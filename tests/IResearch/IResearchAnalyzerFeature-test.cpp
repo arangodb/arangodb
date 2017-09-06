@@ -53,6 +53,7 @@ struct TestAttribute: public irs::attribute {
 };
 
 DEFINE_ATTRIBUTE_TYPE(TestAttribute);
+REGISTER_ATTRIBUTE(TestAttribute); // required to open reader on segments with analized fields
 
 struct TestTermAttribute: public irs::term_attribute {
  public:
@@ -67,6 +68,9 @@ public:
   TestAnalyzer(): irs::analysis::analyzer(TestAnalyzer::type()) {
     _attrs.emplace(_term);
     _attrs.emplace(_attr);
+    _attrs.emplace(_frequency); // required for by_phrase tests
+    _attrs.emplace(_increment); // required by field_data::invert(...)
+    _attrs.emplace(_position); // required for by_phrase tests
   }
 
   virtual irs::attribute_view const& attributes() const NOEXCEPT override { return _attrs; }
@@ -94,6 +98,9 @@ public:
 private:
   irs::attribute_view _attrs;
   irs::bytes_ref _data;
+  irs::frequency _frequency;
+  irs::increment _increment;
+  irs::position _position;
   TestTermAttribute _term;
   TestAttribute _attr;
 };
@@ -219,7 +226,7 @@ SECTION("test_emplace") {
     CHECK((false == !feature.emplace("test_analyzer0", "TestAnalyzer", "abc").first));
     auto pool = feature.get("test_analyzer0");
     CHECK((false == !pool));
-    CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool->features()));
+    CHECK((irs::flags({TestAttribute::type(), irs::frequency::type(), irs::increment::type(), irs::position::type(), irs::term_attribute::type()}) == pool->features()));
   }
 
   // add duplicate valid (same name+type+properties)
@@ -229,7 +236,7 @@ SECTION("test_emplace") {
     CHECK((false == !feature.emplace("test_analyzer1", "TestAnalyzer", "abc").first));
     auto pool = feature.get("test_analyzer1");
     CHECK((false == !pool));
-    CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool->features()));
+    CHECK((irs::flags({TestAttribute::type(), irs::frequency::type(), irs::increment::type(), irs::position::type(), irs::term_attribute::type()}) == pool->features()));
     CHECK((false == !feature.emplace("test_analyzer1", "TestAnalyzer", "abc").first));
     CHECK((false == !feature.get("test_analyzer1")));
   }
@@ -241,7 +248,7 @@ SECTION("test_emplace") {
     CHECK((false == !feature.emplace("test_analyzer2", "TestAnalyzer", "abc").first));
     auto pool = feature.get("test_analyzer2");
     CHECK((false == !pool));
-    CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool->features()));
+    CHECK((irs::flags({TestAttribute::type(), irs::frequency::type(), irs::increment::type(), irs::position::type(), irs::term_attribute::type()}) == pool->features()));
     CHECK((true == !feature.emplace("test_analyzer2", "TestAnalyzer", "abcd").first));
     CHECK((false == !feature.get("test_analyzer2")));
   }
@@ -253,7 +260,7 @@ SECTION("test_emplace") {
     CHECK((false == !feature.emplace("test_analyzer3", "TestAnalyzer", "abc").first));
     auto pool = feature.get("test_analyzer3");
     CHECK((false == !pool));
-    CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool->features()));
+    CHECK((irs::flags({TestAttribute::type(), irs::frequency::type(), irs::increment::type(), irs::position::type(), irs::term_attribute::type()}) == pool->features()));
     CHECK((true == !feature.emplace("test_analyzer3", "invalid", "abc").first));
     CHECK((false == !feature.get("test_analyzer3")));
   }
@@ -319,7 +326,7 @@ SECTION("test_ensure") {
     {
       auto pool = feature.get("test_analyzer");
       REQUIRE((false == !pool));
-      CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool->features()));
+      CHECK((irs::flags({TestAttribute::type(), irs::frequency::type(), irs::increment::type(), irs::position::type(), irs::term_attribute::type()}) == pool->features()));
       auto analyzer = pool.get();
       CHECK((false == !analyzer));
     }
@@ -362,7 +369,7 @@ SECTION("test_get") {
     {
       auto pool = feature.get("test_analyzer");
       REQUIRE((false == !pool));
-      CHECK((irs::flags({TestAttribute::type(), irs::term_attribute::type()}) == pool->features()));
+      CHECK((irs::flags({TestAttribute::type(), irs::frequency::type(), irs::increment::type(), irs::position::type(), irs::term_attribute::type()}) == pool->features()));
       auto analyzer = pool.get();
       CHECK((false == !analyzer));
     }

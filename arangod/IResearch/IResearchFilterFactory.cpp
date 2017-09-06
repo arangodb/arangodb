@@ -869,7 +869,7 @@ bool fromFuncExists(
   return true;
 }
 
-// PHRASE(<attribute>, <value> [, <offset>, <value>, ...] [, <analyzer>])
+// PHRASE(<attribute>, <value> [, <offset>, <value>, ...], <analyzer>)
 bool fromFuncPhrase(
     irs::boolean_filter* filter,
     arangodb::aql::AstNode const& args
@@ -888,6 +888,11 @@ bool fromFuncPhrase(
 
   if (argc < 2) {
     LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'PHRASE' AQL function: Invalid number of arguments passed (must be >= 2)";
+    return false;
+  }
+
+  if (!(argc & 1)) {
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'PHRASE' AQL function: Invalid number of arguments passed (must be an odd number)";
     return false;
   }
 
@@ -918,24 +923,17 @@ bool fromFuncPhrase(
     return false;
   }
 
-  // if custom analyzer is present
-  // as the last argument then use it
-  bool const customAnalyzer = argc & 1;
-  auto pool = arangodb::iresearch::IResearchAnalyzerFeature::identity(); // default
-  irs::string_ref analyzerName("<default>");
+  irs::string_ref analyzerName;
+  auto const* analyzerArg = arangodb::iresearch::getNode(
+    args, argc - 1, arangodb::aql::NODE_TYPE_VALUE
+  );
 
-  if (customAnalyzer) {
-    decltype(fieldArg) analyzerArg = arangodb::iresearch::getNode(
-      args, argc - 1, arangodb::aql::NODE_TYPE_VALUE
-    );
-
-    if (!analyzerArg || !arangodb::iresearch::parseValue(analyzerName, *analyzerArg)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'PHRASE' AQL function: Unable to parse analyzer value";
-      return false;
-    }
-
-    pool = analyzerFeature->get(analyzerName);
+  if (!analyzerArg || !arangodb::iresearch::parseValue(analyzerName, *analyzerArg)) {
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'PHRASE' AQL function: Unable to parse analyzer value";
+    return false;
   }
+
+  auto pool = analyzerFeature->get(analyzerName);
 
   if (!pool) {
     LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'PHRASE' AQL function: Unable to load requested analyzer '" << analyzerName << "'";
@@ -963,7 +961,8 @@ bool fromFuncPhrase(
 
   decltype(fieldArg) offsetArg = nullptr;
   size_t offset;
-  for (size_t idx = 2, end = argc - customAnalyzer; idx < end; idx += 2) {
+
+  for (size_t idx = 2, end = argc - 1; idx < end; idx += 2) {
     offsetArg = arangodb::iresearch::getNode(
       args, idx, arangodb::aql::NODE_TYPE_VALUE
     );

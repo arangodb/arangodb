@@ -68,7 +68,7 @@ SECTION("test_start") {
   std::map<irs::string_ref, irs::string_ref> expected = {
     // filter functions
     { "EXISTS", ".|.,." },
-    { "PHRASE", ".,.|.+" },
+    { "PHRASE", ".,.,.|.+" },
     { "STARTS_WITH", ".,.|." },
 
     // scorer functions

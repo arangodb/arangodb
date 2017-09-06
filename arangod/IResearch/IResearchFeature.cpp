@@ -119,7 +119,7 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(functions, arangodb::aql::Function{
     "PHRASE",      // external name (AQL function external names are always in upper case)
     "phrase",      // internal name
-    ".,.|.+",      // positional arguments (attribute, input [, offset, input... ] [, analyzer])
+    ".,.,.|.+",    // positional arguments (attribute, input [, offset, input... ], analyzer)
     false,         // cacheable
     false,         // deterministic
     true,          // can throw
