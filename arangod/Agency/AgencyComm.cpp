@@ -390,15 +390,16 @@ bool AgencyCommResult::sent() const { return _sent; }
 
 int AgencyCommResult::errorCode() const {
   try {
-    std::shared_ptr<VPackBuilder> bodyBuilder =
-        VPackParser::fromJson(_body);
-    VPackSlice body = bodyBuilder->slice();
-    if (!body.isObject()) {
-      return 0;
+    if (!_body.empty()) {
+      std::shared_ptr<VPackBuilder> bodyBuilder = VPackParser::fromJson(_body);
+      VPackSlice body = bodyBuilder->slice();
+      if (!body.isObject()) {
+        return 0;
+      }
+      // get "errorCode" attribute (0 if not exist)
+      return basics::VelocyPackHelper::getNumericValue<int>(body, "errorCode", 0);
     }
-    // get "errorCode" attribute (0 if not exist)
-    return arangodb::basics::VelocyPackHelper::getNumericValue<int>(
-        body, "errorCode", 0);
+    return 0;
   } catch (VPackException const&) {
     return 0;
   }

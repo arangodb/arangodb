@@ -161,7 +161,7 @@ bool SingleServerEdgeCursor::next(std::function<void(EdgeDocumentToken&&, VPackS
       if (cursor->hasExtra()) {
         bool operationSuccessfull = false;
         auto extraCB = [&](DocumentIdentifierToken const& token, VPackSlice edge){
-          if (token._data == 0) {
+          if (token._data != 0) {
 #ifdef USE_ENTERPRISE
             if (_trx->state()->options().skipInaccessibleCollections &&
                 CheckInaccesible(_trx, edge)) {
