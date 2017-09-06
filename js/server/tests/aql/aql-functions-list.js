@@ -44,12 +44,16 @@ function ahuacatlListTestSuite () {
 
   return {
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop(collectionName);
       collection = internal.db._create(collectionName);
+      
+      for (var i = 0; i < 10; ++i) {
+        collection.save({_key: "test" + i});
+      }
     },
 
-    tearDown: function () {
+    tearDownAll: function () {
       internal.db._drop(collectionName);
     },
 
@@ -720,10 +724,6 @@ function ahuacatlListTestSuite () {
     },
 
     testAppendDocuments : function () {
-      for (var i = 0; i < 10; ++i) {
-        collection.save({_key: "test" + i});
-      }
-
       var bindVars = {"@collection" : collectionName};
       var actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x) RETURN APPEND([], tmp)", bindVars);
       assertEqual(actual.length, 1);
@@ -766,9 +766,6 @@ function ahuacatlListTestSuite () {
     },
 
     testAppendDocuments2 : function () {
-      for (var i = 0; i < 10; ++i) {
-        collection.save({_key: "test" + i});
-      }
       var bindVars = {"@collection" : collectionName};
       var actual = getQueryResults("LET tmp = (FOR x IN @@collection SORT x._key RETURN x) RETURN APPEND(tmp, 'stringvalue')", bindVars);
       assertEqual(actual.length, 1);
@@ -798,9 +795,6 @@ function ahuacatlListTestSuite () {
     },
 
     testAppendDocuments3 : function () {
-      for (var i = 0; i < 10; ++i) {
-        collection.save({_key: "test" + i});
-      }
       var bindVars = {"@collection" : collectionName};
       var actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x._id) RETURN APPEND(tmp, 'stringvalue')", bindVars);
       assertEqual(actual.length, 1);
