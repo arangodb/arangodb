@@ -105,8 +105,6 @@ V8DealerFeature::V8DealerFeature(
       _nextId(0),
       _stopping(false),
       _gcFinished(false),
-      _nrAdditionalContexts(0),
-      _minimumContexts(1),
       _forceNrContexts(0),
       _contextsModificationBlockers(0) {
   setOptional(false);
@@ -238,20 +236,14 @@ void V8DealerFeature::start() {
     _nrMaxContexts = scheduler->concurrency();
   }
 
-  // set a minimum of V8 contexts
-  if (_nrMaxContexts < _minimumContexts) {
-    _nrMaxContexts = _minimumContexts;
-  }
-
   if (0 < _forceNrContexts) {
     _nrMaxContexts = _forceNrContexts;
-  } else if (0 < _nrAdditionalContexts) {
-    _nrMaxContexts += _nrAdditionalContexts;
   }
 
-  if (_nrMinContexts < 1 + _nrAdditionalContexts) {
-    _nrMinContexts = 1 + _nrAdditionalContexts;
+  if (_nrMinContexts < 1) {
+    _nrMinContexts = 1;
   }
+
   if (_nrMinContexts > _nrMaxContexts) {
     _nrMinContexts = _nrMaxContexts;
   }

@@ -85,9 +85,14 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   void defineContextUpdate(
       std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>,
       TRI_vocbase_t*);
-  void setMinimumContexts(size_t nr) { _minimumContexts = nr; }
+
+  void setMinimumContexts(size_t nr) { 
+    if (_nrMinContexts < nr) {
+      _nrMinContexts = nr;
+    }
+  }
+
   void setNumberContexts(size_t nr) { _forceNrContexts = nr; }
-  void increaseContexts() { ++_nrAdditionalContexts; }
 
   void defineBoolean(std::string const& name, bool value) {
     _definedBooleans[name] = value;
@@ -129,8 +134,6 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   std::vector<V8Context*> _freeContexts;
   std::vector<V8Context*> _dirtyContexts;
   std::unordered_set<V8Context*> _busyContexts;
-  size_t _nrAdditionalContexts;
-  size_t _minimumContexts;
   size_t _forceNrContexts;
   size_t _contextsModificationBlockers;
 
