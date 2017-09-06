@@ -1,3 +1,3 @@
 #!/bin/bash
 
-. ./Installation/Pipeline/include/build_EDITION_OS.inc "$1" community linux
+. ./Installation/Pipeline/include/build_OS_EDITION.inc "$1" community linux "$2"
