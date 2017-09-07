@@ -3152,12 +3152,8 @@ AqlValue Functions::CollectionCount(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "COLLECTION_COUNT");
   }
 
-  std::string const collectionName(element.slice().copyString());
-
-  auto resolver = trx->resolver();
-  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(collectionName);
-  trx->addCollectionAtRuntime(cid, collectionName);
-
+  TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
+  std::string const collectionName = element.slice().copyString();
   OperationResult res = trx->count(collectionName, true);
   if (res.failed()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(res.code, res.errorMessage);
