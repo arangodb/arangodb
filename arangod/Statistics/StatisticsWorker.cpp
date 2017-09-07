@@ -167,7 +167,7 @@ VPackSlice StatisticsWorker::_lastEntry(std::string const& collectionName, uint6
 
   bindVars->close();
 
-  std::string const aql("FOR s in @@collection FILTER s.time >= @start " + filter + " SORT s.time DESC RETURN s");
+  std::string const aql("FOR s in @@collection FILTER s.time >= @start " + filter + " SORT s.time DESC LIMIT 1 RETURN s");
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(aql),
                           bindVars, nullptr, arangodb::aql::PART_MAIN);
 
@@ -179,7 +179,7 @@ VPackSlice StatisticsWorker::_lastEntry(std::string const& collectionName, uint6
   VPackSlice result = queryResult.result->slice();
 
   if (result.isArray() && result.length()) {
-    // return first slice
+    return result.getNthValue(0);
   }
 
   return arangodb::basics::VelocyPackHelper::NullValue();
