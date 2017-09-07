@@ -28,9 +28,11 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Logger/Logger.h"
+
+#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -183,7 +185,7 @@ bool MaxMapCountFeature::isNearMaxMappingsInternal(double& suggestedCacheTime) n
     std::string value =
         basics::FileUtils::slurp(mapsFilename.c_str());
     
-    size_t const nmaps = StringUtils::split(value, '\n').size();
+    size_t const nmaps = std::count(value.begin(), value.end(), '\n');
     if (nmaps + 1024 < maxMappings) {
       if (nmaps >= maxMappings * 0.95) {
         // 95 % or more of the max mappings are in use. don't cache for too long
