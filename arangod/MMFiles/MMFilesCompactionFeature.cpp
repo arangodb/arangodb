@@ -103,14 +103,8 @@ void MMFilesCompactionFeature::validateOptions(std::shared_ptr<options::ProgramO
 
   if (_deadShare < 0.001) {
     LOG_TOPIC(WARN, Logger::COMPACTOR)
-      << "compaction.dead-size-percent-threshold should be at least 0.01%.";
+      << "compaction.dead-size-percent-threshold should be at least 0.001%.";
     _deadShare = 0.01;
-  }
-
-  if (_maxFiles < 2) {
-    LOG_TOPIC(WARN, Logger::COMPACTOR)
-      << "compaction.max-files should be at least 2.";
-    _maxFiles = 2;
   }
 
   if (_maxResultFilesize < TRI_JOURNAL_MINIMAL_SIZE) {

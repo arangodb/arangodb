@@ -486,6 +486,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
   // now compact all datafiles
   physical->_datafileStatistics.compactionRun();
+  uint64_t noCombined = 0;
   for (size_t i = 0; i < n; ++i) {
     auto compaction = toCompact[i];
     MMFilesDatafile* df = compaction._datafile;
@@ -510,11 +511,14 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       // TODO: Remove file
       return;
     }
-
+    noCombined ++;
   }  // next file
 
   TRI_ASSERT(context->_dfi.numberDead == 0);
   TRI_ASSERT(context->_dfi.sizeDead == 0);
+  if (noCombined > 1) {
+    physical->_datafileStatistics.compactionCombine(noCombined);
+  }
   physical->_datafileStatistics.compactionWritten(context->_dfi.sizeAlive);
   physical->_datafileStatistics.replace(compactor->fid(), context->_dfi);
 

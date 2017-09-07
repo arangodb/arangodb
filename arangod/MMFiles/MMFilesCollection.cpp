@@ -1271,6 +1271,7 @@ void MMFilesCollection::figuresSpecific(
     builder->add("time", VPackValue(&lastCompactionStampString[0]));
 
     builder->add("count", VPackValue(_datafileStatistics.getCompactionRuns()));
+    builder->add("filesCombined", VPackValue(_datafileStatistics.getCompactionFilesCombined()));
     builder->add("bytesRead", VPackValue(_datafileStatistics.getCompactionRead()));
     builder->add("bytpesWritten", VPackValue(_datafileStatistics.getCompactionWritten()));
     builder->close();  // compactionStatus

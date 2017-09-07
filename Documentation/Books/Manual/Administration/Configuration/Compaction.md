@@ -6,9 +6,9 @@ The ArangoDB MMFiles storage engine will run a compaction over data files.
 ArangoDB writes Documents in the WAL file. Once they have been sealed in the wal file,
 the collector may copy them into a per collection journal file. 
 
-Once journal files fil up, they're sealed to become datafiles.
+Once journal files fill up, they're sealed to become datafiles.
 
-=> one collection may have documents in the WAL-logs, its journal file, and an arbitrary 
+=> one collection may have documents in the WAL logs, its journal file, and an arbitrary 
 number of datafiles.
 
 If a collection is loaded, each of these files are opened (thus use a file handle) and 
@@ -32,7 +32,7 @@ under which conditions the system should perform which amount of these compactio
 
 
 # Activity control
-The activity controll parameters alter the behaviour in terms of scan / execution frequency
+The activity control parameters alter the behaviour in terms of scan / execution frequency
 of the compaction.
 
 Sleep interval between two compaction runs (in seconds):

@@ -33,7 +33,7 @@ class ProgramOptions;
 
 class MMFilesCompactionFeature : public application_features::ApplicationFeature {
  public:
-  static MMFilesCompactionFeature *COMPACTOR;
+  static MMFilesCompactionFeature* COMPACTOR;
  private:
   /// @brief wait time between compaction runs when idle
   uint64_t _compactionSleepTime;

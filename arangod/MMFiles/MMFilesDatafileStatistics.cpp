@@ -35,6 +35,7 @@ MMFilesDatafileStatistics::MMFilesDatafileStatistics() :
   _compactionCount(0),
   _compactionBytesRead(0),
   _compactionBytesWritten(0),
+  _filesCombined(0),
   _lock(),
   _stats(){}
 
