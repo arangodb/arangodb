@@ -85,6 +85,10 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--log.use-microtime",
                      "use microtime instead",
                      new BooleanParameter(&_useMicrotime));
+  
+  options->addOption("--log.role",
+                     "log server role",
+                     new BooleanParameter(&_showRole));
 
   options->addHiddenOption("--log.prefix",
                            "prefix log message with this string",
@@ -158,6 +162,7 @@ void LoggerFeature::prepare() {
 #endif
 
   Logger::setLogLevel(_levels);
+  Logger::setShowRole(_showRole);
   Logger::setUseLocalTime(_useLocalTime);
   Logger::setUseMicrotime(_useMicrotime);
   Logger::setShowLineNumber(_lineNumber);

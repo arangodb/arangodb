@@ -59,6 +59,8 @@ bool Logger::_threaded(false);
 bool Logger::_useLocalTime(false);
 bool Logger::_keepLogRotate(false);
 bool Logger::_useMicrotime(false);
+bool Logger::_showRole(false);
+char Logger::_role('\0');
 std::string Logger::_outputPrefix("");
 
 std::unique_ptr<LogThread> Logger::_loggingThread(nullptr);
@@ -134,6 +136,10 @@ void Logger::setLogLevel(std::vector<std::string> const& levels) {
   }
 }
 
+void Logger::setRole(char role) {
+  _role = role;
+}
+
 // NOTE: this function should not be called if the logging is active.
 void Logger::setOutputPrefix(std::string const& prefix) {
   if (_active) {
@@ -182,6 +188,16 @@ void Logger::setUseLocalTime(bool show) {
   }
 
   _useLocalTime = show;
+}
+
+// NOTE: this function should not be called if the logging is active.
+void Logger::setShowRole(bool show) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "cannot change show role if logging is active");
+  }
+
+  _showRole = show;
 }
 
 // NOTE: this function should not be called if the logging is active.
@@ -247,51 +263,47 @@ void Logger::log(char const* function, char const* file, long int line,
   }
 
   std::stringstream out;
+  char buf[64];
 
   // time prefix
   if (_useMicrotime) {
-    char buf[128];
     snprintf(buf, sizeof(buf), "%.6f ", TRI_microtime());
-    out << buf;
   } else {
-    char timePrefix[32];
     time_t tt = time(0);
     struct tm tb;
 
     if (!_useLocalTime) {
       // use GMtime
       TRI_gmtime(tt, &tb);
-      strftime(timePrefix, sizeof(timePrefix), "%Y-%m-%dT%H:%M:%SZ ", &tb);
+      strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%SZ ", &tb);
     } else {
       // use localtime
       TRI_localtime(tt, &tb);
-      strftime(timePrefix, sizeof(timePrefix), "%Y-%m-%dT%H:%M:%S ", &tb);
+      strftime(buf, sizeof(buf), "%Y-%m-%dT%H:%M:%S ", &tb);
     }
-
-    out << timePrefix;
   }
+  out << buf;
 
   // output prefix
   if (!_outputPrefix.empty()) {
-    out << _outputPrefix << " ";
+    out << _outputPrefix << ' ';
   }
 
   // append the process / thread identifier
-  {
-    char processPrefix[48];
+  TRI_pid_t processId = Thread::currentProcessId();
 
-    TRI_pid_t processId = Thread::currentProcessId();
-
-    if (_showThreadIdentifier) {
-      uint64_t threadNumber = Thread::currentThreadNumber();
-      snprintf(processPrefix, sizeof(processPrefix), "[%llu-%llu] ",
-               (unsigned long long)processId, (unsigned long long)threadNumber);
-    } else {
-      snprintf(processPrefix, sizeof(processPrefix), "[%llu] ",
-               (unsigned long long)processId);
-    }
-
-    out << processPrefix;
+  if (_showThreadIdentifier) {
+    uint64_t threadNumber = Thread::currentThreadNumber();
+    snprintf(buf, sizeof(buf), "[%llu-%llu] ",
+             (unsigned long long)processId, (unsigned long long)threadNumber);
+  } else {
+    snprintf(buf, sizeof(buf), "[%llu] ",
+             (unsigned long long)processId);
+  }
+  out << buf;
+  
+  if (_showRole && _role != '\0') {
+    out << _role << ' ';
   }
 
   // log level
@@ -313,8 +325,9 @@ void Logger::log(char const* function, char const* file, long int line,
 
   // generate the complete message
   out << message;
-  size_t offset = out.str().size() - message.size();
-  auto msg = std::make_unique<LogMessage>(level, topicId, out.str(), offset);
+  std::string ostreamContent = out.str();
+  size_t offset = ostreamContent.size() - message.size();
+  auto msg = std::make_unique<LogMessage>(level, topicId, std::move(ostreamContent), offset);
 
   // now either queue or output the message
   if (_threaded) {
