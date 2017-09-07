@@ -511,13 +511,13 @@ int ContinuousSyncer::processDocument(TRI_replication_operation_e type,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add(StaticStrings::KeyString, key);
-  builder.add(StaticStrings::RevString, rev);
-  builder.close();
+  _documentBuilder.clear();
+  _documentBuilder.openObject();
+  _documentBuilder.add(StaticStrings::KeyString, key);
+  _documentBuilder.add(StaticStrings::RevString, rev);
+  _documentBuilder.close();
 
-  VPackSlice const old = builder.slice();
+  VPackSlice const old = _documentBuilder.slice();
 
   // extract "tid"
   std::string const transactionId = VelocyPackHelper::getStringValue(slice, "tid", "");
@@ -881,6 +881,8 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
 
   // buffer must end with a NUL byte
   TRI_ASSERT(*end == '\0');
+  
+  auto builder = std::make_shared<VPackBuilder>();
 
   while (p < end) {
     char const* q = strchr(p, '\n');
@@ -901,8 +903,7 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
 
     processedMarkers++;
 
-    auto builder = std::make_shared<VPackBuilder>();
-
+    builder->clear();
     try {
       VPackParser parser(builder);
       parser.parse(p, static_cast<size_t>(q - p));
@@ -927,7 +928,8 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
 
     //LOG_TOPIC(ERR, Logger::FIXME) << slice.toJson();
 
-    if (skipMarker(firstRegularTick, slice)) {
+    if (!_transientApplierState && 
+        skipMarker(firstRegularTick, slice)) {
       // entry is skipped
       res = TRI_ERROR_NO_ERROR;
       skipped = true;
@@ -1530,8 +1532,7 @@ int ContinuousSyncer::syncCollectionFinalize(std::string& errorMsg,
                                 "/logger-follow?chunkSize=" + _chunkSize + 
                                 "&from=" + StringUtils::itoa(fetchTick) +
                                 "&serverId=" + _localServerIdString + 
-                                "&collection=" + StringUtils::urlEncode(collectionName) +
-                                "&includeSystem=true";
+                                "&collection=" + StringUtils::urlEncode(collectionName);
 
     // send request
     std::string const progress =
@@ -1560,32 +1561,24 @@ int ContinuousSyncer::syncCollectionFinalize(std::string& errorMsg,
       return TRI_ERROR_REPLICATION_MASTER_ERROR;
     }
 
-    bool checkMore = false;
+    if (response->getHttpReturnCode() == 204) {
+      // No content: this means we are done
+      return TRI_ERROR_NO_ERROR;
+    }
 
     bool found;
     std::string header =
         response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
 
+    bool checkMore = false;
     if (found) {
       checkMore = StringUtils::boolean(header);
-    } else {
-      errorMsg = "got invalid response from master at " +
-                 std::string(_masterInfo._endpoint) +
-                 ": required header is missing";
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-    }
+    } 
 
     header =
         response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
     if (found) {
-      TRI_voc_tick_t lastIncludedTick = StringUtils::uint64(header);
-
-      if (lastIncludedTick > fetchTick) {
-        fetchTick = lastIncludedTick;
-      } else {
-        // we got the same tick again, this indicates we're at the end
-        checkMore = false;
-      }
+      fetchTick = StringUtils::uint64(header);
     } else {
       errorMsg = "got invalid response from master at " +
                  std::string(_masterInfo._endpoint) +
@@ -1601,7 +1594,7 @@ int ContinuousSyncer::syncCollectionFinalize(std::string& errorMsg,
       return res;
     }
 
-    if (!checkMore || processedMarkers == 0) {
+    if (!checkMore) { // || processedMarkers == 0) { // TODO: check if we need this!
       // done!
       return TRI_ERROR_NO_ERROR;
     }

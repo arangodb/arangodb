@@ -589,7 +589,9 @@ function synchronizeOneShard (database, shard, planId, leader) {
               database, 
               collection: shard, 
               leaderId: leader, 
-              from: sy.lastLogTick
+              from: sy.lastLogTick,
+              requestTimeout: 60,
+              connectTimeout: 60
             });
              
             try {
@@ -599,6 +601,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
               throw err4;
             }
           } catch (err3) {
+            ok = false;
             console.topic('heartbeat=error', 'synchronizeOneshard: exception in',
               'syncCollectionFinalize:', err3);
           }

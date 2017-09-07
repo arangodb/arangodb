@@ -26,9 +26,11 @@
 
 #include "Basics/Common.h"
 #include "Replication/Syncer.h"
-#include "VocBase/replication-applier.h"
+
+#include <velocypack/Builder.h>
 
 struct TRI_vocbase_t;
+class TRI_replication_applier_t;
 
 namespace arangodb {
 
@@ -182,6 +184,9 @@ class ContinuousSyncer : public Syncer {
   /// @brief which transactions were open and need to be treated specially
   std::unordered_map<TRI_voc_tid_t, ReplicationTransaction*>
       _ongoingTransactions;
+  
+  /// @brief recycled builder for repeated document creation
+  arangodb::velocypack::Builder _documentBuilder;
 };
 }
 
