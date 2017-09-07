@@ -619,7 +619,7 @@ int TRI_StateReplicationApplier(TRI_replication_applier_t const* applier,
 
   if (applier->_state._progressMsg != nullptr) {
     state->_progressMsg =
-        TRI_DuplicateString(TRI_CORE_MEM_ZONE, applier->_state._progressMsg);
+        TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, applier->_state._progressMsg);
   } else {
     state->_progressMsg = nullptr;
   }
@@ -629,7 +629,7 @@ int TRI_StateReplicationApplier(TRI_replication_applier_t const* applier,
 
   if (applier->_state._lastError._msg != nullptr) {
     state->_lastError._msg =
-        TRI_DuplicateString(TRI_CORE_MEM_ZONE, applier->_state._lastError._msg);
+        TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, applier->_state._lastError._msg);
   } else {
     state->_lastError._msg = nullptr;
   }
@@ -660,11 +660,11 @@ void TRI_DestroyStateReplicationApplier(
   TRI_ASSERT(state != nullptr);
 
   if (state->_progressMsg != nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, state->_progressMsg);
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, state->_progressMsg);
   }
 
   if (state->_lastError._msg != nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, state->_lastError._msg);
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, state->_lastError._msg);
   }
 }
 
@@ -900,7 +900,7 @@ int TRI_replication_applier_t::start(TRI_voc_tick_t initialTick, bool useTick,
 
   // reset error
   if (_state._lastError._msg != nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, _state._lastError._msg);
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, _state._lastError._msg);
     _state._lastError._msg = nullptr;
   }
 
@@ -1039,7 +1039,7 @@ int TRI_replication_applier_t::stop(bool resetError, bool joinThread) {
 
     if (resetError) {
       if (_state._lastError._msg != nullptr) {
-        TRI_FreeString(TRI_CORE_MEM_ZONE, _state._lastError._msg);
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, _state._lastError._msg);
         _state._lastError._msg = nullptr;
       }
 
@@ -1113,7 +1113,7 @@ int TRI_replication_applier_t::shutdown() {
     setProgress("applier stopped", false);
 
     if (_state._lastError._msg != nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, _state._lastError._msg);
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, _state._lastError._msg);
       _state._lastError._msg = nullptr;
     }
 
@@ -1177,7 +1177,7 @@ bool TRI_replication_applier_t::wait(uint64_t sleepTime) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_replication_applier_t::setProgress(char const* msg, bool lock) {
-  char* copy = TRI_DuplicateString(TRI_CORE_MEM_ZONE, msg);
+  char* copy = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, msg);
 
   if (copy == nullptr) {
     return;
@@ -1187,7 +1187,7 @@ void TRI_replication_applier_t::setProgress(char const* msg, bool lock) {
     WRITE_LOCKER(writeLocker, _statusLock);
 
     if (_state._progressMsg != nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, _state._progressMsg);
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, _state._progressMsg);
     }
 
     _state._progressMsg = copy;
@@ -1197,7 +1197,7 @@ void TRI_replication_applier_t::setProgress(char const* msg, bool lock) {
                                 sizeof(_state._progressTime) - 1);
   } else {
     if (_state._progressMsg != nullptr) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, _state._progressMsg);
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, _state._progressMsg);
     }
 
     _state._progressMsg = copy;
@@ -1304,10 +1304,10 @@ int TRI_replication_applier_t::doSetError(int errorCode, char const* msg) {
                               sizeof(_state._lastError._time) - 1);
 
   if (_state._lastError._msg != nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, _state._lastError._msg);
+    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, _state._lastError._msg);
   }
 
-  _state._lastError._msg = TRI_DuplicateString(TRI_CORE_MEM_ZONE, realMsg);
+  _state._lastError._msg = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, realMsg);
 
   return errorCode;
 }

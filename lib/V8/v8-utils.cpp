@@ -1303,8 +1303,9 @@ static void JS_GetTempFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL(errorMessage);
   }
 
+  TRI_DEFER(TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, result));
+
   std::string const tempfile(result);
-  TRI_Free(TRI_CORE_MEM_ZONE, result);
 
   // return result
   TRI_V8_RETURN_STD_STRING(tempfile);
@@ -3482,16 +3483,20 @@ static void JS_ExecuteExternal(
   if (0 != external._readPipe) {
     char* readPipe = TRI_EncodeHexString((char const*)external._readPipe,
                                          sizeof(HANDLE), &readPipe_len);
-    result->Set(TRI_V8_ASCII_STRING(isolate, "readPipe"),
-                TRI_V8_PAIR_STRING(isolate, readPipe, (int)readPipe_len));
-    TRI_FreeString(TRI_CORE_MEM_ZONE, readPipe);
+    if (readPipe != nullptr) {
+      result->Set(TRI_V8_ASCII_STRING(isolate, "readPipe"),
+                  TRI_V8_PAIR_STRING(isolate, readPipe, (int)readPipe_len));
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, readPipe);
+    }
   }
   if (0 != external._writePipe) {
     char* writePipe = TRI_EncodeHexString((char const*)external._writePipe,
                                           sizeof(HANDLE), &writePipe_len);
-    result->Set(TRI_V8_ASCII_STRING(isolate, "writePipe"),
-                TRI_V8_PAIR_STRING(isolate, writePipe, (int)writePipe_len));
-    TRI_FreeString(TRI_CORE_MEM_ZONE, writePipe);
+    if (writePipe != nullptr) {
+      result->Set(TRI_V8_ASCII_STRING(isolate, "writePipe"),
+                  TRI_V8_PAIR_STRING(isolate, writePipe, (int)writePipe_len));
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, writePipe);
+    }
   }
 #endif
   TRI_V8_RETURN(result);
@@ -3670,16 +3675,20 @@ static void JS_ExecuteAndWaitExternal(
   if (0 != external._readPipe) {
     char* readPipe = TRI_EncodeHexString((char const*)external._readPipe,
                                          sizeof(HANDLE), &readPipe_len);
-    result->Set(TRI_V8_ASCII_STRING(isolate, "readPipe"),
-                TRI_V8_PAIR_STRING(isolate, readPipe, (int)readPipe_len));
-    TRI_FreeString(TRI_CORE_MEM_ZONE, readPipe);
+    if (readPipe != nullptr) {
+      result->Set(TRI_V8_ASCII_STRING(isolate, "readPipe"),
+                  TRI_V8_PAIR_STRING(isolate, readPipe, (int)readPipe_len));
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, readPipe);
+    }
   }
   if (0 != external._writePipe) {
     char* writePipe = TRI_EncodeHexString((char const*)external._writePipe,
                                           sizeof(HANDLE), &writePipe_len);
-    result->Set(TRI_V8_ASCII_STRING(isolate, "writePipe"),
-                TRI_V8_PAIR_STRING(isolate, writePipe, (int)writePipe_len));
-    TRI_FreeString(TRI_CORE_MEM_ZONE, writePipe);
+    if (writePipe != nullptr) {
+      result->Set(TRI_V8_ASCII_STRING(isolate, "writePipe"),
+                  TRI_V8_PAIR_STRING(isolate, writePipe, (int)writePipe_len));
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, writePipe);
+    }
   }
 #endif
 

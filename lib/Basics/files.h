@@ -130,6 +130,7 @@ char* TRI_Basename(char const* path);
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_Concatenate2File(char const* path, char const* name);
+char* TRI_Concatenate2File(TRI_memory_zone_t* zone, char const* path, char const* name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a filename
@@ -241,7 +242,7 @@ int TRI_DestroyLockFile(char const* filename);
 /// @brief return the filename component of a file (without path)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetFilename(char const*);
+char* TRI_GetFilename(TRI_memory_zone_t* zone, char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the absolute path of a file

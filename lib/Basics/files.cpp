@@ -746,6 +746,29 @@ char* TRI_Basename(char const* path) {
 /// @brief creates a filename
 ////////////////////////////////////////////////////////////////////////////////
 
+char* TRI_Concatenate2File(TRI_memory_zone_t* zone, char const* path, char const* name) {
+  size_t len = strlen(path);
+  char* result;
+
+  if (0 < len) {
+    result = TRI_DuplicateString(zone, path);
+    RemoveTrailingSeparator(result);
+
+    TRI_AppendString(&result, TRI_DIR_SEPARATOR_STR);
+  } else {
+    result = TRI_DuplicateString(zone, "");
+  }
+
+  TRI_AppendString(&result, name);
+  NormalizePath(result);
+
+  return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a filename
+////////////////////////////////////////////////////////////////////////////////
+
 char* TRI_Concatenate2File(char const* path, char const* name) {
   size_t len = strlen(path);
   char* result;
@@ -1448,7 +1471,7 @@ int TRI_DestroyLockFile(char const* filename) {
 /// @brief return the filename component of a file (without path)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetFilename(char const* filename) {
+char* TRI_GetFilename(TRI_memory_zone_t* zone, char const* filename) {
   char const* p;
   char const* s;
 
@@ -1461,7 +1484,7 @@ char* TRI_GetFilename(char const* filename) {
     p++;
   }
 
-  return TRI_DuplicateString(s);
+  return TRI_DuplicateString(zone, s);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2313,22 +2336,20 @@ int TRI_GetTempName(char const* directory, char** result, bool createFile,
 
   int tries = 0;
   while (tries++ < 10) {
-    TRI_pid_t pid;
-    char* tempName;
-    char* pidString;
-    char* number;
-    char* filename;
+    TRI_pid_t pid = Thread::currentProcessId();
 
-    pid = Thread::currentProcessId();
-
-    number = TRI_StringUInt32(RandomGenerator::interval(UINT32_MAX));
-    pidString = TRI_StringUInt32(pid);
-    tempName = TRI_Concatenate4String("tmp-", pidString, "-", number);
+    char* number = TRI_StringUInt32(RandomGenerator::interval(UINT32_MAX));
+    char* pidString = TRI_StringUInt32(pid);
+    char* tempName = TRI_Concatenate4String("tmp-", pidString, "-", number);
     TRI_Free(TRI_CORE_MEM_ZONE, number);
     TRI_Free(TRI_CORE_MEM_ZONE, pidString);
 
-    filename = TRI_Concatenate2File(dir, tempName);
+    char* filename = TRI_Concatenate2File(TRI_UNKNOWN_MEM_ZONE, dir, tempName);
     TRI_Free(TRI_CORE_MEM_ZONE, tempName);
+
+    if (filename == nullptr) {
+      return TRI_ERROR_OUT_OF_MEMORY;
+    }
 
     if (TRI_ExistsFile(filename)) {
       errorMessage = std::string("Tempfile already exists! ") + filename;
@@ -2349,7 +2370,7 @@ int TRI_GetTempName(char const* directory, char** result, bool createFile,
         return TRI_ERROR_NO_ERROR;
       }
 
-      TRI_Free(TRI_CORE_MEM_ZONE, filename);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, filename);
     }
 
     // next try

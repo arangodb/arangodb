@@ -823,7 +823,10 @@ char* TRI_EncodeHexString(char const* source, size_t sourceLen,
 
   *dstLen = (sourceLen * 2);
   dst = static_cast<uint16_t*>(
-      TRI_Allocate(TRI_CORE_MEM_ZONE, (*dstLen) + 1));
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (*dstLen) + 1));
+  if (dst == nullptr) {
+    return nullptr;
+  }
   result = (char*)dst;
 
   hex = (uint16_t*)HexValues;
@@ -853,7 +856,10 @@ char* TRI_DecodeHexString(char const* source, size_t sourceLen,
 
   *dstLen = (sourceLen / 2);
   dst = static_cast<uint8_t*>(
-      TRI_Allocate(TRI_CORE_MEM_ZONE, (*dstLen) + 1));
+      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (*dstLen) + 1));
+  if (dst == nullptr) {
+    return nullptr;
+  }
   result = (char*)dst;
 
   src = (uint8_t*)source;
