@@ -584,22 +584,6 @@ function synchronizeOneShard (database, shard, planId, leader) {
         }
         if (lockJobId !== false) {
           try {
-            var sy2 = rep.syncCollectionFinalize(
-              database, shard, sy.lastLogTick, { endpoint: ep }, leader);
-            if (sy2.error) {
-              console.topic('heartbeat=error', 'synchronizeOneShard: Could not finalize shard synchronization',
-                shard, sy2);
-              ok = false;
-            } else {
-              try {
-                ok = addShardFollower(ep, database, shard, lockJobId);
-              } catch (err4) {
-                db._drop(shard);
-                throw err4;
-              }
-            }
-
-/*
             var sy2 = REPLICATION_SYNCHRONIZE_FINALIZE({ 
               endpoint: ep, 
               database, 
@@ -614,7 +598,6 @@ function synchronizeOneShard (database, shard, planId, leader) {
               db._drop(shard);
               throw err4;
             }
-*/
           } catch (err3) {
             console.topic('heartbeat=error', 'synchronizeOneshard: exception in',
               'syncCollectionFinalize:', err3);
