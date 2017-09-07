@@ -270,7 +270,7 @@ actions.defineHttp({
     }
 
     var options = { timeout: 10 };
-    var op = ArangoClusterComm.asyncRequest('GET', 'server:' + serverId, '_system',
+    var op = ArangoClusterComm.asyncRequest('GET', 'server:' + serverId, req.database,
       '/_api/version', '', {}, options);
     var r = ArangoClusterComm.wait(op);
     res.contentType = 'application/json; charset=utf-8';
@@ -324,7 +324,7 @@ actions.defineHttp({
     }
 
     var options = { timeout: 10 };
-    var op = ArangoClusterComm.asyncRequest('GET', 'server:' + serverId, '_system',
+    var op = ArangoClusterComm.asyncRequest('GET', 'server:' + serverId, req.database,
       '/_admin/statistics', '', {}, options);
     var r = ArangoClusterComm.wait(op);
     res.contentType = 'application/json; charset=utf-8';
@@ -378,7 +378,7 @@ actions.defineHttp({
     }
 
     var options = { timeout: 10 };
-    var op = ArangoClusterComm.asyncRequest('GET', 'server:' + serverId, '_system',
+    var op = ArangoClusterComm.asyncRequest('GET', 'server:' + serverId, req.database,
       '/_api/engine', '', {}, options);
     var r = ArangoClusterComm.wait(op);
     res.contentType = 'application/json; charset=utf-8';
@@ -428,7 +428,7 @@ actions.defineHttp({
     }
     var DBserver = req.parameters.DBserver;
     var options = { timeout: 10 };
-    var op = ArangoClusterComm.asyncRequest('GET', 'server:' + DBserver, '_system',
+    var op = ArangoClusterComm.asyncRequest('GET', 'server:' + DBserver, req.database,
       '/_admin/statistics', '', {}, options);
     var r = ArangoClusterComm.wait(op);
     res.contentType = 'application/json; charset=utf-8';
@@ -499,6 +499,11 @@ actions.defineHttp({
 
     Health = Object.entries(Health).reduce((Health, [serverId,struct]) => {
       let canBeDeleted = false;
+      if (serverId.startsWith('PRMR')) {
+        Health[serverId].Role = 'DBServer';
+      } else if (serverId.startsWith('CRDN')) {
+        Health[serverId].Role = 'Coordinator';
+      }
       if (struct.Role === 'Coordinator') {
         canBeDeleted = struct.Status === 'FAILED';
       } else if (struct.Role === 'DBServer') {
@@ -599,7 +604,7 @@ actions.defineHttp({
     } else {
       // query a remote statistics collection
       var options = { timeout: 10 };
-      var op = ArangoClusterComm.asyncRequest('POST', 'server:' + DBserver, '_system',
+      var op = ArangoClusterComm.asyncRequest('POST', 'server:' + DBserver, req.database,
         '/_api/cursor', JSON.stringify({query: myQueryVal, bindVars: bind}), {}, options);
       var r = ArangoClusterComm.wait(op);
       res.contentType = 'application/json; charset=utf-8';
@@ -1402,7 +1407,7 @@ actions.defineHttp({
       // get counts of leader and follower shard
       leaderOP = null;
       try {
-        leaderOP = ArangoClusterComm.asyncRequest('GET', 'server:' + shard.leader, '_system',
+        leaderOP = ArangoClusterComm.asyncRequest('GET', 'server:' + shard.leader, req.database,
         '/_api/collection/' + shard.shard + '/count', '', {}, options);
       } catch (e) {
       }
@@ -1411,7 +1416,7 @@ actions.defineHttp({
       // introduce last minute log spam before the release (this was not logging either before restructuring it)
       let followerOps = shard.toCheck.map(follower => {
         try {
-        return ArangoClusterComm.asyncRequest('GET', 'server:' + follower, '_system', '/_api/collection/' + shard.shard + '/count', '', {}, options);
+        return ArangoClusterComm.asyncRequest('GET', 'server:' + follower, req.database, '/_api/collection/' + shard.shard + '/count', '', {}, options);
         } catch (e) {
           return null;
         }

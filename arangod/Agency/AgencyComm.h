@@ -261,7 +261,7 @@ class AgencyCommResult {
   std::string _body;
   std::string _realBody;
 
-  std::map<std::string, AgencyCommResultEntry> _values;
+  std::unordered_map<std::string, AgencyCommResultEntry> _values;
   int _statusCode;
   bool _connected;
   bool _sent;
@@ -606,7 +606,7 @@ class AgencyCommManager {
   // should call `failed` such that the manager can switch to a new
   // current endpoint. In case a redirect is received, one has to inform
   // the manager by calling `redirect`.
-  std::map<std::string,
+  std::unordered_map<std::string,
            std::vector<std::unique_ptr<httpclient::GeneralClientConnection>>>
   _unusedConnections;
 };
