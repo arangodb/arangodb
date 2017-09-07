@@ -904,7 +904,7 @@ def buildEdition(os, edition) {
             def files = findFiles(glob: "enterprise/js/**")
 
             for (file in files) {
-                copyFile(os, file, file.substring(14))
+                copyFile(os, file, file.toString().substring(14))
             }
         }
     }
