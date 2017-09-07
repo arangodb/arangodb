@@ -605,7 +605,7 @@ std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates
     if(_clusterEstimates.empty()) {
       LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is not availabe";
       return true;
-    } else if (ctime - _clusterEstimateTTL > 10.0) {
+    } else if (ctime - _clusterEstimateTTL > 60.0) {
       LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is too old: " << ctime - _clusterEstimateTTL;
       return true;
     }
