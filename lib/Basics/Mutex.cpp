@@ -129,6 +129,10 @@ void Mutex::unlock() {
 void Mutex::assertLockedByCurrentThread() {
   TRI_ASSERT(_holder == Thread::currentThreadId());
 }
+
+void Mutex::assertNotLockedByCurrentThread() {
+  TRI_ASSERT(_holder != Thread::currentThreadId());
+}
 #endif
 
 // -----------------------------------------------------------------------------
@@ -148,6 +152,7 @@ void Mutex::unlock() { ReleaseSRWLockExclusive(&_mutex); }
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 void Mutex::assertLockedByCurrentThread() {}
+void Mutex::assertNotLockedByCurrentThread() {}
 #endif
 
 #endif

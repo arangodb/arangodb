@@ -39,7 +39,7 @@ CacheRebalancerThread::CacheRebalancerThread(cache::Manager* manager,
       _manager(manager),
       _rebalancer(_manager),
       _fullInterval(interval),
-      _shortInterval(100) {}
+      _shortInterval(10000) {}
 
 CacheRebalancerThread::~CacheRebalancerThread() { shutdown(); }
 
@@ -52,8 +52,9 @@ void CacheRebalancerThread::beginShutdown() {
 
 void CacheRebalancerThread::run() {
   while (!isStopping()) {
-    bool ran = _rebalancer.rebalance();
-    uint64_t interval = ran ? _fullInterval : _shortInterval;
+    int result = _rebalancer.rebalance();
+    uint64_t interval = (result != TRI_ERROR_ARANGO_BUSY) ? _fullInterval
+                                                          : _shortInterval;
 
     CONDITION_LOCKER(guard, _condition);
     guard.wait(interval);

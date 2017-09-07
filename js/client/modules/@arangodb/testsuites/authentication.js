@@ -27,12 +27,14 @@
 
 const functionsDocumentation = {
   'authentication': 'authentication tests',
+  'authentication_server': 'authentication server tests',
   'authentication_parameters': 'authentication parameters tests'
 };
 const optionsDocumentation = [
   '   - `skipAuthentication : testing authentication and authentication_paramaters will be skipped.'
 ];
 
+const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
 const yaml = require('js-yaml');
@@ -50,10 +52,9 @@ const download = require('internal').download;
 // / @brief TEST: authentication
 // //////////////////////////////////////////////////////////////////////////////
 
-function authentication (options) {
+function authenticationClient (options) {
   if (options.skipAuthentication === true) {
     print('skipping Authentication tests!');
-
     return {
       authentication: {
         status: true,
@@ -62,10 +63,30 @@ function authentication (options) {
     };
   }
 
-  print(CYAN + 'Authentication tests...' + RESET);
+  print(CYAN + 'Client Authentication tests...' + RESET);
   let testCases = tu.scanTestPath('js/client/tests/authentication');
 
   return tu.performTests(options, testCases, 'authentication', tu.runInArangosh, {
+    'server.authentication': 'true',
+    'server.jwt-secret': 'haxxmann',
+    'cluster.create-waits-for-sync-replication': false
+  });
+}
+
+function authenticationServer (options) {
+  if (options.skipAuthentication === true) {
+    print('skipping Authentication tests!');
+    return {
+      authentication: {
+        status: true,
+        skipped: true
+      }
+    };
+  }
+
+  print(CYAN + 'Server Authentication tests...' + RESET);
+  let testCases = tu.scanTestPath('js/server/tests/authentication');
+  return tu.performTests(options, testCases, 'authentication_server', tu.runThere, {
     'server.authentication': 'true',
     'server.jwt-secret': 'haxxmann',
     'cluster.create-waits-for-sync-replication': false
@@ -149,8 +170,14 @@ function authenticationParameters (options) {
 
   let continueTesting = true;
   let results = {};
+  // we append one cleanup directory for the invoking logic...
+  let dummyDir = fs.join(fs.getTempPath(), 'authentication_dummy');
+  fs.makeDirectory(dummyDir);
+  pu.cleanupDBDirectoriesAppend(dummyDir);
 
   for (let test = 0; test < 3; test++) {
+    let cleanup = true;
+
     let instanceInfo = pu.startInstance('tcp', options,
       authTestServerParams[test],
       'authentication_parameters_' + authTestNames[test]);
@@ -191,7 +218,7 @@ function authenticationParameters (options) {
 
         results[testName].failed++;
         instanceInfo.exitStatus = 'server is gone.';
-
+        cleanup = false;
         break;
       }
 
@@ -213,6 +240,7 @@ function authenticationParameters (options) {
             ' and we got ' + reply.code +
             ' Full Status: ' + yaml.safeDump(reply)
         };
+        cleanup = false;
       }
 
       continueTesting = pu.arangod.check.instanceAlive(instanceInfo, options);
@@ -223,6 +251,10 @@ function authenticationParameters (options) {
     print(CYAN + 'Shutting down ' + authTestNames[test] + ' test...' + RESET);
     pu.shutdownInstance(instanceInfo, options);
     print(CYAN + 'done with ' + authTestNames[test] + ' test.' + RESET);
+
+    if (cleanup) {
+      pu.cleanupLastDirectory(options);
+    }
   }
 
   print();
@@ -231,12 +263,14 @@ function authenticationParameters (options) {
 }
 
 function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
-  testFns['authentication'] = authentication;
+  testFns['authentication'] = authenticationClient;
+  testFns['authentication_server'] = authenticationServer;
   testFns['authentication_parameters'] = authenticationParameters;
 
   opts['skipAuthentication'] = false;
 
   defaultFns.push('authentication');
+  defaultFns.push('authentication_server');
   defaultFns.push('authentication_parameters');
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }

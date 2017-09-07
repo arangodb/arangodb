@@ -231,6 +231,7 @@ SET(ARANGOD_SOURCES
   Aql/VariableGenerator.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
+  Cache/BucketState.cpp
   Cache/Cache.cpp
   Cache/CacheManagerFeature.cpp
   Cache/CacheManagerFeatureThreads.cpp
@@ -242,7 +243,6 @@ SET(ARANGOD_SOURCES
   Cache/PlainBucket.cpp
   Cache/PlainCache.cpp
   Cache/Rebalancer.cpp
-  Cache/State.cpp
   Cache/Table.cpp
   Cache/Transaction.cpp
   Cache/TransactionalBucket.cpp
@@ -283,14 +283,18 @@ SET(ARANGOD_SOURCES
   Graph/BreadthFirstEnumerator.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
   Graph/ClusterTraverserCache.cpp
-  Graph/EdgeDocumentToken.cpp
+  Graph/EdgeCollectionInfo.cpp
   Graph/NeighborsEnumerator.cpp
+  Graph/PathEnumerator.cpp
   Graph/ShortestPathOptions.cpp
   Graph/ShortestPathResult.cpp
   Graph/SingleServerEdgeCursor.cpp
+  Graph/SingleServerTraverser.cpp
   Graph/TraverserCache.cpp
   Graph/TraverserCacheFactory.cpp
   Graph/TraverserDocumentCache.cpp
+  Graph/Traverser.cpp
+  Graph/TraverserOptions.cpp
   Indexes/Index.cpp
   Indexes/IndexIterator.cpp
   Indexes/IndexLookupContext.cpp
@@ -444,16 +448,11 @@ SET(ARANGOD_SOURCES
   VocBase/Methods/Transactions.cpp
   VocBase/AuthInfo.cpp
   VocBase/AuthUserEntry.cpp
-  VocBase/EdgeCollectionInfo.cpp
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
   VocBase/LogicalCollection.cpp
   VocBase/LogicalView.cpp
   VocBase/ManagedDocumentResult.cpp
-  VocBase/PathEnumerator.cpp
-  VocBase/SingleServerTraverser.cpp
-  VocBase/Traverser.cpp
-  VocBase/TraverserOptions.cpp
   VocBase/modes.cpp
   VocBase/replication-applier.cpp
   VocBase/replication-common.cpp
@@ -486,6 +485,8 @@ target_link_libraries(arangoserver
 )
 
 if (USE_ENTERPRISE)
+  target_compile_definitions(arangoserver PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
   if (MSVC)
     target_link_libraries(arangoserver
       Wldap32.lib

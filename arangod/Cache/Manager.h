@@ -25,12 +25,14 @@
 #define ARANGODB_CACHE_MANAGER_H
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteSpinLock.h"
+#include "Basics/SharedAtomic.h"
+#include "Basics/SharedCounter.h"
 #include "Basics/asio-helper.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
 #include "Cache/FrequencyBuffer.h"
 #include "Cache/Metadata.h"
-#include "Cache/State.h"
 #include "Cache/Table.h"
 #include "Cache/Transaction.h"
 #include "Cache/TransactionManager.h"
@@ -38,8 +40,8 @@
 #include <stdint.h>
 #include <atomic>
 #include <chrono>
+#include <map>
 #include <memory>
-#include <set>
 #include <stack>
 #include <utility>
 
@@ -71,27 +73,21 @@ class Rebalancer;      // forward declaration
 ////////////////////////////////////////////////////////////////////////////////
 class Manager {
  protected:
-  struct cmp_weak_ptr {
-    bool operator()(std::weak_ptr<Cache> const& left,
-                    std::weak_ptr<Cache> const& right) const;
-  };
-  struct hash_weak_ptr {
-    size_t operator()(const std::weak_ptr<Cache>& wp) const;
-  };
+  typedef std::function<bool(std::function<void()>)> PostFn;
 
  public:
   static const uint64_t minSize;
-  typedef FrequencyBuffer<std::weak_ptr<Cache>, cmp_weak_ptr, hash_weak_ptr>
-      AccessStatBuffer;
+  typedef FrequencyBuffer<uint64_t> AccessStatBuffer;
   typedef FrequencyBuffer<uint8_t> FindStatBuffer;
-  typedef std::vector<std::pair<std::shared_ptr<Cache>, double>> PriorityList;
+  typedef std::vector<std::pair<std::shared_ptr<Cache>&, double>> PriorityList;
   typedef std::chrono::time_point<std::chrono::steady_clock> time_point;
 
  public:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Initialize the manager with an io_service and global usage limit.
+  /// @brief Initialize the manager with a scheduler post method and global
+  /// usage limit.
   //////////////////////////////////////////////////////////////////////////////
-  Manager(boost::asio::io_service* ioService, uint64_t globalLimit,
+  Manager(PostFn schedulerPost, uint64_t globalLimit,
           bool enableWindowedStats = true);
   ~Manager();
 
@@ -163,32 +159,42 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   void endTransaction(Transaction* tx);
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Post a function to the scheduler
+  //////////////////////////////////////////////////////////////////////////////
+  bool post(std::function<void()> fn);
+
  private:
-  // use sizeof(std::shared_ptr<Cache>) + 32 for sizeof
-  // std::set<std::shared_ptr<Cache>> node -- should be valid for most libraries
+  // use sizeof(uint64_t) + sizeof(std::shared_ptr<Cache>) + 64 for upper bound
+  // on size of std::set<std::shared_ptr<Cache>> node -- should be valid for
+  // most libraries
   static constexpr uint64_t cacheRecordOverhead =
-      sizeof(std::shared_ptr<Cache>) + 32;
+      sizeof(std::shared_ptr<Cache>) + 64;
   // assume at most 16 slots in each stack -- TODO: check validity
   static constexpr uint64_t tableListsOverhead =
       32 * 16 * sizeof(std::shared_ptr<Cache>);
-  static constexpr int64_t triesFast = 100;
-  static constexpr int64_t triesSlow = 1000;
+  static constexpr uint64_t triesFast = 100;
+  static constexpr uint64_t triesSlow = 1000;
 
-  // simple state variable for locking and other purposes
-  State _state;
+  // simple state variables
+  basics::ReadWriteSpinLock<64> _lock;
+  bool _shutdown;
+  bool _shuttingDown;
+  bool _resizing;
+  bool _rebalancing;
 
   // structure to handle access frequency monitoring
   Manager::AccessStatBuffer _accessStats;
-  std::atomic<uint64_t> _accessCounter;
 
   // structures to handle hit rate monitoring
   bool _enableWindowedStats;
   std::unique_ptr<Manager::FindStatBuffer> _findStats;
-  std::atomic<uint64_t> _findHits;
-  std::atomic<uint64_t> _findMisses;
+  basics::SharedCounter<64> _findHits;
+  basics::SharedCounter<64> _findMisses;
 
-  // set of pointers to keep track of registered caches
-  std::set<std::shared_ptr<Cache>> _caches;
+  // registry to keep track of registered caches
+  std::map<uint64_t, std::shared_ptr<Cache>> _caches;
+  uint64_t _nextCacheId;
 
   // actual tables to lease out
   std::stack<std::shared_ptr<Table>> _tables[32];
@@ -206,11 +212,11 @@ class Manager {
 
   // task management
   enum TaskEnvironment { none, rebalancing, resizing };
-  boost::asio::io_service* _ioService;
+  PostFn _schedulerPost;
   uint64_t _resizeAttempt;
-  std::atomic<uint64_t> _outstandingTasks;
-  std::atomic<uint64_t> _rebalancingTasks;
-  std::atomic<uint64_t> _resizingTasks;
+  basics::SharedAtomic<uint64_t> _outstandingTasks;
+  basics::SharedAtomic<uint64_t> _rebalancingTasks;
+  basics::SharedAtomic<uint64_t> _resizingTasks;
   Manager::time_point _rebalanceCompleted;
 
   // friend class tasks and caches to allow access
@@ -226,16 +232,15 @@ class Manager {
   // register and unregister individual caches
   std::tuple<bool, Metadata, std::shared_ptr<Table>> registerCache(
       uint64_t fixedSize, uint64_t maxSize);
-  void unregisterCache(std::shared_ptr<Cache> cache);
+  void unregisterCache(uint64_t id);
 
   // allow individual caches to request changes to their allocations
-  std::pair<bool, Manager::time_point> requestGrow(
-      std::shared_ptr<Cache> cache);
+  std::pair<bool, Manager::time_point> requestGrow(Cache* cache);
   std::pair<bool, Manager::time_point> requestMigrate(
-      std::shared_ptr<Cache> cache, uint32_t requestedLogSize);
+      Cache* cache, uint32_t requestedLogSize);
 
   // stat reporting
-  void reportAccess(std::shared_ptr<Cache> cache);
+  void reportAccess(uint64_t id);
   void reportHitStat(Stat stat);
 
  private:  // used internally and by tasks
@@ -248,15 +253,12 @@ class Manager {
   // check if there is already a global process running
   bool globalProcessRunning() const;
 
-  // expose io_service
-  boost::asio::io_service* ioService();
-
   // coordinate state with task lifecycles
   void prepareTask(TaskEnvironment environment);
   void unprepareTask(TaskEnvironment environment);
 
   // periodically run to rebalance allocations globally
-  bool rebalance(bool onlyCalculate = false);
+  int rebalance(bool onlyCalculate = false);
 
   // helpers for global resizing
   void shrinkOvergrownCaches(TaskEnvironment environment);
@@ -264,10 +266,10 @@ class Manager {
   bool adjustGlobalLimitsIfAllowed(uint64_t newGlobalLimit);
 
   // methods to adjust individual caches
-  void resizeCache(TaskEnvironment environment, std::shared_ptr<Cache> cache,
+  void resizeCache(TaskEnvironment environment, Cache* cache,
                    uint64_t newLimit);
-  void migrateCache(TaskEnvironment environment, std::shared_ptr<Cache> cache,
-                    std::shared_ptr<Table> table);
+  void migrateCache(TaskEnvironment environment, Cache* cache,
+                    std::shared_ptr<Table>& table);
   std::shared_ptr<Table> leaseTable(uint32_t logSize);
   void reclaimTable(std::shared_ptr<Table> table, bool internal = false);
 

@@ -25,9 +25,9 @@
 #define ARANGODB_CACHE_PLAIN_BUCKET_H
 
 #include "Basics/Common.h"
+#include "Cache/BucketState.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
-#include "Cache/State.h"
 
 #include <stdint.h>
 #include <atomic>
@@ -45,7 +45,7 @@ namespace cache {
 /// fits in a single cacheline.
 ////////////////////////////////////////////////////////////////////////////////
 struct PlainBucket {
-  State _state;
+  BucketState _state;
 
   uint32_t _paddingExplicit; // fill 4-byte gap for alignment purposes
 
@@ -100,7 +100,7 @@ struct PlainBucket {
   /// bucket to allow basic LRU semantics. If no matching entry is found,
   /// nothing will be changed and a nullptr will be returned.
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* find(uint32_t hash, void const* key, uint32_t keySize,
+  CachedValue* find(uint32_t hash, void const* key, size_t keySize,
                     bool moveToFront = true);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -125,7 +125,7 @@ struct PlainBucket {
   /// to the value. Upon removal, the empty slot generated is moved to the back
   /// of the bucket (to remove the gap).
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* remove(uint32_t hash, void const* key, uint32_t keySize);
+  CachedValue* remove(uint32_t hash, void const* key, size_t keySize);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Searches for the best candidate in the bucket to evict. Requires

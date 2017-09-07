@@ -65,7 +65,7 @@ struct config_t {
   double _maxPing;
   int64_t _timeoutMult;
   std::string _endpoint;
-  std::map<std::string, std::string> _pool;
+  std::unordered_map<std::string, std::string> _pool;
   std::vector<std::string> _gossipPeers;
   std::vector<std::string> _active;
   bool _supervision;
@@ -173,7 +173,7 @@ struct config_t {
   std::string endpoint() const;
 
   /// @brief copy of pool
-  std::map<std::string, std::string> pool() const;
+  std::unordered_map<std::string, std::string> pool() const;
 
   /// @brief get one pair out of pool
   std::string poolAt(std::string const& id) const;

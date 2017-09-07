@@ -402,8 +402,7 @@ void AqlFunctionFeature::addDocumentFunctions() {
        &Functions::Merge});
   add({"MERGE_RECURSIVE", "AQL_MERGE_RECURSIVE", ".,.|+", true, true, false,
        true, true, &Functions::MergeRecursive});
-  add({"DOCUMENT", "AQL_DOCUMENT", "h.|.", false, false, true, false, true,
-       &Functions::Document, NotInCluster});
+  add({"DOCUMENT", "AQL_DOCUMENT", "h.|.", false, false, true, false, true, &Functions::Document});
   add({"MATCHES", "AQL_MATCHES", ".,.|.", true, true, false, true, true});
   add({"UNSET", "AQL_UNSET", ".,.|+", true, true, false, true, true,
        &Functions::Unset});
@@ -495,7 +494,7 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"CURRENT_DATABASE", "AQL_CURRENT_DATABASE", "", false, false, false,
        false, true, &Functions::CurrentDatabase});
   add({"COLLECTION_COUNT", "AQL_COLLECTION_COUNT", ".h", false, false, true,
-       false, true, &Functions::CollectionCount, NotInCluster});
+       false, true, &Functions::CollectionCount});
 }
 
 void AqlFunctionFeature::addStorageEngineFunctions() {

@@ -95,6 +95,11 @@ function config (options) {
   print('absolute config tests');
   print('--------------------------------------------------------------------------------');
 
+  // we append one cleanup directory for the invoking logic...
+  let dummyDir = fs.join(fs.getTempPath(), 'configdummy');
+  fs.makeDirectory(dummyDir);
+  pu.cleanupDBDirectoriesAppend(dummyDir);
+
   let startTime = time();
 
   for (let i = 0; i < ts.length; i++) {

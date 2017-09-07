@@ -87,8 +87,38 @@ should be started with interleave on such system. This can be achieved using
 
     numactl --interleave=all arangod ...
 
+Max Memory Mappings
+-------------------
+
+(LINUX)
+
+Linux kernels by default restrict the maximum number of memory mappings of a
+single process to about 65K mappings. While this value is sufficient for most
+workloads, it may be too low for a process that has lots of parallel threads
+that all require their own memory mappings. In this case all the threads' 
+memory mappings will be accounted to the single arangod process, and the 
+maximum number of 65K mappings may be reached. When the maximum number of
+mappings is reached, calls to mmap will fail, so the process will think no
+more memory is available although there may be plenty of RAM left.
+
+To avoid this scenario, it is recommended to raise the default value for the
+maximum number of memory mappings to a sufficiently high value. As a rule of
+thumb, one could use 8 times the number of available cores times 1,000.
+
+For a 32 core server, a good rule-of-thumb value thus would be 256000 
+(32 * 8 * 1000). To set the value once, use the following command before
+starting arangod:
+
+    sudo bash -c "sysctl -w 'vm.max_map_count=256000'"
+
+To make the settings durable, it will be necessary to store the adjusted 
+settings in /etc/sysctl.conf or other places that the operating system is
+looking at.
+
 Environment Variables
 ---------------------
+
+(LINUX)
 
 It is recommended to set the environment variable `GLIBCXX_FORCE_NEW` to 1 on
 systems that use glibc++ in order to disable the memory pooling built into

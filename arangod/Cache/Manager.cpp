@@ -23,6 +23,7 @@
 
 #include "Cache/Manager.h"
 #include "Basics/Common.h"
+#include "Basics/SharedPRNG.h"
 #include "Basics/asio-helper.h"
 #include "Cache/Cache.h"
 #include "Cache/CachedValue.h"
@@ -31,7 +32,6 @@
 #include "Cache/ManagerTasks.h"
 #include "Cache/Metadata.h"
 #include "Cache/PlainCache.h"
-#include "Cache/State.h"
 #include "Cache/Table.h"
 #include "Cache/Transaction.h"
 #include "Cache/TransactionalCache.h"
@@ -56,29 +56,22 @@ const uint64_t Manager::minCacheAllocation =
     Manager::cacheRecordOverhead;
 const std::chrono::milliseconds Manager::rebalancingGracePeriod(10);
 
-bool Manager::cmp_weak_ptr::operator()(
-    std::weak_ptr<Cache> const& left, std::weak_ptr<Cache> const& right) const {
-  return !left.owner_before(right) && !right.owner_before(left);
-}
-
-size_t Manager::hash_weak_ptr::operator()(
-    const std::weak_ptr<Cache>& wp) const {
-  auto sp = wp.lock();
-  return std::hash<decltype(sp)>()(sp);
-}
-
-Manager::Manager(boost::asio::io_service* ioService, uint64_t globalLimit,
+Manager::Manager(PostFn schedulerPost, uint64_t globalLimit,
                  bool enableWindowedStats)
-    : _state(),
+    : _lock(),
+      _shutdown(false),
+      _shuttingDown(false),
+      _resizing(false),
+      _rebalancing(false),
       _accessStats((globalLimit >= (1024 * 1024 * 1024))
-                       ? ((1024 * 1024) / sizeof(std::weak_ptr<Cache>))
-                       : (globalLimit / (1024 * sizeof(std::weak_ptr<Cache>)))),
-      _accessCounter(0),
+                       ? ((1024 * 1024) / sizeof(uint64_t))
+                       : (globalLimit / (1024 * sizeof(uint64_t)))),
       _enableWindowedStats(enableWindowedStats),
       _findStats(nullptr),
-      _findHits(0),
-      _findMisses(0),
+      _findHits(),
+      _findMisses(),
       _caches(),
+      _nextCacheId(1),
       _globalSoftLimit(globalLimit),
       _globalHardLimit(globalLimit),
       _globalHighwaterMark(
@@ -89,7 +82,7 @@ Manager::Manager(boost::asio::io_service* ioService, uint64_t globalLimit,
       _spareTableAllocation(0),
       _globalAllocation(_fixedAllocation),
       _transactions(),
-      _ioService(ioService),
+      _schedulerPost(schedulerPost),
       _resizeAttempt(0),
       _outstandingTasks(0),
       _rebalancingTasks(0),
@@ -116,10 +109,11 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type,
                                             bool enableWindowedStats,
                                             uint64_t maxSize) {
   std::shared_ptr<Cache> result(nullptr);
-  _state.lock();
+  _lock.writeLock();
   bool allowed = isOperational();
   Metadata metadata;
   std::shared_ptr<Table> table(nullptr);
+  uint64_t id = _nextCacheId++;
 
   if (allowed) {
     uint64_t fixedSize = 0;
@@ -139,10 +133,11 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type,
   if (allowed) {
     switch (type) {
       case CacheType::Plain:
-        result = PlainCache::create(this, metadata, table, enableWindowedStats);
+        result = PlainCache::create(this, id, metadata, table,
+                                    enableWindowedStats);
         break;
       case CacheType::Transactional:
-        result = TransactionalCache::create(this, metadata, table,
+        result = TransactionalCache::create(this, id, metadata, table,
                                             enableWindowedStats);
         break;
       default:
@@ -151,9 +146,9 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type,
   }
 
   if (result.get() != nullptr) {
-    _caches.emplace(result);
+    _caches.emplace(id, result);
   }
-  _state.unlock();
+  _lock.writeUnlock();
 
   return result;
 }
@@ -163,39 +158,34 @@ void Manager::destroyCache(std::shared_ptr<Cache> cache) {
 }
 
 void Manager::beginShutdown() {
-  _state.lock();
-  if (isOperational()) {
-    _state.toggleFlag(State::Flag::shuttingDown);
-    for (auto it = _caches.begin(); it != _caches.end(); it++) {
-      std::shared_ptr<Cache> cache = *it;
-      cache->beginShutdown();
-    }
+  _lock.writeLock();
+  if (!_shutdown) {
+    _shuttingDown = true;
   }
-  _state.unlock();
+  _lock.writeUnlock();
 }
 
 void Manager::shutdown() {
-  _state.lock();
-  if (!_state.isSet(State::Flag::shutdown)) {
-    if (!_state.isSet(State::Flag::shuttingDown)) {
-      _state.toggleFlag(State::Flag::shuttingDown);
+  _lock.writeLock();
+  if (!_shutdown) {
+    if (!_shuttingDown) {
+      _shuttingDown = true;
     }
     while (!_caches.empty()) {
-      std::shared_ptr<Cache> cache = *_caches.begin();
-      _state.unlock();
+      std::shared_ptr<Cache> cache = _caches.begin()->second;
+      _lock.writeUnlock();
       cache->shutdown();
-      _state.lock();
+      _lock.writeLock();
     }
     freeUnusedTables();
-    _state.clear();
-    _state.toggleFlag(State::Flag::shutdown);
+    _shutdown = true;
   }
-  _state.unlock();
+  _lock.writeUnlock();
 }
 
 // change global cache limit
 bool Manager::resize(uint64_t newGlobalLimit) {
-  _state.lock();
+  _lock.writeLock();
   if ((newGlobalLimit < Manager::minSize) ||
       (static_cast<uint64_t>(0.5 * (1.0 - Manager::highwaterMultiplier) *
                              static_cast<double>(newGlobalLimit)) <
@@ -203,12 +193,11 @@ bool Manager::resize(uint64_t newGlobalLimit) {
       (static_cast<uint64_t>(Manager::highwaterMultiplier *
                              static_cast<double>(newGlobalLimit)) <
        (_caches.size() * Manager::minCacheAllocation))) {
-    _state.unlock();
+    _lock.writeUnlock();
     return false;
   }
 
   bool success = true;
-
   if (!isOperational() || globalProcessRunning()) {
     // shut(ting) down or still have another global process running already
     success = false;
@@ -216,7 +205,7 @@ bool Manager::resize(uint64_t newGlobalLimit) {
     bool done = adjustGlobalLimitsIfAllowed(newGlobalLimit);
     if (!done) {
       // otherwise we need to actually resize
-      _state.toggleFlag(State::Flag::resizing);
+      _resizing = true;
       _globalSoftLimit = newGlobalLimit;
       _globalHighwaterMark = static_cast<uint64_t>(
           Manager::highwaterMultiplier * static_cast<double>(_globalSoftLimit));
@@ -229,23 +218,22 @@ bool Manager::resize(uint64_t newGlobalLimit) {
     }
   }
 
-  _state.unlock();
+  _lock.writeUnlock();
   return success;
 }
 
 uint64_t Manager::globalLimit() {
-  _state.lock();
-  uint64_t limit =
-      _state.isSet(State::Flag::resizing) ? _globalSoftLimit : _globalHardLimit;
-  _state.unlock();
+  _lock.readLock();
+  uint64_t limit = _resizing ? _globalSoftLimit : _globalHardLimit;
+  _lock.readUnlock();
 
   return limit;
 }
 
 uint64_t Manager::globalAllocation() {
-  _state.lock();
+  _lock.readLock();
   uint64_t allocation = _globalAllocation;
-  _state.unlock();
+  _lock.readUnlock();
 
   return allocation;
 }
@@ -254,8 +242,8 @@ std::pair<double, double> Manager::globalHitRates() {
   double lifetimeRate = std::nan("");
   double windowedRate = std::nan("");
 
-  uint64_t currentHits = _findHits.load();
-  uint64_t currentMisses = _findMisses.load();
+  uint64_t currentHits = _findHits.value(std::memory_order_relaxed);
+  uint64_t currentMisses = _findMisses.value(std::memory_order_relaxed);
   if (currentHits + currentMisses > 0) {
     lifetimeRate = 100.0 * (static_cast<double>(currentHits) /
                             static_cast<double>(currentHits + currentMisses));
@@ -263,19 +251,19 @@ std::pair<double, double> Manager::globalHitRates() {
 
   if (_enableWindowedStats && _findStats.get() != nullptr) {
     auto stats = _findStats->getFrequencies();
-    if (stats->size() == 1) {
-      if ((*stats)[0].first == static_cast<uint8_t>(Stat::findHit)) {
+    if (stats.size() == 1) {
+      if (stats[0].first == static_cast<uint8_t>(Stat::findHit)) {
         windowedRate = 100.0;
       } else {
         windowedRate = 0.0;
       }
-    } else if (stats->size() == 2) {
-      if ((*stats)[0].first == static_cast<uint8_t>(Stat::findHit)) {
-        currentHits = (*stats)[0].second;
-        currentMisses = (*stats)[1].second;
+    } else if (stats.size() == 2) {
+      if (stats[0].first == static_cast<uint8_t>(Stat::findHit)) {
+        currentHits = stats[0].second;
+        currentMisses = stats[1].second;
       } else {
-        currentHits = (*stats)[1].second;
-        currentMisses = (*stats)[0].second;
+        currentHits = stats[1].second;
+        currentMisses = stats[0].second;
       }
       if (currentHits + currentMisses > 0) {
         windowedRate =
@@ -294,9 +282,11 @@ Transaction* Manager::beginTransaction(bool readOnly) {
 
 void Manager::endTransaction(Transaction* tx) { _transactions.end(tx); }
 
+bool Manager::post(std::function<void()> fn) { return _schedulerPost(fn); }
+
 std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
     uint64_t fixedSize, uint64_t maxSize) {
-  TRI_ASSERT(_state.isLocked());
+  TRI_ASSERT(_lock.isWriteLocked());
   Metadata metadata;
   std::shared_ptr<Table> table(nullptr);
   bool ok = true;
@@ -328,29 +318,34 @@ std::tuple<bool, Metadata, std::shared_ptr<Table>> Manager::registerCache(
   return std::make_tuple(ok, metadata, table);
 }
 
-void Manager::unregisterCache(std::shared_ptr<Cache> cache) {
-  _state.lock();
+void Manager::unregisterCache(uint64_t id) {
+  _lock.writeLock();
+  auto it = _caches.find(id);
+  if (it == _caches.end()) {
+    _lock.writeUnlock();
+    return;
+  }
+  std::shared_ptr<Cache>& cache = it->second;
   Metadata* metadata = cache->metadata();
-  metadata->lock();
+  metadata->readLock();
   _globalAllocation -= metadata->allocatedSize;
-  metadata->unlock();
-  _caches.erase(cache);
-  _state.unlock();
+  metadata->readUnlock();
+  _caches.erase(id);
+  _lock.writeUnlock();
 }
 
-std::pair<bool, Manager::time_point> Manager::requestGrow(
-    std::shared_ptr<Cache> cache) {
+std::pair<bool, Manager::time_point> Manager::requestGrow(Cache* cache) {
   Manager::time_point nextRequest = futureTime(100);
   bool allowed = false;
 
-  bool ok = _state.lock(Manager::triesSlow);
+  bool ok = _lock.writeLock(Manager::triesSlow);
   if (ok) {
     if (isOperational() && !globalProcessRunning()) {
       Metadata* metadata = cache->metadata();
-      metadata->lock();
+      metadata->writeLock();
 
-      allowed = !metadata->isSet(State::Flag::resizing) &&
-                !metadata->isSet(State::Flag::migrating);
+      allowed = !metadata->isResizing() &&
+                !metadata->isMigrating();
       if (allowed) {
         if (metadata->allocatedSize >= metadata->deservedSize &&
             pastRebalancingGracePeriod()) {
@@ -373,27 +368,27 @@ std::pair<bool, Manager::time_point> Manager::requestGrow(
       }
 
       if (!allowed) {
-        metadata->unlock();
+        metadata->writeUnlock();
       }
     }
-    _state.unlock();
+    _lock.writeUnlock();
   }
 
   return std::make_pair(allowed, nextRequest);
 }
 
 std::pair<bool, Manager::time_point> Manager::requestMigrate(
-    std::shared_ptr<Cache> cache, uint32_t requestedLogSize) {
+    Cache* cache, uint32_t requestedLogSize) {
   Manager::time_point nextRequest = futureTime(100);
   bool allowed = false;
 
-  bool ok = _state.lock(Manager::triesSlow);
+  bool ok = _lock.writeLock(Manager::triesSlow);
   if (ok) {
     if (isOperational() && !globalProcessRunning()) {
       Metadata* metadata = cache->metadata();
-      metadata->lock();
+      metadata->writeLock();
 
-      allowed = !metadata->isSet(State::Flag::migrating);
+      allowed = !metadata->isMigrating();
       if (allowed) {
         if (metadata->tableSize < Table::allocationSize(requestedLogSize)) {
           uint64_t increase =
@@ -430,34 +425,32 @@ std::pair<bool, Manager::time_point> Manager::requestMigrate(
       }
 
       if (!allowed) {
-        metadata->unlock();
+        metadata->writeUnlock();
       }
     }
-    _state.unlock();
+    _lock.writeUnlock();
   }
 
   return std::make_pair(allowed, nextRequest);
 }
 
-void Manager::reportAccess(std::shared_ptr<Cache> cache) {
-  // if (((++_accessCounter) & static_cast<uint64_t>(7)) == 0) {  // record 1
-  // in
-  // 8
-  _accessStats.insertRecord(cache);
-  //}
+void Manager::reportAccess(uint64_t id) {
+  if ((basics::SharedPRNG::rand() & static_cast<unsigned long>(7)) == 0) {
+    _accessStats.insertRecord(id);
+  }
 }
 
 void Manager::reportHitStat(Stat stat) {
   switch (stat) {
     case Stat::findHit: {
-      ++_findHits;
+      _findHits.add(1, std::memory_order_relaxed);
       if (_enableWindowedStats && _findStats.get() != nullptr) {
         _findStats->insertRecord(static_cast<uint8_t>(Stat::findHit));
       }
       break;
     }
     case Stat::findMiss: {
-      ++_findMisses;
+      _findMisses.add(1, std::memory_order_relaxed);
       if (_enableWindowedStats && _findStats.get() != nullptr) {
         _findStats->insertRecord(static_cast<uint8_t>(Stat::findMiss));
       }
@@ -468,16 +461,14 @@ void Manager::reportHitStat(Stat stat) {
 }
 
 bool Manager::isOperational() const {
-  TRI_ASSERT(_state.isLocked());
-  return !_state.isSet(State::Flag::shutdown, State::Flag::shuttingDown);
+  TRI_ASSERT(_lock.isLocked());
+  return (!_shutdown && !_shuttingDown);
 }
 
 bool Manager::globalProcessRunning() const {
-  TRI_ASSERT(_state.isLocked());
-  return _state.isSet(State::Flag::rebalancing, State::Flag::resizing);
+  TRI_ASSERT(_lock.isLocked());
+  return (_rebalancing || _resizing);
 }
-
-boost::asio::io_service* Manager::ioService() { return _ioService; }
 
 void Manager::prepareTask(Manager::TaskEnvironment environment) {
   _outstandingTasks++;
@@ -499,18 +490,18 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
   switch (environment) {
     case TaskEnvironment::rebalancing: {
       if ((--_rebalancingTasks) == 0) {
-        _state.lock();
-        _state.toggleFlag(State::Flag::rebalancing);
+        _lock.writeLock();
+        _rebalancing = false;
         _rebalanceCompleted = std::chrono::steady_clock::now();
-        _state.unlock();
+        _lock.writeUnlock();
       };
       break;
     }
     case TaskEnvironment::resizing: {
       if ((--_resizingTasks) == 0) {
-        _state.lock();
-        _state.toggleFlag(State::Flag::resizing);
-        _state.unlock();
+        _lock.writeLock();
+        _resizing = false;
+        _lock.writeUnlock();
       };
       break;
     }
@@ -521,29 +512,36 @@ void Manager::unprepareTask(Manager::TaskEnvironment environment) {
   _outstandingTasks--;
 }
 
-bool Manager::rebalance(bool onlyCalculate) {
+int Manager::rebalance(bool onlyCalculate) {
   if (!onlyCalculate) {
-    _state.lock();
-    if (!isOperational() || globalProcessRunning()) {
-      _state.unlock();
-      return false;
+    _lock.writeLock();
+    if (_caches.size() == 0) {
+      _lock.writeUnlock();
+      return TRI_ERROR_NO_ERROR;
+    }
+    if (!isOperational()) {
+      _lock.writeUnlock();
+      return TRI_ERROR_SHUTTING_DOWN;
+    }
+    if (globalProcessRunning()) {
+      _lock.writeUnlock();
+      return TRI_ERROR_ARANGO_BUSY;
     }
 
     // start rebalancing
-    _state.toggleFlag(State::Flag::rebalancing);
+    _rebalancing = true;
   }
 
   // adjust deservedSize for each cache
   std::shared_ptr<PriorityList> cacheList = priorityList();
-  std::shared_ptr<Cache> cache;
-  double weight;
   for (auto pair : (*cacheList)) {
-    std::tie(cache, weight) = pair;
+    std::shared_ptr<Cache>& cache = pair.first;
+    double weight = pair.second;
     uint64_t newDeserved = static_cast<uint64_t>(
         std::ceil(weight * static_cast<double>(_globalHighwaterMark)));
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (newDeserved < Manager::minCacheAllocation) {
-      LOG_TOPIC(FATAL, Logger::FIXME)
+      LOG_TOPIC(FATAL, Logger::CACHE)
           << "Deserved limit of " << newDeserved << " from weight " << weight
           << " and highwater " << _globalHighwaterMark
           << ". Should be at least " << Manager::minCacheAllocation;
@@ -551,46 +549,56 @@ bool Manager::rebalance(bool onlyCalculate) {
     }
 #endif
     Metadata* metadata = cache->metadata();
-    metadata->lock();
+    metadata->writeLock();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    uint64_t fixed = metadata->fixedSize + metadata->tableSize + Manager::cacheRecordOverhead;
+    if (newDeserved < fixed) {
+      LOG_TOPIC(ERR, Logger::CACHE) << "Setting deserved cache size " << newDeserved << " below usage: " << fixed
+      << " ; Using weight  " << weight;
+    }
+#endif
     metadata->adjustDeserved(newDeserved);
-    metadata->unlock();
+    metadata->writeUnlock();
   }
 
   if (!onlyCalculate) {
-    shrinkOvergrownCaches(TaskEnvironment::rebalancing);
+    if (_globalAllocation >= _globalHighwaterMark * 0.7) {
+      shrinkOvergrownCaches(TaskEnvironment::rebalancing);
+    }
 
     if (_rebalancingTasks.load() == 0) {
       _rebalanceCompleted = std::chrono::steady_clock::now();
-      _state.toggleFlag(State::Flag::rebalancing);
+      _rebalancing = false;
     }
 
-    _state.unlock();
+    _lock.writeUnlock();
   }
 
-  return true;
+  return TRI_ERROR_NO_ERROR;
 }
 
 void Manager::shrinkOvergrownCaches(Manager::TaskEnvironment environment) {
-  TRI_ASSERT(_state.isLocked());
-  for (std::shared_ptr<Cache> cache : _caches) {
+  TRI_ASSERT(_lock.isWriteLocked());
+  for (auto it : _caches) {
+    std::shared_ptr<Cache>& cache = it.second;
     // skip this cache if it is already resizing or shutdown!
     if (!cache->canResize()) {
       continue;
     }
 
     Metadata* metadata = cache->metadata();
-    metadata->lock();
+    metadata->writeLock();
 
     if (metadata->allocatedSize > metadata->deservedSize) {
-      resizeCache(environment, cache, metadata->newLimit());  // unlocks cache
+      resizeCache(environment, cache.get(), metadata->newLimit()); // unlocks metadata
     } else {
-      metadata->unlock();
+      metadata->writeUnlock();
     }
   }
 }
 
 void Manager::freeUnusedTables() {
-  TRI_ASSERT(_state.isLocked());
+  TRI_ASSERT(_lock.isWriteLocked());
   for (size_t i = 0; i < 32; i++) {
     while (!_tables[i].empty()) {
       auto table = _tables[i].top();
@@ -601,7 +609,7 @@ void Manager::freeUnusedTables() {
 }
 
 bool Manager::adjustGlobalLimitsIfAllowed(uint64_t newGlobalLimit) {
-  TRI_ASSERT(_state.isLocked());
+  TRI_ASSERT(_lock.isWriteLocked());
   if (newGlobalLimit < _globalAllocation) {
     return false;
   }
@@ -615,16 +623,16 @@ bool Manager::adjustGlobalLimitsIfAllowed(uint64_t newGlobalLimit) {
 }
 
 void Manager::resizeCache(Manager::TaskEnvironment environment,
-                          std::shared_ptr<Cache> cache, uint64_t newLimit) {
-  TRI_ASSERT(_state.isLocked());
+                          Cache* cache, uint64_t newLimit) {
+  TRI_ASSERT(_lock.isWriteLocked());
   Metadata* metadata = cache->metadata();
-  TRI_ASSERT(metadata->isLocked());
+  TRI_ASSERT(metadata->isWriteLocked());
 
   if (metadata->usage <= newLimit) {
     uint64_t oldLimit = metadata->hardUsageLimit;
     bool success = metadata->adjustLimits(newLimit, newLimit);
     TRI_ASSERT(success);
-    metadata->unlock();
+    metadata->writeUnlock();
     if (oldLimit > newLimit) {
       _globalAllocation -= (oldLimit - newLimit);
     } else {
@@ -635,44 +643,44 @@ void Manager::resizeCache(Manager::TaskEnvironment environment,
 
   bool success = metadata->adjustLimits(newLimit, metadata->hardUsageLimit);
   TRI_ASSERT(success);
-  TRI_ASSERT(!metadata->isSet(State::Flag::resizing));
-  metadata->toggleFlag(State::Flag::resizing);
-  metadata->unlock();
+  TRI_ASSERT(!metadata->isResizing());
+  metadata->toggleResizing();
+  metadata->writeUnlock();
 
-  auto task = std::make_shared<FreeMemoryTask>(environment, this, cache);
+  auto task = std::make_shared<FreeMemoryTask>(environment, this, cache->shared_from_this());
   bool dispatched = task->dispatch();
   if (!dispatched) {
     // TODO: decide what to do if we don't have an io_service
-    metadata->lock();
-    metadata->toggleFlag(State::Flag::resizing);
-    metadata->unlock();
+    metadata->writeLock();
+    metadata->toggleResizing();
+    metadata->writeUnlock();
   }
 }
 
 void Manager::migrateCache(Manager::TaskEnvironment environment,
-                           std::shared_ptr<Cache> cache,
-                           std::shared_ptr<Table> table) {
-  TRI_ASSERT(_state.isLocked());
+                           Cache* cache,
+                           std::shared_ptr<Table>& table) {
+  TRI_ASSERT(_lock.isWriteLocked());
   Metadata* metadata = cache->metadata();
-  TRI_ASSERT(metadata->isLocked());
+  TRI_ASSERT(metadata->isWriteLocked());
 
-  TRI_ASSERT(!metadata->isSet(State::Flag::migrating));
-  metadata->toggleFlag(State::Flag::migrating);
-  metadata->unlock();
+  TRI_ASSERT(!metadata->isMigrating());
+  metadata->toggleMigrating();
+  metadata->writeUnlock();
 
-  auto task = std::make_shared<MigrateTask>(environment, this, cache, table);
+  auto task = std::make_shared<MigrateTask>(environment, this, cache->shared_from_this(), table);
   bool dispatched = task->dispatch();
   if (!dispatched) {
     // TODO: decide what to do if we don't have an io_service
-    metadata->lock();
+    metadata->writeLock();
     reclaimTable(table, true);
-    metadata->toggleFlag(State::Flag::migrating);
-    metadata->unlock();
+    metadata->toggleMigrating();
+    metadata->writeUnlock();
   }
 }
 
 std::shared_ptr<Table> Manager::leaseTable(uint32_t logSize) {
-  TRI_ASSERT(_state.isLocked());
+  TRI_ASSERT(_lock.isWriteLocked());
 
   std::shared_ptr<Table> table(nullptr);
   if (_tables[logSize].empty()) {
@@ -696,7 +704,7 @@ std::shared_ptr<Table> Manager::leaseTable(uint32_t logSize) {
 void Manager::reclaimTable(std::shared_ptr<Table> table, bool internal) {
   TRI_ASSERT(table.get() != nullptr);
   if (!internal) {
-    _state.lock();
+    _lock.writeLock();
   }
 
   uint32_t logSize = table->logSize();
@@ -712,14 +720,14 @@ void Manager::reclaimTable(std::shared_ptr<Table> table, bool internal) {
   }
 
   if (!internal) {
-    _state.unlock();
+    _lock.writeUnlock();
   }
 }
 
 bool Manager::increaseAllowed(uint64_t increase, bool privileged) const {
-  TRI_ASSERT(_state.isLocked());
+  TRI_ASSERT(_lock.isLocked());
   if (privileged) {
-    if (_state.isSet(State::Flag::resizing) &&
+    if (_resizing &&
         (_globalAllocation <= _globalSoftLimit)) {
       return (increase <= (_globalSoftLimit - _globalAllocation));
     }
@@ -731,60 +739,78 @@ bool Manager::increaseAllowed(uint64_t increase, bool privileged) const {
 }
 
 std::shared_ptr<Manager::PriorityList> Manager::priorityList() {
-  TRI_ASSERT(_state.isLocked());
-  std::shared_ptr<PriorityList> list(new PriorityList());
-  list->reserve(_caches.size());
+  TRI_ASSERT(_lock.isWriteLocked());
   double minimumWeight = static_cast<double>(Manager::minCacheAllocation) /
-                         static_cast<double>(_globalHighwaterMark);
-  while (static_cast<uint64_t>(std::ceil(
-             minimumWeight * static_cast<double>(_globalHighwaterMark))) <
+  static_cast<double>(_globalHighwaterMark);
+  while (static_cast<uint64_t>(std::ceil(minimumWeight * static_cast<double>(_globalHighwaterMark))) <
          Manager::minCacheAllocation) {
     minimumWeight *= 1.001;  // bump by 0.1% until we fix precision issues
   }
-  double uniformMarginalWeight = 0.5 / static_cast<double>(_caches.size());
+
+  double uniformMarginalWeight = 0.2 / static_cast<double>(_caches.size());
   double baseWeight = std::max(minimumWeight, uniformMarginalWeight);
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  LOG_TOPIC(DEBUG, Logger::CACHE) << "uniformMarginalWeight " << uniformMarginalWeight;
+  LOG_TOPIC(DEBUG, Logger::CACHE) << "baseWeight " << baseWeight;
   if (1.0 < (baseWeight * static_cast<double>(_caches.size()))) {
-    LOG_TOPIC(FATAL, Logger::FIXME)
-        << "weight: " << baseWeight << ", count: " << _caches.size();
+    LOG_TOPIC(FATAL, Logger::CACHE)
+    << "weight: " << baseWeight << ", count: " << _caches.size();
     TRI_ASSERT(1.0 >= (baseWeight * static_cast<double>(_caches.size())));
   }
 #endif
   double remainingWeight =
-      1.0 - (baseWeight * static_cast<double>(_caches.size()));
+  1.0 - (baseWeight * static_cast<double>(_caches.size()));
 
-  // catalog accessed caches
-  auto stats = _accessStats.getFrequencies();
-  std::set<std::shared_ptr<Cache>> accessed;
-  for (auto s : *stats) {
-    if (auto cache = s.first.lock()) {
-      accessed.emplace(cache);
+  std::shared_ptr<PriorityList> list(new PriorityList());
+  list->reserve(_caches.size());
+
+  // catalog accessed caches and count total accesses
+  // to get basis for comparison
+  typename AccessStatBuffer::stats_t stats = _accessStats.getFrequencies();
+  std::set<uint64_t> accessed;
+  uint64_t totalAccesses = 0;
+  uint64_t globalUsage = 0;
+  for (auto const& s : stats) {
+    auto c = _caches.find(s.first);
+    if (c != _caches.end()) {
+      totalAccesses += s.second;
+      accessed.emplace(c->second->id());
     }
   }
+  totalAccesses = std::max(static_cast<uint64_t>(1), totalAccesses);
+
+  double allocFrac = 0.8 * std::min(1.0, static_cast<double>(_globalAllocation) / static_cast<double>(_globalHighwaterMark));
+  // calculate global data usage
+  for (auto it = _caches.begin(); it != _caches.end(); it++) {
+    globalUsage += it->second->usage();
+  }
+  globalUsage = std::max(globalUsage, static_cast<uint64_t>(1)); // avoid div-by-zero
 
   // gather all unaccessed caches at beginning of list
   for (auto it = _caches.begin(); it != _caches.end(); it++) {
-    auto found = accessed.find(*it);
+    std::shared_ptr<Cache>& cache = it->second;
+    auto found = accessed.find(cache->id());
     if (found == accessed.end()) {
-      list->emplace_back(*it, baseWeight);
+      double weight = baseWeight + (cache->usage() / globalUsage) * allocFrac;
+      list->emplace_back(cache, weight);
     }
   }
 
-  // count total accesses to get basis for comparison
-  uint64_t totalAccesses = 0;
-  for (auto s : *stats) {
-    totalAccesses += s.second;
-  }
-
-  double normalizer =
-      remainingWeight / (std::max)(1.0, static_cast<double>(totalAccesses));
+  double accessNormalizer = ((1.0 - allocFrac) * remainingWeight) / static_cast<double>(totalAccesses);
+  double usageNormalizer =  (allocFrac * remainingWeight) / static_cast<double>(globalUsage);
 
   // gather all accessed caches in order
-  for (auto s : *stats) {
-    if (auto cache = s.first.lock()) {
-      double accessWeight = static_cast<double>(s.second) * normalizer;
+  for (auto s : stats) {
+    auto it = accessed.find(s.first);
+    if (it != accessed.end()) {
+      std::shared_ptr<Cache>& cache = _caches.find(s.first)->second;
+      double accessWeight = static_cast<double>(s.second) * accessNormalizer;
+      double usageWeight = static_cast<double>(cache->usage()) * usageNormalizer;
+
       TRI_ASSERT(accessWeight >= 0.0);
-      list->emplace_back(cache, baseWeight + accessWeight);
+      TRI_ASSERT(usageWeight >= 0.0);
+      list->emplace_back(cache, (baseWeight + accessWeight + usageWeight));
     }
   }
 
@@ -797,8 +823,8 @@ Manager::time_point Manager::futureTime(uint64_t millisecondsFromNow) {
 }
 
 bool Manager::pastRebalancingGracePeriod() const {
-  TRI_ASSERT(_state.isLocked());
-  bool ok = !_state.isSet(State::Flag::rebalancing);
+  TRI_ASSERT(_lock.isLocked());
+  bool ok = !_rebalancing;
   if (ok) {
     ok = (std::chrono::steady_clock::now() - _rebalanceCompleted) >=
          Manager::rebalancingGracePeriod;

@@ -158,7 +158,7 @@ struct TRI_vocbase_t {
   State _state;
   bool _isOwnAppsDirectory;
 
-  arangodb::basics::ReadWriteLock _collectionsLock;  // collection iterator lock
+  mutable arangodb::basics::ReadWriteLock _collectionsLock;  // collection iterator lock
   std::vector<arangodb::LogicalCollection*>
       _collections;  // pointers to ALL collections
   std::vector<arangodb::LogicalCollection*>
@@ -274,9 +274,9 @@ struct TRI_vocbase_t {
   std::string collectionName(TRI_voc_cid_t id);
 
   /// @brief looks up a collection by name
-  arangodb::LogicalCollection* lookupCollection(std::string const& name);
+  arangodb::LogicalCollection* lookupCollection(std::string const& name) const;
   /// @brief looks up a collection by identifier
-  arangodb::LogicalCollection* lookupCollection(TRI_voc_cid_t id);
+  arangodb::LogicalCollection* lookupCollection(TRI_voc_cid_t id) const;
 
   /// @brief looks up a view by name
   std::shared_ptr<arangodb::LogicalView> lookupView(std::string const& name);
@@ -352,7 +352,7 @@ struct TRI_vocbase_t {
 
  private:
   /// @brief looks up a collection by name, without acquiring a lock
-  arangodb::LogicalCollection* lookupCollectionNoLock(std::string const& name);
+  arangodb::LogicalCollection* lookupCollectionNoLock(std::string const& name) const;
 
   int loadCollection(arangodb::LogicalCollection* collection,
                      TRI_vocbase_col_status_e& status, bool setStatus = true);

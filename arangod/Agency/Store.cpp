@@ -1,3 +1,4 @@
+
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -116,15 +117,6 @@ inline static bool endpointPathFromUrl(std::string const& url,
 Store::Store(Agent* agent, std::string const& name)
   : Thread(name), _agent(agent), _node(name, this) {}
 
-/// Move constructor. note: this is not thread-safe!
-Store::Store(Store&& other)
-  : Thread(other._node.name()),
-    _agent(std::move(other._agent)),
-    _timeTable(std::move(other._timeTable)),
-    _observerTable(std::move(other._observerTable)),
-    _observedTable(std::move(other._observedTable)),
-    _node(std::move(other._node)) {}
-
 /// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
   if (&rhs != this) {
@@ -182,7 +174,8 @@ std::vector<bool> Store::applyTransactions(query_t const& query) {
           break;
         default:  // Wrong
           LOG_TOPIC(ERR, Logger::AGENCY)
-            << "We can only handle log entry with or without precondition!";
+            << "We can only handle log entry with or without precondition! "
+            << " However, We received " << i.toJson();
           success.push_back(false);
           break;
         }
@@ -229,7 +222,8 @@ check_ret_t Store::applyTransaction(Slice const& query) {
       break;
     default:  // Wrong
       LOG_TOPIC(ERR, Logger::AGENCY)
-        << "We can only handle log entry with or without precondition!";
+        << "We can only handle log entry with or without precondition! "
+        << "However we received " << query.toJson(); 
       break;
     }  
     // Wake up TTL processing
@@ -250,7 +244,7 @@ check_ret_t Store::applyTransaction(Slice const& query) {
 
 /// template<class T, class U> std::multimap<std::string, std::string>
 std::ostream& operator<<(std::ostream& os,
-                         std::multimap<std::string, std::string> const& m) {
+                         std::unordered_multimap<std::string, std::string> const& m) {
   for (auto const& i : m) {
     os << i.first << ": " << i.second << std::endl;
   }
@@ -271,22 +265,30 @@ struct notify_t {
 
 /// Apply (from logs)
 std::vector<bool> Store::applyLogEntries(
-  std::vector<VPackSlice> const& queries, index_t index,
+  arangodb::velocypack::Builder const& queries, index_t index,
   term_t term, bool inform) {
   std::vector<bool> applied;
 
   // Apply log entries
   {
+    VPackArrayIterator queriesIterator(queries.slice());
+
     MUTEX_LOCKER(storeLocker, _storeLock);
-    for (auto const& i : queries) {
-      applied.push_back(applies(i));
+
+    while (queriesIterator.valid()) {
+      applied.push_back(applies(queriesIterator.value()));
+      queriesIterator.next();
     }
   }
 
   if (inform && _agent->leading()) {
     // Find possibly affected callbacks
     std::multimap<std::string, std::shared_ptr<notify_t>> in;
-    for (auto const& i : queries) {
+    VPackArrayIterator queriesIterator(queries.slice());
+
+    while (queriesIterator.valid()) {
+      VPackSlice const& i = queriesIterator.value();
+
       for (auto const& j : VPackObjectIterator(i)) {
         if (j.value.isObject() && j.value.hasKey("op")) {
           std::string oper = j.value.get("op").copyString();
@@ -315,6 +317,8 @@ std::vector<bool> Store::applyLogEntries(
           }
         }
       }
+
+      queriesIterator.next();
     }
     
     // Sort by URLS to avoid multiple callbacks
@@ -396,6 +400,13 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
         std::string const& oper = op.key.copyString();
         if (oper == "old") {  // old
           if (node != op.value) {
+            ret.push_back(precond.key);
+            if (mode == FIRST_FAIL) {
+              break;
+            }
+          }
+        } else if (oper == "oldNot") {  // oldNot
+          if (node == op.value) {
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
               break;
@@ -573,19 +584,20 @@ query_t Store::clearExpired() const {
   query_t tmp = std::make_shared<Builder>();
   { VPackArrayBuilder t(tmp.get());
     MUTEX_LOCKER(storeLocker, _storeLock);
-    for (auto it = _timeTable.cbegin(); it != _timeTable.cend(); ++it) {
-      if (it->first < std::chrono::system_clock::now()) {
-        VPackArrayBuilder ttt(tmp.get());
-        { VPackObjectBuilder tttt(tmp.get());
-          tmp->add(VPackValue(it->second));
-          { VPackObjectBuilder ttttt(tmp.get());
-            tmp->add("op", VPackValue("delete"));
-          }}
-      } else {
-        break;
+    if (!_timeTable.empty()) {
+      for (auto it = _timeTable.cbegin(); it != _timeTable.cend(); ++it) {
+        if (it->first < std::chrono::system_clock::now()) {
+          VPackArrayBuilder ttt(tmp.get());
+          { VPackObjectBuilder tttt(tmp.get());
+            tmp->add(VPackValue(it->second));
+            { VPackObjectBuilder ttttt(tmp.get());
+              tmp->add("op", VPackValue("delete"));
+            }}
+        } else {
+          break;
+        }
       }
     }
-    
   }
   return tmp;
 }
@@ -752,25 +764,25 @@ std::multimap<TimePoint, std::string> const& Store::timeTable() const {
 }
 
 /// Observer table
-std::multimap<std::string, std::string>& Store::observerTable() {
+std::unordered_multimap<std::string, std::string>& Store::observerTable() {
   _storeLock.assertLockedByCurrentThread();
   return _observerTable;
 }
 
 /// Observer table
-std::multimap<std::string, std::string> const& Store::observerTable() const {
+std::unordered_multimap<std::string, std::string> const& Store::observerTable() const {
   _storeLock.assertLockedByCurrentThread();
   return _observerTable;
 }
 
 /// Observed table
-std::multimap<std::string, std::string>& Store::observedTable() {
+std::unordered_multimap<std::string, std::string>& Store::observedTable() {
   _storeLock.assertLockedByCurrentThread();
   return _observedTable;
 }
 
 /// Observed table
-std::multimap<std::string, std::string> const& Store::observedTable() const {
+std::unordered_multimap<std::string, std::string> const& Store::observedTable() const {
   _storeLock.assertLockedByCurrentThread();
   return _observedTable;
 }

@@ -113,10 +113,11 @@ struct log_t {
         std::string const& clientId = std::string())
       : index(idx),
         term(t),
-        entry(e),
         clientId(clientId),
         timestamp(std::chrono::duration_cast<std::chrono::milliseconds>(
-            std::chrono::system_clock::now().time_since_epoch())) {}
+            std::chrono::system_clock::now().time_since_epoch())) {
+    entry = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>(*e.get());
+  }
 
   friend std::ostream& operator<<(std::ostream& o, log_t const& l) {
     o << l.index << " " << l.term << " " << VPackSlice(l.entry->data()).toJson()

@@ -389,20 +389,23 @@ inline void RocksDelete(GeoIx* gix, RocksDBKey const& key) {
 }
 
 void SlotRead(GeoIx* gix, int slot, GeoCoordinate* gc /*out param*/) {
-  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
+  RocksDBKey key;
+  key.constructGeoIndexValue(gix->objectId, slot, true);
   std::string slotValue;
   RocksRead(gix, key, &slotValue);
   fromPersistent(slotValue.data(), *gc);
 }
 void SlotWrite(GeoIx* gix, int slot, GeoCoordinate* gc) {
-  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
+  RocksDBKey key;
+  key.constructGeoIndexValue(gix->objectId, slot, true);
   char data[sizeof(GeoCoordinate)];
   toPersistent(*gc, &data[0]);
   RocksWrite(gix, key, rocksdb::Slice(&data[0], sizeof(GeoCoordinate)));
 }
 
 void PotRead(GeoIx* gix, int pot, GeoPot* gp) {
-  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
+  RocksDBKey key;
+  key.constructGeoIndexValue(gix->objectId, pot, false);
   std::string potValue;
   RocksRead(gix, key, &potValue);
   TRI_ASSERT(potValue.size() == sizeof(GeoPot));
@@ -410,7 +413,8 @@ void PotRead(GeoIx* gix, int pot, GeoPot* gp) {
 }
 
 void PotWrite(GeoIx* gix, int pot, GeoPot* gp) {
-  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
+  RocksDBKey key;
+  key.constructGeoIndexValue(gix->objectId, pot, false);
   char data[sizeof(GeoPot)];
   toPersistent(*gp, &data[0]);
   RocksWrite(gix, key, rocksdb::Slice(&data[0], sizeof(GeoPot)));
@@ -449,7 +453,8 @@ double GeoIndex_distance(GeoCoordinate* c1, GeoCoordinate* c2) {
 /* free list.                                          */
 /* =================================================== */
 void GeoIndexFreePot(GeoIx* gix, int pot) {  // rewrite delete in rocksdb
-  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, pot, false);
+  RocksDBKey key;
+  key.constructGeoIndexValue(gix->objectId, pot, false);
   RocksDelete(gix, key);
 }
 /* =================================================== */
@@ -503,7 +508,7 @@ GeoIdx* GeoIndex_new(uint64_t objectId, int numPots, int numSlots) {
   if (gix == nullptr) {
     return (GeoIdx*)gix;
   }
-  // need to set these to null
+  // need to set this ptr to null
   gix->rocksMethods = nullptr;
 
   /* set up the fixed points structure  */
@@ -625,22 +630,35 @@ GeoIdx* GeoIndex_new(uint64_t objectId, int numPots, int numSlots) {
   if (numPots == 0 || numSlots == 0) {  // first run
     gix->nextFreePot = 2;
     gix->nextFreeSlot = 1;
-
-    GeoPot gp;
-    gp.LorLeaf = 0;    // leaf pot
-    gp.RorPoints = 0;  // with no points in it!
-    gp.middle = 0ll;
-    gp.start = 0ll;
-    gp.end = 0x1FFFFFFFFFFFFFll;
-    gp.level = 1;
-    for (i = 0; i < GeoIndexFIXEDPOINTS; i++) gp.maxdist[i] = 0;
-    PotWrite(gix, 1, &gp);  // pot 1 is root
+    GeoIndex_reset(gix);
   } else {
     gix->nextFreePot = numPots + 1;
     gix->nextFreeSlot = numSlots + 1;
   }
   return (GeoIdx*)gix;
 }
+/* =================================================== */
+/*               GeoIndex_reset routine                */
+/* reset the datastructure as if it was just created   */
+/* for the first time                                  */
+/* =================================================== */
+void GeoIndex_reset(GeoIdx* gi) {
+  GeoIx* gix = (GeoIx*)gi;
+  TRI_ASSERT(gi != nullptr);
+  TRI_ASSERT(gix->nextFreePot >= 2);
+  TRI_ASSERT(gix->nextFreeSlot >= 1);
+  
+  GeoPot gp;
+  gp.LorLeaf = 0;    // leaf pot
+  gp.RorPoints = 0;  // with no points in it!
+  gp.middle = 0ll;
+  gp.start = 0ll;
+  gp.end = 0x1FFFFFFFFFFFFFll;
+  gp.level = 1;
+  for (int i = 0; i < GeoIndexFIXEDPOINTS; i++) gp.maxdist[i] = 0;
+  PotWrite(gix, 1, &gp);  // pot 1 is root
+}
+  
 /* =================================================== */
 /*               GeoIndex_free routine                 */
 /* Destroys the GeoIndex, and frees all the memory that*/
@@ -1282,7 +1300,8 @@ GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, GeoCoordinate* c,
 /* return the specified slot to the free list          */
 /* =================================================== */
 void GeoIndexFreeSlot(GeoIx* gix, int slot) {
-  RocksDBKey key = RocksDBKey::GeoIndexValue(gix->objectId, slot, true);
+  RocksDBKey key;
+  key.constructGeoIndexValue(gix->objectId, slot, true);
   RocksDelete(gix, key);
 }
 /* =================================================== */
