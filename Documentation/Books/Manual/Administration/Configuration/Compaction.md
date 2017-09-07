@@ -1,7 +1,7 @@
 MMFiles Compaction options
 ==========================
 
-Since ArangoDB 2.2, the MMFiles storage engine will run a compaction over data files.
+The ArangoDB MMFiles storage engine will run a compaction over data files.
 
 ArangoDB writes Documents in the WAL file. Once they have been sealed in the wal file,
 the collector may copy them into a per collection journal file. 
