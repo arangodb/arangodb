@@ -403,11 +403,9 @@ def checkCommitMessages() {
 
             restrictions = [
                 "build-community-mac" : true,
-                // "build-community-windows" : true,
                 "build-enterprise-linux" : true,
                 "test-cluster-enterprise-rocksdb-linux" : true,
-                "test-singleserver-community-mmfiles-mac" : true
-                // "test-singleserver-community-rocksdb-windows" : true
+                "test-singleserver-enterprise-mmfiles-linux" : true
             ]
         }
     }
