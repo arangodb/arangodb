@@ -730,6 +730,7 @@ function ahuacatlListTestSuite () {
       actual = actual[0];
       assertEqual(actual.length, 10);
       actual = actual.sort(function(l, r) { if (l._key < r._key) { return -1;} else if (l._key > r._key) { return 1;} return 0; });
+      var i;
       for (i = 0; i < 10; ++i) {
         assertEqual(actual[i]._key, "test" + i);
       }
@@ -772,6 +773,7 @@ function ahuacatlListTestSuite () {
       actual = actual[0];
       assertEqual(actual.length, 11);
       assertEqual(actual[10], 'stringvalue');
+      var i;
       for (i = 0; i < 10; ++i) {
         assertEqual(actual[i]._key, "test" + i);
       }
@@ -802,6 +804,7 @@ function ahuacatlListTestSuite () {
       assertEqual(actual.length, 11);
       actual = actual.sort(function(l, r) { if (l < r) { return -1;} else if (l > r) { return 1;} return 0; });
       assertEqual('stringvalue', actual[10]);
+      var i;
       for (i = 0; i < 10; ++i) {
         assertEqual(actual[i], collectionName + "/test" + i);
       }
