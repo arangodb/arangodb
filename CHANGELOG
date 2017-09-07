@@ -1,6 +1,10 @@
 devel
 -----
 
+* changed the return values of AQL functions `REGEX_TEST` and `REGEX_REPLACE`
+  to `null` when the input regex is invalid. Previous versions of ArangoDB
+  partly returned `false` for invalid regex and partly `null`.
+
 * added `--log.role` option for arangod
 
   When set to `true`, this option will make the ArangoDB logger print a single 
