@@ -1,3 +1,3 @@
 #!/bin/bash
 
-. ./Installation/Pipeline/include/build_EDITION_OS.inc "$1" enterprise mac
+. ./Installation/Pipeline/include/build_OS_EDITION.inc "$1" enterprise mac "$2"
