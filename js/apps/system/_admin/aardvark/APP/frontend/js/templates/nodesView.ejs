@@ -68,7 +68,7 @@
           </div>
           <div class="pure-u-10-24 left"><%= node.Endpoint %></div>
 
-          <% var formatted = (node.LastAcked).substr(11, 18).slice(0, -1); %>
+          <% var formatted = (node.Timestamp).substr(11, 18).slice(0, -1); %>
           <div class="pure-u-3-24 hide-small mid"><%= formatted %></div>
           
           <% if(node.Status === 'GOOD') { %>
@@ -147,7 +147,7 @@
           </div>
           <div class="pure-u-10-24 left"><%= node.Endpoint %></div>
 
-          <% var formatted = (node.LastAcked).substr(11, 18).slice(0, -1); %>
+          <% var formatted = (node.Timestamp).substr(11, 18).slice(0, -1); %>
           <div class="pure-u-3-24 mid hide-small"><%= formatted %></div>
 
           <% if(node.Status === 'GOOD') { %>

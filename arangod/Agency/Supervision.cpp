@@ -41,40 +41,66 @@ using namespace arangodb;
 using namespace arangodb::consensus;
 using namespace arangodb::application_features;
 
-
 struct HealthRecord {
+
   std::string shortName;
   std::string syncTime;
   std::string syncStatus;
   std::string status;
   std::string endpoint;
   std::string lastAcked;
-  HealthRecord(std::string const& sn, std::string const& ep) :
+
+  HealthRecord(
+    std::string const& sn, std::string const& ep) :
     shortName(sn), endpoint(ep) {}
+
   HealthRecord(Node const& node) {
     *this = node;
   }
-  HealthRecord operator=(Node const& node) {
-    if (node.has("ShortName")) {
-      syncTime = node("SyncTime").toJson();
+
+  HealthRecord(HealthRecord const& other) {
+    *this = other;
+  }
+
+  HealthRecord& operator=(Node const& node) {
+    if (node.has("Status")) {
       syncStatus = node("SyncStatus").toJson();
       status = node("Status").toJson();
-      lastAcked = node("LastAcked").toJson();
+      if (node.has("SyncTime")) {
+        lastAcked = node("LastAcked").toJson();
+        syncTime = node("SyncTime").toJson();
+      }
     }
     return *this;
   }
+
+  HealthRecord& operator=(HealthRecord const& other) {
+    shortName = other.shortName;
+    syncStatus = other.syncStatus;
+    status = other.status;
+    endpoint = other.endpoint;
+    return *this;
+  }
+
   void toVelocyPack(VPackBuilder& obj) const {
     TRI_ASSERT(obj.isOpenObject());
     obj.add("ShortName", VPackValue(shortName));
     obj.add("Endpoint", VPackValue(endpoint));
-    obj.add("SyncTime", VPackValue(syncTime));
     obj.add("SyncStatus", VPackValue(syncStatus));
     obj.add("Status", VPackValue(status));
-    obj.add("LastAcked", VPackValue(lastAcked)); 
+    if (syncTime.empty()) { 
+      obj.add("Timestamp",
+              VPackValue(timepointToString(std::chrono::system_clock::now()))); 
+    } else {
+      obj.add("SyncTime", VPackValue(syncTime));
+      obj.add("LastAcked", VPackValue(lastAcked));
+    }
   }
+  
   bool statusDiff(HealthRecord const& other) {
     return (status != other.status || syncStatus != other.syncStatus);
   }
+  
   friend std::ostream& operator<<(std::ostream& o, HealthRecord const& hr) {
     VPackBuilder builder;
     { VPackObjectBuilder b(&builder);
@@ -82,6 +108,7 @@ struct HealthRecord {
     o << builder.toJson();
     return o;
   }
+  
 };
 
 
@@ -180,14 +207,14 @@ void Supervision::upgradeAgency() {
 }
 
 void handleOnStatusDBServer(
-  Agent* agent, Node const& snapshot, HealthRecord const& oldPersisted,
-  HealthRecord const& newHealth, std::string const& serverID,
+  Agent* agent, Node const& snapshot, HealthRecord& persisted,
+  HealthRecord& transisted, std::string const& serverID,
   uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope) {
-
+  
   std::string failedServerPath = failedServersPrefix + "/" + serverID;
   
-  // New condition GOOD:
-  if (newHealth.status == Supervision::HEALTH_STATUS_GOOD) {
+  // New condition GOOD: 
+  if (transisted.status == Supervision::HEALTH_STATUS_GOOD) {
     if (snapshot.has(failedServerPath)) {
       Builder del;
       { VPackArrayBuilder c(&del);
@@ -197,8 +224,13 @@ void handleOnStatusDBServer(
             del.add("op", VPackValue("delete")); }}}
       singleWriteTransaction(agent, del);
     }
-  } else if ( // Failed Server:
-    newHealth.status == Supervision::HEALTH_STATUS_FAILED) { 
+  } else if ( // New state: FAILED persisted: GOOD (-> BAD)
+    persisted.status == Supervision::HEALTH_STATUS_GOOD &&
+    transisted.status == Supervision::HEALTH_STATUS_FAILED) {
+    transisted.status = Supervision::HEALTH_STATUS_BAD;
+  } else if ( // New state: FAILED persisted: BAD (-> Job)
+    persisted.status == Supervision::HEALTH_STATUS_BAD &&
+    transisted.status == Supervision::HEALTH_STATUS_FAILED ) {
     if (!snapshot.has(failedServerPath)) {
       envelope = std::make_shared<VPackBuilder>();
       FailedServer(snapshot, agent, std::to_string(jobId),
@@ -210,10 +242,10 @@ void handleOnStatusDBServer(
 
 
 void handleOnStatusCoordinator(
-  Agent* agent, Node const& snapshot, HealthRecord const& oldPersisted,
-  HealthRecord const& newHealth, std::string const& serverID) {
+  Agent* agent, Node const& snapshot, HealthRecord& persisted,
+  HealthRecord& transisted, std::string const& serverID) {
   
-  if (newHealth.status == Supervision::HEALTH_STATUS_GOOD) {
+  if (transisted.status == Supervision::HEALTH_STATUS_GOOD) {
     
     std::string currentFoxxmaster;
     if (snapshot.has(foxxmaster)) {
@@ -234,16 +266,16 @@ void handleOnStatusCoordinator(
 
   
 void handleOnStatus(
-  Agent* agent, Node const& snapshot, HealthRecord const& oldPersisted,
-  HealthRecord const& newHealth, std::string const& serverID,
+  Agent* agent, Node const& snapshot, HealthRecord& persisted,
+  HealthRecord& transisted, std::string const& serverID,
   uint64_t const& jobId, std::shared_ptr<VPackBuilder>& envelope) {
 
   if (serverID.compare(0,4,"PRMR") == 0) {
     handleOnStatusDBServer(
-      agent, snapshot, oldPersisted, newHealth, serverID, jobId, envelope);
+      agent, snapshot, persisted, transisted, serverID, jobId, envelope);
   } else if (serverID.compare(0,4,"CRDN") == 0) {
     handleOnStatusCoordinator(
-      agent, snapshot, oldPersisted, newHealth, serverID);
+      agent, snapshot, persisted, transisted, serverID);
   } else {
     LOG_TOPIC(ERR, Logger::SUPERVISION)
       << "Unknown server type. No supervision action taken.";
@@ -268,113 +300,12 @@ std::vector<check_t> Supervision::check(std::string const& type) {
     }
   }
 
+  // Remove all machines, which are no longer planned
   for (auto const& machine : machinesPlanned) {
-    std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,
-      lastStatus, syncTime, syncStatus, serverID(machine.first),
-      shortName("Unknown");
-    
-    // ShortName
     todelete.erase(
-      std::remove(todelete.begin(), todelete.end(), serverID), todelete.end());
-    shortName = _snapshot(targetShortID + serverID + "/ShortName").toJson();
-    
-    // Endpoint
-    std::string endpoint, epPath = serverID + "/endpoint";
-
-    if (serversRegistered.has(epPath)) {
-      endpoint = serversRegistered(epPath).toJson();
-    }
-      
-    // Health records from persistence, from transience and a new one
-    HealthRecord oldTransient(shortName, endpoint),
-      oldPersistent(shortName, endpoint), newHealth(shortName, endpoint);
-    
-    // Get last health entries from transient and persistent key value stores
-    if (_transient.has(healthPrefix + serverID)) {
-      oldTransient = _transient(healthPrefix + serverID);
-    }
-    if (_snapshot.has(healthPrefix + serverID)) {
-      oldPersistent = _snapshot(healthPrefix + serverID);
-    }
-    
-    // New health card (start with old add current information from sync)
-    newHealth = oldTransient;
-    if (_transient.has(syncPrefix + serverID)) {
-      newHealth.syncTime = _transient(syncPrefix + serverID + "/time").toJson();
-      newHealth.syncStatus =
-        _transient(syncPrefix + serverID + "/status").toJson();
-    } else {
-      newHealth.syncTime =   // Begin of epoch
-        timepointToString(std::chrono::system_clock::time_point());
-      newHealth.syncStatus = "UNKNOWN";
-    }
-
-    // Last change registered in sync (transient != sync)
-    // Either now or value in transient
-    auto lastAckedTime = (oldTransient.syncTime != newHealth.syncTime) ?
-      std::chrono::system_clock::now() : stringToTimepoint(oldTransient.lastAcked);
-    newHealth.lastAcked = timepointToString(lastAckedTime);
-  
-    // Calculate elapsed since lastAcked
-    auto elapsed = std::chrono::duration<double>(
-      std::chrono::system_clock::now() - lastAckedTime);
-    
-    if (elapsed.count() <= _okThreshold) {
-      newHealth.status = Supervision::HEALTH_STATUS_GOOD;
-    } else if (elapsed.count() <= _gracePeriod) {
-      newHealth.status = Supervision::HEALTH_STATUS_BAD;
-    } else {
-      newHealth.status = Supervision::HEALTH_STATUS_FAILED;
-    }
-
-    // Start creating new health report
-    auto report = std::make_shared<Builder>();
-    
-    { VPackArrayBuilder transaction(report.get());        // Transaction
-
-      std::shared_ptr<VPackBuilder> envelope;
-      { VPackObjectBuilder operation(report.get()); // Operation
-
-        report->add(VPackValue(healthPrefix + serverID)); // Supervision/Health
-        { VPackObjectBuilder oo(report.get());
-          newHealth.toVelocyPack(*report); }
-
-        handleOnStatus( // Take necessary actions if any
-          _agent, _snapshot, oldTransient, newHealth, serverID, _jobId, envelope);
-        
-        if (envelope != nullptr) { // Failed server operation
-          TRI_ASSERT(
-            envelope->slice().isArray() && envelope->slice()[0].isObject());
-          for (const auto& i : VPackObjectIterator(envelope->slice()[0])) {
-            report->add(i.key.copyString(), i.value);
-          }
-        }} // Operation
-      
-      if (envelope != nullptr) {                             // Preconditions(Job)
-        TRI_ASSERT(
-          envelope->slice().isArray() && envelope->slice()[1].isObject());
-        report->add(envelope->slice()[1]);
-      }
-      
-    } // Transaction
-
-    if (!this->isStopping()) {
-
-      // Replicate special event and only then transient store
-      if (newHealth.statusDiff(oldPersistent)) { 
-        write_ret_t res = singleWriteTransaction(_agent, *report);
-        if (res.accepted && res.indices.front() != 0) {
-          ++_jobId; // Job was booked 
-          transient(_agent, *report);
-        }
-      } else { // Nothing special just transient store
-        transient(_agent, *report);
-      }
-    }
-    
+      std::remove(
+        todelete.begin(), todelete.end(), machine.first), todelete.end());
   }
-  
-  // Remove nodes, which are no longer planned from health monitoring  
   if (!todelete.empty()) {
     query_t del = std::make_shared<Builder>();
       { VPackArrayBuilder trxs(del.get());
@@ -387,6 +318,118 @@ std::vector<check_t> Supervision::check(std::string const& type) {
     _agent->write(del);
   }
 
+  // Do actual monitoring
+  for (auto const& machine : machinesPlanned) {
+    std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,
+      lastStatus, serverID(machine.first),
+      shortName(_snapshot(targetShortID + serverID + "/ShortName").toJson());
+    
+    // Endpoint
+    std::string endpoint, epPath = serverID + "/endpoint";
+    if (serversRegistered.has(epPath)) {
+      endpoint = serversRegistered(epPath).toJson();
+    }
+
+    // Health records from persistence, from transience and a new one
+    HealthRecord transist(shortName, endpoint), persist(shortName, endpoint);
+    
+    // Get last health entries from transient and persistent key value stores
+    if (_transient.has(healthPrefix + serverID)) {
+      transist = _transient(healthPrefix + serverID);
+    }
+    if (_snapshot.has(healthPrefix + serverID)) {
+      persist = _snapshot(healthPrefix + serverID);
+    }
+    
+    // New health record (start with old add current information from sync)
+    // Sync.time is copied to Health.syncTime
+    // Sync.status is copied to Health.syncStatus
+    std::string syncTime = _transient.has(syncPrefix + serverID) ?
+      _transient(syncPrefix + serverID + "/time").toJson() :
+      transist.syncTime =   // Begin of epoch
+      timepointToString(std::chrono::system_clock::time_point());
+    std::string syncStatus = _transient.has(syncPrefix + serverID) ?
+      _transient(syncPrefix + serverID + "/status").toJson() : "UNKNOWN";
+
+    // Last change registered in sync (transient != sync)
+    // Either now or value in transient
+    auto lastAckedTime = (syncTime != transist.syncTime) ?
+      std::chrono::system_clock::now() : stringToTimepoint(transist.lastAcked);
+    transist.lastAcked = timepointToString(lastAckedTime);
+    transist.syncTime = syncTime;
+    transist.syncStatus = syncStatus;
+    std::string oldTrasientStatus = transist.status;
+    
+    // Calculate elapsed since lastAcked
+    auto elapsed = std::chrono::duration<double>(
+      std::chrono::system_clock::now() - lastAckedTime);
+    
+    if (elapsed.count() <= _okThreshold) {
+      transist.status = Supervision::HEALTH_STATUS_GOOD;
+    } else if (elapsed.count() <= _gracePeriod) {
+      transist.status = Supervision::HEALTH_STATUS_BAD;
+    } else {
+      transist.status = Supervision::HEALTH_STATUS_FAILED;
+    }
+
+    // Status changed?
+    bool changed = transist.statusDiff(persist);
+
+    // Take necessary actions if any
+    std::shared_ptr<VPackBuilder> envelope;
+    handleOnStatus(_agent, _snapshot, persist, transist, serverID, _jobId,
+                   envelope);
+    
+   persist = transist; // Now copy Status, SyncStatus from transient to persited
+    
+    // Transient report
+    std::shared_ptr<Builder> tReport = std::make_shared<Builder>();
+    { VPackArrayBuilder transaction(tReport.get());        // Persist Transaction
+      std::shared_ptr<VPackBuilder> envelope;
+      { VPackObjectBuilder operation(tReport.get());       // Operation
+        tReport->add(VPackValue(healthPrefix + serverID)); // Supervision/Health
+        { VPackObjectBuilder oo(tReport.get());
+          transist.toVelocyPack(*tReport); }}} // Transaction
+
+    // Persistent report
+    std::shared_ptr<Builder> pReport = nullptr;
+    if (changed) {
+      pReport = std::make_shared<Builder>();
+      { VPackArrayBuilder transaction(pReport.get());      // Persist Transaction
+        { VPackObjectBuilder operation(pReport.get());     // Operation
+          pReport->add(VPackValue(healthPrefix + serverID)); // Supervision/Health
+          { VPackObjectBuilder oo(pReport.get());
+            persist.toVelocyPack(*pReport); }
+          if (envelope != nullptr) {                       // Failed server
+            TRI_ASSERT(
+              envelope->slice().isArray() && envelope->slice()[0].isObject());
+            for (const auto& i : VPackObjectIterator(envelope->slice()[0])) {
+              pReport->add(i.key.copyString(), i.value);
+            }
+          }} // Operation
+        if (envelope != nullptr) {                         // Preconditions(Job)
+          TRI_ASSERT(
+            envelope->slice().isArray() && envelope->slice()[1].isObject());
+          pReport->add(envelope->slice()[1]);
+        }} // Transaction
+    }
+
+    if (!this->isStopping()) {
+
+      // Replicate special event and only then transient store
+      if (changed) {
+        write_ret_t res = singleWriteTransaction(_agent, *pReport);
+        if (res.accepted && res.indices.front() != 0) {
+          ++_jobId; // Job was booked 
+          transient(_agent, *tReport);
+        }
+      } else { // Nothing special just transient store
+        transient(_agent, *tReport);
+      }
+    }
+    
+  }
+  
   return ret;
 }
 
@@ -481,9 +524,11 @@ void Supervision::run() {
             upgradeAgency();
           }
 
+          // Do nothing unless leader for over 10 seconds
           auto secondsSinceLeader = std::chrono::duration<double>(
             std::chrono::system_clock::now() - _agent->leaderSince()).count();
-          if (secondsSinceLeader > _gracePeriod) {
+          
+          if (secondsSinceLeader > 10.0) {
             doChecks();
           }
         }
