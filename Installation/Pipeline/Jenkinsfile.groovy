@@ -488,61 +488,48 @@ def jslint() {
 // -----------------------------------------------------------------------------
 
 def getTests(os, edition, mode, engine) {
+    def tests = [
+        ["arangobench", "arangobench" , ""],
+        ["arangosh", "arangosh", "--skipShebang true"],
+        ["authentication", "authentication", ""],
+        ["authentication_parameters", "authentication_parameters", ""],
+        ["config", "config" , ""],
+        ["dump", "dump" , ""],
+        ["dump_authentication", "dump_authentication" , ""],
+        ["endpoints", "endpoints", ""],
+        ["server_http", "server_http", ""],
+        ["shell_client", "shell_client", ""],
+        ["shell_server", "shell_server", ""],
+        ["shell_server_aql_1", "shell_server_aql", "--testBuckets 4/0", ,""],
+        ["shell_server_aql_2", "shell_server_aql", "--testBuckets 4/1", ,""],
+        ["shell_server_aql_3", "shell_server_aql", "--testBuckets 4/2", ,""],
+        ["shell_server_aql_4", "shell_server_aql", "--testBuckets 4/3", ,""],
+        ["upgrade", "upgrade" , ""],
+        rspecify(os, "http_server"),
+        rspecify(os, "ssl_server")
+    ]
+
+    if (edition == "enterprise") {
+        tests += [
+            ["authentication_server", "authentication_server", ""]
+        ]
+    }
+
     if (mode == "singleserver") {
-        return [
+        tests += [
             ["agency", "agency", ""],
             ["boost", "boost", "--skipCache false"],
-            ["arangobench", "arangobench", ""],
-            ["arangosh", "arangosh", "--skipShebang true"],
-            ["authentication", "authentication", ""],
-            ["authentication_server", "authentication_server", ""],
-            ["authentication_parameters", "authentication_parameters", ""],
             ["cluster_sync", "cluster_sync", ""],
-            ["config", "config", ""],
             ["dfdb", "dfdb", ""],
-            //"dump",
-            //"dump_authentication",
-            ["endpoints", "endpoints", ""],
-            rspecify(os, "http_replication"),
-            rspecify(os, "http_server"),
-            ["replication_sync", "replication_sync", ""],
-            ["replication_static", "replication_static", ""],
             ["replication_ongoing", "replication_ongoing", ""],
-            ["server_http", "server_http", ""],
-            ["shell_client", "shell_client", ""],
+            ["replication_static", "replication_static", ""],
+            ["replication_sync", "replication_sync", ""],
             ["shell_replication", "shell_replication", ""],
-            ["shell_server", "shell_server", ""],
-            ["shell_server_aql_1", "shell_server_aql", "--testBuckets 4/0", ,""],
-            ["shell_server_aql_2", "shell_server_aql", "--testBuckets 4/1", ,""],
-            ["shell_server_aql_3", "shell_server_aql", "--testBuckets 4/2", ,""],
-            ["shell_server_aql_4", "shell_server_aql", "--testBuckets 4/3", ,""],
-            rspecify(os, "ssl_server"),
-            ["upgrade", "upgrade" , ""]
+            rspecify(os, "http_replication")
         ]
     }
-    else {
-        return [
-            ["arangobench", "arangobench" , ""],
-            ["arangosh", "arangosh" , "--skipShebang true"],
-            ["authentication", "authentication" , ""],
-            ["authentication_server", "authentication_server", ""],
-            ["authentication_parameters", "authentication_parameters" , ""],
-            ["config", "config" , ""],
-            ["dump", "dump" , ""],
-            ["dump_authentication", "dump_authentication" , ""],
-            ["endpoints", "endpoints" , ""],
-            rspecify(os, "http_server"),
-            ["server_http", "server_http", ""],
-            ["shell_client", "shell_client", ""],
-            ["shell_server", "shell_server", ""],
-            ["shell_server_aql_1", "shell_server_aql", "--testBuckets 4/0"],
-            ["shell_server_aql_2", "shell_server_aql", "--testBuckets 4/1"],
-            ["shell_server_aql_3", "shell_server_aql", "--testBuckets 4/2"],
-            ["shell_server_aql_4", "shell_server_aql", "--testBuckets 4/3"],
-            rspecify(os, "ssl_server"),
-            ["upgrade", "upgrade" , ""]
-        ]
-    }
+
+    return tests
 }
 
 def setupTestEnvironment(os, logFile, runDir) {
