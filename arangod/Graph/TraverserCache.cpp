@@ -50,14 +50,25 @@ TraverserCache::TraverserCache(transaction::Methods* trx)
 
 TraverserCache::~TraverserCache() {}
 
-arangodb::velocypack::Slice TraverserCache::lookupToken(EdgeDocumentToken const* token) {
-  return lookupInCollection(static_cast<SingleServerEdgeDocumentToken const*>(token));
+VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  auto col = _trx->vocbase()->lookupCollection(idToken.cid());
+  TRI_ASSERT(col != nullptr);
+  if (!col->readDocument(_trx, idToken.token(), *_mmdr.get())) {
+    TRI_ASSERT(false);
+    // We already had this token, inconsistent state. Return NULL in Production
+    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS) << "Could not extract indexed Edge Document, return 'null' instead. "
+      << "This is most likely a caching issue. Try: '"
+      << col->name() <<".unload(); " << col->name() << ".load()' in arangosh to fix this.";
+    return basics::VelocyPackHelper::NullValue();
+  }
+  return VPackSlice(_mmdr->vpack());
 }
 
-
 VPackSlice TraverserCache::lookupInCollection(StringRef id) {
+  //TRI_ASSERT(!ServerState::instance()->isCoordinator());
   size_t pos = id.find('/');
-  if (pos == std::string::npos) {
+  if (pos == std::string::npos || pos + 1 == id.size()) {
     // Invalid input. If we get here somehow we managed to store invalid _from/_to
     // values or the traverser did a let an illegal start through
     TRI_ASSERT(false);
@@ -68,7 +79,7 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
   if (res.ok()) {
     ++_insertedDocuments;
     return VPackSlice(_mmdr->vpack());
-  } else if (res.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+  } else if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
     ++_insertedDocuments;
     // This is expected, we may have dangling edges. Interpret as NULL
     return basics::VelocyPackHelper::NullValue();
@@ -78,46 +89,24 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
   }
 }
 
-VPackSlice TraverserCache::lookupInCollection(SingleServerEdgeDocumentToken const* idToken) const {
-  auto col = _trx->vocbase()->lookupCollection(idToken->cid());
-  if (!col->readDocument(_trx, idToken->token(), *_mmdr.get())) {
-    TRI_ASSERT(false);
-    // We already had this token, inconsistent state. Return NULL in Production
-    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS) << "Could not extract indexed Edge Document, return 'null' instead. This is most likely a caching issue. Try: '" << col->name() <<".unload(); " << col->name() << ".load()' in arangosh to fix this."; 
-    return basics::VelocyPackHelper::NullValue();
-  }
-  return VPackSlice(_mmdr->vpack());
-}
-
-void TraverserCache::insertIntoResult(EdgeDocumentToken const* idToken,
+void TraverserCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
                                       VPackBuilder& builder) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  builder.add(lookupInCollection(static_cast<SingleServerEdgeDocumentToken const*>(idToken)));
+  builder.add(lookupToken(idToken));
 }
 
-void TraverserCache::insertIntoResult(StringRef idString,
+void TraverserCache::insertVertexIntoResult(StringRef idString,
                                       VPackBuilder& builder) {
   builder.add(lookupInCollection(idString));
 }
 
-aql::AqlValue TraverserCache::fetchAqlResult(StringRef idString) {
-  return aql::AqlValue(lookupInCollection(idString));
-}
-
-aql::AqlValue TraverserCache::fetchAqlResult(EdgeDocumentToken const* idToken) {
+aql::AqlValue TraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const& idToken) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  return aql::AqlValue(lookupInCollection(static_cast<SingleServerEdgeDocumentToken const*>(idToken)));
+  return aql::AqlValue(lookupToken(idToken));
 }
 
-void TraverserCache::insertDocument(StringRef idString, arangodb::velocypack::Slice const& document) {
-  return;
-}
-
-bool TraverserCache::validateFilter(
-    StringRef idString,
-    std::function<bool(VPackSlice const&)> filterFunc) {
-  VPackSlice slice = lookupInCollection(idString);
-  return filterFunc(slice);
+aql::AqlValue TraverserCache::fetchVertexAqlResult(StringRef idString) {
+  return aql::AqlValue(lookupInCollection(idString));
 }
 
 StringRef TraverserCache::persistString(

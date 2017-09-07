@@ -47,12 +47,12 @@ class EdgeCursor {
   EdgeCursor() {}
   virtual ~EdgeCursor() {}
 
-  virtual bool next(std::function<void(std::unique_ptr<EdgeDocumentToken>&&,
+  virtual bool next(std::function<void(EdgeDocumentToken&&,
                                        arangodb::velocypack::Slice, size_t)>
                         callback) = 0;
 
   virtual void readAll(
-      std::function<void(std::unique_ptr<EdgeDocumentToken>&&,
+      std::function<void(EdgeDocumentToken&&,
                          arangodb::velocypack::Slice, size_t)>) = 0;
 };
 
