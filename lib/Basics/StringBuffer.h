@@ -450,6 +450,8 @@ class StringBuffer {
     TRI_SwapStringBuffer(&_buffer, &other->_buffer);
     return *this;
   }
+  
+  char const* data() const { return TRI_BeginStringBuffer(&_buffer); }
 
   /// @brief returns pointer to the character buffer
   char const* c_str() const { return TRI_BeginStringBuffer(&_buffer); }

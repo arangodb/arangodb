@@ -245,9 +245,9 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     }
     v8::Handle<v8::Object> obj = args[1]->ToObject();
     // Add the type and name into the object. Easier in v8 than in VPack
-    obj->Set(TRI_V8_ASCII_STRING("type"),
+    obj->Set(TRI_V8_ASCII_STRING(isolate, "type"),
              v8::Number::New(isolate, static_cast<int>(collectionType)));
-    obj->Set(TRI_V8_ASCII_STRING("name"), TRI_V8_STD_STRING(name));
+    obj->Set(TRI_V8_ASCII_STRING(isolate, "name"), TRI_V8_STD_STRING(isolate, name));
 
     int res = TRI_V8ToVPack(isolate, builder, obj, false);
 
@@ -272,7 +272,7 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
 
     if (args.Length() >= 3 && args[args.Length()-1]->IsObject()) {
       v8::Handle<v8::Object> obj = args[args.Length()-1]->ToObject();
-      auto v8WaitForSyncReplication = obj->Get(TRI_V8_ASCII_STRING("waitForSyncReplication"));
+      auto v8WaitForSyncReplication = obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSyncReplication"));
       if (!v8WaitForSyncReplication->IsUndefined()) {
         createWaitsForSyncReplication = TRI_ObjectToBoolean(v8WaitForSyncReplication);
       }
@@ -354,24 +354,24 @@ static void JS_CreateEdgeCollectionVocbase(
 
 void TRI_InitV8IndexArangoDB(v8::Isolate* isolate,
                              v8::Handle<v8::ObjectTemplate> rt) {
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("_create"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_create"),
                        JS_CreateVocbase, true);
   TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING("_createEdgeCollection"),
+                       TRI_V8_ASCII_STRING(isolate, "_createEdgeCollection"),
                        JS_CreateEdgeCollectionVocbase);
   TRI_AddMethodVocbase(isolate, rt,
-                       TRI_V8_ASCII_STRING("_createDocumentCollection"),
+                       TRI_V8_ASCII_STRING(isolate, "_createDocumentCollection"),
                        JS_CreateDocumentCollectionVocbase);
 }
 
 void TRI_InitV8IndexCollection(v8::Isolate* isolate,
                                v8::Handle<v8::ObjectTemplate> rt) {
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("dropIndex"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "dropIndex"),
                        JS_DropIndexVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("ensureIndex"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "ensureIndex"),
                        JS_EnsureIndexVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("lookupIndex"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "lookupIndex"),
                        JS_LookupIndexVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getIndexes"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getIndexes"),
                        JS_GetIndexesVocbaseCol, true);
 }

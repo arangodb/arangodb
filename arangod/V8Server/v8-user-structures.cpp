@@ -472,7 +472,7 @@ static inline v8::Handle<v8::Value> ObjectJsonNumber(v8::Isolate* isolate,
 /// @brief converts a TRI_json_t STRING into a V8 object
 static inline v8::Handle<v8::Value> ObjectJsonString(v8::Isolate* isolate,
                                                      TRI_json_t const* json) {
-  return TRI_V8_PAIR_STRING(json->_value._string.data,
+  return TRI_V8_PAIR_STRING(isolate, json->_value._string.data,
                             json->_value._string.length - 1);
 }
 
@@ -500,10 +500,10 @@ static v8::Handle<v8::Value> ObjectJsonObject(v8::Isolate* isolate,
 
     auto val = TRI_ObjectJson(isolate, element);
     if (!val.IsEmpty()) {
-      auto k = TRI_V8_PAIR_STRING(key->_value._string.data,
+      auto k = TRI_V8_PAIR_STRING(isolate, key->_value._string.data,
                                   key->_value._string.length - 1);
       if (!k.IsEmpty()) {
-        object->ForceSet(TRI_V8_PAIR_STRING(key->_value._string.data,
+        object->ForceSet(TRI_V8_PAIR_STRING(isolate, key->_value._string.data,
                                             key->_value._string.length - 1),
                          val);
       }
@@ -727,7 +727,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
     v8::Handle<v8::Object> o = parameter->ToObject();
 
     // first check if the object has a "toJSON" function
-    v8::Handle<v8::String> toJsonString = TRI_V8_PAIR_STRING("toJSON", 6);
+    v8::Handle<v8::String> toJsonString = TRI_V8_PAIR_STRING(isolate, "toJSON", 6);
     if (o->Has(toJsonString)) {
       // call it if yes
       v8::Handle<v8::Value> func = o->Get(toJsonString);
@@ -992,7 +992,7 @@ class KeySpace {
         auto element = it.second;
 
         if (element != nullptr) {
-          result->Set(count++, TRI_V8_STRING(element->key));
+          result->Set(count++, TRI_V8_PAIR_STRING(isolate, element->key, strlen(element->key)));
         }
       }
     }
@@ -1015,7 +1015,7 @@ class KeySpace {
 
         if (element != nullptr) {
           if (TRI_IsPrefixString(element->key, prefix.c_str())) {
-            result->Set(count++, TRI_V8_STRING(element->key));
+            result->Set(count++, TRI_V8_PAIR_STRING(isolate, element->key, strlen(element->key)));
           }
         }
       }
@@ -1034,7 +1034,7 @@ class KeySpace {
         auto element = it.second;
 
         if (element != nullptr) {
-          result->Set(TRI_V8_STRING(element->key),
+          result->Set(TRI_V8_PAIR_STRING(isolate, element->key, strlen(element->key)),
                       TRI_ObjectJson(isolate, element->json));
         }
       }
@@ -1055,7 +1055,7 @@ class KeySpace {
 
         if (element != nullptr) {
           if (TRI_IsPrefixString(element->key, prefix.c_str())) {
-            result->Set(TRI_V8_STRING(element->key),
+            result->Set(TRI_V8_PAIR_STRING(isolate, element->key, strlen(element->key)),
                         TRI_ObjectJson(isolate, element->json));
           }
         }
@@ -2619,62 +2619,62 @@ void TRI_InitV8UserStructures(v8::Isolate* isolate,
   // NOTE: the following functions are all experimental and might
   // change without further notice
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("KEYSPACE_CREATE"),
+                               TRI_V8_ASCII_STRING(isolate, "KEYSPACE_CREATE"),
                                JS_KeyspaceCreate, true);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("KEYSPACE_DROP"),
+                               TRI_V8_ASCII_STRING(isolate, "KEYSPACE_DROP"),
                                JS_KeyspaceDrop, true);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("KEYSPACE_COUNT"),
+                               TRI_V8_ASCII_STRING(isolate, "KEYSPACE_COUNT"),
                                JS_KeyspaceCount, true);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("KEYSPACE_EXISTS"),
+                               TRI_V8_ASCII_STRING(isolate, "KEYSPACE_EXISTS"),
                                JS_KeyspaceExists, true);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("KEYSPACE_KEYS"),
+                               TRI_V8_ASCII_STRING(isolate, "KEYSPACE_KEYS"),
                                JS_KeyspaceKeys, true);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("KEYSPACE_REMOVE"),
+                               TRI_V8_ASCII_STRING(isolate, "KEYSPACE_REMOVE"),
                                JS_KeyspaceRemove, true);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("KEYSPACE_GET"),
+                               TRI_V8_ASCII_STRING(isolate, "KEYSPACE_GET"),
                                JS_KeyspaceGet, true);
 
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("KEY_SET"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "KEY_SET"),
                                JS_KeySet, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_SET_CAS"), JS_KeySetCas, true);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("KEY_GET"),
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_SET_CAS"), JS_KeySetCas, true);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "KEY_GET"),
                                JS_KeyGet, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_REMOVE"), JS_KeyRemove, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_REMOVE"), JS_KeyRemove, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_EXISTS"), JS_KeyExists, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_EXISTS"), JS_KeyExists, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_TYPE"), JS_KeyType, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_TYPE"), JS_KeyType, true);
 
   // numeric functions
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_INCR"), JS_KeyIncr, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_INCR"), JS_KeyIncr, true);
 
   // list / array functions
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_UPDATE"), JS_KeyUpdate, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_UPDATE"), JS_KeyUpdate, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_KEYS"), JS_KeyKeys, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_KEYS"), JS_KeyKeys, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_VALUES"), JS_KeyValues, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_VALUES"), JS_KeyValues, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_COUNT"), JS_KeyCount, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_COUNT"), JS_KeyCount, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_PUSH"), JS_KeyPush, true);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("KEY_POP"),
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_PUSH"), JS_KeyPush, true);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "KEY_POP"),
                                JS_KeyPop, true);
   TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("KEY_TRANSFER"),
+                               TRI_V8_ASCII_STRING(isolate, "KEY_TRANSFER"),
                                JS_KeyTransfer, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_GET_AT"), JS_KeyGetAt, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_GET_AT"), JS_KeyGetAt, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_SET_AT"), JS_KeySetAt, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_SET_AT"), JS_KeySetAt, true);
 }

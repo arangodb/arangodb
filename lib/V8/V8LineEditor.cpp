@@ -276,7 +276,7 @@ class V8Completer : public Completer {
 
       if (1 < splitted._length) {
         for (size_t i = 0; i < splitted._length - 1; ++i) {
-          v8::Handle<v8::String> name = TRI_V8_STRING(splitted._buffer[i]);
+          v8::Handle<v8::String> name = TRI_V8_STRING(isolate, splitted._buffer[i]);
 
           if (!current->Has(name)) {
             TRI_DestroyVectorString(&splitted);
@@ -308,7 +308,7 @@ class V8Completer : public Completer {
 
     // compute all possible completions
     v8::Handle<v8::Array> properties;
-    v8::Handle<v8::String> cpl = TRI_V8_ASCII_STRING("_COMPLETIONS");
+    v8::Handle<v8::String> cpl = TRI_V8_ASCII_STRING(isolate, "_COMPLETIONS");
 
     if (current->HasOwnProperty(cpl)) {
       v8::Handle<v8::Value> funcVal = current->Get(cpl);

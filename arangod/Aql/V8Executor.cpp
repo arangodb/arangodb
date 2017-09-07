@@ -72,13 +72,13 @@ V8Expression* V8Executor::generateExpression(AstNode const* node) {
     std::string name = "r";
     name.append(std::to_string(it.second));
 
-    constantValues->ForceSet(TRI_V8_STD_STRING(name), toV8(isolate, it.first));
+    constantValues->ForceSet(TRI_V8_STD_STRING(isolate, name), toV8(isolate, it.first));
   }
 
   TRI_ASSERT(_buffer != nullptr);
 
   v8::Handle<v8::Script> compiled = v8::Script::Compile(
-      TRI_V8_STD_STRING((*_buffer)), TRI_V8_ASCII_STRING("--script--"));
+      TRI_V8_STD_STRING(isolate, (*_buffer)), TRI_V8_ASCII_STRING(isolate, "--script--"));
 
   if (!compiled.IsEmpty()) {
     v8::Handle<v8::Value> func(compiled->Run());
@@ -126,7 +126,7 @@ int V8Executor::executeExpression(Query* query, AstNode const* node,
   TRI_ASSERT(_buffer != nullptr);
 
   v8::Handle<v8::Script> compiled = v8::Script::Compile(
-      TRI_V8_STD_STRING((*_buffer)), TRI_V8_ASCII_STRING("--script--"));
+      TRI_V8_STD_STRING(isolate, (*_buffer)), TRI_V8_ASCII_STRING(isolate, "--script--"));
 
   if (!compiled.IsEmpty()) {
 
@@ -256,7 +256,7 @@ v8::Handle<v8::Value> V8Executor::toV8(v8::Isolate* isolate,
     for (size_t i = 0; i < n; ++i) {
       auto sub = node->getMember(i);
       result->ForceSet(
-          TRI_V8_PAIR_STRING(sub->getStringValue(), sub->getStringLength()),
+          TRI_V8_PAIR_STRING(isolate, sub->getStringValue(), sub->getStringLength()),
           toV8(isolate, sub->getMember(0)));
     }
     return result;
@@ -275,7 +275,7 @@ v8::Handle<v8::Value> V8Executor::toV8(v8::Isolate* isolate,
         return v8::Number::New(isolate,
                                static_cast<double>(node->value.value._double));
       case VALUE_TYPE_STRING:
-        return TRI_V8_PAIR_STRING(node->value.value._string,
+        return TRI_V8_PAIR_STRING(isolate, node->value.value._string,
                                   node->value.length);
     }
   }
@@ -307,8 +307,8 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
 
       v8::Handle<v8::Array> objValue =
           v8::Handle<v8::Array>::Cast(tryCatch.Exception());
-      v8::Handle<v8::String> errorNum = TRI_V8_ASCII_STRING("errorNum");
-      v8::Handle<v8::String> errorMessage = TRI_V8_ASCII_STRING("errorMessage");
+      v8::Handle<v8::String> errorNum = TRI_V8_ASCII_STRING(isolate, "errorNum");
+      v8::Handle<v8::String> errorMessage = TRI_V8_ASCII_STRING(isolate, "errorMessage");
 
       TRI_Utf8ValueNFC stacktrace(TRI_UNKNOWN_MEM_ZONE, tryCatch.StackTrace());
 

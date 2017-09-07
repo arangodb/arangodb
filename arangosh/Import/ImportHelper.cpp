@@ -160,8 +160,8 @@ ImportHelper::ImportHelper(ClientFeature const* client,
       _keyColumn(-1),
       _onDuplicateAction("error"),
       _collectionName(),
-      _lineBuffer(TRI_UNKNOWN_MEM_ZONE),
-      _outputBuffer(TRI_UNKNOWN_MEM_ZONE),
+      _lineBuffer(TRI_UNKNOWN_MEM_ZONE, false),
+      _outputBuffer(TRI_UNKNOWN_MEM_ZONE, false),
       _firstLine(""),
       _columnNames(),
       _hasError(false) {
@@ -660,7 +660,7 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
 
   if (row == _rowsToSkip) {
     // save the first line
-    _firstLine = _lineBuffer.c_str();
+    _firstLine = std::string(_lineBuffer.c_str(), _lineBuffer.length());
   } else if (row > _rowsToSkip && _firstLine.empty()) {
     // error
     MUTEX_LOCKER(guard, _stats._mutex);

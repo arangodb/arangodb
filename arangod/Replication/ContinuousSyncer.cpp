@@ -1520,6 +1520,10 @@ int ContinuousSyncer::syncCollectionFinalize(std::string& errorMsg,
   // TODO: _barrierId? Database name? _masterInfo!
   
   while (true) {
+    if (application_features::ApplicationServer::isStopping()) {
+      return TRI_ERROR_SHUTTING_DOWN;
+    }
+
     std::string const baseUrl = BaseUrl + 
                                 "/logger-follow?chunkSize=" + _chunkSize + 
                         //        "&barrier=" + StringUtils::itoa(_barrierId) +

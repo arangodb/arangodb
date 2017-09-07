@@ -26,6 +26,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -43,6 +44,8 @@ static bool checkMaxMappings = arangodb::MaxMapCountFeature::needsChecking();
 static uint64_t maxMappings = UINT64_MAX; 
 static std::string mapsFilename;
 
+static StringBuffer fileBuffer(TRI_UNKNOWN_MEM_ZONE, 8192, false);
+
 // cache for the current number of mappings for this process
 // (read from /proc/<pid>/maps
 static Mutex mutex;
@@ -50,7 +53,7 @@ static double lastStamp = 0.0;
 static bool lastValue = false;
 static bool checkInFlight = false;
 
-static constexpr double cacheLifetime = 5.0; 
+static constexpr double cacheLifetime = 7.5; 
 
 static double lastLogStamp = 0.0;
 static constexpr double logFrequency = 10.0;
@@ -102,7 +105,7 @@ void MaxMapCountFeature::prepare() {
     mapsFilename.clear();
   } else {
     try {
-      basics::FileUtils::slurp(mapsFilename.c_str());
+      basics::FileUtils::slurp(mapsFilename);
     } catch (...) {
       // maps file not readable
       mapsFilename.clear();
@@ -181,10 +184,10 @@ bool MaxMapCountFeature::isNearMaxMappings() {
 
 bool MaxMapCountFeature::isNearMaxMappingsInternal(double& suggestedCacheTime) noexcept {
   try {
-    std::string value =
-        basics::FileUtils::slurp(mapsFilename.c_str());
+    // recycle the same buffer for reading the maps file
+    basics::FileUtils::slurp(mapsFilename, fileBuffer);
     
-    size_t const nmaps = std::count(value.begin(), value.end(), '\n');
+    size_t const nmaps = std::count(fileBuffer.begin(), fileBuffer.end(), '\n');
     if (nmaps + 1024 < maxMappings) {
       if (nmaps > maxMappings * 0.90) {
         // more than 90% of the max mappings are in use. don't cache for too long

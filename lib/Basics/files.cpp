@@ -1048,7 +1048,7 @@ char* TRI_SlurpFile(TRI_memory_zone_t* zone, char const* filename,
   }
 
   TRI_string_buffer_t result;
-  TRI_InitStringBuffer(&result, zone);
+  TRI_InitStringBuffer(&result, zone, false);
 
   while (true) {
     int res = TRI_ReserveStringBuffer(&result, READBUFFER_SIZE);

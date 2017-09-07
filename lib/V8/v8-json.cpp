@@ -2610,12 +2610,12 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
         return v8::Undefined(isolate);
       }
 
-      attributeName = TRI_V8_PAIR_STRING(name, outLength);
+      attributeName = TRI_V8_PAIR_STRING(isolate, name, outLength);
       TRI_FreeString(yyextra._memoryZone, name);
     }
     else if (c == STRING_CONSTANT_ASCII) {
       // ASCII-only attribute name
-      attributeName = TRI_V8_ASCII_PAIR_STRING(yytext + 1, yyleng - 2);
+      attributeName = TRI_V8_ASCII_PAIR_STRING(isolate, yytext + 1, yyleng - 2);
     }
     else {
       yyextra._message = "expecting attribute name";
@@ -2722,7 +2722,7 @@ static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate,
         return v8::Undefined(isolate);
       }
 
-      v8::Handle<v8::String> str = TRI_V8_PAIR_STRING(ptr, outLength);
+      v8::Handle<v8::String> str = TRI_V8_PAIR_STRING(isolate, ptr, outLength);
       TRI_FreeString(yyextra._memoryZone, ptr);
 
       return str;
@@ -2735,7 +2735,7 @@ static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate,
       }
 
       // string is not empty
-      return TRI_V8_ASCII_PAIR_STRING(yytext + 1, yyleng - 2);
+      return TRI_V8_ASCII_PAIR_STRING(isolate, yytext + 1, yyleng - 2);
     }
 
     case OPEN_BRACE: {

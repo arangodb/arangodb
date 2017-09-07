@@ -1209,9 +1209,9 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
       }
 
       v8::Handle<v8::Object> globalObj = localContext->Global();
-      globalObj->Set(TRI_V8_ASCII_STRING("GLOBAL"), globalObj);
-      globalObj->Set(TRI_V8_ASCII_STRING("global"), globalObj);
-      globalObj->Set(TRI_V8_ASCII_STRING("root"), globalObj);
+      globalObj->Set(TRI_V8_ASCII_STRING(isolate, "GLOBAL"), globalObj);
+      globalObj->Set(TRI_V8_ASCII_STRING(isolate, "global"), globalObj);
+      globalObj->Set(TRI_V8_ASCII_STRING(isolate, "root"), globalObj);
 
       std::string modules = "";
       std::string sep = "";
@@ -1240,24 +1240,24 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
         v8::HandleScope scope(isolate);
 
         TRI_AddGlobalVariableVocbase(isolate,
-                                     TRI_V8_ASCII_STRING("APP_PATH"),
-                                     TRI_V8_STD_STRING(_appPath));
+                                     TRI_V8_ASCII_STRING(isolate, "APP_PATH"),
+                                     TRI_V8_STD_STRING(isolate, _appPath));
 
         for (auto j : _definedBooleans) {
-          localContext->Global()->ForceSet(TRI_V8_STD_STRING(j.first),
+          localContext->Global()->ForceSet(TRI_V8_STD_STRING(isolate, j.first),
                                            v8::Boolean::New(isolate, j.second),
                                            v8::ReadOnly);
         }
 
         for (auto j : _definedDoubles) {
-          localContext->Global()->ForceSet(TRI_V8_STD_STRING(j.first),
+          localContext->Global()->ForceSet(TRI_V8_STD_STRING(isolate, j.first),
                                            v8::Number::New(isolate, j.second),
                                            v8::ReadOnly);
         }
 
         for (auto j : _definedStrings) {
-          localContext->Global()->ForceSet(TRI_V8_STD_STRING(j.first),
-                                           TRI_V8_STD_STRING(j.second),
+          localContext->Global()->ForceSet(TRI_V8_STD_STRING(isolate, j.first),
+                                           TRI_V8_STD_STRING(isolate, j.second),
                                            v8::ReadOnly);
         }
       }

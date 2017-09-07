@@ -35,6 +35,17 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
+  
+namespace {
+static std::string const DEFAULT = "DEFAULT";
+static std::string const FATAL = "FATAL";
+static std::string const ERR = "ERROR";
+static std::string const WARN = "WARNING";
+static std::string const INFO = "INFO";
+static std::string const DEBUG = "DEBUG";
+static std::string const TRACE = "TRACE";
+static std::string const UNKNOWN = "UNKNOWN";
+}
 
 Mutex Logger::_initializeMutex;
 
@@ -194,15 +205,6 @@ void Logger::setKeepLogrotate(bool keep) {
 }
 
 std::string const& Logger::translateLogLevel(LogLevel level) {
-  static std::string DEFAULT = "DEFAULT";
-  static std::string FATAL = "FATAL";
-  static std::string ERR = "ERROR";
-  static std::string WARN = "WARNING";
-  static std::string INFO = "INFO";
-  static std::string DEBUG = "DEBUG";
-  static std::string TRACE = "TRACE";
-  static std::string UNKNOWN = "UNKNOWN";
-
   switch (level) {
     case LogLevel::DEFAULT:
       return DEFAULT;

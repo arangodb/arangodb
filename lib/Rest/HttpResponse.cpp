@@ -72,7 +72,7 @@ void HttpResponse::setCookie(std::string const& name, std::string const& value,
                              std::string const& domain, bool secure,
                              bool httpOnly) {
   std::unique_ptr<StringBuffer> buffer =
-      std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE);
+      std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, false);
 
   std::string tmp = StringUtils::trim(name);
   buffer->appendText(tmp);
@@ -120,7 +120,7 @@ void HttpResponse::setCookie(std::string const& name, std::string const& value,
     buffer->appendText(TRI_CHAR_LENGTH_PAIR("; HttpOnly"));
   }
 
-  _cookies.emplace_back(buffer->c_str());
+  _cookies.emplace_back(buffer->data(), buffer->length());
 }
 
 void HttpResponse::headResponse(size_t size) {

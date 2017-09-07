@@ -59,8 +59,8 @@ v8::Handle<v8::Value> JSLoader::executeGlobalScript(
   }
 
   result = TRI_ExecuteJavaScriptString(isolate, context,
-                                       TRI_V8_STD_STRING(i->second),
-                                       TRI_V8_STD_STRING(name), false);
+                                       TRI_V8_STD_STRING(isolate, i->second),
+                                       TRI_V8_STD_STRING(isolate, name), false);
 
   if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
@@ -102,8 +102,8 @@ JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
   v8::Context::Scope context_scope(context);
 
   v8::Handle<v8::Value> result =
-    TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STD_STRING(i->second),
-                                TRI_V8_STD_STRING(name), false);
+    TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STD_STRING(isolate, i->second),
+                                TRI_V8_STD_STRING(isolate, name), false);
 
   if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
@@ -179,8 +179,8 @@ bool JSLoader::executeScript(v8::Isolate* isolate,
   // Enter the newly created execution environment.
   v8::Context::Scope context_scope(context);
 
-  TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STD_STRING(content),
-                              TRI_V8_STD_STRING(name), false);
+  TRI_ExecuteJavaScriptString(isolate, context, TRI_V8_STD_STRING(isolate, content),
+                              TRI_V8_STD_STRING(isolate, name), false);
 
   if (!tryCatch.HasCaught()) {
     TRI_LogV8Exception(isolate, &tryCatch);

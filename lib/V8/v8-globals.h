@@ -48,58 +48,44 @@ struct TRI_vocbase_t;
   }
 
 /// @brief shortcut for creating a v8 symbol for the specified string
-///   implicites isolate available.
+///   implies "isolate" variable to be available
 /// @param name local string constant to source
-#define TRI_V8_ASCII_STRING(name)                             \
-  v8::String::NewFromOneByte(isolate, (uint8_t const*)(name), \
-                             v8::String::kNormalString, (int)strlen(name))
-
-#define TRI_V8_ASCII_STRING2(isolate, name)                   \
+#define TRI_V8_ASCII_STRING(isolate, name)                    \
   v8::String::NewFromOneByte(isolate, (uint8_t const*)(name), \
                              v8::String::kNormalString, (int)strlen(name))
 
 #define TRI_V8_ASCII_STD_STRING(isolate, name)                        \
-  v8::String::NewFromOneByte(isolate, (uint8_t const*)(name.c_str()), \
+  v8::String::NewFromOneByte(isolate, (uint8_t const*)(name.data()), \
                              v8::String::kNormalString, (int)name.size())
 
-#define TRI_V8_ASCII_PAIR_STRING(name, length)                \
+#define TRI_V8_ASCII_PAIR_STRING(isolate, name, length)                \
   v8::String::NewFromOneByte(isolate, (uint8_t const*)(name), \
                              v8::String::kNormalString, (int)(length))
 
-/// @brief shortcut for creating a v8 string for the specified string
-///  Implicit argument: isolate (is assumed to be defined)
-/// @param name local char* to use
-///  should be avoided if possible due to performance reasons!
-#define TRI_V8_STRING(name)                                           \
+/// @brief shortcut for creating a v8 symbol for the specified string of unknown
+/// length
+///   implies "isolate" variable to be available
+#define TRI_V8_STRING(isolate, name)                                  \
   v8::String::NewFromUtf8(isolate, (name), v8::String::kNormalString, \
-                          (int)strlen(name))
-
-#define TRI_V8_STRING2(isolate, name)                                 \
-  v8::String::NewFromUtf8(isolate, (name), v8::String::kNormalString, \
-                          (int)strlen(name))
+                          (int)(strlen(name)))
 
 /// @brief shortcut for creating a v8 symbol for the specified string
-///   implicites isolate available.
-/// @param name local std::string to use
-#define TRI_V8_STD_STRING(name)                                             \
-  v8::String::NewFromUtf8(isolate, name.c_str(), v8::String::kNormalString, \
-                          (int)name.length())
-
-#define TRI_V8_STD_STRING2(isolate, name)                                   \
-  v8::String::NewFromUtf8(isolate, name.c_str(), v8::String::kNormalString, \
-                          (int)name.length())
-
-/// @brief shortcut for creating a v8 symbol for the specified string
-///   implicites isolate available.
-#define TRI_V8_STRING_UTF16(name, length) \
-  v8::String::NewFromTwoByte(isolate, (name), v8::String::kNormalString, length)
+///   implies "isolate" variable to be available
+#define TRI_V8_STD_STRING(isolate, name)                                     \
+  v8::String::NewFromUtf8(isolate, (name).data(), v8::String::kNormalString, \
+                          (int)(name).size())
 
 /// @brief shortcut for creating a v8 symbol for the specified string of known
 /// length
-///   implicites isolate available.
-#define TRI_V8_PAIR_STRING(name, length)                              \
+///   implies "isolate" variable to be available
+#define TRI_V8_PAIR_STRING(isolate, name, length)                              \
   v8::String::NewFromUtf8(isolate, (name), v8::String::kNormalString, \
                           (int)(length))
+
+/// @brief shortcut for creating a v8 symbol for the specified string
+///   implies "isolate" variable to be available
+#define TRI_V8_STRING_UTF16(isolate, name, length) \
+  v8::String::NewFromTwoByte(isolate, (name), v8::String::kNormalString, length)
 
 /// @brief shortcut for current v8 globals and scope
 #define TRI_V8_CURRENT_GLOBALS_AND_SCOPE                            \
@@ -110,7 +96,6 @@ struct TRI_vocbase_t;
   } while (0)
 
 /// @brief shortcut for throwing an exception with an error code
-/// Implicitly demands *args* to be function arguments.
 #define TRI_V8_SET_EXCEPTION(code)        \
   do {                                    \
     TRI_CreateErrorObject(isolate, code); \
@@ -123,7 +108,6 @@ struct TRI_vocbase_t;
   } while (0)
 
 /// @brief shortcut for throwing an exception and returning
-/// Implicitly demands *args* to be function arguments.
 #define TRI_V8_SET_EXCEPTION_MESSAGE(code, message)      \
   do {                                                   \
     TRI_CreateErrorObject(isolate, code, message, true); \
@@ -136,7 +120,6 @@ struct TRI_vocbase_t;
   } while (0)
 
 /// @brief shortcut for throwing an exception and returning
-/// Implicitly demands *args* to be function arguments.
 #define TRI_V8_THROW_EXCEPTION_FULL(code, message)        \
   do {                                                    \
     TRI_CreateErrorObject(isolate, code, message, false); \
@@ -200,7 +183,7 @@ struct TRI_vocbase_t;
 /// @brief shortcut for throwing an error
 #define TRI_V8_SET_ERROR(message)                                          \
   do {                                                                     \
-    isolate->ThrowException(v8::Exception::Error(TRI_V8_STRING(message))); \
+    isolate->ThrowException(v8::Exception::Error(TRI_V8_STRING(isolate, message))); \
   } while (0)
 
 #define TRI_V8_THROW_ERROR(message) \
@@ -213,7 +196,7 @@ struct TRI_vocbase_t;
 #define TRI_V8_THROW_RANGE_ERROR(message)                   \
   do {                                                      \
     isolate->ThrowException(                                \
-        v8::Exception::RangeError(TRI_V8_STRING(message))); \
+        v8::Exception::RangeError(TRI_V8_STRING(isolate, message))); \
     return;                                                 \
   } while (0)
 
@@ -221,14 +204,14 @@ struct TRI_vocbase_t;
 #define TRI_V8_THROW_SYNTAX_ERROR(message)                   \
   do {                                                       \
     isolate->ThrowException(                                 \
-        v8::Exception::SyntaxError(TRI_V8_STRING(message))); \
+        v8::Exception::SyntaxError(TRI_V8_STRING(isolate, message))); \
     return;                                                  \
   } while (0)
 
 /// @brief shortcut for throwing a type error
 #define TRI_V8_SET_TYPE_ERROR(message)                                         \
   do {                                                                         \
-    isolate->ThrowException(v8::Exception::TypeError(TRI_V8_STRING(message))); \
+    isolate->ThrowException(v8::Exception::TypeError(TRI_V8_STRING(isolate, message))); \
   } while (0)
 
 #define TRI_V8_THROW_TYPE_ERROR(message) \

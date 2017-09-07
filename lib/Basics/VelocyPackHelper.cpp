@@ -600,7 +600,7 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
     return false;
   }
 
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, false);
   arangodb::basics::VPackStringBufferAdapter bufferAdapter(
       buffer.stringBuffer());
   try {
