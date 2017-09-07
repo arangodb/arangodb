@@ -901,9 +901,11 @@ def buildEdition(os, edition) {
         }
 
         if (edition == "enterprise") {
-            fileOperations([
-                fileCopyOperation(excludes: '', flattenFiles: false, includes: 'enterprise/js/**', targetLocation: 'js')
-            ])
+            def files = findFiles(glob: "enterprise/js/**")
+
+            for (file in files) {
+                copyFile(os, file, file.substring(14))
+            }
         }
     }
     finally {
