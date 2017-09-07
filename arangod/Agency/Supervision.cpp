@@ -375,14 +375,16 @@ std::vector<check_t> Supervision::check(std::string const& type) {
 
     // Take necessary actions if any
     std::shared_ptr<VPackBuilder> envelope;
-    handleOnStatus(_agent, _snapshot, persist, transist, serverID, _jobId,
-                   envelope);
+    if (changed) {
+      handleOnStatus(_agent, _snapshot, persist, transist, serverID, _jobId,
+                     envelope);
+    }
     
     persist = transist; // Now copy Status, SyncStatus from transient to persited
     
     // Transient report
     std::shared_ptr<Builder> tReport = std::make_shared<Builder>();
-    { VPackArrayBuilder transaction(tReport.get());        // Persist Transaction
+    { VPackArrayBuilder transaction(tReport.get());        // Transist Transaction
       std::shared_ptr<VPackBuilder> envelope;
       { VPackObjectBuilder operation(tReport.get());       // Operation
         tReport->add(VPackValue(healthPrefix + serverID)); // Supervision/Health
