@@ -435,6 +435,10 @@ Restrictions: ${restrictions.keySet().join(", ")}
 def stashBinaries(os, edition) {
     def paths = ["build/etc", "etc", "Installation/Pipeline", "js", "scripts", "UnitTests"]
 
+    if (edition == "enterprise") {
+       paths << "enterprise/js"
+    }
+
     if (os == "windows") {
         paths << "build/bin/RelWithDebInfo"
         paths << "build/tests/RelWithDebInfo"
@@ -897,18 +901,6 @@ def buildEdition(os, edition) {
 
             lock('build-${hostname}') {
                 powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
-            }
-        }
-
-        if (edition == "enterprise") {
-            def files = findFiles(glob: "enterprise/js/**")
-
-            for (file in files) {
-                def src = "${file}"
-                def dst = src.substring(14)
-
-                echo "enterprise file ${dst}"
-                copyFile(os, src, dst)
             }
         }
     }
