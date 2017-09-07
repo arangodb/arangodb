@@ -533,18 +533,24 @@ def getTests(os, edition, mode, engine) {
     return tests
 }
 
-def setupTestEnvironment(os, logFile, runDir) {
+def setupTestEnvironment(os, edition, logFile, runDir) {
     fileOperations([
         folderCreateOperation("${runDir}/tmp"),
     ])
 
+    def subdirs = ['build', 'etc', 'js', 'UnitTests']
+
+    if (edition == "enterprise") {
+       subdirs << "enterprise"
+    }
+
     if (os == "windows") {
-        for (file in ['build', 'etc', 'js', 'UnitTests']) {
+        for (file in subdirs) {
             powershell "cd ${runDir} ; New-Item -Path ${file} -ItemType SymbolicLink -Value ..\\${file} | Out-Null"
         }
     }
     else {
-        for (file in ['build', 'etc', 'js', 'UnitTests']) {
+        for (file in subdirs) {
             sh "ln -s ../${file} ${runDir}/${file}"
         }
 
@@ -597,7 +603,7 @@ def executeTests(os, edition, mode, engine, portInit, arch, archRuns, archFailed
 
             try {
                 lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
-                    setupTestEnvironment(os, logFile, runDir)
+                    setupTestEnvironment(os, edition, logFile, runDir)
 
                     try {
                         timeout(30) {
