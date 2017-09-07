@@ -1,4 +1,4 @@
-v3.2.3 (2017-XX-XX)
+v3.2.3 (2017-09-07)
 -------------------
 
 * fixed issue #3106: orphan collections could not be registered in general-graph module

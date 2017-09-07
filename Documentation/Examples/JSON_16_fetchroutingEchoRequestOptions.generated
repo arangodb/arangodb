@@ -8,12 +8,12 @@ arangosh&gt; arango.GET(<span class="hljs-string">"/echo"</span>)
     <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
     <span class="hljs-string">"server"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">34556</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">27426</span> 
     }, 
     <span class="hljs-string">"client"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">56408</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"150350334907057"</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">53226</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"150480009808884"</span> 
     }, 
     <span class="hljs-string">"internals"</span> : { 
     }, 
@@ -33,7 +33,6 @@ arangosh&gt; arango.GET(<span class="hljs-string">"/echo"</span>)
     } 
   }, 
   <span class="hljs-string">"options"</span> : { 
-    <span class="hljs-string">"Hello"</span> : <span class="hljs-string">"World"</span> 
   } 
 }
 arangosh&gt; db._query(<span class="hljs-string">"FOR route IN _routing FILTER route.url == '/echo' REMOVE route in _routing"</span>)
