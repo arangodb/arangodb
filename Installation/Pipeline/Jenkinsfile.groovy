@@ -400,7 +400,6 @@ def checkCommitMessages() {
             ]
         }
         else {
-
             restrictions = [
                 "build-community-mac" : true,
                 "build-enterprise-linux" : true,
@@ -606,9 +605,9 @@ def executeTests(os, edition, mode, engine, portInit, arch, archRuns, archFailed
                                     powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
                                 }
                                 else {
-                                    sh "hostname | tee ${logFile}"
-                                    sh "pwd | tee -a ${logFile}"
-                                    sh "date | tee -a ${logFile}"
+                                    sh "echo \"Host: `hostname`\" | tee ${logFile}"
+                                    sh "echo \"PWD:  `pwd`\" | tee -a ${logFile}"
+                                    sh "echo \"Date: `date`\" | tee -a ${logFile}"
 
                                     command = "(cd ${runDir} ; echo 1 > result ; ${command} ; echo \$? > result) 2>&1 | " +
                                               "tee -a ${logFile} ; exit `cat ${runDir}/result`"
@@ -899,6 +898,12 @@ def buildEdition(os, edition) {
             lock('build-${hostname}') {
                 powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
             }
+        }
+
+        if (edition == "enterprise") {
+            fileOperations([
+                fileCopyOperation(excludes: '', flattenFiles: false, includes: 'enterprise/js/**', targetLocation: 'js')
+            ])
         }
     }
     finally {
