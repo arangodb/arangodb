@@ -665,62 +665,64 @@ def testCheck(os, edition, mode, engine) {
 
 def testStep(os, edition, mode, engine, testName) {
     return {
-        node(testJenkins[os]) {
-            stage(testName) {
-                def archRel = "02_test_${os}_${edition}_${mode}_${engine}"
-                def archFailedRel = "${archRel}_FAILED"
-                def archRunsRel = "${archRel}_RUN"
-                def archCoresRel = "${archRel}_CORES"
+        if (testCheck(os, edition, mode, engine)) {
+            node(testJenkins[os]) {
+                stage(testName) {
+                    def archRel = "02_test_${os}_${edition}_${mode}_${engine}"
+                    def archFailedRel = "${archRel}_FAILED"
+                    def archRunsRel = "${archRel}_RUN"
+                    def archCoresRel = "${archRel}_CORES"
 
-                def arch = pwd() + "/" + "02_test_${os}_${edition}_${mode}_${engine}"
-                def archFailed = "${arch}_FAILED"
-                def archRuns = "${arch}_RUN"
-                def archCores = "${arch}_CORES"
+                    def arch = pwd() + "/" + "02_test_${os}_${edition}_${mode}_${engine}"
+                    def archFailed = "${arch}_FAILED"
+                    def archRuns = "${arch}_RUN"
+                    def archCores = "${arch}_CORES"
 
-                // clean the current workspace completely
-                deleteDir()
+                    // clean the current workspace completely
+                    deleteDir()
 
-                // create directories for the artifacts
-                fileOperations([
-                    folderCreateOperation(arch),
-                    folderCreateOperation(archFailed),
-                    folderCreateOperation(archRuns),
-                    folderCreateOperation(archCores)
-                ])
+                    // create directories for the artifacts
+                    fileOperations([
+                        folderCreateOperation(arch),
+                        folderCreateOperation(archFailed),
+                        folderCreateOperation(archRuns),
+                        folderCreateOperation(archCores)
+                    ])
 
-                // unstash binaries
-                unstashBinaries(os, edition)
+                    // unstash binaries
+                    unstashBinaries(os, edition)
 
-                // find a suitable port
-                def port = (getStartPort(os) as Integer)
-                echo "Using start port: ${port}"
+                    // find a suitable port
+                    def port = (getStartPort(os) as Integer)
+                    echo "Using start port: ${port}"
 
-                // seriously...60 minutes is the super absolute max max max.
-                // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
-                // even if the features are green this is completely broken performance wise..
-                // DO NOT INCREASE!!
+                    // seriously...60 minutes is the super absolute max max max.
+                    // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
+                    // even if the features are green this is completely broken performance wise..
+                    // DO NOT INCREASE!!
 
-                timeout(60) {
-                    try {
-                        executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, archCores)
-                    }
-                    finally {
-                        // step([$class: 'XUnitBuilder',
-                        //     thresholds: [[$class: 'FailedThreshold', unstableThreshold: '1']],
-                        //     tools: [[$class: 'JUnitType', failIfNotNew: false, pattern: 'out/*.xml']]])
-
-                        // release the port reservation
-                        if (os == 'linux' || os == 'mac') {
-                            sh "Installation/Pipeline/port.sh --clean ${port}"
+                    timeout(60) {
+                        try {
+                            executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, archCores)
                         }
-                        else if (os == 'windows') {
-                            powershell "remove-item -Force -ErrorAction Ignore C:\\ports\\${port}"
-                        }
+                        finally {
+                            // step([$class: 'XUnitBuilder',
+                            //     thresholds: [[$class: 'FailedThreshold', unstableThreshold: '1']],
+                            //     tools: [[$class: 'JUnitType', failIfNotNew: false, pattern: 'out/*.xml']]])
 
-                        // archive all artifacts
-                        archiveArtifacts allowEmptyArchive: true,
-                            artifacts: "${archRel}/**, ${archFailedRel}/**, ${archRunsRel}/**, ${archCoresRel}/**",
-                            defaultExcludes: false
+                            // release the port reservation
+                            if (os == 'linux' || os == 'mac') {
+                                sh "Installation/Pipeline/port.sh --clean ${port}"
+                            }
+                            else if (os == 'windows') {
+                                powershell "remove-item -Force -ErrorAction Ignore C:\\ports\\${port}"
+                            }
+
+                            // archive all artifacts
+                            archiveArtifacts allowEmptyArchive: true,
+                                artifacts: "${archRel}/**, ${archFailedRel}/**, ${archRunsRel}/**, ${archCoresRel}/**",
+                                defaultExcludes: false
+                        }
                     }
                 }
             }
@@ -733,11 +735,8 @@ def testStepParallel(os, edition, modeList) {
 
     for (mode in modeList) {
         for (engine in ['mmfiles', 'rocksdb']) {
-            if (testCheck(os, edition, mode, engine)) {
-                def name = "test-${os}-${edition}-${mode}-${engine}";
-
-                branches[name] = testStep(os, edition, mode, engine, name)
-            }
+            def name = "test-${os}-${edition}-${mode}-${engine}";
+            branches[name] = testStep(os, edition, mode, engine, name)
         }
     }
 
@@ -929,35 +928,37 @@ def buildStepCheck(os, edition) {
 
 def runEdition(os, edition) {
     return {
-        node(buildJenkins[os]) {
-            stage("build-${os}-${edition}") {
-                timeout(30) {
-                    checkoutCommunity()
-                    checkCommitMessages()
+        if (buildStepCheck(os, edition)) {
+            node(buildJenkins[os]) {
+                stage("build-${os}-${edition}") {
+                    timeout(30) {
+                        checkoutCommunity()
+                        checkCommitMessages()
 
-                    if (edition == "enterprise") {
-                        checkoutEnterprise()
+                        if (edition == "enterprise") {
+                            checkoutEnterprise()
+                        }
+
+                        // checkoutResilience()
                     }
 
-                    // checkoutResilience()
+                    timeout(90) {
+                        buildEdition(os, edition)
+                        stashBinaries(os, edition)
+                    }
                 }
 
-                timeout(90) {
-                    buildEdition(os, edition)
-                    stashBinaries(os, edition)
+                // we only need one jslint test per edition
+                if (os == "linux") {
+                    stage("jslint-${edition}") {
+                        echo "Running jslint for ${edition}"
+                        jslint()
+                    }
                 }
             }
 
-            // we only need one jslint test per edition
-            if (os == "linux") {
-                stage("jslint-${edition}") {
-                    echo "Running jslint for ${edition}"
-                    jslint()
-                }
-            }
+            testStepParallel(os, edition, ['cluster', 'singleserver'])
         }
-
-        testStepParallel(os, edition, ['cluster', 'singleserver'])
     }
 }
 
@@ -970,9 +971,7 @@ def runOperatingSystems(osList) {
 
     for (os in osList) {
         for (edition in ['community', 'enterprise']) {
-            if (buildStepCheck(os, edition)) {
-                branches["build-${os}-${edition}"] = runEdition(os, edition)
-            }
+            branches["build-${os}-${edition}"] = runEdition(os, edition)
         }
     }
 
