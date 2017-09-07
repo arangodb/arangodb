@@ -1680,23 +1680,18 @@ void MMFilesLogfileManager::removeLogfile(MMFilesWalLogfile* logfile) {
   }
 }
 
-void MMFilesLogfileManager::waitForCollector() {
-  while (true) {
-    READ_LOCKER(locker, _collectorThreadLock);
+void MMFilesLogfileManager::waitForCollectorOnShutdown() {
+  READ_LOCKER(locker, _collectorThreadLock);
 
-    if (_collectorThread == nullptr) {
-      return;
-    }
-
-    if (!_collectorThread->hasQueuedOperations()) {
-      return;
-    }
-
-    locker.unlock();
-
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "waiting for WAL collector";
-    usleep(50000);
+  if (_collectorThread == nullptr) {
+    return;
   }
+
+  if (!_collectorThread->hasQueuedOperations()) {
+    return;
+  }
+
+  _collectorThread->clearQueuedOperations();
 }
 
 // execute a callback during a phase in which the collector has nothing

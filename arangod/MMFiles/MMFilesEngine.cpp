@@ -251,8 +251,8 @@ void MMFilesEngine::stop() {
 
   if (!inRecovery()) {
     auto logfileManager = MMFilesLogfileManager::instance();
-    logfileManager->flush(true, true, false);
-    logfileManager->waitForCollector();
+    logfileManager->flush(true, false, false);
+    logfileManager->waitForCollectorOnShutdown();
   }
 }
 

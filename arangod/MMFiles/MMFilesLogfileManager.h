@@ -387,7 +387,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   // get information about running transactions
   std::tuple<size_t, MMFilesWalLogfile::IdType, MMFilesWalLogfile::IdType> runningTransactions();
 
-  void waitForCollector();
+  void waitForCollectorOnShutdown();
 
   // execute a callback during a phase in which the collector has nothing
   // queued. This is used in the DatabaseManagerThread when dropping

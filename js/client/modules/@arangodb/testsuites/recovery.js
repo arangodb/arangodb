@@ -58,6 +58,9 @@ function runArangodRecovery (instanceInfo, options, script, setup) {
     args['wal.reserve-logfiles'] = 1;
     args['database.directory'] = instanceInfo.tmpDataDir;
 
+    require('console').log('extraArgs:', options.extraArgs);
+    args = Object.assign(args, options.extraArgs);
+
     instanceInfo.recoveryArgv = toArgv(args).concat(['--server.rest-server', 'false']);
   }
 
