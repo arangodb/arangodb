@@ -93,6 +93,12 @@ class ServerState {
 
   /// @brief flush the server state (used for testing)
   void flush();
+  
+  bool isSingleServer() { return isSingleServer(loadRole()); }
+  
+  static bool isSingleServer(ServerState::RoleEnum role) {
+    return (role == ServerState::ROLE_SINGLE);
+  }
 
   /// @brief check whether the server is a coordinator
   bool isCoordinator() { return isCoordinator(loadRole()); }
@@ -134,6 +140,11 @@ class ServerState {
   /// @brief check whether the server is running in a cluster
   static bool isRunningInCluster(ServerState::RoleEnum role) { 
     return isClusterRole(role); 
+  }
+  
+  bool isSingleServerOrCoordinator() {
+    RoleEnum role = loadRole();
+    return isCoordinator(role) || isSingleServer(role);
   }
 
   /// @brief get the server role

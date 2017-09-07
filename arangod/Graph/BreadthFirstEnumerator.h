@@ -25,7 +25,7 @@
 #define ARANGODB_GRAPH_BREADTHFIRSTENUMERATOR_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/PathEnumerator.h"
+#include "Graph/PathEnumerator.h"
 
 namespace arangodb {
 
@@ -45,13 +45,13 @@ class BreadthFirstEnumerator final
 
   struct PathStep {
     size_t sourceIdx;
-    std::unique_ptr<graph::EdgeDocumentToken> edge;
+    graph::EdgeDocumentToken edge;
     arangodb::StringRef const vertex;
 
    public:
     explicit PathStep(arangodb::StringRef const vertex);
 
-    PathStep(size_t sourceIdx, std::unique_ptr<graph::EdgeDocumentToken>&& edge,
+    PathStep(size_t sourceIdx, graph::EdgeDocumentToken&& edge,
              arangodb::StringRef const vertex);
 
     ~PathStep();

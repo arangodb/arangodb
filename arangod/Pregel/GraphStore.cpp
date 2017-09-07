@@ -24,6 +24,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/MutexLocker.h"
+#include "Graph/EdgeCollectionInfo.h"
 #include "Pregel/CommonFormats.h"
 #include "Pregel/PregelFeature.h"
 #include "Pregel/TypedBuffer.h"
@@ -37,7 +38,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
-#include "VocBase/EdgeCollectionInfo.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
@@ -241,24 +241,16 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config,
   _config = config;
   std::unique_ptr<transaction::Methods> trx(_createTransaction());
 
+  ManagedDocumentResult mmdr;
   ShardID const& vertexShard = _config->globalShardIDs()[sourceShard];
-  VPackBuilder builder;
-  builder.openObject();
-  builder.add(StaticStrings::KeyString, VPackValue(_key));
-  builder.close();
-
-  OperationOptions options;
-  options.ignoreRevs = false;
-
-  TRI_voc_cid_t cid = trx->addCollectionAtRuntime(vertexShard);
-  trx->pinData(cid);  // will throw when it fails
-  OperationResult opResult =
-      trx->document(vertexShard, builder.slice(), options);
-  if (!opResult.successful()) {
-    THROW_ARANGO_EXCEPTION(opResult.code);
+  Result res = trx->documentFastPathLocal(vertexShard, StringRef(_key),
+                                          mmdr, true);
+  if (res.fail()) {
+    THROW_ARANGO_EXCEPTION(res.errorNumber());
   }
 
-  std::string documentId = trx->extractIdString(opResult.slice());
+  VPackSlice doc(mmdr.vpack());
+  std::string documentId = trx->extractIdString(doc);
   _index.emplace_back(sourceShard, _key);
 
   VertexEntry& entry = _index.back();
@@ -279,7 +271,7 @@ void GraphStore<V, E>::loadDocument(WorkerConfig* config,
       ((VectorTypedBuffer<V>*)_vertexData)->appendEmptyElement();
     }
     V* data = _vertexData->data() + _localVerticeCount;
-    _graphFormat->copyVertexData(documentId, opResult.slice(), data, sizeof(V));
+    _graphFormat->copyVertexData(documentId, doc, data, sizeof(V));
     _localVerticeCount++;
   }
 

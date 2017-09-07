@@ -26,8 +26,8 @@
 
 #include "Cluster/TraverserEngineRegistry.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/Traverser.h"
-#include "VocBase/TraverserOptions.h"
+#include "Graph/Traverser.h"
+#include "Graph/TraverserOptions.h"
 
 namespace arangodb {
 class CollectionNameResolver;

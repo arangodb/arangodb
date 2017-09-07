@@ -28,8 +28,8 @@
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterEdgeCursor.h"
+#include "Graph/SingleServerTraverser.h"
 #include "Indexes/Index.h"
-#include "VocBase/SingleServerTraverser.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -433,7 +433,6 @@ bool TraverserOptions::hasEdgeFilter(int64_t depth, size_t cursorId) const {
   }
   return expression != nullptr;
 }
-
 
 bool TraverserOptions::evaluateEdgeExpression(arangodb::velocypack::Slice edge,
                                               StringRef vertexId,

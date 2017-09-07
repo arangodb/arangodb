@@ -27,7 +27,9 @@
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/TraverserCache.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
+#include "Transaction/Helpers.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -69,17 +71,40 @@ SingleServerEdgeCursor::~SingleServerEdgeCursor() {
   }
 }
 
+#ifdef USE_ENTERPRISE
+static bool CheckInaccesible(transaction::Methods* trx,
+                             VPackSlice const& edge) {
+  // for skipInaccessibleCollections we need to check the edge
+  // document, in that case nextWithExtra has no benefit
+  TRI_ASSERT(edge.isString());
+  StringRef str (edge);
+  size_t pos = str.find('/');
+  TRI_ASSERT(pos != std::string::npos);
+  return trx->isInaccessibleCollection(str.substr(0, pos).toString());
+}
+#endif
+
 void SingleServerEdgeCursor::getDocAndRunCallback(OperationCursor* cursor, Callback callback) {
   auto collection = cursor->collection();
-  auto etkn = std::make_unique<SingleServerEdgeDocumentToken>(collection->cid(), _cache[_cachePos++]);
-  if (collection->readDocument(_trx, etkn->token(), *_mmdr)) {
-    VPackSlice edgeDocument(_mmdr->vpack());
+  EdgeDocumentToken etkn(collection->cid(), _cache[_cachePos++]);
+  if (collection->readDocument(_trx, etkn.token(), *_mmdr)) {
+    VPackSlice edgeDoc(_mmdr->vpack());
+#ifdef USE_ENTERPRISE
+    if (_trx->state()->options().skipInaccessibleCollections) {
+      // TODO: we only need to check one of these
+      VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDoc);
+      VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
+      if (CheckInaccesible(_trx, from) || CheckInaccesible(_trx, to)) {
+        return;
+      }
+    }
+#endif
     _opts->cache()->increaseCounter();
     if (_internalCursorMapping != nullptr) {
       TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
-      callback(std::move(etkn), edgeDocument, _internalCursorMapping->at(_currentCursor));
+      callback(std::move(etkn), edgeDoc, _internalCursorMapping->at(_currentCursor));
     } else {
-      callback(std::move(etkn), edgeDocument, _currentCursor);
+      callback(std::move(etkn), edgeDoc, _currentCursor);
     }
   }
 }
@@ -102,7 +127,7 @@ bool SingleServerEdgeCursor::advanceCursor(OperationCursor*& cursor, std::vector
   return true;
 }
 
-bool SingleServerEdgeCursor::next(std::function<void(std::unique_ptr<EdgeDocumentToken>&&, VPackSlice, size_t)> callback) {
+bool SingleServerEdgeCursor::next(std::function<void(EdgeDocumentToken&&, VPackSlice, size_t)> callback) {
   // fills callback with next EdgeDocumentToken and Slice that contains the ohter side of the edge
   // (we are standing on a node and want to iterate all connected edges
 
@@ -133,12 +158,18 @@ bool SingleServerEdgeCursor::next(std::function<void(std::unique_ptr<EdgeDocumen
         return false;
       }
     } else {
-      if(cursor->hasExtra()){
+      if (cursor->hasExtra()) {
         bool operationSuccessfull = false;
         auto extraCB = [&](DocumentIdentifierToken const& token, VPackSlice edge){
           if (token._data != 0) {
+#ifdef USE_ENTERPRISE
+            if (_trx->state()->options().skipInaccessibleCollections &&
+                CheckInaccesible(_trx, edge)) {
+              return;
+            }
+#endif
             operationSuccessfull = true;
-            auto etkn = std::make_unique<SingleServerEdgeDocumentToken>(cursor->collection()->cid(), token);
+            auto etkn = EdgeDocumentToken(cursor->collection()->cid(), token);
             if (_internalCursorMapping != nullptr) {
               TRI_ASSERT(_currentCursor < _internalCursorMapping->size());
               callback(std::move(etkn), edge, _internalCursorMapping->at(_currentCursor));
@@ -155,7 +186,7 @@ bool SingleServerEdgeCursor::next(std::function<void(std::unique_ptr<EdgeDocumen
         _cache.clear();
         auto cb = [&](DocumentIdentifierToken const& token) {
           if (token._data != 0) {
-            // Document not found
+            // Document found
             _cache.emplace_back(token);
           }
         };
@@ -171,7 +202,7 @@ bool SingleServerEdgeCursor::next(std::function<void(std::unique_ptr<EdgeDocumen
 }
 
 void SingleServerEdgeCursor::readAll(
-    std::function<void(std::unique_ptr<EdgeDocumentToken>&&, VPackSlice, size_t)> callback) {
+    std::function<void(EdgeDocumentToken&&, VPackSlice, size_t)> callback) {
   size_t cursorId = 0;
   for (_currentCursor = 0; _currentCursor < _cursors.size(); ++_currentCursor) {
     if (_internalCursorMapping != nullptr) {
@@ -186,15 +217,31 @@ void SingleServerEdgeCursor::readAll(
       auto cid = collection->cid();
       if (cursor->hasExtra()) {
         auto cb = [&](DocumentIdentifierToken const& token, VPackSlice edge) {
-          callback(std::make_unique<SingleServerEdgeDocumentToken>(cid, token), edge, cursorId);
+#ifdef USE_ENTERPRISE
+          if (_trx->state()->options().skipInaccessibleCollections &&
+              CheckInaccesible(_trx, edge)) {
+            return;
+          }
+#endif
+          callback(EdgeDocumentToken(cid, token), edge, cursorId);
         };
         cursor->allWithExtra(cb);
       } else {
         auto cb = [&](DocumentIdentifierToken const& token) {
           if (collection->readDocument(_trx, token, *_mmdr)) {
+            VPackSlice edgeDoc(_mmdr->vpack());
+#ifdef USE_ENTERPRISE
+            if (_trx->state()->options().skipInaccessibleCollections) {
+              // TODO: we only need to check one of these
+              VPackSlice from = transaction::helpers::extractFromFromDocument(edgeDoc);
+              VPackSlice to = transaction::helpers::extractToFromDocument(edgeDoc);
+              if (CheckInaccesible(_trx, from) || CheckInaccesible(_trx, to)) {
+                return;
+              }
+            }
+#endif
             _opts->cache()->increaseCounter();
-            VPackSlice doc(_mmdr->vpack());
-            callback(std::make_unique<SingleServerEdgeDocumentToken>(cid, token), doc, cursorId);
+            callback(EdgeDocumentToken(cid, token), edgeDoc, cursorId);
           }
         };
         cursor->all(cb);
