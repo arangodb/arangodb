@@ -218,7 +218,7 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
 
         auto precond = q->slice()[0][1];
         REQUIRE(typeName(precond.get("/arango/Supervision/Health/leader/Status")) == "object");
-        REQUIRE(precond.get("/arango/Supervision/Health/leader/Status").get("oldNot").copyString() == "GOOD");
+        REQUIRE(precond.get("/arango/Supervision/Health/leader/Status").get("old").copyString() == "BAD");
         REQUIRE(typeName(precond.get("/arango/Target/FailedServers").get("old")) == "object");
 
         return fakeWriteResult;
@@ -284,7 +284,7 @@ TEST_CASE("FailedServer", "[agency][supervision]") {
 
         auto precond = q->slice()[0][1];
         REQUIRE(typeName(precond.get("/arango/Supervision/Health/leader/Status")) == "object");
-        REQUIRE(precond.get("/arango/Supervision/Health/leader/Status").get("oldNot").copyString() == "GOOD");
+        REQUIRE(precond.get("/arango/Supervision/Health/leader/Status").get("old").copyString() == "BAD");
         REQUIRE(typeName(precond.get("/arango/Target/FailedServers").get("old")) == "object");
         
         return fakeWriteResult;
