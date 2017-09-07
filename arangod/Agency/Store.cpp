@@ -182,7 +182,8 @@ std::vector<bool> Store::applyTransactions(query_t const& query) {
           break;
         default:  // Wrong
           LOG_TOPIC(ERR, Logger::AGENCY)
-            << "We can only handle log entry with or without precondition!";
+            << "We can only handle log entry with or without precondition! "
+            << " However, We received " << i.toJson();
           success.push_back(false);
           break;
         }
@@ -229,7 +230,8 @@ check_ret_t Store::applyTransaction(Slice const& query) {
       break;
     default:  // Wrong
       LOG_TOPIC(ERR, Logger::AGENCY)
-        << "We can only handle log entry with or without precondition!";
+        << "We can only handle log entry with or without precondition! "
+        << "However we received " << query.toJson(); 
       break;
     }  
     // Wake up TTL processing
@@ -396,6 +398,13 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
         std::string const& oper = op.key.copyString();
         if (oper == "old") {  // old
           if (node != op.value) {
+            ret.push_back(precond.key);
+            if (mode == FIRST_FAIL) {
+              break;
+            }
+          }
+        } else if (oper == "oldNot") {  // oldNot
+          if (node == op.value) {
             ret.push_back(precond.key);
             if (mode == FIRST_FAIL) {
               break;

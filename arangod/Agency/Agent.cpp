@@ -60,6 +60,8 @@ Agent::Agent(config_t const& config)
   _constituent.configure(this);
   if (size() > 1) {
     _inception = std::make_unique<Inception>(this);
+  } else {
+    _leaderSince = std::chrono::system_clock::now();
   }
 }
 
