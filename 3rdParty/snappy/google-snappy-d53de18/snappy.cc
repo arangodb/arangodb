@@ -1336,7 +1336,7 @@ class SnappySinkAllocator {
   void Flush(size_t size) {
     size_t size_written = 0;
     size_t block_size;
-    for (int i = 0; i < blocks_.size(); ++i) {
+    for (size_t i = 0; i < blocks_.size(); ++i) {
       block_size = min<size_t>(blocks_[i].size, size - size_written);
       dest_->AppendAndTakeOwnership(blocks_[i].data, block_size,
                                     &SnappySinkAllocator::Deleter, NULL);
