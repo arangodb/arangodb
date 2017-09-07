@@ -933,7 +933,6 @@ def runEdition(os, edition) {
                 stage("build-${os}-${edition}") {
                     timeout(30) {
                         checkoutCommunity()
-                        checkCommitMessages()
 
                         if (edition == "enterprise") {
                             checkoutEnterprise()
@@ -978,4 +977,5 @@ def runOperatingSystems(osList) {
     parallel branches
 }
 
+checkCommitMessages()
 runOperatingSystems(['linux', 'mac', 'windows'])
