@@ -35,7 +35,7 @@
 using namespace arangodb;
 using namespace arangodb::communicator;
 
-TEST_CASE( "requests are properly aborted", "[communicator]" ) {
+TEST_CASE("requests are properly aborted", "[communicator]" ) {
   Communicator communicator;
 
   bool callbacksCalled = false;

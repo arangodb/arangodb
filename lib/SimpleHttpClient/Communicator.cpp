@@ -306,7 +306,7 @@ void Communicator::createRequestInProgress(NewRequest const& newRequest) {
   curl_easy_setopt(handle, CURLOPT_PROXY, "");
   
   // the xfer/progress options are only used to handle request abortions
-  curl_easy_setopt(handle, CURLOPT_NOPROGRESS, 1L);
+  curl_easy_setopt(handle, CURLOPT_NOPROGRESS, 0L);
   curl_easy_setopt(handle, CURLOPT_XFERINFOFUNCTION, Communicator::curlProgress);
   curl_easy_setopt(handle, CURLOPT_XFERINFODATA, handleInProgress->_rip.get());
 
@@ -457,6 +457,7 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
     case CURLE_ABORTED_BY_CALLBACK:
       TRI_ASSERT(rip->_aborted);
       rip->_callbacks._onError(TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
+      break;
     default:
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Curl return " << rc;
       rip->_callbacks._onError(TRI_ERROR_INTERNAL, {nullptr});
