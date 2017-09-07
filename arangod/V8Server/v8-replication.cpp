@@ -439,12 +439,6 @@ static void JS_SynchronizeReplicationFinalize(
     TRI_V8_THROW_EXCEPTION_USAGE("REPLICATION_SYNCHRONIZE_FINALIZE(<config>)");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
   // treat the argument as an object from now on
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
 
@@ -460,8 +454,9 @@ static void JS_SynchronizeReplicationFinalize(
   std::string database;
   if (object->Has(TRI_V8_ASCII_STRING(isolate, "database"))) {
     database = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "database")));
-  } else {
-    database = vocbase->name();
+  }
+  if (database.empty()) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("<database> must be a valid database name");
   }
   
   std::string collection;
@@ -504,9 +499,10 @@ static void JS_SynchronizeReplicationFinalize(
     leaderId = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "leaderId")));
   }
 
+  DatabaseGuard guard(database);
+
   std::string errorMsg = "";
-// TODO: barrierID?
-  ContinuousSyncer syncer(vocbase, &config, 0, false, 0);
+  ContinuousSyncer syncer(guard.database(), &config, 0, false, 0);
   
   if (!leaderId.empty()) {
     syncer.setLeaderId(leaderId);

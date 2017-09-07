@@ -199,7 +199,7 @@ retry:
     if (res == TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT ||
         res == TRI_ERROR_REPLICATION_NO_START_TICK) {
       if (res == TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT) {
-        LOG_TOPIC(WARN, Logger::REPLICATION) << "replication applier stopped for database '" << _vocbase->name() << "' because required tick is not present on master";
+        LOG_TOPIC(WARN, Logger::REPLICATION) << "replication applier stopped for database '" << _databaseName << "' because required tick is not present on master";
       }
 
       // remove previous applier state
@@ -210,7 +210,7 @@ retry:
       {
         WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
-        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "stopped replication applier for database '" << _vocbase->name() << "' with lastProcessedContinuousTick: " << _applier->_state._lastProcessedContinuousTick << ", lastAppliedContinuousTick: " << _applier->_state._lastAppliedContinuousTick << ", safeResumeTick: " << _applier->_state._safeResumeTick;
+        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "stopped replication applier for database '" << _databaseName << "' with lastProcessedContinuousTick: " << _applier->_state._lastProcessedContinuousTick << ", lastAppliedContinuousTick: " << _applier->_state._lastAppliedContinuousTick << ", safeResumeTick: " << _applier->_state._safeResumeTick;
 
         _applier->_state._lastProcessedContinuousTick = 0;
         _applier->_state._lastAppliedContinuousTick = 0;
@@ -238,10 +238,10 @@ retry:
       if (shortTermFailsInRow > _configuration._autoResyncRetries) {
         if (_configuration._autoResyncRetries > 0) {
           // message only makes sense if there's at least one retry
-          LOG_TOPIC(WARN, Logger::REPLICATION) << "aborting automatic resynchronization for database '" << _vocbase->name() << "' after " << _configuration._autoResyncRetries << " retries";
+          LOG_TOPIC(WARN, Logger::REPLICATION) << "aborting automatic resynchronization for database '" << _databaseName << "' after " << _configuration._autoResyncRetries << " retries";
         }
         else {
-          LOG_TOPIC(WARN, Logger::REPLICATION) << "aborting automatic resynchronization for database '" << _vocbase->name() << "' because autoResyncRetries is 0";
+          LOG_TOPIC(WARN, Logger::REPLICATION) << "aborting automatic resynchronization for database '" << _databaseName << "' because autoResyncRetries is 0";
         }
 
         // always abort if we get here
@@ -249,7 +249,7 @@ retry:
       }
 
       // do an automatic full resync
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "restarting initial synchronization for database '" << _vocbase->name() << "' because autoResync option is set. retry #" << shortTermFailsInRow;
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "restarting initial synchronization for database '" << _databaseName << "' because autoResync option is set. retry #" << shortTermFailsInRow;
 
       // start initial synchronization
       errorMsg = "";
@@ -263,7 +263,7 @@ retry:
 
         if (res == TRI_ERROR_NO_ERROR) {
           TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
-          LOG_TOPIC(INFO, Logger::REPLICATION) << "automatic resynchronization for database '" << _vocbase->name() << "' finished. restarting continuous replication applier from tick " << lastLogTick;
+          LOG_TOPIC(INFO, Logger::REPLICATION) << "automatic resynchronization for database '" << _databaseName << "' finished. restarting continuous replication applier from tick " << lastLogTick;
           _initialTick = lastLogTick;
           _useTick = true;
           goto retry;
@@ -779,7 +779,7 @@ int ContinuousSyncer::applyLogMarker(VPackSlice const& slice,
   // fetch "tick"
   std::string const tick = VelocyPackHelper::getStringValue(slice, "tick", "");
 
-  if (!tick.empty()) {
+  if (!tick.empty() && !_transientApplierState) {
     TRI_voc_tick_t newTick = static_cast<TRI_voc_tick_t>(
         StringUtils::uint64(tick.c_str(), tick.size()));
 
@@ -959,24 +959,26 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
       }
 
       ignoreCount--;
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "ignoring replication error for database '" << _applier->databaseName() << "': " << errorMsg;
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "ignoring replication error for database '" << _databaseName << "': " << errorMsg;
       errorMsg = "";
     }
 
     // update tick value
-    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+    if (!_transientApplierState) {
+      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
-    if (_applier->_state._lastProcessedContinuousTick >
-        _applier->_state._lastAppliedContinuousTick) {
-      _applier->_state._lastAppliedContinuousTick =
-          _applier->_state._lastProcessedContinuousTick;
-    }
+      if (_applier->_state._lastProcessedContinuousTick >
+          _applier->_state._lastAppliedContinuousTick) {
+        _applier->_state._lastAppliedContinuousTick =
+            _applier->_state._lastProcessedContinuousTick;
+      }
 
-    if (skipped) {
-      ++_applier->_state._skippedOperations;
-    } else if (_ongoingTransactions.empty()) {
-      _applier->_state._safeResumeTick =
-          _applier->_state._lastProcessedContinuousTick;
+      if (skipped) {
+        ++_applier->_state._skippedOperations;
+      } else if (_ongoingTransactions.empty()) {
+        _applier->_state._safeResumeTick =
+            _applier->_state._lastProcessedContinuousTick;
+      }
     }
   }
 
@@ -1511,14 +1513,14 @@ int ContinuousSyncer::syncCollectionFinalize(std::string& errorMsg,
     return res;
   }
 
+  _verbose = true;
+
   // we do not want to apply rename, create and drop collection operations
   _ignoreRenameCreateDrop = true;
   
   // we do not want to store the applier status anywhere
   _transientApplierState = true;
 
-  // TODO: _barrierId? Database name? _masterInfo!
-  
   while (true) {
     if (application_features::ApplicationServer::isStopping()) {
       return TRI_ERROR_SHUTTING_DOWN;
@@ -1526,7 +1528,6 @@ int ContinuousSyncer::syncCollectionFinalize(std::string& errorMsg,
 
     std::string const baseUrl = BaseUrl + 
                                 "/logger-follow?chunkSize=" + _chunkSize + 
-                        //        "&barrier=" + StringUtils::itoa(_barrierId) +
                                 "&from=" + StringUtils::itoa(fetchTick) +
                                 "&serverId=" + _localServerIdString + 
                                 "&collection=" + StringUtils::urlEncode(collectionName) +
