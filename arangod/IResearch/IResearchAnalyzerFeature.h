@@ -109,7 +109,10 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
 
  private:
   // map of caches of irs::analysis::analyzer pools indexed by analyzer name and their associated metas
-  std::unordered_map<irs::hashed_string_ref, AnalyzerPool::ptr> _analyzers;
+  typedef std::unordered_map<irs::hashed_string_ref, AnalyzerPool::ptr> Analyzers;
+
+  Analyzers _analyzers; // all analyzers known to this feature (including static)
+  Analyzers _customAnalyzers; // user defined analyzers managed by this feature, a subset of '_analyzers' (used for removals)
   mutable irs::async_utils::read_write_mutex _mutex;
   bool _started;
 
@@ -120,11 +123,8 @@ class IResearchAnalyzerFeature final: public arangodb::application_features::App
     bool initAndPersist
   ) noexcept;
 
-  void loadConfiguration(
-    std::unordered_set<irs::string_ref> const& preinitialized
-  );
-
-  bool loadStaticAnalyzers(std::unordered_set<irs::string_ref>& initialized);
+  static Analyzers const& getStaticAnalyzers();
+  bool loadConfiguration();
   bool storeConfiguration(AnalyzerPool& pool);
   bool updateConfiguration(AnalyzerPool& pool, int64_t delta);
   bool updateConfiguration(

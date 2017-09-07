@@ -219,52 +219,6 @@ void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a pointer to the system database or nullptr on error
-////////////////////////////////////////////////////////////////////////////////
-arangodb::iresearch::SystemDatabaseFeature::ptr getSystemDatabase() {
-  auto* database = arangodb::iresearch::getFeature<arangodb::iresearch::SystemDatabaseFeature>();
-
-  if (!database) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failure to find feature 'SystemDatabase' while getting the system database";
-
-    return nullptr;
-  }
-
-  return database->use();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensure all 'analyzers' are present in 'initialized1' or 'initialized2'
-///        on failure throw exception or return error code
-////////////////////////////////////////////////////////////////////////////////
-template<typename Initialized1, typename Initialized2>
-arangodb::Result ensureAnalyzersInitialized(
-    std::unordered_map<irs::hashed_string_ref, arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr> const& analyzers,
-    Initialized1 const& initialized1,
-    Initialized2 const& initialized2,
-    bool throwException) {
-  // ensure all records were initialized
-  for (auto& entry: analyzers) {
-    if (initialized1.find(entry.first) == initialized1.end()
-        && initialized2.find(entry.first) == initialized2.end()) {
-      if (!throwException) {
-        return arangodb::Result(
-          TRI_ERROR_INTERNAL,
-          std::string("uninitialized AnalyzerPool deletected while validating analyzers, IResearch analyzer name '") + std::string(entry.first) + "'"
-        );
-      }
-
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL,
-        std::string("uninitialized AnalyzerPool deletected while validating analyzers, IResearch analyzer name '") + std::string(entry.first) + "'"
-      );
-    }
-  }
-
-  return arangodb::Result();
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief ensure configuration collection is present in the specified vocbase
 ////////////////////////////////////////////////////////////////////////////////
 void ensureConfigCollection(TRI_vocbase_t& vocbase) {
@@ -278,6 +232,21 @@ void ensureConfigCollection(TRI_vocbase_t& vocbase) {
       throw e;
     }
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a pointer to the system database or nullptr on error
+////////////////////////////////////////////////////////////////////////////////
+arangodb::iresearch::SystemDatabaseFeature::ptr getSystemDatabase() {
+  auto* database = arangodb::iresearch::getFeature<arangodb::iresearch::SystemDatabaseFeature>();
+
+  if (!database) {
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failure to find feature 'SystemDatabase' while getting the system database";
+
+    return nullptr;
+  }
+
+  return database->use();
 }
 
 typedef irs::async_utils::read_write_mutex::read_mutex ReadMutex;
@@ -402,7 +371,9 @@ std::string const& IResearchAnalyzerFeature::AnalyzerPool::name() const noexcept
 
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(
     arangodb::application_features::ApplicationServer* server
-): ApplicationFeature(server, IResearchAnalyzerFeature::name()), _started(false) {
+): ApplicationFeature(server, IResearchAnalyzerFeature::name()),
+  _analyzers(getStaticAnalyzers()), // load static analyzers
+  _started(false) {
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("AQLFunctions"); // used for registering IResearch analyzer functions
@@ -458,6 +429,10 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
 
     // skip initialization and persistance
     if (!initAndPersist) {
+      if (itr.second) {
+        _customAnalyzers[itr.first->first] = itr.first->second; // mark as custom if insertion took place
+      }
+
       erase = false;
 
       return std::make_pair(pool, itr.second);
@@ -485,6 +460,7 @@ std::pair<IResearchAnalyzerFeature::AnalyzerPool::ptr, bool> IResearchAnalyzerFe
         return std::make_pair(AnalyzerPool::ptr(), false);
       }
 
+      _customAnalyzers[itr.first->first] = itr.first->second; // mark as custom
       erase = false;
     } else if (type != pool->_type || properties != pool->_properties) {
       LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "name collision detected while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "', previous registration type '" << pool->_type << "' properties '" << pool->_properties << "'";
@@ -529,9 +505,9 @@ size_t IResearchAnalyzerFeature::erase(
     WriteMutex mutex(_mutex);
     SCOPED_LOCK(mutex);
 
-    auto itr = _analyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
+    auto itr = _customAnalyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>()));
 
-    if (itr == _analyzers.end()) {
+    if (itr == _customAnalyzers.end()) {
       return 0; // nothing to erase
     }
 
@@ -539,7 +515,8 @@ size_t IResearchAnalyzerFeature::erase(
 
     if (!pool) {
       LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "removal of an unset IResearch analizer name '" << name << "'";
-      _analyzers.erase(itr);
+      _analyzers.erase(itr->first); // ok to erase since found in '_customAnalyzers'
+      _customAnalyzers.erase(itr);
 
       return 0; // no actual valid analyzer was removed (this is definitly a bug somewhere)
     }
@@ -603,7 +580,8 @@ size_t IResearchAnalyzerFeature::erase(
     }
 
     // OK to erase if !_started because on start() the persisted configuration will be loaded
-    _analyzers.erase(itr);
+    _analyzers.erase(itr->first); // ok to erase since found in '_customAnalyzers'
+    _customAnalyzers.erase(itr);
 
     return 1;
   } catch (std::exception& e) {
@@ -650,20 +628,88 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
   return nullptr;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a container of statically defined/initialized analyzers
+////////////////////////////////////////////////////////////////////////////////
+/*static*/ IResearchAnalyzerFeature::Analyzers const& IResearchAnalyzerFeature::getStaticAnalyzers() {
+  struct Instance {
+    Analyzers analyzers;
+    Instance() {
+      // register the indentity analyzer
+      {
+        //static const irs::flags extraFeatures = { irs::frequency::type(), irs::norm::type() };
+        static const irs::flags extraFeatures = { }; // FIXME TODO use above once tfidf/bm25 sort is fixed
+        static const irs::string_ref name("identity");
+        PTR_NAMED(AnalyzerPool, pool, name);
+
+        if (!pool
+            || !pool->init(IdentityTokenizer::type().name(), irs::string_ref::nil, extraFeatures)) {
+          LOG_TOPIC(WARN, IResearchFeature::IRESEARCH) << "failure creating an IResearch static analyzer instance for name '" << name << "'";
+          throw irs::illegal_state(); // this should never happen, treat as an assertion failure
+        }
+
+        analyzers.emplace(
+          irs::make_hashed_ref(name, std::hash<irs::string_ref>()),
+          pool
+        );
+      }
+
+      // register the text analyzers
+      {
+        static const std::vector<std::pair<irs::string_ref, irs::string_ref>> textAnalzyers = {
+          {"text_de", "{ \"locale\": \"de\", \"ignored_words\": [ ] }" }, // empty stop word list
+          {"text_en", "{ \"locale\": \"en\", \"ignored_words\": [ ] }" }, // empty stop word list
+          {"text_es", "{ \"locale\": \"es\", \"ignored_words\": [ ] }" }, // empty stop word list
+          {"text_fi", "{ \"locale\": \"fi\", \"ignored_words\": [ ] }" }, // empty stop word list
+          {"text_fr", "{ \"locale\": \"fr\", \"ignored_words\": [ ] }" }, // empty stop word list
+          {"text_it", "{ \"locale\": \"it\", \"ignored_words\": [ ] }" }, // empty stop word list
+          {"text_nl", "{ \"locale\": \"nl\", \"ignored_words\": [ ] }" }, // empty stop word list
+          {"text_no", "{ \"locale\": \"no\", \"ignored_words\": [ ] }" }, // empty stop word list
+          {"text_pt", "{ \"locale\": \"pt\", \"ignored_words\": [ ] }" }, // empty stop word list
+          {"text_ru", "{ \"locale\": \"ru\", \"ignored_words\": [ ] }" }, // empty stop word list
+          {"text_sv", "{ \"locale\": \"sv\", \"ignored_words\": [ ] }" }, // empty stop word list
+        };
+        static const irs::flags extraFeatures = { irs::norm::type() }; // add norms
+        static const irs::string_ref type("text");
+
+        for (auto& entry: textAnalzyers) {
+          auto& name = entry.first;
+          auto& args = entry.second;
+          PTR_NAMED(AnalyzerPool, pool, name);
+
+          if (!pool
+              || !pool->init(type, args, extraFeatures)) {
+            LOG_TOPIC(WARN, IResearchFeature::IRESEARCH) << "failure creating an IResearch static analyzer instance for name '" << name << "'";
+            throw irs::illegal_state(); // this should never happen, treat as an assertion failure
+          }
+
+          
+          analyzers.emplace(
+            irs::make_hashed_ref(name, std::hash<irs::string_ref>()),
+            pool
+          );
+        }
+      }
+    }
+  };
+  static const Instance instance;
+
+  return instance.analyzers;
+}
+
 /*static*/ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::identity() noexcept {
   struct Identity {
     AnalyzerPool::ptr instance;
     Identity() {
-      PTR_NAMED(AnalyzerPool, ptr, IDENTITY_TOKENIZER_NAME);
+      // find the 'identity' analyzer pool in the static analyzers
+      auto& staticAnalyzers = getStaticAnalyzers();
+      irs::string_ref name = "identity"; // hardcoded name of the identity analyzer pool
+      auto key = irs::make_hashed_ref(name, std::hash<irs::string_ref>());
+      auto itr = staticAnalyzers.find(key);
 
-      // name (use same as 'type' for convenience)
-      if (!ptr || !ptr->init(IDENTITY_TOKENIZER_NAME, irs::string_ref::nil)) {
-        LOG_TOPIC(FATAL, iresearch::IResearchFeature::IRESEARCH) << "failed to initialize 'identity' analyzer";
-
-        throw irs::illegal_state(); // this should never happen, treat as an assertion failure
+      if (itr != staticAnalyzers.end()) {
+        instance = itr->second;
       }
-
-      instance = ptr;
     }
   };
   static const Identity identity;
@@ -671,12 +717,11 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
   return identity.instance;
 }
 
-void IResearchAnalyzerFeature::loadConfiguration(
-    std::unordered_set<irs::string_ref> const& preinitialized
-) {
+bool IResearchAnalyzerFeature::loadConfiguration() {
   if (arangodb::ServerState::instance()->isRunningInCluster()) {
     // the following code will not be working in the cluster
-    return;
+    // safe to access since loadConfiguration(...) is called from start() which is single-thread
+    return _customAnalyzers.empty();
   }
 
   auto vocbase = getSystemDatabase();
@@ -684,7 +729,7 @@ void IResearchAnalyzerFeature::loadConfiguration(
   if (!vocbase) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failure to get system database while loading IResearch analyzer persisted configuration";
 
-    return;
+    return false;
   }
 
   arangodb::SingleCollectionTransaction trx(
@@ -697,7 +742,7 @@ void IResearchAnalyzerFeature::loadConfiguration(
   if (!res.ok()) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failure to start transaction while loading IResearch analyzer persisted configuration";
 
-    return;
+    return false;
   }
 
   auto* collection = trx.documentCollection();
@@ -706,11 +751,11 @@ void IResearchAnalyzerFeature::loadConfiguration(
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failure to get collection while loading IResearch analyzer persisted configuration";
     trx.abort();
 
-    return;
+    return false;
   }
 
   std::unordered_map<irs::string_ref, std::pair<AnalyzerPool::ptr, int64_t>> initialized;
-  auto visitor = [this, &trx, collection, &initialized, &preinitialized](
+  auto visitor = [this, &trx, collection, &initialized](
       DocumentIdentifierToken const& token
   )->bool {
     ManagedDocumentResult result;
@@ -790,15 +835,25 @@ void IResearchAnalyzerFeature::loadConfiguration(
       );
     }
 
-    if (!entry.second && preinitialized.find(name) != preinitialized.end()) {
+    static auto& staticAnalyzers = getStaticAnalyzers();
+
+    if (!entry.second
+        && staticAnalyzers.find(irs::make_hashed_ref(name, std::hash<irs::string_ref>())) != staticAnalyzers.end()) {
       if (type != pool->_type || properties != pool->_properties) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "name collision detected while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "', previous registration type '" << pool->_type << "' properties '" << pool->_properties << "'";
+        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "name collision with a static analyzer detected while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "', previous registration type '" << pool->_type << "' properties '" << pool->_properties << "'";
 
         THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
-          std::string("name collision detected while registering an IResearch analizer name '") + std::string(name) + "' type '" + std::string(type) + "' properties '" + std::string(properties) + "', previous registration type '" + std::string(pool->_type) + "' properties '" + std::string(pool->_properties) + "'"
+          std::string("name collision with a static analyzer detected while registering an IResearch analizer name '") + std::string(name) + "' type '" + std::string(type) + "' properties '" + std::string(properties) + "', previous registration type '" + std::string(pool->_type) + "' properties '" + std::string(pool->_properties) + "'"
         );
       }
+
+      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "name collision with a static analyzer detected while registering an IResearch analizer name '" << name << "' type '" << type << "' properties '" << properties << "'";
+
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        std::string("name collision with a static analyzer detected while registering an IResearch analizer name '") + std::string(name) + "' type '" + std::string(type) + "' properties '" + std::string(properties) + "'"
+      );
     } else if (!pool->init(type, properties)) {
       LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failure initializing an IResearch analyzer instance for name '" << name << "' type '" << type << "' properties '" << properties << "'";
 
@@ -819,14 +874,40 @@ void IResearchAnalyzerFeature::loadConfiguration(
     return true; // process next
   };
 
+  bool revert = true;
+  auto cleanup = irs::make_finally([&revert, &initialized]()->void{
+    if (revert) {
+
+      for (auto& entry: initialized) {
+        auto& pool = entry.second.first;
+
+        // reset pool configuration back to uninitialized
+        // safe to reset since loadConfiguration(...) is called from start() which is single-thread
+        if (pool) {
+          pool->_config.clear(); // noexcept
+          pool->_key = irs::string_ref::nil; // noexcept
+          pool->_type = irs::string_ref::nil; // noexcept
+          pool->_properties = irs::string_ref::nil; // noexcept
+          pool->_refCount -= entry.second.second; // noexcept
+        }
+      }
+   }
+  });
+
   try {
     collection->invokeOnAllElements(&trx, visitor);
 
     // ensure all records were initialized
-    ensureAnalyzersInitialized(_analyzers, initialized, preinitialized, true);
+    for (auto& entry: _customAnalyzers) {
+      if (initialized.find(entry.first) == initialized.end()) {
+        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "uninitialized AnalyzerPool deletected while validating analyzers, IResearch analyzer name '" << entry.first << "'";
+        return false; // found an uninitialized analyzer
+      }
+    }
 
     // persist refCount changes
     for (auto& entry: initialized) {
+      // safe to read since loadConfiguration(...) is called from start() which is single-thread
       auto& name = entry.first;
       auto count = entry.second.second;
       auto& pool = entry.second.first;
@@ -850,106 +931,19 @@ void IResearchAnalyzerFeature::loadConfiguration(
         "failure to commit AnalyzerPool configuration while updating ref_count of IResearch analyzer"
       );
     }
+
+    revert = false;
+
+    return true;
+  } catch (std::exception& e) {
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while loading configuration: " << e.what();
+    IR_EXCEPTION();
   } catch (...) {
-    for (auto& entry: initialized) {
-      auto& pool = entry.second.first;
-
-      // reset pool configuration back to uninitialized
-      // safe to reset since loadConfiguration(...) is called from start() which is single-thread
-      if (pool) {
-        pool->_config.clear(); // noexcept
-        pool->_key = irs::string_ref::nil; // noexcept
-        pool->_type = irs::string_ref::nil; // noexcept
-        pool->_properties = irs::string_ref::nil; // noexcept
-        pool->_refCount -= entry.second.second; // noexcept
-      }
-    }
-
-    throw;
-  }
-}
-
-bool IResearchAnalyzerFeature::loadStaticAnalyzers(
-  std::unordered_set<irs::string_ref>& initialized
-) {
-  // register the indentity analyzer
-  {
-    static const irs::string_ref name("identity");
-    auto analyzer = emplace(
-      name,
-      IdentityTokenizer::type().name(),
-      irs::string_ref::nil,
-      false // do not persist since it's a static analyzer always available after start()
-    ).first;
-
-    if (!analyzer
-        || !analyzer->init(IdentityTokenizer::type().name(), irs::string_ref::nil)) {
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failure creating an IResearch static analyzer instance for name '" << name << "'";
-      return false;
-    }
-
-    initialized.emplace(analyzer->name());
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while loading configuration";
+    IR_EXCEPTION();
   }
 
-  // register the identity analyzer with frequency+norms
-  {
-    static const irs::flags extraFeatures = { irs::frequency::type(), irs::norm::type() };
-    static const irs::string_ref name("identity_sort");
-    auto analyzer = emplace(
-      name,
-      IdentityTokenizer::type().name(),
-      irs::string_ref::nil,
-      false // do not persist since it's a static analyzer always available after start()
-    ).first;
-
-    if (!analyzer
-        || !analyzer->init(IdentityTokenizer::type().name(), irs::string_ref::nil, extraFeatures)) {
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failure creating an IResearch static analyzer instance for name '" << name << "'";
-      return false;
-    }
-
-    initialized.emplace(analyzer->name());
-  }
-
-  // register the text analyzers
-  {
-    static const std::vector<std::pair<irs::string_ref, irs::string_ref>> analzyers = {
-      {"text_de", "{ \"locale\": \"de\", \"ignored_words\": [ ] }" }, // empty stop word list
-      {"text_en", "{ \"locale\": \"en\", \"ignored_words\": [ ] }" }, // empty stop word list
-      {"text_es", "{ \"locale\": \"es\", \"ignored_words\": [ ] }" }, // empty stop word list
-      {"text_fi", "{ \"locale\": \"fi\", \"ignored_words\": [ ] }" }, // empty stop word list
-      {"text_fr", "{ \"locale\": \"fr\", \"ignored_words\": [ ] }" }, // empty stop word list
-      {"text_it", "{ \"locale\": \"it\", \"ignored_words\": [ ] }" }, // empty stop word list
-      {"text_nl", "{ \"locale\": \"nl\", \"ignored_words\": [ ] }" }, // empty stop word list
-      {"text_no", "{ \"locale\": \"no\", \"ignored_words\": [ ] }" }, // empty stop word list
-      {"text_pt", "{ \"locale\": \"pt\", \"ignored_words\": [ ] }" }, // empty stop word list
-      {"text_ru", "{ \"locale\": \"ru\", \"ignored_words\": [ ] }" }, // empty stop word list
-      {"text_sv", "{ \"locale\": \"sv\", \"ignored_words\": [ ] }" }, // empty stop word list
-    };
-    static const irs::flags extraFeatures = { irs::norm::type() }; // add norms
-    static const irs::string_ref type("text");
-
-    for (auto& entry: analzyers) {
-      auto& name = entry.first;
-      auto& args = entry.second;
-      auto analyzer = emplace(
-        name,
-        type,
-        args,
-        false // do not persist since it's a static analyzer always available after start()
-      ).first;
-
-      if (!analyzer
-          || !analyzer->init(type, args, extraFeatures)) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failure creating an IResearch static analyzer instance for name '" << name << "'";
-        return false;
-      }
-
-      initialized.emplace(analyzer->name());
-    }
-  }
-
-  return true;
+  return false;
 }
 
 /*static*/ std::string const& IResearchAnalyzerFeature::name() noexcept {
@@ -970,6 +964,13 @@ bool IResearchAnalyzerFeature::release(irs::string_ref const& name) {
     return false; // ignore release requests on uninitialized pools
   }
 
+  static auto& staticAnalyzers = getStaticAnalyzers();
+  auto key = irs::make_hashed_ref(name, std::hash<irs::string_ref>());
+
+  if (staticAnalyzers.find(key) != staticAnalyzers.end()) {
+    return true; // always allow release on static analyzers
+  }
+
   if (_started) {
     return updateConfiguration(*pool, -1); // -1 for decrement
   }
@@ -988,6 +989,13 @@ bool IResearchAnalyzerFeature::reserve(irs::string_ref const& name) {
 
   if (!pool) {
     return false; // ignore reservation requests on uninitialized pools
+  }
+
+  static auto& staticAnalyzers = getStaticAnalyzers();
+  auto key = irs::make_hashed_ref(name, std::hash<irs::string_ref>());
+
+  if (staticAnalyzers.find(key) != staticAnalyzers.end()) {
+    return true; // always allow reserve on static analyzers
   }
 
   if (_started) {
@@ -1018,16 +1026,6 @@ void IResearchAnalyzerFeature::start() {
     }
   }
 
-  std::unordered_set<irs::string_ref> initialized;
-
-  // register static analyzers (before loading configuration)
-  if (!loadStaticAnalyzers(initialized)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_ARANGO_ILLEGAL_STATE,
-      "failure loading IResearch static analyzers"
-    );
-  }
-
   // ensure that the configuration collection is present before loading configuration
   // for the case of inRecovery() if there is no collection then obviously no
   // custom analyzer configurations were persisted (so missing analyzer is failure)
@@ -1056,21 +1054,23 @@ void IResearchAnalyzerFeature::start() {
           } else {
             std::shared_ptr<TRI_vocbase_t> sharedVocbase(std::move(vocbase));
 
-            feature->registerPostRecoveryCallback([this, initialized, sharedVocbase]()->arangodb::Result {
+            feature->registerPostRecoveryCallback([this, sharedVocbase]()->arangodb::Result {
               ensureConfigCollection(*sharedVocbase); // ensure configuration collection exists
 
               WriteMutex mutex(_mutex);
               SCOPED_LOCK(mutex); // '_started' can be asynchronously read
 
               // ensure all records were initialized
-              static const std::unordered_set<irs::string_ref> empty;
-              auto result = ensureAnalyzersInitialized(_analyzers, initialized, empty, false);
-
-              if (result.ok()) {
-                _started = true;
+              if (!_customAnalyzers.empty()) {
+                return arangodb::Result(
+                  TRI_ERROR_INTERNAL,
+                  "uninitialized AnalyzerPool detected while validating analyzers"
+                );
               }
 
-              return result;
+              _started = true;
+
+              return arangodb::Result();
             });
 
             return; // nothing more to do while inRecovery()
@@ -1080,11 +1080,15 @@ void IResearchAnalyzerFeature::start() {
         ensureConfigCollection(*vocbase); // ensure configuration collection exists
 
         WriteMutex mutex(_mutex);
-        SCOPED_LOCK(mutex); // '_analyzers' can be asynchronously modified, '_started' can be asynchronously read
+        SCOPED_LOCK(mutex); // '_customAnalyzers' can be asynchronously modified, '_started' can be asynchronously read
 
         // ensure all records were initialized
-        static const std::unordered_set<irs::string_ref> empty;
-        ensureAnalyzersInitialized(_analyzers, initialized, empty, true);
+        if (!_customAnalyzers.empty()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_INTERNAL,
+            "uninitialized AnalyzerPool detected while validating analyzers"
+          );
+        }
 
         _started = true;
 
@@ -1092,7 +1096,13 @@ void IResearchAnalyzerFeature::start() {
       }
     }
 
-    loadConfiguration(initialized); // load persisted configuration
+    // load persisted configuration
+    if (!loadConfiguration()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "uninitialized AnalyzerPool detected while validating analyzers"
+      );
+    }
   }
 
   WriteMutex mutex(_mutex);
@@ -1104,10 +1114,11 @@ void IResearchAnalyzerFeature::start() {
 void IResearchAnalyzerFeature::stop() {
   {
     WriteMutex mutex(_mutex);
-    SCOPED_LOCK(mutex); // '_analyzers'/'_started' can be asynchronously read
+    SCOPED_LOCK(mutex); // '_analyzers'/_customAnalyzers/'_started' can be asynchronously read
 
     _started = false;
-    _analyzers.clear(); // clear cache
+    _analyzers = getStaticAnalyzers(); // clear cache and reload static analyzers
+    _customAnalyzers.clear(); // clear cache
   }
 
   ApplicationFeature::stop();

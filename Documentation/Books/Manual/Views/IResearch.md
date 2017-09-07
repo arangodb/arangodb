@@ -79,10 +79,6 @@ point in time, so ArangoDB comes with a few default-initialized analyzers:
 * identity
   treat the value as an atom
 
-* identity_sort
-  treat the value as an atom but track metadata required for meaningful sorting
-  of results with frequency based scorers, e.g. bm25, tfidf
-
 * text_de
   tokenize the value into case-insensitive word stems as per the German locale,
   do not discard any any stopwords

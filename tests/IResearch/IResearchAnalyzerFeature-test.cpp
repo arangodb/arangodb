@@ -120,7 +120,6 @@ struct Analyzer {
 std::map<irs::string_ref, Analyzer>const& staticAnalyzers() {
   static const std::map<irs::string_ref, Analyzer> analyzers = {
     { "identity", { "identity", irs::string_ref::nil, irs::flags::empty_instance() } },
-    { "identity_sort", { "identity", irs::string_ref::nil, { irs::frequency::type(), irs::norm::type() } } },
     {"text_de", { "text", "{ \"locale\": \"de\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
     {"text_en", { "text", "{ \"locale\": \"en\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
     {"text_es", { "text", "{ \"locale\": \"es\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
@@ -300,6 +299,29 @@ SECTION("test_emplace") {
     CHECK((true == !analyzer));
     CHECK((true == !feature.get("test_analyzer7")));
   }
+
+  // add static analyzer
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    feature.start();
+    CHECK((false == !feature.emplace("identity", "identity", irs::string_ref::nil).first));
+    auto pool = feature.get("identity");
+    CHECK((false == !pool));
+    CHECK((irs::flags({irs::increment::type(), irs::term_attribute::type()}) == pool->features()));
+    auto analyzer = pool->get();
+    CHECK((false == !analyzer));
+  }
+
+  // add static analyzer (feature not started)
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    CHECK((false == !feature.emplace("identity", "identity", irs::string_ref::nil).first));
+    auto pool = feature.get("identity");
+    CHECK((false == !pool));
+    CHECK((irs::flags({irs::increment::type(), irs::term_attribute::type()}) == pool->features()));
+    auto analyzer = pool->get();
+    CHECK((false == !analyzer));
+  }
 }
 
 SECTION("test_ensure") {
@@ -313,6 +335,15 @@ SECTION("test_ensure") {
       CHECK((irs::flags::empty_instance() == pool->features()));
       auto analyzer = pool->get();
       CHECK((true == !analyzer));
+    }
+
+    // ensure static analyzer (not started)
+    {
+      auto pool = feature.ensure("identity");
+      REQUIRE((false == !pool));
+      CHECK((irs::flags({irs::increment::type(), irs::term_attribute::type()}) == pool->features()));
+      auto analyzer = pool->get();
+      CHECK((false == !analyzer));
     }
   }
 
@@ -334,6 +365,15 @@ SECTION("test_ensure") {
     // ensure invalid (started)
     {
       CHECK((true == !feature.get("invalid")));
+    }
+
+    // ensure static analyzer (started)
+    {
+      auto pool = feature.ensure("identity");
+      REQUIRE((false == !pool));
+      CHECK((irs::flags({irs::increment::type(), irs::term_attribute::type()}) == pool->features()));
+      auto analyzer = pool->get();
+      CHECK((false == !analyzer));
     }
   }
 }
@@ -357,6 +397,15 @@ SECTION("test_get") {
     {
       CHECK((true == !feature.get("invalid")));
     }
+
+    // get static analyzer (not started)
+    {
+      auto pool = feature.get("identity");
+      REQUIRE((false == !pool));
+      CHECK((irs::flags({irs::increment::type(), irs::term_attribute::type()}) == pool->features()));
+      auto analyzer = pool->get();
+      CHECK((false == !analyzer));
+    }
   }
 
   {
@@ -377,6 +426,15 @@ SECTION("test_get") {
     // get invalid (started)
     {
       CHECK((true == !feature.get("invalid")));
+    }
+
+    // get static analyzer (started)
+    {
+      auto pool = feature.get("identity");
+      REQUIRE((false == !pool));
+      CHECK((irs::flags({irs::increment::type(), irs::term_attribute::type()}) == pool->features()));
+      auto analyzer = pool->get();
+      CHECK((false == !analyzer));
     }
   }
 }
@@ -406,7 +464,7 @@ SECTION("test_identity") {
   // test registered 'identity'
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((true == !feature.get("identity")));
+    CHECK((false == !feature.get("identity")));
     auto pool = feature.ensure("identity");
     CHECK((false == !pool));
     feature.start();
@@ -477,11 +535,11 @@ SECTION("test_persistence") {
 
     feature.start();
 
-    for (auto& entry: staticAnalyzers()) {
-      feature.erase(entry.first); // remove to simplify test implementation
-    }
-
     feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+      if (staticAnalyzers().find(name) != staticAnalyzers().end()) {
+        return true; // skip static analyzers
+      }
+
       auto itr = expected.find(name);
       CHECK((itr != expected.end()));
       CHECK((itr->second.first == type));
@@ -506,6 +564,26 @@ SECTION("test_persistence") {
       trx.truncate(collection, options);
       trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 42}")->slice(), options);
       trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"valid\", \"type\": \"identity\", \"properties\": null, \"ref_count\": 52}")->slice(), options);
+      trx.commit();
+    }
+
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    CHECK_THROWS((feature.start()));
+  }
+
+  // read invalid configuration (static analyzers present)
+  {
+    {
+      std::string collection("_iresearch_analyzers");
+      arangodb::OperationOptions options;
+      arangodb::SingleCollectionTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(vocbase.get()),
+        collection,
+        arangodb::AccessMode::Type::WRITE
+      );
+      trx.begin();
+      trx.truncate(collection, options);
+      trx.insert(collection, arangodb::velocypack::Parser::fromJson("{\"name\": \"identity\", \"type\": \"identity\", \"properties\": \"abc\", \"ref_count\": 42}")->slice(), options);
       trx.commit();
     }
 
@@ -544,11 +622,11 @@ SECTION("test_persistence") {
 
     feature.start();
 
-    for (auto& entry: staticAnalyzers()) {
-      feature.erase(entry.first); // remove to simplify test implementation
-    }
-
     feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+      if (staticAnalyzers().find(name) != staticAnalyzers().end()) {
+        return true; // skip static analyzers
+      }
+
       auto itr = expected.find(name);
       CHECK((itr != expected.end()));
       CHECK((itr->second.first == type));
@@ -585,11 +663,11 @@ SECTION("test_persistence") {
 
       feature.start();
 
-      for (auto& entry: staticAnalyzers()) {
-        feature.erase(entry.first); // remove to simplify test implementation
-      }
-
       feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+        if (staticAnalyzers().find(name) != staticAnalyzers().end()) {
+          return true; // skip static analyzers
+        }
+
         auto itr = expected.find(name);
         CHECK((itr != expected.end()));
         CHECK((itr->second.first == type));
@@ -620,6 +698,7 @@ SECTION("test_persistence") {
 
     {
       std::map<irs::string_ref, std::pair<irs::string_ref, irs::string_ref>> expected = {
+        { "identity", { "identity", irs::string_ref::nil } },
         { "valid0", { "identity", irs::string_ref::nil } },
         { "valid1", { "identity", irs::string_ref::nil } },
       };
@@ -627,11 +706,12 @@ SECTION("test_persistence") {
 
       feature.start();
 
-      for (auto& entry: staticAnalyzers()) {
-        feature.erase(entry.first); // remove to simplify test implementation
-      }
-
       feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+        if (name != "identity" &&
+            staticAnalyzers().find(name) != staticAnalyzers().end()) {
+          return true; // skip static analyzers
+        }
+
         auto itr = expected.find(name);
         CHECK((itr != expected.end()));
         CHECK((itr->second.first == type));
@@ -643,6 +723,8 @@ SECTION("test_persistence") {
       CHECK((1 == feature.erase("valid0")));
       CHECK((0 == feature.erase("valid1")));
       CHECK((1 == feature.erase("valid1", true))); // force removal
+      CHECK((0 == feature.erase("identity")));
+      CHECK((0 == feature.erase("identity", false))); // force removal
     }
 
     {
@@ -651,11 +733,11 @@ SECTION("test_persistence") {
 
       feature.start();
 
-      for (auto& entry: staticAnalyzers()) {
-        feature.erase(entry.first); // remove to simplify test implementation
-      }
-
       feature.visit([&expected](irs::string_ref const& name, irs::string_ref const& type, irs::string_ref const& properties)->bool {
+        if (staticAnalyzers().find(name) != staticAnalyzers().end()) {
+          return true; // skip static analyzers
+        }
+
         auto itr = expected.find(name);
         CHECK((itr != expected.end()));
         CHECK((itr->second.first == type));
@@ -789,6 +871,16 @@ SECTION("test_registration") {
     CHECK((0 == feature.erase("valid"))); // remove not allowed
   }
 
+  // reserve static analyzer pool (not started)
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    auto pool = feature.get("identity");
+    CHECK((false == !pool));
+    CHECK((feature.reserve("identity")));
+    CHECK((0 == feature.erase("identity"))); // remove not allowed
+    CHECK((0 == feature.erase("identity", true))); // remove not allowed
+  }
+
   // release pool (not started)
   {
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
@@ -801,6 +893,20 @@ SECTION("test_registration") {
     CHECK((0 == feature.erase("valid"))); // remove not allowed
     CHECK((feature.release("valid")));
     CHECK((1 == feature.erase("valid")));
+  }
+
+  // release static analyzer pool (not started)
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    auto pool = feature.get("identity");
+    CHECK((false == !pool));
+    CHECK((feature.reserve("identity")));
+    CHECK((feature.reserve("identity"))); // 2nd time
+    CHECK((feature.release("identity")));
+    CHECK((0 == feature.erase("identity"))); // remove not allowed
+    CHECK((feature.release("identity")));
+    CHECK((0 == feature.erase("identity"))); // remove not allowed
+    CHECK((0 == feature.erase("identity", true))); // remove not allowed
   }
 
   // reserve pool (persistance failure)
@@ -820,6 +926,26 @@ SECTION("test_registration") {
     }
 
     CHECK((1 == feature.erase("valid"))); // remove allowed
+  }
+
+  // reseve static analyzer pool (persistence failure)
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    feature.start(); // create configuration collection
+    auto pool = feature.get("identity");
+    CHECK((false == !pool));
+
+    {
+      // simulate temporary failure
+      auto before = PhysicalCollectionMock::before;
+      auto restore = irs::make_finally([&before]()->void { PhysicalCollectionMock::before = before; });
+      PhysicalCollectionMock::before = []()->void { throw "exception"; };
+
+      CHECK((feature.reserve("identity")));
+    }
+
+    CHECK((0 == feature.erase("identity"))); // remove not allowed
+    CHECK((0 == feature.erase("identity", true))); // remove not allowed
   }
 
   // release pool (persistence failure)
@@ -847,6 +973,33 @@ SECTION("test_registration") {
     }
 
     CHECK((0 == feature.erase("valid"))); // remove not allowed
+  }
+
+  // release static analyzer pool (persistence failure)
+  {
+    // ensure no persisted configuration present
+    {
+      auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
+      vocbase->dropCollection(collection, true, -1); // drop configuration collection
+    }
+
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    feature.start(); // create configuration collection
+    auto pool = feature.get("identity");
+    CHECK((false == !pool));
+    CHECK((feature.reserve("identity")));
+
+    {
+      // simulate temporary failure
+      auto before = PhysicalCollectionMock::before;
+      auto restore = irs::make_finally([&before]()->void { PhysicalCollectionMock::before = before; });
+      PhysicalCollectionMock::before = []()->void { throw "exception"; };
+
+      CHECK((feature.release("identity")));
+    }
+
+    CHECK((0 == feature.erase("identity"))); // remove not allowed
+    CHECK((0 == feature.erase("identity", true))); // remove not allowed
   }
 
   // reserve/release pool (persisted OK)
@@ -943,7 +1096,8 @@ SECTION("test_registration") {
       CHECK((feature.release(pool->name())));
       CHECK((0 == feature.erase(pool->name()))); // remove denied
       CHECK((feature.release(pool->name())));
-      CHECK((1 == feature.erase(pool->name()))); // remove allowed
+      CHECK((0 == feature.erase(pool->name()))); // remove denied
+      CHECK((0 == feature.erase(pool->name(), true))); // remove denied
     }
   }
 }
@@ -956,6 +1110,15 @@ SECTION("test_remove") {
     CHECK((true == !feature.get("test_analyzer")));
     CHECK((false == !feature.ensure("test_analyzer")));
     CHECK((1 == feature.erase("test_analyzer")));
+  }
+
+  // remove static analyzer (not started)
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    CHECK((0 == feature.erase("identity")));
+    CHECK((false == !feature.get("identity")));
+    CHECK((0 == feature.erase("identity")));
+    CHECK((0 == feature.erase("identity", true)));
   }
 
   // remove existing (started)
@@ -974,6 +1137,15 @@ SECTION("test_remove") {
     feature.start();
     CHECK((true == !feature.get("test_analyzer")));
     CHECK((0 == feature.erase("test_analyzer")));
+  }
+
+  // remove static analyzer (started)
+  {
+    arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
+    feature.start();
+    CHECK((false == !feature.get("identity")));
+    CHECK((0 == feature.erase("identity")));
+    CHECK((0 == feature.erase("identity", true)));
   }
 }
 
@@ -995,7 +1167,9 @@ SECTION("test_start") {
       CHECK((nullptr == collection));
     }
 
+    auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
+    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     feature.start();
     CHECK((nullptr == vocbase->lookupCollection("_iresearch_analyzers")));
@@ -1028,7 +1202,9 @@ SECTION("test_start") {
       CHECK((nullptr == collection));
     }
 
+    auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
+    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     CHECK((true == !feature.get("test_analyzer")));
     CHECK((false == !feature.ensure("test_analyzer")));
@@ -1062,7 +1238,6 @@ SECTION("test_start") {
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
       CHECK((nullptr == collection));
-      StorageEngineMock::inRecoveryResult = false;
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       feature.start();
       CHECK((false == !feature.emplace("test_analyzer", "identity", "abc").first));
@@ -1070,7 +1245,9 @@ SECTION("test_start") {
       CHECK((nullptr != collection));
     }
 
+    auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
+    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     feature.start();
     CHECK((nullptr != vocbase->lookupCollection("_iresearch_analyzers")));
@@ -1102,7 +1279,6 @@ SECTION("test_start") {
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
       CHECK((nullptr == collection));
-      StorageEngineMock::inRecoveryResult = false;
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       feature.start();
       CHECK((false == !feature.emplace("test_analyzer", "identity", "abc").first));
@@ -1110,7 +1286,9 @@ SECTION("test_start") {
       CHECK((nullptr != collection));
     }
 
+    auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
+    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     CHECK((true == !feature.get("test_analyzer")));
     CHECK((false == !feature.ensure("test_analyzer")));
@@ -1146,7 +1324,6 @@ SECTION("test_start") {
       CHECK((nullptr == collection));
     }
 
-    StorageEngineMock::inRecoveryResult = false;
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     feature.start();
     CHECK((nullptr != vocbase->lookupCollection("_iresearch_analyzers")));
@@ -1165,7 +1342,7 @@ SECTION("test_start") {
     CHECK((expected.empty()));
   }
 
-  // test feature start load configuration (no configuration collection, uninitialized analyzers)
+  // test feature start load configuration (no configuration collection, static analyzers)
   {
     // ensure no configuration collection
     {
@@ -1179,10 +1356,8 @@ SECTION("test_start") {
       CHECK((nullptr == collection));
     }
 
-    StorageEngineMock::inRecoveryResult = false;
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
-    CHECK((true == !feature.get("identity")));
-    CHECK((false == !feature.ensure("identity")));
+    CHECK((false == !feature.get("identity")));
     feature.start();
     CHECK((nullptr != vocbase->lookupCollection("_iresearch_analyzers")));
 
@@ -1213,7 +1388,6 @@ SECTION("test_start") {
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
       CHECK((nullptr == collection));
-      StorageEngineMock::inRecoveryResult = false;
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       feature.start();
       CHECK((false == !feature.emplace("test_analyzer", "identity", "abc").first));
@@ -1221,7 +1395,6 @@ SECTION("test_start") {
       CHECK((nullptr != collection));
     }
 
-    StorageEngineMock::inRecoveryResult = false;
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     feature.start();
     CHECK((nullptr != vocbase->lookupCollection("_iresearch_analyzers")));
@@ -1253,7 +1426,6 @@ SECTION("test_start") {
 
       collection = vocbase->lookupCollection("_iresearch_analyzers");
       CHECK((nullptr == collection));
-      StorageEngineMock::inRecoveryResult = false;
       arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
       feature.start();
       CHECK((false == !feature.emplace("test_analyzer", "identity", "abc").first));
@@ -1261,7 +1433,6 @@ SECTION("test_start") {
       CHECK((nullptr != collection));
     }
 
-    StorageEngineMock::inRecoveryResult = false;
     arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
     CHECK((true == !feature.get("test_analyzer")));
     CHECK((false == !feature.ensure("test_analyzer")));
@@ -1426,13 +1597,9 @@ SECTION("test_visit") {
   arangodb::iresearch::IResearchAnalyzerFeature feature(nullptr);
   feature.start();
 
-  for (auto& entry: staticAnalyzers()) {
-    feature.erase(entry.first); // remove to simplify test implementation
-  }
-
-  feature.emplace("test_analyzer0", "TestAnalyzer", "abc0");
-  feature.emplace("test_analyzer1", "TestAnalyzer", "abc1");
-  feature.emplace("test_analyzer2", "TestAnalyzer", "abc2");
+  CHECK((false == !feature.emplace("test_analyzer0", "TestAnalyzer", "abc0").first));
+  CHECK((false == !feature.emplace("test_analyzer1", "TestAnalyzer", "abc1").first));
+  CHECK((false == !feature.emplace("test_analyzer2", "TestAnalyzer", "abc2").first));
 
   // full visitation
   {
@@ -1446,6 +1613,10 @@ SECTION("test_visit") {
       irs::string_ref const& type,
       irs::string_ref const& properties
     )->bool {
+      if (staticAnalyzers().find(name) != staticAnalyzers().end()) {
+        return true; // skip static analyzers
+      }
+
       CHECK((type == "TestAnalyzer"));
       CHECK((1 == expected.erase(std::make_pair<irs::string_ref, irs::string_ref>(irs::string_ref(name), irs::string_ref(properties)))));
       return true;
@@ -1466,6 +1637,10 @@ SECTION("test_visit") {
       irs::string_ref const& type,
       irs::string_ref const& properties
     )->bool {
+      if (staticAnalyzers().find(name) != staticAnalyzers().end()) {
+        return true; // skip static analyzers
+      }
+
       CHECK((type == "TestAnalyzer"));
       CHECK((1 == expected.erase(std::make_pair<irs::string_ref, irs::string_ref>(irs::string_ref(name), irs::string_ref(properties)))));
       return false;
