@@ -255,7 +255,7 @@ bool FailedFollower::start() {
       {agencyPrefix, "Supervision", "Health", _to, "Status"}));
   if (!slice.isString() || slice.copyString() != "GOOD") {
     LOG_TOPIC(INFO, Logger::SUPERVISION) <<
-      "Destination server " << _to << "is no longer in good condition";
+      "Destination server " << _to << " is no longer in good condition";
   }
 
   slice = result.get(

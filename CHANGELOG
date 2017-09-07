@@ -17,6 +17,7 @@ v3.2.3 (2017-XX-XX)
 
 * fixed issue #3120: Foxx queue: job isn't running when server.authentication = true
 
+* fixed supervision failure detection and handling, which happened with	simultaneous agency leadership change
 
 v3.2.2 (2017-08-23)
 -------------------

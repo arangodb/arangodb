@@ -132,9 +132,6 @@ class Supervision : public arangodb::Thread {
   /// @brief Upgrade agency to supervision overhaul jobs 
   void upgradeOne(VPackBuilder&);
 
-  /// @brief Check for inconsistencies in distributeShardsLike
-  void missingPrototype();
-
   /// @brief Check for inconsistencies in replication factor vs dbs entries
   void enforceReplication();
 

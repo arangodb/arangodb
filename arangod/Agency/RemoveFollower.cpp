@@ -162,7 +162,7 @@ bool RemoveFollower::start() {
       = clones(_snapshot, _database, _collection, _shard);
 
   // Now find some new servers to remove:
-  std::map<std::string, int> overview;   // get an overview over the servers
+  std::unordered_map<std::string, int> overview;   // get an overview over the servers
     // -1 : not "GOOD", can be in sync, or leader, or not
     // >=0: number of servers for which it is in sync or confirmed leader
   bool leaderBad = false;
