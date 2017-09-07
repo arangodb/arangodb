@@ -504,7 +504,6 @@ actions.defineHttp({
       } else if (serverId.startsWith('CRDN')) {
         Health[serverId].Role = 'Coordinator';
       }
-      Health[serverId] 
       if (struct.Role === 'Coordinator') {
         canBeDeleted = struct.Status === 'FAILED';
       } else if (struct.Role === 'DBServer') {
