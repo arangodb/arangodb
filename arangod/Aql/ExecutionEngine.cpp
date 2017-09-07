@@ -30,6 +30,7 @@
 #include "Aql/Collection.h"
 #include "Aql/CollectNode.h"
 #include "Aql/CollectOptions.h"
+#include "Aql/EngineInfoContainer.h"
 #include "Aql/EnumerateCollectionBlock.h"
 #include "Aql/EnumerateListBlock.h"
 #include "Aql/ExecutionNode.h"
@@ -369,7 +370,49 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
 // of them the nodes from left to right in these lists. In the end, we have
 // a proper instantiation of the whole thing.
 
+
 struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
+  private:
+    EngineInfoContainer _coordinatorParts;
+    EngineInfoContainer _dbserverParts;
+    std::vector<ExecutionNode*> _currentNodes;
+
+    bool _isCoordinator;
+
+  public:
+    CoordinatorInstanciator() : _isCoordinator(true) {
+    }
+
+    ~CoordinatorInstanciator() {
+    }
+
+
+  /// @brief before method for collection of pieces phase
+  virtual bool before(ExecutionNode* en) override final {
+    auto const nodeType = en->getType();
+
+    _currentNodes.emplace_back(en);
+
+    // TODO TraverserEngines
+    if (nodeType == ExecutionNode::REMOTE) {
+      // The ExecutionEngineContainer copies the list of nodes
+      if (_isCoordinator) {
+        _coordinatorParts.addQuerySnippet(_currentNodes, en->id());
+      } else {
+        _dbserverParts.addQuerySnippet(_currentNodes, en->id());
+      }
+      // Flip coordinator <-> dbserver
+      _isCoordinator = !_isCoordinator;
+      // Reuse this node vector
+      _currentNodes.clear();
+    }
+
+    // Always return false to not abort searching
+    return false;
+  }
+};
+
+struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
   enum EngineLocation { COORDINATOR, DBSERVER };
 
   struct EngineInfo {
@@ -501,7 +544,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   // TraverserEngines will always give the PART_MAIN to other parts
   // of the queries if they desire them.
 
-  CoordinatorInstanciator(Query* query, QueryRegistry* queryRegistry)
+  CoordinatorInstanciatorOld(Query* query, QueryRegistry* queryRegistry)
       : query(query),
         queryRegistry(queryRegistry),
         root(nullptr),
@@ -514,7 +557,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     engines.emplace_back(COORDINATOR, 0, PART_MAIN, 0);
   }
 
-  ~CoordinatorInstanciator() {}
+  ~CoordinatorInstanciatorOld() {}
 
   /// @brief generatePlanForOneShard
   void generatePlanForOneShard(VPackBuilder& builder, size_t nr,
@@ -1291,9 +1334,18 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
     ExecutionBlock* root = nullptr;
 
     if (isCoordinator) {
+
+      // New Node
+      try {
+        auto instN =
+            std::make_unique<CoordinatorInstanciator>();
+        plan->root()->walk(instN.get());  // if this throws, we need to
+      } catch (...) {
+      }
+
       // instantiate the engine on the coordinator
       auto inst =
-          std::make_unique<CoordinatorInstanciator>(query, queryRegistry);
+          std::make_unique<CoordinatorInstanciatorOld>(query, queryRegistry);
       // optionally restrict query to certain shards
       inst->includedShards(query->queryOptions().shardIds);
 
