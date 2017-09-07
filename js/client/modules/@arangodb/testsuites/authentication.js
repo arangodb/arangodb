@@ -27,6 +27,7 @@
 
 const functionsDocumentation = {
   'authentication': 'authentication tests',
+  'authentication_server': 'authentication server tests',
   'authentication_parameters': 'authentication parameters tests'
 };
 const optionsDocumentation = [
@@ -51,10 +52,9 @@ const download = require('internal').download;
 // / @brief TEST: authentication
 // //////////////////////////////////////////////////////////////////////////////
 
-function authentication (options) {
+function authenticationClient (options) {
   if (options.skipAuthentication === true) {
     print('skipping Authentication tests!');
-
     return {
       authentication: {
         status: true,
@@ -63,10 +63,30 @@ function authentication (options) {
     };
   }
 
-  print(CYAN + 'Authentication tests...' + RESET);
+  print(CYAN + 'Client Authentication tests...' + RESET);
   let testCases = tu.scanTestPath('js/client/tests/authentication');
 
   return tu.performTests(options, testCases, 'authentication', tu.runInArangosh, {
+    'server.authentication': 'true',
+    'server.jwt-secret': 'haxxmann',
+    'cluster.create-waits-for-sync-replication': false
+  });
+}
+
+function authenticationServer (options) {
+  if (options.skipAuthentication === true) {
+    print('skipping Authentication tests!');
+    return {
+      authentication: {
+        status: true,
+        skipped: true
+      }
+    };
+  }
+
+  print(CYAN + 'Server Authentication tests...' + RESET);
+  let testCases = tu.scanTestPath('js/server/tests/authentication');
+  return tu.performTests(options, testCases, 'authentication_server', tu.runThere, {
     'server.authentication': 'true',
     'server.jwt-secret': 'haxxmann',
     'cluster.create-waits-for-sync-replication': false
@@ -243,12 +263,14 @@ function authenticationParameters (options) {
 }
 
 function setup (testFns, defaultFns, opts, fnDocs, optionsDoc) {
-  testFns['authentication'] = authentication;
+  testFns['authentication'] = authenticationClient;
+  testFns['authentication_server'] = authenticationServer;
   testFns['authentication_parameters'] = authenticationParameters;
 
   opts['skipAuthentication'] = false;
 
   defaultFns.push('authentication');
+  defaultFns.push('authentication_server');
   defaultFns.push('authentication_parameters');
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }

@@ -36,7 +36,7 @@
 #include "Graph/BaseOptions.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
-#include "VocBase/TraverserOptions.h"
+#include "Graph/TraverserOptions.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>

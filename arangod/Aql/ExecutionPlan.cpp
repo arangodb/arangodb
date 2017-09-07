@@ -44,8 +44,8 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/ShortestPathOptions.h"
+#include "Graph/TraverserOptions.h"
 #include "VocBase/AccessMode.h"
-#include "VocBase/TraverserOptions.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Options.h>

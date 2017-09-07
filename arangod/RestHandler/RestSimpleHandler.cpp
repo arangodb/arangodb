@@ -31,11 +31,11 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Graph/Traverser.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Context.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/Traverser.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>

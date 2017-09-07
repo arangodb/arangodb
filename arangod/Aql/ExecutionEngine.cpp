@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,6 +49,7 @@
 #include "Cluster/CollectionLockState.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Logger/Logger.h"
+#include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "VocBase/ticks.h"
 
@@ -602,10 +603,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     result.add(VPackValue("options"));
 #ifdef USE_ENTERPRISE
     if (query->trx()->state()->options().skipInaccessibleCollections &&
-        query->trx()->isInaccessibleCollection(collection->getPlanId())) {
+        query->trx()->isInaccessibleCollectionId(collection->getPlanId())) {
       aql::QueryOptions opts = query->queryOptions();
       TRI_ASSERT(opts.transactionOptions.skipInaccessibleCollections);
-      opts.inaccessibleShardIds.insert(shardId);
+      opts.inaccessibleCollections.insert(shardId);
+      opts.inaccessibleCollections.insert(collection->getCollection()->cid_as_string());
       opts.toVelocyPack(result, true);
     } else {
       // the toVelocyPack will open & close the "options" object
@@ -888,7 +890,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     // is not cloneable any more.
     en->prepareOptions();
     VPackBuilder optsBuilder;
-    auto opts = en->options();
+    graph::BaseOptions* opts = en->options();
     opts->buildEngineInfo(optsBuilder);
     // All info in opts is identical for each traverser engine.
     // Only the shards are different.
@@ -905,6 +907,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     
 #ifdef USE_ENTERPRISE
     transaction::Methods* trx = query->trx();
+    transaction::Options& trxOps = query->trx()->state()->options();
 #endif
     
     auto findServerLists = [&] (ShardID const& shard) -> Serv2ColMap::iterator {
@@ -950,8 +953,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
             auto pair = findServerLists(shard);
             pair->second.vertexCollections[collection.second->getName()].emplace_back(shard);
 #ifdef USE_ENTERPRISE
-            if (trx->isInaccessibleCollection(collection.second->getPlanId())) {
+            if (trx->isInaccessibleCollectionId(collection.second->getPlanId())) {
+              TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
+              TRI_ASSERT(trxOps.skipInaccessibleCollections);
               pair->second.inaccessibleShards.insert(shard);
+              pair->second.inaccessibleShards.insert(collection.second->getCollection()->cid_as_string());
             }
 #endif
           }
@@ -976,8 +982,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           auto pair = findServerLists(shard);
           pair->second.vertexCollections[it->getName()].emplace_back(shard);
 #ifdef USE_ENTERPRISE
-          if (trx->isInaccessibleCollection(it->getPlanId())) {
+          if (trx->isInaccessibleCollectionId(it->getPlanId())) {
+            TRI_ASSERT(trxOps.skipInaccessibleCollections);
             pair->second.inaccessibleShards.insert(shard);
+            pair->second.inaccessibleShards.insert(it->getCollection()->cid_as_string());
           }
 #endif
         }

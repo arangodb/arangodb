@@ -197,10 +197,10 @@ class Methods {
   std::string name(TRI_voc_cid_t cid) const;
 
   /// @brief order a ditch for a collection
-  void pinData(TRI_voc_cid_t);
+  ENTERPRISE_VIRT void pinData(TRI_voc_cid_t);
 
   /// @brief whether or not a ditch has been created for the collection
-  bool isPinned(TRI_voc_cid_t cid) const;
+  ENTERPRISE_VIRT bool isPinned(TRI_voc_cid_t cid) const;
 
   /// @brief extract the _id attribute from a slice, and convert it into a
   /// string
@@ -222,9 +222,9 @@ class Methods {
   virtual TRI_voc_cid_t addCollectionAtRuntime(std::string const& collectionName);
 
   /// @brief return the type of a collection
-  bool isEdgeCollection(std::string const& collectionName);
-  bool isDocumentCollection(std::string const& collectionName);
-  TRI_col_type_e getCollectionType(std::string const& collectionName);
+  bool isEdgeCollection(std::string const& collectionName) const;
+  bool isDocumentCollection(std::string const& collectionName) const;
+  TRI_col_type_e getCollectionType(std::string const& collectionName) const;
 
   /// @brief return the name of a collection
   std::string collectionName(TRI_voc_cid_t cid);
@@ -253,13 +253,13 @@ class Methods {
   ///        If there was an error the code is returned
   ///        Does not care for revision handling!
   ///        Must only be called on a local server, not in cluster case!
-  Result documentFastPathLocal(std::string const& collectionName,
+  ENTERPRISE_VIRT Result documentFastPathLocal(std::string const& collectionName,
                                StringRef const& key,
                                ManagedDocumentResult& result,
                                bool shouldLock);
 
   /// @brief return one or multiple documents from a collection
-  OperationResult document(std::string const& collectionName,
+  ENTERPRISE_VIRT OperationResult document(std::string const& collectionName,
                            VPackSlice const value,
                            OperationOptions& options);
 
@@ -306,7 +306,7 @@ class Methods {
   /// @brief Gets the best fitting index for an AQL condition.
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
-  std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
+  ENTERPRISE_VIRT std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
       std::string const&, arangodb::aql::Ast*, arangodb::aql::AstNode*,
       arangodb::aql::Variable const*, arangodb::aql::SortCondition const*,
       size_t, std::vector<IndexHandle>&, bool&);
@@ -357,6 +357,7 @@ class Methods {
   /// @brief factory for OperationCursor objects
   /// note: the caller must have read-locked the underlying collection when
   /// calling this method
+  ENTERPRISE_VIRT
   std::unique_ptr<OperationCursor> indexScan(std::string const& collectionName,
                                              CursorType cursorType,
                                              ManagedDocumentResult*,
@@ -364,17 +365,18 @@ class Methods {
                                              uint64_t batchSize, bool reverse);
 
   /// @brief test if a collection is already locked
-  bool isLocked(arangodb::LogicalCollection*, AccessMode::Type) const;
+  ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*,
+                                AccessMode::Type) const;
 
   arangodb::LogicalCollection* documentCollection(TRI_voc_cid_t) const;
 
 /// @brief get the index by it's identifier. Will either throw or
 ///        return a valid index. nullptr is impossible.
-  IndexHandle getIndexByIdentifier(
+  ENTERPRISE_VIRT IndexHandle getIndexByIdentifier(
     std::string const& collectionName, std::string const& indexHandle);
 
 /// @brief get all indexes for a collection name
-  std::vector<std::shared_ptr<arangodb::Index>> indexesForCollection(
+  ENTERPRISE_VIRT std::vector<std::shared_ptr<arangodb::Index>> indexesForCollection(
       std::string const&);
 
   /// @brief Lock all collections. Only works for selected sub-classes
@@ -387,7 +389,8 @@ class Methods {
   CollectionNameResolver const* resolver() const;
   
 #ifdef USE_ENTERPRISE
-  virtual bool isInaccessibleCollection(TRI_voc_cid_t cid) { return false; }
+  virtual bool isInaccessibleCollectionId(TRI_voc_cid_t cid) { return false; }
+  virtual bool isInaccessibleCollection(std::string const& cid) { return false; }
 #endif
 
  private:
@@ -464,7 +467,8 @@ class Methods {
 
  protected:
   /// @brief return the transaction collection for a document collection
-  TransactionCollection* trxCollection(TRI_voc_cid_t cid) const;
+  ENTERPRISE_VIRT TransactionCollection* trxCollection(TRI_voc_cid_t cid,
+                               AccessMode::Type type = AccessMode::Type::READ) const;
 
   /// @brief return the collection
   arangodb::LogicalCollection* documentCollection(
@@ -483,10 +487,10 @@ class Methods {
   Result addCollection(std::string const&, AccessMode::Type);
 
   /// @brief read- or write-lock a collection
-  Result lock(TransactionCollection*, AccessMode::Type);
+  ENTERPRISE_VIRT Result lock(TRI_voc_cid_t, AccessMode::Type);
 
   /// @brief read- or write-unlock a collection
-  Result unlock(TransactionCollection*, AccessMode::Type);
+  ENTERPRISE_VIRT Result unlock(TRI_voc_cid_t, AccessMode::Type);
 
  private:
 

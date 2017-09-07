@@ -24,8 +24,9 @@
 #include "PathEnumerator.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/EdgeCursor.h"
+#include "Graph/Traverser.h"
 #include "Graph/TraverserCache.h"
-#include "VocBase/Traverser.h"
+#include "Graph/TraverserOptions.h"
 
 using PathEnumerator = arangodb::traverser::PathEnumerator;
 using DepthFirstEnumerator = arangodb::traverser::DepthFirstEnumerator;
@@ -81,13 +82,13 @@ bool DepthFirstEnumerator::next() {
 
     bool foundPath = false;
 
-    auto callback = [&](std::unique_ptr<graph::EdgeDocumentToken>&& eid, VPackSlice const& edge,
+    auto callback = [&](graph::EdgeDocumentToken&& eid, VPackSlice const& edge,
                         size_t cursorId) {
 
       if (_opts->hasEdgeFilter(_enumeratedPath.edges.size(), cursorId)) {
         VPackSlice e = edge;
         if (edge.isString()) {
-          e = _opts->cache()->lookupToken(eid.get());
+          e = _opts->cache()->lookupToken(eid);
         }
         if (!_traverser->edgeMatchesConditions(
               e, StringRef(_enumeratedPath.vertices.back()),
@@ -98,9 +99,14 @@ bool DepthFirstEnumerator::next() {
       }
 
       if (_opts->uniqueEdges == TraverserOptions::UniquenessLevel::PATH) {
+        ServerState::RoleEnum role = ServerState::instance()->getRole();
         for (auto const& it : _enumeratedPath.edges) {
-          if (it->equals(eid.get())) {
-            // We already have this edge on the path.
+          // We might already have this edge on the path.
+          if (ServerState::isCoordinator(role)) {
+            if (it.equalsCoordinator(eid)) {
+              return;
+            }
+          } else if (it.equalsLocal(eid)) {
             return;
           }
         }
@@ -131,8 +137,6 @@ bool DepthFirstEnumerator::next() {
           }
         }
 
-        
-        TRI_ASSERT(eid != nullptr);
         _enumeratedPath.edges.push_back(std::move(eid));
         foundPath = true;
         return;
@@ -181,8 +185,9 @@ arangodb::aql::AqlValue DepthFirstEnumerator::lastEdgeToAqlValue() {
     return arangodb::aql::AqlValue(
         arangodb::basics::VelocyPackHelper::NullValue());
   }
-  TRI_ASSERT(_enumeratedPath.edges.back() != nullptr);
-  return _opts->cache()->fetchAqlResult(_enumeratedPath.edges.back().get());
+  // FIXME: add some asserts back into this
+  //TRI_ASSERT(_enumeratedPath.edges.back() != nullptr);
+  return _opts->cache()->fetchEdgeAqlResult(_enumeratedPath.edges.back());
 }
 
 arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(
@@ -192,8 +197,8 @@ arangodb::aql::AqlValue DepthFirstEnumerator::pathToAqlValue(
   result.add(VPackValue("edges"));
   result.openArray();
   for (auto const& it : _enumeratedPath.edges) {
-    TRI_ASSERT(it != nullptr);
-    _opts->cache()->insertIntoResult(it.get(), result);
+    //TRI_ASSERT(it != nullptr);
+    _opts->cache()->insertEdgeIntoResult(it, result);
   }
   result.close();
   result.add(VPackValue("vertices"));

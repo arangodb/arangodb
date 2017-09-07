@@ -28,7 +28,7 @@
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/TraversalNode.h"
-#include "VocBase/TraverserOptions.h"
+#include "Graph/TraverserOptions.h"
 
 using namespace arangodb::aql;
 using namespace arangodb::basics;

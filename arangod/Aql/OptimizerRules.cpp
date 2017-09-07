@@ -49,9 +49,9 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Cluster/ClusterInfo.h"
+#include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
 #include "Transaction/Methods.h"
-#include "VocBase/TraverserOptions.h"
 
 #include <boost/optional.hpp>
 #include <tuple>

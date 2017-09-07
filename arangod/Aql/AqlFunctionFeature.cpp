@@ -30,10 +30,6 @@ using namespace arangodb;
 using namespace arangodb::application_features;
 using namespace arangodb::aql;
 
-/// @brief determines if code is executed in cluster or not
-static ExecutionCondition const NotInCluster =
-    [] { return !arangodb::ServerState::instance()->isRunningInCluster(); };
-
 /// @brief determines if code is executed on coordinator or not
 static ExecutionCondition const NotInCoordinator = [] {
   return !arangodb::ServerState::instance()->isRunningInCluster() ||
@@ -502,7 +498,7 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"CURRENT_DATABASE", "", false, false,
        false, true, &Functions::CurrentDatabase});
   add({"COLLECTION_COUNT", ".h", false, true,
-       false, true, &Functions::CollectionCount, NotInCluster});
+       false, true, &Functions::CollectionCount});
 }
 
 void AqlFunctionFeature::addStorageEngineFunctions() {

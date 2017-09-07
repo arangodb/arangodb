@@ -22,14 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SingleServerTraverser.h"
-#include "Basics/StringRef.h"
-
 #include "Aql/AqlValue.h"
+#include "Basics/StringRef.h"
 #include "Graph/BreadthFirstEnumerator.h"
 #include "Graph/NeighborsEnumerator.h"
 #include "Graph/TraverserCache.h"
+#include "Graph/TraverserOptions.h"
 #include "Transaction/Methods.h"
-#include "VocBase/ManagedDocumentResult.h"
 
 using namespace arangodb;
 using namespace arangodb::traverser;
@@ -42,13 +41,13 @@ SingleServerTraverser::SingleServerTraverser(TraverserOptions* opts,
 
 SingleServerTraverser::~SingleServerTraverser() {}
 
-aql::AqlValue SingleServerTraverser::fetchVertexData(StringRef vid) {
-  return _opts->cache()->fetchAqlResult(vid);
-}
-
 void SingleServerTraverser::addVertexToVelocyPack(StringRef vid,
                                                   VPackBuilder& result) {
-  _opts->cache()->insertIntoResult(vid, result);
+  _opts->cache()->insertVertexIntoResult(vid, result);
+}
+
+aql::AqlValue SingleServerTraverser::fetchVertexData(StringRef vid) {
+  return _opts->cache()->fetchVertexAqlResult(vid);
 }
 
 void SingleServerTraverser::setStartVertex(std::string const& vid) {

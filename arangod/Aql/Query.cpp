@@ -438,7 +438,7 @@ ExecutionPlan* Query::prepare() {
   std::unordered_set<std::string> inaccessibleCollections;
 #ifdef USE_ENTERPRISE
   if (_queryOptions.transactionOptions.skipInaccessibleCollections) {
-    inaccessibleCollections = _queryOptions.inaccessibleShardIds;
+    inaccessibleCollections = _queryOptions.inaccessibleCollections;
   }
 #endif
   
