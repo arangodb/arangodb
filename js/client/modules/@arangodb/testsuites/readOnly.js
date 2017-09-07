@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print */
+/* global arango, db, print*/
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -182,7 +182,7 @@ const requests = [
     users.grantDatabase('test2', 'testdb2', 'ro');
     users.grantCollection('test2', 'testdb2', 'testcol2', 'rw');
     db._useDatabase('_system');
-  }
+  };
 
   try {
     setup();
