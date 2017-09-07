@@ -394,8 +394,6 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
       if (deleted) {
         // found a dead document
-        context->_dfi.numberDead++;
-        context->_dfi.sizeDead += MMFilesDatafileHelper::AlignedMarkerSize<int64_t>(marker);
         return true;
       }
 
@@ -487,9 +485,13 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   }
 
   // now compact all datafiles
+  physical->_datafileStatistics.compactionRun();
   for (size_t i = 0; i < n; ++i) {
     auto compaction = toCompact[i];
     MMFilesDatafile* df = compaction._datafile;
+
+    MMFilesDatafileStatisticsContainer dfi = static_cast<MMFilesCollection*>(collection->getPhysical())->_datafileStatistics.get(df->fid());
+    physical->_datafileStatistics.compactionRead(dfi.sizeAlive +  dfi.sizeDead);
 
     LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "compacting datafile '" << df->getName() << "' into '" << compactor->getName() << "', number: " << i << ", keep deletions: " << compaction._keepDeletions;
 
@@ -511,6 +513,9 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
   }  // next file
 
+  TRI_ASSERT(context->_dfi.numberDead == 0);
+  TRI_ASSERT(context->_dfi.sizeDead == 0);
+  physical->_datafileStatistics.compactionWritten(context->_dfi.sizeAlive);
   physical->_datafileStatistics.replace(compactor->fid(), context->_dfi);
 
   trx.commit();

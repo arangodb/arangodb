@@ -33,6 +33,11 @@ namespace arangodb {
 
 /// @brief datafile statistics manager for a single collection
 class MMFilesDatafileStatistics {
+ private:
+  int64_t _compactionCount;
+  int64_t _compactionBytesRead;
+  int64_t _compactionBytesWritten;
+
  public:
   MMFilesDatafileStatistics(MMFilesDatafileStatistics const&) = delete;
   MMFilesDatafileStatistics& operator=(MMFilesDatafileStatistics const&) = delete;
@@ -40,6 +45,15 @@ class MMFilesDatafileStatistics {
   ~MMFilesDatafileStatistics();
 
  public:
+
+  void compactionRun() { _compactionCount ++; }
+  void compactionRead(uint64_t read) { _compactionBytesRead += read; }
+  void compactionWritten(uint64_t written) { _compactionBytesWritten += written; }
+
+  uint64_t getCompactionRuns()    const { return _compactionCount; }
+  uint64_t getCompactionRead()    const { return _compactionBytesRead; }
+  uint64_t getCompactionWritten() const { return _compactionBytesWritten; }
+
   /// @brief create (empty) statistics for a datafile
   void create(TRI_voc_fid_t);
 

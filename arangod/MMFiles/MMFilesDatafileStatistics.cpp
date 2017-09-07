@@ -31,7 +31,12 @@
 using namespace arangodb;
 
 /// @brief create statistics manager for a collection
-MMFilesDatafileStatistics::MMFilesDatafileStatistics() : _lock(), _stats() {}
+MMFilesDatafileStatistics::MMFilesDatafileStatistics() :
+  _compactionCount(0),
+  _compactionBytesRead(0),
+  _compactionBytesWritten(0),
+  _lock(),
+  _stats(){}
 
 /// @brief destroy statistics manager
 MMFilesDatafileStatistics::~MMFilesDatafileStatistics() {
