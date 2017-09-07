@@ -226,7 +226,7 @@ void handleOnStatusDBServer(
     }
   } else if ( // New state: FAILED persisted: GOOD (-> BAD)
     persisted.status == Supervision::HEALTH_STATUS_GOOD &&
-    transisted.status == Supervision::HEALTH_STATUS_FAILED) {
+    transisted.status != Supervision::HEALTH_STATUS_GOOD) {
     transisted.status = Supervision::HEALTH_STATUS_BAD;
   } else if ( // New state: FAILED persisted: BAD (-> Job)
     persisted.status == Supervision::HEALTH_STATUS_BAD &&
@@ -346,7 +346,6 @@ std::vector<check_t> Supervision::check(std::string const& type) {
     // Sync.status is copied to Health.syncStatus
     std::string syncTime = _transient.has(syncPrefix + serverID) ?
       _transient(syncPrefix + serverID + "/time").toJson() :
-      transist.syncTime =   // Begin of epoch
       timepointToString(std::chrono::system_clock::time_point());
     std::string syncStatus = _transient.has(syncPrefix + serverID) ?
       _transient(syncPrefix + serverID + "/status").toJson() : "UNKNOWN";
@@ -358,7 +357,6 @@ std::vector<check_t> Supervision::check(std::string const& type) {
     transist.lastAcked = timepointToString(lastAckedTime);
     transist.syncTime = syncTime;
     transist.syncStatus = syncStatus;
-    std::string oldTrasientStatus = transist.status;
     
     // Calculate elapsed since lastAcked
     auto elapsed = std::chrono::duration<double>(
@@ -380,7 +378,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
     handleOnStatus(_agent, _snapshot, persist, transist, serverID, _jobId,
                    envelope);
     
-   persist = transist; // Now copy Status, SyncStatus from transient to persited
+    persist = transist; // Now copy Status, SyncStatus from transient to persited
     
     // Transient report
     std::shared_ptr<Builder> tReport = std::make_shared<Builder>();
