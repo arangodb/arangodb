@@ -400,6 +400,10 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   if (rip == nullptr) {
     return;
   }
+
+  if (rip->_options._curlRcFn) {
+    (*rip->_options._curlRcFn)(rc);
+  }
   std::string prefix("Communicator(" + std::to_string(rip->_ticketId) +
                      ") // ");
   LOG_TOPIC(TRACE, Logger::COMMUNICATION)

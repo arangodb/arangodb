@@ -61,3 +61,30 @@ TEST_CASE("requests are properly aborted", "[communicator]" ) {
   }
   REQUIRE(callbacksCalled);
 }
+
+TEST_CASE("requests will call the progress callback", "[communicator]") {
+  Communicator communicator;
+
+  communicator::Callbacks callbacks([](std::unique_ptr<GeneralResponse> response) {
+  }, [](int errorCode, std::unique_ptr<GeneralResponse> response) {
+  });
+
+  auto request = std::unique_ptr<HttpRequest>(HttpRequest::createHttpRequest(rest::ContentType::TEXT, "", 0, {}));
+  request->setRequestType(RequestType::GET);
+
+  // CURL_LAST /* never use! */ HA! FOOL!
+  CURLcode curlRc = CURL_LAST;
+  communicator::Options opt;
+  opt._curlRcFn = std::make_shared<std::function<void(CURLcode)>>([&curlRc](CURLcode rc) {
+    curlRc = rc;
+  });
+  
+  auto destination = Destination("http://www.example.com");
+  communicator.addRequest(destination, std::move(request), callbacks, opt);
+  communicator.work_once();
+  communicator.abortRequests();
+  while (communicator.work_once() > 0) {
+    usleep(1);
+  }
+  REQUIRE(curlRc == CURLE_ABORTED_BY_CALLBACK); // curlRcFn was called
+}
