@@ -55,6 +55,7 @@
 #include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
 #include "tests/Basics/icu-helper.h"
@@ -269,7 +270,7 @@ SECTION("SelectAll") {
 
       arangodb::transaction::UserTransaction trx(
         arangodb::transaction::StandaloneContext::Create(&vocbase),
-        EMPTY, EMPTY, EMPTY, 
+        EMPTY, EMPTY, EMPTY,
         arangodb::transaction::Options()
       );
       CHECK((trx.begin().ok()));
@@ -319,7 +320,7 @@ SECTION("SelectAll") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -341,7 +342,7 @@ SECTION("SelectAll") {
     auto expectedDoc = expectedDocs.begin();
     for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.end());
@@ -363,7 +364,7 @@ SECTION("SelectAll") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -394,7 +395,7 @@ SECTION("SelectAll") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -425,7 +426,7 @@ SECTION("SelectAll") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -456,7 +457,7 @@ SECTION("SelectAll") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -487,7 +488,7 @@ SECTION("SelectAll") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -509,7 +510,7 @@ SECTION("SelectAll") {
     auto expectedDoc = expectedDocs.begin();
     for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.end());
@@ -531,7 +532,7 @@ SECTION("SelectAll") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : arangodb::velocypack::ArrayIterator(result)) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -763,7 +764,7 @@ SECTION("StringTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -797,7 +798,7 @@ SECTION("StringTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -833,7 +834,7 @@ SECTION("StringTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -866,7 +867,7 @@ SECTION("StringTerm") {
       CHECK(actualDocs.valid());
       auto actualDoc = actualDocs.value();
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       actualDocs.next();
     }
     CHECK(!actualDocs.valid());
@@ -899,7 +900,7 @@ SECTION("StringTerm") {
       CHECK(actualDocs.valid());
       auto actualDoc = actualDocs.value();
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       actualDocs.next();
     }
     CHECK(!actualDocs.valid());
@@ -924,7 +925,7 @@ SECTION("StringTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -962,7 +963,7 @@ SECTION("StringTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -996,7 +997,7 @@ SECTION("StringTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -1027,7 +1028,7 @@ SECTION("StringTerm") {
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
 
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -1061,7 +1062,7 @@ SECTION("StringTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -1117,7 +1118,7 @@ SECTION("StringTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -1142,7 +1143,7 @@ SECTION("StringTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -1177,7 +1178,7 @@ SECTION("StringTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -1279,7 +1280,7 @@ SECTION("StringTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -1333,7 +1334,7 @@ SECTION("StringTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -1435,7 +1436,7 @@ SECTION("StringTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -1457,7 +1458,7 @@ SECTION("StringTerm") {
 
     auto const actualDoc = resultIt.value();
     auto const resolved = actualDoc.resolveExternals();
-    CHECK(arangodb::velocypack::Slice(insertedDocs[27].vpack()) == resolved);
+    CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(insertedDocs[27].vpack()), resolved, true));
 
     resultIt.next();
     CHECK(!resultIt.valid());
@@ -1482,7 +1483,7 @@ SECTION("StringTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -1584,7 +1585,7 @@ SECTION("StringTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -1634,7 +1635,7 @@ SECTION("StringTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -1736,7 +1737,7 @@ SECTION("StringTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -1758,7 +1759,7 @@ SECTION("StringTerm") {
 
     auto const actualDoc = resultIt.value();
     auto const resolved = actualDoc.resolveExternals();
-    CHECK(arangodb::velocypack::Slice(insertedDocs[26].vpack()) == resolved);
+    CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(insertedDocs[26].vpack()), resolved, true));
 
     resultIt.next();
     CHECK(!resultIt.valid());
@@ -1783,7 +1784,7 @@ SECTION("StringTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -1885,7 +1886,7 @@ SECTION("StringTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -1953,7 +1954,7 @@ SECTION("StringTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -2055,7 +2056,7 @@ SECTION("StringTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -2123,7 +2124,7 @@ SECTION("StringTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -2225,7 +2226,7 @@ SECTION("StringTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -2293,7 +2294,7 @@ SECTION("StringTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -2395,7 +2396,7 @@ SECTION("StringTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -2433,7 +2434,7 @@ SECTION("StringTerm") {
     CHECK(resultIt.valid());
 
     auto const resolved = resultIt.value().resolveExternals();
-    CHECK(arangodb::velocypack::Slice(insertedDocs[7].vpack()) == resolved);
+    CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(insertedDocs[7].vpack()), resolved, true));
 
     resultIt.next();
     CHECK(!resultIt.valid());
@@ -2469,7 +2470,7 @@ SECTION("StringTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -2511,7 +2512,7 @@ SECTION("StringTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -2549,7 +2550,7 @@ SECTION("StringTerm") {
     CHECK(resultIt.valid());
 
     auto const resolved = resultIt.value().resolveExternals();
-    CHECK(arangodb::velocypack::Slice(insertedDocs[7].vpack()) == resolved);
+    CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(insertedDocs[7].vpack()), resolved, true));
 
     resultIt.next();
     CHECK(!resultIt.valid());
@@ -2585,7 +2586,7 @@ SECTION("StringTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -2796,7 +2797,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -2827,7 +2828,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -2858,7 +2859,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -2889,7 +2890,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -2927,7 +2928,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -2965,7 +2966,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -2999,7 +3000,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -3030,7 +3031,7 @@ SECTION("NumericTerm") {
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
 
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -3064,7 +3065,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -3103,7 +3104,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -3138,7 +3139,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -3163,7 +3164,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -3198,7 +3199,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -3304,7 +3305,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -3354,7 +3355,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -3389,7 +3390,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -3424,7 +3425,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -3530,7 +3531,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -3552,7 +3553,7 @@ SECTION("NumericTerm") {
     CHECK(resultIt.valid());
 
     auto const resolved = resultIt.value().resolveExternals();
-    CHECK(arangodb::velocypack::Slice(insertedDocs[0].vpack()) == resolved);
+    CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(insertedDocs[0].vpack()), resolved, true));
 
     resultIt.next();
     CHECK(!resultIt.valid());
@@ -3586,7 +3587,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -3621,7 +3622,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -3656,7 +3657,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -3762,7 +3763,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -3812,7 +3813,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -3847,7 +3848,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -3882,7 +3883,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -3988,7 +3989,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -4010,7 +4011,7 @@ SECTION("NumericTerm") {
     CHECK(resultIt.valid());
 
     auto const resolved = resultIt.value().resolveExternals();
-    CHECK(arangodb::velocypack::Slice(insertedDocs[31].vpack()) == resolved);
+    CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(insertedDocs[31].vpack()), resolved, true));
 
     resultIt.next();
     CHECK(!resultIt.valid());
@@ -4041,7 +4042,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -4076,7 +4077,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -4111,7 +4112,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -4217,7 +4218,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -4255,7 +4256,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -4321,7 +4322,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -4360,7 +4361,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -4399,7 +4400,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -4505,7 +4506,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -4543,7 +4544,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -4609,7 +4610,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -4648,7 +4649,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -4687,7 +4688,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -4793,7 +4794,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -4831,7 +4832,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -4897,7 +4898,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -4936,7 +4937,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -4975,7 +4976,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -5081,7 +5082,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -5119,7 +5120,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -5157,15 +5158,14 @@ SECTION("NumericTerm") {
     CHECK(1 == resultIt.size());
 
     auto const resolved = resultIt.value().resolveExternals();
-    CHECK(arangodb::velocypack::Slice(insertedDocs[7].vpack()) == resolved);
+    CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(insertedDocs[7].vpack()), resolved, true));
 
     resultIt.next();
     CHECK(!resultIt.valid());
   }
 
   // d.seq > 7 AND d.seq <= 7.0 , unordered
-  // there will be EMPTY_NODE in execution plan,
-  // filter condition will be replaced with the strange 'true' value (why not 'false')
+  // behavior same as above
   {
     auto queryResult = executeQuery(
       vocbase,
@@ -5177,7 +5177,12 @@ SECTION("NumericTerm") {
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    CHECK(0 == resultIt.size());
+    CHECK(1 == resultIt.size());
+
+    auto const resolved = resultIt.value().resolveExternals();
+    CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(insertedDocs[7].vpack()), resolved, true));
+
+    resultIt.next();
     CHECK(!resultIt.valid());
   }
 
@@ -5209,7 +5214,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -5248,7 +5253,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -5287,7 +5292,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -5329,7 +5334,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -5367,7 +5372,7 @@ SECTION("NumericTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -5404,7 +5409,7 @@ SECTION("NumericTerm") {
     CHECK(1 == resultIt.size());
 
     auto const resolved = resultIt.value().resolveExternals();
-    CHECK(arangodb::velocypack::Slice(insertedDocs[7].vpack()) == resolved);
+    CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(insertedDocs[7].vpack()), resolved, true));
 
     resultIt.next();
     CHECK(!resultIt.valid());
@@ -5438,7 +5443,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -5477,7 +5482,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -5516,7 +5521,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -5592,7 +5597,7 @@ SECTION("BooleanTerm") {
 
     for (auto& entry: docs) {
       auto res = trx.insert(collection->name(), entry->slice(), options);
-      CHECK((res.successful()));
+      REQUIRE((res.successful()));
       insertedDocs.emplace_back(res.slice().get("new"));
     }
 
@@ -5729,12 +5734,14 @@ SECTION("BooleanTerm") {
   {
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
+      REQUIRE(docSlice.isObject());
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean() || !valueSlice.getBoolean()) {
         continue;
       }
       auto const keySlice = docSlice.get("seq");
+      REQUIRE(keySlice.isNumber());
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
@@ -5757,7 +5764,7 @@ SECTION("BooleanTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -5767,7 +5774,7 @@ SECTION("BooleanTerm") {
   {
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean() || valueSlice.getBoolean()) {
         continue;
@@ -5795,7 +5802,7 @@ SECTION("BooleanTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -5805,7 +5812,7 @@ SECTION("BooleanTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean() || valueSlice.getBoolean()) {
         continue;
@@ -5829,7 +5836,7 @@ SECTION("BooleanTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -5843,7 +5850,7 @@ SECTION("BooleanTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const keySlice = docSlice.get("seq");
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
@@ -5867,7 +5874,7 @@ SECTION("BooleanTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -5877,7 +5884,7 @@ SECTION("BooleanTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const keySlice = docSlice.get("seq");
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
@@ -5901,7 +5908,7 @@ SECTION("BooleanTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -5911,7 +5918,7 @@ SECTION("BooleanTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const keySlice = docSlice.get("seq");
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
@@ -5935,7 +5942,7 @@ SECTION("BooleanTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -5945,7 +5952,7 @@ SECTION("BooleanTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const keySlice = docSlice.get("seq");
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
@@ -5969,7 +5976,7 @@ SECTION("BooleanTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -5979,7 +5986,7 @@ SECTION("BooleanTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const keySlice = docSlice.get("seq");
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
@@ -6003,7 +6010,7 @@ SECTION("BooleanTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -6013,7 +6020,7 @@ SECTION("BooleanTerm") {
   {
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (valueSlice.isBoolean() && valueSlice.getBoolean()) {
         continue;
@@ -6041,7 +6048,7 @@ SECTION("BooleanTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -6051,7 +6058,7 @@ SECTION("BooleanTerm") {
   {
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (valueSlice.isBoolean() && !valueSlice.getBoolean()) {
         continue;
@@ -6079,7 +6086,7 @@ SECTION("BooleanTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -6089,7 +6096,7 @@ SECTION("BooleanTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (valueSlice.isBoolean() && !valueSlice.getBoolean()) {
         continue;
@@ -6113,7 +6120,7 @@ SECTION("BooleanTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -6227,7 +6234,7 @@ SECTION("BooleanTerm") {
   {
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean() || valueSlice.getBoolean()) {
         continue;
@@ -6255,7 +6262,7 @@ SECTION("BooleanTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -6285,7 +6292,7 @@ SECTION("BooleanTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean() || valueSlice.getBoolean()) {
         continue;
@@ -6309,7 +6316,7 @@ SECTION("BooleanTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -6423,7 +6430,7 @@ SECTION("BooleanTerm") {
   {
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean()) {
         continue;
@@ -6451,7 +6458,7 @@ SECTION("BooleanTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -6461,7 +6468,7 @@ SECTION("BooleanTerm") {
   {
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean() || valueSlice.getBoolean()) {
         continue;
@@ -6489,7 +6496,7 @@ SECTION("BooleanTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -6499,7 +6506,7 @@ SECTION("BooleanTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean()) {
         continue;
@@ -6523,7 +6530,7 @@ SECTION("BooleanTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -6657,7 +6664,7 @@ SECTION("BooleanTerm") {
   {
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean() || !valueSlice.getBoolean()) {
         continue;
@@ -6685,7 +6692,7 @@ SECTION("BooleanTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -6695,7 +6702,7 @@ SECTION("BooleanTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean() || !valueSlice.getBoolean()) {
         continue;
@@ -6719,7 +6726,7 @@ SECTION("BooleanTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -6833,7 +6840,7 @@ SECTION("BooleanTerm") {
   {
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean() || !valueSlice.getBoolean()) {
         continue;
@@ -6861,7 +6868,7 @@ SECTION("BooleanTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -6871,7 +6878,7 @@ SECTION("BooleanTerm") {
   {
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean()) {
         continue;
@@ -6899,7 +6906,7 @@ SECTION("BooleanTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -6909,7 +6916,7 @@ SECTION("BooleanTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean()) {
         continue;
@@ -6933,7 +6940,7 @@ SECTION("BooleanTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -7171,7 +7178,7 @@ SECTION("BooleanTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean() || valueSlice.getBoolean()) {
         continue;
@@ -7195,7 +7202,7 @@ SECTION("BooleanTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -7329,7 +7336,7 @@ SECTION("BooleanTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean() || !valueSlice.getBoolean()) {
         continue;
@@ -7353,7 +7360,7 @@ SECTION("BooleanTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -7447,7 +7454,7 @@ SECTION("BooleanTerm") {
   {
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean() || valueSlice.getBoolean()) {
         continue;
@@ -7475,7 +7482,7 @@ SECTION("BooleanTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -7485,7 +7492,7 @@ SECTION("BooleanTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean() || !valueSlice.getBoolean()) {
         continue;
@@ -7509,7 +7516,7 @@ SECTION("BooleanTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -7519,7 +7526,7 @@ SECTION("BooleanTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean()) {
         continue;
@@ -7543,7 +7550,7 @@ SECTION("BooleanTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -7577,7 +7584,7 @@ SECTION("BooleanTerm") {
   {
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean() || valueSlice.getBoolean()) {
         continue;
@@ -7605,7 +7612,7 @@ SECTION("BooleanTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -7615,7 +7622,7 @@ SECTION("BooleanTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean() || !valueSlice.getBoolean()) {
         continue;
@@ -7639,7 +7646,7 @@ SECTION("BooleanTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -7649,7 +7656,7 @@ SECTION("BooleanTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isBoolean()) {
         continue;
@@ -7673,7 +7680,7 @@ SECTION("BooleanTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -7826,7 +7833,7 @@ SECTION("NullTerm") {
   {
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isNull()) {
         continue;
@@ -7854,7 +7861,7 @@ SECTION("NullTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -7864,7 +7871,7 @@ SECTION("NullTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (!valueSlice.isNull()) {
         continue;
@@ -7888,7 +7895,7 @@ SECTION("NullTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -7902,7 +7909,7 @@ SECTION("NullTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const keySlice = docSlice.get("seq");
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
@@ -7926,7 +7933,7 @@ SECTION("NullTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -7936,7 +7943,7 @@ SECTION("NullTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const keySlice = docSlice.get("seq");
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
@@ -7960,7 +7967,7 @@ SECTION("NullTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -7970,7 +7977,7 @@ SECTION("NullTerm") {
   {
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (valueSlice.isNull()) {
         continue;
@@ -7998,7 +8005,7 @@ SECTION("NullTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -8008,7 +8015,7 @@ SECTION("NullTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (valueSlice.isNull()) {
         continue;
@@ -8032,7 +8039,7 @@ SECTION("NullTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -8190,7 +8197,7 @@ SECTION("NullTerm") {
   {
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (valueSlice.isNone() || !valueSlice.isNull()) {
         continue;
@@ -8218,7 +8225,7 @@ SECTION("NullTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -8228,7 +8235,7 @@ SECTION("NullTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (valueSlice.isNone() || !valueSlice.isNull()) {
         continue;
@@ -8252,7 +8259,7 @@ SECTION("NullTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -8410,7 +8417,7 @@ SECTION("NullTerm") {
   {
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (valueSlice.isNone() || !valueSlice.isNull()) {
         continue;
@@ -8438,7 +8445,7 @@ SECTION("NullTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -8448,7 +8455,7 @@ SECTION("NullTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (valueSlice.isNone() || !valueSlice.isNull()) {
         continue;
@@ -8472,7 +8479,7 @@ SECTION("NullTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -8798,7 +8805,7 @@ SECTION("NullTerm") {
   {
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (valueSlice.isNone() || !valueSlice.isNull()) {
         continue;
@@ -8826,7 +8833,7 @@ SECTION("NullTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -8836,7 +8843,7 @@ SECTION("NullTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (valueSlice.isNone() || !valueSlice.isNull()) {
         continue;
@@ -8860,7 +8867,7 @@ SECTION("NullTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -8874,7 +8881,7 @@ SECTION("NullTerm") {
   {
     std::map<size_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (valueSlice.isNone() || !valueSlice.isNull()) {
         continue;
@@ -8902,7 +8909,7 @@ SECTION("NullTerm") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -8912,7 +8919,7 @@ SECTION("NullTerm") {
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
     for (auto const& doc : insertedDocs) {
-      arangodb::velocypack::Slice docSlice = doc.slice();
+      arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
       if (valueSlice.isNone() || !valueSlice.isNull()) {
         continue;
@@ -8936,7 +8943,7 @@ SECTION("NullTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(expectedDoc->second == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(expectedDoc->second, resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -9095,7 +9102,7 @@ SECTION("StartsWith") {
 
       auto expectedDoc = expectedDocs.find(key);
       REQUIRE(expectedDoc != expectedDocs.end());
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       expectedDocs.erase(expectedDoc);
     }
     CHECK(expectedDocs.empty());
@@ -9128,7 +9135,7 @@ SECTION("StartsWith") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -9161,7 +9168,7 @@ SECTION("StartsWith") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -9291,7 +9298,7 @@ SECTION("Phrase") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -9313,7 +9320,7 @@ SECTION("Phrase") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -9335,7 +9342,7 @@ SECTION("Phrase") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -9357,7 +9364,7 @@ SECTION("Phrase") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -9602,7 +9609,7 @@ SECTION("Phrase") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -9631,7 +9638,7 @@ SECTION("Phrase") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -9660,7 +9667,7 @@ SECTION("Phrase") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -9689,7 +9696,7 @@ SECTION("Phrase") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -9711,7 +9718,7 @@ SECTION("Phrase") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -9733,7 +9740,7 @@ SECTION("Phrase") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -9847,7 +9854,7 @@ SECTION("Tokens") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -9869,7 +9876,7 @@ SECTION("Tokens") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -9892,7 +9899,7 @@ SECTION("Tokens") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -9915,7 +9922,7 @@ SECTION("Tokens") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -9950,7 +9957,7 @@ SECTION("Tokens") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -9985,7 +9992,7 @@ SECTION("Tokens") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10100,7 +10107,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10122,7 +10129,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10144,7 +10151,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10166,7 +10173,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10188,7 +10195,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10210,7 +10217,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10232,7 +10239,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10254,7 +10261,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10276,7 +10283,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10298,7 +10305,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10320,7 +10327,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10342,7 +10349,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10364,7 +10371,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10386,7 +10393,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10408,7 +10415,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10430,7 +10437,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10452,7 +10459,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10474,7 +10481,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10519,7 +10526,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10564,7 +10571,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10587,7 +10594,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10610,7 +10617,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10633,7 +10640,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10656,7 +10663,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10696,7 +10703,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10736,7 +10743,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10759,7 +10766,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10782,7 +10789,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10805,7 +10812,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10828,7 +10835,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10851,7 +10858,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10874,7 +10881,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10897,7 +10904,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10920,7 +10927,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10943,7 +10950,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -10966,7 +10973,7 @@ SECTION("Exists") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11101,7 +11108,7 @@ SECTION("In") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11124,7 +11131,7 @@ SECTION("In") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11149,7 +11156,7 @@ SECTION("In") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11174,7 +11181,7 @@ SECTION("In") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11197,7 +11204,7 @@ SECTION("In") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11220,7 +11227,7 @@ SECTION("In") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11267,7 +11274,7 @@ SECTION("In") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11290,7 +11297,7 @@ SECTION("In") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11442,7 +11449,7 @@ SECTION("Value") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11502,7 +11509,7 @@ SECTION("Value") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11562,7 +11569,7 @@ SECTION("Value") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11584,7 +11591,7 @@ SECTION("Value") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11644,7 +11651,7 @@ SECTION("Value") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11666,7 +11673,7 @@ SECTION("Value") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11726,7 +11733,7 @@ SECTION("Value") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11748,7 +11755,7 @@ SECTION("Value") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11808,7 +11815,7 @@ SECTION("Value") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11868,7 +11875,7 @@ SECTION("Value") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11890,7 +11897,7 @@ SECTION("Value") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));
@@ -11950,7 +11957,7 @@ SECTION("Value") {
     for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
       auto const resolved = itr.value().resolveExternals();
       CHECK((i < expected.size()));
-      CHECK((expected[i++] == resolved));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
     }
 
     CHECK((i == expected.size()));

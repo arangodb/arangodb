@@ -90,7 +90,10 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::t
   }
 
   boost::asio::io_service ioService;
-  arangodb::basics::LocalTaskQueue taskQueue(&ioService);
+  auto poster = [&ioService](std::function<void()> fn) -> void {
+    ioService.post(fn);
+  };
+  arangodb::basics::LocalTaskQueue taskQueue(poster);
   std::shared_ptr<arangodb::basics::LocalTaskQueue> taskQueuePtr(&taskQueue, [](arangodb::basics::LocalTaskQueue*)->void{});
 
   index->batchInsert(trx, docs, taskQueuePtr);
@@ -254,7 +257,13 @@ void PhysicalCollectionMock::prepareIndexes(arangodb::velocypack::Slice indexesS
   // NOOP
 }
 
-arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*, arangodb::velocypack::Slice const key, arangodb::ManagedDocumentResult& result, bool) {
+arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*, arangodb::StringRef const& key, arangodb::ManagedDocumentResult& result, bool) {
+  before();
+  TRI_ASSERT(false);
+  return TRI_ERROR_INTERNAL;
+}
+
+arangodb::Result PhysicalCollectionMock::read(arangodb::transaction::Methods*, arangodb::velocypack::Slice const& key, arangodb::ManagedDocumentResult& result, bool) {
   before();
   TRI_ASSERT(false);
   return TRI_ERROR_INTERNAL;

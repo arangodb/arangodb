@@ -1611,7 +1611,10 @@ int MMFilesCollection::fillIndexes(
       _logicalCollection->vocbase()->name() + "/" + _logicalCollection->name() +
       " }, indexes: " + std::to_string(n - 1));
 
-  auto queue = std::make_shared<arangodb::basics::LocalTaskQueue>();
+  auto poster = [](std::function<void()> fn) -> void {
+    SchedulerFeature::SCHEDULER->post(fn);
+  };
+  auto queue = std::make_shared<arangodb::basics::LocalTaskQueue>(poster);
 
   try {
     TRI_ASSERT(!ServerState::instance()->isCoordinator());

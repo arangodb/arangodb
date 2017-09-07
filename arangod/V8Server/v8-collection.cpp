@@ -3308,7 +3308,10 @@ static void JS_WarmupVocbaseCol(
   }
 
   auto idxs = collection->getIndexes();
-  auto queue = std::make_shared<basics::LocalTaskQueue>();
+  auto poster = [](std::function<void()> fn) -> void {
+    SchedulerFeature::SCHEDULER->post(fn);
+  };
+  auto queue = std::make_shared<basics::LocalTaskQueue>(poster);
 
   for (auto& idx : idxs) {
     idx->warmup(&trx, queue);
