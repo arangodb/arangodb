@@ -44,11 +44,8 @@ function runSetup () {
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
   db._view('UnitTestsRecoveryView').properties(meta);
 
-  for (let i = 0; i < 5; i++) {
-    c.save({ a: "foo", b: "bar", c: i });
-    c.save({ a: "foo", b: "baz", c: i });
-    c.save({ a: "bar", b: "foo", c: i });
-    c.save({ a: "baz", b: "foo", c: i });
+  for (let i = 0; i < 10000; i++) {
+    c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
   }
 
   c.save({ _key: 'crashme' }, { waitForSync: true });
@@ -83,8 +80,8 @@ function recoverySuite () {
       assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
       assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
 
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsRecoveryView FILTER doc.c >= 0 RETURN doc", null, { }).json;
-      assertEqual(result.length, 20);
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsRecoveryView FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length", null, { }).json;
+      assertEqual(result[0], 10000);
     }
 
   };

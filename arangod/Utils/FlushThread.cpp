@@ -60,7 +60,7 @@ void FlushThread::run() {
 
   while (!isStopping()) {
     try {
-      TRI_IF_FAILURE("FlushThreadSync") {
+      TRI_IF_FAILURE("FlushThreadDisableAll") {
         CONDITION_LOCKER(guard, _condition);
         guard.wait(_flushInterval);
         continue;
@@ -68,7 +68,13 @@ void FlushThread::run() {
 
       TRI_voc_tick_t toRelease = engine->currentTick();
       engine->waitForSync(toRelease);
+      TRI_IF_FAILURE("FlushThreadCrashAfterWalSync") {
+        TRI_SegfaultDebugging("crashing before flush thread callbacks");
+      }
       flushFeature->executeCallbacks();
+      TRI_IF_FAILURE("FlushThreadCrashAfterCallbacks") {
+        TRI_SegfaultDebugging("crashing before releasing tick");
+      }
       engine->releaseTick(toRelease);
 
       // sleep if nothing to do
