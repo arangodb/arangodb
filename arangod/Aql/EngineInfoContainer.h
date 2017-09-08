@@ -32,9 +32,12 @@
 namespace arangodb {
 namespace aql {
 
+class Collection;
+class ExecutionEngine;
 class ExecutionNode;
 
-class EngineInfoContainer {
+class EngineInfoContainerCoordinator {
+
  private:
   struct EngineInfo {
    public:
@@ -47,15 +50,13 @@ class EngineInfoContainer {
    private:
     QueryId const _id;
     std::vector<ExecutionNode*> _nodes;
-   public:
     size_t _idOfRemoteNode;  // id of the remote node
-    QueryId _otherId; // Id of query engine before this one
   };
 
  public:
-  EngineInfoContainer();
+  EngineInfoContainerCoordinator();
 
-  ~EngineInfoContainer();
+  ~EngineInfoContainerCoordinator();
 
   // Add a new query part to be executed in this location
   // This will have the following effect:
@@ -63,17 +64,73 @@ class EngineInfoContainer {
   // * It adds the collections to the map
   // This intentionally copies the vector of nodes, the caller reuses
   // the given vector.
-
   QueryId addQuerySnippet(std::vector<ExecutionNode*> nodes, size_t idOfRemoteNode);
 
+  // Build the Engines on the coordinator
+  //   * Creates the ExecutionBlocks
+  //   * Injects all Parts but the First one into QueryRegistery
+  //   Return the first engine which is not added in the Registry
+  ExecutionEngine* buildEngines();
+
+ private:
+  // @brief List of EngineInfos to distribute accross the cluster
+  std::vector<EngineInfo> _engines;
+};
+
+class EngineInfoContainerDBServer {
+
+ private:
+  struct EngineInfo {
+   public:
+    EngineInfo(std::vector<ExecutionNode*>&& nodes,
+               size_t idOfRemoteNode, Collection const* collection);
+    ~EngineInfo();
+
+    void connectQueryId(QueryId id);
+
+   private:
+    std::vector<ExecutionNode*> _nodes;
+    size_t _idOfRemoteNode;  // id of the remote node
+    QueryId _otherId; // Id of query engine before this one
+    Collection const* _collection; // Collection used for distribution, contains shard information
+  };
+
+ public:
+  EngineInfoContainerDBServer();
+
+  ~EngineInfoContainerDBServer();
+
+  // Add a new query part to be executed in this location
+  // This will have the following effect:
+  // * It creates a new EngineInfo from the given information
+  // * It adds the collections to the map
+  // This intentionally copies the vector of nodes, the caller reuses
+  // the given vector.
+  void addQuerySnippet(std::vector<ExecutionNode*> nodes, size_t idOfRemoteNode);
+
+
+  // Connects the last snippet in the list with the given QueryId.
+  // This is only required for DBServer snippets and is used
+  // to give them the query id on the Coordinator.
+  // The coordinator needs to build a list of ids later on.
   void connectLastSnippet(QueryId id);
+
+  // Build the Engines for the DBServer
+  //   * Creates one Query-Entry with all locking information per DBServer
+  //   * Creates one Query-Entry for each Snippet per Shard (multiple on the same DB)
+  //   * Snippets DO NOT lock anything, locking is done in the overall query.
+  //   * After this step DBServer-Collections are locked!
+  void buildEngines();
 
  private:
   // @brief List of EngineInfos to distribute accross the cluster
   std::vector<EngineInfo> _engines;
 
   // @brief Mapping of used collection names to lock type required
-  std::unordered_map<std::string, AccessMode::Type> _collections;
+  std::unordered_map<Collection const*, AccessMode::Type> _collections;
+
+  // @brief List of all satellite collections
+  std::unordered_set<Collection const*> _satellites;
 };
 
 }  // aql

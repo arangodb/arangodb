@@ -373,8 +373,8 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
 
 struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   private:
-    EngineInfoContainer _coordinatorParts;
-    EngineInfoContainer _dbserverParts;
+    EngineInfoContainerCoordinator _coordinatorParts;
+    EngineInfoContainerDBServer _dbserverParts;
     std::vector<ExecutionNode*> _currentNodes;
 
     bool _isCoordinator;
@@ -388,6 +388,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
 
   /// @brief before method for collection of pieces phase
+  ///        Collects all nodes on the path and devides them
+  ///        into coordinator and dbserver parts
   bool before(ExecutionNode* en) override final {
     auto const nodeType = en->getType();
 
@@ -402,6 +404,27 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     return false;
   }
 
+  /// @brief Builds the Engines necessary for the query execution
+  ///        For Coordinator Parts:
+  ///        * Creates the ExecutionBlocks
+  ///        * Injects all Parts but the First one into QueryRegistery
+  ///        For DBServer Parts
+  ///        * Creates one Query-Entry with all locking information per DBServer
+  ///        * Creates one Query-Entry for each Snippet per Shard (multiple on the same DB)
+  ///        * Snippets DO NOT lock anything, locking is done in the overall query.
+  ///        * After this step DBServer-Collections are locked!
+  ///
+  ///        Returns the First Coordinator Engine, the one not in the registry.
+  ExecutionEngine* buildEngines() {
+    if (!_currentNodes.empty()) {
+      // Do we need this?
+      addSnippet(0);
+    }
+    _dbserverParts.buildEngines();
+    return _coordinatorParts.buildEngines();
+  }
+
+ private:
   void addSnippet(size_t id) {
     // The ExecutionEngineContainer copies the list of nodes
     if (_isCoordinator) {
@@ -777,6 +800,7 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
         VPackBuilder b;
         collection->setCurrentShard(shardId);
         generatePlanForOneShard(b, nr++, info, connectedId, shardId, true);
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Sending plan to: " << shardId << ": " << b.toJson();
 
         distributePlanToShard(coordTransactionID, info,
                               connectedId, shardId,
@@ -1347,7 +1371,10 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
       try {
         auto instN =
             std::make_unique<CoordinatorInstanciator>();
-        plan->root()->walk(instN.get());  // if this throws, we need to
+        plan->root()->walk(instN.get());
+        auto engineN = instN->buildEngines();
+        // We have not implemented the API yet.
+        TRI_ASSERT(engineN == nullptr);
       } catch (...) {
       }
 
