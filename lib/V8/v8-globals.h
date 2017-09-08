@@ -37,6 +37,7 @@ struct TRI_vocbase_t;
 #define TRI_V8_TRY_CATCH_BEGIN(isolateVar) \
   auto isolateVar = args.GetIsolate();     \
   try {
+
 /// @brief macro to terminate a try-catch sequence for V8 callbacks
 #define TRI_V8_TRY_CATCH_END                                       \
   } catch (arangodb::basics::Exception const& ex) {                \
@@ -47,45 +48,45 @@ struct TRI_vocbase_t;
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);                    \
   }
 
+static inline v8::Handle<v8::String> v8OneByteStringFactory(v8::Isolate* isolate, void const* ptr, int length) {
+  return v8::String::NewFromOneByte(isolate, static_cast<uint8_t const*>(ptr), v8::String::kNormalString, length);
+}
+
+static inline v8::Handle<v8::String> v8TwoByteStringFactory(v8::Isolate* isolate, void const* ptr, int length) {
+  return v8::String::NewFromTwoByte(isolate, static_cast<uint16_t const*>(ptr), v8::String::kNormalString, length);
+} 
+
+static inline v8::Handle<v8::String> v8Utf8StringFactory(v8::Isolate* isolate, void const* ptr, int length) {
+  return v8::String::NewFromUtf8(isolate, static_cast<char const*>(ptr), v8::String::kNormalString, length);
+}
+
 /// @brief shortcut for creating a v8 symbol for the specified string
-///   implies "isolate" variable to be available
-/// @param name local string constant to source
-#define TRI_V8_ASCII_STRING(isolate, name)                    \
-  v8::String::NewFromOneByte(isolate, (uint8_t const*)(name), \
-                             v8::String::kNormalString, (int)strlen(name))
+#define TRI_V8_ASCII_STRING(isolate, name)                          \
+  v8OneByteStringFactory(isolate, (name), (int) strlen(name))
 
-#define TRI_V8_ASCII_STD_STRING(isolate, name)                        \
-  v8::String::NewFromOneByte(isolate, (uint8_t const*)(name.data()), \
-                             v8::String::kNormalString, (int)name.size())
+#define TRI_V8_ASCII_STD_STRING(isolate, name)                      \
+  v8OneByteStringFactory(isolate, (name).data(), (int) (name).size())
 
-#define TRI_V8_ASCII_PAIR_STRING(isolate, name, length)                \
-  v8::String::NewFromOneByte(isolate, (uint8_t const*)(name), \
-                             v8::String::kNormalString, (int)(length))
+#define TRI_V8_ASCII_PAIR_STRING(isolate, name, length)             \
+  v8OneByteStringFactory(isolate, (name), (int) (length))
 
 /// @brief shortcut for creating a v8 symbol for the specified string of unknown
 /// length
-///   implies "isolate" variable to be available
-#define TRI_V8_STRING(isolate, name)                                  \
-  v8::String::NewFromUtf8(isolate, (name), v8::String::kNormalString, \
-                          (int)(strlen(name)))
+#define TRI_V8_STRING(isolate, name)                                \
+  v8Utf8StringFactory(isolate, (name), (int) strlen(name))
 
 /// @brief shortcut for creating a v8 symbol for the specified string
-///   implies "isolate" variable to be available
-#define TRI_V8_STD_STRING(isolate, name)                                     \
-  v8::String::NewFromUtf8(isolate, (name).data(), v8::String::kNormalString, \
-                          (int)(name).size())
+#define TRI_V8_STD_STRING(isolate, name)                            \
+  v8Utf8StringFactory(isolate, (name).data(), (int) (name).size())
 
 /// @brief shortcut for creating a v8 symbol for the specified string of known
 /// length
-///   implies "isolate" variable to be available
-#define TRI_V8_PAIR_STRING(isolate, name, length)                              \
-  v8::String::NewFromUtf8(isolate, (name), v8::String::kNormalString, \
-                          (int)(length))
+#define TRI_V8_PAIR_STRING(isolate, name, length)                   \
+  v8Utf8StringFactory(isolate, (name), (int) (length))
 
 /// @brief shortcut for creating a v8 symbol for the specified string
-///   implies "isolate" variable to be available
-#define TRI_V8_STRING_UTF16(isolate, name, length) \
-  v8::String::NewFromTwoByte(isolate, (name), v8::String::kNormalString, length)
+#define TRI_V8_STRING_UTF16(isolate, name, length)                  \
+  v8TwoByteStringFactory(isolate, (name), (int) (length))
 
 /// @brief shortcut for current v8 globals and scope
 #define TRI_V8_CURRENT_GLOBALS_AND_SCOPE                            \
