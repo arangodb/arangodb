@@ -32,6 +32,7 @@
 #include "Basics/Thread.h"
 #include "Basics/files.h"
 #include "Logger/LogAppender.h"
+#include "Logger/LogAppenderFile.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -252,13 +253,13 @@ void Logger::log(char const* function, char const* file, long int line,
 
     // additionally log these errors to the debug output window in MSVC so
     // we can see them during development
-    OutputDebugString(message.c_str());
+    OutputDebugString(message.data());
     OutputDebugString("\r\n");
   }
 #endif
 
   if (!_active.load(std::memory_order_relaxed)) {
-    LogAppender::writeStderr(level, message);
+    LogAppenderStdStream::writeLogMessage(STDERR_FILENO, (isatty(STDERR_FILENO) == 1), level, message.data(), message.size(), true);
     return;
   }
 

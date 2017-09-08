@@ -122,6 +122,7 @@ class Logger {
 
   friend class LoggerStream;
   friend class LogThread;
+  friend class LogAppenderStream;
   friend class LogAppenderFile;
 
  public:
