@@ -220,9 +220,8 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
   auto value = RocksDBValue::PrimaryIndexValue(revisionId);
 
-  // acquire rocksdb transaction
   if (mthd->Exists(_cf, key.ref())) {
-    return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+    return IndexResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, this);
   }
 
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
@@ -247,7 +246,6 @@ Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
   blackListKey(key->string().data(),
               static_cast<uint32_t>(key->string().size()));
   Result status = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
-
   return IndexResult(status.errorNumber(), this);
 }
 
