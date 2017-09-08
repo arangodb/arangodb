@@ -639,6 +639,14 @@ void V8DealerFeature::enterLockedContext(TRI_vocbase_t* vocbase,
   }
 }
 
+/// @brief forceContext == -1 means that any free context may be
+/// picked, or a new one will be created if we have not exceeded
+/// the maximum number of contexts
+/// forceContext == -2 means that any free context may be picked, 
+/// or a new one will be created if we have not exceeded or exactly
+/// reached the maximum number of contexts. this can be used to
+/// force the creation of another context for high priority tasks
+/// forceContext >= 0 means picking the context with that exact id 
 V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
                                          bool allowUseDatabase,
                                          ssize_t forceContext) {
@@ -660,7 +668,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
   V8Context* context = nullptr;
 
   // this is for TESTING / DEBUGGING / INIT only
-  if (forceContext != -1) {
+  if (forceContext >= 0) {
     size_t id = static_cast<size_t>(forceContext);
 
     while (!_stopping) {
@@ -742,7 +750,11 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         break;
       }
 
-      if (_contexts.size() + _nrInflightContexts < _nrMaxContexts &&
+      bool contextLimitNotExceeded =
+        ((_contexts.size() + _nrInflightContexts < _nrMaxContexts) ||
+         (forceContext == ANY_CONTEXT_OR_PRIORITY && (_contexts.size() + _nrInflightContexts <= _nrMaxContexts)));
+
+      if (contextLimitNotExceeded &&
           _contextsModificationBlockers == 0 && 
           !MaxMapCountFeature::isNearMaxMappings()) {
   

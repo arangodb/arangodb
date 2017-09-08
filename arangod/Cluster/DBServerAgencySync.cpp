@@ -75,7 +75,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   
   VocbaseGuard guard(vocbase);
 
-  V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true);
+  V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true, V8DealerFeature::ANY_CONTEXT_OR_PRIORITY);
 
   if (context == nullptr) {
     LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "DBServerAgencySync::execute no V8 context";

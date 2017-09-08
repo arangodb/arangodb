@@ -41,6 +41,8 @@ class V8Context;
 class V8DealerFeature final : public application_features::ApplicationFeature {
  public:
   static V8DealerFeature* DEALER;
+  static constexpr ssize_t ANY_CONTEXT = -1;
+  static constexpr ssize_t ANY_CONTEXT_OR_PRIORITY = -2;
 
  public:
   explicit V8DealerFeature(application_features::ApplicationServer* server);
@@ -78,8 +80,16 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
                                        VPackBuilder* builder);
   void startGarbageCollection();
 
+  /// @brief forceContext == -1 means that any free context may be
+  /// picked, or a new one will be created if we have not exceeded
+  /// the maximum number of contexts
+  /// forceContext == -2 means that any free context may be picked, 
+  /// or a new one will be created if we have not exceeded or exactly
+  /// reached the maximum number of contexts. this can be used to
+  /// force the creation of another context for high priority tasks
+  /// forceContext >= 0 means picking the context with that exact id 
   V8Context* enterContext(TRI_vocbase_t*, bool allowUseDatabase,
-                          ssize_t forceContext = -1);
+                          ssize_t forceContext = ANY_CONTEXT);
   void exitContext(V8Context*);
 
   void defineContextUpdate(
