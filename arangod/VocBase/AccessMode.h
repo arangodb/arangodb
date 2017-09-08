@@ -87,4 +87,12 @@ struct AccessMode {
 
 }
 
+namespace std {
+template <>
+struct hash<arangodb::AccessMode::Type> {
+  size_t operator()(arangodb::AccessMode::Type const& value) const noexcept {
+    return static_cast<size_t>(value);
+  }
+};
+}
 #endif
