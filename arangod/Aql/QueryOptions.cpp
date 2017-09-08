@@ -174,13 +174,13 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
   }
   
 #ifdef USE_ENTERPRISE
-  value = slice.get("inaccessibleShardIds");
+  value = slice.get("inaccessibleCollections");
   if (value.isArray()) {
     VPackArrayIterator it(value);
     while (it.valid()) {
       VPackSlice value = it.value();
       if (value.isString()) {
-        inaccessibleShardIds.emplace(value.copyString());
+        inaccessibleCollections.emplace(value.copyString());
       }
       it.next();
     }
@@ -235,12 +235,12 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
   }
   
 #ifdef USE_ENTERPRISE
-  if (!inaccessibleShardIds.empty()) {
-    builder.add("inaccessibleShardIds", VPackValue(VPackValueType::Array));
-    for (auto const& it : inaccessibleShardIds) {
+  if (!inaccessibleCollections.empty()) {
+    builder.add("inaccessibleCollections", VPackValue(VPackValueType::Array));
+    for (auto const& it : inaccessibleCollections) {
       builder.add(VPackValue(it));
     }
-    builder.close(); // inaccessibleShardIds
+    builder.close(); // inaccessibleCollections
   }
 #endif
   

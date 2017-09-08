@@ -510,7 +510,7 @@ void Constituent::callElection() {
 
     if (steady_clock::now() >= timeout) {       // Timeout. 
       MUTEX_LOCKER(locker, _castLock);
-      follow(_term);        
+      followNoLock(_term);        
       break;
     }
 

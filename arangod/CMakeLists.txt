@@ -228,14 +228,18 @@ SET(ARANGOD_SOURCES
   Graph/BreadthFirstEnumerator.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
   Graph/ClusterTraverserCache.cpp
-  Graph/EdgeDocumentToken.cpp
+  Graph/EdgeCollectionInfo.cpp
   Graph/NeighborsEnumerator.cpp
+  Graph/PathEnumerator.cpp
   Graph/ShortestPathOptions.cpp
   Graph/ShortestPathResult.cpp
   Graph/SingleServerEdgeCursor.cpp
+  Graph/SingleServerTraverser.cpp
   Graph/TraverserCache.cpp
   Graph/TraverserCacheFactory.cpp
   Graph/TraverserDocumentCache.cpp
+  Graph/Traverser.cpp
+  Graph/TraverserOptions.cpp
   Indexes/Index.cpp
   Indexes/IndexIterator.cpp
   Indexes/IndexLookupContext.cpp
@@ -388,16 +392,11 @@ SET(ARANGOD_SOURCES
   VocBase/Methods/Transactions.cpp
   VocBase/AuthInfo.cpp
   VocBase/AuthUserEntry.cpp
-  VocBase/EdgeCollectionInfo.cpp
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
   VocBase/LogicalCollection.cpp
   VocBase/LogicalView.cpp
   VocBase/ManagedDocumentResult.cpp
-  VocBase/PathEnumerator.cpp
-  VocBase/SingleServerTraverser.cpp
-  VocBase/Traverser.cpp
-  VocBase/TraverserOptions.cpp
   VocBase/modes.cpp
   VocBase/replication-applier.cpp
   VocBase/replication-common.cpp

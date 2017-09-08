@@ -32,8 +32,8 @@
 #include "Graph/SingleServerEdgeCursor.h"
 #include "Graph/TraverserCache.h"
 #include "Graph/TraverserCacheFactory.h"
+#include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
-#include "VocBase/TraverserOptions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>

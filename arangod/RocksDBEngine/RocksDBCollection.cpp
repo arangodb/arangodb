@@ -229,11 +229,11 @@ TRI_voc_rid_t RocksDBCollection::revision(transaction::Methods* trx) const {
 uint64_t RocksDBCollection::numberDocuments() const { return _numberDocuments; }
 
 uint64_t RocksDBCollection::numberDocuments(transaction::Methods* trx) const {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto state = RocksDBTransactionState::toState(trx);
   auto trxCollection = static_cast<RocksDBTransactionCollection*>(
       state->findCollection(_logicalCollection->cid()));
   TRI_ASSERT(trxCollection != nullptr);
-
   return trxCollection->numberDocuments();
 }
 

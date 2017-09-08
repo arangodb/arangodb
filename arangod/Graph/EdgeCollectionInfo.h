@@ -25,15 +25,10 @@
 #define ARANGOD_EDGE_COLLECTION_INFO_H 1
 
 #include "Aql/Graphs.h"
-#include "VocBase/Traverser.h"
+#include "Graph/Traverser.h"
+#include "Transaction/Methods.h"
 
 namespace arangodb {
-class ManagedDocumentResult;
-namespace transaction {
-class Methods;
-}
-;
-
 namespace traverser {
 
 ////////////////////////////////////////////////////////////////////////////////

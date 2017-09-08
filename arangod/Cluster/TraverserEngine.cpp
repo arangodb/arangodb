@@ -30,10 +30,10 @@
 #include "Graph/EdgeCursor.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserCache.h"
+#include "Graph/TraverserOptions.h"
 #include "Transaction/Context.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/TraverserOptions.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -97,14 +97,15 @@ BaseEngine::BaseEngine(TRI_vocbase_t* vocbase, VPackSlice info)
     _vertexShards.emplace(collection.key.copyString(), shards);
   }
 
-  // FIXME: in the future this needs to be replaced with the new cluster
-  // wide transactions
+  // FIXME: in the future this needs to be replaced with t
+  // he new cluster wide transactions
   transaction::Options trxOpts;
 #ifdef USE_ENTERPRISE
-  if (info.hasKey(INACCESSIBLE)) {
+  VPackSlice inaccessSlice = shardsSlice.get(INACCESSIBLE);
+  if (inaccessSlice.isArray()) {
     trxOpts.skipInaccessibleCollections = true;
     std::unordered_set<ShardID> inaccessible;
-    for (VPackSlice const& shard : VPackArrayIterator(info.get(INACCESSIBLE))) {
+    for (VPackSlice const& shard : VPackArrayIterator(inaccessSlice)) {
       TRI_ASSERT(shard.isString());
       inaccessible.insert(shard.copyString());
     }
@@ -167,7 +168,7 @@ bool BaseEngine::lockCollection(std::string const& shard) {
     return false;
   }
   _trx->pinData(cid);  // will throw when it fails
-  Result res = _trx->lock(_trx->trxCollection(cid), AccessMode::Type::READ);
+  Result res = _trx->lock(cid, AccessMode::Type::READ);
   if (!res.ok()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "Logging Shard " << shard << " lead to exception '"
@@ -214,7 +215,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
       if (res.ok()) {
         // FOUND short circuit.
         builder.add(v);
-        mmdr.addToBuilder(builder, false);
+        mmdr.addToBuilder(builder, true);
         break;
       } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // We are in a very bad condition here...
@@ -222,7 +223,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
       }
     }
   };
-
+  
   if (vertex.isArray()) {
     for (VPackSlice v : VPackArrayIterator(vertex)) {
       workOnOneDocument(v);
@@ -230,7 +231,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
   } else {
     workOnOneDocument(vertex);
   }
-  builder.close();  // The outer object
+  builder.close(); // The outer object
 }
 
 BaseTraverserEngine::BaseTraverserEngine(TRI_vocbase_t* vocbase,
@@ -256,10 +257,10 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
       std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor(
           _opts->nextCursor(&mmdr, vertexId, depth));
 
-      edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid,
+      edgeCursor->readAll([&](EdgeDocumentToken&& eid,
                               VPackSlice edge, size_t cursorId) {
         if (edge.isString()) {
-          edge = _opts->cache()->lookupToken(eid.get());
+          edge = _opts->cache()->lookupToken(eid);
         }
         if (_opts->evaluateEdgeExpression(edge, StringRef(v), depth,
                                           cursorId)) {
@@ -271,10 +272,10 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
   } else if (vertex.isString()) {
     std::unique_ptr<arangodb::graph::EdgeCursor> edgeCursor(
         _opts->nextCursor(&mmdr, StringRef(vertex), depth));
-    edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid,
+    edgeCursor->readAll([&](EdgeDocumentToken&& eid,
                             VPackSlice edge, size_t cursorId) {
       if (edge.isString()) {
-        edge = _opts->cache()->lookupToken(eid.get());
+        edge = _opts->cache()->lookupToken(eid);
       }
       if (_opts->evaluateEdgeExpression(edge, StringRef(vertex), depth,
                                         cursorId)) {
@@ -331,7 +332,7 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
         // FOUND short circuit.
         read++;
         builder.add(v);
-        mmdr.addToBuilder(builder, false);
+        mmdr.addToBuilder(builder, true);
         break;
       } else if (res.isNot(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
         // We are in a very bad condition here...
@@ -410,10 +411,10 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
         edgeCursor.reset(_opts->nextCursor(&mmdr, vertexId));
       }
 
-      edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid,
+      edgeCursor->readAll([&](EdgeDocumentToken&& eid,
                               VPackSlice edge, size_t cursorId) {
         if (edge.isString()) {
-          edge = _opts->cache()->lookupToken(eid.get());
+          edge = _opts->cache()->lookupToken(eid);
         }
         builder.add(edge);
       });
@@ -426,10 +427,10 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
     } else {
       edgeCursor.reset(_opts->nextCursor(&mmdr, vertexId));
     }
-    edgeCursor->readAll([&](std::unique_ptr<EdgeDocumentToken>&& eid,
+    edgeCursor->readAll([&](EdgeDocumentToken&& eid,
                             VPackSlice edge, size_t cursorId) {
       if (edge.isString()) {
-        edge = _opts->cache()->lookupToken(eid.get());
+        edge = _opts->cache()->lookupToken(eid);
       }
       builder.add(edge);
     });
