@@ -60,6 +60,12 @@ void FlushThread::run() {
 
   while (!isStopping()) {
     try {
+      TRI_IF_FAILURE("FlushThreadSync") {
+        CONDITION_LOCKER(guard, _condition);
+        guard.wait(_flushInterval);
+        continue;
+      }
+
       TRI_voc_tick_t toRelease = engine->currentTick();
       engine->waitForSync(toRelease);
       flushFeature->executeCallbacks();
