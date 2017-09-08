@@ -183,6 +183,123 @@ VPackSlice StatisticsWorker::_lastEntry(std::string const& collectionName, uint6
 }
 
 VPackSlice StatisticsWorker::_compute15Minute(uint64_t start, uint64_t clusterId) {
+  std::string filter = "";
+
+/*
+  var filter = '';
+  var bindVars = { start: start };
+
+  if (clusterId) {
+    filter = ' FILTER s.clusterId == @clusterId ';
+    bindVars.clusterId = clusterId;
+  }
+
+  var values = db._query(
+    'FOR s in _statistics '
+    + '  FILTER s.time >= @start '
+    + filter
+    + '  SORT s.time '
+    + '  RETURN s', bindVars);
+  */
+
+  uint64_t count = 0; // = result.length();
+
+  float systemMinorPageFaultsPerSecond = 0,
+  systemMajorPageFaultsPerSecond = 0,
+  systemUserTimePerSecond = 0,
+  systemSystemTimePerSecond = 0,
+  systemResidentSize = 0,
+  systemVirtualSize = 0,
+  systemNumberOfThreads = 0,
+
+  httpRequestsTotalPerSecond = 0,
+  httpRequestsAsyncPerSecond = 0,
+  httpRequestsGetPerSecond = 0,
+  httpRequestsHeadPerSecond = 0,
+  httpRequestsPostPerSecond = 0,
+  httpRequestsPutPerSecond = 0,
+  httpRequestsPatchPerSecond = 0,
+  httpRequestsDeletePerSecond = 0,
+  httpRequestsOptionsPerSecond = 0,
+  httpRequestsOtherPerSecond = 0,
+
+  clientHttpConnections = 0,
+  clientBytesSentPerSecond = 0,
+  clientBytesReceivedPerSecond = 0,
+  clientAvgTotalTime = 0,
+  clientAvgRequestTime = 0,
+  clientAvgQueueTime = 0,
+  clientAvgIoTime = 0;
+
+  /*
+
+  while (values.hasNext()) {
+    var raw = values.next();
+
+    result.time = raw.time;
+
+    result.system.minorPageFaultsPerSecond += raw.system.minorPageFaultsPerSecond;
+    result.system.majorPageFaultsPerSecond += raw.system.majorPageFaultsPerSecond;
+    result.system.userTimePerSecond += raw.system.userTimePerSecond;
+    result.system.systemTimePerSecond += raw.system.systemTimePerSecond;
+    result.system.residentSize += raw.system.residentSize;
+    result.system.virtualSize += raw.system.virtualSize;
+    result.system.numberOfThreads += raw.system.numberOfThreads;
+
+    result.http.requestsTotalPerSecond += raw.http.requestsTotalPerSecond;
+    result.http.requestsAsyncPerSecond += raw.http.requestsAsyncPerSecond;
+    result.http.requestsGetPerSecond += raw.http.requestsGetPerSecond;
+    result.http.requestsHeadPerSecond += raw.http.requestsHeadPerSecond;
+    result.http.requestsPostPerSecond += raw.http.requestsPostPerSecond;
+    result.http.requestsPutPerSecond += raw.http.requestsPutPerSecond;
+    result.http.requestsPatchPerSecond += raw.http.requestsPatchPerSecond;
+    result.http.requestsDeletePerSecond += raw.http.requestsDeletePerSecond;
+    result.http.requestsOptionsPerSecond += raw.http.requestsOptionsPerSecond;
+    result.http.requestsOtherPerSecond += raw.http.requestsOtherPerSecond;
+
+    result.client.httpConnections += raw.client.httpConnections;
+    result.client.bytesSentPerSecond += raw.client.bytesSentPerSecond;
+    result.client.bytesReceivedPerSecond += raw.client.bytesReceivedPerSecond;
+    result.client.avgTotalTime += raw.client.avgTotalTime;
+    result.client.avgRequestTime += raw.client.avgRequestTime;
+    result.client.avgQueueTime += raw.client.avgQueueTime;
+    result.client.avgIoTime += raw.client.avgIoTime;
+
+    count++;
+  }
+
+  if (count !== 0) {
+    result.system.minorPageFaultsPerSecond /= count;
+    result.system.majorPageFaultsPerSecond /= count;
+    result.system.userTimePerSecond /= count;
+    result.system.systemTimePerSecond /= count;
+    result.system.residentSize /= count;
+    result.system.virtualSize /= count;
+    result.system.numberOfThreads /= count;
+
+    result.http.requestsTotalPerSecond /= count;
+    result.http.requestsAsyncPerSecond /= count;
+    result.http.requestsGetPerSecond /= count;
+    result.http.requestsHeadPerSecond /= count;
+    result.http.requestsPostPerSecond /= count;
+    result.http.requestsPutPerSecond /= count;
+    result.http.requestsPatchPerSecond /= count;
+    result.http.requestsDeletePerSecond /= count;
+    result.http.requestsOptionsPerSecond /= count;
+    result.http.requestsOtherPerSecond /= count;
+
+    result.client.httpConnections /= count;
+  }
+
+  return result;
+*/
+
+
+
+
+
+
+
   return arangodb::basics::VelocyPackHelper::NullValue();
 }
 
