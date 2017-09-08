@@ -388,28 +388,34 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
 
   /// @brief before method for collection of pieces phase
-  virtual bool before(ExecutionNode* en) override final {
+  bool before(ExecutionNode* en) override final {
     auto const nodeType = en->getType();
 
     _currentNodes.emplace_back(en);
 
     // TODO TraverserEngines
     if (nodeType == ExecutionNode::REMOTE) {
-      // The ExecutionEngineContainer copies the list of nodes
-      if (_isCoordinator) {
-        _coordinatorParts.addQuerySnippet(_currentNodes, en->id());
-      } else {
-        _dbserverParts.addQuerySnippet(_currentNodes, en->id());
-      }
-      // Flip coordinator <-> dbserver
-      _isCoordinator = !_isCoordinator;
-      // Reuse this node vector
-      _currentNodes.clear();
+      addSnippet(en->id());
     }
 
     // Always return false to not abort searching
     return false;
   }
+
+  void addSnippet(size_t id) {
+    // The ExecutionEngineContainer copies the list of nodes
+    if (_isCoordinator) {
+      QueryId engineId = _coordinatorParts.addQuerySnippet(_currentNodes, id);
+      _dbserverParts.connectLastSnippet(engineId);
+    } else {
+      _dbserverParts.addQuerySnippet(_currentNodes, id);
+    }
+    // Flip coordinator <-> dbserver
+    _isCoordinator = !_isCoordinator;
+    // Reuse this node vector
+    _currentNodes.clear();
+  }
+
 };
 
 struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
@@ -1190,8 +1196,8 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
 
     for (auto it = engines.rbegin(); it != engines.rend(); ++it) {
       EngineInfo* info = &(*it);
-      //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Doing engine: " << it->id << " location:"
-      //          << it->location;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Doing engine: " << it->id << " location:"
+                << it->location << " remote " << it->idOfRemoteNode;
       if (info->location == COORDINATOR) {
         // create a coordinator-based engine
         engine = buildEngineCoordinator(info);
@@ -1202,6 +1208,7 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
           // the plans to be created for the DBServers
           id = TRI_NewTickServer();
 
+          LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Storing Coordinator engine: " << it->id << " id: " << id;
           try {
             queryRegistry->insert(id, engine->getQuery(), 600.0);
           } catch (...) {
@@ -1223,6 +1230,7 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
           }
         }
       } else {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Storing DBServer engine: " << it->id << " C id: " << id;
         // create an engine on a remote DB server
         // hand in the previous engine's id
         distributePlansToShards(info, id);

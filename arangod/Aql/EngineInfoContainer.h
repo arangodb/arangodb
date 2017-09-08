@@ -25,6 +25,8 @@
 #define ARANGOD_AQL_ENGINE_INFO_CONTAINER_H 1
 
 #include "Basics/Common.h"
+
+#include "Aql/types.h"
 #include "VocBase/AccessMode.h"
 
 namespace arangodb {
@@ -36,14 +38,18 @@ class EngineInfoContainer {
  private:
   struct EngineInfo {
    public:
-    EngineInfo(size_t id, std::vector<ExecutionNode*>&& nodes,
+    EngineInfo(QueryId id, std::vector<ExecutionNode*>&& nodes,
                size_t idOfRemoteNode);
     ~EngineInfo();
 
+    void connectQueryId(QueryId id);
+
    private:
-    size_t const _id;
+    QueryId const _id;
     std::vector<ExecutionNode*> _nodes;
+   public:
     size_t _idOfRemoteNode;  // id of the remote node
+    QueryId _otherId; // Id of query engine before this one
   };
 
  public:
@@ -58,7 +64,9 @@ class EngineInfoContainer {
   // This intentionally copies the vector of nodes, the caller reuses
   // the given vector.
 
-  void addQuerySnippet(std::vector<ExecutionNode*> nodes, size_t idOfRemoteNode);
+  QueryId addQuerySnippet(std::vector<ExecutionNode*> nodes, size_t idOfRemoteNode);
+
+  void connectLastSnippet(QueryId id);
 
  private:
   // @brief List of EngineInfos to distribute accross the cluster

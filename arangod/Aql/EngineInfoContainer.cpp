@@ -24,6 +24,7 @@
 #include "EngineInfoContainer.h"
 
 #include "Aql/ExecutionNode.h"
+#include "Logger/Logger.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
@@ -32,22 +33,37 @@ using namespace arangodb::aql;
 EngineInfoContainer::EngineInfo::EngineInfo(size_t id,
                                             std::vector<ExecutionNode*>&& nodes,
                                             size_t idOfRemoteNode)
-    : _id(id), _nodes(nodes), _idOfRemoteNode(idOfRemoteNode) {}
+    : _id(id), _nodes(nodes), _idOfRemoteNode(idOfRemoteNode), _otherId(0) {}
 
 EngineInfoContainer::EngineInfo::~EngineInfo() {
   // This container is not responsible for nodes, they are managed by the AST
   // somewhere else
 }
 
+void EngineInfoContainer::EngineInfo::connectQueryId(QueryId id) {
+  _otherId = id;
+}
+
 EngineInfoContainer::EngineInfoContainer() {}
 
 EngineInfoContainer::~EngineInfoContainer() {}
 
-void EngineInfoContainer::addQuerySnippet(std::vector<ExecutionNode*> nodes,
-                                          size_t idOfRemoteNode) {
+QueryId EngineInfoContainer::addQuerySnippet(std::vector<ExecutionNode*> nodes,
+                                             size_t idOfRemoteNode) {
   // TODO: Check if the following is true:
   // idOfRemote === 0 => id === 0
-  size_t id = TRI_NewTickServer();
+  QueryId id = TRI_NewTickServer();
   _engines.emplace_back(id, std::move(nodes), idOfRemoteNode);
   // TODO analyse used collections
+
+  return id;
+}
+
+void EngineInfoContainer::connectLastSnippet(QueryId id) {
+  if (_engines.empty()) {
+    // If we do not have engines we cannot append the snippet.
+    // This is the case for the initial coordinator snippet.
+    return;
+  }
+  _engines.back().connectQueryId(id);
 }
