@@ -910,9 +910,16 @@ def buildEdition(os, edition) {
             }
         }
     }
+    catch (exc) {
+        fileOperations([
+            folderRenameOperation(destination: "${arch}_FAILED", source: "${arch}")
+        ])
+
+        throw exc
+    }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-            artifacts: "${arch}/**",
+            artifacts: "${arch}/**, ${arch}_FAILED/**",
             defaultExcludes: false
     }
 }
