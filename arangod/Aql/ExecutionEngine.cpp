@@ -65,9 +65,7 @@ struct TraverserEngineShardLists {
     edgeCollections.resize(length);
   }
 
-  ~TraverserEngineShardLists() {
-  }
-
+  ~TraverserEngineShardLists() {}
 
   // Mapping for edge collections to shardIds.
   // We have to retain the ordering of edge collections, all
@@ -196,8 +194,8 @@ static ExecutionBlock* CreateBlock(
                              remote->ownName(), remote->queryId());
     }
   }
-
-  return nullptr;
+        
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
 }
 
 /// @brief create the engine
@@ -246,10 +244,6 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
       }
 
       std::unique_ptr<ExecutionBlock> eb(CreateBlock(engine, en, cache, std::unordered_set<std::string>()));
-
-      if (eb == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
-      }
 
       // do we need to adjust the root node?
       auto const nodeType = en->getType();
@@ -391,7 +385,11 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         if (col->isSatellite()) {
           auxiliaryCollections.emplace(col);
         } else {
-          collection = col;
+          if (collection != nullptr) {
+            auxiliaryCollections.emplace(col);
+          } else {
+            collection = col;
+          }
         }
       };
       Collection* localCollection = nullptr;
@@ -423,6 +421,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       // mop: ok we are actually only working with a satellite...
       // so remove its shardId from the auxiliaryShards again
       if (collection != nullptr && collection->isSatellite()) {
+        // TODO: is this removal still correct?
         auxiliaryCollections.erase(collection);
       }
       populated = true;
@@ -436,7 +435,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       return collection;
     }
 
-    std::unordered_set<Collection*> getAuxiliaryCollections() {
+    std::unordered_set<Collection*>& getAuxiliaryCollections() {
       if (!populated) {
         populate();
       }
@@ -529,7 +528,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     ExecutionNode* previous = nullptr;
     for (ExecutionNode const* current : info->nodes) {
       auto clone = current->clone(&plan, false, false);
-      // UNNECESSARY, because clone does it: plan.registerNode(clone);
 
       if (current->getType() == ExecutionNode::REMOTE) {
         // update the remote node with the information about the query
@@ -561,6 +559,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                              QueryId& connectedId, std::string const& shardId,
                              VPackSlice const& planSlice) {
     Collection* collection = info->getCollection();
+    TRI_ASSERT(collection != nullptr);
+
     // create a JSON representation of the plan
     VPackBuilder result;
     result.openObject();
@@ -578,15 +578,15 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     result.add("type", VPackValue(AccessMode::typeString(collection->accessType)));
     result.close();
 
-    // mop: this is currently only working for satellites and hardcoded to their structure
-    for (auto auxiliaryCollection: info->getAuxiliaryCollections()) {
-      TRI_ASSERT(auxiliaryCollection->isSatellite());
-      
+    for (auto const& auxiliaryCollection : info->getAuxiliaryCollections()) {
+      if (auxiliaryCollection == collection) {
+        // report each different collection just once
+        continue;
+      }
       // add the collection
       result.openObject();
-      auto auxiliaryShards = auxiliaryCollection->shardIds();
-      result.add("name", VPackValue((*auxiliaryShards)[0]));
-      result.add("type", VPackValue(AccessMode::typeString(collection->accessType)));
+      result.add("name", VPackValue(auxiliaryCollection->getName())); // returns the *current* shard 
+      result.add("type", VPackValue(AccessMode::typeString(auxiliaryCollection->accessType)));
       result.close();
     }
     result.close(); // collections
@@ -710,25 +710,30 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   void distributePlansToShards(EngineInfo* info, QueryId connectedId) {
     //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "distributePlansToShards: " << info.id;
     Collection* collection = info->getCollection();
-
-    auto auxiliaryCollections = info->getAuxiliaryCollections();
-    for (auto const& auxiliaryCollection: auxiliaryCollections) {
-      TRI_ASSERT(auxiliaryCollection->shardIds()->size() == 1);
-      auxiliaryCollection->setCurrentShard((*auxiliaryCollection->shardIds())[0]);
-    }
+    TRI_ASSERT(collection != nullptr);
 
     // now send the plan to the remote servers
     arangodb::CoordTransactionID coordTransactionID = TRI_NewTickServer();
     auto cc = arangodb::ClusterComm::instance();
     if (cc != nullptr) {
       // nullptr only happens on controlled shutdown
+      
+      auto auxiliaryCollections = info->getAuxiliaryCollections();
       // iterate over all shards of the collection
       size_t nr = 0;
       auto shardIds = collection->shardIds(_includedShards);
       for (auto const& shardId : *shardIds) {
         // inject the current shard id into the collection
-        VPackBuilder b;
         collection->setCurrentShard(shardId);
+      
+        // inject the current shard id for auxiliary collections
+        for (auto const& auxiliaryCollection : auxiliaryCollections) {
+          auto auxShardIds = auxiliaryCollection->shardIds();
+          TRI_ASSERT(auxShardIds->size() == shardIds->size());
+          auxiliaryCollection->setCurrentShard((*auxShardIds)[nr]);
+        }
+
+        VPackBuilder b;
         generatePlanForOneShard(b, nr++, info, connectedId, shardId, true);
 
         distributePlanToShard(coordTransactionID, info,
@@ -736,8 +741,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
                               b.slice());
       }
       collection->resetCurrentShard();
+      
+      // reset shard for auxiliary collections too
       for (auto const& auxiliaryCollection: auxiliaryCollections) {
-        TRI_ASSERT(auxiliaryCollection->shardIds()->size() == 1);
         auxiliaryCollection->resetCurrentShard();
       }
 
@@ -752,16 +758,12 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     if (needToClone) {
       // need a new query instance on the coordinator
       localQuery = query->clone(PART_DEPENDENT, false);
-      if (localQuery == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "cannot clone query");
-      }
     }
 
     try {
       auto clusterInfo = arangodb::ClusterInfo::instance();
       auto engine = std::make_unique<ExecutionEngine>(localQuery);
-      localQuery->engine(engine.get());
+      localQuery->setEngine(engine.get());
 
       std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
       RemoteNode* remoteNode = nullptr;
@@ -776,11 +778,6 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
         // for all node types but REMOTEs, we create blocks
         ExecutionBlock* eb = CreateBlock(engine.get(), (*en), cache, _includedShards);
-
-        if (eb == nullptr) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "illegal node type");
-        }
 
         try {
           engine.get()->addBlock(eb);
@@ -803,7 +800,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           // we found a gather node
           if (remoteNode == nullptr) {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                           "expecting a remoteNode");
+                                           "expecting a RemoteNode");
           }
 
           // now we'll create a remote node for each shard and add it to the
@@ -875,7 +872,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       // localQuery is stored in the engine
       return engine.release();
     } catch (...) {
-      localQuery->engine(nullptr);  // engine is already destroyed by unique_ptr
+      localQuery->releaseEngine();  // engine is already destroyed by unique_ptr
       if (needToClone) {
         delete localQuery;
       }

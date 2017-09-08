@@ -203,7 +203,9 @@ class Query {
   ExecutionEngine* engine() const { return _engine.get(); }
 
   /// @brief inject the engine
-  void engine(ExecutionEngine* engine);
+  void setEngine(ExecutionEngine* engine);
+  
+  void releaseEngine();
 
   /// @brief return the transaction, if prepared
   inline transaction::Methods* trx() { return _trx; }

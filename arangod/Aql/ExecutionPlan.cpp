@@ -1826,6 +1826,11 @@ void ExecutionPlan::unlinkNode(ExecutionNode* node, bool allowUnlinkingRoot) {
   }
 
   auto dep = node->getDependencies();  // Intentionally copy the vector!
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  for (auto const& it : dep) {
+    TRI_ASSERT(it != nullptr);
+  }
+#endif
 
   for (auto* p : parents) {
     p->removeDependency(node);
@@ -1837,6 +1842,7 @@ void ExecutionPlan::unlinkNode(ExecutionNode* node, bool allowUnlinkingRoot) {
   }
 
   for (auto* x : dep) {
+    TRI_ASSERT(x != nullptr);
     node->removeDependency(x);
   }
 
@@ -1851,6 +1857,7 @@ void ExecutionPlan::replaceNode(ExecutionNode* oldNode,
   TRI_ASSERT(oldNode->id() != newNode->id());
   TRI_ASSERT(newNode->getDependencies().empty());
   TRI_ASSERT(oldNode != _root);
+  TRI_ASSERT(newNode != nullptr);
 
   // Intentional copy
   std::vector<ExecutionNode*> deps = oldNode->getDependencies();
@@ -1883,6 +1890,7 @@ void ExecutionPlan::insertDependency(ExecutionNode* oldNode,
   TRI_ASSERT(oldNode->id() != newNode->id());
   TRI_ASSERT(newNode->getDependencies().empty());
   TRI_ASSERT(oldNode->getDependencies().size() == 1);
+  TRI_ASSERT(newNode != nullptr);
 
   auto oldDeps = oldNode->getDependencies();  // Intentional copy
   TRI_ASSERT(!oldDeps.empty());

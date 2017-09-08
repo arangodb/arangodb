@@ -1047,8 +1047,13 @@ QueryResult Query::explain() {
   }
 }
    
-void Query::engine(ExecutionEngine* engine) {
-  _engine.reset(engine); 
+void Query::setEngine(ExecutionEngine* engine) {
+  TRI_ASSERT(engine != nullptr);
+  _engine.reset(engine);
+}
+
+void Query::releaseEngine() {
+  _engine.release();
 }
 
 /// @brief get v8 executor
