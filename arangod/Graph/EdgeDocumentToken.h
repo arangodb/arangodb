@@ -55,7 +55,9 @@ struct EdgeDocumentToken {
   
   EdgeDocumentToken(TRI_voc_cid_t const cid,
                     DocumentIdentifierToken const token) noexcept : _data(cid, token) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _type = EdgeDocumentToken::TokenType::LOCAL;
+#endif
   }
   
   EdgeDocumentToken(arangodb::velocypack::Slice const& edge) noexcept : _data(edge) {
