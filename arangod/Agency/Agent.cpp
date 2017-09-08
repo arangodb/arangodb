@@ -282,6 +282,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
         }
 
         // TODO: why _liLock here, should by _ioLock, and we already have it
+        // FIXME: Deal with this TODO
         MUTEX_LOCKER(liLocker, _liLock);
         _commitIndex = index;
         if (_commitIndex >= _nextCompactionAfter) {
@@ -398,6 +399,10 @@ bool Agent::recvAppendEntriesRPC(
     _liLock.assertNotLockedByCurrentThread();
     MUTEX_LOCKER(ioLocker, _ioLock);
   
+    // FIXME: We must hold the _logLock the moment above where we restored
+    // from a snapshot until the append to the log further down in this
+    // function, or else, _log can be found empty or in some bad state
+    // by somebody else in the meantime.
     size_t ndups = _state.removeConflicts(queries, gotSnapshot);
     
     if (nqs > ndups) {
@@ -407,7 +412,8 @@ bool Agent::recvAppendEntriesRPC(
       
       try {
 
-        MUTEX_LOCKER(ioLocker, _liLock);
+        MUTEX_LOCKER(ioLocker, _liLock);   // FIXME: _liLock: still necessary?
+        // FIXME: _leaderCommitIndex no longer exists.
         _lastApplied = _state.log(queries, ndups);
         if (_lastApplied < payload[nqs-1].get("index").getNumber<index_t>()) {
           // We could not log all the entries in this query, we need to report
