@@ -111,34 +111,31 @@ void StatisticsWorker::historianAverage() {
   // if (cluster.isCluster()) {
   // }
 
+  uint64_t clusterId = 0;
+
   try {
-    auto now = static_cast<uint64_t>(TRI_microtime());
+    uint64_t now = static_cast<uint64_t>(TRI_microtime());
+    uint64_t start;
 
     // check if need to create a new 15 min interval
-    // var prev15 = lastEntry(
-    //   '_statistics15',
-    //   now - 2 * HISTORY_INTERVAL,
-    //   clusterId);
 
-    // var stat15;
-    // var start;
+    VPackSlice prev15 = _lastEntry("_statistics15", now - 2 * HISTORY_INTERVAL, 0);
 
-    // if (prev15 === null) {
-    //   start = now - HISTORY_INTERVAL;
-    // } else {
-    //   start = prev15.time;
-    // }
+    if (prev15.isNull()) {
+      start = now - HISTORY_INTERVAL;
+    } else {
+      start = prev15.get("time").getUInt();
+    }
 
-    // stat15 = compute15Minute(start, clusterId);
+    VPackSlice stat15 = _compute15Minute(start, clusterId);
 
-    // if (stat15 !== undefined) {
-    //   if (clusterId) {
-    //     stat15.clusterId = clusterId;
-    //   }
+    if (!stat15.isNull()) {
+      if (clusterId) {
+        // append clusterId to slice
+      }
 
-    //   stats15m.save(stat15);
-    // }
-
+      // save stat15 to _statistics15 collection
+    }
   } catch (...) {
     // we don't want this error to appear every x seconds
     // require("console").warn("catch error in historianAverage: %s", err)
@@ -185,7 +182,9 @@ VPackSlice StatisticsWorker::_lastEntry(std::string const& collectionName, uint6
   return arangodb::basics::VelocyPackHelper::NullValue();
 }
 
-
+VPackSlice StatisticsWorker::_compute15Minute(uint64_t start, uint64_t clusterId) {
+  return arangodb::basics::VelocyPackHelper::NullValue();
+}
 
 
 
@@ -201,12 +200,12 @@ void StatisticsWorker::run() {
 
     std::cout << "1 done\n";
 
-    // process every 15 seconds
-
     if (seconds % 8 == 0) {
       collectGarbage();
     }
 
+
+    // process every 15 seconds
     if (seconds % HISTORY_INTERVAL == 0) {
       historianAverage();
       std::cout << "15 done\n";

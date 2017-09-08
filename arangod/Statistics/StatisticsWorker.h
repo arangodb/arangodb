@@ -43,6 +43,7 @@ class StatisticsWorker final : public Thread {
     void historianAverage();
     void _collectGarbage(std::string const& collection, uint64_t time);
     VPackSlice _lastEntry(std::string const& collection, uint64_t start, uint64_t clusterId);
+    VPackSlice _compute15Minute(uint64_t start, uint64_t clusterId);
 };
 
 }
