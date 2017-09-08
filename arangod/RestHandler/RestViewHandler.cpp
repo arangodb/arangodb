@@ -118,14 +118,23 @@ void RestViewHandler::createView() {
   }
 
   TRI_voc_cid_t id = 0;
-  std::shared_ptr<LogicalView> view = _vocbase->createView(body, id);
-  if (view != nullptr) {
-    VPackBuilder props;
-    props.openObject();
-    view->toVelocyPack(props);
-    props.close();
-    generateResult(rest::ResponseCode::CREATED, props.slice());
-  } else {
+  try {
+    std::shared_ptr<LogicalView> view = _vocbase->createView(body, id);
+    if (view != nullptr) {
+      VPackBuilder props;
+      props.openObject();
+      view->toVelocyPack(props);
+      props.close();
+      generateResult(rest::ResponseCode::CREATED, props.slice());
+    } else {
+      generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+                    "problem creating view");
+    }
+  } catch (basics::Exception const& ex) {
+    rest::ResponseCode httpCode = (ex.code() == TRI_ERROR_ARANGO_DUPLICATE_NAME)
+      ? rest::ResponseCode::BAD : rest::ResponseCode::SERVER_ERROR;
+    generateError(httpCode, ex.code(), ex.message());
+  } catch (...) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "problem creating view");
   }
