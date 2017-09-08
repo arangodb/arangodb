@@ -202,7 +202,7 @@ def checkCoresAndSave(os, runDir, name, archRuns, archCores) {
         }
     }
     else {
-        sh "for i in logs out tmp; do test -e \"${runDir}/\$i\" && mv \"${runDir}/\$i\" \"${archRuns}/${name}.\$i\" || true; done"
+        sh "for i in logs out tmp result; do test -e \"${runDir}/\$i\" && mv \"${runDir}/\$i\" \"${archRuns}/${name}.\$i\" || true; done"
 
         def files = findFiles(glob: '${runDir}/core*')
 
@@ -400,14 +400,11 @@ def checkCommitMessages() {
             ]
         }
         else {
-
             restrictions = [
                 "build-community-mac" : true,
-                // "build-community-windows" : true,
                 "build-enterprise-linux" : true,
                 "test-cluster-enterprise-rocksdb-linux" : true,
-                "test-singleserver-community-mmfiles-mac" : true
-                // "test-singleserver-community-rocksdb-windows" : true
+                "test-singleserver-enterprise-mmfiles-linux" : true
             ]
         }
     }
@@ -437,6 +434,10 @@ Restrictions: ${restrictions.keySet().join(", ")}
 
 def stashBinaries(os, edition) {
     def paths = ["build/etc", "etc", "Installation/Pipeline", "js", "scripts", "UnitTests"]
+
+    if (edition == "enterprise") {
+       paths << "enterprise/js"
+    }
 
     if (os == "windows") {
         paths << "build/bin/RelWithDebInfo"
@@ -488,73 +489,68 @@ def jslint() {
 // -----------------------------------------------------------------------------
 
 def getTests(os, edition, mode, engine) {
+    def tests = [
+        ["arangobench", "arangobench" , ""],
+        ["arangosh", "arangosh", "--skipShebang true"],
+        ["authentication", "authentication", ""],
+        ["authentication_parameters", "authentication_parameters", ""],
+        ["config", "config" , ""],
+        ["dump", "dump" , ""],
+        ["dump_authentication", "dump_authentication" , ""],
+        ["endpoints", "endpoints", ""],
+        ["server_http", "server_http", ""],
+        ["shell_client", "shell_client", ""],
+        ["shell_server", "shell_server", ""],
+        ["shell_server_aql_1", "shell_server_aql", "--testBuckets 4/0", ,""],
+        ["shell_server_aql_2", "shell_server_aql", "--testBuckets 4/1", ,""],
+        ["shell_server_aql_3", "shell_server_aql", "--testBuckets 4/2", ,""],
+        ["shell_server_aql_4", "shell_server_aql", "--testBuckets 4/3", ,""],
+        ["upgrade", "upgrade" , ""],
+        rspecify(os, "http_server"),
+        rspecify(os, "ssl_server")
+    ]
+
+    if (edition == "enterprise") {
+        tests += [
+            ["authentication_server", "authentication_server", ""]
+        ]
+    }
+
     if (mode == "singleserver") {
-        return [
+        tests += [
             ["agency", "agency", ""],
             ["boost", "boost", "--skipCache false"],
-            ["arangobench", "arangobench", ""],
-            ["arangosh", "arangosh", "--skipShebang true"],
-            ["authentication", "authentication", ""],
-            ["authentication_parameters", "authentication_parameters", ""],
             ["cluster_sync", "cluster_sync", ""],
-            ["config", "config", ""],
             ["dfdb", "dfdb", ""],
-            //"dump",
-            //"dump_authentication",
-            ["endpoints", "endpoints", ""],
-            rspecify(os, "http_replication"),
-            rspecify(os, "http_server"),
-            ["replication_sync", "replication_sync", ""],
-            ["replication_static", "replication_static", ""],
             ["replication_ongoing", "replication_ongoing", ""],
-            ["server_http", "server_http", ""],
-            ["shell_client", "shell_client", ""],
+            ["replication_static", "replication_static", ""],
+            ["replication_sync", "replication_sync", ""],
             ["shell_replication", "shell_replication", ""],
-            ["shell_server", "shell_server", ""],
-            ["shell_server_aql_1", "shell_server_aql", "--testBuckets 4/0", ,""],
-            ["shell_server_aql_2", "shell_server_aql", "--testBuckets 4/1", ,""],
-            ["shell_server_aql_3", "shell_server_aql", "--testBuckets 4/2", ,""],
-            ["shell_server_aql_4", "shell_server_aql", "--testBuckets 4/3", ,""],
-            rspecify(os, "ssl_server"),
-            ["upgrade", "upgrade" , ""]
+            rspecify(os, "http_replication")
         ]
     }
-    else {
-        return [
-            ["arangobench", "arangobench" , ""],
-            ["arangosh", "arangosh" , "--skipShebang true"],
-            ["authentication", "authentication" , ""],
-            ["authentication_parameters", "authentication_parameters" , ""],
-            ["config", "config" , ""],
-            ["dump", "dump" , ""],
-            ["dump_authentication", "dump_authentication" , ""],
-            ["endpoints", "endpoints" , ""],
-            rspecify(os, "http_server"),
-            ["server_http", "server_http", ""],
-            ["shell_client", "shell_client", ""],
-            ["shell_server", "shell_server", ""],
-            ["shell_server_aql_1", "shell_server_aql", "--testBuckets 4/0"],
-            ["shell_server_aql_2", "shell_server_aql", "--testBuckets 4/1"],
-            ["shell_server_aql_3", "shell_server_aql", "--testBuckets 4/2"],
-            ["shell_server_aql_4", "shell_server_aql", "--testBuckets 4/3"],
-            rspecify(os, "ssl_server"),
-            ["upgrade", "upgrade" , ""]
-        ]
-    }
+
+    return tests
 }
 
-def setupTestEnvironment(os, logFile, runDir) {
+def setupTestEnvironment(os, edition, logFile, runDir) {
     fileOperations([
         folderCreateOperation("${runDir}/tmp"),
     ])
 
+    def subdirs = ['build', 'etc', 'js', 'UnitTests']
+
+    if (edition == "enterprise") {
+       subdirs << "enterprise"
+    }
+
     if (os == "windows") {
-        for (file in ['build', 'etc', 'js', 'UnitTests']) {
+        for (file in subdirs) {
             powershell "cd ${runDir} ; New-Item -Path ${file} -ItemType SymbolicLink -Value ..\\${file} | Out-Null"
         }
     }
     else {
-        for (file in ['build', 'etc', 'js', 'UnitTests']) {
+        for (file in subdirs) {
             sh "ln -s ../${file} ${runDir}/${file}"
         }
 
@@ -607,7 +603,7 @@ def executeTests(os, edition, mode, engine, portInit, arch, archRuns, archFailed
 
             try {
                 lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
-                    setupTestEnvironment(os, logFile, runDir)
+                    setupTestEnvironment(os, edition, logFile, runDir)
 
                     try {
                         timeout(30) {
@@ -619,14 +615,16 @@ def executeTests(os, edition, mode, engine, portInit, arch, archRuns, archFailed
                                     powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
                                 }
                                 else {
+                                    sh "echo \"Host: `hostname`\" | tee ${logFile}"
+                                    sh "echo \"PWD:  `pwd`\" | tee -a ${logFile}"
+                                    sh "echo \"Date: `date`\" | tee -a ${logFile}"
+
                                     command = "(cd ${runDir} ; echo 1 > result ; ${command} ; echo \$? > result) 2>&1 | " +
-                                              "tee ${logFile} ; exit `cat ${runDir}/result`"
+                                              "tee -a ${logFile} ; exit `cat ${runDir}/result`"
                                     echo "executing ${command}"
                                     sh command
                                 }
                             }
-
-                            checkCoresAndSave(os, runDir, name, archRuns, archCores)
                         }
                     }
                     catch (exc) {
@@ -634,6 +632,9 @@ def executeTests(os, edition, mode, engine, portInit, arch, archRuns, archFailed
                         echo exc.toString()
                         copyFile(os, logFile, logFileFailed)
                         throw exc
+                    }
+                    finally {
+                        checkCoresAndSave(os, runDir, name, archRuns, archCores)
                     }
                 }
             }
@@ -671,62 +672,64 @@ def testCheck(os, edition, mode, engine) {
 
 def testStep(os, edition, mode, engine, testName) {
     return {
-        node(testJenkins[os]) {
-            stage(testName) {
-                def archRel = "02_test_${os}_${edition}_${mode}_${engine}"
-                def archFailedRel = "${archRel}_FAILED"
-                def archRunsRel = "${archRel}_RUN"
-                def archCoresRel = "${archRel}_CORES"
+        if (testCheck(os, edition, mode, engine)) {
+            node(testJenkins[os]) {
+                stage(testName) {
+                    def archRel = "02_test_${os}_${edition}_${mode}_${engine}"
+                    def archFailedRel = "${archRel}_FAILED"
+                    def archRunsRel = "${archRel}_RUN"
+                    def archCoresRel = "${archRel}_CORES"
 
-                def arch = pwd() + "/" + "02_test_${os}_${edition}_${mode}_${engine}"
-                def archFailed = "${arch}_FAILED"
-                def archRuns = "${arch}_RUN"
-                def archCores = "${arch}_CORES"
+                    def arch = pwd() + "/" + "02_test_${os}_${edition}_${mode}_${engine}"
+                    def archFailed = "${arch}_FAILED"
+                    def archRuns = "${arch}_RUN"
+                    def archCores = "${arch}_CORES"
 
-                // clean the current workspace completely
-                deleteDir()
+                    // clean the current workspace completely
+                    deleteDir()
 
-                // create directories for the artifacts
-                fileOperations([
-                    folderCreateOperation(arch),
-                    folderCreateOperation(archFailed),
-                    folderCreateOperation(archRuns),
-                    folderCreateOperation(archCores)
-                ])
+                    // create directories for the artifacts
+                    fileOperations([
+                        folderCreateOperation(arch),
+                        folderCreateOperation(archFailed),
+                        folderCreateOperation(archRuns),
+                        folderCreateOperation(archCores)
+                    ])
 
-                // unstash binaries
-                unstashBinaries(os, edition)
+                    // unstash binaries
+                    unstashBinaries(os, edition)
 
-                // find a suitable port
-                def port = (getStartPort(os) as Integer)
-                echo "Using start port: ${port}"
+                    // find a suitable port
+                    def port = (getStartPort(os) as Integer)
+                    echo "Using start port: ${port}"
 
-                // seriously...60 minutes is the super absolute max max max.
-                // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
-                // even if the features are green this is completely broken performance wise..
-                // DO NOT INCREASE!!
+                    // seriously...60 minutes is the super absolute max max max.
+                    // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
+                    // even if the features are green this is completely broken performance wise..
+                    // DO NOT INCREASE!!
 
-                timeout(60) {
-                    try {
-                        executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, archCores)
-                    }
-                    finally {
-                        // step([$class: 'XUnitBuilder',
-                        //     thresholds: [[$class: 'FailedThreshold', unstableThreshold: '1']],
-                        //     tools: [[$class: 'JUnitType', failIfNotNew: false, pattern: 'out/*.xml']]])
-
-                        // release the port reservation
-                        if (os == 'linux' || os == 'mac') {
-                            sh "Installation/Pipeline/port.sh --clean ${port}"
+                    timeout(60) {
+                        try {
+                            executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, archCores)
                         }
-                        else if (os == 'windows') {
-                            powershell "remove-item -Force -ErrorAction Ignore C:\\ports\\${port}"
-                        }
+                        finally {
+                            // step([$class: 'XUnitBuilder',
+                            //     thresholds: [[$class: 'FailedThreshold', unstableThreshold: '1']],
+                            //     tools: [[$class: 'JUnitType', failIfNotNew: false, pattern: 'out/*.xml']]])
 
-                        // archive all artifacts
-                        archiveArtifacts allowEmptyArchive: true,
-                            artifacts: "${archRel}/**, ${archFailedRel}/**, ${archRunsRel}/**, ${archCoresRel}/**",
-                            defaultExcludes: false
+                            // release the port reservation
+                            if (os == 'linux' || os == 'mac') {
+                                sh "Installation/Pipeline/port.sh --clean ${port}"
+                            }
+                            else if (os == 'windows') {
+                                powershell "remove-item -Force -ErrorAction Ignore C:\\ports\\${port}"
+                            }
+
+                            // archive all artifacts
+                            archiveArtifacts allowEmptyArchive: true,
+                                artifacts: "${archRel}/**, ${archFailedRel}/**, ${archRunsRel}/**, ${archCoresRel}/**",
+                                defaultExcludes: false
+                        }
                     }
                 }
             }
@@ -739,11 +742,8 @@ def testStepParallel(os, edition, modeList) {
 
     for (mode in modeList) {
         for (engine in ['mmfiles', 'rocksdb']) {
-            if (testCheck(os, edition, mode, engine)) {
-                def name = "test-${os}-${edition}-${mode}-${engine}";
-
-                branches[name] = testStep(os, edition, mode, engine, name)
-            }
+            def name = "test-${os}-${edition}-${mode}-${engine}";
+            branches[name] = testStep(os, edition, mode, engine, name)
         }
     }
 
@@ -935,35 +935,36 @@ def buildStepCheck(os, edition) {
 
 def runEdition(os, edition) {
     return {
-        node(buildJenkins[os]) {
-            stage("build-${os}-${edition}") {
-                timeout(30) {
-                    checkoutCommunity()
-                    checkCommitMessages()
+        if (buildStepCheck(os, edition)) {
+            node(buildJenkins[os]) {
+                stage("build-${os}-${edition}") {
+                    timeout(30) {
+                        checkoutCommunity()
 
-                    if (edition == "enterprise") {
-                        checkoutEnterprise()
+                        if (edition == "enterprise") {
+                            checkoutEnterprise()
+                        }
+
+                        // checkoutResilience()
                     }
 
-                    // checkoutResilience()
+                    timeout(90) {
+                        buildEdition(os, edition)
+                        stashBinaries(os, edition)
+                    }
                 }
 
-                timeout(90) {
-                    buildEdition(os, edition)
-                    stashBinaries(os, edition)
+                // we only need one jslint test per edition
+                if (os == "linux") {
+                    stage("jslint-${edition}") {
+                        echo "Running jslint for ${edition}"
+                        jslint()
+                    }
                 }
             }
 
-            // we only need one jslint test per edition
-            if (os == "linux") {
-                stage("jslint-${edition}") {
-                    echo "Running jslint for ${edition}"
-                    jslint()
-                }
-            }
+            testStepParallel(os, edition, ['cluster', 'singleserver'])
         }
-
-        testStepParallel(os, edition, ['cluster', 'singleserver'])
     }
 }
 
@@ -976,13 +977,12 @@ def runOperatingSystems(osList) {
 
     for (os in osList) {
         for (edition in ['community', 'enterprise']) {
-            if (buildStepCheck(os, edition)) {
-                branches["build-${os}-${edition}"] = runEdition(os, edition)
-            }
+            branches["build-${os}-${edition}"] = runEdition(os, edition)
         }
     }
 
     parallel branches
 }
 
+checkCommitMessages()
 runOperatingSystems(['linux', 'mac', 'windows'])

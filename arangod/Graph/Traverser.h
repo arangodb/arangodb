@@ -32,9 +32,9 @@
 #include "Aql/AstNode.h"
 #include "Graph/AttributeWeightShortestPathFinder.h"
 #include "Graph/ConstantWeightShortestPathFinder.h"
+#include "Graph/PathEnumerator.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Transaction/Helpers.h"
-#include "VocBase/PathEnumerator.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -64,7 +64,6 @@ class TraverserCache;
 
 namespace traverser {
 
-class PathEnumerator;
 struct TraverserOptions;
 
 class TraversalPath {
@@ -238,13 +237,17 @@ class Traverser {
   /// @brief Builds only the last vertex as AQLValue
   //////////////////////////////////////////////////////////////////////////////
 
-  aql::AqlValue lastVertexToAqlValue();
+  aql::AqlValue lastVertexToAqlValue() {
+    return _enumerator->lastVertexToAqlValue();
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds only the last edge as AQLValue
   //////////////////////////////////////////////////////////////////////////////
 
-  aql::AqlValue lastEdgeToAqlValue();
+  aql::AqlValue lastEdgeToAqlValue() {
+    return _enumerator->lastEdgeToAqlValue();
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Builds the complete path as AQLValue
@@ -256,7 +259,9 @@ class Traverser {
   ///        NOTE: Will clear the given buffer and will leave the path in it.
   //////////////////////////////////////////////////////////////////////////////
 
-  aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder&);
+  aql::AqlValue pathToAqlValue(arangodb::velocypack::Builder& builder) {
+    return _enumerator->pathToAqlValue(builder);
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Get the number of filtered paths
@@ -297,7 +302,7 @@ class Traverser {
   ManagedDocumentResult* _mmdr;
 
   /// @brief internal cursor to enumerate the paths of a graph
-  std::unique_ptr<arangodb::traverser::PathEnumerator> _enumerator;
+  std::unique_ptr< traverser::PathEnumerator> _enumerator;
 
   /// @brief internal getter to extract an edge
   std::unique_ptr<VertexGetter> _vertexGetter;

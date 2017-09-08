@@ -499,6 +499,11 @@ actions.defineHttp({
 
     Health = Object.entries(Health).reduce((Health, [serverId,struct]) => {
       let canBeDeleted = false;
+      if (serverId.startsWith('PRMR')) {
+        Health[serverId].Role = 'DBServer';
+      } else if (serverId.startsWith('CRDN')) {
+        Health[serverId].Role = 'Coordinator';
+      }
       if (struct.Role === 'Coordinator') {
         canBeDeleted = struct.Status === 'FAILED';
       } else if (struct.Role === 'DBServer') {
