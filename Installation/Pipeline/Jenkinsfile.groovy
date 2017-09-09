@@ -936,6 +936,8 @@ def buildEdition(os, edition, maintainer) {
         folderCreateOperation(arch)
     ])
 
+    def logFile = "${arch}/build.log"
+
     try {
         if (os == 'linux' || os == 'mac') {
             sh "echo \"Host: `hostname`\" | tee ${logFile}"
