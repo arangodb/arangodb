@@ -1,3 +1,4 @@
+#!/bin/bash
 concurrency=$1
 os=$2
 edition=$3
