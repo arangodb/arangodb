@@ -525,7 +525,7 @@ def unstashBinaries(os, edition) {
 // --SECTION--                                                    SCRIPTS JSLINT
 // -----------------------------------------------------------------------------
 
-def jslint() {
+def jslint(os, edition, maintainer) {
     def archDir  = "${os}-${edition}-${maintainer}"
     def arch     = "${archDir}/02-jslint"
     def archDone = "${archDir}/02-jslint-DONE"
