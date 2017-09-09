@@ -26,7 +26,7 @@ exit $LastExitCode
 } else {
   New-Item -ItemType Directory -Force -Path $tmp
 
-  $env:_MSPDBSRV_ENDPOINT_="community-${env:BUILD_TAG}"
+  $env:_MSPDBSRV_ENDPOINT_="enterprise-${env:BUILD_TAG}"
   $env:GYP_MSVS_OVERRIDE_PATH="${vcpath}\bin"
   $env:TMP="$tmp"
   $env:TEMP="$tmp"

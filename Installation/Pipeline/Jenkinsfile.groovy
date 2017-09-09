@@ -207,7 +207,12 @@ def checkEnabledEdition(edition, text) {
     return true
 }
 
-def checkEnabledMaintainer(maintainer, text) {
+def checkEnabledMaintainer(maintainer, os, text) {
+    if (os == 'windows' && maintainer != 'maintainer') {
+        echo "Not ${text} ${maintainer} because ${maintainer} is not enabled under Windows"
+        return false
+    }
+
     if (maintainer == 'maintainer' && ! useMaintainer) {
         echo "Not ${text} ${maintainer} because ${maintainer} is not enabled"
         return false
@@ -981,7 +986,7 @@ def buildStepCheck(os, edition, maintainer) {
        return false
     }
 
-    if (! checkEnabledMaintainer(maintainer, 'building')) {
+    if (! checkEnabledMaintainer(maintainer, os, 'building')) {
        return false
     }
 
