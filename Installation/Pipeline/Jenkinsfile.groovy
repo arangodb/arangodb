@@ -964,6 +964,10 @@ def buildEdition(os, edition, maintainer) {
             def hostname = powershell(returnStdout: true, script: "hostname").trim()
 
             powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
+
+            fileOperations([
+                folderDeleteOperation("${arch}/tmp")
+            ])
         }
 
         renameFolder(arch, archDone)
