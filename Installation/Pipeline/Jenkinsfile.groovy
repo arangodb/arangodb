@@ -956,9 +956,7 @@ def buildEdition(os, edition, maintainer) {
 
             def hostname = powershell(returnStdout: true, script: "hostname").trim()
 
-            lock("build-${hostname}") {
-                powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
-            }
+            powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
         }
 
         renameFolder(arch, archDone)
