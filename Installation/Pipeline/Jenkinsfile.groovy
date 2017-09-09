@@ -932,11 +932,17 @@ def buildEdition(os, edition, maintainer) {
     ])
 
     try {
-        if (os == 'linux') {
-            sh "./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 64 ${os} ${edition} ${maintainer} ${arch}"
-        }
-        else if (os == 'mac') {
-            sh "./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 16 ${os} ${edition} ${maintainer} ${arch}"
+        if (os == 'linux' || os == 'mac') {
+            sh "echo \"Host: `hostname`\" | tee ${logFile}"
+            sh "echo \"PWD:  `pwd`\" | tee -a ${logFile}"
+            sh "echo \"Date: `date`\" | tee -a ${logFile}"
+
+            if (os == 'linux') {
+                sh "./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 64 ${os} ${edition} ${maintainer} ${arch}"
+            }
+            else if (os == 'mac') {
+                sh "./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 16 ${os} ${edition} ${maintainer} ${arch}"
+            }
         }
         else if (os == 'windows') {
             // I concede...we need a lock for windows...I could not get it to run concurrently...
@@ -948,7 +954,7 @@ def buildEdition(os, edition, maintainer) {
             // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly
             // test it. I just don't want any more "yeah that might randomly fail. just restart" sentences any more.
 
-            def hostname = powershell(returnStdout: true, script: "hostname")
+            def hostname = powershell(returnStdout: true, script: "hostname").trim()
 
             lock("build-${hostname}") {
                 powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"

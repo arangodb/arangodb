@@ -1,10 +1,13 @@
 $logdir="windows-community-maintainer/01-build"
+$tmp=Join-Path (pwd) "windows-community-maintainer\01-build\tmp"
+
 $ErrorActionPreference="Stop"
 $vcpath=$(Get-ItemProperty HKLM:\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\SxS\VC7)."14.0"
-#$env:_MSPDBSRV_ENDPOINT_="community-${env:BUILD_TAG}"
 $buildOptions = "-DUSE_MAINTAINER_MODE=On -DUSE_ENTERPRISE=Off -DUSE_CATCH_TESTS=On -DUSE_FAILURE_TESTS=On -DDEBUG_SYNC_REPLICATION=On -DCMAKE_BUILD_TYPE=RelWithDebInfo -DSKIP_PACKAGING=On"
+
 Remove-Item -Force -Recurse ${logdir} -ErrorAction SilentlyContinue
 New-Item -Force -ItemType Directory ${logdir} -ErrorAction SilentlyContinue
+
 if (Get-Command docker -errorAction SilentlyContinue) {
   $buildOptions += " -DOPENSSL_INCLUDE_DIR=`"`$env:OPENSSL_INCLUDE_DIR`" -DLIB_EAY_RELEASE=`"`$env:LIB_EAY_RELEASE`" -DSSL_EAY_RELEASE=`"`$env:SSL_EAY_RELEASE`" -DLIB_EAY_RELEASE_DLL=`"`$env:LIB_EAY_RELEASE_DLL`" -DSSL_EAY_RELEASE_DLL=`"`$env:SSL_EAY_RELEASE_DLL"
   $volume = "$env:WORKSPACE"
@@ -21,10 +24,21 @@ exit $LastExitCode
 
   docker run --rm -v $volume m0ppers/build-container powershell C:\arangodb\buildscript.ps1 | Set-Content -PassThru ${logdir}\build.log
 } else {
+  New-Item -ItemType Directory -Force -Path $tmp
+
+  $env:_MSPDBSRV_ENDPOINT_="community-${env:BUILD_TAG}"
   $env:GYP_MSVS_OVERRIDE_PATH="${vcpath}\bin"
+  $env:TMP="$tmp"
+  $env:TEMP="$tmp"
+  $env:TEMPDIR="$tmp"
+
+  $env
+
   New-Item -ItemType Directory -Force -Path build
   cd build
+
   Invoke-Expression "cmake .. -G `"Visual Studio 15 2017 Win64`" ${buildOptions} | Set-Content -PassThru ..\${logdir}\build.log"
   cmake --build . --config RelWithDebInfo | Add-Content -PassThru ..\${logdir}\build.log
+
   cd ..
 }
