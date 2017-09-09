@@ -1,4 +1,4 @@
-$logdir="01_build_windows_community"
+$logdir="windows-community-maintainer/01-build"
 $ErrorActionPreference="Stop"
 $vcpath=$(Get-ItemProperty HKLM:\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\SxS\VC7)."14.0"
 #$env:_MSPDBSRV_ENDPOINT_="community-${env:BUILD_TAG}"

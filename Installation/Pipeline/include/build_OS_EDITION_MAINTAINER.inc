@@ -1,7 +1,8 @@
 concurrency=$1
-edition=$2
-os=$3
-logdir=$4
+os=$2
+edition=$3
+maintainer=$4
+logdir=$5
 
 ENTERPRISE=""
 type="build"
@@ -14,6 +15,19 @@ elif [ "$edition" == enterprise ]; then
     ENTERPRISE="-DUSE_ENTERPRISE=On"
 else
     echo "$0: unknown edition '$edition', expecting 'community' or 'enterprise'"
+    exit 1
+fi
+
+MAINTAINER=""
+
+if [ "$maintainer" == maintainer ]; then
+    MAINTAINER="-DUSE_MAINTAINER_MODE=On"
+    type="${type}_maintainer"
+elif [ "$maintainer" == user ]; then
+    MAINTAINER="-DUSE_MAINTAINER_MODE=Off"
+    type="${type}_user"
+else
+    echo "$0: unknown maintainer '$maintainer', expecting 'maintainer' or 'user'"
     exit 1
 fi
 
@@ -50,10 +64,10 @@ touch $logdir/build.log
     CXXFLAGS=-fno-omit-frame-pointer \
         cmake \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            -DUSE_MAINTAINER_MODE=On \
             -DUSE_CATCH_TESTS=On \
             -DUSE_FAILURE_TESTS=On \
             -DDEBUG_SYNC_REPLICATION=On \
+            $MAINTAINER \
             $ENTERPRISE \
             ..  2>&1 | tee ../$logdir/build.log
 

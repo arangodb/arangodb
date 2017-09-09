@@ -22,6 +22,8 @@ def defaultBuild = true
 def defaultCleanBuild = false
 def defaultCommunity = true
 def defaultEnterprise = true
+def defaultMaintainer = true
+def defaultUser = false
 // def defaultRunResilience = false
 def defaultRunTests = true
 
@@ -57,6 +59,16 @@ properties([
             description: 'build and run tests for enterprise',
             name: 'Enterprise'
         ),
+        booleanParam(
+            defaultValue: defaultMaintainer,
+            description: 'build in maintainer mode',
+            name: 'Maintainer'
+        ),
+        booleanParam(
+            defaultValue: defaultUser,
+            description: 'build in user mode',
+            name: 'User'
+        ),
         // booleanParam(
         //     defaultValue: defaultRunResilience,
         //     description: 'run resilience tests',
@@ -73,12 +85,6 @@ properties([
 // start with empty build directory
 cleanBuild = params.cleanBuild
 
-// build community
-useCommunity = params.Community
-
-// build enterprise
-useEnterprise = params.Enterprise
-
 // build linux
 useLinux = params.Linux
 
@@ -87,6 +93,18 @@ useMac = params.Mac
 
 // build windows
 useWindows = params.Windows
+
+// build and test community
+useCommunity = params.Community
+
+// build and test enterprise
+useEnterprise = params.Enterprise
+
+// build maintainer mode
+useMaintainer = params.Maintainer
+
+// build user mode
+useUser = params.User
 
 // run resilience tests
 //runResilience = params.runResilience
@@ -150,6 +168,12 @@ def copyFile(os, src, dst) {
     }
 }
 
+def renameFolder(src, dst) {
+    fileOperations([
+        folderRenameOperation(destination: dst, source: src)
+    ])
+}
+
 def checkEnabledOS(os, text) {
     if (os == 'linux' && ! useLinux) {
         echo "Not ${text} ${os} because ${os} is not enabled"
@@ -177,6 +201,20 @@ def checkEnabledEdition(edition, text) {
 
     if (edition == 'community' && ! useCommunity) {
         echo "Not ${text} ${edition} because ${edition} is not enabled"
+        return false
+    }
+
+    return true
+}
+
+def checkEnabledMaintainer(maintainer, text) {
+    if (maintainer == 'maintainer' && ! useMaintainer) {
+        echo "Not ${text} ${maintainer} because ${maintainer} is not enabled"
+        return false
+    }
+
+    if (maintainer == 'user' && ! useUser) {
+        echo "Not ${text} ${maintainer} because ${maintainer} is not enabled"
         return false
     }
 
@@ -432,7 +470,7 @@ Restrictions: ${restrictions.keySet().join(", ")}
 // --SECTION--                                                     SCRIPTS STASH
 // -----------------------------------------------------------------------------
 
-def stashBinaries(os, edition) {
+def stashBinaries(os, edition, maintainer) {
     def paths = ["build/etc", "etc", "Installation/Pipeline", "js", "scripts", "UnitTests"]
 
     if (edition == "enterprise") {
@@ -453,14 +491,14 @@ def stashBinaries(os, edition) {
         // this is a super mega mess...scp will run as the system user and not as jenkins when run as a server
         // I couldn't figure out how to properly get it running for hours...so last resort was to install putty
 
-        powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk stash.zip jenkins@c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}.zip"
+        powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk stash.zip jenkins@c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip"
     }
     else {
         paths << "build/bin/"
         paths << "build/tests/"
 
         sh "GZIP=-1 tar cpzf stash.tar.gz " + paths.join(" ")
-        sh "scp stash.tar.gz c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}.tar.gz"
+        sh "scp stash.tar.gz c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.tar.gz"
     }
 }
 
@@ -670,17 +708,17 @@ def testCheck(os, edition, mode, engine) {
     return true
 }
 
-def testStep(os, edition, mode, engine, testName) {
+def testStep(os, edition, mode, engine, maintainer, testName) {
     return {
-        if (testCheck(os, edition, mode, engine)) {
+        if (testCheck(os, edition, mode, engine, maintainer)) {
             node(testJenkins[os]) {
                 stage(testName) {
-                    def archRel = "02_test_${os}_${edition}_${mode}_${engine}"
+                    def archRel = "02_test_${os}_${edition}_${mode}_${engine}_${maintainer}"
                     def archFailedRel = "${archRel}_FAILED"
                     def archRunsRel = "${archRel}_RUN"
                     def archCoresRel = "${archRel}_CORES"
 
-                    def arch = pwd() + "/" + "02_test_${os}_${edition}_${mode}_${engine}"
+                    def arch = pwd() + "/" + "02_test_${os}_${edition}_${mode}_${engine}_${maintainer}"
                     def archFailed = "${arch}_FAILED"
                     def archRuns = "${arch}_RUN"
                     def archCores = "${arch}_CORES"
@@ -697,7 +735,7 @@ def testStep(os, edition, mode, engine, testName) {
                     ])
 
                     // unstash binaries
-                    unstashBinaries(os, edition)
+                    unstashBinaries(os, edition, maintainer)
 
                     // find a suitable port
                     def port = (getStartPort(os) as Integer)
@@ -737,13 +775,13 @@ def testStep(os, edition, mode, engine, testName) {
     }
 }
 
-def testStepParallel(os, edition, modeList) {
+def testStepParallel(os, edition, modeList, maintainer) {
     def branches = [:]
 
     for (mode in modeList) {
         for (engine in ['mmfiles', 'rocksdb']) {
-            def name = "test-${os}-${edition}-${mode}-${engine}";
-            branches[name] = testStep(os, edition, mode, engine, name)
+            def name = "test-${os}-${edition}-${mode}-${engine}-${maintainer}";
+            branches[name] = testStep(os, edition, mode, engine, maintainer, name)
         }
     }
 
@@ -878,8 +916,11 @@ def testStepParallel(os, edition, modeList) {
 // --SECTION--                                                     SCRIPTS BUILD
 // -----------------------------------------------------------------------------
 
-def buildEdition(os, edition) {
-    def arch = "01_build_${os}_${edition}"
+def buildEdition(os, edition, maintainer) {
+    def archDir  = "${os}-${edition}-${maintainer}"
+    def arch     = "${archDir}/01-build"
+    def archDone = "${archDir}/01-build-DONE"
+    def archFail = "${archDir}/01-build-FAIL"
 
     fileOperations([
         folderDeleteOperation(arch),
@@ -888,10 +929,10 @@ def buildEdition(os, edition) {
 
     try {
         if (os == 'linux') {
-            sh "./Installation/Pipeline/linux/build_${os}_${edition}.sh 64 ${arch}"
+            sh "./Installation/Pipeline/include/build_OS_EDITION_MAINTAINER.inc 64 ${os} ${edition} ${maintainer} 64 ${logdir}"
         }
         else if (os == 'mac') {
-            sh "./Installation/Pipeline/mac/build_${os}_${edition}.sh 16 ${arch}"
+            sh "./Installation/Pipeline/include/build_OS_EDITION_MAINTAINER.inc 16 ${os} ${edition} ${maintainer} 64 ${logdir}"
         }
         else if (os == 'windows') {
             // I concede...we need a lock for windows...I could not get it to run concurrently...
@@ -909,20 +950,30 @@ def buildEdition(os, edition) {
                 powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
             }
         }
+
+        renameFolder(arch, archDone)
+    }
+    catch (exc) {
+        renameFolder(arch, archFail)
+        throw exc
     }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-            artifacts: "${arch}/**",
+            artifacts: "${arch}/**, ${archDone}/**, ${archFail}/**",
             defaultExcludes: false
     }
 }
 
-def buildStepCheck(os, edition) {
+def buildStepCheck(os, edition, maintainer) {
     if (! checkEnabledOS(os, 'building')) {
        return false
     }
 
-    if (! checkEnabledEdition(edition, 'testing')) {
+    if (! checkEnabledEdition(edition, 'building')) {
+       return false
+    }
+
+    if (! checkEnabledMaintainer(maintainer, 'building')) {
        return false
     }
 
@@ -933,11 +984,11 @@ def buildStepCheck(os, edition) {
     return true
 }
 
-def runEdition(os, edition) {
+def runEdition(os, edition, maintainer) {
     return {
-        if (buildStepCheck(os, edition)) {
+        if (buildStepCheck(os, edition, maintainer)) {
             node(buildJenkins[os]) {
-                stage("build-${os}-${edition}") {
+                stage("build-${os}-${edition}-${maintainer}") {
                     timeout(30) {
                         checkoutCommunity()
 
@@ -949,8 +1000,8 @@ def runEdition(os, edition) {
                     }
 
                     timeout(90) {
-                        buildEdition(os, edition)
-                        stashBinaries(os, edition)
+                        buildEdition(os, edition, maintainer)
+                        stashBinaries(os, edition, maintainer)
                     }
                 }
 
@@ -963,7 +1014,7 @@ def runEdition(os, edition) {
                 }
             }
 
-            testStepParallel(os, edition, ['cluster', 'singleserver'])
+            testStepParallel(os, edition, ['cluster', 'singleserver'], maintainer)
         }
     }
 }
@@ -977,7 +1028,9 @@ def runOperatingSystems(osList) {
 
     for (os in osList) {
         for (edition in ['community', 'enterprise']) {
-            branches["build-${os}-${edition}"] = runEdition(os, edition)
+            for (maintainer in ['maintainer', 'user']) {
+                branches["build-${os}-${edition}-${maintainer}"] = runEdition(os, edition, maintainer)
+            }
         }
     }
 

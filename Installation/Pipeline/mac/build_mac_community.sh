@@ -1,3 +1,3 @@
 #!/bin/bash
 
-. ./Installation/Pipeline/include/build_OS_EDITION.inc "$1" community mac "$2"
+. ./Installation/Pipeline/include/build_OS_EDITION_MAINTAINER.inc "$1" mac community maintainer "$2"
