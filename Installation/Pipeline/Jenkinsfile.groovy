@@ -694,7 +694,12 @@ def executeTests(os, edition, mode, engine, portInit, arch, archRuns, archFailed
     parallel testSteps
 }
 
-def testCheck(os, edition, mode, engine) {
+def testCheck(os, edition, mode, engine, maintainer) {
+    if (! runTests) {
+        echo "Not testing ${os} ${mode} because testing is not enabled"
+        return false
+    }
+
     if (! checkEnabledOS(os, 'testing')) {
        return false
     }
@@ -703,9 +708,8 @@ def testCheck(os, edition, mode, engine) {
        return false
     }
 
-    if (! runTests) {
-        echo "Not testing ${os} ${mode} because testing is not enabled"
-        return false
+    if (! checkEnabledMaintainer(maintainer, os, 'building')) {
+       return false
     }
 
     if (restrictions && !restrictions["test-${mode}-${edition}-${engine}-${os}"]) {
