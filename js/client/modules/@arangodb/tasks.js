@@ -41,7 +41,7 @@ var API = '/_api/tasks';
 var getTask = function (options) {
   var URL = API;
 
-  if (typeof (options) === 'object') {
+  if (typeof (options) == 'object') {
     if (!options.hasOwnProperty('id')) {
       throwBadParameter('options has to contain an id property.');
     }

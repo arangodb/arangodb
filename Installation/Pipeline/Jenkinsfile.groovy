@@ -526,7 +526,33 @@ def unstashBinaries(os, edition) {
 // -----------------------------------------------------------------------------
 
 def jslint() {
-    sh './Installation/Pipeline/test_jslint.sh'
+    def archDir  = "${os}-${edition}-${maintainer}"
+    def arch     = "${archDir}/02-jslint"
+    def archDone = "${archDir}/02-jslint-DONE"
+    def archFail = "${archDir}/02-jslint-FAIL"
+
+    fileOperations([
+        folderDeleteOperation(arch),
+        folderDeleteOperation(archDone),
+        folderDeleteOperation(archFail),
+        folderCreateOperation(arch)
+    ])
+
+    def logFile = "${arch}/jslint.log"
+
+    try {
+        sh "./Installation/Pipeline/test_jslint.sh | tee ${logFile}"
+        renameFolder(arch, archDone)
+    }
+    catch (exc) {
+        renameFolder(arch, archFail)
+        throw exc
+    }
+    finally {
+        archiveArtifacts allowEmptyArchive: true,
+            artifacts: "${arch}/**, ${archDone}/**, ${archFail}/**",
+            defaultExcludes: false
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -1032,7 +1058,7 @@ def runEdition(os, edition, maintainer) {
                 if (os == "linux") {
                     stage("jslint-${edition}") {
                         echo "Running jslint for ${edition}"
-                        jslint()
+                        jslint(os, edition, maintainer)
                     }
                 }
             }
