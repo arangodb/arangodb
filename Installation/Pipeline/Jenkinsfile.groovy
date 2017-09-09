@@ -929,10 +929,10 @@ def buildEdition(os, edition, maintainer) {
 
     try {
         if (os == 'linux') {
-            sh "./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 64 ${os} ${edition} ${maintainer} 64 ${arch}"
+            sh "./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 64 ${os} ${edition} ${maintainer} ${arch}"
         }
         else if (os == 'mac') {
-            sh "./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 16 ${os} ${edition} ${maintainer} 64 ${arch}"
+            sh "./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 16 ${os} ${edition} ${maintainer} ${arch}"
         }
         else if (os == 'windows') {
             // I concede...we need a lock for windows...I could not get it to run concurrently...
