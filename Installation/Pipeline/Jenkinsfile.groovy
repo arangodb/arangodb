@@ -460,6 +460,8 @@ Windows: ${useWindows}
 Clean Build: ${cleanBuild}
 Building Community: ${useCommunity}
 Building Enterprise: ${useEnterprise}
+Building Maintainer: ${useMaintainer}
+Building Non-Maintainer: ${useUser}
 Running Tests: ${runTests}
 
 Restrictions: ${restrictions.keySet().join(", ")}
@@ -924,6 +926,8 @@ def buildEdition(os, edition, maintainer) {
 
     fileOperations([
         folderDeleteOperation(arch),
+        folderDeleteOperation(archDone),
+        folderDeleteOperation(archFail),
         folderCreateOperation(arch)
     ])
 
@@ -946,7 +950,7 @@ def buildEdition(os, edition, maintainer) {
 
             def hostname = powershell(returnStdout: true, script: "hostname")
 
-            lock('build-${hostname}') {
+            lock("build-${hostname}") {
                 powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
             }
         }
