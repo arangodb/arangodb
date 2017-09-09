@@ -611,7 +611,9 @@ def executeTests(os, edition, mode, engine, portInit, arch, archRuns, archFailed
 
                             withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
                                 if (os == "windows") {
-                                    echo "executing ${command}"
+                                    def hostname = powershell(returnStdout: true, script: "hostname")
+
+                                    echo "executing ${command} on ${hostname}"
                                     powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
                                 }
                                 else {
@@ -905,7 +907,7 @@ def buildEdition(os, edition) {
 
             def hostname = powershell(returnStdout: true, script: "hostname")
 
-            lock('build-${hostname}') {
+            lock("build-${hostname}") {
                 powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
             }
         }
