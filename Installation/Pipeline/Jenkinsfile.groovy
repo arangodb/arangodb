@@ -647,7 +647,7 @@ def setupTestEnvironment(os, edition, maintainer, logFile, runDir) {
     }
 }
 
-def executeTests(os, edition, maintainer, mode, engine, portInit, archDir) {
+def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, stageName) {
     def parallelity = 4
     def testIndex = 0
     def tests = getTests(os, edition, maintainer, mode, engine)
