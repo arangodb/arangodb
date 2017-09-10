@@ -445,25 +445,21 @@ def checkCommitMessages() {
                 "build-windows-enterprise-maintainer" : true,
 
                 // OS EDITION MAINTAINER MODE ENGINE
-                "test-cluster-community-mmfiles-linux" : true,
-                "test-cluster-community-rocksdb-linux" : true,
-                "test-cluster-enterprise-mmfiles-linux" : true,
-                "test-cluster-enterprise-rocksdb-linux" : true,
-                "test-singleserver-community-mmfiles-linux" : true,
-                "test-singleserver-community-rocksdb-linux" : true,
-                "test-singleserver-enterprise-mmfiles-linux" : true,
-                "test-singleserver-enterprise-rocksdb-linux" : true
+                "test-linux-enterprise-maintainer-cluster-rocksdb" : true,
+                "test-linux-community-maintainer-singleserver-mmfiles" : true
             ]
         }
         else {
             restrictions = [
+                // OS EDITION MAINTAINER
                 "build-linux-community-user" : true,
                 "build-linux-enterprise-maintainer" : true,
                 "build-mac-enterprise-user" : true,
                 "build-windows-enterprise-maintainer" : true,
 
-                "test-cluster-enterprise-rocksdb-linux" : true,
-                "test-singleserver-enterprise-mmfiles-linux" : true
+                // OS EDITION MAINTAINER MODE ENGINE
+                "test-linux-enterprise-maintainer-cluster-rocksdb" : true,
+                "test-linux-community-user-singleserver-mmfiles" : true
             ]
         }
     }
