@@ -831,7 +831,7 @@ def testStepParallel(os, edition, maintainer, modeList) {
     for (mode in modeList) {
         for (engine in ['mmfiles', 'rocksdb']) {
             def stageName = "test-${os}-${edition}-${maintainer}-${mode}-${engine}";
-            branches[name] = testStep(os, edition, maintainer, mode, engine, stageName)
+            branches[stageName] = testStep(os, edition, maintainer, mode, engine, stageName)
         }
     }
 
