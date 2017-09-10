@@ -66,7 +66,7 @@ properties([
         ),
         booleanParam(
             defaultValue: defaultUser,
-            description: 'build in user mode',
+            description: 'build in user (aka non-maintainer) mode',
             name: 'User'
         ),
         // booleanParam(
@@ -542,6 +542,7 @@ def jslint(os, edition, maintainer) {
 
     try {
         sh "./Installation/Pipeline/test_jslint.sh | tee ${logFile}"
+        sh "if grep ERROR ${logFile}; then exit 1; fi"
         renameFolder(arch, archDone)
     }
     catch (exc) {
