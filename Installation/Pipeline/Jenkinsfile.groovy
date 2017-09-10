@@ -226,7 +226,7 @@ def checkEnabledMaintainer(maintainer, os, text) {
     return true
 }
 
-def checkCoresAndSave(os, runDir, name, archRuns, archCores) {
+def checkCoresAndSave(os, runDir, name, archRuns) {
     if (os == 'windows') {
         powershell "move-item -Force -ErrorAction Ignore ${runDir}/logs ${archRuns}/${name}.logs"
         powershell "move-item -Force -ErrorAction Ignore ${runDir}/out ${archRuns}/${name}.logs"
@@ -236,10 +236,10 @@ def checkCoresAndSave(os, runDir, name, archRuns, archCores) {
         
         if (files.length > 0) {
             for (file in files) {
-                powershell "move-item -Force -ErrorAction Ignore ${file} ${archCores}"
+                powershell "move-item -Force -ErrorAction Ignore ${file} ${archRuns}"
             }
 
-            powershell "copy-item .\\build\\bin\\* -Include *.exe,*.pdb,*.ilk ${archCores}"
+            powershell "copy-item .\\build\\bin\\* -Include *.exe,*.pdb,*.ilk ${archRuns}"
 
             error("found dmp file")
         }
@@ -251,10 +251,10 @@ def checkCoresAndSave(os, runDir, name, archRuns, archCores) {
 
         if (files.length > 0) {
             for (file in files) {
-                sh "mv ${file} ${archCores}"
+                sh "mv ${file} ${archRuns}"
             }
 
-            sh "cp -a build/bin/* ${archCores}"
+            sh "cp -a build/bin/* ${archRuns}"
 
             error("found core file")
         }
@@ -404,9 +404,14 @@ def checkCommitMessages() {
     else if (skip) {
         useLinux = false
         useMac = false
+
         useWindows = false
         useCommunity = false
         useEnterprise = false
+
+        useMaintainer = false
+        useUser = false
+
         // runResilience = false
         runTests = false
     }
@@ -414,8 +419,13 @@ def checkCommitMessages() {
         useLinux = true
         useMac = true
         useWindows = true
+
         useCommunity = true
         useEnterprise = true
+
+        useMaintainer = true
+        useUser = true
+
         // runResilience = true
         runTests = true
 
@@ -426,12 +436,15 @@ def checkCommitMessages() {
             echo "build of PR"
 
             restrictions = [
-                "build-community-linux" : true,
-                "build-community-mac" : true,
-                "build-community-windows" : true,
-                "build-enterprise-linux" : true,
-                "build-enterprise-mac" : true,
-                "build-enterprise-windows" : true,
+                // OS EDITION MAINTAINER
+                "build-linux-community-maintainer" : true,
+                "build-linux-enterprise-maintainer" : true,
+                "build-mac-community-maintainer" : true,
+                "build-mac-enterprise-user" : true,
+                "build-windows-community-maintainer" : true,
+                "build-windows-enterprise-maintainer" : true,
+
+                // OS EDITION MAINTAINER MODE ENGINE
                 "test-cluster-community-mmfiles-linux" : true,
                 "test-cluster-community-rocksdb-linux" : true,
                 "test-cluster-enterprise-mmfiles-linux" : true,
@@ -444,8 +457,11 @@ def checkCommitMessages() {
         }
         else {
             restrictions = [
-                "build-community-mac" : true,
-                "build-enterprise-linux" : true,
+                "build-linux-community-user" : true,
+                "build-linux-enterprise-maintainer" : true,
+                "build-mac-enterprise-user" : true,
+                "build-windows-enterprise-maintainer" : true,
+
                 "test-cluster-enterprise-rocksdb-linux" : true,
                 "test-singleserver-enterprise-mmfiles-linux" : true
             ]
@@ -509,14 +525,14 @@ def stashBinaries(os, edition, maintainer) {
     }
 }
 
-def unstashBinaries(os, edition) {
+def unstashBinaries(os, edition, maintainer) {
     if (os == "windows") {
-        powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}.zip stash.zip"
+        powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip stash.zip"
         powershell "Expand-Archive -Path stash.zip -Force -DestinationPath ."
         powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
     }
     else {
-        sh "scp c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}.tar.gz stash.tar.gz"
+        sh "scp c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.tar.gz stash.tar.gz"
         sh "tar xpzf stash.tar.gz"
     }
 }
@@ -547,11 +563,12 @@ def jslint(os, edition, maintainer) {
     }
     catch (exc) {
         renameFolder(arch, archFail)
+        fileOperations([fileCreateOperation(fileContent: 'BUILD FAILED', fileName: "${archi}-FAIL.txt")])
         throw exc
     }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-            artifacts: "${arch}/**, ${archDone}/**, ${archFail}/**",
+            artifacts: "${arch}-*, ${arch}/**, ${archDone}/**, ${archFail}/**",
             defaultExcludes: false
     }
 }
@@ -560,7 +577,7 @@ def jslint(os, edition, maintainer) {
 // --SECTION--                                                     SCRIPTS TESTS
 // -----------------------------------------------------------------------------
 
-def getTests(os, edition, mode, engine) {
+def getTests(os, edition, maintainer, mode, engine) {
     def tests = [
         ["arangobench", "arangobench" , ""],
         ["arangosh", "arangosh", "--skipShebang true"],
@@ -605,7 +622,7 @@ def getTests(os, edition, mode, engine) {
     return tests
 }
 
-def setupTestEnvironment(os, edition, logFile, runDir) {
+def setupTestEnvironment(os, edition, maintainer, logFile, runDir) {
     fileOperations([
         folderCreateOperation("${runDir}/tmp"),
     ])
@@ -630,10 +647,10 @@ def setupTestEnvironment(os, edition, logFile, runDir) {
     }
 }
 
-def executeTests(os, edition, mode, engine, portInit, arch, archRuns, archFailed, archCores) {
+def executeTests(os, edition, maintainer, mode, engine, portInit, archDir) {
     def parallelity = 4
     def testIndex = 0
-    def tests = getTests(os, edition, mode, engine)
+    def tests = getTests(os, edition, maintainer, mode, engine)
 
     def portInterval = (mode == "cluster") ? 40 : 10
 
@@ -658,11 +675,13 @@ def executeTests(os, edition, mode, engine, portInit, arch, archRuns, archFailed
             testArgs += " --cluster true"
         }
 
-        testMap["test-${os}-${edition}-${mode}-${engine}-${name}"] = {
-            def logFile = "${arch}/${name}.log"
-            def logFileFailed = "${archFailed}/${name}.log"
+        testMap["${stageName}-${name}"] = {
+            def logFile       = pwd() + "/" + "${archDir}/${name}.log"
+            def logFileFailed = pwd() + "/" + "${archDir}-FAIL/${name}.log"
+            def archRuns      = pwd() + "/" + "${archDir}-RUNS"
+
             def runDir = "run.${currentIndex}"
-            def port = portInit + currentIndex * portInterval
+            def port   = portInit + currentIndex * portInterval
 
             testArgs += " --minPort " + port
             testArgs += " --maxPort " + (port + portInterval - 1)
@@ -674,8 +693,8 @@ def executeTests(os, edition, mode, engine, portInit, arch, archRuns, archFailed
                           testArgs
 
             try {
-                lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
-                    setupTestEnvironment(os, edition, logFile, runDir)
+                lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${maintainer}-${engine}-${lockIndex}") {
+                    setupTestEnvironment(os, edition, maintainer, logFile, runDir)
 
                     try {
                         timeout(30) {
@@ -706,7 +725,7 @@ def executeTests(os, edition, mode, engine, portInit, arch, archRuns, archFailed
                         throw exc
                     }
                     finally {
-                        checkCoresAndSave(os, runDir, name, archRuns, archCores)
+                        checkCoresAndSave(os, runDir, name, archRuns)
                     }
                 }
             }
@@ -721,7 +740,7 @@ def executeTests(os, edition, mode, engine, portInit, arch, archRuns, archFailed
     parallel testSteps
 }
 
-def testCheck(os, edition, mode, engine, maintainer) {
+def testCheck(os, edition, maintainer, mode, engine) {
     if (! runTests) {
         echo "Not testing ${os} ${mode} because testing is not enabled"
         return false
@@ -739,27 +758,23 @@ def testCheck(os, edition, mode, engine, maintainer) {
        return false
     }
 
-    if (restrictions && !restrictions["test-${mode}-${edition}-${engine}-${os}"]) {
+    if (restrictions && !restrictions["test-${os}-${edition}-${maintainer}-${mode}-${engine}"]) {
         return false
     }
 
     return true
 }
 
-def testStep(os, edition, mode, engine, maintainer, testName) {
+def testStep(os, edition, maintainer, mode, engine, stageName) {
     return {
-        if (testCheck(os, edition, mode, engine, maintainer)) {
+        if (testCheck(os, edition, maintainer, mode, engine)) {
             node(testJenkins[os]) {
-                stage(testName) {
-                    def archRel = "02_test_${os}_${edition}_${mode}_${engine}_${maintainer}"
-                    def archFailedRel = "${archRel}_FAILED"
-                    def archRunsRel = "${archRel}_RUN"
-                    def archCoresRel = "${archRel}_CORES"
-
-                    def arch = pwd() + "/" + "02_test_${os}_${edition}_${mode}_${engine}_${maintainer}"
-                    def archFailed = "${arch}_FAILED"
-                    def archRuns = "${arch}_RUN"
-                    def archCores = "${arch}_CORES"
+                stage(stageName) {
+                    def archDir    = "${os}-${edition}-${maintainer}"
+                    def arch       = "${archDir}/03-test-${mode}-${engine}"
+                    def archDone   = "${arch}-DONE"
+                    def archFail   = "${arch}-FAIL"
+                    def archRuns   = "${arch}-RUNS"
 
                     // clean the current workspace completely
                     deleteDir()
@@ -767,9 +782,9 @@ def testStep(os, edition, mode, engine, maintainer, testName) {
                     // create directories for the artifacts
                     fileOperations([
                         folderCreateOperation(arch),
-                        folderCreateOperation(archFailed),
-                        folderCreateOperation(archRuns),
-                        folderCreateOperation(archCores)
+                        folderCreateOperation(archDone),
+                        folderCreateOperation(archFail),
+                        folderCreateOperation(archRuns)
                     ])
 
                     // unstash binaries
@@ -786,13 +801,10 @@ def testStep(os, edition, mode, engine, maintainer, testName) {
 
                     timeout(60) {
                         try {
-                            executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, archCores)
+                            executeTests(os, edition, maintainer, mode, engine, port, arch, stageName)
+                            renameFolder(arch, archDone)
                         }
                         finally {
-                            // step([$class: 'XUnitBuilder',
-                            //     thresholds: [[$class: 'FailedThreshold', unstableThreshold: '1']],
-                            //     tools: [[$class: 'JUnitType', failIfNotNew: false, pattern: 'out/*.xml']]])
-
                             // release the port reservation
                             if (os == 'linux' || os == 'mac') {
                                 sh "Installation/Pipeline/port.sh --clean ${port}"
@@ -803,7 +815,7 @@ def testStep(os, edition, mode, engine, maintainer, testName) {
 
                             // archive all artifacts
                             archiveArtifacts allowEmptyArchive: true,
-                                artifacts: "${archRel}/**, ${archFailedRel}/**, ${archRunsRel}/**, ${archCoresRel}/**",
+                                artifacts: "${arch}-*, ${arch}/**, ${archDone}/**, ${archFail}/**, ${archRuns}/**",
                                 defaultExcludes: false
                         }
                     }
@@ -813,13 +825,13 @@ def testStep(os, edition, mode, engine, maintainer, testName) {
     }
 }
 
-def testStepParallel(os, edition, modeList, maintainer) {
+def testStepParallel(os, edition, maintainer, modeList) {
     def branches = [:]
 
     for (mode in modeList) {
         for (engine in ['mmfiles', 'rocksdb']) {
-            def name = "test-${os}-${edition}-${mode}-${engine}-${maintainer}";
-            branches[name] = testStep(os, edition, mode, engine, maintainer, name)
+            def stageName = "test-${os}-${edition}-${maintainer}-${mode}-${engine}";
+            branches[name] = testStep(os, edition, maintainer, mode, engine, stageName)
         }
     }
 
@@ -962,6 +974,7 @@ def buildEdition(os, edition, maintainer) {
 
     fileOperations([
         folderDeleteOperation(arch),
+        fileDeleteOperation(excludes: '', includes: "${arch}-*"),
         folderDeleteOperation(archDone),
         folderDeleteOperation(archFail),
         folderCreateOperation(arch)
@@ -1005,11 +1018,12 @@ def buildEdition(os, edition, maintainer) {
     }
     catch (exc) {
         renameFolder(arch, archFail)
+        fileOperations([fileCreateOperation(fileContent: 'BUILD FAILED', fileName: "${archi}-FAIL.txt")])
         throw exc
     }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-            artifacts: "${arch}/**, ${archDone}/**, ${archFail}/**",
+            artifacts: "${arch}-*, ${arch}/**, ${archDone}/**, ${archFail}/**",
             defaultExcludes: false
     }
 }
@@ -1027,18 +1041,18 @@ def buildStepCheck(os, edition, maintainer) {
        return false
     }
 
-    if (restrictions && !restrictions["build-${edition}-${os}"]) {
+    if (restrictions && !restrictions["build-${os}-${edition}-${maintainer}"]) {
         return false
     }
 
     return true
 }
 
-def runEdition(os, edition, maintainer) {
+def runEdition(os, edition, maintainer, stageName) {
     return {
         if (buildStepCheck(os, edition, maintainer)) {
             node(buildJenkins[os]) {
-                stage("build-${os}-${edition}-${maintainer}") {
+                stage(stageName) {
                     timeout(30) {
                         checkoutCommunity()
 
@@ -1064,7 +1078,7 @@ def runEdition(os, edition, maintainer) {
                 }
             }
 
-            testStepParallel(os, edition, ['cluster', 'singleserver'], maintainer)
+            testStepParallel(os, edition, maintainer, ['cluster', 'singleserver'])
         }
     }
 }
@@ -1079,7 +1093,8 @@ def runOperatingSystems(osList) {
     for (os in osList) {
         for (edition in ['community', 'enterprise']) {
             for (maintainer in ['maintainer', 'user']) {
-                branches["build-${os}-${edition}-${maintainer}"] = runEdition(os, edition, maintainer)
+                def stageName = "build-${os}-${edition}-${maintainer}"
+                branches[stageName] = runEdition(os, edition, maintainer, stageName)
             }
         }
     }
