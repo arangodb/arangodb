@@ -1009,11 +1009,18 @@ def buildEdition(os, edition, maintainer) {
             // test it. I just don't want any more "yeah that might randomly fail. just restart" sentences any more.
 
             def hostname = powershell(returnStdout: true, script: "hostname").trim()
-
-            powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
+            def tmpDir = "${arch}/tmp"
 
             fileOperations([
-                folderDeleteOperation("${arch}/tmp")
+                folderCreateOperation(tmpDir)
+            ])
+
+            withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}", "_MSPDBSRV_ENDPOINT_=${edition}-${env.BUILD_TAG}"]) {
+                powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
+            }
+
+            fileOperations([
+                folderDeleteOperation(tmpDir)
             ])
         }
     }
