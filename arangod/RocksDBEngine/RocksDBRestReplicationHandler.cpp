@@ -1095,7 +1095,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
     }
   }
 
-  generateResult(rest::ResponseCode::OK, std::move(builder),
+  generateResult(rest::ResponseCode::OK, std::move(buffer),
                  transactionContext);
 }
 
