@@ -18,7 +18,7 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesCompactionFeature.h"
@@ -58,7 +58,7 @@ MMFilesCompactionFeature::MMFilesCompactionFeature(ApplicationServer* server)
 void MMFilesCompactionFeature::collectOptions(std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("compaction", "Configure the MMFiles compactor thread");
   
-  options->addOption("--compaction.sleep-time", "sleep interval between two compaction runs (in s)",
+  options->addOption("--compaction.db-sleep-time", "sleep interval between two compaction runs (in s)",
                      new UInt64Parameter(&_compactionSleepTime));
   
   options->addOption("--compaction.min-interval", "minimum sleep time between two compaction runs (in s)",
@@ -68,23 +68,23 @@ void MMFilesCompactionFeature::collectOptions(std::shared_ptr<options::ProgramOp
   options->addOption("--compaction.min-small-data-file-size", "minimal filesize threshhold original data files have to be below for a compaction",
                      new UInt64Parameter(&_smallDatafileSize));
   
-  options->addOption("--compaction.dead-documents-threshold", "how many dead documents should datafiles to compact contain at least",
+  options->addOption("--compaction.dead-documents-threshold", "minimum unused count of documents in a datafile",
                      new UInt64Parameter(&_deadNumberThreshold));
   
-  options->addOption("--compaction.dead-size-threshold", "how many bytes of the source datafile should be unused at least",
+  options->addOption("--compaction.dead-size-threshold", "how many bytes of the source data file are allowed to be unused at most",
                      new UInt64Parameter(&_deadSizeThreshold));
   
   options->addOption("--compaction.dead-size-percent-threshold", "how many percent of the source datafile should be unused at least",
                      new DoubleParameter(&_deadShare));
 
 
-  options->addOption("--compaction.max-files", "maximum number of files to compact to one file",
+  options->addOption("--compaction.max-files", "Maximum number of files to merge to one file",
                      new UInt64Parameter(&_maxFiles));
 
   options->addOption("--compaction.max-result-file-size", "how large may the compaction result file become (in bytes)",
                      new UInt64Parameter(&_maxResultFilesize));
 
-  options->addOption("--compaction.max-file-size-factor", "how large the resulting compacted file may be in comparison to the original",
+  options->addOption("--compaction.max-file-size-factor", "how large the resulting file may be in comparison to the collections '--database.maximal-journal-size' setting",
                      new UInt64Parameter(&_maxSizeFactor));
 }
 

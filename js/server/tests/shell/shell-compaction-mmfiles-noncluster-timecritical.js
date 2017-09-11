@@ -1124,7 +1124,7 @@ function CompactionSuite () {
 
       assertEqual(fig.compactionStatus.count, 0);
       assertEqual(fig.compactionStatus.bytesRead, 0);
-      assertEqual(fig.compactionStatus.bytpesWritten, 0);
+      assertEqual(fig.compactionStatus.bytesWritten, 0);
 
       internal.db._query(
         'FOR i IN 700..800   REMOVE { _key: CONCAT("test", i) } IN @@col',
@@ -1145,7 +1145,7 @@ function CompactionSuite () {
 
       // It should have erased something, so the values should have increased:
       assertTrue(c1.figures().compactionStatus.bytesRead > fig.compactionStatus.bytesRead);
-      assertTrue(c1.figures().compactionStatus.bytpesWritten > fig.compactionStatus.bytpesWritten);
+      assertTrue(c1.figures().compactionStatus.bytesWritten > fig.compactionStatus.bytesWritten);
 
       internal.wal.waitForCollector(cn);
 

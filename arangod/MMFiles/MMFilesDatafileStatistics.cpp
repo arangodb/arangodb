@@ -32,20 +32,36 @@ using namespace arangodb;
 
 /// @brief create statistics manager for a collection
 MMFilesDatafileStatistics::MMFilesDatafileStatistics() :
-  _compactionCount(0),
-  _compactionBytesRead(0),
-  _compactionBytesWritten(0),
-  _filesCombined(0),
   _lock(),
-  _stats(){}
+  _stats(),
+  _statisticsLock(),
+  _localStats({0, 0, 0, 0}) {
+}
 
 /// @brief destroy statistics manager
 MMFilesDatafileStatistics::~MMFilesDatafileStatistics() {
   WRITE_LOCKER(writeLocker, _lock);
-
   for (auto& it : _stats) {
     delete it.second;
   }
+}
+
+void MMFilesDatafileStatistics::compactionRun(uint64_t noCombined,
+                                              uint64_t read,
+                                              uint64_t written)
+{
+  WRITE_LOCKER(writeLocker, _statisticsLock);
+  _localStats._compactionCount ++;
+  _localStats._filesCombined += noCombined;
+  _localStats._compactionBytesRead += read;
+  _localStats._compactionBytesWritten += written;
+}
+
+MMFilesDatafileStatistics::CompactionStats const MMFilesDatafileStatistics::getStats() {
+  CompactionStats tmp;
+  READ_LOCKER(readLocker, _statisticsLock);
+  tmp = _localStats;
+  return tmp;
 }
 
 /// @brief create an empty statistics container for a file

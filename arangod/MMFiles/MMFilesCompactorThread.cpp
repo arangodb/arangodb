@@ -485,15 +485,13 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   }
 
   // now compact all datafiles
-  physical->_datafileStatistics.compactionRun();
   uint64_t noCombined = 0;
+  uint64_t compactionBytesRead = 0;
   for (size_t i = 0; i < n; ++i) {
     auto compaction = toCompact[i];
     MMFilesDatafile* df = compaction._datafile;
 
-    MMFilesDatafileStatisticsContainer dfi = static_cast<MMFilesCollection*>(collection->getPhysical())->_datafileStatistics.get(df->fid());
-    physical->_datafileStatistics.compactionRead(dfi.sizeAlive +  dfi.sizeDead);
-
+    compactionBytesRead += df->currentSize();
     LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "compacting datafile '" << df->getName() << "' into '" << compactor->getName() << "', number: " << i << ", keep deletions: " << compaction._keepDeletions;
 
     // if this is the first datafile in the list of datafiles, we can also
@@ -516,10 +514,8 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
   TRI_ASSERT(context->_dfi.numberDead == 0);
   TRI_ASSERT(context->_dfi.sizeDead == 0);
-  if (noCombined > 1) {
-    physical->_datafileStatistics.compactionCombine(noCombined);
-  }
-  physical->_datafileStatistics.compactionWritten(context->_dfi.sizeAlive);
+
+  physical->_datafileStatistics.compactionRun(noCombined, compactionBytesRead, context->_dfi.sizeAlive);
   physical->_datafileStatistics.replace(compactor->fid(), context->_dfi);
 
   trx.commit();

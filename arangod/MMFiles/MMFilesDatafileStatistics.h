@@ -31,13 +31,16 @@
 
 namespace arangodb {
 
+
 /// @brief datafile statistics manager for a single collection
 class MMFilesDatafileStatistics {
- private:
-  int64_t _compactionCount;
-  int64_t _compactionBytesRead;
-  int64_t _compactionBytesWritten;
-  int64_t _filesCombined;
+ public:
+  struct CompactionStats {
+    int64_t _compactionCount;
+    int64_t _compactionBytesRead;
+    int64_t _compactionBytesWritten;
+    int64_t _filesCombined;
+  };
 
  public:
   MMFilesDatafileStatistics(MMFilesDatafileStatistics const&) = delete;
@@ -46,16 +49,12 @@ class MMFilesDatafileStatistics {
   ~MMFilesDatafileStatistics();
 
  public:
-  void compactionRun()                        { _compactionCount ++; }
-  void compactionCombine(uint64_t noCombined) { _filesCombined += noCombined; }
-  void compactionRead(uint64_t read)          { _compactionBytesRead += read; }
-  void compactionWritten(uint64_t written)    { _compactionBytesWritten += written; }
+  // @brief increase collection statistics
+  void compactionRun(uint64_t noCombined, uint64_t read, uint64_t written);
 
-  uint64_t getCompactionRuns()          const { return _compactionCount; }
-  uint64_t getCompactionFilesCombined() const { return _filesCombined; }
-  uint64_t getCompactionRead()          const { return _compactionBytesRead; }
-  uint64_t getCompactionWritten()       const { return _compactionBytesWritten; }
-
+  // @brief get current collection statistics
+  MMFilesDatafileStatistics::CompactionStats const getStats();
+  
   /// @brief create (empty) statistics for a datafile
   void create(TRI_voc_fid_t);
 
@@ -92,6 +91,10 @@ class MMFilesDatafileStatistics {
 
   /// @brief per-file statistics
   std::unordered_map<TRI_voc_fid_t, MMFilesDatafileStatisticsContainer*> _stats;
+
+  // @brief per-collection runtime statistics
+  arangodb::basics::ReadWriteLock            _statisticsLock;
+  MMFilesDatafileStatistics::CompactionStats _localStats;
 };
 }
 
