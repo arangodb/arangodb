@@ -27,6 +27,7 @@ exit $LastExitCode
   $Env:BUILD_ID="DoNotKillMe"
   try
   {
+      cd "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE"
       start mspdbsrv -argumentlist '-start','-spawn' -NoNewWindow
   }
   catch {}
