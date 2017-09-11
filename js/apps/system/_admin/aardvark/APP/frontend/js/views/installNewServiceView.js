@@ -47,6 +47,9 @@
           flag = $('#new-app-teardown').prop('checked');
         } else {
           mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
+          if (mount.charAt(0) !== '/') {
+            mount = '/' + mount;
+          }
         }
         var info = {
           name: window.arangoHelper.escapeHtml($('#new-app-name').val()),

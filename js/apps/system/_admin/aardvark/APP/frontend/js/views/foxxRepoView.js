@@ -166,6 +166,9 @@
           flag = $('#new-app-teardown').prop('checked');
         } else {
           mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
+          if (mount.charAt(0) !== '/') {
+            mount = '/' + mount;
+          }
         }
         if (flag !== undefined) {
           this.collection.installFromStore({name: this.toInstall, version: this.version}, mount, this.installCallback.bind(this), flag);
@@ -173,9 +176,9 @@
           this.collection.installFromStore({name: this.toInstall, version: this.version}, mount, this.installCallback.bind(this));
         }
         window.modalView.hide();
+        arangoHelper.arangoNotification('Services', 'Installing ' + this.toInstall + '.');
         this.toInstall = null;
         this.version = null;
-        arangoHelper.arangoNotification('Services', 'Installing ' + this.toInstall + '.');
       }
     },
 

@@ -70,6 +70,9 @@
           flag = Boolean($('#new-app-teardown').prop('checked'));
         } else {
           mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
+          if (mount.charAt(0) !== '/') {
+            mount = '/' + mount;
+          }
         }
         isLegacy = Boolean($('#zip-app-islegacy').prop('checked'));
         this.collection.installFromZip(window.foxxData.data.filename, mount, this.installCallback.bind(this), isLegacy, flag);

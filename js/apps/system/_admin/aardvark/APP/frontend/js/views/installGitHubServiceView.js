@@ -60,6 +60,9 @@
           flag = $('#new-app-teardown').prop('checked');
         } else {
           mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
+          if (mount.charAt(0) !== '/') {
+            mount = '/' + mount;
+          }
         }
         url = window.arangoHelper.escapeHtml($('#repository').val());
         version = window.arangoHelper.escapeHtml($('#tag').val());

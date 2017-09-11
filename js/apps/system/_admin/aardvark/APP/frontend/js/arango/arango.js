@@ -452,14 +452,17 @@
         Store: {
           route: '#services/install'
         },
-        New: {
-          route: '#services/install/new'
-        },
         Upload: {
           route: '#services/install/upload'
         },
+        New: {
+          route: '#services/install/new'
+        },
         GitHub: {
           route: '#services/install/github'
+        },
+        Remote: {
+          route: '#services/install/remote'
         }
       };
 
@@ -1076,16 +1079,21 @@
       });
     },
 
-    createMountPointModal: function (callback) {
+    createMountPointModal: function (callback, mode, mountpoint) {
       var buttons = []; var tableContent = [];
+
+      var mountPoint;
+      if (mode === 'replace' && mountpoint) {
+        mountPoint = mountpoint;
+      }
 
       tableContent.push(
         window.modalView.createTextEntry(
           'new-app-mount',
           'Mountpoint',
-          undefined,
-          'The path the app will be mounted. Has to start with /. Is not allowed to start with /_',
-          '/mountpoint',
+          mountPoint,
+          'The path the app will be mounted. Is not allowed to start with _',
+          'mountpoint',
           false,
           [
             {
@@ -1096,9 +1104,35 @@
         )
       );
 
-      buttons.push(
-        window.modalView.createSuccessButton('Install', callback)
+      tableContent.push(
+        window.modalView.createCheckboxEntry(
+          'app_create_run_teardown',
+          'Run setup?',
+          true,
+          "Should this app's setup script be executed after installing the app?",
+          true
+        )
       );
+
+      if (mode === 'replace') {
+        tableContent.push(
+          window.modalView.createCheckboxEntry(
+            'app_create_run_teardown',
+            'Keep configuration and dependency files?',
+            true,
+            "Should this app's configuration be saved before replacing the app?",
+            true
+          )
+        );
+
+        buttons.push(
+          window.modalView.createSuccessButton('Replace', callback)
+        );
+      } else {
+        buttons.push(
+          window.modalView.createSuccessButton('Install', callback)
+        );
+      }
 
       window.modalView.show(
         'modalTable.ejs',
@@ -1107,37 +1141,35 @@
         tableContent
       );
 
-      window.modalView.modalBindValidation({
-        id: 'new-app-mount',
-        validateInput: function () {
-          return [
-            {
-              rule: Joi.string().regex(/^(\/(APP[^/]+|(?!APP)[a-zA-Z0-9_\-%]+))+$/i),
-              msg: 'May not contain /APP'
-            },
-            {
-              rule: Joi.string().regex(/^(\/[a-zA-Z0-9_\-%]+)+$/),
-              msg: 'Can only contain [a-zA-Z0-9_-%]'
-            },
-            {
-              rule: Joi.string().regex(/^\/([^_]|_open\/)/),
-              msg: 'Mountpoints with _ are reserved for internal use'
-            },
-            {
-              rule: Joi.string().regex(/[^/]$/),
-              msg: 'May not end with /'
-            },
-            {
-              rule: Joi.string().regex(/^\//),
-              msg: 'Has to start with /'
-            },
-            {
-              rule: Joi.string().required().min(2),
-              msg: 'Has to be non-empty'
-            }
-          ];
-        }
-      });
+      if (mode !== 'replace') {
+        window.modalView.modalBindValidation({
+          id: 'new-app-mount',
+          validateInput: function () {
+            return [
+              {
+                rule: Joi.string().regex(/^((APP[^/]+|(?!APP)[a-zA-Z0-9_\-%]+))+$/i),
+                msg: 'May not contain /APP'
+              },
+              {
+                rule: Joi.string().regex(/^([a-zA-Z0-9_\-%]+)+$/),
+                msg: 'Can only contain [a-zA-Z0-9_-%]'
+              },
+              {
+                rule: Joi.string().regex(/([^_]|_open\/)/),
+                msg: 'Mountpoints with _ are reserved for internal use'
+              },
+              {
+                rule: Joi.string().regex(/[^/]$/),
+                msg: 'May not end with /'
+              },
+              {
+                rule: Joi.string().required().min(1),
+                msg: 'Has to be non-empty'
+              }
+            ];
+          }
+        });
+      }
     }
   };
 }());
