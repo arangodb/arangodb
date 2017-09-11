@@ -1100,5 +1100,8 @@ def runOperatingSystems(osList) {
 }
 
 checkCommitMessages()
+
 fileOperations([fileCreateOperation(fileContent: overview, fileName: "overview.txt")])
+archiveArtifacts(allowEmptyArchive: true, artifacts: "overview.txt")
+
 runOperatingSystems(['linux', 'mac', 'windows'])
