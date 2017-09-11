@@ -80,12 +80,4 @@ if test "$DO_CONFIGURE" = "yes"; then
     done # STATE LOOP
 fi # DO_CONFIGURE
 
-# test if db-dir is in place but arangod is not installed if
-# so try an upgrade
-if test -d /var/lib/arangodb3 -a ! -f /usr/sbin/arangod; then
-    db_set @CPACK_PACKAGE_NAME@/new_install_existing_db_dir "true"
-else
-    db_set @CPACK_PACKAGE_NAME@/new_install_existing_db_dir "false"
-fi
-
 exit 0
