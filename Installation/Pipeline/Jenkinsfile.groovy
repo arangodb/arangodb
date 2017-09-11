@@ -538,12 +538,10 @@ def unstashBinaries(os, edition, maintainer) {
 def jslint(os, edition, maintainer) {
     def archDir  = "${os}-${edition}-${maintainer}"
     def arch     = "${archDir}/02-jslint"
-    def archDone = "${archDir}/02-jslint-DONE"
     def archFail = "${archDir}/02-jslint-FAIL"
 
     fileOperations([
         folderDeleteOperation(arch),
-        folderDeleteOperation(archDone),
         folderDeleteOperation(archFail),
         folderCreateOperation(arch)
     ])
@@ -553,7 +551,6 @@ def jslint(os, edition, maintainer) {
     try {
         sh "./Installation/Pipeline/test_jslint.sh | tee ${logFile}"
         sh "if grep ERROR ${logFile}; then exit 1; fi"
-        renameFolder(arch, archDone)
     }
     catch (exc) {
         renameFolder(arch, archFail)
@@ -562,7 +559,7 @@ def jslint(os, edition, maintainer) {
     }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-            artifacts: "${arch}-*, ${arch}/**, ${archDone}/**, ${archFail}/**",
+            artifacts: "${arch}-*, ${arch}/**, ${archFail}/**",
             defaultExcludes: false
     }
 }
@@ -691,6 +688,11 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                     setupTestEnvironment(os, edition, maintainer, logFile, runDir)
 
                     try {
+                        // seriously...30 minutes is the super absolute max max max.
+                        // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
+                        // even if the features are green this is completely broken performance wise..
+                        // DO NOT INCREASE!!
+
                         timeout(30) {
                             def tmpDir = pwd() + "/" + runDir + "/tmp"
 
@@ -725,6 +727,10 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                     }
                     finally {
                         checkCoresAndSave(os, runDir, name, archRun)
+
+                        archiveArtifacts allowEmptyArchive: true,
+                            artifacts: "${logFile}, ${logFileFailed}",
+                            defaultExcludes: false
                     }
                 }
             }
@@ -771,7 +777,6 @@ def testStep(os, edition, maintainer, mode, engine, stageName) {
                 stage(stageName) {
                     def archDir    = "${os}-${edition}-${maintainer}"
                     def arch       = "${archDir}/03-test-${mode}-${engine}"
-                    def archDone   = "${arch}-DONE"
                     def archFail   = "${arch}-FAIL"
                     def archRun    = "${arch}-RUN"
 
@@ -781,7 +786,6 @@ def testStep(os, edition, maintainer, mode, engine, stageName) {
                     // create directories for the artifacts
                     fileOperations([
                         folderCreateOperation(arch),
-                        folderCreateOperation(archDone),
                         folderCreateOperation(archFail),
                         folderCreateOperation(archRun)
                     ])
@@ -793,30 +797,22 @@ def testStep(os, edition, maintainer, mode, engine, stageName) {
                     def port = (getStartPort(os) as Integer)
                     echo "Using start port: ${port}"
 
-                    // seriously...60 minutes is the super absolute max max max.
-                    // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
-                    // even if the features are green this is completely broken performance wise..
-                    // DO NOT INCREASE!!
-
-                    timeout(60) {
-                        try {
-                            executeTests(os, edition, maintainer, mode, engine, port, archDir, arch, stageName)
-                            renameFolder(arch, archDone)
+                    try {
+                        executeTests(os, edition, maintainer, mode, engine, port, archDir, arch, stageName)
+                    }
+                    finally {
+                        // release the port reservation
+                        if (os == 'linux' || os == 'mac') {
+                            sh "Installation/Pipeline/port.sh --clean ${port}"
                         }
-                        finally {
-                            // release the port reservation
-                            if (os == 'linux' || os == 'mac') {
-                                sh "Installation/Pipeline/port.sh --clean ${port}"
-                            }
-                            else if (os == 'windows') {
-                                powershell "remove-item -Force -ErrorAction Ignore C:\\ports\\${port}"
-                            }
-
-                            // archive all artifacts
-                            archiveArtifacts allowEmptyArchive: true,
-                                artifacts: "${arch}-*, ${arch}/**, ${archDone}/**, ${archFail}/**, ${archRun}/**",
-                                defaultExcludes: false
+                        else if (os == 'windows') {
+                            powershell "remove-item -Force -ErrorAction Ignore C:\\ports\\${port}"
                         }
+
+                        // archive all artifacts
+                        archiveArtifacts allowEmptyArchive: true,
+                            artifacts: "${arch}-*, ${archRun}/**",
+                            defaultExcludes: false
                     }
                 }
             }
@@ -968,13 +964,11 @@ def testStepParallel(os, edition, maintainer, modeList) {
 def buildEdition(os, edition, maintainer) {
     def archDir  = "${os}-${edition}-${maintainer}"
     def arch     = "${archDir}/01-build"
-    def archDone = "${archDir}/01-build-DONE"
     def archFail = "${archDir}/01-build-FAIL"
 
     fileOperations([
         folderDeleteOperation(arch),
         fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
-        folderDeleteOperation(archDone),
         folderDeleteOperation(archFail),
         folderCreateOperation(arch)
     ])
@@ -1012,8 +1006,6 @@ def buildEdition(os, edition, maintainer) {
                 folderDeleteOperation("${arch}/tmp")
             ])
         }
-
-        renameFolder(arch, archDone)
     }
     catch (exc) {
         fileOperations([
@@ -1025,7 +1017,7 @@ def buildEdition(os, edition, maintainer) {
     }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-            artifacts: "${archDir}-*, ${arch}/**, ${archDone}/**, ${archFail}/**",
+            artifacts: "${archDir}-*, ${arch}/**, ${archFail}/**",
             defaultExcludes: false
     }
 }
