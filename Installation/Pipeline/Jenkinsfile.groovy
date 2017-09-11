@@ -115,6 +115,9 @@ runTests = params.runTests
 // restrict builds
 restrictions = [:]
 
+// overview of configured builds and tests
+overview = ""
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             CONSTANTS AND HELPERS
 // -----------------------------------------------------------------------------
@@ -462,7 +465,7 @@ def checkCommitMessages() {
         }
     }
 
-    echo """BRANCH_NAME: ${env.BRANCH_NAME}
+    overview = """BRANCH_NAME: ${env.BRANCH_NAME}
 SOURCE: ${sourceBranchLabel}
 CHANGE_ID: ${env.CHANGE_ID}
 CHANGE_TARGET: ${env.CHANGE_TARGET}
@@ -554,7 +557,7 @@ def jslint(os, edition, maintainer) {
     }
     catch (exc) {
         renameFolder(arch, archFail)
-        fileOperations([fileCreateOperation(fileContent: 'BUILD FAILED', fileName: "${archi}-FAIL.txt")])
+        fileOperations([fileCreateOperation(fileContent: 'BUILD FAILED', fileName: "${arch}-FAIL.txt")])
         throw exc
     }
     finally {
@@ -1097,4 +1100,5 @@ def runOperatingSystems(osList) {
 }
 
 checkCommitMessages()
+fileOperations([fileCreateOperation(fileContent: overview, fileName: "overview.txt")])
 runOperatingSystems(['linux', 'mac', 'windows'])
