@@ -733,10 +733,13 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                         throw exc
                     }
                     finally {
+                        def logFileRel       = "${arch}/${name}.log"
+                        def logFileFailedRel = "${arch}-FAIL/${name}.log"
+
                         checkCoresAndSave(os, runDir, name, archRun)
 
                         archiveArtifacts allowEmptyArchive: true,
-                            artifacts: "${logFile}, ${logFileFailed}",
+                            artifacts: "${logFileRel}, ${logFileFailedRel}",
                             defaultExcludes: false
                     }
                 }
