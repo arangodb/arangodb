@@ -30,13 +30,15 @@ exit $LastExitCode
   try
   {
       cd $vcpath
-      start mspdbsrv -argumentlist '-start','-spawn' -NoNewWindow
+      start mspdbsrv -argumentlist '-start','-spawn',$env:_MSPDBSRV_ENDPOINT_ -NoNewWindow
   }
   catch {}
   Set-Location "$old"
   $Env:BUILD_ID=$originalBuildID
 
   $env:GYP_MSVS_OVERRIDE_PATH="${vcpath}\bin"
+  $env:CC="${vcpath}\bin\cl.exe"
+  $env:CXX="${vcpath}\bin\cl.exe"
 
   $env
 
