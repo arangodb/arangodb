@@ -382,14 +382,10 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     void populate() {
       // mop: compiler should inline that I suppose :S
       auto collectionFn = [&](Collection* col) -> void {
-        if (col->isSatellite()) {
+        if (col->isSatellite() || collection != nullptr) {
           auxiliaryCollections.emplace(col);
         } else {
-          if (collection != nullptr) {
-            auxiliaryCollections.emplace(col);
-          } else {
-            collection = col;
-          }
+          collection = col;
         }
       };
       Collection* localCollection = nullptr;
@@ -420,8 +416,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
       }
       // mop: ok we are actually only working with a satellite...
       // so remove its shardId from the auxiliaryShards again
-      if (collection != nullptr && collection->isSatellite()) {
-        // TODO: is this removal still correct?
+      if (collection != nullptr) {
         auxiliaryCollections.erase(collection);
       }
       populated = true;
@@ -727,19 +722,27 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         collection->setCurrentShard(shardId);
       
         // inject the current shard id for auxiliary collections
+        std::string auxShardId;
         for (auto const& auxiliaryCollection : auxiliaryCollections) {
           auto auxShardIds = auxiliaryCollection->shardIds();
-          TRI_ASSERT(auxShardIds->size() == shardIds->size());
-          auxiliaryCollection->setCurrentShard((*auxShardIds)[nr]);
+          if (auxiliaryCollection->isSatellite()) {
+            TRI_ASSERT(auxShardIds->size() == 1);
+            auxShardId = (*auxShardIds)[0];
+          } else {
+            auxShardId = (*auxShardIds)[nr];
+          }
+          auxiliaryCollection->setCurrentShard(auxShardId);
         }
 
         VPackBuilder b;
-        generatePlanForOneShard(b, nr++, info, connectedId, shardId, true);
+        generatePlanForOneShard(b, nr, info, connectedId, shardId, true);
 
+        ++nr;
         distributePlanToShard(coordTransactionID, info,
                               connectedId, shardId,
                               b.slice());
       }
+
       collection->resetCurrentShard();
       
       // reset shard for auxiliary collections too
