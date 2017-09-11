@@ -376,8 +376,6 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
       if (deleted) {
         // found a dead document
-        context->_dfi.numberDead++;
-        context->_dfi.sizeDead += MMFilesDatafileHelper::AlignedMarkerSize<int64_t>(marker);
         return true;
       }
 
@@ -494,6 +492,8 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   }  // next file
 
   MMFilesCollection* physical = static_cast<MMFilesCollection*>(collection->getPhysical());
+  TRI_ASSERT(context->_dfi.numberDead == 0);
+  TRI_ASSERT(context->_dfi.sizeDead == 0);
   physical->_datafileStatistics.replace(compactor->fid(), context->_dfi);
 
   trx.commit();
