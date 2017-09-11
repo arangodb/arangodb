@@ -28,7 +28,7 @@ exit $LastExitCode
   $old=Get-Location
   try
   {
-      cd "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE"
+      cd $vcpath
       start mspdbsrv -argumentlist '-start','-spawn' -NoNewWindow
   }
   catch {}
