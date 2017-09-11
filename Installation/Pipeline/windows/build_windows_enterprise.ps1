@@ -1,5 +1,4 @@
 $logdir="windows-enterprise-maintainer/01-build"
-$tmp=Join-Path (pwd) "windows-community-maintainer\01-build\tmp"
 
 $ErrorActionPreference="Stop"
 $vcpath=$(Get-ItemProperty HKLM:\SOFTWARE\Wow6432Node\Microsoft\VisualStudio\SxS\VC7)."14.0"
@@ -24,13 +23,18 @@ exit $LastExitCode
 
   docker run --rm -v $volume m0ppers/build-container powershell C:\arangodb\buildscript.ps1 | Set-Content -PassThru ${logdir}\build.log
 } else {
-  New-Item -ItemType Directory -Force -Path $tmp
+  var originalBuildID = $Env:BUILD_ID
+  $Env:BUILD_ID = "DoNotKillMe"
+  try
+  {
+      start mspdbsrv -argumentlist '-start','-spawn' -NoNewWindow
+  }
+  catch {}
+  $Env:BUILD_ID = originalBuildID
+
 
   $env:_MSPDBSRV_ENDPOINT_="enterprise-${env:BUILD_TAG}"
   $env:GYP_MSVS_OVERRIDE_PATH="${vcpath}\bin"
-  $env:TMP="$tmp"
-  $env:TEMP="$tmp"
-  $env:TEMPDIR="$tmp"
 
   $env
 
