@@ -52,16 +52,16 @@ void MMFilesDatafileStatistics::compactionRun(uint64_t noCombined,
 {
   WRITE_LOCKER(writeLocker, _statisticsLock);
   _localStats._compactionCount ++;
-  _localStats._filesCombined += noCombined;
+  if (noCombined > 1) {
+    _localStats._filesCombined += noCombined;
+  }
   _localStats._compactionBytesRead += read;
   _localStats._compactionBytesWritten += written;
 }
 
-MMFilesDatafileStatistics::CompactionStats const MMFilesDatafileStatistics::getStats() {
-  CompactionStats tmp;
+MMFilesDatafileStatistics::CompactionStats MMFilesDatafileStatistics::getStats() {
   READ_LOCKER(readLocker, _statisticsLock);
-  tmp = _localStats;
-  return tmp;
+  return _localStats;
 }
 
 /// @brief create an empty statistics container for a file

@@ -36,10 +36,10 @@ namespace arangodb {
 class MMFilesDatafileStatistics {
  public:
   struct CompactionStats {
-    int64_t _compactionCount;
-    int64_t _compactionBytesRead;
-    int64_t _compactionBytesWritten;
-    int64_t _filesCombined;
+    uint64_t _compactionCount;
+    uint64_t _compactionBytesRead;
+    uint64_t _compactionBytesWritten;
+    uint64_t _filesCombined;
   };
 
  public:
@@ -53,7 +53,7 @@ class MMFilesDatafileStatistics {
   void compactionRun(uint64_t noCombined, uint64_t read, uint64_t written);
 
   // @brief get current collection statistics
-  MMFilesDatafileStatistics::CompactionStats const getStats();
+  MMFilesDatafileStatistics::CompactionStats getStats();
   
   /// @brief create (empty) statistics for a datafile
   void create(TRI_voc_fid_t);
