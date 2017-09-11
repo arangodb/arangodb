@@ -43,10 +43,6 @@ else
     exit 1
 fi
 
-echo "CONCURRENY: $concurrency"
-echo "HOST: `hostname`"
-echo "PWD: `pwd`"
-
 mkdir -p build
 
 if [ -z "$logdir" ]; then
@@ -56,6 +52,10 @@ if [ -z "$logdir" ]; then
 fi
 
 touch $logdir/build.log
+
+echo "CONCURRENY: $concurrency" | tee $logdir/build.log
+echo "HOST: `hostname`" | tee $logdir/build.log
+echo "PWD: `pwd`" | tee $logdir/build.log
 
 (
     set -eo pipefail
