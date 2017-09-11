@@ -25,14 +25,15 @@ exit $LastExitCode
 } else {
   $originalBuildID=$Env:BUILD_ID
   $Env:BUILD_ID="DoNotKillMe"
+  old=Get-Location
   try
   {
       cd "C:\Program Files (x86)\Microsoft Visual Studio\2017\Community\Common7\IDE"
       start mspdbsrv -argumentlist '-start','-spawn' -NoNewWindow
   }
   catch {}
+  Set-Location $old
   $Env:BUILD_ID=$originalBuildID
-
 
   $env:_MSPDBSRV_ENDPOINT_="enterprise-${env:BUILD_TAG}"
   $env:GYP_MSVS_OVERRIDE_PATH="${vcpath}\bin"
