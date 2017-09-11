@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global window, Backbone */
+/* global window, _, Backbone */
 (function () {
   'use strict';
   window.FoxxRepository = Backbone.Collection.extend({
@@ -11,6 +11,18 @@
     },
 
     url: 'foxxes/fishbowl',
+
+    parse: function (response) {
+      var foxxes = [];
+      var version;
+      _.each(response, function (foxx) {
+        version = Number.parseInt(foxx.latestVersion.charAt(0));
+        if (version >= 3) {
+          foxxes.push(foxx);
+        }
+      });
+      return foxxes;
+    },
 
     comparator: function (item, item2) {
       var a, b;
