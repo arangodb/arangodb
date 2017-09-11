@@ -482,8 +482,12 @@ Building Maintainer: ${useMaintainer}
 Building Non-Maintainer: ${useUser}
 Running Tests: ${runTests}
 
-Restrictions: ${restrictions.keySet().join(", ")}
+Restrictions:
 """
+
+    for (r in restrictions.keySet()) {
+        overview += "    " + r + "\n"
+    }
 }
 
 // -----------------------------------------------------------------------------
