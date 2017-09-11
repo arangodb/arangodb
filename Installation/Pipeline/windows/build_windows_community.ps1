@@ -32,7 +32,7 @@ exit $LastExitCode
       start mspdbsrv -argumentlist '-start','-spawn' -NoNewWindow
   }
   catch {}
-  Set-Location $old
+  Set-Location "$old"
   $Env:BUILD_ID=$originalBuildID
 
   $env:_MSPDBSRV_ENDPOINT_="community-${env:BUILD_TAG}"
