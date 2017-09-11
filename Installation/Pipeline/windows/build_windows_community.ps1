@@ -23,6 +23,7 @@ exit $LastExitCode
 
   docker run --rm -v $volume m0ppers/build-container powershell C:\arangodb\buildscript.ps1 | Set-Content -PassThru ${logdir}\build.log
 } else {
+  $env:_MSPDBSRV_ENDPOINT_="community-${env:BUILD_TAG}"
   $originalBuildID=$Env:BUILD_ID
   $Env:BUILD_ID="DoNotKillMe"
   $old=Get-Location
@@ -35,7 +36,6 @@ exit $LastExitCode
   Set-Location "$old"
   $Env:BUILD_ID=$originalBuildID
 
-  $env:_MSPDBSRV_ENDPOINT_="community-${env:BUILD_TAG}"
   $env:GYP_MSVS_OVERRIDE_PATH="${vcpath}\bin"
 
   $env
