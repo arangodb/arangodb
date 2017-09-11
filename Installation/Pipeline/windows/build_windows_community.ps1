@@ -25,12 +25,12 @@ exit $LastExitCode
 } else {
   $env:_MSPDBSRV_ENDPOINT_="community-${env:BUILD_TAG}"
   $originalBuildID=$Env:BUILD_ID
-  $Env:BUILD_ID="DoNotKillMe"
+  echo $Env:BUILD_ID="DoNotKillMe"
   $old=Get-Location
   try
   {
       cd $vcpath
-      start mspdbsrv -argumentlist '-start','-spawn',$env:_MSPDBSRV_ENDPOINT_ -NoNewWindow
+      start mspdbsrv -argumentlist '-start','-spawn','-endpoint',$env:_MSPDBSRV_ENDPOINT_ -NoNewWindow
   }
   catch {}
   Set-Location "$old"
