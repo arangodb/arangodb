@@ -354,7 +354,7 @@ static int distributeBabyOnShards(
     ClusterInfo* ci, std::string const& collid,
     std::shared_ptr<LogicalCollection> collinfo,
     std::vector<std::pair<ShardID, VPackValueLength>>& reverseMapping,
-    VPackSlice const node, VPackValueLength const index) {
+    VPackSlice const node, VPackValueLength const index, bool isRestore) {
   ShardID shardID;
   bool userSpecifiedKey = false;
   std::string _key = "";
@@ -403,7 +403,7 @@ static int distributeBabyOnShards(
     // Now perform the above mentioned check:
     if (userSpecifiedKey &&
         (!usesDefaultShardingAttributes || !collinfo->allowUserKeys()) &&
-        !options.isRestore) {
+        !isRestore) {
       return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
     }
   }
@@ -974,14 +974,15 @@ int createDocumentOnCoordinator(
     VPackValueLength length = slice.length();
     for (VPackValueLength idx = 0; idx < length; ++idx) {
       res = distributeBabyOnShards(shardMap, ci, collid, collinfo,
-                                   reverseMapping, slice.at(idx), idx);
+                                   reverseMapping, slice.at(idx), idx,
+                                   options.isRestore);
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
     }
   } else {
     res = distributeBabyOnShards(shardMap, ci, collid, collinfo, reverseMapping,
-                                 slice, 0);
+                                 slice, 0, options.isRestore);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
