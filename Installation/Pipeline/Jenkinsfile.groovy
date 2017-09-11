@@ -368,14 +368,6 @@ def checkCommitMessages() {
         runTests = false
     }
     else {
-        useLinux = true
-        useMac = true
-        useWindows = true
-        useCommunity = true
-        useEnterprise = true
-        // runResilience = true
-        runTests = true
-
         if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
             echo "build of main branch"
         }
