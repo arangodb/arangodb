@@ -27,6 +27,8 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 
+#include <iosfwd>
+
 namespace arangodb {
 class AgencyComm;
 
@@ -306,5 +308,7 @@ class ServerState {
   bool _foxxmasterQueueupdate;
 };
 }
+
+std::ostream& operator<<(std::ostream&, arangodb::ServerState::RoleEnum);
 
 #endif

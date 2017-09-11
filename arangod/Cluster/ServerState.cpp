@@ -24,6 +24,7 @@
 #include "ServerState.h"
 
 #include <iomanip>
+#include <iostream>
 #include <sstream>
 
 #include <boost/uuid/uuid.hpp>
@@ -1175,4 +1176,9 @@ bool ServerState::getFoxxmasterQueueupdate() { return _foxxmasterQueueupdate; }
 
 void ServerState::setFoxxmasterQueueupdate(bool value) {
   _foxxmasterQueueupdate = value;
+}
+
+std::ostream& operator<<(std::ostream& stream, arangodb::ServerState::RoleEnum role) {
+  stream << arangodb::ServerState::roleToString(role);
+  return stream;
 }

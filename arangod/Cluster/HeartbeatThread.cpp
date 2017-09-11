@@ -177,8 +177,13 @@ void HeartbeatThread::runBackgroundJob() {
 void HeartbeatThread::run() {
   if (ServerState::instance()->isCoordinator()) {
     runCoordinator();
-  } else {
+  } else if (ServerState::instance()->isDBServer()) {
     runDBServer();
+  } else if (ServerState::instance()->isSingleServer()) {
+    runSingleServer();
+  } else {
+    LOG_TOPIC(ERR, Logger::FIXME) << "invalid role setup found when starting HeartbeatThread";
+    TRI_ASSERT(false);
   }
 }
 
@@ -392,6 +397,56 @@ void HeartbeatThread::runDBServer() {
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
   LOG_TOPIC(TRACE, Logger::HEARTBEAT)
       << "stopped heartbeat thread (DBServer version)";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief heartbeat main loop, single server version
+////////////////////////////////////////////////////////////////////////////////
+
+void HeartbeatThread::runSingleServer() {
+  LOG_TOPIC(TRACE, Logger::HEARTBEAT)
+      << "starting heartbeat thread (single server version)";
+
+  // mop: the heartbeat thread itself is now ready
+  setReady();
+  // mop: however we need to wait for the rest server here to come up
+  // otherwise we would already create collections and the coordinator would
+  // think
+  // ohhh the dbserver is online...pump some documents into it
+  // which fails when it is still in maintenance mode
+  while (arangodb::rest::RestHandlerFactory::isMaintenance()) {
+    usleep(100000);
+  }
+
+  // convert timeout to seconds
+  // double const interval = (double)_interval / 1000.0 / 1000.0;
+
+  while (!isStopping()) {
+
+    try {
+      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "sending heartbeat to agency";
+
+      // send our state to the agency.
+      // we don't care if this fails
+      sendState();
+
+      if (isStopping()) {
+        break;
+      }
+
+      // TODO: implement the actual heartbeat
+      usleep(100000);
+    } catch (std::exception const& e) {
+      LOG_TOPIC(ERR, Logger::HEARTBEAT)
+          << "Got an exception in single server heartbeat: " << e.what();
+    } catch (...) {
+      LOG_TOPIC(ERR, Logger::HEARTBEAT)
+          << "Got an unknown exception in single server heartbeat";
+    }
+  }
+
+  LOG_TOPIC(TRACE, Logger::HEARTBEAT)
+      << "stopped heartbeat thread (single server version)";
 }
 
 ////////////////////////////////////////////////////////////////////////////////

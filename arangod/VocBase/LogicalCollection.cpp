@@ -237,7 +237,8 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 
   VPackSlice shardKeysSlice = info.get("shardKeys");
 
-  bool const isCluster = ServerState::instance()->isRunningInCluster();
+  // TODO: decide whether we will still need this
+  // bool const isCluster = ServerState::instance()->isRunningInCluster();
   // Cluster only tests
   if (ServerState::instance()->isCoordinator()) {
     if ((_numberOfShards == 0 && !_isSmart) || _numberOfShards > 1000) {
@@ -316,10 +317,12 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
           }
         }
       }
-      if (_shardKeys.empty() && !isCluster) {
+      if (_shardKeys.empty()) { // && !isCluster) {
         // Compatibility. Old configs might store empty shard-keys locally.
         // This is translated to ["_key"]. In cluster-case this always was
         // forbidden.
+        // TODO: now we need to allow this, as we use cluster features for
+        // single servers in case of async failover
         _shardKeys.emplace_back(StaticStrings::KeyString);
       }
     }
@@ -327,7 +330,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 
   if (_shardKeys.empty() || _shardKeys.size() > 8) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "invalid number of shard keys");
+                                   std::string("invalid number of shard keys for collection '") + _name + "'");
   }
 
   auto shardsSlice = info.get("shards");

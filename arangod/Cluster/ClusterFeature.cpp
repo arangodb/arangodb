@@ -187,10 +187,11 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_myRole.empty()) {
     _requestedRole = ServerState::stringToRole(_myRole);
 
-    if (_requestedRole == ServerState::ROLE_SINGLE ||
-        _requestedRole == ServerState::ROLE_AGENT ||
-        _requestedRole == ServerState::ROLE_UNDEFINED
-        ) {
+    std::vector<arangodb::ServerState::RoleEnum> const disallowedRoles= { 
+      /*ServerState::ROLE_SINGLE,*/ ServerState::ROLE_AGENT, ServerState::ROLE_UNDEFINED 
+    };
+
+    if (std::find(disallowedRoles.begin(), disallowedRoles.end(), _requestedRole) != disallowedRoles.end()) {
       LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Invalid role provided. Possible values: PRIMARY, "
                     "SECONDARY, COORDINATOR";
       FATAL_ERROR_EXIT();
@@ -207,7 +208,6 @@ void ClusterFeature::reportRole(arangodb::ServerState::RoleEnum role) {
 }
 
 void ClusterFeature::prepare() {
-
   auto v8Dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
   v8Dealer->defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM",
@@ -239,7 +239,7 @@ void ClusterFeature::prepare() {
     startClusterComm = true;
     auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
     if (authentication->isActive() && !authentication->hasUserdefinedJwt()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Cluster authentication enabled but jwt not set via command line. Please"
+      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Cluster authentication enabled but JWT not set via command line. Please"
         << " provide --server.jwt-secret which is used throughout the cluster.";
       FATAL_ERROR_EXIT();
     }
