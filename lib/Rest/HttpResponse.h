@@ -49,6 +49,7 @@ class HttpResponse : public GeneralResponse {
   explicit HttpResponse(ResponseCode code);
 
  public:
+  
   bool isHeadResponse() const { return _isHeadResponse; }
 
  public:
@@ -72,22 +73,23 @@ class HttpResponse : public GeneralResponse {
   void writeHeader(basics::StringBuffer*);  // override;
 
  public:
+  
   void reset(ResponseCode code) override final;
-
-  void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals,
-                         bool& skipBody) override {
-    if (_contentType == ContentType::JSON) {
-      skipBody = true;
-    }
-  }
-
+  
+  void addPayload(VPackSlice const&,
+                  arangodb::velocypack::Options const* = nullptr,
+                  bool resolve_externals = true) override;
+  void addPayload(VPackBuffer<uint8_t>&&,
+                  arangodb::velocypack::Options const* = nullptr,
+                  bool resolve_externals = true) override;
+  
+  /// used for head-responses
   bool setGenerateBody(bool generateBody) override final {
     return _generateBody = generateBody;
-  }  // used for head-responses
+  }
+  
   int reservePayload(std::size_t size) override { return _body.reserve(size); }
-  void addPayloadPostHook(VPackSlice const&, VPackOptions const* options,
-                          bool resolveExternals, bool bodySkipped) override;
-
+  
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::HTTP;
   }

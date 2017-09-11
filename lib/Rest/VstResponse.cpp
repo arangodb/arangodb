@@ -43,7 +43,7 @@ using namespace arangodb::basics;
 bool VstResponse::HIDE_PRODUCT_HEADER = false;
 
 VstResponse::VstResponse(ResponseCode code, uint64_t id)
-    : GeneralResponse(code), _header(nullptr), _messageId(id) {
+    : GeneralResponse(code), _messageId(id), _header(nullptr) {
   _contentType = ContentType::VPACK;
   _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
 }
@@ -54,6 +54,63 @@ void VstResponse::reset(ResponseCode code) {
   _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
   _contentType = ContentType::VPACK;
   _generateBody = false;  // payload has to be set
+}
+
+void VstResponse::addPayload(VPackSlice const& slice,
+                             velocypack::Options const* options,
+                             bool resolveExternals) {
+  if (!options) {
+    options = &VPackOptions::Options::Defaults;
+  }
+  
+  // only copy buffer if it contains externals
+  if (resolveExternals) {
+    bool resolveExt = VelocyPackHelper::hasNonClientTypes(slice, true, true);
+    if (resolveExt) {  // resolve
+      VPackBuffer<uint8_t> tmpBuffer;
+      tmpBuffer.reserve(slice.byteSize()); // reserve space already
+      VPackBuilder builder(tmpBuffer, options);
+      VelocyPackHelper::sanitizeNonClientTypes(slice, VPackSlice::noneSlice(),
+                                               builder, options, true, true);
+      _vpackPayloads.push_back(std::move(tmpBuffer));
+    } else {
+      // just copy
+      _vpackPayloads.emplace_back(slice.byteSize());
+      _vpackPayloads.back().append(slice.startAs<char const>(),
+                                   slice.byteSize());
+    }
+  } else {
+    // just copy
+    _vpackPayloads.emplace_back(slice.byteSize());
+    _vpackPayloads.back().append(slice.startAs<char const>(),
+                                 slice.byteSize());
+  }
+}
+
+void VstResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
+                             velocypack::Options const* options,
+                             bool resolveExternals) {
+  if (!options) {
+    options = &VPackOptions::Options::Defaults;
+  }
+  
+  // only copy buffer if it contains externals
+  if (resolveExternals) {
+    VPackSlice input(buffer.data());
+    bool resolveExt = VelocyPackHelper::hasNonClientTypes(input, true, true);
+    if (resolveExt) {  // resolve
+      VPackBuffer<uint8_t> tmpBuffer;
+      tmpBuffer.reserve(buffer.length()); // reserve space already
+      VPackBuilder builder(tmpBuffer, options);
+      VelocyPackHelper::sanitizeNonClientTypes(input, VPackSlice::noneSlice(),
+                                               builder, options, true, true);
+      _vpackPayloads.push_back(std::move(tmpBuffer));
+    } else {
+      _vpackPayloads.push_back(std::move(buffer));
+    }
+  } else {
+    _vpackPayloads.push_back(std::move(buffer));
+  }
 }
 
 VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {

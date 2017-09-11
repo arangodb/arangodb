@@ -82,7 +82,8 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest con
   std::unique_ptr<GeneralResponse> response(new HttpResponse(code));
   response->setContentType(req.contentTypeResponse());
 
-  VPackBuilder builder;
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
   builder.openObject();
   builder.add(StaticStrings::Error, VPackValue(true));
   builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
@@ -91,7 +92,7 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest con
   builder.close();
 
   try {
-    response->setPayload(builder.slice(), true, VPackOptions::Defaults);
+    response->setPayload(std::move(buffer), true, VPackOptions::Defaults);
     addResponse(response.get(), stealStatistics(1UL));
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION)

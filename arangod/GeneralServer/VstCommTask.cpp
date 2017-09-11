@@ -453,7 +453,8 @@ void VstCommTask::handleSimpleError(rest::ResponseCode responseCode,
   VstResponse response(responseCode, messageId);
   response.setContentType(req.contentTypeResponse());
 
-  VPackBuilder builder;
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
   builder.openObject();
   builder.add(StaticStrings::Error, VPackValue(true));
   builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
@@ -462,7 +463,7 @@ void VstCommTask::handleSimpleError(rest::ResponseCode responseCode,
   builder.close();
 
   try {
-    response.setPayload(builder.slice(), true, VPackOptions::Defaults);
+    response.setPayload(std::move(buffer), true, VPackOptions::Defaults);
     processResponse(&response);
   } catch (...) {
     closeStream();

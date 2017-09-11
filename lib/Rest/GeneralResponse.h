@@ -137,14 +137,6 @@ class GeneralResponse {
 
   virtual void reset(ResponseCode) = 0;
 
-  // generates the response body, sets the content type; this might
-  // throw an error
-  void setPayload(VPackSlice slice, bool generateBody,
-                  VPackOptions const& options = VPackOptions::Options::Defaults,
-                  bool resolveExternals = true) {
-    _generateBody = generateBody;
-    addPayload(slice, &options, resolveExternals);
-  }
   // Payload needs to be of type: VPackSlice const&
   // or VPackBuffer<uint8_t>&&
   template <typename Payload>
@@ -155,24 +147,13 @@ class GeneralResponse {
     addPayload(std::forward<Payload>(payload), &options, resolveExternals);
   }
 
-  void addPayloadPreconditions() { 
-    if (_vpackPayloads.size() != 0) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Payload set twice";
-      TRI_ASSERT(_vpackPayloads.size() == 0);
-    }
-  }
-  virtual void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals,
-                                 bool& skipBody) {}
-  void addPayload(VPackSlice const&,
+  virtual void addPayload(VPackSlice const&,
                   arangodb::velocypack::Options const* = nullptr,
-                  bool resolve_externals = true);
-  void addPayload(VPackBuffer<uint8_t>&&,
+                  bool resolveExternals = true) = 0;
+  virtual void addPayload(VPackBuffer<uint8_t>&&,
                   arangodb::velocypack::Options const* = nullptr,
-                  bool resolve_externals = true);
-  virtual void addPayloadPostHook(VPackSlice const&,
-                                  arangodb::velocypack::Options const*,
-                                  bool resolveExternals, bool bodySkipped) {}
-
+                  bool resolveExternals = true) = 0;
+  
   virtual int reservePayload(std::size_t size) { return TRI_ERROR_NO_ERROR; }
   bool generateBody() const { return _generateBody; };  // used for head
   virtual bool setGenerateBody(bool) {
@@ -186,8 +167,6 @@ class GeneralResponse {
   std::unordered_map<std::string, std::string>
       _headers;  // headers/metadata map
 
-  std::vector<VPackBuffer<uint8_t>> _vpackPayloads;
-  std::size_t _numPayloads;
   ContentType _contentType;
   ConnectionType _connectionType;
   velocypack::Options _options;

@@ -995,9 +995,10 @@ void RocksDBRestReplicationHandler::handleCommandGetKeys() {
   //lock context
   RocksDBReplicationContextGuard(_manager, ctx);
 
-  VPackBuilder b;
-  ctx->dumpKeyChunks(b, chunkSize);
-  generateResult(rest::ResponseCode::OK, b.slice());
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
+  ctx->dumpKeyChunks(builder, chunkSize);
+  generateResult(rest::ResponseCode::OK, std::move(buffer));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1072,9 +1073,10 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   std::shared_ptr<transaction::Context> transactionContext =
       transaction::StandaloneContext::Create(_vocbase);
 
-  VPackBuilder resultBuilder(transactionContext->getVPackOptions());
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer, transactionContext->getVPackOptions());
   if (keys) {
-    Result rv = ctx->dumpKeys(resultBuilder, chunk, static_cast<size_t>(chunkSize), lowKey);
+    Result rv = ctx->dumpKeys(builder, chunk, static_cast<size_t>(chunkSize), lowKey);
     if (rv.fail()){
       generateError(rv);
       return;
@@ -1086,14 +1088,14 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
       generateResult(rest::ResponseCode::BAD, VPackSlice());
       return;
     }
-    Result rv = ctx->dumpDocuments(resultBuilder, chunk, static_cast<size_t>(chunkSize), lowKey, parsedIds->slice());
+    Result rv = ctx->dumpDocuments(builder, chunk, static_cast<size_t>(chunkSize), lowKey, parsedIds->slice());
     if (rv.fail()){
       generateError(rv);
       return;
     }
   }
 
-  generateResult(rest::ResponseCode::OK, resultBuilder.slice(),
+  generateResult(rest::ResponseCode::OK, std::move(builder),
                  transactionContext);
 }
 

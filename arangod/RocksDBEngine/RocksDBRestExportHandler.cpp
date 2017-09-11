@@ -260,7 +260,7 @@ void RocksDBRestExportHandler::createCursor() {
     builder.close();
 
     _response->setContentType(rest::ContentType::JSON);
-    generateResult(rest::ResponseCode::CREATED, builder.slice());
+    generateResult(rest::ResponseCode::CREATED, std::move(buffer));
 
     cursors->release(c);
   } catch (...) {
@@ -311,7 +311,7 @@ void RocksDBRestExportHandler::modifyCursor() {
     builder.close();
 
     _response->setContentType(rest::ContentType::JSON);
-    generateResult(rest::ResponseCode::OK, builder.slice());
+    generateResult(rest::ResponseCode::OK, std::move(buffer));
 
     cursors->release(cursor);
   } catch (...) {

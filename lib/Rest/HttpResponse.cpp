@@ -34,6 +34,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackDumper.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
 #include "Meta/conversion.h"
 #include "Rest/GeneralRequest.h"
@@ -300,33 +301,40 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   // end of header, body to follow
 }
 
-void HttpResponse::addPayloadPostHook(
-    VPackSlice const& slice,
-    VPackOptions const* options = &VPackOptions::Options::Defaults,
-    bool resolveExternals = true, bool bodySkipped = false) {
-  VPackSlice const* slicePtr;
-  VPackSlice tmpSlice;
-  if (!bodySkipped) {
-    // we have Probably resolved externals
-    TRI_ASSERT(!_vpackPayloads.empty());
-    tmpSlice = VPackSlice(_vpackPayloads.front().data());
-    slicePtr = &tmpSlice;
-  } else {
-    slicePtr = &slice;
+void HttpResponse::addPayload(VPackSlice const& slice,
+                              velocypack::Options const* options,
+                              bool resolveExternals) {
+  if (!options) {
+    options = &velocypack::Options::Defaults;
   }
-
+  
   if (_contentType == rest::ContentType::JSON &&
       _contentTypeRequested == rest::ContentType::VPACK) {
     // content type was set by a handler to Json but the client wants VPACK
     // as we have a slice at had we are able to reply with VPACK
     _contentType = rest::ContentType::VPACK;
   }
-
+  
+  VPackSlice output = slice;
   switch (_contentType) {
     case rest::ContentType::VPACK: {
-      size_t length = static_cast<size_t>(slicePtr->byteSize());
+      
+      // will contain sanitized data
+      VPackBuffer<uint8_t> tmpBuffer;
+      if (resolveExternals) {
+        bool resolveExt = VelocyPackHelper::hasNonClientTypes(output, true, true);
+        if (resolveExt) {  // resolve
+          tmpBuffer.reserve(slice.byteSize()); // reserve space already
+          VPackBuilder builder(tmpBuffer, options);
+          VelocyPackHelper::sanitizeNonClientTypes(output, VPackSlice::noneSlice(),
+                                                   builder, options, true, true);
+          output = VPackSlice(tmpBuffer.data());
+        }
+      }
+      
+      VPackValueLength length = output.byteSize();
       if (_generateBody) {
-        _body.appendText(slicePtr->startAs<const char>(), length);
+        _body.appendText(output.startAs<const char>(), length);
       } else {
         headResponse(length);
       }
@@ -336,7 +344,69 @@ void HttpResponse::addPayloadPostHook(
       setContentType(rest::ContentType::JSON);
       if (_generateBody) {
         arangodb::basics::VelocyPackDumper dumper(&_body, options);
-        dumper.dumpValue(*slicePtr);
+        dumper.dumpValue(output);
+      } else {
+        // TODO can we optimize this?
+        // Just dump some where else to find real length
+        StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE, false);
+        
+        // convert object to string
+        VPackStringBufferAdapter buffer(tmp.stringBuffer());
+        
+        // usual dumping -  but not to the response body
+        VPackDumper dumper(&buffer, options);
+        dumper.dump(output);
+        
+        headResponse(tmp.length());
+      }
+    }
+  }
+}
+
+void HttpResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
+                              velocypack::Options const* options,
+                              bool resolveExternals) {
+  if (!options) {
+    options = &velocypack::Options::Defaults;
+  }
+
+  if (_contentType == rest::ContentType::JSON &&
+      _contentTypeRequested == rest::ContentType::VPACK) {
+    // content type was set by a handler to Json but the client wants VPACK
+    // as we have a slice at had we are able to reply with VPACK
+    _contentType = rest::ContentType::VPACK;
+  }
+
+  VPackSlice output(buffer.data());
+  switch (_contentType) {
+    case rest::ContentType::VPACK: {
+      
+      // will contain sanitized data
+      VPackBuffer<uint8_t> tmpBuffer;
+      if (resolveExternals) {
+        bool resolveExt = VelocyPackHelper::hasNonClientTypes(output, true, true);
+        if (resolveExt) {  // resolve
+          tmpBuffer.reserve(buffer.length()); // reserve space already
+          VPackBuilder builder(tmpBuffer, options);
+          VelocyPackHelper::sanitizeNonClientTypes(output, VPackSlice::noneSlice(),
+                                                   builder, options, true, true);
+          output = VPackSlice(tmpBuffer.data());
+        }
+      }
+
+      VPackValueLength length = output.byteSize();
+      if (_generateBody) {
+        _body.appendText(output.startAs<const char>(), length);
+      } else {
+        headResponse(length);
+      }
+      break;
+    }
+    default: {
+      setContentType(rest::ContentType::JSON);
+      if (_generateBody) {
+        arangodb::basics::VelocyPackDumper dumper(&_body, options);
+        dumper.dumpValue(output);
       } else {
         // TODO can we optimize this?
         // Just dump some where else to find real length
@@ -347,7 +417,7 @@ void HttpResponse::addPayloadPostHook(
 
         // usual dumping -  but not to the response body
         VPackDumper dumper(&buffer, options);
-        dumper.dump(*slicePtr);
+        dumper.dump(output);
 
         headResponse(tmp.length());
       }
