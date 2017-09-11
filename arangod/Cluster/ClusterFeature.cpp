@@ -107,8 +107,6 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addObsoleteOption("--cluster.arangod-path",
                              "path to the arangod for the cluster",
                              true);
-  
-
                              
   options->addOption("--cluster.agency-endpoint",
                      "agency endpoint to connect to",
