@@ -226,35 +226,35 @@ def checkEnabledMaintainer(maintainer, os, text) {
     return true
 }
 
-def checkCoresAndSave(os, runDir, name, archRuns) {
+def checkCoresAndSave(os, runDir, name, archRun) {
     if (os == 'windows') {
-        powershell "move-item -Force -ErrorAction Ignore ${runDir}/logs ${archRuns}/${name}.logs"
-        powershell "move-item -Force -ErrorAction Ignore ${runDir}/out ${archRuns}/${name}.logs"
-        powershell "move-item -Force -ErrorAction Ignore ${runDir}/tmp ${archRuns}/${name}.tmp"
+        powershell "move-item -Force -ErrorAction Ignore ${runDir}/logs ${archRun}/${name}.logs"
+        powershell "move-item -Force -ErrorAction Ignore ${runDir}/out ${archRun}/${name}.logs"
+        powershell "move-item -Force -ErrorAction Ignore ${runDir}/tmp ${archRun}/${name}.tmp"
 
         def files = findFiles(glob: "${runDir}/*.dmp")
         
         if (files.length > 0) {
             for (file in files) {
-                powershell "move-item -Force -ErrorAction Ignore ${file} ${archRuns}"
+                powershell "move-item -Force -ErrorAction Ignore ${file} ${archRun}"
             }
 
-            powershell "copy-item .\\build\\bin\\* -Include *.exe,*.pdb,*.ilk ${archRuns}"
+            powershell "copy-item .\\build\\bin\\* -Include *.exe,*.pdb,*.ilk ${archRun}"
 
             error("found dmp file")
         }
     }
     else {
-        sh "for i in logs out tmp result; do test -e \"${runDir}/\$i\" && mv \"${runDir}/\$i\" \"${archRuns}/${name}.\$i\" || true; done"
+        sh "for i in logs out tmp result; do test -e \"${runDir}/\$i\" && mv \"${runDir}/\$i\" \"${archRun}/${name}.\$i\" || true; done"
 
         def files = findFiles(glob: '${runDir}/core*')
 
         if (files.length > 0) {
             for (file in files) {
-                sh "mv ${file} ${archRuns}"
+                sh "mv ${file} ${archRun}"
             }
 
-            sh "cp -a build/bin/* ${archRuns}"
+            sh "cp -a build/bin/* ${archRun}"
 
             error("found core file")
         }
@@ -454,8 +454,6 @@ def checkCommitMessages() {
                 // OS EDITION MAINTAINER
                 "build-linux-community-user" : true,
                 "build-linux-enterprise-maintainer" : true,
-                "build-mac-enterprise-user" : true,
-                "build-windows-enterprise-maintainer" : true,
 
                 // OS EDITION MAINTAINER MODE ENGINE
                 "test-linux-enterprise-maintainer-cluster-rocksdb" : true,
@@ -643,7 +641,7 @@ def setupTestEnvironment(os, edition, maintainer, logFile, runDir) {
     }
 }
 
-def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, stageName) {
+def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch, stageName) {
     def parallelity = 4
     def testIndex = 0
     def tests = getTests(os, edition, maintainer, mode, engine)
@@ -672,9 +670,9 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, stage
         }
 
         testMap["${stageName}-${name}"] = {
-            def logFile       = pwd() + "/" + "${archDir}/${name}.log"
-            def logFileFailed = pwd() + "/" + "${archDir}-FAIL/${name}.log"
-            def archRuns      = pwd() + "/" + "${archDir}-RUNS"
+            def logFile       = pwd() + "/" + "${arch}/${name}.log"
+            def logFileFailed = pwd() + "/" + "${arch}-FAIL/${name}.log"
+            def archRun       = pwd() + "/" + "${arch}-RUN"
 
             def runDir = "run.${currentIndex}"
             def port   = portInit + currentIndex * portInterval
@@ -717,11 +715,16 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, stage
                     catch (exc) {
                         echo "caught error, copying log to ${logFileFailed}"
                         echo exc.toString()
+
+                        fileOperations([
+                            fileCreateOperation(fileContent: 'TEST FAILED', fileName: "${archDir}-FAIL.txt")
+                        ])
+
                         copyFile(os, logFile, logFileFailed)
                         throw exc
                     }
                     finally {
-                        checkCoresAndSave(os, runDir, name, archRuns)
+                        checkCoresAndSave(os, runDir, name, archRun)
                     }
                 }
             }
@@ -770,7 +773,7 @@ def testStep(os, edition, maintainer, mode, engine, stageName) {
                     def arch       = "${archDir}/03-test-${mode}-${engine}"
                     def archDone   = "${arch}-DONE"
                     def archFail   = "${arch}-FAIL"
-                    def archRuns   = "${arch}-RUNS"
+                    def archRun    = "${arch}-RUN"
 
                     // clean the current workspace completely
                     deleteDir()
@@ -780,7 +783,7 @@ def testStep(os, edition, maintainer, mode, engine, stageName) {
                         folderCreateOperation(arch),
                         folderCreateOperation(archDone),
                         folderCreateOperation(archFail),
-                        folderCreateOperation(archRuns)
+                        folderCreateOperation(archRun)
                     ])
 
                     // unstash binaries
@@ -797,7 +800,7 @@ def testStep(os, edition, maintainer, mode, engine, stageName) {
 
                     timeout(60) {
                         try {
-                            executeTests(os, edition, maintainer, mode, engine, port, arch, stageName)
+                            executeTests(os, edition, maintainer, mode, engine, port, archDir, arch, stageName)
                             renameFolder(arch, archDone)
                         }
                         finally {
@@ -811,7 +814,7 @@ def testStep(os, edition, maintainer, mode, engine, stageName) {
 
                             // archive all artifacts
                             archiveArtifacts allowEmptyArchive: true,
-                                artifacts: "${arch}-*, ${arch}/**, ${archDone}/**, ${archFail}/**, ${archRuns}/**",
+                                artifacts: "${arch}-*, ${arch}/**, ${archDone}/**, ${archFail}/**, ${archRun}/**",
                                 defaultExcludes: false
                         }
                     }
@@ -970,7 +973,7 @@ def buildEdition(os, edition, maintainer) {
 
     fileOperations([
         folderDeleteOperation(arch),
-        fileDeleteOperation(excludes: '', includes: "${arch}-*"),
+        fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
         folderDeleteOperation(archDone),
         folderDeleteOperation(archFail),
         folderCreateOperation(arch)
@@ -1013,13 +1016,16 @@ def buildEdition(os, edition, maintainer) {
         renameFolder(arch, archDone)
     }
     catch (exc) {
+        fileOperations([
+            fileCreateOperation(fileContent: 'BUILD FAILED', fileName: "${archDir}-FAIL.txt")
+        ])
+
         renameFolder(arch, archFail)
-        fileOperations([fileCreateOperation(fileContent: 'BUILD FAILED', fileName: "${archi}-FAIL.txt")])
         throw exc
     }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-            artifacts: "${arch}-*, ${arch}/**, ${archDone}/**, ${archFail}/**",
+            artifacts: "${archDir}-*, ${arch}/**, ${archDone}/**, ${archFail}/**",
             defaultExcludes: false
     }
 }
