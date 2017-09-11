@@ -402,7 +402,8 @@ static int distributeBabyOnShards(
 
     // Now perform the above mentioned check:
     if (userSpecifiedKey &&
-        (!usesDefaultShardingAttributes || !collinfo->allowUserKeys())) {
+        (!usesDefaultShardingAttributes || !collinfo->allowUserKeys()) &&
+        !options.isRestore) {
       return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
     }
   }
@@ -992,7 +993,8 @@ int createDocumentOnCoordinator(
   std::string const optsUrlPart =
       std::string("&waitForSync=") + (options.waitForSync ? "true" : "false") +
       "&returnNew=" + (options.returnNew ? "true" : "false") + "&returnOld=" +
-      (options.returnOld ? "true" : "false");
+      (options.returnOld ? "true" : "false") + "&isRestore=" +
+      (options.isRestore ? "true" : "false");
 
   VPackBuilder reqBuilder;
 
@@ -2129,7 +2131,8 @@ int modifyDocumentOnCoordinator(
   std::string optsUrlPart =
       std::string("?waitForSync=") + (options.waitForSync ? "true" : "false");
   optsUrlPart +=
-      std::string("&ignoreRevs=") + (options.ignoreRevs ? "true" : "false");
+      std::string("&ignoreRevs=") + (options.ignoreRevs ? "true" : "false") +
+      std::string("&isRestore=") + (options.isRestore ? "true" : "false");
 
   arangodb::rest::RequestType reqType;
   if (isPatch) {
