@@ -53,9 +53,9 @@ fi
 
 touch $logdir/build.log
 
-echo "CONCURRENY: $concurrency" | tee $logdir/build.log
-echo "HOST: `hostname`" | tee $logdir/build.log
-echo "PWD: `pwd`" | tee $logdir/build.log
+echo "CONCURRENY: $concurrency" | tee -a $logdir/build.log
+echo "HOST: `hostname`" | tee -a $logdir/build.log
+echo "PWD: `pwd`" | tee -a $logdir/build.log
 
 (
     set -eo pipefail
@@ -70,7 +70,7 @@ echo "PWD: `pwd`" | tee $logdir/build.log
             -DDEBUG_SYNC_REPLICATION=On \
             $MAINTAINER \
             $ENTERPRISE \
-            ..  2>&1 | tee ../$logdir/build.log
+            ..  2>&1 | tee -a ../$logdir/build.log
 
     echo "`date +%T` building..."
     make -j $concurrency -l $load 2>&1 | tee -a ../$logdir/build.log
