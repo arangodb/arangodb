@@ -185,24 +185,35 @@ VPackSlice StatisticsWorker::_lastEntry(std::string const& collectionName, uint6
 VPackSlice StatisticsWorker::_compute15Minute(uint64_t start, uint64_t clusterId) {
   std::string filter = "";
 
-/*
-  var filter = '';
-  var bindVars = { start: start };
+  auto queryRegistryFeature =
+  application_features::ApplicationServer::getFeature<
+      QueryRegistryFeature>("QueryRegistry");
+  auto _queryRegistry = queryRegistryFeature->queryRegistry();
+
+  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+
+  auto bindVars = std::make_shared<VPackBuilder>();
+  bindVars->openObject();
+  bindVars->add("start", VPackValue(start));
 
   if (clusterId) {
-    filter = ' FILTER s.clusterId == @clusterId ';
-    bindVars.clusterId = clusterId;
+    filter = "FILTER s.clusterId == @clusterId";
+    bindVars->add("clusterId", VPackValue(clusterId));
   }
 
-  var values = db._query(
-    'FOR s in _statistics '
-    + '  FILTER s.time >= @start '
-    + filter
-    + '  SORT s.time '
-    + '  RETURN s', bindVars);
-  */
+  bindVars->close();
 
-  uint64_t count = 0; // = result.length();
+  std::string const aql("FOR s in _statistics FILTER s.time >= @start " + filter + " SORT s.time RETURN s");
+  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(aql),
+                          bindVars, nullptr, arangodb::aql::PART_MAIN);
+
+  auto queryResult = query.execute(_queryRegistry);
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+  THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  }
+
+  VPackSlice result = queryResult.result->slice();
+  uint64_t count = result.length();
 
   float systemMinorPageFaultsPerSecond = 0,
   systemMajorPageFaultsPerSecond = 0,
@@ -229,22 +240,23 @@ VPackSlice StatisticsWorker::_compute15Minute(uint64_t start, uint64_t clusterId
   clientAvgTotalTime = 0,
   clientAvgRequestTime = 0,
   clientAvgQueueTime = 0,
-  clientAvgIoTime = 0;
+  clientAvgIoTime = 0,
 
+  fTime;
+
+  for (auto const& values : VPackArrayIterator(result)) {
+    fTime = values.get("time").getNumber<float>();
+
+    systemMinorPageFaultsPerSecond += values.get("system").get("minorPageFaultsPerSecond").getNumber<float>();
+    systemMajorPageFaultsPerSecond += values.get("system").get("majorPageFaultsPerSecond").getNumber<float>();
+    systemUserTimePerSecond += values.get("system").get("userTimePerSecond").getNumber<float>();
+    systemSystemTimePerSecond += values.get("system").get("systemTimePerSecond").getNumber<float>();
+    systemResidentSize += values.get("system").get("residentSize").getNumber<float>();
+    systemVirtualSize += values.get("system").get("virtualSize").getNumber<float>();
+    systemNumberOfThreads += values.get("system").get("numberOfThreads").getNumber<float>();
+  }
   /*
 
-  while (values.hasNext()) {
-    var raw = values.next();
-
-    result.time = raw.time;
-
-    result.system.minorPageFaultsPerSecond += raw.system.minorPageFaultsPerSecond;
-    result.system.majorPageFaultsPerSecond += raw.system.majorPageFaultsPerSecond;
-    result.system.userTimePerSecond += raw.system.userTimePerSecond;
-    result.system.systemTimePerSecond += raw.system.systemTimePerSecond;
-    result.system.residentSize += raw.system.residentSize;
-    result.system.virtualSize += raw.system.virtualSize;
-    result.system.numberOfThreads += raw.system.numberOfThreads;
 
     result.http.requestsTotalPerSecond += raw.http.requestsTotalPerSecond;
     result.http.requestsAsyncPerSecond += raw.http.requestsAsyncPerSecond;
@@ -293,11 +305,6 @@ VPackSlice StatisticsWorker::_compute15Minute(uint64_t start, uint64_t clusterId
 
   return result;
 */
-
-
-
-
-
 
 
   return arangodb::basics::VelocyPackHelper::NullValue();
