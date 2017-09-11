@@ -1,3 +1,8 @@
+v3.2.5 (2017-xx-xx)
+-------------------
+
+* fix double invocation of the compactor
+
 v3.2.3 (2017-09-07)
 -------------------
 
