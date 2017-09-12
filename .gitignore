@@ -107,7 +107,7 @@ js/common/tests/shell/shell-database.js
 .gdb-history
 npm-debug.log
 
-log-*
+/log-*
 data-*
 cluster-init
 
