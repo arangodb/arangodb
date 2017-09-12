@@ -88,7 +88,7 @@ struct TraverserEngineShardLists {
 typedef std::unordered_map<ServerID, TraverserEngineShardLists> Serv2ColMap;
 
 /// @brief helper function to create a block
-static ExecutionBlock* CreateBlock(
+ExecutionBlock* ExecutionEngine::CreateBlock(
     ExecutionEngine* engine, ExecutionNode const* en,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache,
     std::unordered_set<std::string> const& includedShards) {
@@ -245,7 +245,7 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
         static_cast<GraphNode*>(en)->prepareOptions();
       }
 
-      std::unique_ptr<ExecutionBlock> eb(CreateBlock(engine, en, cache, std::unordered_set<std::string>()));
+      std::unique_ptr<ExecutionBlock> eb(ExecutionEngine::CreateBlock(engine, en, cache, std::unordered_set<std::string>()));
 
       if (eb == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
@@ -415,13 +415,18 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
   ///        * After this step DBServer-Collections are locked!
   ///
   ///        Returns the First Coordinator Engine, the one not in the registry.
-  ExecutionEngine* buildEngines() {
+  ExecutionEngine* buildEngines(Query* query, QueryRegistry* registry) {
     if (!_currentNodes.empty()) {
       // Do we need this?
       addSnippet(0);
     }
-    _dbserverParts.buildEngines();
-    return _coordinatorParts.buildEngines();
+
+    // QueryIds are filled by responses of DBServer parts.
+    std::unordered_map<std::string, std::string> queryIds;
+
+    _dbserverParts.buildEngines(query);
+
+    return _coordinatorParts.buildEngines(query, registry, queryIds);
   }
 
  private:
@@ -692,6 +697,7 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
 
     TRI_ASSERT(result.isClosed());
 
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Sending plan to: " << shardId << ": " << result.slice().toJson();
     auto body = std::make_shared<std::string const>(result.slice().toJson());
 
     //LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "GENERATED A PLAN FOR THE REMOTE SERVERS: " << *(body.get());
@@ -800,7 +806,6 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
         VPackBuilder b;
         collection->setCurrentShard(shardId);
         generatePlanForOneShard(b, nr++, info, connectedId, shardId, true);
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Sending plan to: " << shardId << ": " << b.toJson();
 
         distributePlanToShard(coordTransactionID, info,
                               connectedId, shardId,
@@ -846,7 +851,7 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
         }
 
         // for all node types but REMOTEs, we create blocks
-        ExecutionBlock* eb = CreateBlock(engine.get(), (*en), cache, _includedShards);
+        ExecutionBlock* eb = ExecutionEngine::CreateBlock(engine.get(), (*en), cache, _includedShards);
 
         if (eb == nullptr) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -1220,8 +1225,6 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
 
     for (auto it = engines.rbegin(); it != engines.rend(); ++it) {
       EngineInfo* info = &(*it);
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Doing engine: " << it->id << " location:"
-                << it->location << " remote " << it->idOfRemoteNode;
       if (info->location == COORDINATOR) {
         // create a coordinator-based engine
         engine = buildEngineCoordinator(info);
@@ -1372,7 +1375,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
         auto instN =
             std::make_unique<CoordinatorInstanciator>();
         plan->root()->walk(instN.get());
-        auto engineN = instN->buildEngines();
+        auto engineN = instN->buildEngines(query, queryRegistry);
         // We have not implemented the API yet.
         TRI_ASSERT(engineN == nullptr);
       } catch (...) {

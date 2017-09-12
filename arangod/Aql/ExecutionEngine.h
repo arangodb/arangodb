@@ -48,6 +48,11 @@ class ExecutionEngine {
   static ExecutionEngine* instantiateFromPlan(QueryRegistry*, Query*,
                                               ExecutionPlan*, bool);
 
+  static ExecutionBlock* CreateBlock(
+      ExecutionEngine* engine, ExecutionNode const* en,
+      std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache,
+      std::unordered_set<std::string> const& includedShards);
+
   /// @brief get the root block
   ExecutionBlock* root() const {
     TRI_ASSERT(_root != nullptr);

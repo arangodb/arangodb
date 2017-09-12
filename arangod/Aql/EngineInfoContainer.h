@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 
 #include "Aql/types.h"
+#include "Cluster/ClusterInfo.h"
 #include "VocBase/AccessMode.h"
 
 namespace arangodb {
@@ -35,17 +36,27 @@ namespace aql {
 class Collection;
 class ExecutionEngine;
 class ExecutionNode;
+class Query;
+class QueryRegistry;
 
 class EngineInfoContainerCoordinator {
-
  private:
   struct EngineInfo {
    public:
-    EngineInfo(QueryId id, std::vector<ExecutionNode*>&& nodes,
+    EngineInfo(QueryId id, std::vector<ExecutionNode*>& nodes,
                size_t idOfRemoteNode);
     ~EngineInfo();
 
+    EngineInfo(EngineInfo&) = delete;
+    EngineInfo(EngineInfo const& other) = delete;
+    EngineInfo(EngineInfo const&& other);
+
     void connectQueryId(QueryId id);
+
+    ExecutionEngine* buildEngine(
+        Query* query,
+        QueryRegistry* queryRegistry,
+        std::unordered_map<std::string, std::string>& queryIds) const;
 
    private:
     QueryId const _id;
@@ -64,13 +75,17 @@ class EngineInfoContainerCoordinator {
   // * It adds the collections to the map
   // This intentionally copies the vector of nodes, the caller reuses
   // the given vector.
-  QueryId addQuerySnippet(std::vector<ExecutionNode*> nodes, size_t idOfRemoteNode);
+  QueryId addQuerySnippet(std::vector<ExecutionNode*>& nodes,
+                          size_t idOfRemoteNode);
 
   // Build the Engines on the coordinator
   //   * Creates the ExecutionBlocks
   //   * Injects all Parts but the First one into QueryRegistery
   //   Return the first engine which is not added in the Registry
-  ExecutionEngine* buildEngines();
+  ExecutionEngine* buildEngines(
+      Query* query,
+      QueryRegistry* registry,
+      std::unordered_map<std::string, std::string>& queryIds);
 
  private:
   // @brief List of EngineInfos to distribute accross the cluster
@@ -78,21 +93,48 @@ class EngineInfoContainerCoordinator {
 };
 
 class EngineInfoContainerDBServer {
-
  private:
   struct EngineInfo {
    public:
-    EngineInfo(std::vector<ExecutionNode*>&& nodes,
-               size_t idOfRemoteNode, Collection const* collection);
+    EngineInfo(std::vector<ExecutionNode*>& nodes, size_t idOfRemoteNode);
     ~EngineInfo();
 
+    EngineInfo(EngineInfo&) = delete;
+    EngineInfo(EngineInfo const& other) = delete;
+    EngineInfo(EngineInfo const&& other);
+
     void connectQueryId(QueryId id);
+
+    void serializeSnippet(ShardID id, velocypack::Builder& infoBuilder);
 
    private:
     std::vector<ExecutionNode*> _nodes;
     size_t _idOfRemoteNode;  // id of the remote node
-    QueryId _otherId; // Id of query engine before this one
-    Collection const* _collection; // Collection used for distribution, contains shard information
+    QueryId _otherId;        // Id of query engine before this one
+  };
+
+  struct DBServerInfo {
+   public:
+    DBServerInfo();
+    ~DBServerInfo();
+
+   public:
+    void addShardLock(AccessMode::Type const& lock, ShardID const& id);
+
+    void addEngine(EngineInfo* info, ShardID const& id);
+
+    void buildMessage(Query* query, velocypack::Builder& infoBuilder) const;
+
+   private:
+    void injectQueryOptions(Query* query,
+                            velocypack::Builder& infoBuilder) const;
+
+   private:
+    // @brief Map of LockType to ShardId
+    std::unordered_map<AccessMode::Type, std::vector<ShardID>> _shardLocking;
+
+    // @brief Map of all EngineInfos with their shards
+    std::unordered_map<EngineInfo*, std::vector<ShardID>> _engineInfos;
   };
 
  public:
@@ -106,8 +148,8 @@ class EngineInfoContainerDBServer {
   // * It adds the collections to the map
   // This intentionally copies the vector of nodes, the caller reuses
   // the given vector.
-  void addQuerySnippet(std::vector<ExecutionNode*> nodes, size_t idOfRemoteNode);
-
+  void addQuerySnippet(std::vector<ExecutionNode*>& nodes,
+                       size_t idOfRemoteNode);
 
   // Connects the last snippet in the list with the given QueryId.
   // This is only required for DBServer snippets and is used
@@ -117,14 +159,19 @@ class EngineInfoContainerDBServer {
 
   // Build the Engines for the DBServer
   //   * Creates one Query-Entry with all locking information per DBServer
-  //   * Creates one Query-Entry for each Snippet per Shard (multiple on the same DB)
+  //   * Creates one Query-Entry for each Snippet per Shard (multiple on the
+  //   same DB)
   //   * Snippets DO NOT lock anything, locking is done in the overall query.
   //   * After this step DBServer-Collections are locked!
-  void buildEngines();
+  void buildEngines(Query* query);
 
  private:
+  // @brief Reference to the last inserted EngineInfo, used for back linking of
+  // QueryIds
+  EngineInfo* _lastEngine;
+
   // @brief List of EngineInfos to distribute accross the cluster
-  std::vector<EngineInfo> _engines;
+  std::unordered_map<Collection const*, std::vector<EngineInfo>> _engines;
 
   // @brief Mapping of used collection names to lock type required
   std::unordered_map<Collection const*, AccessMode::Type> _collections;
