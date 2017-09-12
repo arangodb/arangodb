@@ -1,12 +1,18 @@
 devel
 -----
 
+* leader-follower replication catchup code has been rewritten in C++
+
+* early stage AQL optimization now also uses the C++ implementations of
+  AQL functions if present. Previously it always referred to the JavaScript
+  implementations and ignored the C++ implementations.
+
 * ArangoDB tty log output is now colored for log messages with levels 
   FATAL, ERR and WARN.
 
 * changed the return values of AQL functions `REGEX_TEST` and `REGEX_REPLACE`
   to `null` when the input regex is invalid. Previous versions of ArangoDB
-  partly returned `false` for invalid regex and partly `null`.
+  partly returned `false` for invalid regexes and partly `null`.
 
 * added `--log.role` option for arangod
 
