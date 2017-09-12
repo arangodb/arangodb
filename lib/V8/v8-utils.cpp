@@ -263,29 +263,25 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path,
                                     bool stripShebang, bool execute,
                                     bool useGlobalContext) {
   v8::HandleScope scope(isolate);
-  bool result;
 
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "loading JavaScript directory: '"
                                             << path << "'";
 
   std::vector<std::string> files = TRI_FilesDirectory(path);
 
-  result = true;
+  bool result = true;
 
   for (auto const& filename : files) {
-    v8::TryCatch tryCatch;
-    bool ok;
-    char* full;
-
     if (!StringUtils::isSuffix(filename, ".js")) {
       continue;
     }
+    
+    v8::TryCatch tryCatch;
 
-    full = TRI_Concatenate2File(path, filename.c_str());
+    std::string full = FileUtils::buildFilename(path, filename);
 
-    ok = LoadJavaScriptFile(isolate, full, stripShebang, execute,
-                            useGlobalContext);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, full);
+    bool ok = LoadJavaScriptFile(isolate, full.c_str(), stripShebang, execute,
+                                 useGlobalContext);
 
     result = result && ok;
 
@@ -1294,21 +1290,17 @@ static void JS_GetTempFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     create = TRI_ObjectToBoolean(args[1]);
   }
 
-  char* result = nullptr;
+  std::string result;
   long systemError;
   std::string errorMessage;
-  if (TRI_GetTempName(p, &result, create, systemError, errorMessage) !=
+  if (TRI_GetTempName(p, result, create, systemError, errorMessage) !=
       TRI_ERROR_NO_ERROR) {
     errorMessage = std::string("could not create temp file: ") + errorMessage;
     TRI_V8_THROW_EXCEPTION_INTERNAL(errorMessage);
   }
 
-  TRI_DEFER(TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, result));
-
-  std::string const tempfile(result);
-
   // return result
-  TRI_V8_RETURN_STD_STRING(tempfile);
+  TRI_V8_RETURN_STD_STRING(result);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1724,9 +1716,8 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
   current->ForceSet(TRI_V8_ASCII_STRING(isolate, "__filename"), filename);
 
   auto oldDirname = current->Get(TRI_V8_ASCII_STRING(isolate, "__dirname"));
-  auto dirname = TRI_Dirname(TRI_ObjectToString(isolate, filename).c_str());
-  current->ForceSet(TRI_V8_ASCII_STRING(isolate, "__dirname"), TRI_V8_STRING(isolate, dirname));
-  TRI_FreeString(TRI_CORE_MEM_ZONE, dirname);
+  auto dirname = TRI_Dirname(TRI_ObjectToString(isolate, filename));
+  current->ForceSet(TRI_V8_ASCII_STRING(isolate, "__dirname"), TRI_V8_STD_STRING(isolate, dirname));
 
   v8::Handle<v8::Value> result;
   {
@@ -2094,9 +2085,9 @@ static void JS_MarkNonce(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("checkAndMarkNonce(<nonce>)");
   }
 
-  TRI_Utf8ValueNFC base64u(TRI_CORE_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC base64u(TRI_UNKNOWN_MEM_ZONE, args[0]);
 
-  if (base64u.length() != 16) {
+  if (*base64u == nullptr || base64u.length() != 16) {
     TRI_V8_THROW_TYPE_ERROR("expecting 16-Byte base64url-encoded nonce");
   }
 
@@ -3422,28 +3413,36 @@ static void JS_ExecuteExternal(
 
       n = arr->Length();
       arguments = static_cast<char**>(
-          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*)));
+          TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(char*)));
+
+      if (arguments == nullptr) {
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
 
       for (uint32_t i = 0; i < n; ++i) {
         TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, arr->Get(i));
 
         if (*arg == nullptr) {
-          arguments[i] = TRI_DuplicateString("");
+          arguments[i] = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, "");
         } else {
-          arguments[i] = TRI_DuplicateString(*arg);
+          arguments[i] = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, *arg);
         }
       }
     } else {
       n = 1;
       arguments = static_cast<char**>(
-          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*)));
+          TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(char*)));
+      
+      if (arguments == nullptr) {
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
 
       TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, a);
 
       if (*arg == nullptr) {
-        arguments[0] = TRI_DuplicateString("");
+        arguments[0] = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, "");
       } else {
-        arguments[0] = TRI_DuplicateString(*arg);
+        arguments[0] = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, *arg);
       }
     }
   }
@@ -3457,10 +3456,12 @@ static void JS_ExecuteExternal(
                             (size_t)n, usePipes, &external);
   if (arguments != nullptr) {
     for (uint32_t i = 0; i < n; ++i) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, arguments[i]);
+      if (arguments[i] != nullptr) {
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, arguments[i]);
+      }
     }
 
-    TRI_Free(TRI_CORE_MEM_ZONE, arguments);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, arguments);
   }
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");
@@ -3614,28 +3615,32 @@ static void JS_ExecuteAndWaitExternal(
 
       n = arr->Length();
       arguments = static_cast<char**>(
-          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*)));
+          TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(char*)));
+      
+      if (arguments == nullptr) {
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
 
       for (uint32_t i = 0; i < n; ++i) {
         TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, arr->Get(i));
 
         if (*arg == nullptr) {
-          arguments[i] = TRI_DuplicateString("");
+          arguments[i] = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, "");
         } else {
-          arguments[i] = TRI_DuplicateString(*arg);
+          arguments[i] = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, *arg);
         }
       }
     } else {
       n = 1;
       arguments = static_cast<char**>(
-          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*)));
+          TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, n * sizeof(char*)));
 
       TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, a);
 
       if (*arg == nullptr) {
-        arguments[0] = TRI_DuplicateString("");
+        arguments[0] = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, "");
       } else {
-        arguments[0] = TRI_DuplicateString(*arg);
+        arguments[0] = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, *arg);
       }
     }
   }
@@ -3649,10 +3654,12 @@ static void JS_ExecuteAndWaitExternal(
                             static_cast<size_t>(n), usePipes, &external);
   if (arguments != nullptr) {
     for (uint32_t i = 0; i < n; ++i) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, arguments[i]);
+      if (arguments[i] != nullptr) {
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, arguments[i]);
+      }
     }
 
-    TRI_Free(TRI_CORE_MEM_ZONE, arguments);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, arguments);
   }
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");

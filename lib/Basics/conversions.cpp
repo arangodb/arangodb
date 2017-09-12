@@ -584,7 +584,7 @@ char* TRI_StringUInt32(uint32_t attr) {
   char buffer[11];
   size_t len = TRI_StringUInt32InPlace(attr, (char*)&buffer);
 
-  return TRI_DuplicateString(buffer, len);
+  return TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, buffer, len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -595,7 +595,7 @@ char* TRI_StringUInt64(uint64_t attr) {
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace(attr, (char*)&buffer);
 
-  return TRI_DuplicateString(buffer, len);
+  return TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, buffer, len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

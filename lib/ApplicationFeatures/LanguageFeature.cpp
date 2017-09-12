@@ -81,8 +81,8 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
     } else if (TRI_IsRegularFile(bpfn.c_str())) {
       path = bpfn;
     } else {
-      std::string argv_0 = FileUtils::buildFilename(binaryExecutionPath, binaryName);
-      path = TRI_LocateInstallDirectory(argv_0.c_str(), binaryPath.c_str());
+      std::string argv0 = FileUtils::buildFilename(binaryExecutionPath, binaryName);
+      path = TRI_LocateInstallDirectory(argv0.c_str(), binaryPath.c_str());
       path = FileUtils::buildFilename(path, ICU_DESTINATION_DIRECTORY, fn);
 
       if (!TRI_IsRegularFile(path.c_str())) {

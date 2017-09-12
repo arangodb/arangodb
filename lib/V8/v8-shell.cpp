@@ -282,7 +282,7 @@ static void JS_ProcessJsonFile(
       }
 
       if (error != nullptr) {
-        TRI_FreeString(TRI_CORE_MEM_ZONE, error);
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, error);
       }
 
       v8::Handle<v8::Number> r = v8::Integer::New(isolate, (int)row);

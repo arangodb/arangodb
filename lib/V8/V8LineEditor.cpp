@@ -23,8 +23,9 @@
 
 #include "V8LineEditor.h"
 
-#include "Logger/Logger.h"
+#include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+#include "Logger/Logger.h"
 #include "Utilities/Completer.h"
 #include "Utilities/ShellBase.h"
 #include "V8/v8-utils.h"
@@ -269,39 +270,35 @@ class V8Completer : public Completer {
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
     v8::Handle<v8::Object> current = context->Global();
     std::string path;
-    char* prefix;
+    std::string prefix;
 
     if (*text != '\0') {
-      TRI_vector_string_t splitted = TRI_SplitString(text, '.');
+      std::vector<std::string> splitted = basics::StringUtils::split(text, '.', '\0');
 
-      if (1 < splitted._length) {
-        for (size_t i = 0; i < splitted._length - 1; ++i) {
-          v8::Handle<v8::String> name = TRI_V8_STRING(isolate, splitted._buffer[i]);
+      if (1 < splitted.size()) {
+        for (size_t i = 0; i < splitted.size() - 1; ++i) {
+          v8::Handle<v8::String> name = TRI_V8_STD_STRING(isolate, splitted[i]);
 
           if (!current->Has(name)) {
-            TRI_DestroyVectorString(&splitted);
             return result;
           }
 
           v8::Handle<v8::Value> val = current->Get(name);
 
           if (!val->IsObject()) {
-            TRI_DestroyVectorString(&splitted);
             return result;
           }
 
           current = val->ToObject();
-          path = path + splitted._buffer[i] + ".";
+          path += splitted[i] + '.';
         }
 
-        prefix = TRI_DuplicateString(splitted._buffer[splitted._length - 1]);
+        prefix = std::move(splitted[splitted.size() - 1]);
       } else {
-        prefix = TRI_DuplicateString(text);
+        prefix = text;
       }
-
-      TRI_DestroyVectorString(&splitted);
     } else {
-      prefix = TRI_DuplicateString(text);
+      prefix = std::string(text);
     }
 
     v8::HandleScope scope(isolate);
@@ -349,7 +346,9 @@ class V8Completer : public Completer {
             std::string suffix = (current->Get(v)->IsFunction()) ? "()" : "";
             std::string name = path + s + suffix;
 
-            if (*prefix == '\0' || TRI_IsPrefixString(s, prefix)) {
+            if (prefix.empty() || 
+                prefix[0] == '\0' || 
+                TRI_IsPrefixString(s, prefix.c_str())) {
               result.emplace_back(name);
             }
           }
@@ -359,7 +358,6 @@ class V8Completer : public Completer {
       // ignore errors in case of OOM
     }
 
-    TRI_FreeString(TRI_CORE_MEM_ZONE, prefix);
     return result;
   }
 };

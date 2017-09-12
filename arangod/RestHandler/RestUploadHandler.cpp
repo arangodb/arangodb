@@ -59,32 +59,23 @@ RestStatus RestUploadHandler::execute() {
     return RestStatus::DONE;
   }
 
-  std::string filenameString;
+  std::string filename;
   {
-    char* filename = nullptr;
     std::string errorMessage;
     long systemError;
 
-    if (TRI_GetTempName("uploads", &filename, false, systemError, errorMessage) !=
+    if (TRI_GetTempName("uploads", filename, false, systemError, errorMessage) !=
         TRI_ERROR_NO_ERROR) {
       errorMessage = "could not generate temp file: " + errorMessage;
       generateError(rest::ResponseCode::SERVER_ERROR,
                     TRI_ERROR_INTERNAL, errorMessage);
       return RestStatus::FAIL;
     }
-
-    if (filename == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    TRI_DEFER(TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, filename));
-
-    filenameString.append(filename);
   }
 
   std::string relativeString;
   {
-    char* relative = TRI_GetFilename(TRI_UNKNOWN_MEM_ZONE, filenameString.c_str());
+    char* relative = TRI_GetFilename(TRI_UNKNOWN_MEM_ZONE, filename.c_str());
 
     if (relative == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -99,7 +90,7 @@ RestStatus RestUploadHandler::execute() {
   size_t bodySize = bodyStr.size();
 
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "saving uploaded file of length " << bodySize << " in file '"
-             << filenameString << "', relative '" << relativeString << "'";
+             << filename << "', relative '" << relativeString << "'";
 
   bool found;
   std::string const& value = request->value("multipart", found);
@@ -117,7 +108,7 @@ RestStatus RestUploadHandler::execute() {
   }
 
   try {
-    FileUtils::spit(filenameString, body, bodySize);
+    FileUtils::spit(filename, body, bodySize);
   } catch (...) {
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_INTERNAL, "could not save file");

@@ -530,36 +530,21 @@ FileResultString currentDirectory() {
 }
 
 std::string homeDirectory() {
-  char* dir = TRI_HomeDirectory();
-  std::string result = dir;
-  TRI_FreeString(TRI_CORE_MEM_ZONE, dir);
-
-  return result;
+  return TRI_HomeDirectory();
 }
 
 std::string configDirectory(char const* binaryPath) {
-  char* dir = TRI_LocateConfigDirectory(binaryPath);
+  std::string dir = TRI_LocateConfigDirectory(binaryPath);
 
-  if (dir == nullptr) {
+  if (dir.empty()) {
     return currentDirectory().result();
   }
 
-  std::string result = dir;
-  TRI_FreeString(TRI_CORE_MEM_ZONE, dir);
-
-  return result;
+  return dir;
 }
 
 std::string dirname(std::string const& name) {
-  char* result = TRI_Dirname(name.c_str());
-  std::string base;
-
-  if (result != nullptr) {
-    base = result;
-    TRI_FreeString(TRI_CORE_MEM_ZONE, result);
-  }
-
-  return base;
+  return TRI_Dirname(name);
 }
 
 void makePathAbsolute(std::string& path) {
@@ -572,7 +557,7 @@ void makePathAbsolute(std::string& path) {
 
     if (p != nullptr) {
       path = p;
-      TRI_FreeString(TRI_CORE_MEM_ZONE, p);
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, p);
     }
   }
 }
