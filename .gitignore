@@ -36,7 +36,7 @@ testsStarted
 soc-pokec-*
 
 build.sh
-build*/
+/build*/
 Build64/
 Build32/
 Debug64/
