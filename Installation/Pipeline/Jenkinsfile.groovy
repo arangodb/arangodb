@@ -1003,26 +1003,14 @@ def buildEdition(os, edition, maintainer) {
             }
         }
         else if (os == 'windows') {
-            // I concede...we need a lock for windows...I could not get it to run concurrently...
-            // v8 would not build multiple times at the same time on the same machine:
-            // PDB API call failed, error code '24': ' etc etc
-            // in theory it should be possible to parallelize it by setting an environment variable
-            // (see the build script) but for v8 it won't work :(
-            // feel free to recheck if there is time somewhen...this thing here really should not be possible but
-            // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly
-            // test it. I just don't want any more "yeah that might randomly fail. just restart" sentences any more.
-
-            def hostname = powershell(returnStdout: true, script: "hostname").trim()
             def tmpDir = "${arch}/tmp"
 
             fileOperations([
                 folderCreateOperation(tmpDir)
             ])
 
-            lock("build-windows-${hostname}") {
-                withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}", "_MSPDBSRV_ENDPOINT_=${edition}-${env.BUILD_TAG}"]) {
-                    powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
-                }
+            withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}", "_MSPDBSRV_ENDPOINT_=${edition}-${env.BUILD_TAG}"]) {
+                powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
             }
 
             fileOperations([
@@ -1080,9 +1068,30 @@ def runEdition(os, edition, maintainer, stageName) {
                         // checkoutResilience()
                     }
 
-                    timeout(90) {
-                        buildEdition(os, edition, maintainer)
-                        stashBinaries(os, edition, maintainer)
+                    // I concede...we need a lock for windows...I could not get it to run concurrently...
+                    // v8 would not build multiple times at the same time on the same machine:
+                    // PDB API call failed, error code '24': ' etc etc
+                    // in theory it should be possible to parallelize it by setting an environment variable
+                    // (see the build script) but for v8 it won't work :(
+                    // feel free to recheck if there is time somewhen...this thing here really should not be possible but
+                    // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly
+                    // test it. I just don't want any more "yeah that might randomly fail. just restart" sentences any more.
+
+                    if (os == "windows") {
+                        def hostname = powershell(returnStdout: true, script: "hostname").trim()
+
+                        lock("build-windows-${hostname}") {
+                            timeout(90) {
+                                buildEdition(os, edition, maintainer)
+                                stashBinaries(os, edition, maintainer)
+                            }
+                        }
+                    }
+                    else {
+                        timeout(90) {
+                            buildEdition(os, edition, maintainer)
+                            stashBinaries(os, edition, maintainer)
+                        }
                     }
                 }
 
