@@ -511,7 +511,7 @@ struct AqlValue final {
   }
   
   /// @brief destroy, explicit destruction, only when needed
-  void destroy();
+  void destroy() noexcept;
   
   /// @brief returns the size of the dynamic memory allocated for the value
   size_t memoryUsage() const noexcept {

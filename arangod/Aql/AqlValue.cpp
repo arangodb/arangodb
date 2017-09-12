@@ -984,7 +984,7 @@ AqlValue AqlValue::clone() const {
 }
 
 /// @brief destroy the value's internals
-void AqlValue::destroy() {
+void AqlValue::destroy() noexcept {
   switch (type()) {
     case VPACK_SLICE_POINTER:
     case VPACK_INLINE: {
