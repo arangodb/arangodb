@@ -58,7 +58,6 @@ void StatisticsWorker::_collectGarbage(std::string const& collectionName,
     std::cout << result.length() << " " <<  result.isArray() <<  std::endl;
 
     for (auto const& key : VPackArrayIterator(result)) {
-      // std::string key = key.copyString();
 
       OperationOptions opOptions;
       opOptions.returnOld = false;
@@ -67,13 +66,6 @@ void StatisticsWorker::_collectGarbage(std::string const& collectionName,
       opOptions.silent = false;
 
       auto transactionContext(transaction::StandaloneContext::Create(vocbase));
-
-      /*VPackBuilder builder;
-      VPackSlice search;
-
-      VPackObjectBuilder guard(&builder);
-      builder.add(StaticStrings::KeyString, key); // VPackValue(key));
-      search = builder.slice();*/
 
       SingleCollectionTransaction trx(transactionContext, collectionName,
                                       AccessMode::Type::WRITE);
@@ -130,9 +122,8 @@ void StatisticsWorker::historianAverage() {
     VPackSlice stat15 = _compute15Minute(start, clusterId);
 
     if (!stat15.isNull()) {
-      if (clusterId) {
-        // append clusterId to slice
-      }
+
+      std::cout << "save stat15 document\n";
 
       // save stat15 to _statistics15 collection
     }
@@ -254,60 +245,98 @@ VPackSlice StatisticsWorker::_compute15Minute(uint64_t start, uint64_t clusterId
     systemResidentSize += values.get("system").get("residentSize").getNumber<float>();
     systemVirtualSize += values.get("system").get("virtualSize").getNumber<float>();
     systemNumberOfThreads += values.get("system").get("numberOfThreads").getNumber<float>();
-  }
-  /*
 
+    httpRequestsTotalPerSecond += values.get("http").get("requestsTotalPerSecond").getNumber<float>();
+    httpRequestsAsyncPerSecond += values.get("http").get("requestsAsyncPerSecond").getNumber<float>();
+    httpRequestsGetPerSecond += values.get("http").get("requestsGetPerSecond").getNumber<float>();
+    httpRequestsHeadPerSecond += values.get("http").get("requestsHeadPerSecond").getNumber<float>();
+    httpRequestsPostPerSecond += values.get("http").get("requestsPostPerSecond").getNumber<float>();
+    httpRequestsPutPerSecond += values.get("http").get("requestsPutPerSecond").getNumber<float>();
+    httpRequestsPatchPerSecond += values.get("http").get("requestsPatchPerSecond").getNumber<float>();
+    httpRequestsDeletePerSecond += values.get("http").get("requestsDeletePerSecond").getNumber<float>();
+    httpRequestsOptionsPerSecond += values.get("http").get("requestsOptionsPerSecond").getNumber<float>();
+    httpRequestsOtherPerSecond += values.get("http").get("requestsOtherPerSecond").getNumber<float>();
 
-    result.http.requestsTotalPerSecond += raw.http.requestsTotalPerSecond;
-    result.http.requestsAsyncPerSecond += raw.http.requestsAsyncPerSecond;
-    result.http.requestsGetPerSecond += raw.http.requestsGetPerSecond;
-    result.http.requestsHeadPerSecond += raw.http.requestsHeadPerSecond;
-    result.http.requestsPostPerSecond += raw.http.requestsPostPerSecond;
-    result.http.requestsPutPerSecond += raw.http.requestsPutPerSecond;
-    result.http.requestsPatchPerSecond += raw.http.requestsPatchPerSecond;
-    result.http.requestsDeletePerSecond += raw.http.requestsDeletePerSecond;
-    result.http.requestsOptionsPerSecond += raw.http.requestsOptionsPerSecond;
-    result.http.requestsOtherPerSecond += raw.http.requestsOtherPerSecond;
-
-    result.client.httpConnections += raw.client.httpConnections;
-    result.client.bytesSentPerSecond += raw.client.bytesSentPerSecond;
-    result.client.bytesReceivedPerSecond += raw.client.bytesReceivedPerSecond;
-    result.client.avgTotalTime += raw.client.avgTotalTime;
-    result.client.avgRequestTime += raw.client.avgRequestTime;
-    result.client.avgQueueTime += raw.client.avgQueueTime;
-    result.client.avgIoTime += raw.client.avgIoTime;
-
-    count++;
+    clientHttpConnections += values.get("client").get("httpConnections").getNumber<float>();
+    clientBytesSentPerSecond += values.get("client").get("bytesSentPerSecond").getNumber<float>();
+    clientBytesReceivedPerSecond += values.get("client").get("bytesReceivedPerSecond").getNumber<float>();
+    clientAvgTotalTime += values.get("client").get("avgTotalTime").getNumber<float>();
+    clientAvgRequestTime += values.get("client").get("avgRequestTime").getNumber<float>();
+    clientAvgQueueTime += values.get("client").get("avgQueueTime").getNumber<float>();
+    clientAvgIoTime += values.get("client").get("avgIoTime").getNumber<float>();
   }
 
-  if (count !== 0) {
-    result.system.minorPageFaultsPerSecond /= count;
-    result.system.majorPageFaultsPerSecond /= count;
-    result.system.userTimePerSecond /= count;
-    result.system.systemTimePerSecond /= count;
-    result.system.residentSize /= count;
-    result.system.virtualSize /= count;
-    result.system.numberOfThreads /= count;
+  if (count != 0) {
+    systemMinorPageFaultsPerSecond /= count;
+    systemMajorPageFaultsPerSecond /= count;
+    systemUserTimePerSecond /= count;
+    systemSystemTimePerSecond /= count;
+    systemResidentSize /= count;
+    systemVirtualSize /= count;
+    systemNumberOfThreads /= count;
 
-    result.http.requestsTotalPerSecond /= count;
-    result.http.requestsAsyncPerSecond /= count;
-    result.http.requestsGetPerSecond /= count;
-    result.http.requestsHeadPerSecond /= count;
-    result.http.requestsPostPerSecond /= count;
-    result.http.requestsPutPerSecond /= count;
-    result.http.requestsPatchPerSecond /= count;
-    result.http.requestsDeletePerSecond /= count;
-    result.http.requestsOptionsPerSecond /= count;
-    result.http.requestsOtherPerSecond /= count;
+    httpRequestsTotalPerSecond /= count;
+    httpRequestsAsyncPerSecond /= count;
+    httpRequestsGetPerSecond /= count;
+    httpRequestsHeadPerSecond /= count;
+    httpRequestsPostPerSecond /= count;
+    httpRequestsPutPerSecond /= count;
+    httpRequestsPatchPerSecond /= count;
+    httpRequestsDeletePerSecond /= count;
+    httpRequestsOptionsPerSecond /= count;
+    httpRequestsOtherPerSecond /= count;
 
-    result.client.httpConnections /= count;
+    clientHttpConnections /= count;
   }
 
-  return result;
-*/
+  VPackBuilder builder;
 
+  VPackObjectBuilder guard(&builder);
 
-  return arangodb::basics::VelocyPackHelper::NullValue();
+  builder.openObject();
+
+  builder.add("time", VPackValue(fTime));
+
+  if (clusterId) {
+    builder.add("clusterId", VPackValue(clusterId));
+  }
+
+  builder.add("system", VPackValue(VPackValueType::Object));
+  builder.add("minorPageFaultsPerSecond", VPackValue(systemMinorPageFaultsPerSecond));
+  builder.add("majorPageFaultsPerSecond", VPackValue(systemMajorPageFaultsPerSecond));
+  builder.add("userTimePerSecond", VPackValue(systemUserTimePerSecond));
+  builder.add("systemTimePerSecond", VPackValue(systemSystemTimePerSecond));
+  builder.add("residentSize", VPackValue(systemResidentSize));
+  builder.add("virtualSize", VPackValue(systemVirtualSize));
+  builder.add("numberOfThreads", VPackValue(systemNumberOfThreads));
+  builder.close();
+
+  builder.add("http", VPackValue(VPackValueType::Object));
+  builder.add("requestsTotalPerSecond", VPackValue(httpRequestsTotalPerSecond));
+  builder.add("requestsAsyncPerSecond", VPackValue(httpRequestsAsyncPerSecond));
+  builder.add("requestsGetPerSecond", VPackValue(httpRequestsGetPerSecond));
+  builder.add("requestsHeadPerSecond", VPackValue(httpRequestsHeadPerSecond));
+  builder.add("requestsPostPerSecond", VPackValue(httpRequestsPostPerSecond));
+  builder.add("requestsPutPerSecond", VPackValue(httpRequestsPutPerSecond));
+  builder.add("requestsPatchPerSecond", VPackValue(httpRequestsPatchPerSecond));
+  builder.add("requestsDeletePerSecond", VPackValue(httpRequestsDeletePerSecond));
+  builder.add("requestsOptionsPerSecond", VPackValue(httpRequestsOptionsPerSecond));
+  builder.add("requestsOtherPerSecond", VPackValue(httpRequestsOtherPerSecond));
+  builder.close();
+
+  builder.add("client", VPackValue(VPackValueType::Object));
+  builder.add("httpConnections", VPackValue(clientHttpConnections));
+  builder.add("bytesSentPerSecond", VPackValue(clientBytesSentPerSecond));
+  builder.add("bytesReceivedPerSecond", VPackValue(clientBytesReceivedPerSecond));
+  builder.add("avgTotalTime", VPackValue(clientAvgTotalTime));
+  builder.add("avgRequestTime", VPackValue(clientAvgRequestTime));
+  builder.add("avgQueueTime", VPackValue(clientAvgQueueTime));
+  builder.add("avgIoTime", VPackValue(clientAvgIoTime));
+  builder.close();
+
+  builder.close();
+
+  return builder.slice();
 }
 
 
