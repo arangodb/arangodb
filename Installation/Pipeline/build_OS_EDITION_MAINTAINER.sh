@@ -1,7 +1,9 @@
+#!/bin/bash
 concurrency=$1
-edition=$2
-os=$3
-logdir=$4
+os=$2
+edition=$3
+maintainer=$4
+logdir=$5
 
 ENTERPRISE=""
 type="build"
@@ -17,6 +19,19 @@ else
     exit 1
 fi
 
+MAINTAINER=""
+
+if [ "$maintainer" == maintainer ]; then
+    MAINTAINER="-DUSE_MAINTAINER_MODE=On"
+    type="${type}_maintainer"
+elif [ "$maintainer" == user ]; then
+    MAINTAINER="-DUSE_MAINTAINER_MODE=Off"
+    type="${type}_user"
+else
+    echo "$0: unknown maintainer '$maintainer', expecting 'maintainer' or 'user'"
+    exit 1
+fi
+
 if [ "$os" == linux ]; then
     type="${type}_linux"
     load=40
@@ -28,10 +43,6 @@ else
     exit 1
 fi
 
-echo "CONCURRENY: $concurrency"
-echo "HOST: `hostname`"
-echo "PWD: `pwd`"
-
 mkdir -p build
 
 if [ -z "$logdir" ]; then
@@ -42,6 +53,10 @@ fi
 
 touch $logdir/build.log
 
+echo "CONCURRENY: $concurrency" | tee -a $logdir/build.log
+echo "HOST: `hostname`" | tee -a $logdir/build.log
+echo "PWD: `pwd`" | tee -a $logdir/build.log
+
 (
     set -eo pipefail
     cd build
@@ -50,12 +65,12 @@ touch $logdir/build.log
     CXXFLAGS=-fno-omit-frame-pointer \
         cmake \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
-            -DUSE_MAINTAINER_MODE=On \
             -DUSE_CATCH_TESTS=On \
             -DUSE_FAILURE_TESTS=On \
             -DDEBUG_SYNC_REPLICATION=On \
+            $MAINTAINER \
             $ENTERPRISE \
-            ..  2>&1 | tee ../$logdir/build.log
+            ..  2>&1 | tee -a ../$logdir/build.log
 
     echo "`date +%T` building..."
     make -j $concurrency -l $load 2>&1 | tee -a ../$logdir/build.log
