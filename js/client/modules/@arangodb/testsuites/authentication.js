@@ -74,7 +74,8 @@ function authenticationClient (options) {
 }
 
 function authenticationServer (options) {
-  if (options.skipAuthentication === true) {
+  let testCases = tu.scanTestPath('js/server/tests/authentication');
+  if ((testCases.length === 0) || (options.skipAuthentication === true)) {
     print('skipping Authentication tests!');
     return {
       authentication: {
@@ -85,7 +86,6 @@ function authenticationServer (options) {
   }
 
   print(CYAN + 'Server Authentication tests...' + RESET);
-  let testCases = tu.scanTestPath('js/server/tests/authentication');
   return tu.performTests(options, testCases, 'authentication_server', tu.runThere, {
     'server.authentication': 'true',
     'server.jwt-secret': 'haxxmann',

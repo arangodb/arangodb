@@ -1,31 +1,31 @@
-/*jshint globalstrict:false, strict:false */
+/* jshint globalstrict:false, strict:false */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for Foxx console
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2015 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Alan Plum
-/// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests for Foxx console
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2015 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Alan Plum
+// / @author Copyright 2015, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
 var jsunity = require('jsunity');
 var expect = require('chai').expect;
@@ -37,21 +37,22 @@ var internal = require('internal');
 var AssertionError = require('assert').AssertionError;
 var mountPath = '##TEST##';
 
+var foxxlogCol = '_foxxlog';
 function clear () {
   'use strict';
   if (!db._foxxlog) {
     return [];
   }
   return db._query(
-    qb.for('entry').in('_foxxlog')
+    qb.for('entry').in(foxxlogCol)
     .filter(qb.eq('entry.mount', qb.str(mountPath)))
-    .remove('entry').in('_foxxlog')
+    .remove('entry').in(foxxlogCol)
   ).toArray();
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 function ConsoleTestSuite () {
   'use strict';
@@ -59,26 +60,26 @@ function ConsoleTestSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief set up
+// //////////////////////////////////////////////////////////////////////////////
 
     setUp: function () {
       console = new Console(mountPath);
       clear();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tear down
+// //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
       clear();
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief tests
+// //////////////////////////////////////////////////////////////////////////////
 
     testConsoleLogLogsMessage: function () {
       clear();
@@ -135,7 +136,11 @@ function ConsoleTestSuite () {
     testConsoleDirUsesInspect: function () {
       const args = [
         'lol',
-        {_PRINT: function (ctx) {ctx.output += 'hello';}}
+        {
+          _PRINT: function (ctx) {
+            ctx.output += 'hello';
+          }
+        }
       ];
       args.forEach(function (arg) {
         clear();
@@ -279,11 +284,20 @@ function ConsoleTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ConsoleTestSuite);
 
-return jsunity.done();
+let rc = jsunity.done();
 
+db._useDatabase('_system');
+try {
+  db._drop(foxxlogCol, {
+    isSystem: true
+  });
+} catch (x) {
+}
+
+return rc;
