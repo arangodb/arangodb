@@ -1113,11 +1113,13 @@ def runOperatingSystems(osList) {
     parallel branches
 }
 
-checkCommitMessages()
+timestamps {
+    checkCommitMessages()
 
-node("master") {
-    fileOperations([fileCreateOperation(fileContent: overview, fileName: "overview.txt")])
-    archiveArtifacts(allowEmptyArchive: true, artifacts: "overview.txt")
+    node("master") {
+        fileOperations([fileCreateOperation(fileContent: overview, fileName: "overview.txt")])
+        archiveArtifacts(allowEmptyArchive: true, artifacts: "overview.txt")
+    }
+
+    runOperatingSystems(['linux', 'mac', 'windows'])
 }
-
-runOperatingSystems(['linux', 'mac', 'windows'])
