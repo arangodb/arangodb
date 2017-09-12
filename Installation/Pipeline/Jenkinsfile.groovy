@@ -419,19 +419,6 @@ def checkCommitMessages() {
         runTests = false
     }
     else {
-        useLinux = true
-        useMac = true
-        useWindows = true
-
-        useCommunity = true
-        useEnterprise = true
-
-        useMaintainer = true
-        useUser = true
-
-        // runResilience = true
-        runTests = true
-
         if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
             echo "build of main branch"
         }
@@ -471,8 +458,30 @@ CHANGE_ID: ${env.CHANGE_ID}
 CHANGE_TARGET: ${env.CHANGE_TARGET}
 JOB_NAME: ${env.JOB_NAME}
 CAUSE: ${causeDescription}
+"""
 
-Linux: ${useLinux}
+    if (restrictions) {
+        useLinux = true
+        useMac = true
+        useWindows = true
+
+        useCommunity = true
+        useEnterprise = true
+
+        useMaintainer = true
+        useUser = true
+
+        // runResilience = true
+        runTests = true
+
+        overview += "Restrictions:\n"
+
+        for (r in restrictions.keySet()) {
+            overview += "    " + r + "\n"
+        }
+    }
+    else {
+        overview += """Linux: ${useLinux}
 Mac: ${useMac}
 Windows: ${useWindows}
 Clean Build: ${cleanBuild}
@@ -481,13 +490,7 @@ Building Enterprise: ${useEnterprise}
 Building Maintainer: ${useMaintainer}
 Building Non-Maintainer: ${useUser}
 Running Tests: ${runTests}
-
-Restrictions:
 """
-
-    for (r in restrictions.keySet()) {
-        overview += "    " + r + "\n"
-    }
 }
 
 // -----------------------------------------------------------------------------
