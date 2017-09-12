@@ -146,11 +146,9 @@ void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
 
     for (auto&& buffer : buffers) {
       if (c == n) {
-        WriteBuffer b(buffer.release(), stat);
-        addWriteBuffer(b);
+        addWriteBuffer(WriteBuffer(buffer.release(), stat));
       } else {
-        WriteBuffer b(buffer.release(), nullptr);
-        addWriteBuffer(b);
+        addWriteBuffer(WriteBuffer(buffer.release(), nullptr));
       }
 
       ++c;

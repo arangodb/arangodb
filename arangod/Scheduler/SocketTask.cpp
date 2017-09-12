@@ -133,7 +133,7 @@ void SocketTask::start() {
 // -----------------------------------------------------------------------------
 
 // caller must hold the _lock
-void SocketTask::addWriteBuffer(WriteBuffer& buffer) {
+void SocketTask::addWriteBuffer(WriteBuffer&& buffer) {
   _lock.assertLockedByCurrentThread();
 
   if (_closedSend || _abandoned) {

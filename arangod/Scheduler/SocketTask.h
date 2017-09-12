@@ -139,7 +139,7 @@ class SocketTask : virtual public Task {
   };
 
   // will acquire the _lock
-  void addWriteBuffer(WriteBuffer&);
+  void addWriteBuffer(WriteBuffer&&);
 
   // will acquire the _lock
   void closeStream();
