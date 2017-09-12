@@ -33,7 +33,6 @@
 
 /// @brief string buffer with formatting routines
 struct TRI_string_buffer_t {
-  TRI_memory_zone_t* _memoryZone;
   char* _buffer;
   char* _current;
   size_t _len;
@@ -536,10 +535,9 @@ class StringBuffer {
   /// @brief set the buffer content
   void set(TRI_string_buffer_t const* other) {
     if (_buffer._buffer != nullptr) {
-      TRI_Free(_buffer._memoryZone, _buffer._buffer);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, _buffer._buffer);
     }
 
-    _buffer._memoryZone = other->_memoryZone;
     _buffer._buffer = other->_buffer;
     _buffer._current = other->_current;
     _buffer._len = other->_len;

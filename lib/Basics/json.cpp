@@ -875,7 +875,7 @@ bool TRI_ReplaceObjectJson(TRI_memory_zone_t* zone, TRI_json_t* object,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_StringifyJson(TRI_string_buffer_t* buffer, TRI_json_t const* object) {
-  return StringifyJson(buffer->_memoryZone, buffer, object, true);
+  return StringifyJson(TRI_UNKNOWN_MEM_ZONE, buffer, object, true);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

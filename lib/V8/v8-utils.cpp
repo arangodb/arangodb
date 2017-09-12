@@ -87,10 +87,10 @@ static UniformCharacter JSSaltGenerator(
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.
 TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone,
                                    v8::Handle<v8::Value> const obj)
-    : _str(nullptr), _length(0), _memoryZone(memoryZone) {
+    : _str(nullptr), _length(0) {
   v8::String::Value str(obj);
 
-  _str = TRI_normalize_utf16_to_NFC(_memoryZone, *str, (size_t)str.length(),
+  _str = TRI_normalize_utf16_to_NFC(TRI_UNKNOWN_MEM_ZONE, *str, (size_t)str.length(),
                                     &_length);
 }
 
@@ -100,7 +100,7 @@ TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone,
 
 TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
   if (_str != nullptr) {
-    TRI_Free(_memoryZone, _str);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, _str);
   }
 }
 

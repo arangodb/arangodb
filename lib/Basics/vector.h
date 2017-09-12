@@ -27,38 +27,15 @@
 #include "Basics/Common.h"
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the memory zone for a zone id
-////////////////////////////////////////////////////////////////////////////////
-
-inline TRI_memory_zone_t* TRI_MemoryZone(TRI_memory_zone_id_t zid) {
-  return TRI_UNKNOWN_MEM_ZONE; 
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the memory zone id for a zone
-////////////////////////////////////////////////////////////////////////////////
-
-inline TRI_memory_zone_id_t TRI_MemoryZoneId(TRI_memory_zone_t const* zone) {
-  return 1;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief pod vector
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vector_s {
   char* _buffer;
-  TRI_memory_zone_id_t _memoryZoneX;  // private. do not access from outside
   uint32_t _lengthX;                  // private. do not access from outside!
   uint32_t _capacityX;                // private. do not access from outside!
   uint32_t _elementSizeX;             // private. do not access from outside!
 } TRI_vector_t;
-
-static_assert(sizeof(TRI_memory_zone_id_t) == 4,
-              "invalid size for TRI_memory_zone_id_t");
-
-static_assert(sizeof(TRI_vector_t) == sizeof(char*) + 4 * sizeof(uint32_t),
-              "invalid size for TRI_vector_t");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a vector
@@ -181,7 +158,6 @@ void* TRI_BeginVector(TRI_vector_t const*);
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_vector_string_s {
-  TRI_memory_zone_t* _memoryZone;
   char** _buffer;
   size_t _length;
   size_t _capacity;

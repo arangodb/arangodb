@@ -45,7 +45,7 @@ static int Reserve(TRI_string_buffer_t* self, size_t size) {
     TRI_ASSERT(len > 0);
 
     char* ptr = static_cast<char*>(
-        TRI_Reallocate(self->_memoryZone, self->_buffer, len + 1));
+        TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, self->_buffer, len + 1));
 
     if (ptr == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -114,7 +114,6 @@ TRI_string_buffer_t* TRI_CreateSizedStringBuffer(TRI_memory_zone_t* zone,
 /// @warning You must call initialize before using the string buffer.
 void TRI_InitStringBuffer(TRI_string_buffer_t* self, TRI_memory_zone_t* zone,
                           bool initializeMemory) {
-  self->_memoryZone = zone;
   self->_buffer = nullptr;
   self->_current = nullptr;
   self->_len = 0;
@@ -129,7 +128,6 @@ void TRI_InitStringBuffer(TRI_string_buffer_t* self, TRI_memory_zone_t* zone,
 void TRI_InitSizedStringBuffer(TRI_string_buffer_t* self,
                                TRI_memory_zone_t* zone, size_t const length,
                                bool initializeMemory) {
-  self->_memoryZone = zone;
   self->_buffer = nullptr;
   self->_current = nullptr;
   self->_len = 0;
@@ -145,7 +143,7 @@ void TRI_InitSizedStringBuffer(TRI_string_buffer_t* self,
 /// @warning You must call free or destroy after using the string buffer.
 void TRI_DestroyStringBuffer(TRI_string_buffer_t* self) {
   if (self->_buffer != nullptr) {
-    TRI_Free(self->_memoryZone, self->_buffer);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, self->_buffer);
   }
 }
 
@@ -156,7 +154,7 @@ void TRI_AnnihilateStringBuffer(TRI_string_buffer_t* self) {
   if (self->_buffer != nullptr) {
     // somewhat paranoid? don't ask me
     memset(self->_buffer, 0, self->_len);
-    TRI_Free(self->_memoryZone, self->_buffer);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, self->_buffer);
     self->_buffer = nullptr;
   }
 }
@@ -265,17 +263,14 @@ void TRI_SwapStringBuffer(TRI_string_buffer_t* self,
   char* otherBuffer = other->_buffer;
   char* otherCurrent = other->_current;
   size_t otherLen = other->_len;
-  TRI_memory_zone_t* otherZone = other->_memoryZone;
 
   other->_buffer = self->_buffer;
   other->_current = self->_current;
   other->_len = self->_len;
-  other->_memoryZone = self->_memoryZone;
 
   self->_buffer = otherBuffer;
   self->_current = otherCurrent;
   self->_len = otherLen;
-  self->_memoryZone = otherZone;
 }
 
 /// @brief returns pointer to the beginning of the character buffer

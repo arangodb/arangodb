@@ -61,8 +61,6 @@ class TRI_Utf8ValueNFC {
   char* _str;
 
   size_t _length;
-
-  TRI_memory_zone_t* _memoryZone;
 };
 
 /// @brief slot for a type

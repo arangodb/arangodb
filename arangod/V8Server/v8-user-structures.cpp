@@ -39,12 +39,11 @@ using namespace arangodb;
 int TRI_CompareValuesJson(TRI_json_t const* lhs, TRI_json_t const* rhs,
                           bool useUTF8 = true);
 
-static TRI_json_t* MergeRecursive(TRI_memory_zone_t* zone,
-                                  TRI_json_t const* lhs, TRI_json_t const* rhs,
+static TRI_json_t* MergeRecursive(TRI_json_t const* lhs, TRI_json_t const* rhs,
                                   bool nullMeansRemove, bool mergeObjects) {
   TRI_ASSERT(lhs != nullptr);
 
-  std::unique_ptr<TRI_json_t> result(TRI_CopyJson(zone, lhs));
+  std::unique_ptr<TRI_json_t> result(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, lhs));
 
   if (result == nullptr) {
     return nullptr;
@@ -64,7 +63,7 @@ static TRI_json_t* MergeRecursive(TRI_memory_zone_t* zone,
     if (value->_type == TRI_JSON_NULL && nullMeansRemove) {
       // replacement value is a null and we don't want to store nulls => delete
       // attribute from the result
-      TRI_DeleteObjectJson(zone, r, key->_value._string.data);
+      TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, r, key->_value._string.data);
     } else {
       // replacement value is not a null or we want to store nulls
       TRI_json_t const* lhsValue =
@@ -75,35 +74,35 @@ static TRI_json_t* MergeRecursive(TRI_memory_zone_t* zone,
         if (value->_type == TRI_JSON_OBJECT && nullMeansRemove) {
           TRI_json_t empty;
           TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &empty);
-          TRI_json_t* merged = MergeRecursive(zone, &empty, value,
+          TRI_json_t* merged = MergeRecursive(&empty, value,
                                               nullMeansRemove, mergeObjects);
 
           if (merged == nullptr) {
             return nullptr;
           }
-          TRI_Insert3ObjectJson(zone, r, key->_value._string.data, merged);
+          TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, key->_value._string.data, merged);
         } else {
-          TRI_json_t* copy = TRI_CopyJson(zone, value);
+          TRI_json_t* copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value);
 
           if (copy == nullptr) {
             return nullptr;
           }
 
-          TRI_Insert3ObjectJson(zone, r, key->_value._string.data, copy);
+          TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, r, key->_value._string.data, copy);
         }
       } else {
         // existing array already has the attribute => replace attribute
         if (lhsValue->_type == TRI_JSON_OBJECT &&
             value->_type == TRI_JSON_OBJECT && mergeObjects) {
-          TRI_json_t* merged = MergeRecursive(zone, lhsValue, value,
+          TRI_json_t* merged = MergeRecursive(lhsValue, value,
                                               nullMeansRemove, mergeObjects);
           if (merged == nullptr) {
             return nullptr;
           }
-          TRI_ReplaceObjectJson(zone, r, key->_value._string.data, merged);
-          TRI_FreeJson(zone, merged);
+          TRI_ReplaceObjectJson(TRI_UNKNOWN_MEM_ZONE, r, key->_value._string.data, merged);
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, merged);
         } else {
-          TRI_ReplaceObjectJson(zone, r, key->_value._string.data, value);
+          TRI_ReplaceObjectJson(TRI_UNKNOWN_MEM_ZONE, r, key->_value._string.data, value);
         }
       }
     }
@@ -424,13 +423,13 @@ int TRI_CompareValuesJson(TRI_json_t const* lhs, TRI_json_t const* rhs,
 /// @brief merge two JSON documents into one
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_MergeJson(TRI_memory_zone_t* zone, TRI_json_t const* lhs,
+static TRI_json_t* TRI_MergeJson(TRI_json_t const* lhs,
                           TRI_json_t const* rhs, bool nullMeansRemove,
                           bool mergeObjects) {
   TRI_ASSERT(lhs->_type == TRI_JSON_OBJECT);
   TRI_ASSERT(rhs->_type == TRI_JSON_OBJECT);
 
-  return MergeRecursive(zone, lhs, rhs, nullMeansRemove, mergeObjects);
+  return MergeRecursive(lhs, rhs, nullMeansRemove, mergeObjects);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1591,7 +1590,7 @@ class KeySpace {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
 
-    TRI_json_t* merged = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, found->json, other,
+    TRI_json_t* merged = TRI_MergeJson(found->json, other,
                                        nullMeansRemove, false);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, other);
 
