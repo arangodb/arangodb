@@ -24,7 +24,6 @@ exit $LastExitCode
   docker run --rm -v $volume m0ppers/build-container powershell C:\arangodb\buildscript.ps1 | Set-Content -PassThru ${logdir}\build.log
 } else {
   $env:GYP_MSVS_OVERRIDE_PATH="${vcpath}\bin"
-  $env:GYP_USE_SEPARATE_MSPDBSRV=1
   $env:CC="${vcpath}\bin\cl.exe"
   $env:CXX="${vcpath}\bin\cl.exe"
 
