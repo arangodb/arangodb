@@ -976,5 +976,7 @@ def runOperatingSystems(osList) {
     parallel branches
 }
 
-checkCommitMessages()
-runOperatingSystems(['linux', 'mac', 'windows'])
+timestamps {
+    checkCommitMessages()
+    runOperatingSystems(['linux', 'mac', 'windows'])
+}
