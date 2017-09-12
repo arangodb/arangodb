@@ -159,6 +159,9 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   /// @brief add a single value node to the iterator's keys
   void handleValNode(transaction::Methods* trx, VPackBuilder* keys,
                      arangodb::aql::AstNode const* valNode, bool isId) const;
+  
+private:
+  bool const _isRunningInCluster;
 };
 }  // namespace arangodb
 

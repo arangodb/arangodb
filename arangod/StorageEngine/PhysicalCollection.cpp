@@ -47,7 +47,9 @@ using namespace arangodb;
 
 PhysicalCollection::PhysicalCollection(LogicalCollection* collection,
                                        VPackSlice const& info)
-    : _logicalCollection(collection), _indexes() {}
+  : _logicalCollection(collection),
+    _isDBServer(ServerState::instance()->isDBServer()),
+    _indexes() {}
 
 void PhysicalCollection::figures(
     std::shared_ptr<arangodb::velocypack::Builder>& builder) {
@@ -261,7 +263,7 @@ int PhysicalCollection::newObjectForInsert(
   uint8_t* p = builder.add(StaticStrings::IdString,
                            VPackValuePair(9ULL, VPackValueType::Custom));
   *p++ = 0xf3;  // custom type for _id
-  if (trx->state()->isDBServer() && !_logicalCollection->isSystem()) {
+  if (_isDBServer && !_logicalCollection->isSystem()) {
     // db server in cluster, note: the local collections _statistics,
     // _statisticsRaw and _statistics15 (which are the only system
     // collections)

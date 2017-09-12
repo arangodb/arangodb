@@ -32,13 +32,13 @@
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
+#include "Utils/ExecContext.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-dispatcher.h"
-#include "VocBase/AuthInfo.h"
 #include "VocBase/modes.h"
 #include "VocBase/vocbase.h"
 
@@ -136,17 +136,16 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   return Result();
 }
 
-arangodb::Result Databases::create(std::string const& dbName,
+arangodb::Result Databases::create(ExecContext const* exec,
+                                   std::string const& dbName,
                                    VPackSlice const& inUsers,
                                    VPackSlice const& inOptions) {
   if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
     return Result(TRI_ERROR_ARANGO_READ_ONLY);
   }
   auto auth = FeatureCacheFeature::instance()->authenticationFeature();
-  if (auth->isActive() && ExecContext::CURRENT != nullptr) {
-    AuthLevel level = ExecContext::CURRENT->systemAuthLevel();
-
-    if (level != AuthLevel::RW) {
+  if (exec != nullptr) {
+    if (exec->systemAuthLevel() != AuthLevel::RW) {
       return TRI_ERROR_FORBIDDEN;
     }
   }
@@ -263,16 +262,16 @@ arangodb::Result Databases::create(std::string const& dbName,
     TRI_ASSERT(vocbase->name() == dbName);
 
     // we need to add the permissions before running the upgrade script
-    if (auth->isActive() && ExecContext::CURRENT != nullptr) {
+    if (exec != nullptr) {
       // ignore errors here Result r =
       auth->authInfo()->updateUser(
-          ExecContext::CURRENT->user(), [&](AuthUserEntry& entry) {
+          exec->user(), [&](AuthUserEntry& entry) {
             entry.grantDatabase(dbName, AuthLevel::RW);
             entry.grantCollection(dbName, "*", AuthLevel::RW);
           });
     }
 
-    V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
+    V8Context* ctx = V8DealerFeature::DEALER->enterContext(exec, vocbase, true);
     if (ctx == nullptr) {
       return Result(TRI_ERROR_INTERNAL, "could not acquire V8 context");
     }
@@ -315,16 +314,16 @@ arangodb::Result Databases::create(std::string const& dbName,
     TRI_ASSERT(!vocbase->isDangling());
 
     // we need to add the permissions before running the upgrade script
-    if (auth->isActive() && ExecContext::CURRENT != nullptr) {
+    if (ServerState::instance()->isSingleServer() && exec != nullptr) {
       // ignore errors here Result r =
-      auth->authInfo()->updateUser(ExecContext::CURRENT->user(),
+      auth->authInfo()->updateUser(exec->user(),
                                    [&](AuthUserEntry& entry) {
                                      entry.grantDatabase(dbName, AuthLevel::RW);
                                      entry.grantCollection(dbName, "*", AuthLevel::RW);
                                    });
     }
 
-    V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
+    V8Context* ctx = V8DealerFeature::DEALER->enterContext(exec, vocbase, true);
     if (ctx == nullptr) {
       return Result(TRI_ERROR_INTERNAL, "Could not get v8 context");
     }
@@ -380,18 +379,17 @@ arangodb::Result Databases::create(std::string const& dbName,
   return Result();
 }
 
-arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
+arangodb::Result Databases::drop(ExecContext const* exec,
+                                 TRI_vocbase_t* systemVocbase,
                                  std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
-  if (ExecContext::CURRENT != nullptr) {
-    AuthLevel level = ExecContext::CURRENT->systemAuthLevel();
-
-    if (level != AuthLevel::RW) {
+  if (exec != nullptr) {
+    if (ExecContext::CURRENT->systemAuthLevel() != AuthLevel::RW) {
       return TRI_ERROR_FORBIDDEN;
     }
   }
 
-  V8Context* ctx = V8DealerFeature::DEALER->enterContext(systemVocbase, true);
+  auto ctx = V8DealerFeature::DEALER->enterContext(exec, systemVocbase, true);
   if (ctx == nullptr) {
     return Result(TRI_ERROR_INTERNAL, "Could not get v8 context");
   }
@@ -464,11 +462,13 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
         TRI_V8_ASCII_STRING("reload routing"), false);
   }
 
+  Result res;
   auto auth = FeatureCacheFeature::instance()->authenticationFeature();
   if (ServerState::instance()->isCoordinator() ||
       !ServerState::instance()->isRunningInCluster()) {
-    auth->authInfo()->enumerateUsers(
-        [&](AuthUserEntry& entry) { entry.removeDatabase(dbName); });
+    res = auth->authInfo()->enumerateUsers([&](AuthUserEntry& entry) {
+      entry.removeDatabase(dbName);
+    });
   }
-  return Result();
+  return res;
 }

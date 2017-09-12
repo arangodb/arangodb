@@ -29,6 +29,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Utils/CollectionGuard.h"
+#include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Hints.h"
@@ -60,7 +61,8 @@ MMFilesCollectionExport::~MMFilesCollectionExport() {
   }
 }
 
-void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
+void MMFilesCollectionExport::run(ExecContext const* exec,
+                                  uint64_t maxWaitTime, size_t limit) {
   MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
 
   // try to acquire the exclusive lock on the compaction
@@ -93,7 +95,7 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
 
   {
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(_collection->vocbase()), _name,
+        transaction::StandaloneContext::Create(_collection->vocbase(), exec), _name,
         AccessMode::Type::READ);
 
     // already locked by guard above

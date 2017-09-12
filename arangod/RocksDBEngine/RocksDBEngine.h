@@ -35,10 +35,13 @@
 #include "Enterprise/RocksDBEngine/RocksDBEngineEE.h"
 #endif
 
-#include <rocksdb/db.h>
-#include <rocksdb/utilities/transaction_db.h>
+#include <rocksdb/options.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
+
+namespace rocksdb {
+  class TransactionDB;
+}
 
 namespace arangodb {
 class PhysicalCollection;
@@ -86,8 +89,8 @@ class RocksDBEngine final : public StorageEngine {
 
   TransactionManager* createTransactionManager() override;
   transaction::ContextData* createTransactionContextData() override;
-  TransactionState* createTransactionState(
-      TRI_vocbase_t*, transaction::Options const&) override;
+  TransactionState* createTransactionState(TRI_vocbase_t*,
+                    transaction::Options const&, ExecContext const*) override;
   TransactionCollection* createTransactionCollection(
       TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
       int nestingLevel) override;

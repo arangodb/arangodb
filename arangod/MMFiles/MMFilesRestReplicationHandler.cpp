@@ -826,11 +826,10 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
                                                             tickStart);
   }
 
-  auto transactionContext =
-      std::make_shared<transaction::StandaloneContext>(_vocbase);
-
+  auto ctx = transaction::StandaloneContext::Create(_vocbase,
+                                                    _request->execContext());
   // initialize the dump container
-  MMFilesReplicationDumpContext dump(transactionContext,
+  MMFilesReplicationDumpContext dump(ctx,
                                      static_cast<size_t>(determineChunkSize()),
                                      includeSystem, cid, useVst);
 
@@ -929,12 +928,11 @@ void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
     return;
   }
 
-  auto transactionContext =
-      std::make_shared<transaction::StandaloneContext>(_vocbase);
-
+  auto ctx = transaction::StandaloneContext::Create(_vocbase,
+                                                    _request->execContext());
   // initialize the dump container
   MMFilesReplicationDumpContext dump(
-      transactionContext, static_cast<size_t>(determineChunkSize()), false, 0);
+      ctx, static_cast<size_t>(determineChunkSize()), false, 0);
 
   // and dump
   int res =
@@ -1251,7 +1249,6 @@ int MMFilesRestReplicationHandler::processRestoreCollection(
     return TRI_ERROR_NO_ERROR;
   }
 
-  grantTemporaryRights();
   arangodb::LogicalCollection* col = nullptr;
 
   if (reuseId) {
@@ -1283,8 +1280,8 @@ int MMFilesRestReplicationHandler::processRestoreCollection(
 
         // instead, truncate them
         SingleCollectionTransaction trx(
-            transaction::StandaloneContext::Create(_vocbase), col->cid(),
-            AccessMode::Type::WRITE);
+            transaction::StandaloneContext::Create(_vocbase, _request->execContext()),
+            col->cid(), AccessMode::Type::WRITE);
         trx.addHint(
             transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
@@ -1539,7 +1536,6 @@ int MMFilesRestReplicationHandler::processRestoreIndexes(
 
   READ_LOCKER(readLocker, _vocbase->_inventoryLock);
 
-  grantTemporaryRights();
   // look up the collection
   try {
     CollectionGuard guard(_vocbase, name.c_str());
@@ -1547,8 +1543,8 @@ int MMFilesRestReplicationHandler::processRestoreIndexes(
     LogicalCollection* collection = guard.collection();
 
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(_vocbase), collection->cid(),
-        AccessMode::Type::WRITE);
+        transaction::StandaloneContext::Create(_vocbase, _request->execContext()),
+        collection->cid(), AccessMode::Type::WRITE);
 
     Result res = trx.begin();
 
@@ -1956,10 +1952,9 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
   }
 
   try {
-    std::shared_ptr<transaction::Context> transactionContext =
-        transaction::StandaloneContext::Create(_vocbase);
-
-    VPackBuilder resultBuilder(transactionContext->getVPackOptions());
+    auto ctx = transaction::StandaloneContext::Create(_vocbase,
+                                                      _request->execContext());
+    VPackBuilder resultBuilder(ctx->getVPackOptions());
     resultBuilder.openArray();
 
     if (keys) {
@@ -1982,8 +1977,7 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
 
     collectionKeys->release();
 
-    generateResult(rest::ResponseCode::OK, resultBuilder.slice(),
-                   transactionContext);
+    generateResult(rest::ResponseCode::OK, resultBuilder.slice(), ctx);
     return;
   } catch (...) {
     collectionKeys->release();
@@ -2131,11 +2125,9 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
   arangodb::LogicalCollection* col = guard.collection();
   TRI_ASSERT(col != nullptr);
 
-  auto transactionContext =
-      std::make_shared<transaction::StandaloneContext>(_vocbase);
-
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase, _request->execContext());
   // initialize the dump container
-  MMFilesReplicationDumpContext dump(transactionContext,
+  MMFilesReplicationDumpContext dump(ctx,
                                      static_cast<size_t>(determineChunkSize()),
                                      includeSystem, 0);
 
@@ -2732,7 +2724,8 @@ void MMFilesRestReplicationHandler::handleCommandHoldReadLockCollection() {
     _holdReadLockJobs.emplace(id, std::shared_ptr<SingleCollectionTransaction>(nullptr));
   }
 
-  auto trxContext = transaction::StandaloneContext::Create(_vocbase);
+  auto trxContext = transaction::StandaloneContext::Create(_vocbase,
+                                                           _request->execContext());
   auto trx = std::make_shared<SingleCollectionTransaction>(
     trxContext, col->cid(), AccessMode::Type::READ);
   trx->addHint(transaction::Hints::Hint::LOCK_ENTIRELY);

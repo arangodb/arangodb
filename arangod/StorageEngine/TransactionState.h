@@ -56,6 +56,7 @@ namespace transaction {
 class Methods;
 struct Options;
 }
+class ExecContext;
 class TransactionCollection;
 
 /// @brief transaction type
@@ -65,7 +66,8 @@ class TransactionState {
   TransactionState(TransactionState const&) = delete;
   TransactionState& operator=(TransactionState const&) = delete;
 
-  TransactionState(TRI_vocbase_t* vocbase, transaction::Options const&);
+  TransactionState(TRI_vocbase_t* vocbase, transaction::Options const&,
+                   ExecContext const*);
   virtual ~TransactionState();
 
   bool isRunningInCluster() const {
@@ -159,6 +161,8 @@ class TransactionState {
   TransactionCollection* findCollection(TRI_voc_cid_t cid) const;
 
   void setType(AccessMode::Type type);
+  
+  ExecContext const* execContext() const { return _execContext; }
 
  protected:
   /// @brief find a collection in the transaction's list of collections
@@ -179,12 +183,18 @@ class TransactionState {
   /// @brief clear the query cache for all collections that were modified by
   /// the transaction
   void clearQueryCache();
-
+  
  protected:
-  TRI_vocbase_t* _vocbase;      // vocbase
-  TRI_voc_tid_t _id;            // local trx id
-  AccessMode::Type _type;       // access type (read|write)
-  transaction::Status _status;  // current status
+  /// @brief vocbase
+  TRI_vocbase_t* _vocbase;
+  /// @brief local trx id
+  TRI_voc_tid_t _id;
+  /// @brief access type (read|write)
+  AccessMode::Type _type;
+  /// @brief current status
+  transaction::Status _status;
+  /// @brief user context in which this is run
+  ExecContext const* _execContext;
 
   SmallVector<TransactionCollection*>::allocator_type::arena_type
       _arena;  // memory for collections

@@ -24,12 +24,13 @@
 #include "StandaloneContext.h"
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 
 /// @brief create the context
-transaction::StandaloneContext::StandaloneContext(TRI_vocbase_t* vocbase)
-    : Context(vocbase) {}
+transaction::StandaloneContext::StandaloneContext(TRI_vocbase_t* vocbase, ExecContext const* exec)
+    : Context(vocbase, exec) {}
 
 /// @brief order a custom type handler for the collection
 std::shared_ptr<arangodb::velocypack::CustomTypeHandler> transaction::StandaloneContext::orderCustomTypeHandler() {
@@ -53,7 +54,13 @@ CollectionNameResolver const* transaction::StandaloneContext::getResolver() {
 }
 
 /// @brief create a context, returned in a shared ptr
-std::shared_ptr<transaction::StandaloneContext> transaction::StandaloneContext::Create(TRI_vocbase_t* vocbase) {
-  return std::make_shared<transaction::StandaloneContext>(vocbase);
+std::shared_ptr<transaction::StandaloneContext> transaction::StandaloneContext::Create(                                                                                       TRI_vocbase_t* vocbase) {
+  ExecContext const* exe = ExecContext::CURRENT;
+  return std::make_shared<transaction::StandaloneContext>(vocbase, exe);
+}
+
+/// @brief create a context, returned in a shared ptr
+std::shared_ptr<transaction::StandaloneContext> transaction::StandaloneContext::Create(                                                                                       TRI_vocbase_t* vocbase, ExecContext const* exec) {
+  return std::make_shared<transaction::StandaloneContext>(vocbase, exec);
 }
 

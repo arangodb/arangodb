@@ -103,7 +103,7 @@ bool State::persist(index_t index, term_t term,
 
   TRI_ASSERT(_vocbase != nullptr);
   auto transactionContext =
-    std::make_shared<transaction::StandaloneContext>(_vocbase);
+    std::make_shared<transaction::StandaloneContext>(_vocbase, nullptr);
   SingleCollectionTransaction trx(
     transactionContext, "log", AccessMode::Type::WRITE);
 
@@ -755,7 +755,7 @@ bool State::loadOrPersistConfiguration() {
     _agent->id(to_string(boost::uuids::random_generator()()));
 
     auto transactionContext =
-        std::make_shared<transaction::StandaloneContext>(_vocbase);
+      std::make_shared<transaction::StandaloneContext>(_vocbase, nullptr);
     SingleCollectionTransaction trx(
       transactionContext, "configuration", AccessMode::Type::WRITE);
 
@@ -983,7 +983,7 @@ bool State::persistReadDB(index_t cind) {
 
     TRI_ASSERT(_vocbase != nullptr);
     auto transactionContext =
-        std::make_shared<transaction::StandaloneContext>(_vocbase);
+        std::make_shared<transaction::StandaloneContext>(_vocbase, nullptr);
     SingleCollectionTransaction trx(
       transactionContext, "compact", AccessMode::Type::WRITE);
 
@@ -1021,7 +1021,7 @@ bool State::persistCompactionSnapshot(index_t cind,
 
     TRI_ASSERT(_vocbase != nullptr);
     auto transactionContext =
-        std::make_shared<transaction::StandaloneContext>(_vocbase);
+        std::make_shared<transaction::StandaloneContext>(_vocbase, nullptr);
     SingleCollectionTransaction trx(
       transactionContext, "compact", AccessMode::Type::WRITE);
 
@@ -1092,7 +1092,7 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
   MUTEX_LOCKER(guard, _configurationWriteLock);
 
   auto transactionContext =
-      std::make_shared<transaction::StandaloneContext>(_vocbase);
+      std::make_shared<transaction::StandaloneContext>(_vocbase, nullptr);
   SingleCollectionTransaction trx(
     transactionContext, "configuration", AccessMode::Type::WRITE);
 

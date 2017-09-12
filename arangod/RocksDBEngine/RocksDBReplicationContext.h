@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
-#include "RocksDBEngine/RocksDBToken.h"
+#include "StorageEngine/DocumentIdentifierToken.h"
 #include "Transaction/Methods.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
@@ -38,6 +38,7 @@
 
 namespace arangodb {
 class DatabaseGuard;
+class ExecContext;
 
 class RocksDBReplicationContext {
  public:
@@ -64,7 +65,7 @@ class RocksDBReplicationContext {
   }
 
   // creates new transaction/snapshot
-  void bind(TRI_vocbase_t*);
+  void bind(TRI_vocbase_t*, ExecContext const*);
   int bindCollection(std::string const& collectionName);
 
   // returns inventory
@@ -104,9 +105,6 @@ class RocksDBReplicationContext {
 
  private:
   void releaseDumpingResources();
-
-  std::unique_ptr<transaction::Methods> createTransaction(
-      TRI_vocbase_t* vocbase);
 
   static bool filterCollection(arangodb::LogicalCollection* collection,
                                void* data);

@@ -453,8 +453,9 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       ctx->adjustTtl(ttl);
     }
 
+    // create transaction+snapshot
     RocksDBReplicationContextGuard(_manager, ctx);
-    ctx->bind(_vocbase);  // create transaction+snapshot
+    ctx->bind(_vocbase, _request->execContext());
 
     VPackBuilder b;
     b.add(VPackValue(VPackValueType::Object));
@@ -611,10 +612,9 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     cid = c->cid();
   }
 
-  std::shared_ptr<transaction::Context> transactionContext =
-      transaction::StandaloneContext::Create(_vocbase);
-
-  VPackBuilder builder(transactionContext->getVPackOptions());
+  auto trxContext = transaction::StandaloneContext::Create(_vocbase,
+                                                           _request->execContext());
+  VPackBuilder builder(trxContext->getVPackOptions());
   builder.openArray();
   auto result = tailWal(_vocbase, tickStart, tickEnd, chunkSize, includeSystem,
                         cid, builder);
@@ -659,7 +659,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     if (useVst) {
       for (auto message : arangodb::velocypack::ArrayIterator(data)) {
         _response->addPayload(VPackSlice(message),
-                              transactionContext->getVPackOptions(), true);
+                              trxContext->getVPackOptions(), true);
       }
     } else {
       HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
@@ -671,10 +671,8 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
       basics::StringBuffer& buffer = httpResponse->body();
       arangodb::basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
-      VPackDumper dumper(
-          &adapter,
-          transactionContext
-              ->getVPackOptions());  // note: we need the CustomTypeHandler here
+      // note: we need the CustomTypeHandler here
+      VPackDumper dumper(&adapter, trxContext->getVPackOptions());
       for (auto marker : arangodb::velocypack::ArrayIterator(data)) {
         dumper.dump(marker);
         httpResponse->body().appendChar('\n');
@@ -1069,10 +1067,9 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   }
   RocksDBReplicationContextGuard(_manager, ctx);
 
-  std::shared_ptr<transaction::Context> transactionContext =
-      transaction::StandaloneContext::Create(_vocbase);
-
-  VPackBuilder resultBuilder(transactionContext->getVPackOptions());
+  auto trxContext = transaction::StandaloneContext::Create(_vocbase,
+                                                           _request->execContext());
+  VPackBuilder resultBuilder(trxContext->getVPackOptions());
   if (keys) {
     Result rv = ctx->dumpKeys(resultBuilder, chunk, static_cast<size_t>(chunkSize), lowKey);
     if (rv.fail()){
@@ -1093,8 +1090,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
     }
   }
 
-  generateResult(rest::ResponseCode::OK, resultBuilder.slice(),
-                 transactionContext);
+  generateResult(rest::ResponseCode::OK, resultBuilder.slice(), trxContext);
 }
 
 void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
@@ -1107,28 +1103,6 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
   }
 
   std::string const& id = suffixes[1];
-  /*uint64_t batchId = arangodb::basics::StringUtils::uint64(id);
-  bool busy;
-  RocksDBReplicationContext *ctx = _manager->find(batchId, busy);
-  if (busy || ctx == nullptr) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
-                  "batchId not specified");
-    return;
-  }
-  RocksDBReplicationContextGuard(_manager, ctx);*/
-
-  /*auto keys = _vocbase->collectionKeys();
-  TRI_ASSERT(keys != nullptr);
-
-  auto collectionKeysId =
-  static_cast<CollectionKeysId>(arangodb::basics::StringUtils::uint64(id));
-  bool found = keys->remove(collectionKeysId);
-
-  if (!found) {
-    generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
-    return;
-  }*/
-
   VPackBuilder resultBuilder;
   resultBuilder.openObject();
   resultBuilder.add("id", VPackValue(id));  // id as a string
@@ -1792,9 +1766,9 @@ void RocksDBRestReplicationHandler::handleCommandHoldReadLockCollection() {
   // we need to lock in EXCLUSIVE mode here, because simply locking
   // in READ mode will not stop other writers in RocksDB. In order
   // to stop other writers, we need to fetch the EXCLUSIVE lock
-  auto trxContext = transaction::StandaloneContext::Create(_vocbase);
-  auto trx = std::make_shared<SingleCollectionTransaction>(
-    trxContext, col->cid(), AccessMode::Type::EXCLUSIVE);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase, _request->execContext());
+  auto trx = std::make_shared<SingleCollectionTransaction>(ctx, col->cid(),
+                                                           AccessMode::Type::EXCLUSIVE);
   trx->addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
   Result res = trx->begin();
   if (!res.ok()) {
@@ -2023,7 +1997,6 @@ int RocksDBRestReplicationHandler::processRestoreCollection(
     return TRI_ERROR_NO_ERROR;
   }
 
-  grantTemporaryRights();
   arangodb::LogicalCollection* col = nullptr;
 
   if (reuseId) {
@@ -2055,7 +2028,7 @@ int RocksDBRestReplicationHandler::processRestoreCollection(
 
         // instead, truncate them
         SingleCollectionTransaction trx(
-            transaction::StandaloneContext::Create(_vocbase), col->cid(),
+            transaction::StandaloneContext::Create(_vocbase, _request->execContext()), col->cid(),
             AccessMode::Type::EXCLUSIVE);
         trx.addHint(
             transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
@@ -2411,7 +2384,6 @@ int RocksDBRestReplicationHandler::processRestoreIndexes(
 
   int res = TRI_ERROR_NO_ERROR;
 
-  grantTemporaryRights();
   READ_LOCKER(readLocker, _vocbase->_inventoryLock);
 
   // look up the collection
@@ -2420,10 +2392,9 @@ int RocksDBRestReplicationHandler::processRestoreIndexes(
 
     LogicalCollection* collection = guard.collection();
 
-    SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(_vocbase), collection->cid(),
-        AccessMode::Type::EXCLUSIVE);
-
+    auto ctx = transaction::StandaloneContext::Create(_vocbase,
+                                                      _request->execContext());
+    SingleCollectionTransaction trx(ctx , collection->cid(), AccessMode::Type::EXCLUSIVE);
     Result res = trx.begin();
 
     if (!res.ok()) {

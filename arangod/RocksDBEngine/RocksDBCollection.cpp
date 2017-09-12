@@ -64,8 +64,8 @@
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 
-#include <rocksdb/db.h>
 #include <rocksdb/utilities/transaction.h>
+#include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -947,8 +947,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
                         TRI_RidToString(revisionId), options.mergeObjects,
                         options.keepNull, *builder.get());
-  auto state = RocksDBTransactionState::toState(trx);
-  if (state->isDBServer()) {
+  if (_isDBServer) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
                                    trx->resolver()->getCollectionNameCluster(
@@ -960,6 +959,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
 
   VPackSlice const newDoc(builder->slice());
 
+  auto state = RocksDBTransactionState::toState(trx);
   RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),
                          trx->isSingleOperationTransaction(),
                          [&state]() { state->resetLogState(); });
@@ -1041,8 +1041,7 @@ Result RocksDBCollection::replace(
                       isEdgeCollection, TRI_RidToString(revisionId),
                       *builder.get());
 
-  auto state = RocksDBTransactionState::toState(trx);
-  if (state->isDBServer()) {
+  if (_isDBServer) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
                                    trx->resolver()->getCollectionNameCluster(
@@ -1052,6 +1051,7 @@ Result RocksDBCollection::replace(
     }
   }
 
+  auto state = RocksDBTransactionState::toState(trx);
   RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),
                          trx->isSingleOperationTransaction(),
                          [&state]() { state->resetLogState(); });
@@ -1793,10 +1793,10 @@ int RocksDBCollection::unlockRead() {
 // rescans the collection to update document count
 uint64_t RocksDBCollection::recalculateCounts() {
   // start transaction to get a collection lock
-  arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(
-          _logicalCollection->vocbase()),
-      _logicalCollection->cid(), AccessMode::Type::EXCLUSIVE);
+  auto ctx = transaction::StandaloneContext::Create(
+                              _logicalCollection->vocbase(), nullptr);
+  SingleCollectionTransaction trx(ctx, _logicalCollection->cid(),
+                                  AccessMode::Type::EXCLUSIVE);
   auto res = trx.begin();
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -1917,10 +1917,9 @@ void RocksDBCollection::recalculateIndexEstimates() {
 void RocksDBCollection::recalculateIndexEstimates(
     std::vector<std::shared_ptr<Index>> const& indexes) {
   // start transaction to get a collection lock
-  arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(
-          _logicalCollection->vocbase()),
-      _logicalCollection->cid(), AccessMode::Type::EXCLUSIVE);
+  auto ctx = transaction::StandaloneContext::Create(_logicalCollection->vocbase(), nullptr);
+  arangodb::SingleCollectionTransaction trx(ctx, _logicalCollection->cid(),
+                                            AccessMode::Type::EXCLUSIVE);
   auto res = trx.begin();
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);

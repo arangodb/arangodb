@@ -85,6 +85,7 @@
 #include <rocksdb/table.h>
 #include <rocksdb/transaction_log.h>
 #include <rocksdb/write_batch.h>
+#include <rocksdb/utilities/transaction_db.h>
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -578,9 +579,9 @@ transaction::ContextData* RocksDBEngine::createTransactionContextData() {
   return new RocksDBTransactionContextData();
 }
 
-TransactionState* RocksDBEngine::createTransactionState(
-    TRI_vocbase_t* vocbase, transaction::Options const& options) {
-  return new RocksDBTransactionState(vocbase, options);
+TransactionState* RocksDBEngine::createTransactionState(TRI_vocbase_t* vocbase,
+                transaction::Options const& options, ExecContext const* exec) {
+  return new RocksDBTransactionState(vocbase, options, exec);
 }
 
 TransactionCollection* RocksDBEngine::createTransactionCollection(

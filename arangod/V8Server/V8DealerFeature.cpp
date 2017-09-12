@@ -289,7 +289,6 @@ void V8DealerFeature::start() {
     }
   }
 
-
   DatabaseFeature* database =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
 
@@ -574,7 +573,7 @@ void V8DealerFeature::loadJavaScriptFileInDefaultContext(TRI_vocbase_t* vocbase,
   TRI_DEFER(alreadyLockedInThread = false);
 
   // enter context #0
-  V8Context* context = enterContext(vocbase, true, 0);
+  V8Context* context = enterContext(nullptr, vocbase, true, 0);
   
   if (context == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not acquire default V8 context");
@@ -602,10 +601,11 @@ void V8DealerFeature::enterContextInternal(TRI_vocbase_t* vocbase,
                                            V8Context* context,
                                            bool allowUseDatabase) {
   context->lockAndEnter();
-  enterLockedContext(vocbase, context, allowUseDatabase);
+  enterLockedContext(nullptr, vocbase, context, allowUseDatabase);
 }
 
-void V8DealerFeature::enterLockedContext(TRI_vocbase_t* vocbase,
+void V8DealerFeature::enterLockedContext(ExecContext const* exec,
+                                         TRI_vocbase_t* vocbase,
                                          V8Context* context,
                                          bool allowUseDatabase) {
   TRI_ASSERT(vocbase != nullptr);
@@ -634,6 +634,7 @@ void V8DealerFeature::enterLockedContext(TRI_vocbase_t* vocbase,
 
       // initialize the context data
       v8g->_query = nullptr;
+      v8g->_execContext = exec;
       v8g->_vocbase = vocbase;
       v8g->_allowUseDatabase = allowUseDatabase;
 
@@ -647,7 +648,8 @@ void V8DealerFeature::enterLockedContext(TRI_vocbase_t* vocbase,
   }
 }
 
-V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
+V8Context* V8DealerFeature::enterContext(ExecContext const* exec,
+                                         TRI_vocbase_t* vocbase,
                                          bool allowUseDatabase,
                                          ssize_t forceContext) {
   TRI_ASSERT(vocbase != nullptr);
@@ -837,7 +839,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
   TRI_ASSERT(context != nullptr);
   TRI_ASSERT(context->isUsed());
 
-  enterLockedContext(vocbase, context, allowUseDatabase);
+  enterLockedContext(exec, vocbase, context, allowUseDatabase);
   return context;
 }
 
@@ -929,6 +931,7 @@ void V8DealerFeature::exitLockedContext(V8Context* context) {
 
     // reset the context data; gc should be able to run without it
     v8g->_query = nullptr;
+    v8g->_execContext = nullptr;
     v8g->_vocbase = nullptr;
     v8g->_allowUseDatabase = false;
 

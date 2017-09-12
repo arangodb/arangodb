@@ -238,6 +238,7 @@ class PhysicalCollection {
 
  protected:
   LogicalCollection* _logicalCollection;
+  bool const _isDBServer;
 
   mutable basics::ReadWriteLock _indexesLock;
   std::vector<std::shared_ptr<Index>> _indexes;

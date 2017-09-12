@@ -784,7 +784,7 @@ int InitialSyncer::handleCollectionDump(arangodb::LogicalCollection* col,
 /// @brief incrementally fetch data from a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int InitialSyncer::handleCollectionSync(arangodb::LogicalCollection* col,
+int InitialSyncer::handleCollectionSync(LogicalCollection* col,
                                         std::string const& cid,
                                         std::string const& collectionName,
                                         TRI_voc_tick_t maxTick,

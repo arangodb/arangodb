@@ -39,7 +39,7 @@ class StandaloneContext final : public Context {
  public:
 
   /// @brief create the context
-  explicit StandaloneContext(TRI_vocbase_t*);
+  explicit StandaloneContext(TRI_vocbase_t*, ExecContext const*);
 
   /// @brief destroy the context
   ~StandaloneContext() = default;
@@ -67,7 +67,10 @@ class StandaloneContext final : public Context {
   
   /// @brief create a context, returned in a shared ptr
   static std::shared_ptr<transaction::StandaloneContext> Create(TRI_vocbase_t*);
-
+    
+  /// @brief create a context, returned in a shared ptr
+  static std::shared_ptr<transaction::StandaloneContext> Create(TRI_vocbase_t*,
+                                                                ExecContext const*);
 };
 
 }
