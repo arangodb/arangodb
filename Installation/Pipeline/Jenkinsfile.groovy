@@ -1019,8 +1019,10 @@ def buildEdition(os, edition, maintainer) {
                 folderCreateOperation(tmpDir)
             ])
 
-            withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}", "_MSPDBSRV_ENDPOINT_=${edition}-${env.BUILD_TAG}"]) {
-                powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
+            lock("build-windows-${hostname}") {
+                withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}", "_MSPDBSRV_ENDPOINT_=${edition}-${env.BUILD_TAG}"]) {
+                    powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
+                }
             }
 
             fileOperations([
