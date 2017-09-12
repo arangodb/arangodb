@@ -23,19 +23,8 @@ exit $LastExitCode
 
   docker run --rm -v $volume m0ppers/build-container powershell C:\arangodb\buildscript.ps1 | Set-Content -PassThru ${logdir}\build.log
 } else {
-  $originalBuildID=$Env:BUILD_ID
-  echo $Env:BUILD_ID="DoNotKillMe"
-  $old=Get-Location
-  try
-  {
-      cd $vcpath
-      start mspdbsrv -argumentlist '-start','-spawn','-endpoint',$env:_MSPDBSRV_ENDPOINT_ -NoNewWindow
-  }
-  catch {}
-  Set-Location "$old"
-  $Env:BUILD_ID=$originalBuildID
-
   $env:GYP_MSVS_OVERRIDE_PATH="${vcpath}\bin"
+  $env:GYP_USE_SEPARATE_MSPDBSRV=1
   $env:CC="${vcpath}\bin\cl.exe"
   $env:CXX="${vcpath}\bin\cl.exe"
 
