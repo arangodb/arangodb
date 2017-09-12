@@ -1,6 +1,6 @@
 tags
 build
-core.*
+/core.*
 *.vim
 .deps
 .dirstamp
