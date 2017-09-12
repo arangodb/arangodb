@@ -147,6 +147,18 @@ installer.put('/git', function (req) {
   Install a Foxx with user/repository and version.
 `);
 
+installer.put('/url', function (req) {
+  req.body = `${req.body.url}`;
+})
+.body(joi.object({
+  url: joi.string().required(),
+  version: joi.string().default('master')
+}).required(), '')
+.summary('Install a Foxx from URL')
+.description(dd`
+  Install a Foxx from URL.
+`);
+
 installer.put('/generate', (req, res) => {
   const tempDir = fs.getTempFile('aardvark', false);
   const generated = FoxxGenerator.generate(req.body);

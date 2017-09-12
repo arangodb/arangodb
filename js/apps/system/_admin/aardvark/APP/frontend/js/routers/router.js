@@ -32,6 +32,7 @@
       'services/install/new': 'installNewService',
       'services/install/github': 'installGitHubService',
       'services/install/upload': 'installUploadService',
+      'services/install/remote': 'installUrlService',
       'service/:mount': 'applicationDetail',
       'graphs': 'graphManagement',
       'graphs/:name': 'showGraph',
@@ -972,6 +973,21 @@
       this.serviceGitHubView.render();
     },
 
+    installUrlService: function (initialized) {
+      this.checkUser();
+      if (!initialized) {
+        this.waitForInit(this.installUrlService.bind(this));
+        return;
+      }
+      if (this.serviceUrlView) {
+        this.serviceUrlView.remove();
+      }
+      this.serviceUrlView = new window.ServiceInstallUrlView({
+        collection: this.foxxList
+      });
+      this.serviceUrlView.render();
+    },
+
     installUploadService: function (initialized) {
       this.checkUser();
       if (!initialized) {
@@ -1036,7 +1052,6 @@
         this.userPermissionView.render();
       } else if (initialized === false) {
         this.waitForInit(this.userPermissionView.bind(this), name);
-        return;
       }
     },
 
