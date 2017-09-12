@@ -678,20 +678,17 @@ std::string TRI_Basename(char const* path) {
 #ifdef TRI_HAVE_WIN32_LIST_FILES
 
 std::vector<std::string> TRI_FilesDirectory(char const* path) {
-  struct _finddata_t fd;
-  intptr_t handle;
-  char* filter;
-
+  std::vector<std::string> result;
   std::string filter(path);
   filter.append("\\*");
 
-  handle = _findfirst(filter.c_str(), &fd);
+  struct _finddata_t fd;
+  intptr_t handle = _findfirst(filter.c_str(), &fd);
 
   if (handle == -1) {
     return result;
   }
 
-  std::vector<std::string> result;
   do {
     if (strcmp(fd.name, ".") != 0 && strcmp(fd.name, "..") != 0) {
       result.emplace_back(fd.name);
@@ -854,7 +851,7 @@ bool TRI_WritePointer(int fd, void const* buffer, size_t length) {
   char const* ptr = static_cast<char const*>(buffer);
 
   while (0 < length) {
-    ssize_t n = TRI_WRITE(fd, ptr, (TRI_write_t)length);
+    ssize_t n = TRI_WRITE(fd, ptr, static_cast<TRI_write_t>(length));
 
     if (n < 0) {
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -988,7 +985,7 @@ int TRI_CreateLockFile(char const* filename) {
   WRITE_LOCKER(locker, OpenedFilesLock);
 
   for (size_t i = 0; i < OpenedFiles.size(); ++i) {
-    if (OpenedFiles[i].first == element) {
+    if (OpenedFiles[i].first == filename) {
       // file already exists
       return TRI_ERROR_NO_ERROR;
     }

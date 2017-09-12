@@ -138,7 +138,7 @@ static void fillStringBuffer(int fd, std::string const& filename, StringBuffer& 
     if (result.reserve(chunkSize) != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
-    ssize_t n = TRI_READ(fd, result.end(), chunkSize);
+    ssize_t n = TRI_READ(fd, result.end(), static_cast<TRI_read_t>(chunkSize));
 
     if (n == 0) {
       break;
@@ -207,7 +207,7 @@ void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
   TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
 
   while (0 < len) {
-    ssize_t n = TRI_WRITE(fd, ptr, (TRI_write_t)len);
+    ssize_t n = TRI_WRITE(fd, ptr, static_cast<TRI_write_t>(len));
 
     if (n < 0) {
       throwFileWriteError(filename);

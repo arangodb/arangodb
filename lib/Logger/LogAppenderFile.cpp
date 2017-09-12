@@ -124,7 +124,7 @@ void LogAppenderFile::writeLogMessage(LogLevel level, char const* buffer, size_t
   int fd = _fd;
 
   while (len > 0) {
-    ssize_t n = TRI_WRITE(fd, buffer, len);
+    ssize_t n = TRI_WRITE(fd, buffer, static_cast<TRI_write_t>(len));
 
     if (n < 0) {
       fprintf(stderr, "cannot log data: %s\n", TRI_LAST_ERROR_STR);
