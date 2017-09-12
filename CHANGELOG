@@ -35,16 +35,20 @@ devel
   the number of memory mappings currently used by the process and compare it with
   the maximum number of allowed mappings as determined by /proc/sys/vm/max_map_count
 
+  The default value is `true`, so the checks will be performed. When the current 
+  number of mappings exceeds 90% of the maximum number of mappings, the creation
+  of further V8 contexts will be deferred.
+
   Note that this option is effective on Linux systems only.
 
-* arangoimp now has a --remove-attribute option
+* arangoimp now has a `--remove-attribute` option
 
 * added V8 context lifetime control options
   `--javascript.v8-contexts-max-invocations` and `--javascript.v8-contexts-max-age`
 
   These options allow specifying after how many invocations a used V8 context is 
   disposed, or after what time a V8 context is disposed automatically after its
-  creation. If either of the two thresholds is reached, a V8 context will be
+  creation. If either of the two thresholds is reached, an idl V8 context will be
   disposed. 
   
   The default value of `--javascript.v8-contexts-max-invocations` is 0, meaning that
