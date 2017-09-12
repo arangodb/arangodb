@@ -491,6 +491,7 @@ Building Maintainer: ${useMaintainer}
 Building Non-Maintainer: ${useUser}
 Running Tests: ${runTests}
 """
+    }
 }
 
 // -----------------------------------------------------------------------------
