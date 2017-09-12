@@ -55,6 +55,7 @@ describe('Foxx service', () => {
   });
 
   afterEach(() => {
+    waitForJob();
     download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
       method: 'delete'
     });
@@ -90,6 +91,7 @@ describe('Foxx service', () => {
       method: 'post'
     });
     expect(res.code).to.equal(204);
+    waitForJob();
     res = download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
       method: 'post'
     });
