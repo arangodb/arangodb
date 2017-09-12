@@ -68,11 +68,11 @@
           </div>
           <div class="pure-u-10-24 left"><%= node.Endpoint %></div>
 
-          <% var formatted = (node.LastHeartbeatAcked).substr(11, 18).slice(0, -1); %>
+          <% var formatted = (node.Timestamp).substr(11, 18).slice(0, -1); %>
           <div class="pure-u-3-24 hide-small mid"><%= formatted %></div>
           
           <% if(node.Status === 'GOOD') { %>
-            <div class="pure-u-1-24 mid state"><i class="fa fa-check-circle tippy" title="<%= node.LastHeartbeatStatus %>"></i></div>
+            <div class="pure-u-1-24 mid state"><i class="fa fa-check-circle tippy" title="<%= node.SyncStatus %>"></i></div>
           <% } else { %>
             <div class="pure-u-1-24 mid state"><i class="fa fa-exclamation-circle"></i></div>
           <% } %>
@@ -147,11 +147,11 @@
           </div>
           <div class="pure-u-10-24 left"><%= node.Endpoint %></div>
 
-          <% var formatted = (node.LastHeartbeatAcked).substr(11, 18).slice(0, -1); %>
+          <% var formatted = (node.Timestamp).substr(11, 18).slice(0, -1); %>
           <div class="pure-u-3-24 mid hide-small"><%= formatted %></div>
 
           <% if(node.Status === 'GOOD') { %>
-            <div class="pure-u-1-24 mid state"><i class="fa fa-check-circle tippy" title="<%= node.LastHeartbeatStatus %>"></i></div>
+            <div class="pure-u-1-24 mid state"><i class="fa fa-check-circle tippy" title="<%= node.SyncStatus %>"></i></div>
           <% } else { %>
             <div class="pure-u-1-24 mid state"><i class="fa fa-exclamation-circle"></i></div>
           <% } %>

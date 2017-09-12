@@ -261,7 +261,7 @@ class ImportHelper {
 
   void sendCsvBuffer();
   void sendJsonBuffer(char const* str, size_t len, bool isObject);
-  SenderThread* findSender();
+  SenderThread* findIdleSender();
   void waitForSenders();
 
  private:

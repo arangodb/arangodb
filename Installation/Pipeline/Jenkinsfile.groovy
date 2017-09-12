@@ -11,6 +11,10 @@ properties(
     ]]
 )
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                             SELECTABLE PARAMETERS
+// -----------------------------------------------------------------------------
+
 def defaultLinux = true
 def defaultMac = false
 def defaultWindows = false
@@ -97,7 +101,6 @@ restrictions = [:]
 // --SECTION--                                             CONSTANTS AND HELPERS
 // -----------------------------------------------------------------------------
 
-
 // github proxy repositiory
 proxyRepo = 'http://c1:8088/github.com/arangodb/arangodb'
 
@@ -126,6 +129,111 @@ if (sourceBranchLabel == ~/devel$/) {
     useMac = true
 }
 
+buildJenkins = [
+    "linux": "linux && build",
+    "mac" : "mac",
+    "windows": "windows"
+]
+
+testJenkins = [
+    "linux": "linux && tests",
+    "mac" : "mac",
+    "windows": "windows"
+]
+
+def copyFile(os, src, dst) {
+    if (os == "windows") {
+        powershell "copy-item -Force -ErrorAction Ignore ${src} ${dst}"
+    }
+    else {
+        sh "cp ${src} ${dst}"
+    }
+}
+
+def checkEnabledOS(os, text) {
+    if (os == 'linux' && ! useLinux) {
+        echo "Not ${text} ${os} because ${os} is not enabled"
+        return false
+    }
+
+    if (os == 'mac' && ! useMac) {
+        echo "Not ${text} ${os} because ${os} is not enabled"
+        return false
+    }
+
+    if (os == 'windows' && ! useWindows) {
+        echo "Not ${text} ${os} because ${os} is not enabled"
+        return false
+    }
+
+    return true
+}
+
+def checkEnabledEdition(edition, text) {
+    if (edition == 'enterprise' && ! useEnterprise) {
+        echo "Not ${text} ${edition} because ${edition} is not enabled"
+        return false
+    }
+
+    if (edition == 'community' && ! useCommunity) {
+        echo "Not ${text} ${edition} because ${edition} is not enabled"
+        return false
+    }
+
+    return true
+}
+
+def checkCoresAndSave(os, runDir, name, archRuns, archCores) {
+    if (os == 'windows') {
+        powershell "move-item -Force -ErrorAction Ignore ${runDir}/logs ${archRuns}/${name}.logs"
+        powershell "move-item -Force -ErrorAction Ignore ${runDir}/out ${archRuns}/${name}.logs"
+        powershell "move-item -Force -ErrorAction Ignore ${runDir}/tmp ${archRuns}/${name}.tmp"
+
+        def files = findFiles(glob: "${runDir}/*.dmp")
+        
+        if (files.length > 0) {
+            for (file in files) {
+                powershell "move-item -Force -ErrorAction Ignore ${file} ${archCores}"
+            }
+
+            powershell "copy-item .\\build\\bin\\* -Include *.exe,*.pdb,*.ilk ${archCores}"
+
+            error("found dmp file")
+        }
+    }
+    else {
+        sh "for i in logs out tmp result; do test -e \"${runDir}/\$i\" && mv \"${runDir}/\$i\" \"${archRuns}/${name}.\$i\" || true; done"
+
+        def files = findFiles(glob: '${runDir}/core*')
+
+        if (files.length > 0) {
+            for (file in files) {
+                sh "mv ${file} ${archCores}"
+            }
+
+            sh "cp -a build/bin/* ${archCores}"
+
+            error("found core file")
+        }
+    }
+}
+
+def getStartPort(os) {
+    if (os == "windows") {
+        return powershell (returnStdout: true, script: "Installation/Pipeline/port.ps1")
+    }
+    else {
+        return sh (returnStdout: true, script: "Installation/Pipeline/port.sh")
+    }
+}
+
+def rspecify(os, test) {
+    if (os == "windows") {
+        return [test, test, "--rspec C:\\tools\\ruby23\\bin\\rspec.bat"]
+    } else {
+        return [test, test, ""]
+    }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       SCRIPTS SCM
@@ -135,6 +243,7 @@ def checkoutCommunity() {
     if (cleanBuild) {
         deleteDir()
     }
+
     retry(3) {
         try {
             checkout(
@@ -259,13 +368,6 @@ def checkCommitMessages() {
         runTests = false
     }
     else {
-        useLinux = true
-        useMac = true
-        useWindows = true
-        useCommunity = true
-        useEnterprise = true
-        // runResilience = true
-        runTests = true
         if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
             echo "build of main branch"
         }
@@ -290,14 +392,11 @@ def checkCommitMessages() {
             ]
         }
         else {
-
             restrictions = [
                 "build-community-mac" : true,
-                // "build-community-windows" : true,
                 "build-enterprise-linux" : true,
                 "test-cluster-enterprise-rocksdb-linux" : true,
-                "test-singleserver-community-mmfiles-mac" : true
-                // "test-singleserver-community-rocksdb-windows" : true
+                "test-singleserver-enterprise-mmfiles-linux" : true
             ]
         }
     }
@@ -327,18 +426,28 @@ Restrictions: ${restrictions.keySet().join(", ")}
 
 def stashBinaries(os, edition) {
     def paths = ["build/etc", "etc", "Installation/Pipeline", "js", "scripts", "UnitTests"]
+
+    if (edition == "enterprise") {
+       paths << "enterprise/js"
+    }
+
     if (os == "windows") {
         paths << "build/bin/RelWithDebInfo"
         paths << "build/tests/RelWithDebInfo"
 
-        // so frustrating...compress-archive is built in but it simply won't include the relative path to the archive :(
+        // so frustrating...compress-archive is built in but it simply won't include the relative path to
+        // the archive :(
         // powershell "Compress-Archive -Force -Path (Get-ChildItem -Recurse -Path " + paths.join(',') + ") -DestinationPath stash.zip -Confirm -CompressionLevel Fastest"
         // install 7z portable (https://chocolatey.org/packages/7zip.portable)
+
         powershell "7z a stash.zip -r -bd -mx=1 " + paths.join(" ")
+
         // this is a super mega mess...scp will run as the system user and not as jenkins when run as a server
         // I couldn't figure out how to properly get it running for hours...so last resort was to install putty
+
         powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk stash.zip jenkins@c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}.zip"
-    } else {
+    }
+    else {
         paths << "build/bin/"
         paths << "build/tests/"
 
@@ -351,27 +460,13 @@ def unstashBinaries(os, edition) {
     if (os == "windows") {
         powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}.zip stash.zip"
         powershell "Expand-Archive -Path stash.zip -Force -DestinationPath ."
-    } else {
+        powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
+    }
+    else {
         sh "scp c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}.tar.gz stash.tar.gz"
         sh "tar xpzf stash.tar.gz"
     }
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         VARIABLES
-// -----------------------------------------------------------------------------
-
-buildJenkins = [
-    "linux": "linux && build",
-    "mac" : "mac",
-    "windows": "windows"
-]
-
-testJenkins = [
-    "linux": "linux && tests",
-    "mac" : "mac",
-    "windows": "windows"
-]
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    SCRIPTS JSLINT
@@ -385,171 +480,178 @@ def jslint() {
 // --SECTION--                                                     SCRIPTS TESTS
 // -----------------------------------------------------------------------------
 
-def getStartPort(os) {
-    if (os == "windows") {
-        return powershell (returnStdout: true, script: "Installation/Pipeline/port.ps1")
-    } else {
-        return sh (returnStdout: true, script: "Installation/Pipeline/port.sh")
-    }
-}
-
-def rspecify(os, test) {
-    if (os == "windows") {
-        return [test, test, "--rspec C:\\tools\\ruby23\\bin\\rspec.bat"]
-    } else {
-        return [test, test, ""]
-    }
-}
-
 def getTests(os, edition, mode, engine) {
+    def tests = [
+        ["arangobench", "arangobench" , ""],
+        ["arangosh", "arangosh", "--skipShebang true"],
+        ["authentication", "authentication", ""],
+        ["authentication_parameters", "authentication_parameters", ""],
+        ["config", "config" , ""],
+        ["dump", "dump" , ""],
+        ["dump_authentication", "dump_authentication" , ""],
+        ["endpoints", "endpoints", ""],
+        ["server_http", "server_http", ""],
+        ["shell_client", "shell_client", ""],
+        ["shell_server", "shell_server", ""],
+        ["shell_server_aql_1", "shell_server_aql", "--testBuckets 4/0", ,""],
+        ["shell_server_aql_2", "shell_server_aql", "--testBuckets 4/1", ,""],
+        ["shell_server_aql_3", "shell_server_aql", "--testBuckets 4/2", ,""],
+        ["shell_server_aql_4", "shell_server_aql", "--testBuckets 4/3", ,""],
+        ["upgrade", "upgrade" , ""],
+        rspecify(os, "http_server"),
+        rspecify(os, "ssl_server")
+    ]
+
+    if (edition == "enterprise") {
+        tests += [
+            ["authentication_server", "authentication_server", ""]
+        ]
+    }
+
     if (mode == "singleserver") {
-        return [
-            ["agency","agency" ,""],
+        tests += [
+            ["agency", "agency", ""],
             ["boost", "boost", "--skipCache false"],
-            ["arangobench","arangobench" ,""],
-            ["arangosh","arangosh" ,""],
-            ["authentication", "authentication",""],
-            ["authentication_parameters","authentication_parameters" ,""],
-            ["cluster_sync","cluster_sync" ,""],
-            ["config","config" ,""],
-            ["dfdb","dfdb" ,""],
-            //"dump",
-            //"dump_authentication",
-            ["endpoints","endpoints" ,""],
-            rspecify(os, "http_replication"),
-            rspecify(os, "http_server"),
-            ["replication_sync", "replication_sync",""],
-            ["replication_static", "replication_static",""],
-            ["replication_ongoing","replication_ongoing" ,""],
-            ["server_http","server_http" ,""],
-            ["shell_client", "shell_client",""],
-            ["shell_replication","shell_replication" ,""],
-            ["shell_server","shell_server" ,""],
-            ["shell_server_aql_1", "shell_server_aql","--testBuckets 4/0", ,""],
-            ["shell_server_aql_2", "shell_server_aql","--testBuckets 4/1", ,""],
-            ["shell_server_aql_3", "shell_server_aql","--testBuckets 4/2", ,""],
-            ["shell_server_aql_4", "shell_server_aql","--testBuckets 4/3", ,""],
-            rspecify(os, "ssl_server"),
-            ["upgrade","upgrade" , ""]
+            ["cluster_sync", "cluster_sync", ""],
+            ["dfdb", "dfdb", ""],
+            ["replication_ongoing", "replication_ongoing", ""],
+            ["replication_static", "replication_static", ""],
+            ["replication_sync", "replication_sync", ""],
+            ["shell_replication", "shell_replication", ""],
+            rspecify(os, "http_replication")
         ]
-    } else {
-        return [
-            ["arangobench","arangobench" , ""],
-            ["arangosh","arangosh" , ""],
-            ["authentication","authentication" , ""],
-            ["authentication_parameters","authentication_parameters" , ""],
-            ["config","config" , ""],
-            ["dump","dump" , ""],
-            ["dump_authentication","dump_authentication" , ""],
-            ["endpoints","endpoints" , ""],
-            rspecify(os, "http_server"),
-            ["server_http", "server_http", ""],
-            ["shell_client", "shell_client", ""],
-            ["shell_server", "shell_server", ""],
-            ["shell_server_aql_1", "shell_server_aql","--testBuckets 4/0"],
-            ["shell_server_aql_2", "shell_server_aql","--testBuckets 4/1"],
-            ["shell_server_aql_3", "shell_server_aql","--testBuckets 4/2"],
-            ["shell_server_aql_4", "shell_server_aql","--testBuckets 4/3"],
-            rspecify(os, "ssl_server"),
-            ["upgrade","upgrade" , ""]
-        ]
-  }
+    }
+
+    return tests
 }
 
-def executeTests(os, edition, mode, engine, port) {
-    def arch = "LOG_test_${os}_${edition}_${mode}_${engine}"
+def setupTestEnvironment(os, edition, logFile, runDir) {
+    fileOperations([
+        folderCreateOperation("${runDir}/tmp"),
+    ])
 
-    if (os == 'linux' || os == 'mac') {
-       sh "rm -rf ${arch}"
-       sh "mkdir -p ${arch}"
-    }
-    else if (os == 'windows') {
-        bat "del /F /Q ${arch}"
-        powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+    def subdirs = ['build', 'etc', 'js', 'UnitTests']
+
+    if (edition == "enterprise") {
+       subdirs << "enterprise"
     }
 
+    if (os == "windows") {
+        for (file in subdirs) {
+            powershell "cd ${runDir} ; New-Item -Path ${file} -ItemType SymbolicLink -Value ..\\${file} | Out-Null"
+        }
+    }
+    else {
+        for (file in subdirs) {
+            sh "ln -s ../${file} ${runDir}/${file}"
+        }
+
+        sh "echo `date` > ${logFile}"
+    }
+}
+
+def executeTests(os, edition, mode, engine, portInit, arch, archRuns, archFailed, archCores) {
     def parallelity = 4
     def testIndex = 0
     def tests = getTests(os, edition, mode, engine)
 
+    def portInterval = (mode == "cluster") ? 40 : 10
+
     // this is an `Array.reduce()` in groovy :S
     def testSteps = tests.inject([:]) { testMap, testStruct ->
         def lockIndex = testIndex % parallelity
+        def currentIndex = testIndex
+
         testIndex++
 
         def name = testStruct[0]
         def test = testStruct[1]
-        def testArgs = "--prefix ${os}-${edition}-${mode}-${engine} --configDir etc/jenkins --skipLogAnalysis true --skipTimeCritical true --skipNonDeterministic true --storageEngine ${engine} " + testStruct[2]
+        def testArgs = "--prefix ${os}-${edition}-${mode}-${engine} " +
+                       "--configDir etc/jenkins " +
+                       "--skipLogAnalysis true " +
+                       "--skipTimeCritical true " +
+                       "--skipNonDeterministic true " +
+                       "--storageEngine ${engine} " +
+                       testStruct[2]
 
-        def portInterval = 10
         if (mode == "cluster") {
-            portInterval = 40
             testArgs += " --cluster true"
         }
 
         testMap["test-${os}-${edition}-${mode}-${engine}-${name}"] = {
+            def logFile = "${arch}/${name}.log"
+            def logFileFailed = "${archFailed}/${name}.log"
+            def runDir = "run.${currentIndex}"
+            def port = portInit + currentIndex * portInterval
+
             testArgs += " --minPort " + port
             testArgs += " --maxPort " + (port + portInterval - 1)
-            def command = "build/bin/arangosh --log.level warning --javascript.execute UnitTests/unittest.js ${test} -- "
-            command += testArgs
-            lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
-                timeout(30) {
-                    def tmpDir = pwd() + "/tmp"
-                    withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
-                        if (os == "windows") {
-                            powershell command
-                        } else {
-                            sh command
+
+            def command = "./build/bin/arangosh " +
+                          "--log.level warning " +
+                          "--javascript.execute UnitTests/unittest.js " +
+                          " ${test} -- " +
+                          testArgs
+
+            try {
+                lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${engine}-${lockIndex}") {
+                    setupTestEnvironment(os, edition, logFile, runDir)
+
+                    try {
+                        timeout(30) {
+                            def tmpDir = pwd() + "/" + runDir + "/tmp"
+
+                            withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
+                                if (os == "windows") {
+                                    echo "executing ${command}"
+                                    powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
+                                }
+                                else {
+                                    sh "echo \"Host: `hostname`\" | tee ${logFile}"
+                                    sh "echo \"PWD:  `pwd`\" | tee -a ${logFile}"
+                                    sh "echo \"Date: `date`\" | tee -a ${logFile}"
+
+                                    command = "(cd ${runDir} ; echo 1 > result ; ${command} ; echo \$? > result) 2>&1 | " +
+                                              "tee -a ${logFile} ; exit `cat ${runDir}/result`"
+                                    echo "executing ${command}"
+                                    sh command
+                                }
+                            }
                         }
+                    }
+                    catch (exc) {
+                        echo "caught error, copying log to ${logFileFailed}"
+                        echo exc.toString()
+                        copyFile(os, logFile, logFileFailed)
+                        throw exc
+                    }
+                    finally {
+                        checkCoresAndSave(os, runDir, name, archRuns, archCores)
                     }
                 }
             }
+            catch (exc) {
+                error "test ${name} failed"
+            }
         }
-        port += portInterval
+
         testMap
     }
 
     parallel testSteps
-
-    if (os == 'windows') {
-        if (findFiles(glob: '*.dmp').length > 0) {
-            error("found dmp file")
-        }
-    } else {
-        if (findFiles(glob: 'core*').length > 0) {
-            error("found core file")
-        }
-    }
 }
 
 def testCheck(os, edition, mode, engine) {
+    if (! checkEnabledOS(os, 'testing')) {
+       return false
+    }
+
+    if (! checkEnabledEdition(edition, 'testing')) {
+       return false
+    }
+
     if (! runTests) {
         echo "Not testing ${os} ${mode} because testing is not enabled"
-        return false
-    }
-
-    if (os == 'linux' && ! useLinux) {
-        echo "Not testing ${os} ${mode} because testing on ${os} is not enabled"
-        return false
-    }
-
-    if (os == 'mac' && ! useMac) {
-        echo "Not testing ${os} ${mode} because testing on ${os} is not enabled"
-        return false
-    }
-
-    if (os == 'windows' && ! useWindows) {
-        echo "Not testing ${os} ${mode} because testing on ${os} is not enabled"
-        return false
-    }
-
-    if (edition == 'enterprise' && ! useEnterprise) {
-        echo "Not testing ${os} ${mode} ${edition} because testing ${edition} is not enabled"
-        return false
-    }
-
-    if (edition == 'community' && ! useCommunity) {
-        echo "Not testing ${os} ${mode} ${edition} because testing ${edition} is not enabled"
         return false
     }
 
@@ -560,53 +662,66 @@ def testCheck(os, edition, mode, engine) {
     return true
 }
 
-def testStep(os, edition, mode, engine) {
+def testStep(os, edition, mode, engine, testName) {
     return {
-        node(testJenkins[os]) {
-            def buildName = "${os}-${edition}"
-            def name = "${os}-${edition}-${mode}-${engine}"
-            stage("test-${name}") {
-                fileOperations([folderDeleteOperation('tmp'), folderDeleteOperation('build/bin'), folderDeleteOperation('js'), folderDeleteOperation('out'), folderCreateOperation('tmp'),  fileDeleteOperation(excludes: '', includes: 'core.*,*.dmp')])
-                unstashBinaries(os, edition)
-                def port = 0
-                port = getStartPort(os) as Integer
-                echo "Using start port: ${port}"
-                if (os == "windows") {
-                    powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
-                }
-                // seriously...60 minutes is the super absolute max max max.
-                // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
-                // even if the features are green this is completely broken performance wise..
-                // DO NOT INCREASE!!
-                timeout(60) {
-                    try {
-                        executeTests(os, edition, mode, engine, port)
-                    }
-                    finally {
-                        def arch = "LOG_test_${os}_${edition}_${mode}_${engine}"
-                        // step([$class: 'XUnitBuilder',
-                        //     thresholds: [[$class: 'FailedThreshold', unstableThreshold: '1']],
-                        //     tools: [[$class: 'JUnitType', failIfNotNew: false, pattern: 'out/*.xml']]])
+        if (testCheck(os, edition, mode, engine)) {
+            node(testJenkins[os]) {
+                stage(testName) {
+                    def archRel = "02_test_${os}_${edition}_${mode}_${engine}"
+                    def archFailedRel = "${archRel}_FAILED"
+                    def archRunsRel = "${archRel}_RUN"
+                    def archCoresRel = "${archRel}_CORES"
 
-                        if (os == 'linux' || os == 'mac') {
-                            sh "find log-output -name 'FAILED_*' -exec cp '{}' . ';'"
-                            sh "for i in logs log-output; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
-                            sh "for i in core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
-                            sh "cp -a build/bin/* ${arch}"
-                            if (port > 0) {
+                    def arch = pwd() + "/" + "02_test_${os}_${edition}_${mode}_${engine}"
+                    def archFailed = "${arch}_FAILED"
+                    def archRuns = "${arch}_RUN"
+                    def archCores = "${arch}_CORES"
+
+                    // clean the current workspace completely
+                    deleteDir()
+
+                    // create directories for the artifacts
+                    fileOperations([
+                        folderCreateOperation(arch),
+                        folderCreateOperation(archFailed),
+                        folderCreateOperation(archRuns),
+                        folderCreateOperation(archCores)
+                    ])
+
+                    // unstash binaries
+                    unstashBinaries(os, edition)
+
+                    // find a suitable port
+                    def port = (getStartPort(os) as Integer)
+                    echo "Using start port: ${port}"
+
+                    // seriously...60 minutes is the super absolute max max max.
+                    // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
+                    // even if the features are green this is completely broken performance wise..
+                    // DO NOT INCREASE!!
+
+                    timeout(60) {
+                        try {
+                            executeTests(os, edition, mode, engine, port, arch, archRuns, archFailed, archCores)
+                        }
+                        finally {
+                            // step([$class: 'XUnitBuilder',
+                            //     thresholds: [[$class: 'FailedThreshold', unstableThreshold: '1']],
+                            //     tools: [[$class: 'JUnitType', failIfNotNew: false, pattern: 'out/*.xml']]])
+
+                            // release the port reservation
+                            if (os == 'linux' || os == 'mac') {
                                 sh "Installation/Pipeline/port.sh --clean ${port}"
                             }
-                        } else if (os == 'windows') {
-                            powershell "move-item -Force -ErrorAction Ignore logs ${arch}"
-                            powershell "move-item -Force -ErrorAction Ignore log-output ${arch}"
-                            powershell "move-item -Force -ErrorAction Ignore .\\build\\bin\\*.dmp ${arch}"
-                            powershell "move-item -Force -ErrorAction Ignore .\\build\\tests\\*.dmp ${arch}"
-                            powershell "Copy-Item .\\build\\bin\\* -Include *.exe,*.pdb,*.ilk ${arch}"
+                            else if (os == 'windows') {
+                                powershell "remove-item -Force -ErrorAction Ignore C:\\ports\\${port}"
+                            }
+
+                            // archive all artifacts
+                            archiveArtifacts allowEmptyArchive: true,
+                                artifacts: "${archRel}/**, ${archFailedRel}/**, ${archRunsRel}/**, ${archCoresRel}/**",
+                                defaultExcludes: false
                         }
-                        
-                        archiveArtifacts allowEmptyArchive: true,
-                            artifacts: "${arch}/**, FAILED_*",
-                            defaultExcludes: false
                     }
                 }
             }
@@ -619,13 +734,11 @@ def testStepParallel(os, edition, modeList) {
 
     for (mode in modeList) {
         for (engine in ['mmfiles', 'rocksdb']) {
-            if (testCheck(os, edition, mode, engine)) {
-                def name = "test-${os}-${edition}-${mode}-${engine}";
-
-                branches[name] = testStep(os, edition, mode, engine)
-            }
+            def name = "test-${os}-${edition}-${mode}-${engine}";
+            branches[name] = testStep(os, edition, mode, engine, name)
         }
     }
+
     parallel branches
 }
 
@@ -758,49 +871,51 @@ def testStepParallel(os, edition, modeList) {
 // -----------------------------------------------------------------------------
 
 def buildEdition(os, edition) {
-    def arch = "LOG_build_${os}_${edition}"
+    def arch = "01_build_${os}_${edition}"
 
-    fileOperations([folderDeleteOperation(arch), folderCreateOperation(arch)])
-    if (os == 'linux') {
-        sh "./Installation/Pipeline/linux/build_${os}_${edition}.sh 64"
-    }
-    else if (os == 'mac') {
-        sh "./Installation/Pipeline/mac/build_${os}_${edition}.sh 16"
-    }
-    else if (os == 'windows') {
-        // i concede...we need a lock for windows...I could not get it to run concurrently...
-        // v8 would not build multiple times at the same time on the same machine:
-        // PDB API call failed, error code '24': ' etc etc
-        // in theory it should be possible to parallelize it by setting an environment variable (see the build script) but for v8 it won't work :(
-        // feel free to recheck if there is time somewhen...this thing here really should not be possible but
-        // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly test it
-        // I just don't want any more "yeah that might randomly fail. just restart" sentences any more
-        def hostname = powershell(returnStdout: true, script: "hostname")
-        lock('build-${hostname}') {
-            powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
+    fileOperations([
+        folderDeleteOperation(arch),
+        folderCreateOperation(arch)
+    ])
+
+    try {
+        if (os == 'linux') {
+            sh "./Installation/Pipeline/linux/build_${os}_${edition}.sh 64 ${arch}"
         }
+        else if (os == 'mac') {
+            sh "./Installation/Pipeline/mac/build_${os}_${edition}.sh 16 ${arch}"
+        }
+        else if (os == 'windows') {
+            // I concede...we need a lock for windows...I could not get it to run concurrently...
+            // v8 would not build multiple times at the same time on the same machine:
+            // PDB API call failed, error code '24': ' etc etc
+            // in theory it should be possible to parallelize it by setting an environment variable
+            // (see the build script) but for v8 it won't work :(
+            // feel free to recheck if there is time somewhen...this thing here really should not be possible but
+            // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly
+            // test it. I just don't want any more "yeah that might randomly fail. just restart" sentences any more.
+
+            def hostname = powershell(returnStdout: true, script: "hostname")
+
+            lock('build-${hostname}') {
+                powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
+            }
+        }
+    }
+    finally {
+        archiveArtifacts allowEmptyArchive: true,
+            artifacts: "${arch}/**",
+            defaultExcludes: false
     }
 }
 
 def buildStepCheck(os, edition) {
-    if (os == 'linux' && ! useLinux) {
-        return false
+    if (! checkEnabledOS(os, 'building')) {
+       return false
     }
 
-    if (os == 'mac' && ! useMac) {
-        return false
-    }
-
-    if (os == 'windows' && ! useWindows) {
-        return false
-    }
-
-    if (edition == 'enterprise' && ! useEnterprise) {
-        return false
-    }
-
-    if (edition == 'community' && ! useCommunity) {
-        return false
+    if (! checkEnabledEdition(edition, 'testing')) {
+       return false
     }
 
     if (restrictions && !restrictions["build-${edition}-${os}"]) {
@@ -812,54 +927,56 @@ def buildStepCheck(os, edition) {
 
 def runEdition(os, edition) {
     return {
-        node(buildJenkins[os]) {
-            def name = "${os}-${edition}"
+        if (buildStepCheck(os, edition)) {
+            node(buildJenkins[os]) {
+                stage("build-${os}-${edition}") {
+                    timeout(30) {
+                        checkoutCommunity()
 
-            stage("build-${name}") {
-                timeout(30) {
-                    checkoutCommunity()
-                    checkCommitMessages()
-                    if (edition == "enterprise") {
-                        checkoutEnterprise()
-                    }
-                    // checkoutResilience()
-                }
-
-                timeout(90) {
-                    buildEdition(os, edition)
-                    // we only need one jslint test per edition
-                    if (os == "linux") {
-                        stage("jslint-${edition}") {
-                            echo "Running jslint for ${edition}"
-                            jslint()
+                        if (edition == "enterprise") {
+                            checkoutEnterprise()
                         }
+
+                        // checkoutResilience()
                     }
-                    stashBinaries(os, edition)
+
+                    timeout(90) {
+                        buildEdition(os, edition)
+                        stashBinaries(os, edition)
+                    }
                 }
 
-
+                // we only need one jslint test per edition
+                if (os == "linux") {
+                    stage("jslint-${edition}") {
+                        echo "Running jslint for ${edition}"
+                        jslint()
+                    }
+                }
             }
-        }
 
-        testStepParallel(os, edition, ['cluster', 'singleserver'])
+            testStepParallel(os, edition, ['cluster', 'singleserver'])
+        }
     }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                              MAIN
+// -----------------------------------------------------------------------------
 
 def runOperatingSystems(osList) {
     def branches = [:]
 
     for (os in osList) {
         for (edition in ['community', 'enterprise']) {
-            if (buildStepCheck(os, edition)) {
-                branches["build-${os}-${edition}"] = runEdition(os, edition)
-            }
+            branches["build-${os}-${edition}"] = runEdition(os, edition)
         }
     }
+
     parallel branches
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                          PIPELINE
-// -----------------------------------------------------------------------------
-
-runOperatingSystems(['linux', 'mac', 'windows'])
+timestamps {
+    checkCommitMessages()
+    runOperatingSystems(['linux', 'mac', 'windows'])
+}

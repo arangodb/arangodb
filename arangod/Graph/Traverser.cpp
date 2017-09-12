@@ -24,11 +24,11 @@
 #include "Traverser.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/TraverserCache.h"
+#include "Graph/TraverserOptions.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Context.h"
 #include "VocBase/KeyGenerator.h"
-#include "VocBase/TraverserOptions.h"
 
 #include <velocypack/Iterator.h> 
 #include <velocypack/velocypack-aliases.h>
@@ -186,19 +186,6 @@ bool arangodb::traverser::Traverser::next() {
 
 TraverserCache* arangodb::traverser::Traverser::traverserCache() {
   return _opts->cache();
-}
-
-arangodb::aql::AqlValue arangodb::traverser::Traverser::lastVertexToAqlValue() {
-  return _enumerator->lastVertexToAqlValue();
-}
-
-arangodb::aql::AqlValue arangodb::traverser::Traverser::lastEdgeToAqlValue() {
-  return _enumerator->lastEdgeToAqlValue();
-}
-
-arangodb::aql::AqlValue arangodb::traverser::Traverser::pathToAqlValue(
-    VPackBuilder& builder) {
-  return _enumerator->pathToAqlValue(builder);
 }
 
 size_t arangodb::traverser::Traverser::getAndResetReadDocuments() {

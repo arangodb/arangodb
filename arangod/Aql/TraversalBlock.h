@@ -27,7 +27,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/TraversalNode.h"
 #include "Basics/VelocyPackHelper.h"
-#include "VocBase/Traverser.h"
+#include "Graph/Traverser.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
