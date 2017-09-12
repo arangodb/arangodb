@@ -424,7 +424,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     // QueryIds are filled by responses of DBServer parts.
     std::unordered_map<std::string, std::string> queryIds;
 
-    _dbserverParts.buildEngines(query);
+    _dbserverParts.buildEngines(query, queryIds);
 
     return _coordinatorParts.buildEngines(query, registry, queryIds);
   }

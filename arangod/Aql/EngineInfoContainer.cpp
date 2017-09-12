@@ -32,6 +32,7 @@
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "VocBase/ticks.h"
@@ -212,6 +213,8 @@ ExecutionEngine* EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     // This deletes query, engine and entry in QueryRegistry
     throw;
   }
+  
+  return engine.release();
 }
 
 QueryId EngineInfoContainerCoordinator::addQuerySnippet(
@@ -225,7 +228,7 @@ QueryId EngineInfoContainerCoordinator::addQuerySnippet(
 
 ExecutionEngine* EngineInfoContainerCoordinator::buildEngines(
     Query* query, QueryRegistry* registry,
-    std::unordered_map<std::string, std::string>& queryIds) {
+    std::unordered_map<std::string, std::string>& queryIds) const {
   bool first = true;
   std::unique_ptr<ExecutionEngine> result;
   Query* localQuery = query;
@@ -284,7 +287,9 @@ void EngineInfoContainerDBServer::EngineInfo::connectQueryId(QueryId id) {
 }
 
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
-    ShardID id, VPackBuilder& infoBuilder) {
+    ShardID id, VPackBuilder& infoBuilder) const {
+  // The Key is required to build up the queryId mapping later
+  infoBuilder.add(VPackValue(_idOfRemoteNode + ":" + id));
   TRI_ASSERT(!_nodes.empty());
   // TODO: Well do we need to clone?!
   auto last = _nodes.back();
@@ -377,7 +382,7 @@ void EngineInfoContainerDBServer::DBServerInfo::addShardLock(
 }
 
 void EngineInfoContainerDBServer::DBServerInfo::addEngine(
-    EngineInfoContainerDBServer::EngineInfo* info, ShardID const& id) {
+    EngineInfoContainerDBServer::EngineInfo const* info, ShardID const& id) {
   _engineInfos[info].emplace_back(id);
 }
 
@@ -416,7 +421,7 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
   // This will open and close an Object.
   query->ast()->variables()->toVelocyPack(infoBuilder);
   infoBuilder.add(VPackValue("snippets"));
-  infoBuilder.openArray();
+  infoBuilder.openObject();
 
   for (auto const& it : _engineInfos) {
     for (auto const& s : it.second) {
@@ -424,7 +429,6 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
     }
   }
   infoBuilder.close();  // snippets
-  // Generate the snippets
   infoBuilder.close();  // Object
 }
 
@@ -434,7 +438,7 @@ void EngineInfoContainerDBServer::DBServerInfo::injectQueryOptions(
   query->queryOptions().toVelocyPack(infoBuilder, true);
 }
 
-void EngineInfoContainerDBServer::buildEngines(Query* query) {
+void EngineInfoContainerDBServer::buildEngines(Query* query, std::unordered_map<std::string, std::string>& queryIds) const {
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "We have " << _engines.size()
                                           << " DBServer engines";
   std::map<ServerID, DBServerInfo> dbServerMapping;
@@ -444,7 +448,7 @@ void EngineInfoContainerDBServer::buildEngines(Query* query) {
   for (auto const& it : _collections) {
     // it.first => Collection const*
     // it.second => Lock Type
-    std::vector<EngineInfo>* engines = nullptr;
+    std::vector<EngineInfo> const* engines = nullptr;
     if (_engines.find(it.first) != _engines.end()) {
       engines = &_engines.find(it.first)->second;
     }
@@ -467,6 +471,19 @@ void EngineInfoContainerDBServer::buildEngines(Query* query) {
     }
   }
 
+  auto cc = ClusterComm::instance();
+
+  if (cc == nullptr) {
+    // nullptr only happens on controlled shutdown
+    return;
+  }
+
+  // TODO FIXME
+  std::string const url("/_db/" + arangodb::basics::StringUtils::urlEncode(
+                                      query->vocbase()->name()) +
+                        "/_internal/traverser");
+
+  std::unordered_map<std::string, std::string> headers;
   // Build Lookup Infos
   VPackBuilder infoBuilder;
   for (auto const& it : dbServerMapping) {
@@ -475,6 +492,34 @@ void EngineInfoContainerDBServer::buildEngines(Query* query) {
     infoBuilder.clear();
     it.second.buildMessage(query, infoBuilder);
     LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << infoBuilder.toJson();
-    // TODO Send to DBServer.
+
+
+    // Now we send to DBServers. We expect a body with {id => engineId} plus 0 => trxEngine
+    CoordTransactionID coordTransactionID = TRI_NewTickServer();
+    auto res = cc->syncRequest("", coordTransactionID, "server:" + it.first,
+                               RequestType::POST, url, infoBuilder.toJson(),
+                               headers, 90.0);
+
+    if (res->getErrorCode() != TRI_ERROR_NO_ERROR) {
+      // TODO could not register all engines. Need to cleanup.
+      THROW_ARANGO_EXCEPTION_MESSAGE(res->getErrorCode(), res->stringifyErrorMessage());
+    }
+
+    std::shared_ptr<VPackBuilder> builder = res->result->getBodyVelocyPack();
+    VPackSlice response = builder->slice();
+    if (!response.isObject()) {
+      // TODO could not register all engines. Need to cleanup.
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COMMUNICATION, "Unable to deploy query on all required servers. This can happen during Failover. Please check: " + it.first);
+    }
+
+    for (auto const& resEntry: VPackObjectIterator(response)) {
+      if (!resEntry.value.isString()) {
+        // TODO could not register all engines. Need to cleanup.
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COMMUNICATION, "Unable to deploy query on all required servers. This can happen during Failover. Please check: " + it.first);
+      }
+      queryIds.emplace(resEntry.key.copyString(), resEntry.value.copyString());
+    }
+
   }
+
 }

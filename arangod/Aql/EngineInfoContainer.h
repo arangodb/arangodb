@@ -54,8 +54,7 @@ class EngineInfoContainerCoordinator {
     void connectQueryId(QueryId id);
 
     ExecutionEngine* buildEngine(
-        Query* query,
-        QueryRegistry* queryRegistry,
+        Query* query, QueryRegistry* queryRegistry,
         std::unordered_map<std::string, std::string>& queryIds) const;
 
    private:
@@ -83,9 +82,8 @@ class EngineInfoContainerCoordinator {
   //   * Injects all Parts but the First one into QueryRegistery
   //   Return the first engine which is not added in the Registry
   ExecutionEngine* buildEngines(
-      Query* query,
-      QueryRegistry* registry,
-      std::unordered_map<std::string, std::string>& queryIds);
+      Query* query, QueryRegistry* registry,
+      std::unordered_map<std::string, std::string>& queryIds) const;
 
  private:
   // @brief List of EngineInfos to distribute accross the cluster
@@ -105,7 +103,7 @@ class EngineInfoContainerDBServer {
 
     void connectQueryId(QueryId id);
 
-    void serializeSnippet(ShardID id, velocypack::Builder& infoBuilder);
+    void serializeSnippet(ShardID id, velocypack::Builder& infoBuilder) const;
 
    private:
     std::vector<ExecutionNode*> _nodes;
@@ -121,7 +119,7 @@ class EngineInfoContainerDBServer {
    public:
     void addShardLock(AccessMode::Type const& lock, ShardID const& id);
 
-    void addEngine(EngineInfo* info, ShardID const& id);
+    void addEngine(EngineInfo const* info, ShardID const& id);
 
     void buildMessage(Query* query, velocypack::Builder& infoBuilder) const;
 
@@ -134,7 +132,7 @@ class EngineInfoContainerDBServer {
     std::unordered_map<AccessMode::Type, std::vector<ShardID>> _shardLocking;
 
     // @brief Map of all EngineInfos with their shards
-    std::unordered_map<EngineInfo*, std::vector<ShardID>> _engineInfos;
+    std::unordered_map<EngineInfo const*, std::vector<ShardID>> _engineInfos;
   };
 
  public:
@@ -163,7 +161,9 @@ class EngineInfoContainerDBServer {
   //   same DB)
   //   * Snippets DO NOT lock anything, locking is done in the overall query.
   //   * After this step DBServer-Collections are locked!
-  void buildEngines(Query* query);
+  void buildEngines(
+      Query* query,
+      std::unordered_map<std::string, std::string>& queryIds) const;
 
  private:
   // @brief Reference to the last inserted EngineInfo, used for back linking of
