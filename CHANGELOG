@@ -1,6 +1,8 @@
 v3.1.28 (XXXX-XX-XX)
 --------------------
 
+* fix double compaction runs
+
 * used the required mutex in Store::clear to avoid races
 
 
