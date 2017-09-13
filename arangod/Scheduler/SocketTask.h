@@ -177,9 +177,7 @@ class SocketTask : virtual public Task {
   SmallVector<basics::StringBuffer*, 32> _stringBuffers; // needs _lock
 
   WriteBuffer _writeBuffer;
-  
-  SmallList<WriteBuffer, 64>::allocator_type::arena_type _writeBuffersArena;
-  SmallList<WriteBuffer, 64> _writeBuffers;
+  std::list<WriteBuffer> _writeBuffers;
 
   std::unique_ptr<Socket> _peer;
   boost::posix_time::milliseconds _keepAliveTimeout;
