@@ -27,6 +27,7 @@
 #include "Aql/Condition.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
+#include "Logger/Logger.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Iterator.h>
@@ -62,6 +63,14 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _indexes(),
       _condition(nullptr),
       _reverse(base.get("reverse").getBoolean()) {
+  if (_collection == nullptr) {
+
+    LOG_TOPIC(ERR, arangodb::Logger::AQL) << "Collection required for IndexNode not present. Tried to find collection \"" << base.get("collection").copyString() << "\". Known collections:";
+    for (auto const& cname : plan->getAst()->query()->collections()->collectionNames()) {
+      LOG_TOPIC(ERR, arangodb::Logger::AQL) << cname;
+    }
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_BAD_JSON_PLAN, "Could not find required collection in JSON-plan.");
+  }
   VPackSlice indexes = base.get("indexes");
 
   if (!indexes.isArray()) {
