@@ -347,6 +347,7 @@ class Agent : public arangodb::Thread,
   mutable arangodb::Mutex _ioLock;
 
   // lock for _leaderCommitIndex
+  // FIXME: _leaderCommitIndex does no longer exist.
   mutable arangodb::Mutex _liLock;
 
   // note: when both _ioLock and _liLock are acquired,
