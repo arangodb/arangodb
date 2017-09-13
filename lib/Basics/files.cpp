@@ -1010,7 +1010,7 @@ int TRI_CreateLockFile(char const* filename) {
     TRI_SYSTEM_ERROR();
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot write lockfile '" << filename
              << "': " << TRI_GET_ERRORBUF;
-    res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
+    int res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     if (r) {
       CloseHandle(fd);
