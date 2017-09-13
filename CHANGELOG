@@ -1,6 +1,8 @@
 v3.2.3 (2017-09-07)
 -------------------
 
+* fix double invocation of the compactor
+
 * fixed issue #3106: orphan collections could not be registered in general-graph module
 
 * fixed wrong selection of the database inside the internal cluster js api
