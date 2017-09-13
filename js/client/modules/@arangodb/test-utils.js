@@ -156,6 +156,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   let continueTesting = true;
   let count = 0;
   let forceTerminate = false;
+  let graphCount = 0;
 
   for (let i = 0; i < testList.length; i++) {
     let te = testList[i];
@@ -230,6 +231,17 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           db._collections().forEach(collection => {
             collectionsBefore.push(collection._name);
           });
+        }
+
+        if (db._graphs.count() !== graphCount) {
+          results[te] = {
+            status: false,
+            message: 'Cleanup of graphs missing - found graph definitions: [ ' +
+              JSON.stringify(db._graphs.toArray()) +
+              ' ] - Original test status: ' +
+              JSON.stringify(results[te])
+          };
+          graphCount = db._graphs.count();
         }
 
         if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('alive')) {

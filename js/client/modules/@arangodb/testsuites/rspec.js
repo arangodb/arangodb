@@ -158,6 +158,7 @@ function rubyTests (options, ssl) {
   };
 
   let count = 0;
+  let graphCount = 0;
   files = tu.splitBuckets(options, files);
 
   for (let i = 0; i < files.length; i++) {
@@ -253,6 +254,17 @@ function rubyTests (options, ssl) {
             db._collections().forEach(collection => {
               collectionsBefore.push(collection._name);
             });
+          }
+
+          if (db._graphs.count() !== graphCount) {
+            results[te] = {
+              status: false,
+              message: 'Cleanup of graphs missing - found graph definitions: [ ' +
+                JSON.stringify(db._graphs.toArray()) +
+                ' ] - Original test status: ' +
+                JSON.stringify(results[te])
+            };
+            graphCount = db._graphs.count();
           }
         }
       } else {
