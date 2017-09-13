@@ -11,6 +11,7 @@
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 
+#include <velocypack/Exception.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
@@ -125,9 +126,49 @@ void StatisticsWorker::historianAverage() {
 
       std::cout << "save stat15 document\n";
 
-      // save stat15 to _statistics15 collection
-    }
+      TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+
+      arangodb::OperationOptions opOptions;
+      opOptions.isRestore = false,
+      opOptions.waitForSync = false;
+      opOptions.returnNew = false;
+      opOptions.silent = false;
+
+      // find and load collection given by name or identifier
+      auto transactionContext(transaction::StandaloneContext::Create(vocbase));
+      SingleCollectionTransaction trx(transactionContext, "_statistics15",
+                                      AccessMode::Type::WRITE);
+      trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+
+      Result res = trx.begin();
+      
+      if (!res.ok()) {
+        // ?
+        return;
+      }
+
+      arangodb::OperationResult result = trx.insert("_statistics15", stat15, opOptions);
+
+      // Will commit if no error occured.
+      // or abort if an error occured.
+      // result stays valid!
+      res = trx.finish(result.code);
+      
+      if (result.failed()) {
+        // ?
+        return;
+      }
+
+      if (!res.ok()) {
+        // ?
+      }
+    } // if !null
+  } catch(arangodb::velocypack::Exception const& ex) {
+    std::cout << ex.what() << " " << ex.errorCode() << std::endl;
+    std::cout << ex << std::endl;
+
   } catch (...) {
+    std::cout << "catch :S\n";
     // we don't want this error to appear every x seconds
     // require("console").warn("catch error in historianAverage: %s", err)
   }
@@ -206,6 +247,12 @@ VPackSlice StatisticsWorker::_compute15Minute(uint64_t start, uint64_t clusterId
   VPackSlice result = queryResult.result->slice();
   uint64_t count = result.length();
 
+  std::cout << "_compute15Minute count is " << count << std::endl;
+
+  if (count == 0) {
+    return arangodb::basics::VelocyPackHelper::NullValue();
+  }
+
   float systemMinorPageFaultsPerSecond = 0,
   systemMajorPageFaultsPerSecond = 0,
   systemUserTimePerSecond = 0,
@@ -236,6 +283,8 @@ VPackSlice StatisticsWorker::_compute15Minute(uint64_t start, uint64_t clusterId
   fTime;
 
   for (auto const& values : VPackArrayIterator(result)) {
+    std::cout << "value type is " << values.hexType() << std::endl;
+
     fTime = values.get("time").getNumber<float>();
 
     systemMinorPageFaultsPerSecond += values.get("system").get("minorPageFaultsPerSecond").getNumber<float>();
@@ -290,7 +339,6 @@ VPackSlice StatisticsWorker::_compute15Minute(uint64_t start, uint64_t clusterId
   }
 
   VPackBuilder builder;
-
   VPackObjectBuilder guard(&builder);
 
   builder.openObject();

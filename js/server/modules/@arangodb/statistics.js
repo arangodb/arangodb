@@ -579,13 +579,13 @@ exports.installPeriodicTasks = function () {
     command: "require('@arangodb/statistics').historian();"
   });
 
-  internal.registerTask({
-    id: 'statistics-average-collector',
-    name: 'statistics-average-collector',
-    offset: 2 * interval,
-    period: interval15,
-    command: "require('@arangodb/statistics').historianAverage();"
-  });
+  // internal.registerTask({
+  //   id: 'statistics-average-collector',
+  //   name: 'statistics-average-collector',
+  //   offset: 2 * interval,
+  //   period: interval15,
+  //   command: "require('@arangodb/statistics').historianAverage();"
+  // });
 
   // internal.registerTask({
   //   id: 'statistics-gc',
