@@ -348,7 +348,7 @@ Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
 
     TRI_ASSERT(end >= start);
     size_t outLength;
-    char* normalized = TRI_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, word,
+    char* normalized = TRI_normalize_utf8_to_NFC(word,
                                                  wordLength, &outLength);
     if (normalized == nullptr) {
       return Result(TRI_ERROR_OUT_OF_MEMORY);
@@ -356,14 +356,14 @@ Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
 
     // lower case string
     int32_t outLength2;
-    char* lowered = TRI_tolower_utf8(TRI_UNKNOWN_MEM_ZONE, normalized,
+    char* lowered = TRI_tolower_utf8(normalized,
                                      (int32_t)outLength, &outLength2);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, normalized);
+    TRI_Free(normalized);
     if (lowered == nullptr) {
       return Result(TRI_ERROR_OUT_OF_MEMORY);
     }
     // emplace_back below may throw
-    TRI_DEFER(TRI_Free(TRI_UNKNOWN_MEM_ZONE, lowered));
+    TRI_DEFER(TRI_Free(lowered));
 
     // calculate the proper prefix
     char* prefixEnd =

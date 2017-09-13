@@ -45,7 +45,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "V8Server/V8DealerFeature.h"
 #include "V8Server/v8-collection.h"
 #include "VocBase/AuthInfo.h"
 #include "VocBase/LogicalCollection.h"

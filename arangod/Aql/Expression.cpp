@@ -82,7 +82,6 @@ static void RegisterWarning(arangodb::aql::Ast const* ast,
 /// @brief create the expression
 Expression::Expression(Ast* ast, AstNode* node)
     : _ast(ast),
-      _executor(_ast->query()->executor()),
       _node(node),
       _type(UNPROCESSED),
       _canThrow(true),
@@ -93,7 +92,6 @@ Expression::Expression(Ast* ast, AstNode* node)
       _attributes(),
       _expressionContext(nullptr) {
   TRI_ASSERT(_ast != nullptr);
-  TRI_ASSERT(_executor != nullptr);
   TRI_ASSERT(_node != nullptr);
 }
 
@@ -180,7 +178,7 @@ AqlValue Expression::execute(transaction::Methods* trx, ExpressionContext* ctx,
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "invalid simple expression");
+                                 "invalid expression type");
 
 }
 
@@ -463,7 +461,7 @@ void Expression::buildExpression(transaction::Methods* trx) {
     memcpy(_data, builder->data(), static_cast<size_t>(builder->size()));
   } else if (_type == V8) {
     // generate a V8 expression
-    _func = _executor->generateExpression(_node);
+    _func = _ast->query()->v8Executor()->generateExpression(_node);
 
     // optimizations for the generated function
     if (_func != nullptr && !_attributes.empty()) {

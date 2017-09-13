@@ -88,19 +88,19 @@ int UnitTestsFeature::runUnitTests(std::vector<std::string> const& unitTests) {
       v8::Handle<v8::Array> sysTestFiles = v8::Array::New(isolate);
 
       for (size_t i = 0; i < unitTests.size(); ++i) {
-        sysTestFiles->Set((uint32_t)i, TRI_V8_STD_STRING(unitTests[i]));
+        sysTestFiles->Set((uint32_t)i, TRI_V8_STD_STRING(isolate, unitTests[i]));
       }
 
-      localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS"),
+      localContext->Global()->Set(TRI_V8_ASCII_STRING(isolate, "SYS_UNIT_TESTS"),
                                   sysTestFiles);
-      localContext->Global()->Set(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT"),
+      localContext->Global()->Set(TRI_V8_ASCII_STRING(isolate, "SYS_UNIT_TESTS_RESULT"),
                                   v8::True(isolate));
 
       v8::Local<v8::String> name(
-          TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
+          TRI_V8_ASCII_STRING(isolate, TRI_V8_SHELL_COMMAND_NAME));
 
       // run tests
-      auto input = TRI_V8_ASCII_STRING(
+      auto input = TRI_V8_ASCII_STRING(isolate, 
           "require(\"@arangodb/testrunner\").runCommandLineTests();");
       TRI_ExecuteJavaScriptString(isolate, localContext, input, name, true);
 
@@ -113,7 +113,7 @@ int UnitTestsFeature::runUnitTests(std::vector<std::string> const& unitTests) {
         }
       } else {
         ok = TRI_ObjectToBoolean(localContext->Global()->Get(
-            TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT")));
+            TRI_V8_ASCII_STRING(isolate, "SYS_UNIT_TESTS_RESULT")));
       }
     }
     localContext->Exit();

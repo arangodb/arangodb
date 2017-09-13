@@ -58,18 +58,11 @@ ShellBase::ShellBase(std::string const& history, Completer* completer)
       _state(STATE_NONE),
       _completer(completer) {
   // construct the complete history path
-  std::string path;
-  char* p = TRI_HomeDirectory();
+  std::string path(TRI_HomeDirectory());
 
-  if (p != nullptr) {
-    path.append(p);
-    TRI_Free(TRI_CORE_MEM_ZONE, p);
-
-    if (!path.empty() && path[path.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
-      path.push_back(TRI_DIR_SEPARATOR_CHAR);
-    }
+  if (!path.empty() && path[path.size() - 1] != TRI_DIR_SEPARATOR_CHAR) {
+    path.push_back(TRI_DIR_SEPARATOR_CHAR);
   }
-
   path.append(history);
 
   _historyFilename = path;

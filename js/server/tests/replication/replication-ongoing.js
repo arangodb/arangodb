@@ -99,7 +99,9 @@ function ReplicationSuite() {
     replication.applier.stop();
     replication.applier.forget();
 
-    internal.wait(1, false);
+    while (replication.applier.state().state.running) {
+      internal.wait(0.1, false);
+    }
 
     var syncResult = replication.sync({
       endpoint: masterEndpoint,
