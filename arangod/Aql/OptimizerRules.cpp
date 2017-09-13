@@ -288,7 +288,7 @@ void arangodb::aql::removeRedundantSortsRule(
   }
 
   std::unordered_set<ExecutionNode*> toUnlink;
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, false);
+  arangodb::basics::StringBuffer buffer(false);
 
   for (auto const& n : nodes) {
     if (toUnlink.find(n) != toUnlink.end()) {
@@ -1357,7 +1357,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
     return;
   }
 
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, false);
+  arangodb::basics::StringBuffer buffer(false);
   std::unordered_map<VariableId, Variable const*> replacements;
 
   for (auto const& n : nodes) {

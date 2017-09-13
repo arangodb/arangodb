@@ -52,7 +52,7 @@ SocketTask::SocketTask(arangodb::EventLoop loop,
     : Task(loop, "SocketTask"),
       _connectionStatistics(nullptr),
       _connectionInfo(std::move(connectionInfo)),
-      _readBuffer(TRI_UNKNOWN_MEM_ZONE, READ_BLOCK_SIZE + 1, false),
+      _readBuffer(READ_BLOCK_SIZE + 1, false),
       _stringBuffers{_stringBuffersArena},
       _writeBuffer(nullptr, nullptr),
       _peer(std::move(socket)),
@@ -259,7 +259,7 @@ StringBuffer* SocketTask::leaseStringBuffer(size_t length) {
     }
     _stringBuffers.pop_back();
   } else {
-    buffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE, length, false);
+    buffer = new StringBuffer(length, false);
   }
 
   TRI_ASSERT(buffer != nullptr);

@@ -75,14 +75,14 @@ RestStatus RestUploadHandler::execute() {
 
   std::string relativeString;
   {
-    char* relative = TRI_GetFilename(TRI_UNKNOWN_MEM_ZONE, filename.c_str());
+    char* relative = TRI_GetFilename(filename.c_str());
 
     if (relative == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
     relativeString.append(relative);
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, relative);
+    TRI_FreeString(relative);
   }
 
   std::string const& bodyStr = request->body();

@@ -162,7 +162,7 @@ std::string slurp(std::string const& filename) {
   TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
 
   constexpr size_t chunkSize = 8192;
-  StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, chunkSize, false);
+  StringBuffer buffer(chunkSize, false);
 
   fillStringBuffer(fd, filename, buffer, chunkSize);
 
@@ -557,7 +557,7 @@ void makePathAbsolute(std::string& path) {
 
     if (p != nullptr) {
       path = p;
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, p);
+      TRI_FreeString(p);
     }
   }
 }

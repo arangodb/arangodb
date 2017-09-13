@@ -66,18 +66,12 @@
 #define BuiltInRealloc(ptr, n) realloc(ptr, n)
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-#define MALLOC_WRAPPER(zone, n) FailMalloc(zone, n)
-#define REALLOC_WRAPPER(zone, ptr, n) FailRealloc(zone, ptr, n)
+#define MALLOC_WRAPPER(n) FailMalloc(n)
+#define REALLOC_WRAPPER(ptr, n) FailRealloc(ptr, n)
 #else
-#define MALLOC_WRAPPER(zone, n) BuiltInMalloc(n)
-#define REALLOC_WRAPPER(zone, ptr, n) BuiltInRealloc(ptr, n)
+#define MALLOC_WRAPPER(n) BuiltInMalloc(n)
+#define REALLOC_WRAPPER(ptr, n) BuiltInRealloc(ptr, n)
 #endif
-
-/// @brief unknown memory zone
-static TRI_memory_zone_t TriUnknownMemZone;
-
-/// @brief unknown memory zone
-TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE = &TriUnknownMemZone;
 
 /// @brief configuration parameters for memory error tests
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -141,7 +135,7 @@ static bool ShouldFail(size_t n) {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 /// @brief intentionally failing malloc - used for failure tests
-static void* FailMalloc(TRI_memory_zone_t* zone, size_t n) {
+static void* FailMalloc(size_t n) {
   // we can fail, so let's check whether we should fail intentionally...
   if (ShouldFail(n)) {
     // intentionally return NULL
@@ -155,7 +149,7 @@ static void* FailMalloc(TRI_memory_zone_t* zone, size_t n) {
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 /// @brief intentionally failing realloc - used for failure tests
-static void* FailRealloc(TRI_memory_zone_t* zone, void* old, size_t n) {
+static void* FailRealloc(void* old, size_t n) {
   // we can fail, so let's check whether we should fail intentionally...
   if (ShouldFail(n)) {
     // intentionally return NULL
@@ -301,16 +295,16 @@ void* TRI_SystemAllocate(uint64_t n, bool set) {
 
 /// @brief basic memory management for allocate
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void* TRI_AllocateZ(TRI_memory_zone_t* zone, uint64_t n,
+void* TRI_AllocateZ(uint64_t n,
                     char const* file, int line) {
 #else
-void* TRI_Allocate(TRI_memory_zone_t* zone, uint64_t n) {
+void* TRI_Allocate(uint64_t n) {
 #endif
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   CheckSize(n, file, line);
 #endif
 
-  char* m = static_cast<char*>(MALLOC_WRAPPER(zone, (size_t)n));
+  char* m = static_cast<char*>(MALLOC_WRAPPER((size_t)n));
 
   if (m == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -327,17 +321,17 @@ void* TRI_Allocate(TRI_memory_zone_t* zone, uint64_t n) {
 
 /// @brief basic memory management for reallocate
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void* TRI_ReallocateZ(TRI_memory_zone_t* zone, void* m, uint64_t n,
+void* TRI_ReallocateZ(void* m, uint64_t n,
                       char const* file, int line) {
 #else
-void* TRI_Reallocate(TRI_memory_zone_t* zone, void* m, uint64_t n) {
+void* TRI_Reallocate(void* m, uint64_t n) {
 #endif
 
   if (m == nullptr) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    return TRI_AllocateZ(zone, n, file, line);
+    return TRI_AllocateZ(n, file, line);
 #else
-    return TRI_Allocate(zone, n);
+    return TRI_Allocate(n);
 #endif
   }
 
@@ -347,7 +341,7 @@ void* TRI_Reallocate(TRI_memory_zone_t* zone, void* m, uint64_t n) {
   CheckSize(n, file, line);
 #endif
 
-  p = static_cast<char*>(REALLOC_WRAPPER(zone, p, (size_t)n));
+  p = static_cast<char*>(REALLOC_WRAPPER(p, (size_t)n));
 
   if (p == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -359,9 +353,9 @@ void* TRI_Reallocate(TRI_memory_zone_t* zone, void* m, uint64_t n) {
 
 /// @brief basic memory management for deallocate
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void TRI_FreeZ(TRI_memory_zone_t* zone, void* m, char const* file, int line) {
+void TRI_FreeZ(void* m, char const* file, int line) {
 #else
-void TRI_Free(TRI_memory_zone_t* zone, void* m) {
+void TRI_Free(void* m) {
 #endif
 
   char* p = (char*)m;

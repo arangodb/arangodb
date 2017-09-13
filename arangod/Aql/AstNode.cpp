@@ -1369,7 +1369,7 @@ bool AstNode::isAttributeAccessForVariable(
   }
   auto node = this;
   
-  basics::StringBuffer indexBuff(TRI_UNKNOWN_MEM_ZONE, false);
+  basics::StringBuffer indexBuff(false);
 
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
          node->type == NODE_TYPE_INDEXED_ACCESS ||
@@ -2223,7 +2223,7 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
 /// note that this may throw and that the caller is responsible for
 /// catching the error
 std::string AstNode::toString() const {
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, false);
+  arangodb::basics::StringBuffer buffer(false);
   stringify(&buffer, false, false);
   return std::string(buffer.data(), buffer.length());
 }

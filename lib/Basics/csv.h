@@ -82,7 +82,7 @@ typedef struct TRI_csv_parser_s {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitCsvParser(
-    TRI_csv_parser_t*, TRI_memory_zone_t*, void (*)(TRI_csv_parser_t*, size_t),
+    TRI_csv_parser_t*, void (*)(TRI_csv_parser_t*, size_t),
     void (*)(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool),
     void (*)(TRI_csv_parser_t*, char const*, size_t, size_t, size_t, bool),
     void* vData);

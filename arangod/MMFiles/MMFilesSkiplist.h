@@ -511,8 +511,7 @@ class MMFilesSkiplist {
 
     // allocate enough memory for skiplist node plus all the next nodes in one
     // go
-    void* ptr = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                             sizeof(Node) + sizeof(Node*) * height);
+    void* ptr = TRI_Allocate(                             sizeof(Node) + sizeof(Node*) * height);
 
     if (ptr == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -524,7 +523,7 @@ class MMFilesSkiplist {
       // use placement new
       newNode = new (ptr) Node(height, static_cast<char*>(ptr));
     } catch (...) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, ptr);
+      TRI_Free(ptr);
       throw;
     }
 
@@ -544,7 +543,7 @@ class MMFilesSkiplist {
     // we have used placement new to construct the skiplist node,
     // so now we have to manually call its dtor and free the underlying memory
     node->~Node();
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, node);
+    TRI_Free(node);
   }
 
   //////////////////////////////////////////////////////////////////////////////

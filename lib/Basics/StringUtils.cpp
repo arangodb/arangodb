@@ -2273,7 +2273,7 @@ std::string encodeHex(std::string const& str) {
   char* tmp = TRI_EncodeHexString(str.c_str(), str.length(), &len);
   
   if (tmp != nullptr) {
-    TRI_DEFER(TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, tmp));
+    TRI_DEFER(TRI_FreeString(tmp));
     return std::string(tmp, len);
   }
   return std::string();
@@ -2284,7 +2284,7 @@ std::string decodeHex(std::string const& str) {
   char* tmp = TRI_DecodeHexString(str.c_str(), str.length(), &len);
   
   if (tmp != nullptr) {
-    TRI_DEFER(TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, tmp));
+    TRI_DEFER(TRI_FreeString(tmp));
     return std::string(tmp, len);
   }
   return std::string();

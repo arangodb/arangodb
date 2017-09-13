@@ -179,7 +179,7 @@ bool TRI_fsync(int fd);
 /// @brief slurps in a file
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_SlurpFile(TRI_memory_zone_t*, char const* filename, size_t* length);
+char* TRI_SlurpFile(char const* filename, size_t* length);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a lock file based on the PID
@@ -228,7 +228,7 @@ int TRI_DestroyLockFile(char const* filename);
 /// @brief return the filename component of a file (without path)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_GetFilename(TRI_memory_zone_t* zone, char const*);
+char* TRI_GetFilename(char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the absolute path of a file

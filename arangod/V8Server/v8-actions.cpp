@@ -764,9 +764,9 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
   // .........................................................................
   TRI_GET_GLOBAL_STRING(BodyFromFileKey);
   if (!bodySet && res->Has(BodyFromFileKey)) {
-    TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, res->Get(BodyFromFileKey));
+    TRI_Utf8ValueNFC filename(res->Get(BodyFromFileKey));
     size_t length;
-    char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *filename, &length);
+    char* content = TRI_SlurpFile(*filename, &length);
 
     if (content == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -778,14 +778,14 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
       case Endpoint::TransportType::HTTP: {
         HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
         httpResponse->body().appendText(content, length);
-        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
+        TRI_FreeString(content);
       } break;
 
       case Endpoint::TransportType::VST: {
         VPackBuilder builder;
         builder.add(
             VPackValuePair(reinterpret_cast<uint8_t const*>(content), length));
-        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
+        TRI_FreeString(content);
 
         // create vpack from file
         response->setContentType(rest::ContentType::VPACK);
@@ -793,7 +793,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
       } break;
 
       default:
-        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
+        TRI_FreeString(content);
         throw std::logic_error("unknown transport type");
     }
   }
@@ -1006,7 +1006,7 @@ static void JS_DefineAction(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // extract the action name
-  TRI_Utf8ValueNFC utf8name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC utf8name(args[0]);
 
   if (*utf8name == 0) {
     TRI_V8_THROW_TYPE_ERROR("<name> must be an UTF-8 string");

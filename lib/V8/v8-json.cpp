@@ -2587,7 +2587,7 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
     if (c == STRING_CONSTANT) {
       // utf-8 attribute name
       size_t outLength;
-      char* name = TRI_UnescapeUtf8String(TRI_UNKNOWN_MEM_ZONE, yytext + 1, yyleng - 2, &outLength, true);
+      char* name = TRI_UnescapeUtf8String(yytext + 1, yyleng - 2, &outLength, true);
     
       if (name == nullptr) {
         yyextra._message = "out-of-memory";
@@ -2595,7 +2595,7 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
       }
 
       attributeName = TRI_V8_PAIR_STRING(isolate, name, outLength);
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, name);
+      TRI_FreeString(name);
     }
     else if (c == STRING_CONSTANT_ASCII) {
       // ASCII-only attribute name
@@ -2699,7 +2699,7 @@ static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate,
 
       // string is not empty
       size_t outLength;
-      char* ptr = TRI_UnescapeUtf8String(TRI_UNKNOWN_MEM_ZONE, yytext + 1, yyleng - 2, &outLength, true);
+      char* ptr = TRI_UnescapeUtf8String(yytext + 1, yyleng - 2, &outLength, true);
 
       if (ptr == nullptr || outLength == 0) {
         yyextra._message = "out-of-memory";
@@ -2707,7 +2707,7 @@ static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate,
       }
 
       v8::Handle<v8::String> str = TRI_V8_PAIR_STRING(isolate, ptr, outLength);
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, ptr);
+      TRI_FreeString(ptr);
 
       return str;
     }
@@ -2790,7 +2790,7 @@ v8::Handle<v8::Value> TRI_FromJsonString (v8::Isolate* isolate,
 
   if (error != nullptr) {
     if (yyextra._message != nullptr) {
-      *error = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, yyextra._message);
+      *error = TRI_DuplicateString(yyextra._message);
     }
     else {
       *error = nullptr;

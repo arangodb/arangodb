@@ -119,7 +119,7 @@ std::string const& ScriptLoader::findScript(std::string const& name) {
 
     for (size_t i = 0; i < parts.size(); i++) {
       std::string filename = basics::FileUtils::buildFilename(parts[i], name);
-      char* result = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename.c_str(), nullptr);
+      char* result = TRI_SlurpFile(filename.c_str(), nullptr);
 
       if (result == nullptr && (i == parts.size() - 1)) {
         LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot locate file '" << StringUtils::correctPath(name) << "': " << TRI_last_error();
@@ -127,7 +127,7 @@ std::string const& ScriptLoader::findScript(std::string const& name) {
 
       if (result != nullptr) {
         _scripts[name] = result;
-        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, result);
+        TRI_FreeString(result);
         return _scripts[name];
       }
     }

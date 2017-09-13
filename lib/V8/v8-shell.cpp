@@ -122,7 +122,7 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // extract the filename
-  TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC filename(args[0]);
 
   if (*filename == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be an UTF8 filename");
@@ -171,7 +171,7 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_csv_parser_t parser;
 
-  TRI_InitCsvParser(&parser, TRI_UNKNOWN_MEM_ZONE, ProcessCsvBegin,
+  TRI_InitCsvParser(&parser, ProcessCsvBegin,
                     ProcessCsvAdd, ProcessCsvEnd, isolate);
 
   TRI_SetSeparatorCsvParser(&parser, separator[0]);
@@ -237,7 +237,7 @@ static void JS_ProcessJsonFile(
   }
 
   // extract the filename
-  TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC filename(args[0]);
 
   if (*filename == 0) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be an UTF8 filename");
@@ -274,7 +274,7 @@ static void JS_ProcessJsonFile(
       if (object->IsUndefined()) {
         if (error != nullptr) {
           std::string msg = error;
-          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, error);
+          TRI_FreeString(error);
           TRI_V8_THROW_SYNTAX_ERROR(msg.c_str());
         } else {
           TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -282,7 +282,7 @@ static void JS_ProcessJsonFile(
       }
 
       if (error != nullptr) {
-        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, error);
+        TRI_FreeString(error);
       }
 
       v8::Handle<v8::Number> r = v8::Integer::New(isolate, (int)row);

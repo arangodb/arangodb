@@ -228,7 +228,7 @@ static int V8ToVPackNoKeyRevId (v8::Isolate* isolate,
   uint32_t const n = names->Length();
   for (uint32_t i = 0; i < n; ++i) {
     v8::Handle<v8::Value> key = names->Get(i);
-    TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, key);
+    TRI_Utf8ValueNFC str(key);
     if (*str == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
@@ -1124,7 +1124,7 @@ static void JS_SetTheLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
     std::string theLeader;
     if (args.Length() >= 1 && args[0]->IsString()) {
-      TRI_Utf8ValueNFC l(TRI_UNKNOWN_MEM_ZONE, args[0]);
+      TRI_Utf8ValueNFC l(args[0]);
       theLeader = std::string(*l, l.length());
     }
     collection->followers()->setTheLeader(theLeader);
@@ -1609,7 +1609,7 @@ static int RenameGraphCollections(v8::Isolate* isolate,
                                   std::string const& newName) {
   v8::HandleScope scope(isolate);
 
-  StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  StringBuffer buffer(true);
   buffer.appendText("require('@arangodb/general-graph')._renameCollection(");
   buffer.appendJsonEncoded(oldName.c_str(), oldName.size());
   buffer.appendChar(',');

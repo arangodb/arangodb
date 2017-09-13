@@ -1385,7 +1385,7 @@ static void PrepareClusterCommRequest(
 
   reqType = arangodb::rest::RequestType::GET;
   if (args[0]->IsString()) {
-    TRI_Utf8ValueNFC UTF8(TRI_UNKNOWN_MEM_ZONE, args[0]);
+    TRI_Utf8ValueNFC UTF8(args[0]);
     std::string methstring = *UTF8;
     reqType = arangodb::HttpRequest::translateMethod(methstring);
     if (reqType == arangodb::rest::RequestType::ILLEGAL) {

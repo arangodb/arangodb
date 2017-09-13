@@ -47,7 +47,7 @@ LanguageFeature::LanguageFeature(
 
 LanguageFeature::~LanguageFeature() {
   if (_icuDataPtr != nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, _icuDataPtr);
+    TRI_Free(_icuDataPtr);
   }
 }
 
@@ -114,7 +114,7 @@ void* LanguageFeature::prepareIcu(std::string const& binaryPath,
     }
   }
 
-  void* icuDataPtr = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, path.c_str(), nullptr);
+  void* icuDataPtr = TRI_SlurpFile(path.c_str(), nullptr);
 
   if (icuDataPtr == nullptr) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)

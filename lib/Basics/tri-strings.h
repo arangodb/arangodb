@@ -33,7 +33,7 @@
 /// tolower and toupper of ctype.h are not used because they depend on locale
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_LowerAsciiString(TRI_memory_zone_t*, char const*);
+char* TRI_LowerAsciiString(char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert an ASCII string to upper case
@@ -42,7 +42,7 @@ char* TRI_LowerAsciiString(TRI_memory_zone_t*, char const*);
 /// tolower and toupper of ctype.h are not used because they depend on locale
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UpperAsciiString(TRI_memory_zone_t*, char const*);
+char* TRI_UpperAsciiString(char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests if ASCII strings are equal
@@ -91,13 +91,13 @@ char* TRI_IsContainedMemory(char const* full, size_t fullLength,
 /// @brief duplicates a string
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_DuplicateString(TRI_memory_zone_t*, char const*);
+char* TRI_DuplicateString(char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief duplicates a string of given length
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_DuplicateString(TRI_memory_zone_t*, char const*, size_t length);
+char* TRI_DuplicateString(char const*, size_t length);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a string
@@ -111,7 +111,7 @@ void TRI_CopyString(char* dst, char const* src, size_t length);
 /// @brief concatenate three strings using a memory zone
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_Concatenate3String(TRI_memory_zone_t*, char const*, char const*,
+char* TRI_Concatenate3String(char const*, char const*,
                              char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,10 +119,10 @@ char* TRI_Concatenate3String(TRI_memory_zone_t*, char const*, char const*,
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#define TRI_FreeString(a, b) TRI_FreeStringZ((a), (b), __FILE__, __LINE__)
-void TRI_FreeStringZ(TRI_memory_zone_t*, char*, char const* file, int line);
+#define TRI_FreeString(a) TRI_FreeStringZ((a), __FILE__, __LINE__)
+void TRI_FreeStringZ(char*, char const* file, int line);
 #else
-void TRI_FreeString(TRI_memory_zone_t*, char*);
+void TRI_FreeString(char*);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -156,7 +156,7 @@ constexpr size_t TRI_MaxLengthEscapeControlsCString(size_t inLength) {
 /// @brief escapes special characters using C escapes
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_EscapeControlsCString(TRI_memory_zone_t*, char const* in,
+char* TRI_EscapeControlsCString(char const* in,
                                 size_t inLength, size_t* outLength,
                                 bool appendNewline);
 
@@ -178,7 +178,7 @@ char* TRI_EscapeControlsCString(char const* in, size_t inLength,
 /// escape the character '/'.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_EscapeUtf8String(TRI_memory_zone_t*, char const* in, size_t inLength,
+char* TRI_EscapeUtf8String(char const* in, size_t inLength,
                            bool escapeSlash, size_t* outLength, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -188,7 +188,7 @@ char* TRI_EscapeUtf8String(TRI_memory_zone_t*, char const* in, size_t inLength,
 /// sequence by unicode characters and representing them as UTF-8 sequences.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UnescapeUtf8String(TRI_memory_zone_t*, char const* in,
+char* TRI_UnescapeUtf8String(char const* in,
                              size_t inLength, size_t* outLength, bool normalize);
 
 ////////////////////////////////////////////////////////////////////////////////

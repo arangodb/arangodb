@@ -469,7 +469,7 @@ static void ClientConnection_httpGetAny(
     TRI_V8_THROW_EXCEPTION_USAGE("get(<url>[, <headers>])");
   }
 
-  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC url(args[0]);
   // check header fields
   std::unordered_map<std::string, std::string> headerFields;
 
@@ -521,7 +521,7 @@ static void ClientConnection_httpHeadAny(
     TRI_V8_THROW_EXCEPTION_USAGE("head(<url>[, <headers>])");
   }
 
-  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC url(args[0]);
 
   // check header fields
   std::unordered_map<std::string, std::string> headerFields;
@@ -574,7 +574,7 @@ static void ClientConnection_httpDeleteAny(
     TRI_V8_THROW_EXCEPTION_USAGE("delete(<url>[, <headers>[, <body>]])");
   }
 
-  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC url(args[0]);
 
   // check header fields
   std::unordered_map<std::string, std::string> headerFields;
@@ -584,7 +584,7 @@ static void ClientConnection_httpDeleteAny(
   }
 
   if (args.Length() > 2) {
-    TRI_Utf8ValueNFC bodyUtf(TRI_UNKNOWN_MEM_ZONE, args[2]);
+    TRI_Utf8ValueNFC bodyUtf(args[2]);
     std::string body = *bodyUtf;
     TRI_V8_RETURN(v8connection->deleteData(isolate, *url, headerFields, raw, body));
   }
@@ -634,7 +634,7 @@ static void ClientConnection_httpOptionsAny(
     TRI_V8_THROW_EXCEPTION_USAGE("options(<url>, <body>[, <headers>])");
   }
 
-  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC url(args[0]);
   v8::String::Utf8Value body(args[1]);
 
   // check header fields
@@ -690,7 +690,7 @@ static void ClientConnection_httpPostAny(
     TRI_V8_THROW_EXCEPTION_USAGE("post(<url>, <body>[, <headers>])");
   }
 
-  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC url(args[0]);
   v8::String::Utf8Value body(args[1]);
 
   // check header fields
@@ -746,7 +746,7 @@ static void ClientConnection_httpPutAny(
     TRI_V8_THROW_EXCEPTION_USAGE("put(<url>, <body>[, <headers>])");
   }
 
-  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC url(args[0]);
   v8::String::Utf8Value body(args[1]);
 
   // check header fields
@@ -801,7 +801,7 @@ static void ClientConnection_httpPatchAny(
     TRI_V8_THROW_EXCEPTION_USAGE("patch(<url>, <body>[, <headers>])");
   }
 
-  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC url(args[0]);
   v8::String::Utf8Value body(args[1]);
 
   // check header fields
@@ -856,7 +856,7 @@ static void ClientConnection_httpSendFile(
     TRI_V8_THROW_EXCEPTION_USAGE("sendFile(<url>, <file>)");
   }
 
-  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC url(args[0]);
 
   std::string const infile = TRI_ObjectToString(isolate, args[1]);
 

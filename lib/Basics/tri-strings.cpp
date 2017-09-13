@@ -344,7 +344,7 @@ static void DecodeSurrogatePair(char** dst, char const* src1,
 /// @brief convert a string to lower case
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_LowerAsciiString(TRI_memory_zone_t* zone, char const* value) {
+char* TRI_LowerAsciiString(char const* value) {
   size_t length;
   char* buffer;
   char* p;
@@ -358,7 +358,7 @@ char* TRI_LowerAsciiString(TRI_memory_zone_t* zone, char const* value) {
   length = strlen(value);
 
   buffer = static_cast<char*>(
-      TRI_Allocate(zone, (sizeof(char) * length) + 1));
+      TRI_Allocate((sizeof(char) * length) + 1));
 
   if (buffer == nullptr) {
     return nullptr;
@@ -384,7 +384,7 @@ char* TRI_LowerAsciiString(TRI_memory_zone_t* zone, char const* value) {
 /// @brief convert a string to upper case
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UpperAsciiString(TRI_memory_zone_t* zone, char const* value) {
+char* TRI_UpperAsciiString(char const* value) {
   size_t length;
   char* buffer;
   char* p;
@@ -398,7 +398,7 @@ char* TRI_UpperAsciiString(TRI_memory_zone_t* zone, char const* value) {
   length = strlen(value);
 
   buffer = static_cast<char*>(
-      TRI_Allocate(zone, (sizeof(char) * length) + 1));
+      TRI_Allocate((sizeof(char) * length) + 1));
 
   if (buffer == nullptr) {
     return nullptr;
@@ -500,9 +500,9 @@ char* TRI_IsContainedMemory(char const* full, size_t fullLength,
 /// @brief duplicates a string
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_DuplicateString(TRI_memory_zone_t* zone, char const* value) {
+char* TRI_DuplicateString(char const* value) {
   size_t n = strlen(value) + 1;
-  char* result = static_cast<char*>(TRI_Allocate(zone, n));
+  char* result = static_cast<char*>(TRI_Allocate(n));
 
   if (result != nullptr) {
     memcpy(result, value, n);
@@ -515,9 +515,9 @@ char* TRI_DuplicateString(TRI_memory_zone_t* zone, char const* value) {
 /// @brief duplicates a string of given length
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_DuplicateString(TRI_memory_zone_t* zone, char const* value,
+char* TRI_DuplicateString(char const* value,
                           size_t length) {
-  char* result = static_cast<char*>(TRI_Allocate(zone, length + 1));
+  char* result = static_cast<char*>(TRI_Allocate(length + 1));
 
   if (result != nullptr) {
     memcpy(result, value, length);
@@ -540,14 +540,14 @@ void TRI_CopyString(char* dst, char const* src, size_t length) {
 /// @brief concatenate three strings using a memory zone
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_Concatenate3String(TRI_memory_zone_t* zone, char const* a,
+char* TRI_Concatenate3String(char const* a,
                              char const* b, char const* c) {
   size_t na = strlen(a);
   size_t nb = strlen(b);
   size_t nc = strlen(c);
 
   char* result =
-      static_cast<char*>(TRI_Allocate(zone, na + nb + nc + 1));
+      static_cast<char*>(TRI_Allocate(na + nb + nc + 1));
 
   if (result != nullptr) {
     memcpy(result, a, na);
@@ -566,15 +566,15 @@ char* TRI_Concatenate3String(TRI_memory_zone_t* zone, char const* a,
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-void TRI_FreeStringZ(TRI_memory_zone_t* zone, char* value, char const* file,
+void TRI_FreeStringZ(char* value, char const* file,
                      int line) {
-  TRI_FreeZ(zone, value, file, line);
+  TRI_FreeZ(value, file, line);
 }
 
 #else
 
-void TRI_FreeString(TRI_memory_zone_t* zone, char* value) {
-  TRI_Free(zone, value);
+void TRI_FreeString(char* value) {
+  TRI_Free(value);
 }
 
 #endif
@@ -593,7 +593,7 @@ char* TRI_EncodeHexString(char const* source, size_t sourceLen,
 
   *dstLen = (sourceLen * 2);
   dst = static_cast<uint16_t*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (*dstLen) + 1));
+      TRI_Allocate((*dstLen) + 1));
   if (dst == nullptr) {
     return nullptr;
   }
@@ -626,7 +626,7 @@ char* TRI_DecodeHexString(char const* source, size_t sourceLen,
 
   *dstLen = (sourceLen / 2);
   dst = static_cast<uint8_t*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (*dstLen) + 1));
+      TRI_Allocate((*dstLen) + 1));
   if (dst == nullptr) {
     return nullptr;
   }
@@ -653,7 +653,7 @@ char* TRI_DecodeHexString(char const* source, size_t sourceLen,
 
 char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen) {
   unsigned char* dst = static_cast<unsigned char*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, SHA256_DIGEST_LENGTH));
+      TRI_Allocate(SHA256_DIGEST_LENGTH));
   if (dst == nullptr) {
     return nullptr;
   }
@@ -672,11 +672,11 @@ char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen) {
 /// @brief escapes special characters using C escapes
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_EscapeControlsCString(TRI_memory_zone_t* zone, char const* in,
+char* TRI_EscapeControlsCString(char const* in,
                                 size_t inLength, size_t* outLength,
                                 bool appendNewline) {
   char* buffer = static_cast<char*>(
-      TRI_Allocate(zone, TRI_MaxLengthEscapeControlsCString(inLength)));
+      TRI_Allocate(TRI_MaxLengthEscapeControlsCString(inLength)));
 
   return TRI_EscapeControlsCString(in, inLength, buffer, outLength, appendNewline);
 }
@@ -749,10 +749,10 @@ char* TRI_EscapeControlsCString(char const* in, size_t inLength,
 /// @brief escapes special characters using unicode escapes
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_EscapeUtf8String(TRI_memory_zone_t* zone, char const* in,
+char* TRI_EscapeUtf8String(char const* in,
                            size_t inLength, bool escapeSlash, size_t* outLength,
                            bool compactResult) {
-  char* buffer = (char*)TRI_Allocate(zone, 6 * inLength + 1);
+  char* buffer = (char*)TRI_Allocate(6 * inLength + 1);
 
   if (buffer == nullptr) {
     return nullptr;
@@ -887,13 +887,13 @@ char* TRI_EscapeUtf8String(TRI_memory_zone_t* zone, char const* in,
     return buffer;
   }
 
-  qtr = static_cast<char*>(TRI_Allocate(zone, *outLength + 1));
+  qtr = static_cast<char*>(TRI_Allocate(*outLength + 1));
 
   if (qtr != nullptr) {
     memcpy(qtr, buffer, *outLength + 1);
   }
 
-  TRI_Free(zone, buffer);
+  TRI_Free(buffer);
 
   return qtr;
 }
@@ -902,13 +902,13 @@ char* TRI_EscapeUtf8String(TRI_memory_zone_t* zone, char const* in,
 /// @brief unescapes unicode escape sequences
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UnescapeUtf8String(TRI_memory_zone_t* zone, char const* in,
+char* TRI_UnescapeUtf8String(char const* in,
                              size_t inLength, size_t* outLength, bool normalize) {
   char const* ptr;
   char const* end;
   size_t tmpLength = 0;
 
-  char* buffer = static_cast<char*>(TRI_Allocate(zone, inLength + 1));
+  char* buffer = static_cast<char*>(TRI_Allocate(inLength + 1));
 
   if (buffer == nullptr) {
     return nullptr;
@@ -1005,11 +1005,11 @@ char* TRI_UnescapeUtf8String(TRI_memory_zone_t* zone, char const* in,
 
   if (normalize && *outLength > 0) {
     char* utf8_nfc =
-        TRI_normalize_utf8_to_NFC(zone, buffer, *outLength, &tmpLength);
+        TRI_normalize_utf8_to_NFC(buffer, *outLength, &tmpLength);
 
     if (utf8_nfc != nullptr) {
       *outLength = tmpLength;
-      TRI_Free(zone, buffer);
+      TRI_Free(buffer);
       return utf8_nfc;
     }
     // intentional fall-through

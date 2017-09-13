@@ -44,7 +44,7 @@ static bool checkMaxMappings = arangodb::MaxMapCountFeature::needsChecking();
 static uint64_t maxMappings = UINT64_MAX; 
 static std::string mapsFilename;
 
-static StringBuffer fileBuffer(TRI_UNKNOWN_MEM_ZONE, 8192, false);
+static StringBuffer fileBuffer(8192, false);
 
 // cache for the current number of mappings for this process
 // (read from /proc/<pid>/maps

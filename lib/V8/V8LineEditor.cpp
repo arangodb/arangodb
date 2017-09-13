@@ -339,7 +339,7 @@ class V8Completer : public Completer {
         for (uint32_t i = 0; i < n; ++i) {
           v8::Handle<v8::Value> v = properties->Get(i);
 
-          TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, v);
+          TRI_Utf8ValueNFC str(v);
           char const* s = *str;
 
           if (s != nullptr && *s) {

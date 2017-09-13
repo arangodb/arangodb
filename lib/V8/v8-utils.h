@@ -37,7 +37,7 @@ namespace arangodb{
 
 class TRI_Utf8ValueNFC {
  public:
-  TRI_Utf8ValueNFC(TRI_memory_zone_t*, v8::Handle<v8::Value> const);
+  explicit TRI_Utf8ValueNFC(v8::Handle<v8::Value> const);
 
   ~TRI_Utf8ValueNFC();
 

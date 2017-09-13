@@ -282,7 +282,7 @@ int TRI_ZipFile(char const* filename, char const* dir,
   }
 
   int bufferSize = 16384;
-  buffer = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (size_t)bufferSize);
+  buffer = TRI_Allocate((size_t)bufferSize);
 
   if (buffer == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -296,7 +296,7 @@ int TRI_ZipFile(char const* filename, char const* dir,
 #endif
 
   if (zf == nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
+    TRI_Free(buffer);
 
     return ZIP_ERRNO;
   }
@@ -376,7 +376,7 @@ int TRI_ZipFile(char const* filename, char const* dir,
 
   zipClose(zf, NULL);
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
+  TRI_Free(buffer);
 
   return res;
 }
@@ -404,7 +404,7 @@ int TRI_Adler32(char const* filename, uint32_t& checksum) {
 
   ssize_t chunkRemain = static_cast<TRI_read_t>(statbuf.st_size);
   char* buf =
-      static_cast<char*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 131072));
+      static_cast<char*>(TRI_Allocate(131072));
 
   if (buf == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -422,7 +422,7 @@ int TRI_Adler32(char const* filename, uint32_t& checksum) {
     ssize_t nRead = TRI_READ(fd, buf, readChunk);
 
     if (nRead < 0) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, buf);
+      TRI_Free(buf);
       return TRI_ERROR_INTERNAL;
     }
     
@@ -430,7 +430,7 @@ int TRI_Adler32(char const* filename, uint32_t& checksum) {
     chunkRemain -= nRead;
   }
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, buf);
+  TRI_Free(buf);
 
   checksum = static_cast<uint32_t>(adler);
   return TRI_ERROR_NO_ERROR;
@@ -448,7 +448,7 @@ int TRI_UnzipFile(char const* filename, char const* outPath,
   zlib_filefunc64_def ffunc;
 #endif
   size_t bufferSize = 16384;
-  void* buffer = (void*)TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, bufferSize);
+  void* buffer = (void*)TRI_Allocate(bufferSize);
 
   if (buffer == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -461,7 +461,7 @@ int TRI_UnzipFile(char const* filename, char const* outPath,
   unzFile uf = unzOpen64(filename);
 #endif
   if (uf == nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
+    TRI_Free(buffer);
     errorMessage = std::string("unable to open zip file '") + filename + "'";
     return TRI_ERROR_INTERNAL;
   }
@@ -471,7 +471,7 @@ int TRI_UnzipFile(char const* filename, char const* outPath,
 
   unzClose(uf);
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, buffer);
+  TRI_Free(buffer);
 
   return res;
 }

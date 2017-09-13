@@ -310,7 +310,7 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
       v8::Handle<v8::String> errorNum = TRI_V8_ASCII_STRING(isolate, "errorNum");
       v8::Handle<v8::String> errorMessage = TRI_V8_ASCII_STRING(isolate, "errorMessage");
 
-      TRI_Utf8ValueNFC stacktrace(TRI_UNKNOWN_MEM_ZONE, tryCatch.StackTrace());
+      TRI_Utf8ValueNFC stacktrace(tryCatch.StackTrace());
 
       if (objValue->HasOwnProperty(errorNum) &&
           objValue->HasOwnProperty(errorMessage)) {
@@ -1019,7 +1019,7 @@ void V8Executor::generateCodeNode(AstNode const* node) {
 /// @brief create the string buffer
 arangodb::basics::StringBuffer* V8Executor::initializeBuffer() {
   if (_buffer == nullptr) {
-    _buffer = new arangodb::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE, 512, false);
+    _buffer = new arangodb::basics::StringBuffer(512, false);
 
     if (_buffer->stringBuffer()->_buffer == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
