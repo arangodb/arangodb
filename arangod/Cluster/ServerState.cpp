@@ -179,8 +179,7 @@ std::string ServerState::stateToString(StateEnum state) {
 void ServerState::findAndSetRoleBlocking() {
   while (true) {
     auto role = determineRole(_localInfo, _id);
-    std::string roleString = roleToString(role);
-    LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Found my role: " << roleString;
+    LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Found my role: " << role;
 
     if (storeRole(role)) {
       break;
@@ -762,6 +761,8 @@ void ServerState::setState(StateEnum state) {
     result = checkSecondaryState(state);
   } else if (role == ROLE_COORDINATOR) {
     result = checkCoordinatorState(state);
+  } else if (role == ROLE_SINGLE) {
+    result = true;
   }
 
   if (result) {
@@ -797,6 +798,25 @@ void ServerState::setJavaScriptPath(std::string const& value) {
   _javaScriptStartupPath = value;
 }
 
+void ServerState::forceRole(ServerState::RoleEnum role) {
+  TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
+  TRI_ASSERT(_role == ServerState::ROLE_UNDEFINED);
+
+  auto expected = _role.load(std::memory_order_relaxed);
+
+  while (true) {
+    if (expected != ServerState::ROLE_UNDEFINED) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid role found");
+    }
+    if (_role.compare_exchange_weak(expected, role,
+                                    std::memory_order_release,
+                                    std::memory_order_relaxed)) {
+      return;
+    }
+    expected = _role.load(std::memory_order_relaxed);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief redetermine the server role, we do this after a plan change.
 /// This is needed for automatic failover. This calls determineRole with
@@ -809,15 +829,14 @@ void ServerState::setJavaScriptPath(std::string const& value) {
 bool ServerState::redetermineRole() {
   std::string saveIdOfPrimary = _idOfPrimary;
   RoleEnum role = determineRole(_localInfo, _id);
-  std::string roleString = roleToString(role);
   LOG_TOPIC(INFO, Logger::CLUSTER) << "Redetermined role from agency: "
-                                   << roleString;
+                                   << role;
   if (role == ServerState::ROLE_UNDEFINED) {
     return false;
   }
   RoleEnum oldRole = loadRole();
   if (role != oldRole) {
-    LOG_TOPIC(INFO, Logger::CLUSTER) << "Changed role to: " << roleString;
+    LOG_TOPIC(INFO, Logger::CLUSTER) << "Changed role to: " << role;
     if (oldRole == ROLE_PRIMARY && role == ROLE_SECONDARY) {
       std::string oldId("Current/DBServers/" + _id);
       AgencyOperation del(oldId, AgencySimpleOperationType::DELETE_OP);
@@ -859,7 +878,14 @@ ServerState::RoleEnum ServerState::determineRole(std::string const& info,
     setId(id);
   }
 
-  ServerState::RoleEnum role = checkCoordinatorsList(id);
+  ServerState::RoleEnum role = loadRole();
+
+  if (role == ServerState::ROLE_SINGLE) {
+    // role of single server does never change
+    return role;
+  }
+
+  role = checkCoordinatorsList(id);
   if (role == ServerState::ROLE_UNDEFINED) {
     role = checkServersList(id);
   }

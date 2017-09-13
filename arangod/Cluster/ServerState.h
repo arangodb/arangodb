@@ -195,6 +195,9 @@ class ServerState {
   /// @brief gets the JavaScript startup path
   std::string getJavaScriptPath();
 
+  /// @brief forces a specific role
+  void forceRole(RoleEnum role);
+
   /// @brief sets the JavaScript startup path
   void setJavaScriptPath(std::string const&);
 
