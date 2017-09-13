@@ -27,10 +27,15 @@
 #include "Basics/Common.h"
 #include "Basics/short_alloc.h"
 
+#include <list>
+
 namespace arangodb {
 
 template <class T, std::size_t BufSize = 64>
 using SmallVector = std::vector<T, short_alloc<T, BufSize, alignof(T)>>;
+
+template <class T, std::size_t BufSize = 64>
+using SmallList = std::list<T, short_alloc<T, BufSize, alignof(T)>>;
 
 }  // namespace arangodb
 

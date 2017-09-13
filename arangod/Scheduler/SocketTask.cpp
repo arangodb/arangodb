@@ -62,7 +62,9 @@ SocketTask::SocketTask(arangodb::EventLoop loop,
       _useKeepAliveTimer(keepAliveTimeout > 0.0),
       _keepAliveTimerActive(false),
       _closeRequested(false),
-      _abandoned(false) {
+      _abandoned(false),
+      _closedSend(false),
+      _closedReceive(false) {
   _connectionStatistics = ConnectionStatistics::acquire();
   ConnectionStatistics::SET_START(_connectionStatistics);
 

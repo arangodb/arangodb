@@ -34,7 +34,6 @@
 #include "Basics/SmallVector.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/asio-helper.h"
-#include "Basics/short_alloc.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Scheduler/Socket.h"
 #include "Statistics/RequestStatistics.h"
@@ -156,16 +155,7 @@ class SocketTask : virtual public Task {
       
   basics::StringBuffer* leaseStringBuffer(size_t length);
   void returnStringBuffer(basics::StringBuffer*);
-  
- protected:
-  Mutex _lock;
-  ConnectionStatistics* _connectionStatistics;
-  ConnectionInfo _connectionInfo;
-  basics::StringBuffer _readBuffer; // needs _lock
-  
-  SmallVector<basics::StringBuffer*, 32>::allocator_type::arena_type _stringBuffersArena;
-  SmallVector<basics::StringBuffer*, 32> _stringBuffers; // needs _lock
-
+ 
  private:
   void writeWriteBuffer();
   bool completedWriteBuffer();
@@ -175,13 +165,21 @@ class SocketTask : virtual public Task {
   bool processAll();
   void asyncReadSome();
   bool abandon();
-
+  
+ protected:
+  Mutex _lock;
+  ConnectionStatistics* _connectionStatistics;
+  ConnectionInfo _connectionInfo;
+  basics::StringBuffer _readBuffer; // needs _lock
+  
  private:
-  WriteBuffer _writeBuffer;
+  SmallVector<basics::StringBuffer*, 32>::allocator_type::arena_type _stringBuffersArena;
+  SmallVector<basics::StringBuffer*, 32> _stringBuffers; // needs _lock
 
-  using WriteBufferList = std::list<WriteBuffer, short_alloc<WriteBuffer, 64, alignof(WriteBuffer)>>;
-  WriteBufferList::allocator_type::arena_type _writeBuffersArena;
-  WriteBufferList _writeBuffers;
+  WriteBuffer _writeBuffer;
+  
+  SmallList<WriteBuffer, 64>::allocator_type::arena_type _writeBuffersArena;
+  SmallList<WriteBuffer, 64> _writeBuffers;
 
   std::unique_ptr<Socket> _peer;
   boost::posix_time::milliseconds _keepAliveTimeout;
@@ -190,9 +188,8 @@ class SocketTask : virtual public Task {
   bool _keepAliveTimerActive;
   bool _closeRequested;
   bool _abandoned;
-
-  bool _closedSend = false;
-  bool _closedReceive = false;
+  bool _closedSend;
+  bool _closedReceive;
 };
 }
 }
