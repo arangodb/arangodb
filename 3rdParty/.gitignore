@@ -1,7 +1,5 @@
 *.ao
 *.d
-*.1
-*.8
 *.pc
 
 libev/.libs/

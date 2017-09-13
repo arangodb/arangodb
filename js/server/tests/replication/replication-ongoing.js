@@ -195,6 +195,7 @@ function ReplicationSuite() {
 
       db._drop(cn);
       db._drop(cn2);
+      db._drop(cn + "Renamed");
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -213,6 +214,7 @@ function ReplicationSuite() {
 
       db._drop(cn);
       db._drop(cn2);
+      db._drop(cn + "Renamed");
     },
     
     ////////////////////////////////////////////////////////////////////////////////
