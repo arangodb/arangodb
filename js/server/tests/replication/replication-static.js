@@ -101,7 +101,9 @@ function ReplicationSuite() {
     connectToSlave();
     replication.applier.stop();
 
-    internal.wait(1, false);
+    while (replication.applier.state().state.running) {
+      internal.wait(0.1, false);
+    }
 
     var includeSystem = true;
     var restrictType = "";
@@ -128,6 +130,9 @@ function ReplicationSuite() {
       restrictType: restrictType,
       restrictCollections: restrictCollections
     });
+    
+    db._flushCache();
+    slaveFunc(state);
     
     assertTrue(syncResult.hasOwnProperty('lastLogTick'));
 
