@@ -135,6 +135,8 @@ class LogicalCollection {
   std::string name() const;
   std::string dbName() const;
 
+  std::string globallyUniqueId() const;
+
   // Does always return the cid
   std::string const distributeShardsLike() const;
   void distributeShardsLike(std::string const& cid);
@@ -365,6 +367,8 @@ class LogicalCollection {
 
   void increaseInternalVersion();
 
+  std::string generateGloballyUniqueId() const;
+
  protected:
   virtual void includeVelocyPackEnterprise(velocypack::Builder& result) const;
 
@@ -392,9 +396,6 @@ class LogicalCollection {
   // @brief Name of other collection this shards should be distributed like
   std::vector<std::string> _avoidServers;
 
-  // @brief Flag if this collection is a smart one. (Enterprise only)
-  bool _isSmart;
-
   // the following contains in the cluster/DBserver case the information
   // which other servers are in sync with this shard. It is unset in all
   // other cases.
@@ -402,6 +403,9 @@ class LogicalCollection {
 
   // @brief Current state of this colletion
   TRI_vocbase_col_status_e _status;
+  
+  // @brief Flag if this collection is a smart one. (Enterprise only)
+  bool _isSmart;
 
   // SECTION: Properties
   bool _isLocal;
@@ -410,8 +414,9 @@ class LogicalCollection {
 
   bool const _isSystem;
 
-  uint32_t _version;
   bool _waitForSync;
+  
+  uint32_t _version;
 
   // SECTION: Replication
   size_t _replicationFactor;
@@ -431,6 +436,10 @@ class LogicalCollection {
   std::shared_ptr<velocypack::Buffer<uint8_t> const>
       _keyOptions;  // options for key creation
   std::unique_ptr<KeyGenerator> _keyGenerator;
+
+  /// @brief globally unique collection id. assigned by the
+  /// initial creator of the collection
+  std::string _globallyUniqueId;
 
   std::unique_ptr<PhysicalCollection> _physical;
 
