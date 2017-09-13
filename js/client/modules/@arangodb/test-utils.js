@@ -220,7 +220,8 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           collectionsAfter.push(collection._name);
         });
         let delta = diffArray(collectionsBefore, collectionsAfter);
-        if (delta.length !== 0) {
+	print(delta);
+        if ((delta.length !== 0) && (! _.isEqual(delta, ['_foxxlog']))) {
           results[te] = {
             status: false,
             message: 'Cleanup missing - test left over collections! [' + delta + '] - Original test status: ' + JSON.stringify(results[te])
