@@ -30,12 +30,9 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
+  
 namespace transaction {
 class Methods;
-}
-
-namespace transaction {
 class Context;
 }
 

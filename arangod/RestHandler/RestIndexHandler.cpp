@@ -100,7 +100,8 @@ RestStatus RestIndexHandler::getIndexes() {
     }
 
     VPackBuilder indexes;
-    Result res = methods::Indexes::getAll(coll, withFigures, indexes);
+    Result res = methods::Indexes::getAll(_request->execContext(),
+                                          coll, withFigures, indexes);
     if (!res.ok()) {
       generateError(rest::ResponseCode::BAD, res.errorNumber(),
                     res.errorMessage());
@@ -141,7 +142,8 @@ RestStatus RestIndexHandler::getIndexes() {
     b.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
 
     VPackBuilder output;
-    Result res = methods::Indexes::getIndex(coll, b.slice(), output);
+    Result res = methods::Indexes::getIndex(_request->execContext(),
+                                            coll, b.slice(), output);
     if (res.ok()) {
       VPackBuilder b;
       b.openObject();
@@ -200,7 +202,8 @@ RestStatus RestIndexHandler::createIndex() {
   }
 
   VPackBuilder output;
-  Result res = methods::Indexes::ensureIndex(coll, body, true, output);
+  Result res = methods::Indexes::ensureIndex(_request->execContext(),
+                                             coll, body, true, output);
   if (res.ok()) {
     VPackSlice created = output.slice().get("isNewlyCreated");
     auto r = created.isBool() && created.getBool() ? rest::ResponseCode::CREATED
@@ -250,7 +253,8 @@ RestStatus RestIndexHandler::dropIndex() {
   VPackBuilder idBuilder;
   idBuilder.add(VPackValue(cName + TRI_INDEX_HANDLE_SEPARATOR_CHR + iid));
 
-  Result res = methods::Indexes::drop(coll, idBuilder.slice());
+  Result res = methods::Indexes::drop(_request->execContext(),
+                                      coll, idBuilder.slice());
   if (res.ok()) {
     VPackBuilder b;
     b.openObject();

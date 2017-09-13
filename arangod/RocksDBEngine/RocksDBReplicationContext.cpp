@@ -81,10 +81,27 @@ uint64_t RocksDBReplicationContext::count() const {
 }
 
 // creates new transaction/snapshot
-void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
+void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase,
+                                     ExecContext const* exec) {
   if ((_trx.get() == nullptr) || (_trx->vocbase() != vocbase)) {
     releaseDumpingResources();
-    _trx = createTransaction(vocbase);
+    
+    _guard.reset(new DatabaseGuard(vocbase));
+    transaction::Options transactionOptions;
+    transactionOptions.waitForSync = false;
+    transactionOptions.allowImplicitCollections = true;
+    
+    auto ctx = transaction::StandaloneContext::Create(vocbase, exec);
+    _trx.reset(new transaction::UserTransaction(ctx, {}, {}, {},
+                                                transactionOptions));
+    Result res = _trx->begin();
+    if (!res.ok()) {
+      _guard.reset();
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    _customTypeHandler = ctx->orderCustomTypeHandler();
+    _vpackOptions.customTypeHandler = _customTypeHandler.get();
+    
     auto state = RocksDBTransactionState::toState(_trx.get());
     _lastTick = state->sequenceNumber();
   }
@@ -102,7 +119,7 @@ int RocksDBReplicationContext::bindCollection(
     
     // we are getting into trouble during the dumping of "_users"
     // this workaround avoids the auth check in addCollectionAtRuntime
-    ExecContext *old = ExecContext::CURRENT;
+    ExecContext const* old = ExecContext::CURRENT;
     if (old != nullptr && old->systemAuthLevel() == AuthLevel::RW) {
       ExecContext::CURRENT = nullptr;
     }
@@ -469,29 +486,6 @@ void RocksDBReplicationContext::releaseDumpingResources() {
   }
   _collection = nullptr;
   _guard.reset();
-}
-
-std::unique_ptr<transaction::Methods>
-RocksDBReplicationContext::createTransaction(TRI_vocbase_t* vocbase) {
-  _guard.reset(new DatabaseGuard(vocbase));
-
-  transaction::Options transactionOptions;
-  transactionOptions.waitForSync = false;
-  transactionOptions.allowImplicitCollections = true;
-
-  std::shared_ptr<transaction::StandaloneContext> ctx =
-      transaction::StandaloneContext::Create(vocbase);
-  std::unique_ptr<transaction::Methods> trx(
-      new transaction::UserTransaction(ctx, {}, {}, {}, transactionOptions));
-  Result res = trx->begin();
-  if (!res.ok()) {
-    _guard.reset();
-    THROW_ARANGO_EXCEPTION(res);
-  }
-  _customTypeHandler = ctx->orderCustomTypeHandler();
-  _vpackOptions.customTypeHandler = _customTypeHandler.get();
-
-  return trx;
 }
 
 /// @brief filter a collection based on collection attributes

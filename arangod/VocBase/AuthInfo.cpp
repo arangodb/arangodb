@@ -122,10 +122,10 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
-
+  
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT;
+  ExecContext const* oldExe = ExecContext::CURRENT;
   ExecContext::CURRENT = nullptr;
   TRI_DEFER(ExecContext::CURRENT = oldExe);
 
@@ -144,7 +144,9 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
-    return std::shared_ptr<VPackBuilder>();
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code,
+                                   "Error executing user query");
+    //return std::shared_ptr<VPackBuilder>();
   }
 
   VPackSlice usersSlice = queryResult.result->slice();
@@ -168,10 +170,10 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT;
+  ExecContext const* oldExe = ExecContext::CURRENT;
   ExecContext::CURRENT = nullptr;
   TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  
   std::string const queryStr("FOR u IN _users FILTER u.user == @name RETURN u");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
 
@@ -190,7 +192,8 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, "query error");
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code,
+                                   "Error executing user query");
   }
 
   VPackSlice usersSlice = queryResult.result->slice();
@@ -299,14 +302,8 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
     return Result(TRI_ERROR_INTERNAL);
   }
 
-  // we cannot set this execution context, otherwise the transaction
-  // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
   std::shared_ptr<transaction::Context> ctx(
-      new transaction::StandaloneContext(vocbase));
+      new transaction::StandaloneContext(vocbase, nullptr));
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -442,14 +439,8 @@ static Result UpdateUser(VPackSlice const& user) {
     return Result(TRI_ERROR_INTERNAL);
   }
 
-  // we cannot set this execution context, otherwise the transaction
-  // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
   std::shared_ptr<transaction::Context> ctx(
-      new transaction::StandaloneContext(vocbase));
+      new transaction::StandaloneContext(vocbase, nullptr));
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -544,14 +535,8 @@ static Result RemoveUserInternal(AuthUserEntry const& entry) {
     return Result(TRI_ERROR_INTERNAL);
   }
 
-  // we cannot set this execution context, otherwise the transaction
-  // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
   std::shared_ptr<transaction::Context> ctx(
-      new transaction::StandaloneContext(vocbase));
+      new transaction::StandaloneContext(vocbase, nullptr));
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
 

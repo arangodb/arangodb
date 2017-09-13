@@ -117,7 +117,7 @@ class GeneralRequest {
   RequestContext* requestContext() const { return _requestContext; }
   void setRequestContext(RequestContext*, bool);
 
-  ExecContext* execContext() const { return _execContext; }
+  ExecContext const* execContext() const { return _execContext; }
   void setExecContext(ExecContext*);
 
   RequestType requestType() const { return _type; }

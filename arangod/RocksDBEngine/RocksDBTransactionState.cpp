@@ -45,7 +45,7 @@
 #include "VocBase/modes.h"
 #include "VocBase/ticks.h"
 
-#include <rocksdb/db.h>
+#include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
 #include <rocksdb/utilities/optimistic_transaction_db.h>
@@ -59,8 +59,9 @@ struct RocksDBTransactionData final : public TransactionData {};
 
 /// @brief transaction type
 RocksDBTransactionState::RocksDBTransactionState(
-    TRI_vocbase_t* vocbase, transaction::Options const& options)
-    : TransactionState(vocbase, options),
+    TRI_vocbase_t* vocbase, transaction::Options const& options,
+    ExecContext const* exe)
+    : TransactionState(vocbase, options, exe),
       _snapshot(nullptr),
       _rocksWriteOptions(),
       _rocksReadOptions(),

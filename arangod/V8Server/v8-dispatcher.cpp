@@ -29,12 +29,12 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Hints.h"
+#include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
@@ -98,7 +98,7 @@ class V8Task : public std::enable_shared_from_this<V8Task> {
 
  private:
   void toVelocyPack(VPackBuilder&) const;
-  void work();
+  void work(ExecContext const*);
   void queue(std::chrono::microseconds offset);
   void unqueue() noexcept;
   std::function<void(boost::system::error_code const&)> callbackFunction();
@@ -147,9 +147,8 @@ std::shared_ptr<V8Task> V8Task::createTask(std::string const& id,
     return {nullptr};
   }
 
-  auto itr = _tasks.emplace(
-      id,
-      std::make_shared<V8Task>(id, name, vocbase, command, allowUseDatabase));
+  auto task = std::make_shared<V8Task>(id, name, vocbase, command, allowUseDatabase);
+  auto itr = _tasks.emplace(id, std::move(task));
 
   ec = TRI_ERROR_NO_ERROR;
   return itr.first->second;
@@ -299,27 +298,24 @@ V8Task::callbackFunction() {
     }
 
     // get the permissions to be used by this task
-    AuthLevel dbLvl = AuthLevel::RW;
+    bool allowContinue = true;
     std::unique_ptr<ExecContext> execContext;
     TRI_DEFER(ExecContext::CURRENT = nullptr);
     if (!_user.empty()) { // not superuser
-      AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
       std::string const& dbname = _vocbaseGuard->vocbase()->name();
-      dbLvl = auth->canUseDatabase(_user, dbname);
-      execContext.reset(new ExecContext(_user, dbname,
-                                        auth->canUseDatabase(_user, TRI_VOC_SYSTEM_DATABASE),
-                                        dbLvl));
+      execContext.reset(new ExecContext(_user, dbname));
       ExecContext::CURRENT = execContext.get();
+      allowContinue = execContext->canUseDatabase(dbname, AuthLevel::RW);
     }
 
     // permissions might have changed since starting this task
-    if (SchedulerFeature::SCHEDULER->isStopping() || dbLvl != AuthLevel::RW) {
+    if (SchedulerFeature::SCHEDULER->isStopping() || !allowContinue) {
       V8Task::unregisterTask(_id, false);
       return;
     }
 
     // now do the work:
-    work();
+    work(execContext.get());
 
     if (_periodic && !SchedulerFeature::SCHEDULER->isStopping()) {
       // requeue the task
@@ -416,8 +412,8 @@ void V8Task::toVelocyPack(VPackBuilder& builder) const {
   builder.add("database", VPackValue(_vocbaseGuard->vocbase()->name()));
 }
 
-void V8Task::work() {
-  auto context = V8DealerFeature::DEALER->enterContext(_vocbaseGuard->vocbase(),
+void V8Task::work(ExecContext const* exec) {
+  auto context = V8DealerFeature::DEALER->enterContext(exec, _vocbaseGuard->vocbase(),
                                                        _allowUseDatabase);
 
   // note: the context might be 0 in case of shut-down
@@ -536,9 +532,11 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 1 || !args[0]->IsObject()) {
     TRI_V8_THROW_EXCEPTION_USAGE("register(<task>)");
   }
+  
+  TRI_GET_GLOBALS();
 
-  if (ExecContext::CURRENT != nullptr &&
-      ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW) {
+  ExecContext const* exec = static_cast<ExecContext const*>(v8g->_execContext);
+  if (exec != nullptr && exec->databaseAuthLevel() != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "registerTask() needs db RW permissions");
   }
@@ -594,11 +592,13 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("runAsUser"))) {
     runAsUser = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("runAsUser")));
   }
+  
   // only the superroot is allowed to run tasks as an arbitrary user
-  if (ExecContext::CURRENT != nullptr) {
-    if (runAsUser.empty()) { // execute task as the same use
-      runAsUser = ExecContext::CURRENT->user();
-    } else if (ExecContext::CURRENT->user() != runAsUser) {
+  TRI_ASSERT(exec == ExecContext::CURRENT);
+  if (exec != nullptr) {
+    if (runAsUser.empty()) { // execute task as the same user
+      runAsUser = exec->user();
+    } else if (exec->user() != runAsUser) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
   }
@@ -632,8 +632,6 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
-
-  TRI_GET_GLOBALS();
 
   command = "(function (params) { " + command + " } )(params);";
 
@@ -682,15 +680,16 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("unregister(<id>)");
   }
-
-  if (ExecContext::CURRENT != nullptr &&
-      ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW) {
+  
+  TRI_GET_GLOBALS();
+  
+  ExecContext const* exec = static_cast<ExecContext const*>(v8g->_execContext);
+  if (exec != nullptr && exec->databaseAuthLevel() != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "unregisterTask() needs db RW permissions");
   }
 
   int res = V8Task::unregisterTask(GetTaskId(isolate, args[0]), true);
-
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -727,7 +726,7 @@ static void JS_GetTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-/// creates a new object in _queues
+/// creates a new object in _queues, circumvents permission blocks
 static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
@@ -735,19 +734,18 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("createQueue(<id>)");
   }
+  
+  TRI_GET_GLOBALS();
 
   std::string runAsUser;
-  if (ExecContext::CURRENT != nullptr) {
-    if (ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW) {
+  ExecContext const* exec = static_cast<ExecContext const*>(v8g->_execContext);
+  if (exec != nullptr) {
+    if (exec->databaseAuthLevel() != AuthLevel::RW) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "createQueue() needs db RW permissions");
     }
-    runAsUser = ExecContext::CURRENT->user();
+    runAsUser = exec->user();
   }
-  // stupid trick to force superuser rights
-  ExecContext *exe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = exe);
 
   VPackBuilder docs;
   {
@@ -759,11 +757,9 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   docs.add("runAsUser", VPackValue(runAsUser));
   docs.close();
 
-  TRI_GET_GLOBALS();
-
-  auto transactionContext = std::make_shared<transaction::V8Context>(v8g->_vocbase, true);
-  SingleCollectionTransaction trx(transactionContext, "_queues",
-                                  AccessMode::Type::EXCLUSIVE);
+  auto ctx = transaction::StandaloneContext::Create(v8g->_vocbase, nullptr);
+  SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::EXCLUSIVE);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
@@ -794,21 +790,17 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string key = TRI_ObjectToString(args[0]);
   VPackBuilder keyB;
   keyB(VPackValue(VPackValueType::Object))(StaticStrings::KeyString, VPackValue(key))();
+  
+  TRI_GET_GLOBALS();
 
-  ExecContext *exe = ExecContext::CURRENT;
-  if (exe != nullptr && exe->databaseAuthLevel() != AuthLevel::RW) {
+  ExecContext const* exec = static_cast<ExecContext const*>(v8g->_execContext);
+  if (exec != nullptr && exec->databaseAuthLevel() != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "deleteQueue() needs db RW permissions");
   }
-  // stupid trick to force superuser rights
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = exe);
 
-  TRI_GET_GLOBALS();
-
-  auto transactionContext = std::make_shared<transaction::V8Context>(v8g->_vocbase, true);
-  SingleCollectionTransaction trx(transactionContext, "_queues",
-                                  AccessMode::Type::WRITE);
+  auto ctx = transaction::StandaloneContext::Create(v8g->_vocbase, nullptr);
+  SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();
   if (!res.ok()) {

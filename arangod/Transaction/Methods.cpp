@@ -2997,10 +2997,12 @@ void transaction::Methods::setupEmbedded(TRI_vocbase_t*) {
 }
 
 /// @brief set up a top-level transaction
-void transaction::Methods::setupToplevel(TRI_vocbase_t* vocbase, transaction::Options const& options) {
+void transaction::Methods::setupToplevel(TRI_vocbase_t* vocbase,
+                                         transaction::Options const& options) {
   // we are not embedded. now start our own transaction
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  _state = engine->createTransactionState(vocbase, options);
+  _state = engine->createTransactionState(vocbase, options,
+                                          _transactionContext->execContext());
 
   TRI_ASSERT(_state != nullptr);
 

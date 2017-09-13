@@ -72,13 +72,10 @@ VPackSlice MMFilesExportCursor::next() {
 size_t MMFilesExportCursor::count() const { return _size; }
 
 void MMFilesExportCursor::dump(VPackBuilder& builder) {
-  auto transactionContext =
-      std::make_shared<transaction::StandaloneContext>(_vocbaseGuard.vocbase());
-
+  auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.vocbase());
   VPackOptions const* oldOptions = builder.options;
 
-  builder.options = transactionContext->getVPackOptions();
-
+  builder.options = ctx->getVPackOptions();
   TRI_ASSERT(_ex != nullptr);
   auto const restrictionType = _ex->_restrictions.type;
 

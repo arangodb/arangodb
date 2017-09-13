@@ -319,13 +319,3 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
 
   return (!found.empty());
 }
-
-RocksDBReplicationContextGuard::RocksDBReplicationContextGuard(
-    RocksDBReplicationManager* manager, RocksDBReplicationContext* ctx)
-    : _manager(manager), _ctx(ctx) {}
-
-RocksDBReplicationContextGuard::~RocksDBReplicationContextGuard() {
-  if (_ctx != nullptr) {
-    _manager->release(_ctx);
-  }
-}

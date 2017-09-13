@@ -62,7 +62,8 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::methods;
 
-Result Indexes::getIndex(arangodb::LogicalCollection const* collection,
+Result Indexes::getIndex(ExecContext const* exec,
+                         LogicalCollection const* collection,
                          VPackSlice const& indexId, VPackBuilder& out) {
   // do some magic to parse the iid
   std::string name;
@@ -85,7 +86,7 @@ Result Indexes::getIndex(arangodb::LogicalCollection const* collection,
   }
 
   VPackBuilder tmp;
-  Result res = Indexes::getAll(collection, false, tmp);
+  Result res = Indexes::getAll(exec, collection, false, tmp);
   if (res.ok()) {
     for (VPackSlice const& index : VPackArrayIterator(tmp.slice())) {
       if (index.get("id").compareString(name) == 0) {
@@ -97,7 +98,7 @@ Result Indexes::getIndex(arangodb::LogicalCollection const* collection,
   return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
 }
 
-arangodb::Result Indexes::getAll(arangodb::LogicalCollection const* collection,
+arangodb::Result Indexes::getAll(ExecContext const* exec, LogicalCollection const* collection,
                                  bool withFigures, VPackBuilder& result) {
 
   VPackBuilder tmp;
@@ -145,7 +146,7 @@ arangodb::Result Indexes::getAll(arangodb::LogicalCollection const* collection,
     // add locks for consistency
 
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(collection->vocbase()),
+        transaction::StandaloneContext::Create(collection->vocbase(), exec),
         collection->cid(), AccessMode::Type::READ);
     trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
 
@@ -242,14 +243,15 @@ arangodb::Result Indexes::getAll(arangodb::LogicalCollection const* collection,
 /// @brief ensures an index, locally
 ////////////////////////////////////////////////////////////////////////////////
 
-static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
+static Result EnsureIndexLocal(ExecContext const* exec,
+                               arangodb::LogicalCollection* collection,
                                VPackSlice const& definition, bool create,
                                VPackBuilder& output) {
   TRI_ASSERT(collection != nullptr);
   READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);
 
   SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(collection->vocbase()),
+      transaction::StandaloneContext::Create(collection->vocbase(), exec),
       collection->cid(),
       create ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ);
 
@@ -322,18 +324,16 @@ Result Indexes::ensureIndexCoordinator(
   return Result(res, errorMsg);
 }
 
-Result Indexes::ensureIndex(arangodb::LogicalCollection* collection,
+Result Indexes::ensureIndex(ExecContext const* exec, LogicalCollection* collection,
                             VPackSlice const& definition, bool create,
                             VPackBuilder& output) {
   // can read indexes with RO on db and collection. Modifications require RW/RW
-  if (ExecContext::CURRENT != nullptr) {
-    AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-    AuthLevel lvl1 = ExecContext::CURRENT->databaseAuthLevel();
-    AuthLevel lvl2 = auth->canUseCollection(ExecContext::CURRENT->user(),
-                                              ExecContext::CURRENT->database(),
-                                              collection->name());
-    if ((create && (lvl1 != AuthLevel::RW || lvl2 != AuthLevel::RW)) ||
-        lvl1 == AuthLevel::NONE || lvl2 == AuthLevel::NONE) {
+  if (exec != nullptr) {
+    AuthLevel lvl = exec->databaseAuthLevel();
+    bool canModify = exec->canUseCollection(collection->name(), AuthLevel::RW);
+    bool canRead = exec->canUseCollection(collection->name(), AuthLevel::RO);
+    if ((create && (lvl != AuthLevel::RW || !canModify)) ||
+        (lvl == AuthLevel::NONE || !canRead)) {
       return TRI_ERROR_FORBIDDEN;
     }
   }
@@ -436,7 +436,7 @@ Result Indexes::ensureIndex(arangodb::LogicalCollection* collection,
     output = VPackCollection::merge(tmp.slice(), b.slice(), false);
     return res;
   } else {
-    return EnsureIndexLocal(collection, indexDef, create, output);
+    return EnsureIndexLocal(exec, collection, indexDef, create, output);
   }
 }
 
@@ -514,15 +514,12 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
   return Result();
 }
 
-arangodb::Result Indexes::drop(arangodb::LogicalCollection const* collection,
+arangodb::Result Indexes::drop(ExecContext const* exec, LogicalCollection const* collection,
                                VPackSlice const& indexArg) {
 
-  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-  if (ExecContext::CURRENT != nullptr) {
+  if (exec != nullptr) {
     if (ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW ||
-        auth->canUseCollection(ExecContext::CURRENT->user(),
-                               ExecContext::CURRENT->database(),
-                               collection->name()) != AuthLevel::RW) {
+        !exec->canUseCollection(collection->name(), AuthLevel::RW)) {
       return TRI_ERROR_FORBIDDEN;
     }
   }
@@ -549,7 +546,7 @@ arangodb::Result Indexes::drop(arangodb::LogicalCollection const* collection,
     READ_LOCKER(readLocker, collection->vocbase()->_inventoryLock);
 
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(collection->vocbase()),
+        transaction::StandaloneContext::Create(collection->vocbase(), exec),
         collection->cid(), AccessMode::Type::EXCLUSIVE);
 
     Result res = trx.begin();

@@ -63,7 +63,7 @@ RocksDBExportCursor::RocksDBExportCursor(
   _collection = _collectionGuard->collection();
 
   _trx.reset(new SingleCollectionTransaction(
-      transaction::StandaloneContext::Create(_collection->vocbase()), _name,
+      transaction::StandaloneContext::Create(vocbase), _name,
       AccessMode::Type::READ));
 
   // already locked by guard above
@@ -114,12 +114,10 @@ VPackSlice RocksDBExportCursor::next() {
 size_t RocksDBExportCursor::count() const { return _size; }
 
 void RocksDBExportCursor::dump(VPackBuilder& builder) {
-  auto transactionContext =
-      std::make_shared<transaction::StandaloneContext>(_vocbaseGuard.vocbase());
-
+  auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.vocbase(),
+                                                    nullptr);
   VPackOptions const* oldOptions = builder.options;
-
-  builder.options = transactionContext->getVPackOptions();
+  builder.options = ctx->getVPackOptions();
 
   TRI_ASSERT(_iter.get() != nullptr);
 

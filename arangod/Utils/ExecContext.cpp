@@ -21,11 +21,50 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecContext.h"
+#include "GeneralServer/AuthenticationFeature.h"
+#include "StorageEngine/TransactionState.h"
+#include "Transaction/Methods.h"
+#include "VocBase/AuthInfo.h"
+#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 
-thread_local ExecContext* ExecContext::CURRENT = nullptr;
+thread_local ExecContext const* ExecContext::CURRENT = nullptr;
 
-ExecContext* ExecContext::copy() const {
+ExecContext const* ExecContext::fromTrx(transaction::Methods const* trx) {
+  if (trx != nullptr) {
+    return trx->state()->execContext();
+  }
+  return nullptr;
+}
+
+/*ExecContext* ExecContext::copy() const {
   return new ExecContext(_user, _database, _systemAuthLevel, _databaseAuthLevel);
+}*/
+
+typedef AuthenticationFeature _AF;
+
+ExecContext::ExecContext(std::string const& u, std::string const& db)
+  : _user(u),
+    _database(db),
+    _systemAuthLevel(_AF::INSTANCE->canUseDatabase(u, TRI_VOC_SYSTEM_DATABASE)),
+    _databaseAuthLevel(_AF::INSTANCE->canUseDatabase(u, db)) {}
+
+bool ExecContext::canUseDatabase(std::string const& db, AuthLevel requested) const {
+  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+  if (auth != nullptr && auth->isActive()) {
+    AuthLevel allowed = auth->authInfo()->canUseDatabase(_user, db);
+    return requested <= allowed;
+  }
+  return true;
+}
+
+bool ExecContext::canUseCollection(std::string const& db,
+                   std::string const& coll, AuthLevel requested) const {
+  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+  if (auth != nullptr && auth->isActive()) {
+    AuthLevel allowed =  auth->authInfo()->canUseCollection(_user, db, coll);
+    return requested <= allowed;
+  }
+  return true;
 }

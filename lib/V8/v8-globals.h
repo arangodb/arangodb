@@ -625,6 +625,9 @@ struct TRI_v8_global_t {
 
   /// @brief current AQL query
   void* _query;
+  
+  /// @brief execContext
+  void const* _execContext;
 
   /// @brief pointer to the vocbase (TRI_vocbase_t*)
   TRI_vocbase_t* _vocbase;

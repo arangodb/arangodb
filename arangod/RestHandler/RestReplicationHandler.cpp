@@ -592,15 +592,12 @@ void RestReplicationHandler::handleCommandRestoreData() {
 Result RestReplicationHandler::processRestoreData(
     std::string const& colName, bool useRevision) {
 
-  grantTemporaryRights();
-
   if (colName == "_users") {
     // We need to handle the _users in a special way
     return processRestoreUsersBatch(colName, useRevision);
   }
-  SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(_vocbase), colName,
-      AccessMode::Type::WRITE);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase, _request->execContext());
+  SingleCollectionTransaction trx(ctx, colName, AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
 
   Result res = trx.begin();
@@ -942,17 +939,4 @@ Result RestReplicationHandler::processRestoreDataBatch(
   }
 
   return TRI_ERROR_NO_ERROR;
-}
-
-void RestReplicationHandler::grantTemporaryRights() {
-  AuthenticationFeature* auth =
-      FeatureCacheFeature::instance()->authenticationFeature();
-  if (auth->isActive() && ExecContext::CURRENT != nullptr) {
-    AuthLevel level = auth->canUseDatabase(ExecContext::CURRENT->user(), _vocbase->name());
-    if (level == AuthLevel::RW) {
-      // If you have administrative access on this database,
-      // we grant you everything for restore.
-      ExecContext::CURRENT = nullptr;
-    }
-  }
 }

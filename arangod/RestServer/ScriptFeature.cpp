@@ -69,7 +69,7 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
 
   auto database = ApplicationServer::getFeature<DatabaseFeature>("Database");
   V8Context* context =
-      V8DealerFeature::DEALER->enterContext(database->systemDatabase(), true);
+      V8DealerFeature::DEALER->enterContext(nullptr, database->systemDatabase(), true);
 
   if (context == nullptr) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot acquire V8 context";

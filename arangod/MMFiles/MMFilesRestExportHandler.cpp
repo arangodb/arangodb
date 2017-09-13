@@ -249,7 +249,7 @@ void MMFilesRestExportHandler::createCursor() {
   // this may throw!
   auto collectionExport =
       std::make_unique<MMFilesCollectionExport>(_vocbase, name, _restrictions);
-  collectionExport->run(waitTime, limit);
+  collectionExport->run(_request->execContext(), waitTime, limit);
 
   size_t batchSize =
       arangodb::basics::VelocyPackHelper::getNumericValue<size_t>(

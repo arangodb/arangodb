@@ -21,6 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "v8-replication.h"
 #include "Basics/ReadLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
@@ -29,12 +30,12 @@
 #include "RestServer/ServerIdFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/V8Context.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-vocbaseprivate.h"
-#include "v8-replication.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Parser.h>
@@ -142,7 +143,7 @@ static void JS_LastLoggerReplication( v8::FunctionCallbackInfo<v8::Value> const&
     TRI_V8_THROW_EXCEPTION_USAGE("tickStart < tickEnd");
   }
 
-  auto transactionContext = transaction::StandaloneContext::Create(vocbase);
+  auto transactionContext = transaction::V8Context::Create(vocbase, false);
   auto builderSPtr = std::make_shared<VPackBuilder>();
   Result res = EngineSelectorFeature::ENGINE->lastLogger(
     vocbase, transactionContext, tickStart, tickEnd, builderSPtr);

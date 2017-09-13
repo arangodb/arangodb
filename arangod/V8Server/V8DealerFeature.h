@@ -35,6 +35,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class ExecContext;
 class Thread;
 class V8Context;
 
@@ -78,8 +79,8 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
                                        VPackBuilder* builder);
   void startGarbageCollection();
 
-  V8Context* enterContext(TRI_vocbase_t*, bool allowUseDatabase,
-                          ssize_t forceContext = -1);
+  V8Context* enterContext(ExecContext const* exe, TRI_vocbase_t*,
+                          bool allowUseDatabase, ssize_t forceContext = -1);
   void exitContext(V8Context*);
 
   void defineContextUpdate(
@@ -110,7 +111,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
                                   VPackBuilder* builder);
   bool loadJavaScriptFileInContext(TRI_vocbase_t*, std::string const& file, V8Context* context, VPackBuilder* builder);
   void enterContextInternal(TRI_vocbase_t* vocbase, V8Context* context, bool allowUseDatabase);
-  void enterLockedContext(TRI_vocbase_t* vocbase, V8Context* context, bool allowUseDatabase);
+  void enterLockedContext(ExecContext const*, TRI_vocbase_t*, V8Context*, bool allowUseDatabase);
   void exitContextInternal(V8Context*);
   void exitLockedContext(V8Context*);
   void applyContextUpdate(V8Context* context);

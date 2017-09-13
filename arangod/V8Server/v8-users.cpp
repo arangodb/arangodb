@@ -61,9 +61,7 @@ static bool IsSystemUser() {
 /// check ExecContext if system use
 static bool CanAccessUser(std::string const& user) {
   if (ExecContext::CURRENT != nullptr) {
-    AuthLevel level =
-    ExecContext::CURRENT->systemAuthLevel();
-    return level == AuthLevel::RW || user == ExecContext::CURRENT->user();
+    return IsSystemUser()|| user == ExecContext::CURRENT->user();
   }
   return true;
 }
@@ -170,12 +168,8 @@ static void JS_RemoveUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 1 || !args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("remove(username)");
   }
-  if (ExecContext::CURRENT != nullptr) {
-    AuthLevel level =
-        ExecContext::CURRENT->systemAuthLevel();
-    if (level != AuthLevel::RW) {
+  if (!IsSystemUser()) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
   }
 
   std::string username = TRI_ObjectToString(args[0]);
@@ -196,12 +190,8 @@ static void JS_GetUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 1 || !args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("document(username)");
   }
-  if (ExecContext::CURRENT != nullptr) {
-    AuthLevel level =
-        ExecContext::CURRENT->systemAuthLevel();
-    if (level != AuthLevel::RW) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
+  if (!IsSystemUser()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
   auto authentication =
@@ -222,12 +212,8 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() > 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("reload()");
   }
-  if (ExecContext::CURRENT != nullptr) {
-    AuthLevel level =
-        ExecContext::CURRENT->systemAuthLevel();
-    if (level != AuthLevel::RW) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
+  if (!IsSystemUser()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
   auto authentication =

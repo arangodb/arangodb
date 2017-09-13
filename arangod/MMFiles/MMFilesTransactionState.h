@@ -52,7 +52,8 @@ class TransactionCollection;
 /// @brief transaction type
 class MMFilesTransactionState final : public TransactionState {
  public:
-  MMFilesTransactionState(TRI_vocbase_t* vocbase, transaction::Options const&);
+  MMFilesTransactionState(TRI_vocbase_t* vocbase, transaction::Options const&,
+                          ExecContext const*);
   ~MMFilesTransactionState();
 
   /// @brief begin a transaction

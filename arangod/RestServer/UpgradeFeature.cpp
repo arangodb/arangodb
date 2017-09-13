@@ -162,7 +162,7 @@ void UpgradeFeature::upgradeDatabase() {
   // enter context and isolate
   {
     V8Context* context =
-        V8DealerFeature::DEALER->enterContext(systemVocbase, true, 0);
+        V8DealerFeature::DEALER->enterContext(nullptr, systemVocbase, true, 0);
 
     if (context == nullptr) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not enter context #0";

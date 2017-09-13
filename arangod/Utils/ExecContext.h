@@ -27,11 +27,16 @@
 #include "Utils/Authentication.h"
 
 namespace arangodb {
-
+namespace transaction {
+  class Methods;
+}
+  
 enum class AuthLevel;
 
 class ExecContext {
  public:
+  
+  ExecContext(std::string const& user, std::string const& database);
   ExecContext(std::string const& user, std::string const& database,
               AuthLevel systemLevel, AuthLevel dbLevel)
       : _user(user),
@@ -41,13 +46,23 @@ class ExecContext {
 
   ExecContext(ExecContext const&) = delete;
 
-  static thread_local ExecContext* CURRENT;
+  static thread_local ExecContext const* CURRENT;
+  static ExecContext const* fromTrx(transaction::Methods const*);
 
   std::string const& user() const { return _user; }
   std::string const& database() const { return _database; }
   AuthLevel systemAuthLevel() const { return _systemAuthLevel; };
   AuthLevel databaseAuthLevel() const { return _databaseAuthLevel; };
-  ExecContext* copy() const;
+  
+  bool canUseDatabase(AuthLevel requested) const {
+    return canUseDatabase(_database, requested);
+  }
+  bool canUseDatabase(std::string const& db, AuthLevel requested) const;
+  bool canUseCollection(std::string const& c, AuthLevel requested) const {
+    return canUseCollection(_database, c, requested);
+  }
+  bool canUseCollection(std::string const& db,
+                     std::string const& c, AuthLevel requested) const;
   
  private:
   std::string const _user;
