@@ -98,11 +98,17 @@ describe('Foxx service', () => {
     });
     expect(res.code).to.equal(204);
     expect(waitForJob()).to.equal(true);
-    const jobResult = db._query(aql`
-      FOR i IN foxx_queue_test
-        FILTER i.job == true
-        RETURN 1
-    `).toArray();
+
+    let retryCount = 0;
+    var jobResult = [];
+    while ((jobResult.length !== 1) && (retryCount < 50)) {
+      jobResult = db._query(aql`
+                            FOR i IN foxx_queue_test
+                            FILTER i.job == true
+                            RETURN 1
+                            `).toArray();
+      retryCount++;
+    }
     expect(jobResult.length).to.equal(1);
   });
   const waitForJob = () => {
