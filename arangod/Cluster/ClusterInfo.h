@@ -56,7 +56,7 @@ class CollectionInfoCurrent {
   friend class ClusterInfo;
 
  public:
-  CollectionInfoCurrent(uint64_t currentVersion);
+  explicit CollectionInfoCurrent(uint64_t currentVersion);
 
   CollectionInfoCurrent(CollectionInfoCurrent const&) = delete;
 

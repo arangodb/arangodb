@@ -195,7 +195,10 @@ void RocksDBCollection::load() {
   if (_cacheEnabled) {
     createCache();
     if (_cachePresent) {
-      _cache->sizeHint(0.3 * numberDocuments());
+      uint64_t numDocs = numberDocuments();
+      if (numDocs > 0) {
+        _cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
+      }
     }
   }
   READ_LOCKER(guard, _indexesLock);
@@ -229,11 +232,11 @@ TRI_voc_rid_t RocksDBCollection::revision(transaction::Methods* trx) const {
 uint64_t RocksDBCollection::numberDocuments() const { return _numberDocuments; }
 
 uint64_t RocksDBCollection::numberDocuments(transaction::Methods* trx) const {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto state = RocksDBTransactionState::toState(trx);
   auto trxCollection = static_cast<RocksDBTransactionCollection*>(
       state->findCollection(_logicalCollection->cid()));
   TRI_ASSERT(trxCollection != nullptr);
-
   return trxCollection->numberDocuments();
 }
 

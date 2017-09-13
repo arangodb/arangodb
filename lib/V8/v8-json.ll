@@ -64,7 +64,6 @@ PLUS          [+]
 
 struct jsonData {
   char const* _message;
-  TRI_memory_zone_t* _memoryZone;
 };
 
 #define YY_FATAL_ERROR(a)          \
@@ -250,19 +249,19 @@ static v8::Handle<v8::Value> ParseObject (v8::Isolate* isolate,
     if (c == STRING_CONSTANT) {
       // utf-8 attribute name
       size_t outLength;
-      char* name = TRI_UnescapeUtf8String(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength, true);
+      char* name = TRI_UnescapeUtf8String(yytext + 1, yyleng - 2, &outLength, true);
     
       if (name == nullptr) {
         yyextra._message = "out-of-memory";
         return v8::Undefined(isolate);
       }
 
-      attributeName = TRI_V8_PAIR_STRING(name, outLength);
-      TRI_FreeString(yyextra._memoryZone, name);
+      attributeName = TRI_V8_PAIR_STRING(isolate, name, outLength);
+      TRI_FreeString(name);
     }
     else if (c == STRING_CONSTANT_ASCII) {
       // ASCII-only attribute name
-      attributeName = TRI_V8_ASCII_PAIR_STRING(yytext + 1, yyleng - 2);
+      attributeName = TRI_V8_ASCII_PAIR_STRING(isolate, yytext + 1, yyleng - 2);
     }
     else {
       yyextra._message = "expecting attribute name";
@@ -362,15 +361,15 @@ static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate,
 
       // string is not empty
       size_t outLength;
-      char* ptr = TRI_UnescapeUtf8String(yyextra._memoryZone, yytext + 1, yyleng - 2, &outLength, true);
+      char* ptr = TRI_UnescapeUtf8String(yytext + 1, yyleng - 2, &outLength, true);
 
       if (ptr == nullptr || outLength == 0) {
         yyextra._message = "out-of-memory";
         return v8::Undefined(isolate);
       }
 
-      v8::Handle<v8::String> str = TRI_V8_PAIR_STRING(ptr, outLength);
-      TRI_FreeString(yyextra._memoryZone, ptr);
+      v8::Handle<v8::String> str = TRI_V8_PAIR_STRING(isolate, ptr, outLength);
+      TRI_FreeString(ptr);
 
       return str;
     }
@@ -382,7 +381,7 @@ static v8::Handle<v8::Value> ParseValue (v8::Isolate* isolate,
       }
 
       // string is not empty
-      return TRI_V8_ASCII_PAIR_STRING(yytext + 1, yyleng - 2);
+      return TRI_V8_ASCII_PAIR_STRING(isolate, yytext + 1, yyleng - 2);
     }
 
     case OPEN_BRACE: {
@@ -438,7 +437,6 @@ v8::Handle<v8::Value> TRI_FromJsonString (v8::Isolate* isolate,
   yylex_init(&scanner);
   struct yyguts_t* yyg = (struct yyguts_t*) scanner;
 
-  yyextra._memoryZone = TRI_UNKNOWN_MEM_ZONE;
   YY_BUFFER_STATE buf = yy_scan_string(text, scanner);
 
   int c = yylex(scanner);
@@ -454,7 +452,7 @@ v8::Handle<v8::Value> TRI_FromJsonString (v8::Isolate* isolate,
 
   if (error != nullptr) {
     if (yyextra._message != nullptr) {
-      *error = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, yyextra._message);
+      *error = TRI_DuplicateString(yyextra._message);
     }
     else {
       *error = nullptr;

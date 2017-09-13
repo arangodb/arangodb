@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print */
+/* global print db */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -178,6 +178,12 @@ function rubyTests (options, ssl) {
           instanceInfo.exitStatus = 'server is gone.';
           break;
         }
+
+        let collectionsBefore = [];
+        db._collections().forEach(collection => {
+          collectionsBefore.push(collection._name);
+        });
+
         const subFolder = ssl ? 'ssl_server' : 'http_server';
         const resultfn = fs.join(options.testOutputDirectory, subFolder, te + '.json');
 
@@ -231,6 +237,26 @@ function rubyTests (options, ssl) {
         }
 
         continueTesting = pu.arangod.check.instanceAlive(instanceInfo, options);
+        if (continueTesting) {
+          // Check whether some collections were left behind, and if mark test as failed.
+          let collectionsAfter = [];
+          db._collections().forEach(collection => {
+            collectionsAfter.push(collection._name);
+          });
+          let delta = tu.diffArray(collectionsBefore, collectionsAfter, _.isEqual).filter(function(name) {
+            return (name[0] !== '_'); // exclude system collections from the comparison
+          });
+          if (delta.length !== 0) {
+            result[te] = {
+              status: false,
+              message: 'Cleanup missing - test left over collections: ' + delta + '. Original test status: ' + JSON.stringify(result[te])
+            };
+            collectionsBefore = [];
+            db._collections().forEach(collection => {
+              collectionsBefore.push(collection._name);
+            });
+          }
+        }
       } else {
         if (options.extremeVerbosity) {
           print('Skipped ' + te + ' because of ' + filtered.filter);

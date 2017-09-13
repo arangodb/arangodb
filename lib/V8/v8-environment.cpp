@@ -57,7 +57,7 @@ static void EnvGetter(v8::Local<v8::String> property,
   if ((result > 0 || GetLastError() == ERROR_SUCCESS) &&
       result < sizeof(buffer)) {
     uint16_t const* two_byte_buffer = reinterpret_cast<uint16_t const*>(buffer);
-    TRI_V8_RETURN(TRI_V8_STRING_UTF16(two_byte_buffer, result));
+    TRI_V8_RETURN(TRI_V8_STRING_UTF16(isolate, two_byte_buffer, result));
   }
 #endif
   // Not found.  Fetch from prototype.
@@ -159,7 +159,7 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
     char const* var = environ[i];
     char const* s = strchr(var, '=');
     size_t const length = s ? s - var : strlen(var);
-    v8::Local<v8::String> name = TRI_V8_PAIR_STRING(var, length);
+    v8::Local<v8::String> name = TRI_V8_PAIR_STRING(isolate, var, length);
     envarr->Set(i, name);
   }
 #else  // _WIN32
@@ -182,7 +182,7 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
     }
     uint16_t const* two_byte_buffer = reinterpret_cast<uint16_t const*>(p);
     size_t const two_byte_buffer_len = s - p;
-    auto value = TRI_V8_STRING_UTF16(two_byte_buffer, (int)two_byte_buffer_len);
+    auto value = TRI_V8_STRING_UTF16(isolate, two_byte_buffer, (int)two_byte_buffer_len);
 
     envarr->Set(i, value);
     p = s + wcslen(s) + 1;
@@ -207,7 +207,7 @@ void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   v8::Handle<v8::FunctionTemplate> ft;
 
   ft = v8::FunctionTemplate::New(isolate);
-  ft->SetClassName(TRI_V8_ASCII_STRING("ENV"));
+  ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ENV"));
 
   rt = ft->InstanceTemplate();
   // rt->SetInternalFieldCount(3);
@@ -215,6 +215,6 @@ void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   rt->SetNamedPropertyHandler(EnvGetter, EnvSetter, EnvQuery, EnvDeleter,
                               EnvEnumerator, v8::Object::New(isolate));
   v8g->EnvTempl.Reset(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("ENV"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "ENV"),
                                ft->GetFunction());
 }

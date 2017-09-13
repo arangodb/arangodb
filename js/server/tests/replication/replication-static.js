@@ -101,7 +101,9 @@ function ReplicationSuite() {
     connectToSlave();
     replication.applier.stop();
 
-    internal.wait(1, false);
+    while (replication.applier.state().state.running) {
+      internal.wait(0.1, false);
+    }
 
     var includeSystem = true;
     var restrictType = "";
@@ -129,6 +131,9 @@ function ReplicationSuite() {
       restrictCollections: restrictCollections
     });
     
+    db._flushCache();
+    slaveFunc(state);
+    
     assertTrue(syncResult.hasOwnProperty('lastLogTick'));
 
     applierConfiguration = applierConfiguration || {};
@@ -150,23 +155,25 @@ function ReplicationSuite() {
       var slaveState = replication.applier.state();
       
       if (slaveState.state.lastError.errorNum > 0) {
-        console.log("slave has errored:", JSON.stringify(slaveState.state.lastError));
+        console.warn("slave has errored:", JSON.stringify(slaveState.state.lastError));
         break;
       }
 
       if (!slaveState.state.running) {
-        console.log("slave is not running");
+        // TODO: we log with level warning here for debugging. testing.js will otherwise hide the log messages
+        console.warn("slave is not running");
         break;
       }
          
       if (compareTicks(slaveState.state.lastAppliedContinuousTick, syncResult.lastLogTick) >= 0 ||
           compareTicks(slaveState.state.lastProcessedContinuousTick, syncResult.lastLogTick) >= 0) {
-        console.log("slave has caught up. syncResult.lastLogTick:", syncResult.lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick);
+        // TODO: we log with level warning here for debugging. testing.js will otherwise hide the log messages
+        console.warn("slave has caught up. syncResult.lastLogTick:", syncResult.lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick, "slaveState:", slaveState);
         break;
       }
 
       if (!printed) {
-        console.log("waiting for slave to catch up");
+        console.warn("waiting for slave to catch up");
         printed = true;
       }
       internal.wait(0.5, false);
@@ -279,10 +286,9 @@ function ReplicationSuite() {
 
       compare(
         function(state) {
-          var c = db._create(cn),
-            i;
+          var c = db._create(cn);
 
-          for (i = 0; i < 5000; ++i) {
+          for (var i = 0; i < 5000; ++i) {
             c.save({
               "value": i
             });

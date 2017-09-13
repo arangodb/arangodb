@@ -122,13 +122,9 @@ std::string buildFilename(std::string const& path, std::string const& name) {
   return result;
 }
 
-static void throwFileReadError(int fd, std::string const& filename) {
+static void throwFileReadError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
   int res = TRI_errno();
-
-  if (fd >= 0) {
-    TRI_TRACKED_CLOSE_FILE(fd);
-  }
 
   std::string message("read failed for file '" + filename + "': " +
                       strerror(res));
@@ -137,76 +133,60 @@ static void throwFileReadError(int fd, std::string const& filename) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 }
 
-std::string slurp(std::string const& filename) {
-  int fd = TRI_TRACKED_OPEN_FILE(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
-
-  if (fd == -1) {
-    throwFileReadError(fd, filename);
-  }
-
-  char buffer[10240];
-  StringBuffer result(TRI_CORE_MEM_ZONE);
-
+static void fillStringBuffer(int fd, std::string const& filename, StringBuffer& result, size_t chunkSize) {
   while (true) {
-    ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
+    if (result.reserve(chunkSize) != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+    ssize_t n = TRI_READ(fd, result.end(), static_cast<TRI_read_t>(chunkSize));
 
     if (n == 0) {
       break;
     }
 
     if (n < 0) {
-      throwFileReadError(fd, filename);
+      throwFileReadError(filename);
     }
-
-    result.appendText(buffer, n);
+    
+    result.increaseLength(n);
   }
+}
 
-  TRI_TRACKED_CLOSE_FILE(fd);
+std::string slurp(std::string const& filename) {
+  int fd = TRI_TRACKED_OPEN_FILE(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
-  std::string r(result.c_str(), result.length());
+  if (fd == -1) {
+    throwFileReadError(filename);
+  }
+  
+  TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
 
-  return r;
+  constexpr size_t chunkSize = 8192;
+  StringBuffer buffer(chunkSize, false);
+
+  fillStringBuffer(fd, filename, buffer, chunkSize);
+
+  return std::string(buffer.data(), buffer.length());
 }
 
 void slurp(std::string const& filename, StringBuffer& result) {
   int fd = TRI_TRACKED_OPEN_FILE(filename.c_str(), O_RDONLY | TRI_O_CLOEXEC);
 
   if (fd == -1) {
-    throwFileReadError(fd, filename);
+    throwFileReadError(filename);
   }
+  
+  TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
 
-  // reserve space in the output buffer
-  off_t fileSize = size(filename);
-  if (fileSize > 0) {
-    result.reserve((size_t)fileSize);
-  }
+  result.reset();
+  constexpr size_t chunkSize = 8192;
 
-  char buffer[10240];
-
-  while (true) {
-    ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
-
-    if (n == 0) {
-      break;
-    }
-
-    if (n < 0) {
-      throwFileReadError(fd, filename);
-    }
-
-    result.appendText(buffer, n);
-  }
-
-  TRI_TRACKED_CLOSE_FILE(fd);
+  fillStringBuffer(fd, filename, result, chunkSize);
 }
 
-static void throwFileWriteError(int fd, std::string const& filename) {
+static void throwFileWriteError(std::string const& filename) {
   TRI_set_errno(TRI_ERROR_SYS_ERROR);
   int res = TRI_errno();
-
-  if (fd >= 0) {
-    TRI_TRACKED_CLOSE_FILE(fd);
-  }
 
   std::string message("write failed for file '" + filename + "': " +
                       strerror(res));
@@ -221,14 +201,16 @@ void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
                                    S_IRUSR | S_IWUSR | S_IRGRP);
 
   if (fd == -1) {
-    throwFileWriteError(fd, filename);
+    throwFileWriteError(filename);
   }
+  
+  TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
 
   while (0 < len) {
-    ssize_t n = TRI_WRITE(fd, ptr, (TRI_write_t)len);
+    ssize_t n = TRI_WRITE(fd, ptr, static_cast<TRI_write_t>(len));
 
     if (n < 0) {
-      throwFileWriteError(fd, filename);
+      throwFileWriteError(filename);
     }
 
     ptr += n;
@@ -238,18 +220,15 @@ void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
   if (sync) {
     // intentionally ignore this error as there is nothing we can do about it
     TRI_fsync(fd);
-
   }
-
-  TRI_TRACKED_CLOSE_FILE(fd);
 }
 
 void spit(std::string const& filename, std::string const& content, bool sync) {
-  spit(filename, content.c_str(), content.size(), sync);
+  spit(filename, content.data(), content.size(), sync);
 }
 
 void spit(std::string const& filename, StringBuffer const& content, bool sync) {
-  spit(filename, content.c_str(), content.length(), sync);
+  spit(filename, content.data(), content.length(), sync);
 }
 
 bool remove(std::string const& fileName, int* errorNumber) {
@@ -551,36 +530,21 @@ FileResultString currentDirectory() {
 }
 
 std::string homeDirectory() {
-  char* dir = TRI_HomeDirectory();
-  std::string result = dir;
-  TRI_FreeString(TRI_CORE_MEM_ZONE, dir);
-
-  return result;
+  return TRI_HomeDirectory();
 }
 
 std::string configDirectory(char const* binaryPath) {
-  char* dir = TRI_LocateConfigDirectory(binaryPath);
+  std::string dir = TRI_LocateConfigDirectory(binaryPath);
 
-  if (dir == nullptr) {
+  if (dir.empty()) {
     return currentDirectory().result();
   }
 
-  std::string result = dir;
-  TRI_FreeString(TRI_CORE_MEM_ZONE, dir);
-
-  return result;
+  return dir;
 }
 
 std::string dirname(std::string const& name) {
-  char* result = TRI_Dirname(name.c_str());
-  std::string base;
-
-  if (result != nullptr) {
-    base = result;
-    TRI_FreeString(TRI_CORE_MEM_ZONE, result);
-  }
-
-  return base;
+  return TRI_Dirname(name);
 }
 
 void makePathAbsolute(std::string& path) {
@@ -593,7 +557,7 @@ void makePathAbsolute(std::string& path) {
 
     if (p != nullptr) {
       path = p;
-      TRI_FreeString(TRI_CORE_MEM_ZONE, p);
+      TRI_FreeString(p);
     }
   }
 }

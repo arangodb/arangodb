@@ -58,6 +58,7 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _foregroundTty = false;
   bool _forceDirect = false;
   bool _useMicrotime = false;
+  bool _showRole = false;
 
  private:
   bool _supervisor = false;

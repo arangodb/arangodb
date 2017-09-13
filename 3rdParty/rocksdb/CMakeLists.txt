@@ -20,7 +20,7 @@ if (USE_JEMALLOC)
     set(THIRDPARTY_LIBS      ${JEMALLOC_LIB})
   endif ()
 else ()
-  set(WITH_JEMALLOC OFF CACHE BOOL "enable jemalloc")
+  set(WITH_JEMALLOC OFF CACHE BOOL "enable jemalloc" FORCE)
 endif ()
 
 # snappy settings

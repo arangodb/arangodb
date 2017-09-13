@@ -146,8 +146,7 @@ void Constituent::termNoLock(term_t t) {
         result = trx.insert("election", body.slice(), options);
       } catch (std::exception const& e) {
         LOG_TOPIC(FATAL, Logger::AGENCY)
-          << "Failed to persist RAFT election ballot: " << e.what() << ". Bailing out."
-          << __FILE__ << ":" << __LINE__;
+          << "Failed to persist RAFT election ballot: " << e.what() << ". Bailing out.";
         FATAL_ERROR_EXIT();
       }
 
@@ -510,7 +509,7 @@ void Constituent::callElection() {
 
     if (steady_clock::now() >= timeout) {       // Timeout. 
       MUTEX_LOCKER(locker, _castLock);
-      follow(_term);        
+      followNoLock(_term);        
       break;
     }
 

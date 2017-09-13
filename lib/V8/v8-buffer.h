@@ -109,15 +109,15 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
       // seems object has become a FastBuffer already
       ISOLATE;
 
-      if (o->Has(TRI_V8_ASCII_STRING("offset"))) {
-        v8::Handle<v8::Value> offset = o->Get(TRI_V8_ASCII_STRING("offset"));
+      if (o->Has(TRI_V8_ASCII_STRING(isolate, "offset"))) {
+        v8::Handle<v8::Value> offset = o->Get(TRI_V8_ASCII_STRING(isolate, "offset"));
         if (offset->IsNumber()) {
           offsetValue = offset->Int32Value();
         }
       }
 
-      if (o->Has(TRI_V8_ASCII_STRING("parent"))) {
-        v8::Handle<v8::Value> parent = o->Get(TRI_V8_ASCII_STRING("parent"));
+      if (o->Has(TRI_V8_ASCII_STRING(isolate, "parent"))) {
+        v8::Handle<v8::Value> parent = o->Get(TRI_V8_ASCII_STRING(isolate, "parent"));
         if (!parent->IsObject()) {
           return nullptr;
         }
@@ -161,15 +161,15 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
       // seems object has become a FastBuffer already
       ISOLATE;
 
-      if (o->Has(TRI_V8_ASCII_STRING("length"))) {
-        v8::Handle<v8::Value> length = o->Get(TRI_V8_ASCII_STRING("length"));
+      if (o->Has(TRI_V8_ASCII_STRING(isolate, "length"))) {
+        v8::Handle<v8::Value> length = o->Get(TRI_V8_ASCII_STRING(isolate, "length"));
         if (length->IsNumber()) {
           lengthValue = length->Int32Value();
         }
       }
 
-      if (o->Has(TRI_V8_ASCII_STRING("parent"))) {
-        v8::Handle<v8::Value> parent = o->Get(TRI_V8_ASCII_STRING("parent"));
+      if (o->Has(TRI_V8_ASCII_STRING(isolate, "parent"))) {
+        v8::Handle<v8::Value> parent = o->Get(TRI_V8_ASCII_STRING(isolate, "parent"));
         if (!parent->IsObject()) {
           return 0;
         }

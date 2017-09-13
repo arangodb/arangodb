@@ -35,12 +35,12 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Cluster/SmartGraphTraverser.h"
 #endif
+#include "Graph/SingleServerTraverser.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
 #include "VocBase/ManagedDocumentResult.h"
-#include "VocBase/SingleServerTraverser.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>

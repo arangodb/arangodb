@@ -25,7 +25,7 @@
 #define ARANGODB_GRAPH_NEIGHBORSENUMERATOR_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/PathEnumerator.h"
+#include "Graph/PathEnumerator.h"
 
 #include <velocypack/Slice.h>
 

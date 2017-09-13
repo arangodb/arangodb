@@ -46,10 +46,6 @@
 #include <velocypack/Dumper.h>
 #include <velocypack/velocypack-aliases.h>
 
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Transaction/IgnoreNoAccessAqlTransaction.h"
-#endif
-
 using namespace arangodb;
 using namespace arangodb::rest;
 using namespace arangodb::aql;
@@ -897,6 +893,7 @@ std::shared_ptr<VPackBuilder> RestAqlHandler::parseVelocyPackBody() {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot parse json object";
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_CORRUPTED_JSON, "cannot parse json object");
+      return nullptr;
     }
     VPackSlice tmp = body->slice();
     if (!tmp.isObject()) {
