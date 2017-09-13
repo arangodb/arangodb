@@ -100,6 +100,33 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   void getInfoQuery(std::string const& operation, std::string const& idString);
 
  private:
+
+  // POST method for /_api/aql/setup (internal)
+  // Only available on DBServers in the Cluster.
+  // This route sets-up all the query engines required
+  // for a complete query on this server.
+  // Furthermore it directly locks all shards for this query.
+  // So after this route the query is ready to go.
+  // NOTE: As this Route LOCKS the collections, the caller
+  // is responsible to destroy those engines in a timely
+  // manner, if the engines are not called for a period
+  // of time, they will be garbage-collected and unlocked.
+  // The body is a VelocyPack with the following layout:
+  //  {
+  //    lockInfo: {
+  //      READ: [<collections to read-lock],
+  //      WRITE: [<collections to write-lock]
+  //    },
+  //    options: { < query options > },
+  //    snippets: {
+  //      <queryId: {nodes: [ <nodes>]}>
+  //    },
+  //    variables: [ <variables> ]
+  //  }
+
+  void setupClusterQuery();
+ 
+
   // Send slice as result with the given response type.
   void sendResponse(rest::ResponseCode,
                     arangodb::velocypack::Slice const, transaction::Context*);
