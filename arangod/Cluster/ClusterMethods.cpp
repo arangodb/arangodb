@@ -30,11 +30,11 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
+#include "Graph/Traverser.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/Traverser.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Buffer.h>
@@ -1707,7 +1707,7 @@ int fetchEdgesFromEngines(
         resSlice, "readIndex", 0);
     VPackSlice edges = resSlice.get("edges");
     for (auto const& e : VPackArrayIterator(edges)) {
-      VPackSlice id = e.get(StaticStrings::IdString);
+      VPackSlice id = transaction::helpers::extractIdFromDocument(e);
       StringRef idRef(id);
       auto resE = cache.find(idRef);
       if (resE == cache.end()) {
@@ -1809,7 +1809,7 @@ void fetchVerticesFromEngines(
       }
       TRI_ASSERT(result.find(key) == result.end());
       auto val = VPackBuilder::clone(pair.value);
-      VPackSlice id = val.slice().get(StaticStrings::IdString);
+      VPackSlice id = transaction::helpers::extractIdFromDocument(val.slice());
       TRI_ASSERT(id.isString());
       result.emplace(StringRef(id), val.steal());
     }
@@ -2164,11 +2164,12 @@ int modifyDocumentOnCoordinator(
         TRI_ASSERT(it.second.size() == 1);
         body = std::make_shared<std::string>(slice.toJson());
 
+        StringRef keyStr(transaction::helpers::extractKeyFromDocument(slice));
         // We send to single endpoint
         requests.emplace_back(
             "shard:" + it.first, reqType,
             baseUrl + StringUtils::urlEncode(it.first) + "/" +
-                StringUtils::urlEncode(slice.get(StaticStrings::KeyString).copyString()) + optsUrlPart,
+                StringUtils::urlEncode(keyStr.data(), keyStr.length()) + optsUrlPart,
             body);
       } else {
         reqBuilder.clear();
@@ -2683,7 +2684,7 @@ int fetchEdgesFromEngines(
         resSlice, "readIndex", 0);
     VPackSlice edges = resSlice.get("edges");
     for (auto const& e : VPackArrayIterator(edges)) {
-      VPackSlice id = e.get(StaticStrings::IdString);
+      VPackSlice id = transaction::helpers::extractIdFromDocument(e);
       StringRef idRef(id);
       auto resE = cache.find(idRef);
       if (resE == cache.end()) {

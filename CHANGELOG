@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #3106: orphan collections could not be registered in general-graph module
+
 * fixed wrong selection of the database inside the internal cluster js api
 
 * added startup option `--server.check-max-memory-mappings` to make arangod check
@@ -26,6 +28,8 @@ devel
 * fixed wrong ui cluster health information
 
 * fixed issue #3070: Add index in _jobs collection
+
+* fixed issue #3125: HTTP Foxx API JSON parsing
 
 * fixed issue #3120: Foxx queue: job isn't running when server.authentication = true
 

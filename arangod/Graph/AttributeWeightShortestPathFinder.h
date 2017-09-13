@@ -28,6 +28,7 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringRef.h"
 
+#include "Graph/EdgeDocumentToken.h"
 #include "Graph/ShortestPathFinder.h"
 #include "Graph/ShortestPathPriorityQueue.h"
 
@@ -55,14 +56,12 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
    public:
     arangodb::StringRef _vertex;
     arangodb::StringRef _predecessor;
-    std::unique_ptr<arangodb::graph::EdgeDocumentToken> _edge;
+    arangodb::graph::EdgeDocumentToken _edge;
     bool _done;
-
-    Step();
 
     Step(arangodb::StringRef const& vert,
          arangodb::StringRef const& pred, double weig,
-         std::unique_ptr<EdgeDocumentToken>&& edge);
+         EdgeDocumentToken&& edge);
 
     double weight() const { return _weight; }
 
@@ -223,7 +222,7 @@ class AttributeWeightShortestPathFinder : public ShortestPathFinder {
   void inserter(std::unordered_map<arangodb::StringRef, size_t>& candidates,
                 std::vector<Step*>& result, arangodb::StringRef const& s,
                 arangodb::StringRef const& t, double currentWeight,
-                std::unique_ptr<EdgeDocumentToken>&& edge);
+                graph::EdgeDocumentToken&& edge);
 
   void expandVertex(bool isBackward, arangodb::StringRef const& source,
                     std::vector<Step*>& result);

@@ -798,7 +798,7 @@ void ImportHelper::sendCsvBuffer() {
   }
   _firstChunk = false;
 
-  SenderThread* t = findSender();
+  SenderThread* t = findIdleSender();
   if (t != nullptr) {
     t->sendData(url, &_outputBuffer);
   }
@@ -838,7 +838,7 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
   }
   _firstChunk = false;
 
-  SenderThread* t = findSender();
+  SenderThread* t = findIdleSender();
   if (t != nullptr) {
     StringBuffer buff(TRI_UNKNOWN_MEM_ZONE, len, false);
     buff.appendText(str, len);
@@ -846,7 +846,9 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
   }
 }
 
-SenderThread* ImportHelper::findSender() {
+/// Should return an idle sender, collect all errors
+/// and return nullptr, if there was an error
+SenderThread* ImportHelper::findIdleSender() {
   while (!_senderThreads.empty()) {
     for (auto const& t : _senderThreads) {
       if (t->hasError()) {
@@ -857,11 +859,12 @@ SenderThread* ImportHelper::findSender() {
         return t.get();
       }
     }
-    usleep(100000);
+    std::this_thread::yield();
   }
   return nullptr;
 }
 
+/// Busy wait for all sender threads to finish
 void ImportHelper::waitForSenders() {
   while (!_senderThreads.empty()) {
     uint32_t numIdle = 0;
