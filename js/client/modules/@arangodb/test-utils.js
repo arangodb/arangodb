@@ -220,7 +220,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
           collectionsAfter.push(collection._name);
         });
         let delta = diffArray(collectionsBefore, collectionsAfter);
-	print(delta)
+	print(delta);
         if ((delta.length !== 0) && (! _.isEqual(delta, ['_foxxlog']))) {
           results[te] = {
             status: false,
