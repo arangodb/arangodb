@@ -258,6 +258,10 @@ void ClusterFeature::prepare() {
     reportRole(_requestedRole);
   }
 
+  if (_requestedRole == ServerState::ROLE_SINGLE) {
+    ServerState::instance()->forceRole(_requestedRole);
+  }
+
   ServerState::instance()->setClusterEnabled();
 
   // register the prefix with the communicator
@@ -307,13 +311,14 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
+/* TODO: do we need to re-enable this check?
   if (role == ServerState::ROLE_SINGLE) {
     LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "determined single-server role for server '" << _myId
                << "'. Please check the configurarion in the agency ("
                << endpoints << ")";
     FATAL_ERROR_EXIT();
   }
-
+*/
   if (_myId.empty()) {
     _myId = ServerState::instance()->getId();  // has been set by getRole!
   }
@@ -364,10 +369,6 @@ void ClusterFeature::prepare() {
   
 }
 
-// YYY #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-// YYY #warning FRANK split into methods
-// YYY #endif
-
 void ClusterFeature::start() {
   // return if cluster is disabled
   if (!_enableCluster) {
@@ -391,7 +392,7 @@ void ClusterFeature::start() {
   LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) << "Cluster feature is turned on. Agency version: " << version
             << ", Agency endpoints: " << endpoints << ", server id: '" << _myId
             << "', internal address: " << _myAddress
-            << ", role: " << ServerState::roleToString(role);
+            << ", role: " << role;
 
   if (!_disableHeartbeat) {
     AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs");

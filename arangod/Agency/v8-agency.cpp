@@ -154,8 +154,7 @@ static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
     try {
       max_index = *std::max_element(ret.indices.begin(), ret.indices.end());
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__
-                                      << __LINE__;
+      LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
     }
 
     if (max_index > 0) {

@@ -175,26 +175,8 @@ void HeartbeatThread::runBackgroundJob() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::run() {
-  if (ServerState::instance()->isCoordinator()) {
-    runCoordinator();
-  } else if (ServerState::instance()->isDBServer()) {
-    runDBServer();
-  } else if (ServerState::instance()->isSingleServer()) {
-    runSingleServer();
-  } else {
-    LOG_TOPIC(ERR, Logger::FIXME) << "invalid role setup found when starting HeartbeatThread";
-    TRI_ASSERT(false);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief heartbeat main loop, dbserver version
-////////////////////////////////////////////////////////////////////////////////
-
-void HeartbeatThread::runDBServer() {
-  LOG_TOPIC(TRACE, Logger::HEARTBEAT)
-      << "starting heartbeat thread (DBServer version)";
-
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
+  
   // mop: the heartbeat thread itself is now ready
   setReady();
   // mop: however we need to wait for the rest server here to come up
@@ -202,14 +184,41 @@ void HeartbeatThread::runDBServer() {
   // think
   // ohhh the dbserver is online...pump some documents into it
   // which fails when it is still in maintenance mode
-  while (arangodb::rest::RestHandlerFactory::isMaintenance()) {
-    usleep(100000);
+  if (!ServerState::instance()->isCoordinator(role)) {
+    while (arangodb::rest::RestHandlerFactory::isMaintenance()) {
+      if (isStopping()) {
+        // startup aborted
+        return;
+      } 
+      usleep(100000);
+    }
   }
+  
+  LOG_TOPIC(TRACE, Logger::HEARTBEAT)
+      << "starting heartbeat thread (" << role << ")";
 
+  if (ServerState::instance()->isCoordinator(role)) {
+    runCoordinator();
+  } else if (ServerState::instance()->isDBServer(role)) {
+    runDBServer();
+  } else if (ServerState::instance()->isSingleServer(role)) {
+    runSingleServer();
+  } else {
+    LOG_TOPIC(ERR, Logger::FIXME) << "invalid role setup found when starting HeartbeatThread";
+    TRI_ASSERT(false);
+  }
+  
+  LOG_TOPIC(TRACE, Logger::HEARTBEAT)
+      << "stopped heartbeat thread (" << role << ")";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief heartbeat main loop, dbserver version
+////////////////////////////////////////////////////////////////////////////////
+
+void HeartbeatThread::runDBServer() {
   // convert timeout to seconds
   double const interval = (double)_interval / 1000.0 / 1000.0;
-
-  
 
   std::function<bool(VPackSlice const& result)> updatePlan =
     [=](VPackSlice const& result) {
@@ -262,8 +271,6 @@ void HeartbeatThread::runDBServer() {
   while (!isStopping()) {
 
     try {
-      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "sending heartbeat to agency";
-
       double const start = TRI_microtime();
       // send our state to the agency.
       // we don't care if this fails
@@ -296,14 +303,8 @@ void HeartbeatThread::runDBServer() {
           VPackSlice agentPool =
             result.slice()[0].get(
               std::vector<std::string>({".agency","pool"}));
+          updateAgentPool(agentPool);
 
-          if (agentPool.isObject() && agentPool.hasKey("size") &&
-              agentPool.get("size").getUInt() > 1) {
-            _agency.updateEndpoints(agentPool);
-          } else {
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Cannot find an agency persisted in RAFT 8|";
-          }
-          
           VPackSlice shutdownSlice =
               result.slice()[0].get(std::vector<std::string>(
                   {AgencyCommManager::path(), "Shutdown"}));
@@ -395,8 +396,6 @@ void HeartbeatThread::runDBServer() {
   }
 
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
-  LOG_TOPIC(TRACE, Logger::HEARTBEAT)
-      << "stopped heartbeat thread (DBServer version)";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -404,28 +403,9 @@ void HeartbeatThread::runDBServer() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::runSingleServer() {
-  LOG_TOPIC(TRACE, Logger::HEARTBEAT)
-      << "starting heartbeat thread (single server version)";
-
-  // mop: the heartbeat thread itself is now ready
-  setReady();
-  // mop: however we need to wait for the rest server here to come up
-  // otherwise we would already create collections and the coordinator would
-  // think
-  // ohhh the dbserver is online...pump some documents into it
-  // which fails when it is still in maintenance mode
-  while (arangodb::rest::RestHandlerFactory::isMaintenance()) {
-    usleep(100000);
-  }
-
-  // convert timeout to seconds
-  // double const interval = (double)_interval / 1000.0 / 1000.0;
-
   while (!isStopping()) {
 
     try {
-      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "sending heartbeat to agency";
-
       // send our state to the agency.
       // we don't care if this fails
       sendState();
@@ -435,7 +415,26 @@ void HeartbeatThread::runSingleServer() {
       }
 
       // TODO: implement the actual heartbeat
-      usleep(100000);
+      AgencyReadTransaction trx(
+        std::vector<std::string>({
+            AgencyCommManager::path("Current/Version"),
+            AgencyCommManager::path("Sync/Commands", _myId),
+            "/.agency"}));
+
+      AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
+    
+      if (!result.successful()) {
+        LOG_TOPIC(WARN, Logger::HEARTBEAT)
+            << "Heartbeat: Could not read from agency!";
+      } else {
+        VPackSlice agentPool =
+          result.slice()[0].get(
+            std::vector<std::string>({".agency","pool"}));
+        updateAgentPool(agentPool);
+      }
+
+      // TODO: implement the actual heartbeat
+      usleep(1000000);
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "Got an exception in single server heartbeat: " << e.what();
@@ -444,9 +443,6 @@ void HeartbeatThread::runSingleServer() {
           << "Got an unknown exception in single server heartbeat";
     }
   }
-
-  LOG_TOPIC(TRACE, Logger::HEARTBEAT)
-      << "stopped heartbeat thread (single server version)";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -458,8 +454,6 @@ void HeartbeatThread::runCoordinator() {
       application_features::ApplicationServer::getFeature<
           AuthenticationFeature>("Authentication");
   TRI_ASSERT(authentication != nullptr);
-  LOG_TOPIC(TRACE, Logger::HEARTBEAT)
-      << "starting heartbeat thread (coordinator version)";
 
   uint64_t oldUserVersion = 0;
 
@@ -473,12 +467,8 @@ void HeartbeatThread::runCoordinator() {
   // last value of current which we have noticed:
   uint64_t lastCurrentVersionNoticed = 0;
 
-  setReady();
-
   while (!isStopping()) {
     try {
-      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "sending heartbeat to agency";
-
       double const start = TRI_microtime();
       // send our state to the agency.
       // we don't care if this fails
@@ -505,16 +495,11 @@ void HeartbeatThread::runCoordinator() {
             << "Heartbeat: Could not read from agency!";
       } else {
 
-          VPackSlice agentPool =
-            result.slice()[0].get(
-              std::vector<std::string>({".agency","pool"}));
-          if (agentPool.isObject() && agentPool.hasKey("size") &&
-              agentPool.get("size").getUInt() > 1) {
-            _agency.updateEndpoints(agentPool);
-          } else {
-            LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Cannot find an agency persisted in RAFT 8|";
-          }
-        
+        VPackSlice agentPool =
+          result.slice()[0].get(
+            std::vector<std::string>({".agency","pool"}));
+        updateAgentPool(agentPool);
+
         VPackSlice shutdownSlice = result.slice()[0].get(
             std::vector<std::string>({AgencyCommManager::path(), "Shutdown"}));
 
@@ -675,8 +660,6 @@ void HeartbeatThread::runCoordinator() {
           << "Got an unknown exception in coordinator heartbeat";
     }
   }
-
-  LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "stopped heartbeat thread";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -929,6 +912,8 @@ bool HeartbeatThread::handleStateChange(AgencyCommResult& result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool HeartbeatThread::sendState() {
+  LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "sending heartbeat to agency";
+
   const AgencyCommResult result = _agency.sendServerState(0.0);
   //      8.0 * static_cast<double>(_interval) / 1000.0 / 1000.0);
 
@@ -947,4 +932,13 @@ bool HeartbeatThread::sendState() {
   }
 
   return false;
+}
+
+void HeartbeatThread::updateAgentPool(VPackSlice const& agentPool) {
+  if (agentPool.isObject() && agentPool.hasKey("size") &&
+      agentPool.get("size").getUInt() > 1) {
+    _agency.updateEndpoints(agentPool);
+  } else {
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Cannot find an agency persisted in RAFT 8|";
+  }
 }
