@@ -243,11 +243,13 @@ function rubyTests (options, ssl) {
           db._collections().forEach(collection => {
             collectionsAfter.push(collection._name);
           });
-          let delta = tu.diffArray(collectionsBefore, collectionsAfter, _.isEqual);
+          let delta = tu.diffArray(collectionsBefore, collectionsAfter, _.isEqual).filter(function(name) {
+            return (name[0] !== '_'); // exclude system collections from the comparison
+          });
           if (delta.length !== 0) {
             result[te] = {
               status: false,
-              message: 'Cleanup missing - test left over collections! [' + delta + '] - Original test status: ' + JSON.stringify(result[te])
+              message: 'Cleanup missing - test left over collections: ' + delta + '. Original test status: ' + JSON.stringify(result[te])
             };
             collectionsBefore = [];
             db._collections().forEach(collection => {

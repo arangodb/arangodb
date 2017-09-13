@@ -42,7 +42,6 @@
   TRI_csv_parser_t parser;                                            \
                                                                       \
   TRI_InitCsvParser(&parser,                                          \
-                    TRI_UNKNOWN_MEM_ZONE,                             \
                     &CCsvSetup::ProcessCsvBegin,                      \
                     &CCsvSetup::ProcessCsvAdd,                        \
                     &CCsvSetup::ProcessCsvEnd,                        \

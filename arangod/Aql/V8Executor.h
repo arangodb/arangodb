@@ -47,7 +47,7 @@ struct V8Expression;
 class V8Executor {
  public:
   /// @brief create the executor
-  explicit V8Executor(int64_t);
+  explicit V8Executor(int64_t literalSizeThreshold);
 
   /// @brief destroy the executor
   ~V8Executor();
@@ -58,9 +58,6 @@ class V8Executor {
 
   /// @brief executes an expression directly
   int executeExpression(Query*, AstNode const*, arangodb::velocypack::Builder&);
-
-  /// @brief returns a reference to a built-in function
-  Function const* getFunctionByName(std::string const&);
 
   /// @brief checks if a V8 exception has occurred and throws an appropriate C++
   /// exception from it if so
@@ -73,7 +70,7 @@ class V8Executor {
   /// @brief traverse the expression and note all (big) array/object literals
   void detectConstantValues(AstNode const*, AstNodeType);
 
-  /// @brief convert an AST node to a V8 object
+  /// @brief convert an AST value node to a V8 object
   v8::Handle<v8::Value> toV8(v8::Isolate*, AstNode const*) const;
 
   /// @brief generate JavaScript code for an arbitrary expression
@@ -154,6 +151,10 @@ class V8Executor {
   arangodb::basics::StringBuffer* initializeBuffer();
 
  private:
+  /// @brief minimum number of array members / object attributes for considering
+  /// an array / object literal "big" and pulling it out of the expression
+  static constexpr size_t defaultLiteralSizeThreshold = 32;
+
   /// @brief a string buffer used for operations
   arangodb::basics::StringBuffer* _buffer;
 
@@ -165,11 +166,6 @@ class V8Executor {
 
   /// @brief local value for literal object size threshold
   size_t const _literalSizeThreshold;
-
- public:
-  /// @brief minimum number of array members / object attributes for considering
-  /// an array / object literal "big" and pulling it out of the expression
-  static size_t const DefaultLiteralSizeThreshold;
 
 };
 }

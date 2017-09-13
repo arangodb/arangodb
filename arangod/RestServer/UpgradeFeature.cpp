@@ -193,20 +193,20 @@ void UpgradeFeature::upgradeDatabase() {
 
           v8::Handle<v8::Object> args = v8::Object::New(context->_isolate);
 
-          args->Set(TRI_V8_ASCII_STRING2(context->_isolate, "upgrade"),
+          args->Set(TRI_V8_ASCII_STRING(context->_isolate, "upgrade"),
                     v8::Boolean::New(context->_isolate, _upgrade));
 
 
           localContext->Global()->Set(
-              TRI_V8_ASCII_STRING2(context->_isolate, "UPGRADE_ARGS"), args);
+              TRI_V8_ASCII_STRING(context->_isolate, "UPGRADE_ARGS"), args);
 
           bool ok = TRI_UpgradeDatabase(vocbase, localContext);
 
           if (!ok) {
-            if (localContext->Global()->Has(TRI_V8_ASCII_STRING2(
+            if (localContext->Global()->Has(TRI_V8_ASCII_STRING(
                     context->_isolate, "UPGRADE_STARTED"))) {
             
-              uint64_t upgradeType = TRI_ObjectToUInt64(localContext->Global()->Get(TRI_V8_ASCII_STRING2(context->_isolate, "UPGRADE_TYPE")), false);
+              uint64_t upgradeType = TRI_ObjectToUInt64(localContext->Global()->Get(TRI_V8_ASCII_STRING(context->_isolate, "UPGRADE_TYPE")), false);
 
               localContext->Exit();
   // 0 = undecided

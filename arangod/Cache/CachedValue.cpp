@@ -75,17 +75,17 @@ void CachedValue::operator delete(void* ptr) {
 }
 
 CachedValue::CachedValue(size_t off, void const* k, size_t kSize,
-                         void const* v, size_t vSize)
+                         void const* v, size_t vSize) noexcept
   : _refCount(0),
     _keySize(static_cast<uint32_t>(kSize + (off << _offsetShift))),
-    _valueSize(vSize) {
+    _valueSize(static_cast<uint32_t>(vSize)) {
   std::memcpy(const_cast<uint8_t*>(key()), k, kSize);
   if (vSize > 0) {
     std::memcpy(const_cast<uint8_t*>(value()), v, vSize);
   }
 }
 
-CachedValue::CachedValue(CachedValue const& other)
+CachedValue::CachedValue(CachedValue const& other) noexcept
   : _refCount(0),
     _keySize(other._keySize),
     _valueSize(other._valueSize) {

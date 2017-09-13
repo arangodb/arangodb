@@ -148,9 +148,9 @@ void QueryList::remove(Query* query) {
         }
       }
       if (loadTime >= 0.1) {
-        LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << bindParameters << ", took: " << Logger::FIXED(now - started) << ", loading took: " << Logger::FIXED(loadTime);
+        LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << "'" << bindParameters << ", took: " << Logger::FIXED(now - started) << ", loading took: " << Logger::FIXED(loadTime);
       } else {
-        LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << bindParameters << ", took: " << Logger::FIXED(now - started);
+        LOG_TOPIC(WARN, Logger::QUERIES) << "slow query: '" << q << "'" << bindParameters << ", took: " << Logger::FIXED(now - started);
       }
 
       _slow.emplace_back(QueryEntryCopy(

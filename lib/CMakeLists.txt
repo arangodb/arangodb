@@ -186,7 +186,6 @@ add_library(${LIB_ARANGO} STATIC
   Logger/LogAppender.cpp
   Logger/LogAppenderFile.cpp
   Logger/LogAppenderSyslog.cpp
-  Logger/LogAppenderTty.cpp
   Logger/LogBuffer.cpp
   Logger/LogLevel.cpp
   Logger/LogThread.cpp

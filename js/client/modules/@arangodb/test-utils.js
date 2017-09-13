@@ -219,12 +219,14 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         db._collections().forEach(collection => {
           collectionsAfter.push(collection._name);
         });
-        let delta = diffArray(collectionsBefore, collectionsAfter);
+        let delta = diffArray(collectionsBefore, collectionsAfter).filter(function(name) {
+          return (name[0] !== '_'); // exclude system collections from the comparison
+        });
 	print(delta);
-        if ((delta.length !== 0) && (! _.isEqual(delta, ['_foxxlog']))) {
+        if (delta.length !== 0) {
           results[te] = {
             status: false,
-            message: 'Cleanup missing - test left over collections! [' + delta + '] - Original test status: ' + JSON.stringify(results[te])
+            message: 'Cleanup missing - test left over collections: ' + delta + '. Original test status: ' + JSON.stringify(results[te])
           };
           collectionsBefore = [];
           db._collections().forEach(collection => {

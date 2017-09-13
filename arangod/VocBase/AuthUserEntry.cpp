@@ -97,8 +97,8 @@ static int HexHashFromData(std::string const& hashMethod,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
+  TRI_DEFER(TRI_FreeString(hex));
   outHash = std::string(hex, hexLen);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, hex);
   return TRI_ERROR_NO_ERROR;
 }
 

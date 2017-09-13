@@ -41,6 +41,8 @@ class V8Context;
 class V8DealerFeature final : public application_features::ApplicationFeature {
  public:
   static V8DealerFeature* DEALER;
+  static constexpr ssize_t ANY_CONTEXT = -1;
+  static constexpr ssize_t ANY_CONTEXT_OR_PRIORITY = -2;
 
  public:
   explicit V8DealerFeature(application_features::ApplicationServer* server);
@@ -78,16 +80,29 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
                                        VPackBuilder* builder);
   void startGarbageCollection();
 
+  /// @brief forceContext == -1 means that any free context may be
+  /// picked, or a new one will be created if we have not exceeded
+  /// the maximum number of contexts
+  /// forceContext == -2 means that any free context may be picked, 
+  /// or a new one will be created if we have not exceeded or exactly
+  /// reached the maximum number of contexts. this can be used to
+  /// force the creation of another context for high priority tasks
+  /// forceContext >= 0 means picking the context with that exact id 
   V8Context* enterContext(TRI_vocbase_t*, bool allowUseDatabase,
-                          ssize_t forceContext = -1);
+                          ssize_t forceContext = ANY_CONTEXT);
   void exitContext(V8Context*);
 
   void defineContextUpdate(
       std::function<void(v8::Isolate*, v8::Handle<v8::Context>, size_t)>,
       TRI_vocbase_t*);
-  void setMinimumContexts(size_t nr) { _minimumContexts = nr; }
+
+  void setMinimumContexts(size_t nr) { 
+    if (_nrMinContexts < nr) {
+      _nrMinContexts = nr;
+    }
+  }
+
   void setNumberContexts(size_t nr) { _forceNrContexts = nr; }
-  void increaseContexts() { ++_nrAdditionalContexts; }
 
   void defineBoolean(std::string const& name, bool value) {
     _definedBooleans[name] = value;
@@ -129,8 +144,6 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   std::vector<V8Context*> _freeContexts;
   std::vector<V8Context*> _dirtyContexts;
   std::unordered_set<V8Context*> _busyContexts;
-  size_t _nrAdditionalContexts;
-  size_t _minimumContexts;
   size_t _forceNrContexts;
   size_t _contextsModificationBlockers;
 
