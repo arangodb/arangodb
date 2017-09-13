@@ -866,17 +866,28 @@ TRI_vocbase_t* RocksDBEngine::createDatabase(
 
 int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
                                              VPackSlice const& slice) {
+  Result res = writeDatabaseMarker(id, slice,
+                                           RocksDBLogValue::DatabaseCreate(id));
+  return res.errorNumber();
+}
+
+Result RocksDBEngine::writeDatabaseMarker(TRI_voc_tick_t id,
+                                          VPackSlice const& slice,
+                                          RocksDBLogValue&& logValue) {
   RocksDBKey key;
   key.constructDatabase(id);
   auto value = RocksDBValue::Database(slice);
-  rocksdb::WriteOptions options;  // TODO: check which options would make sense
-
-  rocksdb::Status res = _db->Put(options, RocksDBColumnFamily::definitions(),
-                                 key.string(), value.string());
-  auto result = rocksutils::convertStatus(res);
-  return result.errorNumber();
+  rocksdb::WriteOptions wo;  // TODO: check which options would make sense
+  
+  // Write marker + key into RocksDB inside one batch
+  rocksdb::WriteBatch batch;
+  batch.PutLogData(logValue.slice());
+  batch.Put(RocksDBColumnFamily::definitions(),
+            key.string(), value.string());
+  rocksdb::Status res = _db->Write(wo, &batch);
+  return rocksutils::convertStatus(res);
 }
-
+  
 int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
                                                TRI_voc_cid_t cid,
                                                VPackSlice const& slice,
@@ -884,13 +895,13 @@ int RocksDBEngine::writeCreateCollectionMarker(TRI_voc_tick_t databaseId,
   RocksDBKey key;
   key.constructCollection(databaseId, cid);
   auto value = RocksDBValue::Collection(slice);
-  rocksdb::WriteOptions options;  // TODO: check which options would make sense
+  rocksdb::WriteOptions wo;  // TODO: check which options would make sense
 
   // Write marker + key into RocksDB inside one batch
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
   batch.Put(RocksDBColumnFamily::definitions(), key.string(), value.string());
-  rocksdb::Status res = _db->Write(options, &batch);
+  rocksdb::Status res = _db->Write(wo, &batch);
 
   auto result = rocksutils::convertStatus(res);
   return result.errorNumber();
@@ -905,7 +916,10 @@ void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase,
   builder.add("deleted", VPackValue(true));
   builder.close();
 
-  status = writeCreateDatabaseMarker(vocbase->id(), builder.slice());
+  auto log = RocksDBLogValue::DatabaseDrop(vocbase->id());
+  Result res = writeDatabaseMarker(vocbase->id(), builder.slice(),
+                                           std::move(log));
+  status = res.errorNumber();
 }
 
 Result RocksDBEngine::dropDatabase(TRI_vocbase_t* database) {
@@ -1483,11 +1497,11 @@ void RocksDBEngine::addSystemDatabase() {
   builder.add("deleted", VPackValue(false));
   builder.close();
 
-  int res = writeCreateDatabaseMarker(id, builder.slice());
-
-  if (res != TRI_ERROR_NO_ERROR) {
+  RocksDBLogValue log = RocksDBLogValue::DatabaseCreate(id);
+  Result res = writeDatabaseMarker(id, builder.slice(), std::move(log));
+  if (res.fail()) {
     LOG_TOPIC(FATAL, arangodb::Logger::STARTUP)
-        << "unable to write database marker: " << TRI_errno_string(res);
+        << "unable to write database marker: " << res.errorMessage();
     FATAL_ERROR_EXIT();
   }
 }

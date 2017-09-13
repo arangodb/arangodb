@@ -66,6 +66,9 @@ typedef enum {
 
   REPLICATION_STOP = 1000,   // not used in ArangoDB 2.2 and higher
   REPLICATION_START = 1001,  // not used in ArangoDB 2.2 and higher
+  
+  DATABASE_CREATE = 1100,
+  DATABASE_DROP = 1101,
 
   REPLICATION_COLLECTION_CREATE = 2000,
   REPLICATION_COLLECTION_DROP = 2001,

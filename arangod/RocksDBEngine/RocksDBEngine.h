@@ -97,12 +97,12 @@ class RocksDBEngine final : public StorageEngine {
 
   // create storage-engine specific collection
   PhysicalCollection* createPhysicalCollection(LogicalCollection*,
-                                               VPackSlice const&) override;
+                                               velocypack::Slice const&) override;
 
   // create storage-engine specific view
-  PhysicalView* createPhysicalView(LogicalView*, VPackSlice const&) override;
+  PhysicalView* createPhysicalView(LogicalView*, velocypack::Slice const&) override;
 
-  void getStatistics(VPackBuilder& builder) const override;
+  void getStatistics(velocypack::Builder& builder) const override;
 
   // inventory functionality
   // -----------------------
@@ -136,26 +136,25 @@ class RocksDBEngine final : public StorageEngine {
                      std::string const& collectionName, TRI_voc_tick_t maxTick,
                      std::string& errorMsg) override;
   Result createLoggerState(TRI_vocbase_t* vocbase,
-                           VPackBuilder& builder) override;
-  Result createTickRanges(VPackBuilder& builder) override;
+                           velocypack::Builder& builder) override;
+  Result createTickRanges(velocypack::Builder& builder) override;
   Result firstTick(uint64_t& tick) override;
   Result lastLogger(TRI_vocbase_t* vocbase,
                     std::shared_ptr<transaction::Context>, uint64_t tickStart,
                     uint64_t tickEnd,
-                    std::shared_ptr<VPackBuilder>& builderSPtr) override;
+                    std::shared_ptr<velocypack::Builder>& builderSPtr) override;
   // database, collection and index management
   // -----------------------------------------
 
   void waitForSync(TRI_voc_tick_t tick) override;
 
-  virtual TRI_vocbase_t* openDatabase(
-      arangodb::velocypack::Slice const& parameters, bool isUpgrade,
-      int&) override;
+  virtual TRI_vocbase_t* openDatabase(velocypack::Slice const& parameters,
+                                      bool isUpgrade, int&) override;
   TRI_vocbase_t* createDatabase(TRI_voc_tick_t id,
                                 arangodb::velocypack::Slice const& args,
                                 int& status) override;
   int writeCreateDatabaseMarker(TRI_voc_tick_t id,
-                                VPackSlice const& slice) override;
+                                velocypack::Slice const& slice) override;
   void prepareDropDatabase(TRI_vocbase_t* vocbase, bool useWriteMarker,
                            int& status) override;
   Result dropDatabase(TRI_vocbase_t* database) override;
@@ -221,8 +220,10 @@ class RocksDBEngine final : public StorageEngine {
 
   rocksdb::TransactionDB* db() const { return _db; }
 
+  Result writeDatabaseMarker(TRI_voc_tick_t id, velocypack::Slice const& slice,
+                             RocksDBLogValue&& logValue);
   int writeCreateCollectionMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t id,
-                                  VPackSlice const& slice,
+                                  velocypack::Slice const& slice,
                                   RocksDBLogValue&& logValue);
 
   void addCollectionMapping(uint64_t, TRI_voc_tick_t, TRI_voc_cid_t);

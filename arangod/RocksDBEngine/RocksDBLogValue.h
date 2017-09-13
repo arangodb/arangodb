@@ -43,7 +43,7 @@ class RocksDBLogValue {
   // parameter in an appropriate format into the underlying string buffer.
   //----------------------------------------------------------------------------
 
-  static RocksDBLogValue DatabaseCreate();
+  static RocksDBLogValue DatabaseCreate(TRI_voc_tick_t dbid);
   static RocksDBLogValue DatabaseDrop(TRI_voc_tick_t vocbaseId);
   static RocksDBLogValue CollectionCreate(TRI_voc_tick_t vocbaseId,
                                           TRI_voc_cid_t cid);

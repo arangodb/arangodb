@@ -30,8 +30,8 @@
 using namespace arangodb;
 using namespace arangodb::rocksutils;
 
-RocksDBLogValue RocksDBLogValue::DatabaseCreate() {
-  return RocksDBLogValue(RocksDBLogType::DatabaseCreate);
+RocksDBLogValue RocksDBLogValue::DatabaseCreate(TRI_voc_tick_t dbid) {
+  return RocksDBLogValue(RocksDBLogType::DatabaseCreate, dbid);
 }
 
 RocksDBLogValue RocksDBLogValue::DatabaseDrop(TRI_voc_tick_t dbid) {
@@ -120,6 +120,7 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type) : _buffer() {
 RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t val)
     : _buffer() {
   switch (type) {
+    case RocksDBLogType::DatabaseCreate:
     case RocksDBLogType::DatabaseDrop:
     case RocksDBLogType::DocumentOperationsPrologue: {
       _buffer.reserve(sizeof(RocksDBLogType) + sizeof(uint64_t));
