@@ -139,7 +139,10 @@ void RocksDBPrimaryIndex::load() {
   if (useCache()) {
     // FIXME: make the factor configurable
     RocksDBCollection* rdb = static_cast<RocksDBCollection*>(_collection->getPhysical());
-    _cache->sizeHint(0.3 * rdb->numberDocuments());
+    uint64_t numDocs = rdb->numberDocuments();
+    if (numDocs > 0) {
+      _cache->sizeHint(static_cast<double>(0.3 * numDocs));
+    }
   }
 }
 
