@@ -213,7 +213,7 @@ ExecutionEngine* EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     // This deletes query, engine and entry in QueryRegistry
     throw;
   }
-  
+
   return engine.release();
 }
 
@@ -262,8 +262,12 @@ ExecutionEngine* EngineInfoContainerCoordinator::buildEngines(
 // -----------------------------------------------------------------------------
 
 EngineInfoContainerDBServer::EngineInfo::EngineInfo(
-    std::vector<ExecutionNode*>& nodes, size_t idOfRemoteNode)
-    : _nodes(nodes), _idOfRemoteNode(idOfRemoteNode), _otherId(0) {
+    std::vector<ExecutionNode*>& nodes, size_t idOfRemoteNode,
+    Collection* collection)
+    : _nodes(nodes),
+      _idOfRemoteNode(idOfRemoteNode),
+      _otherId(0),
+      _collection(collection) {
   TRI_ASSERT(!_nodes.empty());
   LOG_TOPIC(DEBUG, Logger::AQL) << "Create DBServer Engine";
 }
@@ -273,13 +277,16 @@ EngineInfoContainerDBServer::EngineInfo::~EngineInfo() {
   LOG_TOPIC(DEBUG, Logger::AQL) << "Destroying DBServer Engine";
   // This container is not responsible for nodes
   // they are managed by the AST somewhere else
+  // We are also not responsible for the collection.
 }
 
 EngineInfoContainerDBServer::EngineInfo::EngineInfo(EngineInfo const&& other)
     : _nodes(std::move(other._nodes)),
       _idOfRemoteNode(other._idOfRemoteNode),
-      _otherId(other._otherId) {
+      _otherId(other._otherId),
+      _collection(other._collection) {
   TRI_ASSERT(!_nodes.empty());
+  TRI_ASSERT(_collection != nullptr);
 }
 
 void EngineInfoContainerDBServer::EngineInfo::connectQueryId(QueryId id) {
@@ -287,24 +294,57 @@ void EngineInfoContainerDBServer::EngineInfo::connectQueryId(QueryId id) {
 }
 
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
-    ShardID id, VPackBuilder& infoBuilder) const {
+    Query* query, ShardID id, VPackBuilder& infoBuilder) const {
   // The Key is required to build up the queryId mapping later
-  infoBuilder.add(VPackValue(_idOfRemoteNode + ":" + id));
+  infoBuilder.add(VPackValue(
+      arangodb::basics::StringUtils::itoa(_idOfRemoteNode) + ":" + id));
+
   TRI_ASSERT(!_nodes.empty());
-  // TODO: Well do we need to clone?!
-  auto last = _nodes.back();
-  // Only the LAST node can be a REMOTE node.
-  // Inject the Shard. And Start Velocypack from there
-  if (last->getType() == ExecutionNode::REMOTE) {
-    auto rem = static_cast<RemoteNode*>(last);
-    rem->server("server:" + arangodb::ServerState::instance()->getId());
-    rem->ownName(id);
-    rem->queryId(_otherId);
-    // Do we need this still?
-    rem->isResponsibleForInitializeCursor(false);
+  // copy the relevant fragment of the plan for each shard
+  // Note that in these parts of the query there are no SubqueryNodes,
+  // since they are all on the coordinator!
+  // Also note: As _collection is set to the correct current shard
+  // this clone does the translation collection => shardId implicitly
+  // at the relevant parts of the query.
+
+  _collection->setCurrentShard(id);
+
+  ExecutionPlan plan(query->ast());
+  ExecutionNode* previous = nullptr;
+
+  for (ExecutionNode const* current : _nodes) {
+    auto clone = current->clone(&plan, false, false);
+    // UNNECESSARY, because clone does it: plan.registerNode(clone);
+
+    if (current->getType() == ExecutionNode::REMOTE) {
+      auto rem = static_cast<RemoteNode*>(clone);
+      // update the remote node with the information about the query
+      rem->server("server:" + arangodb::ServerState::instance()->getId());
+      rem->ownName(id);
+      rem->queryId(_otherId);
+
+      // only one of the remote blocks is responsible for forwarding the
+      // initializeCursor and shutDown requests
+      // for simplicity, we always use the first remote block if we have more
+      // than one
+
+      // Do we still need this???
+      rem->isResponsibleForInitializeCursor(false);
+    }
+
+    if (previous != nullptr) {
+      previous->addDependency(clone);
+    }
+
+    previous = clone;
   }
+  TRI_ASSERT(previous != nullptr);
+
+  plan.root(previous);
+  plan.setVarUsageComputed();
   // Always Verbose
-  last->toVelocyPack(infoBuilder, true);
+  plan.root()->toVelocyPack(infoBuilder, true);
+  _collection->resetCurrentShard();
 }
 
 EngineInfoContainerDBServer::EngineInfoContainerDBServer()
@@ -327,7 +367,7 @@ void EngineInfoContainerDBServer::addQuerySnippet(
     // How can this happen?
     return;
   }
-  Collection const* collection = nullptr;
+  Collection* collection = nullptr;
   auto handleCollection = [&](Collection const* col, bool isWrite) -> void {
     auto it = _collections.find(col);
     if (it == _collections.end()) {
@@ -342,7 +382,8 @@ void EngineInfoContainerDBServer::addQuerySnippet(
     if (collection != nullptr && collection->isSatellite()) {
       _satellites.emplace(collection);
     }
-    collection = col;
+    // ... const_cast
+    collection = const_cast<Collection*>(col);
   };
 
   // Analyse the collections used in this Query.
@@ -369,7 +410,7 @@ void EngineInfoContainerDBServer::addQuerySnippet(
     };
   }
 
-  _engines[collection].emplace_back(nodes, idOfRemoteNode);
+  _engines[collection].emplace_back(nodes, idOfRemoteNode, collection);
   _lastEngine = &_engines[collection].back();  // The new engine
 }
 
@@ -396,10 +437,8 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
   for (auto const& shardLocks : _shardLocking) {
     switch (shardLocks.first) {
       case AccessMode::Type::READ:
-        infoBuilder.add(VPackValue("READ"));
-        break;
       case AccessMode::Type::WRITE:
-        infoBuilder.add(VPackValue("WRITE"));
+        infoBuilder.add(VPackValue(AccessMode::typeString(shardLocks.first)));
         break;
       default:
         // We only have Read and Write Locks in Cluster.
@@ -425,7 +464,7 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
 
   for (auto const& it : _engineInfos) {
     for (auto const& s : it.second) {
-      it.first->serializeSnippet(s, infoBuilder);
+      it.first->serializeSnippet(query, s, infoBuilder);
     }
   }
   infoBuilder.close();  // snippets
@@ -438,7 +477,9 @@ void EngineInfoContainerDBServer::DBServerInfo::injectQueryOptions(
   query->queryOptions().toVelocyPack(infoBuilder, true);
 }
 
-void EngineInfoContainerDBServer::buildEngines(Query* query, std::unordered_map<std::string, std::string>& queryIds) const {
+void EngineInfoContainerDBServer::buildEngines(
+    Query* query,
+    std::unordered_map<std::string, std::string>& queryIds) const {
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "We have " << _engines.size()
                                           << " DBServer engines";
   std::map<ServerID, DBServerInfo> dbServerMapping;
@@ -478,10 +519,9 @@ void EngineInfoContainerDBServer::buildEngines(Query* query, std::unordered_map<
     return;
   }
 
-  // TODO FIXME
   std::string const url("/_db/" + arangodb::basics::StringUtils::urlEncode(
                                       query->vocbase()->name()) +
-                        "/_internal/traverser");
+                        "/_api/aql/setup");
 
   std::unordered_map<std::string, std::string> headers;
   // Build Lookup Infos
@@ -491,10 +531,9 @@ void EngineInfoContainerDBServer::buildEngines(Query* query, std::unordered_map<
                                             << it.first;
     infoBuilder.clear();
     it.second.buildMessage(query, infoBuilder);
-    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << infoBuilder.toJson();
 
-
-    // Now we send to DBServers. We expect a body with {id => engineId} plus 0 => trxEngine
+    // Now we send to DBServers. We expect a body with {id => engineId} plus 0
+    // => trxEngine
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
     auto res = cc->syncRequest("", coordTransactionID, "server:" + it.first,
                                RequestType::POST, url, infoBuilder.toJson(),
@@ -502,24 +541,34 @@ void EngineInfoContainerDBServer::buildEngines(Query* query, std::unordered_map<
 
     if (res->getErrorCode() != TRI_ERROR_NO_ERROR) {
       // TODO could not register all engines. Need to cleanup.
-      THROW_ARANGO_EXCEPTION_MESSAGE(res->getErrorCode(), res->stringifyErrorMessage());
+      THROW_ARANGO_EXCEPTION_MESSAGE(res->getErrorCode(),
+                                     res->stringifyErrorMessage());
     }
 
     std::shared_ptr<VPackBuilder> builder = res->result->getBodyVelocyPack();
     VPackSlice response = builder->slice();
-    if (!response.isObject()) {
+
+    LOG_TOPIC(DEBUG, Logger::AQL) << "Received: " << response.toJson();
+    if (!response.isObject() || !response.get("result").isObject()) {
       // TODO could not register all engines. Need to cleanup.
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COMMUNICATION, "Unable to deploy query on all required servers. This can happen during Failover. Please check: " + it.first);
+      LOG_TOPIC(ERR, Logger::AQL) << "Recieved error information from " << it.first << " : " << response.toJson();
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+                                     "Unable to deploy query on all required "
+                                     "servers. This can happen during "
+                                     "Failover. Please check: " +
+                                         it.first);
     }
 
-    for (auto const& resEntry: VPackObjectIterator(response)) {
+    for (auto const& resEntry : VPackObjectIterator(response.get("result"))) {
       if (!resEntry.value.isString()) {
         // TODO could not register all engines. Need to cleanup.
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COMMUNICATION, "Unable to deploy query on all required servers. This can happen during Failover. Please check: " + it.first);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+                                       "Unable to deploy query on all required "
+                                       "servers. This can happen during "
+                                       "Failover. Please check: " +
+                                           it.first);
       }
       queryIds.emplace(resEntry.key.copyString(), resEntry.value.copyString());
     }
-
   }
-
 }

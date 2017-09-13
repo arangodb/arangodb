@@ -94,7 +94,8 @@ class EngineInfoContainerDBServer {
  private:
   struct EngineInfo {
    public:
-    EngineInfo(std::vector<ExecutionNode*>& nodes, size_t idOfRemoteNode);
+    EngineInfo(std::vector<ExecutionNode*>& nodes, size_t idOfRemoteNode,
+               Collection* collection);
     ~EngineInfo();
 
     EngineInfo(EngineInfo&) = delete;
@@ -103,12 +104,14 @@ class EngineInfoContainerDBServer {
 
     void connectQueryId(QueryId id);
 
-    void serializeSnippet(ShardID id, velocypack::Builder& infoBuilder) const;
+    void serializeSnippet(Query* query, ShardID id,
+                          velocypack::Builder& infoBuilder) const;
 
    private:
     std::vector<ExecutionNode*> _nodes;
-    size_t _idOfRemoteNode;  // id of the remote node
-    QueryId _otherId;        // Id of query engine before this one
+    size_t _idOfRemoteNode;   // id of the remote node
+    QueryId _otherId;         // Id of query engine before this one
+    Collection* _collection;  // The collection used to connect to this engine
   };
 
   struct DBServerInfo {

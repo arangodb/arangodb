@@ -1378,6 +1378,8 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
         auto engineN = instN->buildEngines(query, queryRegistry);
         // We have not implemented the API yet.
         TRI_ASSERT(engineN == nullptr);
+      } catch (std::exception const& e) {
+        LOG_TOPIC(ERR, Logger::AQL) << "Coordinator query instantiation failed: " << e.what();
       } catch (...) {
       }
 
