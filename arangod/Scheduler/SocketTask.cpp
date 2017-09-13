@@ -55,6 +55,7 @@ SocketTask::SocketTask(arangodb::EventLoop loop,
       _readBuffer(READ_BLOCK_SIZE + 1, false),
       _stringBuffers{_stringBuffersArena},
       _writeBuffer(nullptr, nullptr),
+      _writeBuffers{_writeBuffersArena},
       _peer(std::move(socket)),
       _keepAliveTimeout(static_cast<long>(keepAliveTimeout * 1000)),
       _keepAliveTimer(_peer->_ioService, _keepAliveTimeout),
@@ -418,11 +419,11 @@ bool SocketTask::reserveMemory() {
 bool SocketTask::trySyncRead() {
   _lock.assertLockedByCurrentThread();
 
-  boost::system::error_code err;
-
   if (_abandoned) {
     return false;
   }
+  
+  boost::system::error_code err;
 
   if (0 == _peer->available(err)) {
     return false;
@@ -431,6 +432,11 @@ bool SocketTask::trySyncRead() {
   if (err) {
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "read failed with "
                                             << err.message();
+    return false;
+  }
+
+  if (!reserveMemory()) {
+    LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
     return false;
   }
 
@@ -471,13 +477,9 @@ bool SocketTask::processAll() {
     }
   }
 
-  if (_closeRequested) {
-    // it is too early to close the stream here, as there may
-    // be some writeBuffers which still need to be sent to the client
-    return false;
-  }
-  
-  return true;
+  // it is too early to close the stream here, as there may
+  // be some writeBuffers which still need to be sent to the client
+  return !_closeRequested;
 }
 
 // will acquire the _lock
@@ -494,11 +496,6 @@ void SocketTask::asyncReadSome() {
       size_t n = 0;
 
       while (++n <= MAX_DIRECT_TRIES) {
-        if (!reserveMemory()) {
-          LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
-          return;
-        }
-
         if (!trySyncRead()) {
           if (n < MAX_DIRECT_TRIES) {
             std::this_thread::yield();
@@ -511,7 +508,7 @@ void SocketTask::asyncReadSome() {
         processAll();
         compactify();
       }
-    } catch (boost::system::system_error& err) {
+    } catch (boost::system::system_error const& err) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "i/o stream failed with: "
         << err.what();
 

@@ -34,6 +34,7 @@
 #include "Basics/SmallVector.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/asio-helper.h"
+#include "Basics/short_alloc.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Scheduler/Socket.h"
 #include "Statistics/RequestStatistics.h"
@@ -81,13 +82,13 @@ class SocketTask : virtual public Task {
     WriteBuffer(WriteBuffer const&) = delete;
     WriteBuffer& operator=(WriteBuffer const&) = delete;
 
-    WriteBuffer(WriteBuffer&& other) 
+    WriteBuffer(WriteBuffer&& other) noexcept
         : _buffer(other._buffer), _statistics(other._statistics) {
       other._buffer = nullptr;
       other._statistics = nullptr;
     }
 
-    WriteBuffer& operator=(WriteBuffer&& other) {
+    WriteBuffer& operator=(WriteBuffer&& other) noexcept {
       if (this != &other) {
         // release our own memory to prevent memleaks
         release();
@@ -104,16 +105,16 @@ class SocketTask : virtual public Task {
 
     ~WriteBuffer() { release(); }
 
-    bool empty() const {
+    bool empty() const noexcept {
       return _buffer == nullptr;
     }
     
-    void clear() {
+    void clear() noexcept {
       _buffer = nullptr;
       _statistics = nullptr;
     }
 
-    void release() {
+    void release() noexcept {
       if (_buffer != nullptr) {
         delete _buffer;
         _buffer = nullptr;
@@ -177,7 +178,10 @@ class SocketTask : virtual public Task {
 
  private:
   WriteBuffer _writeBuffer;
-  std::list<WriteBuffer> _writeBuffers;
+
+  using WriteBufferList = std::list<WriteBuffer, short_alloc<WriteBuffer, 64, alignof(WriteBuffer)>>;
+  WriteBufferList::allocator_type::arena_type _writeBuffersArena;
+  WriteBufferList _writeBuffers;
 
   std::unique_ptr<Socket> _peer;
   boost::posix_time::milliseconds _keepAliveTimeout;
@@ -185,7 +189,7 @@ class SocketTask : virtual public Task {
   bool const _useKeepAliveTimer;
   bool _keepAliveTimerActive;
   bool _closeRequested;
-  std::atomic<bool> _abandoned;
+  bool _abandoned;
 
   bool _closedSend = false;
   bool _closedReceive = false;
