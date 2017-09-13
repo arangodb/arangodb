@@ -1,55 +1,54 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertEqual, assertNotEqual, fail */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, assertEqual, assertNotEqual, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the collection interface
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the collection interface
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
+var jsunity = require('jsunity');
 
-var arangodb = require("@arangodb");
-var internal = require("internal");
+var arangodb = require('@arangodb');
+var internal = require('internal');
 
 var db = arangodb.db;
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: FiguresSuite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite: FiguresSuite
+// //////////////////////////////////////////////////////////////////////////////
 
 function FiguresSuite () {
   'use strict';
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief figures
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief figures
+// //////////////////////////////////////////////////////////////////////////////
 
-    testFigures : function () {
-      var collection = "example";
+    testFigures: function () {
+      var collection = 'testFigures';
 
       db._drop(collection);
       var c1 = db._create(collection);
@@ -65,7 +64,7 @@ function FiguresSuite () {
       assertEqual(0, f.dead.size);
       assertEqual(0, f.dead.deletion);
 
-      var d1 = c1.save({ hello : 1 });
+      var d1 = c1.save({ hello: 1 });
 
       internal.wal.flush(true, true);
 
@@ -89,7 +88,7 @@ function FiguresSuite () {
       assertEqual(0, f.dead.size);
       assertEqual(0, f.dead.deletion);
 
-      var d2 = c1.save({ hello : 2 });
+      var d2 = c1.save({ hello: 2 });
 
       internal.wal.flush(true, true);
       tries = 0;
@@ -159,12 +158,12 @@ function FiguresSuite () {
       db._drop(collection);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check figures
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief check figures
+// //////////////////////////////////////////////////////////////////////////////
 
-    testFiguresAfterOperations : function () {
-      var cnName = "example";
+    testFiguresAfterOperations: function () {
+      var cnName = 'FiguresAfterOperations';
 
       db._drop(cnName);
       var collection = db._create(cnName);
@@ -172,9 +171,9 @@ function FiguresSuite () {
       collection.load();
       var figures;
 
-      collection.save({ _key : "a1" });
-      collection.save({ _key : "a2" });
-      collection.save({ _key : "a3" });
+      collection.save({ _key: 'a1' });
+      collection.save({ _key: 'a2' });
+      collection.save({ _key: 'a3' });
 
       internal.wal.flush(true, true);
       var tries = 0;
@@ -191,17 +190,15 @@ function FiguresSuite () {
 
       // insert a few duplicates
       try {
-        collection.save({ _key : "a1" });
+        collection.save({ _key: 'a1' });
         fail();
+      } catch (e1) {
       }
-      catch (e1) {
-      }
-      
+
       try {
-        collection.save({ _key : "a2" });
+        collection.save({ _key: 'a2' });
         fail();
-      }
-      catch (e2) {
+      } catch (e2) {
       }
 
       // we should see the same figures
@@ -212,8 +209,8 @@ function FiguresSuite () {
       assertEqual(0, figures.dead.count);
 
       // now remove some documents
-      collection.remove("a2");
-      collection.remove("a3");
+      collection.remove('a2');
+      collection.remove('a3');
 
       // we should see two live docs less
       internal.wal.flush(true, true);
@@ -230,7 +227,7 @@ function FiguresSuite () {
       assertEqual(2, figures.dead.count);
 
       // replacing one document does not change alive, but increases dead!
-      collection.replace("a1", { });
+      collection.replace('a1', { });
 
       internal.wal.flush(true, true);
       tries = 0;
@@ -247,10 +244,9 @@ function FiguresSuite () {
 
       // this doc does not exist. should not change the figures
       try {
-        collection.replace("a2", { });
+        collection.replace('a2', { });
         fail();
-      }
-      catch (e3) {
+      } catch (e3) {
       }
 
       internal.wal.flush(true, true);
@@ -258,17 +254,16 @@ function FiguresSuite () {
 
       assertEqual(1, figures.alive.count);
       assertEqual(3, figures.dead.count);
+      collection.unload();
+      collection.drop();
     }
   };
 }
 
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suites
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(FiguresSuite);
 
 return jsunity.done();
-
