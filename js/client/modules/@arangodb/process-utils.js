@@ -1195,6 +1195,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
       let count = 0;
       instanceInfo.arangods.forEach(arangod => {
         while (true) {
+          wait(0.5, false);
           if (options.useReconnect) {
             try {
               arango.reconnect(instanceInfo.endpoint, '_system', options.username, options.password);
@@ -1215,7 +1216,6 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
               throw new Error('startup failed! bailing out!');
             }
           }
-          wait(0.5, false);
         }
       });
     }
