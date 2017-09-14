@@ -41,8 +41,6 @@ var assertQueryError = helper.assertQueryError;
 
 function ahuacatlTypesFunctionsTestSuite () {
   var vn = "UnitTestsAhuacatlVertex";
-  var vertex = null;
-  var d = null;
 
   return {
 
@@ -50,18 +48,18 @@ function ahuacatlTypesFunctionsTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       db._drop(vn);
 
-      vertex = db._create(vn);
-      d = vertex.save({ _key: "test1" });
+      var vertex = db._create(vn);
+      vertex.save({ _key: "test1" });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop(vn);
     },
 
@@ -854,7 +852,7 @@ function ahuacatlTypesFunctionsTestSuite () {
     
     testToBool24 : function () {
       var expected = [ true ];
-      var actual = getQueryResults("RETURN TO_BOOL(DOCUMENT(" + vn + ", " + JSON.stringify(d._id) + "))");
+      var actual = getQueryResults("RETURN TO_BOOL(DOCUMENT(" + vn + ", " + JSON.stringify(vn + "/test1") + "))");
       assertEqual(expected, actual);
     },
 

@@ -143,3 +143,18 @@ when no thread is logged and
 ```
 
 when this command line option is set.
+
+### Role
+
+Log role: `--log.role`
+
+When set to `true`, this option will make the ArangoDB logger print a single 
+character with the server's role into each logged message. The roles are: 
+  
+- U: undefined/unclear (used at startup)
+- S: single server
+- C: coordinator
+- P: primary
+- A: agent
+
+The default value for this option is `false`, so no roles will be logged. 

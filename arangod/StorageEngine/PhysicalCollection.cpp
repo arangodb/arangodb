@@ -246,15 +246,13 @@ int PhysicalCollection::newObjectForInsert(
   } else {
     VPackValueLength l;
     char const* p = s.getString(l);
+    // validate and track the key just used
     int res =
         _logicalCollection->keyGenerator()->validate(p, l, isRestore);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
     builder.add(StaticStrings::KeyString, s);
-        
-    // track the key just used
-    _logicalCollection->keyGenerator()->track(p, l);
   }
 
   // _id

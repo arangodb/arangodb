@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertMatch, assertNotEqual, console,
+/*global assertEqual, assertTrue, assertMatch, assertNotEqual
   assertUndefined, assertFalse, fail, REPLICATION_LOGGER_LAST */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,7 +57,6 @@ function ReplicationLoggerSuite () {
   };
 
   var getLogEntries = function (tick, type) {
-    console.error("getLogEntries called");
     var result = [ ];
     getLastLogTick();
   
@@ -73,7 +72,6 @@ function ReplicationLoggerSuite () {
     var entries = REPLICATION_LOGGER_LAST(tick, "9999999999999999999");
 
     if (type === undefined) {
-      console.error("- no log entries produced");
       return entries;
     }
 
@@ -106,7 +104,6 @@ function ReplicationLoggerSuite () {
       });
     }
 
-    console.error("- produced: ", JSON.stringify(result));
     return result;
   };
 

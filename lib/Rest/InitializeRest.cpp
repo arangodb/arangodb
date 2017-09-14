@@ -77,7 +77,6 @@ void ShutdownRest() {
   TRI_ShutdownFiles();
   TRI_ShutdownError();
   TRI_ShutdownDebugging();
-  TRI_ShutdownMemory();
 }
 }
 }
