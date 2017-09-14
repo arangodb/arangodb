@@ -1940,14 +1940,8 @@ static std::string getTempPath() {
   // ..........................................................................
 
 #define LOCAL_MAX_PATH_BUFFER 2049
-  TCHAR tempFileName[LOCAL_MAX_PATH_BUFFER];
   TCHAR tempPathName[LOCAL_MAX_PATH_BUFFER];
   DWORD dwReturnValue = 0;
-  UINT uReturnValue = 0;
-  HANDLE tempFileHandle = INVALID_HANDLE_VALUE;
-  BOOL ok;
-  std::string result;
-
   // ..........................................................................
   // Attempt to locate the path where the users temporary files are stored
   // Note we are imposing a limit of 2048+1 characters for the maximum size of a
@@ -1969,85 +1963,25 @@ static std::string getTempPath() {
     // something wrong
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "GetTempPathA failed: LOCAL_MAX_PATH_BUFFER="
                                               << LOCAL_MAX_PATH_BUFFER << ":dwReturnValue=" << dwReturnValue;
-    // attempt to simply use the current directory
-    _tcscpy(tempFileName, TEXT("."));
   }
 
-  // ...........................................................................
-  // Having obtained the temporary path, we have to determine if we can actually
-  // write to that directory
-  // ...........................................................................
-
-  uReturnValue = GetTempFileName(tempPathName, TEXT("TRI_"), 0, tempFileName);
-
-  if (uReturnValue == 0) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "GetTempFileNameA failed";
-    _tcscpy(tempFileName, TEXT("TRI_tempFile"));
-  }
-
-  tempFileHandle = CreateFile((LPTSTR)tempFileName,   // file name
-                              GENERIC_WRITE,          // open for write
-                              0,                      // do not share
-                              NULL,                   // default security
-                              CREATE_ALWAYS,          // overwrite existing
-                              FILE_ATTRIBUTE_NORMAL,  // normal file
-                              NULL);                  // no template
-
-  if (tempFileHandle == INVALID_HANDLE_VALUE) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Cannot create temporary file '" << (LPTSTR) tempFileName;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create temporary file"); 
-  }
-
-  ok = CloseHandle(tempFileHandle);
-
-  if (!ok) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Cannot close handle of temporary file";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot close handle of temporary file"); 
-  }
-
-  ok = DeleteFile(tempFileName);
-
-  if (!ok) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Cannot delete temporary file";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot delete temporary file"); 
-  }
-
+  std::string result(tempPathName);
   // ...........................................................................
   // Whether or not UNICODE is defined, we assume that the temporary file name
   // fits in the ascii set of characters. This is a small compromise so that
   // temporary file names can be extra long if required.
   // ...........................................................................
+  for (auto it = result.begin(); it != result.end(); ++it)
   {
-    size_t j;
-    size_t pathSize = _tcsclen(tempPathName);
-    char* temp = static_cast<char*>(
-                                    TRI_Allocate(pathSize + 1));
-
-    if (temp == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    for (j = 0; j < pathSize; ++j) {
-      if (tempPathName[j] > 127) {
-        TRI_Free(temp);
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Invalid characters in temporary path name";
-      }
-      temp[j] = (char)(tempPathName[j]);
-    }
-    temp[pathSize] = '\0';
-
-    // ok = (WideCharToMultiByte(CP_UTF8, WC_NO_BEST_FIT_CHARS, tempPathName,
-    // -1, temp, pathSize + 1,  NULL, NULL) != 0);
-
-    result = temp;
-    TRI_FreeString(temp);
-
-    // remove trailing directory separator
-    while (!result.empty() && IsDirSeparatorChar(result[result.size() - 1])) {
-      result.pop_back();
+    if (static_cast<byte>(*it) > 127) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Invalid characters in temporary path name: '" <<
+        result << "'";
+      FATAL_ERROR_ABORT();
     }
   }
-  result += TRI_DIR_SEPARATOR_STR;
+  if (*result.end() != TRI_DIR_SEPARATOR_CHAR) {
+    result += TRI_DIR_SEPARATOR_STR;
+  }
   return result;
 }
 
@@ -2061,7 +1995,7 @@ static int mkDTemp(char *s, size_t bufferSize) {
 
 #else
 
-std::string getTempPath() {
+static std::string getTempPath() {
   
   std::string system = "";
   char const* v = getenv("TMPDIR");
