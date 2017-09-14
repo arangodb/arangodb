@@ -758,6 +758,18 @@ function shutdownArangod (arangod, options, forceTerminate) {
     } else if (options.useKillExternal) {
       killExternal(arangod.pid);
     } else {
+      if (arango.isConnected) {
+        try {
+          arango.DELETE('/_admin/shutdown');
+          if (options.extremeVerbosity) {
+            print('Shutdown response: ' + JSON.stringify(reply));
+          }
+          return;
+        } catch (x) {
+          print('failed to shut down arangod via our connection!')
+          print(x);
+        }
+      }
       const requestOptions = makeAuthorizationHeaders(options);
       requestOptions.method = 'DELETE';
       print(arangod.url + '/_admin/shutdown');
