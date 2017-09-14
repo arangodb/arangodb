@@ -394,6 +394,11 @@ while [ $# -gt 0 ];  do
             shift
             CONFIGURE_OPTIONS+=(-DUSE_ENTERPRISE=On)
             ;;
+
+        --maintainer)
+            shift
+            ;;
+
         --retryPackages)
             shift
             RETRY_N_TIMES=$1
@@ -417,8 +422,6 @@ if test -n "$LASTREV"; then
         CLEAN_IT=0
     fi
 fi
-
-
 
 if [ "$GCC5" == 1 ]; then
     CC=/usr/bin/gcc-5
