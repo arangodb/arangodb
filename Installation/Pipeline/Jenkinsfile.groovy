@@ -726,12 +726,20 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                         }
                     }
                     catch (exc) {
-                        echo "caught error, copying log to ${logFileFailed}"
-                        echo exc.toString()
+                        def msg = exc.toString()
+
+                        echo "caught error, copying log to ${logFileFailed}: ${msg}"
 
                         fileOperations([
-                            fileCreateOperation(fileContent: 'TEST FAILED', fileName: "${archDir}-FAIL.txt")
+                            fileCreateOperation(fileContent: 'TEST FAILED: ${msg}', fileName: "${archDir}-FAIL.txt")
                         ])
+
+                        if (os == 'linux' || os == 'mac') {
+                            sh "echo \"${msg}\" >> ${logFile}"
+                        }
+                        else {
+                            powershell "echo \"${msg}\" | Out-File -filepath ${logFile} -append"
+                        }
 
                         copyFile(os, logFile, logFileFailed)
                         throw exc
@@ -1020,9 +1028,18 @@ def buildEdition(os, edition, maintainer) {
         }
     }
     catch (exc) {
+        def msg = exc.toString()
+        
         fileOperations([
-            fileCreateOperation(fileContent: 'BUILD FAILED', fileName: "${archDir}-FAIL.txt")
+            fileCreateOperation(fileContent: 'BUILD FAILED: ${msg}', fileName: "${archDir}-FAIL.txt")
         ])
+
+        if (os == 'linux' || os == 'mac') {
+            sh "echo \"${msg}\" >> ${logFile}"
+        }
+        else {
+            powershell "echo \"${msg}\" | Out-File -filepath ${logFile} -append"
+        }
 
         renameFolder(arch, archFail)
         throw exc
