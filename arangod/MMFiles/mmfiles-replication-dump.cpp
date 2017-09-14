@@ -99,6 +99,8 @@ static inline bool MustReplicateWalMarkerType(MMFilesMarker const* marker) {
           type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION ||
           type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
           type == TRI_DF_MARKER_VPACK_DROP_INDEX ||
+          type == TRI_DF_MARKER_VPACK_CREATE_DATABASE ||
+          type == TRI_DF_MARKER_VPACK_DROP_DATABASE ||
           type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
           type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
           type == TRI_DF_MARKER_VPACK_CHANGE_VIEW);
@@ -138,6 +140,10 @@ static TRI_replication_operation_e TranslateType(
       return REPLICATION_INDEX_CREATE;
     case TRI_DF_MARKER_VPACK_DROP_INDEX:
       return REPLICATION_INDEX_DROP;
+    case TRI_DF_MARKER_VPACK_CREATE_DATABASE:
+      return REPLICATION_DATABASE_CREATE;
+    case TRI_DF_MARKER_VPACK_DROP_DATABASE:
+      return REPLICATION_DATABASE_DROP;
     case TRI_DF_MARKER_VPACK_CREATE_VIEW:
       return REPLICATION_VIEW_CREATE;
     case TRI_DF_MARKER_VPACK_DROP_VIEW:
@@ -164,39 +170,11 @@ static int StringifyMarker(MMFilesReplicationDumpContext* dump,
     // logger-follow command
     Append(dump, "{\"tick\":\"");
     Append(dump, static_cast<uint64_t>(marker->getTick()));
+    Append(dump, "\",\"type\":");
+    Append(dump, static_cast<uint64_t>(TranslateType(marker)));
     // for debugging use the following
     // Append(dump, "\",\"typeName\":\"");
     // Append(dump, TRI_NameMarkerDatafile(marker));
-
-    if (dump->_compat28 && (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
-                            type == TRI_DF_MARKER_VPACK_REMOVE)) {
-      // 2.8-compatible format
-      VPackSlice slice(reinterpret_cast<char const*>(marker) +
-                       MMFilesDatafileHelper::VPackOffset(type));
-      arangodb::basics::VPackStringBufferAdapter adapter(dump->_buffer);
-      VPackDumper dumper(
-          &adapter,
-          &dump->_vpackOptions);  // note: we need the CustomTypeHandler here
-
-      // additionally dump "key" and "rev" attributes on the top-level
-      Append(dump, "\",\"key\":");
-      dumper.dump(slice.get(StaticStrings::KeyString));
-      if (slice.hasKey(StaticStrings::RevString)) {
-        Append(dump, ",\"rev\":");
-        dumper.dump(slice.get(StaticStrings::RevString));
-      }
-      // convert 2300 markers to 2301 markers for edges
-      Append(dump, ",\"type\":");
-      if (type == TRI_DF_MARKER_VPACK_DOCUMENT && isEdgeCollection) {
-        Append(dump, 2301);
-      } else {
-        Append(dump, static_cast<uint64_t>(TranslateType(marker)));
-      }
-    } else {
-      // 3.0 dump
-      Append(dump, "\",\"type\":");
-      Append(dump, static_cast<uint64_t>(TranslateType(marker)));
-    }
 
     if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
         type == TRI_DF_MARKER_VPACK_REMOVE ||
@@ -238,34 +216,8 @@ static int StringifyMarker(MMFilesReplicationDumpContext* dump,
       Append(dump, "{");
     }
 
-    if (dump->_compat28 && (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
-                            type == TRI_DF_MARKER_VPACK_REMOVE)) {
-      // 2.8-compatible format
-      VPackSlice slice(reinterpret_cast<char const*>(marker) +
-                       MMFilesDatafileHelper::VPackOffset(type));
-      arangodb::basics::VPackStringBufferAdapter adapter(dump->_buffer);
-      VPackDumper dumper(
-          &adapter,
-          &dump->_vpackOptions);  // note: we need the CustomTypeHandler here
-
-      // additionally dump "key" and "rev" attributes on the top-level
-      Append(dump, "\"key\":");
-      dumper.dump(slice.get(StaticStrings::KeyString));
-      if (slice.hasKey(StaticStrings::RevString)) {
-        Append(dump, ",\"rev\":");
-        dumper.dump(slice.get(StaticStrings::RevString));
-      }
-      // convert 2300 markers to 2301 markers for edges
-      Append(dump, ",\"type\":");
-      if (type == TRI_DF_MARKER_VPACK_DOCUMENT && isEdgeCollection) {
-        Append(dump, 2301);
-      } else {
-        Append(dump, static_cast<uint64_t>(TranslateType(marker)));
-      }
-    } else {
-      Append(dump, "\"type\":");
-      Append(dump, static_cast<uint64_t>(TranslateType(marker)));
-    }
+    Append(dump, "\"type\":");
+    Append(dump, static_cast<uint64_t>(TranslateType(marker)));
   }
 
   switch (type) {
@@ -329,29 +281,8 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
   if (!isDump) {
     // logger-follow command
     builder.add("tick", VPackValue(static_cast<uint64_t>(marker->getTick())));
-
-    if (dump->_compat28 && (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
-                            type == TRI_DF_MARKER_VPACK_REMOVE)) {
-      // 2.8-compatible format
-      VPackSlice slice(reinterpret_cast<char const*>(marker) +
-                       MMFilesDatafileHelper::VPackOffset(type));
-      // additionally dump "key" and "rev" attributes on the top-level
-      builder.add("key", slice.get(StaticStrings::KeyString));
-      if (slice.hasKey(StaticStrings::RevString)) {
-        builder.add("rev", slice.get(StaticStrings::RevString));
-      }
-      // convert 2300 markers to 2301 markers for edges
-      if (type == TRI_DF_MARKER_VPACK_DOCUMENT && isEdgeCollection) {
-        builder.add("type", VPackValue(2301));
-      } else {
-        builder.add("type",
-                    VPackValue(static_cast<uint64_t>(TranslateType(marker))));
-      }
-    } else {
-      // 3.0 dump
-      builder.add("type",
-                  VPackValue(static_cast<uint64_t>(TranslateType(marker))));
-    }
+    builder.add("type",
+                VPackValue(static_cast<uint64_t>(TranslateType(marker))));
 
     if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
         type == TRI_DF_MARKER_VPACK_REMOVE ||
@@ -377,27 +308,8 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
     if (withTicks) {
       builder.add("tick", VPackValue(static_cast<uint64_t>(marker->getTick())));
     }
-
-    if (dump->_compat28 && (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
-                            type == TRI_DF_MARKER_VPACK_REMOVE)) {
-      // 2.8-compatible format
-      VPackSlice slice(reinterpret_cast<char const*>(marker) +
-                       MMFilesDatafileHelper::VPackOffset(type));
-      builder.add("key", slice.get(StaticStrings::KeyString));
-      if (slice.hasKey(StaticStrings::RevString)) {
-        builder.add("rev", slice.get(StaticStrings::RevString));
-      }
-      // convert 2300 markers to 2301 markers for edges
-      if (type == TRI_DF_MARKER_VPACK_DOCUMENT && isEdgeCollection) {
-        builder.add("type", VPackValue(2301));
-      } else {
-        builder.add("type",
-                    VPackValue(static_cast<uint64_t>(TranslateType(marker))));
-      }
-    } else {
-      builder.add("type",
-                  VPackValue(static_cast<uint64_t>(TranslateType(marker))));
-    }
+    builder.add("type",
+                VPackValue(static_cast<uint64_t>(TranslateType(marker))));
   }
 
   switch (type) {

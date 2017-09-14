@@ -69,7 +69,7 @@ RestStatus RestUsersHandler::execute() {
 
 bool RestUsersHandler::isSystemUser() const {
   if (_request->execContext() != nullptr) {
-    return _request->execContext()->systemAuthLevel() == AuthLevel::RW;
+    return _request->execContext()->isSystemUser();
   }
   // if authentication is deactivated authorize anyway
   return !FeatureCacheFeature::instance()->authenticationFeature()->isActive();

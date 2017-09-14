@@ -1163,14 +1163,6 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
     return;
   }
 
-  // check for 2.8 compatibility
-  bool compat28 = false;
-  std::string const& value8 = _request->value("compat28", found);
-
-  if (found) {
-    compat28 = StringUtils::boolean(value8);
-  }
-
   // print request
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
       << "requested collection dump for collection '" << collection
@@ -1187,8 +1179,7 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
   }
 
   // do the work!
-  auto result =
-      context->dump(_vocbase, collection, dump, determineChunkSize(), compat28);
+  auto result = context->dump(_vocbase, collection, dump, determineChunkSize());
 
   // generate the result
   if (dump.length() == 0) {

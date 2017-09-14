@@ -24,8 +24,7 @@
 #define APPLICATION_FEATURES_UNIT_TEST_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-
-#include "Rest/OperationMode.h"
+#include "GeneralServer/OperationMode.h"
 
 namespace arangodb {
 class UnitTestsFeature final : public application_features::ApplicationFeature {

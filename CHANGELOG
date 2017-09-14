@@ -1,6 +1,8 @@
 devel
 -----
 
+* Removed --compat28 parameter from arangodump and replication API
+
 * leader-follower replication catchup code has been rewritten in C++
 
 * early stage AQL optimization now also uses the C++ implementations of

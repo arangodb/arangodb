@@ -38,22 +38,25 @@ using namespace arangodb::rest;
 
 RocksDBRestWalHandler::RocksDBRestWalHandler(GeneralRequest* request,
                                              GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+    : RestBaseHandler(request, response) {}
 
 RestStatus RocksDBRestWalHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
-
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting /_admin/wal/<operation>");
     return RestStatus::DONE;
   }
-
-  std::string const& operation = suffixes[0];
+  if (_request->execContext() != nullptr &&
+      !_request->execContext()->isSystemUser()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_FORBIDDEN,
+                  "need to be a system user to do this");
+    return RestStatus::DONE;
+  }
 
   // extract the sub-request type
   auto const type = _request->requestType();
-
+  std::string const& operation = suffixes[0];
   if (operation == "transactions") {
     if (type == rest::RequestType::GET) {
       transactions();

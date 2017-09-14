@@ -104,7 +104,7 @@ RocksDBLogValue RocksDBLogValue::SingleRemove(TRI_voc_tick_t vocbaseId,
                                               arangodb::StringRef const& key) {
   return RocksDBLogValue(RocksDBLogType::SingleRemove, vocbaseId, cid, key);
 }
-
+/*
 RocksDBLogValue::RocksDBLogValue(RocksDBLogType type) : _buffer() {
   switch (type) {
     case RocksDBLogType::DatabaseCreate:
@@ -115,7 +115,7 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type) : _buffer() {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "invalid type for log value");
   }
-}
+}*/
 
 RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t val)
     : _buffer() {

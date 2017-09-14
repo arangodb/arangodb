@@ -30,8 +30,6 @@ namespace arangodb {
 namespace transaction {
   class Methods;
 }
-  
-enum class AuthLevel;
 
 class ExecContext {
  public:
@@ -53,6 +51,10 @@ class ExecContext {
   std::string const& database() const { return _database; }
   AuthLevel systemAuthLevel() const { return _systemAuthLevel; };
   AuthLevel databaseAuthLevel() const { return _databaseAuthLevel; };
+  
+  bool isSystemUser() const {
+    return _systemAuthLevel == AuthLevel::RW;
+  }
   
   bool canUseDatabase(AuthLevel requested) const {
     return canUseDatabase(_database, requested);

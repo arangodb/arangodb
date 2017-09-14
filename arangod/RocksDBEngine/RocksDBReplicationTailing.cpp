@@ -66,6 +66,8 @@ static TRI_replication_operation_e convertLogType(RocksDBLogType t) {
       return REPLICATION_VIEW_DROP;
     case RocksDBLogType::ViewChange:
       return REPLICATION_VIEW_CHANGE;
+    case RocksDBLogType::BeginTransaction:
+      return REPLICATION_TRANSACTION_START;
 
     default:
       return REPLICATION_INVALID;
@@ -97,6 +99,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     tick();
     switch (type) {
       case RocksDBLogType::DatabaseCreate: {
+        _currentDbId = RocksDBLogValue::databaseId(blob);
         // FIXME: do we have to print something?
         break;
       }
@@ -130,9 +133,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
             _currentCollectionId == _onlyCollectionId) {
           VPackSlice indexSlice = RocksDBLogValue::indexSlice(blob);
           _builder.openObject();
-          _builder.add(
-              "type",
-              VPackValue(static_cast<uint64_t>(REPLICATION_INDEX_CREATE)));
+          _builder.add("type", VPackValue(convertLogType(type)));
           _builder.add("database", VPackValue(std::to_string(_currentDbId)));
           _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
           _builder.add("data", indexSlice);
@@ -148,9 +149,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         if (_onlyCollectionId == 0 ||
             _currentCollectionId == _onlyCollectionId) {
           _builder.openObject();
-          _builder.add(
-              "type",
-              VPackValue(static_cast<uint64_t>(REPLICATION_INDEX_DROP)));
+          _builder.add("type", VPackValue(convertLogType(type)));
           _builder.add("database", VPackValue(std::to_string(_currentDbId)));
           _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
           _builder.add("data", VPackValue(VPackValueType::Object));
@@ -180,9 +179,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
 
         _builder.openObject();
         _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
-        _builder.add(
-            "type",
-            VPackValue(static_cast<uint64_t>(REPLICATION_TRANSACTION_START)));
+        _builder.add("type", VPackValue(convertLogType(type)));
         _builder.add("database", VPackValue(std::to_string(_currentDbId)));
         _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
         _builder.close();
@@ -224,50 +221,66 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     }
     LOG_TOPIC(_LOG, Logger::ROCKSDB) << "PUT: key:" << key.ToString()
                                      << "  value: " << value.ToString();
-
-    if (column_family_id == _definitionsCF &&
-        RocksDBKey::type(key) == RocksDBEntryType::Collection) {
-      if (_lastLogType == RocksDBLogType::IndexCreate ||
-          _lastLogType == RocksDBLogType::IndexDrop) {
-        _lastLogType = RocksDBLogType::Invalid;
-        return rocksdb::Status();
-      }
-      TRI_ASSERT(_lastLogType == RocksDBLogType::CollectionCreate ||
-                 _lastLogType == RocksDBLogType::CollectionChange ||
-                 _lastLogType == RocksDBLogType::CollectionRename);
-      TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
-      LOG_TOPIC(_LOG, Logger::ROCKSDB) << "CID: " << _currentCollectionId;
-
-      VPackSlice collectionData = RocksDBValue::data(value);
-      _builder.openObject();
-      _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
-      _builder.add("type", VPackValue(convertLogType(_lastLogType)));
-      _builder.add("database", VPackValue(std::to_string(_currentDbId)));
-      _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
-
-      VPackSlice cname = collectionData.get("name");
-      if (cname.isString()) {
-        _builder.add("cname", cname);
-
-        // set name in cache              
-        _collectionNames[_currentCollectionId] = cname.copyString();
-      }
-
-      if (_lastLogType == RocksDBLogType::CollectionRename) {
-        _builder.add("data", VPackValue(VPackValueType::Object));
-        _builder.add("id", VPackValue(std::to_string(_currentCollectionId)));
-        _builder.add("oldName", VPackValue(_oldCollectionName));
-        _builder.add("name", cname);
+    
+    if (column_family_id == _definitionsCF) {
+      
+      if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
+        TRI_ASSERT(_lastLogType == RocksDBLogType::DatabaseCreate ||
+                   _lastLogType == RocksDBLogType::DatabaseDrop);
+        
+        VPackSlice data = RocksDBValue::data(value);
+        _builder.openObject();
+        _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
+        _builder.add("type", VPackValue(convertLogType(_lastLogType)));
+        _builder.add("database", VPackValue(std::to_string(_currentDbId)));
+        _builder.add("data", data);
         _builder.close();
-      } else {  // change and create need full data
-        _builder.add("data", collectionData);
-      }
-      _builder.close();
-      // log type is only ever relevant, immediately after it appeared
-      // we want double occurences create / drop / change collection to fail
-      _lastLogType = RocksDBLogType::Invalid;
-      _currentDbId = 0;
-      _currentCollectionId = 0;
+
+        
+      } else if (RocksDBKey::type(key) == RocksDBEntryType::Collection) {
+        if (_lastLogType == RocksDBLogType::IndexCreate ||
+            _lastLogType == RocksDBLogType::IndexDrop) {
+          _lastLogType = RocksDBLogType::Invalid;
+          return rocksdb::Status();
+        }
+        TRI_ASSERT(_lastLogType == RocksDBLogType::CollectionCreate ||
+                   _lastLogType == RocksDBLogType::CollectionChange ||
+                   _lastLogType == RocksDBLogType::CollectionRename);
+        TRI_ASSERT(_currentDbId != 0 && _currentCollectionId != 0);
+        LOG_TOPIC(_LOG, Logger::ROCKSDB) << "CID: " << _currentCollectionId;
+        
+        VPackSlice data = RocksDBValue::data(value);
+        _builder.openObject();
+        _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
+        _builder.add("type", VPackValue(convertLogType(_lastLogType)));
+        _builder.add("database", VPackValue(std::to_string(_currentDbId)));
+        _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
+        
+        VPackSlice cname = data.get("name");
+        if (cname.isString()) {
+          _builder.add("cname", cname);
+          
+          // set name in cache
+          _collectionNames[_currentCollectionId] = cname.copyString();
+        }
+        
+        if (_lastLogType == RocksDBLogType::CollectionRename) {
+          _builder.add("data", VPackValue(VPackValueType::Object));
+          _builder.add("id", VPackValue(std::to_string(_currentCollectionId)));
+          _builder.add("oldName", VPackValue(_oldCollectionName));
+          _builder.add("name", cname);
+          _builder.close();
+        } else {  // change and create need full data
+          _builder.add("data", data);
+        }
+        _builder.close();
+        // log type is only ever relevant, immediately after it appeared
+        // we want double occurences create / drop / change collection to fail
+        _lastLogType = RocksDBLogType::Invalid;
+        _currentDbId = 0;
+        _currentCollectionId = 0;
+      } // if (RocksDBKey::type(key) == RocksDBEntryType::Collection)
+      
     } else if (column_family_id == _documentsCF) {
       TRI_ASSERT((_seenBeginTransaction && !_singleOp) ||
                  (!_seenBeginTransaction && _singleOp));
@@ -554,49 +567,46 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
   while (iterator->Valid() && lastTick <= tickEnd &&
          builder.buffer()->size() < chunkSize) {
     s = iterator->status();
-    if (s.ok()) {
-      rocksdb::BatchResult batch = iterator->GetBatch();
-      TRI_ASSERT(lastTick == tickStart || batch.sequence >= lastTick);
-
-      if (!fromTickIncluded && batch.sequence >= tickStart &&
-          batch.sequence <= tickEnd) {
-        fromTickIncluded = true;
-      }
-      if (batch.sequence <= tickStart) {
-        iterator->Next();
-        continue;
-      }
-      if (batch.sequence > tickEnd) {
-        break;
-      }
-
-      lastTick = batch.sequence;
-      LOG_TOPIC(_LOG, Logger::ROCKSDB) << "Start WriteBatch tick: " << lastTick;
-      handler->startNewBatch(batch.sequence);
-      s = batch.writeBatchPtr->Iterate(handler.get());
-      if (s.ok()) {
-        lastWrittenTick = handler->endBatch();
-        LOG_TOPIC(_LOG, Logger::ROCKSDB) << "End WriteBatch written-tick: "
-                                         << lastWrittenTick;
-        handler->endBatch();
-        if (!fromTickIncluded && lastTick >= tickStart && lastTick <= tickEnd) {
-          fromTickIncluded = true;
-        }
-      } else {
-        LOG_TOPIC(ERR, Logger::ROCKSDB) << s.ToString();
-        break;
-      }
-    } else {
+    if (!s.ok()) {
       LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan";
       auto converted = convertStatus(s);
       auto result =
-          RocksDBReplicationResult(converted.errorNumber(), lastWrittenTick);
+      RocksDBReplicationResult(converted.errorNumber(), lastWrittenTick);
       if (fromTickIncluded) {
         result.includeFromTick();
       }
       return result;
     }
+    
+    rocksdb::BatchResult batch = iterator->GetBatch();
+    TRI_ASSERT(lastTick == tickStart || batch.sequence >= lastTick);
+    if (!fromTickIncluded && batch.sequence >= tickStart &&
+        batch.sequence <= tickEnd) {
+      fromTickIncluded = true;
+    }
+    if (batch.sequence <= tickStart) {
+      iterator->Next(); // skip
+      continue;
+    } else if (batch.sequence > tickEnd) {
+      break; // cancel out
+    }
 
+    lastTick = batch.sequence;
+    LOG_TOPIC(_LOG, Logger::ROCKSDB) << "Start WriteBatch tick: " << lastTick;
+    handler->startNewBatch(batch.sequence);
+    s = batch.writeBatchPtr->Iterate(handler.get());
+    if (!s.ok()) {
+      LOG_TOPIC(ERR, Logger::ROCKSDB) << s.ToString();
+      break;
+    }
+    
+    lastWrittenTick = handler->endBatch();
+    LOG_TOPIC(_LOG, Logger::ROCKSDB) << "End WriteBatch written-tick: "
+                                     << lastWrittenTick;
+    handler->endBatch();
+    if (!fromTickIncluded && lastTick >= tickStart && lastTick <= tickEnd) {
+      fromTickIncluded = true;
+    }
     iterator->Next();
   }
 

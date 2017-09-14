@@ -24,8 +24,7 @@
 #define APPLICATION_FEATURES_SCRIPT_FEATURE_H 1
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-
-#include "Rest/OperationMode.h"
+#include "GeneralServer/OperationMode.h"
 
 namespace arangodb {
 class ScriptFeature final : public application_features::ApplicationFeature {

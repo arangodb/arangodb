@@ -51,9 +51,7 @@ using namespace arangodb::rest;
 
 static bool IsSystemUser() {
   if (ExecContext::CURRENT != nullptr) {
-    AuthLevel level =
-    ExecContext::CURRENT->systemAuthLevel();
-    return level == AuthLevel::RW;
+    return ExecContext::CURRENT->isSystemUser();
   }
   return true;
 }

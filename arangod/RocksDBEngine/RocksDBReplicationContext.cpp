@@ -158,7 +158,7 @@ RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
 // creating a new iterator if one does not exist for this collection
 RocksDBReplicationResult RocksDBReplicationContext::dump(
     TRI_vocbase_t* vocbase, std::string const& collectionName,
-    basics::StringBuffer& buff, uint64_t chunkSize, bool compat28) {
+    basics::StringBuffer& buff, uint64_t chunkSize) {
   TRI_ASSERT(vocbase != nullptr);
   if (_trx.get() == nullptr) {
     return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
@@ -170,16 +170,12 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
 
   // set type
   int type = REPLICATION_MARKER_DOCUMENT;  // documents
-  if (compat28 && (_collection->type() == TRI_COL_TYPE_EDGE)) {
-    type = 2301;  // 2.8 compatibility edges
-  }
-
   arangodb::basics::VPackStringBufferAdapter adapter(buff.stringBuffer());
 
   VPackBuilder builder(&_vpackOptions);
 
-  auto cb = [this, &type, &buff, &adapter, &compat28,
-             &builder](DocumentIdentifierToken const& token) {
+  auto cb = [this, &type, &buff, &adapter,
+             &builder] (DocumentIdentifierToken const& token) {
     builder.clear();
 
     builder.openObject();
@@ -196,16 +192,12 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     }
 
     builder.add(VPackValue("data"));
-    auto key = VPackSlice(_mdr.vpack()).get(StaticStrings::KeyString);
     _mdr.addToBuilder(builder, false);
-    if (compat28) {
-      builder.add("key", key);
-    }
     builder.close();
 
-    VPackDumper dumper(
-        &adapter,
-        &_vpackOptions);  // note: we need the CustomTypeHandler here
+    // note: we need the CustomTypeHandler here
+    VPackDumper dumper( &adapter,
+        &_vpackOptions);
     VPackSlice slice = builder.slice();
     dumper.dump(slice);
     buff.appendChar('\n');
@@ -240,11 +232,10 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   }
 
   std::string lowKey;
-  VPackSlice highKey;  // FIXME: no good keeping this
+  VPackSlice highKey; // points into document owned by _mdr
   uint64_t hash = 0x012345678;
   auto cb = [&](DocumentIdentifierToken const& token) {
-    bool ok = _collection->readDocument(_trx.get(), token, _mdr);
-    if (!ok) {
+    if (!_collection->readDocument(_trx.get(), token, _mdr)) {
       // TODO: do something here?
       return;
     }
@@ -273,7 +264,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
       }
       b.add(VPackValue(VPackValueType::Object));
       b.add("low", VPackValue(lowKey));
-      b.add("high", VPackValue(highKey.copyString()));
+      b.add("high", highKey);
       b.add("hash", VPackValue(std::to_string(hash)));
       b.close();
       lowKey.clear();  // reset string

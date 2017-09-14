@@ -2092,13 +2092,6 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
     withTicks = StringUtils::boolean(value7);
   }
 
-  bool compat28 = false;
-  std::string const& value8 = _request->value("compat28", found);
-
-  if (found) {
-    compat28 = StringUtils::boolean(value8);
-  }
-
   arangodb::LogicalCollection* c = _vocbase->lookupCollection(collection);
 
   if (c == nullptr) {
@@ -2131,11 +2124,7 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
   MMFilesReplicationDumpContext dump(ctx,
                                      static_cast<size_t>(determineChunkSize()),
                                      includeSystem, 0);
-
-  if (compat28) {
-    dump._compat28 = true;
-  }
-
+  
   int res = MMFilesDumpCollectionReplication(&dump, col, tickStart, tickEnd,
                                              withTicks);
 

@@ -59,7 +59,6 @@ struct MMFilesReplicationDumpContext {
         _hasMore(false),
         _includeSystem(includeSystem),
         _fromTickIncluded(false),
-        _compat28(false),
         _slices(),
         _useVst(useVst) {
     if (_chunkSize == 0) {
@@ -96,7 +95,6 @@ struct MMFilesReplicationDumpContext {
   bool _hasMore;
   bool _includeSystem;
   bool _fromTickIncluded;
-  bool _compat28;
   std::vector<VPackBuffer<uint8_t>> _slices;
   bool _useVst;
 };

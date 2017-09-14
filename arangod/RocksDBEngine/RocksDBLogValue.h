@@ -105,7 +105,7 @@ class RocksDBLogValue {
   rocksdb::Slice slice() const { return rocksdb::Slice(_buffer); }
 
  private:
-  explicit RocksDBLogValue(RocksDBLogType type);
+  //explicit RocksDBLogValue(RocksDBLogType type);
   RocksDBLogValue(RocksDBLogType type, uint64_t);
   RocksDBLogValue(RocksDBLogType type, uint64_t, uint64_t);
   RocksDBLogValue(RocksDBLogType type, uint64_t, uint64_t, uint64_t);
