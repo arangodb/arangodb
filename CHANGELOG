@@ -1,6 +1,9 @@
 devel
 -----
 
+* fix windows implementation for fs.getTempPath() to also create a
+  sub-directory as we do on linux
+
 * leader-follower replication catchup code has been rewritten in C++
 
 * early stage AQL optimization now also uses the C++ implementations of
