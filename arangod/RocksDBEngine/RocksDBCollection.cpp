@@ -195,7 +195,10 @@ void RocksDBCollection::load() {
   if (_cacheEnabled) {
     createCache();
     if (_cachePresent) {
-      _cache->sizeHint(0.3 * numberDocuments());
+      uint64_t numDocs = numberDocuments();
+      if (numDocs > 0) {
+        _cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
+      }
     }
   }
   READ_LOCKER(guard, _indexesLock);

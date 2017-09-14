@@ -153,7 +153,7 @@ static inline size_t MemoryList(uint32_t size) {
 static TRI_fulltext_list_t* IncreaseList(TRI_fulltext_list_t* list,
                                          uint32_t size) {
   TRI_fulltext_list_t* copy =
-      TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, list, MemoryList(size));
+      TRI_Reallocate(list, MemoryList(size));
 
   if (copy != nullptr) {
     InitList(copy, size);
@@ -204,7 +204,7 @@ TRI_fulltext_list_t* TRI_CloneListMMFilesFulltextIndex(
 /// @brief create a new list
 TRI_fulltext_list_t* TRI_CreateListMMFilesFulltextIndex(uint32_t size) {
   TRI_fulltext_list_t* list =
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, MemoryList(size));
+      TRI_Allocate(MemoryList(size));
 
   if (list == nullptr) {
     // out of memory
@@ -218,7 +218,7 @@ TRI_fulltext_list_t* TRI_CreateListMMFilesFulltextIndex(uint32_t size) {
 
 /// @brief free a list
 void TRI_FreeListMMFilesFulltextIndex(TRI_fulltext_list_t* list) {
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, list);
+  TRI_Free(list);
 }
 
 /// @brief get the memory usage of a list

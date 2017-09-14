@@ -169,27 +169,27 @@ static void JS_JsonCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
       docs->Set(static_cast<uint32_t>(i), TRI_VPackToV8(isolate, row));
     }
 
-    result->ForceSet(TRI_V8_ASCII_STRING("result"), docs);
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "result"), docs);
 
     bool hasCount = cursor->hasCount();
     size_t count = cursor->count();
     bool hasNext = cursor->hasNext();
     VPackSlice const extra = cursor->extra();
 
-    result->ForceSet(TRI_V8_ASCII_STRING("hasMore"),
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "hasMore"),
                      v8::Boolean::New(isolate, hasNext));
 
     if (hasNext) {
-      result->ForceSet(TRI_V8_ASCII_STRING("id"),
+      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "id"),
                        TRI_V8UInt64String<TRI_voc_tick_t>(isolate, cursor->id()));
     }
 
     if (hasCount) {
-      result->ForceSet(TRI_V8_ASCII_STRING("count"),
+      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "count"),
                        v8::Number::New(isolate, static_cast<double>(count)));
     }
     if (!extra.isNone()) {
-      result->ForceSet(TRI_V8_ASCII_STRING("extra"),
+      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "extra"),
                        TRI_VPackToV8(isolate, extra));
     }
 
@@ -212,9 +212,9 @@ void TRI_InitV8cursor(v8::Handle<v8::Context> context, TRI_v8_global_t* v8g) {
 
   // cursor functions. not intended to be used by end users
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("CREATE_CURSOR"),
+                               TRI_V8_ASCII_STRING(isolate, "CREATE_CURSOR"),
                                JS_CreateCursor, true);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("JSON_CURSOR"),
+                               TRI_V8_ASCII_STRING(isolate, "JSON_CURSOR"),
                                JS_JsonCursor, true);
 }

@@ -25,6 +25,7 @@
 #include "Aql/ExecutionEngine.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Cluster/ServerState.h"
+#include "Logger/Logger.h"
 
 using namespace arangodb::aql;
 
@@ -35,6 +36,10 @@ Optimizer::Optimizer(size_t maxNumberOfPlans)
   
 size_t Optimizer::hasEnoughPlans(size_t extraPlans) const {
   return (_newPlans.size() + extraPlans >= _maxNumberOfPlans);
+}
+  
+void Optimizer::disableRule(int rule) {
+  _disabledIds.emplace(rule);
 }
 
 // @brief add a plan to the optimizer
@@ -96,10 +101,10 @@ int Optimizer::createPlans(ExecutionPlan* plan,
   int maxRuleLevel = OptimizerRulesFeature::_rules.rbegin()->first;
 
   // which optimizer rules are disabled?
-  std::unordered_set<int> disabledIds(OptimizerRulesFeature::getDisabledRuleIds(rulesSpecification));
+  _disabledIds = OptimizerRulesFeature::getDisabledRuleIds(rulesSpecification);
 
   _newPlans.clear();
-
+        
   while (leastDoneLevel < maxRuleLevel) {
     // std::cout << "Have " << _plans.size() << " plans:" << std::endl;
     // for (auto const& p : _plans.list) {
@@ -121,19 +126,14 @@ int Optimizer::createPlans(ExecutionPlan* plan,
         auto it = OptimizerRulesFeature::_rules.upper_bound(level);
         TRI_ASSERT(it != OptimizerRulesFeature::_rules.end());
 
-        // std::cout << "Trying rule " << it->second.name << " with level "
-        //          << it->first << " on plan " << count++
-        //          << std::endl;
-
         level = (*it).first;
         auto& rule = (*it).second;
 
         // skip over rules if we should
         // however, we don't want to skip those rules that will not create
         // additional plans
-        if (((runOnlyRequiredRules && rule.canCreateAdditionalPlans) ||
-             disabledIds.find(level) != disabledIds.end()) &&
-            rule.canBeDisabled) {
+        if ((runOnlyRequiredRules && rule.canCreateAdditionalPlans) ||
+            _disabledIds.find(level) != _disabledIds.end()) {
           // we picked a disabled rule or we have reached the max number of
           // plans and just skip this rule
 
@@ -183,7 +183,6 @@ int Optimizer::createPlans(ExecutionPlan* plan,
         leastDoneLevel = l;
       }
     }
-    // std::cout << "Least done level is " << leastDoneLevel << std::endl;
 
     // Stop if the result gets out of hand:
     if (!runOnlyRequiredRules && _plans.size() >= _maxNumberOfPlans) {
@@ -199,17 +198,11 @@ int Optimizer::createPlans(ExecutionPlan* plan,
   TRI_ASSERT(_plans.size() >= 1);
 
   estimatePlans();
-  sortPlans();
-#if 0
-  // Only for debugging:
-  // std::cout << "Optimization ends with " << _plans.size() << " plans."
-  //           << std::endl;
-  // for (auto const& p : _plans.list) {
-  //   p->show();
-  //   std::cout << "costing: " << p->getCost() << std::endl;
-  //   std::cout << std::endl;
-  // }
-#endif
+  if (_plans.size() > 1) {
+    sortPlans();
+  }
+
+  LOG_TOPIC(TRACE, Logger::FIXME) << "optimization ends with " << _plans.size() << " plans";
 
   return TRI_ERROR_NO_ERROR;
 }

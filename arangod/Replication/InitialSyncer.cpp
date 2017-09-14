@@ -95,10 +95,7 @@ InitialSyncer::~InitialSyncer() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief run method, performs a full synchronization
-////////////////////////////////////////////////////////////////////////////////
-
 int InitialSyncer::run(std::string& errorMsg, bool incremental) {
   if (_client == nullptr || _connection == nullptr || _endpoint == nullptr) {
     errorMsg = "invalid endpoint";
@@ -235,10 +232,7 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief send a WAL flush command
-////////////////////////////////////////////////////////////////////////////////
-
 int InitialSyncer::sendFlush(std::string& errorMsg) {
   std::string const url = "/_admin/wal/flush";
   std::string const body =
@@ -275,10 +269,7 @@ int InitialSyncer::sendFlush(std::string& errorMsg) {
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief send a "start batch" command
-////////////////////////////////////////////////////////////////////////////////
-
 int InitialSyncer::sendStartBatch(std::string& errorMsg) {
   _batchId = 0;
 
@@ -329,10 +320,7 @@ int InitialSyncer::sendStartBatch(std::string& errorMsg) {
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief send an "extend batch" command
-////////////////////////////////////////////////////////////////////////////////
-
 int InitialSyncer::sendExtendBatch() {
   if (_batchId == 0) {
     return TRI_ERROR_NO_ERROR;
@@ -373,10 +361,7 @@ int InitialSyncer::sendExtendBatch() {
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief send a "finish batch" command
-////////////////////////////////////////////////////////////////////////////////
-
 int InitialSyncer::sendFinishBatch() {
   if (_batchId == 0) {
     return TRI_ERROR_NO_ERROR;
@@ -413,10 +398,7 @@ int InitialSyncer::sendFinishBatch() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the initial synchronization should be aborted
-////////////////////////////////////////////////////////////////////////////////
-
 bool InitialSyncer::checkAborted() {
   if (application_features::ApplicationServer::isStopping() ||
       (_vocbase->replicationApplier() != nullptr &&
@@ -426,10 +408,7 @@ bool InitialSyncer::checkAborted() {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the data from a collection dump
-////////////////////////////////////////////////////////////////////////////////
-
 int InitialSyncer::applyCollectionDump(transaction::Methods& trx,
                                        std::string const& collectionName,
                                        SimpleHttpResult* response,
@@ -546,10 +525,7 @@ int InitialSyncer::applyCollectionDump(transaction::Methods& trx,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief incrementally fetch data from a collection
-////////////////////////////////////////////////////////////////////////////////
-
 int InitialSyncer::handleCollectionDump(arangodb::LogicalCollection* col,
                                         std::string const& cid,
                                         std::string const& collectionName,
@@ -780,10 +756,7 @@ int InitialSyncer::handleCollectionDump(arangodb::LogicalCollection* col,
   return TRI_ERROR_INTERNAL;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief incrementally fetch data from a collection
-////////////////////////////////////////////////////////////////////////////////
-
 int InitialSyncer::handleCollectionSync(arangodb::LogicalCollection* col,
                                         std::string const& cid,
                                         std::string const& collectionName,
@@ -983,15 +956,9 @@ int InitialSyncer::handleCollectionSync(arangodb::LogicalCollection* col,
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief incrementally fetch data from a collection
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief changes the properties of a collection, based on the VelocyPack
 /// provided
-////////////////////////////////////////////////////////////////////////////////
-
 int InitialSyncer::changeCollection(arangodb::LogicalCollection* col,
                                     VPackSlice const& slice) {
   arangodb::CollectionGuard guard(_vocbase, col->cid());
@@ -1003,10 +970,7 @@ int InitialSyncer::changeCollection(arangodb::LogicalCollection* col,
   return guard.collection()->updateProperties(slice, doSync).errorNumber();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the number of documents in a collection
-////////////////////////////////////////////////////////////////////////////////
-
 int64_t InitialSyncer::getSize(arangodb::LogicalCollection* col) {
   SingleCollectionTransaction trx(
       transaction::StandaloneContext::Create(_vocbase), col->cid(),
@@ -1022,10 +986,7 @@ int64_t InitialSyncer::getSize(arangodb::LogicalCollection* col) {
   return static_cast<int64_t>(document->numberDocuments(&trx));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief handle the information about a collection
-////////////////////////////////////////////////////////////////////////////////
-
 int InitialSyncer::handleCollection(VPackSlice const& parameters,
                                     VPackSlice const& indexes, bool incremental,
                                     std::string& errorMsg, sync_phase_e phase) {
@@ -1287,10 +1248,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
   return TRI_ERROR_INTERNAL;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief handle the inventory response of the master
-////////////////////////////////////////////////////////////////////////////////
-
 int InitialSyncer::handleInventoryResponse(VPackSlice const& slice,
                                            bool incremental,
                                            std::string& errorMsg) {
@@ -1391,10 +1349,7 @@ int InitialSyncer::handleInventoryResponse(VPackSlice const& slice,
   return iterateCollections(collections, incremental, errorMsg, PHASE_DUMP);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief iterate over all collections from an array and apply an action
-////////////////////////////////////////////////////////////////////////////////
-
 int InitialSyncer::iterateCollections(
     std::vector<std::pair<VPackSlice, VPackSlice>> const& collections,
     bool incremental, std::string& errorMsg, sync_phase_e phase) {
