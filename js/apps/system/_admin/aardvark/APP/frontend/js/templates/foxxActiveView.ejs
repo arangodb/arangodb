@@ -1,7 +1,9 @@
 <script id="foxxActiveView.ejs" type="text/template">
   <div class="paddingBox">
     <div class="foxxDesc">
+      <p><span class="foxxMount"><%=model.get("mount")%></span></p>
       <p><span class="foxxName"><%=model.get("name")%></span></p>
+      <p><span class="foxxName"><%=model.get("version")%></span></p>
       <!--<p><span class="foxxCategory"><%=model.get("category")%></span></p>-->
     </div>
     <!-- <div class="foxxActions"><button class="installFoxx button-success" appId="<%=model.name %>" appVersion="<%=model.latestVersion%>" >Interface</button></div>-->
@@ -11,7 +13,15 @@
       <div class="tileBadge">
         <span>
           <div class="corneredBadge development">
-            development
+            Development
+          </div>
+        </span>
+      </div>
+    <% } else { %>
+      <div class="tileBadge">
+        <span>
+          <div class="corneredBadge production">
+            Production
           </div>
         </span>
       </div>

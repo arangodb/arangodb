@@ -402,6 +402,10 @@ $iconsize: 50px;
         &.development {
           border-bottom-color: $c-unloaded;
         }
+
+        &.production {
+          border-bottom-color: $c-positive;
+        }
       }
     }
   }
