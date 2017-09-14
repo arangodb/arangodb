@@ -1154,6 +1154,9 @@ bool ServerState::storeRole(RoleEnum role) {
       }
     }
   }
+
+  Logger::setRole(roleToString(role)[0]);
+
   _role.store(role, std::memory_order_release);
   return true;
 }

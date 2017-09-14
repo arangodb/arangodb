@@ -250,6 +250,18 @@ int TraditionalKeyGenerator::validate(char const* p, size_t length, bool isResto
   if (!validateKey(p, length)) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
+  
+  if (length > 0 && p[0] >= '0' && p[0] <= '9') {
+    // potentially numeric key
+    uint64_t value = StringUtils::uint64(p, length);
+
+    MUTEX_LOCKER(mutexLocker, _lock);
+
+    if (value > _lastValue) {
+      // and update our last value
+      _lastValue = value;
+    }
+  }
 
   return TRI_ERROR_NO_ERROR;
 }

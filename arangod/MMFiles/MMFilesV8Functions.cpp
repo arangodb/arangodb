@@ -121,29 +121,29 @@ static void JS_DatafilesVocbaseCol(
 
   // journals
   v8::Handle<v8::Array> journals = v8::Array::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("journals"), journals);
+  result->Set(TRI_V8_ASCII_STRING(isolate, "journals"), journals);
 
   uint32_t i = 0;
   for (auto& it : structure.journals) {
-    journals->Set(i++, TRI_V8_STD_STRING(it));
+    journals->Set(i++, TRI_V8_STD_STRING(isolate, it));
   }
 
   // compactors
   v8::Handle<v8::Array> compactors = v8::Array::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("compactors"), compactors);
+  result->Set(TRI_V8_ASCII_STRING(isolate, "compactors"), compactors);
 
   i = 0;
   for (auto& it : structure.compactors) {
-    compactors->Set(i++, TRI_V8_STD_STRING(it));
+    compactors->Set(i++, TRI_V8_STD_STRING(isolate, it));
   }
 
   // datafiles
   v8::Handle<v8::Array> datafiles = v8::Array::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("datafiles"), datafiles);
+  result->Set(TRI_V8_ASCII_STRING(isolate, "datafiles"), datafiles);
 
   i = 0;
   for (auto& it : structure.datafiles) {
-    datafiles->Set(i++, TRI_V8_STD_STRING(it));
+    datafiles->Set(i++, TRI_V8_STD_STRING(isolate, it));
   }
 
   TRI_V8_RETURN(result);
@@ -186,50 +186,50 @@ static void JS_DatafileScanVocbaseCol(
     // build result
     result = v8::Object::New(isolate);
 
-    result->Set(TRI_V8_ASCII_STRING("currentSize"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "currentSize"),
                 v8::Number::New(isolate, scan.currentSize));
-    result->Set(TRI_V8_ASCII_STRING("maximalSize"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "maximalSize"),
                 v8::Number::New(isolate, scan.maximalSize));
-    result->Set(TRI_V8_ASCII_STRING("endPosition"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "endPosition"),
                 v8::Number::New(isolate, scan.endPosition));
-    result->Set(TRI_V8_ASCII_STRING("numberMarkers"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "numberMarkers"),
                 v8::Number::New(isolate, scan.numberMarkers));
-    result->Set(TRI_V8_ASCII_STRING("status"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "status"),
                 v8::Number::New(isolate, scan.status));
-    result->Set(TRI_V8_ASCII_STRING("isSealed"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "isSealed"),
                 v8::Boolean::New(isolate, scan.isSealed));
 
     v8::Handle<v8::Array> entries = v8::Array::New(isolate);
-    result->Set(TRI_V8_ASCII_STRING("entries"), entries);
+    result->Set(TRI_V8_ASCII_STRING(isolate, "entries"), entries);
 
     uint32_t i = 0;
     for (auto const& entry : scan.entries) {
       v8::Handle<v8::Object> o = v8::Object::New(isolate);
 
-      o->Set(TRI_V8_ASCII_STRING("position"),
+      o->Set(TRI_V8_ASCII_STRING(isolate, "position"),
              v8::Number::New(isolate, entry.position));
-      o->Set(TRI_V8_ASCII_STRING("size"),
+      o->Set(TRI_V8_ASCII_STRING(isolate, "size"),
              v8::Number::New(isolate, entry.size));
-      o->Set(TRI_V8_ASCII_STRING("realSize"),
+      o->Set(TRI_V8_ASCII_STRING(isolate, "realSize"),
              v8::Number::New(isolate, entry.realSize));
-      o->Set(TRI_V8_ASCII_STRING("tick"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, entry.tick));
-      o->Set(TRI_V8_ASCII_STRING("type"),
+      o->Set(TRI_V8_ASCII_STRING(isolate, "tick"), TRI_V8UInt64String<TRI_voc_tick_t>(isolate, entry.tick));
+      o->Set(TRI_V8_ASCII_STRING(isolate, "type"),
              v8::Number::New(isolate, static_cast<int>(entry.type)));
-      o->Set(TRI_V8_ASCII_STRING("status"),
+      o->Set(TRI_V8_ASCII_STRING(isolate, "status"),
              v8::Number::New(isolate, static_cast<int>(entry.status)));
 
       if (!entry.key.empty()) {
-        o->Set(TRI_V8_ASCII_STRING("key"), TRI_V8_STD_STRING(entry.key));
+        o->Set(TRI_V8_ASCII_STRING(isolate, "key"), TRI_V8_STD_STRING(isolate, entry.key));
       }
 
       if (entry.typeName != nullptr) {
-        o->Set(TRI_V8_ASCII_STRING("typeName"),
-               TRI_V8_ASCII_STRING(entry.typeName));
+        o->Set(TRI_V8_ASCII_STRING(isolate, "typeName"),
+               TRI_V8_ASCII_STRING(isolate, entry.typeName));
       }
 
       if (!entry.diagnosis.empty()) {
-        o->Set(TRI_V8_ASCII_STRING("diagnosis"),
-               TRI_V8_STD_STRING(entry.diagnosis));
+        o->Set(TRI_V8_ASCII_STRING(isolate, "diagnosis"),
+               TRI_V8_STD_STRING(isolate, entry.diagnosis));
       }
 
       entries->Set(i++, o);
@@ -329,57 +329,57 @@ static void JS_PropertiesWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() == 1) {
     // set the properties
     v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
-    if (object->Has(TRI_V8_ASCII_STRING("allowOversizeEntries"))) {
+    if (object->Has(TRI_V8_ASCII_STRING(isolate, "allowOversizeEntries"))) {
       bool value = TRI_ObjectToBoolean(
-          object->Get(TRI_V8_ASCII_STRING("allowOversizeEntries")));
+          object->Get(TRI_V8_ASCII_STRING(isolate, "allowOversizeEntries")));
       l->allowOversizeEntries(value);
     }
 
-    if (object->Has(TRI_V8_ASCII_STRING("logfileSize"))) {
+    if (object->Has(TRI_V8_ASCII_STRING(isolate, "logfileSize"))) {
       uint32_t value = static_cast<uint32_t>(TRI_ObjectToUInt64(
-          object->Get(TRI_V8_ASCII_STRING("logfileSize")), true));
+          object->Get(TRI_V8_ASCII_STRING(isolate, "logfileSize")), true));
       l->filesize(value);
     }
 
-    if (object->Has(TRI_V8_ASCII_STRING("historicLogfiles"))) {
+    if (object->Has(TRI_V8_ASCII_STRING(isolate, "historicLogfiles"))) {
       uint32_t value = static_cast<uint32_t>(TRI_ObjectToUInt64(
-          object->Get(TRI_V8_ASCII_STRING("historicLogfiles")), true));
+          object->Get(TRI_V8_ASCII_STRING(isolate, "historicLogfiles")), true));
       l->historicLogfiles(value);
     }
 
-    if (object->Has(TRI_V8_ASCII_STRING("reserveLogfiles"))) {
+    if (object->Has(TRI_V8_ASCII_STRING(isolate, "reserveLogfiles"))) {
       uint32_t value = static_cast<uint32_t>(TRI_ObjectToUInt64(
-          object->Get(TRI_V8_ASCII_STRING("reserveLogfiles")), true));
+          object->Get(TRI_V8_ASCII_STRING(isolate, "reserveLogfiles")), true));
       l->reserveLogfiles(value);
     }
 
-    if (object->Has(TRI_V8_ASCII_STRING("throttleWait"))) {
+    if (object->Has(TRI_V8_ASCII_STRING(isolate, "throttleWait"))) {
       uint64_t value = TRI_ObjectToUInt64(
-          object->Get(TRI_V8_ASCII_STRING("throttleWait")), true);
+          object->Get(TRI_V8_ASCII_STRING(isolate, "throttleWait")), true);
       l->maxThrottleWait(value);
     }
 
-    if (object->Has(TRI_V8_ASCII_STRING("throttleWhenPending"))) {
+    if (object->Has(TRI_V8_ASCII_STRING(isolate, "throttleWhenPending"))) {
       uint64_t value = TRI_ObjectToUInt64(
-          object->Get(TRI_V8_ASCII_STRING("throttleWhenPending")), true);
+          object->Get(TRI_V8_ASCII_STRING(isolate, "throttleWhenPending")), true);
       l->throttleWhenPending(value);
     }
   }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("allowOversizeEntries"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "allowOversizeEntries"),
               v8::Boolean::New(isolate, l->allowOversizeEntries()));
-  result->Set(TRI_V8_ASCII_STRING("logfileSize"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "logfileSize"),
               v8::Number::New(isolate, l->filesize()));
-  result->Set(TRI_V8_ASCII_STRING("historicLogfiles"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "historicLogfiles"),
               v8::Number::New(isolate, l->historicLogfiles()));
-  result->Set(TRI_V8_ASCII_STRING("reserveLogfiles"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "reserveLogfiles"),
               v8::Number::New(isolate, l->reserveLogfiles()));
-  result->Set(TRI_V8_ASCII_STRING("syncInterval"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "syncInterval"),
               v8::Number::New(isolate, (double)l->syncInterval()));
-  result->Set(TRI_V8_ASCII_STRING("throttleWait"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "throttleWait"),
               v8::Number::New(isolate, (double)l->maxThrottleWait()));
-  result->Set(TRI_V8_ASCII_STRING("throttleWhenPending"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "throttleWhenPending"),
               v8::Number::New(isolate, (double)l->throttleWhenPending()));
 
   TRI_V8_RETURN(result);
@@ -397,17 +397,17 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() > 0) {
     if (args[0]->IsObject()) {
       v8::Handle<v8::Object> obj = args[0]->ToObject();
-      if (obj->Has(TRI_V8_ASCII_STRING("waitForSync"))) {
+      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "waitForSync"))) {
         waitForSync =
-            TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING("waitForSync")));
+            TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
       }
-      if (obj->Has(TRI_V8_ASCII_STRING("waitForCollector"))) {
+      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "waitForCollector"))) {
         waitForCollector = TRI_ObjectToBoolean(
-            obj->Get(TRI_V8_ASCII_STRING("waitForCollector")));
+            obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForCollector")));
       }
-      if (obj->Has(TRI_V8_ASCII_STRING("writeShutdownFile"))) {
+      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile"))) {
         writeShutdownFile = TRI_ObjectToBoolean(
-            obj->Get(TRI_V8_ASCII_STRING("writeShutdownFile")));
+            obj->Get(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile")));
       }
     } else {
       waitForSync = TRI_ObjectToBoolean(args[0]);
@@ -506,17 +506,17 @@ static void JS_TransactionsWal(
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   result->ForceSet(
-      TRI_V8_ASCII_STRING("runningTransactions"),
+      TRI_V8_ASCII_STRING(isolate, "runningTransactions"),
       v8::Number::New(isolate, static_cast<double>(std::get<0>(info))));
 
   // lastCollectedId
   {
     auto value = std::get<1>(info);
     if (value == UINT64_MAX) {
-      result->ForceSet(TRI_V8_ASCII_STRING("minLastCollected"),
+      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "minLastCollected"),
                        v8::Null(isolate));
     } else {
-      result->ForceSet(TRI_V8_ASCII_STRING("minLastCollected"),
+      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "minLastCollected"),
                        TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(value)));
     }
   }
@@ -525,9 +525,9 @@ static void JS_TransactionsWal(
   {
     auto value = std::get<2>(info);
     if (value == UINT64_MAX) {
-      result->ForceSet(TRI_V8_ASCII_STRING("minLastSealed"), v8::Null(isolate));
+      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "minLastSealed"), v8::Null(isolate));
     } else {
-      result->ForceSet(TRI_V8_ASCII_STRING("minLastSealed"),
+      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "minLastSealed"),
                        TRI_V8UInt64String<TRI_voc_tick_t>(isolate, static_cast<TRI_voc_tick_t>(value)));
     }
   }
@@ -546,27 +546,27 @@ void MMFilesV8Functions::registerResources() {
   v8::Handle<v8::ObjectTemplate> rt = v8::Handle<v8::ObjectTemplate>::New(isolate, v8g->VocbaseColTempl);
   TRI_ASSERT(!rt.IsEmpty());
   
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("datafiles"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "datafiles"),
                        JS_DatafilesVocbaseCol, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("datafileScan"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "datafileScan"),
                        JS_DatafileScanVocbaseCol, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("rotate"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "rotate"),
                        JS_RotateVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("truncateDatafile"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "truncateDatafile"),
                        JS_TruncateDatafileVocbaseCol, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("tryRepairDatafile"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "tryRepairDatafile"),
                        JS_TryRepairDatafileVocbaseCol, true);
   
   // add global WAL handling functions
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("WAL_FLUSH"), JS_FlushWal, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "WAL_FLUSH"), JS_FlushWal, true);
   TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("WAL_WAITCOLLECTOR"),
+                               TRI_V8_ASCII_STRING(isolate, "WAL_WAITCOLLECTOR"),
                                JS_WaitCollectorWal, true);
   TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("WAL_PROPERTIES"),
+                               TRI_V8_ASCII_STRING(isolate, "WAL_PROPERTIES"),
                                JS_PropertiesWal, true);
   TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("WAL_TRANSACTIONS"),
+                               TRI_V8_ASCII_STRING(isolate, "WAL_TRANSACTIONS"),
                                JS_TransactionsWal, true);
 }

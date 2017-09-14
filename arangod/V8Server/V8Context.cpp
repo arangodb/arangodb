@@ -159,8 +159,8 @@ void V8Context::handleGlobalContextMethods() {
 
       TRI_ExecuteJavaScriptString(
           _isolate, _isolate->GetCurrentContext(),
-          TRI_V8_STD_STRING2(_isolate, func),
-          TRI_V8_ASCII_STRING2(_isolate, "global context method"), false);
+          TRI_V8_STD_STRING(_isolate, func),
+          TRI_V8_ASCII_STRING(_isolate, "global context method"), false);
 
       if (tryCatch.HasCaught()) {
         if (tryCatch.CanContinue()) {
@@ -183,9 +183,9 @@ void V8Context::handleCancelationCleanup() {
   try {
     TRI_ExecuteJavaScriptString(
         _isolate, _isolate->GetCurrentContext(),
-        TRI_V8_ASCII_STRING2(_isolate,
+        TRI_V8_ASCII_STRING(_isolate,
                             "require('module')._cleanupCancelation();"),
-        TRI_V8_ASCII_STRING2(_isolate, "context cleanup method"), false);
+        TRI_V8_ASCII_STRING(_isolate, "context cleanup method"), false);
   } catch (...) {
     LOG_TOPIC(WARN, arangodb::Logger::V8) << "caught exception during cancelation cleanup";
     // do not throw from here

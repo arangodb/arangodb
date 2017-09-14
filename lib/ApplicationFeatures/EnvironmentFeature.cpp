@@ -264,7 +264,7 @@ void EnvironmentFeature::start() {
         if (static_cast<double>(r) < 0.99 * rr) {
           LOG_TOPIC(WARN, Logger::MEMORY)
             << "/proc/sys/vm/overcommit_ratio is set to '" << r
-            << "'. It is recommended to set it to at least'" << std::llround(rr)
+            << "'. It is recommended to set it to at least '" << std::llround(rr)
             << "' (100 * (max(0, (RAM - Swap Space)) / RAM)) to utilize all "
             << "available RAM. Setting it to this value will minimize swap "
             << "usage, but may result in more out-of-memory errors, while "

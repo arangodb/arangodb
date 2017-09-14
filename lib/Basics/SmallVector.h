@@ -27,6 +27,8 @@
 #include "Basics/Common.h"
 #include "Basics/short_alloc.h"
 
+#include <list>
+
 namespace arangodb {
 
 template <class T, std::size_t BufSize = 64>

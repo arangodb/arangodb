@@ -33,7 +33,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Traverser.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Context.h"
 #include "VocBase/LogicalCollection.h"

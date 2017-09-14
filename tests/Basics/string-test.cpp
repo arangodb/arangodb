@@ -52,28 +52,28 @@ TEST_CASE("CStringTest", "[string]") {
 SECTION("tst_lower_ascii_no_change") {
   char* result;
 
-  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, "this is supposed to stay the same");
+  result = TRI_LowerAsciiString("this is supposed to stay the same");
   CHECK("this is supposed to stay the same" == std::string(result));
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
   
-  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, "this is also supposed to stay the same");
+  result = TRI_LowerAsciiString("this is also supposed to stay the same");
   CHECK("this is also supposed to stay the same" == std::string(result));
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
   
   // punctuation should not change
-  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, "01234567890,.;:-_#'+*~!\"§$%&/()[]{}=?\\|<>");
+  result = TRI_LowerAsciiString("01234567890,.;:-_#'+*~!\"§$%&/()[]{}=?\\|<>");
   CHECK(std::string("01234567890,.;:-_#'+*~!\"§$%&/()[]{}=?\\|<>") == std::string(result));
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
   
   // whitespace should not change
-  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, ("  \t \n \r \n"));
+  result = TRI_LowerAsciiString(("  \t \n \r \n"));
   CHECK(std::string("  \t \n \r \n") == result);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
   
   // test an empty string
-  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, "");
+  result = TRI_LowerAsciiString("");
   CHECK(std::string("") == std::string(result));
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -83,13 +83,13 @@ SECTION("tst_lower_ascii_no_change") {
 SECTION("tst_lower_ascii") {
   char* result;
 
-  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, "This MUST be converted into LOWER CASE!");
+  result = TRI_LowerAsciiString("This MUST be converted into LOWER CASE!");
   CHECK(std::string("this must be converted into lower case!") == result);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
   
-  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, "SCREAMING OUT LOUD");
+  result = TRI_LowerAsciiString("SCREAMING OUT LOUD");
   CHECK(std::string("screaming out loud") == result);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -99,17 +99,17 @@ SECTION("tst_lower_ascii") {
 SECTION("tst_lower_ascii_non_ascii") {
   char* result;
 
-  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, "äöüÄÖÜß");
+  result = TRI_LowerAsciiString("äöüÄÖÜß");
   CHECK(std::string("äöüÄÖÜß") == result);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
   
-  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, "코리아닷컴");
+  result = TRI_LowerAsciiString("코리아닷컴");
   CHECK(std::string("코리아닷컴") == result);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
   
-  result = TRI_LowerAsciiString(TRI_CORE_MEM_ZONE, "своих партнеров");
+  result = TRI_LowerAsciiString("своих партнеров");
   CHECK(std::string("своих партнеров") == result);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,28 +119,28 @@ SECTION("tst_lower_ascii_non_ascii") {
 SECTION("tst_upper_ascii_no_change") {
   char* result;
 
-  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "THIS IS SUPPOSED TO STAY THE SAME");
+  result = TRI_UpperAsciiString("THIS IS SUPPOSED TO STAY THE SAME");
   CHECK(std::string("THIS IS SUPPOSED TO STAY THE SAME") == result);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
   
-  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "THIS IS ALSO SUPPOSED TO STAY THE SAME");
+  result = TRI_UpperAsciiString("THIS IS ALSO SUPPOSED TO STAY THE SAME");
   CHECK(std::string("THIS IS ALSO SUPPOSED TO STAY THE SAME") == result);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
   
   // punctuation should not change
-  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "01234567890,.;:-_#'+*~!\"§$%&/()[]{}=?\\|<>");
+  result = TRI_UpperAsciiString("01234567890,.;:-_#'+*~!\"§$%&/()[]{}=?\\|<>");
   CHECK(std::string("01234567890,.;:-_#'+*~!\"§$%&/()[]{}=?\\|<>") == result);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
   
   // whitespace should not change
-  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "  \t \n \r \n");
+  result = TRI_UpperAsciiString("  \t \n \r \n");
   CHECK(std::string("  \t \n \r \n") == result);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
   
   // test an empty string
-  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "");
+  result = TRI_UpperAsciiString("");
   CHECK(std::string("") == result);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,13 +150,13 @@ SECTION("tst_upper_ascii_no_change") {
 SECTION("tst_upper_ascii") {
   char* result;
 
-  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "This must be converted into upper CASE!");
+  result = TRI_UpperAsciiString("This must be converted into upper CASE!");
   CHECK(std::string("THIS MUST BE CONVERTED INTO UPPER CASE!") == result);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
   
-  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "silently whispering");
+  result = TRI_UpperAsciiString("silently whispering");
   CHECK(std::string("SILENTLY WHISPERING") == result);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -166,17 +166,17 @@ SECTION("tst_upper_ascii") {
 SECTION("tst_upper_ascii_non_ascii") {
   char* result;
 
-  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "äöüÄÖÜß");
+  result = TRI_UpperAsciiString("äöüÄÖÜß");
   CHECK(std::string("äöüÄÖÜß") == result);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
   
-  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "코리아닷컴");
+  result = TRI_UpperAsciiString("코리아닷컴");
   CHECK(std::string("코리아닷컴") == result);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
   
-  result = TRI_UpperAsciiString(TRI_CORE_MEM_ZONE, "своих партнеров");
+  result = TRI_UpperAsciiString("своих партнеров");
   CHECK(std::string("своих партнеров") == result);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

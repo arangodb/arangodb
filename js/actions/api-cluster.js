@@ -33,7 +33,7 @@
 
 var actions = require('@arangodb/actions');
 var cluster = require('@arangodb/cluster');
-//var internal = require('internal');
+// var internal = require('internal');
 var _ = require('lodash');
 
 var fetchKey = cluster.fetchKey;
@@ -88,7 +88,7 @@ actions.defineHttp({
     }
 
     let agency = ArangoAgency.get('', false, true).arango;
-    
+
     let node = agency.Supervision.Health[serverId];
     if (node === undefined) {
       actions.resultError(req, res, actions.HTTP_NOT_FOUND,
@@ -107,14 +107,14 @@ actions.defineHttp({
     // need to make sure it is not responsible for anything
     if (node.Role === 'DBServer') {
       let used = [];
-      preconditions = reducePlanServers(function(data, agencyKey, servers) {
+      preconditions = reducePlanServers(function (data, agencyKey, servers) {
         data[agencyKey] = {'old': servers};
         if (servers.indexOf(serverId) !== -1) {
           used.push(agencyKey);
         }
         return data;
       }, {});
-      preconditions = reduceCurrentServers(function(data, agencyKey, servers) {
+      preconditions = reduceCurrentServers(function (data, agencyKey, servers) {
         data[agencyKey] = {'old': servers};
         if (servers.indexOf(serverId) !== -1) {
           used.push(agencyKey);
@@ -148,7 +148,7 @@ actions.defineHttp({
     }
 
     actions.resultOk(req, res, actions.HTTP_OK, true);
-    /*DBOnly:
+    /* DBOnly:
 
     Current/Databases/YYY/XXX
     */
@@ -270,7 +270,7 @@ actions.defineHttp({
     }
 
     var options = { timeout: 10 };
-    var op = ArangoClusterComm.asyncRequest('GET', 'server:' + serverId, '_system',
+    var op = ArangoClusterComm.asyncRequest('GET', 'server:' + serverId, req.database,
       '/_api/version', '', {}, options);
     var r = ArangoClusterComm.wait(op);
     res.contentType = 'application/json; charset=utf-8';
@@ -279,17 +279,21 @@ actions.defineHttp({
       res.body = r.body;
     } else if (r.status === 'TIMEOUT') {
       res.responseCode = actions.HTTP_BAD;
-      res.body = JSON.stringify({'error': true,
-      'errorMessage': 'operation timed out'});
+      res.body = JSON.stringify({
+        'error': true,
+        'errorMessage': 'operation timed out'
+      });
     } else {
       res.responseCode = actions.HTTP_BAD;
       var bodyobj;
       try {
         bodyobj = JSON.parse(r.body);
       } catch (err) {}
-      res.body = JSON.stringify({'error': true,
+      res.body = JSON.stringify({
+        'error': true,
         'errorMessage': 'error from Server, possibly Server unknown',
-      'body': bodyobj});
+        'body': bodyobj
+      });
     }
   }
 });
@@ -324,7 +328,7 @@ actions.defineHttp({
     }
 
     var options = { timeout: 10 };
-    var op = ArangoClusterComm.asyncRequest('GET', 'server:' + serverId, '_system',
+    var op = ArangoClusterComm.asyncRequest('GET', 'server:' + serverId, req.database,
       '/_admin/statistics', '', {}, options);
     var r = ArangoClusterComm.wait(op);
     res.contentType = 'application/json; charset=utf-8';
@@ -333,17 +337,21 @@ actions.defineHttp({
       res.body = r.body;
     } else if (r.status === 'TIMEOUT') {
       res.responseCode = actions.HTTP_BAD;
-      res.body = JSON.stringify({'error': true,
-      'errorMessage': 'operation timed out'});
+      res.body = JSON.stringify({
+        'error': true,
+        'errorMessage': 'operation timed out'
+      });
     } else {
       res.responseCode = actions.HTTP_BAD;
       var bodyobj;
       try {
         bodyobj = JSON.parse(r.body);
       } catch (err) {}
-      res.body = JSON.stringify({'error': true,
+      res.body = JSON.stringify({
+        'error': true,
         'errorMessage': 'error from Server, possibly Server unknown',
-      'body': bodyobj});
+        'body': bodyobj
+      });
     }
   }
 });
@@ -378,7 +386,7 @@ actions.defineHttp({
     }
 
     var options = { timeout: 10 };
-    var op = ArangoClusterComm.asyncRequest('GET', 'server:' + serverId, '_system',
+    var op = ArangoClusterComm.asyncRequest('GET', 'server:' + serverId, req.database,
       '/_api/engine', '', {}, options);
     var r = ArangoClusterComm.wait(op);
     res.contentType = 'application/json; charset=utf-8';
@@ -387,17 +395,21 @@ actions.defineHttp({
       res.body = r.body;
     } else if (r.status === 'TIMEOUT') {
       res.responseCode = actions.HTTP_BAD;
-      res.body = JSON.stringify({'error': true,
-      'errorMessage': 'operation timed out'});
+      res.body = JSON.stringify({
+        'error': true,
+        'errorMessage': 'operation timed out'
+      });
     } else {
       res.responseCode = actions.HTTP_BAD;
       var bodyobj;
       try {
         bodyobj = JSON.parse(r.body);
       } catch (err) {}
-      res.body = JSON.stringify({'error': true,
+      res.body = JSON.stringify({
+        'error': true,
         'errorMessage': 'error from Server, possibly Server unknown',
-      'body': bodyobj});
+        'body': bodyobj
+      });
     }
   }
 });
@@ -428,7 +440,7 @@ actions.defineHttp({
     }
     var DBserver = req.parameters.DBserver;
     var options = { timeout: 10 };
-    var op = ArangoClusterComm.asyncRequest('GET', 'server:' + DBserver, '_system',
+    var op = ArangoClusterComm.asyncRequest('GET', 'server:' + DBserver, req.database,
       '/_admin/statistics', '', {}, options);
     var r = ArangoClusterComm.wait(op);
     res.contentType = 'application/json; charset=utf-8';
@@ -437,17 +449,21 @@ actions.defineHttp({
       res.body = r.body;
     } else if (r.status === 'TIMEOUT') {
       res.responseCode = actions.HTTP_BAD;
-      res.body = JSON.stringify({'error': true,
-      'errorMessage': 'operation timed out'});
+      res.body = JSON.stringify({
+        'error': true,
+        'errorMessage': 'operation timed out'
+      });
     } else {
       res.responseCode = actions.HTTP_BAD;
       var bodyobj;
       try {
         bodyobj = JSON.parse(r.body);
       } catch (err) {}
-      res.body = JSON.stringify({'error': true,
+      res.body = JSON.stringify({
+        'error': true,
         'errorMessage': 'error from DBserver, possibly DBserver unknown',
-      'body': bodyobj});
+        'body': bodyobj
+      });
     }
   }
 });
@@ -469,13 +485,14 @@ actions.defineHttp({
       return;
     }
 
+    /* remove? timeout not used
     var timeout = 60.0;
-
     try {
       if (req.parameters.hasOwnProperty('timeout')) {
         timeout = Number(req.parameters.timeout);
       }
     } catch (e) {}
+    */
 
     var clusterId;
     try {
@@ -497,7 +514,7 @@ actions.defineHttp({
       return;
     }
 
-    Health = Object.entries(Health).reduce((Health, [serverId,struct]) => {
+    Health = Object.entries(Health).reduce((Health, [serverId, struct]) => {
       let canBeDeleted = false;
       if (serverId.startsWith('PRMR')) {
         Health[serverId].Role = 'DBServer';
@@ -508,14 +525,14 @@ actions.defineHttp({
         canBeDeleted = struct.Status === 'FAILED';
       } else if (struct.Role === 'DBServer') {
         if (struct.Status === 'FAILED') {
-          let numUsed = reducePlanServers(function(numUsed, agencyKey, servers) {
+          let numUsed = reducePlanServers(function (numUsed, agencyKey, servers) {
             if (servers.indexOf(serverId) !== -1) {
               numUsed++;
             }
             return numUsed;
           }, 0);
           if (numUsed === 0) {
-            numUsed = reduceCurrentServers(function(numUsed, agencyKey, servers) {
+            numUsed = reduceCurrentServers(function (numUsed, agencyKey, servers) {
               if (servers.indexOf(serverId) !== -1) {
                 numUsed++;
               }
@@ -533,7 +550,7 @@ actions.defineHttp({
     Object.entries(agency[0]['.agency'].pool).forEach(([key, value]) => {
       Health[key] = {Endpoint: value, Role: 'Agent', CanBeDeleted: false};
     });
-    
+
     actions.resultOk(req, res, actions.HTTP_OK, {Health, ClusterId: clusterId});
   }
 });
@@ -596,15 +613,17 @@ actions.defineHttp({
       res.contentType = 'application/json; charset=utf-8';
       if (cursor instanceof Error) {
         res.responseCode = actions.HTTP_BAD;
-        res.body = JSON.stringify({'error': true,
-        'errorMessage': 'an error occurred'});
+        res.body = JSON.stringify({
+          'error': true,
+          'errorMessage': 'an error occurred'
+        });
       }
       res.responseCode = actions.HTTP_OK;
       res.body = JSON.stringify({result: cursor.docs});
     } else {
       // query a remote statistics collection
       var options = { timeout: 10 };
-      var op = ArangoClusterComm.asyncRequest('POST', 'server:' + DBserver, '_system',
+      var op = ArangoClusterComm.asyncRequest('POST', 'server:' + DBserver, req.database,
         '/_api/cursor', JSON.stringify({query: myQueryVal, bindVars: bind}), {}, options);
       var r = ArangoClusterComm.wait(op);
       res.contentType = 'application/json; charset=utf-8';
@@ -613,17 +632,21 @@ actions.defineHttp({
         res.body = r.body;
       } else if (r.status === 'TIMEOUT') {
         res.responseCode = actions.HTTP_BAD;
-        res.body = JSON.stringify({'error': true,
-        'errorMessage': 'operation timed out'});
+        res.body = JSON.stringify({
+          'error': true,
+          'errorMessage': 'operation timed out'
+        });
       } else {
         res.responseCode = actions.HTTP_BAD;
         var bodyobj;
         try {
           bodyobj = JSON.parse(r.body);
         } catch (err) {}
-        res.body = JSON.stringify({'error': true,
+        res.body = JSON.stringify({
+          'error': true,
           'errorMessage': 'error from DBserver, possibly DBserver unknown',
-        'body': bodyobj});
+          'body': bodyobj
+        });
       }
     }
   }
@@ -751,7 +774,6 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-
     if (req.requestType !== actions.PUT ||
       !require('@arangodb/cluster').isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
@@ -781,7 +803,7 @@ actions.defineHttp({
 
     if (fetchKey(dbservers, id) === undefined) {
       for (var sid in sID) {
-        if(sID[sid].ShortName === id) {
+        if (sID[sid].ShortName === id) {
           id = sid;
           break;
         }
@@ -793,7 +815,7 @@ actions.defineHttp({
 
     if (fetchKey(dbservers, nid) === undefined) {
       for (sid in sID) {
-        if(sID[sid].ShortName === nid) {
+        if (sID[sid].ShortName === nid) {
           nid = sid;
           break;
         }
@@ -818,8 +840,8 @@ actions.defineHttp({
         let oldValue = ArangoAgency.get('Plan/DBServers/' + id);
         actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED, 0,
           'Primary does not have the given oldSecondary as ' +
-          'its secondary, current value: '
-          + JSON.stringify(
+          'its secondary, current value: ' +
+          JSON.stringify(
             fetchKey(oldValue, 'arango', 'Plan', 'DBServers', id)
           ));
         return;
@@ -829,17 +851,17 @@ actions.defineHttp({
   }
 });
 
-function reducePlanServers(reducer, data) {
+function reducePlanServers (reducer, data) {
   var databases = ArangoAgency.get('Plan/Collections');
   databases = databases.arango.Plan.Collections;
 
-  return Object.keys(databases).reduce(function(data, databaseName) {
+  return Object.keys(databases).reduce(function (data, databaseName) {
     var collections = databases[databaseName];
 
-    return Object.keys(collections).reduce(function(data, collectionKey) {
+    return Object.keys(collections).reduce(function (data, collectionKey) {
       var collection = collections[collectionKey];
 
-      return Object.keys(collection.shards).reduce(function(data, shardKey) {
+      return Object.keys(collection.shards).reduce(function (data, shardKey) {
         var servers = collection.shards[shardKey];
 
         let key = '/arango/Plan/Collections/' + databaseName + '/' + collectionKey + '/shards/' + shardKey;
@@ -849,17 +871,17 @@ function reducePlanServers(reducer, data) {
   }, data);
 }
 
-function reduceCurrentServers(reducer, data) {
+function reduceCurrentServers (reducer, data) {
   var databases = ArangoAgency.get('Current/Collections');
   databases = databases.arango.Current.Collections;
 
-  return Object.keys(databases).reduce(function(data, databaseName) {
+  return Object.keys(databases).reduce(function (data, databaseName) {
     var collections = databases[databaseName];
 
-    return Object.keys(collections).reduce(function(data, collectionKey) {
+    return Object.keys(collections).reduce(function (data, collectionKey) {
       var collection = collections[collectionKey];
 
-      return Object.keys(collection).reduce(function(data, shardKey) {
+      return Object.keys(collection).reduce(function (data, shardKey) {
         var servers = collection[shardKey].servers;
 
         let key = '/arango/Current/Collections/' + databaseName + '/' + collectionKey + '/' + shardKey + '/servers';
@@ -875,9 +897,9 @@ function reduceCurrentServers(reducer, data) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function changeAllShardReponsibilities (oldServer, newServer) {
-  return reducePlanServers(function(data, key, servers) {
+  return reducePlanServers(function (data, key, servers) {
     var oldServers = _.cloneDeep(servers);
-    servers = servers.map(function(server) {
+    servers = servers.map(function (server) {
       if (server === oldServer) {
         return newServer;
       } else {
@@ -889,7 +911,7 @@ function changeAllShardReponsibilities (oldServer, newServer) {
     return data;
   }, {
     operations: {},
-    preconditions: {},
+    preconditions: {}
   });
 }
 
@@ -979,12 +1001,12 @@ actions.defineHttp({
     let shardChanges = changeAllShardReponsibilities(body.primary, body.secondary);
     operations = Object.assign(operations, shardChanges.operations);
     preconditions = Object.assign(preconditions, shardChanges.preconditions);
-    
+
     try {
       global.ArangoAgency.write([[operations, preconditions]]);
     } catch (e) {
       if (e.code === 412) {
-        let oldValue = ArangoAgency.get('Plan/DBServers/' + body.primary);
+        // unused: let oldValue = ArangoAgency.get('Plan/DBServers/' + body.primary);
         actions.resultError(req, res, actions.HTTP_PRECONDITION_FAILED, 0,
           'Could not change primary to secondary.');
         return;
@@ -1092,10 +1114,11 @@ actions.defineHttp({
           'Cannot read from agency.');
         return;
       }
-      actions.resultOk(req, res, actions.HTTP_OK,
-        {numberOfCoordinators: nrCoordinators,
-          numberOfDBServers: nrDBServers,
-        cleanedServers});
+      actions.resultOk(req, res, actions.HTTP_OK, {
+        numberOfCoordinators: nrCoordinators,
+        numberOfDBServers: nrDBServers,
+        cleanedServers
+      });
     } else { // PUT
       var body = actions.getJsonBody(req, res);
       if (body === undefined) {
@@ -1220,11 +1243,13 @@ actions.defineHttp({
     var id;
     try {
       id = ArangoClusterInfo.uniqid();
-      var todo = { 'type': 'cleanOutServer',
+      var todo = {
+        'type': 'cleanOutServer',
         'server': server,
         'jobId': id,
         'timeCreated': (new Date()).toISOString(),
-      'creator': ArangoServerState.id() };
+        'creator': ArangoServerState.id()
+      };
       ArangoAgency.set('Target/ToDo/' + id, todo);
     } catch (e1) {
       ok = false;
@@ -1308,8 +1333,8 @@ actions.defineHttp({
         "body must be an object with string attributes 'database', 'collection', 'shard', 'fromServer' and 'toServer'");
       return;
     }
-    body.shards=[body.shard];
-    body.collections=[body.collection];
+    body.shards = [body.shard];
+    body.collections = [body.collection];
     var r = require('@arangodb/cluster').moveShard(body);
     if (r.error) {
       actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE, r);
@@ -1391,7 +1416,7 @@ actions.defineHttp({
       });
     });
 
-    var leaderOP, followerOP, leaderR, followerR, leaderBody, followerBody;
+    var leaderOP, leaderR, followerR, leaderBody, followerBody;
     var options = { timeout: 10 };
 
     _.each(dbsToCheck, function (shard) {
@@ -1407,7 +1432,7 @@ actions.defineHttp({
       // get counts of leader and follower shard
       leaderOP = null;
       try {
-        leaderOP = ArangoClusterComm.asyncRequest('GET', 'server:' + shard.leader, '_system',
+        leaderOP = ArangoClusterComm.asyncRequest('GET', 'server:' + shard.leader, req.database,
         '/_api/collection/' + shard.shard + '/count', '', {}, options);
       } catch (e) {
       }
@@ -1416,12 +1441,11 @@ actions.defineHttp({
       // introduce last minute log spam before the release (this was not logging either before restructuring it)
       let followerOps = shard.toCheck.map(follower => {
         try {
-        return ArangoClusterComm.asyncRequest('GET', 'server:' + follower, '_system', '/_api/collection/' + shard.shard + '/count', '', {}, options);
+          return ArangoClusterComm.asyncRequest('GET', 'server:' + follower, req.database, '/_api/collection/' + shard.shard + '/count', '', {}, options);
         } catch (e) {
           return null;
         }
       });
-
 
       let [minFollowerCount, maxFollowerCount] = followerOps.reduce((result, followerOp) => {
         if (!followerOp) {
@@ -1438,7 +1462,7 @@ actions.defineHttp({
             } catch (e) {
             }
           }
-        } catch(e) {
+        } catch (e) {
         }
         if (result === null) {
           return [followerCount, followerCount];
@@ -1465,7 +1489,7 @@ actions.defineHttp({
       }
       result.results[shard.collection].Plan[shard.shard].progress = {
         total: leaderCount,
-        current: followerCount,
+        current: followerCount
       };
     });
 

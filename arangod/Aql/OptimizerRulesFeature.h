@@ -68,7 +68,7 @@ class OptimizerRulesFeature final : public application_features::ApplicationFeat
   static std::map<int, OptimizerRule> _rules;
 
   /// @brief map to look up rule id by name
-  static std::unordered_map<std::string, int> _ruleLookup;
+  static std::unordered_map<std::string, std::pair<int, bool>> _ruleLookup;
 };
 
 } // namespace aql
