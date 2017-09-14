@@ -62,6 +62,17 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
       _indexes(),
       _condition(nullptr),
       _reverse(base.get("reverse").getBoolean()) {
+
+  TRI_ASSERT(_vocbase != nullptr);
+  TRI_ASSERT(_collection != nullptr);
+
+  if (_collection == nullptr) {
+    std::string msg("collection '");
+    msg.append(base.get("collection").copyString());
+    msg.append("' not found");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+  }
+
   VPackSlice indexes = base.get("indexes");
 
   if (!indexes.isArray()) {

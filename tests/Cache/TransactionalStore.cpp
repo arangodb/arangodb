@@ -70,7 +70,7 @@ TransactionalStore::Transaction::Transaction(arangodb::cache::Transaction* c,
 
 TransactionalStore::TransactionalStore(Manager* manager)
     : _manager(manager),
-      _directory(TRI_UNKNOWN_MEM_ZONE),
+      _directory(true),
       _id(++_sequence),
       _readOptions(rocksdb::ReadOptions()),
       _writeOptions(rocksdb::WriteOptions()),

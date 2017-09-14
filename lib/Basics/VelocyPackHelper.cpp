@@ -576,17 +576,17 @@ uint64_t VelocyPackHelper::stringUInt64(VPackSlice const& slice) {
 std::shared_ptr<VPackBuilder> VelocyPackHelper::velocyPackFromFile(
     std::string const& path) {
   size_t length;
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, path.c_str(), &length);
+  char* content = TRI_SlurpFile(path.c_str(), &length);
   if (content != nullptr) {
     // The Parser might throw;
     std::shared_ptr<VPackBuilder> b;
     try {
       auto b = VPackParser::fromJson(reinterpret_cast<uint8_t const*>(content),
                                      length);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, content);
+      TRI_Free(content);
       return b;
     } catch (...) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, content);
+      TRI_Free(content);
       throw;
     }
   }
@@ -600,7 +600,7 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
     return false;
   }
 
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  arangodb::basics::StringBuffer buffer(false);
   arangodb::basics::VPackStringBufferAdapter bufferAdapter(
       buffer.stringBuffer());
   try {
@@ -626,7 +626,7 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
   size_t n = buffer.length();
 
   while (0 < n) {
-    ssize_t m = TRI_WRITE(fd, p, (TRI_write_t)n);
+    ssize_t m = TRI_WRITE(fd, p, static_cast<TRI_write_t>(n));
 
     if (m <= 0) {
       return false;

@@ -58,7 +58,7 @@ inline std::string buildFilename(std::string const& path, std::string const& nam
 
 // reads file into string
 std::string slurp(std::string const& filename);
-void slurp(std::string const& filename, StringBuffer&);
+void slurp(std::string const& filename, StringBuffer& result);
 
 // creates file and writes string to it
 void spit(std::string const& filename, char const* ptr, size_t len, bool sync = false);

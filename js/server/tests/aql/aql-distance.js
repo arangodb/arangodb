@@ -36,6 +36,20 @@ var helper = require("@arangodb/aql-helper");
 var assertQueryError = helper.assertQueryError;
 var assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
 
+function assertAlmostEqual(a, b, text) {
+  if (typeof(a) === 'number') {
+    a = a.toPrecision(7);
+  }
+  if (typeof(b) === 'number') {
+    b = b.toPrecision(7);
+  }
+  if (((a === 0) && (b === 0.0))||
+      ((b === 0) && (a === 0.0))) {
+    return;
+  }
+
+  assertEqual(a, b, text);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -50,20 +64,19 @@ function distanceSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistance1 : function () {
-        var co1 = { lat: 52.5163, lon: 13.3777, _key: "BrandenburgGate" };
-        var co2 = { lat: 50.9322, lon: 6.94, _key: "ArangoHQ" };
-        var query = "DISTANCE(" + co1.lat + "," + co1.lon + "," + co2.lat + "," + co2.lon + ")";
-        var expected    = [ 476918.8968838096  ]; // Vincenty's formula: 477.47 km
-        var expected_js = [ 476918.89688380965 ]; // Vincenty's formula: 477.47 km
+      var co1 = { lat: 52.5163, lon: 13.3777, _key: "BrandenburgGate" };
+      var co2 = { lat: 50.9322, lon: 6.94, _key: "ArangoHQ" };
+      var query = "DISTANCE(" + co1.lat + "," + co1.lon + "," + co2.lat + "," + co2.lon + ")";
+      var expected    = [ 476918.89688380965  ]; // Vincenty's formula: 477.47 km
 
-        var actual = AQL_EXECUTE("RETURN " + query).json;
-        assertEqual(expected, actual);
-        
-        actual = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json;
-        assertEqual(expected_js, actual);
-        
-        actual = AQL_EXECUTE("RETURN NOOPT(V8(" + query + "))").json;
-        assertEqual(expected, actual);
+      var actual = AQL_EXECUTE("RETURN " + query).json;
+      assertAlmostEqual(expected[0], actual[0]);
+      
+      actual = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json;
+      assertAlmostEqual(expected[0], actual[0]);
+      
+      actual = AQL_EXECUTE("RETURN NOOPT(V8(" + query + "))").json;
+      assertAlmostEqual(expected[0], actual[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,38 +84,39 @@ function distanceSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistance2 : function () {
-        var co1 = { lat: 40.78, lon: -73.97, _key: "CentralPark" };
-        var co2 = { lat: 34.05, lon: -118.25, _key: "LosAngeles" };
-        var query = "DISTANCE(" + co1.lat + "," + co1.lon + "," + co2.lat + "," + co2.lon + ")";
-        var expected = [ 3938926.7382122413 ]; // Vincenty's formula: 3943.29 km
-        
-        var actual = AQL_EXECUTE("RETURN " + query).json;
-        assertEqual(expected, actual);
-        
-        actual = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json;
-        assertEqual(expected, actual);
-        
-        actual = AQL_EXECUTE("RETURN NOOPT(V8(" + query + "))").json;
-        assertEqual(expected, actual);    },
+      var co1 = { lat: 40.78, lon: -73.97, _key: "CentralPark" };
+      var co2 = { lat: 34.05, lon: -118.25, _key: "LosAngeles" };
+      var query = "DISTANCE(" + co1.lat + "," + co1.lon + "," + co2.lat + "," + co2.lon + ")";
+      var expected = [ 3938926.7382122413 ]; // Vincenty's formula: 3943.29 km
+      
+      var actual = AQL_EXECUTE("RETURN " + query).json;
+      assertAlmostEqual(expected[0], actual[0]);
+      
+      actual = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json;
+      assertAlmostEqual(expected[0], actual[0]);
+      
+      actual = AQL_EXECUTE("RETURN NOOPT(V8(" + query + "))").json;
+      assertAlmostEqual(expected[0], actual[0]);    
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test DISTANCE function
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistance3 : function () {
-        var co1 = { lat: 0, lon: 0, _key: "zeroPoint" };
-        var co2 = { lat: 0, lon: 180, _key: "otherSideOfGLobe" };
-        var query = "DISTANCE(" + co1.lat + "," + co1.lon + "," + co2.lat + "," + co2.lon + ")";
-        var expected = [ 20015086.79602057 ]; // Half of equatorial circumference (WGS 84): 20037.5085 km
-        
-        var actual = AQL_EXECUTE("RETURN " + query).json;
-        assertEqual(expected, actual);
-        
-        actual = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json;
-        assertEqual(expected, actual);
-        
-        actual = AQL_EXECUTE("RETURN NOOPT(V8(" + query + "))").json;
-        assertEqual(expected, actual);
+      var co1 = { lat: 0, lon: 0, _key: "zeroPoint" };
+      var co2 = { lat: 0, lon: 180, _key: "otherSideOfGLobe" };
+      var query = "DISTANCE(" + co1.lat + "," + co1.lon + "," + co2.lat + "," + co2.lon + ")";
+      var expected = [ 20015086.79602057 ]; // Half of equatorial circumference (WGS 84): 20037.5085 km
+      
+      var actual = AQL_EXECUTE("RETURN " + query).json;
+      assertAlmostEqual(expected[0], actual[0]);
+      
+      actual = AQL_EXECUTE("RETURN NOOPT(" + query + ")").json;
+      assertAlmostEqual(expected[0], actual[0]);
+      
+      actual = AQL_EXECUTE("RETURN NOOPT(V8(" + query + "))").json;
+      assertAlmostEqual(expected[0], actual[0]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

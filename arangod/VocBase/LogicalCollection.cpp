@@ -151,13 +151,13 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _name(other.name()),
       _distributeShardsLike(other._distributeShardsLike),
       _avoidServers(other.avoidServers()),
-      _isSmart(other.isSmart()),
       _status(other.status()),
+      _isSmart(other.isSmart()),
       _isLocal(false),
       _isDeleted(other._isDeleted),
       _isSystem(other.isSystem()),
-      _version(other._version),
       _waitForSync(other.waitForSync()),
+      _version(other._version),
       _replicationFactor(other.replicationFactor()),
       _numberOfShards(other.numberOfShards()),
       _allowUserKeys(other.allowUserKeys()),
@@ -165,14 +165,18 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _vocbase(other.vocbase()),
       _keyOptions(other._keyOptions),
       _keyGenerator(KeyGenerator::factory(VPackSlice(keyOptions()))),
+      _globallyUniqueId(other._globallyUniqueId),
       _physical(other.getPhysical()->clone(this)),
       _clusterEstimateTTL(0),
       _planVersion(other._planVersion) {
+  
   TRI_ASSERT(_physical != nullptr);
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
     _followers.reset(new FollowerInfo(this));
   }
+  
+  TRI_ASSERT(!_globallyUniqueId.empty());
 }
 
 // @brief Constructor used in coordinator case.
@@ -187,16 +191,16 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
           info, "type", TRI_COL_TYPE_UNKNOWN)),
       _name(ReadStringValue(info, "name", "")),
       _distributeShardsLike(ReadStringValue(info, "distributeShardsLike", "")),
-      _isSmart(Helper::readBooleanValue(info, "isSmart", false)),
       _status(Helper::readNumericValue<TRI_vocbase_col_status_e, int>(
           info, "status", TRI_VOC_COL_STATUS_CORRUPTED)),
+      _isSmart(Helper::readBooleanValue(info, "isSmart", false)),
       _isLocal(!ServerState::instance()->isCoordinator()),
       _isDeleted(Helper::readBooleanValue(info, "deleted", false)),
       _isSystem(IsSystemName(_name) &&
                 Helper::readBooleanValue(info, "isSystem", false)),
+      _waitForSync(Helper::readBooleanValue(info, "waitForSync", false)),
       _version(Helper::readNumericValue<uint32_t>(info, "version",
                                                   currentVersion())),
-      _waitForSync(Helper::readBooleanValue(info, "waitForSync", false)),
       _replicationFactor(1),
       _numberOfShards(
           Helper::readNumericValue<size_t>(info, "numberOfShards", 1)),
@@ -205,11 +209,20 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _vocbase(vocbase),
       _keyOptions(nullptr),
       _keyGenerator(),
+      _globallyUniqueId(Helper::getStringValue(info, "globallyUniqueId", "")),
       _physical(
           EngineSelectorFeature::ENGINE->createPhysicalCollection(this, info)),
       _clusterEstimateTTL(0),
       _planVersion(0) {
-  // add keyoptions from slice
+  
+  if (_globallyUniqueId.empty()) {
+    // no id found. generate a new one
+    _globallyUniqueId = generateGloballyUniqueId();
+  }
+  
+  TRI_ASSERT(!_globallyUniqueId.empty());
+
+  // add keyOptions from slice
   TRI_ASSERT(info.isObject());
   VPackSlice keyOpts = info.get("keyOptions");
   _keyGenerator.reset(KeyGenerator::factory(keyOpts));
@@ -505,6 +518,14 @@ std::string LogicalCollection::name() const {
   // TODO Activate this lock. Right now we have some locks outside.
   // READ_LOCKER(readLocker, _lock);
   return _name;
+}
+
+std::string LogicalCollection::globallyUniqueId() const {
+  if (!_globallyUniqueId.empty()) {
+    return _globallyUniqueId;
+  }
+
+  return generateGloballyUniqueId();
 }
 
 std::string const LogicalCollection::distributeShardsLike() const {
@@ -852,6 +873,7 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool translateCids,
   result.add("deleted", VPackValue(_isDeleted));
   result.add("isSystem", VPackValue(_isSystem));
   result.add("waitForSync", VPackValue(_waitForSync));
+  result.add("globallyUniqueId", VPackValue(_globallyUniqueId));
 
   // TODO is this still releveant or redundant in keyGenerator?
   result.add("allowUserKeys", VPackValue(_allowUserKeys));
@@ -1350,4 +1372,26 @@ Result LogicalCollection::compareChecksums(VPackSlice checksumSlice, std::string
   }
 
   return Result();
+}
+
+std::string LogicalCollection::generateGloballyUniqueId() const {
+  std::string result;
+  if (_vocbase->isSystem()) {
+    result.reserve(32);
+    result.append(StaticStrings::SystemDatabase);
+    result.push_back('/');
+  } else {
+    result.reserve(64);
+    result.append(ServerState::instance()->getId());
+    result.push_back('/');
+    result.append(_vocbase->name());
+    result.push_back('/');
+  }
+  if (isSystem()) {
+    result.append(_name);
+  } else {
+    result.append(std::to_string(_cid));
+  }
+
+  return result;
 }
