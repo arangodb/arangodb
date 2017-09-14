@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
-#include "Transaction/StandaloneContext.h"
+#include "Transaction/Context.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -42,7 +42,7 @@
 
 /// @brief replication dump container
 struct MMFilesReplicationDumpContext {
-  MMFilesReplicationDumpContext(std::shared_ptr<arangodb::transaction::StandaloneContext> const&
+  MMFilesReplicationDumpContext(std::shared_ptr<arangodb::transaction::Context> const&
                              transactionContext,
                          size_t chunkSize, bool includeSystem,
                          TRI_voc_cid_t restrictCollection, bool useVst = false)
@@ -82,7 +82,7 @@ struct MMFilesReplicationDumpContext {
     }
   }
 
-  std::shared_ptr<arangodb::transaction::StandaloneContext> _transactionContext;
+  std::shared_ptr<arangodb::transaction::Context> _transactionContext;
   TRI_vocbase_t* _vocbase;
   TRI_string_buffer_t* _buffer;
   size_t _chunkSize;

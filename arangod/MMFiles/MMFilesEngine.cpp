@@ -3464,12 +3464,10 @@ Result MMFilesEngine::firstTick(uint64_t& tick){
   return Result{};
 };
 
-Result MMFilesEngine::lastLogger(TRI_vocbase_t* /*vocbase*/, std::shared_ptr<transaction::Context> transactionContext, uint64_t tickStart, uint64_t tickEnd,  std::shared_ptr<VPackBuilder>& builderSPtr) {
+Result MMFilesEngine::lastLogger(TRI_vocbase_t* /*vocbase*/, std::shared_ptr<transaction::Context> transactionContext,
+                                 uint64_t tickStart, uint64_t tickEnd,  std::shared_ptr<VPackBuilder>& builderSPtr) {
   Result res{};
-  std::shared_ptr<transaction::StandaloneContext> scontext =
-    std::dynamic_pointer_cast<transaction::StandaloneContext>(transactionContext);
-  TRI_ASSERT(scontext);
-  MMFilesReplicationDumpContext dump(scontext, 0, true, 0);
+  MMFilesReplicationDumpContext dump(transactionContext, 0, true, 0);
   int r = MMFilesDumpLogReplication(&dump, std::unordered_set<TRI_voc_tid_t>(),
                                       0, tickStart, tickEnd, true);
   if (r != TRI_ERROR_NO_ERROR) {
