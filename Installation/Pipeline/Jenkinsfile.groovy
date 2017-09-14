@@ -704,7 +704,7 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                         // even if the features are green this is completely broken performance wise..
                         // DO NOT INCREASE!!
 
-                        timeout(30) {
+                        timeout(os == 'linux' ? 30 : 60) {
                             def tmpDir = pwd() + "/" + runDir + "/tmp"
 
                             withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
