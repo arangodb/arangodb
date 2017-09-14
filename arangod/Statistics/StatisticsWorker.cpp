@@ -105,6 +105,7 @@ void StatisticsWorker::historianAverage() {
   // }
 
   uint64_t clusterId = 0;
+  uint64_t x = 0;
 
   try {
     uint64_t now = static_cast<uint64_t>(TRI_microtime());
@@ -112,21 +113,38 @@ void StatisticsWorker::historianAverage() {
 
     // check if need to create a new 15 min interval
 
-    VPackSlice prev15 = _lastEntry("_statistics15", now - 2 * HISTORY_INTERVAL, 0);
+    std::cout << x++ << std::endl;
+    std::shared_ptr<arangodb::velocypack::Builder> prev15Builder = _lastEntry("_statistics15", now - 2 * HISTORY_INTERVAL, 0);
+    VPackSlice prev15 = prev15Builder->slice();
 
-    if (prev15.isNull()) {
-      start = now - HISTORY_INTERVAL;
+    std::cout << "lastEntry hexType " << prev15.hexType() << std::endl;
+
+    std::cout << x++ << std::endl;
+
+    if (prev15.isArray() && prev15.length()) {
+      start = prev15.getNthValue(0).get("time").getUInt();
     } else {
-      start = prev15.get("time").getUInt();
+      start = now - HISTORY_INTERVAL;
     }
 
-    VPackSlice stat15 = _compute15Minute(start, clusterId);
+    std::cout << x++ << std::endl;
 
-    if (!stat15.isNull()) {
+    VPackBuilder builder = _compute15Minute(start, clusterId);
+    VPackSlice stat15 = builder.slice();
+
+    std::cout << "hextype " << stat15.hexType() << std::endl;
+
+    if (stat15.length() != 0) {
 
       std::cout << "save stat15 document\n";
 
+      std::cout << "hextype " << stat15.hexType() << std::endl;
+
+
+      std::cout << x++ << std::endl;
+
       TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+      std::cout << x++ << std::endl;
 
       arangodb::OperationOptions opOptions;
       opOptions.isRestore = false,
@@ -136,36 +154,44 @@ void StatisticsWorker::historianAverage() {
 
       // find and load collection given by name or identifier
       auto transactionContext(transaction::StandaloneContext::Create(vocbase));
+      std::cout << x++ << std::endl;
       SingleCollectionTransaction trx(transactionContext, "_statistics15",
                                       AccessMode::Type::WRITE);
       trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-
+      std::cout << x++ << std::endl;
       Result res = trx.begin();
-      
+      std::cout << x++ << std::endl;
       if (!res.ok()) {
         // ?
         return;
       }
-
+      std::cout << x++ << std::endl;
       arangodb::OperationResult result = trx.insert("_statistics15", stat15, opOptions);
-
+      std::cout << x++ << std::endl;
       // Will commit if no error occured.
       // or abort if an error occured.
       // result stays valid!
       res = trx.finish(result.code);
-      
+      std::cout << x++ << std::endl;
       if (result.failed()) {
         // ?
         return;
       }
+      std::cout << x++ << std::endl;
 
       if (!res.ok()) {
         // ?
       }
+      std::cout << x++ << std::endl;
     } // if !null
   } catch(arangodb::velocypack::Exception const& ex) {
     std::cout << ex.what() << " " << ex.errorCode() << std::endl;
     std::cout << ex << std::endl;
+
+  } catch(arangodb::basics::Exception const& ex) {
+    std::cout << ex.what() << std::endl;
+    std::cout << ex.message() << std::endl;
+    std::cout << ex.code() << std::endl;
 
   } catch (...) {
     std::cout << "catch :S\n";
@@ -174,7 +200,7 @@ void StatisticsWorker::historianAverage() {
   }
 }
 
-VPackSlice StatisticsWorker::_lastEntry(std::string const& collectionName, uint64_t start, uint64_t clusterId) {
+std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::_lastEntry(std::string const& collectionName, uint64_t start, uint64_t clusterId) {
   std::string filter = "";
 
   auto queryRegistryFeature =
@@ -202,19 +228,13 @@ VPackSlice StatisticsWorker::_lastEntry(std::string const& collectionName, uint6
 
   auto queryResult = query.execute(_queryRegistry);
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
 
-  VPackSlice result = queryResult.result->slice();
-
-  if (result.isArray() && result.length()) {
-    return result.getNthValue(0);
-  }
-
-  return arangodb::basics::VelocyPackHelper::NullValue();
+  return queryResult.result;
 }
 
-VPackSlice StatisticsWorker::_compute15Minute(uint64_t start, uint64_t clusterId) {
+VPackBuilder StatisticsWorker::_compute15Minute(uint64_t start, uint64_t clusterId) {
   std::string filter = "";
 
   auto queryRegistryFeature =
@@ -250,7 +270,10 @@ VPackSlice StatisticsWorker::_compute15Minute(uint64_t start, uint64_t clusterId
   std::cout << "_compute15Minute count is " << count << std::endl;
 
   if (count == 0) {
-    return arangodb::basics::VelocyPackHelper::NullValue();
+    VPackBuilder builder;
+    builder.openObject();
+    builder.close();
+    return builder; //  arangodb::basics::VelocyPackHelper::NullValue();
   }
 
   float systemMinorPageFaultsPerSecond = 0,
@@ -282,7 +305,9 @@ VPackSlice StatisticsWorker::_compute15Minute(uint64_t start, uint64_t clusterId
 
   fTime;
 
-  for (auto const& values : VPackArrayIterator(result)) {
+  for (auto const& vs : VPackArrayIterator(result)) {
+    VPackSlice const& values = vs.resolveExternals();
+
     std::cout << "value type is " << values.hexType() << std::endl;
 
     fTime = values.get("time").getNumber<float>();
@@ -339,8 +364,6 @@ VPackSlice StatisticsWorker::_compute15Minute(uint64_t start, uint64_t clusterId
   }
 
   VPackBuilder builder;
-  VPackObjectBuilder guard(&builder);
-
   builder.openObject();
 
   builder.add("time", VPackValue(fTime));
@@ -384,7 +407,7 @@ VPackSlice StatisticsWorker::_compute15Minute(uint64_t start, uint64_t clusterId
 
   builder.close();
 
-  return builder.slice();
+  return builder;
 }
 
 
