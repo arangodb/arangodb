@@ -1928,69 +1928,16 @@ void TRI_SetApplicationName(char const* name) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the system's temporary path
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifndef _WIN32
-
-static std::unique_ptr<char[]> SystemTempPath;
-
-static void SystemTempPathCleaner(void) {
-  char* path = SystemTempPath.get();
-
-  if (path != nullptr) {
-    rmdir(path);
-  }
-}
-
-std::string TRI_GetTempPath() {
-  char* path = SystemTempPath.get();
-
-  if (path == nullptr) {
-    std::string system = "";
-    char const* v = getenv("TMPDIR");
-
-    // create the template
-    if (v == nullptr || *v == '\0') {
-      system = "/tmp/";
-    } else if (v[strlen(v) - 1] == '/') {
-      system = v;
-    } else {
-      system = std::string(v) + "/";
-    }
-
-    system += TRI_ApplicationName + "_XXXXXX";
-
-    // copy to a character array
-    SystemTempPath.reset(new char[system.size() + 1]);
-    path = SystemTempPath.get();
-    TRI_CopyString(path, system.c_str(), system.size());
-
-    // fill template
-    char* res = mkdtemp(SystemTempPath.get());
-
-    if (res == nullptr) {
-      system = "/tmp/arangodb";
-      SystemTempPath.reset(new char[system.size() + 1]);
-      path = SystemTempPath.get();
-      TRI_CopyString(path, system.c_str(), system.size());
-    }
-
-    atexit(SystemTempPathCleaner);
-  }
-
-  return std::string(path);
-}
-
-#else
-
-std::string TRI_GetTempPath() {
-// ..........................................................................
-// Unfortunately we generally have little control on whether or not the
-// application will be compiled with UNICODE defined. In some cases such as
-// this one, we attempt to cater for both. MS provides some methods which are
-// 'defined' for both, for example, GetTempPath (below) actually converts to
-// GetTempPathA (ascii) or GetTempPathW (wide characters or what MS call
-// unicode).
-// ..........................................................................
+#ifdef _WIN32
+static std::string getTempPath() {
+  // ..........................................................................
+  // Unfortunately we generally have little control on whether or not the
+  // application will be compiled with UNICODE defined. In some cases such as
+  // this one, we attempt to cater for both. MS provides some methods which are
+  // 'defined' for both, for example, GetTempPath (below) actually converts to
+  // GetTempPathA (ascii) or GetTempPathW (wide characters or what MS call
+  // unicode).
+  // ..........................................................................
 
 #define LOCAL_MAX_PATH_BUFFER 2049
   TCHAR tempFileName[LOCAL_MAX_PATH_BUFFER];
@@ -2008,20 +1955,20 @@ std::string TRI_GetTempPath() {
   // ..........................................................................
 
   /* from MSDN:
-    The GetTempPath function checks for the existence of environment variables
-    in the following order and uses the first path found:
+     The GetTempPath function checks for the existence of environment variables
+     in the following order and uses the first path found:
 
-    The path specified by the TMP environment variable.
-    The path specified by the TEMP environment variable.
-    The path specified by the USERPROFILE environment variable.
-    The Windows directory.
+     The path specified by the TMP environment variable.
+     The path specified by the TEMP environment variable.
+     The path specified by the USERPROFILE environment variable.
+     The Windows directory.
   */
   dwReturnValue = GetTempPath(LOCAL_MAX_PATH_BUFFER, tempPathName);
 
   if ((dwReturnValue > LOCAL_MAX_PATH_BUFFER) || (dwReturnValue == 0)) {
     // something wrong
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "GetTempPathA failed: LOCAL_MAX_PATH_BUFFER="
-               << LOCAL_MAX_PATH_BUFFER << ":dwReturnValue=" << dwReturnValue;
+                                              << LOCAL_MAX_PATH_BUFFER << ":dwReturnValue=" << dwReturnValue;
     // attempt to simply use the current directory
     _tcscpy(tempFileName, TEXT("."));
   }
@@ -2074,7 +2021,7 @@ std::string TRI_GetTempPath() {
     size_t j;
     size_t pathSize = _tcsclen(tempPathName);
     char* temp = static_cast<char*>(
-        TRI_Allocate(pathSize + 1));
+                                    TRI_Allocate(pathSize + 1));
 
     if (temp == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -2100,11 +2047,87 @@ std::string TRI_GetTempPath() {
       result.pop_back();
     }
   }
-
+  result += TRI_DIR_SEPARATOR_STR;
   return result;
 }
 
+static int mkDTemp(char *s, size_t bufferSize) {
+  auto rc = _mktemp_s(s, bufferSize);
+  if (rc == 0) {
+    rc = TRI_MKDIR(s, 0700);
+  }
+  return rc;
+}
+
+#else
+
+std::string getTempPath() {
+  
+  std::string system = "";
+  char const* v = getenv("TMPDIR");
+
+  if (v == nullptr || *v == '\0') {
+    system = "/tmp/";
+  } else if (v[strlen(v) - 1] == '/') {
+    system = v;
+  } else {
+    system = std::string(v) + "/";
+  }
+  return system;
+}
+
+static int mkDTemp(char *s, size_t bufferSize) {
+  if (mkdtemp(s) != nullptr) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  else {
+    return errno;
+  }
+}
+
 #endif
+
+static std::unique_ptr<char[]> SystemTempPath;
+
+static void SystemTempPathCleaner(void) {
+  char* path = SystemTempPath.get();
+
+  if (path != nullptr) {
+    TRI_RMDIR(path);
+  }
+}
+
+std::string TRI_GetTempPath() {
+  char* path = SystemTempPath.get();
+
+  if (path == nullptr) {
+    std::string system = getTempPath();
+    // create the template
+    system += TRI_ApplicationName + "_XXXXXX";
+
+    // copy to a character array
+    SystemTempPath.reset(new char[system.size() + 1]);
+    path = SystemTempPath.get();
+    TRI_CopyString(path, system.c_str(), system.size());
+
+    // fill template
+    int res = mkDTemp(SystemTempPath.get(), system.size() + 1);
+
+    if (res != 0) {
+      system = TRI_DIR_SEPARATOR_STR "tmp" TRI_DIR_SEPARATOR_STR "arangodb";
+      SystemTempPath.reset(new char[system.size() + 1]);
+      path = SystemTempPath.get();
+      TRI_CopyString(path, system.c_str(), system.size());
+      if (TRI_MKDIR(path, 0700) != 0) {
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "failed to create a temporary directory - giving up";
+        FATAL_ERROR_ABORT();
+      }
+    }
+    atexit(SystemTempPathCleaner);
+  }
+
+  return std::string(path);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a temporary file name
