@@ -66,8 +66,8 @@ void MMFilesDocumentOperation::setVPack(uint8_t const* vpack) {
   _newRevision._vpack = vpack;
 }
 
-void MMFilesDocumentOperation::setRevisions(DocumentDescriptor const& oldRevision,
-                                     DocumentDescriptor const& newRevision) {
+void MMFilesDocumentOperation::setRevisions(MMFilesDocumentDescriptor const& oldRevision,
+                                     MMFilesDocumentDescriptor const& newRevision) {
   TRI_ASSERT(_oldRevision.empty());
   TRI_ASSERT(_newRevision.empty());
 

@@ -460,7 +460,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   // we are re-using the _fid of the first original datafile!
   MMFilesDatafile* compactor = nullptr;
   try {
-    compactor = physical->createCompactor(initial._fid, static_cast<TRI_voc_size_t>(initial._targetSize));
+    compactor = physical->createCompactor(initial._fid, static_cast<uint32_t>(initial._targetSize));
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, Logger::COMPACTOR) << "could not create compactor file: " << ex.what();
     return;

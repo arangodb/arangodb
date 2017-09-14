@@ -593,7 +593,7 @@ void MMFilesCollectorThread::processCollectionMarker(
   auto const* walMarker = reinterpret_cast<MMFilesMarker const*>(operation.walPosition);
   TRI_ASSERT(walMarker != nullptr);
   TRI_ASSERT(reinterpret_cast<MMFilesMarker const*>(operation.datafilePosition));
-  TRI_voc_size_t const datafileMarkerSize = operation.datafileMarkerSize;
+  uint32_t const datafileMarkerSize = operation.datafileMarkerSize;
   TRI_voc_fid_t const fid = operation.datafileId;
 
   MMFilesMarkerType const type = walMarker->getType();

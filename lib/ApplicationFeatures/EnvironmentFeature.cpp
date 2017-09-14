@@ -212,8 +212,6 @@ void EnvironmentFeature::prepare() {
 
 void EnvironmentFeature::start() {
 #ifdef __linux__
-  bool usingRocksDB =
-    (EngineSelectorFeature::engineName() == RocksDBEngine::EngineName);
   try {
     std::string value =
         basics::FileUtils::slurp("/proc/sys/vm/overcommit_memory");
@@ -235,7 +233,7 @@ void EnvironmentFeature::start() {
     //  space is not permitted to exceed swap plus this percentage
     //  of physical RAM.
 
-    if (usingRocksDB) {
+    if (EngineSelectorFeature::engineName() == RocksDBEngine::EngineName) {
       if (v != 2) {
         LOG_TOPIC(WARN, Logger::MEMORY)
           << "/proc/sys/vm/overcommit_memory is set to '" << v

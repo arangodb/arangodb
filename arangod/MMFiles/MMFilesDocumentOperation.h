@@ -33,6 +33,26 @@ namespace transaction {
 class Methods;
 }
 
+struct MMFilesDocumentDescriptor {
+  MMFilesDocumentDescriptor() : _revisionId(0), _vpack(nullptr) {}
+  MMFilesDocumentDescriptor(TRI_voc_rid_t revisionId, uint8_t const* vpack) : _revisionId(revisionId), _vpack(vpack) {}
+
+  bool empty() const { return _vpack == nullptr; }
+  
+  void reset(MMFilesDocumentDescriptor const& other) {
+    _revisionId = other._revisionId;
+    _vpack = other._vpack;
+  }
+
+  void clear() {
+    _revisionId = 0;
+    _vpack = nullptr;
+  }
+
+  TRI_voc_rid_t _revisionId;
+  uint8_t const* _vpack;
+};
+
 struct MMFilesDocumentOperation {
   enum class StatusType : uint8_t {
     CREATED,
@@ -50,8 +70,8 @@ struct MMFilesDocumentOperation {
   MMFilesDocumentOperation* clone();
   void swapped();
 
-  void setRevisions(DocumentDescriptor const& oldRevision,
-                    DocumentDescriptor const& newRevision);
+  void setRevisions(MMFilesDocumentDescriptor const& oldRevision,
+                    MMFilesDocumentDescriptor const& newRevision);
   
   void setVPack(uint8_t const* vpack);
 
@@ -78,8 +98,8 @@ struct MMFilesDocumentOperation {
 
  private:
   LogicalCollection* _collection;
-  DocumentDescriptor _oldRevision;
-  DocumentDescriptor _newRevision;
+  MMFilesDocumentDescriptor _oldRevision;
+  MMFilesDocumentDescriptor _newRevision;
   TRI_voc_tick_t _tick;
   TRI_voc_document_operation_e _type;
   StatusType _status;

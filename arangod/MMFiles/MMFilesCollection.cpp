@@ -149,7 +149,7 @@ arangodb::Result MMFilesCollection::updateProperties(VPackSlice const& slice,
   }
 
   if (!journalSlice.isNone() && journalSlice.isNumber()) {
-    TRI_voc_size_t toUpdate = journalSlice.getNumericValue<TRI_voc_size_t>();
+    uint32_t toUpdate = journalSlice.getNumericValue<uint32_t>();
     if (toUpdate < TRI_JOURNAL_MINIMAL_SIZE) {
       return {TRI_ERROR_BAD_PARAMETER, "<properties>.journalSize too small"};
     }
@@ -159,10 +159,10 @@ arangodb::Result MMFilesCollection::updateProperties(VPackSlice const& slice,
                                                     _indexBuckets);  // MMFiles
 
   if (slice.hasKey("journalSize")) {
-    _journalSize = Helper::getNumericValue<TRI_voc_size_t>(slice, "journalSize",
+    _journalSize = Helper::getNumericValue<uint32_t>(slice, "journalSize",
                                                            _journalSize);
   } else {
-    _journalSize = Helper::getNumericValue<TRI_voc_size_t>(slice, "maximalSize",
+    _journalSize = Helper::getNumericValue<uint32_t>(slice, "maximalSize",
                                                            _journalSize);
   }
   _doCompact = Helper::getBooleanValue(slice, "doCompact", _doCompact);
@@ -473,10 +473,10 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection,
       _nextCompactionStartIndex(0),
       _lastCompactionStatus(nullptr),
       _lastCompactionStamp(0.0),
-      _journalSize(Helper::readNumericValue<TRI_voc_size_t>(
+      _journalSize(Helper::readNumericValue<uint32_t>(
           info, "maximalSize",  // Backwards compatibility. Agency uses
                                 // journalSize. paramters.json uses maximalSize
-          Helper::readNumericValue<TRI_voc_size_t>(info, "journalSize",
+          Helper::readNumericValue<uint32_t>(info, "journalSize",
                                                    TRI_JOURNAL_DEFAULT_SIZE))),
       _isVolatile(arangodb::basics::VelocyPackHelper::readBooleanValue(
           info, "isVolatile", false)),
@@ -780,7 +780,7 @@ int MMFilesCollection::syncActiveJournal() {
 /// current journal cannot provide enough space, close the old journal and
 /// create a new one
 int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
-                                           TRI_voc_size_t size,
+                                           uint32_t size,
                                            char*& resultPosition,
                                            MMFilesDatafile*& resultDatafile) {
   // reset results
@@ -788,7 +788,7 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
   resultDatafile = nullptr;
 
   // start with configured journal size
-  TRI_voc_size_t targetSize = static_cast<TRI_voc_size_t>(_journalSize);
+  uint32_t targetSize = static_cast<uint32_t>(_journalSize);
 
   // make sure that the document fits
   while (targetSize - 256 < size) {
@@ -892,7 +892,7 @@ int MMFilesCollection::reserveJournalSpace(TRI_voc_tick_t tick,
 
 /// @brief create compactor file
 MMFilesDatafile* MMFilesCollection::createCompactor(
-    TRI_voc_fid_t fid, TRI_voc_size_t maximalSize) {
+    TRI_voc_fid_t fid, uint32_t maximalSize) {
   WRITE_LOCKER(writeLocker, _filesLock);
 
   TRI_ASSERT(_compactors.empty());
@@ -900,7 +900,7 @@ MMFilesDatafile* MMFilesCollection::createCompactor(
   _compactors.reserve(_compactors.size() + 1);
 
   std::unique_ptr<MMFilesDatafile> compactor(
-      createDatafile(fid, static_cast<TRI_voc_size_t>(maximalSize), true));
+      createDatafile(fid, static_cast<uint32_t>(maximalSize), true));
 
   // should not throw, as we've reserved enough space before
   _compactors.emplace_back(compactor.get());
@@ -958,7 +958,7 @@ int MMFilesCollection::replaceDatafileWithCompactor(
 
 /// @brief creates a datafile
 MMFilesDatafile* MMFilesCollection::createDatafile(TRI_voc_fid_t fid,
-                                                   TRI_voc_size_t journalSize,
+                                                   uint32_t journalSize,
                                                    bool isCompactor) {
   TRI_ASSERT(fid > 0);
 
@@ -2847,8 +2847,8 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
   TRI_voc_rid_t revisionId =
       transaction::helpers::extractRevFromDocument(newSlice);
   VPackSlice doc(marker->vpack());
-  operation.setRevisions(DocumentDescriptor(),
-                         DocumentDescriptor(revisionId, doc.begin()));
+  operation.setRevisions(MMFilesDocumentDescriptor(),
+                         MMFilesDocumentDescriptor(revisionId, doc.begin()));
 
   MMFilesDocumentPosition old;
 
@@ -3299,8 +3299,8 @@ Result MMFilesCollection::update(
   try {
     insertRevision(revisionId, marker->vpack(), 0, true, true);
 
-    operation.setRevisions(DocumentDescriptor(oldRevisionId, oldDoc.begin()),
-                           DocumentDescriptor(revisionId, newDoc.begin()));
+    operation.setRevisions(MMFilesDocumentDescriptor(oldRevisionId, oldDoc.begin()),
+                           MMFilesDocumentDescriptor(revisionId, newDoc.begin()));
 
     if (oldRevisionId == revisionId) {
       // update with same revision id => can happen if isRestore = true
@@ -3428,8 +3428,8 @@ Result MMFilesCollection::replace(
   try {
     insertRevision(revisionId, marker->vpack(), 0, true, true);
 
-    operation.setRevisions(DocumentDescriptor(oldRevisionId, oldDoc.begin()),
-                           DocumentDescriptor(revisionId, newDoc.begin()));
+    operation.setRevisions(MMFilesDocumentDescriptor(oldRevisionId, oldDoc.begin()),
+                           MMFilesDocumentDescriptor(revisionId, newDoc.begin()));
 
     if (oldRevisionId == revisionId) {
       // update with same revision id => can happen if isRestore = true
@@ -3550,8 +3550,8 @@ Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
 
   // we found a document to remove
   try {
-    operation.setRevisions(DocumentDescriptor(oldRevisionId, oldDoc.begin()),
-                           DocumentDescriptor());
+    operation.setRevisions(MMFilesDocumentDescriptor(oldRevisionId, oldDoc.begin()),
+                           MMFilesDocumentDescriptor());
 
     // delete from indexes
     res = deleteSecondaryIndexes(trx, oldRevisionId, oldDoc, false);
@@ -3710,8 +3710,8 @@ Result MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
   MMFilesDocumentOperation operation(_logicalCollection,
                                      TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
-  operation.setRevisions(DocumentDescriptor(oldRevisionId, oldDoc.begin()),
-                         DocumentDescriptor());
+  operation.setRevisions(MMFilesDocumentDescriptor(oldRevisionId, oldDoc.begin()),
+                         MMFilesDocumentDescriptor());
 
   // delete from indexes
   Result res;

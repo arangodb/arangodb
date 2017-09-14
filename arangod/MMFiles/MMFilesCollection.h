@@ -183,13 +183,13 @@ class MMFilesCollection final : public PhysicalCollection {
   /// or if the journal is volatile
   int syncActiveJournal();
 
-  int reserveJournalSpace(TRI_voc_tick_t tick, TRI_voc_size_t size,
+  int reserveJournalSpace(TRI_voc_tick_t tick, uint32_t size,
                           char*& resultPosition,
                           MMFilesDatafile*& resultDatafile);
 
   /// @brief create compactor file
   MMFilesDatafile* createCompactor(TRI_voc_fid_t fid,
-                                   TRI_voc_size_t maximalSize);
+                                   uint32_t maximalSize);
 
   /// @brief close an existing compactor
   int closeCompactor(MMFilesDatafile* datafile);
@@ -454,7 +454,7 @@ class MMFilesCollection final : public PhysicalCollection {
       std::function<bool(MMFilesMarker const*, MMFilesDatafile*)> const& cb);
 
   /// @brief creates a datafile
-  MMFilesDatafile* createDatafile(TRI_voc_fid_t fid, TRI_voc_size_t journalSize,
+  MMFilesDatafile* createDatafile(TRI_voc_fid_t fid, uint32_t journalSize,
                                   bool isCompactor);
 
   /// @brief iterate over a vector of datafiles and pick those with a specific
@@ -556,7 +556,7 @@ class MMFilesCollection final : public PhysicalCollection {
   char const* _lastCompactionStatus;
   double _lastCompactionStamp;
   std::string _path;
-  TRI_voc_size_t _journalSize;
+  uint32_t _journalSize;
 
   bool const _isVolatile;
 
