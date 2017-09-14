@@ -35,7 +35,6 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Indexes/Index.h"
-#include "MMFiles/MMFilesLogfileManager.h"
 #include "Replication/InitialSyncer.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -1049,11 +1048,11 @@ int RestReplicationHandler::processRestoreCollection(
         // some collections must not be dropped
         
         // instead, truncate them
-        SingleCollectionTransaction trx(
-                                        transaction::StandaloneContext::Create(_vocbase, _request->execContext()),
-                                        col->cid(), AccessMode::Type::WRITE);
-        trx.addHint(
-                    transaction::Hints::Hint::RECOVERY);  // to turn off waitForSync!
+        auto ctx = transaction::StandaloneContext::Create(_vocbase,
+                                                          _request->execContext());
+        SingleCollectionTransaction trx(ctx, col->cid(), AccessMode::Type::WRITE);
+        // to turn off waitForSync!
+        trx.addHint(transaction::Hints::Hint::RECOVERY);
         
         res = trx.begin();
         if (!res.ok()) {
@@ -1895,11 +1894,10 @@ void RestReplicationHandler::handleCommandSync() {
   config._verbose = verbose;
   config._useCollectionId = useCollectionId;
   
-  // only mmfiles need to wait around
-  if (MMFilesLogfileManager::instance() != nullptr) {
-    // wait until all data in current logfile got synced
-    MMFilesLogfileManager::instance()->waitForSync(5.0);
-  }
+  // wait until all data in current logfile got synced
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine != nullptr);
+  engine->waitForSync(5.0);
   
   InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType,
                        verbose, false);

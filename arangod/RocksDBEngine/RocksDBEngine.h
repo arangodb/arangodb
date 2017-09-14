@@ -119,9 +119,13 @@ class RocksDBEngine final : public StorageEngine {
                arangodb::velocypack::Builder& result) override;
 
   std::string versionFilename(TRI_voc_tick_t id) const override;
-  std::string databasePath(TRI_vocbase_t const* vocbase) const override;
+  std::string databasePath(TRI_vocbase_t const* vocbase) const override {
+    return _basePath;
+  }
   std::string collectionPath(TRI_vocbase_t const* vocbase,
-                             TRI_voc_cid_t id) const override;
+                             TRI_voc_cid_t id) const override {
+    return std::string(); // no path to be returned here
+  }
 
   std::shared_ptr<arangodb::velocypack::Builder>
   getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
@@ -146,7 +150,9 @@ class RocksDBEngine final : public StorageEngine {
   // database, collection and index management
   // -----------------------------------------
 
-  void waitForSync(TRI_voc_tick_t tick) override;
+  void waitForSync(double tick) override {
+    // intentionally empty, not useful for this type of engine
+  }
 
   virtual TRI_vocbase_t* openDatabase(velocypack::Slice const& parameters,
                                       bool isUpgrade, int&) override;

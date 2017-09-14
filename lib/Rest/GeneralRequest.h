@@ -211,7 +211,7 @@ class GeneralRequest {
 
   // request context
   RequestContext* _requestContext;
-  ExecContext* _execContext;
+  ExecContext* _execContext = nullptr;
 
   bool _isRequestContextOwner;
   rest::AuthenticationMethod _authenticationMethod =

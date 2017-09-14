@@ -163,7 +163,7 @@ class MMFilesEngine final : public StorageEngine {
 
   std::string versionFilename(TRI_voc_tick_t id) const override;
 
-  void waitForSync(TRI_voc_tick_t tick) override;
+  void waitForSync(double maxWait) override;
 
   virtual TRI_vocbase_t* openDatabase(
       arangodb::velocypack::Slice const& parameters, bool isUpgrade,

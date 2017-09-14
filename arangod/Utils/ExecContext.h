@@ -68,7 +68,7 @@ class ExecContext {
   
  private:
   std::string const _user;
-  std::string _database;
+  std::string const _database;
   AuthLevel const _systemAuthLevel;
   AuthLevel const _databaseAuthLevel;
 };

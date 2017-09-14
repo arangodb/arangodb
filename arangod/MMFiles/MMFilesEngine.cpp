@@ -695,12 +695,12 @@ int MMFilesEngine::getViews(TRI_vocbase_t* vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-void MMFilesEngine::waitForSync(TRI_voc_tick_t tick) {
+void MMFilesEngine::waitForSync(double maxWait) {
   if (application_features::ApplicationServer::isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
 
-  MMFilesLogfileManager::instance()->slots()->waitForTick(tick);
+  MMFilesLogfileManager::instance()->waitForSync(maxWait);
 }
 
 TRI_vocbase_t* MMFilesEngine::openDatabase(

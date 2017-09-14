@@ -155,7 +155,7 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   using CollectionView = LogicalCollection;
     
-  virtual void waitForSync(TRI_voc_tick_t tick) = 0;
+  virtual void waitForSync(double maxWait) = 0;
 
   //// operations on databasea
 
