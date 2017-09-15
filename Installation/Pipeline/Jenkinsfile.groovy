@@ -1091,13 +1091,12 @@ def createDockerImage(edition, maintainer, stageName) {
                 stage(stageName) {
                     checkoutSource(edition)
                     
-                    def test=1
-                    def packageaaa="HAHAAHA"
+                    def packageName="${edition}-${maintainer}"
                     def dockerTag=sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
                     withEnv(["DOCKERTAG=${dockerTag}"]) {
                         sh "scripts/build-docker.sh"
-                        sh "docker tag arangodb:${dockerTag} c1.triagens-gmbh.zz:5000/arangodb/${package}:${dockerTag}"
-                        sh "docker push c1.triagens-gmbh.zz:5000/arangodb/${package}:${dockerTag}"
+                        sh "docker tag arangodb:${dockerTag} c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag}"
+                        sh "docker push c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag}"
                     }
                 }
             }
