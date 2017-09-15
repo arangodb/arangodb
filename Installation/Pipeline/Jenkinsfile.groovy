@@ -1071,20 +1071,45 @@ def buildStepCheck(os, edition, maintainer) {
     return true
 }
 
+def checkoutSource(edition) {
+    timeout(30) {
+        checkoutCommunity()
+
+        if (edition == "enterprise") {
+            checkoutEnterprise()
+        }
+
+        // checkoutResilience()
+    }
+}
+
+def createDockerImage(edition, maintainer, stageName) {
+    def os = "linux"
+    return {
+        if (buildStepCheck(os, edition, maintainer)) {
+            node(buildJenkins[os]) {
+                stage(stageName) {
+                    checkoutSource(edition);
+
+                    def dockerTag = sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-');
+                    def package = "${edition}-${maintainer}"
+                    withEnv(["DOCKERTAG=${dockerTag}"]) {
+                        sh "scripts/build-docker.sh"
+                        sh "docker tag arangodb:${dockerTag} c1.triagens-gmbh.zz:5000/arangodb/${package}:${dockerTag}"
+                        sh "docker push c1.triagens-gmbh.zz:5000/arangodb/${package}:${dockerTag}"
+                    }
+                }
+            }
+        }
+    }
+}
+
 def runEdition(os, edition, maintainer, stageName) {
     return {
         if (buildStepCheck(os, edition, maintainer)) {
             node(buildJenkins[os]) {
                 stage(stageName) {
-                    timeout(30) {
-                        checkoutCommunity()
-
-                        if (edition == "enterprise") {
-                            checkoutEnterprise()
-                        }
-
-                        // checkoutResilience()
-                    }
+                    checkout(edition);
 
                     // I concede...we need a lock for windows...I could not get it to run concurrently...
                     // v8 would not build multiple times at the same time on the same machine:
@@ -1137,8 +1162,12 @@ def runOperatingSystems(osList) {
     for (os in osList) {
         for (edition in ['community', 'enterprise']) {
             for (maintainer in ['maintainer', 'user']) {
-                def stageName = "build-${os}-${edition}-${maintainer}"
+                def name = "${os}-${edition}-${maintainer}"
+                def stageName = "build-${name}"
                 branches[stageName] = runEdition(os, edition, maintainer, stageName)
+                if (os == 'linux') {
+                    branches["docker-${name}"] = createDockerImage(os, edition, maintainer, "docker-${name}")
+                }
             }
         }
     }
