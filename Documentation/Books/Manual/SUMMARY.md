@@ -162,6 +162,7 @@
     * [Logging Options](Administration/Configuration/Logging.md)
     * [General Options](Administration/Configuration/GeneralArangod.md)
     * [Write-Ahead Log Options](Administration/Configuration/Wal.md)
+    * [Compaction Options](Administration/Configuration/Compaction.md)
     * [Cluster Options](Administration/Configuration/Cluster.md)
     * [RocksDB Engine Options](Administration/Configuration/RocksDB.md)
     * [Hash Cache Options](Administration/Configuration/Cache.md)
