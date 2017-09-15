@@ -9,7 +9,7 @@
     divs: ['#readme', '#swagger', '#app-info', '#sideinformation', '#information', '#settings'],
     navs: ['#service-info', '#service-api', '#service-readme', '#service-settings'],
 
-    template: templateEngine.createTemplate('applicationDetailView.ejs'),
+    template: templateEngine.createTemplate('serviceDetailView.ejs'),
 
     remove: function () {
       this.$el.empty().off(); /* off to unbind the events */
@@ -262,7 +262,8 @@
             $(this.el).html(this.template.render({
               app: this.model,
               baseUrl: arangoHelper.databaseUrl('', db),
-              mode: mode
+              mode: mode,
+              installed: true
             }));
 
             // init ace

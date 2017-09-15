@@ -1,5 +1,9 @@
 .application-detail-view {
 
+  h1, h2, h3, h4 {
+    font-weight: 100;
+  }
+
   .headerBar {
     .subMenuEntries {
       margin-left: 5px;
@@ -12,9 +16,110 @@
     }
   }
 
+  .foxx-left {
+    font-weight: 100;
+
+    > p {
+      margin: 15px;
+    }
+
+    .app-warning {
+      @include border-radius(3px);
+      background: $c-negative;
+      color: $c-white;
+      margin: 15px;
+      padding: 6px 8px;
+
+      h4,
+      p {
+        font-size: 1em;
+        margin: 0;
+      }
+    }
+  }
+
   section.info {
+    background: $c-white;
     float: left;
     padding: 13px 0 0;
+
+    .foxx-icon-container {
+      margin-bottom: 15px;
+      margin-left: 15px;
+      width: 100px;
+
+      img {
+        float: right;
+        width: 100%;
+      }
+    }
+
+    .foxx-label-container {
+      font-weight: 100;
+      margin-bottom: 20px;
+      margin-left: 10px;
+      width: 100%;
+
+      p {
+        width: 100%;
+        clear: both;
+
+        span {
+          display: block;
+          float: left;
+
+          &:first-child {
+            min-width: 65px;
+          }
+        }
+      }
+    }
+
+    .readme {
+      background: $c-white;
+      margin-top: -10px;
+      padding: 1em 1em;
+      padding-top: 0;
+
+      .buttons {
+
+        background: $c-white;
+        height: 30px;
+        position: relative;
+        right: -15px;
+        width: 100%;
+
+        button {
+          float: right;
+        }
+      }
+
+      .modal-body {
+        border: {
+          bottom: 1px solid $c-content-border;
+          left: 0;
+          right: 0;
+          top: 0;
+        }
+        padding-bottom: 15px;
+      }
+
+      .modal-footer {
+        border: {
+          bottom: 0;
+          left: 0;
+          right: 0;
+          top: 1px solid $c-content-border;
+        }
+        padding-right: 0;
+      }
+
+      h1 {
+        float: left;
+        text-align: left;
+        width: 100%;
+      }
+    }
 
     .header {
       height: 200px;
@@ -167,18 +272,6 @@
         }
       }
 
-      .app-warning {
-        @include border-radius(3px);
-        background: $c-negative;
-        color: $c-white;
-        padding: 6px 8px;
-
-        h4,
-        p {
-          font-size: 1em;
-          margin: 0;
-        }
-      }
     }
 
   }
@@ -234,49 +327,6 @@ main {
     }
   }
 
-  .readme {
-    background: $c-white;
-    padding: 1em 2em;
-
-    .buttons {
-
-      background: $c-white;
-      height: 30px;
-      position: relative;
-      right: -15px;
-      width: 100%;
-
-      button {
-        float: right;
-      }
-    }
-
-    .modal-body {
-      border: {
-        bottom: 1px solid $c-content-border;
-        left: 0;
-        right: 0;
-        top: 0;
-      }
-      padding-bottom: 15px;
-    }
-
-    .modal-footer {
-      border: {
-        bottom: 0;
-        left: 0;
-        right: 0;
-        top: 1px solid $c-content-border;
-      }
-      padding-right: 0;
-    }
-
-    h1 {
-      float: left;
-      text-align: left;
-      width: 100%;
-    }
-  }
 
 }
 

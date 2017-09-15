@@ -418,3 +418,21 @@ div.headerBar {
     }
   }
 }
+
+.categoryBar {
+  background: $c-bluegrey-dark;
+  background: -webkit-linear-gradient(left, $c-bluegrey-dark , $c-white); /* For Safari 5.1 to 6.0 */
+  background: -o-linear-gradient(right, $c-bluegrey-dark, $c-white); /* For Opera 11.1 to 12.0 */
+  background: -moz-linear-gradient(right, $c-bluegrey-dark, $c-white); /* For Firefox 3.6 to 15 */
+  background: linear-gradient(to right, $c-bluegrey-dark , $c-white); /* Standard syntax */
+  clear: both;
+  width: 100%;
+
+  h4 {
+    font-weight: 100;
+    color: $c-white;
+    padding-left: 15px;
+    padding-top: 10px;
+    padding-bottom: 10px; 
+  }
+}
