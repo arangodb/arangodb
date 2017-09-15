@@ -1090,9 +1090,9 @@ def createDockerImage(edition, maintainer, stageName) {
             node(buildJenkins[os]) {
                 stage(stageName) {
                     checkoutSource(edition);
-
-                    def dockerTag = sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
+                    
                     def package = "${edition}-${maintainer}"
+                    def dockerTag = sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
                     withEnv(["DOCKERTAG=${dockerTag}"]) {
                         sh "scripts/build-docker.sh"
                         sh "docker tag arangodb:${dockerTag} c1.triagens-gmbh.zz:5000/arangodb/${package}:${dockerTag}"
