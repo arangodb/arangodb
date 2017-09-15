@@ -766,7 +766,7 @@ function shutdownArangod (arangod, options, forceTerminate) {
           }
           return;
         } catch (x) {
-          print('failed to shut down arangod via our connection!')
+          print('failed to shut down arangod via our connection!');
           print(x);
         }
       }
