@@ -2164,7 +2164,9 @@ int modifyDocumentOnCoordinator(
         TRI_ASSERT(it.second.size() == 1);
         body = std::make_shared<std::string>(slice.toJson());
 
-        StringRef keyStr(transaction::helpers::extractKeyFromDocument(slice));
+        TRI_ASSERT(slice.get(StaticStrings::KeyString).isString());
+
+        StringRef keyStr(slice.get(StaticStrings::KeyString));
         // We send to single endpoint
         requests.emplace_back(
             "shard:" + it.first, reqType,
