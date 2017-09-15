@@ -709,7 +709,9 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
 
                             withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
                                 if (os == "windows") {
-                                    echo "executing ${command}"
+                                    def hostname = powershell(returnStdout: true, script: "hostname")
+
+                                    echo "executing ${command} on ${hostname}"
                                     powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
                                 }
                                 else {
