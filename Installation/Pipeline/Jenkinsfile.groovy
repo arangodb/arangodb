@@ -669,7 +669,7 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                        "--configDir etc/jenkins " +
                        "--skipLogAnalysis true " +
                        "--skipTimeCritical true " +
-                       "--skipNonDeterministic true " +
+                       "--skipNondeterministic true " +
                        "--storageEngine ${engine} " +
                        testStruct[2]
 
