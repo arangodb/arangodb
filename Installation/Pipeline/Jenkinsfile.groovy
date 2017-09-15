@@ -1109,7 +1109,7 @@ def runEdition(os, edition, maintainer, stageName) {
         if (buildStepCheck(os, edition, maintainer)) {
             node(buildJenkins[os]) {
                 stage(stageName) {
-                    checkout(edition)
+                    checkoutSource(edition)
 
                     // I concede...we need a lock for windows...I could not get it to run concurrently...
                     // v8 would not build multiple times at the same time on the same machine:
