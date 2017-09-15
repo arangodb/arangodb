@@ -129,6 +129,7 @@ class MMFilesAllIndexIterator final : public IndexIterator {
   char const* typeName() const override { return "all-index-iterator"; }
 
   bool next(TokenCallback const& cb, size_t limit) override;
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
 
   void skip(uint64_t count, uint64_t& skipped) override;
 
@@ -137,6 +138,7 @@ class MMFilesAllIndexIterator final : public IndexIterator {
  private:
   MMFilesPrimaryIndexImpl const* _index;
   arangodb::basics::BucketPosition _position;
+  std::vector<std::pair<TRI_voc_rid_t, uint8_t const*>> _revisions;
   bool const _reverse;
   uint64_t _total;
 };

@@ -118,6 +118,32 @@ bool MMFilesAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
   return true;
 }
 
+bool MMFilesAllIndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
+  _revisions.clear();
+  _revisions.reserve(limit);
+
+  bool done = false;
+  while (limit > 0) {
+    MMFilesSimpleIndexElement element;
+    if (_reverse) {
+      element = _index->findSequentialReverse(&_context, _position);
+    } else {
+      element = _index->findSequential(&_context, _position, _total);
+    }
+    if (element) {
+      _revisions.emplace_back(std::make_pair(element.revisionId(), nullptr));
+      --limit;
+    } else {
+      done = true;
+      break;
+    }
+  }
+
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  physical->readDocumentWithCallback(_trx, _revisions, cb);
+  return !done;
+}
+
 // Skip the first count-many entries
 void MMFilesAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
   while (count > 0) {

@@ -42,6 +42,19 @@ MMFilesDocumentPosition MMFilesRevisionsCache::lookup(TRI_voc_rid_t revisionId) 
   return _positions.findByKey(nullptr, &revisionId);
 }
 
+void MMFilesRevisionsCache::batchLookup(std::vector<std::pair<TRI_voc_rid_t, uint8_t const*>>& revisions) const {
+  READ_LOCKER(locker, _lock);
+
+  for (auto& it : revisions) {
+    MMFilesDocumentPosition const old = _positions.findByKey(nullptr, &it.first);
+    if (old) {
+      uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
+      TRI_ASSERT(VPackSlice(vpack).isObject());
+      it.second = vpack;
+    }
+  }
+}
+
 void MMFilesRevisionsCache::sizeHint(int64_t hint) {
   WRITE_LOCKER(locker, _lock);
   if (hint > 256) {

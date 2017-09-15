@@ -74,6 +74,7 @@ class MMFilesRevisionsCache {
   size_t memoryUsage();
   void clear();
   MMFilesDocumentPosition lookup(TRI_voc_rid_t revisionId) const;
+  void batchLookup(std::vector<std::pair<TRI_voc_rid_t, uint8_t const*>>& revisions) const;
   MMFilesDocumentPosition insert(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock);
   void insert(MMFilesDocumentPosition const& position, bool shouldLock);
   void update(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal);
