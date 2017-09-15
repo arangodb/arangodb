@@ -127,7 +127,7 @@ class MMFilesRestReplicationHandler : public RestReplicationHandler {
   /// @brief add or remove a WAL logfile barrier
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommandBarrier();
+  void handleCommandBarrier() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the inventory (current replication and collection state)
@@ -139,11 +139,11 @@ class MMFilesRestReplicationHandler : public RestReplicationHandler {
   /// @brief apply a single marker from the collection dump
   //////////////////////////////////////////////////////////////////////////////
 
-  int applyCollectionDumpMarker(transaction::Methods&,
+  /*int applyCollectionDumpMarker(transaction::Methods&,
                                 CollectionNameResolver const&,
                                 std::string const&, TRI_replication_operation_e,
                                 VPackSlice const&, VPackSlice const&,
-                                std::string&);
+                                std::string&);*/
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief produce list of keys for a specific collection

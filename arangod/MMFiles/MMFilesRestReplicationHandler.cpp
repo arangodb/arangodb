@@ -757,7 +757,7 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the data from a collection dump or the continuous log
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
 int MMFilesRestReplicationHandler::applyCollectionDumpMarker(
     transaction::Methods& trx, CollectionNameResolver const& resolver,
     std::string const& collectionName, TRI_replication_operation_e type,
@@ -816,7 +816,7 @@ int MMFilesRestReplicationHandler::applyCollectionDumpMarker(
   errorMsg = "unexpected marker type " + StringUtils::itoa(type);
 
   return TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
-}
+}*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief produce list of keys for a specific collection

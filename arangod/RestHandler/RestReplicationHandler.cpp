@@ -229,6 +229,11 @@ RestStatus RestReplicationHandler::execute() {
       } else {
         handleCommandBatch();
       }
+    } else if (command == "barrier") {
+      if (isCoordinatorError()) {
+        return RestStatus::DONE;
+      }
+      handleCommandBarrier();
     } else if (command == "inventory") {
       // get overview of collections and idexes followed by some extra data
       // example call: curl --dump -
