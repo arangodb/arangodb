@@ -47,7 +47,7 @@ SimpleHttpResult::SimpleHttpResult()
       _hasContentLength(false),
       _chunked(false),
       _deflated(false),
-      _resultBody(TRI_UNKNOWN_MEM_ZONE, false),
+      _resultBody(false),
       _requestResultType(UNKNOWN),
       _haveSentRequestFully(false) {
   

@@ -355,26 +355,26 @@ static char* makeWindowsArgs(TRI_external_t* external) {
   int err = TRI_ERROR_NO_ERROR;
   char* res;
 
-  buf = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
+  buf = TRI_CreateStringBuffer();
   if (buf == NULL) {
     return NULL;
   }
   TRI_ReserveStringBuffer(buf, 1024);
   err = appendQuotedArg(buf, external->_executable);
   if (err != TRI_ERROR_NO_ERROR) {
-    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buf);
+    TRI_FreeStringBuffer(buf);
     return NULL;
   }
   for (i = 1; i < external->_numberArguments; i++) {
     err = TRI_AppendCharStringBuffer(buf, ' ');
     if (err != TRI_ERROR_NO_ERROR) {
-      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buf);
+      TRI_FreeStringBuffer(buf);
       return NULL;
     }
     err = appendQuotedArg(buf, external->_arguments[i]);
   }
   res = TRI_StealStringBuffer(buf);
-  TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buf);
+  TRI_FreeStringBuffer(buf);
   return res;
 }
 
@@ -416,7 +416,7 @@ static bool startProcess(TRI_external_t* external, HANDLE rd, HANDLE wr) {
                             &siStartInfo,  // STARTUPINFO pointer
                             &piProcInfo);  // receives PROCESS_INFORMATION
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, args);
+  TRI_Free(args);
 
   if (bFuncRetn == FALSE) {
     TRI_SYSTEM_ERROR();
@@ -783,12 +783,20 @@ void TRI_SetProcessTitle(char const* title) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeExternal(TRI_external_t* ext) {
-  TRI_Free(TRI_CORE_MEM_ZONE, ext->_executable);
+  if (ext == nullptr) {
+    return;
+  }
+
+  if (ext->_executable != nullptr) {
+    TRI_Free(ext->_executable);
+  }
 
   for (size_t i = 0; i < ext->_numberArguments; i++) {
-    TRI_Free(TRI_CORE_MEM_ZONE, ext->_arguments[i]);
+    if (ext->_arguments[i] != nullptr) {
+      TRI_Free(ext->_arguments[i]);
+    }
   }
-  TRI_Free(TRI_CORE_MEM_ZONE, ext->_arguments);
+  TRI_Free(ext->_arguments);
 
 #ifndef _WIN32
   if (ext->_readPipe != -1) {
@@ -806,7 +814,7 @@ static void FreeExternal(TRI_external_t* ext) {
     CloseHandle(ext->_writePipe);
   }
 #endif
-  TRI_Free(TRI_CORE_MEM_ZONE, ext);
+  TRI_Free(ext);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -818,7 +826,7 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
                                TRI_external_id_t* pid) {
   // create the external structure
   TRI_external_t* external = static_cast<TRI_external_t*>(
-      TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_external_t)));
+      TRI_Allocate(sizeof(TRI_external_t)));
 
   if (external == nullptr) {
     // gracefully handle out of memory
@@ -832,7 +840,7 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
   external->_numberArguments = n + 1;
 
   external->_arguments = static_cast<char**>(
-      TRI_Allocate(TRI_CORE_MEM_ZONE, (n + 2) * sizeof(char*)));
+      TRI_Allocate((n + 2) * sizeof(char*)));
 
   if (external->_arguments == nullptr) {
     // gracefully handle out of memory
@@ -846,7 +854,11 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
   external->_arguments[0] = TRI_DuplicateString(executable);
 
   for (size_t i = 0; i < n; ++i) {
-    external->_arguments[i + 1] = TRI_DuplicateString(arguments[i]);
+    if (arguments[i] != nullptr) {
+      external->_arguments[i + 1] = TRI_DuplicateString(arguments[i]);
+    } else {
+      external->_arguments[i + 1] = TRI_DuplicateString("");
+    }
   }
 
   external->_arguments[n + 1] = nullptr;

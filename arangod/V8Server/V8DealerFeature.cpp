@@ -105,8 +105,6 @@ V8DealerFeature::V8DealerFeature(
       _nextId(0),
       _stopping(false),
       _gcFinished(false),
-      _nrAdditionalContexts(0),
-      _minimumContexts(1),
       _forceNrContexts(0),
       _contextsModificationBlockers(0) {
   setOptional(false);
@@ -238,20 +236,14 @@ void V8DealerFeature::start() {
     _nrMaxContexts = scheduler->concurrency();
   }
 
-  // set a minimum of V8 contexts
-  if (_nrMaxContexts < _minimumContexts) {
-    _nrMaxContexts = _minimumContexts;
-  }
-
   if (0 < _forceNrContexts) {
     _nrMaxContexts = _forceNrContexts;
-  } else if (0 < _nrAdditionalContexts) {
-    _nrMaxContexts += _nrAdditionalContexts;
   }
 
-  if (_nrMinContexts < 1 + _nrAdditionalContexts) {
-    _nrMinContexts = 1 + _nrAdditionalContexts;
+  if (_nrMinContexts < 1) {
+    _nrMinContexts = 1;
   }
+
   if (_nrMinContexts > _nrMaxContexts) {
     _nrMinContexts = _nrMaxContexts;
   }
@@ -647,6 +639,14 @@ void V8DealerFeature::enterLockedContext(TRI_vocbase_t* vocbase,
   }
 }
 
+/// @brief forceContext == -1 means that any free context may be
+/// picked, or a new one will be created if we have not exceeded
+/// the maximum number of contexts
+/// forceContext == -2 means that any free context may be picked, 
+/// or a new one will be created if we have not exceeded or exactly
+/// reached the maximum number of contexts. this can be used to
+/// force the creation of another context for high priority tasks
+/// forceContext >= 0 means picking the context with that exact id 
 V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
                                          bool allowUseDatabase,
                                          ssize_t forceContext) {
@@ -668,7 +668,7 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
   V8Context* context = nullptr;
 
   // this is for TESTING / DEBUGGING / INIT only
-  if (forceContext != -1) {
+  if (forceContext >= 0) {
     size_t id = static_cast<size_t>(forceContext);
 
     while (!_stopping) {
@@ -750,7 +750,11 @@ V8Context* V8DealerFeature::enterContext(TRI_vocbase_t* vocbase,
         break;
       }
 
-      if (_contexts.size() + _nrInflightContexts < _nrMaxContexts &&
+      bool contextLimitNotExceeded =
+        ((_contexts.size() + _nrInflightContexts < _nrMaxContexts) ||
+         (forceContext == ANY_CONTEXT_OR_PRIORITY && (_contexts.size() + _nrInflightContexts <= _nrMaxContexts)));
+
+      if (contextLimitNotExceeded &&
           _contextsModificationBlockers == 0 && 
           !MaxMapCountFeature::isNearMaxMappings()) {
   
@@ -1217,9 +1221,9 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
       }
 
       v8::Handle<v8::Object> globalObj = localContext->Global();
-      globalObj->Set(TRI_V8_ASCII_STRING("GLOBAL"), globalObj);
-      globalObj->Set(TRI_V8_ASCII_STRING("global"), globalObj);
-      globalObj->Set(TRI_V8_ASCII_STRING("root"), globalObj);
+      globalObj->Set(TRI_V8_ASCII_STRING(isolate, "GLOBAL"), globalObj);
+      globalObj->Set(TRI_V8_ASCII_STRING(isolate, "global"), globalObj);
+      globalObj->Set(TRI_V8_ASCII_STRING(isolate, "root"), globalObj);
 
       std::string modules = "";
       std::string sep = "";
@@ -1248,24 +1252,24 @@ V8Context* V8DealerFeature::buildContext(size_t id) {
         v8::HandleScope scope(isolate);
 
         TRI_AddGlobalVariableVocbase(isolate,
-                                     TRI_V8_ASCII_STRING("APP_PATH"),
-                                     TRI_V8_STD_STRING(_appPath));
+                                     TRI_V8_ASCII_STRING(isolate, "APP_PATH"),
+                                     TRI_V8_STD_STRING(isolate, _appPath));
 
         for (auto j : _definedBooleans) {
-          localContext->Global()->ForceSet(TRI_V8_STD_STRING(j.first),
+          localContext->Global()->ForceSet(TRI_V8_STD_STRING(isolate, j.first),
                                            v8::Boolean::New(isolate, j.second),
                                            v8::ReadOnly);
         }
 
         for (auto j : _definedDoubles) {
-          localContext->Global()->ForceSet(TRI_V8_STD_STRING(j.first),
+          localContext->Global()->ForceSet(TRI_V8_STD_STRING(isolate, j.first),
                                            v8::Number::New(isolate, j.second),
                                            v8::ReadOnly);
         }
 
         for (auto j : _definedStrings) {
-          localContext->Global()->ForceSet(TRI_V8_STD_STRING(j.first),
-                                           TRI_V8_STD_STRING(j.second),
+          localContext->Global()->ForceSet(TRI_V8_STD_STRING(isolate, j.first),
+                                           TRI_V8_STD_STRING(isolate, j.second),
                                            v8::ReadOnly);
         }
       }

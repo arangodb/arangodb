@@ -190,8 +190,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (_maxElectionTimeout <= 2. * _minElectionTimeout) {
     LOG_TOPIC(WARN, Logger::AGENCY)
-        << "agency.election-timeout-max should probably be chosen longer!"
-        << " " << __FILE__ << __LINE__;
+        << "agency.election-timeout-max should probably be chosen longer!";
   }
 
   if (_compactionKeepSize == 0) {

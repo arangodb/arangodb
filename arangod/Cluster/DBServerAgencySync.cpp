@@ -75,7 +75,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   
   VocbaseGuard guard(vocbase);
 
-  V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true);
+  V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true, V8DealerFeature::ANY_CONTEXT_OR_PRIORITY);
 
   if (context == nullptr) {
     LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "DBServerAgencySync::execute no V8 context";
@@ -95,9 +95,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     v8::HandleScope scope(isolate);
 
     // execute script inside the context
-    auto file = TRI_V8_ASCII_STRING("handle-plan-change");
+    auto file = TRI_V8_ASCII_STRING(isolate, "handle-plan-change");
     auto content =
-        TRI_V8_ASCII_STRING("require('@arangodb/cluster').handlePlanChange");
+        TRI_V8_ASCII_STRING(isolate, "require('@arangodb/cluster').handlePlanChange");
     
     v8::TryCatch tryCatch;
     v8::Handle<v8::Value> handlePlanChange = TRI_ExecuteJavaScriptString(

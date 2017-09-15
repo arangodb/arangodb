@@ -1,4 +1,4 @@
-/* global ArangoServerState, ArangoClusterInfo */
+/* global ArangoServerState, ArangoClusterInfo, REPLICATION_SYNCHRONIZE_FINALIZE */
 'use strict';
 
 // /////////////////////////////////////////////////////////////////////////////
@@ -584,21 +584,24 @@ function synchronizeOneShard (database, shard, planId, leader) {
         }
         if (lockJobId !== false) {
           try {
-            var sy2 = rep.syncCollectionFinalize(
-              database, shard, sy.lastLogTick, { endpoint: ep }, leader);
-            if (sy2.error) {
-              console.topic('heartbeat=error', 'synchronizeOneShard: Could not finalize shard synchronization',
-                shard, sy2);
-              ok = false;
-            } else {
-              try {
-                ok = addShardFollower(ep, database, shard, lockJobId);
-              } catch (err4) {
-                db._drop(shard);
-                throw err4;
-              }
+            var sy2 = REPLICATION_SYNCHRONIZE_FINALIZE({ 
+              endpoint: ep, 
+              database, 
+              collection: shard, 
+              leaderId: leader, 
+              from: sy.lastLogTick,
+              requestTimeout: 60,
+              connectTimeout: 60
+            });
+             
+            try {
+              ok = addShardFollower(ep, database, shard, lockJobId);
+            } catch (err4) {
+              db._drop(shard);
+              throw err4;
             }
           } catch (err3) {
+            ok = false;
             console.topic('heartbeat=error', 'synchronizeOneshard: exception in',
               'syncCollectionFinalize:', err3);
           }

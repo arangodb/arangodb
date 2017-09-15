@@ -53,17 +53,17 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() > 0) {
     if (args[0]->IsObject()) {
       v8::Handle<v8::Object> obj = args[0]->ToObject();
-      if (obj->Has(TRI_V8_ASCII_STRING("waitForSync"))) {
+      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "waitForSync"))) {
         waitForSync =
-            TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING("waitForSync")));
+            TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
       }
-      if (obj->Has(TRI_V8_ASCII_STRING("waitForCollector"))) {
+      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "waitForCollector"))) {
         waitForCollector = TRI_ObjectToBoolean(
-            obj->Get(TRI_V8_ASCII_STRING("waitForCollector")));
+            obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForCollector")));
       }
-      if (obj->Has(TRI_V8_ASCII_STRING("writeShutdownFile"))) {
+      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile"))) {
         writeShutdownFile = TRI_ObjectToBoolean(
-            obj->Get(TRI_V8_ASCII_STRING("writeShutdownFile")));
+            obj->Get(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile")));
       }
     } else {
       waitForSync = TRI_ObjectToBoolean(args[0]);
@@ -207,21 +207,21 @@ void RocksDBV8Functions::registerResources() {
       v8::Handle<v8::ObjectTemplate>::New(isolate, v8g->VocbaseColTempl);
   TRI_ASSERT(!rt.IsEmpty());
 
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("recalculateCount"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "recalculateCount"),
                        JS_RecalculateCounts, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("compact"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "compact"),
                        JS_CompactCollection);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("estimatedSize"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "estimatedSize"),
                        JS_EstimateCollectionSize);
 
   // add global WAL handling functions
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("WAL_FLUSH"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "WAL_FLUSH"),
                                JS_FlushWal, true);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("WAL_WAITCOLLECTOR"),
+                               TRI_V8_ASCII_STRING(isolate, "WAL_WAITCOLLECTOR"),
                                JS_WaitCollectorWal, true);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("WAL_PROPERTIES"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "WAL_PROPERTIES"),
                                JS_PropertiesWal, true);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("WAL_TRANSACTIONS"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "WAL_TRANSACTIONS"),
                                JS_TransactionsWal, true);
 }

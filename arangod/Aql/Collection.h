@@ -74,6 +74,16 @@ struct Collection {
   /// @brief returns the collection's plan id
   TRI_voc_cid_t getPlanId() const;
 
+  /// @brief returns the responsible servers for the collection
+  std::unordered_set<std::string> responsibleServers() const;
+  
+  /// @brief returns the "distributeShardsLike" attribute for the collection
+  std::string distributeShardsLike() const;
+  
+  /// @brief fills the set with the responsible servers for the collection
+  /// returns the number of responsible servers found for the collection
+  size_t responsibleServers(std::unordered_set<std::string>&) const;
+
   /// @brief returns the shard ids of a collection
   std::shared_ptr<std::vector<std::string>> shardIds() const;
 
