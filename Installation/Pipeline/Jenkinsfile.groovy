@@ -1091,6 +1091,7 @@ def createDockerImage(edition, maintainer, stageName) {
                 stage(stageName) {
                     checkoutSource(edition)
                     
+                    def test=1
                     def package = "${edition}-${maintainer}"
                     def dockerTag = sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
                     withEnv(["DOCKERTAG=${dockerTag}"]) {
