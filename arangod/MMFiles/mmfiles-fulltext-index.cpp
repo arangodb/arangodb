@@ -151,7 +151,7 @@ static inline void* ReallocateMemory(index__t* const idx, void* old,
   TRI_ASSERT(oldSize > 0);
 #endif
 
-  data = TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, old, newSize);
+  data = TRI_Reallocate(old, newSize);
   if (data != nullptr) {
     idx->_memoryAllocated += newSize;
     idx->_memoryAllocated -= oldSize;
@@ -167,7 +167,7 @@ static inline void* AllocateMemory(index__t* const idx, size_t const size) {
   TRI_ASSERT(size > 0);
 #endif
 
-  data = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, size);
+  data = TRI_Allocate(size);
   if (data != nullptr) {
     idx->_memoryAllocated += size;
   }
@@ -183,7 +183,7 @@ static inline void FreeMemory(index__t* const idx, void* data,
 #endif
 
   idx->_memoryAllocated -= size;
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
+  TRI_Free(data);
 }
 
 /// @brief adjust the number of followers for a node

@@ -39,12 +39,11 @@ using namespace arangodb;
 int TRI_CompareValuesJson(TRI_json_t const* lhs, TRI_json_t const* rhs,
                           bool useUTF8 = true);
 
-static TRI_json_t* MergeRecursive(TRI_memory_zone_t* zone,
-                                  TRI_json_t const* lhs, TRI_json_t const* rhs,
+static TRI_json_t* MergeRecursive(TRI_json_t const* lhs, TRI_json_t const* rhs,
                                   bool nullMeansRemove, bool mergeObjects) {
   TRI_ASSERT(lhs != nullptr);
 
-  std::unique_ptr<TRI_json_t> result(TRI_CopyJson(zone, lhs));
+  std::unique_ptr<TRI_json_t> result(TRI_CopyJson(lhs));
 
   if (result == nullptr) {
     return nullptr;
@@ -64,7 +63,7 @@ static TRI_json_t* MergeRecursive(TRI_memory_zone_t* zone,
     if (value->_type == TRI_JSON_NULL && nullMeansRemove) {
       // replacement value is a null and we don't want to store nulls => delete
       // attribute from the result
-      TRI_DeleteObjectJson(zone, r, key->_value._string.data);
+      TRI_DeleteObjectJson(r, key->_value._string.data);
     } else {
       // replacement value is not a null or we want to store nulls
       TRI_json_t const* lhsValue =
@@ -74,36 +73,36 @@ static TRI_json_t* MergeRecursive(TRI_memory_zone_t* zone,
         // existing array does not have the attribute => append new attribute
         if (value->_type == TRI_JSON_OBJECT && nullMeansRemove) {
           TRI_json_t empty;
-          TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &empty);
-          TRI_json_t* merged = MergeRecursive(zone, &empty, value,
+          TRI_InitObjectJson(&empty);
+          TRI_json_t* merged = MergeRecursive(&empty, value,
                                               nullMeansRemove, mergeObjects);
 
           if (merged == nullptr) {
             return nullptr;
           }
-          TRI_Insert3ObjectJson(zone, r, key->_value._string.data, merged);
+          TRI_Insert3ObjectJson(r, key->_value._string.data, merged);
         } else {
-          TRI_json_t* copy = TRI_CopyJson(zone, value);
+          TRI_json_t* copy = TRI_CopyJson(value);
 
           if (copy == nullptr) {
             return nullptr;
           }
 
-          TRI_Insert3ObjectJson(zone, r, key->_value._string.data, copy);
+          TRI_Insert3ObjectJson(r, key->_value._string.data, copy);
         }
       } else {
         // existing array already has the attribute => replace attribute
         if (lhsValue->_type == TRI_JSON_OBJECT &&
             value->_type == TRI_JSON_OBJECT && mergeObjects) {
-          TRI_json_t* merged = MergeRecursive(zone, lhsValue, value,
+          TRI_json_t* merged = MergeRecursive(lhsValue, value,
                                               nullMeansRemove, mergeObjects);
           if (merged == nullptr) {
             return nullptr;
           }
-          TRI_ReplaceObjectJson(zone, r, key->_value._string.data, merged);
-          TRI_FreeJson(zone, merged);
+          TRI_ReplaceObjectJson(r, key->_value._string.data, merged);
+          TRI_FreeJson(merged);
         } else {
-          TRI_ReplaceObjectJson(zone, r, key->_value._string.data, value);
+          TRI_ReplaceObjectJson(r, key->_value._string.data, value);
         }
       }
     }
@@ -148,7 +147,7 @@ static TRI_json_t* UniquifyArrayJson(TRI_json_t const* array) {
   TRI_ASSERT(array->_type == TRI_JSON_ARRAY);
 
   // create result array
-  std::unique_ptr<TRI_json_t> result(TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE));
+  std::unique_ptr<TRI_json_t> result(TRI_CreateArrayJson());
 
   if (result == nullptr) {
     return nullptr;
@@ -163,7 +162,7 @@ static TRI_json_t* UniquifyArrayJson(TRI_json_t const* array) {
 
     // don't push value if it is the same as the last value
     if (last == nullptr || TRI_CompareValuesJson(p, last, false) != 0) {
-      int res = TRI_PushBackArrayJson(TRI_UNKNOWN_MEM_ZONE, result.get(), p);
+      int res = TRI_PushBackArrayJson(result.get(), p);
 
       if (res != TRI_ERROR_NO_ERROR) {
         return nullptr;
@@ -218,7 +217,7 @@ static TRI_json_t* GetMergedKeyArray(TRI_json_t const* lhs,
              TRI_LengthVector(&rhs->_value._objects);
 
   std::unique_ptr<TRI_json_t> keys(
-      TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, n));
+      TRI_CreateArrayJson(n));
 
   if (keys == nullptr) {
     return nullptr;
@@ -235,7 +234,7 @@ static TRI_json_t* GetMergedKeyArray(TRI_json_t const* lhs,
         static_cast<TRI_json_t const*>(TRI_AtVector(&lhs->_value._objects, i));
 
     TRI_ASSERT(TRI_IsStringJson(key));
-    int res = TRI_PushBackArrayJson(TRI_UNKNOWN_MEM_ZONE, keys.get(), key);
+    int res = TRI_PushBackArrayJson(keys.get(), key);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return nullptr;
@@ -249,7 +248,7 @@ static TRI_json_t* GetMergedKeyArray(TRI_json_t const* lhs,
         static_cast<TRI_json_t const*>(TRI_AtVector(&rhs->_value._objects, i));
 
     TRI_ASSERT(TRI_IsStringJson(key));
-    int res = TRI_PushBackArrayJson(TRI_UNKNOWN_MEM_ZONE, keys.get(), key);
+    int res = TRI_PushBackArrayJson(keys.get(), key);
     
     if (res != TRI_ERROR_NO_ERROR) {
       return nullptr;
@@ -424,13 +423,13 @@ int TRI_CompareValuesJson(TRI_json_t const* lhs, TRI_json_t const* rhs,
 /// @brief merge two JSON documents into one
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_MergeJson(TRI_memory_zone_t* zone, TRI_json_t const* lhs,
+static TRI_json_t* TRI_MergeJson(TRI_json_t const* lhs,
                           TRI_json_t const* rhs, bool nullMeansRemove,
                           bool mergeObjects) {
   TRI_ASSERT(lhs->_type == TRI_JSON_OBJECT);
   TRI_ASSERT(rhs->_type == TRI_JSON_OBJECT);
 
-  return MergeRecursive(zone, lhs, rhs, nullMeansRemove, mergeObjects);
+  return MergeRecursive(lhs, rhs, nullMeansRemove, mergeObjects);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -472,7 +471,7 @@ static inline v8::Handle<v8::Value> ObjectJsonNumber(v8::Isolate* isolate,
 /// @brief converts a TRI_json_t STRING into a V8 object
 static inline v8::Handle<v8::Value> ObjectJsonString(v8::Isolate* isolate,
                                                      TRI_json_t const* json) {
-  return TRI_V8_PAIR_STRING(json->_value._string.data,
+  return TRI_V8_PAIR_STRING(isolate, json->_value._string.data,
                             json->_value._string.length - 1);
 }
 
@@ -500,10 +499,10 @@ static v8::Handle<v8::Value> ObjectJsonObject(v8::Isolate* isolate,
 
     auto val = TRI_ObjectJson(isolate, element);
     if (!val.IsEmpty()) {
-      auto k = TRI_V8_PAIR_STRING(key->_value._string.data,
+      auto k = TRI_V8_PAIR_STRING(isolate, key->_value._string.data,
                                   key->_value._string.length - 1);
       if (!k.IsEmpty()) {
-        object->ForceSet(TRI_V8_PAIR_STRING(key->_value._string.data,
+        object->ForceSet(TRI_V8_PAIR_STRING(isolate, key->_value._string.data,
                                             key->_value._string.length - 1),
                          val);
       }
@@ -638,7 +637,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
 
   if (parameter->IsString()) {
     v8::Handle<v8::String> stringParameter = parameter->ToString();
-    TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, stringParameter);
+    TRI_Utf8ValueNFC str(stringParameter);
 
     if (*str == nullptr) {
       TRI_InitNullJson(result);
@@ -655,7 +654,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
     uint32_t const n = array->Length();
 
     // allocate the result array in one go
-    TRI_InitArrayJson(TRI_UNKNOWN_MEM_ZONE, result, static_cast<size_t>(n));
+    TRI_InitArrayJson(result, static_cast<size_t>(n));
     int res =
         TRI_ReserveVector(&result->_value._objects, static_cast<size_t>(n));
 
@@ -706,7 +705,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
 
     if (parameter->IsStringObject()) {
       v8::Handle<v8::String> stringParameter(parameter->ToString());
-      TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, stringParameter);
+      TRI_Utf8ValueNFC str(stringParameter);
 
       if (*str == nullptr) {
         TRI_InitNullJson(result);
@@ -727,7 +726,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
     v8::Handle<v8::Object> o = parameter->ToObject();
 
     // first check if the object has a "toJSON" function
-    v8::Handle<v8::String> toJsonString = TRI_V8_PAIR_STRING("toJSON", 6);
+    v8::Handle<v8::String> toJsonString = TRI_V8_PAIR_STRING(isolate, "toJSON", 6);
     if (o->Has(toJsonString)) {
       // call it if yes
       v8::Handle<v8::Value> func = o->Get(toJsonString);
@@ -739,7 +738,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
 
         if (!converted.IsEmpty()) {
           // return whatever toJSON returned
-          TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, converted->ToString());
+          TRI_Utf8ValueNFC str(converted->ToString());
 
           if (*str == nullptr) {
             TRI_InitNullJson(result);
@@ -777,7 +776,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
     uint32_t const n = names->Length();
 
     // allocate the result object buffer in one go
-    TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, result, static_cast<size_t>(n));
+    TRI_InitObjectJson(result, static_cast<size_t>(n));
     int res = TRI_ReserveVector(&result->_value._objects,
                                 static_cast<size_t>(n * 2));  // key + value
 
@@ -790,7 +789,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
     for (uint32_t i = 0; i < n; ++i) {
       // process attribute name
       v8::Handle<v8::Value> key = names->Get(i);
-      TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, key);
+      TRI_Utf8ValueNFC str(key);
 
       if (*str == nullptr) {
         return TRI_ERROR_OUT_OF_MEMORY;
@@ -817,7 +816,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
         // ignore this error
         // now free the attributeName string and return the elements to the
         // vector
-        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, attributeName);
+        TRI_FreeString(attributeName);
         TRI_ReturnVector(&result->_value._objects);
         TRI_ReturnVector(&result->_value._objects);
 
@@ -841,7 +840,7 @@ static int ObjectToJson(v8::Isolate* isolate, TRI_json_t* result,
 /// @brief convert a V8 value to a json_t value
 TRI_json_t* TRI_ObjectToJson(v8::Isolate* isolate,
                              v8::Handle<v8::Value> const parameter) {
-  TRI_json_t* json = TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
+  TRI_json_t* json = TRI_CreateNullJson();
 
   if (json == nullptr) {
     return nullptr;
@@ -853,7 +852,7 @@ TRI_json_t* TRI_ObjectToJson(v8::Isolate* isolate,
 
   if (res != TRI_ERROR_NO_ERROR) {
     // some processing error occurred
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+    TRI_FreeJson(json);
     return nullptr;
   }
 
@@ -871,7 +870,7 @@ struct KeySpaceElement {
 
   KeySpaceElement(char const* k, size_t length, TRI_json_t* json)
       : key(nullptr), json(json) {
-    key = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, k, length);
+    key = TRI_DuplicateString(k, length);
     if (key == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
@@ -879,16 +878,16 @@ struct KeySpaceElement {
 
   ~KeySpaceElement() {
     if (key != nullptr) {
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, key);
+      TRI_FreeString(key);
     }
     if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      TRI_FreeJson(json);
     }
   }
 
   void setValue(TRI_json_t* value) {
     if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      TRI_FreeJson(json);
       json = nullptr;
     }
     json = value;
@@ -992,7 +991,7 @@ class KeySpace {
         auto element = it.second;
 
         if (element != nullptr) {
-          result->Set(count++, TRI_V8_STRING(element->key));
+          result->Set(count++, TRI_V8_PAIR_STRING(isolate, element->key, strlen(element->key)));
         }
       }
     }
@@ -1015,7 +1014,7 @@ class KeySpace {
 
         if (element != nullptr) {
           if (TRI_IsPrefixString(element->key, prefix.c_str())) {
-            result->Set(count++, TRI_V8_STRING(element->key));
+            result->Set(count++, TRI_V8_PAIR_STRING(isolate, element->key, strlen(element->key)));
           }
         }
       }
@@ -1034,7 +1033,7 @@ class KeySpace {
         auto element = it.second;
 
         if (element != nullptr) {
-          result->Set(TRI_V8_STRING(element->key),
+          result->Set(TRI_V8_PAIR_STRING(isolate, element->key, strlen(element->key)),
                       TRI_ObjectJson(isolate, element->json));
         }
       }
@@ -1055,7 +1054,7 @@ class KeySpace {
 
         if (element != nullptr) {
           if (TRI_IsPrefixString(element->key, prefix.c_str())) {
-            result->Set(TRI_V8_STRING(element->key),
+            result->Set(TRI_V8_PAIR_STRING(isolate, element->key, strlen(element->key)),
                         TRI_ObjectJson(isolate, element->json));
           }
         }
@@ -1173,7 +1172,7 @@ class KeySpace {
     }
 
     int res = TRI_CompareValuesJson(found->json, other);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, other);
+    TRI_FreeJson(other);
 
     if (res != 0) {
       delete element;
@@ -1231,7 +1230,7 @@ class KeySpace {
     if (found == nullptr) {
       auto element = new KeySpaceElement(
           key.c_str(), key.size(),
-          TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, value));
+          TRI_CreateNumberJson(value));
 
       _hash.emplace(key, element);
       result = value;
@@ -1259,16 +1258,16 @@ class KeySpace {
     }
 
     if (found == nullptr) {
-      TRI_json_t* list = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1);
+      TRI_json_t* list = TRI_CreateArrayJson(1);
 
       if (list == nullptr) {
         return TRI_ERROR_OUT_OF_MEMORY;
       }
 
-      if (TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, list,
+      if (TRI_PushBack3ArrayJson(list,
                                  TRI_ObjectToJson(isolate, value)) !=
           TRI_ERROR_NO_ERROR) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, list);
+        TRI_FreeJson(list);
         return TRI_ERROR_OUT_OF_MEMORY;
       }
 
@@ -1282,7 +1281,7 @@ class KeySpace {
         return TRI_ERROR_INTERNAL;
       }
 
-      if (TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, current,
+      if (TRI_PushBack3ArrayJson(current,
                                  TRI_ObjectToJson(isolate, value)) !=
           TRI_ERROR_NO_ERROR) {
         return TRI_ERROR_OUT_OF_MEMORY;
@@ -1327,7 +1326,7 @@ class KeySpace {
                         TRI_LengthVector(&current->_value._objects) - 1);
 
     v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, item);
-    TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, item);
+    TRI_DestroyJson(item);
 
     TRI_V8_RETURN(result);
   }
@@ -1371,7 +1370,7 @@ class KeySpace {
     }
 
     if (dest == nullptr) {
-      TRI_json_t* list = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1);
+      TRI_json_t* list = TRI_CreateArrayJson(1);
 
       if (list == nullptr) {
         TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -1514,7 +1513,7 @@ class KeySpace {
         auto item = static_cast<TRI_json_t*>(TRI_AtVector(
             &found->json->_value._objects, static_cast<size_t>(index)));
         if (item != nullptr) {
-          TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, item);
+          TRI_DestroyJson(item);
         }
 
         TRI_SetVector(&found->json->_value._objects, static_cast<size_t>(index),
@@ -1522,7 +1521,7 @@ class KeySpace {
       }
 
       // only free pointer to json, but not its internal structures
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, json);
+      TRI_Free(json);
     }
 
     return true;
@@ -1591,9 +1590,9 @@ class KeySpace {
       TRI_V8_THROW_EXCEPTION_MEMORY();
     }
 
-    TRI_json_t* merged = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, found->json, other,
+    TRI_json_t* merged = TRI_MergeJson(found->json, other,
                                        nullMeansRemove, false);
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, other);
+    TRI_FreeJson(other);
 
     if (merged == nullptr) {
       TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -2619,62 +2618,62 @@ void TRI_InitV8UserStructures(v8::Isolate* isolate,
   // NOTE: the following functions are all experimental and might
   // change without further notice
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("KEYSPACE_CREATE"),
+                               TRI_V8_ASCII_STRING(isolate, "KEYSPACE_CREATE"),
                                JS_KeyspaceCreate, true);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("KEYSPACE_DROP"),
+                               TRI_V8_ASCII_STRING(isolate, "KEYSPACE_DROP"),
                                JS_KeyspaceDrop, true);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("KEYSPACE_COUNT"),
+                               TRI_V8_ASCII_STRING(isolate, "KEYSPACE_COUNT"),
                                JS_KeyspaceCount, true);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("KEYSPACE_EXISTS"),
+                               TRI_V8_ASCII_STRING(isolate, "KEYSPACE_EXISTS"),
                                JS_KeyspaceExists, true);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("KEYSPACE_KEYS"),
+                               TRI_V8_ASCII_STRING(isolate, "KEYSPACE_KEYS"),
                                JS_KeyspaceKeys, true);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("KEYSPACE_REMOVE"),
+                               TRI_V8_ASCII_STRING(isolate, "KEYSPACE_REMOVE"),
                                JS_KeyspaceRemove, true);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("KEYSPACE_GET"),
+                               TRI_V8_ASCII_STRING(isolate, "KEYSPACE_GET"),
                                JS_KeyspaceGet, true);
 
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("KEY_SET"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "KEY_SET"),
                                JS_KeySet, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_SET_CAS"), JS_KeySetCas, true);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("KEY_GET"),
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_SET_CAS"), JS_KeySetCas, true);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "KEY_GET"),
                                JS_KeyGet, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_REMOVE"), JS_KeyRemove, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_REMOVE"), JS_KeyRemove, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_EXISTS"), JS_KeyExists, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_EXISTS"), JS_KeyExists, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_TYPE"), JS_KeyType, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_TYPE"), JS_KeyType, true);
 
   // numeric functions
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_INCR"), JS_KeyIncr, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_INCR"), JS_KeyIncr, true);
 
   // list / array functions
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_UPDATE"), JS_KeyUpdate, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_UPDATE"), JS_KeyUpdate, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_KEYS"), JS_KeyKeys, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_KEYS"), JS_KeyKeys, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_VALUES"), JS_KeyValues, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_VALUES"), JS_KeyValues, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_COUNT"), JS_KeyCount, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_COUNT"), JS_KeyCount, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_PUSH"), JS_KeyPush, true);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("KEY_POP"),
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_PUSH"), JS_KeyPush, true);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "KEY_POP"),
                                JS_KeyPop, true);
   TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("KEY_TRANSFER"),
+                               TRI_V8_ASCII_STRING(isolate, "KEY_TRANSFER"),
                                JS_KeyTransfer, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_GET_AT"), JS_KeyGetAt, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_GET_AT"), JS_KeyGetAt, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("KEY_SET_AT"), JS_KeySetAt, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "KEY_SET_AT"), JS_KeySetAt, true);
 }

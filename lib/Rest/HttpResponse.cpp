@@ -47,7 +47,7 @@ bool HttpResponse::HIDE_PRODUCT_HEADER = false;
 HttpResponse::HttpResponse(ResponseCode code)
     : GeneralResponse(code),
       _isHeadResponse(false),
-      _body(TRI_UNKNOWN_MEM_ZONE, false),
+      _body(false),
       _bodySize(0) {
   _generateBody = false;
   _contentType = ContentType::TEXT;
@@ -73,7 +73,7 @@ void HttpResponse::setCookie(std::string const& name, std::string const& value,
                              std::string const& domain, bool secure,
                              bool httpOnly) {
   std::unique_ptr<StringBuffer> buffer =
-      std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE);
+      std::make_unique<StringBuffer>(false);
 
   std::string tmp = StringUtils::trim(name);
   buffer->appendText(tmp);
@@ -121,7 +121,7 @@ void HttpResponse::setCookie(std::string const& name, std::string const& value,
     buffer->appendText(TRI_CHAR_LENGTH_PAIR("; HttpOnly"));
   }
 
-  _cookies.emplace_back(buffer->c_str());
+  _cookies.emplace_back(buffer->data(), buffer->length());
 }
 
 void HttpResponse::headResponse(size_t size) {
@@ -304,9 +304,6 @@ void HttpResponse::writeHeader(StringBuffer* output) {
 void HttpResponse::addPayload(VPackSlice const& slice,
                               velocypack::Options const* options,
                               bool resolveExternals) {
-  if (!options) {
-    options = &velocypack::Options::Defaults;
-  }
   
   if (_contentType == rest::ContentType::JSON &&
       _contentTypeRequested == rest::ContentType::VPACK) {
@@ -315,60 +312,12 @@ void HttpResponse::addPayload(VPackSlice const& slice,
     _contentType = rest::ContentType::VPACK;
   }
   
-  VPackSlice output = slice;
-  switch (_contentType) {
-    case rest::ContentType::VPACK: {
-      
-      // will contain sanitized data
-      VPackBuffer<uint8_t> tmpBuffer;
-      if (resolveExternals) {
-        bool resolveExt = VelocyPackHelper::hasNonClientTypes(output, true, true);
-        if (resolveExt) {  // resolve
-          tmpBuffer.reserve(slice.byteSize()); // reserve space already
-          VPackBuilder builder(tmpBuffer, options);
-          VelocyPackHelper::sanitizeNonClientTypes(output, VPackSlice::noneSlice(),
-                                                   builder, options, true, true);
-          output = VPackSlice(tmpBuffer.data());
-        }
-      }
-      
-      VPackValueLength length = output.byteSize();
-      if (_generateBody) {
-        _body.appendText(output.startAs<const char>(), length);
-      } else {
-        headResponse(length);
-      }
-      break;
-    }
-    default: {
-      setContentType(rest::ContentType::JSON);
-      if (_generateBody) {
-        arangodb::basics::VelocyPackDumper dumper(&_body, options);
-        dumper.dumpValue(output);
-      } else {
-        // TODO can we optimize this?
-        // Just dump some where else to find real length
-        StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE, false);
-        
-        // convert object to string
-        VPackStringBufferAdapter buffer(tmp.stringBuffer());
-        
-        // usual dumping -  but not to the response body
-        VPackDumper dumper(&buffer, options);
-        dumper.dump(output);
-        
-        headResponse(tmp.length());
-      }
-    }
-  }
+  addPayloadInternal(slice, slice.byteSize(), options, resolveExternals);
 }
 
 void HttpResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
                               velocypack::Options const* options,
                               bool resolveExternals) {
-  if (!options) {
-    options = &velocypack::Options::Defaults;
-  }
 
   if (_contentType == rest::ContentType::JSON &&
       _contentTypeRequested == rest::ContentType::VPACK) {
@@ -377,7 +326,17 @@ void HttpResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
     _contentType = rest::ContentType::VPACK;
   }
 
-  VPackSlice output(buffer.data());
+  addPayloadInternal(VPackSlice(buffer.data()), buffer.length(),
+                     options, resolveExternals);
+}
+
+void HttpResponse::addPayloadInternal(VPackSlice output, size_t inputLength,
+                                      VPackOptions const* options,
+                                      bool resolveExternals) {
+  if (!options) {
+    options = &velocypack::Options::Defaults;
+  }
+  
   switch (_contentType) {
     case rest::ContentType::VPACK: {
       
@@ -386,14 +345,14 @@ void HttpResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
       if (resolveExternals) {
         bool resolveExt = VelocyPackHelper::hasNonClientTypes(output, true, true);
         if (resolveExt) {  // resolve
-          tmpBuffer.reserve(buffer.length()); // reserve space already
+          tmpBuffer.reserve(inputLength); // reserve space already
           VPackBuilder builder(tmpBuffer, options);
           VelocyPackHelper::sanitizeNonClientTypes(output, VPackSlice::noneSlice(),
                                                    builder, options, true, true);
           output = VPackSlice(tmpBuffer.data());
         }
       }
-
+      
       VPackValueLength length = output.byteSize();
       if (_generateBody) {
         _body.appendText(output.startAs<const char>(), length);
@@ -410,17 +369,18 @@ void HttpResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
       } else {
         // TODO can we optimize this?
         // Just dump some where else to find real length
-        StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE, false);
-
+        StringBuffer tmp(false);
+        
         // convert object to string
         VPackStringBufferAdapter buffer(tmp.stringBuffer());
-
+        
         // usual dumping -  but not to the response body
         VPackDumper dumper(&buffer, options);
         dumper.dump(output);
-
+        
         headResponse(tmp.length());
       }
     }
   }
 }
+

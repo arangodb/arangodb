@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ScriptLoader.h"
+#include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/files.h"
 #include "Logger/Logger.h"
@@ -117,18 +118,16 @@ std::string const& ScriptLoader::findScript(std::string const& name) {
     std::vector<std::string> parts = getDirectoryParts();
 
     for (size_t i = 0; i < parts.size(); i++) {
-      char* filename = TRI_Concatenate2File(parts.at(i).c_str(), name.c_str());
-      char* result = TRI_SlurpFile(TRI_CORE_MEM_ZONE, filename, nullptr);
+      std::string filename = basics::FileUtils::buildFilename(parts[i], name);
+      char* result = TRI_SlurpFile(filename.c_str(), nullptr);
 
       if (result == nullptr && (i == parts.size() - 1)) {
         LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot locate file '" << StringUtils::correctPath(name) << "': " << TRI_last_error();
       }
 
-      TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
-
       if (result != nullptr) {
         _scripts[name] = result;
-        TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+        TRI_FreeString(result);
         return _scripts[name];
       }
     }
@@ -151,20 +150,18 @@ std::vector<std::string> ScriptLoader::getDirectoryParts() {
 // .........................................................................
 
 #ifdef _WIN32
-    TRI_vector_string_t parts = TRI_Split2String(_directory.c_str(), ";");
+    std::vector<std::string> parts = basics::StringUtils::split(_directory, ';', '\0');
 #else
-    TRI_vector_string_t parts = TRI_Split2String(_directory.c_str(), ":;");
+    std::vector<std::string> parts = basics::StringUtils::split(_directory, ":;", '\0');
 #endif
 
-    for (size_t i = 0; i < parts._length; i++) {
-      std::string part = StringUtils::trim(parts._buffer[i]);
+    for (size_t i = 0; i < parts.size(); ++i) {
+      std::string part = StringUtils::trim(parts[i]);
 
       if (!part.empty()) {
-        directories.push_back(part);
+        directories.push_back(std::move(part));
       }
     }
-
-    TRI_DestroyVectorString(&parts);
   }
 
   return directories;

@@ -340,7 +340,9 @@ unsigned int const SliceStaticData::FirstSubMap[32] = {
     3,  // 0x0f, object with unsorted index table
     5,  // 0x10, object with unsorted index table
     9,  // 0x11, object with unsorted index table
-    9,  // 0x12, object with unsorted index table
+    9,  // 0x12, object with unsorted index table,
+    0,  // 0x13, compact array, no index table - note: the offset is dynamic!
+    0,  // 0x14, compact object, no index table - note: the offset is dynamic!
     0};
 
 // creates a Slice from Json and adds it to a scope

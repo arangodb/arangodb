@@ -79,6 +79,35 @@ TRI_voc_cid_t Collection::getPlanId() const {
   return getCollection()->cid();
 }
 
+std::unordered_set<std::string> Collection::responsibleServers() const {
+  std::unordered_set<std::string> result;
+  auto clusterInfo = arangodb::ClusterInfo::instance();
+
+  auto shardIds = this->shardIds();
+  for (auto const& it : *shardIds) {
+    auto servers = clusterInfo->getResponsibleServer(it);
+    result.emplace((*servers)[0]);
+  }
+  return result;
+}
+
+size_t Collection::responsibleServers(std::unordered_set<std::string>& result) const {
+  auto clusterInfo = arangodb::ClusterInfo::instance();
+
+  size_t n = 0;
+  auto shardIds = this->shardIds();
+  for (auto const& it : *shardIds) {
+    auto servers = clusterInfo->getResponsibleServer(it);
+    result.emplace((*servers)[0]);
+    ++n;
+  }
+  return n;
+}
+
+std::string Collection::distributeShardsLike() const {
+  return getCollection()->distributeShardsLike();
+}
+
 /// @brief returns the shard ids of a collection
 std::shared_ptr<std::vector<std::string>> Collection::shardIds() const {
   auto clusterInfo = arangodb::ClusterInfo::instance();

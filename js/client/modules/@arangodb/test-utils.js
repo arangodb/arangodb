@@ -156,6 +156,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   let continueTesting = true;
   let count = 0;
   let forceTerminate = false;
+  let graphCount = 0;
 
   for (let i = 0; i < testList.length; i++) {
     let te = testList[i];
@@ -219,17 +220,30 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         db._collections().forEach(collection => {
           collectionsAfter.push(collection._name);
         });
-        let delta = diffArray(collectionsBefore, collectionsAfter);
+        let delta = diffArray(collectionsBefore, collectionsAfter).filter(function(name) {
+          return (name[0] !== '_'); // exclude system collections from the comparison
+        });
 	print(delta);
-        if ((delta.length !== 0) && (! _.isEqual(delta, ['_foxxlog']))) {
+        if (delta.length !== 0) {
           results[te] = {
             status: false,
-            message: 'Cleanup missing - test left over collections! [' + delta + '] - Original test status: ' + JSON.stringify(results[te])
+            message: 'Cleanup missing - test left over collections: ' + delta + '. Original test status: ' + JSON.stringify(results[te])
           };
           collectionsBefore = [];
           db._collections().forEach(collection => {
             collectionsBefore.push(collection._name);
           });
+        }
+
+        if (db._graphs.count() !== graphCount) {
+          results[te] = {
+            status: false,
+            message: 'Cleanup of graphs missing - found graph definitions: [ ' +
+              JSON.stringify(db._graphs.toArray()) +
+              ' ] - Original test status: ' +
+              JSON.stringify(results[te])
+          };
+          graphCount = db._graphs.count();
         }
 
         if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('alive')) {

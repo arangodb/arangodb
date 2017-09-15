@@ -138,9 +138,9 @@ void V8ShellFeature::start() {
   v8::Context::Scope context_scope{context};
 
   v8::Handle<v8::Object> globalObj = context->Global();
-  globalObj->Set(TRI_V8_ASCII_STRING2(_isolate, "GLOBAL"), globalObj);
-  globalObj->Set(TRI_V8_ASCII_STRING2(_isolate, "global"), globalObj);
-  globalObj->Set(TRI_V8_ASCII_STRING2(_isolate, "root"), globalObj);
+  globalObj->Set(TRI_V8_ASCII_STRING(_isolate, "GLOBAL"), globalObj);
+  globalObj->Set(TRI_V8_ASCII_STRING(_isolate, "global"), globalObj);
+  globalObj->Set(TRI_V8_ASCII_STRING(_isolate, "root"), globalObj);
 
   initGlobals();
 }
@@ -332,7 +332,7 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
   v8LineEditor.open(_console->autoComplete());
 
   v8::Local<v8::String> name(
-      TRI_V8_ASCII_STRING2(_isolate, TRI_V8_SHELL_COMMAND_NAME));
+      TRI_V8_ASCII_STRING(_isolate, TRI_V8_SHELL_COMMAND_NAME));
 
   uint64_t nrCommands = 0;
 
@@ -389,15 +389,15 @@ int V8ShellFeature::runShell(std::vector<std::string> const& positionals) {
     v8LineEditor.setExecutingCommand(true);
 
     v8::Handle<v8::Value> v = TRI_ExecuteJavaScriptString(
-        _isolate, context, TRI_V8_STRING2(_isolate, input.c_str()), name, true);
+        _isolate, context, TRI_V8_STD_STRING(_isolate, input), name, true);
 
     v8LineEditor.setExecutingCommand(false);
 
     if (v.IsEmpty()) {
-      context->Global()->Set(TRI_V8_ASCII_STRING2(_isolate, "_last"),
+      context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "_last"),
                              v8::Undefined(_isolate));
     } else {
-      context->Global()->Set(TRI_V8_ASCII_STRING2(_isolate, "_last"), v);
+      context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "_last"), v);
     }
 
     // command failed
@@ -476,39 +476,39 @@ bool V8ShellFeature::runScript(std::vector<std::string> const& files,
     if (execute) {
       v8::TryCatch tryCatch;
 
-      v8::Handle<v8::String> name = TRI_V8_STD_STRING2(_isolate, file);
+      v8::Handle<v8::String> name = TRI_V8_STD_STRING(_isolate, file);
       v8::Handle<v8::Value> args[] = {name};
       v8::Handle<v8::Value> filename = args[0];
 
       v8::Handle<v8::Object> current = _isolate->GetCurrentContext()->Global();
 
       auto oldFilename =
-          current->Get(TRI_V8_ASCII_STRING2(_isolate, "__filename"));
+          current->Get(TRI_V8_ASCII_STRING(_isolate, "__filename"));
 
-      current->ForceSet(TRI_V8_ASCII_STRING2(_isolate, "__filename"), filename);
+      current->ForceSet(TRI_V8_ASCII_STRING(_isolate, "__filename"), filename);
 
       auto oldDirname =
-          current->Get(TRI_V8_ASCII_STRING2(_isolate, "__dirname"));
+          current->Get(TRI_V8_ASCII_STRING(_isolate, "__dirname"));
 
       auto dirname = FileUtils::dirname(TRI_ObjectToString(filename));
 
-      current->ForceSet(TRI_V8_ASCII_STRING2(_isolate, "__dirname"),
-                        TRI_V8_STD_STRING2(_isolate, dirname));
+      current->ForceSet(TRI_V8_ASCII_STRING(_isolate, "__dirname"),
+                        TRI_V8_STD_STRING(_isolate, dirname));
 
       ok = TRI_ExecuteGlobalJavaScriptFile(_isolate, file.c_str(), true);
 
       // restore old values for __dirname and __filename
       if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
-        current->Delete(TRI_V8_ASCII_STRING2(_isolate, "__filename"));
+        current->Delete(TRI_V8_ASCII_STRING(_isolate, "__filename"));
       } else {
-        current->ForceSet(TRI_V8_ASCII_STRING2(_isolate, "__filename"),
+        current->ForceSet(TRI_V8_ASCII_STRING(_isolate, "__filename"),
                           oldFilename);
       }
 
       if (oldDirname.IsEmpty() || oldDirname->IsUndefined()) {
-        current->Delete(TRI_V8_ASCII_STRING2(_isolate, "__dirname"));
+        current->Delete(TRI_V8_ASCII_STRING(_isolate, "__dirname"));
       } else {
-        current->ForceSet(TRI_V8_ASCII_STRING2(_isolate, "__dirname"),
+        current->ForceSet(TRI_V8_ASCII_STRING(_isolate, "__dirname"),
                           oldDirname);
       }
 
@@ -548,8 +548,8 @@ bool V8ShellFeature::runString(std::vector<std::string> const& strings,
     v8::TryCatch tryCatch;
 
     v8::Handle<v8::Value> result = TRI_ExecuteJavaScriptString(
-        _isolate, context, TRI_V8_STD_STRING2(_isolate, script),
-        TRI_V8_ASCII_STRING2(_isolate, "(command-line)"), false);
+        _isolate, context, TRI_V8_STD_STRING(_isolate, script),
+        TRI_V8_ASCII_STRING(_isolate, "(command-line)"), false);
 
     if (tryCatch.HasCaught()) {
       std::string exception(TRI_StringifyV8Exception(_isolate, &tryCatch));
@@ -598,22 +598,22 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
       continue;
     }
 
-    sysTestFiles->Set(i, TRI_V8_STD_STRING2(_isolate, file));
+    sysTestFiles->Set(i, TRI_V8_STD_STRING(_isolate, file));
     ++i;
   }
 
-  context->Global()->Set(TRI_V8_ASCII_STRING2(_isolate, "SYS_UNIT_TESTS"),
+  context->Global()->Set(TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS"),
                          sysTestFiles);
 
   context->Global()->Set(
-      TRI_V8_ASCII_STRING2(_isolate, "SYS_UNIT_TESTS_RESULT"),
+      TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
       v8::True(_isolate));
 
   // run tests
-  auto input = TRI_V8_ASCII_STRING2(
+  auto input = TRI_V8_ASCII_STRING(
       _isolate, "require(\"jslint\").runCommandLineTests({});");
 
-  auto name = TRI_V8_ASCII_STRING2(_isolate, TRI_V8_SHELL_COMMAND_NAME);
+  auto name = TRI_V8_ASCII_STRING(_isolate, TRI_V8_SHELL_COMMAND_NAME);
 
   v8::TryCatch tryCatch;
   TRI_ExecuteJavaScriptString(_isolate, context, input, name, true);
@@ -623,7 +623,7 @@ bool V8ShellFeature::jslint(std::vector<std::string> const& files) {
     ok = false;
   } else {
     bool res = TRI_ObjectToBoolean(context->Global()->Get(
-        TRI_V8_ASCII_STRING2(_isolate, "SYS_UNIT_TESTS_RESULT")));
+        TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT")));
 
     ok = ok && res;
   }
@@ -660,25 +660,25 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
       continue;
     }
 
-    sysTestFiles->Set(i, TRI_V8_STD_STRING2(_isolate, file));
+    sysTestFiles->Set(i, TRI_V8_STD_STRING(_isolate, file));
     ++i;
   }
 
   TRI_AddGlobalVariableVocbase(_isolate,
-                               TRI_V8_ASCII_STRING2(_isolate, "SYS_UNIT_TESTS"),
+                               TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS"),
                                sysTestFiles);
 
   // do not use TRI_AddGlobalVariableVocBase because it creates read-only
   // variables!!
   context->Global()->Set(
-      TRI_V8_ASCII_STRING2(_isolate, "SYS_UNIT_TESTS_RESULT"),
+      TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT"),
       v8::True(_isolate));
 
   // run tests
-  auto input = TRI_V8_ASCII_STRING2(
+  auto input = TRI_V8_ASCII_STRING(
       _isolate, "require(\"@arangodb/testrunner\").runCommandLineTests();");
 
-  auto name = TRI_V8_ASCII_STRING2(_isolate, TRI_V8_SHELL_COMMAND_NAME);
+  auto name = TRI_V8_ASCII_STRING(_isolate, TRI_V8_SHELL_COMMAND_NAME);
 
   v8::TryCatch tryCatch;
   TRI_ExecuteJavaScriptString(_isolate, context, input, name, true);
@@ -689,7 +689,7 @@ bool V8ShellFeature::runUnitTests(std::vector<std::string> const& files,
     ok = false;
   } else {
     bool res = TRI_ObjectToBoolean(context->Global()->Get(
-        TRI_V8_ASCII_STRING2(_isolate, "SYS_UNIT_TESTS_RESULT")));
+        TRI_V8_ASCII_STRING(_isolate, "SYS_UNIT_TESTS_RESULT")));
 
     ok = ok && res;
   }
@@ -821,7 +821,7 @@ static void JS_VersionClient(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   if (!details) {
     // return version string
-    TRI_V8_RETURN(TRI_V8_ASCII_STRING(ARANGODB_VERSION));
+    TRI_V8_RETURN(TRI_V8_ASCII_STRING(isolate, ARANGODB_VERSION));
   }
 
   // return version details
@@ -843,31 +843,31 @@ void V8ShellFeature::initGlobals() {
 
   // set pretty print default
   TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING2(_isolate, "PRETTY_PRINT"),
+      _isolate, TRI_V8_ASCII_STRING(_isolate, "PRETTY_PRINT"),
       v8::Boolean::New(_isolate, _console->prettyPrint()));
 
   // add colors for print.js
   TRI_AddGlobalVariableVocbase(_isolate,
-                               TRI_V8_ASCII_STRING2(_isolate, "COLOR_OUTPUT"),
+                               TRI_V8_ASCII_STRING(_isolate, "COLOR_OUTPUT"),
                                v8::Boolean::New(_isolate, _console->colors()));
 
   // string functions
   TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING2(_isolate, "NORMALIZE_STRING"),
+      _isolate, TRI_V8_ASCII_STRING(_isolate, "NORMALIZE_STRING"),
       v8::FunctionTemplate::New(_isolate, JS_NormalizeString)->GetFunction());
 
   TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING2(_isolate, "COMPARE_STRING"),
+      _isolate, TRI_V8_ASCII_STRING(_isolate, "COMPARE_STRING"),
       v8::FunctionTemplate::New(_isolate, JS_CompareString)->GetFunction());
 
   TRI_AddGlobalVariableVocbase(
       _isolate, 
-      TRI_V8_ASCII_STRING2(_isolate, "ARANGODB_CLIENT_VERSION"),
+      TRI_V8_ASCII_STRING(_isolate, "ARANGODB_CLIENT_VERSION"),
       v8::FunctionTemplate::New(_isolate, JS_VersionClient)->GetFunction());
 
   // is quite
   TRI_AddGlobalVariableVocbase(_isolate, 
-                               TRI_V8_ASCII_STRING2(_isolate, "ARANGO_QUIET"),
+                               TRI_V8_ASCII_STRING(_isolate, "ARANGO_QUIET"),
                                v8::Boolean::New(_isolate, _console->quiet()));
 
   auto ctx = ArangoGlobalContext::CONTEXT;
@@ -913,17 +913,17 @@ void V8ShellFeature::initGlobals() {
   v8::Local<v8::Value> console = v8::External::New(_isolate, _console);
 
   TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING2(_isolate, "SYS_OUTPUT"),
+      _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_OUTPUT"),
       v8::FunctionTemplate::New(_isolate, JS_PagerOutput, console)
           ->GetFunction());
 
   TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING2(_isolate, "SYS_START_PAGER"),
+      _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_START_PAGER"),
       v8::FunctionTemplate::New(_isolate, JS_StartOutputPager, console)
           ->GetFunction());
 
   TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING2(_isolate, "SYS_STOP_PAGER"),
+      _isolate, TRI_V8_ASCII_STRING(_isolate, "SYS_STOP_PAGER"),
       v8::FunctionTemplate::New(_isolate, JS_StopOutputPager, console)
           ->GetFunction());
 }
@@ -934,34 +934,34 @@ void V8ShellFeature::initMode(ShellFeature::RunMode runMode,
   v8::Handle<v8::Array> p = v8::Array::New(_isolate, (int)positionals.size());
 
   for (uint32_t i = 0; i < positionals.size(); ++i) {
-    p->Set(i, TRI_V8_STD_STRING2(_isolate, positionals[i]));
+    p->Set(i, TRI_V8_STD_STRING(_isolate, positionals[i]));
   }
 
   TRI_AddGlobalVariableVocbase(_isolate,
-                               TRI_V8_ASCII_STRING2(_isolate, "ARGUMENTS"), p);
+                               TRI_V8_ASCII_STRING(_isolate, "ARGUMENTS"), p);
 
   // set mode flags
   TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING2(_isolate, "IS_EXECUTE_SCRIPT"),
+      _isolate, TRI_V8_ASCII_STRING(_isolate, "IS_EXECUTE_SCRIPT"),
       v8::Boolean::New(_isolate,
                        runMode == ShellFeature::RunMode::EXECUTE_SCRIPT));
 
   TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING2(_isolate, "IS_EXECUTE_STRING"),
+      _isolate, TRI_V8_ASCII_STRING(_isolate, "IS_EXECUTE_STRING"),
       v8::Boolean::New(_isolate,
                        runMode == ShellFeature::RunMode::EXECUTE_STRING));
 
   TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING2(_isolate, "IS_CHECK_SCRIPT"),
+      _isolate, TRI_V8_ASCII_STRING(_isolate, "IS_CHECK_SCRIPT"),
       v8::Boolean::New(_isolate,
                        runMode == ShellFeature::RunMode::CHECK_SYNTAX));
 
   TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING2(_isolate, "IS_UNIT_TESTS"),
+      _isolate, TRI_V8_ASCII_STRING(_isolate, "IS_UNIT_TESTS"),
       v8::Boolean::New(_isolate, runMode == ShellFeature::RunMode::UNIT_TESTS));
 
   TRI_AddGlobalVariableVocbase(
-      _isolate, TRI_V8_ASCII_STRING2(_isolate, "IS_JS_LINT"),
+      _isolate, TRI_V8_ASCII_STRING(_isolate, "IS_JS_LINT"),
       v8::Boolean::New(_isolate, runMode == ShellFeature::RunMode::JSLINT));
 }
 

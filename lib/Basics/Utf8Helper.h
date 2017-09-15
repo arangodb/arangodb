@@ -116,7 +116,7 @@ class Utf8Helper {
   /// @brief Lowercase the characters in a UTF-8 string.
   //////////////////////////////////////////////////////////////////////////////
 
-  char* tolower(TRI_memory_zone_t* zone, char const* src, int32_t srcLength,
+  char* tolower(char const* src, int32_t srcLength,
                 int32_t& dstLength);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -129,7 +129,7 @@ class Utf8Helper {
   /// @brief Uppercase the characters in a UTF-8 string.
   //////////////////////////////////////////////////////////////////////////////
 
-  char* toupper(TRI_memory_zone_t* zone, char const* src, int32_t srcLength,
+  char* toupper(char const* src, int32_t srcLength,
                 int32_t& dstLength);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -167,28 +167,28 @@ class Utf8Helper {
 /// @brief convert a utf-8 string to a uchar (utf-16)
 ////////////////////////////////////////////////////////////////////////////////
 
-UChar* TRI_Utf8ToUChar(TRI_memory_zone_t* zone, char const* utf8,
+UChar* TRI_Utf8ToUChar(char const* utf8,
                        size_t inLength, size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uchar (utf-16) to a utf-8 string
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UCharToUtf8(TRI_memory_zone_t* zone, UChar const* uchar,
+char* TRI_UCharToUtf8(UChar const* uchar,
                       size_t inLength, size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize an utf8 string (NFC)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_normalize_utf8_to_NFC(TRI_memory_zone_t* zone, char const* utf8,
+char* TRI_normalize_utf8_to_NFC(char const* utf8,
                                 size_t inLength, size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize an utf16 string (NFC) and export it to utf8
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_normalize_utf16_to_NFC(TRI_memory_zone_t* zone, uint16_t const* utf16,
+char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16,
                                  size_t inLength, size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,7 +217,7 @@ static inline int TRI_compare_utf8(char const* left, size_t leftLength,
 /// @brief Lowercase the characters in a UTF-8 string
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_tolower_utf8(TRI_memory_zone_t* zone, char const* src,
+char* TRI_tolower_utf8(char const* src,
                        int32_t srcLength, int32_t* dstLength);
 
 #endif

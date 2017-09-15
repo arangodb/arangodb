@@ -103,6 +103,9 @@ class HttpResponse : public GeneralResponse {
   std::vector<std::string> _cookies;
   basics::StringBuffer _body;
   size_t _bodySize;
+    
+  void addPayloadInternal(velocypack::Slice, size_t,
+                          velocypack::Options const*, bool);
 };
 }
 

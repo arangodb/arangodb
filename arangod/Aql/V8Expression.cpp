@@ -86,7 +86,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
       if (it != _attributeRestrictions.end()) {
         // build a partial object
         values->ForceSet(
-            TRI_V8_STD_STRING(varname),
+            TRI_V8_STD_STRING(isolate, varname),
             value.toV8Partial(isolate, trx, (*it).second));
         continue;
       }
@@ -95,7 +95,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
     // fallthrough to building the complete object
 
     // build the regular object
-    values->ForceSet(TRI_V8_STD_STRING(varname),
+    values->ForceSet(TRI_V8_STD_STRING(isolate, varname),
                      value.toV8(isolate, trx));
   }
 
