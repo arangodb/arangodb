@@ -1061,7 +1061,7 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
     cur->destroyValue(_pos, _regId);
 
     // overwrite with new value
-    cur->setValue(_pos, _regId, AqlValue(builder));
+    cur->emplaceValue(_pos, _regId, builder);
 
     value = builder.slice();
     hasCreatedKeyAttribute = true;
@@ -1090,10 +1090,10 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
         // clear the previous value and overwrite with new value:
         if (usedAlternativeRegId) {
           cur->destroyValue(_pos, _alternativeRegId);
-          cur->setValue(_pos, _alternativeRegId, AqlValue(builder2));
+          cur->emplaceValue(_pos, _alternativeRegId, builder2);
         } else {
           cur->destroyValue(_pos, _regId);
-          cur->setValue(_pos, _regId, AqlValue(builder2));
+          cur->emplaceValue(_pos, _regId, builder2);
         }
         value = builder2.slice();
       }
@@ -1116,10 +1116,10 @@ size_t DistributeBlock::sendToClient(AqlItemBlock* cur) {
         // clear the previous value and overwrite with new value:
         if (usedAlternativeRegId) {
           cur->destroyValue(_pos, _alternativeRegId);
-          cur->setValue(_pos, _alternativeRegId, AqlValue(builder2.slice()));
+          cur->emplaceValue(_pos, _alternativeRegId, builder2.slice());
         } else {
           cur->destroyValue(_pos, _regId);
-          cur->setValue(_pos, _regId, AqlValue(builder2.slice()));
+          cur->emplaceValue(_pos, _regId, builder2.slice());
         }
         value = builder2.slice();
       }
