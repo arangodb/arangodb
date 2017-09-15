@@ -669,7 +669,7 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                        "--configDir etc/jenkins " +
                        "--skipLogAnalysis true " +
                        "--skipTimeCritical true " +
-                       "--skipNonDeterministic true " +
+                       "--skipNondeterministic true " +
                        "--storageEngine ${engine} " +
                        testStruct[2]
 
@@ -704,7 +704,7 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                         // even if the features are green this is completely broken performance wise..
                         // DO NOT INCREASE!!
 
-                        timeout(30) {
+                        timeout(os == 'linux' ? 30 : 60) {
                             def tmpDir = pwd() + "/" + runDir + "/tmp"
 
                             withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
@@ -726,12 +726,20 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                         }
                     }
                     catch (exc) {
-                        echo "caught error, copying log to ${logFileFailed}"
-                        echo exc.toString()
+                        def msg = exc.toString()
+
+                        echo "caught error, copying log to ${logFileFailed}: ${msg}"
 
                         fileOperations([
-                            fileCreateOperation(fileContent: 'TEST FAILED', fileName: "${archDir}-FAIL.txt")
+                            fileCreateOperation(fileContent: 'TEST FAILED: ${msg}', fileName: "${archDir}-FAIL.txt")
                         ])
+
+                        if (os == 'linux' || os == 'mac') {
+                            sh "echo \"${msg}\" >> ${logFile}"
+                        }
+                        else {
+                            powershell "echo \"${msg}\" | Out-File -filepath ${logFile} -append"
+                        }
 
                         copyFile(os, logFile, logFileFailed)
                         throw exc
@@ -1020,9 +1028,18 @@ def buildEdition(os, edition, maintainer) {
         }
     }
     catch (exc) {
+        def msg = exc.toString()
+        
         fileOperations([
-            fileCreateOperation(fileContent: 'BUILD FAILED', fileName: "${archDir}-FAIL.txt")
+            fileCreateOperation(fileContent: 'BUILD FAILED: ${msg}', fileName: "${archDir}-FAIL.txt")
         ])
+
+        if (os == 'linux' || os == 'mac') {
+            sh "echo \"${msg}\" >> ${logFile}"
+        }
+        else {
+            powershell "echo \"${msg}\" | Out-File -filepath ${logFile} -append"
+        }
 
         renameFolder(arch, archFail)
         throw exc
