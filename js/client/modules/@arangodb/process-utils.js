@@ -758,7 +758,7 @@ function shutdownArangod (arangod, options, forceTerminate) {
     } else if (options.useKillExternal) {
       killExternal(arangod.pid);
     } else {
-      if (arango.isConnected) {
+      if (arango.isConnected()) {
         try {
           arango.DELETE('/_admin/shutdown');
           if (options.extremeVerbosity) {
