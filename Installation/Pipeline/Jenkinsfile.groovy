@@ -534,6 +534,7 @@ def unstashBinaries(os, edition, maintainer) {
     if (os == "windows") {
         powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip stash.zip"
         powershell "Expand-Archive -Path stash.zip -Force -DestinationPath ."
+        powershell "copy build\\tests\\RelWithDebInfo\\* build\\bin"
         powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
     }
     else {
@@ -610,7 +611,7 @@ def getTests(os, edition, maintainer, mode, engine) {
     if (mode == "singleserver") {
         tests += [
             ["agency", "agency", ""],
-            ["boost", "boost", "--skipCache false"],
+            ["catch", "catch", "--skipCache false"],
             ["cluster_sync", "cluster_sync", ""],
             ["dfdb", "dfdb", ""],
             ["replication_ongoing", "replication_ongoing", ""],
