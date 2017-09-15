@@ -1089,7 +1089,7 @@ def createDockerImage(edition, maintainer, stageName) {
         if (buildStepCheck(os, edition, maintainer)) {
             node(buildJenkins[os]) {
                 stage(stageName) {
-                    checkoutSource(edition);
+                    checkoutSource(edition)
                     
                     def package = "${edition}-${maintainer}"
                     def dockerTag = sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
@@ -1109,7 +1109,7 @@ def runEdition(os, edition, maintainer, stageName) {
         if (buildStepCheck(os, edition, maintainer)) {
             node(buildJenkins[os]) {
                 stage(stageName) {
-                    checkout(edition);
+                    checkout(edition)
 
                     // I concede...we need a lock for windows...I could not get it to run concurrently...
                     // v8 would not build multiple times at the same time on the same machine:
