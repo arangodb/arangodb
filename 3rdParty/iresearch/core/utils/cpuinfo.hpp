@@ -15,6 +15,7 @@
 #if defined(_MSC_VER)
 
 #include "shared.hpp"
+#include <intrin.h>
 
 NS_ROOT
 

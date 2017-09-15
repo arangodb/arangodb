@@ -82,28 +82,23 @@ class phrase_query : public filter::prepared {
 
   using filter::prepared::execute;
 
-  virtual score_doc_iterator::ptr execute(
+  virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord) const override {
-    typedef detail::conjunction<score_wrapper<
-      score_doc_iterator::ptr>
-    > conjunction_t;
-    typedef phrase_iterator<conjunction_t> phrase_iterator_t;
-
     // get phrase state for the specified reader
     auto phrase_state = states_.find(rdr);
     if (!phrase_state) {
       // invalid state 
-      return score_doc_iterator::empty();
+      return doc_iterator::empty();
     }
 
     // get features required for query & order
     auto features = ord.features() | by_phrase::required();
 
-    phrase_iterator_t::doc_iterators_t itrs;
+    phrase_iterator::doc_iterators_t itrs;
     itrs.reserve(phrase_state->terms.size());
 
-    phrase_iterator_t::positions_t positions;
+    phrase_iterator::positions_t positions;
     positions.reserve(phrase_state->terms.size());
 
     // find term using cached state
@@ -113,7 +108,7 @@ class phrase_query : public filter::prepared {
       // use bytes_ref::nil here since we do not need just to "jump"
       // to cached state, and we are not interested in term value itself */
       if (!terms->seek(bytes_ref::nil, *term_state.first)) {
-        return score_doc_iterator::empty();
+        return doc_iterator::empty();
       }
 
       // get postings
@@ -123,12 +118,12 @@ class phrase_query : public filter::prepared {
       auto& pos = docs->attributes().get<position>();
       if (!pos) {
         // positions not found
-        return score_doc_iterator::empty();
+        return doc_iterator::empty();
       }
       positions.emplace_back(std::cref(*pos), term_stats->second);
 
       // add base iterator
-      itrs.emplace_back(score_doc_iterator::make<basic_score_iterator>(
+      itrs.emplace_back(doc_iterator::make<basic_doc_iterator>(
         rdr,
         *phrase_state->reader,
         term_stats->first, 
@@ -140,7 +135,7 @@ class phrase_query : public filter::prepared {
       ++term_stats;
     }
 
-    return detail::make_conjunction<phrase_iterator_t>(
+    return make_conjunction<phrase_iterator>(
       std::move(itrs), ord, std::move(positions)
     );
   }
@@ -198,16 +193,17 @@ filter::prepared::ptr by_phrase::prepare(
   phrase_state::terms_states_t phrase_terms;
   phrase_terms.reserve(phrase_.size());
 
-  // prepare phrase stats
-  std::vector<order::prepared::stats> phrase_stats;
-  phrase_stats.reserve(phrase_.size());
-  for(auto& word : phrase_) {
-    UNUSED(word);
-    phrase_stats.emplace_back(ord.prepare_stats());
+  // prepare phrase stats (collector for each term)
+  std::vector<order::prepared::stats> term_stats;
+  term_stats.reserve(phrase_.size());
+
+  for(auto size = phrase_.size(); size; --size) {
+    term_stats.emplace_back(ord.prepare_stats());
   }
 
   // iterate over the segments
   const string_ref field = fld_;
+
   for (const auto& sr : rdr) {
     // get term dictionary for field
     const term_reader* tr = sr.field(field);
@@ -224,11 +220,11 @@ filter::prepared::ptr by_phrase::prepare(
     seek_term_iterator::ptr term = tr->iterator();
     // get term metadata
     auto& meta = term->attributes().get<term_meta>();
-
-    auto term_stats = phrase_stats.begin();
-    term_stats->field(sr, *tr);
+    auto term_itr = term_stats.begin();
 
     for(auto& word: phrase_) {
+      auto next_stats = irs::make_finally([&term_itr]()->void{ ++term_itr; });
+
       if (!term->seek(word.second)) {
         if (ord.empty()) {
           break;
@@ -239,20 +235,13 @@ filter::prepared::ptr by_phrase::prepare(
         }
       }
 
-      // read term attributes
-      term->read();
+      term->read(); // read term attributes
+      term_itr->collect(sr, *tr, term->attributes()); // collect statistics
 
       // estimate phrase & term
-      const cost::cost_t term_estimation = meta 
-        ? meta->docs_count 
-        : cost::MAX;
+      const cost::cost_t term_estimation = meta ? meta->docs_count : cost::MAX;
       phrase_terms.emplace_back(term->cookie(), term_estimation);
-
-      // collect stats
-      term_stats->term(term->attributes());
-      ++term_stats;
     }
-    
 
     // we have not found all needed terms
     if (phrase_terms.size() != phrase_.size()) {
@@ -271,18 +260,16 @@ filter::prepared::ptr by_phrase::prepare(
   size_t base_offset = first_pos();
 
   // finish stats
-  phrase_query::phrase_stats_t stats;
-  stats.reserve(phrase_.size());
+  phrase_query::phrase_stats_t stats(phrase_.size());
+  auto stat_itr = stats.begin();
+  auto term_itr = term_stats.begin();
+  assert(term_stats.size() == phrase_.size()); // initialized above
 
-  auto term_stats = phrase_stats.begin();
-  for(auto& word : phrase_) {
-    stats.emplace_back();
-
-    auto& stat = stats.back();
-    term_stats->finish(rdr, stat.first);
-    stat.second = position::value_t(word.first-base_offset);
-
-    ++term_stats;
+  for(auto& term: phrase_) {
+    term_itr->finish(stat_itr->first, rdr);
+    stat_itr->second = position::value_t(term.first - base_offset);
+    ++stat_itr;
+    ++term_itr;
   }
 
   auto q = memory::make_unique<phrase_query>(
@@ -297,3 +284,7 @@ filter::prepared::ptr by_phrase::prepare(
 }
 
 NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

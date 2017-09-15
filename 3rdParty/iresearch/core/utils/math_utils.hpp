@@ -13,7 +13,10 @@
 #define IRESEARCH_MATH_UTILS_H
 
 #ifdef _MSC_VER
+  #include <intrin.h>
+  
   #pragma intrinsic(_BitScanReverse)
+  #pragma intrinsic(_BitScanForward)  
 #endif
 
 #include "shared.hpp"
@@ -122,24 +125,50 @@ FORCE_INLINE uint32_t pop32( uint32_t v ) NOEXCEPT {
   return __builtin_popcount(v);
 #elif defined(_MSC_VER) 
   //TODO: compile time
-  return cpuinfo::support_popcnt() ?__popcnt( v ) : popcnt32( v );
+  return cpuinfo::support_popcnt() ?__popcnt(v) : popcnt32(v);
 #endif
 }
 
 FORCE_INLINE uint64_t pop64(uint64_t v) NOEXCEPT{
 #if  __GNUC__ >= 4
-  return __builtin_popcountll( v );
+  return __builtin_popcountll(v);
 #elif defined(_MSC_VER) && defined(_M_X64)
   //TODO: compile time
-  return cpuinfo::support_popcnt() ? __popcnt64( v ) : popcnt64( v ); 
+  return cpuinfo::support_popcnt() ? __popcnt64(v) : popcnt64(v);
+#endif
+}
+
+FORCE_INLINE uint32_t ctz32(uint32_t v) NOEXCEPT {
+  assert(v); // 0 does not supported
+#if  __GNUC__ >= 4
+  return __builtin_ffs(v) - 1; // __builit_ffs returns `index`+1
+#elif defined(_MSC_VER)
+  unsigned long idx;
+  _BitScanForward(&idx, v);
+  return idx;
+#else
+  static_assert(false, "Not supported");
+#endif
+}
+
+FORCE_INLINE uint64_t ctz64(uint64_t v) NOEXCEPT {
+  assert(v); // 0 does not supported
+#if  __GNUC__ >= 4
+  return __builtin_ffsll(v) - 1; // __builit_ffsll returns `index`+1
+#elif defined(_MSC_VER)
+  unsigned long idx;
+  _BitScanForward64(&idx, v);
+  return idx;
+#else
+  static_assert(false, "Not supported");
 #endif
 }
 
 FORCE_INLINE uint32_t clz32(uint32_t v) NOEXCEPT {
   assert(v); // 0 does not supported
-#if  __GNUC__ >= 4  
+#if  __GNUC__ >= 4
   return __builtin_clz(v);
-#elif defined(_MSC_VER) 
+#elif defined(_MSC_VER)
   unsigned long idx;
   _BitScanReverse(&idx, v);
   return 31 - idx;
@@ -152,7 +181,7 @@ FORCE_INLINE uint64_t clz64(uint64_t v) NOEXCEPT {
   assert(v); // 0 does not supported
 #if  __GNUC__ >= 4
   return __builtin_clzll(v);
-#elif defined(_MSC_VER) 
+#elif defined(_MSC_VER)
   unsigned long idx;
   _BitScanReverse64(&idx, v);
   return 63 - idx;
@@ -198,22 +227,25 @@ FORCE_INLINE uint64_t log2_ceil_64(uint64_t v) {
 template<typename T>
 struct math_traits {
   static size_t clz(T value);
+  static size_t ctz(T value);
   static size_t pop(T value);
 }; // math_traits 
 
 template<>
 struct math_traits<uint32_t> {
   typedef uint32_t type;
-  
+
   static size_t clz(type value) { return clz32(value); }
+  static size_t ctz(type value) { return ctz32(value); }
   static size_t pop(type value) { return pop32(value); }
 }; // math_traits
 
 template<>
 struct math_traits<uint64_t> {
   typedef uint64_t type;
-  
+
   static size_t clz(type value) { return clz64(value); }
+  static size_t ctz(type value) { return ctz64(value); }
   static size_t pop(type value) { return pop64(value); }
 }; // math_traits
 

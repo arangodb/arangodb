@@ -9,8 +9,6 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
-#include <boost/exception/get_error_info.hpp>
-
 #include "shared.hpp"
 #include "error.hpp"
 

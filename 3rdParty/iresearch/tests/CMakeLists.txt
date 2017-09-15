@@ -64,6 +64,7 @@ set(IReSearch_tests_sources
   ./store/directory_test_case.cpp
   ./store/directory_cleaner_tests.cpp
   ./store/fs_directory_tests.cpp
+  ./store/mmap_directory_tests.cpp
   ./store/memory_directory_tests.cpp
   ./store/memory_index_output_tests.cpp
   ./store/store_utils_tests.cpp
@@ -74,10 +75,12 @@ set(IReSearch_tests_sources
   ./index/field_meta_test.cpp
   ./index/merge_writer_tests.cpp
   ./index/postings_tests.cpp
+  ./index/segment_writer_tests.cpp
   ./search/empty_filter_tests.cpp
   ./search/granular_range_filter_tests.cpp
   ./search/index_reader_test.cpp
   ./search/scorers_tests.cpp
+  ./search/bitset_doc_iterator_test.cpp
   ./search/sort_tests.cpp
   ./search/tfidf_test.cpp
   ./search/bm25_test.cpp
@@ -175,6 +178,12 @@ target_include_directories(${IResearchTests_TARGET_NAME}-shared
 target_include_directories(${IResearchTests_TARGET_NAME}-static
   PRIVATE ${PROJECT_BINARY_DIR}/core
 )
+
+if(MSVC)
+  target_compile_options(${IResearchTests_TARGET_NAME}-static
+    PRIVATE "/bigobj"
+  )
+endif()
 
 set_target_properties(${IResearchTests_TARGET_NAME}-shared
   PROPERTIES

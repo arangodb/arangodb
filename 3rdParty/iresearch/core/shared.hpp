@@ -172,6 +172,9 @@ namespace irs = ::iresearch;
 
 #define ASSERT( cond, mess ) assert( (cond) && (mess) )
 
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+
 #include "types.hpp" // iresearch types
 
 #endif // IRESEACH_SHARED_H

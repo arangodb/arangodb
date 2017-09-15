@@ -1,15 +1,6 @@
-# Use new trusty images, should yield newer compilers and packages
 sudo: required
 dist: precise
 language: cpp
-      
-addons:
-  apt:    
-    packages:
-      - valgrind
-      - g++-5
-    sources: &sources
-      - ubuntu-toolchain-r-test
 
 #cache:
 #  directories:
@@ -28,83 +19,359 @@ branches:
   only:
     - master
 
-os: linux
-compiler: gcc
-
 env:
   global:
-    - COMPILER=g++-5
     - MAKEFLAGS="-j 4"
     - BOOST_VERSION=default
-  matrix:
+
+matrix:
+  include:
+    ############################################################################
+    # GCC 4.8
+    ############################################################################
+
     ############################################################################
     # Debug build, static library
     ############################################################################
-    - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-4.8
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
+        - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
     # Release build, static library
     ############################################################################
-    - BUILD_TYPE="Release" STATIC_LIB="true"
-    
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-4.8
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
+        - BUILD_TYPE="Release" STATIC_LIB="true"
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
+
     ############################################################################
     # Debug build, shared library
     ############################################################################
-    - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-4.8
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
+        - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
 
     ############################################################################
     # Release build, shared library
     ############################################################################
-    - BUILD_TYPE="Release"
-          
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-4.8
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-4.8 && CXX=g++-4.8"
+        - BUILD_TYPE="Release"
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
+
+    ############################################################################
+    # GCC 4.9
+    ############################################################################
+
+    ############################################################################
+    # Debug build, static library
+    ############################################################################
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-4.9
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
+        - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
+
+    ############################################################################
+    # Release build, static library
+    ############################################################################
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-4.9
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
+        - BUILD_TYPE="Release" STATIC_LIB="true"
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
+
+    ############################################################################
+    # Debug build, shared library
+    ############################################################################
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-4.9
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
+        - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
+
+    ############################################################################
+    # Release build, shared library
+    ############################################################################
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-4.9
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-4.9 && CXX=g++-4.9"
+        - BUILD_TYPE="Release"
+        - SUPPRESS_MAKE_ERRORS=true # travis is unable to handle log files > 4MB
+
+    ############################################################################
+    # GCC 5
+    ############################################################################
+
+    ############################################################################
+    # Debug build, static library
+    ############################################################################
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-5
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-5 && CXX=g++-5"
+        - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, static library
+    ############################################################################
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-5
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-5 && CXX=g++-5"
+        - BUILD_TYPE="Release" STATIC_LIB="true"
+
+    ############################################################################
+    # Debug build, shared library
+    ############################################################################
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-5
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-5 && CXX=g++-5"
+        - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, shared library
+    ############################################################################
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-5
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-5 && CXX=g++-5"
+        - BUILD_TYPE="Release"
+
+    ############################################################################
+    # GCC 6
+    ############################################################################
+
+    ############################################################################
+    # Debug build, static library
+    ############################################################################
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-6
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-6 && CXX=g++-6"
+        - BUILD_TYPE="Debug" STATIC_LIB="true" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, static library
+    ############################################################################
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-6
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-6 && CXX=g++-6"
+        - BUILD_TYPE="Release" STATIC_LIB="true"
+
+    ############################################################################
+    # Debug build, shared library
+    ############################################################################
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-6
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-6 && CXX=g++-6"
+        - BUILD_TYPE="Debug" TEST_PARAMS="--gtest_filter=*:-:*"
+
+    ############################################################################
+    # Release build, shared library
+    ############################################################################
+    - os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+            - george-edison55-precise-backports
+          packages:
+            - g++-6
+            - valgrind
+            - cmake-data
+            - cmake
+      env:
+        - SET_ENV="CC=gcc-6 && CXX=g++-6"
+        - BUILD_TYPE="Release"
+
 before_install:
-  sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-5 60 --slave /usr/bin/g++ g++ /usr/bin/g++-5
+  - eval "${SET_ENV}"
 
 install:
-  - g++ --version
-  
+  - cmake --version
+
   ############################################################################
   # All the dependencies are installed in ${TRAVIS_BUILD_DIR}/deps/
   ############################################################################
   - DEPS_DIR="${TRAVIS_BUILD_DIR}/deps"
   - mkdir -p ${DEPS_DIR} && cd ${DEPS_DIR}
-  
+
   ############################################################################
   # Setup default versions and override compiler if needed
-  ############################################################################  
-  - if [[ "${BOOST_VERSION}" == "default" ]]; then BOOST_VERSION=1.58.0; fi  
-  - if [[ "${COMPILER}" != "" ]]; then export CXX=${COMPILER}; fi
-  
   ############################################################################
-  # Install a recent CMake
-  ############################################################################
-  - |
-    if [[ "${TRAVIS_OS_NAME}" == "linux" ]]; then
-      CMAKE_URL="https://cmake.org/files/v3.7/cmake-3.7.2-Linux-x86_64.tar.gz"
-      mkdir cmake && travis_retry wget --no-check-certificate --quiet -O - ${CMAKE_URL} | tar --strip-components=1 -xz -C cmake
-      export PATH=${DEPS_DIR}/cmake/bin:${PATH}
-    else
-      brew upgrade cmake || brew install cmake
-    fi
-  - cmake --version
-  
+  - if [[ "${BOOST_VERSION}" == "default" ]]; then BOOST_VERSION=1.58.0; fi
+
   ############################################################################
   # Install ICU
   ############################################################################
-  - |    
+  - |
     ICU_DIR=${DEPS_DIR}/icu
     if [[ -z "$(ls -A ${ICU_DIR})" ]]; then
-      ICU_URL="http://download.icu-project.org/files/icu4c/57.1/icu4c-57_1-src.tgz"              
+      ICU_URL="http://download.icu-project.org/files/icu4c/57.1/icu4c-57_1-src.tgz"
       cd ${DEPS_DIR}
       wget -P icu ${ICU_URL}
       cd ${ICU_DIR}
-      tar -zxf icu4c-57_1-src.tgz            
+      tar -zxf icu4c-57_1-src.tgz
       cd icu/source
       ./configure --enable-static
     fi
     sudo make install #DESTDIR=${ICU_DIR}
     export ICU_ROOT=/usr/local  
-  
+
   ############################################################################
   # Install Boost
   ############################################################################
@@ -114,24 +381,24 @@ install:
       if [[ -z "$(ls -A ${BOOST_DIR})" ]]; then
         if [[ "${BOOST_VERSION}" == "trunk" ]]; then
           BOOST_URL="http://github.com/boostorg/boost.git"
-          travis_retry git clone --depth 1 --recursive --quiet ${BOOST_URL} ${BOOST_DIR} || exit 1          
+          travis_retry git clone --depth 1 --recursive --quiet ${BOOST_URL} ${BOOST_DIR} || exit 1
         else
           BOOST_URL="http://sourceforge.net/projects/boost/files/boost/${BOOST_VERSION}/boost_${BOOST_VERSION//\./_}.tar.gz"
           mkdir -p ${BOOST_DIR}
           { travis_retry wget --quiet -O - ${BOOST_URL} | tar --strip-components=1 -xz -C ${BOOST_DIR}; } || exit 1
         fi
-        (cd ${BOOST_DIR} && ./bootstrap.sh --with-libraries=filesystem,locale,system,thread && ./b2 install --libdir=lib)
-      fi      
+        (cd ${BOOST_DIR} && ./bootstrap.sh --with-libraries=filesystem,locale,system,thread,regex && ./b2 install --libdir=lib)
+      fi
       export BOOST_ROOT=${BOOST_DIR}
-    fi    
-    
+    fi
+
   ############################################################################
   # Install Lz4
   ############################################################################
-  - |    
+  - |
     LZ4_DIR=${DEPS_DIR}/lz4
     if [[ -z "$(ls -A ${LZ4_DIR})" ]]; then
-      LZ4_URL="https://github.com/lz4/lz4.git"        
+      LZ4_URL="https://github.com/lz4/lz4.git"
       cd ${DEPS_DIR}
       travis_retry git clone --depth 1 --recursive --quiet ${LZ4_URL} ${LZ4_DIR} || exit 1
       cd ${LZ4_DIR}
@@ -145,9 +412,9 @@ install:
   - |
     SNOWBALL_DIR=${DEPS_DIR}/snowball
     if [[ -z "$(ls -A ${SNOWBALL_DIR})" ]]; then
-      SNOWBALL_URL="https://github.com/snowballstem/snowball.git"        
+      SNOWBALL_URL="https://github.com/snowballstem/snowball.git"
       cd ${DEPS_DIR}
-      travis_retry git clone --quiet ${SNOWBALL_URL} ${SNOWBALL_DIR} || exit 1        
+      travis_retry git clone --quiet ${SNOWBALL_URL} ${SNOWBALL_DIR} || exit 1
       cd ${SNOWBALL_DIR}
       git reset --hard 9e0a8340d58c70f91e8a0233b985242dc69c6fb8
       mkdir build && cd build
@@ -157,7 +424,7 @@ install:
       cmake --build .
     fi
     export SNOWBALL_ROOT=${SNOWBALL_DIR}
-    
+
   ############################################################################
   # Install gtest
   ############################################################################
@@ -166,14 +433,14 @@ install:
     if [[ -z "$(ls -A ${GTEST_DIR})" ]]; then
       GTEST_URL="https://github.com/google/googletest.git"
       cd ${DEPS_DIR}
-      travis_retry git clone --depth 1 --recursive --quiet ${GTEST_URL} ${GTEST_DIR} || exit 1        
+      travis_retry git clone --depth 1 --recursive --quiet ${GTEST_URL} ${GTEST_DIR} || exit 1
       cd ${GTEST_DIR}
       mkdir build && cd build
       cmake -DCMAKE_INSTALL_PREFIX=${GTEST_DIR}/build/package ..
       make install
     fi
     export GTEST_ROOT=${GTEST_DIR}/build/package
-        
+
 before_script:
   ############################################################################
   # Go back to the root of the project and setup the build directory
@@ -181,14 +448,19 @@ before_script:
   - CMAKE_OPTIONS="-DCMAKE_BUILD_TYPE=${BUILD_TYPE}"
   - cd ${TRAVIS_BUILD_DIR}
   - (mkdir build && cd build && cmake .. ${CMAKE_OPTIONS})
-  
+
 script:
-    - if [[ "${STATIC_LIB}" == "true" ]]; then BUILD_TYPE_SUFFIX="-static" TEST_EXECUTABLE_SUFFIX="-s"; fi  
+    - if [[ "${STATIC_LIB}" == "true" ]]; then BUILD_TYPE_SUFFIX="-static" TEST_EXECUTABLE_SUFFIX="-s"; fi
     - cd ${TRAVIS_BUILD_DIR}/build
-    - make iresearch-tests${BUILD_TYPE_SUFFIX}
+    - |
+      if [[ "${SUPPRESS_MAKE_ERRORS}" == true ]]; then
+        make iresearch-tests${BUILD_TYPE_SUFFIX} 2>/dev/null
+      else
+        make iresearch-tests${BUILD_TYPE_SUFFIX}
+      fi
     - travis_wait 60 ./bin/iresearch-tests${TEST_EXECUTABLE_SUFFIX} ${TEST_PARAMS}
-    - tar -czf iresearch-${TRAVIS_OS_NAME}-${BUILD_TYPE}${BUILD_TYPE_SUFFIX}-${TRAVIS_BUILD_NUMBER}.tar.gz bin 
-    
+    - tar -czf iresearch-${TRAVIS_OS_NAME}-${BUILD_TYPE}${BUILD_TYPE_SUFFIX}-${TRAVIS_BUILD_NUMBER}.tar.gz bin
+
 deploy:
   provider: releases
   api_key:

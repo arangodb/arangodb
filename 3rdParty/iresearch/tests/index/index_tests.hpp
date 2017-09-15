@@ -212,8 +212,8 @@ class text_field : public tests::field_base {
 //////////////////////////////////////////////////////////////////////////////
 class string_field : public tests::field_base {
  public:
-  string_field(const ir::string_ref& name);
-  string_field(const ir::string_ref& name, const ir::string_ref& value);
+  string_field(const irs::string_ref& name, const irs::flags& extra_features = irs::flags::empty_instance());
+  string_field(const irs::string_ref& name, const irs::string_ref& value, const irs::flags& extra_features = irs::flags::empty_instance());
 
   void value(const ir::string_ref& str);
   ir::string_ref value() const { return value_; }
@@ -223,6 +223,7 @@ class string_field : public tests::field_base {
   virtual bool write(ir::data_output& out) const override;
 
  private:
+  irs::flags features_;
   mutable ir::string_token_stream stream_;
   std::string value_;
 }; // string_field

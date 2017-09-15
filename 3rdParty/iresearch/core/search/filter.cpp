@@ -11,32 +11,30 @@
 
 #include "filter.hpp"
 
-NS_ROOT
+NS_LOCAL
 
 //////////////////////////////////////////////////////////////////////////////
-/// @class emtpy_query 
+/// @class emtpy_query
 /// @brief represent a query returns empty result set 
 //////////////////////////////////////////////////////////////////////////////
-class empty_query final : public filter::prepared {
+class empty_query final : public irs::filter::prepared {
  public:
-  virtual score_doc_iterator::ptr execute(
-      const sub_reader&,
-      const order::prepared& ) const override {
-    return score_doc_iterator::empty();
-  }    
+  virtual irs::doc_iterator::ptr execute(
+      const irs::sub_reader&,
+      const irs::order::prepared&) const override {
+    return irs::doc_iterator::empty();
+  }
 }; // empty_query
 
-// ----------------------------------------------------------------------------
-// --SECTION--                                                       Attributes
-// ----------------------------------------------------------------------------
+NS_END // LOCAL
 
-DEFINE_ATTRIBUTE_TYPE(iresearch::score);
+NS_ROOT
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            filter
 // -----------------------------------------------------------------------------
 
-filter::filter(const type_id& type)
+filter::filter(const type_id& type) NOEXCEPT
   : boost_(boost::no_boost()), type_(&type) {
 }
 
@@ -67,7 +65,8 @@ filter::prepared::ptr empty::prepare(
     const order::prepared&,
     boost_t
 ) const {
-  return filter::prepared::empty();
+  static filter::prepared::ptr instance = std::make_shared<empty_query>();
+  return instance;
 }
 
 NS_END // ROOT

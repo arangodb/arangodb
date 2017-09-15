@@ -491,18 +491,20 @@ class column_existence_filter_test_case
       filter.field(column_name);
 
       irs::order order;
-      size_t collector_field_count = 0;
+      size_t collector_collect_count = 0;
       size_t collector_finish_count = 0;
-      size_t collector_term_count = 0;
       size_t scorer_score_count = 0;
       auto& sort = order.add<sort::custom_sort>();
 
-      sort.collector_field = [&collector_field_count](const irs::sub_reader&, const irs::term_reader&)->void { ++collector_field_count; };
-      sort.collector_finish = [&collector_finish_count](const irs::index_reader&, irs::attribute_store&)->void { ++collector_finish_count; };
-      sort.collector_term = [&collector_term_count](const irs::attribute_view&)->void { ++collector_term_count; };
-      sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { dst = src; };
+      sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
+        ++collector_collect_count;
+      };
+      sort.collector_finish = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&)->void {
+        ++collector_finish_count;
+      };
+      sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
       sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA); };
-      sort.scorer_score = [&scorer_score_count](irs::doc_id_t)->void { ++scorer_score_count; };
+      sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
 
       auto prepared_order = order.prepare();
       auto prepared_filter = filter.prepare(*rdr, prepared_order);
@@ -524,11 +526,15 @@ class column_existence_filter_test_case
 
       size_t docs_count = 0;
       auto& score = filter_itr->attributes().get<irs::score>();
+      ASSERT_TRUE(score);
+
+      // ensure that we avoid COW for pre c++11 std::basic_string
+      const irs::bytes_ref score_value = score->value();
 
       while (filter_itr->next()) {
-        filter_itr->score();
+        score->evaluate();
         ASSERT_FALSE(!score);
-        scored_result.emplace(score->value(), filter_itr->value());
+        scored_result.emplace(score_value, filter_itr->value());
         ASSERT_TRUE(column_itr->next());
         ASSERT_EQ(filter_itr->value(), column_itr->value().first);
         ++docs_count;
@@ -538,10 +544,162 @@ class column_existence_filter_test_case
       ASSERT_EQ(segment.docs_count(), docs_count);
       ASSERT_EQ(segment.live_docs_count(), docs_count);
 
-      ASSERT_EQ(0, collector_field_count); // should not be executed
+      ASSERT_EQ(0, collector_collect_count); // should not be executed
       ASSERT_EQ(1, collector_finish_count);
-      ASSERT_EQ(0, collector_term_count); // should not be executed
       ASSERT_EQ(32, scorer_score_count);
+
+      std::vector<irs::doc_id_t> expected = { 1, 4, 5, 16, 17, 20, 21, 2, 3, 6, 7, 18, 19, 22, 23, 8, 9, 12, 13, 24, 25, 28, 29, 10, 11, 14, 15, 26, 27, 30, 31, 32 };
+      std::vector<irs::doc_id_t> actual;
+
+      for (auto& entry: scored_result) {
+        actual.emplace_back(entry.second);
+      }
+
+      ASSERT_EQ(expected, actual);
+    }
+
+    // 'seq*' column (prefix single)
+    {
+      const std::string column_name = "seq";
+
+      irs::by_column_existence filter;
+      filter.prefix_match(true);
+      filter.field(column_name);
+
+      irs::order order;
+      size_t collector_collect_count = 0;
+      size_t collector_finish_count = 0;
+      size_t scorer_score_count = 0;
+      auto& sort = order.add<sort::custom_sort>();
+
+      sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
+        ++collector_collect_count;
+      };
+      sort.collector_finish = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&)->void {
+        ++collector_finish_count;
+      };
+      sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
+      sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA); };
+      sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
+
+      auto prepared_order = order.prepare();
+      auto prepared_filter = filter.prepare(*rdr, prepared_order);
+      auto score_less = [&prepared_order](
+        const iresearch::bytes_ref& lhs, const iresearch::bytes_ref& rhs
+      )->bool {
+        return prepared_order.less(lhs.c_str(), rhs.c_str());
+      };
+      std::multimap<iresearch::bstring, iresearch::doc_id_t, decltype(score_less)> scored_result(score_less);
+
+      ASSERT_EQ(1, rdr->size());
+      auto& segment = (*rdr)[0];
+
+      auto column = segment.column_reader(column_name);
+      ASSERT_NE(nullptr, column);
+      auto column_itr = column->iterator();
+      auto filter_itr = prepared_filter->execute(segment, prepared_order);
+      ASSERT_EQ(column->size(), irs::cost::extract(filter_itr->attributes()));
+
+      size_t docs_count = 0;
+      auto& score = filter_itr->attributes().get<irs::score>();
+      ASSERT_TRUE(score);
+
+      // ensure that we avoid COW for pre c++11 std::basic_string
+      const irs::bytes_ref score_value = score->value();
+
+      while (filter_itr->next()) {
+        score->evaluate();
+        ASSERT_FALSE(!score);
+        scored_result.emplace(score_value, filter_itr->value());
+        ASSERT_TRUE(column_itr->next());
+        ASSERT_EQ(filter_itr->value(), column_itr->value().first);
+        ++docs_count;
+      }
+
+      ASSERT_FALSE(column_itr->next());
+      ASSERT_EQ(segment.docs_count(), docs_count);
+      ASSERT_EQ(segment.live_docs_count(), docs_count);
+
+      ASSERT_EQ(0, collector_collect_count); // should not be executed
+      ASSERT_EQ(1, collector_finish_count);
+      ASSERT_EQ(32, scorer_score_count);
+
+      std::vector<irs::doc_id_t> expected = { 1, 4, 5, 16, 17, 20, 21, 2, 3, 6, 7, 18, 19, 22, 23, 8, 9, 12, 13, 24, 25, 28, 29, 10, 11, 14, 15, 26, 27, 30, 31, 32 };
+      std::vector<irs::doc_id_t> actual;
+
+      for (auto& entry: scored_result) {
+        actual.emplace_back(entry.second);
+      }
+
+      ASSERT_EQ(expected, actual);
+    }
+
+    // 's*' column (prefix multiple)
+    {
+      const std::string column_name = "s";
+      const std::string column_name_full = "seq";
+
+      irs::by_column_existence filter;
+      filter.prefix_match(true);
+      filter.field(column_name);
+
+      irs::order order;
+      size_t collector_collect_count = 0;
+      size_t collector_finish_count = 0;
+      size_t scorer_score_count = 0;
+      auto& sort = order.add<sort::custom_sort>();
+
+      sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
+        ++collector_collect_count;
+      };
+      sort.collector_finish = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&)->void {
+        ++collector_finish_count;
+      };
+      sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { ASSERT_TRUE(&dst); ASSERT_TRUE(&src); dst = src; };
+      sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA); };
+      sort.scorer_score = [&scorer_score_count](irs::doc_id_t& score)->void { ASSERT_TRUE(&score); ++scorer_score_count; };
+
+      auto prepared_order = order.prepare();
+      auto prepared_filter = filter.prepare(*rdr, prepared_order);
+      auto score_less = [&prepared_order](
+        const iresearch::bytes_ref& lhs, const iresearch::bytes_ref& rhs
+      )->bool {
+        return prepared_order.less(lhs.c_str(), rhs.c_str());
+      };
+      std::multimap<iresearch::bstring, iresearch::doc_id_t, decltype(score_less)> scored_result(score_less);
+
+      ASSERT_EQ(1, rdr->size());
+      auto& segment = (*rdr)[0];
+
+      auto column = segment.column_reader(column_name_full);
+      ASSERT_NE(nullptr, column);
+      auto column_itr = column->iterator();
+      auto filter_itr = prepared_filter->execute(segment, prepared_order);
+      ASSERT_EQ(column->size() * 2, irs::cost::extract(filter_itr->attributes())); // 2 columns matched
+
+      size_t docs_count = 0;
+      auto& score = filter_itr->attributes().get<irs::score>();
+      ASSERT_TRUE(score);
+
+      // ensure that we avoid COW for pre c++11 std::basic_string
+      const irs::bytes_ref score_value = score->value();
+
+      while (filter_itr->next()) {
+        score->evaluate();
+        ASSERT_FALSE(!score);
+        scored_result.emplace(score_value, filter_itr->value());
+        ASSERT_TRUE(column_itr->next());
+        ASSERT_EQ(filter_itr->value(), column_itr->value().first);
+        ++docs_count;
+      }
+
+      ASSERT_FALSE(column_itr->next());
+      ASSERT_EQ(segment.docs_count(), docs_count);
+      ASSERT_EQ(segment.live_docs_count(), docs_count);
+
+      ASSERT_EQ(0, collector_collect_count); // should not be executed
+      ASSERT_EQ(1, collector_finish_count);
+      ASSERT_EQ(32 * 2, scorer_score_count); // 2 columns matched
 
       std::vector<irs::doc_id_t> expected = { 1, 4, 5, 16, 17, 20, 21, 2, 3, 6, 7, 18, 19, 22, 23, 8, 9, 12, 13, 24, 25, 28, 29, 10, 11, 14, 15, 26, 27, 30, 31, 32 };
       std::vector<irs::doc_id_t> actual;

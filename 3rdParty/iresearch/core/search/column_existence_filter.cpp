@@ -31,24 +31,22 @@
 
 NS_LOCAL
 
-class column_existence_iterator final : public irs::score_doc_iterator_base {
+class column_existence_iterator final : public irs::doc_iterator_base {
  public:
   explicit column_existence_iterator(
       const irs::sub_reader& reader,
       const irs::attribute_store& prepared_filter_attrs,
-      irs::columnstore_reader::column_iterator::ptr&& it,
+      irs::columnstore_iterator::ptr&& it,
       const irs::order::prepared& ord,
       uint64_t docs_count)
-    : score_doc_iterator_base(ord),
+    : doc_iterator_base(ord),
       it_(std::move(it)) {
     assert(it_);
-
-    // set estimation value
-    est_.value(docs_count);
-    attrs_.emplace(est_);
-
     // make doc_id accessible via attribute
     attrs_.emplace(doc_);
+
+    // set estimation value
+    estimate(docs_count);
 
     // set scorers
     scorers_ = ord_->prepare_scorers(
@@ -57,15 +55,15 @@ class column_existence_iterator final : public irs::score_doc_iterator_base {
       prepared_filter_attrs,
       attributes() // doc_iterator attributes
     );
+
+    prepare_score([this](irs::byte_type* score) {
+      value(); // ensure doc_id is updated before scoring
+      scorers_.score(*ord_, score);
+    });
   }
 
   virtual bool next() override {
     return it_->next();
-  }
-
-  virtual void score() override {
-    value(); // ensure doc_id is updated before scoring
-    scorers_.score(*ord_, scr_.leak());
   }
 
   virtual irs::doc_id_t seek(irs::doc_id_t target) override {
@@ -82,8 +80,7 @@ class column_existence_iterator final : public irs::score_doc_iterator_base {
 
  private:
   mutable irs::document doc_; // modified during value()
-  irs::cost est_;
-  irs::columnstore_reader::column_iterator::ptr it_;
+  irs::columnstore_iterator::ptr it_;
   irs::order::prepared::scorers scorers_;
 }; // column_existence_iterator
 
@@ -95,17 +92,17 @@ class column_existence_query final : public irs::filter::prepared {
   ): irs::filter::prepared(std::move(attrs)), field_(field) {
   }
 
-  virtual irs::score_doc_iterator::ptr execute(
+  virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& rdr,
       const irs::order::prepared& ord
   ) const override {
     const auto* column = rdr.column_reader(field_);
 
     if (!column) {
-      return irs::score_doc_iterator::empty();
+      return irs::doc_iterator::empty();
     }
 
-    return irs::score_doc_iterator::make<column_existence_iterator>(
+    return irs::doc_iterator::make<column_existence_iterator>(
       rdr,
       attributes(), // prepared_filter attributes
       column->iterator(),
@@ -126,7 +123,7 @@ class column_prefix_existence_query final : public irs::filter::prepared {
   ): irs::filter::prepared(std::move(attrs)), prefix_(prefix) {
   }
 
-  virtual irs::score_doc_iterator::ptr execute(
+  virtual irs::doc_iterator::ptr execute(
       const irs::sub_reader& rdr,
       const irs::order::prepared& ord
   ) const override {
@@ -134,13 +131,10 @@ class column_prefix_existence_query final : public irs::filter::prepared {
 
     if (!it->seek(prefix_)) {
       // reached the end
-      return irs::score_doc_iterator::empty();
+      return irs::doc_iterator::empty();
     }
 
-    typedef irs::detail::disjunction<
-      irs::score_wrapper<column_existence_iterator::ptr>
-    > disjunction_t;
-    disjunction_t::doc_iterators_t itrs;
+    irs::disjunction::doc_iterators_t itrs;
 
     while (irs::starts_with(it->value().name, prefix_)) {
       const auto* column = rdr.column_reader(it->value().id);
@@ -164,8 +158,8 @@ class column_prefix_existence_query final : public irs::filter::prepared {
       }
     }
 
-    return irs::detail::make_disjunction<disjunction_t>(
-      std::move(itrs), 1, ord
+    return irs::make_disjunction<irs::disjunction>(
+      std::move(itrs), ord
     );
   }
 
@@ -212,7 +206,7 @@ filter::prepared::ptr by_column_existence::prepare(
   attribute_store attrs;
 
   // skip filed-level/term-level statistics because there are no fields/terms
-  order.prepare_stats().finish(reader, attrs);
+  order.prepare_stats().finish(attrs, reader);
 
   irs::boost::apply(attrs, boost() * filter_boost); // apply boost
 

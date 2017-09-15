@@ -27,29 +27,43 @@ class bitset : util::noncopyable {
   typedef size_t word_t;
   typedef size_t index_t;
 
-  explicit bitset(size_t bits = 0) {
+  // returns corresponding bit index within a word for the
+  // specified offset in bits
+  CONSTEXPR FORCE_INLINE static size_t bit(size_t i) NOEXCEPT {
+    return i % bits_required<word_t>();
+  }
+
+  // returns corresponding word index specified offset in bits
+  CONSTEXPR FORCE_INLINE static size_t word(size_t i) NOEXCEPT {
+    return i / bits_required<word_t>();
+  }
+
+  // returns corresponding offset in bits for the specified word index
+  CONSTEXPR FORCE_INLINE static size_t bit_offset(size_t i) NOEXCEPT {
+    return i * bits_required<word_t>();
+  }
+
+  bitset() = default;
+
+  explicit bitset(size_t bits) {
     reset(bits);
   }
 
   bitset(bitset&& rhs) NOEXCEPT
     : bits_(rhs.bits_),
       words_(rhs.words_),
-      capacity_(rhs.capacity_),
       data_(std::move(rhs.data_)) {
     rhs.bits_ = 0;
     rhs.words_ = 0;
-    rhs.capacity_ = 0;
   }
 
   bitset& operator=(bitset&& rhs) NOEXCEPT {
     if (this != &rhs) {
       bits_ = rhs.bits_;
       words_ = rhs.words_;
-      capacity_ = rhs.capacity_;
       data_ = std::move(rhs.data_);
       rhs.bits_ = 0;
       rhs.words_ = 0;
-      rhs.capacity_ = 0;
     }
 
     return *this;
@@ -57,76 +71,80 @@ class bitset : util::noncopyable {
 
   void reset(size_t bits) {
     const auto words = bit_to_words(bits);
-    if (words > capacity_) {
+
+    if (words > words_) {
       data_ = memory::make_unique<word_t[]>(words);
-      capacity_ = words;
     }
+
     words_ = words;
     bits_ = bits;
     clear();
   }
 
-  // returns number of bits in bitset
-  size_t size() const { return bits_; }
-  size_t capacity() const { return capacity_; }
-  size_t words() const { return words_; }
+  // number of bits in bitset
+  size_t size() const NOEXCEPT { return bits_; }
 
-  const word_t* data() const { return data_.get(); }
-  word_t* data() { return data_.get(); }
+  // capacity in bits
+  size_t capacity() const NOEXCEPT {
+    return bits_required<word_t>()*words_;
+  }
+
+  size_t words() const NOEXCEPT { return words_; }
+
+  const word_t* data() const NOEXCEPT { return data_.get(); }
+
+  const word_t* begin() const NOEXCEPT { return data(); }
+  const word_t* end() const NOEXCEPT { return data() + words_; }
+
+  template<typename T>
+  void memset(const T& value) NOEXCEPT {
+    memset(&value, sizeof(value));
+  }
+
+  void memset(const void* src, size_t size) NOEXCEPT {
+    std::memcpy(data_.get(), src, std::min(size, words()*sizeof(word_t)));
+    sanitize();
+  }
 
   void set(size_t i) NOEXCEPT {
-    assert(i < bits_);
-    auto* data = data_.get();
-    const auto wi = word(i);
-    set_bit(data[wi], bit(i, wi));
+    set_bit(data_[word(i)], bit(i));
   }
 
   void unset(size_t i) NOEXCEPT {
-    assert(i < bits_);
-    auto* data = data_.get();
-    const auto wi = word(i);
-    unset_bit(data[wi], bit(i, wi));
+    unset_bit(data_[word(i)], bit(i));
   }
 
   void reset(size_t i, bool set) NOEXCEPT {
-    assert(i < bits_);
-    auto* data = data_.get();
-    const auto wi = word(i);
-    set_bit(data[wi], bit(i, wi), set);
+    set_bit(data_[word(i)], bit(i), set);
   }
 
   bool test(size_t i) const NOEXCEPT {
-    assert(i < bits_);
-    auto* data = data_.get();
-    const auto wi = word(i);
-    return check_bit(data[wi], bit(i, wi));
+    return check_bit(data_[word(i)], bit(i));
   }
 
-  bool any() const {
-    auto* data = data_.get();
+  bool any() const NOEXCEPT {
     return std::any_of(
-      data, data + words_,
+      begin(), end(),
       [] (word_t w) { return w != 0; }
     );
   }
 
-  bool none() const {
+  bool none() const NOEXCEPT {
     return !any();
   }
 
-  bool all() const {
+  bool all() const NOEXCEPT {
     return (count() == size());
   }
 
-  void clear() {
+  void clear() NOEXCEPT {
     std::memset(data_.get(), 0, sizeof(word_t)*words_);
   }
 
   // counts bits set
   word_t count() const NOEXCEPT {
-    auto* data = data_.get();
     return std::accumulate(
-      data, data + words_, word_t(0),
+      begin(), end(), word_t(0),
       [] (word_t v, word_t w) {
         return v + math::math_traits<word_t>::pop(w);
     });
@@ -135,21 +153,27 @@ class bitset : util::noncopyable {
  private:
   typedef std::unique_ptr<word_t[]> word_ptr_t;
 
-  FORCE_INLINE static size_t word(size_t i) NOEXCEPT {
-    return i / bits_required<word_t>();
-  }
-
-  FORCE_INLINE static size_t bit(size_t i, size_t wi) NOEXCEPT {
-    return i - bits_required<word_t>()*wi;
-  }
-
   FORCE_INLINE static size_t bit_to_words(size_t bits) NOEXCEPT {
-    return bits ? ((bits - 1) / bits_required<word_t>()) + 1 : 0;
+    static const size_t EXTRA[] { 1, 0 };
+
+    return bits / bits_required<word_t>()
+        + EXTRA[0 == (bits % bits_required<word_t>())];
   }
 
-  size_t bits_{};    // number of bits in a bitset
-  size_t words_{};   // number of words used for storing data
-  size_t capacity_{}; // capacity in words
+  void sanitize() NOEXCEPT {
+    assert(bits_ <= capacity());
+
+    if (!words_) {
+      return;
+    }
+
+    const auto mask = ~(~word_t(0) << (bits_ % bits_required<word_t>()));
+
+    data_[words_ - 1] &= mask;
+  }
+
+  size_t bits_{};   // number of bits in a bitset
+  size_t words_{};  // number of words used for storing data
   word_ptr_t data_; // words array
 }; // bitset
 

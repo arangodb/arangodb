@@ -125,9 +125,9 @@ TEST( string_token_stream_tests, next_end) {
   ASSERT_EQ( ref.size(), offs->end);
   ASSERT_FALSE( ts.next());
   ASSERT_FALSE( ts.next());
-  ASSERT_EQ( ref, term->value());
+  ASSERT_EQ( irs::bytes_ref::nil, term->value());
   ASSERT_EQ( 0, offs->start);
-  ASSERT_EQ( ref.size(), offs->end);
+  ASSERT_EQ( 0, offs->end);
 
   /* reset stream */
   ts.reset(str);

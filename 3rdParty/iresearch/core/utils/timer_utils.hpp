@@ -44,9 +44,6 @@ class IRESEARCH_API scoped_timer: private iresearch::util::noncopyable {
 
 IRESEARCH_API timer_stat_t& get_stat(const std::string& key);
 
-#define STRINGIFY(x) #x
-#define TOSTRING(x) STRINGIFY(x)
-
 // Note: MSVC sometimes initializes the static variable and sometimes leaves it as *(nullptr)
 //       therefore for MSVC before use, check if the static variable has been initialized
 #define REGISTER_TIMER__(timer_name, line) \

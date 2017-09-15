@@ -31,7 +31,17 @@ namespace ir = iresearch;
 // ----------------------------------------------------------------------------
 
 namespace tests {
-    
+
+const irs::columnstore_iterator::value_type INVALID{
+  irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+  irs::bytes_ref::nil
+};
+
+const irs::columnstore_iterator::value_type EOFMAX{
+  irs::type_limits<irs::type_t::doc_id_t>::eof(),
+  irs::bytes_ref::nil
+};
+
 class format_test_case_base : public index_test_base {
  public:  
   class postings;
@@ -831,14 +841,14 @@ class format_test_case_base : public index_test_base {
   void column_iterator_constants() {
     // INVALID
     {
-      auto& value = irs::columnstore_reader::column_iterator::INVALID;
+      auto& value = INVALID;
       ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::invalid(), value.first);
       ASSERT_EQ(ir::bytes_ref::nil, value.second);
     }
 
     // EOF
     {
-      auto& value = irs::columnstore_reader::column_iterator::EOFMAX;
+      auto& value = EOFMAX;
       ASSERT_EQ(ir::type_limits<ir::type_t::doc_id_t>::eof(), value.first);
       ASSERT_EQ(ir::bytes_ref::nil, value.second);
     }
@@ -2200,7 +2210,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         ASSERT_TRUE(it->next());
         std::memset(field.buf, 0, sizeof field.buf); // clear buffer
@@ -2230,7 +2240,7 @@ class format_test_case_base : public index_test_base {
         ASSERT_NE(nullptr, it);
 
         auto& actual_value = it->value();
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::INVALID, actual_value);
+        ASSERT_EQ(INVALID, actual_value);
 
         ASSERT_EQ(&actual_value, &it->seek(0));
         std::memset(field.buf, 0, sizeof field.buf); // clear buffer
@@ -2421,7 +2431,7 @@ class format_test_case_base : public index_test_base {
       auto reader = codec()->get_columnstore_reader();
       ASSERT_TRUE(reader->prepare(dir(), meta));
 
-      std::unordered_map<std::string, iresearch::columnstore_reader::column_iterator::ptr> readers;
+      std::unordered_map<std::string, iresearch::columnstore_iterator::ptr> readers;
 
       irs::bytes_ref actual_value;
       irs::bytes_ref_input in;
@@ -2477,7 +2487,7 @@ class format_test_case_base : public index_test_base {
       for (auto& entry : readers) {
         auto& it = entry.second;
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->value());
+        ASSERT_EQ(EOFMAX, it->value());
       }
     }
 
@@ -2488,7 +2498,7 @@ class format_test_case_base : public index_test_base {
       auto reader = codec()->get_columnstore_reader();
       ASSERT_TRUE(reader->prepare(dir(), meta));
 
-      std::unordered_map<std::string, iresearch::columnstore_reader::column_iterator::ptr> readers;
+      std::unordered_map<std::string, iresearch::columnstore_iterator::ptr> readers;
 
       irs::bytes_ref actual_value;
       irs::bytes_ref_input in;
@@ -2544,7 +2554,7 @@ class format_test_case_base : public index_test_base {
       for (auto& entry : readers) {
         auto& it = entry.second;
         ASSERT_FALSE(it->next());
-        ASSERT_EQ(irs::columnstore_reader::column_iterator::EOFMAX, it->value());
+        ASSERT_EQ(EOFMAX, it->value());
       }
     }
   }

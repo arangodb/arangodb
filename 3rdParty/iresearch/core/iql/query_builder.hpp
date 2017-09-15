@@ -31,7 +31,7 @@ namespace iresearch {
           std::is_base_of<iresearch::filter, T>::value, T
         >::type type;
 
-        filter_ = iresearch::filter::make<type>(std::forward<Args>(args)...);
+        filter_ = type::make(std::forward<Args>(args)...);
 
         return static_cast<type&>(*filter_);
       }
@@ -56,8 +56,6 @@ namespace iresearch {
       }
 
      protected:
-      typedef PTR ptr;
-
       IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
       PTR filter_;
       IRESEARCH_API_PRIVATE_VARIABLES_END

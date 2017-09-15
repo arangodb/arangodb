@@ -418,30 +418,30 @@ class IRESEARCH_API bytes_output final: public data_output, public bytes_ref {
   IRESEARCH_API_PRIVATE_VARIABLES_END
 };
 
-class IRESEARCH_API bytes_ref_input final : public data_input{
+class IRESEARCH_API bytes_ref_input : public index_input {
  public:
   bytes_ref_input();
   explicit bytes_ref_input(const bytes_ref& data);
 
-  void skip(size_t size) {
+  void skip(size_t size) NOEXCEPT {
     assert(pos_ + size < data_.size());
     pos_ += size;
   }
 
-  void seek(size_t pos) {
+  virtual void seek(size_t pos) NOEXCEPT override {
     assert(pos < data_.size());
     pos_ = pos;
   }
 
-  virtual size_t file_pointer() const override {
+  virtual size_t file_pointer() const NOEXCEPT override {
     return pos_;
   }
 
-  virtual size_t length() const override {
+  virtual size_t length() const NOEXCEPT override {
     return data_.size();
   }
-  
-  virtual bool eof() const override {
+
+  virtual bool eof() const NOEXCEPT override {
     return pos_ >= data_.size();
   }
 
@@ -449,19 +449,31 @@ class IRESEARCH_API bytes_ref_input final : public data_input{
   virtual size_t read_bytes(byte_type* b, size_t size) override;
   void read_bytes(bstring& buf, size_t size); // append to buf
 
-  void reset(const byte_type* data, size_t size) {
+  void reset(const byte_type* data, size_t size) NOEXCEPT {
     data_ = bytes_ref(data, size);
     pos_ = 0;
   }
 
-  void reset(const bytes_ref& ref) {
+  void reset(const bytes_ref& ref) NOEXCEPT {
     reset(ref.c_str(), ref.size());
+  }
+
+  virtual ptr dup() const NOEXCEPT {
+    try {
+      return index_input::make<bytes_ref_input>(*this);
+    } catch (...) {
+      return nullptr;
+    }
+  }
+
+  virtual ptr reopen() const NOEXCEPT {
+    return dup();
   }
 
  private:
   bytes_ref data_;
   size_t pos_;
-};
+}; // bytes_ref_input
 
 class IRESEARCH_API bytes_input final: public data_input, public bytes_ref {
  public:

@@ -13,10 +13,8 @@
 #define IRESEARCH_FILE_SYSTEM_DIRECTORY_H
 
 #include "directory.hpp"
-#include "utils/attributes.hpp"
-#include "utils/file_utils.hpp"
 #include "utils/string.hpp"
-#include "utils/noncopyable.hpp"
+#include "utils/attributes.hpp"
 
 NS_ROOT
 
@@ -74,7 +72,7 @@ class IRESEARCH_API fs_directory : public directory {
   attribute_store attributes_;
   std::string dir_;
   IRESEARCH_API_PRIVATE_VARIABLES_END
-};
+}; // fs_directory
 
 NS_END
 

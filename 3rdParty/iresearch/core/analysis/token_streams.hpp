@@ -45,9 +45,9 @@ class IRESEARCH_API boolean_token_stream final
 
   virtual bool next() override;
 
-  void reset(bool value) { 
+  void reset(bool value) {
     value_ = value;
-    in_use_ = false; 
+    in_use_ = false;
   }
 
   virtual const attribute_view& attributes() const NOEXCEPT override {
@@ -193,21 +193,7 @@ class IRESEARCH_API numeric_token_stream final
       return numeric_term::value(buf, NT_DBL, val, 0);
     }
 
-    bool next(increment& inc) {
-      auto bits = type_ > NT_DBL
-        ? bits_required<int32_t>()
-        : bits_required<int64_t>();
-
-      if (shift_ >= bits) {
-        return false;
-      }
-
-      value_ = value(data_, type_, val_, shift_);
-      shift_ += step_;
-      inc.value = step_ == shift_ ? 1 : 0;
-
-      return true;
-    }
+    bool next(increment& inc);
 
     void reset(int32_t value, uint32_t step) {
       val_.i32 = value;

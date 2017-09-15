@@ -101,6 +101,43 @@ TEST(math_utils_test, log2_64) {
   ASSERT_EQ(63, math::log2_64(std::numeric_limits<uint64_t>::max()));
 }
 
+TEST(math_utils_test, clz32) {
+  ASSERT_EQ(31, math::math_traits<uint32_t>::clz(UINT32_C(1)));
+  ASSERT_EQ(10, math::math_traits<uint32_t>::clz(UINT32_C(0x200000)));
+  ASSERT_EQ(10, math::math_traits<uint32_t>::clz(UINT32_C(0x311480)));
+  ASSERT_EQ(6, math::math_traits<uint32_t>::clz(UINT32_C(0x2122000)));
+  ASSERT_EQ(0, math::math_traits<uint32_t>::clz(UINT32_C(0xFFFFFFFF)));
+}
+
+TEST(math_utils_test, ctz32) {
+  ASSERT_EQ(0, math::math_traits<uint32_t>::ctz(UINT32_C(1)));
+  ASSERT_EQ(21, math::math_traits<uint32_t>::ctz(UINT32_C(0x200000)));
+  ASSERT_EQ(7, math::math_traits<uint32_t>::ctz(UINT32_C(0x311480)));
+  ASSERT_EQ(0, math::math_traits<uint32_t>::ctz(UINT32_C(0xFFFFFFFF)));
+  ASSERT_EQ(13, math::math_traits<uint32_t>::ctz(UINT32_C(0x2122000)));
+  ASSERT_EQ(31, math::math_traits<uint32_t>::ctz(UINT32_C(0x80000000)));
+}
+
+TEST(math_utils_test, clz64) {
+  ASSERT_EQ(63, math::math_traits<uint64_t>::clz(UINT64_C(1)));
+  ASSERT_EQ(42, math::math_traits<uint64_t>::clz(UINT64_C(0x200000)));
+  ASSERT_EQ(42, math::math_traits<uint64_t>::clz(UINT64_C(0x311480)));
+  ASSERT_EQ(32, math::math_traits<uint64_t>::clz(UINT64_C(0xFFFFFFFF)));
+  ASSERT_EQ(10, math::math_traits<uint64_t>::clz(UINT64_C(0x29008000000000)));
+  ASSERT_EQ(0, math::math_traits<uint64_t>::clz(UINT64_C(0xFFFFFFFFFFFFFFFF)));
+}
+
+TEST(math_utils_test, ctz64) {
+  ASSERT_EQ(0, math::math_traits<uint64_t>::ctz(UINT64_C(1)));
+  ASSERT_EQ(21, math::math_traits<uint64_t>::ctz(UINT64_C(0x200000)));
+  ASSERT_EQ(7, math::math_traits<uint64_t>::ctz(UINT64_C(0x311480)));
+  ASSERT_EQ(0, math::math_traits<uint64_t>::ctz(UINT64_C(0xFFFFFFFF)));
+  ASSERT_EQ(0, math::math_traits<uint64_t>::ctz(UINT64_C(0xFFFFFFFFFFFFFFFF)));
+  ASSERT_EQ(31, math::math_traits<uint64_t>::ctz(UINT64_C(0x80000000)));
+  ASSERT_EQ(39, math::math_traits<uint64_t>::ctz(UINT64_C(0x29008000000000)));
+  ASSERT_EQ(63, math::math_traits<uint64_t>::ctz(UINT64_C(0x8000000000000000)));
+}
+
 TEST(math_utils, popcnt) {
   {
     const uint32_t value = 0;

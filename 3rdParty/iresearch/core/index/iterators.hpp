@@ -39,6 +39,8 @@ struct IRESEARCH_API doc_iterator
   DECLARE_SPTR(doc_iterator);
   DECLARE_FACTORY(doc_iterator);
 
+  static doc_iterator::ptr empty();
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief jumps to the specified target and returns current value
   /// of the iterator.
@@ -49,27 +51,6 @@ struct IRESEARCH_API doc_iterator
   //////////////////////////////////////////////////////////////////////////////
   virtual doc_id_t seek(doc_id_t target) = 0;
 }; // doc_iterator
-
-struct IRESEARCH_API score_doc_iterator: doc_iterator {
-  DECLARE_PTR(score_doc_iterator);
-  DECLARE_FACTORY(score_doc_iterator);
-
-  static score_doc_iterator::ptr empty();
-
-  virtual void score() = 0;
-}; // score_doc_iterator
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief jumps iterator to the specified target and returns current value
-/// of the iterator
-/// @returns 'false' if iterator exhausted, true otherwise
-//////////////////////////////////////////////////////////////////////////////
-template<typename Iterator, typename T, typename Less = std::less<T>>
-bool seek(Iterator& it, const T& target, Less less = Less()) {
-  bool next = true;
-  while (less(it.value(), target) && (next = it.next()));
-  return next;
-}
 
 // ----------------------------------------------------------------------------
 // --SECTION--                                                  field iterators 
@@ -143,6 +124,51 @@ struct IRESEARCH_API seek_term_iterator : term_iterator {
     const seek_cookie& cookie) = 0;
   virtual seek_cookie::ptr cookie() const = 0;
 };
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                                 iterator helpers
+// ----------------------------------------------------------------------------
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief jumps iterator to the specified target and returns current value
+/// of the iterator
+/// @returns 'false' if iterator exhausted, true otherwise
+//////////////////////////////////////////////////////////////////////////////
+template<typename Iterator, typename T, typename Less = std::less<T>>
+bool seek(Iterator& it, const T& target, Less less = Less()) {
+  bool next = true;
+  while (less(it.value(), target) && (next = it.next()));
+  return next;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief position iterator to the specified min term or to the next term
+///        after the min term depending on the specified 'Include' value
+/// @returns true in case if iterator has been succesfully positioned,
+///          false otherwise
+//////////////////////////////////////////////////////////////////////////////
+template<bool Include>
+inline bool seek_min(seek_term_iterator& it, const bytes_ref& min) {
+  const auto res = it.seek_ge(min);
+
+  return SeekResult::END != res
+      && (Include || SeekResult::FOUND != res || it.next());
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief position iterator 'count' items after the current position
+/// @return if the iterator has been succesfully positioned
+//////////////////////////////////////////////////////////////////////////////
+template<typename Iterator>
+inline bool skip(Iterator& itr, size_t count) {
+  while (count--) {
+    if (!itr.next()) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 NS_END
 

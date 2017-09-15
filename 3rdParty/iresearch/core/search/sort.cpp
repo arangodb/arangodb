@@ -153,26 +153,22 @@ order::prepared::stats& order::prepared::stats::operator=(
   return *this;
 }
 
-void order::prepared::stats::field(
+void order::prepared::stats::collect(
     const sub_reader& segment,
-    const term_reader& field) const {
+    const term_reader& field,
+    const attribute_view& term_attrs
+) const {
   for (auto& collector : colls_) {
-    collector->field(segment, field);
-  }
-}
-
-void order::prepared::stats::term(const attribute_view& term) const {
-  for (auto& collector : colls_) {
-    collector->term(term);
+    collector->collect(segment, field, term_attrs);
   }
 }
 
 void order::prepared::stats::finish(
-    const index_reader& index,
-    attribute_store& query_context
+    attribute_store& filter_attrs,
+    const index_reader& index
 ) const {
   for (auto& collector : colls_) {
-    collector->finish(index, query_context);
+    collector->finish(filter_attrs, index);
   }
 }
 
@@ -225,6 +221,12 @@ order::prepared::prepare_stats() const {
     }
   });
   return prepared::stats(std::move(colls));
+}
+
+void order::prepared::prepare_score(byte_type* score) const {
+  for (auto& sort : order_) {
+    sort.bucket->prepare_score(score + sort.offset);
+  }
 }
 
 order::prepared::scorers 

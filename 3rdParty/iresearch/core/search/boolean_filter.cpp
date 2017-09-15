@@ -11,28 +11,107 @@
 
 #include "all_filter.hpp"
 #include "boolean_filter.hpp"
-#include "disjunction.hpp"
 #include "conjunction.hpp"
+#include "disjunction.hpp"
+#include "min_match_disjunction.hpp"
 #include "exclusion.hpp"
 #include <boost/functional/hash.hpp>
 
-NS_ROOT
-NS_BEGIN(detail)
+NS_LOCAL
 
-/* first - pointer to the innermost not "not" node 
- * second - optimized inversion */
-std::pair<const filter*, bool> optimize_not( const Not& node ) {
+// first - pointer to the innermost not "not" node
+// second - collapsed negation mark
+std::pair<const irs::filter*, bool> optimize_not(const irs::Not& node) {
   bool neg = true;
-  const filter* inner = node.filter();
-  for ( ; inner && inner->type() == Not::type(); ) {
+  const irs::filter* inner = node.filter();
+  while (inner && inner->type() == irs::Not::type()) {
     neg = !neg;
-    inner = static_cast< const Not* >( inner )->filter();
+    inner = static_cast<const irs::Not*>(inner)->filter();
   }
 
-  return std::make_pair( inner, neg );
+  return std::make_pair(inner, neg);
 }
 
-NS_END // detail
+//////////////////////////////////////////////////////////////////////////////
+/// @returns disjunction iterator created from the specified queries
+//////////////////////////////////////////////////////////////////////////////
+template<typename QueryIterator, typename... Args>
+irs::doc_iterator::ptr make_disjunction(
+    const irs::sub_reader& rdr,
+    const irs::order::prepared& ord,
+    QueryIterator begin,
+    QueryIterator end,
+    Args&&... args) {
+  assert(std::distance(begin, end) >= 0);
+  const size_t size = size_t(std::distance(begin, end));
+
+  // check the size before the execution
+  if (0 == size) {
+    // empty or unreachable search criteria
+    return irs::doc_iterator::empty();
+  }
+
+  irs::disjunction::doc_iterators_t itrs;
+  itrs.reserve(size);
+
+  for (;begin != end; ++begin) {
+    // execute query - get doc iterator
+    auto docs = begin->execute(rdr, ord);
+
+    // filter out empty iterators
+    if (!irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())) {
+      itrs.emplace_back(std::move(docs));
+    }
+  }
+
+  return irs::make_disjunction<irs::disjunction>(
+    std::move(itrs), ord, std::forward<Args>(args)...
+  );
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @returns conjunction iterator created from the specified queries
+//////////////////////////////////////////////////////////////////////////////
+template<typename QueryIterator, typename... Args>
+irs::doc_iterator::ptr make_conjunction(
+    const irs::sub_reader& rdr,
+    const irs::order::prepared& ord,
+    QueryIterator begin,
+    QueryIterator end,
+    Args&&... args) {
+  assert(std::distance(begin, end) >= 0);
+  const size_t size = std::distance(begin, end);
+
+  // check size before the execution
+  switch (size) {
+    case 0:
+      return irs::doc_iterator::empty();
+    case 1:
+      return begin->execute(rdr, ord);
+  }
+
+  irs::conjunction::doc_iterators_t itrs;
+  itrs.reserve(size);
+
+  for (;begin != end; ++begin) {
+    auto docs = begin->execute(rdr, ord);
+
+    // filter out empty iterators
+    if (irs::type_limits<irs::type_t::doc_id_t>::eof(docs->value())) {
+      return irs::doc_iterator::empty();
+    }
+
+    itrs.emplace_back(std::move(docs));
+  }
+
+  return irs::make_conjunction<irs::conjunction>(
+    std::move(itrs), ord
+  );
+}
+
+NS_END // LOCAL
+
+NS_ROOT
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class boolean_query
@@ -48,19 +127,19 @@ class boolean_query : public filter::prepared {
 
   boolean_query() : excl_(0)  { }
 
-  virtual score_doc_iterator::ptr execute(
+  virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord ) const override {
-    typedef detail::disjunction<score_doc_iterator::ptr> disjunction_t;
-
     if (empty()) {
-      return score_doc_iterator::empty();
+      return doc_iterator::empty();
     }
 
     assert(excl_);
     auto incl = execute(rdr, ord, begin(), begin() + excl_);
-    auto excl = detail::make_disjunction<disjunction_t>(
-      rdr, ord, begin() + excl_, end(), 1 
+
+    // exclusion part does not affect scoring at all
+    auto excl = ::make_disjunction(
+      rdr, order::prepared::unordered(), begin() + excl_, end()
     );
 
     // got empty iterator for excluded
@@ -69,8 +148,8 @@ class boolean_query : public filter::prepared {
       return incl;
     }
 
-    return score_doc_iterator::make<detail::exclusion>(
-      std::move(incl), std::move(excl) 
+    return doc_iterator::make<exclusion>(
+      std::move(incl), std::move(excl)
     );
   }
 
@@ -83,26 +162,21 @@ class boolean_query : public filter::prepared {
     boolean_query::queries_t queries;
     queries.reserve(incl.size() + excl.size());
 
-    /* apply boost to the current node */
+    // apply boost to the current node
     boost::apply(this->attributes(), boost);
 
-    /* prepare included */
-    std::transform(
-      incl.begin(), incl.end(),
-      irstd::back_emplacer(queries),
-      [&rdr, &ord, boost] (const filter* sub) {
-        return sub->prepare(rdr, ord, boost);
-    });
+    // prepare included
+    for (const auto* filter : incl) {
+      queries.emplace_back(filter->prepare(rdr, ord, boost));
+    }
 
-    /* prepare excluded */
-    std::transform(
-      excl.begin(), excl.end(),
-      irstd::back_emplacer(queries),
-      [&rdr, &ord] (const filter* sub) {
-        return sub->prepare(rdr, ord);
-    });
+    // prepare excluded
+    for (const auto* filter : excl) {
+      // exclusion part does not affect scoring at all
+      queries.emplace_back(filter->prepare(rdr, order::prepared::unordered()));
+    }
 
-    /* nothrow block */
+    // nothrow block
     queries_ = std::move(queries);
     excl_ = incl.size();
   }
@@ -115,17 +189,17 @@ class boolean_query : public filter::prepared {
   size_t size() const { return queries_.size(); }
 
 protected:
-  virtual score_doc_iterator::ptr execute(
+  virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
       iterator begin,
       iterator end) const = 0;
 
  private:
-  /* 0..excl_-1 - included queries
-   * excl_..queries.end() - excluded queries */
+  // 0..excl_-1 - included queries
+  // excl_..queries.end() - excluded queries
   queries_t queries_;
-  /* index of the first excluded query */
+  // index of the first excluded query
   size_t excl_;
 };
 
@@ -135,17 +209,12 @@ protected:
 //////////////////////////////////////////////////////////////////////////////
 class and_query final : public boolean_query {
 public:
-  virtual score_doc_iterator::ptr execute(
+  virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
-      iterator begin, 
+      iterator begin,
       iterator end) const override {
-    typedef score_wrapper<score_doc_iterator::ptr> score_wrapper_t;
-    typedef detail::conjunction<score_wrapper_t> conjunction_t;
-
-    return detail::make_conjunction<conjunction_t>(
-      rdr, ord, begin, end
-    );
+    return ::make_conjunction(rdr, ord, begin, end);
   }
 };
 
@@ -155,17 +224,12 @@ public:
 //////////////////////////////////////////////////////////////////////////////
 class or_query final : public boolean_query {
  public:
-  virtual score_doc_iterator::ptr execute(
+  virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
       iterator begin,
       iterator end) const override {
-    typedef score_wrapper<score_doc_iterator::ptr> score_wrapper_t;
-    typedef detail::disjunction<score_wrapper_t> disjunction_t;
-
-    return detail::make_disjunction<disjunction_t>(
-      rdr, ord, begin, end, 1
-    );
+    return ::make_disjunction(rdr, ord, begin, end);
   }
 }; // or_query
 
@@ -181,25 +245,85 @@ class min_match_query final : public boolean_query {
     assert(min_match_count_ > 1);
   }
 
-  virtual score_doc_iterator::ptr execute(
+  virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord,
-      iterator begin, iterator end) const override {
-   typedef score_wrapper<score_doc_iterator::ptr> score_wrapper_t;
-   typedef cost_wrapper<score_wrapper_t> cost_wrapper_t;
-   typedef detail::disjunction<cost_wrapper_t> disjunction_t;
+      iterator begin,
+      iterator end) const override {
+    assert(std::distance(begin, end) >= 0);
+    const size_t size = size_t(std::distance(begin, end));
 
-   return detail::make_disjunction<disjunction_t>(
-     rdr, ord, begin, end, min_match_count_
-   );
+    // 1 <= min_match_count
+    size_t min_match_count = std::max(size_t(1), min_match_count_);
+
+    // check the size before the execution
+    if (0 == size || min_match_count > size) {
+      // empty or unreachable search criteria
+      return doc_iterator::empty();
+    } else if (min_match_count == size) {
+      // pure conjunction
+      return ::make_conjunction(rdr, ord, begin, end);
+    }
+
+    // min_match_count <= size
+    min_match_count = std::min(size, min_match_count);
+
+    min_match_disjunction::doc_iterators_t itrs;
+    itrs.reserve(size);
+
+    for (;begin != end; ++begin) {
+      // execute query - get doc iterator
+      auto docs = begin->execute(rdr, ord);
+
+      // filter out empty iterators
+      if (!type_limits<type_t::doc_id_t>::eof(docs->value())) {
+        itrs.emplace_back(std::move(docs));
+      }
+    }
+
+    return make_min_match_disjunction(
+      std::move(itrs), ord, min_match_count
+    );
   }
 
  private:
+  static doc_iterator::ptr make_min_match_disjunction(
+      min_match_disjunction::doc_iterators_t&& itrs,
+      const order::prepared& ord,
+      size_t min_match_count) {
+    const auto size = min_match_count > itrs.size() ? 0 : itrs.size();
+
+    switch (size) {
+      case 0:
+        // empty or unreachable search criteria
+        return doc_iterator::empty();
+      case 1:
+        // single sub-query
+        return std::move(itrs.front());
+    }
+
+    if (min_match_count == size) {
+      // pure conjunction
+      return doc_iterator::make<conjunction>(
+        conjunction::doc_iterators_t(
+          std::make_move_iterator(itrs.begin()),
+          std::make_move_iterator(itrs.end())
+        ), ord
+      );
+    }
+
+    // min match disjunction
+    assert(min_match_count < size);
+    return doc_iterator::make<min_match_disjunction>(
+      std::move(itrs), min_match_count, ord
+    );
+  }
+
   size_t min_match_count_;
 }; // min_match_query
 
 // ----------------------------------------------------------------------------
-// --SECTION--                                                   boolean_filter 
+// --SECTION--                                                   boolean_filter
 // ----------------------------------------------------------------------------
 
 boolean_filter::boolean_filter(const type_id& type) NOEXCEPT
@@ -261,7 +385,8 @@ void boolean_filter::group_filters(
   for (auto begin = this->begin(), end = this->end(); begin != end; ++begin) {
     const Not* not_node = begin.safe_as<Not>();
     if (not_node) {
-      auto res = detail::optimize_not(*not_node);
+      const auto res = optimize_not(*not_node);
+
       if (!res.first) {
         continue;
       }
@@ -339,32 +464,53 @@ filter::prepared::ptr Or::prepare(
 DEFINE_FILTER_TYPE(Not);
 DEFINE_FACTORY_DEFAULT(Not);
 
-Not::Not() : iresearch::filter(Not::type()) {}
+Not::Not() NOEXCEPT
+  : irs::filter(Not::type()) {
+}
 
 filter::prepared::ptr Not::prepare(
-    const index_reader&,
-    const order::prepared&,
-    boost_t) const {
-  return filter::prepared::empty();
+    const index_reader& rdr,
+    const order::prepared& ord,
+    boost_t boost) const {
+  const auto res = optimize_not(*this);
+
+  if (!res.first) {
+    return prepared::empty();
+  }
+
+  boost *= this->boost();
+
+  if (res.second) {
+    all all_docs;
+    const std::vector<const irs::filter*> incl { &all_docs };
+    const std::vector<const irs::filter*> excl { res.first };
+
+    auto q = and_query::make<and_query>();
+    q->prepare(rdr, ord, boost, incl, excl);
+    return q;
+  }
+
+  // negation has been optimized out
+  return res.first->prepare(rdr, ord, boost);
 }
 
 size_t Not::hash() const {
   size_t seed = 0;
   ::boost::hash_combine(seed, filter::hash());
   if (filter_) {
-    ::boost::hash_combine<const iresearch::filter&>(seed, *filter_);
+    ::boost::hash_combine<const irs::filter&>(seed, *filter_);
   }
   return seed;
 }
 
-bool Not::equals( const iresearch::filter& rhs ) const {
-  const Not& typed_rhs = static_cast< const Not& >( rhs );
-  return filter::equals( rhs ) 
+bool Not::equals(const irs::filter& rhs) const {
+  const Not& typed_rhs = static_cast<const Not&>(rhs);
+  return filter::equals(rhs)
     && ((!empty() && !typed_rhs.empty() && *filter_ == *typed_rhs.filter_)
        || (empty() && typed_rhs.empty()));
 }
 
-NS_END // root
+NS_END // ROOT
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

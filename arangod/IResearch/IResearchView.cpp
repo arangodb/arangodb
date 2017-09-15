@@ -25,6 +25,7 @@
 #include "search/all_filter.hpp"
 #include "search/boolean_filter.hpp"
 #include "search/scorers.hpp"
+#include "search/score.hpp"
 #include "store/memory_directory.hpp"
 #include "store/fs_directory.hpp"
 #include "utils/directory_utils.hpp"
@@ -455,7 +456,14 @@ bool OrderedViewIterator::next(TokenCallback const& callback, size_t limit) {
   for (size_t i = 0, count = _reader.size(); i < count; ++i) {
     auto& segmentReader = _reader[i];
     auto itr = _filter->execute(segmentReader, _order);
-    auto& score = itr->attributes().get<irs::score>();
+    const irs::score* score = itr->attributes().get<irs::score>();
+
+#if defined(__GNUC__) && !defined(_GLIBCXX_USE_CXX11_ABI)
+    // workaround for std::basic_string's COW with old compilers
+    const irs::bytes_ref scoreValue = score->value();
+#else
+    const auto& scoreValue = score->value();
+#endif
 
     while (itr->next()) {
       if (!loadToken(tmpToken, i, itr->value())) {
@@ -464,7 +472,7 @@ bool OrderedViewIterator::next(TokenCallback const& callback, size_t limit) {
         continue; // if here then there is probably a bug in IResearchView while indexing
       }
 
-      itr->score(); // compute a score for the current document
+      score->evaluate(); // compute a score for the current document
 
       if (!score) {
         LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failed to generate document score while iterating iResearch view, ignoring: reader_id '" << i << "', doc_id '" << itr->value() << "'";
@@ -472,7 +480,7 @@ bool OrderedViewIterator::next(TokenCallback const& callback, size_t limit) {
         continue; // if here then there is probably a bug in IResearchView or in the iResearch library
       }
 
-      orderedDocTokens.emplace(score->value(), tmpToken);
+      orderedDocTokens.emplace(scoreValue, tmpToken);
 
       if (orderedDocTokens.size() > maxDocCount) {
         orderedDocTokens.erase(--(orderedDocTokens.end())); // remove element with the least score

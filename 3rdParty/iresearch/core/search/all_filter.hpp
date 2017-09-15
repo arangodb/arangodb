@@ -37,7 +37,7 @@ class IRESEARCH_API all: public filter {
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY_DEFAULT();
 
-  all();
+  all() NOEXCEPT;
 
   virtual filter::prepared::ptr prepare(
     const index_reader& reader,

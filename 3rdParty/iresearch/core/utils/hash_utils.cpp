@@ -20,7 +20,6 @@ NS_ROOT
 #if defined(_MSC_VER) && defined(IRESEARCH_DLL)
 
 template class IRESEARCH_API hashed_basic_string_ref<char>;
-template class IRESEARCH_API hashed_basic_string_ref<wchar_t>;
 template class IRESEARCH_API hashed_basic_string_ref<byte_type>;
 
 #endif

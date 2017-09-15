@@ -109,6 +109,46 @@ class granular_range_filter_test_case: public filter_test_case_base {
     }
   }
 
+  void by_range_granularity_boost() {
+    // add segment
+    {
+      tests::json_doc_generator gen(
+        resource("granular_sequential.json"),
+        &by_range_json_field_factory
+      );
+      add_segment(gen);
+    }
+
+    auto rdr = open_reader();
+    ASSERT_EQ(1, rdr->size());
+
+    auto& segment = (*rdr)[0];
+
+    // without boost
+    {
+      ir::by_granular_range q;
+      q.field("name")
+       .include<ir::Bound::MIN>(true).insert<ir::Bound::MIN>("A")
+       .include<ir::Bound::MAX>(true).insert<ir::Bound::MAX>("M");
+
+      auto prepared = q.prepare(tests::empty_index_reader::instance());
+      ASSERT_EQ(irs::boost::no_boost(), ir::boost::extract(prepared->attributes()));
+    }
+
+    // with boost
+    {
+      iresearch::boost::boost_t boost = 1.5f;
+      ir::by_granular_range q;
+      q.field("name")
+       .include<ir::Bound::MIN>(true).insert<ir::Bound::MIN>("A")
+       .include<ir::Bound::MAX>(true).insert<ir::Bound::MAX>("M");
+      q.boost(boost);
+
+      auto prepared = q.prepare(segment);
+      ASSERT_EQ(boost, ir::boost::extract(prepared->attributes()));
+    }
+  }
+
   void by_range_granularity_level() {
     // add segment
     {
@@ -368,6 +408,39 @@ class granular_range_filter_test_case: public filter_test_case_base {
 
     auto rdr = open_reader();
 
+    // long - seq = [7..7]
+    {
+      irs::numeric_token_stream min_stream;
+      min_stream.reset(INT64_C(7));
+      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      ASSERT_TRUE(min_stream.next());
+
+      irs::numeric_token_stream max_stream;
+      max_stream.reset(INT64_C(7));
+      auto& max_term = max_stream.attributes().get<irs::term_attribute>();
+      ASSERT_TRUE(max_stream.next());
+
+      irs::by_granular_range query;
+      query.field("seq")
+           .include<irs::Bound::MIN>(true)
+           .insert<irs::Bound::MIN>(min_term->value())
+           .include<irs::Bound::MAX>(true)
+           .insert<irs::Bound::MAX>(max_term->value());
+
+      auto prepared = query.prepare(rdr);
+
+      std::vector<irs::doc_id_t> expected { 8 };
+      std::vector<irs::doc_id_t> actual;
+
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub);
+        for (;docs->next();) {
+          actual.push_back(docs->value());
+        }
+      }
+      ASSERT_EQ(expected, actual);
+    }
+
     // long - seq = [1..7]
     {
       ir::numeric_token_stream min_stream;
@@ -475,6 +548,39 @@ class granular_range_filter_test_case: public filter_test_case_base {
 
       std::vector<ir::doc_id_t> expected { 1, 2, 3, 4, 5, 6 };
       std::vector<ir::doc_id_t> actual;
+
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
+        for (;docs->next();) {
+          actual.push_back(docs->value());
+        }
+      }
+      ASSERT_EQ(expected, actual);
+    }
+
+    // int - seq = [7..7]
+    {
+      irs::numeric_token_stream min_stream;
+      min_stream.reset(INT32_C(7));
+      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      ASSERT_TRUE(min_stream.next());
+
+      irs::numeric_token_stream max_stream;
+      max_stream.reset(INT32_C(7));
+      auto& max_term = max_stream.attributes().get<irs::term_attribute>();
+      ASSERT_TRUE(max_stream.next());
+
+      irs::by_granular_range query;
+      query.field("seq")
+           .include<irs::Bound::MIN>(true)
+           .insert<irs::Bound::MIN>(min_term->value())
+           .include<irs::Bound::MAX>(true)
+           .insert<irs::Bound::MAX>(max_term->value());
+
+      auto prepared = query.prepare(rdr);
+
+      std::vector<irs::doc_id_t> expected { 8 };
+      std::vector<irs::doc_id_t> actual;
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
@@ -602,6 +708,39 @@ class granular_range_filter_test_case: public filter_test_case_base {
       ASSERT_EQ(expected, actual);
     }
 
+    // float - value = [123..123]
+    {
+      irs::numeric_token_stream min_stream;
+      min_stream.reset((float_t)123.f);
+      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      ASSERT_TRUE(min_stream.next());
+
+      irs::numeric_token_stream max_stream;
+      max_stream.reset((float_t)123.f);
+      auto& max_term = max_stream.attributes().get<irs::term_attribute>();
+      ASSERT_TRUE(max_stream.next());
+
+      irs::by_granular_range query;
+      query.field("value")
+           .include<irs::Bound::MIN>(true)
+           .insert<irs::Bound::MIN>(min_term->value())
+           .include<irs::Bound::MAX>(true)
+           .insert<irs::Bound::MAX>(max_term->value());
+
+      auto prepared = query.prepare(rdr);
+
+      std::vector<irs::doc_id_t> expected { 3, 8 };
+      std::vector<irs::doc_id_t> actual;
+
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
+        for (;docs->next();) {
+          actual.push_back(docs->value());
+        }
+      }
+      ASSERT_EQ(expected, actual);
+    }
+
     // float - value = [91.524..123)
     {
       ir::numeric_token_stream min_stream;
@@ -712,6 +851,38 @@ class granular_range_filter_test_case: public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub);
+        for (;docs->next();) {
+          actual.push_back(docs->value());
+        }
+      }
+      ASSERT_EQ(expected, actual);
+    }
+
+    // double - value = [123...123]
+    {
+      irs::numeric_token_stream min_stream;
+      min_stream.reset((double_t)123.);
+      auto& min_term = min_stream.attributes().get<irs::term_attribute>();
+      ASSERT_TRUE(min_stream.next());
+      irs::numeric_token_stream max_stream;
+      max_stream.reset((double_t)123.);
+      auto& max_term = max_stream.attributes().get<irs::term_attribute>();
+      ASSERT_TRUE(max_stream.next());
+
+      ir::by_granular_range query;
+      query.field("value")
+           .include<irs::Bound::MIN>(true)
+           .insert<irs::Bound::MIN>(min_term->value())
+           .include<irs::Bound::MAX>(true)
+           .insert<irs::Bound::MAX>(max_term->value());
+
+      auto prepared = query.prepare(rdr);
+
+      std::vector<irs::doc_id_t> expected{ 3, 8 };
+      std::vector<irs::doc_id_t> actual;
+
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub); 
         for (;docs->next();) {
           actual.push_back(docs->value());
         }
@@ -1152,6 +1323,35 @@ class granular_range_filter_test_case: public filter_test_case_base {
     // empty query
     check_query(ir::by_granular_range(), docs_t{}, rdr);
 
+    // value = (..;..) test collector call count for field/term/finish
+    {
+      docs_t docs{ 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
+      costs_t costs{ docs.size() };
+      irs::order order;
+
+      size_t collect_count = 0;
+      size_t finish_count = 0;
+      auto& scorer = order.add<sort::custom_sort>();
+      scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+        ++collect_count;
+      };
+      scorer.collector_finish = [&finish_count](irs::attribute_store&, const irs::index_reader&)->void{
+        ++finish_count;
+      };
+      scorer.prepare_collector = [&scorer]()->irs::sort::collector::ptr{
+        return irs::memory::make_unique<sort::custom_sort::prepared::collector>(scorer);
+      };
+      check_query(
+        irs::by_granular_range()
+          .field("value")
+          .insert<irs::Bound::MIN>(irs::numeric_utils::numeric_traits<double_t>::ninf())
+          .insert<irs::Bound::MAX>(irs::numeric_utils::numeric_traits<double_t>::inf())
+        , order, docs, rdr
+      );
+      ASSERT_EQ(11, collect_count);
+      ASSERT_EQ(11, finish_count); // 11 different terms
+    }
+
     // value = (..;..)
     {
       docs_t docs{ 1, 5, 7, 9, 10, 3, 4, 8, 11, 2, 6, 12, 13, 14, 15, 16, 17 };
@@ -1254,7 +1454,7 @@ TEST(by_granular_range_test, boost) {
     ASSERT_EQ(ir::boost::no_boost(), ir::boost::extract(prepared->attributes()));
   }
 
-  // with boost
+  // with boost, empty query
   {
     iresearch::boost::boost_t boost = 1.5f;
     ir::by_granular_range q;
@@ -1264,7 +1464,7 @@ TEST(by_granular_range_test, boost) {
     q.boost(boost);
 
     auto prepared = q.prepare(tests::empty_index_reader::instance());
-    ASSERT_EQ(boost, ir::boost::extract(prepared->attributes()));
+    ASSERT_EQ(irs::boost::no_boost(), ir::boost::extract(prepared->attributes()));
   }
 }
 
@@ -1290,6 +1490,10 @@ TEST_F(memory_granular_range_filter_test_case, by_range) {
 
 TEST_F(memory_granular_range_filter_test_case, by_range_granularity) {
   by_range_granularity_level();
+}
+
+TEST_F(memory_granular_range_filter_test_case, by_range_granularity_boost) {
+  by_range_granularity_boost();
 }
 
 TEST_F(memory_granular_range_filter_test_case, by_range_numeric) {

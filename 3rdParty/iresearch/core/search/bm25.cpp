@@ -32,7 +32,7 @@ NS_ROOT
 // |doc| = index_time_doc_boost / sqrt(# of terms in a field within a document)
 
 // average document length
-// avgDL = total_term_frequency / total_docs_count;
+// avgDL = sum(field_term_count) / (# documents with this field)
 
 NS_BEGIN(bm25)
 
@@ -131,20 +131,19 @@ class collector final : public iresearch::sort::collector {
     : k_(k), b_(b) {
   }
 
-  virtual void field(
-      const sub_reader& /* segment */,
-      const term_reader& field) override {
+  virtual void collect(
+      const sub_reader& segment,
+      const term_reader& field,
+      const attribute_view& term_attrs
+  ) override {
+    UNUSED(segment);
     auto& freq = field.attributes().get<frequency>();
+    auto& meta = term_attrs.get<term_meta>();
 
     if (freq) {
+      field_count += field.docs_count();
       total_term_freq += freq->value;
     }
-
-    docs_count += field.docs_count();
-  }
-
-  virtual void term(const attribute_view& term_attrs) override {
-    auto& meta = term_attrs.get<iresearch::term_meta>();
 
     if (meta) {
       docs_count += meta->docs_count;
@@ -152,31 +151,31 @@ class collector final : public iresearch::sort::collector {
   }
 
   virtual void finish(
-      const iresearch::index_reader& index_reader, 
-      attribute_store& query_attrs
+      attribute_store& filter_attrs,
+      const index_reader& index
   ) override {
-    auto& bm25stats = query_attrs.emplace<stats>();
+    auto& bm25stats = filter_attrs.emplace<stats>();
 
     // precomputed idf value
-    bm25stats->idf = 1 + static_cast<float_t>(
-      std::log(index_reader.docs_count() / double_t(docs_count + 1))
-    ); 
+    bm25stats->idf =
+      1 + float_t(std::log(index.docs_count() / double_t(docs_count + 1)));
 
     // precomputed length norm
     const float_t kb = k_ * b_;
     bm25stats->norm_const = k_ - kb;
     bm25stats->norm_length = kb;
     if (total_term_freq && docs_count) {
-      const auto avg_doc_len = static_cast<float_t>(total_term_freq) / docs_count;
+      const auto avg_doc_len = float_t(total_term_freq) / field_count;
       bm25stats->norm_length /= avg_doc_len;
     }
 
     // add norm attribute
-    query_attrs.emplace<norm>();
+    filter_attrs.emplace<norm>();
   }
 
  private:
   uint64_t docs_count = 0; // number of documents that have at least one term for processed fields
+  uint64_t field_count = 0; // number of documents with the specified field
   uint64_t total_term_freq = 0; // number of tokens for processed fields
   float_t k_;
   float_t b_;
@@ -186,8 +185,7 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
  public:
   DECLARE_FACTORY(prepared);
 
-  sort(float_t k, float_t b, bool reverse)
-    : k_(k), b_(b) {
+  sort(float_t k, float_t b, bool reverse): k_(k), b_(b) {
     static const std::function<bool(score_t, score_t)> greater = std::greater<score_t>();
     static const std::function<bool(score_t, score_t)> less = std::less<score_t>();
     less_ = reverse ? &greater : &less;
@@ -239,7 +237,7 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
     return (*less_)(lhs, rhs);
   }
 
- private: 
+ private:
   const std::function<bool(score_t, score_t)>* less_;
   float_t k_;
   float_t b_;

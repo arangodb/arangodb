@@ -46,24 +46,26 @@ struct range {
 
 NS_END // detail
 
+class term_selector;
+
 //////////////////////////////////////////////////////////////////////////////
-/// @class by_range 
+/// @class by_range
 /// @brief user-side term range filter
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API by_range: public filter {
+class IRESEARCH_API by_range : public filter {
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY_DEFAULT();
 
-  by_range();
+  by_range() NOEXCEPT;
 
   using filter::prepare;
-  
+
   virtual filter::prepared::ptr prepare(
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost) const override;
-  
+
   by_range& field(std::string fld) {
     fld_ = std::move(fld); 
     return *this;
@@ -72,7 +74,7 @@ class IRESEARCH_API by_range: public filter {
   const std::string& field() const { 
     return fld_; 
   }
-  
+
   template<Bound B>
   const bstring& term() const {
     return get<B>::term(const_cast<range_t&>(rng_));

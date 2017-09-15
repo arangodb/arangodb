@@ -22,6 +22,16 @@
 NS_ROOT
 NS_BEGIN(memory)
 
+// ----------------------------------------------------------------------------
+// --SECTION--                                                    is_shared_ptr
+// ----------------------------------------------------------------------------
+
+template<typename T>
+struct is_shared_ptr : std::false_type {};
+
+template<typename T>
+struct is_shared_ptr<std::shared_ptr<T>> : std::true_type {};
+
 ///////////////////////////////////////////////////////////////////////////////
 /// @brief dump memory statistics and stack trace to stderr
 ///////////////////////////////////////////////////////////////////////////////
@@ -406,6 +416,27 @@ typename std::enable_if<
   void
 >::type allocate_unique(Alloc&, Types&&...) = delete;
 
+// ----------------------------------------------------------------------------
+// --SECTION--                                                            maker
+// ----------------------------------------------------------------------------
+
+template<typename Class, bool = is_shared_ptr<typename Class::ptr>::value>
+struct maker {
+  template<typename... Args>
+  static typename Class::ptr make(Args&&... args) {
+    // creates shared_ptr with a single heap allocation
+    return std::make_shared<Class>(std::forward<Args>(args)...);
+  }
+};
+
+template<typename Class>
+struct maker<Class, false> {
+  template<typename... Args>
+  static typename Class::ptr make(Args&&... args) {
+    return typename Class::ptr(new Class(std::forward<Args>(args)...));
+  }
+};
+
 NS_END // memory
 NS_END // ROOT
 
@@ -442,11 +473,13 @@ NS_END // ROOT
 #define DECLARE_CREF(class_name) typedef std::reference_wrapper<const class_name> cref
 
 #define DECLARE_FACTORY(class_name) \
+template<typename Class, bool> friend struct irs::memory::maker; \
 template<typename _T, typename... _Args> \
 static ptr make(_Args&&... args) { \
   typedef typename std::enable_if<std::is_base_of<class_name, _T>::value, _T>::type type; \
   try { \
-    return ptr(new type(std::forward<_Args>(args)...)); \
+    typedef irs::memory::maker<type> maker_t; \
+    return maker_t::template make(std::forward<_Args>(args)...); \
   } catch (std::bad_alloc&) { \
     fprintf( \
       stderr, \

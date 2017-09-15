@@ -16,12 +16,14 @@
 
 NS_ROOT
 
-class IRESEARCH_API by_prefix final : public by_term {
+class term_selector;
+
+class IRESEARCH_API by_prefix final : public by_term { /* public multiterm_filter<limited_term_selector> { */
  public:
   DECLARE_FILTER_TYPE();
   DECLARE_FACTORY_DEFAULT();
 
-  by_prefix();
+  by_prefix() NOEXCEPT;
 
   using by_term::field;
 
@@ -56,6 +58,13 @@ class IRESEARCH_API by_prefix final : public by_term {
 
  protected:
   virtual bool equals(const filter& rhs) const override;
+
+  virtual void collect_terms(
+    term_selector& selector,
+    const sub_reader& segment,
+    const term_reader& field,
+    seek_term_iterator& terms
+  ) const;
 
  private:
   size_t scored_terms_limit_{1024};

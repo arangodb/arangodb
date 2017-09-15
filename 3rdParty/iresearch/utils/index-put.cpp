@@ -14,6 +14,7 @@
 #include "analysis/token_streams.hpp"
 #include "analysis/text_token_stream.hpp"
 #include "store/fs_directory.hpp"
+#include "store/store_utils.hpp"
 #include "analysis/token_attributes.hpp"
 
 #include <boost/thread.hpp>
@@ -517,3 +518,7 @@ int put(int argc, char* argv[]) {
 
   return put(cmdput);
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

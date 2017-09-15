@@ -100,7 +100,9 @@ set(IResearch_core_sources
   ./search/scorers.cpp
   ./search/sort.cpp
   ./search/cost.cpp
+  ./search/score.cpp
   ./search/score_doc_iterators.cpp
+  ./search/bitset_doc_iterator.cpp
   ./search/filter.cpp
   ./search/term_filter.cpp
   ./search/prefix_filter.cpp
@@ -117,6 +119,7 @@ set(IResearch_core_sources
   ./store/directory_attributes.cpp
   ./store/directory_cleaner.cpp
   ./store/fs_directory.cpp
+  ./store/mmap_directory.cpp
   ./store/memory_directory.cpp 
   ./store/store_utils.cpp 
   ./utils/async_utils.cpp
@@ -125,6 +128,7 @@ set(IResearch_core_sources
   ./utils/compression.cpp
   ./utils/directory_utils.cpp
   ./utils/file_utils.cpp 
+  ./utils/mmap_utils.cpp 
   ./utils/hash_utils.cpp
   ./utils/index_utils.cpp
   ./utils/math_utils.cpp 

@@ -84,15 +84,18 @@ struct IRESEARCH_API stored_attribute : attribute {
 
 class IRESEARCH_API attribute_registrar {
  public:
-  attribute_registrar(const attribute::type_id& type);
+  attribute_registrar(
+    const attribute::type_id& type,
+    const char* source = nullptr
+  );
   operator bool() const NOEXCEPT;
  private:
   bool registered_;
 };
 
-#define REGISTER_ATTRIBUTE__(attribute_name, line) static ::iresearch::attribute_registrar attribute_registrar ## _ ## line(attribute_name::type())
-#define REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, line) REGISTER_ATTRIBUTE__(attribute_name, line)
-#define REGISTER_ATTRIBUTE(attribute_name) REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, __LINE__)
+#define REGISTER_ATTRIBUTE__(attribute_name, line, source) static ::iresearch::attribute_registrar attribute_registrar ## _ ## line(attribute_name::type(), source)
+#define REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, file, line) REGISTER_ATTRIBUTE__(attribute_name, line, file ":" TOSTRING(line))
+#define REGISTER_ATTRIBUTE(attribute_name) REGISTER_ATTRIBUTE_EXPANDER__(attribute_name, __FILE__, __LINE__)
 
 //////////////////////////////////////////////////////////////////////////////
 /// @class basic_attribute
@@ -287,6 +290,8 @@ class IRESEARCH_API_TEMPLATE attribute_map {
     T& operator*() const NOEXCEPT { return reinterpret_cast<T&>(*ptr_); }
     T* operator->() const NOEXCEPT { return ptr_cast(ptr_); }
     explicit operator bool() const NOEXCEPT { return nullptr != ptr_; }
+    operator T*() NOEXCEPT { return get(); }
+    operator const T*() const NOEXCEPT { return get(); }
 
     T* get() const { return ptr_cast(ptr_); }
     static const ref<T>& nil() NOEXCEPT { static const ref<T> nil; return nil; }
@@ -464,7 +469,7 @@ class IRESEARCH_API_TEMPLATE attribute_map {
 //////////////////////////////////////////////////////////////////////////////
 /// @brief storage of shared_ptr to attributes
 //////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API attribute_store: public attribute_map<stored_attribute::ptr> {
+class IRESEARCH_API attribute_store: public attribute_map<std::shared_ptr<stored_attribute>> {
  public:
   attribute_store(size_t reserve = 0);
 
@@ -513,7 +518,7 @@ class IRESEARCH_API attribute_view: public attribute_map<attribute*> {
     auto& attr = attribute_map::emplace(inserted, type::type());
 
     if (inserted) {
-      reinterpret_cast<ref<type>&>(attr) = value;
+      reinterpret_cast<ref<type>&>(attr) = std::move(value);
     }
 
     return reinterpret_cast<ref<T>&>(attr);

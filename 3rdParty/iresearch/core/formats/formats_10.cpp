@@ -45,6 +45,16 @@ NS_LOCAL
 
 irs::bytes_ref DUMMY; // placeholder for visiting logic in columnstore
 
+const irs::columnstore_iterator::value_type INVALID{
+  irs::type_limits<irs::type_t::doc_id_t>::invalid(),
+  irs::bytes_ref::nil
+};
+
+const irs::columnstore_iterator::value_type EOFMAX{
+  irs::type_limits<irs::type_t::doc_id_t>::eof(),
+  irs::bytes_ref::nil
+};
+
 NS_END
 
 NS_ROOT
@@ -2161,7 +2171,7 @@ class sparse_block : util::noncopyable {
  public:
   class iterator {
    public:
-    typedef columnstore_reader::column_iterator::value_type value_t;
+    typedef columnstore_iterator::value_type value_t;
 
     const value_t& value() const NOEXCEPT {
       return value_;
@@ -2198,12 +2208,12 @@ class sparse_block : util::noncopyable {
     }
 
     void seal() NOEXCEPT {
-      value_ = columnstore_reader::column_iterator::EOFMAX;
+      value_ = EOFMAX;
       next_ = begin_ = end_;
     }
 
     void reset(const sparse_block& block) NOEXCEPT {
-      value_ = columnstore_reader::column_iterator::INVALID;
+      value_ = INVALID;
       next_ = begin_ = std::begin(block.index_);
       end_ = block.end_;
       data_ = &block.data_;
@@ -2224,7 +2234,7 @@ class sparse_block : util::noncopyable {
     }
 
    private:
-    value_t value_{ columnstore_reader::column_iterator::INVALID };
+    value_t value_{ INVALID };
     const sparse_block::ref* next_{}; // next position
     const sparse_block::ref* begin_{};
     const sparse_block::ref* end_{};
@@ -2340,7 +2350,7 @@ class dense_block : util::noncopyable {
  public:
   class iterator {
    public:
-    typedef columnstore_reader::column_iterator::value_type value_t;
+    typedef columnstore_iterator::value_type value_t;
 
     const value_t& value() const NOEXCEPT {
       return value_;
@@ -2371,7 +2381,7 @@ class dense_block : util::noncopyable {
     }
 
     void seal() NOEXCEPT {
-      value_ = columnstore_reader::column_iterator::EOFMAX;
+      value_ = EOFMAX;
       it_ = begin_ = end_;
     }
 
@@ -2405,7 +2415,7 @@ class dense_block : util::noncopyable {
       );
     }
 
-    value_t value_{ columnstore_reader::column_iterator::INVALID };
+    value_t value_{ INVALID };
     const uint64_t* begin_{};
     const uint64_t* it_{};
     const uint64_t* end_{};
@@ -2512,7 +2522,7 @@ class dense_fixed_length_block : util::noncopyable {
  public:
   class iterator {
    public:
-    typedef columnstore_reader::column_iterator::value_type value_t;
+    typedef columnstore_iterator::value_type value_t;
 
     const value_t& value() const NOEXCEPT {
       return value_;
@@ -2541,7 +2551,7 @@ class dense_fixed_length_block : util::noncopyable {
     }
 
     void seal() NOEXCEPT {
-      value_ = columnstore_reader::column_iterator::EOFMAX;
+      value_ = EOFMAX;
       begin_ = end_ = 0;
     }
 
@@ -2570,7 +2580,7 @@ class dense_fixed_length_block : util::noncopyable {
       begin_ += avg_length_;
     }
 
-    value_t value_{ columnstore_reader::column_iterator::INVALID };
+    value_t value_{ INVALID };
     uint64_t begin_{}; // start offset
     uint64_t end_{}; // end offset
     uint64_t avg_length_{}; // average value length
@@ -2654,7 +2664,7 @@ class sparse_mask_block : util::noncopyable {
  public:
   class iterator {
    public:
-    typedef columnstore_reader::column_iterator::value_type value_t;
+    typedef columnstore_iterator::value_type value_t;
 
     const value_t& value() const NOEXCEPT {
       return value_;
@@ -2677,12 +2687,12 @@ class sparse_mask_block : util::noncopyable {
     }
 
     void seal() NOEXCEPT {
-      value_ = columnstore_reader::column_iterator::EOFMAX;
+      value_ = EOFMAX;
       it_ = begin_ = end_;
     }
 
     void reset(const sparse_mask_block& block) NOEXCEPT {
-      value_ = columnstore_reader::column_iterator::INVALID;
+      value_ = INVALID;
       it_ = begin_ = std::begin(block.keys_);
       end_ = begin_ + block.size_;
 
@@ -2698,7 +2708,7 @@ class sparse_mask_block : util::noncopyable {
     }
 
    private:
-    value_t value_{ columnstore_reader::column_iterator::INVALID };
+    value_t value_{ INVALID };
     const doc_id_t* it_{};
     const doc_id_t* begin_{};
     const doc_id_t* end_{};
@@ -2968,7 +2978,7 @@ class column
 }; // column
 
 template<typename Column>
-class column_iterator final : public irs::columnstore_reader::column_iterator {
+class column_iterator final : public irs::columnstore_iterator {
  public:
   typedef Column column_t;
   typedef typename Column::block_t block_t;
@@ -3183,12 +3193,12 @@ class sparse_column final : public column {
     return true;
   }
 
-  virtual columnstore_reader::column_iterator::ptr iterator() const {
+  virtual columnstore_iterator::ptr iterator() const {
     typedef column_iterator<column_t> iterator_t;
 
     return empty()
       ? columnstore_reader::empty_iterator()
-      : columnstore_reader::column_iterator::make<iterator_t>(
+      : columnstore_iterator::make<iterator_t>(
           *this,
           refs_.data(),
           refs_.data() + refs_.size() - 1 // -1 for upper bound
@@ -3377,12 +3387,12 @@ class dense_fixed_length_column final : public column {
     return true;
   }
 
-  virtual columnstore_reader::column_iterator::ptr iterator() const {
+  virtual columnstore_iterator::ptr iterator() const {
     typedef column_iterator<column_t> iterator_t;
 
     return empty()
       ? columnstore_reader::empty_iterator()
-      : columnstore_reader::column_iterator::make<iterator_t>(
+      : columnstore_iterator::make<iterator_t>(
           *this,
           refs_.data(),
           refs_.data() + refs_.size()
@@ -3532,14 +3542,14 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
     return true;
   }
 
-  virtual columnstore_reader::column_iterator::ptr iterator() const;
+  virtual columnstore_iterator::ptr iterator() const;
 
   virtual columnstore_reader::values_reader_f values() const {
     return column_values<column_t>(*this);
   }
 
  private:
-  class column_iterator final : public columnstore_reader::column_iterator {
+  class column_iterator final : public columnstore_iterator {
    public:
     explicit column_iterator(const column_t& column) NOEXCEPT
       : min_(1 + column.min_), max_(column.max()) {
@@ -3573,7 +3583,7 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
     }
 
    private:
-    value_type value_{ columnstore_reader::column_iterator::INVALID };
+    value_type value_{ INVALID };
     doc_id_t min_{ type_limits<type_t::doc_id_t>::invalid() };
     doc_id_t max_{ type_limits<type_t::doc_id_t>::invalid() };
   }; // column_iterator
@@ -3581,10 +3591,10 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
   doc_id_t min_{}; // min key (less than any key in column)
 }; // dense_fixed_length_column
 
-columnstore_reader::column_iterator::ptr dense_fixed_length_column<dense_mask_block>::iterator() const {
+columnstore_iterator::ptr dense_fixed_length_column<dense_mask_block>::iterator() const {
   return empty()
     ? columnstore_reader::empty_iterator()
-    : columnstore_reader::column_iterator::make<column_iterator>(*this);
+    : columnstore_iterator::make<column_iterator>(*this);
 }
 
 // ----------------------------------------------------------------------------
@@ -3609,7 +3619,7 @@ column_factory_f g_column_factories[] {
 //////////////////////////////////////////////////////////////////////////////
 /// @class reader
 //////////////////////////////////////////////////////////////////////////////
-class reader final : public columnstore_reader, public context_provider {
+class IRESEARCH_PLUGIN reader final : public columnstore_reader, public context_provider {
  public:
   explicit reader(size_t pool_size = 16)
     : context_provider(pool_size) {

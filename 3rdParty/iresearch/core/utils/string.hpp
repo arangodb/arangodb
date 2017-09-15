@@ -44,7 +44,7 @@ inline std::basic_string<T>& oversize(
 /// @class basic_string_ref
 //////////////////////////////////////////////////////////////////////////////
 template<typename Elem, typename Traits = std::char_traits<Elem>>
-class basic_string_ref {
+class IRESEARCH_API basic_string_ref {
  public:
   typedef Traits traits_type;
   typedef Elem char_type;
@@ -182,7 +182,6 @@ class basic_string_ref {
 }; // basic_string_ref
 
 template class IRESEARCH_API basic_string_ref<char>;
-template class IRESEARCH_API basic_string_ref<wchar_t>;
 template class IRESEARCH_API basic_string_ref<byte_type>;
 
 template < typename _Elem, typename _Traits > 

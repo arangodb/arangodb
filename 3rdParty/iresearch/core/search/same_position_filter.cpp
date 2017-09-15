@@ -22,25 +22,15 @@
 
 NS_ROOT
 
-template<typename Conjunction>
-class same_position_iterator final : public Conjunction {
+class same_position_iterator final : public conjunction {
  public:
-  typedef typename Conjunction::doc_iterator doc_iterator_t;
-  typedef typename Conjunction::traits_t traits_t;
-  typedef typename std::enable_if<
-    std::is_base_of<
-      detail::conjunction<doc_iterator_t, traits_t>, 
-      Conjunction
-    >::value, Conjunction
-  >::type conjunction_t;
-
   typedef std::vector<position::cref> positions_t;
 
   same_position_iterator(
-      typename conjunction_t::doc_iterators_t&& itrs,
+      conjunction::doc_iterators_t&& itrs,
       const order::prepared& ord,
       positions_t&& pos)
-    : conjunction_t(std::move(itrs), ord),
+    : conjunction(std::move(itrs), ord),
       pos_(std::move(pos)) {
     assert(!pos_.empty());
   }
@@ -53,7 +43,7 @@ class same_position_iterator final : public Conjunction {
 
   virtual bool next() override {
     bool next = false;
-    while(true == (next = conjunction_t::next()) && !find_same_position()) {}
+    while (true == (next = conjunction::next()) && !find_same_position()) {}
     return next;
   }
 
@@ -64,7 +54,7 @@ class same_position_iterator final : public Conjunction {
 #endif
 
   virtual doc_id_t seek(doc_id_t target) override {
-    const auto doc = conjunction_t::seek(target);
+    const auto doc = conjunction::seek(target);
 
     if (type_limits<type_t::doc_id_t>::eof(doc) || find_same_position()) {
       return doc; 
@@ -114,28 +104,23 @@ class same_position_query final : public filter::prepared {
 
   using filter::prepared::execute;
 
-  virtual score_doc_iterator::ptr execute(
+  virtual doc_iterator::ptr execute(
       const sub_reader& segment,
       const order::prepared& ord) const override {
-    typedef detail::conjunction<score_wrapper<
-      score_doc_iterator::ptr>
-    > conjunction_t;
-    typedef same_position_iterator<conjunction_t> same_position_iterator_t;
-
     // get query state for the specified reader
     auto query_state = states_.find(segment);
     if (!query_state) {
       // invalid state 
-      return score_doc_iterator::empty();
+      return doc_iterator::empty();
     }
 
     // get features required for query & order
     auto features = ord.features() | by_same_position::features();
 
-    same_position_iterator_t::doc_iterators_t itrs;
+    same_position_iterator::doc_iterators_t itrs;
     itrs.reserve(query_state->size());
 
-    same_position_iterator_t::positions_t positions;
+    same_position_iterator::positions_t positions;
     positions.reserve(itrs.size());
 
     auto term_stats = stats_.begin();
@@ -145,7 +130,7 @@ class same_position_query final : public filter::prepared {
       // use bytes_ref::nil here since we do not need just to "jump"
       // to cached state, and we are not interested in term value itself */
       if (!term->seek(bytes_ref::nil, *term_state.cookie)) {
-        return score_doc_iterator::empty();
+        return doc_iterator::empty();
       }
 
       // get postings
@@ -155,12 +140,12 @@ class same_position_query final : public filter::prepared {
       auto& pos = docs->attributes().get<position>();
       if (!pos) {
         // positions not found
-        return score_doc_iterator::empty();
+        return doc_iterator::empty();
       }
       positions.emplace_back(std::cref(*pos));
 
       // add base iterator
-      itrs.emplace_back(score_doc_iterator::make<basic_score_iterator>(
+      itrs.emplace_back(doc_iterator::make<basic_doc_iterator>(
         segment,
         *term_state.reader,
         *term_stats,
@@ -172,7 +157,7 @@ class same_position_query final : public filter::prepared {
       ++term_stats;
     }
 
-    return detail::make_conjunction<same_position_iterator_t>(
+    return make_conjunction<same_position_iterator>(
       std::move(itrs), ord, std::move(positions)
     );
   }
@@ -254,15 +239,19 @@ filter::prepared::ptr by_same_position::prepare(
   term_states.reserve(terms_.size());
 
   // prepare phrase stats (collector for each term)
-  std::vector<order::prepared::stats> query_stats;
-  query_stats.reserve(terms_.size());
+  std::vector<order::prepared::stats> term_stats;
+  term_stats.reserve(terms_.size());
+
   for(auto size = terms_.size(); size; --size) {
-    query_stats.emplace_back(ord.prepare_stats());
+    term_stats.emplace_back(ord.prepare_stats());
   }
-  
+
   for (const auto& segment : index) {
-    auto term_stats = query_stats.begin();
+    auto term_itr = term_stats.begin();
+
     for (const auto& branch : terms_) {
+      auto next_stats = irs::make_finally([&term_itr]()->void{ ++term_itr; });
+
       // get term dictionary for field
       const term_reader* field = segment.field(branch.first);
       if (!field) {
@@ -288,18 +277,15 @@ filter::prepared::ptr by_same_position::prepare(
           continue;
         }
       }
-      
+
       term->read(); // read term attributes
-      term_stats->field(segment, *field); // collect field stats
-      term_stats->term(term->attributes()); // collect term stats
+      term_itr->collect(segment, *field, term->attributes()); // collect statistics
 
       term_states.emplace_back();
       auto& state = term_states.back();
       state.cookie = term->cookie();
       state.estimation = meta ? meta->docs_count : cost::MAX;
       state.reader = field;
-
-      ++term_stats;
     }
 
     if (term_states.size() != terms_.size()) {
@@ -310,21 +296,27 @@ filter::prepared::ptr by_same_position::prepare(
 
     auto& state = query_states.insert(segment);
     state = std::move(term_states);
+
     term_states.reserve(terms_.size());
   }
 
   // finish stats
   same_position_query::stats_t stats(terms_.size());
-  auto term_stats = query_stats.begin();
-  for(auto& stat : stats) {
-    term_stats->finish(index, stat);
-    ++term_stats;
+  auto stat_itr = stats.begin();
+  auto term_itr = term_stats.begin();
+  assert(term_stats.size() == terms_.size()); // initialized above
+
+  for (size_t i = 0, size = terms_.size(); i < size; ++i) {
+    term_itr->finish(*stat_itr, index);
+    ++stat_itr;
+    ++term_itr;
   }
 
   auto q = memory::make_unique<same_position_query>(
-    std::move(query_states), std::move(stats)
+    std::move(query_states),
+    std::move(stats)
   );
-  
+
   // apply boost
   iresearch::boost::apply(q->attributes(), this->boost() * boost);
 
@@ -332,3 +324,7 @@ filter::prepared::ptr by_same_position::prepare(
 }
 
 NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

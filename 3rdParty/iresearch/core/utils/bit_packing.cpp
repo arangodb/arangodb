@@ -24,7 +24,9 @@ NS_LOCAL
   __pragma(warning(disable:4724)) // all X % zero are masked by constexpr conditionals (must disable outside of fn body)
 #elif defined (__GNUC__)
   #pragma GCC diagnostic push
-  #pragma GCC diagnostic ignored "-Wshift-count-negative" // all negative shifts are masked by constexpr conditionals
+  #if (__GNUC__ >= 5)
+    #pragma GCC diagnostic ignored "-Wshift-count-negative" // all negative shifts are masked by constexpr conditionals
+  #endif
 #endif
 
 

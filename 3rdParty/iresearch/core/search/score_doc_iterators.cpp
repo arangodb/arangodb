@@ -14,9 +14,8 @@
 
 NS_ROOT
 
-score_doc_iterator_base::score_doc_iterator_base(const order::prepared& ord)
+doc_iterator_base::doc_iterator_base(const order::prepared& ord)
   : ord_(&ord) {
-  irs::score::apply(attrs_, scr_, ord);
 }
 
 #if defined(_MSC_VER)
@@ -25,25 +24,29 @@ score_doc_iterator_base::score_doc_iterator_base(const order::prepared& ord)
   #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
-basic_score_iterator::basic_score_iterator(
+basic_doc_iterator::basic_doc_iterator(
     const sub_reader& segment,
     const term_reader& field,
     const attribute_store& stats,
     doc_iterator::ptr&& it,
     const order::prepared& ord,
     cost::cost_t estimation) NOEXCEPT
-  : score_doc_iterator_base(ord),
+  : doc_iterator_base(ord),
     it_(std::move(it)), 
     stats_(&stats) {
-  assert( it_ );
+  assert(it_);
+
   // set estimation value
-  est_.value(estimation);
-  attrs_.emplace(est_);
+  estimate(estimation);
 
   // set scorers
   scorers_ = ord_->prepare_scorers(
     segment, field, *stats_, it_->attributes()
   );
+
+  prepare_score([this](byte_type* score) {
+    scorers_.score(*ord_, score);
+  });
 }
 
 #if defined(_MSC_VER)

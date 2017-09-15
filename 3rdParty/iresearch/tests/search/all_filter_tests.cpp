@@ -15,6 +15,7 @@
 #include "store/memory_directory.hpp"
 #include "store/fs_directory.hpp"
 #include "formats/formats.hpp"
+#include "search/score.hpp"
 
 namespace ir = iresearch;
 
@@ -65,23 +66,30 @@ protected:
     {
       docs_t docs{ 1, 4, 5, 16, 17, 20, 21, 2, 3, 6, 7, 18, 19, 22, 23, 8, 9, 12, 13, 24, 25, 28, 29, 10, 11, 14, 15, 26, 27, 30, 31, 32 };
       irs::order order;
-      size_t collector_field_count = 0;
+      size_t collector_collect_count = 0;
       size_t collector_finish_count = 0;
-      size_t collector_term_count = 0;
       size_t scorer_score_count = 0;
       auto& sort = order.add<sort::custom_sort>();
 
-      sort.collector_field = [&collector_field_count](const irs::sub_reader&, const irs::term_reader&)->void { ++collector_field_count; };
-      sort.collector_finish = [&collector_finish_count](const irs::index_reader&, irs::attribute_store&)->void { ++collector_finish_count; };
-      sort.collector_term = [&collector_term_count](const irs::attribute_view&)->void { ++collector_term_count; };
-      sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { dst = src; };
-      sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool { return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA); };
-      sort.scorer_score = [&scorer_score_count](irs::doc_id_t)->void { ++scorer_score_count; };
+      sort.collector_collect = [&collector_collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void {
+        ++collector_collect_count;
+      };
+      sort.collector_finish = [&collector_finish_count](irs::attribute_store&, const irs::index_reader&)->void {
+        ++collector_finish_count;
+      };
+      sort.scorer_add = [](irs::doc_id_t& dst, const irs::doc_id_t& src)->void { 
+        dst = src; 
+      };
+      sort.scorer_less = [](const irs::doc_id_t& lhs, const irs::doc_id_t& rhs)->bool {
+        return (lhs & 0xAAAAAAAAAAAAAAAA) < (rhs & 0xAAAAAAAAAAAAAAAA); 
+      };
+      sort.scorer_score = [&scorer_score_count](irs::doc_id_t)->void { 
+        ++scorer_score_count;
+      };
 
       check_query(irs::all(), order, docs, rdr);
-      ASSERT_EQ(0, collector_field_count); // should not be executed
+      ASSERT_EQ(0, collector_collect_count); // should not be executed
       ASSERT_EQ(1, collector_finish_count);
-      ASSERT_EQ(0, collector_term_count); // should not be executed
       ASSERT_EQ(32, scorer_score_count);
     }
 

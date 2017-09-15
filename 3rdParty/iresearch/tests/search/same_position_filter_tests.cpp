@@ -24,6 +24,103 @@ namespace tests {
 
 class same_position_filter_test_case : public filter_test_case_base {
  protected:
+  void sub_objects_ordered() {
+    // add segment
+    {
+      tests::json_doc_generator gen(
+        resource("phrase_sequential.json"),
+        [](tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+          if (data.is_string()) { // field
+            doc.insert(std::make_shared<templates::text_field<std::string>>(name, data.str), true, false);
+          } else if (data.is_number()) { // seq
+            const auto value = std::to_string(data.as_number<uint64_t>());
+            doc.insert(std::make_shared<templates::string_field>(name, value), false, true);
+          }
+      });
+      add_segment(gen);
+      gen.reset();
+      add_segment(gen, irs::OPEN_MODE::OM_APPEND);
+    }
+
+    // read segment
+    auto index = open_reader();
+
+    // collector count (no branches)
+    {
+      irs::by_same_position filter;
+
+      size_t collect_count = 0;
+      size_t finish_count = 0;
+      irs::order order;
+      auto& scorer = order.add<tests::sort::custom_sort>();
+      scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+        ++collect_count;
+      };
+      scorer.collector_finish = [&finish_count](irs::attribute_store&, const irs::index_reader&)->void{
+        ++finish_count;
+      };
+      scorer.prepare_collector = [&scorer]()->irs::sort::collector::ptr{
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+      };
+
+      auto pord = order.prepare();
+      auto prepared = filter.prepare(index, pord);
+      ASSERT_EQ(0, collect_count);
+      ASSERT_EQ(0, finish_count); // no terms optimization
+    }
+
+    // collector count (single term)
+    {
+      irs::by_same_position filter;
+      filter.push_back("phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+
+      size_t collect_count = 0;
+      size_t finish_count = 0;
+      irs::order order;
+      auto& scorer = order.add<tests::sort::custom_sort>();
+      scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+        ++collect_count;
+      };
+      scorer.collector_finish = [&finish_count](irs::attribute_store&, const irs::index_reader&)->void{
+        ++finish_count;
+      };
+      scorer.prepare_collector = [&scorer]()->irs::sort::collector::ptr{
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+      };
+
+      auto pord = order.prepare();
+      auto prepared = filter.prepare(index, pord);
+      ASSERT_EQ(2, collect_count); // 1 term in 2 segments
+      ASSERT_EQ(1, finish_count); // 1 unique term
+    }
+
+    // collector count (multiple terms)
+    {
+      irs::by_same_position filter;
+      filter.push_back("phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("quick")));
+      filter.push_back("phrase", irs::ref_cast<irs::byte_type>(irs::string_ref("brown")));
+
+      size_t collect_count = 0;
+      size_t finish_count = 0;
+      irs::order order;
+      auto& scorer = order.add<tests::sort::custom_sort>();
+      scorer.collector_collect = [&collect_count](const irs::sub_reader&, const irs::term_reader&, const irs::attribute_view&)->void{
+        ++collect_count;
+      };
+      scorer.collector_finish = [&finish_count](irs::attribute_store&, const irs::index_reader&)->void{
+        ++finish_count;
+      };
+      scorer.prepare_collector = [&scorer]()->irs::sort::collector::ptr{
+        return irs::memory::make_unique<tests::sort::custom_sort::prepared::collector>(scorer);
+      };
+
+      auto pord = order.prepare();
+      auto prepared = filter.prepare(index, pord);
+      ASSERT_EQ(4, collect_count); // 2 term in 2 segments
+      ASSERT_EQ(2, finish_count); // 2 unique terms
+    }
+  }
+
   void sub_objects_unordered() {
     // add segment
     tests::json_doc_generator gen(
@@ -384,7 +481,7 @@ TEST(by_same_position_test, boost) {
       auto prepared = q.prepare(tests::empty_index_reader::instance());
       ASSERT_EQ(boost, ir::boost::extract(prepared->attributes()));
     }
-    
+
     // single multiple terms 
     {
       ir::by_same_position q;
@@ -397,6 +494,7 @@ TEST(by_same_position_test, boost) {
     }
   }
 }
+
 TEST(by_same_position_test, equal) {
   ASSERT_EQ(ir::by_same_position(), ir::by_same_position());
 
@@ -404,7 +502,7 @@ TEST(by_same_position_test, equal) {
     ir::by_same_position q0;
     q0.push_back("speed", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("quick")));
     q0.push_back("color", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("brown")));
-    
+
     ir::by_same_position q1;
     q1.push_back("speed", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("quick")));
     q1.push_back("color", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("brown")));
@@ -416,32 +514,32 @@ TEST(by_same_position_test, equal) {
     q0.push_back("speed", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("quick")));
     q0.push_back("color", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("brown")));
     q0.push_back("name", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("fox")));
-    
+
     ir::by_same_position q1;
     q1.push_back("speed", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("quick")));
     q1.push_back("color", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("brown")));
     q1.push_back("name", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("squirrel")));
     ASSERT_NE(q0, q1);
   }
-  
+
   {
     ir::by_same_position q0;
     q0.push_back("Speed", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("quick")));
     q0.push_back("color", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("brown")));
     q0.push_back("name", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("fox")));
-    
+
     ir::by_same_position q1;
     q1.push_back("speed", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("quick")));
     q1.push_back("color", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("brown")));
     q1.push_back("name", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("fox")));
     ASSERT_NE(q0, q1);
   }
-  
+
   {
     ir::by_same_position q0;
     q0.push_back("speed", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("quick")));
     q0.push_back("color", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("brown")));
-    
+
     ir::by_same_position q1;
     q1.push_back("speed", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("quick")));
     q1.push_back("color", iresearch::ref_cast<iresearch::byte_type>(iresearch::string_ref("brown")));
@@ -467,6 +565,7 @@ protected:
 };
 
 TEST_F(memory_same_position_filter_test_case, by_same_position) {
+  sub_objects_ordered();
   sub_objects_unordered();
 }
 
@@ -487,5 +586,6 @@ protected:
 };
 
 TEST_F(fs_same_position_filter_test_case, by_same_position) {
+  sub_objects_ordered();
   sub_objects_unordered();
 }

@@ -237,12 +237,22 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
   ////////////////////////////////////////////////////////////////////////////////
   class LinkNode: public irs::iql::proxy_filter_t<std::shared_ptr<iresearch::filter>> {
    public:
-    LinkNode(iresearch::filter* link):
-      proxy_filter_t(LinkNode::type()) { filter_ = std::move(ptr(link)); }
-    LinkNode(LinkNode& other):
-      proxy_filter_t(LinkNode::type()) { filter_ = other.filter_; }
+    LinkNode(iresearch::filter* link): proxy_filter_t(LinkNode::type()) {
+      filter_ = std::move(ptr(link));
+    }
+
+    LinkNode(const LinkNode& other): proxy_filter_t(LinkNode::type()) {
+      filter_ = other.filter_;
+    }
+
+    template<typename... Args>
+    static ptr make(Args&&... args) {
+      PTR_NAMED(LinkNode, ptr, std::forward<Args>(args)...);
+      return ptr;
+    }
+
    private:
-     DECLARE_FILTER_TYPE();
+    DECLARE_FILTER_TYPE();
   };
 
   DEFINE_FILTER_TYPE(LinkNode);
@@ -250,6 +260,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
   class RootNode: public iresearch::Or {
    public:
     DECLARE_FACTORY_DEFAULT();
+
    private:
     friend parse_context;
     iresearch::order order;
@@ -913,9 +924,10 @@ query query_builder::build(
 
   // link the query into both the root and result.filter via two LinkNodes
   if (!result.error) {
-    auto& link = root->proxy<LinkNode>(result.filter.release());
+    auto& link = root->proxy<LinkNode>(result.filter.get());
+    result.filter.release();
 
-    result.filter = std::move(LinkNode::make<LinkNode>(link));
+    result.filter = LinkNode::make(link);
   }
 
   return result;

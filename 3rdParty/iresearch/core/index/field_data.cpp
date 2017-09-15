@@ -572,6 +572,22 @@ bool field_data::invert(
   const offset* offs = nullptr;
   const payload* pay = nullptr;
 
+  if (!inc) {
+    IR_FRMT_ERROR(
+      "field '%s' missing required token_stream attribute '%s'",
+      meta_.name.c_str(), increment::type().name().c_str()
+    );
+    return false;
+  }
+
+  if (!term) {
+    IR_FRMT_ERROR(
+      "field '%s' missing required token_stream attribute '%s'",
+      meta_.name.c_str(), term_attribute::type().name().c_str()
+    );
+    return false;
+  }
+
   if (meta_.features.check<offset>()) {
     offs = attrs.get<offset>().get();
 

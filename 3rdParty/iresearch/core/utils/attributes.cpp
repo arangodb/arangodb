@@ -79,18 +79,28 @@ flags& flags::operator=(std::initializer_list<const attribute::type_id*> flags) 
 // --SECTION--                                            attribute registration
 // -----------------------------------------------------------------------------
 
-attribute_registrar::attribute_registrar(const attribute::type_id& type) {
+attribute_registrar::attribute_registrar(
+    const attribute::type_id& type,
+    const char* source /*= nullptr*/
+) {
   auto entry = attribute_register::instance().set(type.name(), &type);
 
   registered_ = entry.second;
 
   if (!registered_ && &type != entry.first) {
-    IR_FRMT_WARN(
-      "type name collision detected while registering attribute, ignoring: type '%s' from %s:%d",
-      type.name().c_str(),
-      __FILE__,
-      __LINE__
-    );
+    if (source) {
+      IR_FRMT_WARN(
+        "type name collision detected while registering attribute, ignoring: type '%s' from %s",
+        type.name().c_str(),
+        source
+      );
+    } else {
+      IR_FRMT_WARN(
+        "type name collision detected while registering attribute, ignoring: type '%s'",
+        type.name().c_str()
+      );
+    }
+
     IR_STACK_TRACE();
   }
 }
@@ -106,7 +116,7 @@ attribute_registrar::operator bool() const NOEXCEPT {
 #if defined(_MSC_VER) && defined(IRESEARCH_DLL)
 
   template class IRESEARCH_API attribute_map<attribute*>;
-  template class IRESEARCH_API attribute_map<stored_attribute::ptr>;
+  template class IRESEARCH_API attribute_map<std::shared_ptr<stored_attribute>>;
 
 #endif
 

@@ -68,20 +68,28 @@ NS_BEGIN(analysis)
 // -----------------------------------------------------------------------------
 
 analyzer_registrar::analyzer_registrar(
-  const analyzer::type_id& type,
-  analyzer::ptr(*factory)(const iresearch::string_ref& args)
+    const analyzer::type_id& type,
+    analyzer::ptr(*factory)(const iresearch::string_ref& args),
+    const char* source /*= nullptr*/
 ) {
   auto entry = analyzer_register::instance().set(type.name(), factory);
 
   registered_ = entry.second;
 
   if (!registered_ && factory != entry.first) {
-    IR_FRMT_WARN(
-      "type name collision detected while registering analyzer, ignoring: type '%s' from %s:%d",
-      type.name().c_str(),
-      __FILE__,
-      __LINE__
-    );
+    if (source) {
+      IR_FRMT_WARN(
+        "type name collision detected while registering analyzer, ignoring: type '%s' from %s",
+        type.name().c_str(),
+        source
+      );
+    } else {
+      IR_FRMT_WARN(
+        "type name collision detected while registering analyzer, ignoring: type '%s'",
+        type.name().c_str()
+      );
+    }
+
     IR_STACK_TRACE();
   }
 }

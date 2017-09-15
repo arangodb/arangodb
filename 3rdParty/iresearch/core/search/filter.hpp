@@ -14,77 +14,12 @@
 
 #include "shared.hpp"
 #include "sort.hpp"
+#include "index/iterators.hpp"
 
 #include <unordered_map>
+#include <functional>
 
 NS_ROOT
-
-//////////////////////////////////////////////////////////////////////////////
-/// @class score
-/// @brief represents a score related for the particular document
-//////////////////////////////////////////////////////////////////////////////
-class IRESEARCH_API score : public attribute {
- public:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief applies score to the specified attributes collection ("src")
-  //////////////////////////////////////////////////////////////////////////////
-  static bool apply(
-      attribute_view& src,
-      irs::score& score,
-      const order::prepared& ord) {
-    if (ord.empty()) {
-      return false;
-    }
-
-    src.emplace(score);
-
-    score.order_ = &ord;
-    score.value_.resize(ord.size());
-    score.clear();
-
-    return true;
-  }
-
-  DECLARE_ATTRIBUTE_TYPE();
-
-  score() = default;
-
-  template<typename T>
-  const T& get(size_t i) const {
-    assert(order_ && sizeof(T) == (*order_)[i].bucket->size());
-    return reinterpret_cast<const T&>(*(value_.c_str() + (*order_)[i].offset));
-  }
-
-  byte_type* leak() {
-    return &(value_[0]);
-  };
-
-  const byte_type* c_str() const {
-    return value_.c_str();
-  }
-
-  const bstring& value() const {
-    return value_;
-  }
-
-  void clear() {
-    if (order_) {
-      for (auto& ord: *order_) {
-        ord.bucket->prepare_score(&(value_[0]) + ord.offset);
-      }
-    }
-  }
-
-  bool empty() const NOEXCEPT {
-    return value_.empty();
-  }
-
- private:
-  IRESEARCH_API_PRIVATE_VARIABLES_BEGIN
-  const order::prepared* order_;
-  bstring value_;
-  IRESEARCH_API_PRIVATE_VARIABLES_END
-}; // score
 
 template<typename State>
 class states_cache {
@@ -149,7 +84,7 @@ class IRESEARCH_API filter {
     explicit prepared(attribute_store&& attrs);
     virtual ~prepared();
 
-    score_doc_iterator::ptr execute(const sub_reader& rdr) const {
+    doc_iterator::ptr execute(const sub_reader& rdr) const {
       return execute(rdr, order::prepared::unordered());
     }
 
@@ -158,7 +93,7 @@ class IRESEARCH_API filter {
       return attrs_;
     }
 
-    virtual score_doc_iterator::ptr execute(
+    virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord) const = 0;
 
@@ -172,7 +107,7 @@ class IRESEARCH_API filter {
   DECLARE_PTR(filter);
   DECLARE_FACTORY(filter);
 
-  filter(const type_id& type);
+  filter(const type_id& type) NOEXCEPT;
   virtual ~filter();
 
   virtual size_t hash() const {

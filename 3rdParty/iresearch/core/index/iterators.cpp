@@ -38,11 +38,10 @@ irs::attribute_view empty_doc_iterator_attributes() {
 /// @class empty_doc_iterator
 /// @brief represents an iterator with no documents 
 //////////////////////////////////////////////////////////////////////////////
-struct empty_doc_iterator : score_doc_iterator {
+struct empty_doc_iterator : doc_iterator {
   virtual doc_id_t value() const override { return type_limits<type_t::doc_id_t>::eof(); }
   virtual bool next() override { return false; }
   virtual doc_id_t seek(doc_id_t) override { return type_limits<type_t::doc_id_t>::eof(); }
-  virtual void score() override { }
   virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     static irs::attribute_view empty = empty_doc_iterator_attributes();
     return empty;
@@ -56,7 +55,7 @@ struct empty_doc_iterator : score_doc_iterator {
 struct empty_term_iterator : term_iterator {
   virtual const bytes_ref& value() const override { return bytes_ref::nil; }
   virtual doc_iterator::ptr postings(const flags&) const {
-    return score_doc_iterator::empty();
+    return doc_iterator::empty();
   }
   virtual void read() { }
   virtual bool next() override { return false; }
@@ -97,7 +96,7 @@ struct empty_field_iterator : field_iterator {
     return empty_term_reader::instance();
   }
 
-  virtual bool seek(const string_ref &name) override {
+  virtual bool seek(const string_ref&) override {
     return false;
   }
 
@@ -112,7 +111,7 @@ struct empty_column_iterator : column_iterator {
     return empty;
   }
 
-  virtual bool seek(const string_ref& name) override {
+  virtual bool seek(const string_ref&) override {
     return false;
   }
 
@@ -137,9 +136,10 @@ term_iterator::ptr term_iterator::empty() {
 // --SECTION--                                                seek_doc_iterator 
 // ----------------------------------------------------------------------------
 
-score_doc_iterator::ptr score_doc_iterator::empty() {
-  //TODO: make singletone
-  return score_doc_iterator::make<empty_doc_iterator>();
+doc_iterator::ptr doc_iterator::empty() {
+  static doc_iterator::ptr instance = std::make_shared<empty_doc_iterator>();
+
+  return instance;
 }
 
 // ----------------------------------------------------------------------------

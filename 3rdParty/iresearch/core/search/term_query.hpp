@@ -51,9 +51,17 @@ class term_query : public filter::prepared {
 
   DECLARE_SPTR(term_query);
 
+  static ptr make(
+    const index_reader& rdr,
+    const order::prepared& ord,
+    filter::boost_t boost,
+    const string_ref& field,
+    const bytes_ref& term
+  );
+
   explicit term_query(states_t&& states, attribute_store&& attrs);
 
-  virtual score_doc_iterator::ptr execute(
+  virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& ord) const override;
 

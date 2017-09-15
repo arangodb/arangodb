@@ -21,9 +21,9 @@
   #define file_path_t wchar_t*
   #define file_stat _wstat
   #define file_fstat _fstat
-  #define file_stat_t struct _stat     
+  #define file_stat_t struct _stat
   #define file_no _fileno
-  #define mode_t unsigned short    
+  #define mode_t unsigned short
   #define file_open(name, mode) iresearch::file_utils::open(name, _T(mode))
 #else
   #define file_path_t char*
@@ -39,35 +39,59 @@
 NS_ROOT
 NS_BEGIN(file_utils)
 
-struct file_deleter {
-  void operator()(FILE* f) const { 
-    if (f) ::fclose(f); 
-  }
-};
-
-typedef std::unique_ptr<FILE, file_deleter> handle_t;
+// -----------------------------------------------------------------------------
+// --SECTION--                                                         lock file
+// -----------------------------------------------------------------------------
 
 struct lock_file_deleter {
   void operator()(void* handle) const;
-};
+}; // lock_file_deleter
 
 typedef std::unique_ptr<void, lock_file_deleter> lock_handle_t;
 
 lock_handle_t create_lock_file(const file_path_t file);
 bool verify_lock_file(const file_path_t file);
 
-ptrdiff_t file_size(const file_path_t file);
-ptrdiff_t file_size( int fd );
-bool file_sync(const file_path_t name) NOEXCEPT;
-bool is_directory(const file_path_t name) NOEXCEPT;
-bool file_exists(const file_path_t name);
+// -----------------------------------------------------------------------------
+// --SECTION--                                                             stats
+// -----------------------------------------------------------------------------
+
+ptrdiff_t file_size(const file_path_t file) NOEXCEPT;
+ptrdiff_t file_size(int fd) NOEXCEPT;
+ptrdiff_t block_size(int fd) NOEXCEPT;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                         open file
+// -----------------------------------------------------------------------------
+
+struct file_deleter {
+  void operator()(FILE* f) const NOEXCEPT {
+    if (f) ::fclose(f);
+  }
+}; // file_deleter
+
+typedef std::unique_ptr<FILE, file_deleter> handle_t;
+
 handle_t open(const file_path_t path, const file_path_t mode) NOEXCEPT;
 handle_t open(FILE* file, const file_path_t mode) NOEXCEPT;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   directory utils
+// -----------------------------------------------------------------------------
+
+bool is_directory(const file_path_t name) NOEXCEPT;
+
 bool visit_directory(
   const file_path_t name,
   const std::function<bool(const file_path_t name)>& visitor,
   bool include_dot_dir = true
 );
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                              misc
+// -----------------------------------------------------------------------------
+
+bool file_sync(const file_path_t name) NOEXCEPT;
 
 NS_END
 NS_END

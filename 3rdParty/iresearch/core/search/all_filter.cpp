@@ -28,21 +28,20 @@
 
 NS_LOCAL
 
-class all_iterator final : public irs::score_doc_iterator_base {
+class all_iterator final : public irs::doc_iterator_base {
  public:
   all_iterator(
       const irs::sub_reader& reader,
       const irs::attribute_store& prepared_filter_attrs,
       const irs::order::prepared& order,
       uint64_t docs_count)
-    : score_doc_iterator_base(order),
+    : doc_iterator_base(order),
       max_doc_(irs::doc_id_t(irs::type_limits<irs::type_t::doc_id_t>::min() + docs_count - 1)) {
-    // set estimation value
-    est_.value(max_doc_);
-    attrs_.emplace(est_);
-
     // make doc_id accessible via attribute
     attrs_.emplace(doc_);
+
+    // set estimation value
+    estimate(max_doc_);
 
     // set scorers
     scorers_ = ord_->prepare_scorers(
@@ -51,18 +50,20 @@ class all_iterator final : public irs::score_doc_iterator_base {
       prepared_filter_attrs,
       attributes() // doc_iterator attributes
     );
+
+    prepare_score([this](irs::byte_type* score) {
+      scorers_.score(*ord_, score);
+    });
   }
 
   virtual bool next() override {
     return !irs::type_limits<irs::type_t::doc_id_t>::eof(seek(doc_.value + 1));
   }
 
-  virtual void score() override {
-    scorers_.score(*ord_, scr_.leak());
-  }
-
   virtual irs::doc_id_t seek(irs::doc_id_t target) override {
-    doc_.value = target <= max_doc_ ? target : irs::type_limits<irs::type_t::doc_id_t>::eof();
+    doc_.value = target <= max_doc_
+      ? target
+      : irs::type_limits<irs::type_t::doc_id_t>::eof();
 
     return doc_.value;
   }
@@ -73,7 +74,6 @@ class all_iterator final : public irs::score_doc_iterator_base {
 
  private:
   irs::document doc_;
-  irs::cost est_;
   irs::doc_id_t max_doc_; // largest valid doc_id
   irs::order::prepared::scorers scorers_;
 };
@@ -96,11 +96,11 @@ class all_query: public filter::prepared {
     : filter::prepared(std::move(attrs)) {
   }
 
-  virtual score_doc_iterator::ptr execute(
+  virtual doc_iterator::ptr execute(
       const sub_reader& rdr,
       const order::prepared& order
   ) const override {
-    return score_doc_iterator::make<all_iterator>(
+    return doc_iterator::make<all_iterator>(
       rdr,
       attributes(), // prepared_filter attributes
       order,
@@ -112,7 +112,8 @@ class all_query: public filter::prepared {
 DEFINE_FILTER_TYPE(irs::all);
 DEFINE_FACTORY_DEFAULT(irs::all);
 
-all::all(): filter(all::type()) {
+all::all() NOEXCEPT
+  : filter(all::type()) {
 }
 
 filter::prepared::ptr all::prepare(
@@ -123,7 +124,7 @@ filter::prepared::ptr all::prepare(
   attribute_store attrs;
 
   // skip filed-level/term-level statistics because there are no fields/terms
-  order.prepare_stats().finish(reader, attrs);
+  order.prepare_stats().finish(attrs, reader);
 
   irs::boost::apply(attrs, boost() * filter_boost); // apply boost
 

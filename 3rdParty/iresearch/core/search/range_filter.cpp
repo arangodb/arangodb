@@ -11,40 +11,43 @@
 
 #include "shared.hpp"
 #include "range_filter.hpp"
+#include "multiterm_filter.hpp"
 #include "range_query.hpp"
+#include "term_query.hpp"
 #include "index/index_reader.hpp"
 #include "analysis/token_attributes.hpp"
 
 #include <boost/functional/hash.hpp>
 
-NS_ROOT
-NS_BEGIN(detail)
+NS_LOCAL
 
 template<typename Comparer>
 void collect_terms(
-    const sub_reader& reader, const term_reader& tr, 
-    seek_term_iterator& terms, range_query::states_t& states, 
-    limited_sample_scorer* scorer,
+    const irs::sub_reader& segment,
+    const irs::term_reader& field,
+    irs::seek_term_iterator& terms,
+    irs::range_query::states_t& states,
+    irs::limited_sample_scorer& scorer,
     Comparer cmp) {
   if (cmp(terms)) {
-    /* read attributes */
+    // read attributes
     terms.read();
 
-    /* get state for current segment */
-    auto& state = states.insert(reader);
-    state.reader = &tr;
+    // get state for current segment
+    auto& state = states.insert(segment);
+    state.reader = &field;
     state.min_term = terms.value();
     state.min_cookie = terms.cookie();
+    state.unscored_docs.reset(
+      (irs::type_limits<irs::type_t::doc_id_t>::min)() + segment.docs_count()
+    ); // highest valid doc_id in segment
 
     // get term metadata
-    auto& meta = terms.attributes().get<term_meta>();
+    auto& meta = terms.attributes().get<irs::term_meta>();
 
     do {
       // fill scoring candidates
-      if (scorer) {
-        scorer->collect(meta ? meta->docs_count : 0, state.count, state, reader, terms.cookie());
-      }
-
+      scorer.collect(meta ? meta->docs_count : 0, state.count, state, segment, terms);
       ++state.count;
 
       if (meta) {
@@ -55,19 +58,21 @@ void collect_terms(
         break;
       }
 
-      /* read attributes */
+      // read attributes
       terms.read();
     } while (cmp(terms));
   }
 }
 
-NS_END // detail
+NS_END // LOCAL
+
+NS_ROOT
 
 DEFINE_FILTER_TYPE(by_range)
 DEFINE_FACTORY_DEFAULT(by_range)
 
-by_range::by_range():
-  filter(by_range::type()) {
+by_range::by_range() NOEXCEPT
+  : filter(by_range::type()) {
 }
 
 bool by_range::equals(const filter& rhs) const {
@@ -87,75 +92,104 @@ size_t by_range::hash() const {
 }
 
 filter::prepared::ptr by_range::prepare(
-    const index_reader& rdr,
+    const index_reader& index,
     const order::prepared& ord,
     boost_t boost) const {
-  limited_sample_scorer scorer_instance(scored_terms_limit_); // object for collecting order stats
-  limited_sample_scorer* scorer = ord.empty() ? nullptr : &scorer_instance;
-  range_query::states_t states(rdr.size());
+  //TODO: optimize unordered case
+  // - seek to min
+  // - get ordinal position of the term
+  // - seek to max
+  // - get ordinal position of the term
 
-  /* iterate over the segments */
-  const string_ref field = fld_;
-  for (const auto& sr : rdr) {
-    /* get term dictionary for field */
-    const term_reader* tr = sr.field(field);
-    if (!tr) {
+  if (rng_.min_type != Bound_Type::UNBOUNDED
+      && rng_.max_type != Bound_Type::UNBOUNDED
+      && rng_.min == rng_.max) {
+
+    if (rng_.min_type == rng_.max_type && rng_.min_type == Bound_Type::INCLUSIVE) {
+      // degenerated case
+      return term_query::make(index, ord, boost*this->boost(), fld_, rng_.min);
+    }
+
+    // can't satisfy conditon
+    return prepared::empty();
+  }
+
+  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit_); // object for collecting order stats
+  range_query::states_t states(index.size());
+
+  // iterate over the segments
+  const string_ref field_name = fld_;
+  for (const auto& segment : index) {
+    // get term dictionary for field
+    const auto* field = segment.field(field_name);
+
+    if (!field) {
+      // can't find field with the specified name
       continue;
     }
 
-    /* seek to min */
-    seek_term_iterator::ptr terms = tr->iterator();
+    auto terms = field->iterator();
+    bool res = false;
 
-    //TODO: optimize empty unordered case. seek to min, 
-    //get ordinal position of the term, seek max, 
-    //get ordinal position of the term.
+    // seek to min
+    switch (rng_.min_type) {
+      case Bound_Type::UNBOUNDED:
+        res = terms->next();
+        break;
+      case Bound_Type::INCLUSIVE:
+        res = seek_min<true>(*terms, rng_.min);
+        break;
+      case Bound_Type::EXCLUSIVE:
+        res = seek_min<false>(*terms, rng_.min);
+        break;
+      default:
+        assert(false);
+    }
 
-    auto res = terms->seek_ge(rng_.min);
-    if (SeekResult::END == res) {
-      /* have reached the end of the segment */
+    if (!res) {
+      // reached the end, nothing to collect
       continue;
     }
 
-    if (SeekResult::FOUND == res) {
-      if (Bound_Type::EXCLUSIVE == rng_.min_type && !terms->next()) {
-        continue;
-      }
-    }
+    // now we are on the target or the next term
+    const irs::bytes_ref max = rng_.max;
 
-    /* now we are on the target term 
-     * or on the next term after the target term */
-    auto& max = rng_.max;
-
-    if (Bound_Type::UNBOUNDED == rng_.max_type) {
-      detail::collect_terms(
-        sr, *tr, *terms, states, scorer, [](const term_iterator&)->bool {
-          return true; 
-      });
-    } else if (Bound_Type::INCLUSIVE == rng_.max_type) {
-      detail::collect_terms(
-        sr, *tr, *terms, states, scorer, [&max](const term_iterator& terms)->bool {
-          return terms.value() <= max;
-      });
-    } else { // Bound_Type::EXCLUSIVE == rng_.max_type
-      detail::collect_terms(
-        sr, *tr, *terms, states, scorer, [&max](const term_iterator& terms)->bool {
-          return terms.value() < max;
-      });
+    switch (rng_.max_type) {
+      case Bound_Type::UNBOUNDED:
+        ::collect_terms(
+          segment, *field, *terms, states, scorer, [](const term_iterator&) {
+            return true;
+        });
+        break;
+      case Bound_Type::INCLUSIVE:
+        ::collect_terms(
+          segment, *field, *terms, states, scorer, [max](const term_iterator& terms) {
+            return terms.value() <= max;
+        });
+        break;
+      case Bound_Type::EXCLUSIVE:
+        ::collect_terms(
+          segment, *field, *terms, states, scorer, [max](const term_iterator& terms) {
+            return terms.value() < max;
+        });
+        break;
+      default:
+        assert(false);
     }
   }
 
-  if (scorer) {
-    auto stats = ord.prepare_stats();
-
-    scorer->score(stats);
-  }
+  scorer.score(index, ord);
 
   auto q = memory::make_unique<range_query>(std::move(states));
 
-  /* apply boost */
-  iresearch::boost::apply(q->attributes(), this->boost() * boost);
+  // apply boost
+  irs::boost::apply(q->attributes(), this->boost() * boost);
 
   return std::move(q);
 }
 
 NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

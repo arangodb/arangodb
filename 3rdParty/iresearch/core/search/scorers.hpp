@@ -36,16 +36,17 @@ class IRESEARCH_API scorer_registrar {
  public:
   scorer_registrar(
     const sort::type_id& type,
-    sort::ptr(*factory)(const irs::string_ref& args)
+    sort::ptr(*factory)(const irs::string_ref& args),
+    const char* source = nullptr
   );
   operator bool() const NOEXCEPT;
  private:
   bool registered_;
 };
 
-#define REGISTER_SCORER__(scorer_name, line) static ::iresearch::scorer_registrar scorer_registrar ## _ ## line(scorer_name::type(), &scorer_name::make)
-#define REGISTER_SCORER_EXPANDER__(scorer_name, line) REGISTER_SCORER__(scorer_name, line)
-#define REGISTER_SCORER(scorer_name) REGISTER_SCORER_EXPANDER__(scorer_name, __LINE__)
+#define REGISTER_SCORER__(scorer_name, line, source) static ::iresearch::scorer_registrar scorer_registrar ## _ ## line(scorer_name::type(), &scorer_name::make, source)
+#define REGISTER_SCORER_EXPANDER__(scorer_name, file, line) REGISTER_SCORER__(scorer_name, line, file ":" TOSTRING(line))
+#define REGISTER_SCORER(scorer_name) REGISTER_SCORER_EXPANDER__(scorer_name, __FILE__, __LINE__)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               convinience methods

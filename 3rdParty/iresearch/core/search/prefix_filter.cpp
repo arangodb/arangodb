@@ -11,9 +11,11 @@
 
 #include "shared.hpp"
 #include "prefix_filter.hpp"
+#include "multiterm_filter.hpp"
 #include "range_query.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/index_reader.hpp"
+#include "index/iterators.hpp"
 
 #include <boost/functional/hash.hpp>
 
@@ -23,7 +25,7 @@ filter::prepared::ptr by_prefix::prepare(
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost) const {
-  limited_sample_scorer scorer(scored_terms_limit_); // object for collecting order stats
+  limited_sample_scorer scorer(ord.empty() ? 0 : scored_terms_limit_); // object for collecting order stats
   range_query::states_t states(rdr.size());  
 
   auto& prefix = term();
@@ -55,13 +57,11 @@ filter::prepared::ptr by_prefix::prepare(
       state.reader = tr;
       state.min_term = terms->value();
       state.min_cookie = terms->cookie();
+      state.unscored_docs.reset((type_limits<type_t::doc_id_t>::min)() + sr.docs_count()); // highest valid doc_id in reader
 
       do {
         // fill scoring candidates
-        if (!ord.empty()) {
-          scorer.collect(meta ? meta->docs_count : 0, state.count, state, sr, terms->cookie());
-        }
-
+        scorer.collect(meta ? meta->docs_count : 0, state.count, state, sr, *terms);
         ++state.count;
 
         /* collect cost */
@@ -78,11 +78,7 @@ filter::prepared::ptr by_prefix::prepare(
     }
   }
 
-  if (!ord.empty()) {
-    auto stats = ord.prepare_stats();
-
-    scorer.score(stats);
-  }
+  scorer.score(rdr, ord);
 
   auto q = memory::make_unique<range_query>(std::move(states));
 
@@ -95,7 +91,8 @@ filter::prepared::ptr by_prefix::prepare(
 DEFINE_FILTER_TYPE(by_prefix)
 DEFINE_FACTORY_DEFAULT(by_prefix);
 
-by_prefix::by_prefix() : by_term(by_prefix::type()) {
+by_prefix::by_prefix() NOEXCEPT
+  : by_term(by_prefix::type()) {
 }
 
 size_t by_prefix::hash() const {
@@ -110,4 +107,24 @@ bool by_prefix::equals(const filter& rhs) const {
   return by_term::equals(rhs) && scored_terms_limit_ == trhs.scored_terms_limit_;
 }
 
+void by_prefix::collect_terms(
+    term_selector& selector,
+    const sub_reader& segment,
+    const term_reader& field,
+    seek_term_iterator& terms) const {
+  if (!seek_min<true>(terms, this->term())) {
+    // nothing to collect
+    return;
+  }
+
+  do {
+    terms.read(); // read attributes
+    selector.insert(segment, field, terms);
+  } while (terms.next());
+}
+
 NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

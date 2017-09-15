@@ -15,21 +15,16 @@
 #include "index/iterators.hpp"
 
 NS_ROOT
-NS_BEGIN(detail)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class exclusion
 ////////////////////////////////////////////////////////////////////////////////
-class exclusion final : public score_doc_iterator {
+class exclusion final : public doc_iterator {
  public:
-  exclusion(score_doc_iterator::ptr&& incl, score_doc_iterator::ptr&& excl)
+  exclusion(doc_iterator::ptr&& incl, doc_iterator::ptr&& excl)
     : incl_(std::move(incl)), excl_(std::move(excl)) {
     assert(incl_);
     assert(excl_);
-  }
-
-  virtual void score() override {
-    incl_->score();
   }
 
   virtual doc_id_t value() const {
@@ -61,8 +56,8 @@ class exclusion final : public score_doc_iterator {
   }
 
  private:
-  /* moves iterator to next not excluded
-   * document not less than "target" */
+  // moves iterator to next not excluded
+  // document not less than "target"
   doc_id_t next(doc_id_t target) {
     auto excl = excl_->value();
 
@@ -85,11 +80,10 @@ class exclusion final : public score_doc_iterator {
     return target;
   }
 
-  score_doc_iterator::ptr incl_;
-  score_doc_iterator::ptr excl_;
+  doc_iterator::ptr incl_;
+  doc_iterator::ptr excl_;
 }; // exclusion
 
-NS_END // detail
 NS_END // ROOT
 
 #endif // IRESEARCH_EXCLUSION_H

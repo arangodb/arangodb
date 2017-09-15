@@ -53,7 +53,13 @@ class collector final : public iresearch::sort::collector {
     : normalize_(normalize) {
   }
 
-  virtual void term(const attribute_view& term_attrs) override {
+  virtual void collect(
+      const sub_reader& segment,
+      const term_reader& field,
+      const attribute_view& term_attrs
+  ) override {
+    UNUSED(segment);
+    UNUSED(field);
     auto& meta = term_attrs.get<iresearch::term_meta>();
 
     if (meta) {
@@ -62,16 +68,15 @@ class collector final : public iresearch::sort::collector {
   }
 
   virtual void finish(
-      const iresearch::index_reader& index, 
-      attribute_store& query_attrs
+      attribute_store& filter_attrs,
+      const iresearch::index_reader& index
   ) override {
-    query_attrs.emplace<tfidf::idf>()->value = 1 + static_cast<float_t>(
-      std::log(index.docs_count() / double_t(docs_count + 1))
-    );
+    filter_attrs.emplace<tfidf::idf>()->value =
+      1 + float_t(std::log(index.docs_count() / double_t(docs_count + 1)));
 
+    // add norm attribute if requested
     if (normalize_) {
-      // add norm attribute if requested
-      query_attrs.emplace<norm>();
+      filter_attrs.emplace<norm>();
     }
   }
 
@@ -133,8 +138,7 @@ class sort final: iresearch::sort::prepared_base<tfidf::score_t> {
  public:
   DECLARE_FACTORY(prepared);
 
-  sort(bool normalize, bool reverse)
-    : normalize_(normalize) {
+  sort(bool normalize, bool reverse): normalize_(normalize) {
     static const std::function<bool(score_t, score_t)> greater = std::greater<score_t>();
     static const std::function<bool(score_t, score_t)> less = std::less<score_t>();
     less_ = reverse ? &greater : &less;

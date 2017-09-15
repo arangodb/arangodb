@@ -13,21 +13,12 @@
 #define IRESEARCH_PHRASE_ITERATOR_H
 
 #include "shared.hpp"
+#include "conjunction.hpp"
 
 NS_ROOT
 
-template<typename Conjunction>
-class phrase_iterator final : public Conjunction {
+class phrase_iterator final : public conjunction {
  public:
-  typedef typename Conjunction::doc_iterator doc_iterator_t;
-  typedef typename Conjunction::traits_t traits_t;
-  typedef typename std::enable_if<
-    std::is_base_of<
-      detail::conjunction<doc_iterator_t, traits_t>, 
-      Conjunction
-    >::value, Conjunction
-  >::type conjunction_t;
-
   typedef std::pair<
     position::cref, // position attribute
     position::value_t // desired offset in the phrase
@@ -35,29 +26,29 @@ class phrase_iterator final : public Conjunction {
   typedef std::vector<position_t> positions_t;
 
   phrase_iterator(
-      typename conjunction_t::doc_iterators_t&& itrs,
+      conjunction::doc_iterators_t&& itrs,
       const order::prepared& ord,
-      positions_t&& pos
-  ): conjunction_t(std::move(itrs), ord),
+      positions_t&& pos)
+    : conjunction(std::move(itrs), ord),
      pos_(std::move(pos)) {
     assert(!pos_.empty());
 
     // add phrase frequency
-    conjunction_t::attrs_.emplace(phrase_freq_);
+    conjunction::attrs_.emplace(phrase_freq_);
   }
 
   virtual bool next() override {
     bool next = false;
-    while((next = conjunction_t::next()) && !(phrase_freq_.value = phrase_freq())) {}
+    while((next = conjunction::next()) && !(phrase_freq_.value = phrase_freq())) {}
     return next;
   }
 
   virtual doc_id_t seek(doc_id_t target) override {
-    const auto doc = conjunction_t::seek(target);
+    const auto doc = conjunction::seek(target);
 
     if (type_limits<type_t::doc_id_t>::eof(doc) || (phrase_freq_.value = phrase_freq())) {
-      return doc; 
-    } 
+      return doc;
+    }
 
     next();
     return this->value();
@@ -68,7 +59,7 @@ class phrase_iterator final : public Conjunction {
   frequency::value_t phrase_freq() const {
     assert(!pos_.empty());
 
-    if (1 == conjunction_t::size()) {
+    if (1 == conjunction::size()) {
       // equal to term, do not to count it with postings
       return 1;
     }

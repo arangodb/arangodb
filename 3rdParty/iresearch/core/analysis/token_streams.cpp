@@ -40,7 +40,7 @@ NS_ROOT
 
 boolean_token_stream::boolean_token_stream(bool value /*= false*/) 
   : attrs_(2), // increment + term
-    in_use_(false), 
+    in_use_(false),
     value_(value) {
   init_attributes();
 }
@@ -54,14 +54,14 @@ boolean_token_stream::boolean_token_stream(
 }
 
 bool boolean_token_stream::next() {
-  if (in_use_) {
-    return false;
-  }
+  static const bytes_ref BOOL_VALUES[] {
+    value_false(), value_true()
+  };
 
+  const auto in_use = in_use_;
   in_use_ = true;
-  term_.value(value_ ? value_true() : value_false());
-
-  return true;
+  term_.value(BOOL_VALUES[value_]);
+  return !in_use;
 }
 
 /*static*/ const bytes_ref& boolean_token_stream::value_false() {
@@ -96,14 +96,13 @@ string_token_stream::string_token_stream(string_token_stream&& other) NOEXCEPT
 }
 
 bool string_token_stream::next() {
-  if (in_use_) {
-    return false;
-  }
-
+  const auto in_use = in_use_;
   term_.value(value_);
   offset_.start = 0;
   offset_.end = static_cast<uint32_t>(value_.size());
-  return (in_use_ = true);
+  value_ = irs::bytes_ref::nil;
+  in_use_ = true;
+  return !in_use;
 }
 
 // -----------------------------------------------------------------------------
@@ -143,6 +142,28 @@ bytes_ref numeric_token_stream::numeric_term::value(
   }
 
   return bytes_ref::nil;
+}
+
+
+bool numeric_token_stream::numeric_term::next(increment& inc) {
+  static const uint32_t INCREMENT_VALUE[] { 
+    0, 1
+  };
+
+  static const uint32_t BITS_REQUIRED[] {
+    bits_required<int64_t>(),
+    bits_required<int32_t>()
+  };
+
+  if (shift_ >= BITS_REQUIRED[type_ > NT_DBL]) {
+    return false;
+  }
+
+  value_ = value(data_, type_, val_, shift_);
+  shift_ += step_;
+  inc.value = INCREMENT_VALUE[step_ == shift_];
+
+  return true;
 }
 
 // -----------------------------------------------------------------------------
@@ -226,14 +247,10 @@ null_token_stream::null_token_stream(null_token_stream&& other) NOEXCEPT
 }
 
 bool null_token_stream::next() {
-  if (in_use_) {
-    return false;
-  }
-
+  const auto in_use = in_use_;
   in_use_ = true;
   term_.value(value_null());
-
-  return true;
+  return !in_use;
 }
 
 /*static*/ const bytes_ref& null_token_stream::value_null() {

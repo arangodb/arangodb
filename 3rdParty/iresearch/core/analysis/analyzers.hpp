@@ -37,16 +37,17 @@ class IRESEARCH_API analyzer_registrar {
  public:
   analyzer_registrar(
     const analyzer::type_id& type,
-    analyzer::ptr(*factory)(const iresearch::string_ref& args)
+    analyzer::ptr(*factory)(const iresearch::string_ref& args),
+    const char* source = nullptr
   );
   operator bool() const NOEXCEPT;
  private:
   bool registered_;
 };
 
-#define REGISTER_ANALYZER__(analyzer_name, line) static iresearch::analysis::analyzer_registrar analyzer_registrar ## _ ## line(analyzer_name::type(), &analyzer_name::make)
-#define REGISTER_ANALYZER_EXPANDER__(analyzer_name, line) REGISTER_ANALYZER__(analyzer_name, line)
-#define REGISTER_ANALYZER(analyzer_name) REGISTER_ANALYZER_EXPANDER__(analyzer_name, __LINE__)
+#define REGISTER_ANALYZER__(analyzer_name, line, source) static iresearch::analysis::analyzer_registrar analyzer_registrar ## _ ## line(analyzer_name::type(), &analyzer_name::make, source)
+#define REGISTER_ANALYZER_EXPANDER__(analyzer_name, file, line) REGISTER_ANALYZER__(analyzer_name, line, file ":" TOSTRING(line))
+#define REGISTER_ANALYZER(analyzer_name) REGISTER_ANALYZER_EXPANDER__(analyzer_name, __FILE__, __LINE__)
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               convinience methods

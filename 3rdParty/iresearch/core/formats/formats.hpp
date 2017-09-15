@@ -94,7 +94,7 @@ struct IRESEARCH_API postings_writer : util::const_attribute_view_provider {
   }
 
  protected:
-  friend class term_meta;
+  friend struct term_meta;
 
   state make_state(term_meta& meta) NOEXCEPT {
     return state(&meta, releaser(this));
@@ -280,23 +280,20 @@ struct IRESEARCH_API column_meta_reader {
 // --SECTION--                                                    columns_reader
 // -----------------------------------------------------------------------------
 
+struct IRESEARCH_API columnstore_iterator : irs::iterator<const std::pair<doc_id_t, bytes_ref>&> {
+  DECLARE_PTR(columnstore_iterator);
+  DECLARE_FACTORY(columnstore_iterator);
+
+  typedef std::pair<doc_id_t, bytes_ref> value_type;
+
+  virtual const value_type& seek(doc_id_t doc) = 0;
+}; // column_iterator
+
 struct IRESEARCH_API columnstore_reader {
   DECLARE_PTR(columnstore_reader);
 
   typedef std::function<bool(doc_id_t, bytes_ref&)> values_reader_f;
-  typedef std::function<bool(doc_id_t, const bytes_ref&)> values_visitor_f;
-
-  struct column_iterator : irs::iterator<const std::pair<doc_id_t, bytes_ref>&> {
-    DECLARE_PTR(column_iterator);
-    DECLARE_FACTORY(column_iterator);
-
-    typedef std::pair<doc_id_t, bytes_ref> value_type;
-
-    static const value_type INVALID;
-    static const value_type EOFMAX;
-
-    virtual const value_type& seek(doc_id_t doc) = 0;
-  }; // column_iterator
+  typedef std::function<bool(doc_id_t, const bytes_ref&)> values_visitor_f;  
 
   struct column_reader {
     virtual ~column_reader() = default;
@@ -305,14 +302,14 @@ struct IRESEARCH_API columnstore_reader {
     virtual columnstore_reader::values_reader_f values() const = 0;
 
     // returns corresponding column iterator
-    virtual columnstore_reader::column_iterator::ptr iterator() const = 0;
+    virtual columnstore_iterator::ptr iterator() const = 0;
 
     virtual bool visit(const columnstore_reader::values_visitor_f& reader) const = 0;
 
     virtual size_t size() const = 0;
   };
 
-  static column_iterator::ptr empty_iterator();
+  static columnstore_iterator::ptr empty_iterator();
   static const values_reader_f& empty_reader();
 
   virtual ~columnstore_reader();
@@ -334,8 +331,6 @@ struct IRESEARCH_API columnstore_reader {
 }; // columnstore_reader
 
 NS_END
-
-MSVC_ONLY(template class IRESEARCH_API std::function<bool(iresearch::data_input&)>); // columnstore_reader::value_reader_f
 
 NS_ROOT
 
@@ -575,15 +570,19 @@ class IRESEARCH_API formats {
 
 class IRESEARCH_API format_registrar {
  public:
-  format_registrar(const format::type_id& type, format::ptr(*factory)());
+  format_registrar(
+    const format::type_id& type,
+    format::ptr(*factory)(),
+    const char* source = nullptr
+  );
   operator bool() const NOEXCEPT;
  private:
   bool registered_;
 };
 
-#define REGISTER_FORMAT__(format_name, line) static iresearch::format_registrar format_registrar ## _ ## line(format_name::type(), &format_name::make)
-#define REGISTER_FORMAT_EXPANDER__(format_name, line) REGISTER_FORMAT__(format_name, line)
-#define REGISTER_FORMAT(format_name) REGISTER_FORMAT_EXPANDER__(format_name, __LINE__)
+#define REGISTER_FORMAT__(format_name, line, source) static iresearch::format_registrar format_registrar ## _ ## line(format_name::type(), &format_name::make, source)
+#define REGISTER_FORMAT_EXPANDER__(format_name, file, line) REGISTER_FORMAT__(format_name, line, file ":" TOSTRING(line))
+#define REGISTER_FORMAT(format_name) REGISTER_FORMAT_EXPANDER__(format_name, __FILE__, __LINE__)
 
 NS_END
 

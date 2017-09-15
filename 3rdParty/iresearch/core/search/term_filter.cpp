@@ -51,54 +51,7 @@ filter::prepared::ptr by_term::prepare(
     const index_reader& rdr,
     const order::prepared& ord,
     boost_t boost) const {
-  term_query::states_t states(rdr.size());
-  attribute_store attrs;
-
-  /* iterate over the segments */
-  const string_ref field = fld_;
-  auto stats = ord.prepare_stats();
-  for (const auto& sr : rdr) {
-    /* get term dictionary for field */
-    const term_reader* tr = sr.field(field);
-    if (!tr) {
-      continue;
-    }
-
-    /* collect field level stats */
-    stats.field(sr, *tr);
-
-    /* find term */
-    seek_term_iterator::ptr terms = tr->iterator();
-    if (!terms->seek(term_)) {
-      continue;
-    }
-
-    /* get term metadata */
-    auto& meta = terms->attributes().get<term_meta>();
-
-    /* read term attributes */
-    terms->read();
-
-    /* Cache term state in prepared query attributes.
-     * Later, using cached state we could easily "jump" to
-     * postings without relatively expensive FST traversal */
-    auto& state = states.insert(sr);
-    state.reader = tr;
-    state.cookie = terms->cookie();
-    /* collect cost */
-    if (meta) {
-      state.estimation = meta->docs_count;
-    }
-
-    /* collect term level stats */
-    stats.term(terms->attributes());
-  }
-  stats.finish(rdr, attrs);
-
-  /* apply boost */
-  iresearch::boost::apply(attrs, this->boost() * boost);
-
-  return memory::make_unique<term_query>(std::move(states), std::move(attrs));
+  return term_query::make(rdr, ord, boost*this->boost(), fld_, term_);
 }
 
 NS_END // ROOT

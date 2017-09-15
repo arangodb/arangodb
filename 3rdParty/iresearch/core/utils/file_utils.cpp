@@ -354,15 +354,25 @@ bool file_sync(const file_path_t file) NOEXCEPT {
 
 #endif // _WIN32
 
-ptrdiff_t file_size(const file_path_t file) {
+ptrdiff_t file_size(const file_path_t file) NOEXCEPT {
   assert(file != nullptr);
   file_stat_t info;
   return 0 == file_stat(file, &info) ? info.st_size : -1;
 }
 
-ptrdiff_t file_size(int fd) {
+ptrdiff_t file_size(int fd) NOEXCEPT {
   file_stat_t info;
   return 0 == file_fstat(fd, &info) ? info.st_size : -1;
+}
+
+ptrdiff_t block_size(int fd) NOEXCEPT {
+#ifdef _WIN32
+  // fixme
+  return 512;
+#else
+  file_stat_t info;
+  return 0 == file_fstat(fd, &info) ? info.st_blksize : -1;
+#endif // _WIN32
 }
 
 bool is_directory(const file_path_t name) NOEXCEPT {
