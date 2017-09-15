@@ -250,7 +250,7 @@ def checkCoresAndSave(os, runDir, name, archRun) {
     else {
         sh "for i in logs out tmp result; do test -e \"${runDir}/\$i\" && mv \"${runDir}/\$i\" \"${archRun}/${name}.\$i\" || true; done"
 
-        def files = findFiles(glob: '${runDir}/core*')
+        def files = findFiles(glob: "${runDir}/core*")
 
         if (files.length > 0) {
             for (file in files) {
@@ -566,12 +566,12 @@ def jslint(os, edition, maintainer) {
     }
     catch (exc) {
         renameFolder(arch, archFail)
-        fileOperations([fileCreateOperation(fileContent: 'BUILD FAILED', fileName: "${arch}-FAIL.txt")])
+        fileOperations([fileCreateOperation(fileContent: 'JSLINT FAILED', fileName: "${archDir}-FAIL.txt")])
         throw exc
     }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-            artifacts: "${arch}-*, ${arch}/**, ${archFail}/**",
+            artifacts: "${archDir}-*, ${arch}/**, ${archFail}/**",
             defaultExcludes: false
     }
 }
@@ -752,7 +752,7 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                         checkCoresAndSave(os, runDir, name, archRun)
 
                         archiveArtifacts allowEmptyArchive: true,
-                            artifacts: "${logFileRel}, ${logFileFailedRel}",
+                            artifacts: "${archDir}-*, ${logFileRel}, ${logFileFailedRel}",
                             defaultExcludes: false
                     }
                 }
