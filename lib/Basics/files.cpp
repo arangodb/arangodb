@@ -1971,15 +1971,15 @@ static std::string getTempPath() {
   // fits in the ascii set of characters. This is a small compromise so that
   // temporary file names can be extra long if required.
   // ...........................................................................
-  for (auto it = result.begin(); it != result.end(); ++it)
-  {
-    if (static_cast<byte>(*it) > 127) {
+
+  for (auto const& it : result) {
+    if (static_cast<uint8_t>(it) > 127) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Invalid characters in temporary path name: '" <<
         result << "'";
       FATAL_ERROR_ABORT();
     }
   }
-  if (*result.end() != TRI_DIR_SEPARATOR_CHAR) {
+  if (result.empty() || (result.back() != TRI_DIR_SEPARATOR_CHAR)) {
     result += TRI_DIR_SEPARATOR_STR;
   }
   return result;
