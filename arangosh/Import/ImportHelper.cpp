@@ -160,8 +160,8 @@ ImportHelper::ImportHelper(ClientFeature const* client,
       _keyColumn(-1),
       _onDuplicateAction("error"),
       _collectionName(),
-      _lineBuffer(TRI_UNKNOWN_MEM_ZONE),
-      _outputBuffer(TRI_UNKNOWN_MEM_ZONE),
+      _lineBuffer(false),
+      _outputBuffer(false),
       _firstLine(""),
       _columnNames(),
       _hasError(false) {
@@ -230,7 +230,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
 
   size_t separatorLength;
   char* separator =
-      TRI_UnescapeUtf8String(TRI_UNKNOWN_MEM_ZONE, _separator.c_str(),
+      TRI_UnescapeUtf8String(_separator.c_str(),
                              _separator.size(), &separatorLength, true);
 
   if (separator == nullptr) {
@@ -243,7 +243,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
 
   TRI_csv_parser_t parser;
 
-  TRI_InitCsvParser(&parser, TRI_UNKNOWN_MEM_ZONE, ProcessCsvBegin,
+  TRI_InitCsvParser(&parser, ProcessCsvBegin,
                     ProcessCsvAdd, ProcessCsvEnd, nullptr);
 
   TRI_SetSeparatorCsvParser(&parser, separator[0]);
@@ -266,7 +266,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
     ssize_t n = TRI_READ(fd, buffer, sizeof(buffer));
 
     if (n < 0) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, separator);
+      TRI_Free(separator);
       TRI_DestroyCsvParser(&parser);
       if (fd != STDIN_FILENO) {
         TRI_TRACKED_CLOSE_FILE(fd);
@@ -293,7 +293,7 @@ bool ImportHelper::importDelimited(std::string const& collectionName,
   }
 
   TRI_DestroyCsvParser(&parser);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, separator);
+  TRI_Free(separator);
 
   if (fd != STDIN_FILENO) {
     TRI_TRACKED_CLOSE_FILE(fd);
@@ -660,7 +660,7 @@ void ImportHelper::addLastField(char const* field, size_t fieldLength,
 
   if (row == _rowsToSkip) {
     // save the first line
-    _firstLine = _lineBuffer.c_str();
+    _firstLine = std::string(_lineBuffer.c_str(), _lineBuffer.length());
   } else if (row > _rowsToSkip && _firstLine.empty()) {
     // error
     MUTEX_LOCKER(guard, _stats._mutex);
@@ -840,7 +840,7 @@ void ImportHelper::sendJsonBuffer(char const* str, size_t len, bool isObject) {
 
   SenderThread* t = findIdleSender();
   if (t != nullptr) {
-    StringBuffer buff(TRI_UNKNOWN_MEM_ZONE, len, false);
+    StringBuffer buff(len, false);
     buff.appendText(str, len);
     t->sendData(url, &buff);
   }

@@ -64,9 +64,9 @@ static void FillDistribution(v8::Isolate* isolate, v8::Handle<v8::Object> list,
                              StatisticsDistribution const& dist) {
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  result->Set(TRI_V8_ASCII_STRING("sum"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "sum"),
               v8::Number::New(isolate, dist._total));
-  result->Set(TRI_V8_ASCII_STRING("count"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "count"),
               v8::Number::New(isolate, (double)dist._count));
 
   v8::Handle<v8::Array> counts =
@@ -78,7 +78,7 @@ static void FillDistribution(v8::Isolate* isolate, v8::Handle<v8::Object> list,
     counts->Set(pos, v8::Number::New(isolate, (double)*i));
   }
 
-  result->Set(TRI_V8_ASCII_STRING("counts"), counts);
+  result->Set(TRI_V8_ASCII_STRING(isolate, "counts"), counts);
 
   list->Set(name, result);
 }
@@ -102,9 +102,9 @@ static void JS_ServerStatistics(
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  result->Set(TRI_V8_ASCII_STRING("uptime"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "uptime"),
               v8::Number::New(isolate, (double)info._uptime));
-  result->Set(TRI_V8_ASCII_STRING("physicalMemory"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "physicalMemory"),
               v8::Number::New(isolate, (double)TRI_PhysicalMemory));
 
   TRI_V8_RETURN(result);
@@ -146,9 +146,9 @@ static void JS_ClientStatistics(
   ConnectionStatistics::fill(httpConnections, totalRequests, methodRequests,
                              asyncRequests, connectionTime);
 
-  result->Set(TRI_V8_ASCII_STRING("httpConnections"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "httpConnections"),
               v8::Number::New(isolate, (double)httpConnections._count));
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING("connectionTime"),
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "connectionTime"),
                    connectionTime);
 
   StatisticsDistribution totalTime;
@@ -161,16 +161,16 @@ static void JS_ClientStatistics(
   RequestStatistics::fill(totalTime, requestTime, queueTime, ioTime, bytesSent,
                           bytesReceived);
 
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING("totalTime"),
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "totalTime"),
                    totalTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING("requestTime"),
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "requestTime"),
                    requestTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING("queueTime"),
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "queueTime"),
                    queueTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING("ioTime"), ioTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING("bytesSent"),
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "ioTime"), ioTime);
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "bytesSent"),
                    bytesSent);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING("bytesReceived"),
+  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "bytesReceived"),
                    bytesReceived);
 
   TRI_V8_RETURN(result);
@@ -197,43 +197,43 @@ static void JS_HttpStatistics(v8::FunctionCallbackInfo<v8::Value> const& args) {
                              asyncRequests, connectionTime);
 
   // request counters
-  result->Set(TRI_V8_ASCII_STRING("requestsTotal"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "requestsTotal"),
               v8::Number::New(isolate, (double)totalRequests._count));
-  result->Set(TRI_V8_ASCII_STRING("requestsAsync"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "requestsAsync"),
               v8::Number::New(isolate, (double)asyncRequests._count));
   result->Set(
-      TRI_V8_ASCII_STRING("requestsGet"),
+      TRI_V8_ASCII_STRING(isolate, "requestsGet"),
       v8::Number::New(
           isolate, (double)methodRequests[(int)rest::RequestType::GET]._count));
-  result->Set(TRI_V8_ASCII_STRING("requestsHead"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "requestsHead"),
               v8::Number::New(
                   isolate,
                   (double)methodRequests[(int)rest::RequestType::HEAD]._count));
-  result->Set(TRI_V8_ASCII_STRING("requestsPost"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "requestsPost"),
               v8::Number::New(
                   isolate,
                   (double)methodRequests[(int)rest::RequestType::POST]._count));
   result->Set(
-      TRI_V8_ASCII_STRING("requestsPut"),
+      TRI_V8_ASCII_STRING(isolate, "requestsPut"),
       v8::Number::New(
           isolate, (double)methodRequests[(int)rest::RequestType::PUT]._count));
   result->Set(
-      TRI_V8_ASCII_STRING("requestsPatch"),
+      TRI_V8_ASCII_STRING(isolate, "requestsPatch"),
       v8::Number::New(
           isolate,
           (double)methodRequests[(int)rest::RequestType::PATCH]._count));
   result->Set(
-      TRI_V8_ASCII_STRING("requestsDelete"),
+      TRI_V8_ASCII_STRING(isolate, "requestsDelete"),
       v8::Number::New(
           isolate,
           (double)methodRequests[(int)rest::RequestType::DELETE_REQ]._count));
   result->Set(
-      TRI_V8_ASCII_STRING("requestsOptions"),
+      TRI_V8_ASCII_STRING(isolate, "requestsOptions"),
       v8::Number::New(
           isolate,
           (double)methodRequests[(int)rest::RequestType::OPTIONS]._count));
   result->Set(
-      TRI_V8_ASCII_STRING("requestsOther"),
+      TRI_V8_ASCII_STRING(isolate, "requestsOther"),
       v8::Number::New(
           isolate,
           (double)methodRequests[(int)rest::RequestType::ILLEGAL]._count));
@@ -255,29 +255,29 @@ void TRI_InitV8Statistics(v8::Isolate* isolate,
   // .............................................................................
 
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_ENABLED_STATISTICS"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_ENABLED_STATISTICS"),
                                JS_EnabledStatistics);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_CLIENT_STATISTICS"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_CLIENT_STATISTICS"),
                                JS_ClientStatistics);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_HTTP_STATISTICS"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_HTTP_STATISTICS"),
                                JS_HttpStatistics);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_SERVER_STATISTICS"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_SERVER_STATISTICS"),
                                JS_ServerStatistics);
 
   TRI_AddGlobalVariableVocbase(
-      isolate, TRI_V8_ASCII_STRING("CONNECTION_TIME_DISTRIBUTION"),
+      isolate, TRI_V8_ASCII_STRING(isolate, "CONNECTION_TIME_DISTRIBUTION"),
       DistributionList(isolate,
                        TRI_ConnectionTimeDistributionVectorStatistics));
   TRI_AddGlobalVariableVocbase(
-      isolate, TRI_V8_ASCII_STRING("REQUEST_TIME_DISTRIBUTION"),
+      isolate, TRI_V8_ASCII_STRING(isolate, "REQUEST_TIME_DISTRIBUTION"),
       DistributionList(isolate, TRI_RequestTimeDistributionVectorStatistics));
   TRI_AddGlobalVariableVocbase(
-      isolate, TRI_V8_ASCII_STRING("BYTES_SENT_DISTRIBUTION"),
+      isolate, TRI_V8_ASCII_STRING(isolate, "BYTES_SENT_DISTRIBUTION"),
       DistributionList(isolate, TRI_BytesSentDistributionVectorStatistics));
   TRI_AddGlobalVariableVocbase(
-      isolate, TRI_V8_ASCII_STRING("BYTES_RECEIVED_DISTRIBUTION"),
+      isolate, TRI_V8_ASCII_STRING(isolate, "BYTES_RECEIVED_DISTRIBUTION"),
       DistributionList(isolate, TRI_BytesReceivedDistributionVectorStatistics));
 }

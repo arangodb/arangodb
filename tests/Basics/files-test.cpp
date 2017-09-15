@@ -45,7 +45,7 @@ static uint64_t counter = 0;
 // -----------------------------------------------------------------------------
 
 struct CFilesSetup {
-  CFilesSetup () : _directory(TRI_UNKNOWN_MEM_ZONE) {
+  CFilesSetup () : _directory(true) {
     long systemError;
     std::string errorMessage;
     
@@ -71,7 +71,7 @@ struct CFilesSetup {
   }
 
   StringBuffer* writeFile (const char* blob) {
-    StringBuffer* filename = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
+    StringBuffer* filename = new StringBuffer(true);
     filename->appendText(_directory);
     filename->appendChar(TRI_DIR_SEPARATOR_CHAR);
     filename->appendText("tmp-");
@@ -230,81 +230,81 @@ SECTION("tst_absolute_paths") {
   path = TRI_GetAbsolutePath("the-fox", "\\tmp");
 
   CHECK(std::string("\\tmp\\the-fox") == path);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  TRI_Free(path);
 
   path = TRI_GetAbsolutePath("the-fox.lol", "\\tmp");
   CHECK(std::string("\\tmp\\the-fox.lol") == path);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("the-fox.lol", "\\tmp\\the-fox");
   CHECK(std::string("\\tmp\\the-fox\\the-fox.lol") == path);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("file", "\\");
   CHECK(std::string("\\file") == path);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  TRI_Free(path);
   
   path = TRI_GetAbsolutePath(".\\file", "\\");
   CHECK(std::string("\\.\\file") == path);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("\\file", "\\tmp");
   CHECK(std::string("\\tmp\\file") == path);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("\\file\\to\\file", "\\tmp");
   CHECK(std::string("\\tmp\\file\\to\\file") == path);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("file\\to\\file", "\\tmp");
   CHECK(std::string("\\tmp\\file\\to\\file") == path);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("c:\\file\\to\\file", "abc");
   CHECK(std::string("c:\\file\\to\\file") == path);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("c:\\file\\to\\file", "\\tmp");
   CHECK(std::string("c:\\file\\to\\file") == path);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  TRI_Free(path);
 
 #else
 
   path = TRI_GetAbsolutePath("the-fox", "/tmp");
   CHECK(std::string("/tmp/the-fox") == path);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  TRI_Free(path);
 
   path = TRI_GetAbsolutePath("the-fox.lol", "/tmp");
   CHECK(std::string("/tmp/the-fox.lol") == path);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("the-fox.lol", "/tmp/the-fox");
   CHECK(std::string("/tmp/the-fox/the-fox.lol") == path);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("file", "/");
   CHECK(std::string("/file") == path);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("./file", "/");
   CHECK(std::string("/./file") == path);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("/file", "/tmp");
   CHECK(std::string("/file") == path);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("/file/to/file", "/tmp");
   CHECK(std::string("/file/to/file") == path);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("file/to/file", "/tmp");
   CHECK(std::string("/tmp/file/to/file") == path);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  TRI_Free(path);
   
   path = TRI_GetAbsolutePath("c:file/to/file", "/tmp");
   CHECK(std::string("c:file/to/file") == path);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, path);
+  TRI_Free(path);
 #endif
 }
 }

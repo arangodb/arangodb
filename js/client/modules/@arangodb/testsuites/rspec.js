@@ -244,7 +244,9 @@ function rubyTests (options, ssl) {
           db._collections().forEach(collection => {
             collectionsAfter.push(collection._name);
           });
-          let delta = tu.diffArray(collectionsBefore, collectionsAfter, _.isEqual);
+          let delta = tu.diffArray(collectionsBefore, collectionsAfter, _.isEqual).filter(function(name) {
+            return (name[0] !== '_'); // exclude system collections from the comparison
+          });
           if (delta.length !== 0) {
             results[te] = {
               status: false,
