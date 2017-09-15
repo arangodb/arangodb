@@ -1166,7 +1166,7 @@ def runOperatingSystems(osList) {
                 def stageName = "build-${name}"
                 branches[stageName] = runEdition(os, edition, maintainer, stageName)
                 if (os == 'linux') {
-                    branches["docker-${name}"] = createDockerImage(os, edition, maintainer, "docker-${name}")
+                    branches["docker-${name}"] = createDockerImage(edition, maintainer, "docker-${name}")
                 }
             }
         }
