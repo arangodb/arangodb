@@ -100,7 +100,7 @@ BaseEngine::BaseEngine(TRI_vocbase_t* vocbase, VPackSlice info)
   // FIXME: in the future this needs to be replaced with t
   // he new cluster wide transactions
   transaction::Options trxOpts;
-  auto ctx = arangodb::transaction::StandaloneContext::Create(vocbase, nullptr);
+  auto ctx = arangodb::transaction::StandaloneContext::Create(vocbase);
 #ifdef USE_ENTERPRISE
   VPackSlice inaccessSlice = shardsSlice.get(INACCESSIBLE);
   if (inaccessSlice.isArray()) {

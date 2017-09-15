@@ -38,7 +38,6 @@
 
 namespace arangodb {
 class DatabaseGuard;
-class ExecContext;
 
 class RocksDBReplicationContext {
  public:
@@ -65,7 +64,7 @@ class RocksDBReplicationContext {
   }
 
   // creates new transaction/snapshot
-  void bind(TRI_vocbase_t*, ExecContext const*);
+  void bind(TRI_vocbase_t*);
   int bindCollection(std::string const& collectionName);
 
   // returns inventory

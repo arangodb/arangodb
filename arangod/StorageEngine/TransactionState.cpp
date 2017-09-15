@@ -39,13 +39,11 @@ using namespace arangodb;
 
 /// @brief transaction type
 TransactionState::TransactionState(TRI_vocbase_t* vocbase,
-                                   transaction::Options const& options,
-                                   ExecContext const* exec)
+                                   transaction::Options const& options)
     : _vocbase(vocbase),
       _id(0),
       _type(AccessMode::Type::READ),
       _status(transaction::Status::CREATED),
-      _execContext(exec),
       _arena(),
       _collections{_arena},  // assign arena to vector
       _serverRole(ServerState::instance()->getRole()),
@@ -104,7 +102,8 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
                                     int nestingLevel, bool force) {
   LOG_TRX(this, nestingLevel) << "adding collection " << cid;
 
-  if (_execContext != nullptr) {
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr) {
     std::string const colName = _resolver->getCollectionNameCluster(cid);
     AuthenticationFeature* auth =
     FeatureCacheFeature::instance()->authenticationFeature();
@@ -114,17 +113,16 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
                !ServerState::instance()->isRunningInCluster());
     // avoid extra lookups of auth context, if we use the same db as stored
     // in the execution context initialized by RestServer/VocbaseContext
-    AuthLevel level = auth->canUseCollection(_execContext->user(),
-                                     _vocbase->name(), colName);
+    AuthLevel level = auth->canUseCollection(exec->user(), _vocbase->name(), colName);
     
     if (level == AuthLevel::NONE) {
-      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << _execContext->user()
+      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
                                              << " has collection AuthLevel::NONE";
       return TRI_ERROR_FORBIDDEN;
     }
     bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
     if (level == AuthLevel::RO && collectionWillWrite) {
-      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << _execContext->user()
+      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
                                               << "has no write right for collection " << colName;
       return TRI_ERROR_ARANGO_READ_ONLY;
     }

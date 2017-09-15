@@ -123,8 +123,8 @@ class v8_action_t final : public TRI_action_t {
     }
 
     // get a V8 context
-    V8Context* context = V8DealerFeature::DEALER->enterContext(request->execContext(),
-                                vocbase, allowUseDatabaseInRestActions, forceContext);
+    V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase,
+                            allowUseDatabaseInRestActions, forceContext);
 
     // note: the context might be nullptr in case of shut-down
     if (context == nullptr) {

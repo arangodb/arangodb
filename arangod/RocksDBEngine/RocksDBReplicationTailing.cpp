@@ -48,6 +48,10 @@ static std::string const emptyString;
 /// an incomplete convert function, basically only use for DDL ops
 static TRI_replication_operation_e convertLogType(RocksDBLogType t) {
   switch (t) {
+    case RocksDBLogType::DatabaseCreate:
+      return REPLICATION_DATABASE_CREATE;
+    case RocksDBLogType::DatabaseDrop:
+      return REPLICATION_DATABASE_DROP;
     case RocksDBLogType::CollectionCreate:
       return REPLICATION_COLLECTION_CREATE;
     case RocksDBLogType::CollectionDrop:
@@ -70,6 +74,7 @@ static TRI_replication_operation_e convertLogType(RocksDBLogType t) {
       return REPLICATION_TRANSACTION_START;
 
     default:
+      TRI_ASSERT(false);
       return REPLICATION_INVALID;
   }
 }
@@ -228,13 +233,13 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         TRI_ASSERT(_lastLogType == RocksDBLogType::DatabaseCreate ||
                    _lastLogType == RocksDBLogType::DatabaseDrop);
         
-        VPackSlice data = RocksDBValue::data(value);
+        /*VPackSlice data = RocksDBValue::data(value);
         _builder.openObject();
         _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
         _builder.add("type", VPackValue(convertLogType(_lastLogType)));
         _builder.add("database", VPackValue(std::to_string(_currentDbId)));
         _builder.add("data", data);
-        _builder.close();
+        _builder.close();*/
 
         
       } else if (RocksDBKey::type(key) == RocksDBEntryType::Collection) {

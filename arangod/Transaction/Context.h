@@ -43,7 +43,6 @@ struct CustomTypeHandler;
 }
 
 class CollectionNameResolver;
-class ExecContext;
 class LogicalCollection;
 class TransactionState;
 
@@ -59,7 +58,7 @@ class Context {
  protected:
 
   /// @brief create the context
-  explicit Context(TRI_vocbase_t*, ExecContext const*);
+  explicit Context(TRI_vocbase_t*);
 
  public:
 
@@ -120,9 +119,6 @@ class Context {
   
   /// @brief unregister the transaction
   virtual void unregisterTransaction() noexcept = 0;
-  
-  /// @brief Eexecution context for this transaction, may be null
-  ExecContext const* execContext() const { return _execContext; };
 
  protected:
   
@@ -134,9 +130,6 @@ class Context {
  protected:
   
   TRI_vocbase_t* _vocbase;
-  
-  /// @brief Stores the user context for this transaction, may be nullptr
-  ExecContext const* _execContext;
   
   CollectionNameResolver const* _resolver;
     

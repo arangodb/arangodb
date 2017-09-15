@@ -31,26 +31,22 @@ using namespace arangodb;
 
 thread_local ExecContext const* ExecContext::CURRENT = nullptr;
 
-ExecContext const* ExecContext::fromTrx(transaction::Methods const* trx) {
-  if (trx != nullptr) {
-    return trx->state()->execContext();
-  }
-  return nullptr;
+ExecContext* ExecContext::copy() const {
+  return new ExecContext(_user, _database, _systemAuthLevel,
+                         _databaseAuthLevel);
 }
-
-/*ExecContext* ExecContext::copy() const {
-  return new ExecContext(_user, _database, _systemAuthLevel, _databaseAuthLevel);
-}*/
 
 typedef AuthenticationFeature _AF;
 
 ExecContext::ExecContext(std::string const& u, std::string const& db)
-  : _user(u),
-    _database(db),
-    _systemAuthLevel(_AF::INSTANCE->canUseDatabase(u, TRI_VOC_SYSTEM_DATABASE)),
-    _databaseAuthLevel(_AF::INSTANCE->canUseDatabase(u, db)) {}
+    : _user(u),
+      _database(db),
+      _systemAuthLevel(
+          _AF::INSTANCE->canUseDatabase(u, TRI_VOC_SYSTEM_DATABASE)),
+      _databaseAuthLevel(_AF::INSTANCE->canUseDatabase(u, db)) {}
 
-bool ExecContext::canUseDatabase(std::string const& db, AuthLevel requested) const {
+bool ExecContext::canUseDatabase(std::string const& db,
+                                 AuthLevel requested) const {
   AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
   if (auth != nullptr && auth->isActive()) {
     AuthLevel allowed = auth->authInfo()->canUseDatabase(_user, db);
@@ -60,10 +56,11 @@ bool ExecContext::canUseDatabase(std::string const& db, AuthLevel requested) con
 }
 
 bool ExecContext::canUseCollection(std::string const& db,
-                   std::string const& coll, AuthLevel requested) const {
+                                   std::string const& coll,
+                                   AuthLevel requested) const {
   AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
   if (auth != nullptr && auth->isActive()) {
-    AuthLevel allowed =  auth->authInfo()->canUseCollection(_user, db, coll);
+    AuthLevel allowed = auth->authInfo()->canUseCollection(_user, db, coll);
     return requested <= allowed;
   }
   return true;

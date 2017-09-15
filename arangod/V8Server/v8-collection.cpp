@@ -977,8 +977,7 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  TRI_GET_GLOBALS();
-  ExecContext const* exec = static_cast<ExecContext const*>(v8g->_execContext);
+  ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     if (exec->databaseAuthLevel() != AuthLevel::RW ||
         !exec->canUseCollection(collection->name(), AuthLevel::RW)) {
@@ -1470,8 +1469,7 @@ static void JS_PropertiesVocbaseCol(
 
   bool const isModification = (args.Length() != 0);
   
-  TRI_GET_GLOBALS();
-  ExecContext const* exec = static_cast<ExecContext const*>(v8g->_execContext);
+  ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     bool canModify = exec->canUseCollection(collection->name(), AuthLevel::RW);
     bool canRead = exec->canUseCollection(collection->name(), AuthLevel::RO);
@@ -1640,8 +1638,7 @@ static void JS_RenameVocbaseCol(
 
   std::string const name = TRI_ObjectToString(args[0]);
   
-  TRI_GET_GLOBALS();
-  ExecContext const* exec = static_cast<ExecContext const*>(v8g->_execContext);
+  ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     if (!exec->canUseDatabase(AuthLevel::RW) ||
         !exec->canUseCollection(name, AuthLevel::RW)) {
@@ -2163,8 +2160,7 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // now check the access rights to collections
-  TRI_GET_GLOBALS();
-  ExecContext const* exec = static_cast<ExecContext const*>(v8g->_execContext);
+  ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     VPackSlice storeSlice = paramBuilder.slice().get("store");
     bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
@@ -2765,7 +2761,7 @@ static void JS_TruncateVocbaseCol(
   TRI_GET_GLOBALS();
 
   // Manually check this here, because truncate messes up the return code
-  ExecContext const* exec = static_cast<ExecContext const*>(v8g->_execContext);
+  ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     CollectionNameResolver resolver(collection->vocbase());
     std::string const cName = resolver.getCollectionNameCluster(collection->cid());

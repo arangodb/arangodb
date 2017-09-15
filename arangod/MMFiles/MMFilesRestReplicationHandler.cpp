@@ -557,8 +557,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
                                                             tickStart);
   }
 
-  auto ctx = transaction::StandaloneContext::Create(_vocbase,
-                                                    _request->execContext());
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   // initialize the dump container
   MMFilesReplicationDumpContext dump(ctx,
                                      static_cast<size_t>(determineChunkSize()),
@@ -660,8 +659,7 @@ void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
     return;
   }
 
-  auto ctx = transaction::StandaloneContext::Create(_vocbase,
-                                                    _request->execContext());
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   // initialize the dump container
   MMFilesReplicationDumpContext dump(
       ctx, static_cast<size_t>(determineChunkSize()), false, 0);
@@ -1032,8 +1030,7 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
   }
 
   try {
-    auto ctx = transaction::StandaloneContext::Create(_vocbase,
-                                                      _request->execContext());
+    auto ctx = transaction::StandaloneContext::Create(_vocbase);
     VPackBuilder resultBuilder(ctx->getVPackOptions());
     resultBuilder.openArray();
 
@@ -1198,7 +1195,7 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
   arangodb::LogicalCollection* col = guard.collection();
   TRI_ASSERT(col != nullptr);
 
-  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase, _request->execContext());
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
   // initialize the dump container
   MMFilesReplicationDumpContext dump(ctx,
                                      static_cast<size_t>(determineChunkSize()),

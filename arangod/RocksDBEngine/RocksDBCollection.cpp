@@ -1796,8 +1796,7 @@ int RocksDBCollection::unlockRead() {
 // rescans the collection to update document count
 uint64_t RocksDBCollection::recalculateCounts() {
   // start transaction to get a collection lock
-  auto ctx = transaction::StandaloneContext::Create(
-                              _logicalCollection->vocbase(), nullptr);
+  auto ctx = transaction::StandaloneContext::Create(_logicalCollection->vocbase());
   SingleCollectionTransaction trx(ctx, _logicalCollection->cid(),
                                   AccessMode::Type::EXCLUSIVE);
   auto res = trx.begin();
@@ -1920,7 +1919,7 @@ void RocksDBCollection::recalculateIndexEstimates() {
 void RocksDBCollection::recalculateIndexEstimates(
     std::vector<std::shared_ptr<Index>> const& indexes) {
   // start transaction to get a collection lock
-  auto ctx = transaction::StandaloneContext::Create(_logicalCollection->vocbase(), nullptr);
+  auto ctx = transaction::StandaloneContext::Create(_logicalCollection->vocbase());
   arangodb::SingleCollectionTransaction trx(ctx, _logicalCollection->cid(),
                                             AccessMode::Type::EXCLUSIVE);
   auto res = trx.begin();

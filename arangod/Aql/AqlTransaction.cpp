@@ -56,8 +56,7 @@ AqlTransaction* AqlTransaction::create(
 transaction::Methods* AqlTransaction::clone(
     transaction::Options const& options) const {
   
-  auto ctx = transaction::StandaloneContext::Create(vocbase(),
-                                    _transactionContext->execContext());
+  auto ctx = transaction::StandaloneContext::Create(vocbase());
   return new AqlTransaction(ctx, &_collections, options, false);
 }
 

@@ -66,8 +66,7 @@ class TransactionState {
   TransactionState(TransactionState const&) = delete;
   TransactionState& operator=(TransactionState const&) = delete;
 
-  TransactionState(TRI_vocbase_t* vocbase, transaction::Options const&,
-                   ExecContext const*);
+  TransactionState(TRI_vocbase_t* vocbase, transaction::Options const&);
   virtual ~TransactionState();
 
   bool isRunningInCluster() const {
@@ -162,8 +161,6 @@ class TransactionState {
 
   void setType(AccessMode::Type type);
   
-  ExecContext const* execContext() const { return _execContext; }
-
  protected:
   /// @brief find a collection in the transaction's list of collections
   TransactionCollection* findCollection(TRI_voc_cid_t cid,
@@ -193,8 +190,6 @@ class TransactionState {
   AccessMode::Type _type;
   /// @brief current status
   transaction::Status _status;
-  /// @brief user context in which this is run
-  ExecContext const* _execContext;
 
   SmallVector<TransactionCollection*>::allocator_type::arena_type
       _arena;  // memory for collections

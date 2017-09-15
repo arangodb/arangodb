@@ -30,8 +30,6 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class ExecContext;
-  
 namespace methods {
 
 /// Common code for the db._database(),
@@ -40,10 +38,10 @@ struct Databases {
   static std::vector<std::string> list(std::string const& user = "");
   static arangodb::Result info(TRI_vocbase_t* vocbase,
                                arangodb::velocypack::Builder& result);
-  static arangodb::Result create(ExecContext const*, std::string const& dbName,
+  static arangodb::Result create(std::string const& dbName,
                                  arangodb::velocypack::Slice const& users,
                                  arangodb::velocypack::Slice const& options);
-  static arangodb::Result drop(ExecContext const*, TRI_vocbase_t* systemVocbase,
+  static arangodb::Result drop(TRI_vocbase_t* systemVocbase,
                                std::string const& dbName);
 };
 }

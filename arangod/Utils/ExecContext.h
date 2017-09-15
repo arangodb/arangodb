@@ -28,12 +28,11 @@
 
 namespace arangodb {
 namespace transaction {
-  class Methods;
+class Methods;
 }
 
 class ExecContext {
  public:
-  
   ExecContext(std::string const& user, std::string const& database);
   ExecContext(std::string const& user, std::string const& database,
               AuthLevel systemLevel, AuthLevel dbLevel)
@@ -41,21 +40,20 @@ class ExecContext {
         _database(database),
         _systemAuthLevel(systemLevel),
         _databaseAuthLevel(dbLevel) {}
-
   ExecContext(ExecContext const&) = delete;
 
   static thread_local ExecContext const* CURRENT;
-  static ExecContext const* fromTrx(transaction::Methods const*);
 
+  /// @brief should always be owned externally, so copy it here
+  ExecContext* copy() const;
+  
   std::string const& user() const { return _user; }
   std::string const& database() const { return _database; }
   AuthLevel systemAuthLevel() const { return _systemAuthLevel; };
   AuthLevel databaseAuthLevel() const { return _databaseAuthLevel; };
-  
-  bool isSystemUser() const {
-    return _systemAuthLevel == AuthLevel::RW;
-  }
-  
+
+  bool isSystemUser() const { return _systemAuthLevel == AuthLevel::RW; }
+
   bool canUseDatabase(AuthLevel requested) const {
     return canUseDatabase(_database, requested);
   }
@@ -63,9 +61,9 @@ class ExecContext {
   bool canUseCollection(std::string const& c, AuthLevel requested) const {
     return canUseCollection(_database, c, requested);
   }
-  bool canUseCollection(std::string const& db,
-                     std::string const& c, AuthLevel requested) const;
-  
+  bool canUseCollection(std::string const& db, std::string const& c,
+                        AuthLevel requested) const;
+
  private:
   std::string const _user;
   std::string const _database;

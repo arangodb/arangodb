@@ -126,7 +126,7 @@ bool RestDocumentHandler::createDocument() {
                          opOptions.isSynchronousReplicationFrom);
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase, _request->execContext());
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
   bool const isMultiple = body.isArray();
   if (!isMultiple) {
@@ -231,7 +231,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  auto ctx(transaction::StandaloneContext::Create(_vocbase, _request->execContext()));
+  auto ctx(transaction::StandaloneContext::Create(_vocbase));
   SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::READ);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
@@ -421,7 +421,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase, _request->execContext());
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
   if (!isArrayCase) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -516,7 +516,7 @@ bool RestDocumentHandler::deleteDocument() {
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
-  auto ctx = transaction::StandaloneContext::Create(_vocbase, _request->execContext());
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   VPackBuilder builder;
   VPackSlice search;
   std::shared_ptr<VPackBuilder> builderPtr;
@@ -604,7 +604,7 @@ bool RestDocumentHandler::readManyDocuments() {
   opOptions.ignoreRevs =
       extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
 
-  auto ctx = transaction::StandaloneContext::Create(_vocbase, _request->execContext());
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName,
                                   AccessMode::Type::READ);
 

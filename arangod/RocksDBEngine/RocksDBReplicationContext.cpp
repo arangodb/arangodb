@@ -81,8 +81,7 @@ uint64_t RocksDBReplicationContext::count() const {
 }
 
 // creates new transaction/snapshot
-void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase,
-                                     ExecContext const* exec) {
+void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
   if ((_trx.get() == nullptr) || (_trx->vocbase() != vocbase)) {
     releaseDumpingResources();
     
@@ -91,7 +90,7 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase,
     transactionOptions.waitForSync = false;
     transactionOptions.allowImplicitCollections = true;
     
-    auto ctx = transaction::StandaloneContext::Create(vocbase, exec);
+    auto ctx = transaction::StandaloneContext::Create(vocbase);
     _trx.reset(new transaction::UserTransaction(ctx, {}, {}, {},
                                                 transactionOptions));
     Result res = _trx->begin();

@@ -59,9 +59,8 @@ struct RocksDBTransactionData final : public TransactionData {};
 
 /// @brief transaction type
 RocksDBTransactionState::RocksDBTransactionState(
-    TRI_vocbase_t* vocbase, transaction::Options const& options,
-    ExecContext const* exe)
-    : TransactionState(vocbase, options, exe),
+    TRI_vocbase_t* vocbase, transaction::Options const& options)
+    : TransactionState(vocbase, options),
       _snapshot(nullptr),
       _rocksWriteOptions(),
       _rocksReadOptions(),

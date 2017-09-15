@@ -358,7 +358,7 @@ bool RestImportHandler::createFromJson(std::string const& type) {
   }
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase, _request->execContext());
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
 
   // .............................................................................
@@ -563,7 +563,7 @@ bool RestImportHandler::createFromVPack(std::string const& type) {
   }
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase, _request->execContext());
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
 
   // .............................................................................
@@ -743,7 +743,7 @@ bool RestImportHandler::createFromKeyValueList() {
   current = next + 1;
 
   // find and load collection given by name or identifier
-  auto ctx = transaction::StandaloneContext::Create(_vocbase, _request->execContext());
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
 
   // .............................................................................

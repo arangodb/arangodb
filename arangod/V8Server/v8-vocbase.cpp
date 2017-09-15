@@ -1774,12 +1774,9 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8ToVPackSimple(isolate, users, user);
     }
   }
-  
-  TRI_GET_GLOBALS();
-  
+    
   std::string const dbName = TRI_ObjectToString(args[0]);
-  ExecContext const* exec = static_cast<ExecContext const*>(v8g->_execContext);
-  Result res = methods::Databases::create(exec, dbName, users.slice(), options.slice());
+  Result res = methods::Databases::create( dbName, users.slice(), options.slice());
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
@@ -1808,15 +1805,13 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
   
-  TRI_GET_GLOBALS();
-  
-  ExecContext const* exec = static_cast<ExecContext const*>(v8g->_execContext);
+  ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr && exec->systemAuthLevel() != AuthLevel::RW) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
   std::string const name = TRI_ObjectToString(args[0]);
-  Result res = methods::Databases::drop(exec, vocbase, name);
+  Result res = methods::Databases::drop(vocbase, name);
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }

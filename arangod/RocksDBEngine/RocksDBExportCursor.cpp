@@ -114,8 +114,7 @@ VPackSlice RocksDBExportCursor::next() {
 size_t RocksDBExportCursor::count() const { return _size; }
 
 void RocksDBExportCursor::dump(VPackBuilder& builder) {
-  auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.vocbase(),
-                                                    nullptr);
+  auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.vocbase());
   VPackOptions const* oldOptions = builder.options;
   builder.options = ctx->getVPackOptions();
 

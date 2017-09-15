@@ -64,10 +64,8 @@ struct CustomTypeHandler final : public VPackCustomTypeHandler {
 };
 
 /// @brief create the context
-transaction::Context::Context(TRI_vocbase_t* vocbase,
-                              ExecContext const* exec)
+transaction::Context::Context(TRI_vocbase_t* vocbase)
     : _vocbase(vocbase),
-      _execContext(exec),
       _resolver(nullptr), 
       _customTypeHandler(),
       _builders{_arena},

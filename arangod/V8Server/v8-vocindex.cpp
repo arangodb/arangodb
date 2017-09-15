@@ -90,7 +90,7 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   TRI_GET_GLOBALS();
   
   VPackBuilder output;
-  ExecContext const* exec = static_cast<ExecContext const*>(v8g->_execContext);
+  ExecContext const* exec = ExecContext::CURRENT;
   Result res = methods::Indexes::ensureIndex(exec, collection,
                                              builder.slice(), create, output);
   if (!res.ok()) {
@@ -153,11 +153,8 @@ static void JS_DropIndexVocbaseCol(
   
   VPackBuilder builder;
   TRI_V8ToVPackSimple(isolate, builder, args[0]);
-  
-  TRI_GET_GLOBALS();
-  
-  ExecContext const* exec = static_cast<ExecContext const*>(v8g->_execContext);
-  Result res = methods::Indexes::drop(exec, collection, builder.slice());
+    
+  Result res = methods::Indexes::drop(collection, builder.slice());
   if (res.ok()) {
     TRI_V8_RETURN_TRUE();
   }
@@ -187,11 +184,8 @@ static void JS_GetIndexesVocbaseCol(
     withFigures = TRI_ObjectToBoolean(args[0]);
   }
   
-  TRI_GET_GLOBALS();
-  
   VPackBuilder output;
-  ExecContext const* exec = static_cast<ExecContext const*>(v8g->_execContext);
-  Result res = methods::Indexes::getAll(exec, collection, withFigures, output);
+  Result res = methods::Indexes::getAll(collection, withFigures, output);
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }

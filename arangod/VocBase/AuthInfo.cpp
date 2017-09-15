@@ -301,9 +301,14 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
+  
+  // we cannot set this execution context, otherwise the transaction
+  // will ask us again for permissions and we get a deadlock
+  ExecContext const* oldExe = ExecContext::CURRENT;
+  ExecContext::CURRENT = nullptr;
+  TRI_DEFER(ExecContext::CURRENT = oldExe);
 
-  std::shared_ptr<transaction::Context> ctx(
-      new transaction::StandaloneContext(vocbase, nullptr));
+  auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -438,9 +443,14 @@ static Result UpdateUser(VPackSlice const& user) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
+  
+  // we cannot set this execution context, otherwise the transaction
+  // will ask us again for permissions and we get a deadlock
+  ExecContext const* oldExe = ExecContext::CURRENT;
+  ExecContext::CURRENT = nullptr;
+  TRI_DEFER(ExecContext::CURRENT = oldExe);
 
-  std::shared_ptr<transaction::Context> ctx(
-      new transaction::StandaloneContext(vocbase, nullptr));
+  auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -534,9 +544,14 @@ static Result RemoveUserInternal(AuthUserEntry const& entry) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
+  
+  // we cannot set this execution context, otherwise the transaction
+  // will ask us again for permissions and we get a deadlock
+  ExecContext const* oldExe = ExecContext::CURRENT;
+  ExecContext::CURRENT = nullptr;
+  TRI_DEFER(ExecContext::CURRENT = oldExe);
 
-  std::shared_ptr<transaction::Context> ctx(
-      new transaction::StandaloneContext(vocbase, nullptr));
+  auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
 

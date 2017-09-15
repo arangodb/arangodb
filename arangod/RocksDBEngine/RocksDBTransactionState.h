@@ -66,8 +66,7 @@ class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBBatchedMethods;
 
  public:
-  RocksDBTransactionState(TRI_vocbase_t* vocbase, transaction::Options const&,
-                          ExecContext const*);
+  RocksDBTransactionState(TRI_vocbase_t* vocbase, transaction::Options const&);
   ~RocksDBTransactionState();
 
   /// @brief begin a transaction

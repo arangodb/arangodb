@@ -743,7 +743,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       if (cacheEntry != nullptr) {
         
         auto ctx = transaction::StandaloneContext::Create(_vocbase);
-        ExecContext const* exe = ctx->execContext();
+        ExecContext const* exe = ExecContext::CURRENT;
         // got a result from the query cache
         if(exe != nullptr) {
           for (std::string const& collectionName : cacheEntry->_collections) {
@@ -1068,8 +1068,7 @@ V8Executor* Query::v8Executor() {
 void Query::enterContext() {
   if (!_contextOwnedByExterior) {
     if (_context == nullptr) {
-      ExecContext const* exec = ExecContext::CURRENT;
-      _context = V8DealerFeature::DEALER->enterContext(exec, _vocbase, false);
+      _context = V8DealerFeature::DEALER->enterContext(_vocbase, false);
 
       if (_context == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

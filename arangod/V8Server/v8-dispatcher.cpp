@@ -413,7 +413,7 @@ void V8Task::toVelocyPack(VPackBuilder& builder) const {
 }
 
 void V8Task::work(ExecContext const* exec) {
-  auto context = V8DealerFeature::DEALER->enterContext(exec, _vocbaseGuard->vocbase(),
+  auto context = V8DealerFeature::DEALER->enterContext(_vocbaseGuard->vocbase(),
                                                        _allowUseDatabase);
 
   // note: the context might be 0 in case of shut-down
@@ -535,7 +535,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   TRI_GET_GLOBALS();
 
-  ExecContext const* exec = static_cast<ExecContext const*>(v8g->_execContext);
+  ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr && exec->databaseAuthLevel() != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "registerTask() needs db RW permissions");
@@ -683,7 +683,7 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   TRI_GET_GLOBALS();
   
-  ExecContext const* exec = static_cast<ExecContext const*>(v8g->_execContext);
+  ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr && exec->databaseAuthLevel() != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "unregisterTask() needs db RW permissions");
@@ -735,10 +735,8 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("createQueue(<id>)");
   }
   
-  TRI_GET_GLOBALS();
-
   std::string runAsUser;
-  ExecContext const* exec = static_cast<ExecContext const*>(v8g->_execContext);
+  ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     if (exec->databaseAuthLevel() != AuthLevel::RW) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
@@ -756,8 +754,10 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   docs.add("runAsUser", VPackValue(runAsUser));
   docs.close();
+  
+  TRI_GET_GLOBALS();
 
-  auto ctx = transaction::StandaloneContext::Create(v8g->_vocbase, nullptr);
+  auto ctx = transaction::StandaloneContext::Create(v8g->_vocbase);
   SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::EXCLUSIVE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();
@@ -793,13 +793,13 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   TRI_GET_GLOBALS();
 
-  ExecContext const* exec = static_cast<ExecContext const*>(v8g->_execContext);
+  ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr && exec->databaseAuthLevel() != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "deleteQueue() needs db RW permissions");
   }
 
-  auto ctx = transaction::StandaloneContext::Create(v8g->_vocbase, nullptr);
+  auto ctx = transaction::StandaloneContext::Create(v8g->_vocbase);
   SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();

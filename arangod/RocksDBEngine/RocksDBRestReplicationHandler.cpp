@@ -170,7 +170,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
 
     // create transaction+snapshot
     RocksDBReplicationContextGuard(_manager, ctx);
-    ctx->bind(_vocbase, _request->execContext());
+    ctx->bind(_vocbase);
 
     VPackBuilder b;
     b.add(VPackValue(VPackValueType::Object));
@@ -327,8 +327,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
     cid = c->cid();
   }
 
-  auto trxContext = transaction::StandaloneContext::Create(_vocbase,
-                                                           _request->execContext());
+  auto trxContext = transaction::StandaloneContext::Create(_vocbase);
   VPackBuilder builder(trxContext->getVPackOptions());
   builder.openArray();
   auto result = tailWal(_vocbase, tickStart, tickEnd, chunkSize, includeSystem,
@@ -694,8 +693,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   }
   RocksDBReplicationContextGuard(_manager, ctx);
 
-  auto trxContext = transaction::StandaloneContext::Create(_vocbase,
-                                                           _request->execContext());
+  auto trxContext = transaction::StandaloneContext::Create(_vocbase);
   VPackBuilder resultBuilder(trxContext->getVPackOptions());
   if (keys) {
     Result rv = ctx->dumpKeys(resultBuilder, chunk, static_cast<size_t>(chunkSize), lowKey);
@@ -750,7 +748,6 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
 
   bool found = false;
   uint64_t contextId = 0;
-
 
   // contains dump options that might need to be inspected
   // VPackSlice options = _request->payload();

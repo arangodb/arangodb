@@ -580,8 +580,8 @@ transaction::ContextData* RocksDBEngine::createTransactionContextData() {
 }
 
 TransactionState* RocksDBEngine::createTransactionState(TRI_vocbase_t* vocbase,
-                transaction::Options const& options, ExecContext const* exec) {
-  return new RocksDBTransactionState(vocbase, options, exec);
+                transaction::Options const& options) {
+  return new RocksDBTransactionState(vocbase, options);
 }
 
 TransactionCollection* RocksDBEngine::createTransactionCollection(

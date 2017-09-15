@@ -32,7 +32,7 @@ using namespace arangodb;
 
 /// @brief create the context
 transaction::V8Context::V8Context(TRI_vocbase_t* vocbase, bool embeddable)
-    : Context(vocbase, nullptr),
+    : Context(vocbase),
       _sharedTransactionContext(nullptr),
       _mainScope(nullptr),
       _currentTransaction(nullptr),
@@ -40,7 +40,6 @@ transaction::V8Context::V8Context(TRI_vocbase_t* vocbase, bool embeddable)
       // need to set everything here
       TRI_GET_GLOBALS2(v8::Isolate::GetCurrent());
       _sharedTransactionContext = static_cast<transaction::V8Context*>(v8g->_transactionContext);
-      _execContext = static_cast<ExecContext const*>(v8g->_execContext);
     }
 
 /// @brief order a custom type handler for the collection

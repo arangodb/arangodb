@@ -136,16 +136,15 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
   return Result();
 }
 
-arangodb::Result Databases::create(ExecContext const* exec,
-                                   std::string const& dbName,
+arangodb::Result Databases::create(std::string const& dbName,
                                    VPackSlice const& inUsers,
                                    VPackSlice const& inOptions) {
   if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
     return Result(TRI_ERROR_ARANGO_READ_ONLY);
   }
   auto auth = FeatureCacheFeature::instance()->authenticationFeature();
-  if (exec != nullptr) {
-    if (exec->systemAuthLevel() != AuthLevel::RW) {
+  if (ExecContext::CURRENT != nullptr) {
+    if (!ExecContext::CURRENT->isSystemUser()) {
       return TRI_ERROR_FORBIDDEN;
     }
   }
@@ -262,16 +261,16 @@ arangodb::Result Databases::create(ExecContext const* exec,
     TRI_ASSERT(vocbase->name() == dbName);
 
     // we need to add the permissions before running the upgrade script
-    if (exec != nullptr) {
+    if (ExecContext::CURRENT != nullptr) {
       // ignore errors here Result r =
       auth->authInfo()->updateUser(
-          exec->user(), [&](AuthUserEntry& entry) {
+          ExecContext::CURRENT->user(), [&](AuthUserEntry& entry) {
             entry.grantDatabase(dbName, AuthLevel::RW);
             entry.grantCollection(dbName, "*", AuthLevel::RW);
           });
     }
 
-    V8Context* ctx = V8DealerFeature::DEALER->enterContext(exec, vocbase, true);
+    V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
     if (ctx == nullptr) {
       return Result(TRI_ERROR_INTERNAL, "could not acquire V8 context");
     }
@@ -314,16 +313,17 @@ arangodb::Result Databases::create(ExecContext const* exec,
     TRI_ASSERT(!vocbase->isDangling());
 
     // we need to add the permissions before running the upgrade script
-    if (ServerState::instance()->isSingleServer() && exec != nullptr) {
+    if (ServerState::instance()->isSingleServer() &&
+        ExecContext::CURRENT != nullptr) {
       // ignore errors here Result r =
-      auth->authInfo()->updateUser(exec->user(),
+      auth->authInfo()->updateUser(ExecContext::CURRENT->user(),
                                    [&](AuthUserEntry& entry) {
                                      entry.grantDatabase(dbName, AuthLevel::RW);
                                      entry.grantCollection(dbName, "*", AuthLevel::RW);
                                    });
     }
 
-    V8Context* ctx = V8DealerFeature::DEALER->enterContext(exec, vocbase, true);
+    V8Context* ctx = V8DealerFeature::DEALER->enterContext(vocbase, true);
     if (ctx == nullptr) {
       return Result(TRI_ERROR_INTERNAL, "Could not get v8 context");
     }
@@ -379,17 +379,16 @@ arangodb::Result Databases::create(ExecContext const* exec,
   return Result();
 }
 
-arangodb::Result Databases::drop(ExecContext const* exec,
-                                 TRI_vocbase_t* systemVocbase,
+arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
                                  std::string const& dbName) {
   TRI_ASSERT(systemVocbase->isSystem());
-  if (exec != nullptr) {
+  if (ExecContext::CURRENT != nullptr) {
     if (ExecContext::CURRENT->systemAuthLevel() != AuthLevel::RW) {
       return TRI_ERROR_FORBIDDEN;
     }
   }
 
-  auto ctx = V8DealerFeature::DEALER->enterContext(exec, systemVocbase, true);
+  auto ctx = V8DealerFeature::DEALER->enterContext(systemVocbase, true);
   if (ctx == nullptr) {
     return Result(TRI_ERROR_INTERNAL, "Could not get v8 context");
   }

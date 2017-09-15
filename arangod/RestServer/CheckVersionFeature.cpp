@@ -114,8 +114,7 @@ void CheckVersionFeature::checkVersion() {
 
   // enter context and isolate
   {
-    V8Context* context =
-        V8DealerFeature::DEALER->enterContext(nullptr, vocbase, true, 0);
+    V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true, 0);
 
     if (context == nullptr) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not enter context #0";

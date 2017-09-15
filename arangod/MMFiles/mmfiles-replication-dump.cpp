@@ -99,8 +99,8 @@ static inline bool MustReplicateWalMarkerType(MMFilesMarker const* marker) {
           type == TRI_DF_MARKER_VPACK_CHANGE_COLLECTION ||
           type == TRI_DF_MARKER_VPACK_CREATE_INDEX ||
           type == TRI_DF_MARKER_VPACK_DROP_INDEX ||
-          type == TRI_DF_MARKER_VPACK_CREATE_DATABASE ||
-          type == TRI_DF_MARKER_VPACK_DROP_DATABASE ||
+          //type == TRI_DF_MARKER_VPACK_CREATE_DATABASE ||
+          //type == TRI_DF_MARKER_VPACK_DROP_DATABASE ||
           type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
           type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
           type == TRI_DF_MARKER_VPACK_CHANGE_VIEW);
@@ -140,10 +140,10 @@ static TRI_replication_operation_e TranslateType(
       return REPLICATION_INDEX_CREATE;
     case TRI_DF_MARKER_VPACK_DROP_INDEX:
       return REPLICATION_INDEX_DROP;
-    case TRI_DF_MARKER_VPACK_CREATE_DATABASE:
+    /*case TRI_DF_MARKER_VPACK_CREATE_DATABASE:
       return REPLICATION_DATABASE_CREATE;
     case TRI_DF_MARKER_VPACK_DROP_DATABASE:
-      return REPLICATION_DATABASE_DROP;
+      return REPLICATION_DATABASE_DROP;*/
     case TRI_DF_MARKER_VPACK_CREATE_VIEW:
       return REPLICATION_VIEW_CREATE;
     case TRI_DF_MARKER_VPACK_DROP_VIEW:
@@ -152,6 +152,7 @@ static TRI_replication_operation_e TranslateType(
       return REPLICATION_VIEW_CHANGE;
 
     default:
+      TRI_ASSERT(false);
       return REPLICATION_INVALID;
   }
 }

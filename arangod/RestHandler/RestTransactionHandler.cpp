@@ -65,8 +65,7 @@ RestStatus RestTransactionHandler::execute() {
 
   std::string portType = _request->connectionInfo().portType();
 
-  _v8Context = V8DealerFeature::DEALER->enterContext(_request->execContext(),
-                                                     _vocbase, true /*allow use database*/);
+  _v8Context = V8DealerFeature::DEALER->enterContext(_vocbase, true /*allow use database*/);
   if (!_v8Context) {
     generateError(Result(TRI_ERROR_INTERNAL, "could not acquire v8 context"));
     return RestStatus::DONE;

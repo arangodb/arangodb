@@ -52,9 +52,8 @@ static inline MMFilesLogfileManager* GetMMFilesLogfileManager() {
 
 /// @brief transaction type
 MMFilesTransactionState::MMFilesTransactionState(TRI_vocbase_t* vocbase,
-                                                 transaction::Options const& options,
-                                                 ExecContext const* exec)
-    : TransactionState(vocbase, options, exec),
+                                                 transaction::Options const& options)
+    : TransactionState(vocbase, options),
       _rocksTransaction(nullptr),
       _beginWritten(false),
       _hasOperations(false) {}
