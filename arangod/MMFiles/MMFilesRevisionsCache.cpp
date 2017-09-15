@@ -30,32 +30,8 @@
 
 using namespace arangodb;
 
-namespace {
-static inline uint64_t HashKey(void*, TRI_voc_rid_t const* key) {
-  return std::hash<TRI_voc_rid_t>()(*key);
-//  return XXH64(key, sizeof(TRI_voc_rid_t), 0x12345678);
-}
-
-static inline uint64_t HashElement(void*, MMFilesDocumentPosition const& element) {
-  return std::hash<TRI_voc_rid_t>()(element.revisionId());
-//  TRI_voc_rid_t revisionId = element.revisionId();
-//  return HashKey(nullptr, &revisionId);
-}
-
-static bool IsEqualKeyElement(void*, TRI_voc_rid_t const* key,
-                              uint64_t hash, MMFilesDocumentPosition const& element) {
-  return *key == element.revisionId();
-}
-
-static bool IsEqualElementElement(void*, MMFilesDocumentPosition const& left,
-                                  MMFilesDocumentPosition const& right) {
-  return left.revisionId() == right.revisionId();
-}
-
-} // namespace
-
 MMFilesRevisionsCache::MMFilesRevisionsCache() 
-    : _positions(HashKey, HashElement, IsEqualKeyElement, IsEqualElementElement, IsEqualElementElement, 8, []() -> std::string { return "mmfiles revisions"; }) {}
+    : _positions(MMFilesRevisionsCacheHelper(), 8, []() -> std::string { return "mmfiles revisions"; }) {}
 
 MMFilesRevisionsCache::~MMFilesRevisionsCache() {}
 
