@@ -1150,6 +1150,10 @@ def runOperatingSystems(osList) {
 }
 
 timestamps {
+    node("master") {
+        echo sh(returnStdout: true, script: 'env')
+    }
+
     checkCommitMessages()
 
     node("master") {
