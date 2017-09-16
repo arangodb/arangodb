@@ -27,12 +27,12 @@ class HttpCommTask final : public GeneralCommTask {
   // convert from GeneralResponse to httpResponse
   void addResponse(GeneralResponse* response,
                    RequestStatistics* stat) override {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
-
-    if (httpResponse == nullptr) {
-      throw std::logic_error("invalid response or response Type");
-    }
-
+    TRI_ASSERT(httpResponse);
+#else
+    HttpResponse* httpResponse = static_cast<HttpResponse*>(response);
+#endif
     addResponse(httpResponse, stat);
   }
 

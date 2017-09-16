@@ -102,7 +102,7 @@ void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
   _lock.assertLockedByCurrentThread();
 
   VPackMessageNoOwnBuffer response_message = response->prepareForNetwork();
-  uint64_t const id = response_message._id;
+  uint64_t const mid = response_message._id;
 
   std::vector<VPackSlice> slices;
 
@@ -112,7 +112,7 @@ void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
 
     for (auto& payload : response_message._payloads) {
       LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-result\",\""
-                                         << (void*)this << "/" << id << "\","
+                                         << (void*)this << "/" << mid << "\","
                                          << payload.toJson() << "\"";
 
       slices.push_back(payload);
@@ -123,7 +123,7 @@ void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
   }
 
   // set some sensible maxchunk size and compression
-  auto buffers = createChunkForNetwork(slices, id, _maxChunkSize,
+  auto buffers = createChunkForNetwork(slices, mid, _maxChunkSize,
                                        _protocolVersion);
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
 
@@ -157,7 +157,7 @@ void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
 
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
-      << "\"vst-request-end\",\"" << (void*)this << "/" << id << "\",\""
+      << "\"vst-request-end\",\"" << (void*)this << "/" << mid << "\",\""
       << _connectionInfo.clientAddress << "\",\""
       << VstRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response->responseCode()) << ","
@@ -462,7 +462,7 @@ void VstCommTask::handleSimpleError(rest::ResponseCode responseCode,
 
   try {
     response.setPayload(std::move(buffer), true, VPackOptions::Defaults);
-    processResponse(&response);
+    addResponse(&response, nullptr);
   } catch (...) {
     closeStream();
   }

@@ -168,7 +168,7 @@ void GeneralCommTask::executeRequest(
         response->setHeaderNC(StaticStrings::AsyncId, StringUtils::itoa(jobId));
       }
 
-      processResponse(response.get());
+      addResponse(response.get(), nullptr);
       return;
     } else {
       handleSimpleError(rest::ResponseCode::SERVER_ERROR, *request, TRI_ERROR_QUEUE_FULL,
@@ -179,23 +179,11 @@ void GeneralCommTask::executeRequest(
   // synchronous request
   else {
     transferStatisticsTo(messageId, handler.get());
-    ok = handleRequest(std::move(handler));
+    ok = handleRequestSync(std::move(handler));
   }
 
   if (!ok) {
     handleSimpleError(rest::ResponseCode::SERVER_ERROR, *request, messageId);
-  }
-}
-
-void GeneralCommTask::processResponse(GeneralResponse* response) {
-  _lock.assertLockedByCurrentThread();
-  
-  if (response == nullptr) {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION)
-        << "processResponse received a nullptr, closing connection";
-    closeStreamNoLock();
-  } else {
-    addResponse(response, nullptr);
   }
 }
 
@@ -241,7 +229,7 @@ void GeneralCommTask::transferStatisticsTo(uint64_t id, RestHandler* handler) {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
+bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   bool isDirect = false;
   bool isPrio = false;
 

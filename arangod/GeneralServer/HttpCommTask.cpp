@@ -71,7 +71,7 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
 }
 
 void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest const& req, uint64_t /* messageId */) {
-  std::unique_ptr<GeneralResponse> response(new HttpResponse(code));
+  std::unique_ptr<HttpResponse> response(new HttpResponse(code));
   response->setContentType(req.contentTypeResponse());
   addResponse(response.get(), stealStatistics(1UL));
 }
@@ -79,7 +79,7 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest con
 void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest const& req, int errorNum,
                                      std::string const& errorMessage,
                                      uint64_t /* messageId */) {
-  std::unique_ptr<GeneralResponse> response(new HttpResponse(code));
+  std::unique_ptr<HttpResponse> response(new HttpResponse(code));
   response->setContentType(req.contentTypeResponse());
 
   VPackBuffer<uint8_t> buffer;
@@ -93,7 +93,7 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest con
 
   try {
     response->setPayload(std::move(buffer), true, VPackOptions::Defaults);
-    addResponse(response.get(), stealStatistics(1UL));
+    addResponse(std::move(response), stealStatistics(1UL));
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "handleSimpleError received an exception, closing connection:"
@@ -596,7 +596,7 @@ bool HttpCommTask::processRead(double startTime) {
 
     response.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
 
-    processResponse(&response);
+    addResponse(&response, nullptr);
   }
 
   _incompleteRequest.reset(nullptr);
@@ -643,7 +643,7 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
         << "\"http-request-source\",\"" << (void*)this << "\",\""
         << source << "\"";
   }
-
+    
   // create a handler and execute
   std::unique_ptr<GeneralResponse> response(
       new HttpResponse(rest::ResponseCode::SERVER_ERROR));
@@ -733,7 +733,7 @@ void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
                                  StaticStrings::N1800);
   }
 
-  processResponse(&response);
+  addResponse(&response, nullptr);
 }
 
 std::unique_ptr<GeneralResponse> HttpCommTask::createResponse(

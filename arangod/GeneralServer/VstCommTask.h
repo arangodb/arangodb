@@ -44,13 +44,14 @@ class VstCommTask final : public GeneralCommTask {
 
   // convert from GeneralResponse to VstResponse ad dispatch request to class
   // internal addResponse
-  void addResponse(GeneralResponse* response, RequestStatistics* stat) override {
+  void addResponse(std::unique_ptr<GeneralResponse>,
+                   RequestStatistics* stat) override {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     VstResponse* vstResponse = dynamic_cast<VstResponse*>(response);
-
-    if (vstResponse == nullptr) {
-      throw std::logic_error("invalid response or response Type");
-    }
-
+    TRI_ASSERT(vstResponse);
+#else
+    VstResponse* vstResponse = static_cast<HttpResponse*>(response);
+#endif
     addResponse(vstResponse, stat);
   }
 
