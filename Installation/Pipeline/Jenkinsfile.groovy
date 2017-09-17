@@ -557,6 +557,7 @@ def jslint(os, edition, maintainer) {
     def archFail = "${archDir}/02-jslint-FAIL"
 
     fileOperations([
+        fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
         folderDeleteOperation(arch),
         folderDeleteOperation(archFail),
         folderCreateOperation(arch)
@@ -814,6 +815,7 @@ def testStep(os, edition, maintainer, mode, engine, stageName) {
 
                     // create directories for the artifacts
                     fileOperations([
+                        fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
                         folderCreateOperation(arch),
                         folderCreateOperation(archFail),
                         folderCreateOperation(archRun)
