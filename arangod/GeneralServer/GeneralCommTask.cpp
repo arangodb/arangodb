@@ -168,7 +168,7 @@ void GeneralCommTask::executeRequest(
         response->setHeaderNC(StaticStrings::AsyncId, StringUtils::itoa(jobId));
       }
 
-      addResponse(response.get(), nullptr);
+      addResponse(std::move(response), nullptr);
       return;
     } else {
       handleSimpleError(rest::ResponseCode::SERVER_ERROR, *request, TRI_ERROR_QUEUE_FULL,
@@ -273,14 +273,15 @@ bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   std::unique_ptr<Job> job(
       new Job(_server, std::move(handler),
               [self, this](std::shared_ptr<RestHandler> h) {
-                handleRequestDirectly(basics::ConditionalLocking::DoLock, h);
+                handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(h));
               }));
 
   bool ok = SchedulerFeature::SCHEDULER->queue(std::move(job));
 
   if (!ok) {
     
-    handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, *(handler->request()), TRI_ERROR_QUEUE_FULL,
+    handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                      *(handler->request()), TRI_ERROR_QUEUE_FULL,
                       TRI_errno_string(TRI_ERROR_QUEUE_FULL), messageId);
   }
 
@@ -299,7 +300,7 @@ void GeneralCommTask::handleRequestDirectly(bool doLock, std::shared_ptr<RestHan
     CONDITIONAL_MUTEX_LOCKER(locker, _lock, doLock); 
     _lock.assertLockedByCurrentThread();
 
-    addResponse(h->response(), stat);
+    addResponse(h->stealResponse(), stat);
   });
 
   HandlerWorkStack monitor(handler);

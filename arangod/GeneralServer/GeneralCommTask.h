@@ -98,7 +98,8 @@ class GeneralCommTask : public SocketTask {
   virtual std::unique_ptr<GeneralResponse> createResponse(
       rest::ResponseCode, uint64_t messageId) = 0;
 
-  virtual void addResponse(std::unique_ptr<GeneralResponse>, RequestStatistics*) = 0;
+  virtual void addResponse(std::unique_ptr<GeneralResponse>,
+                           RequestStatistics*) = 0;
 
   virtual void handleSimpleError(rest::ResponseCode, GeneralRequest const&, uint64_t messageId) = 0;
 

@@ -71,17 +71,15 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
 }
 
 void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest const& req, uint64_t /* messageId */) {
-  std::unique_ptr<HttpResponse> response(new HttpResponse(code));
+  std::unique_ptr<HttpResponse> response(new HttpResponse(code, leaseStringBuffer(0)));
   response->setContentType(req.contentTypeResponse());
-  addResponse(response.get(), stealStatistics(1UL));
+  addResponse(std::move(response), stealStatistics(1UL));
 }
 
 void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest const& req, int errorNum,
                                      std::string const& errorMessage,
                                      uint64_t /* messageId */) {
-  std::unique_ptr<HttpResponse> response(new HttpResponse(code));
-  response->setContentType(req.contentTypeResponse());
-
+  
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
   builder.openObject();
@@ -90,10 +88,12 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest con
   builder.add(StaticStrings::ErrorMessage, VPackValue(errorMessage));
   builder.add(StaticStrings::Code, VPackValue((int)code));
   builder.close();
-
+  
   try {
-    response->setPayload(std::move(buffer), true, VPackOptions::Defaults);
-    addResponse(std::move(response), stealStatistics(1UL));
+    auto resp = std::make_unique<HttpResponse>(code, leaseStringBuffer(buffer.size()));
+    resp->setContentType(req.contentTypeResponse());
+    resp->setPayload(std::move(buffer), true, VPackOptions::Defaults);
+    addResponse(std::move(resp), stealStatistics(1UL));
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "handleSimpleError received an exception, closing connection:"
@@ -106,9 +106,15 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest con
   }
 }
 
-void HttpCommTask::addResponse(HttpResponse* response,
+void HttpCommTask::addResponse(std::unique_ptr<GeneralResponse> baseResponse,
                                RequestStatistics* stat) {
   _lock.assertLockedByCurrentThread();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  HttpResponse* response = dynamic_cast<HttpResponse*>(baseResponse.get());
+  TRI_ASSERT(response != nullptr);
+#else
+  HttpResponse* response = static_cast<HttpResponse*>(baseResponse.get());
+#endif
 
   resetKeepAlive();
 
@@ -201,15 +207,17 @@ void HttpCommTask::addResponse(HttpResponse* response,
       << _originalBodyLength << "," << responseBodyLength << ",\"" << _fullUrl
       << "\"," << Logger::FIXED(totalTime, 6);
 
-  // clear body
-  response->body().clear();
+  std::unique_ptr<basics::StringBuffer> body = response->stealBody();
+  returnStringBuffer(body.get());
+  body.release();
 }
 
 // reads data from the socket
 // caller must hold the _lock
 bool HttpCommTask::processRead(double startTime) {
+  _lock.assertLockedByCurrentThread();
+  
   cancelKeepAlive();
-
   TRI_ASSERT(_readBuffer.c_str() != nullptr);
 
   if (_requestPending) {
@@ -591,12 +599,11 @@ bool HttpCommTask::processRead(double startTime) {
     handleSimpleError(authResult, *_incompleteRequest, TRI_ERROR_USER_CHANGE_PASSWORD,
                       "change password", 1);
   } else {  // not authenticated
-    HttpResponse response(rest::ResponseCode::UNAUTHORIZED);
+    auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::UNAUTHORIZED,
+                                               leaseStringBuffer(0));
     std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
-
-    response.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
-
-    addResponse(&response, nullptr);
+    resp->setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
+    addResponse(std::move(resp), nullptr);
   }
 
   _incompleteRequest.reset(nullptr);
@@ -604,6 +611,7 @@ bool HttpCommTask::processRead(double startTime) {
 }
 
 void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
+  _lock.assertLockedByCurrentThread();
   {
     LOG_TOPIC(DEBUG, Logger::REQUESTS)
         << "\"http-request-begin\",\"" << (void*)this << "\",\""
@@ -645,13 +653,12 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
   }
     
   // create a handler and execute
-  std::unique_ptr<GeneralResponse> response(
-      new HttpResponse(rest::ResponseCode::SERVER_ERROR));
+  auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR,
+                                             leaseStringBuffer(1024));
+  resp->setContentType(request->contentTypeResponse());
+  resp->setContentTypeRequested(request->contentTypeResponse());
 
-  response->setContentType(request->contentTypeResponse());
-  response->setContentTypeRequested(request->contentTypeResponse());
-
-  executeRequest(std::move(request), std::move(response));
+  executeRequest(std::move(request), std::move(resp));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -700,9 +707,10 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
 }
 
 void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
-  HttpResponse response(rest::ResponseCode::OK);
+  std::unique_ptr<HttpResponse> resp(new HttpResponse(rest::ResponseCode::OK,
+                                                      leaseStringBuffer(0)));
 
-  response.setHeaderNCIfNotSet(StaticStrings::Allow,
+  resp->setHeaderNCIfNotSet(StaticStrings::Allow,
                                StaticStrings::CorsMethods);
 
   if (!_origin.empty()) {
@@ -712,8 +720,8 @@ void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
 
     // send back which HTTP methods are allowed for the resource
     // we'll allow all
-    response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowMethods,
-                                 StaticStrings::CorsMethods);
+    resp->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowMethods,
+                              StaticStrings::CorsMethods);
 
     if (!allowHeaders.empty()) {
       // allow all extra headers the client requested
@@ -721,24 +729,24 @@ void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
       // client sends some broken headers and then later cannot access the data
       // on
       // the server. that's a client problem.
-      response.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowHeaders,
-                                   allowHeaders);
+      resp->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowHeaders,
+                                allowHeaders);
 
       LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "client requested validation of the following headers: "
                  << allowHeaders;
     }
 
     // set caching time (hard-coded value)
-    response.setHeaderNCIfNotSet(StaticStrings::AccessControlMaxAge,
-                                 StaticStrings::N1800);
+    resp->setHeaderNCIfNotSet(StaticStrings::AccessControlMaxAge,
+                              StaticStrings::N1800);
   }
 
-  addResponse(&response, nullptr);
+  addResponse(std::move(resp), nullptr);
 }
 
 std::unique_ptr<GeneralResponse> HttpCommTask::createResponse(
     rest::ResponseCode responseCode, uint64_t /* messageId */) {
-  return std::unique_ptr<GeneralResponse>(new HttpResponse(responseCode));
+  return std::make_unique<HttpResponse>(responseCode,leaseStringBuffer(0));
 }
 
 void HttpCommTask::compactify() {

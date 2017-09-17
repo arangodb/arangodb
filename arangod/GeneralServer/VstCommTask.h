@@ -45,15 +45,7 @@ class VstCommTask final : public GeneralCommTask {
   // convert from GeneralResponse to VstResponse ad dispatch request to class
   // internal addResponse
   void addResponse(std::unique_ptr<GeneralResponse>,
-                   RequestStatistics* stat) override {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    VstResponse* vstResponse = dynamic_cast<VstResponse*>(response);
-    TRI_ASSERT(vstResponse);
-#else
-    VstResponse* vstResponse = static_cast<HttpResponse*>(response);
-#endif
-    addResponse(vstResponse, stat);
-  }
+                   RequestStatistics* stat) override;
 
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
@@ -69,10 +61,11 @@ class VstCommTask final : public GeneralCommTask {
 
   void handleAuthHeader(VPackSlice const& header, uint64_t messageId);
 
-  void handleSimpleError(rest::ResponseCode code, GeneralRequest const& req, uint64_t id) override {
-    VstResponse response(code, id);
-    response.setContentType(req.contentTypeResponse());
-    addResponse(&response, nullptr);
+  void handleSimpleError(rest::ResponseCode code, GeneralRequest const& req,
+                         uint64_t mid) override {
+    std::unique_ptr<VstResponse> response(new VstResponse(code, mid));
+    response->setContentType(req.contentTypeResponse());
+    addResponse(std::move(response), nullptr);
   }
 
   void handleSimpleError(rest::ResponseCode, GeneralRequest const&, int code,
@@ -85,8 +78,6 @@ class VstCommTask final : public GeneralCommTask {
   // reets the internal state this method can be called to clean up when the
   // request handling aborts prematurely
   void closeTask(rest::ResponseCode code = rest::ResponseCode::SERVER_ERROR);
-
-  void addResponse(VstResponse*, RequestStatistics* stat);
 
  private:
   using MessageID = uint64_t;
@@ -143,6 +134,8 @@ class VstCommTask final : public GeneralCommTask {
   bool getMessageFromMultiChunks(
       ChunkHeader const& chunkHeader, VstInputMessage& message, bool& doExecute,
       char const* vpackBegin, char const* chunkEnd);
+  
+private:
 
   /// Is the current user authorized
   bool _authorized;

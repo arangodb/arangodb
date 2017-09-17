@@ -42,6 +42,7 @@ namespace arangodb {
 class ConnectionStatistics;
 
 namespace rest {
+  
 class SocketTask : virtual public Task {
   friend class HttpCommTask;
 
@@ -152,7 +153,8 @@ class SocketTask : virtual public Task {
 
   // caller must hold the _lock
   void cancelKeepAlive();
-      
+  
+  
   basics::StringBuffer* leaseStringBuffer(size_t length);
   void returnStringBuffer(basics::StringBuffer*);
  

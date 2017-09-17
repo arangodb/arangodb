@@ -45,17 +45,26 @@ using namespace arangodb::basics;
 bool HttpResponse::HIDE_PRODUCT_HEADER = false;
 
 HttpResponse::HttpResponse(ResponseCode code)
+  : HttpResponse(code, new StringBuffer(false)) {}
+
+HttpResponse::HttpResponse(ResponseCode code,
+                           basics::StringBuffer* buffer)
     : GeneralResponse(code),
       _isHeadResponse(false),
-      _body(false),
+      _body(buffer),
       _bodySize(0) {
+  TRI_ASSERT(buffer);
   _generateBody = false;
   _contentType = ContentType::TEXT;
   _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
-  if (_body.c_str() == nullptr) {
+  if (_body->c_str() == nullptr) {
     // no buffer could be reserved. out of memory!
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+}
+
+HttpResponse::~HttpResponse() {
+  delete _body;
 }
 
 void HttpResponse::reset(ResponseCode code) {
@@ -64,7 +73,7 @@ void HttpResponse::reset(ResponseCode code) {
   _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
   _contentType = ContentType::TEXT;
   _isHeadResponse = false;
-  _body.clear();
+  _body->clear();
   _bodySize = 0;
 }
 
@@ -125,7 +134,7 @@ void HttpResponse::setCookie(std::string const& name, std::string const& value,
 }
 
 void HttpResponse::headResponse(size_t size) {
-  _body.clear();
+  _body->clear();
   _isHeadResponse = true;
   _bodySize = size;
 }
@@ -134,7 +143,7 @@ size_t HttpResponse::bodySize() const {
   if (_isHeadResponse) {
     return _bodySize;
   }
-  return _body.length();
+  return _body->length();
 }
 
 void HttpResponse::writeHeader(StringBuffer* output) {
@@ -293,7 +302,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
       // been a GET.
       output->appendInteger(_bodySize);
     } else {
-      output->appendInteger(_body.length());
+      output->appendInteger(_body->length());
     }
 
     output->appendText("\r\n\r\n", 4);
@@ -355,7 +364,7 @@ void HttpResponse::addPayloadInternal(VPackSlice output, size_t inputLength,
       
       VPackValueLength length = output.byteSize();
       if (_generateBody) {
-        _body.appendText(output.startAs<const char>(), length);
+        _body->appendText(output.startAs<const char>(), length);
       } else {
         headResponse(length);
       }
@@ -364,7 +373,7 @@ void HttpResponse::addPayloadInternal(VPackSlice output, size_t inputLength,
     default: {
       setContentType(rest::ContentType::JSON);
       if (_generateBody) {
-        arangodb::basics::VelocyPackDumper dumper(&_body, options);
+        arangodb::basics::VelocyPackDumper dumper(_body, options);
         dumper.dumpValue(output);
       } else {
         // TODO can we optimize this?

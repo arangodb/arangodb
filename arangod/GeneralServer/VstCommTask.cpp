@@ -98,8 +98,15 @@ VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
       ->vstMaxSize();
 }
 
-void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
-  _lock.assertLockedByCurrentThread();
+void VstCommTask::addResponse(std::unique_ptr<GeneralResponse> baseResponse,
+                                 RequestStatistics* stat) {
+    _lock.assertLockedByCurrentThread();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    VstResponse* response = dynamic_cast<VstResponse*>(baseResponse.get());
+    TRI_ASSERT(response != nullptr);
+#else
+    VstResponse* response = static_cast<VstResponse*>(baseResponse.get());
+#endif
 
   VPackMessageNoOwnBuffer response_message = response->prepareForNetwork();
   uint64_t const mid = response_message._id;
@@ -448,8 +455,8 @@ void VstCommTask::handleSimpleError(rest::ResponseCode responseCode,
                                     int errorNum,
                                     std::string const& errorMessage,
                                     uint64_t messageId) {
-  VstResponse response(responseCode, messageId);
-  response.setContentType(req.contentTypeResponse());
+  std::unique_ptr<VstResponse> resp(new VstResponse(responseCode, messageId));
+  resp->setContentType(req.contentTypeResponse());
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);
@@ -461,8 +468,8 @@ void VstCommTask::handleSimpleError(rest::ResponseCode responseCode,
   builder.close();
 
   try {
-    response.setPayload(std::move(buffer), true, VPackOptions::Defaults);
-    addResponse(&response, nullptr);
+    resp->setPayload(std::move(buffer), true, VPackOptions::Defaults);
+    addResponse(std::move(resp), nullptr);
   } catch (...) {
     closeStream();
   }

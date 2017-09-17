@@ -46,7 +46,10 @@ class HttpResponse : public GeneralResponse {
   static bool HIDE_PRODUCT_HEADER;
 
  public:
-  explicit HttpResponse(ResponseCode code);
+  explicit HttpResponse(ResponseCode);
+  explicit HttpResponse(ResponseCode code,
+                        basics::StringBuffer* leased);
+  ~HttpResponse();
 
  public:
   
@@ -66,7 +69,10 @@ class HttpResponse : public GeneralResponse {
   // information to the string buffer. Note that adding data to the body
   // invalidates any previously returned header. You must call header
   // again.
-  basics::StringBuffer& body() { return _body; }
+  basics::StringBuffer& body() {
+    TRI_ASSERT(_body);
+    return *_body;
+  }
   size_t bodySize() const;
 
   // you should call writeHeader only after the body has been created
@@ -88,7 +94,7 @@ class HttpResponse : public GeneralResponse {
     return _generateBody = generateBody;
   }
   
-  int reservePayload(std::size_t size) override { return _body.reserve(size); }
+  int reservePayload(std::size_t size) override { return _body->reserve(size); }
   
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::HTTP;
@@ -98,10 +104,16 @@ class HttpResponse : public GeneralResponse {
   // the body must already be set. deflate is then run on the existing body
   int deflate(size_t = 16384);
 
+  std::unique_ptr<basics::StringBuffer> stealBody() {
+    std::unique_ptr<basics::StringBuffer> bb(_body);
+    _body = nullptr;
+    return bb;
+  }
+  
  private:
   bool _isHeadResponse;
   std::vector<std::string> _cookies;
-  basics::StringBuffer _body;
+  basics::StringBuffer *_body;
   size_t _bodySize;
     
   void addPayloadInternal(velocypack::Slice, size_t,
