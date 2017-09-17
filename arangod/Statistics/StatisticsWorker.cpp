@@ -5,6 +5,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/StandaloneContext.h"
@@ -99,12 +100,15 @@ void StatisticsWorker::_collectGarbage(std::string const& collectionName,
 
 
 void StatisticsWorker::historianAverage() {
-  // var stats15m = db._statistics15;
-  // var clusterId = cluster.isCluster() && global.ArangoServerState.id();
-  // if (cluster.isCluster()) {
-  // }
 
-  uint64_t clusterId = 0;
+  std::string clusterId = "";
+
+  if (ServerState::instance()->isRunningInCluster()) {
+    clusterId = ServerState::instance()->getId();
+  }
+
+  std::cout << "clusterId is " << clusterId << std::endl;
+
   uint64_t x = 0;
 
   try {
@@ -118,6 +122,8 @@ void StatisticsWorker::historianAverage() {
     VPackSlice prev15 = prev15Builder->slice();
 
     std::cout << "lastEntry hexType " << prev15.hexType() << std::endl;
+    std::cout << "lastEntry isArray " << prev15.isArray() << std::endl;
+    std::cout << "lastEntry length "  << prev15.length() << std::endl;
 
     std::cout << x++ << std::endl;
 
@@ -200,7 +206,7 @@ void StatisticsWorker::historianAverage() {
   }
 }
 
-std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::_lastEntry(std::string const& collectionName, uint64_t start, uint64_t clusterId) {
+std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::_lastEntry(std::string const& collectionName, uint64_t start, std::string const& clusterId) {
   std::string filter = "";
 
   auto queryRegistryFeature =
@@ -215,7 +221,7 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::_lastEntry(std:
   bindVars->add("@collection", VPackValue(collectionName));
   bindVars->add("start", VPackValue(start));
 
-  if (clusterId) {
+  if (clusterId.length()) {
     filter = "FILTER s.clusterId == @clusterId";
     bindVars->add("clusterId", VPackValue(clusterId));
   }
@@ -234,7 +240,7 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::_lastEntry(std:
   return queryResult.result;
 }
 
-VPackBuilder StatisticsWorker::_compute15Minute(uint64_t start, uint64_t clusterId) {
+VPackBuilder StatisticsWorker::_compute15Minute(uint64_t start, std::string const& clusterId) {
   std::string filter = "";
 
   auto queryRegistryFeature =
@@ -248,7 +254,7 @@ VPackBuilder StatisticsWorker::_compute15Minute(uint64_t start, uint64_t cluster
   bindVars->openObject();
   bindVars->add("start", VPackValue(start));
 
-  if (clusterId) {
+  if (clusterId.length()) {
     filter = "FILTER s.clusterId == @clusterId";
     bindVars->add("clusterId", VPackValue(clusterId));
   }
@@ -368,7 +374,7 @@ VPackBuilder StatisticsWorker::_compute15Minute(uint64_t start, uint64_t cluster
 
   builder.add("time", VPackValue(fTime));
 
-  if (clusterId) {
+  if (clusterId.length()) {
     builder.add("clusterId", VPackValue(clusterId));
   }
 
@@ -418,6 +424,8 @@ VPackBuilder StatisticsWorker::_compute15Minute(uint64_t start, uint64_t cluster
 
 void StatisticsWorker::run() {
   uint64_t seconds = 0;
+
+  // create collections
 
   while (!isStopping() && StatisticsFeature::enabled()) {
     // process every second
