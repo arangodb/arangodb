@@ -28,6 +28,7 @@
 #include "Basics/AssocUnique.h"
 #include "Basics/ReadWriteLock.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 struct MMFilesMarker;
@@ -45,18 +46,18 @@ class MMFilesRevisionsCache {
   size_t capacity();
   size_t memoryUsage();
   void clear();
-  MMFilesDocumentPosition lookup(TRI_voc_rid_t revisionId) const;
-  MMFilesDocumentPosition insert(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock);
+  MMFilesDocumentPosition lookup(LocalDocumentId const& documentId) const;
+  MMFilesDocumentPosition insert(LocalDocumentId const& documentId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock);
   void insert(MMFilesDocumentPosition const& position, bool shouldLock);
-  void update(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal);
-  bool updateConditional(TRI_voc_rid_t revisionId, MMFilesMarker const* oldPosition, MMFilesMarker const* newPosition, TRI_voc_fid_t newFid, bool isInWal);
-  void remove(TRI_voc_rid_t revisionId);
-  MMFilesDocumentPosition fetchAndRemove(TRI_voc_rid_t revisionId);
+  void update(LocalDocumentId const& documentId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal);
+  bool updateConditional(LocalDocumentId const& documentId, MMFilesMarker const* oldPosition, MMFilesMarker const* newPosition, TRI_voc_fid_t newFid, bool isInWal);
+  void remove(LocalDocumentId const& documentId);
+  MMFilesDocumentPosition fetchAndRemove(LocalDocumentId const& documentId);
 
  private:
   mutable arangodb::basics::ReadWriteLock _lock; 
   
-  arangodb::basics::AssocUnique<TRI_voc_rid_t, MMFilesDocumentPosition> _positions;
+  arangodb::basics::AssocUnique<LocalDocumentId::BaseType, MMFilesDocumentPosition> _positions;
 };
 
 } // namespace arangodb

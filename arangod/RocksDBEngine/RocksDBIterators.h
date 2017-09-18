@@ -28,7 +28,6 @@
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
-#include "RocksDBEngine/RocksDBToken.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -47,7 +46,7 @@ class RocksDBPrimaryIndex;
 /// basically sorted after revision ID
 class RocksDBAllIndexIterator final : public IndexIterator {
  public:
-  typedef std::function<void(DocumentIdentifierToken const& token,
+  typedef std::function<void(LocalDocumentId const& token,
                              StringRef const& key)>
       TokenKeyCallback;
   RocksDBAllIndexIterator(LogicalCollection* collection,
@@ -106,7 +105,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 /// into the document store. E.g. used for incremental sync
 class RocksDBSortedAllIterator final : public IndexIterator {
  public:
-  typedef std::function<void(DocumentIdentifierToken const& token,
+  typedef std::function<void(LocalDocumentId const& token,
                              StringRef const& key)>
       TokenKeyCallback;
   RocksDBSortedAllIterator(LogicalCollection* collection,

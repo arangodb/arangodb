@@ -33,7 +33,6 @@
 #include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
-#include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -216,7 +215,7 @@ static bool IsEqualElementElementUnique(void*,
                                         MMFilesHashIndexElement const* left,
                                         MMFilesHashIndexElement const* right) {
   // this is quite simple
-  return left->revisionId() == right->revisionId();
+  return left->localDocumentId() == right->localDocumentId();
 }
 
 /// @brief determines if two elements are equal
@@ -226,7 +225,7 @@ static bool IsEqualElementElementMulti(void* userData,
   TRI_ASSERT(left != nullptr);
   TRI_ASSERT(right != nullptr);
 
-  if (left->revisionId() != right->revisionId()) {
+  if (left->localDocumentId() != right->localDocumentId()) {
     return false;
   }
   if (left->hash() != right->hash()) {
@@ -260,7 +259,7 @@ static uint64_t HashKey(void*, VPackSlice const* key) {
 static bool IsEqualKeyElementMulti(void* userData, VPackSlice const* left,
                                    MMFilesHashIndexElement const* right) {
   TRI_ASSERT(left->isArray());
-  TRI_ASSERT(right->revisionId() != 0);
+  TRI_ASSERT(right->isSet());
   IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
   TRI_ASSERT(context != nullptr);
 
@@ -317,7 +316,7 @@ bool MMFilesHashIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
     if (!_buffer.empty()) {
       // found something
-      cb(MMFilesToken{_buffer[_posInBuffer++]->revisionId()});
+      cb(LocalDocumentId{_buffer[_posInBuffer++]->localDocumentId()});
       --limit;
     }
   }
@@ -375,7 +374,7 @@ bool MMFilesHashIndexIteratorVPack::next(TokenCallback const& cb,
 
     if (!_buffer.empty()) {
       // found something
-      cb(MMFilesToken{_buffer[_posInBuffer++]->revisionId()});
+      cb(_buffer[_posInBuffer++]->localDocumentId());
       --limit;
     }
   }
@@ -432,7 +431,7 @@ MMFilesHashIndex::MMFilesHashIndex(TRI_idx_iid_t iid,
                                    LogicalCollection* collection,
                                    VPackSlice const& info)
     : MMFilesPathBasedIndex(iid, collection, info,
-                            sizeof(TRI_voc_rid_t) + sizeof(uint32_t), false),
+                            sizeof(LocalDocumentId) + sizeof(uint32_t), false),
       _uniqueArray(nullptr) {
   size_t indexBuckets = 1;
 
@@ -578,21 +577,21 @@ bool MMFilesHashIndex::matchesDefinition(VPackSlice const& info) const {
 }
 
 Result MMFilesHashIndex::insert(transaction::Methods* trx,
-                             TRI_voc_rid_t revisionId, VPackSlice const& doc,
-                             bool isRollback) {
+                                LocalDocumentId const& documentId, VPackSlice const& doc,
+                                bool isRollback) {
   if (_unique) {
-    return IndexResult(insertUnique(trx, revisionId, doc, isRollback), this);
+    return IndexResult(insertUnique(trx, documentId, doc, isRollback), this);
   }
 
-  return IndexResult(insertMulti(trx, revisionId, doc, isRollback), this);
+  return IndexResult(insertMulti(trx, documentId, doc, isRollback), this);
 }
 
 /// @brief removes an entry from the hash array part of the hash index
 Result MMFilesHashIndex::remove(transaction::Methods* trx,
-                             TRI_voc_rid_t revisionId, VPackSlice const& doc,
-                             bool isRollback) {
+                                LocalDocumentId const& documentId, VPackSlice const& doc,
+                                bool isRollback) {
   std::vector<MMFilesHashIndexElement*> elements;
-  int res = fillElement<MMFilesHashIndexElement>(elements, revisionId, doc);
+  int res = fillElement<MMFilesHashIndexElement>(elements, documentId, doc);
 
   if (res != TRI_ERROR_NO_ERROR) {
     for (auto& hashElement : elements) {
@@ -622,7 +621,7 @@ Result MMFilesHashIndex::remove(transaction::Methods* trx,
 
 void MMFilesHashIndex::batchInsert(
     transaction::Methods* trx,
-    std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
+    std::vector<std::pair<LocalDocumentId, VPackSlice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   TRI_ASSERT(queue != nullptr);
   if (_unique) {
@@ -696,10 +695,10 @@ int MMFilesHashIndex::lookup(
 }
 
 int MMFilesHashIndex::insertUnique(transaction::Methods* trx,
-                                   TRI_voc_rid_t revisionId,
+                                   LocalDocumentId const& documentId,
                                    VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesHashIndexElement*> elements;
-  int res = fillElement<MMFilesHashIndexElement>(elements, revisionId, doc);
+  int res = fillElement<MMFilesHashIndexElement>(elements, documentId, doc);
 
   if (res != TRI_ERROR_NO_ERROR) {
     for (auto& it : elements) {
@@ -739,7 +738,7 @@ int MMFilesHashIndex::insertUnique(transaction::Methods* trx,
 
 void MMFilesHashIndex::batchInsertUnique(
     transaction::Methods* trx,
-    std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
+    std::vector<std::pair<LocalDocumentId, VPackSlice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   TRI_ASSERT(queue != nullptr);
   std::shared_ptr<std::vector<MMFilesHashIndexElement*>> elements;
@@ -796,10 +795,10 @@ void MMFilesHashIndex::batchInsertUnique(
 }
 
 int MMFilesHashIndex::insertMulti(transaction::Methods* trx,
-                                  TRI_voc_rid_t revisionId,
+                                  LocalDocumentId const& documentId,
                                   VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesHashIndexElement*> elements;
-  int res = fillElement<MMFilesHashIndexElement>(elements, revisionId, doc);
+  int res = fillElement<MMFilesHashIndexElement>(elements, documentId, doc);
 
   if (res != TRI_ERROR_NO_ERROR) {
     for (auto& hashElement : elements) {
@@ -861,7 +860,7 @@ int MMFilesHashIndex::insertMulti(transaction::Methods* trx,
 
 void MMFilesHashIndex::batchInsertMulti(
     transaction::Methods* trx,
-    std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
+    std::vector<std::pair<LocalDocumentId, VPackSlice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   TRI_ASSERT(queue != nullptr);
   std::shared_ptr<std::vector<MMFilesHashIndexElement*>> elements;

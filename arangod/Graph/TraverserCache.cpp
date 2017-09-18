@@ -54,7 +54,7 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto col = _trx->vocbase()->lookupCollection(idToken.cid());
   TRI_ASSERT(col != nullptr);
-  if (!col->readDocument(_trx, idToken.token(), *_mmdr.get())) {
+  if (!col->readDocument(_trx, idToken.localDocumentId(), *_mmdr.get())) {
     TRI_ASSERT(false);
     // We already had this token, inconsistent state. Return NULL in Production
     LOG_TOPIC(ERR, arangodb::Logger::GRAPHS) << "Could not extract indexed Edge Document, return 'null' instead. "

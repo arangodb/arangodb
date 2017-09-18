@@ -25,6 +25,7 @@
 #define ARANGOD_MMFILES_DOCUMENT_OPERATION_H 1
 
 #include "Basics/Common.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -34,22 +35,23 @@ class Methods;
 }
 
 struct MMFilesDocumentDescriptor {
-  MMFilesDocumentDescriptor() : _revisionId(0), _vpack(nullptr) {}
-  MMFilesDocumentDescriptor(TRI_voc_rid_t revisionId, uint8_t const* vpack) : _revisionId(revisionId), _vpack(vpack) {}
+  MMFilesDocumentDescriptor() : _localDocumentId(), _vpack(nullptr) {}
+  MMFilesDocumentDescriptor(LocalDocumentId const& documentId, uint8_t const* vpack) 
+      : _localDocumentId(documentId), _vpack(vpack) {}
 
   bool empty() const { return _vpack == nullptr; }
   
   void reset(MMFilesDocumentDescriptor const& other) {
-    _revisionId = other._revisionId;
+    _localDocumentId = other._localDocumentId;
     _vpack = other._vpack;
   }
 
   void clear() {
-    _revisionId = 0;
+    _localDocumentId.clear();
     _vpack = nullptr;
   }
 
-  TRI_voc_rid_t _revisionId;
+  LocalDocumentId _localDocumentId;
   uint8_t const* _vpack;
 };
 
@@ -63,14 +65,14 @@ struct MMFilesDocumentOperation {
   };
   
   MMFilesDocumentOperation(LogicalCollection* collection,
-                    TRI_voc_document_operation_e type);
+                           TRI_voc_document_operation_e type);
 
   ~MMFilesDocumentOperation();
 
   MMFilesDocumentOperation* clone();
   void swapped();
 
-  void setRevisions(MMFilesDocumentDescriptor const& oldRevision,
+  void setDocumentIds(MMFilesDocumentDescriptor const& oldRevision,
                     MMFilesDocumentDescriptor const& newRevision);
   
   void setVPack(uint8_t const* vpack);

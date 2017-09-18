@@ -163,15 +163,15 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   bool matchesDefinition(VPackSlice const& info) const override;
 
-  Result insert(transaction::Methods*, TRI_voc_rid_t,
+  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
                 arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  Result remove(transaction::Methods*, TRI_voc_rid_t,
+  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
                 arangodb::velocypack::Slice const&, bool isRollback) override;
 
   void batchInsert(
       transaction::Methods*,
-      std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
+      std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const&,
       std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override;
 
   void unload() override;
@@ -198,20 +198,20 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
   int lookup(transaction::Methods*, arangodb::velocypack::Slice,
              std::vector<MMFilesHashIndexElement*>&) const;
 
-  int insertUnique(transaction::Methods*, TRI_voc_rid_t,
+  int insertUnique(transaction::Methods*, LocalDocumentId const& documentId,
                    arangodb::velocypack::Slice const&, bool isRollback);
 
   void batchInsertUnique(
       transaction::Methods*,
-      std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
+      std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const&,
       std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
 
-  int insertMulti(transaction::Methods*, TRI_voc_rid_t,
+  int insertMulti(transaction::Methods*, LocalDocumentId const& documentId,
                   arangodb::velocypack::Slice const&, bool isRollback);
 
   void batchInsertMulti(
       transaction::Methods*,
-      std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
+      std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const&,
       std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
 
   int removeUniqueElement(transaction::Methods*, MMFilesHashIndexElement*,
@@ -238,8 +238,8 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
         return hash;
       }
 
-      TRI_voc_rid_t revisionId = element->revisionId();
-      return fasthash64_uint64(revisionId, hash);
+      uint64_t documentId = element->localDocumentIdValue();
+      return fasthash64_uint64(documentId, hash);
     }
   };
 
@@ -254,10 +254,10 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
     bool operator()(void* userData, MMFilesHashIndexElement const* left,
                     MMFilesHashIndexElement const* right) {
-      TRI_ASSERT(left->revisionId() != 0);
-      TRI_ASSERT(right->revisionId() != 0);
+      TRI_ASSERT(left->isSet());
+      TRI_ASSERT(right->isSet());
 
-      if (!_allowExpansion && left->revisionId() == right->revisionId()) {
+      if (!_allowExpansion && left->localDocumentId() == right->localDocumentId()) {
         return true;
       }
 

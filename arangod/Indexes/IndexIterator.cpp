@@ -58,7 +58,7 @@ bool IndexIterator::hasExtra() const {
 }
 
 bool IndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
-  return next([this, &cb](DocumentIdentifierToken const& token) {
+  return next([this, &cb](LocalDocumentId const& token) {
     _collection->readDocumentWithCallback(_trx, token, cb);
   }, limit);
 }
@@ -80,7 +80,7 @@ void IndexIterator::reset() {}
 /// @brief default implementation for skip
 void IndexIterator::skip(uint64_t count, uint64_t& skipped) {
   // Skip the first count-many entries
-  auto cb = [&skipped] (DocumentIdentifierToken const& ) {
+  auto cb = [&skipped] (LocalDocumentId const& ) {
     ++skipped;
   };
   // TODO: Can be improved
@@ -92,7 +92,7 @@ void IndexIterator::skip(uint64_t count, uint64_t& skipped) {
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
 bool MultiIndexIterator::next(TokenCallback const& callback, size_t limit) {
-  auto cb = [&limit, &callback] (DocumentIdentifierToken const& token) {
+  auto cb = [&limit, &callback] (LocalDocumentId const& token) {
     --limit;
     callback(token);
   };

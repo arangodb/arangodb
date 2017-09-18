@@ -26,7 +26,7 @@
 //
 // typeName() returns a string descibing the type of the indexIterator
 //
-// The next() function of the IndexIterator expects a callback taking DocumentIdentifierTokens
+// The next() function of the IndexIterator expects a callback taking LocalDocumentIds
 // that are created from RevisionIds. In addition it expects a limit.
 // The iterator has to walk through the Index and call the callback with at most limit
 // many elements. On the next iteration it has to continue after the last returned Token.
@@ -47,6 +47,7 @@
 
 #include "Basics/Common.h"
 #include "Indexes/IndexLookupContext.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
@@ -61,10 +62,10 @@ class Methods;
 /// at the index itself
 class IndexIterator {
  public:
-  typedef std::function<void(DocumentIdentifierToken const& token)> TokenCallback;
-  typedef std::function<void(DocumentIdentifierToken const& token,
+  typedef std::function<void(LocalDocumentId const& token)> TokenCallback;
+  typedef std::function<void(LocalDocumentId const& token,
                              velocypack::Slice extra)> DocumentCallback;
-  typedef std::function<void(DocumentIdentifierToken const& token,
+  typedef std::function<void(LocalDocumentId const& token,
                              velocypack::Slice extra)> ExtraCallback;
 
  public:

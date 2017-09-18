@@ -26,8 +26,8 @@
 
 #include "Basics/AssocMulti.h"
 #include "Basics/Common.h"
-#include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "MMFiles/MMFilesIndex.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -73,7 +73,7 @@ class MMFilesEdgeIndexIterator final : public IndexIterator {
   MMFilesSimpleIndexElement _lastElement;
 };
 
-class MMFilesEdgeIndex final : public Index {
+class MMFilesEdgeIndex final : public MMFilesIndex {
  public:
   MMFilesEdgeIndex() = delete;
 
@@ -103,14 +103,14 @@ class MMFilesEdgeIndex final : public Index {
 
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  Result insert(transaction::Methods*, TRI_voc_rid_t,
+  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  Result remove(transaction::Methods*, TRI_voc_rid_t,
+  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
   void batchInsert(transaction::Methods*,
-                   std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&,
+                   std::vector<std::pair<LocalDocumentId, VPackSlice>> const&,
                    std::shared_ptr<arangodb::basics::LocalTaskQueue>) override;
 
   void load() override {}
@@ -158,9 +158,9 @@ class MMFilesEdgeIndex final : public Index {
                      arangodb::aql::AstNode const* valNode) const;
 
   MMFilesSimpleIndexElement buildFromElement(
-      TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;
+      LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) const;
   MMFilesSimpleIndexElement buildToElement(
-      TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;
+      LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) const;
 
  private:
   /// @brief the hash table for _from

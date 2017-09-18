@@ -71,7 +71,7 @@ bool OperationCursor::next(IndexIterator::TokenCallback const& callback, uint64_
   // We add wrapper around Callback that validates that
   // the callback has been called at least once.
   bool called = false;
-  auto cb = [&](DocumentIdentifierToken const& token) {
+  auto cb = [&](LocalDocumentId const& token) {
     called = true;
     callback(token);
   };
@@ -110,7 +110,7 @@ bool OperationCursor::nextDocument(IndexIterator::DocumentCallback const& callba
   // We add wrapper around Callback that validates that
   // the callback has been called at least once.
   bool called = false;
-  auto cb = [&](DocumentIdentifierToken const& token, VPackSlice slice) {
+  auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
     called = true;
     callback(token, slice);
   };
@@ -156,7 +156,7 @@ bool OperationCursor::nextWithExtra(IndexIterator::ExtraCallback const& callback
   // We add wrapper around Callback that validates that
   // the callback has been called at least once.
   bool called = false;
-  auto cb = [&](DocumentIdentifierToken const& token, VPackSlice extra) {
+  auto cb = [&](LocalDocumentId const& token, VPackSlice extra) {
     called = true;
     callback(token, extra);
   };

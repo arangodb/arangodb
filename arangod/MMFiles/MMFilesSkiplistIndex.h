@@ -284,10 +284,10 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
 
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  Result insert(transaction::Methods*, TRI_voc_rid_t,
+  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
                 arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  Result remove(transaction::Methods*, TRI_voc_rid_t,
+  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
                 arangodb::velocypack::Slice const&, bool isRollback) override;
 
   void unload() override;

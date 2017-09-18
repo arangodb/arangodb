@@ -71,7 +71,7 @@ class Context;
 
 /// @brief forward declarations
 class CollectionNameResolver;
-struct DocumentIdentifierToken;
+struct LocalDocumentId;
 class Index;
 class ManagedDocumentResult;
 struct OperationCursor;
@@ -231,7 +231,7 @@ class Methods {
 
   /// @brief Iterate over all elements of the collection.
   ENTERPRISE_VIRT void invokeOnAllElements(std::string const& collectionName,
-                           std::function<bool(arangodb::DocumentIdentifierToken const&)>);
+                           std::function<bool(arangodb::LocalDocumentId const&)>);
 
   /// @brief return one  document from a collection, fast path
   ///        If everything went well the result will contain the found document

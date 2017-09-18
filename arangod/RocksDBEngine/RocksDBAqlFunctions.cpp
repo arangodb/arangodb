@@ -26,8 +26,6 @@
 #include "Aql/Function.h"
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
 #include "RocksDBEngine/RocksDBGeoIndex.h"
-#include "RocksDBEngine/RocksDBToken.h"
-#include "StorageEngine/DocumentIdentifierToken.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -208,10 +206,10 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
   }
 
   struct geo_coordinate_distance_t {
-    geo_coordinate_distance_t(double distance, RocksDBToken token)
+    geo_coordinate_distance_t(double distance, LocalDocumentId token)
         : _distance(distance), _token(token) {}
     double _distance;
-    RocksDBToken _token;
+    LocalDocumentId _token;
   };
 
   std::vector<geo_coordinate_distance_t> distances;
@@ -221,7 +219,7 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
 
     for (size_t i = 0; i < nCoords; ++i) {
       distances.emplace_back(geo_coordinate_distance_t(
-          cors->distances[i], RocksDBToken(cors->coordinates[i].data)));
+          cors->distances[i], LocalDocumentId(cors->coordinates[i].data)));
     }
   } catch (...) {
     GeoIndex_CoordinatesFree(cors);

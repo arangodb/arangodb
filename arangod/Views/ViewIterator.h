@@ -25,7 +25,7 @@
 #define ARANGOD_VIEWS_VIEW_ITERATOR_H 1
 
 #include "Basics/Common.h"
-#include "StorageEngine/DocumentIdentifierToken.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/ManagedDocumentResult.h"
 
 namespace arangodb {
@@ -40,9 +40,9 @@ class Slice;
 
 class ViewIterator {
  public:
-  typedef std::function<void(DocumentIdentifierToken const& token)> TokenCallback;
+  typedef std::function<void(LocalDocumentId const& token)> TokenCallback;
 
-  typedef std::function<void(DocumentIdentifierToken const& token, arangodb::velocypack::Slice extra)> ExtraCallback; 
+  typedef std::function<void(LocalDocumentId const& token, arangodb::velocypack::Slice extra)> ExtraCallback; 
 
   ViewIterator() = delete;
   ViewIterator(ViewIterator const&) = delete;
@@ -74,7 +74,7 @@ class ViewIterator {
 
   virtual void skip(uint64_t count, uint64_t& skipped); // same as IndexIterator API
 
-  bool readDocument(arangodb::DocumentIdentifierToken const& token, arangodb::ManagedDocumentResult& result) const; 
+  bool readDocument(arangodb::LocalDocumentId const& token, arangodb::ManagedDocumentResult& result) const; 
 
  protected:
   ViewImplementation* _view;

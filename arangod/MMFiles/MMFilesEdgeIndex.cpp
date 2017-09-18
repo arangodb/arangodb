@@ -34,7 +34,6 @@
 #include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
-#include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -69,8 +68,8 @@ static uint64_t HashElementEdge(void*, MMFilesSimpleIndexElement const& element,
     return element.hash();
   }
 
-  TRI_voc_rid_t revisionId = element.revisionId();
-  return fasthash64_uint64(revisionId, 0x56781234);
+  uint64_t documentId = element.localDocumentIdValue();
+  return fasthash64_uint64(documentId, 0x56781234);
 }
 
 /// @brief checks if key and element match
@@ -92,7 +91,7 @@ static bool IsEqualKeyEdge(void* userData, VPackSlice const* left,
 /// @brief checks for elements are equal
 static bool IsEqualElementEdge(void*, MMFilesSimpleIndexElement const& left,
                                MMFilesSimpleIndexElement const& right) {
-  return left.revisionId() == right.revisionId();
+  return left.localDocumentId() == right.localDocumentId();
 }
 
 /// @brief checks for elements are equal
@@ -169,7 +168,7 @@ bool MMFilesEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
     } else {
       _lastElement = _buffer.back();
       // found something
-      cb(MMFilesToken{_buffer[_posInBuffer++].revisionId()});
+      cb(LocalDocumentId{_buffer[_posInBuffer++].localDocumentId()});
       limit--;
     }
   }
@@ -185,7 +184,7 @@ void MMFilesEdgeIndexIterator::reset() {
 
 MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid,
                                    arangodb::LogicalCollection* collection)
-    : Index(iid, collection,
+    : MMFilesIndex(iid, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
                 {{arangodb::basics::AttributeName(StaticStrings::FromString,
                                                   false)},
@@ -279,14 +278,13 @@ void MMFilesEdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   builder.add("to", VPackValue(VPackValueType::Object));
   _edgesTo->appendToVelocyPack(builder);
   builder.close();
-  // builder.add("buckets", VPackValue(_numBuckets));
 }
 
 Result MMFilesEdgeIndex::insert(transaction::Methods* trx,
-                                TRI_voc_rid_t revisionId, VPackSlice const& doc,
+                                LocalDocumentId const& documentId, VPackSlice const& doc,
                                 bool isRollback) {
-  MMFilesSimpleIndexElement fromElement(buildFromElement(revisionId, doc));
-  MMFilesSimpleIndexElement toElement(buildToElement(revisionId, doc));
+  MMFilesSimpleIndexElement fromElement(buildFromElement(documentId, doc));
+  MMFilesSimpleIndexElement toElement(buildToElement(documentId, doc));
 
   ManagedDocumentResult result;
   IndexLookupContext context(trx, _collection, &result, 1);
@@ -308,10 +306,10 @@ Result MMFilesEdgeIndex::insert(transaction::Methods* trx,
 }
 
 Result MMFilesEdgeIndex::remove(transaction::Methods* trx,
-                                TRI_voc_rid_t revisionId, VPackSlice const& doc,
+                                LocalDocumentId const& documentId, VPackSlice const& doc,
                                 bool isRollback) {
-  MMFilesSimpleIndexElement fromElement(buildFromElement(revisionId, doc));
-  MMFilesSimpleIndexElement toElement(buildToElement(revisionId, doc));
+  MMFilesSimpleIndexElement fromElement(buildFromElement(documentId, doc));
+  MMFilesSimpleIndexElement toElement(buildToElement(documentId, doc));
 
   ManagedDocumentResult result;
   IndexLookupContext context(trx, _collection, &result, 1);
@@ -330,7 +328,7 @@ Result MMFilesEdgeIndex::remove(transaction::Methods* trx,
 
 void MMFilesEdgeIndex::batchInsert(
     transaction::Methods* trx,
-    std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
+    std::vector<std::pair<LocalDocumentId, VPackSlice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   if (documents.empty()) {
     return;
@@ -360,17 +358,15 @@ void MMFilesEdgeIndex::batchInsert(
   // _from
   for (auto const& it : documents) {
     VPackSlice value(transaction::helpers::extractFromFromDocument(it.second));
-    fromElements->emplace_back(MMFilesSimpleIndexElement(
-        it.first, value,
-        static_cast<uint32_t>(value.begin() - it.second.begin())));
+    fromElements->emplace_back(it.first, value,
+        static_cast<uint32_t>(value.begin() - it.second.begin()));
   }
 
   // _to
   for (auto const& it : documents) {
     VPackSlice value(transaction::helpers::extractToFromDocument(it.second));
-    toElements->emplace_back(MMFilesSimpleIndexElement(
-        it.first, value,
-        static_cast<uint32_t>(value.begin() - it.second.begin())));
+    toElements->emplace_back(it.first, value,
+        static_cast<uint32_t>(value.begin() - it.second.begin()));
   }
 
   _edgesFrom->batchInsert(creator, destroyer, fromElements, queue);
@@ -574,19 +570,19 @@ void MMFilesEdgeIndex::handleValNode(
 }
 
 MMFilesSimpleIndexElement MMFilesEdgeIndex::buildFromElement(
-    TRI_voc_rid_t revisionId, VPackSlice const& doc) const {
+    LocalDocumentId const& documentId, VPackSlice const& doc) const {
   TRI_ASSERT(doc.isObject());
   VPackSlice value(transaction::helpers::extractFromFromDocument(doc));
   TRI_ASSERT(value.isString());
   return MMFilesSimpleIndexElement(
-      revisionId, value, static_cast<uint32_t>(value.begin() - doc.begin()));
+      documentId, value, static_cast<uint32_t>(value.begin() - doc.begin()));
 }
 
 MMFilesSimpleIndexElement MMFilesEdgeIndex::buildToElement(
-    TRI_voc_rid_t revisionId, VPackSlice const& doc) const {
+    LocalDocumentId const& documentId, VPackSlice const& doc) const {
   TRI_ASSERT(doc.isObject());
   VPackSlice value(transaction::helpers::extractToFromDocument(doc));
   TRI_ASSERT(value.isString());
   return MMFilesSimpleIndexElement(
-      revisionId, value, static_cast<uint32_t>(value.begin() - doc.begin()));
+      documentId, value, static_cast<uint32_t>(value.begin() - doc.begin()));
 }

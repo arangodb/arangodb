@@ -32,7 +32,6 @@
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexElement.h"
-#include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
@@ -120,7 +119,7 @@ bool MMFilesPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
         _index->lookupKey(_trx, _iterator.value());
     _iterator.next();
     if (result) {
-      cb(MMFilesToken{result.revisionId()});
+      cb(LocalDocumentId{result.localDocumentId()});
       --limit;
     }
   }
@@ -147,7 +146,7 @@ bool MMFilesAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
       element = _index->findSequential(&_context, _position, _total);
     }
     if (element) {
-      cb(MMFilesToken{element.revisionId()});
+      cb(LocalDocumentId{element.localDocumentId()});
       --limit;
     } else {
       return false;
@@ -190,7 +189,7 @@ bool MMFilesAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
     MMFilesSimpleIndexElement element =
         _index->findRandom(&_context, _initial, _position, _step, _total);
     if (element) {
-      cb(MMFilesToken{element.revisionId()});
+      cb(LocalDocumentId{element.localDocumentId()});
       --limit;
     } else {
       return false;
@@ -207,7 +206,7 @@ void MMFilesAnyIndexIterator::reset() {
 
 MMFilesPrimaryIndex::MMFilesPrimaryIndex(
     arangodb::LogicalCollection* collection)
-    : Index(0, collection,
+    : MMFilesIndex(0, collection,
             std::vector<std::vector<arangodb::basics::AttributeName>>(
                 {{arangodb::basics::AttributeName(StaticStrings::KeyString,
                                                   false)}}),
@@ -258,7 +257,7 @@ void MMFilesPrimaryIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   _primaryIndex->appendToVelocyPack(builder);
 }
 
-Result MMFilesPrimaryIndex::insert(transaction::Methods*, TRI_voc_rid_t,
+Result MMFilesPrimaryIndex::insert(transaction::Methods*, LocalDocumentId const&,
                                    VPackSlice const&, bool) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC(WARN, arangodb::Logger::FIXME)
@@ -268,7 +267,7 @@ Result MMFilesPrimaryIndex::insert(transaction::Methods*, TRI_voc_rid_t,
                                  "insert() called for primary index");
 }
 
-Result MMFilesPrimaryIndex::remove(transaction::Methods*, TRI_voc_rid_t,
+Result MMFilesPrimaryIndex::remove(transaction::Methods*, LocalDocumentId const&,
                                    VPackSlice const&, bool) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC(WARN, arangodb::Logger::FIXME)
@@ -310,7 +309,7 @@ MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(
   TRI_ASSERT(key.isString());
   MMFilesSimpleIndexElement* element =
       _primaryIndex->findByKeyRef(&context, key.begin());
-  if (element != nullptr && element->revisionId() == 0) {
+  if (element != nullptr && !element->isSet()) {
     return nullptr;
   }
   return element;
@@ -324,7 +323,7 @@ MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(
   TRI_ASSERT(key.isString());
   MMFilesSimpleIndexElement* element =
       _primaryIndex->findByKeyRef(&context, key.begin());
-  if (element != nullptr && element->revisionId() == 0) {
+  if (element != nullptr && !element->isSet()) {
     return nullptr;
   }
   return element;
@@ -376,28 +375,28 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequentialReverse(
 /// @brief adds a key/element to the index
 /// returns a status code, and *found will contain a found element (if any)
 Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
-                                      TRI_voc_rid_t revisionId,
+                                      LocalDocumentId const& documentId,
                                       VPackSlice const& doc) {
   ManagedDocumentResult result;
   IndexLookupContext context(trx, _collection, &result, 1);
-  MMFilesSimpleIndexElement element(buildKeyElement(revisionId, doc));
+  MMFilesSimpleIndexElement element(buildKeyElement(documentId, doc));
 
   return IndexResult(_primaryIndex->insert(&context, element), this);
 }
 
 Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
-                                      TRI_voc_rid_t revisionId,
+                                      LocalDocumentId const& documentId,
                                       VPackSlice const& doc,
                                       ManagedDocumentResult& mmdr) {
   IndexLookupContext context(trx, _collection, &mmdr, 1);
-  MMFilesSimpleIndexElement element(buildKeyElement(revisionId, doc));
+  MMFilesSimpleIndexElement element(buildKeyElement(documentId, doc));
 
   return IndexResult(_primaryIndex->insert(&context, element), this);
 }
 
 /// @brief removes an key/element from the index
 Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
-                                      TRI_voc_rid_t revisionId,
+                                      LocalDocumentId const&,
                                       VPackSlice const& doc) {
   ManagedDocumentResult result;
   IndexLookupContext context(trx, _collection, &result, 1);
@@ -414,7 +413,7 @@ Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
 }
 
 Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
-                                      TRI_voc_rid_t revisionId,
+                                      LocalDocumentId const&,
                                       VPackSlice const& doc,
                                       ManagedDocumentResult& mmdr) {
   IndexLookupContext context(trx, _collection, &mmdr, 1);
@@ -438,9 +437,9 @@ int MMFilesPrimaryIndex::resize(transaction::Methods* trx, size_t targetSize) {
 }
 
 void MMFilesPrimaryIndex::invokeOnAllElements(
-    std::function<bool(DocumentIdentifierToken const&)> work) {
+    std::function<bool(LocalDocumentId const&)> work) {
   auto wrappedWork = [&work](MMFilesSimpleIndexElement const& el) -> bool {
-    return work(MMFilesToken{el.revisionId()});
+    return work(LocalDocumentId{el.localDocumentId()});
   };
   _primaryIndex->invokeOnAllElements(wrappedWork);
 }
@@ -610,10 +609,10 @@ void MMFilesPrimaryIndex::handleValNode(transaction::Methods* trx,
 }
 
 MMFilesSimpleIndexElement MMFilesPrimaryIndex::buildKeyElement(
-    TRI_voc_rid_t revisionId, VPackSlice const& doc) const {
+    LocalDocumentId const& documentId, VPackSlice const& doc) const {
   TRI_ASSERT(doc.isObject());
   VPackSlice value(transaction::helpers::extractKeyFromDocument(doc));
   TRI_ASSERT(value.isString());
   return MMFilesSimpleIndexElement(
-      revisionId, value, static_cast<uint32_t>(value.begin() - doc.begin()));
+      documentId, value, static_cast<uint32_t>(value.begin() - doc.begin()));
 }
