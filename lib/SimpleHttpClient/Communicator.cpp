@@ -304,6 +304,12 @@ void Communicator::createRequestInProgress(NewRequest const& newRequest) {
   curl_easy_setopt(handle, CURLOPT_URL, url.c_str());
   curl_easy_setopt(handle, CURLOPT_VERBOSE, 1L);
   curl_easy_setopt(handle, CURLOPT_PROXY, "");
+  
+  // the xfer/progress options are only used to handle request abortions
+  curl_easy_setopt(handle, CURLOPT_NOPROGRESS, 0L);
+  curl_easy_setopt(handle, CURLOPT_XFERINFOFUNCTION, Communicator::curlProgress);
+  curl_easy_setopt(handle, CURLOPT_XFERINFODATA, handleInProgress->_rip.get());
+
   curl_easy_setopt(handle, CURLOPT_WRITEFUNCTION, Communicator::readBody);
   curl_easy_setopt(handle, CURLOPT_WRITEDATA, handleInProgress->_rip.get());
   curl_easy_setopt(handle, CURLOPT_HEADERFUNCTION, Communicator::readHeaders);
@@ -394,6 +400,10 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
   if (rip == nullptr) {
     return;
   }
+
+  if (rip->_options._curlRcFn) {
+    (*rip->_options._curlRcFn)(rc);
+  }
   std::string prefix("Communicator(" + std::to_string(rip->_ticketId) +
                      ") // ");
   LOG_TOPIC(TRACE, Logger::COMMUNICATION)
@@ -434,7 +444,23 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
     case CURLE_OPERATION_TIMEDOUT:
     case CURLE_RECV_ERROR:
     case CURLE_GOT_NOTHING:
-      rip->_callbacks._onError(TRI_ERROR_CLUSTER_TIMEOUT, {nullptr});
+      if (rip->_aborted) {
+        rip->_callbacks._onError(TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
+      } else {
+        rip->_callbacks._onError(TRI_ERROR_CLUSTER_TIMEOUT, {nullptr});
+      }
+      break;
+    case CURLE_WRITE_ERROR:
+      if (rip->_aborted) {
+        rip->_callbacks._onError(TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
+      } else {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Got a write error from curl but request was not aborted";
+        rip->_callbacks._onError(TRI_ERROR_INTERNAL, {nullptr});
+      }
+      break;
+    case CURLE_ABORTED_BY_CALLBACK:
+      TRI_ASSERT(rip->_aborted);
+      rip->_callbacks._onError(TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
       break;
     default:
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Curl return " << rc;
@@ -455,9 +481,11 @@ void Communicator::transformResult(CURL* handle,
 
 size_t Communicator::readBody(void* data, size_t size, size_t nitems,
                               void* userp) {
-  size_t realsize = size * nitems;
-
   RequestInProgress* rip = (struct RequestInProgress*)userp;
+  if (rip->_aborted) {
+    return 0;
+  }
+  size_t realsize = size * nitems;
   try {
     rip->_responseBody->appendText((char*)data, realsize);
     return realsize;
@@ -489,6 +517,13 @@ void Communicator::logHttpHeaders(std::string const& prefix,
         << prefix << " " << headerData.substr(last, n - last);
     last = n + 2;
   }
+}
+
+int Communicator::curlProgress(void* userptr, curl_off_t dltotal,
+                               curl_off_t dlnow, curl_off_t ultotal,
+                               curl_off_t ulnow) {
+  RequestInProgress* rip = (struct RequestInProgress*)userptr;
+  return (int) rip->_aborted;
 }
 
 int Communicator::curlDebug(CURL* handle, curl_infotype type, char* data,
@@ -530,6 +565,9 @@ size_t Communicator::readHeaders(char* buffer, size_t size, size_t nitems,
                                  void* userptr) {
   size_t realsize = size * nitems;
   RequestInProgress* rip = (struct RequestInProgress*)userptr;
+  if (rip->_aborted) {
+    return 0;
+  }
 
   std::string const header(buffer, realsize);
   size_t pivot = header.find_first_of(':');
@@ -607,11 +645,9 @@ void Communicator::abortRequestInternal(Ticket ticketId) {
   if (handle == _handlesInProgress.end()) {
     return;
   }
+
   std::string prefix("Communicator(" + std::to_string(handle->second->_rip->_ticketId) +
                      ") // ");
   LOG_TOPIC(WARN, Logger::REQUESTS) << prefix << "aborting request to " << handle->second->_rip->_destination.url();
-  handle->second->_rip->_callbacks._onError(TRI_COMMUNICATOR_REQUEST_ABORTED,
-                                            {nullptr});
-  _handlesInProgress.erase(ticketId);
+  handle->second->_rip->_aborted = true;
 }
-
