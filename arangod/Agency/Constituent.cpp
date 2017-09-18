@@ -732,13 +732,19 @@ void Constituent::run() {
       } else if (role == CANDIDATE) {
         callElection();  // Run for office
       } else {
-        int32_t left =
-          static_cast<int32_t>(100000.0 * _agent->config().minPing() *
-                               _agent->config().timeoutMult());
-        long randTimeout = static_cast<long>(left);
+        // This is 1/10th of the minPing timeout:
+        uint64_t timeout =
+          static_cast<uint64_t>(100000.0 * _agent->config().minPing() *
+                                _agent->config().timeoutMult());
         {
           CONDITION_LOCKER(guardv, _cv);
-          _cv.wait(randTimeout);
+          _cv.wait(timeout);
+        }
+        double now = TRI_microtime();
+        if (now - _lastHeartbeatSent > _agent->config().minPing()
+                                     * _agent->config().timeoutMult()
+                                     / 10.0) {
+          _agent->sendEmptyAppendEntriesRPC();
         }
       }
     }

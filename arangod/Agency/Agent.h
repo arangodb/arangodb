@@ -141,6 +141,12 @@ class Agent : public arangodb::Thread,
   ///        also used as heartbeat ($5.2).
   void sendAppendEntriesRPC();
 
+  /// @brief Invoked by leader to replicate log entries ($5.3);
+  ///        also used as heartbeat ($5.2). This is the version used by
+  ///        the constituent to send out empty heartbeats to keep
+  ///        the term alive.
+  void sendEmptyAppendEntriesRPC();
+
   /// @brief 1. Deal with appendEntries to slaves.
   ///        2. Report success of write processes.
   void run() override final;

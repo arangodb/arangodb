@@ -559,6 +559,46 @@ void Agent::sendAppendEntriesRPC() {
         
     }
   }
+  _constituent.notifyHeartbeatSent();
+}
+
+
+/// Leader's append entries, empty ones for heartbeat, triggered by Constituent
+void Agent::sendEmptyAppendEntriesRPC() {
+
+  auto cc = ClusterComm::instance();
+  if (cc == nullptr) {
+    // nullptr only happens during controlled shutdown
+    return;
+  }
+
+  std::string const myid = id();
+  for (auto const& followerId : _config.active()) {
+    if (followerId != myid && leading()) {
+      // RPC path
+      std::stringstream path;
+      path << "/_api/agency_priv/appendEntries?term=" << _constituent.term()
+           << "&leaderId=" << id() << "&prevLogIndex=0"
+           << "&prevLogTerm=0&leaderCommit=" << _commitIndex
+           << "&senderTimeStamp=" << std::llround(readSystemClock() * 1000);
+
+      // Just check once more:
+      if (!leading()) {
+        return;
+      }
+
+      // Send request
+      auto headerFields =
+        std::make_unique<std::unordered_map<std::string, std::string>>();
+      cc->asyncRequest(
+        "1", 1, _config.poolAt(followerId),
+        arangodb::rest::RequestType::POST, path.str(),
+        std::make_shared<std::string>("[]"), headerFields,
+        std::make_shared<AgentCallback>(this, followerId, 0, 0),
+        _config.minPing() * _config.timeoutMult(), true);
+    }
+  }
+  _constituent.notifyHeartbeatSent();
 }
 
 
