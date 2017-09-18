@@ -2036,7 +2036,15 @@ std::string TRI_GetTempPath() {
 
   if (path == nullptr) {
     std::string system = getTempPath();
-    // create the template
+
+    // Strip any double back/slashes from the string.
+    while (system.find(TRI_DIR_SEPARATOR_STR TRI_DIR_SEPARATOR_STR) !=  std::string::npos) {
+      system = StringUtils::replace(system,
+                                    std::string(TRI_DIR_SEPARATOR_STR TRI_DIR_SEPARATOR_STR),
+                                    std::string(TRI_DIR_SEPARATOR_STR)
+                                    );
+    }
+
     system += TRI_ApplicationName + "_XXXXXX";
 
     // copy to a character array
