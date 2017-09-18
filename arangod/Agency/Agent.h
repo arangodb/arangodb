@@ -276,7 +276,7 @@ class Agent : public arangodb::Thread,
   bool activateAgency();
 
   /// @brief Assignment of persisted state
-  Agent& operator=(VPackSlice const&);
+  void setPersistedState(VPackSlice const&);
 
   /// @brief Get current term
   bool id(std::string const&);
@@ -342,7 +342,6 @@ class Agent : public arangodb::Thread,
      _lastAcked
      _lastSent
      _confirmed
-     _nextCompactionAfter
    */
   mutable arangodb::Mutex _ioLock;
 
@@ -356,9 +355,6 @@ class Agent : public arangodb::Thread,
 
   // @brief guard _activator 
   mutable arangodb::Mutex _activatorLock;
-
-  /// @brief Next compaction after
-  index_t _nextCompactionAfter;
 
   /// @brief Inception thread getting an agent up to join RAFT from cmd or persistence
   std::unique_ptr<Inception> _inception;

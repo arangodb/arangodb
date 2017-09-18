@@ -51,7 +51,6 @@ Agent::Agent(config_t const& config)
     _spearhead(this),
     _readDB(this),
     _transient(this),
-    _nextCompactionAfter(_config.compactionStepSize()),
     _activator(nullptr),
     _compactor(this),
     _ready(false),
@@ -284,7 +283,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
         // TODO: why _liLock here, should by _ioLock, and we already have it
         MUTEX_LOCKER(liLocker, _liLock);
         _commitIndex = index;
-        if (_commitIndex >= _nextCompactionAfter) {
+        if (_commitIndex >= _state.nextCompactionAfter()) {
           _compactor.wakeUp();
         }
 
@@ -328,67 +327,6 @@ bool Agent::recvAppendEntriesRPC(
     return false;
   }
 
-  // Check whether we have got a snapshot in the first position:
-  bool gotSnapshot = payload.length() > 0 &&
-                     payload[0].isObject() &&
-                     !payload[0].get("readDB").isNone();
-
-  // In case of a snapshot, there are three possibilities:
-  //   1. Our highest log index is smaller than the snapshot index, in this 
-  //      case we must throw away our complete local log and start from the
-  //      snapshot (note that snapshot indexes are always committed by a 
-  //      majority).
-  //   2. For the snapshot index we have an entry with this index in 
-  //      our log (and it is not yet compacted), in this case we verify
-  //      that the terms match and if so, we can simply ignore the
-  //      snapshot. If the term in our log entry is smaller (cannot be
-  //      larger because compaction snapshots are always committed), then
-  //      our complete log must be deleted as in 1.
-  //   3. Our highest log index is larger than the snapshot index but we
-  //      no longer have an entry in the log for the snapshot index due to
-  //      our own compaction. In this case we have compacted away the
-  //      snapshot index, therefore we know it was committed by a majority
-  //      and thus the snapshot can be ignored safely as well.
-  if (gotSnapshot) {
-    bool useSnapshot = false;   // if this remains, we ignore the snapshot
-
-    index_t snapshotIndex
-        = static_cast<index_t>(payload[0].get("index").getNumber<index_t>());
-    term_t snapshotTerm
-        = static_cast<term_t>(payload[0].get("term").getNumber<index_t>());
-    index_t ourLastIndex = _state.lastIndex();
-    if (ourLastIndex < snapshotIndex) {
-      useSnapshot = true;   // this implies that we completely eradicate our log
-    } else {
-      try {
-        log_t logEntry = _state.at(snapshotIndex);
-        if (logEntry.term != snapshotTerm) {  // can only be < as in 2.
-          useSnapshot = true;
-        }
-      } catch (...) {
-        // Simply ignore that we no longer have the entry, useSnapshot remains
-        // false and we will ignore the snapshot as in 3. above
-      }
-    }
-    if (useSnapshot) {
-      // Now we must completely erase our log and compaction snapshots and
-      // start from the snapshot
-      Store snapshot(this, "snapshot");
-      snapshot = payload[0].get("readDB");
-      if (!_state.restoreLogFromSnapshot(snapshot, snapshotIndex, snapshotTerm)) {
-        LOG_TOPIC(ERR, Logger::AGENCY)
-          << "Could not restore received log snapshot.";
-        return false;
-      }
-      // Now the log is empty, but this will soon be rectified.
-      { 
-        MUTEX_LOCKER(ioLocker, _ioLock);
-        _nextCompactionAfter = (std::min)(_nextCompactionAfter,
-            snapshotIndex + _config.compactionStepSize());
-      }
-    }
-  }
-
   size_t nqs = payload.length();
 
   // State machine, _lastCommitIndex to advance atomically
@@ -399,7 +337,7 @@ bool Agent::recvAppendEntriesRPC(
     MUTEX_LOCKER(ioLocker, _ioLock);
 
     try {
-      _lastApplied = _state.log(queries, gotSnapshot);
+      _lastApplied = _state.logFollower(queries);
       if (_lastApplied < payload[nqs-1].get("index").getNumber<index_t>()) {
         // We could not log all the entries in this query, we need to report
         // this to the leader!
@@ -418,7 +356,7 @@ bool Agent::recvAppendEntriesRPC(
     MUTEX_LOCKER(ioLocker, _ioLock);
     _commitIndex = std::min(leaderCommitIndex, _lastApplied);
 
-    wakeup = (_commitIndex >= _nextCompactionAfter);
+    wakeup = (_commitIndex >= _state.nextCompactionAfter());
   }
  
   if (wakeup) {
@@ -745,8 +683,9 @@ void Agent::load() {
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading persistent state.";
   if (!_state.loadCollections(vocbase, queryRegistry, _config.waitForSync())) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC(FATAL, Logger::AGENCY)
         << "Failed to load persistent state on startup.";
+    FATAL_ERROR_EXIT();
   }
 
   // Note that the agent thread is terminated immediately when there is only
@@ -869,8 +808,8 @@ trans_ret_t Agent::transact(query_t const& queries) {
         check_ret_t res = _spearhead.applyTransaction(query); 
         if(res.successful()) {
           maxind = (query.length() == 3 && query[2].isString()) ?
-            _state.log(query[0], term(), query[2].copyString()) :
-            _state.log(query[0], term());
+            _state.logLeaderSingle(query[0], term(), query[2].copyString()) :
+            _state.logLeaderSingle(query[0], term());
           ret->add(VPackValue(maxind));
         } else {
           _spearhead.read(res.failed->slice(), *ret);
@@ -1037,7 +976,7 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
     }
     
     applied = _spearhead.applyTransactions(chunk);
-    auto tmp = _state.log(chunk, applied, term());
+    auto tmp = _state.logLeaderMulti(chunk, applied, term());
     indices.insert(indices.end(), tmp.begin(), tmp.end());
 
   }
@@ -1521,7 +1460,6 @@ void Agent::compact() {
 
   {
     MUTEX_LOCKER(ioLocker, _ioLock);
-    _nextCompactionAfter += _config.compactionStepSize();
     commitIndex = _commitIndex;
   }
 
@@ -1597,7 +1535,7 @@ Store const& Agent::transient() const {
 }
 
 /// Rebuild from persisted state
-Agent& Agent::operator=(VPackSlice const& compaction) {
+void Agent::setPersistedState(VPackSlice const& compaction) {
   // Catch up with compacted state
   MUTEX_LOCKER(ioLocker, _ioLock);
   _spearhead = compaction.get("readDB");
@@ -1612,12 +1550,6 @@ Agent& Agent::operator=(VPackSlice const& compaction) {
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
   }
-
-  // Schedule next compaction
-  _nextCompactionAfter = _commitIndex + _config.compactionStepSize();
-
-  return *this;
-  
 }
 
 /// Are we still starting up?
