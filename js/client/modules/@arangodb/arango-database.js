@@ -59,6 +59,11 @@ function ArangoDatabase (connection) {
       delete this._viewList[name];
     }
   };
+  this._renameView = function (from, to) {
+    // store the view in our own list
+    this._viewList[to] = this._viewList[from];
+    delete this._viewList[from];
+  };
 }
 
 exports.ArangoDatabase = ArangoDatabase;

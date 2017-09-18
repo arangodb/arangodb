@@ -181,6 +181,23 @@ bool LogicalView::deleted() const { return _isDeleted; }
 
 void LogicalView::setDeleted(bool newValue) { _isDeleted = newValue; }
 
+void LogicalView::rename(std::string const& newName, bool doSync) {
+  std::string oldName = _name;
+  try {
+    _name = newName;
+      
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    TRI_ASSERT(engine != nullptr);
+
+    if (!engine->inRecovery()) {
+      engine->changeView(_vocbase, _id, this, doSync);
+    }
+  } catch (...) {
+    _name = oldName;
+    throw;
+  }
+}
+
 void LogicalView::drop() {
   _isDeleted = true;
 

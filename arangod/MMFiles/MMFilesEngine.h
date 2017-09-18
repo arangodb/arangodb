@@ -243,6 +243,12 @@ class MMFilesEngine final : public StorageEngine {
   arangodb::Result renameCollection(TRI_vocbase_t* vocbase,
                                     arangodb::LogicalCollection const*,
                                     std::string const& oldName) override;
+  
+  // asks the storage engine to persist renaming of a view
+  // This will write a renameMarker if not in recovery
+  arangodb::Result renameView(TRI_vocbase_t* vocbase,
+                              std::shared_ptr<arangodb::LogicalView> view,
+                              std::string const& oldName) override;
 
   // asks the storage engine to create an index as specified in the VPack
   // Slice object and persist the creation info. The database id, collection id

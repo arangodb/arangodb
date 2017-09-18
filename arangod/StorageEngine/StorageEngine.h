@@ -264,6 +264,11 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual arangodb::Result renameCollection(
       TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection,
       std::string const& oldName) = 0;
+  
+  // asks the storage engine to persist renaming of a view
+  virtual arangodb::Result renameView(
+      TRI_vocbase_t* vocbase, std::shared_ptr<arangodb::LogicalView> view,
+      std::string const& oldName) = 0;
 
   //// Operations on Views
   // asks the storage engine to create a view as specified in the VPack

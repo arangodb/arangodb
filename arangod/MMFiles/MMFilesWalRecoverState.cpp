@@ -777,6 +777,79 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         break;
       }
 
+      case TRI_DF_MARKER_VPACK_RENAME_VIEW: {
+        TRI_voc_tick_t const databaseId =
+            MMFilesDatafileHelper::DatabaseId(marker);
+        TRI_voc_cid_t const viewId =
+            MMFilesDatafileHelper::ViewId(marker);
+        VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) +
+                                      MMFilesDatafileHelper::VPackOffset(type));
+
+        if (!payloadSlice.isObject()) {
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "cannot rename view: invalid marker";
+          ++state->errorCount;
+          return state->canContinue();
+        }
+
+        if (state->isDropped(databaseId)) {
+          return true;
+        }
+
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+            << "found view rename marker. databaseId: " << databaseId
+            << ", viewId: " << viewId;
+
+        TRI_vocbase_t* vocbase = state->useDatabase(databaseId);
+
+        if (vocbase == nullptr) {
+          // if the underlying database is gone, we can go on
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cannot open database "
+                                                    << databaseId;
+          return true;
+        }
+        
+        std::shared_ptr<arangodb::LogicalView> view =
+            vocbase->lookupView(viewId);
+
+        if (view == nullptr) {
+          // if the underlying collection is gone, we can go on
+          LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
+              << "cannot rename view " << viewId << " in database " << databaseId << ": "
+              << TRI_errno_string(TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
+          return true;
+        }
+
+        VPackSlice nameSlice = payloadSlice.get("name");
+        if (!nameSlice.isString()) {
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "cannot rename view " << viewId << " in database "
+              << databaseId << ": name attribute is no string";
+          ++state->errorCount;
+          return state->canContinue();
+        }
+        std::string name = nameSlice.copyString();
+
+        // check if other view exists with target name
+        std::shared_ptr<arangodb::LogicalView> other = vocbase->lookupView(name);
+
+        if (other != nullptr) {
+          vocbase->dropView(other);
+        }
+
+        int res = vocbase->renameView(view, name);
+
+        if (res != TRI_ERROR_NO_ERROR) {
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+              << "cannot rename view " << viewId << " in database "
+              << databaseId << " to '" << name
+              << "': " << TRI_errno_string(res);
+          ++state->errorCount;
+          return state->canContinue();
+        }
+        break;
+      }
+
       case TRI_DF_MARKER_VPACK_CHANGE_VIEW: {
         TRI_voc_tick_t const databaseId =
             MMFilesDatafileHelper::DatabaseId(marker);

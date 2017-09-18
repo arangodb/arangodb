@@ -1160,6 +1160,50 @@ Result MMFilesEngine::renameCollection(
   return {res, TRI_errno_string(res)};
 }
 
+// asks the storage engine to persist renaming of a view
+// This will write a renameMarker if not in recovery
+Result MMFilesEngine::renameView(
+    TRI_vocbase_t* vocbase, std::shared_ptr<arangodb::LogicalView> view,
+    std::string const& oldName) {
+  if (inRecovery()) {
+    // Nothing todo. Marker already there
+    return {};
+  }
+  int res = TRI_ERROR_NO_ERROR;
+  try {
+    VPackBuilder builder;
+    builder.openObject();
+    builder.add("id", VPackValue(std::to_string(view->id())));
+    builder.add("oldName", VPackValue(oldName));
+    builder.add("name", VPackValue(view->name()));
+    builder.close();
+
+    MMFilesViewMarker marker(TRI_DF_MARKER_VPACK_RENAME_VIEW,
+                             vocbase->id(), view->id(),
+                             builder.slice());
+
+    MMFilesWalSlotInfoCopy slotInfo =
+        MMFilesLogfileManager::instance()->allocateAndWrite(marker, false);
+
+    if (slotInfo.errorCode != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
+    }
+
+    res = TRI_ERROR_NO_ERROR;
+  } catch (arangodb::basics::Exception const& ex) {
+    res = ex.code();
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+        << "could not save view rename marker in log: "
+        << TRI_errno_string(res);
+  }
+  return {res, TRI_errno_string(res)};
+}
+
 void MMFilesEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                                arangodb::LogicalView const* parameters) {
   std::string const path = databasePath(vocbase);

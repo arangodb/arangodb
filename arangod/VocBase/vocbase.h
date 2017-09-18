@@ -291,6 +291,10 @@ struct TRI_vocbase_t {
       bool, std::function<bool(arangodb::LogicalCollection*,
                                arangodb::LogicalCollection*)>);
 
+  /// @brief renames a view
+  int renameView(std::shared_ptr<arangodb::LogicalView> view,
+                 std::string const& newName);
+
   /// @brief renames a collection
   int renameCollection(arangodb::LogicalCollection* collection,
                        std::string const& newName, bool doOverride);

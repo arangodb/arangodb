@@ -101,6 +101,7 @@ static inline bool MustReplicateWalMarkerType(MMFilesMarker const* marker) {
           type == TRI_DF_MARKER_VPACK_DROP_INDEX ||
           type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
           type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
+          type == TRI_DF_MARKER_VPACK_RENAME_VIEW ||
           type == TRI_DF_MARKER_VPACK_CHANGE_VIEW);
 }
 
@@ -142,6 +143,8 @@ static TRI_replication_operation_e TranslateType(
       return REPLICATION_VIEW_CREATE;
     case TRI_DF_MARKER_VPACK_DROP_VIEW:
       return REPLICATION_VIEW_DROP;
+    case TRI_DF_MARKER_VPACK_RENAME_VIEW:
+      return REPLICATION_VIEW_RENAME;
     case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
       return REPLICATION_VIEW_CHANGE;
 
@@ -277,6 +280,7 @@ static int StringifyMarker(MMFilesReplicationDumpContext* dump,
     case TRI_DF_MARKER_VPACK_CREATE_VIEW:
     case TRI_DF_MARKER_VPACK_RENAME_COLLECTION:
     case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION:
+    case TRI_DF_MARKER_VPACK_RENAME_VIEW:
     case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
     case TRI_DF_MARKER_VPACK_DROP_DATABASE:
     case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
@@ -409,6 +413,7 @@ static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
     case TRI_DF_MARKER_VPACK_CREATE_VIEW:
     case TRI_DF_MARKER_VPACK_RENAME_COLLECTION:
     case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION:
+    case TRI_DF_MARKER_VPACK_RENAME_VIEW:
     case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
     case TRI_DF_MARKER_VPACK_DROP_DATABASE:
     case TRI_DF_MARKER_VPACK_DROP_COLLECTION:

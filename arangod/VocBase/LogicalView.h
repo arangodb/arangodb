@@ -72,6 +72,8 @@ class LogicalView {
   bool deleted() const;
   void setDeleted(bool);
 
+  void rename(std::string const& newName, bool doSync);
+
   PhysicalView* getPhysical() const { return _physical.get(); }
   ViewImplementation* getImplementation() const {
     return _implementation.get();

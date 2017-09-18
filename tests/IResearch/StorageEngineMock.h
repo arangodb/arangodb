@@ -155,6 +155,8 @@ class StorageEngineMock: public arangodb::StorageEngine {
   virtual void addV8Functions() override;
   virtual void changeCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, arangodb::LogicalCollection const* parameters, bool doSync) override;
   virtual void changeView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, arangodb::LogicalView const*, bool doSync) override;
+  virtual arangodb::Result renameView(TRI_vocbase_t*, std::shared_ptr<arangodb::LogicalView>, std::string const&) override;
+    
   virtual std::string collectionPath(TRI_vocbase_t const* vocbase, TRI_voc_cid_t id) const override;
   virtual std::string createCollection(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, arangodb::LogicalCollection const*) override;
   virtual TRI_vocbase_t* createDatabase(TRI_voc_tick_t id, arangodb::velocypack::Slice const& args, int& status) override;

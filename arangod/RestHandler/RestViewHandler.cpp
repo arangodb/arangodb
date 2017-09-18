@@ -151,9 +151,9 @@ void RestViewHandler::modifyView(bool partialUpdate) {
 
   std::vector<std::string> const& suffixes = _request->suffixes();
 
-  if ((suffixes.size() != 2) || (suffixes[1] != "properties")) {
+  if ((suffixes.size() != 2) || (suffixes[1] != "properties" && suffixes[1] != "rename")) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
-                  "expecting [PUT, PATCH] /_api/view/<view-name>/properties");
+                  "expecting [PUT, PATCH] /_api/view/<view-name>/properties or PUT /_api/view/<view-name>/rename");
     return;
   }
 
@@ -174,6 +174,25 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       return;
     }
     VPackSlice body = parsedBody.get()->slice();
+  
+    // handle rename functionality
+    if (suffixes[1] == "rename") {
+      VPackSlice newName = body.get("name");
+      if (!newName.isString()) {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+                    "expecting \"name\" parameter to be a string");
+        return;
+      }
+
+      int res = _vocbase->renameView(view, newName.copyString());
+      
+      if (res == TRI_ERROR_NO_ERROR) {
+        getSingleView(newName.copyString());
+      } else {
+        generateError(GeneralResponse::responseCode(res), res);
+      }
+      return;
+    }
 
     auto result = view->updateProperties(body, partialUpdate,
                                          true);  // TODO: not force sync?

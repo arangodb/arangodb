@@ -186,6 +186,12 @@ class RocksDBEngine final : public StorageEngine {
                         arangodb::LogicalCollection* collection) override;
   void createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                   arangodb::LogicalView const*) override;
+  
+  // asks the storage engine to persist renaming of a view
+  // This will write a renameMarker if not in recovery
+  arangodb::Result renameView(TRI_vocbase_t* vocbase,
+                              std::shared_ptr<arangodb::LogicalView> view,
+                              std::string const& oldName) override;
 
   arangodb::Result persistView(TRI_vocbase_t* vocbase,
                                arangodb::LogicalView const*) override;

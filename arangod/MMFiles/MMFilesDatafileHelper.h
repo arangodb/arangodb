@@ -86,6 +86,7 @@ static inline size_t VPackOffset(MMFilesMarkerType type) noexcept {
       type == TRI_DF_MARKER_VPACK_DROP_INDEX ||
       type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
       type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
+      type == TRI_DF_MARKER_VPACK_RENAME_VIEW ||
       type == TRI_DF_MARKER_VPACK_CHANGE_VIEW) {
     // VPack is located after database id and collection id
     return sizeof(MMFilesMarker) + sizeof(TRI_voc_tick_t) + sizeof(TRI_voc_cid_t);
@@ -122,6 +123,7 @@ static inline size_t DatabaseIdOffset(MMFilesMarkerType type) noexcept {
       type == TRI_DF_MARKER_VPACK_DROP_INDEX ||
       type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
       type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
+      type == TRI_DF_MARKER_VPACK_RENAME_VIEW ||
       type == TRI_DF_MARKER_VPACK_CHANGE_VIEW ||
       type == TRI_DF_MARKER_VPACK_CREATE_DATABASE ||
       type == TRI_DF_MARKER_VPACK_DROP_DATABASE ||
@@ -148,6 +150,7 @@ static inline TRI_voc_tick_t DatabaseId(MMFilesMarker const* marker) noexcept {
       type == TRI_DF_MARKER_VPACK_DROP_INDEX ||
       type == TRI_DF_MARKER_VPACK_CREATE_VIEW ||
       type == TRI_DF_MARKER_VPACK_DROP_VIEW ||
+      type == TRI_DF_MARKER_VPACK_RENAME_VIEW ||
       type == TRI_DF_MARKER_VPACK_CHANGE_VIEW ||
       type == TRI_DF_MARKER_VPACK_CREATE_DATABASE ||
       type == TRI_DF_MARKER_VPACK_DROP_DATABASE ||
