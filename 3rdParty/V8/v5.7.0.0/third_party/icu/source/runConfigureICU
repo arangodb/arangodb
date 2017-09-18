@@ -265,8 +265,8 @@ case $platform in
         CXX=cl; export CXX
         RELEASE_CFLAGS='-Gy -MD'
         RELEASE_CXXFLAGS='-Gy -MD'
-        DEBUG_CFLAGS='-Z7 -MDd'
-        DEBUG_CXXFLAGS='-Z7 -MDd'
+        DEBUG_CFLAGS='-Zi -MDd'
+        DEBUG_CXXFLAGS='-Zi -MDd'
         DEBUG_LDFLAGS='-DEBUG'
         ;;
     Cygwin/MSVC2005)
@@ -276,8 +276,8 @@ case $platform in
         CXX=cl; export CXX
         RELEASE_CFLAGS='/Gy /MD'
         RELEASE_CXXFLAGS='/Gy /MD'
-        DEBUG_CFLAGS='/Z7 /MDd'
-        DEBUG_CXXFLAGS='/Z7 /MDd'
+        DEBUG_CFLAGS='/Zi /MDd'
+        DEBUG_CXXFLAGS='/Zi /MDd'
         DEBUG_LDFLAGS='/DEBUG'
         ;;
     Cygwin/ICL)
@@ -288,8 +288,8 @@ case $platform in
         # The Intel compiler has optimization bugs. So we disable optimization.
         RELEASE_CFLAGS='/Od'
         RELEASE_CXXFLAGS='/Od'
-        DEBUG_CFLAGS='/Z7'
-        DEBUG_CXXFLAGS='/Z7'
+        DEBUG_CFLAGS='/Zi'
+        DEBUG_CXXFLAGS='/Zi'
         DEBUG_LDFLAGS='/DEBUG'
         ;;
     MacOSX)
@@ -325,8 +325,8 @@ case $platform in
         CXX=cl; export CXX
         RELEASE_CFLAGS='-Gy -MD'
         RELEASE_CXXFLAGS='-Gy -MD'
-        DEBUG_CFLAGS='-Z7 -MDd'
-        DEBUG_CXXFLAGS='-Z7 -MDd'
+        DEBUG_CFLAGS='-Zi -MDd'
+        DEBUG_CXXFLAGS='-Zi -MDd'
         DEBUG_LDFLAGS='-DEBUG'
         ;;
     *BSD)
