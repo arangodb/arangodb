@@ -341,16 +341,24 @@ class Agent : public arangodb::Thread,
   std::unordered_map<std::string, TimePoint> _lastSent;
   std::unordered_map<std::string, TimePoint> _earliestPackage;
 
-  /// Rules for the locks: One must never fetch _ioLock whilst holding
-  /// _logLock (in State).
+  // @brief Lock for all of the above data about other agents. This
+  // protects _confirmed, _lastHighest, _lastAcked, _lastSent and
+  // _earliestPackage.:
+  mutable arangodb::Mutex _otherAgentsLock;
+
   /**< @brief RAFT consistency lock:
      _spearhead
      _readDB
-     _lastAcked
-     _lastSent
-     _confirmed
    */
   mutable arangodb::Mutex _ioLock;
+
+  /// Rules for the locks: This covers the following locks:
+  ///    _ioLock (here)
+  ///    _logLock (in State)
+  ///    _otherAgentsLock (here)
+  /// One may never acquire a log in this list whilst holding another one
+  /// that appears further down on this list. This is to prevent deadlock.
+  /// TODO: Put _compactionLock into this locking concept!
 
   // @brief guard _activator 
   mutable arangodb::Mutex _activatorLock;
