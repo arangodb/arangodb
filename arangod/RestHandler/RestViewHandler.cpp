@@ -26,6 +26,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Rest/GeneralResponse.h"
 #include "VocBase/LogicalView.h"
 
 #include <velocypack/velocypack-aliases.h>
@@ -131,9 +132,7 @@ void RestViewHandler::createView() {
                     "problem creating view");
     }
   } catch (basics::Exception const& ex) {
-    rest::ResponseCode httpCode = (ex.code() == TRI_ERROR_ARANGO_DUPLICATE_NAME)
-      ? rest::ResponseCode::BAD : rest::ResponseCode::SERVER_ERROR;
-    generateError(httpCode, ex.code(), ex.message());
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.message());
   } catch (...) {
     generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
                   "problem creating view");
@@ -186,16 +185,7 @@ void RestViewHandler::modifyView(bool partialUpdate) {
       generateResult(rest::ResponseCode::OK, updated.slice());
       return;
     } else {
-      rest::ResponseCode httpCode;
-      switch (result.errorNumber()) {
-        case TRI_ERROR_BAD_PARAMETER:
-          httpCode = rest::ResponseCode::BAD;
-          break;
-        default:
-          httpCode = rest::ResponseCode::SERVER_ERROR;
-          break;
-      }
-      generateError(httpCode, result.errorNumber(), result.errorMessage());
+      generateError(GeneralResponse::responseCode(result.errorNumber()), result.errorNumber(), result.errorMessage());
       return;
     }
   } catch (...) {
@@ -222,7 +212,7 @@ void RestViewHandler::deleteView() {
   int res = _vocbase->dropView(name);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    generateOk();
+    generateSuccess(rest::ResponseCode::OK, VPackSlice::trueSlice());
   } else if (res == TRI_ERROR_ARANGO_VIEW_NOT_FOUND) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
