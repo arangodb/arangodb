@@ -5,13 +5,11 @@ include(ExternalProject)
 
 # set version and paths
 set(JEMALLOC_VERSION "5.0.1")
-# set(JEMALLOC_VERSION "3.6.0")
 set(JEMALLOC_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/v${JEMALLOC_VERSION}")
 set(JEMALLOC_BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/v${JEMALLOC_VERSION}")
 
 # export to paths to parent scope
 set(JEMALLOC_VERSION "${JEMALLOC_VERSION}" PARENT_SCOPE)
-set(JEMALLOC_HOME "${JEMALLOC_BINARY_DIR}" PARENT_SCOPE)
 
 # copy files into binary directory
 file(
@@ -73,5 +71,6 @@ if (LINUX OR DARWIN)
            && cp -a ${JEMALLOC_BINARY_DIR}/lib/libjemalloc.a ${CMAKE_CURRENT_BINARY_DIR}/lib
   )
 
-  set(JEMALLOC_LIB "${JEMALLOC_BINARY_DIR}/lib/libjemalloc.a" PARENT_SCOPE)
+  set(JEMALLOC_HOME "${CMAKE_CURRENT_BINARY_DIR}" PARENT_SCOPE)
+  set(JEMALLOC_LIB "${CMAKE_CURRENT_BINARY_DIR}/lib/libjemalloc.a" PARENT_SCOPE)
 endif ()
