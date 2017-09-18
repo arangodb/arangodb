@@ -135,6 +135,10 @@ enterpriseRepo = 'http://c1:8088/github.com/arangodb/enterprise'
 credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 
 // source branch for pull requests
+if (env.JOB_BASE_NAME == "arangodb-ci-devel") {
+    env.BRANCH_NAME = "devel"
+}
+
 sourceBranchLabel = env.BRANCH_NAME
 
 if (env.BRANCH_NAME =~ /^PR-/) {
@@ -143,11 +147,6 @@ if (env.BRANCH_NAME =~ /^PR-/) {
 
   def reg = ~/^arangodb:/
   sourceBranchLabel = sourceBranchLabel - reg
-}
-
-if (sourceBranchLabel == ~/devel$/) {
-    useWindows = true
-    useMac = true
 }
 
 buildJenkins = [
@@ -250,7 +249,7 @@ def checkCoresAndSave(os, runDir, name, archRun) {
     else {
         sh "for i in logs out tmp result; do test -e \"${runDir}/\$i\" && mv \"${runDir}/\$i\" \"${archRun}/${name}.\$i\" || true; done"
 
-        def files = findFiles(glob: '${runDir}/core*')
+        def files = findFiles(glob: "${runDir}/core*")
 
         if (files.length > 0) {
             for (file in files) {
@@ -407,8 +406,8 @@ def checkCommitMessages() {
     else if (skip) {
         useLinux = false
         useMac = false
-
         useWindows = false
+
         useCommunity = false
         useEnterprise = false
 
@@ -421,6 +420,19 @@ def checkCommitMessages() {
     else {
         if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
             echo "build of main branch"
+
+            useLinux = true
+            useMac = true
+            useWindows = true
+
+            useCommunity = true
+            useEnterprise = true
+
+            useMaintainer = true
+            useUser = true
+
+            // runResilience = false
+            runTests = true
         }
         else if (env.BRANCH_NAME =~ /^PR-/) {
             echo "build of PR"
@@ -534,6 +546,7 @@ def unstashBinaries(os, edition, maintainer) {
     if (os == "windows") {
         powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip stash.zip"
         powershell "Expand-Archive -Path stash.zip -Force -DestinationPath ."
+        powershell "copy build\\tests\\RelWithDebInfo\\* build\\bin"
         powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
     }
     else {
@@ -552,6 +565,7 @@ def jslint(os, edition, maintainer) {
     def archFail = "${archDir}/02-jslint-FAIL"
 
     fileOperations([
+        fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
         folderDeleteOperation(arch),
         folderDeleteOperation(archFail),
         folderCreateOperation(arch)
@@ -565,12 +579,12 @@ def jslint(os, edition, maintainer) {
     }
     catch (exc) {
         renameFolder(arch, archFail)
-        fileOperations([fileCreateOperation(fileContent: 'BUILD FAILED', fileName: "${arch}-FAIL.txt")])
+        fileOperations([fileCreateOperation(fileContent: 'JSLINT FAILED', fileName: "${archDir}-FAIL.txt")])
         throw exc
     }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-            artifacts: "${arch}-*, ${arch}/**, ${archFail}/**",
+            artifacts: "${archDir}-*, ${arch}/**, ${archFail}/**",
             defaultExcludes: false
     }
 }
@@ -610,7 +624,7 @@ def getTests(os, edition, maintainer, mode, engine) {
     if (mode == "singleserver") {
         tests += [
             ["agency", "agency", ""],
-            ["boost", "boost", "--skipCache false"],
+            ["catch", "catch", "--skipCache false"],
             ["cluster_sync", "cluster_sync", ""],
             ["dfdb", "dfdb", ""],
             ["replication_ongoing", "replication_ongoing", ""],
@@ -709,7 +723,9 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
 
                             withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
                                 if (os == "windows") {
-                                    echo "executing ${command}"
+                                    def hostname = powershell(returnStdout: true, script: "hostname")
+
+                                    echo "executing ${command} on ${hostname}"
                                     powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
                                 }
                                 else {
@@ -751,7 +767,7 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                         checkCoresAndSave(os, runDir, name, archRun)
 
                         archiveArtifacts allowEmptyArchive: true,
-                            artifacts: "${logFileRel}, ${logFileFailedRel}",
+                            artifacts: "${archDir}-*, ${logFileRel}, ${logFileFailedRel}",
                             defaultExcludes: false
                     }
                 }
@@ -807,6 +823,7 @@ def testStep(os, edition, maintainer, mode, engine, stageName) {
 
                     // create directories for the artifacts
                     fileOperations([
+                        fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
                         folderCreateOperation(arch),
                         folderCreateOperation(archFail),
                         folderCreateOperation(archRun)
@@ -1147,6 +1164,10 @@ def runOperatingSystems(osList) {
 }
 
 timestamps {
+    node("master") {
+        echo sh(returnStdout: true, script: 'env')
+    }
+
     checkCommitMessages()
 
     node("master") {

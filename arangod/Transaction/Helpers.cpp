@@ -241,7 +241,6 @@ VPackSlice transaction::helpers::extractToFromDocument(VPackSlice slice) {
   }
   // this method must only be called on edges
   // this means we must have at least the attributes  _key, _id, _from, _to and _rev
-
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
   VPackValueLength count = 0;
 
