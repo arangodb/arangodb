@@ -56,6 +56,7 @@ class EnumerateViewBlock : public ExecutionBlock {
    Variable const* _outVariable;
    std::unique_ptr<ViewIterator> _iter;
    std::unique_ptr<ManagedDocumentResult> _mmdr;
+   bool _hasMore;
 };
 
 }

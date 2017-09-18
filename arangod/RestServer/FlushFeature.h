@@ -53,6 +53,8 @@ class FlushFeature final
   void stop() override;
   void unprepare() override;
 
+  static bool isRunning() { return _isRunning.load(); }
+
   /// @brief register the callback, using ptr as key
   void registerCallback(void* ptr, FlushFeature::FlushCallback const& cb);
 
@@ -66,8 +68,9 @@ class FlushFeature final
  private:
   uint64_t _flushInterval;
   std::unique_ptr<FlushThread> _flushThread;
+  static std::atomic<bool> _isRunning;
 
-  basics::ReadWriteLock _callbacksLock; 
+  basics::ReadWriteLock _callbacksLock;
   std::unordered_map<void*, FlushCallback> _callbacks;
 };
 }

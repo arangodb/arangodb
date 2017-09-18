@@ -36,6 +36,8 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+std::atomic<bool> FlushFeature::_isRunning(false);
+
 FlushFeature::FlushFeature(ApplicationServer* server)
     : ApplicationFeature(server, "Flush"),
       _flushInterval(1000000) {
@@ -72,6 +74,8 @@ void FlushFeature::start() {
     LOG_TOPIC(FATAL, Logger::FIXME) << "unable to start FlushThread";
     FATAL_ERROR_ABORT();
   }
+
+  _isRunning.store(true);
 }
 
 void FlushFeature::beginShutdown() {
@@ -90,6 +94,7 @@ void FlushFeature::stop() {
       usleep(10000);
     }
 
+    _isRunning.store(false);
     _flushThread.reset();
   }
 }

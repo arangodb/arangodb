@@ -39,6 +39,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FlushFeature.h"
 #include "RestServer/TransactionManagerFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -1747,7 +1748,7 @@ int MMFilesLogfileManager::waitForCollector(MMFilesWalLogfile::IdType logfileId,
 
     double const now = TRI_microtime();
 
-    if (now > end) {
+    if (now > end || !FlushFeature::isRunning()) {
       break;
     }
 

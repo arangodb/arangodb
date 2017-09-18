@@ -120,8 +120,8 @@ describe ArangoDB do
           cmd3 = api + '/dup'
           doc3 = ArangoDB.log_delete("#{prefix}-create-duplicate", cmd3)
 
-          doc3.code.should eq(204)
-          doc3.headers['content-type'].should eq("text/plain; charset=utf-8")
+          doc3.code.should eq(200)
+          doc3.headers['content-type'].should eq("application/json; charset=utf-8")
         end
 
       end
@@ -226,8 +226,8 @@ describe ArangoDB do
           cmd3 = api + '/lemon'
           doc3 = ArangoDB.log_delete("#{prefix}-modify-unacceptable", cmd3)
 
-          doc3.code.should eq(204)
-          doc3.headers['content-type'].should eq("text/plain; charset=utf-8")
+          doc3.code.should eq(200)
+          doc3.headers['content-type'].should eq("application/json; charset=utf-8")
         end
 
       end
@@ -254,8 +254,8 @@ describe ArangoDB do
         cmd1 = api + "/abc"
         doc1 = ArangoDB.log_delete("#{prefix}-drop-a-view", cmd1)
 
-        doc1.code.should eq(204)
-        doc1.headers['content-type'].should eq("text/plain; charset=utf-8")
+        doc1.code.should eq(200)
+        doc1.headers['content-type'].should eq("application/json; charset=utf-8")
 
         cmd2 = api + "/abc"
         doc2 = ArangoDB.log_get("#{prefix}-drop-a-view", cmd2)
