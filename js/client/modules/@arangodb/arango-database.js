@@ -1191,7 +1191,7 @@ ArangoDatabase.prototype._dropView = function (id) {
 
   var v = this._collection(id);
   if (v) {
-    return v.drop(options);
+    return v.drop();
   }
 
   return undefined;
