@@ -223,4 +223,5 @@ ArangoView.prototype.rename = function (name) {
   arangosh.checkRequestResult(requestResult);
 
   this._database._renameView(this._name, name);
+  this._name = name;
 };
