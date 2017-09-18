@@ -12210,12 +12210,12 @@ SECTION("And") {
   // field and prefix
   {
     std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[36].slice(),
+      insertedDocs[37].slice(),
       insertedDocs[6].slice(),
       insertedDocs[9].slice(),
       insertedDocs[26].slice(),
       insertedDocs[31].slice(),
-      insertedDocs[36].slice(),
-      insertedDocs[37].slice(),
     };
     auto result = executeQuery(
       vocbase,
@@ -12385,9 +12385,9 @@ SECTION("And") {
   // prefix and not exists and field
   {
     std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[37].slice(),
       insertedDocs[9].slice(),
       insertedDocs[31].slice(),
-      insertedDocs[37].slice(),
     };
     auto result = executeQuery(
       vocbase,
