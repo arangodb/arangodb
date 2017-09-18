@@ -12486,6 +12486,45 @@ SECTION("Or") {
 
   std::deque<arangodb::ManagedDocumentResult> insertedDocs;
 
+  // populate view with the data
+  {
+    arangodb::OperationOptions opt;
+    TRI_voc_tick_t tick;
+
+    arangodb::transaction::UserTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      EMPTY, EMPTY, EMPTY,
+      arangodb::transaction::Options()
+    );
+    CHECK((trx.begin().ok()));
+
+    // insert into collections
+    {
+      irs::utf8_path resource;
+      resource/=irs::string_ref(IResearch_test_resource_dir);
+      resource/=irs::string_ref("simple_sequential.json");
+
+      auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
+      auto root = builder->slice();
+      REQUIRE(root.isArray());
+
+      size_t i = 0;
+
+      arangodb::LogicalCollection* collections[] {
+        logicalCollection1, logicalCollection2
+      };
+
+      for (auto doc : arangodb::velocypack::ArrayIterator(root)) {
+        insertedDocs.emplace_back();
+        auto const res = collections[i % 2]->insert(&trx, doc, insertedDocs.back(), opt, tick, false);
+        CHECK(res.ok());
+        ++i;
+      }
+    }
+
+    CHECK((trx.commit().ok()));
+    view->sync();
+  }
 
   // d.name == 'A' OR d.name == 'Q', d.seq DESC
   {
@@ -12534,7 +12573,7 @@ SECTION("Or") {
 
     auto queryResult = executeQuery(
       vocbase,
-      "FOR d IN VIEW testView FILTER d.name == 'X' OR d.same == 'xyz' SORT TFIDF(d), d.seq DESC RETURN d"
+      "FOR d IN VIEW testView FILTER d.name == 'X' OR d.same == 'xyz' SORT TFIDF(d) DESC, d.seq DESC RETURN d"
     );
     REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 
@@ -12548,7 +12587,7 @@ SECTION("Or") {
     {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDocs[23]->vpack()) == resolved);
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDocs[23]->vpack()), resolved, true)));
       expectedDocs.erase(23);
     }
 
@@ -12557,11 +12596,50 @@ SECTION("Or") {
     for (resultIt.next(); resultIt.valid(); resultIt.next()) {
       auto const actualDoc = resultIt.value();
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true)));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
   }
+
+  // d.name == 'X' OR d.value <= 100 OR d.duplicated == abcd , TFIDF(d), d.seq DESC
+//  {
+//    std::map<ptrdiff_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+//    for (auto const& doc : insertedDocs) {
+//      arangodb::velocypack::Slice docSlice(doc.vpack());
+//      expectedDocs.emplace(docSlice.get("seq").getNumber<ptrdiff_t>(), &doc);
+//    }
+//
+//    auto queryResult = executeQuery(
+//      vocbase,
+//      "FOR d IN VIEW testView FILTER d.name == 'X' OR d.value <= 100 OR d.duplicated == 'abcd' SORT TFIDF(d), d.seq DESC RETURN d"
+//    );
+//    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+//
+//    auto result = queryResult.result->slice();
+//    CHECK(result.isArray());
+//
+//    arangodb::velocypack::ArrayIterator resultIt(result);
+//    CHECK(expectedDocs.size() == resultIt.size());
+//
+//    // Check 1st (the most relevant doc)
+//    {
+//      auto const actualDoc = resultIt.value();
+//      auto const resolved = actualDoc.resolveExternals();
+//      CHECK(arangodb::velocypack::Slice(expectedDocs[23]->vpack()) == resolved);
+//      expectedDocs.erase(23);
+//    }
+//
+//    // Check the rest of documents
+//    auto expectedDoc = expectedDocs.rbegin();
+//    for (resultIt.next(); resultIt.valid(); resultIt.next()) {
+//      auto const actualDoc = resultIt.value();
+//      auto const resolved = actualDoc.resolveExternals();
+//      CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+//      ++expectedDoc;
+//    }
+//    CHECK(expectedDoc == expectedDocs.rend());
+//  }
 
   // d.name == 'A' OR d.name == 'Q' OR d.same != 'xyz', d.seq DESC
   {
@@ -12601,7 +12679,6 @@ SECTION("Or") {
   }
 }
 
-// SECTION("SimpleBoolean") { }
 // SECTION("ComplexBoolean") { }
 
 
