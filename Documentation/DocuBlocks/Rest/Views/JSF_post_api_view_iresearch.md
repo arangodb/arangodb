@@ -131,12 +131,14 @@ If the *view-name* is unknown, then a *HTTP 404* is returned.
     var url = "/_api/view";
     var body = {
       name: "testViewBasics",
-      type: "iresearch"
+      type: "iresearch",
+      properties: {}
     };
 
     var response = logCurlRequest('POST', url, body);
 
-    assert(response.code === 200);
+    console.log(response.code);
+    assert(response.code === 201);
 
     logJsonResponse(response);
 
