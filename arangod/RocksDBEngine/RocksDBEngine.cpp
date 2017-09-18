@@ -1155,8 +1155,7 @@ void RocksDBEngine::createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 Result RocksDBEngine::renameView(
     TRI_vocbase_t* vocbase, std::shared_ptr<arangodb::LogicalView> view,
     std::string const& oldName) {
-  // nothing to do here
-  return {TRI_ERROR_NO_ERROR};
+  return persistView(vocbase, view.get());
 }
 
 arangodb::Result RocksDBEngine::persistView(

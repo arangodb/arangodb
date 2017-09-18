@@ -65,7 +65,7 @@ function runSetup () {
   db._dropView('UnitTestsRecovery8');
   v = db._createView('UnitTestsRecovery8', 'logger', {});
 
-  db._collection('UnitTestsDummy').save({ _key: 'foo' }, true);
+  db._collection('UnitTestsDummy').save({ _key: 'foo' }, { waitForSync: true });
 
   internal.debugSegfault('crashing server');
 }
