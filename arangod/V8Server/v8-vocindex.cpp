@@ -87,8 +87,6 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   VPackBuilder builder;
   TRI_V8ToVPackSimple(isolate, builder, args[0]);
   
-  TRI_GET_GLOBALS();
-  
   VPackBuilder output;
   ExecContext const* exec = ExecContext::CURRENT;
   Result res = methods::Indexes::ensureIndex(exec, collection,
