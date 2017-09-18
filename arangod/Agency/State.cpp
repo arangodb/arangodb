@@ -229,7 +229,6 @@ index_t State::logNonBlocking(
   }
   
   return _log.back().index;
-  
 }
 
 /// Log transactions (follower)
@@ -663,9 +662,9 @@ bool State::loadPersisted() {
   loadOrPersistConfiguration();
 
   if (checkCollection("log") && checkCollection("compact")) {
-      bool lc = loadCompacted();
-      bool lr = loadRemaining();
-        return (lc && lr);
+    bool lc = loadCompacted();
+    bool lr = loadRemaining();
+    return (lc && lr);
   }
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Couldn't find persisted log";
@@ -754,21 +753,13 @@ bool State::loadCompacted() {
     _agent->setPersistedState(ii);
     try {
       _cur = basics::StringUtils::uint64(ii.get("_key").copyString());
+      _log.clear();   // will be filled in loadRemaining
       // Schedule next compaction:
       _nextCompactionAfter = _cur + _agent->config().compactionStepSize();
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__
                                      << __LINE__;
     }
-  }
-
-  // We can be sure that every compacted snapshot only contains index entries
-  // that have been written and agreed upon by an absolute majority of agents.
-  if (!_log.empty()) {
-    index_t lastIndex = _log.back().index;
-    
-    logLock.unlock();
-    _agent->lastCommitted(lastIndex);
   }
 
   return true;
@@ -874,7 +865,7 @@ bool State::loadRemaining() {
   MUTEX_LOCKER(logLock, _logLock);
   if (result.isArray() && result.length() > 0) {
     
-    _log.clear();
+    TRI_ASSERT(_log.empty());  // was cleared in loadCompacted
     std::string clientId;
     for (auto const& i : VPackArrayIterator(result)) {
 
@@ -921,7 +912,7 @@ bool State::find(index_t prevIndex, term_t prevTerm) {
 /// Log compaction
 bool State::compact(index_t cind) {
   // We need to compute the state at index cind and 
-  //   cind <= _lastAppliedIndex
+  //   cind <= _commitIndex
   // and usually it is < because compactionKeepSize > 0. We start at the
   // latest compaction state and advance from there:
   Store snapshot(_agent, "snapshot");
@@ -1032,42 +1023,6 @@ bool State::removeObsolete(index_t cind) {
     }
   }
   return true;
-}
-
-
-/// Persist the globally commited truth
-bool State::persistReadDB(index_t cind) {
-  if (checkCollection("compact")) {
-    std::stringstream i_str;
-    i_str << std::setw(20) << std::setfill('0') << cind;
-
-    Builder store;
-    { VPackObjectBuilder s(&store);
-      store.add(VPackValue("readDB"));
-      { VPackArrayBuilder a(&store);
-        _agent->readDB().dumpToBuilder(store); }
-      store.add("_key", VPackValue(i_str.str())); }
-
-    TRI_ASSERT(_vocbase != nullptr);
-    auto transactionContext =
-        std::make_shared<transaction::StandaloneContext>(_vocbase);
-    SingleCollectionTransaction trx(
-      transactionContext, "compact", AccessMode::Type::WRITE);
-
-    Result res = trx.begin();
-
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    auto result = trx.insert("compact", store.slice(), _options);
-    res = trx.finish(result.code);
-
-    return res.ok();
-  }
-
-  LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to persist read DB for compaction!";
-  return false;
 }
 
 /// Persist a compaction snapshot

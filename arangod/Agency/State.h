@@ -220,9 +220,6 @@ class State {
   /// @brief Remove obsolete logs
   bool removeObsolete(arangodb::consensus::index_t cind);
 
-  /// @brief Persist read database
-  bool persistReadDB(arangodb::consensus::index_t cind);
-
   /// @brief Our agent
   Agent* _agent;
 

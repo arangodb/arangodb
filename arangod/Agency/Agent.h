@@ -83,7 +83,7 @@ class Agent : public arangodb::Thread,
   bool fitness() const;
 
   /// @brief Leader ID
-  std::pair<index_t, index_t> lastCommitted() const;
+  index_t lastCommitted() const;
 
   /// @brief Leader ID
   std::string leaderID() const;
@@ -176,7 +176,7 @@ class Agent : public arangodb::Thread,
   size_t size() const;
 
   /// @brief Rebuild DBs by applying state log to empty DB
-  index_t rebuildDBs();
+  void rebuildDBs();
 
   /// @brief Rebuild DBs by applying state log to empty DB
   void compact();
@@ -275,7 +275,8 @@ class Agent : public arangodb::Thread,
   /// @brief Activate this agent in single agent mode.
   bool activateAgency();
 
-  /// @brief Assignment of persisted state
+  /// @brief Assignment of persisted state, only used at startup, one needs
+  /// to hold the _ioLock to call this
   void setPersistedState(VPackSlice const&);
 
   /// @brief Get current term
@@ -283,9 +284,6 @@ class Agent : public arangodb::Thread,
 
   /// @brief Get current term
   bool mergeConfiguration(VPackSlice const&);
-
-  /// @brief Leader ID
-  void lastCommitted(index_t);
 
   /// @brief Leader election delegate
   Constituent _constituent;
@@ -300,17 +298,19 @@ class Agent : public arangodb::Thread,
   config_t _config;
 
   /// @brief
-  /// Leader: Last index that is "committed" in the sense that the leader
-  /// has convinced itself that an absolute majority (including the leader)
-  /// have written the entry into their log, this variable is only maintained
-  /// on the leader.
-  /// Follower: this is only kept on followers and indicates what the leader
-  /// told them it has last "committed" in the above sense.
-  index_t _commitIndex;
-
-  /// @brief Index of highest log entry applied to state achine (initialized
-  /// to 0, increases monotonically)
-  index_t _lastApplied;
+  /// Leader: Last index that is "committed" in the sense that the
+  /// leader has convinced itself that an absolute majority (including
+  /// the leader) have written the entry into their log. This is also
+  /// the index of the highest log entry applied to the state machine
+  /// _readDB (called "lastApplied" in the Raft paper).
+  /// Follower: this indicates what the leader told them it has last
+  /// "committed" in the above sense.
+  /// Locking policy: Note that this is only ever changed at startup, when
+  /// answers to appendEntriesRPC messages come in on the leader, and when
+  /// appendEntriesRPC calls are received on the follower. In each case
+  /// we hold the _ioLock when _commitIndex is changed. Reading the atomic
+  /// variable is allowed without a lock.
+  std::atomic<index_t> _commitIndex;
 
   /// @brief Spearhead (write) kv-store
   Store _spearhead;
@@ -335,23 +335,16 @@ class Agent : public arangodb::Thread,
   std::unordered_map<std::string, TimePoint> _lastSent;
   std::unordered_map<std::string, TimePoint> _earliestPackage;
 
+  /// Rules for the locks: One must never fetch _ioLock whilst holding
+  /// _logLock (in State).
   /**< @brief RAFT consistency lock:
      _spearhead
      _readDB
-     _commitIndex (log index)
      _lastAcked
      _lastSent
      _confirmed
    */
   mutable arangodb::Mutex _ioLock;
-
-  // lock for _leaderCommitIndex
-  mutable arangodb::Mutex _liLock;
-
-  // note: when both _ioLock and _liLock are acquired,
-  // the locking order must be:
-  // 1) _ioLock
-  // 2) _liLock
 
   // @brief guard _activator 
   mutable arangodb::Mutex _activatorLock;
