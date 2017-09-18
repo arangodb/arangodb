@@ -2164,7 +2164,12 @@ int modifyDocumentOnCoordinator(
         TRI_ASSERT(it.second.size() == 1);
         body = std::make_shared<std::string>(slice.toJson());
 
-        StringRef keyStr(transaction::helpers::extractKeyFromDocument(slice));
+        auto keySlice = slice.get(StaticStrings::KeyString);
+        if (!keySlice.isString()) {
+          return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+        }
+
+        StringRef keyStr(keySlice);
         // We send to single endpoint
         requests.emplace_back(
             "shard:" + it.first, reqType,

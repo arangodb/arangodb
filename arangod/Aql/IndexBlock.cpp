@@ -163,7 +163,7 @@ int IndexBlock::initialize() {
   auto instantiateExpression = [&](size_t i, size_t j, size_t k,
                                    AstNode* a) -> void {
     // all new AstNodes are registered with the Ast in the Query
-    auto e = std::make_unique<Expression>(ast, a);
+    auto e = std::make_unique<Expression>(en->_plan, ast, a);
 
     TRI_IF_FAILURE("IndexBlock::initialize") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);

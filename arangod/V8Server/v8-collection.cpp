@@ -2758,8 +2758,6 @@ static void JS_TruncateVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
   
-  TRI_GET_GLOBALS();
-
   // Manually check this here, because truncate messes up the return code
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
