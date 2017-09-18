@@ -637,8 +637,8 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
     Instance() {
       // register the indentity analyzer
       {
-        //static const irs::flags extraFeatures = { irs::frequency::type(), irs::norm::type() };
-        static const irs::flags extraFeatures = { }; // FIXME TODO use above once tfidf/bm25 sort is fixed
+        static const irs::flags extraFeatures = { irs::frequency::type(), irs::norm::type() };
+        //static const irs::flags extraFeatures = { }; // FIXME TODO use above once tfidf/bm25 sort is fixed
         static const irs::string_ref name("identity");
         PTR_NAMED(AnalyzerPool, pool, name);
 

@@ -307,7 +307,7 @@ SECTION("test_emplace") {
     CHECK((false == !feature.emplace("identity", "identity", irs::string_ref::nil).first));
     auto pool = feature.get("identity");
     CHECK((false == !pool));
-    CHECK((irs::flags({irs::increment::type(), irs::term_attribute::type()}) == pool->features()));
+    CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::increment::type(), irs::term_attribute::type()}) == pool->features())); // FIXME remove increment, term_attribute
     auto analyzer = pool->get();
     CHECK((false == !analyzer));
   }
@@ -318,7 +318,7 @@ SECTION("test_emplace") {
     CHECK((false == !feature.emplace("identity", "identity", irs::string_ref::nil).first));
     auto pool = feature.get("identity");
     CHECK((false == !pool));
-    CHECK((irs::flags({irs::increment::type(), irs::term_attribute::type()}) == pool->features()));
+    CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::increment::type(), irs::term_attribute::type()}) == pool->features())); // FIXME remove increment, term_attribute
     auto analyzer = pool->get();
     CHECK((false == !analyzer));
   }
@@ -341,7 +341,7 @@ SECTION("test_ensure") {
     {
       auto pool = feature.ensure("identity");
       REQUIRE((false == !pool));
-      CHECK((irs::flags({irs::increment::type(), irs::term_attribute::type()}) == pool->features()));
+      CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::increment::type(), irs::term_attribute::type()}) == pool->features())); // FIXME remove increment, term_attribute
       auto analyzer = pool->get();
       CHECK((false == !analyzer));
     }
@@ -371,7 +371,7 @@ SECTION("test_ensure") {
     {
       auto pool = feature.ensure("identity");
       REQUIRE((false == !pool));
-      CHECK((irs::flags({irs::increment::type(), irs::term_attribute::type()}) == pool->features()));
+      CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::increment::type(), irs::term_attribute::type()}) == pool->features())); // FIXME remove increment, term_attribute
       auto analyzer = pool->get();
       CHECK((false == !analyzer));
     }
@@ -402,7 +402,7 @@ SECTION("test_get") {
     {
       auto pool = feature.get("identity");
       REQUIRE((false == !pool));
-      CHECK((irs::flags({irs::increment::type(), irs::term_attribute::type()}) == pool->features()));
+      CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::increment::type(), irs::term_attribute::type()}) == pool->features())); // FIXME remove increment, term_attribute
       auto analyzer = pool->get();
       CHECK((false == !analyzer));
     }
@@ -432,7 +432,7 @@ SECTION("test_get") {
     {
       auto pool = feature.get("identity");
       REQUIRE((false == !pool));
-      CHECK((irs::flags({irs::increment::type(), irs::term_attribute::type()}) == pool->features()));
+      CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::increment::type(), irs::term_attribute::type()}) == pool->features())); // FIXME remove increment, term_attribute
       auto analyzer = pool->get();
       CHECK((false == !analyzer));
     }
@@ -444,7 +444,7 @@ SECTION("test_identity") {
   {
     auto pool = arangodb::iresearch::IResearchAnalyzerFeature::identity();
     CHECK((false == !pool));
-    CHECK((irs::flags({irs::increment::type(), irs::term_attribute::type()}) == pool->features()));
+    CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::increment::type(), irs::term_attribute::type()}) == pool->features())); // FIXME remove increment, term_attribute
     CHECK(("identity" == pool->name()));
     auto analyzer = pool->get();
     CHECK((false == !analyzer));
@@ -470,7 +470,7 @@ SECTION("test_identity") {
     feature.start();
     pool = feature.get("identity");
     REQUIRE((false == !pool));
-    CHECK((irs::flags({irs::increment::type(), irs::term_attribute::type()}) == pool->features()));
+    CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::increment::type(), irs::term_attribute::type()}) == pool->features())); // FIXME remove increment, term_attribute
     CHECK(("identity" == pool->name()));
     auto analyzer = pool->get();
     CHECK((false == !analyzer));

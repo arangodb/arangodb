@@ -165,7 +165,7 @@ SECTION("test_defaults") {
   CHECK(1U == meta._tokenizers.size());
   CHECK((*(meta._tokenizers.begin())));
   CHECK(("identity" == (*(meta._tokenizers.begin()))->name()));
-  CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == (*(meta._tokenizers.begin()))->features()));
+  CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::term_attribute::type(), irs::increment::type()}) == (*(meta._tokenizers.begin()))->features())); // FIXME remove increment, term_attribute
   CHECK(false == !meta._tokenizers.begin()->get());
 }
 
@@ -208,7 +208,7 @@ SECTION("test_inheritDefaults") {
         CHECK(1U == actual._tokenizers.size());
         CHECK((*(actual._tokenizers.begin())));
         CHECK(("identity" == (*(actual._tokenizers.begin()))->name()));
-        CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == (*(actual._tokenizers.begin()))->features()));
+        CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::term_attribute::type(), irs::increment::type()}) == (*(actual._tokenizers.begin()))->features())); // FIXME remove increment, term_attribute
         CHECK(false == !actual._tokenizers.begin()->get());
       }
     }
@@ -239,7 +239,8 @@ SECTION("test_readDefaults") {
   CHECK(1U == meta._tokenizers.size());
   CHECK((*(meta._tokenizers.begin())));
   CHECK(("identity" == (*(meta._tokenizers.begin()))->name()));
-  CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == (*(meta._tokenizers.begin()))->features()));
+  CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::term_attribute::type(), irs::increment::type()}) == (*(meta._tokenizers.begin()))->features())); // FIXME remove increment, term_attribute
+
   CHECK(false == !meta._tokenizers.begin()->get());
 }
 
@@ -289,7 +290,7 @@ SECTION("test_readCustomizedValues") {
           CHECK(1U == actual._tokenizers.size());
           CHECK((*(actual._tokenizers.begin())));
           CHECK(("identity" == (*(actual._tokenizers.begin()))->name()));
-          CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == (*(actual._tokenizers.begin()))->features()));
+          CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::term_attribute::type(), irs::increment::type()}) == (*(actual._tokenizers.begin()))->features())); // FIXME remove increment, term_attribute
           CHECK(false == !actual._tokenizers.begin()->get());
         } else if ("all" == fieldOverride.key()) {
           CHECK(11. == actual._boost);
@@ -317,7 +318,7 @@ SECTION("test_readCustomizedValues") {
           ++itr;
           CHECK((*itr));
           CHECK(("identity" == (*itr)->name()));
-          CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == (*itr)->features()));
+          CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::term_attribute::type(), irs::increment::type()}) == (*itr)->features())); // FIXME remove increment, term_attribute
           CHECK(false == !itr->get());
         } else if ("none" == fieldOverride.key()) {
           CHECK(10. == actual._boost); // inherited
@@ -332,7 +333,7 @@ SECTION("test_readCustomizedValues") {
           ++itr;
           CHECK((*itr));
           CHECK(("identity" == (*itr)->name()));
-          CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == (*itr)->features()));
+          CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::term_attribute::type(), irs::increment::type()}) == (*itr)->features())); // FIXME remove increment, term_attribute
           CHECK(false == !itr->get());
         }
       }
@@ -350,7 +351,7 @@ SECTION("test_readCustomizedValues") {
     ++itr;
     CHECK((*itr));
     CHECK(("identity" == (*itr)->name()));
-    CHECK((irs::flags({irs::term_attribute::type(), irs::increment::type()}) == (*itr)->features()));
+    CHECK((irs::flags({irs::norm::type(), irs::frequency::type(), irs::term_attribute::type(), irs::increment::type()}) == (*itr)->features()));  // FIXME remove increment, term_attribute
     CHECK(false == !itr->get());
   }
 }
