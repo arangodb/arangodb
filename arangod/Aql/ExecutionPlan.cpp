@@ -400,7 +400,7 @@ ExecutionNode* ExecutionPlan::createCalculation(
 
   // generate a temporary calculation node
   auto expr =
-      std::make_unique<Expression>(_ast, const_cast<AstNode*>(expression));
+      std::make_unique<Expression>(this, _ast, const_cast<AstNode*>(expression));
 
   CalculationNode* en;
   if (conditionVariable != nullptr) {
