@@ -313,7 +313,7 @@ class RandomDeviceCombined : public RandomDevice {
       if (r == 0) {
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "read on random device failed: nothing read";
         FATAL_ERROR_EXIT();
-      } else if (r < 0) 
+      } else if (r < 0) {
         if (errno == EWOULDBLOCK || errno == EAGAIN) {
           LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "not enough entropy (got " << (sizeof(buffer) - n)
                     << "), switching to pseudo-random";
