@@ -65,7 +65,7 @@ namespace {
 static int indexOf(std::vector<std::string> const& haystack, std::string const& needle) {
   for (size_t i = 0; i < haystack.size(); ++i) {
     if (haystack[i] == needle) {
-      return i;
+      return static_cast<int>(i);
     }
   }
   return -1;

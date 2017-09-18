@@ -404,7 +404,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       int res = copyMarker(context->_compactor, marker, &result);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res, std::string("cannot write document marker into compactor file: ") + TRI_errno_string(res)); 
+        THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("cannot write document marker into compactor file: ") + TRI_errno_string(res)); 
       }
 
       // let marker point to the new position
@@ -423,8 +423,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
         int res = copyMarker(context->_compactor, marker, &result);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          // TODO: dont fail but recover from this state
-          THROW_ARANGO_EXCEPTION(res, std::string("cannot write remove marker into compactor file: ") + TRI_errno_string(res));
+          THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("cannot write remove marker into compactor file: ") + TRI_errno_string(res));
         }
 
         // update datafile info
