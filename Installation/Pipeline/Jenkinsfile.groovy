@@ -210,11 +210,6 @@ def checkEnabledEdition(edition, text) {
 }
 
 def checkEnabledMaintainer(maintainer, os, text) {
-    if (os == 'windows' && maintainer != 'maintainer') {
-        echo "Not ${text} ${maintainer} because ${maintainer} is not enabled under Windows"
-        return false
-    }
-
     if (maintainer == 'maintainer' && ! useMaintainer) {
         echo "Not ${text} ${maintainer} because ${maintainer} is not enabled"
         return false
@@ -1028,20 +1023,22 @@ def buildEdition(os, edition, maintainer) {
             }
         }
         else if (os == 'windows') {
-            def tmpDir = "${arch}/tmp"
+            // def tmpDir = "${arch}/tmp"
 
-            fileOperations([
-                folderCreateOperation(tmpDir)
-            ])
+            // fileOperations([
+            //     folderCreateOperation(tmpDir)
+            // ])
 
             // withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}",
             //          "_MSPDBSRV_ENDPOINT_=${edition}-${env.BUILD_TAG}", "GYP_USE_SEPARATE_MSPDBSRV=1"]) {
-                powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
+            //    powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
             // }
 
-            fileOperations([
-                folderDeleteOperation(tmpDir)
-            ])
+            // fileOperations([
+            //     folderDeleteOperation(tmpDir)
+            // ])
+
+            powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}_${maintainer}.ps1"
         }
     }
     catch (exc) {
