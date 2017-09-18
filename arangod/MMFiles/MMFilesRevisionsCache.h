@@ -28,7 +28,6 @@
 #include "Basics/AssocUnique.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/fasthash.h"
-#include "Logger/Logger.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
 #include "VocBase/voc-types.h"
 
@@ -39,7 +38,6 @@ namespace arangodb {
 struct MMFilesRevisionsCacheHelper {
   static inline uint64_t HashKey(void*, TRI_voc_rid_t const* key) {
     return fasthash64_uint64(*key, 0xdeadbeef);
-    return std::hash<TRI_voc_rid_t>()(*key);
   }
 
   static inline uint64_t HashElement(void*, MMFilesDocumentPosition const& element, bool) {

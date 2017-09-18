@@ -24,7 +24,6 @@
 #include "MMFilesRevisionsCache.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/xxhash.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 
@@ -110,7 +109,7 @@ void MMFilesRevisionsCache::update(TRI_voc_rid_t revisionId, uint8_t const* data
   WRITE_LOCKER(locker, _lock);
   
   MMFilesDocumentPosition* old = _positions.findByKeyRef(nullptr, &revisionId);
-  if (old == nullptr) {
+  if (old == nullptr || !(*old)) {
     return;
   }
      
@@ -122,12 +121,12 @@ void MMFilesRevisionsCache::update(TRI_voc_rid_t revisionId, uint8_t const* data
 bool MMFilesRevisionsCache::updateConditional(TRI_voc_rid_t revisionId, MMFilesMarker const* oldPosition, MMFilesMarker const* newPosition, TRI_voc_fid_t newFid, bool isInWal) {
   WRITE_LOCKER(locker, _lock);
 
-  MMFilesDocumentPosition old = _positions.findByKey(nullptr, &revisionId);
-  if (!old) {
+  MMFilesDocumentPosition* old = _positions.findByKeyRef(nullptr, &revisionId);
+  if (old == nullptr || !(*old)) {
     return false;
   }
      
-  uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
+  uint8_t const* vpack = static_cast<uint8_t const*>(old->dataptr());
   TRI_ASSERT(vpack != nullptr);
 
   MMFilesMarker const* markerPtr = reinterpret_cast<MMFilesMarker const*>(vpack - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
@@ -137,12 +136,8 @@ bool MMFilesRevisionsCache::updateConditional(TRI_voc_rid_t revisionId, MMFilesM
     return false;
   }
   
-  _positions.removeByKey(nullptr, &revisionId);
-
-  old.dataptr(reinterpret_cast<char const*>(newPosition) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
-  old.fid(newFid, isInWal); 
-
-  _positions.insert(nullptr, old);
+  old->dataptr(reinterpret_cast<char const*>(newPosition) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+  old->fid(newFid, isInWal); 
   
   return true;
 }
