@@ -344,7 +344,7 @@ class VelocyPackHelper {
   /// @brief parses a json file to VelocyPack
   //////////////////////////////////////////////////////////////////////////////
 
-  static std::shared_ptr<VPackBuilder> velocyPackFromFile(std::string const&);
+  static VPackBuilder velocyPackFromFile(std::string const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief writes a VelocyPack to a file

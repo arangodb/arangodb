@@ -82,18 +82,17 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
                              TRI_replication_applier_configuration_t* config) {
   int res;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  std::shared_ptr<VPackBuilder> builder = engine->getReplicationApplierConfiguration(vocbase, res);
+  VPackBuilder builder = engine->getReplicationApplierConfiguration(vocbase, res);
 
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
     // file not found
-    TRI_ASSERT(builder == nullptr);
+    TRI_ASSERT(builder.isEmpty());
     return TRI_ERROR_FILE_NOT_FOUND;
   }
 
-  TRI_ASSERT(builder != nullptr);
+  TRI_ASSERT(!builder.isEmpty());
 
-  VPackSlice const slice = builder->slice();
-
+  VPackSlice const slice = builder.slice();
   // read the database name
   VPackSlice value = slice.get("database");
 
@@ -736,15 +735,14 @@ int TRI_LoadStateReplicationApplier(TRI_vocbase_t* vocbase,
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "replication state file '"
                                         << filename << "' found";
 
-  std::shared_ptr<VPackBuilder> builder;
+  VPackBuilder builder;
   try {
     builder = VelocyPackHelper::velocyPackFromFile(filename);
-  }
-  catch (...) {
+  } catch (...) {
     return TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE;
   }
 
-  VPackSlice const slice = builder->slice();
+  VPackSlice const slice = builder.slice();
   if (!slice.isObject()) {
     return TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE;
   }

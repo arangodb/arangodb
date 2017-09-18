@@ -69,6 +69,7 @@
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBV8Functions.h"
 #include "RocksDBEngine/RocksDBValue.h"
+#include "RocksDBEngine/RocksDBWalAccess.h"
 #include "RocksDBEngine/RocksDBView.h"
 #include "Transaction/Options.h"
 #include "VocBase/replication-applier.h"
@@ -114,6 +115,7 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, new RocksDBIndexFactory()),
       _db(nullptr),
       _vpackCmp(new RocksDBVPackComparator()),
+      _walAccess(new RocksDBWalAccess()),
       _maxTransactionSize(transaction::Options::defaultMaxTransactionSize),
       _intermediateCommitSize(
           transaction::Options::defaultIntermediateCommitSize),
@@ -777,9 +779,8 @@ std::string RocksDBEngine::versionFilename(TRI_voc_tick_t id) const {
   return _basePath + TRI_DIR_SEPARATOR_CHAR + "VERSION-" + std::to_string(id);
 }
 
-std::shared_ptr<arangodb::velocypack::Builder>
-RocksDBEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
-                                                  int& status) {
+VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
+                                                               int& status) {
   RocksDBKey key;
   key.constructReplicationApplierConfig(vocbase->id());
   rocksdb::PinnableSlice value;
@@ -789,13 +790,12 @@ RocksDBEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
   auto s = db->Get(opts, RocksDBColumnFamily::definitions(), key.string(), &value);
   if (!s.ok()) {
     status = TRI_ERROR_FILE_NOT_FOUND;
-    return std::shared_ptr<arangodb::velocypack::Builder>();
+    return arangodb::velocypack::Builder();
   }
 
-  auto builder = std::make_shared<VPackBuilder>();
-  builder->add(RocksDBValue::data(value));
-
   status = TRI_ERROR_NO_ERROR;
+  VPackBuilder builder;
+  builder.add(RocksDBValue::data(value));
   return builder;
 }
 
@@ -1246,55 +1246,6 @@ arangodb::Result RocksDBEngine::syncWal(bool waitForSync,
   return arangodb::Result();
 }
 
-Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
-                                        VPackBuilder& builder) {
-  syncWal();
-
-  builder.openObject();  // Base
-  rocksdb::SequenceNumber lastTick = _db->GetLatestSequenceNumber();
-
-  // "state" part
-  builder.add("state", VPackValue(VPackValueType::Object));  // open
-  builder.add("running", VPackValue(true));
-  builder.add("lastLogTick", VPackValue(std::to_string(lastTick)));
-  builder.add("lastUncommittedLogTick", VPackValue(std::to_string(lastTick)));
-  builder.add("totalEvents",
-              VPackValue(lastTick));  // s.numEvents + s.numEventsSync
-  builder.add("time", VPackValue(utilities::timeString()));
-  builder.close();
-
-  // "server" part
-  builder.add("server", VPackValue(VPackValueType::Object));  // open
-  builder.add("version", VPackValue(ARANGODB_VERSION));
-  builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
-  builder.close();
-
-  // "clients" part
-  builder.add("clients", VPackValue(VPackValueType::Array));  // open
-  if (vocbase != nullptr) {                                   // add clients
-    auto allClients = vocbase->getReplicationClients();
-    for (auto& it : allClients) {
-      // One client
-      builder.add(VPackValue(VPackValueType::Object));
-      builder.add("serverId", VPackValue(std::to_string(std::get<0>(it))));
-
-      char buffer[21];
-      TRI_GetTimeStampReplication(std::get<1>(it), &buffer[0], sizeof(buffer));
-      builder.add("time", VPackValue(buffer));
-
-      builder.add("lastServedTick",
-                  VPackValue(std::to_string(std::get<2>(it))));
-
-      builder.close();
-    }
-  }
-  builder.close();  // clients
-
-  builder.close();  // base
-
-  return Result{};
-}
-
 std::vector<std::string> RocksDBEngine::currentWalFiles() {
   rocksdb::VectorLogPtr files;
   std::vector<std::string> names;
@@ -1593,16 +1544,6 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
   }
 }
 
-RocksDBCounterManager* RocksDBEngine::counterManager() const {
-  TRI_ASSERT(_counterManager);
-  return _counterManager.get();
-}
-
-RocksDBReplicationManager* RocksDBEngine::replicationManager() const {
-  TRI_ASSERT(_replicationManager);
-  return _replicationManager.get();
-}
-
 void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   // add int properties
   auto addInt = [&](std::string const& s) {
@@ -1729,7 +1670,56 @@ int RocksDBEngine::handleSyncKeys(arangodb::InitialSyncer& syncer,
   return handleSyncKeysRocksDB(syncer, col, keysId, cid, collectionName,
                                maxTick, errorMsg);
 }
+ 
+Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
+                                        VPackBuilder& builder) {
+  syncWal();
   
+  builder.openObject();  // Base
+  rocksdb::SequenceNumber lastTick = _db->GetLatestSequenceNumber();
+  
+  // "state" part
+  builder.add("state", VPackValue(VPackValueType::Object));  // open
+  builder.add("running", VPackValue(true));
+  builder.add("lastLogTick", VPackValue(std::to_string(lastTick)));
+  builder.add("lastUncommittedLogTick", VPackValue(std::to_string(lastTick)));
+  builder.add("totalEvents",
+              VPackValue(lastTick));  // s.numEvents + s.numEventsSync
+  builder.add("time", VPackValue(utilities::timeString()));
+  builder.close();
+  
+  // "server" part
+  builder.add("server", VPackValue(VPackValueType::Object));  // open
+  builder.add("version", VPackValue(ARANGODB_VERSION));
+  builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
+  builder.close();
+  
+  // "clients" part
+  builder.add("clients", VPackValue(VPackValueType::Array));  // open
+  if (vocbase != nullptr) {                                   // add clients
+    auto allClients = vocbase->getReplicationClients();
+    for (auto& it : allClients) {
+      // One client
+      builder.add(VPackValue(VPackValueType::Object));
+      builder.add("serverId", VPackValue(std::to_string(std::get<0>(it))));
+      
+      char buffer[21];
+      TRI_GetTimeStampReplication(std::get<1>(it), &buffer[0], sizeof(buffer));
+      builder.add("time", VPackValue(buffer));
+      
+      builder.add("lastServedTick",
+                  VPackValue(std::to_string(std::get<2>(it))));
+      
+      builder.close();
+    }
+  }
+  builder.close();  // clients
+  
+  builder.close();  // base
+  
+  return Result{};
+}
+
 Result RocksDBEngine::createTickRanges(VPackBuilder& builder) {
   rocksdb::TransactionDB* tdb = rocksutils::globalRocksDB();
   rocksdb::VectorLogPtr walFiles;
@@ -1801,6 +1791,11 @@ Result RocksDBEngine::lastLogger(
   builderSPtr = std::move(builder);
 
   return rep;
+}
+  
+WalAccess const* RocksDBEngine::walAccess() const {
+ TRI_ASSERT(_walAccess);
+ return _walAccess.get();
 }
 
 /// @brief get compression supported by RocksDB

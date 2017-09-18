@@ -42,11 +42,9 @@ using namespace arangodb::velocypack;
 // define to INFO to see the WAL output
 #define _LOG TRACE
 
-namespace {
 static std::string const emptyString;
-
 /// an incomplete convert function, basically only use for DDL ops
-static TRI_replication_operation_e convertLogType(RocksDBLogType t) {
+TRI_replication_operation_e rocksutils::convertLogType(RocksDBLogType t) {
   switch (t) {
     case RocksDBLogType::DatabaseCreate:
       return REPLICATION_DATABASE_CREATE;
@@ -77,8 +75,6 @@ static TRI_replication_operation_e convertLogType(RocksDBLogType t) {
       TRI_ASSERT(false);
       return REPLICATION_INVALID;
   }
-}
-
 }
 
 /// WAL parser

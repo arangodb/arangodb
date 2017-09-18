@@ -405,7 +405,7 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
 
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
         << "reading database parameters from file '" << file << "'";
-    std::shared_ptr<VPackBuilder> builder;
+    VPackBuilder builder;
     try {
       builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(file);
     } catch (...) {
@@ -417,7 +417,7 @@ void MMFilesEngine::getDatabases(arangodb::velocypack::Builder& result) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
     }
 
-    VPackSlice parameters = builder->slice();
+    VPackSlice parameters = builder.slice();
     std::string const parametersString = parameters.toJson();
 
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "database parameters: "
@@ -476,10 +476,10 @@ void MMFilesEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
 
   builder.openObject();
 
-  std::shared_ptr<VPackBuilder> fileInfoBuilder =
+  VPackBuilder fileInfoBuilder =
       arangodb::basics::VelocyPackHelper::velocyPackFromFile(
           basics::FileUtils::buildFilename(path, parametersFilename()));
-  builder.add("parameters", fileInfoBuilder->slice());
+  builder.add("parameters", fileInfoBuilder.slice());
 
   if (includeIndexes) {
     // dump index information
@@ -495,10 +495,9 @@ void MMFilesEngine::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
           StringUtils::isSuffix(file, ".json")) {
         std::string const filename =
             basics::FileUtils::buildFilename(path, file);
-        std::shared_ptr<VPackBuilder> indexVPack =
-            arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
+        VPackBuilder indexVPack = basics::VelocyPackHelper::velocyPackFromFile(filename);
 
-        VPackSlice const indexSlice = indexVPack->slice();
+        VPackSlice const indexSlice = indexVPack.slice();
         VPackSlice const id = indexSlice.get("id");
 
         if (id.isNumber()) {
@@ -2282,13 +2281,11 @@ VPackBuilder MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
     }
   }
       
-  std::shared_ptr<VPackBuilder> content;
+  VPackBuilder content;
   VPackSlice slice;
-  
   try {
-    content =
-      arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
-    slice = content->slice();
+    content = basics::VelocyPackHelper::velocyPackFromFile(filename);
+    slice = content.slice();
   } catch (...) {
     // ignore errors right now but re-throw with the following exception
   }
@@ -2379,9 +2376,8 @@ VPackBuilder MMFilesEngine::loadCollectionInfo(TRI_vocbase_t* vocbase,
     if (next[0] == "index" && parts[1] == "json") {
       std::string filename =
           arangodb::basics::FileUtils::buildFilename(path, file);
-      std::shared_ptr<VPackBuilder> content =
-          arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
-      VPackSlice indexSlice = content->slice();
+      VPackBuilder content = basics::VelocyPackHelper::velocyPackFromFile(filename);
+      VPackSlice indexSlice = content.slice();
       if (!indexSlice.isObject()) {
         // invalid index definition
         continue;
@@ -2417,9 +2413,8 @@ VPackBuilder MMFilesEngine::loadViewInfo(TRI_vocbase_t* vocbase,
     }
   }
 
-  std::shared_ptr<VPackBuilder> content =
-      arangodb::basics::VelocyPackHelper::velocyPackFromFile(filename);
-  VPackSlice slice = content->slice();
+  VPackBuilder content = basics::VelocyPackHelper::velocyPackFromFile(filename);
+  VPackSlice slice = content.slice();
   if (!slice.isObject()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "cannot open '" << filename << "', view parameters are not readable";
@@ -3331,10 +3326,10 @@ int MMFilesEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
   return res;
 }
   
-std::shared_ptr<arangodb::velocypack::Builder> MMFilesEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase, int& status) {
+VPackBuilder MMFilesEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase, int& status) {
   std::string const filename = arangodb::basics::FileUtils::buildFilename(databasePath(vocbase), "REPLICATION-APPLIER-CONFIG");
 
-  std::shared_ptr<VPackBuilder> builder;
+  VPackBuilder builder;
 
   if (!TRI_ExistsFile(filename.c_str())) {
     status = TRI_ERROR_FILE_NOT_FOUND;
@@ -3343,7 +3338,7 @@ std::shared_ptr<arangodb::velocypack::Builder> MMFilesEngine::getReplicationAppl
 
   try {
     builder = VelocyPackHelper::velocyPackFromFile(filename);
-    if (builder->slice().isObject()) {
+    if (builder.slice().isObject()) {
       status = TRI_ERROR_NO_ERROR;
     } else {
       LOG_TOPIC(ERR, Logger::REPLICATION)
@@ -3479,4 +3474,9 @@ Result MMFilesEngine::lastLogger(TRI_vocbase_t* /*vocbase*/, std::shared_ptr<tra
   parser.parse(dump._buffer->_buffer);
   builderSPtr = parser.steal();
   return res;
+}
+
+WalAccess const* MMFilesEngine::walAccess() const {
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  return nullptr;
 }

@@ -49,8 +49,9 @@ class PhysicalView;
 class RocksDBBackgroundThread;
 class RocksDBVPackComparator;
 class RocksDBCounterManager;
-class RocksDBReplicationManager;
 class RocksDBLogValue;
+class RocksDBReplicationManager;
+class RocksDBWalAccess;
 class TransactionCollection;
 class TransactionState;
 
@@ -127,9 +128,8 @@ class RocksDBEngine final : public StorageEngine {
     return std::string(); // no path to be returned here
   }
 
-  std::shared_ptr<arangodb::velocypack::Builder>
-  getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
-                                     int& status) override;
+  velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
+                                                         int& status) override;
   int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) override;
   int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
                                           arangodb::velocypack::Slice slice,
@@ -147,10 +147,12 @@ class RocksDBEngine final : public StorageEngine {
                     std::shared_ptr<transaction::Context>, uint64_t tickStart,
                     uint64_t tickEnd,
                     std::shared_ptr<velocypack::Builder>& builderSPtr) override;
+  WalAccess const* walAccess() const override;
+  
   // database, collection and index management
   // -----------------------------------------
 
-  void waitForSync(double tick) override {
+  void waitForSync(double) override {
     // intentionally empty, not useful for this type of engine
   }
 
@@ -264,8 +266,19 @@ class RocksDBEngine final : public StorageEngine {
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
-  RocksDBCounterManager* counterManager() const;
-  RocksDBReplicationManager* replicationManager() const;
+  
+  /// @brief recovery manager
+  RocksDBCounterManager* counterManager() const {
+    TRI_ASSERT(_counterManager);
+    return _counterManager.get();
+  }
+  
+  /// @brief manages the ongoing dump clients
+  RocksDBReplicationManager* replicationManager() const {
+    TRI_ASSERT(_replicationManager);
+    return _replicationManager.get();
+  }
+  
   arangodb::Result syncWal(bool waitForSync = false,
                            bool waitForCollector = false,
                            bool writeShutdownFile = false);
@@ -282,10 +295,13 @@ class RocksDBEngine final : public StorageEngine {
   /// path to arangodb data dir
   std::string _basePath;
     
-  /// repository for replication contexts
+  /// @brief repository for replication contexts
   std::unique_ptr<RocksDBReplicationManager> _replicationManager;
-  /// tracks the count of documents in collections
+  /// @brief tracks the count of documents in collections
   std::unique_ptr<RocksDBCounterManager> _counterManager;
+  /// @brief Local wal access abstraction
+  std::unique_ptr<RocksDBWalAccess> _walAccess;
+  
   /// Background thread handling garbage collection etc
   std::unique_ptr<RocksDBBackgroundThread> _backgroundThread;
   uint64_t _maxTransactionSize;       // maximum allowed size for a transaction

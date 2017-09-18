@@ -26,7 +26,9 @@
 
 #include "Basics/Common.h"
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
+#include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/replication-common.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -40,6 +42,8 @@ RocksDBReplicationResult tailWal(TRI_vocbase_t* vocbase, uint64_t tickStart,
                                  uint64_t tickEnd, size_t chunkSize,
                                  bool includeSystem, TRI_voc_cid_t collectionId,
                                  VPackBuilder& builder);
+
+TRI_replication_operation_e convertLogType(RocksDBLogType t);
 
 }  // namespace rocksutils
 }  // namespace arangodb

@@ -93,9 +93,8 @@ int ServerIdFeature::readId() {
 
   TRI_server_id_t foundId;
   try {
-    std::shared_ptr<VPackBuilder> builder =
-        arangodb::basics::VelocyPackHelper::velocyPackFromFile(_idFilename);
-    VPackSlice content = builder->slice();
+    VPackBuilder builder = basics::VelocyPackHelper::velocyPackFromFile(_idFilename);
+    VPackSlice content = builder.slice();
     if (!content.isObject()) {
       return TRI_ERROR_INTERNAL;
     }

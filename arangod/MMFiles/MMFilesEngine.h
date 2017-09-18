@@ -89,9 +89,8 @@ class MMFilesEngine final : public StorageEngine {
   
   bool useRawDocumentPointers() override { return true; }
 
-  std::shared_ptr<arangodb::velocypack::Builder>
-  getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
-                                     int& status) override;
+  velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
+                                                         int& status) override;
   int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) override;
   int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
                                           arangodb::velocypack::Slice slice,
@@ -106,6 +105,7 @@ class MMFilesEngine final : public StorageEngine {
   Result createTickRanges(VPackBuilder& builder) override;
   Result firstTick(uint64_t& tick) override;
   Result lastLogger(TRI_vocbase_t* vocbase, std::shared_ptr<transaction::Context>, uint64_t tickStart, uint64_t tickEnd,  std::shared_ptr<VPackBuilder>& builderSPtr) override;
+  WalAccess const* walAccess() const override;
 
   TransactionManager* createTransactionManager() override;
   transaction::ContextData* createTransactionContextData() override;

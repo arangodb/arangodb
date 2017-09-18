@@ -389,7 +389,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
     std::vector<std::string> const files =
         FileUtils::listFiles(_inputDirectory);
     std::string const suffix = std::string(".structure.json");
-    std::vector<std::shared_ptr<VPackBuilder>> collectionBuilders;
+    std::vector<VPackBuilder> collectionBuilders;
     std::vector<VPackSlice> collections;
 
     // Step 1 determine all collections to process
@@ -413,9 +413,8 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
         }
 
         std::string const fqn = _inputDirectory + TRI_DIR_SEPARATOR_STR + file;
-        std::shared_ptr<VPackBuilder> fileContentBuilder =
-            arangodb::basics::VelocyPackHelper::velocyPackFromFile(fqn);
-        VPackSlice const fileContent = fileContentBuilder->slice();
+        VPackBuilder fileContentBuilder = basics::VelocyPackHelper::velocyPackFromFile(fqn);
+        VPackSlice const fileContent = fileContentBuilder.slice();
 
         if (!fileContent.isObject()) {
           errorMsg = "could not read collection structure file '" + fqn + "'";
@@ -473,7 +472,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
           // Ich muss nur diesen namen überschreiben, der Rest soll identisch
           // bleiben.
         } else {
-          collectionBuilders.emplace_back(fileContentBuilder);
+          collectionBuilders.emplace_back(std::move(fileContentBuilder));
           collections.emplace_back(fileContent);
         }
       }

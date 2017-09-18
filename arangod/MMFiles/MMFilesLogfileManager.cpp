@@ -1830,14 +1830,14 @@ void MMFilesLogfileManager::closeLogfiles() {
 // reads the shutdown information
 int MMFilesLogfileManager::readShutdownInfo() {
   TRI_ASSERT(!_shutdownFile.empty());
-  std::shared_ptr<VPackBuilder> builder;
+  VPackBuilder builder;
   try {
     builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(_shutdownFile);
   } catch (...) {
     return TRI_ERROR_INTERNAL;
   }
 
-  VPackSlice slice = builder->slice();
+  VPackSlice slice = builder.slice();
   if (!slice.isObject()) {
     return TRI_ERROR_INTERNAL;
   }
