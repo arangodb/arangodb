@@ -520,9 +520,9 @@ function ahuacatlMiscFunctionsTestSuite () {
         }
       }
 
-      var actual = getQueryResults("RETURN CURRENT_USER()");
       // there is no current user in the non-request context
-      assertEqual([ expected ], actual);
+      assertEqual([ expected ], getQueryResults("RETURN NOOPT(CURRENT_USER())"));
+      assertEqual([ expected ], getQueryResults("RETURN NOOPT(V8(CURRENT_USER()))"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
