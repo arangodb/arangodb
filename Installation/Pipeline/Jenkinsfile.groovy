@@ -149,11 +149,6 @@ if (env.BRANCH_NAME =~ /^PR-/) {
   sourceBranchLabel = sourceBranchLabel - reg
 }
 
-if (sourceBranchLabel == ~/devel$/) {
-    useWindows = true
-    useMac = true
-}
-
 buildJenkins = [
     "linux": "linux && build",
     "mac" : "mac",
@@ -411,8 +406,8 @@ def checkCommitMessages() {
     else if (skip) {
         useLinux = false
         useMac = false
-
         useWindows = false
+
         useCommunity = false
         useEnterprise = false
 
@@ -425,6 +420,19 @@ def checkCommitMessages() {
     else {
         if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
             echo "build of main branch"
+
+            useLinux = true
+            useMac = true
+            useWindows = true
+
+            useCommunity = true
+            useEnterprise = true
+
+            useMaintainer = true
+            useUser = true
+
+            // runResilience = false
+            runTests = true
         }
         else if (env.BRANCH_NAME =~ /^PR-/) {
             echo "build of PR"
@@ -557,6 +565,7 @@ def jslint(os, edition, maintainer) {
     def archFail = "${archDir}/02-jslint-FAIL"
 
     fileOperations([
+        fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
         folderDeleteOperation(arch),
         folderDeleteOperation(archFail),
         folderCreateOperation(arch)
@@ -814,6 +823,7 @@ def testStep(os, edition, maintainer, mode, engine, stageName) {
 
                     // create directories for the artifacts
                     fileOperations([
+                        fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
                         folderCreateOperation(arch),
                         folderCreateOperation(archFail),
                         folderCreateOperation(archRun)

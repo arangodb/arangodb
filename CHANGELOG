@@ -1,6 +1,8 @@
 devel
 -----
 
+* ui: added replicationFactor option during SmartGraph creation.
+
 * make the mmfiles compactor configurable
 
 * leader-follower replication catchup code has been rewritten in C++
