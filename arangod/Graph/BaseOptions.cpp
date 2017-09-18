@@ -95,7 +95,7 @@ BaseOptions::LookupInfo::LookupInfo(arangodb::aql::Query* query,
 
   read = info.get("expression");
   if (read.isObject()) {
-    expression = new aql::Expression(query->ast(), read);
+    expression = new aql::Expression(query->plan(), query->ast(), read);
   } else {
     expression = nullptr;
   }
@@ -117,7 +117,7 @@ BaseOptions::LookupInfo::LookupInfo(LookupInfo const& other)
       conditionNeedUpdate(other.conditionNeedUpdate),
       conditionMemberToUpdate(other.conditionMemberToUpdate) {
   if (other.expression != nullptr) {
-    expression = other.expression->clone(nullptr);
+    expression = other.expression->clone(nullptr, nullptr);
   }
 }
 
@@ -301,7 +301,7 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
         condition->removeMemberUnchecked(n - 1);
       }
     }
-    info.expression = new aql::Expression(plan->getAst(), condition);
+    info.expression = new aql::Expression(plan, plan->getAst(), condition);
   }
   list.emplace_back(std::move(info));
 }

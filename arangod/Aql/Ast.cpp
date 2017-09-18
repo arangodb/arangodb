@@ -2687,7 +2687,7 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
 
   TRI_ASSERT(lhs->isConstant() && rhs->isConstant());
   
-  Expression exp(this, node);
+  Expression exp(nullptr, this, node);
   FixedVarExpressionContext context;
   bool mustDestroy;
   // execute the expression using the C++ variant
@@ -2973,7 +2973,7 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
   TRI_ASSERT(_query->trx() != nullptr); 
 
   if (func->hasImplementation() && node->isSimple()) {
-    Expression exp(this, node);
+    Expression exp(nullptr, this, node);
     FixedVarExpressionContext context;
     bool mustDestroy;
     // execute the expression using the C++ variant
