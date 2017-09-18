@@ -742,7 +742,7 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                         echo "caught error, copying log to ${logFileFailed}: ${msg}"
 
                         fileOperations([
-                            fileCreateOperation(fileContent: 'TEST FAILED: ${msg}', fileName: "${archDir}-FAIL.txt")
+                            fileCreateOperation(fileContent: "TEST FAILED: ${msg}", fileName: "${archDir}-FAIL.txt")
                         ])
 
                         if (os == 'linux' || os == 'mac') {
@@ -1045,7 +1045,7 @@ def buildEdition(os, edition, maintainer) {
         def msg = exc.toString()
         
         fileOperations([
-            fileCreateOperation(fileContent: 'BUILD FAILED: ${msg}', fileName: "${archDir}-FAIL.txt")
+            fileCreateOperation(fileContent: "BUILD FAILED: ${msg}", fileName: "${archDir}-FAIL.txt")
         ])
 
         if (os == 'linux' || os == 'mac') {
