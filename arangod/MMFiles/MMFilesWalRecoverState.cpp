@@ -780,8 +780,8 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
       case TRI_DF_MARKER_VPACK_RENAME_VIEW: {
         TRI_voc_tick_t const databaseId =
             MMFilesDatafileHelper::DatabaseId(marker);
-        TRI_voc_cid_t const viewId =
-            MMFilesDatafileHelper::ViewId(marker);
+        TRI_voc_cid_t const viewId = MMFilesDatafileHelper::ViewId(marker);
+
         VPackSlice const payloadSlice(reinterpret_cast<char const*>(marker) +
                                       MMFilesDatafileHelper::VPackOffset(type));
 
@@ -808,7 +808,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
                                                     << databaseId;
           return true;
         }
-        
+
         std::shared_ptr<arangodb::LogicalView> view =
             vocbase->lookupView(viewId);
 
@@ -897,7 +897,7 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         // be
         // dropped later
         bool const forceSync = state->willViewBeDropped(databaseId, viewId);
-    
+
         arangodb::Result res =
             view->updateProperties(payloadSlice.get("properties"), false, forceSync);
         if (!res.ok()) {

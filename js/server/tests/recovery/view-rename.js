@@ -43,13 +43,13 @@ function runSetup () {
   db._dropView('UnitTestsRecovery1');
   db._dropView('UnitTestsRecovery2');
   v = db._createView('UnitTestsRecovery1', 'logger', {});
-  v.properties({ level: 'debug' });
+  v.properties({ level: 'DEBUG' });
   v.rename('UnitTestsRecovery2');
 
   db._dropView('UnitTestsRecovery3');
   db._dropView('UnitTestsRecovery4');
   v = db._createView('UnitTestsRecovery3', 'logger', {});
-  v.properties({ level: 'info' });
+  v.properties({ level: 'INFO' });
   v.rename('UnitTestsRecovery4');
 
   db._dropView('UnitTestsRecovery5');
@@ -69,8 +69,6 @@ function runSetup () {
 
   internal.debugSegfault('crashing server');
 }
-      assertEqual(1, c.count());
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
@@ -93,12 +91,12 @@ function recoverySuite () {
       assertNull(db._view('UnitTestsRecovery1'));
       v = db._view('UnitTestsRecovery2');
       prop = v.properties();
-      assertEqual(prop.level, 'debug');
+      assertEqual(prop.level, 'DEBUG');
 
       assertNull(db._view('UnitTestsRecovery3'));
       v = db._view('UnitTestsRecovery4');
       prop = v.properties();
-      assertEqual(prop.level, 'info');
+      assertEqual(prop.level, 'INFO');
 
       assertNull(db._view('UnitTestsRecovery6'));
       assertNotNull(db._view('UnitTestsRecovery5'));

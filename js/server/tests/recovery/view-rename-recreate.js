@@ -43,14 +43,14 @@ function runSetup () {
   db._dropView('UnitTestsRecovery1');
   db._dropView('UnitTestsRecovery2');
   var v = db._createView('UnitTestsRecovery1', 'logger', {});
-  v.properties({ level: 'debug' });
+  v.properties({ level: 'DEBUG' });
 
   v.rename('UnitTestsRecovery2');
 
   v = db._createView('UnitTestsRecovery1', 'logger', {});
-  v.properties({ level: 'info' });
+  v.properties({ level: 'INFO' });
 
-  db.UnitTestsDummy.save({ _key: 'foo' }, true);
+  db.UnitTestsDummy.save({ _key: 'foo' }, { waitForSync: true });
 
   internal.debugSegfault('crashing server');
 }
@@ -75,10 +75,10 @@ function recoverySuite () {
       var v, prop;
 
       v = db._view('UnitTestsRecovery1');
-      assertEqual(v.properties().level, 'info');
+      assertEqual(v.properties().level, 'INFO');
 
       v = db._view('UnitTestsRecovery2');
-      assertEqual(v.properties.level, 'debug');
+      assertEqual(v.properties().level, 'DEBUG');
     }
 
   };
