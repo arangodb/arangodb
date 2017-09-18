@@ -210,6 +210,11 @@ def checkEnabledEdition(edition, text) {
 }
 
 def checkEnabledMaintainer(maintainer, os, text) {
+    if (os == 'windows' && maintainer != 'maintainer') {
+        echo "Not ${text} ${maintainer} because ${maintainer} is not enabled under Windows"
+        return false
+    }
+
     if (maintainer == 'maintainer' && ! useMaintainer) {
         echo "Not ${text} ${maintainer} because ${maintainer} is not enabled"
         return false
@@ -1023,22 +1028,20 @@ def buildEdition(os, edition, maintainer) {
             }
         }
         else if (os == 'windows') {
-            // def tmpDir = "${arch}/tmp"
+            def tmpDir = "${arch}/tmp"
 
-            // fileOperations([
-            //     folderCreateOperation(tmpDir)
-            // ])
+            fileOperations([
+                folderCreateOperation(tmpDir)
+            ])
 
             // withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}",
             //          "_MSPDBSRV_ENDPOINT_=${edition}-${env.BUILD_TAG}", "GYP_USE_SEPARATE_MSPDBSRV=1"]) {
-            //    powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
+                powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
             // }
 
-            // fileOperations([
-            //     folderDeleteOperation(tmpDir)
-            // ])
-
-            powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}_${maintainer}.ps1"
+            fileOperations([
+                folderDeleteOperation(tmpDir)
+            ])
         }
     }
     catch (exc) {
@@ -1108,12 +1111,22 @@ def runEdition(os, edition, maintainer, stageName) {
                     // feel free to recheck if there is time somewhen...this thing here really should not be possible but
                     // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly
                     // test it. I just don't want any more "yeah that might randomly fail. just restart" sentences any more.
-                    //
-                    // Trying "/Z7" instead
 
-                    timeout(90) {
-                        buildEdition(os, edition, maintainer)
-                        stashBinaries(os, edition, maintainer)
+                    if (os == "windows") {
+                        def hostname = powershell(returnStdout: true, script: "hostname").trim()
+
+                        lock("build-windows-${hostname}") {
+                            timeout(90) {
+                                buildEdition(os, edition, maintainer)
+                                stashBinaries(os, edition, maintainer)
+                            }
+                        }
+                    }
+                    else {
+                        timeout(90) {
+                            buildEdition(os, edition, maintainer)
+                            stashBinaries(os, edition, maintainer)
+                        }
                     }
                 }
 
