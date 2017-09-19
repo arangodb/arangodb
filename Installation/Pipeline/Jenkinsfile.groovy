@@ -574,7 +574,7 @@ def jslint(os, edition, maintainer) {
     def logFile = "${arch}/jslint.log"
 
     try {
-        sh "./Installation/Pipeline/test_jslint.sh | tee ${logFile}"
+        sh "./Installation/Pipeline/test_jslint.sh 2>&1 | tee ${logFile}"
         sh "if grep ERROR ${logFile}; then exit 1; fi"
     }
     catch (exc) {
@@ -584,7 +584,7 @@ def jslint(os, edition, maintainer) {
     }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-            artifacts: "${archDir}-*, ${arch}/**, ${archFail}/**",
+            artifacts: "${archDir}-FAIL.txt, ${arch}/**, ${archFail}/**",
             defaultExcludes: false
     }
 }
@@ -767,7 +767,7 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                         checkCoresAndSave(os, runDir, name, archRun)
 
                         archiveArtifacts allowEmptyArchive: true,
-                            artifacts: "${archDir}-*, ${logFileRel}, ${logFileFailedRel}",
+                            artifacts: "${archDir}-FAIL.txt, ${logFileRel}, ${logFileFailedRel}",
                             defaultExcludes: false
                     }
                 }
@@ -850,7 +850,7 @@ def testStep(os, edition, maintainer, mode, engine, stageName) {
 
                         // archive all artifacts
                         archiveArtifacts allowEmptyArchive: true,
-                            artifacts: "${arch}-*, ${archRun}/**",
+                            artifacts: "${archRun}/**",
                             defaultExcludes: false
                     }
                 }
@@ -1006,8 +1006,8 @@ def buildEdition(os, edition, maintainer) {
     def archFail = "${archDir}/01-build-FAIL"
 
     fileOperations([
-        folderDeleteOperation(arch),
         fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
+        folderDeleteOperation(arch),
         folderDeleteOperation(archFail),
         folderCreateOperation(arch)
     ])
@@ -1063,7 +1063,7 @@ def buildEdition(os, edition, maintainer) {
     }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-            artifacts: "${archDir}-*, ${arch}/**, ${archFail}/**",
+            artifacts: "${archDir}-FAIL.txt, ${arch}/**, ${archFail}/**",
             defaultExcludes: false
     }
 }
@@ -1088,20 +1088,72 @@ def buildStepCheck(os, edition, maintainer) {
     return true
 }
 
+def checkoutSource(edition) {
+    timeout(30) {
+        checkoutCommunity()
+
+        if (edition == "enterprise") {
+            checkoutEnterprise()
+        }
+
+        // checkoutResilience()
+    }
+}
+
+def createDockerImage(edition, maintainer, stageName) {
+    def os = "linux"
+
+    return {
+        if (buildStepCheck(os, edition, maintainer)) {
+            node(buildJenkins[os]) {
+                stage(stageName) {
+                    checkoutSource(edition)
+
+                    def archDir  = "${os}-${edition}-${maintainer}"
+                    def arch     = "${archDir}/04-docker"
+                    def archFail = "${archDir}/04-docker-FAIL"
+
+                    fileOperations([
+                        fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
+                        folderDeleteOperation(arch),
+                        folderDeleteOperation(archFail),
+                        folderCreateOperation(arch)
+                    ])
+
+                    def logFile = "${arch}/build.log"
+
+                    def packageName="${os}-${edition}-${maintainer}"
+                    def dockerTag=sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
+
+                    withEnv(["DOCKERTAG=${packageName}-${dockerTag}"]) {
+                        try {
+                            sh "scripts/build-docker.sh 2>&1 | tee ${logFile}"
+                            sh "docker tag arangodb:${packageName}-${dockerTag} c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag} 2>&1 | tee -a ${logFile}"
+                            sh "docker push c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag} 2>&1 | tee -a ${logFile}"
+                        }
+                        catch (exc) {
+                            renameFolder(arch, archFail)
+                            fileOperations([fileCreateOperation(fileContent: 'DOCKER FAILED', fileName: "${archDir}-FAIL.txt")])
+                            throw exc
+                        }
+                        finally {
+                            archiveArtifacts allowEmptyArchive: true,
+                                artifacts: "${archDir}-FAIL.txt, ${arch}/**, ${archFail}/**",
+                                defaultExcludes: false
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 def runEdition(os, edition, maintainer, stageName) {
     return {
         if (buildStepCheck(os, edition, maintainer)) {
             node(buildJenkins[os]) {
                 stage(stageName) {
-                    timeout(30) {
-                        checkoutCommunity()
-
-                        if (edition == "enterprise") {
-                            checkoutEnterprise()
-                        }
-
-                        // checkoutResilience()
-                    }
+                    checkoutSource(edition)
 
                     // I concede...we need a lock for windows...I could not get it to run concurrently...
                     // v8 would not build multiple times at the same time on the same machine:
@@ -1154,8 +1206,13 @@ def runOperatingSystems(osList) {
     for (os in osList) {
         for (edition in ['community', 'enterprise']) {
             for (maintainer in ['maintainer', 'user']) {
-                def stageName = "build-${os}-${edition}-${maintainer}"
+                def name = "${os}-${edition}-${maintainer}"
+                def stageName = "build-${name}"
                 branches[stageName] = runEdition(os, edition, maintainer, stageName)
+
+                if (os == 'linux') {
+                    branches["docker-${name}"] = createDockerImage(edition, maintainer, "docker-${name}")
+                }
             }
         }
     }
