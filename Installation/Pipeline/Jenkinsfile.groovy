@@ -1006,8 +1006,8 @@ def buildEdition(os, edition, maintainer) {
     def archFail = "${archDir}/01-build-FAIL"
 
     fileOperations([
-        folderDeleteOperation(arch),
         fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
+        folderDeleteOperation(arch),
         folderDeleteOperation(archFail),
         folderCreateOperation(arch)
     ])
@@ -1107,6 +1107,8 @@ def createDockerImage(edition, maintainer, stageName) {
         if (buildStepCheck(os, edition, maintainer)) {
             node(buildJenkins[os]) {
                 stage(stageName) {
+                    checkoutSource(edition)
+
                     def archDir  = "${os}-${edition}-${maintainer}"
                     def arch     = "${archDir}/04-docker"
                     def archFail = "${archDir}/04-docker-FAIL"
@@ -1120,16 +1122,14 @@ def createDockerImage(edition, maintainer, stageName) {
 
                     def logFile = "${arch}/build.log"
 
-                    checkoutSource(edition)
-                    
                     def packageName="${os}-${edition}-${maintainer}"
                     def dockerTag=sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
 
                     withEnv(["DOCKERTAG=${packageName}-${dockerTag}"]) {
                         try {
                             sh "scripts/build-docker.sh 2>&1 | tee ${logFile}"
-                            sh "docker tag arangodb:${packageName}-${dockerTag} c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag} 2>&1 | tee ${logFile}"
-                            sh "docker push c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag} 2>&1 | tee ${logFile}"
+                            sh "docker tag arangodb:${packageName}-${dockerTag} c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag} 2>&1 | tee -a ${logFile}"
+                            sh "docker push c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag} 2>&1 | tee -a ${logFile}"
                         }
                         catch (exc) {
                             renameFolder(arch, archFail)
