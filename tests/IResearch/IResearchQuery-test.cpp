@@ -12603,7 +12603,7 @@ SECTION("Or") {
     CHECK(expectedDoc == expectedDocs.rend());
   }
 
-  // d.name == 'K' OR d.value <= 100 OR d.duplicated == abcd , TFIDF(d), d.seq DESC
+  // d.name == 'K' OR d.value <= 100 OR d.duplicated == abcd, TFIDF(d) DESC, d.seq DESC
   {
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       arangodb::velocypack::Slice(insertedDocs[10].vpack()), // {"name":"K","seq":10,"same":"xyz","value":12,"duplicated":"abcd"}
@@ -12679,6 +12679,103 @@ SECTION("Or") {
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
       CHECK(arangodb::velocypack::Slice(expectedDoc->second->vpack()) == resolved);
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == expectedDocs.rend());
+  }
+
+  // d.name == 'F' OR EXISTS(d.duplicated), BM25(d) DESC, d.seq DESC
+  {
+    std::map<ptrdiff_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice(doc.vpack());
+      auto const keySlice = docSlice.get("name");
+      if (keySlice.isNone()) {
+        continue;
+      }
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+      if (key != "F" && docSlice.get("duplicated").isNone()) {
+        continue;
+      }
+      expectedDocs.emplace(docSlice.get("seq").getNumber<ptrdiff_t>(), &doc);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name == 'F' OR EXISTS(d.duplicated) SORT BM25(d) DESC, d.seq DESC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    // Check 1st (the most relevant doc)
+    // {"name":"F","seq":5,"same":"xyz", "value":1234 }
+    {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDocs[5]->vpack()), resolved, true)));
+      expectedDocs.erase(5);
+    }
+
+    // Check the rest of documents
+    auto expectedDoc = expectedDocs.rbegin();
+    for (resultIt.next(); resultIt.valid(); resultIt.next()) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true)));
+      ++expectedDoc;
+    }
+    CHECK(expectedDoc == expectedDocs.rend());
+  }
+
+  // d.name == 'F' OR STARTS_WITH(d.prefix, 'abc'), BM25(d) DESC, d.seq DESC
+  {
+    std::map<ptrdiff_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice(doc.vpack());
+      auto const keySlice = docSlice.get("name");
+      if (keySlice.isNone()) {
+        continue;
+      }
+      auto const prefixSlice = docSlice.get("prefix");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+      if (key != "F" && (prefixSlice.isNone() || !irs::starts_with(arangodb::iresearch::getStringRef(prefixSlice), "abc"))) {
+        continue;
+      }
+      expectedDocs.emplace(docSlice.get("seq").getNumber<ptrdiff_t>(), &doc);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name == 'F' OR STARTS_WITH(d.prefix, 'abc') SORT BM25(d) DESC, d.seq DESC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    // Check 1st (the most relevant doc)
+    // {"name":"F","seq":5,"same":"xyz", "value":1234 }
+    {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDocs[5]->vpack()), resolved, true)));
+      expectedDocs.erase(5);
+    }
+
+    // Check the rest of documents
+    auto expectedDoc = expectedDocs.rbegin();
+    for (resultIt.next(); resultIt.valid(); resultIt.next()) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true)));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
