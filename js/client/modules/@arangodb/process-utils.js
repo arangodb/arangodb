@@ -1167,7 +1167,6 @@ function startInstanceSingleServer (instanceInfo, protocol, options,
 
 function startInstance (protocol, options, addArgs, testname, tmpDir) {
   let rootDir = fs.join(tmpDir || fs.getTempPath(), testname);
-  print("rootdir: " + rootDir + " = fs.join(tmpDir " + tmpDir);
 
   let instanceInfo = {
     rootDir,
