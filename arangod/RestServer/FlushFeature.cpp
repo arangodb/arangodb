@@ -28,6 +28,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "RestServer/DatabaseFeature.h"
 #include "Utils/FlushThread.h"
 #include "Utils/FlushTransaction.h"
 
@@ -69,13 +70,19 @@ void FlushFeature::prepare() {
 
 void FlushFeature::start() {
   _flushThread.reset(new FlushThread(_flushInterval));
+  DatabaseFeature* dbFeature = DatabaseFeature::DATABASE;
+  dbFeature->registerPostRecoveryCallback(
+    [this]() -> Result {
+      if (!this->_flushThread->start()) {
+        LOG_TOPIC(FATAL, Logger::FIXME) << "unable to start FlushThread";
+        FATAL_ERROR_ABORT();
+      }
 
-  if (!_flushThread->start()) {
-    LOG_TOPIC(FATAL, Logger::FIXME) << "unable to start FlushThread";
-    FATAL_ERROR_ABORT();
-  }
+      this->_isRunning.store(true);
 
-  _isRunning.store(true);
+      return {TRI_ERROR_NO_ERROR};
+    }
+  );
 }
 
 void FlushFeature::beginShutdown() {
