@@ -85,7 +85,7 @@ function recoverySuite () {
     // / @brief test whether rename works
     // //////////////////////////////////////////////////////////////////////////////
 
-    testCollectionRename: function () {
+    testViewRename: function () {
       var v, prop;
 
       assertNull(db._view('UnitTestsRecovery1'));

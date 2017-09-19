@@ -60,7 +60,6 @@ function iResearchAqlTestSuite () {
 
       // save last doc with waitForSync
       c.save({ a: "baz", b: "foo", c: 4 }, { waitForSync: true });
-      require('internal').wait(2);
     },
 
     tearDownAll : function () {
