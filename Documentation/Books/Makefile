@@ -1,4 +1,4 @@
-ALLBOOKS=HTTP AQL Manual
+ALLBOOKS=HTTP AQL Manual Cookbook
 OTHER_MIME=pdf epub mobi
 all: build-books
 
@@ -446,9 +446,6 @@ build-dist-books:
 	mkdir -p ${OUTPUT_DIR} ; \
 	( \
 		mv books ArangoDB-${newVersionNumber} ; pwd; \
-		if test -n "${COOKBOOK_DIR}" ; then \
-			cp -a ${COOKBOOK_DIR} ArangoDB-${newVersionNumber}/cookbook ; \
-		fi ; \
 		tar -czf ${OUTPUT_DIR}/ArangoDB-${newVersionNumber}.tar.gz ArangoDB-${newVersionNumber} ; \
 		mv ArangoDB-${newVersionNumber} books ; \
 	) ; \
