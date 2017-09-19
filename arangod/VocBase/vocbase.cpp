@@ -152,16 +152,13 @@ void TRI_vocbase_t::registerCollection(
     auto it = _collectionsByName.emplace(name, collection);
 
     if (!it.second) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "duplicate entry for collection name '" << name << "'";
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-          << "collection id " << cid
-          << " has same name as already added collection "
-          << _collectionsByName[name]->cid();
+      std::string msg;
+      msg.append(std::string("duplicate entry for collection name '") + name + "'. collection id " + std::to_string(cid) + " has same name as already added collection " + std::to_string(_collectionsByName[name]->cid()));
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
 
       TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
       TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_NAME, msg);
     }
 
     // check collection identifier
@@ -169,11 +166,11 @@ void TRI_vocbase_t::registerCollection(
       auto it2 = _collectionsById.emplace(cid, collection);
 
       if (!it2.second) {
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME)
-            << "duplicate collection identifier " << collection->cid()
-            << " for name '" << name << "'";
+        std::string msg;
+        msg.append(std::string("duplicate collection identifier ") + std::to_string(collection->cid()) + " for name '" + name + "'");
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
 
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, msg);
       }
     } catch (...) {
       _collectionsByName.erase(name);
@@ -188,7 +185,11 @@ void TRI_vocbase_t::registerCollection(
       auto it2 = _collectionsByUuid.emplace(collection->globallyUniqueId(), collection);
 
       if (!it2.second) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
+        std::string msg;
+        msg.append(std::string("duplicate entry for collection uuid '") + collection->globallyUniqueId() + "'");
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER, msg);
       }
     } catch (...) {
       _collectionsByName.erase(name);
