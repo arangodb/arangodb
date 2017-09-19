@@ -170,6 +170,8 @@ struct TRI_vocbase_t {
       _collectionsByName;  // collections by name
   std::unordered_map<TRI_voc_cid_t, arangodb::LogicalCollection*>
       _collectionsById;  // collections by id
+  std::unordered_map<std::string, arangodb::LogicalCollection*>
+      _collectionsByUuid;  // collections by uuid
 
   arangodb::basics::ReadWriteLock _viewsLock;  // views management lock
   std::unordered_map<std::string, std::shared_ptr<arangodb::LogicalView>>
@@ -273,6 +275,8 @@ struct TRI_vocbase_t {
   /// returns empty string if the collection does not exist.
   std::string collectionName(TRI_voc_cid_t id);
 
+  /// @brief looks up a collection by uuid
+  arangodb::LogicalCollection* lookupCollectionByUuid(std::string const& uuid) const;
   /// @brief looks up a collection by name
   arangodb::LogicalCollection* lookupCollection(std::string const& name) const;
   /// @brief looks up a collection by identifier
@@ -346,11 +350,22 @@ struct TRI_vocbase_t {
   /// when you are done with the collection.
   arangodb::LogicalCollection* useCollection(std::string const& name,
                                              TRI_vocbase_col_status_e&);
+  
+  /// @brief locks a collection for usage by uuid
+  /// Note that this will READ lock the collection you have to release the
+  /// collection lock by yourself and call @ref TRI_ReleaseCollectionVocBase
+  /// when you are done with the collection.
+  arangodb::LogicalCollection* useCollectionByUuid(std::string const& uuid,
+                                                   TRI_vocbase_col_status_e&);
 
   /// @brief releases a collection from usage
   void releaseCollection(arangodb::LogicalCollection* collection);
 
  private:
+
+  arangodb::LogicalCollection* useCollectionInternal(
+      arangodb::LogicalCollection* collection, TRI_vocbase_col_status_e& status);
+  
   /// @brief looks up a collection by name, without acquiring a lock
   arangodb::LogicalCollection* lookupCollectionNoLock(std::string const& name) const;
 

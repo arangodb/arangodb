@@ -159,6 +159,8 @@ void TRI_vocbase_t::registerCollection(
           << " has same name as already added collection "
           << _collectionsByName[name]->cid();
 
+      TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
+      TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_NAME);
     }
 
@@ -167,8 +169,6 @@ void TRI_vocbase_t::registerCollection(
       auto it2 = _collectionsById.emplace(cid, collection);
 
       if (!it2.second) {
-        _collectionsByName.erase(name);
-
         LOG_TOPIC(ERR, arangodb::Logger::FIXME)
             << "duplicate collection identifier " << collection->cid()
             << " for name '" << name << "'";
@@ -177,22 +177,41 @@ void TRI_vocbase_t::registerCollection(
       }
     } catch (...) {
       _collectionsByName.erase(name);
+      TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
+      TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
       throw;
     }
 
     TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
 
     try {
-      _collections.emplace_back(collection);
+      auto it2 = _collectionsByUuid.emplace(collection->globallyUniqueId(), collection);
+
+      if (!it2.second) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DUPLICATE_IDENTIFIER);
+      }
     } catch (...) {
       _collectionsByName.erase(name);
       _collectionsById.erase(cid);
       TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
+      TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
+      throw;
+    }
+
+    try {
+      _collections.emplace_back(collection);
+    } catch (...) {
+      _collectionsByName.erase(name);
+      _collectionsById.erase(cid);
+      _collectionsByUuid.erase(collection->globallyUniqueId());
+      TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
+      TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
       throw;
     }
 
     collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
     TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
+    TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
   }
 }
 
@@ -206,6 +225,7 @@ bool TRI_vocbase_t::unregisterCollection(
 
   // pre-condition
   TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
+  TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
 
   // only if we find the collection by its id, we can delete it by name
   if (_collectionsById.erase(collection->cid()) > 0) {
@@ -213,9 +233,12 @@ bool TRI_vocbase_t::unregisterCollection(
     // same name, but with a different id
     _collectionsByName.erase(colName);
   }
+  
+  _collectionsByUuid.erase(collection->globallyUniqueId());
 
   // post-condition
   TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
+  TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
 
   return true;
 }
@@ -725,6 +748,7 @@ void TRI_vocbase_t::shutdown() {
     WRITE_LOCKER(readLocker, _collectionsLock);
     _collectionsByName.clear();
     _collectionsById.clear();
+    _collectionsByUuid.clear();
   }
 
   // free dead collections (already dropped but pointers still around)
@@ -832,6 +856,19 @@ std::string TRI_vocbase_t::collectionName(TRI_voc_cid_t id) {
   }
 
   return (*it).second->name();
+}
+
+/// @brief looks up a collection by uuid
+LogicalCollection* TRI_vocbase_t::lookupCollectionByUuid(std::string const& uuid) const {
+  // otherwise we'll look up the collection by name
+  READ_LOCKER(readLocker, _collectionsLock);
+
+  auto it = _collectionsByUuid.find(uuid);
+
+  if (it == _collectionsByUuid.end()) {
+    return nullptr;
+  }
+  return (*it).second;
 }
 
 /// @brief looks up a collection by name
@@ -1179,6 +1216,7 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
     throw;
   }
   TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
+  TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
 
   locker.unlock();
   writeLocker.unlock();
@@ -1216,22 +1254,8 @@ arangodb::LogicalCollection* TRI_vocbase_t::useCollection(
       collection = (*it).second;
     }
   }
-
-  if (collection == nullptr) {
-    TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-    return nullptr;
-  }
-
-  // try to load the collection
-  int res = loadCollection(collection, status);
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    return collection;
-  }
-
-  TRI_set_errno(res);
-
-  return nullptr;
+  
+  return useCollectionInternal(collection, status);
 }
 
 /// @brief locks a collection for usage by name
@@ -1249,7 +1273,31 @@ arangodb::LogicalCollection* TRI_vocbase_t::useCollection(
       collection = (*it).second;
     }
   }
+  
+  return useCollectionInternal(collection, status);
+}
 
+/// @brief locks a collection for usage by name
+arangodb::LogicalCollection* TRI_vocbase_t::useCollectionByUuid(
+    std::string const& uuid, TRI_vocbase_col_status_e& status) {
+  // check that we have an existing name
+  arangodb::LogicalCollection* collection = nullptr;
+
+  {
+    READ_LOCKER(readLocker, _collectionsLock);
+
+    auto it = _collectionsByUuid.find(uuid);
+
+    if (it != _collectionsByUuid.end()) {
+      collection = (*it).second;
+    }
+  }
+
+  return useCollectionInternal(collection, status);
+}
+  
+arangodb::LogicalCollection* TRI_vocbase_t::useCollectionInternal(
+    arangodb::LogicalCollection* collection, TRI_vocbase_col_status_e& status) {
   if (collection == nullptr) {
     TRI_set_errno(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     return nullptr;
