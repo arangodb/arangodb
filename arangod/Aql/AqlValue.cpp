@@ -159,33 +159,23 @@ bool AqlValue::isArray() const noexcept {
   }
 }
 
-std::array<std::string const, 8> AqlValue::typeStrings = { {
-  "none",
-  "null",
-  "bool",
-  "number",
-  "string",
-  "object",
-  "array",
-  "unknown"} };
-
-std::string const & AqlValue::getTypeString() const noexcept {
+char const* AqlValue::getTypeString() const noexcept {
   if(isNone()) {
-    return typeStrings[0];
+    return "none";
   } else if(isNull(true)) {
-     return typeStrings[1];
+     return "null";
   } else if(isBoolean()) {
-     return typeStrings[2];
+     return "bool";
   } else if(isNumber()) {
-     return typeStrings[3];
+     return "number";
   } else if(isString()) {
-     return typeStrings[4];
+     return "string";
   } else if(isObject()) {
-     return typeStrings[5];
+     return "object";
   } else if(isArray()){
-     return typeStrings[6];
+     return "array";
   }
-  return typeStrings[7];
+  return "unknown";
 }
 
 /// @brief get the (array) length (note: this treats ranges as arrays, too!)
