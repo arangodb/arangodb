@@ -416,18 +416,27 @@ def checkCommitMessages() {
         if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
             echo "build of main branch"
 
-            useLinux = true
-            useMac = true
-            useWindows = true
+            restrictions = [
+                // OS EDITION MAINTAINER
+                "build-linux-community-maintainer" : true,
+                "build-linux-enterprise-maintainer" : true,
+                "build-linux-community-user" : true,
+                "build-linux-enterprise-user" : true,
+                "build-mac-community-user" : true,
+                "build-mac-enterprise-user" : true,
+                "build-windows-community-user" : true,
+                "build-windows-enterprise-user" : true,
 
-            useCommunity = true
-            useEnterprise = true
-
-            useMaintainer = true
-            useUser = true
-
-            // runResilience = false
-            runTests = true
+                // OS EDITION MAINTAINER MODE ENGINE
+                "test-linux-community-maintainer-singleserver-mmfiles" : true,
+                "test-linux-community-maintainer-singleserver-rocksdb" : true,
+                "test-linux-enterprise-user-cluster-mmfiles" : true,
+                "test-linux-enterprise-user-cluster-rocksdb" : true,
+                "test-mac-community-user-singleserver-rocksdb" : true,
+                "test-mac-enterprise-user-cluster-rocksdb" : true,
+                "test-windows-community-user-singleserver-rocksdb" : true,
+                "test-windows-mac-enterprise-user-cluster-rocksdb" : true,
+            ]
         }
         else if (env.BRANCH_NAME =~ /^PR-/) {
             echo "build of PR"
@@ -436,9 +445,7 @@ def checkCommitMessages() {
                 // OS EDITION MAINTAINER
                 "build-linux-community-maintainer" : true,
                 "build-linux-enterprise-maintainer" : true,
-                "build-mac-community-maintainer" : true,
                 "build-mac-enterprise-user" : true,
-                "build-windows-community-maintainer" : true,
                 "build-windows-enterprise-maintainer" : true,
 
                 // OS EDITION MAINTAINER MODE ENGINE
