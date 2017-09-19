@@ -70,13 +70,13 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
     std::string msg("collection '");
     msg.append(base.get("collection").copyString());
     msg.append("' not found");
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, msg);
   }
 
   VPackSlice indexes = base.get("indexes");
 
   if (!indexes.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "\"indexes\" attribute should be an array");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "\"indexes\" attribute should be an array");
   }
 
   _indexes.reserve(indexes.length());
@@ -89,7 +89,7 @@ IndexNode::IndexNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& bas
 
   VPackSlice condition = base.get("condition");
   if (!condition.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "\"condition\" attribute should be an object");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "\"condition\" attribute should be an object");
   }
 
   _condition = Condition::fromVPack(plan, condition);
