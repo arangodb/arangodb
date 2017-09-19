@@ -71,9 +71,9 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
 }
 
 void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest const& req, uint64_t /* messageId */) {
-  std::unique_ptr<HttpResponse> response(new HttpResponse(code, leaseStringBuffer(0)));
-  response->setContentType(req.contentTypeResponse());
-  addResponse(std::move(response), stealStatistics(1UL));
+  HttpResponse response(code, leaseStringBuffer(0));
+  response.setContentType(req.contentTypeResponse());
+  addResponse(&response, stealStatistics(1UL));
 }
 
 void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest const& req, int errorNum,
@@ -90,10 +90,10 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest con
   builder.close();
   
   try {
-    auto resp = std::make_unique<HttpResponse>(code, leaseStringBuffer(buffer.size()));
-    resp->setContentType(req.contentTypeResponse());
-    resp->setPayload(std::move(buffer), true, VPackOptions::Defaults);
-    addResponse(std::move(resp), stealStatistics(1UL));
+    HttpResponse resp(code, leaseStringBuffer(buffer.size()));
+    resp.setContentType(req.contentTypeResponse());
+    resp.setPayload(std::move(buffer), true, VPackOptions::Defaults);
+    addResponse(&resp, stealStatistics(1UL));
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "handleSimpleError received an exception, closing connection:"
@@ -106,14 +106,14 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest con
   }
 }
 
-void HttpCommTask::addResponse(std::unique_ptr<GeneralResponse> baseResponse,
+void HttpCommTask::addResponse(GeneralResponse* baseResponse,
                                RequestStatistics* stat) {
   _lock.assertLockedByCurrentThread();
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  HttpResponse* response = dynamic_cast<HttpResponse*>(baseResponse.get());
+  HttpResponse* response = dynamic_cast<HttpResponse*>(baseResponse);
   TRI_ASSERT(response != nullptr);
 #else
-  HttpResponse* response = static_cast<HttpResponse*>(baseResponse.get());
+  HttpResponse* response = static_cast<HttpResponse*>(baseResponse);
 #endif
 
   resetKeepAlive();
@@ -208,8 +208,7 @@ void HttpCommTask::addResponse(std::unique_ptr<GeneralResponse> baseResponse,
       << "\"," << Logger::FIXED(totalTime, 6);
 
   std::unique_ptr<basics::StringBuffer> body = response->stealBody();
-  returnStringBuffer(body.get());
-  body.release();
+  returnStringBuffer(body.release()); // takes care of deleting
 }
 
 // reads data from the socket
@@ -599,11 +598,10 @@ bool HttpCommTask::processRead(double startTime) {
     handleSimpleError(authResult, *_incompleteRequest, TRI_ERROR_USER_CHANGE_PASSWORD,
                       "change password", 1);
   } else {  // not authenticated
-    auto resp = std::make_unique<HttpResponse>(rest::ResponseCode::UNAUTHORIZED,
-                                               leaseStringBuffer(0));
+    HttpResponse resp(rest::ResponseCode::UNAUTHORIZED, leaseStringBuffer(0));
     std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
-    resp->setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
-    addResponse(std::move(resp), nullptr);
+    resp.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
+    addResponse(&resp, nullptr);
   }
 
   _incompleteRequest.reset(nullptr);
@@ -707,10 +705,9 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
 }
 
 void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
-  std::unique_ptr<HttpResponse> resp(new HttpResponse(rest::ResponseCode::OK,
-                                                      leaseStringBuffer(0)));
+  HttpResponse resp(rest::ResponseCode::OK, leaseStringBuffer(0));
 
-  resp->setHeaderNCIfNotSet(StaticStrings::Allow,
+  resp.setHeaderNCIfNotSet(StaticStrings::Allow,
                                StaticStrings::CorsMethods);
 
   if (!_origin.empty()) {
@@ -720,7 +717,7 @@ void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
 
     // send back which HTTP methods are allowed for the resource
     // we'll allow all
-    resp->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowMethods,
+    resp.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowMethods,
                               StaticStrings::CorsMethods);
 
     if (!allowHeaders.empty()) {
@@ -729,7 +726,7 @@ void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
       // client sends some broken headers and then later cannot access the data
       // on
       // the server. that's a client problem.
-      resp->setHeaderNCIfNotSet(StaticStrings::AccessControlAllowHeaders,
+      resp.setHeaderNCIfNotSet(StaticStrings::AccessControlAllowHeaders,
                                 allowHeaders);
 
       LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "client requested validation of the following headers: "
@@ -737,11 +734,11 @@ void HttpCommTask::processCorsOptions(std::unique_ptr<HttpRequest> request) {
     }
 
     // set caching time (hard-coded value)
-    resp->setHeaderNCIfNotSet(StaticStrings::AccessControlMaxAge,
+    resp.setHeaderNCIfNotSet(StaticStrings::AccessControlMaxAge,
                               StaticStrings::N1800);
   }
 
-  addResponse(std::move(resp), nullptr);
+  addResponse(&resp, nullptr);
 }
 
 std::unique_ptr<GeneralResponse> HttpCommTask::createResponse(

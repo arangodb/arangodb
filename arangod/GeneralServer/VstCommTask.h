@@ -44,8 +44,7 @@ class VstCommTask final : public GeneralCommTask {
 
   // convert from GeneralResponse to VstResponse ad dispatch request to class
   // internal addResponse
-  void addResponse(std::unique_ptr<GeneralResponse>,
-                   RequestStatistics* stat) override;
+  void addResponse(GeneralResponse*, RequestStatistics*) override;
 
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
@@ -63,9 +62,9 @@ class VstCommTask final : public GeneralCommTask {
 
   void handleSimpleError(rest::ResponseCode code, GeneralRequest const& req,
                          uint64_t mid) override {
-    std::unique_ptr<VstResponse> response(new VstResponse(code, mid));
-    response->setContentType(req.contentTypeResponse());
-    addResponse(std::move(response), nullptr);
+    VstResponse response(code, mid);
+    response.setContentType(req.contentTypeResponse());
+    addResponse(&response, nullptr);
   }
 
   void handleSimpleError(rest::ResponseCode, GeneralRequest const&, int code,

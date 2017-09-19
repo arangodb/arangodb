@@ -168,7 +168,7 @@ void GeneralCommTask::executeRequest(
         response->setHeaderNC(StaticStrings::AsyncId, StringUtils::itoa(jobId));
       }
 
-      addResponse(std::move(response), nullptr);
+      addResponse(response.get(), nullptr);
       return;
     } else {
       handleSimpleError(rest::ResponseCode::SERVER_ERROR, *request, TRI_ERROR_QUEUE_FULL,
@@ -300,7 +300,7 @@ void GeneralCommTask::handleRequestDirectly(bool doLock, std::shared_ptr<RestHan
     CONDITIONAL_MUTEX_LOCKER(locker, _lock, doLock); 
     _lock.assertLockedByCurrentThread();
 
-    addResponse(h->stealResponse(), stat);
+    addResponse(h->response(), stat);
   });
 
   HandlerWorkStack monitor(handler);

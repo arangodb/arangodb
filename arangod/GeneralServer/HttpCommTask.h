@@ -26,7 +26,7 @@ class HttpCommTask final : public GeneralCommTask {
   }
 
   // convert from GeneralResponse to httpResponse
-  void addResponse(std::unique_ptr<GeneralResponse> response,
+  void addResponse(GeneralResponse* response,
                    RequestStatistics* stat) override;
 
  private:
