@@ -250,6 +250,7 @@ function cleanupLastDirectory (options) {
         while (i < 5) {
           try {
             fs.removeDirectoryRecursive(cleanupDirectory, true);
+            return;
           } catch (x) {
             print('failed to delete directory "' + cleanupDirectory + '" - "' +
                   x + '" - Will retry in 5 seconds"');
