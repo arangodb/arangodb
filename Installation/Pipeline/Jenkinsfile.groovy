@@ -584,7 +584,7 @@ def jslint(os, edition, maintainer) {
     }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-            artifacts: "${archDir}-*, ${arch}/**, ${archFail}/**",
+            artifacts: "${archDir}-FAIL.txt, ${arch}/**, ${archFail}/**",
             defaultExcludes: false
     }
 }
@@ -767,7 +767,7 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                         checkCoresAndSave(os, runDir, name, archRun)
 
                         archiveArtifacts allowEmptyArchive: true,
-                            artifacts: "${archDir}-*, ${logFileRel}, ${logFileFailedRel}",
+                            artifacts: "${archDir}-FAIL.txt, ${logFileRel}, ${logFileFailedRel}",
                             defaultExcludes: false
                     }
                 }
@@ -850,7 +850,7 @@ def testStep(os, edition, maintainer, mode, engine, stageName) {
 
                         // archive all artifacts
                         archiveArtifacts allowEmptyArchive: true,
-                            artifacts: "${arch}-*, ${archRun}/**",
+                            artifacts: "${archRun}/**",
                             defaultExcludes: false
                     }
                 }
@@ -1063,7 +1063,7 @@ def buildEdition(os, edition, maintainer) {
     }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-            artifacts: "${archDir}-*, ${arch}/**, ${archFail}/**",
+            artifacts: "${archDir}-FAIL.txt, ${arch}/**, ${archFail}/**",
             defaultExcludes: false
     }
 }
