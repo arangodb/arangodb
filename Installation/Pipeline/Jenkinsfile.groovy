@@ -628,6 +628,12 @@ def getTests(os, edition, maintainer, mode, engine) {
             ["shell_replication", "shell_replication", ""],
             rspecify(os, "http_replication")
         ]
+
+        if (maintainer == "maintainer" && os == "linux") {
+            test += [
+                ["recovery", "recovery", ""]
+            ]
+        }
     }
 
     return tests
