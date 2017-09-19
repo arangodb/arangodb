@@ -72,6 +72,7 @@
 #include "RestHandler/RestUsersHandler.h"
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestViewHandler.h"
+#include "RestHandler/RestWalAccessHandler.h"
 #include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/EndpointFeature.h"
@@ -413,7 +414,7 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::VIEW_PATH,
       RestHandlerCreator<RestViewHandler>::createNoData);
-
+  
   _handlerFactory->addPrefixHandler(
       "/_api/aql",
       RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>,
@@ -435,6 +436,9 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addPrefixHandler(
       "/_api/pregel", RestHandlerCreator<RestPregelHandler>::createNoData);
+  
+  _handlerFactory->addPrefixHandler(
+      "/_api/wal", RestHandlerCreator<RestWalAccessHandler>::createNoData);
 
   if (agency->isEnabled()) {
     _handlerFactory->addPrefixHandler(
@@ -528,7 +532,7 @@ void GeneralServerFeature::defineHandlers() {
   }
 
   // ...........................................................................
-  // /_admin
+  // actions defined in v8
   // ...........................................................................
 
   _handlerFactory->addPrefixHandler(

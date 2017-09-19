@@ -61,7 +61,7 @@ void ConsoleThread::run() {
   usleep(100 * 1000);
 
   // enter V8 context
-  _context = V8DealerFeature::DEALER->enterContext(nullptr, _vocbase, true);
+  _context = V8DealerFeature::DEALER->enterContext(_vocbase, true);
 
   if (_context == nullptr) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot acquire V8 context";
