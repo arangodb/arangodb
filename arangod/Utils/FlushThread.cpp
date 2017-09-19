@@ -66,16 +66,18 @@ void FlushThread::run() {
         continue;
       }
 
-      TRI_voc_tick_t toRelease = engine->currentTick();
-      engine->waitForSync(toRelease);
-      TRI_IF_FAILURE("FlushThreadCrashAfterWalSync") {
-        TRI_SegfaultDebugging("crashing before flush thread callbacks");
+      if (!engine->inRecovery()) {
+        TRI_voc_tick_t toRelease = engine->currentTick();
+        engine->waitForSync(toRelease);
+        TRI_IF_FAILURE("FlushThreadCrashAfterWalSync") {
+          TRI_SegfaultDebugging("crashing before flush thread callbacks");
+        }
+        flushFeature->executeCallbacks();
+        TRI_IF_FAILURE("FlushThreadCrashAfterCallbacks") {
+          TRI_SegfaultDebugging("crashing before releasing tick");
+        }
+        engine->releaseTick(toRelease);
       }
-      flushFeature->executeCallbacks();
-      TRI_IF_FAILURE("FlushThreadCrashAfterCallbacks") {
-        TRI_SegfaultDebugging("crashing before releasing tick");
-      }
-      engine->releaseTick(toRelease);
 
       // sleep if nothing to do
       CONDITION_LOCKER(guard, _condition);
