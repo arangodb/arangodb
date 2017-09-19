@@ -43,8 +43,8 @@ using namespace arangodb::aql;
 /// @brief hashes the value
 uint64_t AqlValue::hash(transaction::Methods* trx, uint64_t seed) const {
   switch (type()) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
+    case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE:
     case VPACK_MANAGED_BUFFER: {
       // we must use the slow hash function here, because a value may have
@@ -191,8 +191,8 @@ std::string const & AqlValue::getTypeString() const noexcept {
 /// @brief get the (array) length (note: this treats ranges as arrays, too!)
 size_t AqlValue::length() const {
   switch (type()) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
+    case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE:
     case VPACK_MANAGED_BUFFER: {
       return static_cast<size_t>(slice().length());
@@ -293,8 +293,8 @@ AqlValue AqlValue::getKeyAttribute(transaction::Methods* trx,
   mustDestroy = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:
-    // fall-through intentional
       doCopy = false;
+    // fall-through intentional
     case VPACK_INLINE:
     // fall-through intentional
     case VPACK_MANAGED_SLICE:
@@ -570,8 +570,8 @@ AqlValue AqlValue::get(transaction::Methods* trx,
 bool AqlValue::hasKey(transaction::Methods* trx,
                       std::string const& name) const {
   switch (type()) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
+    case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE:
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
@@ -596,8 +596,8 @@ double AqlValue::toDouble(transaction::Methods* trx) const {
 double AqlValue::toDouble(transaction::Methods* trx, bool& failed) const {
   failed = false;
   switch (type()) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
+    case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE:
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
@@ -663,8 +663,8 @@ double AqlValue::toDouble(transaction::Methods* trx, bool& failed) const {
 /// @brief get the numeric value of an AqlValue
 int64_t AqlValue::toInt64(transaction::Methods* trx) const {
   switch (type()) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
+    case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE:
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
@@ -715,8 +715,8 @@ int64_t AqlValue::toInt64(transaction::Methods* trx) const {
 /// @brief whether or not the contained value evaluates to true
 bool AqlValue::toBoolean() const {
   switch (type()) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
+    case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE:
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
@@ -810,8 +810,8 @@ v8::Handle<v8::Value> AqlValue::toV8(
     v8::Isolate* isolate, transaction::Methods* trx) const {
   
   switch (type()) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
+    case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE:
     case VPACK_MANAGED_BUFFER: {
       VPackOptions* options = trx->transactionContext()->getVPackOptions();
@@ -911,8 +911,8 @@ void AqlValue::toVelocyPack(transaction::Methods* trx,
 AqlValue AqlValue::materialize(transaction::Methods* trx, bool& hasCopied,
                                bool resolveExternals) const {
   switch (type()) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
+    case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE:
     case VPACK_MANAGED_BUFFER: {
       hasCopied = false;
@@ -939,6 +939,10 @@ AqlValue AqlValue::materialize(transaction::Methods* trx, bool& hasCopied,
 /// @brief clone a value
 AqlValue AqlValue::clone() const {
   switch (type()) {
+    case VPACK_INLINE: {
+      // copy internal data
+      return AqlValue(slice());
+    }
     case VPACK_SLICE_POINTER: {
       if (isManagedDocument()) {
         // copy from externally managed document. this will not copy the data
@@ -946,10 +950,6 @@ AqlValue AqlValue::clone() const {
       }
       // copy from regular pointer. this may copy the data
       return AqlValue(_data.pointer);
-    }
-    case VPACK_INLINE: {
-      // copy internal data
-      return AqlValue(slice());
     }
     case VPACK_MANAGED_SLICE: {
       return AqlValue(AqlValueHintCopy(_data.slice));
@@ -986,8 +986,8 @@ AqlValue AqlValue::clone() const {
 /// @brief destroy the value's internals
 void AqlValue::destroy() noexcept {
   switch (type()) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE: {
+    case VPACK_SLICE_POINTER:
       // nothing to do
       return;
     }
@@ -1018,15 +1018,15 @@ void AqlValue::destroy() noexcept {
 /// @brief return the slice from the value
 VPackSlice AqlValue::slice() const {
   switch (type()) {
-    case VPACK_SLICE_POINTER: {
-      return VPackSlice(_data.pointer);
-    }
     case VPACK_INLINE: {
       VPackSlice s(&_data.internal[0]);
       if (s.isExternal()) {
         s = s.resolveExternal();
       }
       return s;
+    }
+    case VPACK_SLICE_POINTER: {
+      return VPackSlice(_data.pointer);
     }
     case VPACK_MANAGED_SLICE: {
       VPackSlice s(_data.slice);
@@ -1137,8 +1137,8 @@ int AqlValue::Compare(transaction::Methods* trx, AqlValue const& left,
   // if we get here, types are equal or can be treated as being equal
 
   switch (leftType) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
+    case VPACK_SLICE_POINTER:
     case VPACK_MANAGED_SLICE: 
     case VPACK_MANAGED_BUFFER: {
       return arangodb::basics::VelocyPackHelper::compare(

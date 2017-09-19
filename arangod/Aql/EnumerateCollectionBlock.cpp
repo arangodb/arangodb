@@ -216,7 +216,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
 
   if (send < atMost) {
     // The collection did not have enough results
-    res->shrink(send, false);
+    res->shrink(send);
   }
 
   // Clear out registers no longer needed later:
