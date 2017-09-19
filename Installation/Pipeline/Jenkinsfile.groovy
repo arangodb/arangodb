@@ -1102,17 +1102,19 @@ def checkoutSource(edition) {
 
 def createDockerImage(edition, maintainer, stageName) {
     def os = "linux"
+
     return {
         if (buildStepCheck(os, edition, maintainer)) {
             node(buildJenkins[os]) {
                 stage(stageName) {
                     checkoutSource(edition)
                     
-                    def packageName="${edition}-${maintainer}"
+                    def packageName="${os}-${edition}-${maintainer}"
                     def dockerTag=sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
-                    withEnv(["DOCKERTAG=${dockerTag}"]) {
+
+                    withEnv(["DOCKERTAG=${packageName}-${dockerTag}"]) {
                         sh "scripts/build-docker.sh"
-                        sh "docker tag arangodb:${dockerTag} c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag}"
+                        sh "docker tag arangodb:${packageName}-${dockerTag} c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag}"
                         sh "docker push c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag}"
                     }
                 }
@@ -1182,6 +1184,7 @@ def runOperatingSystems(osList) {
                 def name = "${os}-${edition}-${maintainer}"
                 def stageName = "build-${name}"
                 branches[stageName] = runEdition(os, edition, maintainer, stageName)
+
                 if (os == 'linux') {
                     branches["docker-${name}"] = createDockerImage(edition, maintainer, "docker-${name}")
                 }
