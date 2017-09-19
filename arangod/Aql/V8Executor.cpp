@@ -359,7 +359,7 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
       msg += " See log for details";
     }
     // we can't figure out what kind of error occurred and throw a generic error
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, msg);
   }
 
   if (result.IsEmpty()) {
@@ -373,7 +373,7 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
       msg += " See log for details";
     }
 
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, msg);
   }
 
   // if we get here, no exception has been raised

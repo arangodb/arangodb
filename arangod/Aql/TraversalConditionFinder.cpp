@@ -733,7 +733,7 @@ bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathV
   TRI_ASSERT(_plan->getAst() != nullptr);
 
   bool mustDestroy = false;
-  Expression tmpExp(_plan->getAst(), node);
+  Expression tmpExp(_plan, _plan->getAst(), node);
 
   TRI_ASSERT(_plan->getAst()->query() != nullptr);
   auto trx = _plan->getAst()->query()->trx();
