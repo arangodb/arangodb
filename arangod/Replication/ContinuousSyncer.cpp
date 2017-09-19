@@ -379,21 +379,25 @@ bool ContinuousSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
     return true;
   }
 
-  if (_restrictType == RESTRICT_NONE && _includeSystem) {
-    return false;
+  // the transient applier state is just used for one shard / collection
+  if (!_transientApplierState) {
+    if (_restrictType == RESTRICT_NONE && _includeSystem) {
+      return false;
+    }
+    
+    VPackSlice const name = slice.get("cname");
+    if (name.isString()) {
+      return excludeCollection(name.copyString());
+    }
+
   }
-
-  VPackSlice const name = slice.get("cname");
-
-  if (name.isString()) {
-    return excludeCollection(name.copyString());
-  }
-
+  
   return false;
 }
 
 /// @brief whether or not a collection should be excluded
 bool ContinuousSyncer::excludeCollection(std::string const& masterName) const {
+  TRI_ASSERT(!_transientApplierState);
   if (masterName[0] == '_' && !_includeSystem) {
     // system collection
     return true;
@@ -794,7 +798,12 @@ int ContinuousSyncer::applyLogMarker(VPackSlice const& slice,
   // handle marker type
   TRI_replication_operation_e type = (TRI_replication_operation_e)typeValue;
 
-  if (type == REPLICATION_MARKER_DOCUMENT || 
+  if (type == REPLICATION_DATABASE_CREATE) {
+    return TRI_ERROR_NO_ERROR;
+  } else if (type == REPLICATION_DATABASE_DROP) {
+    // TODO
+    return TRI_ERROR_NO_ERROR;
+  } else if (type == REPLICATION_MARKER_DOCUMENT ||
       type == REPLICATION_MARKER_REMOVE) {
     return processDocument(type, slice, errorMsg);
   }
@@ -927,9 +936,7 @@ int ContinuousSyncer::applyLog(SimpleHttpResult* response,
     bool skipped;
 
     //LOG_TOPIC(ERR, Logger::FIXME) << slice.toJson();
-
-    if (!_transientApplierState && 
-        skipMarker(firstRegularTick, slice)) {
+    if (skipMarker(firstRegularTick, slice)) {
       // entry is skipped
       res = TRI_ERROR_NO_ERROR;
       skipped = true;

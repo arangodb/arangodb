@@ -530,7 +530,8 @@ WalTailingResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
                                         size_t chunkSize, bool includeSystem,
                                         WalFilter const& filter,
                                         MarkerCallback const& func) const {
-  uint64_t firstTick = tickStart; // first tick actually read
+  // first tick actually read
+  uint64_t firstTick = std::max(tickStart - 1, (uint64_t)0);
   uint64_t lastTick = tickStart; // lastTick at start of a write batch)
   uint64_t lastWrittenTick = tickStart; // lastTick at the end of a write batch
 
@@ -540,7 +541,7 @@ WalTailingResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
   rocksdb::Status s;
   // no need verifying the WAL contents
   rocksdb::TransactionLogIterator::ReadOptions ro(false);
-  s = rocksutils::globalRocksDB()->GetUpdatesSince(tickStart - 1, &iterator, ro);
+  s = rocksutils::globalRocksDB()->GetUpdatesSince(tickStart, &iterator, ro);
   if (!s.ok()) {
     Result r = convertStatus(s, rocksutils::StatusHint::wal);
     return WalTailingResult{r.errorNumber(), 0, 0};
@@ -567,8 +568,8 @@ WalTailingResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
       break; // cancel out
     }
 
-    // record the first tick we are reading
-    if (firstTick == tickStart) {
+    // record the first tick we are actually printing
+    if (firstTick <= tickStart) {
       firstTick = batch.sequence;
     }
     lastTick = batch.sequence; // start of the batch

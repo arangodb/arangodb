@@ -557,7 +557,8 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
   rocksdb::Status s;
   // no need verifying the WAL contents
   rocksdb::TransactionLogIterator::ReadOptions ro(false);
-  s = rocksutils::globalRocksDB()->GetUpdatesSince(tickStart - 1, &iterator, ro);
+  uint64_t since = std::max(tickStart - 1, (uint64_t)0);
+  s = rocksutils::globalRocksDB()->GetUpdatesSince(since, &iterator, ro);
   
   if (!s.ok()) {
     auto converted = convertStatus(s, rocksutils::StatusHint::wal);

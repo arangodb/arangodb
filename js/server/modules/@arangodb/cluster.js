@@ -1167,7 +1167,7 @@ function updateCurrentForCollections(localErrors, plannedCollections,
                 if (currentCollections[database][collection].hasOwnProperty(shard)) {
                   let cur = currentCollections[database][collection][shard];
                   if (!localCollections.hasOwnProperty(shard) &&
-                      cur.servers[0] === ourselves &&
+                      cur.servers && cur.servers[0] === ourselves &&
                       !shardMap.hasOwnProperty(shard)) {
                     Object.assign(trx, makeDropCurrentEntryCollection(database, collection, shard));
                   }
