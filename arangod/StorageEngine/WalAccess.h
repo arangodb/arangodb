@@ -57,8 +57,11 @@ class WalAccess {
 
  public:
   typedef std::unordered_map<TRI_voc_tick_t, std::set<TRI_voc_cid_t>> WalFilter;
+  typedef std::function<void(TRI_vocbase_t*,
+                        velocypack::Slice const&)> MarkerCallback;
 
-  /// {"tickMin":"123", "tickMax":"456", "server":{"version":"3.2", "serverId":"abc"}}
+  /// {"tickMin":"123", "tickMax":"456",
+  ///  "server":{"version":"3.2", "serverId":"abc"}}
   virtual Result tickRange(std::pair<TRI_voc_tick_t,
                                      TRI_voc_tick_t>& minMax) const = 0;
 
@@ -74,7 +77,7 @@ class WalAccess {
   virtual WalTailingResult tail(uint64_t tickStart, uint64_t tickEnd,
                                 size_t chunkSize,
                                 bool includeSystem, WalFilter const& filter,
-                                velocypack::Builder&) const = 0;
+                                MarkerCallback const&) const = 0;
 };
 }
 

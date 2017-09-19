@@ -316,6 +316,7 @@ arangodb::StringRef RocksDBLogValue::documentKey(rocksdb::Slice const& slice) {
   TRI_ASSERT(type == RocksDBLogType::SingleRemove ||
              type == RocksDBLogType::DocumentRemove);
   size_t off = sizeof(RocksDBLogType);
+  // only single remove contains vocbase id and cid
   if (type == RocksDBLogType::SingleRemove) {
     off += sizeof(uint64_t) * 2;
   }

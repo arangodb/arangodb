@@ -25,9 +25,6 @@
 #define ARANGOD_ROCKSDB_ENGINE_WAL_ACCESS_H 1
 
 #include "StorageEngine/WalAccess.h"
-#include "VocBase/voc-types.h"
-
-#include <velocypack/Builder.h>
 
 namespace arangodb {
 
@@ -39,8 +36,8 @@ class RocksDBWalAccess : public WalAccess {
   virtual ~RocksDBWalAccess() {}
 
   /// {"tickMin":"123", "tickMax":"456", "version":"3.2", "serverId":"abc"}
-  Result tickRange(std::pair<TRI_voc_tick_t,
-                             TRI_voc_tick_t>& minMax) const override;
+  Result tickRange(
+      std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const override;
 
   /// {"lastTick":"123",
   ///  "version":"3.2",
@@ -51,9 +48,10 @@ class RocksDBWalAccess : public WalAccess {
   ///
   TRI_voc_tick_t lastTick() const override;
 
+  /// Tails the wall, this will already sanitize the
   WalTailingResult tail(uint64_t tickStart, uint64_t tickEnd, size_t chunkSize,
-              bool includeSystem, WalFilter const& filter,
-              velocypack::Builder&) const override;
+                        bool includeSystem, WalFilter const& filter,
+                        MarkerCallback const&) const override;
 };
 }
 
