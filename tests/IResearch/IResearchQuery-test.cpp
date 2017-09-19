@@ -12732,7 +12732,7 @@ SECTION("Or") {
     CHECK(expectedDoc == expectedDocs.rend());
   }
 
-  // d.name == 'D' OR STARTS_WITH(d.prefix, 'abc'), BM25(d) DESC, d.seq DESC
+  // d.name == 'D' OR STARTS_WITH(d.prefix, 'abc'), TFIDF(d) DESC, d.seq DESC
   {
     std::vector<arangodb::velocypack::Slice> expectedDocs {
       // The most relevant document (satisfied both search conditions)
@@ -12769,6 +12769,89 @@ SECTION("Or") {
     }
     CHECK(expectedDoc == expectedDocs.end());
   }
+
+  // d.name == 'D' OR STARTS_WITH(d.prefix, 'abc'), BM25(d) DESC, d.seq DESC
+  {
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      // The most relevant document (satisfied both search conditions)
+      arangodb::velocypack::Slice(insertedDocs[3].vpack()),  // {"name":"D","seq":3,"same":"xyz", "value":12, "prefix":"abcde"}
+
+      // Less relevant documents (satisfied STARTS_WITH condition only, has unqiue term in 'prefix' field)
+      arangodb::velocypack::Slice(insertedDocs[25].vpack()), // {"name":"Z","seq":25,"same":"xyz", "prefix":"abcdrer" }
+      arangodb::velocypack::Slice(insertedDocs[20].vpack()), // {"name":"U","seq":20,"same":"xyz", "prefix":"abc", "duplicated":"abcd"}
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),  // {"name":"A","seq":0,"same":"xyz", "value":100, "duplicated":"abcd", "prefix":"abcd" }
+
+      // The least relevant documents (contain non-unique term 'abcy' in 'prefix' field)
+      arangodb::velocypack::Slice(insertedDocs[31].vpack()), // {"name":"%","seq":31,"same":"xyz", "prefix":"abcy"}
+      arangodb::velocypack::Slice(insertedDocs[30].vpack()), // {"name":"$","seq":30,"same":"xyz", "duplicated":"abcd", "prefix":"abcy" }
+    };
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name == 'D' OR STARTS_WITH(d.prefix, 'abc') SORT BM25(d) DESC, d.seq DESC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // STARTS_WITH(d['prefix'], 'abc') OR EXISTS(d.duplicated) OR d.value < 100 OR d.name >= 'Z', BM25(d) DESC, TFIDF(d) DESC, d.seq DESC
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      arangodb::velocypack::Slice(insertedDocs[25].vpack()), // {"name":"Z","seq":25,"same":"xyz", "prefix":"abcdrer" ,
+      arangodb::velocypack::Slice(insertedDocs[26].vpack()), // {"name":"~","seq":26,"same":"xyz", "duplicated":"abcd"}
+      arangodb::velocypack::Slice(insertedDocs[20].vpack()), // {"name":"U","seq":20,"same":"xyz", "prefix":"abc", "duplicated":"abcd"}
+      arangodb::velocypack::Slice(insertedDocs[3].vpack()),  // {"name":"D","seq":3,"same":"xyz", "value":12, "prefix":"abcde"}
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),  // {"name":"A","seq":0,"same":"xyz", "value":100, "duplicated":"abcd", "prefix":"abcd" }
+      arangodb::velocypack::Slice(insertedDocs[31].vpack()), // {"name":"%","seq":31,"same":"xyz", "prefix":"abcy"}
+      arangodb::velocypack::Slice(insertedDocs[30].vpack()), // {"name":"$","seq":30,"same":"xyz", "duplicated":"abcd", "prefix":"abcy" }
+      arangodb::velocypack::Slice(insertedDocs[23].vpack()), // {"name":"X","seq":23,"same":"xyz", "duplicated":"vczc", "prefix":"bateradsfsfasdf" }
+      arangodb::velocypack::Slice(insertedDocs[18].vpack()), // {"name":"S","seq":18,"same":"xyz", "duplicated":"vczc"}
+      arangodb::velocypack::Slice(insertedDocs[16].vpack()), // {"name":"Q","seq":16,"same":"xyz", "value":-32.5, "duplicated":"vczc"}
+      arangodb::velocypack::Slice(insertedDocs[15].vpack()), // {"name":"P","seq":15,"same":"xyz","value":50, "prefix":"abde"},
+      arangodb::velocypack::Slice(insertedDocs[14].vpack()), // {"name":"O","seq":14,"same":"xyz","value":0 },
+      arangodb::velocypack::Slice(insertedDocs[13].vpack()), // {"name":"N","seq":13,"same":"xyz","value":1, "duplicated":"vczc"},
+      arangodb::velocypack::Slice(insertedDocs[12].vpack()), // {"name":"M","seq":12,"same":"xyz","value":90.564 },
+      arangodb::velocypack::Slice(insertedDocs[11].vpack()), // {"name":"L","seq":11,"same":"xyz","value":95 }
+      arangodb::velocypack::Slice(insertedDocs[10].vpack()), // {"name":"K","seq":10,"same":"xyz","value":12, "duplicated":"abcd"}
+      arangodb::velocypack::Slice(insertedDocs[7].vpack()),  // {"name":"H","seq":7,"same":"xyz", "value":123, "duplicated":"vczc"},
+      arangodb::velocypack::Slice(insertedDocs[4].vpack()),  // {"name":"E","seq":4,"same":"xyz", "value":100, "duplicated":"abcd"}
+      arangodb::velocypack::Slice(insertedDocs[2].vpack()),  // {"name":"C","seq":2,"same":"xyz", "value":123, "duplicated":"vczc"}
+      arangodb::velocypack::Slice(insertedDocs[1].vpack()),  // {"name":"B","seq":1,"same":"xyz", "value":101, "duplicated":"vczc"}
+    };
+
+    auto result = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER STARTS_WITH(d['prefix'], 'abc') OR EXISTS(d.duplicated) OR d.value < 100 OR d.name >= 'Z' SORT TFIDF(d) DESC, d.seq DESC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      CHECK((i < expected.size()));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
+  // PHRASE(d['duplicated'], 'v', 2, 'z', 'test_analyzer') OR tSTARTS_WITH(d['prefix'], 'abc') OR d.value > 100 OR d.name >= 'Z', BM25(d) DESC, TFIDF(d) DESC, d.seq DESC
 }
 
 // SECTION("ComplexBoolean") { }
