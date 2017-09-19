@@ -2726,7 +2726,8 @@ static void JS_RemoveDirectory(
   int res = TRI_RemoveEmptyDirectory(*name);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot remove directory");
+    std::string err = std::string("cannot remove directory: " ) + *name + "'";
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res, err);
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -2792,7 +2793,8 @@ static void JS_RemoveRecursiveDirectory(
   int res = TRI_RemoveDirectory(*name);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot remove directory");
+    std::string err = std::string("cannot remove directory: " ) + *name + "'";
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res, err);
   }
 
   TRI_V8_RETURN_UNDEFINED();

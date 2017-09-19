@@ -24,12 +24,17 @@
 #ifndef ARANGODB_SIMPLE_HTTP_CLIENT_OPTIONS_H
 #define ARANGODB_SIMPLE_HTTP_CLIENT_OPTIONS_H 1
 
+#include <memory>
+#include <functional>
+#include "curl/curl.h"
+
 namespace arangodb {
 namespace communicator {
 class Options {
  public:
   double requestTimeout = 120.0;
   double connectionTimeout = 2.0;
+  std::shared_ptr<std::function<void(CURLcode)>> _curlRcFn = nullptr;
 };
 }
 }

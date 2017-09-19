@@ -1332,7 +1332,7 @@ CalculationNode::CalculationNode(ExecutionPlan* plan,
     : ExecutionNode(plan, base),
       _conditionVariable(Variable::varFromVPack(plan->getAst(), base, "conditionVariable", true)),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
-      _expression(new Expression(plan->getAst(), base)),
+      _expression(new Expression(plan, plan->getAst(), base)),
       _canRemoveIfThrows(false) {}
 
 /// @brief toVelocyPack, for CalculationNode
@@ -1373,7 +1373,7 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
 
-  auto c = new CalculationNode(plan, _id, _expression->clone(plan->getAst()),
+  auto c = new CalculationNode(plan, _id, _expression->clone(plan, plan->getAst()),
                                conditionVariable, outVariable);
   c->_canRemoveIfThrows = _canRemoveIfThrows;
 
