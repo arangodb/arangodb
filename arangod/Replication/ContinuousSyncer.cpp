@@ -1507,7 +1507,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
 /// and filtering on the collection name until no more data is available
 int ContinuousSyncer::syncCollectionFinalize(std::string& errorMsg,
                                              std::string const& collectionName,
-                                             TRI_voc_tick_t fetchTick) {
+                                             TRI_voc_tick_t fromTick) {
   // fetch master state just once
   int res = getMasterState(errorMsg);
 
@@ -1530,13 +1530,13 @@ int ContinuousSyncer::syncCollectionFinalize(std::string& errorMsg,
 
     std::string const baseUrl = BaseUrl + 
                                 "/logger-follow?chunkSize=" + _chunkSize + 
-                                "&from=" + StringUtils::itoa(fetchTick) +
+                                "&from=" + StringUtils::itoa(fromTick) +
                                 "&serverId=" + _localServerIdString + 
                                 "&collection=" + StringUtils::urlEncode(collectionName);
 
     // send request
     std::string const progress =
-        "fetching master log for collection '" + collectionName + "' from tick " + StringUtils::itoa(fetchTick) +
+        "fetching master log for collection '" + collectionName + "' from tick " + StringUtils::itoa(fromTick) +
         ", barrier: " + StringUtils::itoa(_barrierId);
     setProgress(progress);
 
@@ -1569,27 +1569,42 @@ int ContinuousSyncer::syncCollectionFinalize(std::string& errorMsg,
     bool found;
     std::string header =
         response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
-
     bool checkMore = false;
     if (found) {
       checkMore = StringUtils::boolean(header);
     } 
 
-    header =
-        response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
+    TRI_voc_tick_t lastIncludedTick;
+    header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
     if (found) {
-      fetchTick = StringUtils::uint64(header);
+      lastIncludedTick = StringUtils::uint64(header);
     } else {
       errorMsg = "got invalid response from master at " +
                  std::string(_masterInfo._endpoint) +
                  ": required header is missing";
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
-
+    
+    // was the specified from value included the result?
+    bool fromIncluded = false;
+    header = response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
+    if (found) {
+      fromIncluded = StringUtils::boolean(header);
+    }
+    if (!fromIncluded && fromTick > 0) {// && _requireFromPresent
+      TRI_ASSERT(_masterIs27OrHigher);
+      res = TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
+      errorMsg = "required follow tick value '" + StringUtils::itoa(lastIncludedTick) +
+      "' is not present (anymore?) on master at " + _masterInfo._endpoint +
+      ". Last tick available on master is " + StringUtils::itoa(lastIncludedTick) +
+      ". It may be required to do a full resync and increase the "
+      "number of historic logfiles on the master.";
+      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    }
+    
     uint64_t processedMarkers = 0;
     uint64_t ignoreCount = 0;
-    int res = applyLog(response.get(), fetchTick, errorMsg, processedMarkers, ignoreCount);
-
+    int res = applyLog(response.get(), fromTick, errorMsg, processedMarkers, ignoreCount);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }

@@ -367,7 +367,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
                          StringUtils::itoa(latest));
   _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
   _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
-                         result.fromTickIncluded() ? "true" : "false");
+                         result.minTickIncluded() ? "true" : "false");
 
   if (length > 0) {
     if (useVst) {

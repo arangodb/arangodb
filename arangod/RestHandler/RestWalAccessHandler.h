@@ -27,6 +27,9 @@
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
+class WalAccess;
+  
+/// Storage engine agnostic handler for using the WalAccess interface
 class RestWalAccessHandler : public arangodb::RestBaseHandler {
  public:
   RestWalAccessHandler(GeneralRequest*, GeneralResponse*);
@@ -35,6 +38,9 @@ class RestWalAccessHandler : public arangodb::RestBaseHandler {
   char const* name() const override final { return "RestWalAccessHandler"; }
   bool isDirect() const override { return false; }
   RestStatus execute() override;
+  
+private:
+  void handleCommandTail(WalAccess const* wal);
 };
 }
 
