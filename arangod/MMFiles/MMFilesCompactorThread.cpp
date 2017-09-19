@@ -21,6 +21,7 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "MMFilesCompactionFeature.h"
 #include "MMFilesCompactorThread.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ReadLocker.h"
@@ -393,8 +394,6 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
       if (deleted) {
         // found a dead document
-        context->_dfi.numberDead++;
-        context->_dfi.sizeDead += MMFilesDatafileHelper::AlignedMarkerSize<int64_t>(marker);
         return true;
       }
 
@@ -405,9 +404,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       int res = copyMarker(context->_compactor, marker, &result);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        // TODO: dont fail but recover from this state
-        LOG_TOPIC(FATAL, Logger::COMPACTOR) << "cannot write compactor file: " << TRI_errno_string(res); 
-        FATAL_ERROR_EXIT();
+        THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("cannot write document marker into compactor file: ") + TRI_errno_string(res)); 
       }
 
       // let marker point to the new position
@@ -426,9 +423,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
         int res = copyMarker(context->_compactor, marker, &result);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          // TODO: dont fail but recover from this state
-          LOG_TOPIC(FATAL, Logger::COMPACTOR) << "cannot write document marker to compactor file: " << TRI_errno_string(res);
-          FATAL_ERROR_EXIT();
+          THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("cannot write remove marker into compactor file: ") + TRI_errno_string(res));
         }
 
         // update datafile info
@@ -486,30 +481,42 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   }
 
   // now compact all datafiles
+  uint64_t nrCombined = 0;
+  uint64_t compactionBytesRead = 0;
   for (size_t i = 0; i < n; ++i) {
     auto compaction = toCompact[i];
     MMFilesDatafile* df = compaction._datafile;
 
+    compactionBytesRead += df->currentSize();
     LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "compacting datafile '" << df->getName() << "' into '" << compactor->getName() << "', number: " << i << ", keep deletions: " << compaction._keepDeletions;
 
     // if this is the first datafile in the list of datafiles, we can also
-    // collect
-    // deletion markers
+    // collect deletion markers
     context->_keepDeletions = compaction._keepDeletions;
 
     // run the actual compaction of a single datafile
-    bool ok = TRI_IterateDatafile(df, compactifier);
+    bool ok;
+    try {
+      ok = TRI_IterateDatafile(df, compactifier);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(WARN, Logger::COMPACTOR) << "failed to compact datafile '" << df->getName() << "': " << ex.what();
+      throw;
+    }
 
     if (!ok) {
       LOG_TOPIC(WARN, Logger::COMPACTOR) << "failed to compact datafile '" << df->getName() << "'";
       // compactor file does not need to be removed now. will be removed on next
       // startup
-      // TODO: Remove file
       return;
     }
 
+    ++nrCombined;
   }  // next file
 
+  TRI_ASSERT(context->_dfi.numberDead == 0);
+  TRI_ASSERT(context->_dfi.sizeDead == 0);
+
+  physical->_datafileStatistics.compactionRun(nrCombined, compactionBytesRead, context->_dfi.sizeAlive);
   physical->_datafileStatistics.replace(compactor->fid(), context->_dfi);
 
   trx.commit();
@@ -662,7 +669,7 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   }
   
   std::vector<CompactionInfo> toCompact;
-  toCompact.reserve(maxFiles());
+  toCompact.reserve(MMFilesCompactionFeature::COMPACTOR->maxFiles());
 
   // now we have datafiles that we can process 
   size_t const n = datafiles.size();
@@ -674,12 +681,12 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
   uint64_t const numDocuments = getNumberOfDocuments(collection);
 
   // get maximum size of result file
-  uint64_t maxSize = maxSizeFactor() * static_cast<MMFilesCollection*>(collection->getPhysical())->journalSize();
+  uint64_t maxSize = MMFilesCompactionFeature::COMPACTOR->maxSizeFactor() * static_cast<MMFilesCollection*>(collection->getPhysical())->journalSize();
   if (maxSize < 8 * 1024 * 1024) {
     maxSize = 8 * 1024 * 1024;
   }
-  if (maxSize >= maxResultFilesize()) {
-    maxSize = maxResultFilesize();
+  if (maxSize >= MMFilesCompactionFeature::COMPACTOR->maxResultFilesize()) {
+    maxSize = MMFilesCompactionFeature::COMPACTOR->maxResultFilesize();
   }
 
   if (start >= n || numDocuments == 0) {
@@ -711,7 +718,9 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
       break;
     }
 
-    if (!doCompact && df->maximalSize() < smallDatafileSize() && i < n - 1) {
+    if (!doCompact &&
+        df->maximalSize() < MMFilesCompactionFeature::COMPACTOR->smallDatafileSize() &&
+        (i < n - 1)) {
       // very small datafile and not the last one. let's compact it so it's
       // merged with others
       doCompact = true;
@@ -728,18 +737,18 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
       // compact first datafile(s) if they contain only deletions
       doCompact = true;
       reason = ReasonOnlyDeletions;
-    } else if (dfi.sizeDead >= deadSizeThreshold()) {
+    } else if (dfi.sizeDead >= MMFilesCompactionFeature::COMPACTOR->deadSizeThreshold()) {
       // the size of dead objects is above some threshold
       doCompact = true;
       reason = ReasonDeadSize;
     } else if (dfi.sizeDead > 0 &&
                (((double)dfi.sizeDead /
-                     ((double)dfi.sizeDead + (double)dfi.sizeAlive) >= deadShare()) ||
-                ((double)dfi.sizeDead / (double)df->maximalSize() >= deadShare()))) {
+                     ((double)dfi.sizeDead + (double)dfi.sizeAlive) >= MMFilesCompactionFeature::COMPACTOR->deadShare()) ||
+                ((double)dfi.sizeDead / (double)df->maximalSize() >= MMFilesCompactionFeature::COMPACTOR->deadShare()))) {
       // the size of dead objects is above some share
       doCompact = true;
       reason = ReasonDeadSizeShare;
-    } else if (dfi.numberDead >= deadNumberThreshold()) {
+    } else if (dfi.numberDead >= MMFilesCompactionFeature::COMPACTOR->deadNumberThreshold()) {
       // the number of dead objects is above some threshold
       doCompact = true;
       reason = ReasonDeadCount;
@@ -813,8 +822,8 @@ bool MMFilesCompactorThread::compactCollection(LogicalCollection* collection, bo
       break;
     }
 
-    if (totalSize >= smallDatafileSize() &&
-        toCompact.size() >= maxFiles()) {
+    if (totalSize >= MMFilesCompactionFeature::COMPACTOR->smallDatafileSize() &&
+        toCompact.size() >= MMFilesCompactionFeature::COMPACTOR->maxFiles()) {
       // found enough files to compact
       break;
     }
@@ -859,7 +868,6 @@ void MMFilesCompactorThread::run() {
   MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
   std::vector<arangodb::LogicalCollection*> collections;
   int numCompacted = 0;
-
   while (true) {
     // keep initial _state value as vocbase->_state might change during
     // compaction loop
@@ -904,7 +912,7 @@ void MMFilesCompactorThread::run() {
 
               try {
                 double const now = TRI_microtime();
-                if (physical->lastCompactionStamp() + compactionCollectionInterval() <= now) {
+                if (physical->lastCompactionStamp() + MMFilesCompactionFeature::COMPACTOR->compactionCollectionInterval() <= now) {
                   auto ce = arangodb::MMFilesCollection::toMMFilesCollection(
                                 collection)
                                 ->ditches()
@@ -963,7 +971,7 @@ void MMFilesCompactorThread::run() {
       } else if (state != TRI_vocbase_t::State::SHUTDOWN_COMPACTOR && _vocbase->state() == TRI_vocbase_t::State::NORMAL) {
         // only sleep while server is still running
         CONDITION_LOCKER(locker, _condition);
-        _condition.wait(compactionSleepTime());
+        _condition.wait(MMFilesCompactionFeature::COMPACTOR->compactionSleepTime());
       }
     
       if (state == TRI_vocbase_t::State::SHUTDOWN_COMPACTOR || isStopping()) {

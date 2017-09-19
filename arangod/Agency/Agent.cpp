@@ -397,30 +397,18 @@ bool Agent::recvAppendEntriesRPC(
     
     _liLock.assertNotLockedByCurrentThread();
     MUTEX_LOCKER(ioLocker, _ioLock);
-  
-    size_t ndups = _state.removeConflicts(queries, gotSnapshot);
-    
-    if (nqs > ndups) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
-        << "Appending " << nqs - ndups << " entries to state machine. ("
-        << nqs << ", " << ndups << "): " << payload.toJson() ;
-      
-      try {
 
-        MUTEX_LOCKER(ioLocker, _liLock);
-        _lastApplied = _state.log(queries, ndups);
-        if (_lastApplied < payload[nqs-1].get("index").getNumber<index_t>()) {
-          // We could not log all the entries in this query, we need to report
-          // this to the leader!
-          ok = false;
-        }
-        
-      } catch (std::exception const& e) {
-        LOG_TOPIC(DEBUG, Logger::AGENCY)
-          << "Exception during log append: " << __FILE__ << __LINE__
-          << " " << e.what();
+    try {
+      _lastApplied = _state.log(queries, gotSnapshot);
+      if (_lastApplied < payload[nqs-1].get("index").getNumber<index_t>()) {
+        // We could not log all the entries in this query, we need to report
+        // this to the leader!
+        ok = false;
       }
-      
+    } catch (std::exception const& e) {
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "Exception during log append: " << __FILE__ << __LINE__
+        << " " << e.what();
     }
   }
 
