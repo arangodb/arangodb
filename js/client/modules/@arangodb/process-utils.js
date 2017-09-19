@@ -43,6 +43,7 @@ const testPort = require('internal').testPort;
 const download = require('internal').download;
 const time = require('internal').time;
 const wait = require('internal').wait;
+const sleep = require('internal').sleep;
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -245,7 +246,20 @@ function cleanupLastDirectory (options) {
       // Avoid attempting to remove the same directory multiple times
       if ((cleanupDirectories.indexOf(cleanupDirectory) === -1) &&
           (fs.exists(cleanupDirectory))) {
-        fs.removeDirectoryRecursive(cleanupDirectory, true);
+        let i = 0;
+        while (i < 5) {
+          try {
+            fs.removeDirectoryRecursive(cleanupDirectory, true);
+          } catch (x) {
+            print('failed to delete directory "' + cleanupDirectory + '" - "' +
+                  x + '" - Will retry in 5 seconds"');
+            sleep(5);
+          }
+          i += 1;
+        }
+        print('failed to delete directory "' + cleanupDirectory + '" - "' +
+              '" - Deferring cleanup for test run end."');
+        cleanupDirectories.unshift(cleanupDirectory);
       }
       break;
     }
