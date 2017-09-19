@@ -210,11 +210,6 @@ def checkEnabledEdition(edition, text) {
 }
 
 def checkEnabledMaintainer(maintainer, os, text) {
-    if (os == 'windows' && maintainer != 'maintainer') {
-        echo "Not ${text} ${maintainer} because ${maintainer} is not enabled under Windows"
-        return false
-    }
-
     if (maintainer == 'maintainer' && ! useMaintainer) {
         echo "Not ${text} ${maintainer} because ${maintainer} is not enabled"
         return false
@@ -421,18 +416,27 @@ def checkCommitMessages() {
         if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
             echo "build of main branch"
 
-            useLinux = true
-            useMac = true
-            useWindows = true
+            restrictions = [
+                // OS EDITION MAINTAINER
+                "build-linux-community-maintainer" : true,
+                "build-linux-enterprise-maintainer" : true,
+                "build-linux-community-user" : true,
+                "build-linux-enterprise-user" : true,
+                "build-mac-community-user" : true,
+                "build-mac-enterprise-user" : true,
+                "build-windows-community-user" : true,
+                "build-windows-enterprise-user" : true,
 
-            useCommunity = true
-            useEnterprise = true
-
-            useMaintainer = true
-            useUser = true
-
-            // runResilience = false
-            runTests = true
+                // OS EDITION MAINTAINER MODE ENGINE
+                "test-linux-community-maintainer-singleserver-mmfiles" : true,
+                "test-linux-community-maintainer-singleserver-rocksdb" : true,
+                "test-linux-enterprise-user-cluster-mmfiles" : true,
+                "test-linux-enterprise-user-cluster-rocksdb" : true,
+                "test-mac-community-user-singleserver-rocksdb" : true,
+                "test-mac-enterprise-user-cluster-rocksdb" : true,
+                "test-windows-community-user-singleserver-rocksdb" : true,
+                "test-windows-mac-enterprise-user-cluster-rocksdb" : true,
+            ]
         }
         else if (env.BRANCH_NAME =~ /^PR-/) {
             echo "build of PR"
@@ -441,9 +445,7 @@ def checkCommitMessages() {
                 // OS EDITION MAINTAINER
                 "build-linux-community-maintainer" : true,
                 "build-linux-enterprise-maintainer" : true,
-                "build-mac-community-maintainer" : true,
                 "build-mac-enterprise-user" : true,
-                "build-windows-community-maintainer" : true,
                 "build-windows-enterprise-maintainer" : true,
 
                 // OS EDITION MAINTAINER MODE ENGINE
@@ -633,6 +635,12 @@ def getTests(os, edition, maintainer, mode, engine) {
             ["shell_replication", "shell_replication", ""],
             rspecify(os, "http_replication")
         ]
+
+        if (maintainer == "maintainer" && os == "linux") {
+            test += [
+                ["recovery", "recovery", ""]
+            ]
+        }
     }
 
     return tests
@@ -747,7 +755,7 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                         echo "caught error, copying log to ${logFileFailed}: ${msg}"
 
                         fileOperations([
-                            fileCreateOperation(fileContent: 'TEST FAILED: ${msg}', fileName: "${archDir}-FAIL.txt")
+                            fileCreateOperation(fileContent: "TEST FAILED: ${msg}", fileName: "${archDir}-FAIL.txt")
                         ])
 
                         if (os == 'linux' || os == 'mac') {
@@ -1028,27 +1036,29 @@ def buildEdition(os, edition, maintainer) {
             }
         }
         else if (os == 'windows') {
-            def tmpDir = "${arch}/tmp"
+            // def tmpDir = "${arch}/tmp"
 
-            fileOperations([
-                folderCreateOperation(tmpDir)
-            ])
+            // fileOperations([
+            //     folderCreateOperation(tmpDir)
+            // ])
 
             // withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}",
             //          "_MSPDBSRV_ENDPOINT_=${edition}-${env.BUILD_TAG}", "GYP_USE_SEPARATE_MSPDBSRV=1"]) {
-                powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
+            //    powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
             // }
 
-            fileOperations([
-                folderDeleteOperation(tmpDir)
-            ])
+            // fileOperations([
+            //     folderDeleteOperation(tmpDir)
+            // ])
+
+            powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}_${maintainer}.ps1"
         }
     }
     catch (exc) {
         def msg = exc.toString()
         
         fileOperations([
-            fileCreateOperation(fileContent: 'BUILD FAILED: ${msg}', fileName: "${archDir}-FAIL.txt")
+            fileCreateOperation(fileContent: "BUILD FAILED: ${msg}", fileName: "${archDir}-FAIL.txt")
         ])
 
         if (os == 'linux' || os == 'mac') {
