@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertFalse */
+/* global assertEqual, assertNull, assertTrue, assertFalse, assertNotNull */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for dump/reload
@@ -35,26 +35,23 @@ var jsunity = require('jsunity');
 function runSetup () {
   'use strict';
   internal.debugClearFailAt();
-  var i;
+  var v;
 
   db._drop('UnitTestsDummy');
   db._create('UnitTestsDummy');
 
   db._dropView('UnitTestsRecovery1');
   db._dropView('UnitTestsRecovery2');
-  var v = db._createView('UnitTestsRecovery1', 'logger', {});
-  v.properties({ level: 'DEBUG' });
+  v = db._createView('UnitTestsRecovery1', 'iresearch', {});
+  v.properties({ links: { 'UnitTestsDummy': { includeAllFields: true } } });
+  db._collection('UnitTestsDummy').save({ _key: 'foo', num: 1 }, { waitForSync: true });
 
   v.rename('UnitTestsRecovery2');
 
-  v = db._createView('UnitTestsRecovery1', 'logger', {});
-  v.properties({ level: 'INFO' });
-
-  internal.wal.flush(true, true);
+  db._collection('UnitTestsDummy').save({ _key: 'bar', num: 2 }, { waitForSync: true });
 
   internal.debugSegfault('crashing server');
 }
-
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test suite
 // //////////////////////////////////////////////////////////////////////////////
@@ -68,17 +65,16 @@ function recoverySuite () {
     tearDown: function () {},
 
     // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test whether rename and recreate works
+    // / @brief test whether rename works
     // //////////////////////////////////////////////////////////////////////////////
 
-    testViewRenameRecreateWithFlush: function () {
-      var v, prop;
+    testIResearchViewRename: function () {
+      var v, res;
 
-      v = db._view('UnitTestsRecovery1');
-      assertEqual(v.properties().level, 'INFO');
-
+      assertNull(db._view('UnitTestsRecovery1'));
       v = db._view('UnitTestsRecovery2');
-      assertEqual(v.properties().level, 'DEBUG');
+      res = AQL_EXECUTE('FOR doc IN VIEW `UnitTestsRecovery2` FILTER doc.num > 0 RETURN doc', null, {}).json;
+      assertEqual(res.length, 2);
     }
 
   };
