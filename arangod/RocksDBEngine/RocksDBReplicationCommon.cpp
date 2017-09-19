@@ -27,12 +27,12 @@ using namespace arangodb;
 
 RocksDBReplicationResult::RocksDBReplicationResult(int errorNumber,
                                                    uint64_t maxTick)
-    : Result(errorNumber), _maxTick(maxTick), _fromTickIncluded(false) {}
+    : Result(errorNumber), _maxTick(maxTick), _minTickIncluded(false) {}
 
 uint64_t RocksDBReplicationResult::maxTick() const { return _maxTick; }
 
-bool RocksDBReplicationResult::fromTickIncluded() const {
-  return _fromTickIncluded;
+bool RocksDBReplicationResult::minTickIncluded() const {
+  return _minTickIncluded;
 }
 
-void RocksDBReplicationResult::includeFromTick() { _fromTickIncluded = true; }
+void RocksDBReplicationResult::includeMinTick() { _minTickIncluded = true; }

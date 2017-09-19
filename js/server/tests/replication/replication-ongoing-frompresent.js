@@ -278,8 +278,15 @@ function ReplicationSuite() {
         },
 
         function(state) {
-          // data loss on slave!
-          assertTrue(db._collection(cn).count() < 25);
+          if (db._engine().name === "rocksdb") {
+            // rocksdb keeps wal longer
+            let cc = db._collection(cn).count();
+            assertEqual(cc, 31, "rocksdb must keep wal");
+          } else {
+            // data loss on slave!
+            let cc = db._collection(cn).count();
+            assertTrue(cc < 25, "Expected less than " + cc);
+          }
         }, {
           requireFromPresent: false,
           keepBarrier: false
@@ -363,10 +370,16 @@ function ReplicationSuite() {
         },
 
         function (state) {
-          // slave should have failed
-          assertFalse(replication.applier.state().state.running);
-          // data loss on slave!
-          assertTrue(db._collection(cn).count() < 25);
+          if (db._engine().name === "rocksdb") {
+            // rocksdb keeps wal longer
+            assertTrue(replication.applier.state().state.running);            
+            assertEqual(db._collection(cn).count(), 30, "rocksdb must keep wal");
+          } else {
+            // slave should have failed
+            assertFalse(replication.applier.state().state.running);
+            // data loss on slave!
+            assertTrue(db._collection(cn).count() < 25);
+          }
         },
         {
           requireFromPresent: true,

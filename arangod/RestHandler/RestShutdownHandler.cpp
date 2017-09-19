@@ -47,7 +47,7 @@ bool RestShutdownHandler::isDirect() const { return true; }
 RestStatus RestShutdownHandler::execute() {
   if (_request->execContext() != nullptr &&
       !_request->execContext()->isSystemUser()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_FORBIDDEN);
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     return RestStatus::DONE;
   }
   if (_request->requestType() != rest::RequestType::DELETE_REQ) {

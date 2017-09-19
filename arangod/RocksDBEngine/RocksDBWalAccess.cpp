@@ -530,16 +530,17 @@ WalTailingResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
                                         size_t chunkSize, bool includeSystem,
                                         WalFilter const& filter,
                                         MarkerCallback const& func) const {
-  uint64_t firstTick = tickStart;
-  uint64_t lastTick = tickStart;
-  uint64_t lastWrittenTick = tickStart;
+  uint64_t firstTick = tickStart; // first tick actually read
+  uint64_t lastTick = tickStart; // lastTick at start of a write batch)
+  uint64_t lastWrittenTick = tickStart; // lastTick at the end of a write batch
 
   auto handler = std::make_unique<MyWALParser>(includeSystem, filter, func);
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
 
+  rocksdb::Status s;
+  // no need verifying the WAL contents
   rocksdb::TransactionLogIterator::ReadOptions ro(false);
-  rocksdb::Status s =
-      rocksutils::globalRocksDB()->GetUpdatesSince(tickStart, &iterator, ro);
+  s = rocksutils::globalRocksDB()->GetUpdatesSince(tickStart - 1, &iterator, ro);
   if (!s.ok()) {
     Result r = convertStatus(s, rocksutils::StatusHint::wal);
     return WalTailingResult{r.errorNumber(), 0, 0};
@@ -553,9 +554,8 @@ WalTailingResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
     s = iterator->status();
     if (!s.ok()) {
       LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan";
-      auto converted = rocksutils::convertStatus(s);
-      return WalTailingResult(converted.errorNumber(), tickStart,
-                              lastWrittenTick);
+      LOG_TOPIC(ERR, Logger::ROCKSDB) << s.ToString();
+      break; // s is considered in the end
     }
 
     rocksdb::BatchResult batch = iterator->GetBatch();
@@ -564,29 +564,31 @@ WalTailingResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
       iterator->Next();  // skip
       continue;
     } else if (batch.sequence > tickEnd) {
-      break;  // cancel out
+      break; // cancel out
     }
 
     // record the first tick we are reading
     if (firstTick == tickStart) {
       firstTick = batch.sequence;
     }
-    lastTick = batch.sequence;
+    lastTick = batch.sequence; // start of the batch
+    
     handler->startNewBatch(batch.sequence);
     s = batch.writeBatchPtr->Iterate(handler.get());
     if (!s.ok()) {
+      LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan";
       LOG_TOPIC(ERR, Logger::ROCKSDB) << s.ToString();
-      break;
+      break; // s is considered in the end
     }
-
-    lastWrittenTick = handler->endBatch();
-    handler->endBatch();
+    lastWrittenTick = handler->endBatch(); // end of the batch
+    
+    TRI_ASSERT(lastWrittenTick >= lastTick);
     iterator->Next();
   }
 
+  WalTailingResult result(TRI_ERROR_NO_ERROR, firstTick, lastWrittenTick);
   if (!s.ok()) {  // TODO do something?
-    Result r = convertStatus(s, rocksutils::StatusHint::wal);
-    return WalTailingResult(r.errorNumber(), firstTick, lastWrittenTick);
+    result.reset(convertStatus(s, rocksutils::StatusHint::wal));
   }
-  return WalTailingResult(TRI_ERROR_NO_ERROR, firstTick, lastWrittenTick);
+  return result;
 }

@@ -552,16 +552,19 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
 
   std::unique_ptr<WALParser> handler(
       new WALParser(vocbase, includeSystem, collectionId, builder));
-  std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
+  std::unique_ptr<rocksdb::TransactionLogIterator> iterator;
 
-  rocksdb::Status s = static_cast<rocksdb::DB*>(globalRocksDB())
-                          ->GetUpdatesSince(tickStart, &iterator);
-  if (!s.ok()) {  // TODO do something?
+  rocksdb::Status s;
+  // no need verifying the WAL contents
+  rocksdb::TransactionLogIterator::ReadOptions ro(false);
+  s = rocksutils::globalRocksDB()->GetUpdatesSince(tickStart - 1, &iterator, ro);
+  
+  if (!s.ok()) {
     auto converted = convertStatus(s, rocksutils::StatusHint::wal);
     return {converted.errorNumber(), lastTick};
   }
 
-  bool fromTickIncluded = false;
+  bool minTickIncluded = false;
   // we need to check if the builder is bigger than the chunksize,
   // only after we printed a full WriteBatch. Otherwise a client might
   // never read the full writebatch
@@ -570,20 +573,15 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
     s = iterator->status();
     if (!s.ok()) {
       LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan";
-      auto converted = convertStatus(s);
-      auto result =
-      RocksDBReplicationResult(converted.errorNumber(), lastWrittenTick);
-      if (fromTickIncluded) {
-        result.includeFromTick();
-      }
-      return result;
+      LOG_TOPIC(ERR, Logger::ROCKSDB) << s.ToString();
+      break; // s is considered in the end
     }
     
     rocksdb::BatchResult batch = iterator->GetBatch();
     TRI_ASSERT(lastTick == tickStart || batch.sequence >= lastTick);
-    if (!fromTickIncluded && batch.sequence >= tickStart &&
+    if (!minTickIncluded && batch.sequence <= tickStart &&
         batch.sequence <= tickEnd) {
-      fromTickIncluded = true;
+      minTickIncluded = true;
     }
     if (batch.sequence <= tickStart) {
       iterator->Next(); // skip
@@ -597,27 +595,27 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
     handler->startNewBatch(batch.sequence);
     s = batch.writeBatchPtr->Iterate(handler.get());
     if (!s.ok()) {
+      LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan";
       LOG_TOPIC(ERR, Logger::ROCKSDB) << s.ToString();
-      break;
+      break; // s is considered in the end
     }
     
     lastWrittenTick = handler->endBatch();
     LOG_TOPIC(_LOG, Logger::ROCKSDB) << "End WriteBatch written-tick: "
                                      << lastWrittenTick;
-    handler->endBatch();
-    if (!fromTickIncluded && lastTick >= tickStart && lastTick <= tickEnd) {
-      fromTickIncluded = true;
+    TRI_ASSERT(lastWrittenTick >= lastTick);
+    if (!minTickIncluded && lastWrittenTick <= tickStart && lastWrittenTick <= tickEnd) {
+      minTickIncluded = true;
     }
     iterator->Next();
   }
 
+  RocksDBReplicationResult result(TRI_ERROR_NO_ERROR, lastWrittenTick);
   if (!s.ok()) {  // TODO do something?
-    auto converted = convertStatus(s, rocksutils::StatusHint::wal);
-    return {converted.errorNumber(), lastWrittenTick};
+    result.reset(convertStatus(s, rocksutils::StatusHint::wal));
   }
-  auto result = RocksDBReplicationResult(TRI_ERROR_NO_ERROR, lastWrittenTick);
-  if (fromTickIncluded) {
-    result.includeFromTick();
+  if (minTickIncluded) {
+    result.includeMinTick();
   }
   return result;
 }

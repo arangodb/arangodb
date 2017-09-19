@@ -1025,8 +1025,8 @@ int RestReplicationHandler::processRestoreCollection(
     return TRI_ERROR_NO_ERROR;
   }
 
-  arangodb::LogicalCollection* col = nullptr;
-
+  grantTemporaryRights();
+  LogicalCollection* col = nullptr;
   if (reuseId) {
     TRI_voc_cid_t const cid =
         arangodb::basics::VelocyPackHelper::extractIdValue(parameters);
@@ -1269,6 +1269,8 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
 Result RestReplicationHandler::processRestoreData(std::string const& colName,
                                                   bool useRevision) {
+  grantTemporaryRights();
+  
   if (colName == "_users") {
     // We need to handle the _users in a special way
     return processRestoreUsersBatch(colName, useRevision);
@@ -1671,8 +1673,9 @@ int RestReplicationHandler::processRestoreIndexes(VPackSlice const& collection,
 
   int res = TRI_ERROR_NO_ERROR;
 
+  grantTemporaryRights();
   READ_LOCKER(readLocker, _vocbase->_inventoryLock);
-
+  
   // look up the collection
   try {
     CollectionGuard guard(_vocbase, name.c_str());
@@ -2678,6 +2681,19 @@ uint64_t RestReplicationHandler::determineChunkSize() const {
   }
 
   return chunkSize;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Grant temporary restore rights
+//////////////////////////////////////////////////////////////////////////////
+void RestReplicationHandler::grantTemporaryRights() {
+  if (ExecContext::CURRENT != nullptr) {
+    if (ExecContext::CURRENT->canUseDatabase(_vocbase->name(), AuthLevel::RW) ) {
+      // If you have administrative access on this database,
+      // we grant you everything for restore.
+      ExecContext::CURRENT = nullptr;
+    }
+  }
 }
 
 //////////////////////////////////////////////////////////////////////////////
