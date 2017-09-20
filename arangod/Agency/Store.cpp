@@ -662,6 +662,7 @@ void Store::run() {
     }
 
     toClear = clearExpired();
+    // FIXME: This code has no effect.
     if (_agent && _agent->leading()) {
       //_agent->write(toClear);
     }
