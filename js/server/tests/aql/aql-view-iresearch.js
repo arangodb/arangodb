@@ -53,13 +53,14 @@ function iResearchAqlTestSuite () {
         c.save({ a: "foo", b: "bar", c: i });
         c.save({ a: "foo", b: "baz", c: i });
         c.save({ a: "bar", b: "foo", c: i });
-      }
-      for (let i = 0; i < 4; i++) {
         c.save({ a: "baz", b: "foo", c: i });
       }
 
+      c.save({ name: "full", text: "the quick brown fox jumps over the lazy dog" });
+      c.save({ name: "half", text: "quick fox over lazy" });
+      c.save({ name: "other half", text: "the brown jumps the dog" });
       // save last doc with waitForSync
-      c.save({ a: "baz", b: "foo", c: 4 }, { waitForSync: true });
+      c.save({ name: "quarter", text: "quick over" }, { waitForSync: true });
     },
 
     tearDownAll : function () {
@@ -216,6 +217,23 @@ function iResearchAqlTestSuite () {
       assertEqual(result[1].b, 'baz');
       assertEqual(result[0].c, 0);
       assertEqual(result[1].c, 0);
+    },
+
+    testInTokensFilterSortTFIDF : function () {
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.text IN TOKENS('the quick brown', 'text_en') SORT TFIDF(doc) LIMIT 4 RETURN doc", null, { }).json;
+
+      assertEqual(result.length, 4);
+      assertEqual(result[0].name, 'full');
+      assertEqual(result[1].name, 'other half');
+      assertEqual(result[2].name, 'half');
+      assertEqual(result[3].name, 'quarter');
+    },
+
+    testPhraseFilter : function () {
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER PHRASE(doc.text, 'quick brown fox jumps', 'text_en') RETURN doc", null, { }).json;
+
+      assertEqual(result.length, 1);
+      assertEqual(result[0].name, 'full');
     },
 
   };
