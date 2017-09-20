@@ -287,7 +287,8 @@ void MMFilesCleanupThread::cleanupCollection(arangodb::LogicalCollection* collec
       }
     } else {
       // unknown type
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unknown ditch type '" << type << "'"; FATAL_ERROR_EXIT();
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unknown ditch type '" << type << "'"; 
+      FATAL_ERROR_EXIT();
     }
 
     // next iteration

@@ -470,7 +470,7 @@ ExecutionPlan* Query::prepare() {
     enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
     plan.reset(ExecutionPlan::instantiateFromAst(_ast.get()));
 
-    if (plan.get() == nullptr) {
+    if (plan == nullptr) {
       // oops
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to create query execution engine");
     }
@@ -507,7 +507,7 @@ ExecutionPlan* Query::prepare() {
 
     // we have an execution plan in VelocyPack format
     plan.reset(ExecutionPlan::instantiateFromVelocyPack(_ast.get(), _queryBuilder->slice()));
-    if (plan.get() == nullptr) {
+    if (plan == nullptr) {
       // oops
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not create plan from vpack");
     }
@@ -977,7 +977,7 @@ QueryResult Query::explain() {
 
     if (plan == nullptr) {
       // oops
-      return QueryResult(TRI_ERROR_INTERNAL);
+      return QueryResult(TRI_ERROR_INTERNAL, "unable to create plan from AST");
     }
 
     // Run the query optimizer:
@@ -1071,8 +1071,8 @@ void Query::enterContext() {
       _context = V8DealerFeature::DEALER->enterContext(_vocbase, false);
 
       if (_context == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "cannot enter V8 context");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT,
+                                       "unable to enter V8 context for query execution");
       }
 
       // register transaction and resolver in context

@@ -597,7 +597,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
             try {
               ok = addShardFollower(ep, database, shard, lockJobId);
             } catch (err4) {
-              db._drop(shard);
+              db._drop(shard, {isSystem: true });
               throw err4;
             }
           } catch (err3) {
@@ -1001,7 +1001,7 @@ function executePlanForCollections(plannedCollections) {
               collections[collection].planId);
 
             try {
-              db._drop(collection, {timeout:1.0});
+              db._drop(collection, {timeout:1.0, isSystem: true});
               console.topic('heartbeat=debug', "dropping local shard '%s/%s' of '%s/%s => SUCCESS",
                     database,
                     collection,
