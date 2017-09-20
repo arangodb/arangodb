@@ -53,13 +53,17 @@ TraverserCache::~TraverserCache() {}
 VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto col = _trx->vocbase()->lookupCollection(idToken.cid());
-  TRI_ASSERT(col != nullptr);
+
+  if (col == nullptr) {
+    // collection gone... should not happen
+    return basics::VelocyPackHelper::NullValue();
+  }
+
   if (!col->readDocument(_trx, idToken.token(), *_mmdr.get())) {
-    TRI_ASSERT(false);
     // We already had this token, inconsistent state. Return NULL in Production
-    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS) << "Could not extract indexed Edge Document, return 'null' instead. "
-      << "This is most likely a caching issue. Try: '"
-      << col->name() <<".unload(); " << col->name() << ".load()' in arangosh to fix this.";
+    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS) << "Could not extract indexed edge document, return 'null' instead. "
+      << "This is most likely a caching issue. Try: 'db."
+      << col->name() <<".unload(); db." << col->name() << ".load()' in arangosh to fix this.";
     return basics::VelocyPackHelper::NullValue();
   }
   return VPackSlice(_mmdr->vpack());
