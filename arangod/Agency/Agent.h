@@ -339,8 +339,8 @@ class Agent : public arangodb::Thread,
   /// Agent thread in sendAppendEntriesRPC. Therefore no protection is
   /// necessary for these:
 
-  /// @brief _lastHighest stores for each follower the highest index it
-  /// has reported in the last appendEntriesRPC call.
+  /// @brief stores for each follower the highest index log it has ever been
+  // sent to.
   std::unordered_map<std::string, index_t> _lastHighest;
 
   /// @brief _lastSent stores for each follower the time stamp of the time 
@@ -350,14 +350,16 @@ class Agent : public arangodb::Thread,
 
   /// The following three members are protected by _tiLock:
 
-  /// @brief Confirmed indices of all members of agency FIXME, explain
-  /// difference to _lastHighest.
+  /// @brief stores for each follower the highest index log it has reported as 
+  /// locally logged.
   std::unordered_map<std::string, index_t> _confirmed;
 
-  /// @brief _lastAcked: FIXME explain
+  /// @brief _lastAcked: last time we received an answer to a sendAppendEntries
   std::unordered_map<std::string, TimePoint> _lastAcked;
 
-  /// @brief _earliestPackage: FIXME explain
+  /// @brief The earliest timepoint at which we will send new sendAppendEntries
+  /// to a particular follower. This is a measure to avoid bombarding a
+  /// follower, that has trouble keeping up.
   std::unordered_map<std::string, TimePoint> _earliestPackage;
 
   // @brief Lock for the above time data about other agents. This
