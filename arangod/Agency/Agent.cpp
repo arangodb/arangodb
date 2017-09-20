@@ -728,10 +728,6 @@ void Agent::load() {
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting spearhead worker.";
 
-  // Single threaded startup no need locking
-  _spearhead.start();
-  _readDB.start();
-
   _constituent.start(vocbase, queryRegistry);
   persistConfiguration(term());
 
@@ -1205,13 +1201,6 @@ void Agent::beginShutdown() {
 
   // Compactor
   _compactor.beginShutdown();
-
-  // Stop key value stores
-  {
-    MUTEX_LOCKER(ioLocker, _ioLock);
-    _spearhead.beginShutdown();
-    _readDB.beginShutdown();
-  }
 
   // Wake up all waiting rest handlers
   {
