@@ -392,6 +392,12 @@ void Agent::sendAppendEntriesRPC() {
         lastAcked = _lastAcked[followerId];
         earliestPackage = _earliestPackage[followerId];
       }
+
+      if (
+        ((system_clock::now() - earliestPackage).count() < 0)) {
+        continue;
+      }
+
       duration<double> lockTime = system_clock::now() - startTime;
       if (lockTime.count() > 0.1) {
         LOG_TOPIC(WARN, Logger::AGENCY)
@@ -421,8 +427,7 @@ void Agent::sendAppendEntriesRPC() {
 
       duration<double> m = system_clock::now() - _lastSent[followerId];
 
-      if (highest == _lastHighest[followerId] &&
-          m.count() < 0.25 * _config.minPing()) {
+      if (highest == _lastHighest[followerId]) {
         // I intentionally left here _config.minPing() without the
         // _config.timeoutMult(), if things are getting tight on the
         // system, we still send out empty heartbeats every 1/4 minpings,
@@ -481,34 +486,33 @@ void Agent::sendAppendEntriesRPC() {
            << "&prevLogTerm=" << prevLogTerm << "&leaderCommit=" << _commitIndex
            << "&senderTimeStamp=" << std::llround(readSystemClock() * 1000);
       
-      size_t toLog = 0;
       // Body
       Builder builder;
       builder.add(VPackValue(VPackValueType::Array));
-      if (
-          ((system_clock::now() - earliestPackage).count() > 0)) {
-        if (needSnapshot) {
-          { VPackObjectBuilder guard(&builder);
-            builder.add(VPackValue("readDB"));
-            { VPackArrayBuilder guard2(&builder);
-              snapshot.dumpToBuilder(builder);
-            }
-            builder.add("term", VPackValue(snapshotTerm));
-            builder.add("index", VPackValue(snapshotIndex));
+
+      if (needSnapshot) {
+        { VPackObjectBuilder guard(&builder);
+          builder.add(VPackValue("readDB"));
+          { VPackArrayBuilder guard2(&builder);
+            snapshot.dumpToBuilder(builder);
           }
+          builder.add("term", VPackValue(snapshotTerm));
+          builder.add("index", VPackValue(snapshotIndex));
         }
-        for (size_t i = 0; i < unconfirmed.size(); ++i) {
-          auto const& entry = unconfirmed.at(i);
-          if (entry.index > lastConfirmed) {
-            builder.add(VPackValue(VPackValueType::Object));
-            builder.add("index", VPackValue(entry.index));
-            builder.add("term", VPackValue(entry.term));
-            builder.add("query", VPackSlice(entry.entry->data()));
-            builder.add("clientId", VPackValue(entry.clientId));
-            builder.close();
-            highest = entry.index;
-            ++toLog;
-          }
+      }
+
+      size_t toLog = 0;
+      for (size_t i = 0; i < unconfirmed.size(); ++i) {
+        auto const& entry = unconfirmed.at(i);
+        if (entry.index > lastConfirmed) {
+          builder.add(VPackValue(VPackValueType::Object));
+          builder.add("index", VPackValue(entry.index));
+          builder.add("term", VPackValue(entry.term));
+          builder.add("query", VPackSlice(entry.entry->data()));
+          builder.add("clientId", VPackValue(entry.clientId));
+          builder.close();
+          highest = entry.index;
+          ++toLog;
         }
       }
       builder.close();
@@ -523,14 +527,12 @@ void Agent::sendAppendEntriesRPC() {
       }
       
       // Verbose output
-      if (toLog > 0) {
-        LOG_TOPIC(TRACE, Logger::AGENCY)
-          << "Appending " << toLog << " entries up to index "
-          << highest
-          << (needSnapshot ? " and a snapshot" : "")
-          << " to follower " << followerId << ". Message: "
-          << builder.toJson();
-      }
+      LOG_TOPIC(TRACE, Logger::AGENCY)
+        << "Appending " << toLog << " entries up to index "
+        << highest
+        << (needSnapshot ? " and a snapshot" : "")
+        << " to follower " << followerId << ". Message: "
+        << builder.toJson();
 
       // Send request
       auto headerFields =
@@ -539,33 +541,26 @@ void Agent::sendAppendEntriesRPC() {
         "1", 1, _config.poolAt(followerId),
         arangodb::rest::RequestType::POST, path.str(),
         std::make_shared<std::string>(builder.toJson()), headerFields,
-        std::make_shared<AgentCallback>(
-          this, followerId, (toLog) ? highest : 0, toLog),
+        std::make_shared<AgentCallback>(this, followerId, highest, toLog),
         std::max(1.0e-3 * toLog * dt.count(), 
                  _config.minPing() * _config.timeoutMult()), true);
 
       _lastSent[followerId]    = system_clock::now();
       _lastHighest[followerId] = highest;
 
-      if (toLog > 0) {
-        earliestPackage = system_clock::now() + toLog * dt;
-        {
-          MUTEX_LOCKER(tiLocker, _tiLock);
-          _earliestPackage[followerId] = earliestPackage;
-        }
-        LOG_TOPIC(DEBUG, Logger::AGENCY)
-          << "Appending " << unconfirmed.size() - 1 << " entries up to index "
-          << highest << " to follower " << followerId 
-          << ". Next real log contact to " << followerId<< " in: " 
-          <<  std::chrono::duration<double, std::milli>(
-            earliestPackage-system_clock::now()).count() << "ms";
-      } else {
-        LOG_TOPIC(TRACE, Logger::AGENCY)
-          << "Just keeping follower " << followerId
-          << " devout with " << builder.toJson();
+      earliestPackage = system_clock::now() + toLog * dt;
+      {
+        MUTEX_LOCKER(tiLocker, _tiLock);
+        _earliestPackage[followerId] = earliestPackage;
       }
-        
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << "Appending " << unconfirmed.size() - 1 << " entries up to index "
+        << highest << " to follower " << followerId 
+        << ". Next real log contact to " << followerId<< " in: " 
+        <<  std::chrono::duration<double, std::milli>(
+          earliestPackage-system_clock::now()).count() << "ms";
     }
+    
   }
   _constituent.notifyHeartbeatSent();
 }
@@ -1430,7 +1425,8 @@ void Agent::rebuildDBs() {
 
   {
     auto logs = _state.slices(lastCompactionIndex+1, commitIndex);
-    _readDB.applyLogEntries(logs, commitIndex, false  /* do not send callbacks */);
+    _readDB.applyLogEntries(logs, commitIndex, term,
+                            false  /* do not send callbacks */);
   }
   _spearhead = _readDB;
 
