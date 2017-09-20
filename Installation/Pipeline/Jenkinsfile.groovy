@@ -275,13 +275,21 @@ def rspecify(os, test) {
     }
 }
 
+def deleteDirDocker(os) {
+    if (os == "linux") {
+        sh "sudo rm -rf build-deb"
+    }
+
+    deleteDir()
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       SCRIPTS SCM
 // -----------------------------------------------------------------------------
 
-def checkoutCommunity() {
+def checkoutCommunity(os) {
     if (cleanBuild) {
-        deleteDir()
+        deleteDirDocker(os)
     }
 
     retry(3) {
@@ -637,7 +645,7 @@ def getTests(os, edition, maintainer, mode, engine) {
         ]
 
         if (maintainer == "maintainer" && os == "linux") {
-            test += [
+            tests += [
                 ["recovery", "recovery", ""]
             ]
         }
@@ -827,7 +835,7 @@ def testStep(os, edition, maintainer, mode, engine, stageName) {
                     def archRun    = "${arch}-RUN"
 
                     // clean the current workspace completely
-                    deleteDir()
+                    deleteDirDocker(os)
 
                     // create directories for the artifacts
                     fileOperations([
@@ -1098,9 +1106,9 @@ def buildStepCheck(os, edition, maintainer) {
     return true
 }
 
-def checkoutSource(edition) {
+def checkoutSource(os, edition) {
     timeout(30) {
-        checkoutCommunity()
+        checkoutCommunity(os)
 
         if (edition == "enterprise") {
             checkoutEnterprise()
@@ -1117,7 +1125,7 @@ def createDockerImage(edition, maintainer, stageName) {
         if (buildStepCheck(os, edition, maintainer)) {
             node(buildJenkins[os]) {
                 stage(stageName) {
-                    checkoutSource(edition)
+                    checkoutSource(os, edition)
 
                     def archDir  = "${os}-${edition}-${maintainer}"
                     def arch     = "${archDir}/04-docker"
@@ -1163,7 +1171,7 @@ def runEdition(os, edition, maintainer, stageName) {
         if (buildStepCheck(os, edition, maintainer)) {
             node(buildJenkins[os]) {
                 stage(stageName) {
-                    checkoutSource(edition)
+                    checkoutSource(os, edition)
 
                     // I concede...we need a lock for windows...I could not get it to run concurrently...
                     // v8 would not build multiple times at the same time on the same machine:
