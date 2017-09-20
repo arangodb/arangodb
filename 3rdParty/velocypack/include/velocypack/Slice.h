@@ -855,7 +855,7 @@ class Slice {
     if (fsm == 0) {
       // need to calculate the offset by reading the dynamic length
       VELOCYPACK_ASSERT(head == 0x13 || head == 0x14);
-      return 1 + readVariableValueLength<false>(_start + 1);
+      return 1 + arangodb::velocypack::getVariableValueLength(readVariableValueLength<false>(_start + 1));
     }
     if (fsm <= 2 && _start[2] != 0) {
       return 2;
