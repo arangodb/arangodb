@@ -178,7 +178,7 @@ class Agent : public arangodb::Thread,
   void reportIn(std::string const&, index_t, size_t = 0);
 
   /// @brief Wait for slaves to confirm appended entries
-  AgentInterface::raft_commit_t waitFor(index_t last_entry, double timeout = 2.0) override;
+  AgentInterface::raft_commit_t waitFor(index_t last_entry, double timeout = 10.0) override;
 
   /// @brief Convencience size of agency
   size_t size() const;

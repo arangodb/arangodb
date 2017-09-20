@@ -329,7 +329,7 @@ bool Agent::recvAppendEntriesRPC(
   size_t nqs = payload.length();
 
   bool ok = true;
-  index_t lastIndex;   // Index of last entry in our log
+  index_t lastIndex = 0;   // Index of last entry in our log
   if (nqs > 0) {
     
     try {
@@ -542,7 +542,7 @@ void Agent::sendAppendEntriesRPC() {
         arangodb::rest::RequestType::POST, path.str(),
         std::make_shared<std::string>(builder.toJson()), headerFields,
         std::make_shared<AgentCallback>(this, followerId, highest, toLog),
-        std::max(1.0e-3 * toLog * dt.count(), 
+        std::max(5.0e-3 * toLog * dt.count(), 
                  _config.minPing() * _config.timeoutMult()), true);
 
       _lastSent[followerId]    = system_clock::now();
