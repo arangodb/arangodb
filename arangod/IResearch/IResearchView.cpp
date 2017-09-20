@@ -794,11 +794,9 @@ arangodb::iresearch::IResearchLink* findFirstMatchingLink(
       continue; // not an iresearch Link
     }
 
-    #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      auto* link = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
-    #else
-      auto* link = static_cast<arangodb::iresearch::IResearchLink*>(index.get());
-    #endif
+    // TODO FIXME find a better way to retrieve an iResearch Link
+    // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
+    auto* link = dynamic_cast<arangodb::iresearch::IResearchLink*>(index.get());
 
     if (link && *link == view) {
       return link; // found required link
@@ -999,11 +997,8 @@ arangodb::Result updateLinks(
         auto linkPtr = state._collection->createIndex(&trx, linkDefinitions[state._linkDefinitionsOffset].first.slice(), isNew);
 
         // TODO FIXME find a better way to retrieve an iResearch Link
-        #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-          auto* ptr = dynamic_cast<arangodb::iresearch::IResearchLink*>(linkPtr.get());
-        #else
-          auto* ptr = static_cast<arangodb::iresearch::IResearchLink*>(linkPtr.get());
-        #endif
+        // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
+        auto* ptr = dynamic_cast<arangodb::iresearch::IResearchLink*>(linkPtr.get());
 
         state._valid = ptr && isNew;
       }
@@ -1653,11 +1648,8 @@ void IResearchView::getPropertiesVPack(
       for (auto& index: trx.indexesForCollection(collectionName)) {
         if (index && arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK == index->type()) {
           // TODO FIXME find a better way to retrieve an iResearch Link
-          #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-            auto* ptr = dynamic_cast<IResearchLink*>(index.get());
-          #else
-            auto* ptr = static_cast<IResearchLink*>(index.get());
-          #endif
+          // cannot use static_cast/reinterpret_cast since Index is not related to IResearchLink
+          auto* ptr = dynamic_cast<IResearchLink*>(index.get());
 
           if (!ptr || *ptr != *this) {
             continue; // the index is not a link for the current view
