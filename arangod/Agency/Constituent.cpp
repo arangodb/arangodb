@@ -227,12 +227,10 @@ void Constituent::lead(term_t term) {
 
   _agent->beginPrepareLeadership();
   TRI_DEFER(_agent->endPrepareLeadership());
-  
+
   if (!_agent->prepareLead()) {
-    {
-      MUTEX_LOCKER(guard, _castLock);
-      followNoLock(term);
-    }
+    MUTEX_LOCKER(guard, _castLock);
+    followNoLock(term);
     return;
   }
 
