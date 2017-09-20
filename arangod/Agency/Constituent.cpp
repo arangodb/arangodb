@@ -739,11 +739,27 @@ void Constituent::run() {
           CONDITION_LOCKER(guardv, _cv);
           _cv.wait(timeout);
         }
+
         double now = TRI_microtime();
-        if (now - _lastHeartbeatSent > _agent->config().minPing()
-                                     * _agent->config().timeoutMult()
-                                     / 4.0) {
-          _agent->sendEmptyAppendEntriesRPC();
+        std::string const myid = _agent->id();
+        for (auto const& followerId : _agent->config().active()) {
+          if (followerId != myid) {
+            bool needed = false;
+            {
+              MUTEX_LOCKER(guard, _heartBeatMutex);
+              auto it = _lastHeartbeatSent.find(followerId);
+              if (it == _lastHeartbeatSent.end() ||
+                  now - it->second > _agent->config().minPing()
+                                     * _agent->config().timeoutMult() / 4.0) {
+                needed = true;
+              }
+            }
+            if (needed) {
+              LOG_TOPIC(WARN, Logger::AGENCY)
+                << "Sending empty appendEntriesRPC to follower " << followerId;
+              _agent->sendEmptyAppendEntriesRPC(followerId);
+            }
+          }
         }
       }
     }
@@ -768,3 +784,10 @@ int64_t Constituent::countRecentElectionEvents(double threshold) {
   }
   return count;
 }
+
+// Notify about heartbeat being sent out:
+void Constituent::notifyHeartbeatSent(std::string followerId) {
+  MUTEX_LOCKER(guard, _heartBeatMutex);
+  _lastHeartbeatSent[followerId] = TRI_microtime();
+}
+

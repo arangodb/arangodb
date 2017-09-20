@@ -147,7 +147,7 @@ class Agent : public arangodb::Thread,
   ///        also used as heartbeat ($5.2). This is the version used by
   ///        the constituent to send out empty heartbeats to keep
   ///        the term alive.
-  void sendEmptyAppendEntriesRPC();
+  void sendEmptyAppendEntriesRPC(std::string followerId);
 
   /// @brief 1. Deal with appendEntries to slaves.
   ///        2. Report success of write processes.

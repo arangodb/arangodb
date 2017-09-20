@@ -81,9 +81,7 @@ class Constituent : public Thread {
   bool checkLeader(term_t, std::string, index_t, term_t);
 
   // Notify about heartbeat being sent out:
-  void notifyHeartbeatSent() {
-    _lastHeartbeatSent = TRI_microtime();
-  }
+  void notifyHeartbeatSent(std::string followerId);
 
   // My daily business
   void run() override final;
@@ -170,10 +168,14 @@ class Constituent : public Thread {
   mutable arangodb::Mutex _recentElectionsMutex;
   std::list<double> _recentElections;
 
-  // For leader case: Last time we have sent out AppendEntriesRPC messages,
-  // this is used to find out if additional empty heartbeats have to be sent
-  // out by the Constituent:
-  std::atomic<double> _lastHeartbeatSent;
+  // For leader case: Last time we have sent out AppendEntriesRPC message
+  // to some follower, this is used to find out if additional empty
+  // heartbeats have to be sent out by the Constituent:
+  std::unordered_map<std::string, double> _lastHeartbeatSent;
+
+  /// @brief _heartBeatMutex, protection for _lastHeartbeatSent
+  mutable arangodb::Mutex _heartBeatMutex;
+
 };
 }
 }
