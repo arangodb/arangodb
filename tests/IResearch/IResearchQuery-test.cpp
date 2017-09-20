@@ -12467,8 +12467,8 @@ SECTION("Or") {
   {
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": {"
-      "\"collection_1\": { \"includeAllFields\": true, \"nestListValues\": true },"
-      "\"collection_2\": { \"includeAllFields\": true }"
+      "\"collection_1\": { \"includeAllFields\": true, \"nestListValues\": true, \"tokenizers\": [ \"test_analyzer\", \"identity\" ] },"
+      "\"collection_2\": { \"includeAllFields\": true, \"tokenizers\": [ \"test_analyzer\", \"identity\" ] }"
       "}}"
     );
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
@@ -12851,7 +12851,46 @@ SECTION("Or") {
     CHECK((i == expected.size()));
   }
 
-  // PHRASE(d['duplicated'], 'v', 2, 'z', 'test_analyzer') OR tSTARTS_WITH(d['prefix'], 'abc') OR d.value > 100 OR d.name >= 'Z', BM25(d) DESC, TFIDF(d) DESC, d.seq DESC
+  // PHRASE(d['duplicated'], 'v', 2, 'z', 'test_analyzer') OR STARTS_WITH(d['prefix'], 'abc') OR d.value > 100 OR d.name >= 'Z', BM25(d) DESC, TFIDF(d) DESC, d.seq DESC
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      arangodb::velocypack::Slice(insertedDocs[25].vpack()), // {"name":"Z","seq":25,"same":"xyz", "prefix":"abcdrer" ,
+      arangodb::velocypack::Slice(insertedDocs[23].vpack()), // {"name":"X","seq":23,"same":"xyz", "duplicated":"vczc", "prefix":"bateradsfsfasdf" }
+      arangodb::velocypack::Slice(insertedDocs[18].vpack()), // {"name":"S","seq":18,"same":"xyz", "duplicated":"vczc"}
+      arangodb::velocypack::Slice(insertedDocs[16].vpack()), // {"name":"Q","seq":16,"same":"xyz", "value":-32.5, "duplicated":"vczc"}
+      arangodb::velocypack::Slice(insertedDocs[13].vpack()), // {"name":"N","seq":13,"same":"xyz","value":1, "duplicated":"vczc"},
+      arangodb::velocypack::Slice(insertedDocs[7].vpack()),  // {"name":"H","seq":7,"same":"xyz", "value":123, "duplicated":"vczc"},
+      arangodb::velocypack::Slice(insertedDocs[2].vpack()),  // {"name":"C","seq":2,"same":"xyz", "value":123, "duplicated":"vczc"}
+      arangodb::velocypack::Slice(insertedDocs[1].vpack()),  // {"name":"B","seq":1,"same":"xyz", "value":101, "duplicated":"vczc"}
+      arangodb::velocypack::Slice(insertedDocs[26].vpack()), // {"name":"~","seq":26,"same":"xyz", "duplicated":"abcd"}
+      arangodb::velocypack::Slice(insertedDocs[20].vpack()), // {"name":"U","seq":20,"same":"xyz", "prefix":"abc", "duplicated":"abcd"}
+      arangodb::velocypack::Slice(insertedDocs[3].vpack()),  // {"name":"D","seq":3,"same":"xyz", "value":12, "prefix":"abcde"}
+      arangodb::velocypack::Slice(insertedDocs[0].vpack()),  // {"name":"A","seq":0,"same":"xyz", "value":100, "duplicated":"abcd", "prefix":"abcd" }
+      arangodb::velocypack::Slice(insertedDocs[31].vpack()), // {"name":"%","seq":31,"same":"xyz", "prefix":"abcy"}
+      arangodb::velocypack::Slice(insertedDocs[30].vpack()), // {"name":"$","seq":30,"same":"xyz", "duplicated":"abcd", "prefix":"abcy" }
+      arangodb::velocypack::Slice(insertedDocs[15].vpack()), // {"name":"P","seq":15,"same":"xyz","value":50, "prefix":"abde"},
+      arangodb::velocypack::Slice(insertedDocs[14].vpack()), // {"name":"O","seq":14,"same":"xyz","value":0 },
+      arangodb::velocypack::Slice(insertedDocs[12].vpack()), // {"name":"M","seq":12,"same":"xyz","value":90.564 },
+      arangodb::velocypack::Slice(insertedDocs[11].vpack()), // {"name":"L","seq":11,"same":"xyz","value":95 }
+      arangodb::velocypack::Slice(insertedDocs[10].vpack()), // {"name":"K","seq":10,"same":"xyz","value":12, "duplicated":"abcd"}
+    };
+
+    auto result = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'v', 1, 'z', 'test_analyzer') OR STARTS_WITH(d['prefix'], 'abc') OR d.value < 100 OR d.name >= 'Z' SORT TFIDF(d) DESC, d.seq DESC RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      CHECK((i < expected.size()));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+    }
+    CHECK((i == expected.size()));
+  }
 }
 
 // SECTION("ComplexBoolean") { }
