@@ -272,11 +272,11 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
       {
         // Change _readDB and _commitIndex atomically together:
         _tiLock.assertNotLockedByCurrentThread();
-        MUTEX_LOCKER(guard, _ioLock);
+        term_t t = _constituent.term();
+        MUTEX_LOCKER(guard, _ioLock); 
         _readDB.applyLogEntries(
-          _state.slices(
-            commitIndex + 1, index), commitIndex, _constituent.term(),
-            true /* inform others by callbacks */ );
+          _state.slices( /* inform others by callbacks */ 
+            commitIndex + 1, index), commitIndex, t, true);
         _commitIndex = index;
       }
 
@@ -643,13 +643,14 @@ query_t Agent::activate(query_t const& everything) {
       index_t commitIndex = 0;
       {
         _tiLock.assertNotLockedByCurrentThread();
+        term_t t = _constituent.term();
         MUTEX_LOCKER(ioLocker, _ioLock); // Atomicity 
         if (!compact.isEmptyArray()) {
           _readDB = compact.get("readDB");
         }
         commitIndex = _commitIndex;  // take a local copy
-        _readDB.applyLogEntries(batch, commitIndex, _constituent.term(),
-                                false  /* do not perform callbacks */);
+        /* do not perform callbacks */
+        _readDB.applyLogEntries(batch, commitIndex, t, false);
         _spearhead = _readDB;
       }
 
@@ -1040,6 +1041,7 @@ read_ret_t Agent::read(query_t const& query) {
     return read_ret_t(false, NO_LEADER);
   }
 
+  std::string leaderId = _constituent.leaderID(); 
   _tiLock.assertNotLockedByCurrentThread();
   MUTEX_LOCKER(ioLocker, _ioLock);
 
@@ -1047,7 +1049,7 @@ read_ret_t Agent::read(query_t const& query) {
   auto result = std::make_shared<arangodb::velocypack::Builder>();
   std::vector<bool> success = _readDB.read(query, result);
 
-  return read_ret_t(true, _constituent.leaderID(), success, result);
+  return read_ret_t(true, leaderId, success, result);
   
 }
 
@@ -1092,7 +1094,7 @@ void Agent::run() {
 void Agent::reportActivated(
   std::string const& failed, std::string const& replacement, query_t state) {
 
-  term_t myterm;
+  term_t myterm = _constituent.term();
       
   if (state->slice().get("success").getBoolean()) {
     
@@ -1103,7 +1105,6 @@ void Agent::reportActivated(
       _confirmed[replacement] = commitIndex;
       _lastAcked[replacement] = system_clock::now();
       _config.swapActiveMember(failed, replacement);
-      myterm = _constituent.term();
     }
     
     {
@@ -1114,9 +1115,7 @@ void Agent::reportActivated(
       _activator.reset(nullptr);
     }
     
-  } else {
-    myterm = _constituent.term();
-  }
+  } 
 
   persistConfiguration(myterm);
 
@@ -1405,11 +1404,12 @@ void Agent::notify(query_t const& message) {
 // Rebuild key value stores
 void Agent::rebuildDBs() {
 
+  term_t term = _constituent.term();
+
   _tiLock.assertNotLockedByCurrentThread();
   MUTEX_LOCKER(ioLocker, _ioLock);
 
   index_t lastCompactionIndex;
-  term_t term;
 
   // We must go back to clean sheet
   _readDB.clear();
@@ -1428,8 +1428,7 @@ void Agent::rebuildDBs() {
 
   {
     auto logs = _state.slices(lastCompactionIndex+1, commitIndex);
-    _readDB.applyLogEntries(logs, commitIndex, _constituent.term(),
-        false  /* do not send callbacks */);
+    _readDB.applyLogEntries(logs, commitIndex, false  /* do not send callbacks */);
   }
   _spearhead = _readDB;
 
