@@ -139,8 +139,10 @@ class Agent : public arangodb::Thread,
 
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
+ private:
   void sendAppendEntriesRPC();
 
+ public:
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2). This is the version used by
   ///        the constituent to send out empty heartbeats to keep
@@ -333,17 +335,33 @@ class Agent : public arangodb::Thread,
   /// @brief Condition variable for waitFor
   arangodb::basics::ConditionVariable _waitForCV;
 
-  /// @brief Confirmed indices of all members of agency
-  std::unordered_map<std::string, index_t> _confirmed;
+  /// The following two members are strictly only used in the
+  /// Agent thread in sendAppendEntriesRPC. Therefore no protection is
+  /// necessary for these:
+
+  /// @brief _lastHighest stores for each follower the highest index it
+  /// has reported in the last appendEntriesRPC call.
   std::unordered_map<std::string, index_t> _lastHighest;
 
-  std::unordered_map<std::string, TimePoint> _lastAcked;
+  /// @brief _lastSent stores for each follower the time stamp of the time 
+  /// when the main Agent thread has last sent a non-empty
+  /// appendEntriesRPC to that follower.
   std::unordered_map<std::string, TimePoint> _lastSent;
+
+  /// The following three members are protected by _tiLock:
+
+  /// @brief Confirmed indices of all members of agency FIXME, explain
+  /// difference to _lastHighest.
+  std::unordered_map<std::string, index_t> _confirmed;
+
+  /// @brief _lastAcked: FIXME explain
+  std::unordered_map<std::string, TimePoint> _lastAcked;
+
+  /// @brief _earliestPackage: FIXME explain
   std::unordered_map<std::string, TimePoint> _earliestPackage;
 
-  // @brief Lock for all of the above time data about other agents. This
-  // protects _confirmed, _lastHighest, _lastAcked, _lastSent and
-  // _earliestPackage.:
+  // @brief Lock for the above time data about other agents. This
+  // protects _confirmed, _lastAcked and _earliestPackage:
   mutable arangodb::Mutex _tiLock;
 
   /**< @brief RAFT consistency lock:

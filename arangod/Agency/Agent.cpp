@@ -259,8 +259,11 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 
     size_t n = 0;
 
-    for (auto const& i : _config.active()) {
-      n += (_confirmed[i] >= index);
+    {
+      MUTEX_LOCKER(tiLocker, _tiLock);
+      for (auto const& i : _config.active()) {
+        n += (_confirmed[i] >= index);
+      }
     }
 
     // catch up read database and commit index
@@ -369,7 +372,7 @@ void Agent::sendAppendEntriesRPC() {
     return;
   }
 
-  // _lastSent, _lastHighest and _confirmed only accessed in main thread
+  // _lastSent, _lastHighest only accessed in main thread
   std::string const myid = id();
   
   for (auto const& followerId : _config.active()) {
@@ -416,7 +419,6 @@ void Agent::sendAppendEntriesRPC() {
 
       index_t highest = unconfirmed.back().index;
 
-      // _lastSent, _lastHighest: local and single threaded access
       duration<double> m = system_clock::now() - _lastSent[followerId];
 
       if (highest == _lastHighest[followerId] &&
@@ -542,8 +544,8 @@ void Agent::sendAppendEntriesRPC() {
         std::max(1.0e-3 * toLog * dt.count(), 
                  _config.minPing() * _config.timeoutMult()), true);
 
-      _lastSent[followerId]        = system_clock::now();
-      _lastHighest[followerId]     = highest;
+      _lastSent[followerId]    = system_clock::now();
+      _lastHighest[followerId] = highest;
 
       if (toLog > 0) {
         earliestPackage = system_clock::now() + toLog * dt;
