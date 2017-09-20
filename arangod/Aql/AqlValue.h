@@ -86,18 +86,42 @@ struct AqlValueHintCopy {
 };
 
 // no-op struct used only internally to indicate that we want
-// to NOT copy the data behind the passed pointer
-struct AqlValueHintNoCopy {
-  explicit AqlValueHintNoCopy(uint8_t const* ptr) : ptr(ptr) {}
+// to NOT copy the database document data behind the passed pointer
+struct AqlValueHintDocumentNoCopy {
+  explicit AqlValueHintDocumentNoCopy(uint8_t const* v) : ptr(v) {}
   uint8_t const* ptr;
 };
 
-// no-op struct used only internally to indicate that we want
-// to pass the ownership of the data behind the passed pointer
-// to the callee
-struct AqlValueHintTransferOwnership {
-  explicit AqlValueHintTransferOwnership(uint8_t* ptr) : ptr(ptr) {}
-  uint8_t* ptr;
+struct AqlValueHintNull {
+  constexpr AqlValueHintNull() noexcept {}
+};
+
+struct AqlValueHintBool {
+  explicit AqlValueHintBool(bool v) noexcept : value(v) {}
+  bool const value;
+};
+
+struct AqlValueHintZero {
+  constexpr AqlValueHintZero() noexcept {}
+};
+
+struct AqlValueHintDouble {
+  explicit AqlValueHintDouble(double v) noexcept : value(v) {}
+  double const value;
+};
+
+struct AqlValueHintInt {
+  explicit AqlValueHintInt(int64_t v) noexcept : value(v) {}
+  explicit AqlValueHintInt(int v) noexcept : value(int64_t(v)) {}
+  int64_t const value;
+};
+
+struct AqlValueHintUInt {
+  explicit AqlValueHintUInt(uint64_t v) noexcept : value(v) {}
+#ifdef TRI_OVERLOAD_FUNCS_SIZE_T
+  explicit AqlValueHintUInt(size_t v) noexcept : value(uint64_t(v)) {}
+#endif
+  uint64_t const value;
 };
 
 struct AqlValue final {
@@ -176,14 +200,30 @@ struct AqlValue final {
   }
 
   // construct boolean value type
+  // DEPRECATED
   explicit AqlValue(bool value) {
     VPackSlice slice(value ? arangodb::basics::VelocyPackHelper::TrueValue() : arangodb::basics::VelocyPackHelper::FalseValue());
     memcpy(_data.internal, slice.begin(), static_cast<size_t>(slice.byteSize()));
     setType(AqlValueType::VPACK_INLINE);
   }
+  
+  explicit AqlValue(AqlValueHintNull const&) noexcept {
+    _data.internal[0] = 0x18; // null in VPack
+    setType(AqlValueType::VPACK_INLINE);
+  }
+
+  explicit AqlValue(AqlValueHintBool const& v) noexcept {
+    _data.internal[0] = v.value ? 0x1a : 0x19; // true/false in VPack
+    setType(AqlValueType::VPACK_INLINE);
+  }
+  
+  explicit AqlValue(AqlValueHintZero const&) noexcept {
+    _data.internal[0] = 0x30; // 0 in VPack
+    setType(AqlValueType::VPACK_INLINE);
+  }
 
   // construct from a double value
-  explicit AqlValue(double value) {
+  explicit AqlValue(double value) noexcept {
     if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL || value == -HUGE_VAL) {
       // null
       _data.internal[0] = 0x18;
@@ -202,6 +242,9 @@ struct AqlValue final {
     }
     setType(AqlValueType::VPACK_INLINE);
   }
+  
+  // construct from a double value
+  explicit AqlValue(AqlValueHintDouble const&v) noexcept : AqlValue(v.value) {}
   
   // construct from an int64 value
   explicit AqlValue(int64_t value) noexcept {
@@ -250,6 +293,11 @@ struct AqlValue final {
     }
     setType(AqlValueType::VPACK_INLINE);
   }
+  
+  // construct from a uint64 value
+  explicit AqlValue(AqlValueHintUInt const& v) noexcept : AqlValue(v.value) {}
+  
+  explicit AqlValue(AqlValueHintInt const& v) noexcept : AqlValue(v.value) {}
   
   // construct from char* and length, copying the string
   AqlValue(char const* value, size_t length) {
@@ -315,22 +363,15 @@ struct AqlValue final {
   }
   
   // construct from pointer, not copying!
-  explicit AqlValue(AqlValueHintNoCopy const& ptr) noexcept {
-    setPointer<true>(ptr.ptr);
+  explicit AqlValue(AqlValueHintDocumentNoCopy const& v) noexcept {
+    setPointer<true>(v.ptr);
     TRI_ASSERT(!VPackSlice(_data.pointer).isExternal());
   }
   
   // construct from pointer, copying the data behind the pointer
-  explicit AqlValue(AqlValueHintCopy const& ptr) {
-    TRI_ASSERT(ptr.ptr != nullptr);
-    initFromSlice(VPackSlice(ptr.ptr));
-  }
-  
-  // construct from pointer, taking over the ownership
-  explicit AqlValue(AqlValueHintTransferOwnership const& ptr) {
-    TRI_ASSERT(ptr.ptr != nullptr);
-    _data.slice = ptr.ptr;
-    setType(AqlValueType::VPACK_MANAGED_SLICE);
+  explicit AqlValue(AqlValueHintCopy const& v) {
+    TRI_ASSERT(v.ptr != nullptr);
+    initFromSlice(VPackSlice(v.ptr));
   }
   
   // construct from Builder, copying contents
@@ -422,7 +463,7 @@ struct AqlValue final {
   /// as arrays, too!)
   bool isArray() const noexcept;
 
-  // @brief return a string describing the content of this aqlvalue
+  // @brief return a string describing the content of this AqlValue
   char const* getTypeString() const noexcept;
 
   /// @brief get the (array) length (note: this treats ranges as arrays, too!)

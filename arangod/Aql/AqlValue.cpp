@@ -160,22 +160,22 @@ bool AqlValue::isArray() const noexcept {
 }
 
 char const* AqlValue::getTypeString() const noexcept {
-  if(isNone()) {
+  if (isNone()) {
     return "none";
-  } else if(isNull(true)) {
+  } else if (isNull(true)) {
      return "null";
-  } else if(isBoolean()) {
+  } else if (isBoolean()) {
      return "bool";
-  } else if(isNumber()) {
+  } else if (isNumber()) {
      return "number";
-  } else if(isString()) {
+  } else if (isString()) {
      return "string";
-  } else if(isObject()) {
+  } else if (isObject()) {
      return "object";
-  } else if(isArray()){
+  } else if (isArray()){
      return "array";
   }
-  return "unknown";
+  return "none";
 }
 
 /// @brief get the (array) length (note: this treats ranges as arrays, too!)
@@ -274,7 +274,7 @@ AqlValue AqlValue::at(transaction::Methods* trx,
   }
 
   // default is to return null
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief get the _key attribute from an object/document
@@ -313,7 +313,7 @@ AqlValue AqlValue::getKeyAttribute(transaction::Methods* trx,
   }
 
   // default is to return null
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief get the _id attribute from an object/document
@@ -357,7 +357,7 @@ AqlValue AqlValue::getIdAttribute(transaction::Methods* trx,
   }
 
   // default is to return null
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief get the _from attribute from an object/document
@@ -396,7 +396,7 @@ AqlValue AqlValue::getFromAttribute(transaction::Methods* trx,
   }
 
   // default is to return null
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief get the _to attribute from an object/document
@@ -435,7 +435,7 @@ AqlValue AqlValue::getToAttribute(transaction::Methods* trx,
   }
 
   // default is to return null
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief get the (object) element by name
@@ -480,7 +480,7 @@ AqlValue AqlValue::get(transaction::Methods* trx,
   }
 
   // default is to return null
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief get the (object) element(s) by name
@@ -489,7 +489,7 @@ AqlValue AqlValue::get(transaction::Methods* trx,
                        bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   if (names.empty()) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   switch (type()) {
@@ -518,7 +518,7 @@ AqlValue AqlValue::get(transaction::Methods* trx,
 
           if (s.isNone()) {
             // not found
-            return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+            return AqlValue(AqlValueHintNull());
           } else if (s.isCustom()) {
             // _id needs special treatment
             if (i + 1 == n) {
@@ -527,9 +527,9 @@ AqlValue AqlValue::get(transaction::Methods* trx,
               return AqlValue(transaction::helpers::extractIdString(trx->resolver(), s, prev));
             }
             // x._id.y
-            return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+            return AqlValue(AqlValueHintNull());
           } else if (i + 1 < n && !s.isObject()) {
-            return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+            return AqlValue(AqlValueHintNull());
           }
         }
 
@@ -553,7 +553,7 @@ AqlValue AqlValue::get(transaction::Methods* trx,
   }
 
   // default is to return null
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief check whether an object has a specific key
@@ -936,7 +936,7 @@ AqlValue AqlValue::clone() const {
     case VPACK_SLICE_POINTER: {
       if (isManagedDocument()) {
         // copy from externally managed document. this will not copy the data
-        return AqlValue(AqlValueHintNoCopy(_data.pointer));
+        return AqlValue(AqlValueHintDocumentNoCopy(_data.pointer));
       }
       // copy from regular pointer. this may copy the data
       return AqlValue(_data.pointer);
