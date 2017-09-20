@@ -60,7 +60,7 @@ T* getFeature() {
 
 arangodb::aql::Function const* getFunction(
   arangodb::aql::AqlFunctionFeature& functions,
-  std::string const& externalName
+  std::string const& name
 );
 
 } // iresearch

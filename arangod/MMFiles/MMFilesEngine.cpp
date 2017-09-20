@@ -35,6 +35,7 @@
 #include "MMFiles/MMFilesAqlFunctions.h"
 #include "MMFiles/MMFilesCleanupThread.h"
 #include "MMFiles/MMFilesCollection.h"
+#include "MMFiles/MMFilesCompactionFeature.h"
 #include "MMFiles/MMFilesCompactorThread.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
@@ -154,6 +155,7 @@ MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
   server->addFeature(new MMFilesWalRecoveryFeature(server));
   server->addFeature(new MMFilesLogfileManager(server));
   server->addFeature(new MMFilesPersistentIndexFeature(server));
+  server->addFeature(new MMFilesCompactionFeature(server));
 }
 
 MMFilesEngine::~MMFilesEngine() {}

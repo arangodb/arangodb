@@ -60,6 +60,43 @@ using namespace arangodb;
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;
 
+namespace {
+
+static int indexOf(std::vector<std::string> const& haystack, std::string const& needle) {
+  for (size_t i = 0; i < haystack.size(); ++i) {
+    if (haystack[i] == needle) {
+      return static_cast<int>(i);
+    }
+  }
+  return -1;
+}
+
+static aql::Collection const* getCollection(ExecutionNode const* node) {
+  switch (node->getType()) {
+  case EN::ENUMERATE_COLLECTION:
+    return static_cast<EnumerateCollectionNode const*>(node)->collection();
+  case EN::INDEX:
+    return static_cast<IndexNode const*>(node)->collection();
+  case EN::TRAVERSAL:
+  case EN::SHORTEST_PATH:
+    return static_cast<GraphNode const*>(node)->collection();
+  default:
+    // note: modification nodes are not covered here yet 
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "node type does not have a collection");
+  }
+}
+
+static aql::Variable const* getVariable(ExecutionNode const* node) {
+  auto const* n = dynamic_cast<DocumentProducingNode const*>(node);
+  if (n != nullptr) {
+    return n->outVariable();
+  }
+    // note: modification nodes are not covered here yet 
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "node type does not have an out variable");
+}
+
+}
+
 /// @brief adds a SORT operation for IN right-hand side operands
 void arangodb::aql::sortInValuesRule(Optimizer* opt,
                                      std::unique_ptr<ExecutionPlan> plan,
@@ -141,7 +178,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
       AstNode const* testNode = originalNode;
 
       if (originalNode->type == NODE_TYPE_FCALL &&
-          static_cast<Function const*>(originalNode->getData())->externalName ==
+          static_cast<Function const*>(originalNode->getData())->name ==
               "NOOPT") {
         // bypass NOOPT(...)
         TRI_ASSERT(originalNode->numMembers() == 1);
@@ -193,7 +230,7 @@ void arangodb::aql::sortInValuesRule(Optimizer* opt,
 
     auto outVar = ast->variables()->createTemporaryVariable();
     ExecutionNode* calculationNode = nullptr;
-    auto expression = new Expression(ast, sorted);
+    auto expression = new Expression(plan.get(), ast, sorted);
     try {
       calculationNode =
           new CalculationNode(plan.get(), plan->nextId(), expression, outVar);
@@ -251,7 +288,7 @@ void arangodb::aql::removeRedundantSortsRule(
   }
 
   std::unordered_set<ExecutionNode*> toUnlink;
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, false);
+  arangodb::basics::StringBuffer buffer(false);
 
   for (auto const& n : nodes) {
     if (toUnlink.find(n) != toUnlink.end()) {
@@ -1018,7 +1055,7 @@ void arangodb::aql::splitFiltersRule(Optimizer* opt,
 
         ExecutionNode* calculationNode = nullptr;
         auto outVar = plan->getAst()->variables()->createTemporaryVariable();
-        auto expression = new Expression(plan->getAst(), current);
+        auto expression = new Expression(plan.get(), plan->getAst(), current);
         try {
           calculationNode = new CalculationNode(plan.get(), plan->nextId(),
                                                 expression, outVar);
@@ -1319,7 +1356,7 @@ void arangodb::aql::removeRedundantCalculationsRule(
     return;
   }
 
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, false);
+  arangodb::basics::StringBuffer buffer(false);
   std::unordered_map<VariableId, Variable const*> replacements;
 
   for (auto const& n : nodes) {
@@ -2001,7 +2038,7 @@ void arangodb::aql::removeFiltersCoveredByIndexRule(
             } else if (newNode != condition->root()) {
               // some condition is left, but it is a different one than
               // the one from the FILTER node
-              auto expr = std::make_unique<Expression>(plan->getAst(), newNode);
+              auto expr = std::make_unique<Expression>(plan.get(), plan->getAst(), newNode);
               CalculationNode* cn =
                   new CalculationNode(plan.get(), plan->nextId(), expr.get(),
                                       calculationNode->outVariable());
@@ -2426,6 +2463,292 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
   opt->addPlan(std::move(plan), rule, false);
 }
 
+/// @brief optimize queries in the cluster so that the entire query gets pushed to a single server
+void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt, 
+                                                   std::unique_ptr<ExecutionPlan> plan, 
+                                                   OptimizerRule const* rule) {
+  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+  bool wasModified = false;
+  bool done = false;
+  
+  std::unordered_set<std::string> responsibleServers;
+  auto collections = plan->getAst()->query()->collections();
+
+  for (auto const& it : *(collections->collections())) {
+    Collection* c = it.second;
+    TRI_ASSERT(c != nullptr);
+
+    if (c->numberOfShards() != 1) {
+      // more than one shard for this collection
+      done = true;
+      break;
+    }
+        
+    size_t n = c->responsibleServers(responsibleServers);
+
+    if (n != 1) {
+      // more than one responsible server for this collection
+      done = true;
+      break;
+    }
+  }
+
+  if (done || responsibleServers.size() != 1) {
+    opt->addPlan(std::move(plan), rule, wasModified);
+    return;
+  }
+    
+  // we only found a single responsible server, and all collections involved
+  // have exactly one shard
+  // that means we can move the entire query onto that server
+
+
+  // TODO: handle Traversals and ShortestPaths here!
+  // TODO: properly handle subqueries here
+  SmallVector<ExecutionNode*>::allocator_type::arena_type s;
+  SmallVector<ExecutionNode*> nodes{s};
+  // std::vector<ExecutionNode::NodeType> types = {ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH, ExecutionNode::SUBQUERY}; 
+  std::vector<ExecutionNode::NodeType> types = {ExecutionNode::SHORTEST_PATH, ExecutionNode::SUBQUERY}; 
+  plan->findNodesOfType(nodes, types, true);
+
+  bool hasIncompatibleNodes = !nodes.empty();
+    
+  nodes.clear();
+  types = {ExecutionNode::INDEX, ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::TRAVERSAL}; 
+  plan->findNodesOfType(nodes, types, false);
+
+  if (!nodes.empty() && !hasIncompatibleNodes) {
+    // turn off all other cluster optimization rules now as they are superfluous
+    opt->disableRule(OptimizerRule::optimizeClusterJoinsRule_pass10);
+    opt->disableRule(OptimizerRule::distributeInClusterRule_pass10);
+    opt->disableRule(OptimizerRule::scatterInClusterRule_pass10);
+    opt->disableRule(OptimizerRule::distributeFilternCalcToClusterRule_pass10);
+    opt->disableRule(OptimizerRule::distributeSortToClusterRule_pass10);
+    opt->disableRule(OptimizerRule::removeUnnecessaryRemoteScatterRule_pass10);
+#ifdef USE_ENTERPRISE
+    opt->disableRule(OptimizerRule::removeSatelliteJoinsRule_pass10);
+#endif
+    opt->disableRule(OptimizerRule::undistributeRemoveAfterEnumCollRule_pass10);
+    
+    // get first collection from query
+    Collection const* c = getCollection(nodes[0]);
+    TRI_ASSERT(c != nullptr);
+
+    TRI_vocbase_t* vocbase = plan->getAst()->query()->vocbase();
+      
+    ExecutionNode* rootNode = plan->root();
+
+    // insert a remote node
+    ExecutionNode* remoteNode = new RemoteNode(plan.get(), plan->nextId(), vocbase, c,
+                                  "", "", "");
+    plan->registerNode(remoteNode);
+    remoteNode->addDependency(rootNode);
+
+    // insert a gather node
+    ExecutionNode* gatherNode = new GatherNode(plan.get(), plan->nextId(), vocbase, c);
+    plan->registerNode(gatherNode);
+    gatherNode->addDependency(remoteNode);
+
+    plan->root(gatherNode, true);
+    wasModified = true;
+  }
+  
+  opt->addPlan(std::move(plan), rule, wasModified);
+}
+
+void arangodb::aql::optimizeClusterJoinsRule(Optimizer* opt, 
+                                             std::unique_ptr<ExecutionPlan> plan, 
+                                             OptimizerRule const* rule) {
+  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+  bool wasModified = false;
+  
+  SmallVector<ExecutionNode*>::allocator_type::arena_type s;
+  SmallVector<ExecutionNode*> nodes{s};
+  std::vector<ExecutionNode::NodeType> const types = {ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::INDEX}; 
+  plan->findNodesOfType(nodes, types, true);
+
+  for (auto& n : nodes) {
+    ExecutionNode* current = n->getFirstDependency();
+    while (current != nullptr) {
+      if (current->getType() == ExecutionNode::ENUMERATE_COLLECTION ||
+          current->getType() == ExecutionNode::INDEX) {
+
+        Collection const* c1 = getCollection(n);
+        Collection const* c2 = getCollection(current);
+        
+        bool qualifies = false;
+
+        // check how many (different) responsible servers we have for this
+        // collection
+        std::unordered_set<std::string> responsibleServers;
+        size_t n1 = c1->responsibleServers(responsibleServers);
+        size_t n2 = c2->responsibleServers(responsibleServers);
+
+        if (responsibleServers.size() == 1 && 
+            c1->numberOfShards() == 1 && 
+            c2->numberOfShards() == 1) {
+          // a single responsible server. so we can use a shard-local access
+          qualifies = true;
+        } else if ((c1->isSatellite() && (c2->numberOfShards() == 1 || n2 == 1)) ||
+                   (c2->isSatellite() && (c1->numberOfShards() == 1 || n1 == 1))) {
+          // a satellite collection and another collection with a single shard or single responsible server
+          qualifies = true;
+        }
+
+        if (!qualifies && n->getType() == EN::INDEX) {
+          Variable const* indexVariable = getVariable(n);
+          Variable const* otherVariable = getVariable(current);
+          
+          std::string dist1 = c1->distributeShardsLike();
+          std::string dist2 = c2->distributeShardsLike();
+
+          // convert cluster collection names into proper collection names
+          if (!dist1.empty()) {
+            auto trx = plan->getAst()->query()->trx();
+            dist1 = trx->resolver()->getCollectionNameCluster(
+                    static_cast<TRI_voc_cid_t>(basics::StringUtils::uint64(dist1)));
+          }
+          if (!dist2.empty()) {
+            auto trx = plan->getAst()->query()->trx();
+            dist2 = trx->resolver()->getCollectionNameCluster(
+                    static_cast<TRI_voc_cid_t>(basics::StringUtils::uint64(dist2)));
+          }
+          
+          if (dist1 == c2->getName() || 
+              dist2 == c1->getName() ||
+              (!dist1.empty() && dist1 == dist2)) {
+            // collections have the same "distributeShardsLike" values
+            // so their shards are distributed to the same servers for the
+            // same shardKey values
+            // now check if the number of shardKeys match
+            auto keys1 = c1->shardKeys();
+            auto keys2 = c2->shardKeys();
+            
+            if (keys1.size() == keys2.size()) {
+              // same number of shard keys... now check if the shard keys are all used 
+              // and whether we only have equality joins
+              Condition const* condition = static_cast<IndexNode const*>(n)->condition();
+
+              if (condition != nullptr) {
+                AstNode const* root = condition->root();
+
+                if (root != nullptr && root->type == NODE_TYPE_OPERATOR_NARY_OR) {
+                  size_t found = 0;
+                  size_t numAnds = root->numMembers();
+            
+                  for (size_t i = 0; i < numAnds; ++i) {
+                    AstNode const* andNode = root->getMember(i);
+                    
+                    if (andNode == nullptr) {
+                      continue;
+                    }
+
+                    TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
+
+                    std::unordered_set<int> shardKeysFound;
+                    size_t numConds = andNode->numMembers();
+
+                    if (numConds < keys1.size()) {
+                      // too few join conditions, so we will definitely not cover all shardKeys
+                      break;
+                    }
+            
+                    for (size_t j = 0; j < numConds; ++j) {
+                      AstNode const* condNode = andNode->getMember(j);
+                      
+                      if (condNode == nullptr || condNode->type != NODE_TYPE_OPERATOR_BINARY_EQ) {
+                        // something other than an equality join. we do not support this
+                        continue;
+                      }
+
+                      // equality comparison
+                      // now check if this comparison has the pattern 
+                      // <variable from collection1>.<attribute from collection1> == 
+                      //   <variable from collection2>.<attribute from collection2>
+                      
+                      auto const* lhs = condNode->getMember(0);  
+                      auto const* rhs = condNode->getMember(1);  
+            
+                      if (lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS ||
+                          rhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+                        // something else
+                        continue;
+                      }
+
+                      AstNode const* lhsData = lhs->getMember(0);
+                      AstNode const* rhsData = rhs->getMember(0);
+
+                      if (lhsData->type != NODE_TYPE_REFERENCE ||
+                          rhsData->type != NODE_TYPE_REFERENCE) {
+                        // something else
+                        continue;
+                      }
+
+                      Variable const* lhsVar = static_cast<Variable const*>(lhsData->getData());
+                      Variable const* rhsVar = static_cast<Variable const*>(rhsData->getData());
+            
+                      std::string leftString = lhs->getString();
+                      std::string rightString = rhs->getString();
+            
+                      int pos = -1;
+                      if (lhsVar == indexVariable && 
+                          rhsVar == otherVariable &&
+                          indexOf(keys1, leftString) == indexOf(keys2, rightString)) {
+                        pos = indexOf(keys1, leftString);
+                        // indexedCollection.shardKeyAttribute == otherCollection.shardKeyAttribute
+                      } else if (lhsVar == otherVariable &&
+                                  rhsVar == indexVariable &&
+                                  indexOf(keys2, leftString) == indexOf(keys1, rightString)) {
+                        // otherCollection.shardKeyAttribute == indexedCollection.shardKeyAttribute
+                        pos = indexOf(keys2, leftString);
+                      }
+                      
+                      // we found a shardKeys match  
+                      if (pos != -1) {
+                        shardKeysFound.emplace(pos);
+                      }
+                    }
+
+                    // conditions match
+                    if (shardKeysFound.size() >= keys1.size()) {
+                      // all shard keys covered
+                      ++found;
+                    } else {
+                      // not all shard keys covered
+                      break;
+                    }
+                  }
+
+                  qualifies = (found > 0 && found == numAnds);
+                }
+              }
+            }
+          }
+        }
+        // everything else does not qualify
+
+        if (qualifies) {
+          wasModified = true;
+
+          plan->excludeFromScatterGather(current);
+          break; // done for this pair 
+        }
+
+      } else if (current->getType() != ExecutionNode::FILTER &&
+                 current->getType() != ExecutionNode::CALCULATION &&
+                 current->getType() != ExecutionNode::LIMIT) {
+        // we allow just these nodes in between and ignore them
+        // we need to stop for all other types of nodes
+        break;
+      }
+
+      current = current->getFirstDependency();
+    }
+  }
+  
+  opt->addPlan(std::move(plan), rule, wasModified);
+}
+
 /// @brief scatter operations in cluster
 /// this rule inserts scatter, gather and remote nodes so operations on sharded
 /// collections actually work
@@ -2433,160 +2756,163 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
 void arangodb::aql::scatterInClusterRule(Optimizer* opt,
                                          std::unique_ptr<ExecutionPlan> plan,
                                          OptimizerRule const* rule) {
+  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   bool wasModified = false;
 
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    // find subqueries
-    std::unordered_map<ExecutionNode*, ExecutionNode*> subqueries;
+  // find subqueries
+  std::unordered_map<ExecutionNode*, ExecutionNode*> subqueries;
 
-    SmallVector<ExecutionNode*>::allocator_type::arena_type s;
-    SmallVector<ExecutionNode*> subs{s};
-    plan->findNodesOfType(subs, ExecutionNode::SUBQUERY, true);
+  SmallVector<ExecutionNode*>::allocator_type::arena_type s;
+  SmallVector<ExecutionNode*> subs{s};
+  plan->findNodesOfType(subs, ExecutionNode::SUBQUERY, true);
 
-    for (auto& it : subs) {
-      subqueries.emplace(static_cast<SubqueryNode const*>(it)->getSubquery(),
-                         it);
+  for (auto& it : subs) {
+    subqueries.emplace(static_cast<SubqueryNode const*>(it)->getSubquery(),
+                        it);
+  }
+
+  // we are a coordinator. now look in the plan for nodes of type
+  // EnumerateCollectionNode, IndexNode and modification nodes
+  std::vector<ExecutionNode::NodeType> const types = {
+      ExecutionNode::ENUMERATE_COLLECTION,
+      ExecutionNode::INDEX,
+      ExecutionNode::INSERT,
+      ExecutionNode::UPDATE,
+      ExecutionNode::REPLACE,
+      ExecutionNode::REMOVE,
+      ExecutionNode::UPSERT};
+
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> nodes{a};
+  plan->findNodesOfType(nodes, types, true);
+
+  for (auto& node : nodes) {
+    // found a node we need to replace in the plan
+
+    auto const& parents = node->getParents();
+    auto const& deps = node->getDependencies();
+    TRI_ASSERT(deps.size() == 1);
+
+    // don't do this if we are already distributing!
+    if (deps[0]->getType() == ExecutionNode::REMOTE &&
+        deps[0]->getFirstDependency()->getType() ==
+            ExecutionNode::DISTRIBUTE) {
+      continue;
     }
 
-    // we are a coordinator. now look in the plan for nodes of type
-    // EnumerateCollectionNode, IndexNode and modification nodes
-    std::vector<ExecutionNode::NodeType> const types = {
-        ExecutionNode::ENUMERATE_COLLECTION,
-        ExecutionNode::INDEX,
-        ExecutionNode::INSERT,
-        ExecutionNode::UPDATE,
-        ExecutionNode::REPLACE,
-        ExecutionNode::REMOVE,
-        ExecutionNode::UPSERT};
-
-    SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-    SmallVector<ExecutionNode*> nodes{a};
-    plan->findNodesOfType(nodes, types, true);
-
-    for (auto& node : nodes) {
-      // found a node we need to replace in the plan
-
-      auto const& parents = node->getParents();
-      auto const& deps = node->getDependencies();
-      TRI_ASSERT(deps.size() == 1);
-
-      // don't do this if we are already distributing!
-      if (deps[0]->getType() == ExecutionNode::REMOTE &&
-          deps[0]->getFirstDependency()->getType() ==
-              ExecutionNode::DISTRIBUTE) {
-        continue;
-      }
-
-      bool const isRootNode = plan->isRoot(node);
-      plan->unlinkNode(node, true);
-
-      auto const nodeType = node->getType();
-
-      // extract database and collection from plan node
-      TRI_vocbase_t* vocbase = nullptr;
-      Collection const* collection = nullptr;
-
-      SortElementVector elements;
-
-      if (nodeType == ExecutionNode::ENUMERATE_COLLECTION) {
-        vocbase = static_cast<EnumerateCollectionNode*>(node)->vocbase();
-        collection = static_cast<EnumerateCollectionNode*>(node)->collection();
-      } else if (nodeType == ExecutionNode::INDEX) {
-        auto idxNode = static_cast<IndexNode*>(node);
-        vocbase = idxNode->vocbase();
-        collection = idxNode->collection();
-        auto outVars = idxNode->getVariablesSetHere();
-        TRI_ASSERT(outVars.size() == 1);
-        Variable const* sortVariable = outVars[0];
-        bool isSortReverse = idxNode->reverse();
-        auto allIndexes = idxNode->getIndexes();
-        TRI_ASSERT(!allIndexes.empty());
-
-        // Using Index for sort only works if all indexes are equal.
-        auto first = allIndexes[0].getIndex();
-        if (first->isSorted()) {
-          for (auto const& path : first->fieldNames()) {
-            elements.emplace_back(sortVariable, !isSortReverse, path);
-          }
-          for (auto const& it : allIndexes) {
-            if (first != it.getIndex()) {
-              elements.clear();
-              break;
-            }
-          }
-        }
-      } else if (nodeType == ExecutionNode::INSERT ||
-                 nodeType == ExecutionNode::UPDATE ||
-                 nodeType == ExecutionNode::REPLACE ||
-                 nodeType == ExecutionNode::REMOVE ||
-                 nodeType == ExecutionNode::UPSERT) {
-        vocbase = static_cast<ModificationNode*>(node)->vocbase();
-        collection = static_cast<ModificationNode*>(node)->collection();
-        if (nodeType == ExecutionNode::REMOVE ||
-            nodeType == ExecutionNode::UPDATE) {
-          // Note that in the REPLACE or UPSERT case we are not getting here,
-          // since
-          // the distributeInClusterRule fires and a DistributionNode is
-          // used.
-          auto* modNode = static_cast<ModificationNode*>(node);
-          modNode->getOptions().ignoreDocumentNotFound = true;
-        }
-      } else {
-        TRI_ASSERT(false);
-      }
-
-      // insert a scatter node
-      ExecutionNode* scatterNode =
-          new ScatterNode(plan.get(), plan->nextId(), vocbase, collection);
-      plan->registerNode(scatterNode);
-      TRI_ASSERT(!deps.empty());
-      scatterNode->addDependency(deps[0]);
-
-      // insert a remote node
-      ExecutionNode* remoteNode = new RemoteNode(
-          plan.get(), plan->nextId(), vocbase, collection, "", "", "");
-      plan->registerNode(remoteNode);
-      TRI_ASSERT(scatterNode);
-      remoteNode->addDependency(scatterNode);
-
-      // re-link with the remote node
-      node->addDependency(remoteNode);
-
-      // insert another remote node
-      remoteNode = new RemoteNode(plan.get(), plan->nextId(), vocbase,
-                                  collection, "", "", "");
-      plan->registerNode(remoteNode);
-      TRI_ASSERT(node);
-      remoteNode->addDependency(node);
-
-      // insert a gather node
-      GatherNode* gatherNode =
-          new GatherNode(plan.get(), plan->nextId(), vocbase, collection);
-      plan->registerNode(gatherNode);
-      TRI_ASSERT(remoteNode);
-      gatherNode->addDependency(remoteNode);
-      if (!elements.empty() && gatherNode->collection()->numberOfShards() > 1) {
-        gatherNode->setElements(elements);
-      }
-
-      // and now link the gather node with the rest of the plan
-      if (parents.size() == 1) {
-        parents[0]->replaceDependency(deps[0], gatherNode);
-      }
-
-      // check if the node that we modified was at the end of a subquery
-      auto it = subqueries.find(node);
-
-      if (it != subqueries.end()) {
-        static_cast<SubqueryNode*>((*it).second)->setSubquery(gatherNode, true);
-      }
-
-      if (isRootNode) {
-        // if we replaced the root node, set a new root node
-        plan->root(gatherNode);
-      }
-      wasModified = true;
+    if (plan->shouldExcludeFromScatterGather(node)) {
+      continue;
     }
+
+    bool const isRootNode = plan->isRoot(node);
+    plan->unlinkNode(node, true);
+
+    auto const nodeType = node->getType();
+
+    // extract database and collection from plan node
+    TRI_vocbase_t* vocbase = nullptr;
+    Collection const* collection = nullptr;
+
+    SortElementVector elements;
+
+    if (nodeType == ExecutionNode::ENUMERATE_COLLECTION) {
+      vocbase = static_cast<EnumerateCollectionNode*>(node)->vocbase();
+      collection = static_cast<EnumerateCollectionNode*>(node)->collection();
+    } else if (nodeType == ExecutionNode::INDEX) {
+      auto idxNode = static_cast<IndexNode*>(node);
+      vocbase = idxNode->vocbase();
+      collection = idxNode->collection();
+      auto outVars = idxNode->getVariablesSetHere();
+      TRI_ASSERT(outVars.size() == 1);
+      Variable const* sortVariable = outVars[0];
+      bool isSortReverse = idxNode->reverse();
+      auto allIndexes = idxNode->getIndexes();
+      TRI_ASSERT(!allIndexes.empty());
+
+      // Using Index for sort only works if all indexes are equal.
+      auto first = allIndexes[0].getIndex();
+      if (first->isSorted()) {
+        for (auto const& path : first->fieldNames()) {
+          elements.emplace_back(sortVariable, !isSortReverse, path);
+        }
+        for (auto const& it : allIndexes) {
+          if (first != it.getIndex()) {
+            elements.clear();
+            break;
+          }
+        }
+      }
+    } else if (nodeType == ExecutionNode::INSERT ||
+                nodeType == ExecutionNode::UPDATE ||
+                nodeType == ExecutionNode::REPLACE ||
+                nodeType == ExecutionNode::REMOVE ||
+                nodeType == ExecutionNode::UPSERT) {
+      vocbase = static_cast<ModificationNode*>(node)->vocbase();
+      collection = static_cast<ModificationNode*>(node)->collection();
+      if (nodeType == ExecutionNode::REMOVE ||
+          nodeType == ExecutionNode::UPDATE) {
+        // Note that in the REPLACE or UPSERT case we are not getting here,
+        // since
+        // the distributeInClusterRule fires and a DistributionNode is
+        // used.
+        auto* modNode = static_cast<ModificationNode*>(node);
+        modNode->getOptions().ignoreDocumentNotFound = true;
+      }
+    } else {
+      TRI_ASSERT(false);
+    }
+
+    // insert a scatter node
+    ExecutionNode* scatterNode =
+        new ScatterNode(plan.get(), plan->nextId(), vocbase, collection);
+    plan->registerNode(scatterNode);
+    TRI_ASSERT(!deps.empty());
+    scatterNode->addDependency(deps[0]);
+
+    // insert a remote node
+    ExecutionNode* remoteNode = new RemoteNode(
+        plan.get(), plan->nextId(), vocbase, collection, "", "", "");
+    plan->registerNode(remoteNode);
+    TRI_ASSERT(scatterNode);
+    remoteNode->addDependency(scatterNode);
+
+    // re-link with the remote node
+    node->addDependency(remoteNode);
+
+    // insert another remote node
+    remoteNode = new RemoteNode(plan.get(), plan->nextId(), vocbase,
+                                collection, "", "", "");
+    plan->registerNode(remoteNode);
+    TRI_ASSERT(node);
+    remoteNode->addDependency(node);
+
+    // insert a gather node
+    GatherNode* gatherNode =
+        new GatherNode(plan.get(), plan->nextId(), vocbase, collection);
+    plan->registerNode(gatherNode);
+    TRI_ASSERT(remoteNode);
+    gatherNode->addDependency(remoteNode);
+    if (!elements.empty() && gatherNode->collection()->numberOfShards() > 1) {
+      gatherNode->setElements(elements);
+    }
+
+    // and now link the gather node with the rest of the plan
+    if (parents.size() == 1) {
+      parents[0]->replaceDependency(deps[0], gatherNode);
+    }
+
+    // check if the node that we modified was at the end of a subquery
+    auto it = subqueries.find(node);
+
+    if (it != subqueries.end()) {
+      static_cast<SubqueryNode*>((*it).second)->setSubquery(gatherNode, true);
+    }
+
+    if (isRootNode) {
+      // if we replaced the root node, set a new root node
+      plan->root(gatherNode);
+    }
+    wasModified = true;
   }
 
   opt->addPlan(std::move(plan), rule, wasModified);
@@ -2602,236 +2928,235 @@ void arangodb::aql::scatterInClusterRule(Optimizer* opt,
 void arangodb::aql::distributeInClusterRule(Optimizer* opt,
                                             std::unique_ptr<ExecutionPlan> plan,
                                             OptimizerRule const* rule) {
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    bool wasModified = false;
-    // we are a coordinator, we replace the root if it is a modification node
+  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+  bool wasModified = false;
+  // we are a coordinator, we replace the root if it is a modification node
 
-    // only replace if it is the last node in the plan
-    SmallVector<ExecutionNode*>::allocator_type::arena_type a;
-    SmallVector<ExecutionNode*> subqueryNodes{a};
-    // inspect each return node and work upwards to SingletonNode
-    subqueryNodes.push_back(plan->root());
-    plan->findNodesOfType(subqueryNodes, ExecutionNode::SUBQUERY, true);
+  // only replace if it is the last node in the plan
+  SmallVector<ExecutionNode*>::allocator_type::arena_type a;
+  SmallVector<ExecutionNode*> subqueryNodes{a};
+  // inspect each return node and work upwards to SingletonNode
+  subqueryNodes.push_back(plan->root());
+  plan->findNodesOfType(subqueryNodes, ExecutionNode::SUBQUERY, true);
 
-    for (ExecutionNode* subqueryNode : subqueryNodes) {
-      SubqueryNode* snode = nullptr;
-      ExecutionNode* root = nullptr; //only used for asserts
-      bool hasFound = false;
-      if (subqueryNode == plan->root()){
-        snode = nullptr;
-        root = plan->root();
+  for (ExecutionNode* subqueryNode : subqueryNodes) {
+    SubqueryNode* snode = nullptr;
+    ExecutionNode* root = nullptr; //only used for asserts
+    bool hasFound = false;
+    if (subqueryNode == plan->root()){
+      snode = nullptr;
+      root = plan->root();
+    } else {
+      snode = static_cast<SubqueryNode*>(subqueryNode);
+      root = snode->getSubquery();
+    }
+    ExecutionNode* node = root;
+    TRI_ASSERT(node != nullptr);
+
+    while (node != nullptr) {
+      // loop until we find a modification node or the end of the plan
+      auto nodeType = node->getType();
+
+      // check if there is a node type that needs distribution
+      if (nodeType == ExecutionNode::INSERT ||
+          nodeType == ExecutionNode::REMOVE ||
+          nodeType == ExecutionNode::UPDATE ||
+          nodeType == ExecutionNode::REPLACE ||
+          nodeType == ExecutionNode::UPSERT) {
+        // found a node!
+        hasFound = true;
+        break;
+      }
+
+      // there is nothing above us
+      if (!node->hasDependency()) {
+        // reached the end
+        break;
+      }
+
+      //go further up the tree
+      node = node->getFirstDependency();
+    }
+
+    if (!hasFound){
+      continue;
+    }
+
+    TRI_ASSERT(node != nullptr);
+    if (node == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
+    }
+
+    ExecutionNode* originalParent = nullptr;
+    {
+      if (node->hasParent()) {
+        auto const& parents = node->getParents();
+        originalParent = parents[0];
+        TRI_ASSERT(originalParent != nullptr);
+        TRI_ASSERT(node != root);
       } else {
-        snode = static_cast<SubqueryNode*>(subqueryNode);
-        root = snode->getSubquery();
+        TRI_ASSERT(node == root);
       }
-      ExecutionNode* node = root;
-      TRI_ASSERT(node != nullptr);
+    }
 
-      while (node != nullptr) {
-        // loop until we find a modification node or the end of the plan
-        auto nodeType = node->getType();
+    // when we get here, we have found a matching data-modification node!
+    auto const nodeType = node->getType();
 
-        // check if there is a node type that needs distribution
-        if (nodeType == ExecutionNode::INSERT ||
-            nodeType == ExecutionNode::REMOVE ||
-            nodeType == ExecutionNode::UPDATE ||
-            nodeType == ExecutionNode::REPLACE ||
-            nodeType == ExecutionNode::UPSERT) {
-          // found a node!
-          hasFound = true;
-          break;
-        }
+    TRI_ASSERT(nodeType == ExecutionNode::INSERT ||
+                nodeType == ExecutionNode::REMOVE ||
+                nodeType == ExecutionNode::UPDATE ||
+                nodeType == ExecutionNode::REPLACE ||
+                nodeType == ExecutionNode::UPSERT);
 
-        // there is nothing above us
-        if (!node->hasDependency()) {
-          // reached the end
-          break;
-        }
-
-        //go further up the tree
-        node = node->getFirstDependency();
-      }
-
-      if (!hasFound){
-        continue;
-      }
-
-      TRI_ASSERT(node != nullptr);
-      if (node == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
-      }
-
-      ExecutionNode* originalParent = nullptr;
-      {
-        if (node->hasParent()) {
-          auto const& parents = node->getParents();
-          originalParent = parents[0];
-          TRI_ASSERT(originalParent != nullptr);
-          TRI_ASSERT(node != root);
-        } else {
-          TRI_ASSERT(node == root);
-        }
-      }
-
-      // when we get here, we have found a matching data-modification node!
-      auto const nodeType = node->getType();
-
-      TRI_ASSERT(nodeType == ExecutionNode::INSERT ||
-                 nodeType == ExecutionNode::REMOVE ||
-                 nodeType == ExecutionNode::UPDATE ||
-                 nodeType == ExecutionNode::REPLACE ||
-                 nodeType == ExecutionNode::UPSERT);
-
-      Collection const* collection =
-          static_cast<ModificationNode*>(node)->collection();
+    Collection const* collection =
+        static_cast<ModificationNode*>(node)->collection();
 
 #ifdef USE_ENTERPRISE
-      auto ci = ClusterInfo::instance();
-      auto collInfo =
-          ci->getCollection(collection->vocbase->name(), collection->name);
-      // Throws if collection is not found!
-      if (collInfo->isSmart() && collInfo->type() == TRI_COL_TYPE_EDGE) {
-        distributeInClusterRuleSmartEdgeCollection(
-            plan.get(), snode, node, originalParent, wasModified);
+    auto ci = ClusterInfo::instance();
+    auto collInfo =
+        ci->getCollection(collection->vocbase->name(), collection->name);
+    // Throws if collection is not found!
+    if (collInfo->isSmart() && collInfo->type() == TRI_COL_TYPE_EDGE) {
+      distributeInClusterRuleSmartEdgeCollection(
+          plan.get(), snode, node, originalParent, wasModified);
+      continue;
+    }
+#endif
+    bool const defaultSharding = collection->usesDefaultSharding();
+
+    if (nodeType == ExecutionNode::REMOVE ||
+        nodeType == ExecutionNode::UPDATE) {
+      if (!defaultSharding) {
+        // We have to use a ScatterNode.
         continue;
       }
-#endif
-      bool const defaultSharding = collection->usesDefaultSharding();
+    }
 
-      if (nodeType == ExecutionNode::REMOVE ||
-          nodeType == ExecutionNode::UPDATE) {
-        if (!defaultSharding) {
-          // We have to use a ScatterNode.
-          continue;
-        }
-      }
+    // In the INSERT and REPLACE cases we use a DistributeNode...
 
-      // In the INSERT and REPLACE cases we use a DistributeNode...
-
-      TRI_ASSERT(node->hasDependency());
-      auto const& deps = node->getDependencies();
+    TRI_ASSERT(node->hasDependency());
+    auto const& deps = node->getDependencies();
 
 
-      if (originalParent != nullptr) {
-        // nodes below removed node
-        originalParent->removeDependency(node);
-        //auto planRoot = plan->root();
-        plan->unlinkNode(node, true);
-        if (!snode){
-          //plan->root(planRoot, true);
-        } else {
-          snode->setSubquery(originalParent,true);
-        }
+    if (originalParent != nullptr) {
+      // nodes below removed node
+      originalParent->removeDependency(node);
+      //auto planRoot = plan->root();
+      plan->unlinkNode(node, true);
+      if (!snode){
+        //plan->root(planRoot, true);
       } else {
-        // no nodes below unlinked node
-        plan->unlinkNode(node, true);
-        if (!snode){
-          plan->root(deps[0], true);
-        } else {
-          snode->setSubquery(deps[0],true);
-        }
+        snode->setSubquery(originalParent,true);
       }
-
-      // extract database from plan node
-      TRI_vocbase_t* vocbase = static_cast<ModificationNode*>(node)->vocbase();
-
-      // insert a distribute node
-      ExecutionNode* distNode = nullptr;
-      Variable const* inputVariable;
-      if (nodeType == ExecutionNode::INSERT ||
-          nodeType == ExecutionNode::REMOVE) {
-        TRI_ASSERT(node->getVariablesUsedHere().size() == 1);
-
-        // in case of an INSERT, the DistributeNode is responsible for generating
-        // keys
-        // if none present
-        bool const createKeys = (nodeType == ExecutionNode::INSERT);
-        inputVariable = node->getVariablesUsedHere()[0];
-        distNode =
-            new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                               inputVariable->id, createKeys, true);
-      } else if (nodeType == ExecutionNode::REPLACE) {
-        std::vector<Variable const*> v = node->getVariablesUsedHere();
-        if (defaultSharding && v.size() > 1) {
-          // We only look into _inKeyVariable
-          inputVariable = v[1];
-        } else {
-          // We only look into _inDocVariable
-          inputVariable = v[0];
-        }
-        distNode =
-            new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                               inputVariable->id, false, v.size() > 1);
-      } else if (nodeType == ExecutionNode::UPDATE) {
-        std::vector<Variable const*> v = node->getVariablesUsedHere();
-        if (v.size() > 1) {
-          // If there is a key variable:
-          inputVariable = v[1];
-          // This is the _inKeyVariable! This works, since we use a ScatterNode
-          // for non-default-sharding attributes.
-        } else {
-          // was only UPDATE <doc> IN <collection>
-          inputVariable = v[0];
-        }
-        distNode =
-            new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
-                               inputVariable->id, false, v.size() > 1);
-      } else if (nodeType == ExecutionNode::UPSERT) {
-        // an UPSERT node has two input variables!
-        std::vector<Variable const*> v(node->getVariablesUsedHere());
-        TRI_ASSERT(v.size() >= 2);
-
-        auto d = new DistributeNode(plan.get(), plan->nextId(), vocbase,
-                                    collection, v[0]->id, v[1]->id, true, true);
-        d->setAllowSpecifiedKeys(true);
-        distNode = static_cast<ExecutionNode*>(d);
+    } else {
+      // no nodes below unlinked node
+      plan->unlinkNode(node, true);
+      if (!snode){
+        plan->root(deps[0], true);
       } else {
-        TRI_ASSERT(false);
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
+        snode->setSubquery(deps[0],true);
       }
+    }
 
-      TRI_ASSERT(distNode != nullptr);
+    // extract database from plan node
+    TRI_vocbase_t* vocbase = static_cast<ModificationNode*>(node)->vocbase();
 
-      plan->registerNode(distNode);
-      distNode->addDependency(deps[0]);
+    // insert a distribute node
+    ExecutionNode* distNode = nullptr;
+    Variable const* inputVariable;
+    if (nodeType == ExecutionNode::INSERT ||
+        nodeType == ExecutionNode::REMOVE) {
+      TRI_ASSERT(node->getVariablesUsedHere().size() == 1);
 
-      // insert a remote node
-      ExecutionNode* remoteNode = new RemoteNode(plan.get(), plan->nextId(),
-                                                 vocbase, collection, "", "", "");
-      plan->registerNode(remoteNode);
-      remoteNode->addDependency(distNode);
-
-      // re-link with the remote node
-      node->addDependency(remoteNode);
-
-      // insert another remote node
-      remoteNode = new RemoteNode(plan.get(), plan->nextId(), vocbase, collection,
-                                  "", "", "");
-      plan->registerNode(remoteNode);
-      remoteNode->addDependency(node);
-
-      // insert a gather node
-      ExecutionNode* gatherNode =
-          new GatherNode(plan.get(), plan->nextId(), vocbase, collection);
-      plan->registerNode(gatherNode);
-      gatherNode->addDependency(remoteNode);
-
-      if (originalParent != nullptr) {
-        // we did not replace the root node
-        TRI_ASSERT(gatherNode);
-        originalParent->addDependency(gatherNode);
+      // in case of an INSERT, the DistributeNode is responsible for generating
+      // keys
+      // if none present
+      bool const createKeys = (nodeType == ExecutionNode::INSERT);
+      inputVariable = node->getVariablesUsedHere()[0];
+      distNode =
+          new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
+                              inputVariable->id, createKeys, true);
+    } else if (nodeType == ExecutionNode::REPLACE) {
+      std::vector<Variable const*> v = node->getVariablesUsedHere();
+      if (defaultSharding && v.size() > 1) {
+        // We only look into _inKeyVariable
+        inputVariable = v[1];
       } else {
-        // we replaced the root node, set a new root node
-        if (!snode){
-          plan->root(gatherNode, true);
-        } else {
-          snode->setSubquery(gatherNode,true);
-        }
+        // We only look into _inDocVariable
+        inputVariable = v[0];
       }
-      wasModified = true;
-    } // for end nodes in plan
-    opt->addPlan(std::move(plan), rule, wasModified);
-  } // if coordiantor
+      distNode =
+          new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
+                              inputVariable->id, false, v.size() > 1);
+    } else if (nodeType == ExecutionNode::UPDATE) {
+      std::vector<Variable const*> v = node->getVariablesUsedHere();
+      if (v.size() > 1) {
+        // If there is a key variable:
+        inputVariable = v[1];
+        // This is the _inKeyVariable! This works, since we use a ScatterNode
+        // for non-default-sharding attributes.
+      } else {
+        // was only UPDATE <doc> IN <collection>
+        inputVariable = v[0];
+      }
+      distNode =
+          new DistributeNode(plan.get(), plan->nextId(), vocbase, collection,
+                              inputVariable->id, false, v.size() > 1);
+    } else if (nodeType == ExecutionNode::UPSERT) {
+      // an UPSERT node has two input variables!
+      std::vector<Variable const*> v(node->getVariablesUsedHere());
+      TRI_ASSERT(v.size() >= 2);
+
+      auto d = new DistributeNode(plan.get(), plan->nextId(), vocbase,
+                                  collection, v[0]->id, v[1]->id, true, true);
+      d->setAllowSpecifiedKeys(true);
+      distNode = static_cast<ExecutionNode*>(d);
+    } else {
+      TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
+    }
+
+    TRI_ASSERT(distNode != nullptr);
+
+    plan->registerNode(distNode);
+    distNode->addDependency(deps[0]);
+
+    // insert a remote node
+    ExecutionNode* remoteNode = new RemoteNode(plan.get(), plan->nextId(),
+                                                vocbase, collection, "", "", "");
+    plan->registerNode(remoteNode);
+    remoteNode->addDependency(distNode);
+
+    // re-link with the remote node
+    node->addDependency(remoteNode);
+
+    // insert another remote node
+    remoteNode = new RemoteNode(plan.get(), plan->nextId(), vocbase, collection,
+                                "", "", "");
+    plan->registerNode(remoteNode);
+    remoteNode->addDependency(node);
+
+    // insert a gather node
+    ExecutionNode* gatherNode =
+        new GatherNode(plan.get(), plan->nextId(), vocbase, collection);
+    plan->registerNode(gatherNode);
+    gatherNode->addDependency(remoteNode);
+
+    if (originalParent != nullptr) {
+      // we did not replace the root node
+      TRI_ASSERT(gatherNode);
+      originalParent->addDependency(gatherNode);
+    } else {
+      // we replaced the root node, set a new root node
+      if (!snode){
+        plan->root(gatherNode, true);
+      } else {
+        snode->setSubquery(gatherNode,true);
+      }
+    }
+    wasModified = true;
+  } // for end nodes in plan
+  opt->addPlan(std::move(plan), rule, wasModified);
 }
 
 /// @brief move filters up into the cluster distribution part of the plan
@@ -2858,10 +3183,13 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
 
     std::unordered_set<Variable const*> varsSetHere;
     auto parents = n->getParents();
+    TRI_ASSERT(!parents.empty());
 
     while (true) {
+      TRI_ASSERT(!parents.empty());
       bool stopSearching = false;
       auto inspectNode = parents[0];
+      TRI_ASSERT(inspectNode != nullptr);
 
       switch (inspectNode->getType()) {
         case EN::ENUMERATE_LIST:
@@ -2965,10 +3293,11 @@ void arangodb::aql::distributeSortToClusterRule(
 
     auto parents = n->getParents();
 
-    while (1) {
+    while (true) {
+      TRI_ASSERT(!parents.empty());
       bool stopSearching = false;
-
       auto inspectNode = parents[0];
+      TRI_ASSERT(inspectNode != nullptr);
 
       switch (inspectNode->getType()) {
         case EN::ENUMERATE_LIST:
@@ -3061,20 +3390,23 @@ void arangodb::aql::removeUnnecessaryRemoteScatterRule(
       }
 
       node = d[0];
-      if (node->getType() != EN::SINGLETON &&
-          node->getType() != EN::CALCULATION) {
-        // found some other node type...
-        // this disqualifies the optimization
-        canOptimize = false;
-        break;
-      }
-
-      if (node->getType() == EN::CALCULATION) {
-        auto calc = static_cast<CalculationNode const*>(node);
-        // check if the expression can be executed on a DB server safely
-        if (!calc->expression()->canRunOnDBServer()) {
+      if (!plan->shouldExcludeFromScatterGather(node)) {
+        if (node->getType() != EN::SINGLETON &&
+            node->getType() != EN::CALCULATION && 
+            node->getType() != EN::FILTER) {
+          // found some other node type...
+          // this disqualifies the optimization
           canOptimize = false;
           break;
+        }
+
+        if (node->getType() == EN::CALCULATION) {
+          auto calc = static_cast<CalculationNode const*>(node);
+          // check if the expression can be executed on a DB server safely
+          if (!calc->expression()->canRunOnDBServer()) {
+            canOptimize = false;
+            break;
+          }
         }
       }
     }
@@ -3621,7 +3953,7 @@ void arangodb::aql::replaceOrWithInRule(Optimizer* opt,
 
     if (newRoot != root) {
       ExecutionNode* newNode = nullptr;
-      Expression* expr = new Expression(plan->getAst(), newRoot);
+      Expression* expr = new Expression(plan.get(), plan->getAst(), newRoot);
 
       try {
         TRI_IF_FAILURE("OptimizerRules::replaceOrWithInRuleOom") {
@@ -3810,7 +4142,7 @@ void arangodb::aql::removeRedundantOrRule(Optimizer* opt,
       ExecutionNode* newNode = nullptr;
       auto astNode = remover.createReplacementNode(plan->getAst());
 
-      expr = new Expression(plan->getAst(), astNode);
+      expr = new Expression(plan.get(), plan->getAst(), astNode);
 
       try {
         newNode =
@@ -4137,7 +4469,7 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_
             } else if (newNode != condition->root()) {
               // some condition is left, but it is a different one than
               // the one from the FILTER node
-              auto expr = std::make_unique<Expression>(plan->getAst(), newNode);
+              auto expr = std::make_unique<Expression>(plan.get(), plan->getAst(), newNode);
               CalculationNode* cn =
               new CalculationNode(plan.get(), plan->nextId(), expr.get(),
                                   calculationNode->outVariable());
@@ -4464,7 +4796,7 @@ GeoIndexInfo isDistanceFunction(AstNode* distanceNode,
 
   // we're looking for "DISTANCE()", which is a function call
   // with an empty parameters array
-  if (func->externalName != "DISTANCE" || distanceNode->numMembers() != 1) {
+  if (func->name != "DISTANCE" || distanceNode->numMembers() != 1) {
     return rv;
   }
   rv.distanceNode = distanceNode;
@@ -4787,7 +5119,7 @@ void replaceGeoCondition(ExecutionPlan* plan, GeoIndexInfo& info) {
     auto ast = plan->getAst();
     CalculationNode* newNode = nullptr;
     Expression* expr =
-        new Expression(ast, static_cast<CalculationNode*>(info.setter)
+        new Expression(plan, ast, static_cast<CalculationNode*>(info.setter)
                                 ->expression()
                                 ->nodeForModification()
                                 ->clone(ast));

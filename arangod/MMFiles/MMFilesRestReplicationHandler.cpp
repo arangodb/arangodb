@@ -765,7 +765,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
   if (found) {
     includeSystem = StringUtils::boolean(value4);
   }
-
+  
   // grab list of transactions from the body value
   std::unordered_set<TRI_voc_tid_t> transactionIds;
 
@@ -839,6 +839,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
                                       tickStart, tickEnd, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    generateError(GeneralResponse::responseCode(res), res);
     return;
   }
   bool const checkMore = (dump._lastFoundTick > 0 &&
@@ -2381,6 +2382,8 @@ void MMFilesRestReplicationHandler::handleCommandApplierSetConfig() {
       body, "ignoreErrors", config._ignoreErrors);
   config._maxConnectRetries = VelocyPackHelper::getNumericValue<uint64_t>(
       body, "maxConnectRetries", config._maxConnectRetries);
+  config._lockTimeoutRetries = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "lockTimeoutRetries", config._lockTimeoutRetries);
   config._sslProtocol = VelocyPackHelper::getNumericValue<uint32_t>(
       body, "sslProtocol", config._sslProtocol);
   config._chunkSize = VelocyPackHelper::getNumericValue<uint64_t>(

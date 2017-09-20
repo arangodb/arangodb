@@ -178,10 +178,18 @@ struct OptimizerRule {
 
     /// Pass 9: patch update statements
     patchUpdateStatementsRule_pass9,
-
+    
     /// "Pass 10": final transformations for the cluster
+    
+    // optimize queries in the cluster so that the entire query
+    // gets pushed to a single server
+    optimizeClusterSingleShardRule_pass10,
+
     // make operations on sharded collections use distribute
     distributeInClusterRule_pass10,
+    
+    // try to find candidates for shard-local joins in the cluster
+    optimizeClusterJoinsRule_pass10,
 
     // make operations on sharded collections use scatter / gather / remote
     scatterInClusterRule_pass10,

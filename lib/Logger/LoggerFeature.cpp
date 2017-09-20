@@ -52,8 +52,8 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
 
   _levels.push_back("info");
 
-  // if stdout is not a tty, then the default for _foregroundTty becomes false
-  _foregroundTty = (isatty(STDOUT_FILENO) != 0);
+  // if stdout is a tty, then the default for _foregroundTty becomes true
+  _foregroundTty = (isatty(STDOUT_FILENO) == 1);
 }
 
 LoggerFeature::~LoggerFeature() {
@@ -85,6 +85,10 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--log.use-microtime",
                      "use microtime instead",
                      new BooleanParameter(&_useMicrotime));
+  
+  options->addOption("--log.role",
+                     "log server role",
+                     new BooleanParameter(&_showRole));
 
   options->addHiddenOption("--log.prefix",
                            "prefix log message with this string",
@@ -125,7 +129,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void LoggerFeature::loadOptions(
     std::shared_ptr<options::ProgramOptions> options,
-    const char *binaryPath) {
+    char const* binaryPath) {
   // for debugging purpose, we set the log levels NOW
   // this might be overwritten latter
   Logger::setLogLevel(_levels);
@@ -158,6 +162,7 @@ void LoggerFeature::prepare() {
 #endif
 
   Logger::setLogLevel(_levels);
+  Logger::setShowRole(_showRole);
   Logger::setUseLocalTime(_useLocalTime);
   Logger::setUseMicrotime(_useMicrotime);
   Logger::setShowLineNumber(_lineNumber);
@@ -166,16 +171,16 @@ void LoggerFeature::prepare() {
   Logger::setOutputPrefix(_prefix);
   Logger::setKeepLogrotate(_keepLogRotate);
 
-  for (auto definition : _output) {
+  for (auto const& definition : _output) {
     if (_supervisor && StringUtils::isPrefix(definition, "file://")) {
-      definition += ".supervisor";
+      LogAppender::addAppender(definition + ".supervisor");
+    } else {
+      LogAppender::addAppender(definition);
     }
-
-    LogAppender::addAppender(definition);
   }
 
-  if (!_backgrounded && _foregroundTty) {
-    LogAppender::addTtyAppender();
+  if (_foregroundTty) {
+    LogAppender::addAppender("-");
   }
 
   if (_forceDirect || _supervisor) {

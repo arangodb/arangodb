@@ -23,6 +23,9 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Arithmetic.h"
+#include "Aql/AqlFunctionFeature.h"
+#include "Aql/Expression.h"
+#include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
@@ -32,6 +35,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterInfo.h"
+#include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -1274,7 +1278,7 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName,
     // built-in function
     node = createNode(NODE_TYPE_FCALL);
     // register a pointer to the function
-    auto func = _query->executor()->getFunctionByName(normalized.first);
+    auto func = AqlFunctionFeature::getFunctionByName(normalized.first);
 
     TRI_ASSERT(func != nullptr);
     node->setData(static_cast<void const*>(func));
@@ -1718,7 +1722,7 @@ void Ast::validateAndOptimize() {
       auto func = static_cast<Function*>(node->getData());
       TRI_ASSERT(func != nullptr);
 
-      if (func->externalName == "NOOPT") {
+      if (func->name == "NOOPT") {
         // NOOPT will turn all function optimizations off
         ++(ctx->stopOptimizationRequests);
       }
@@ -1783,7 +1787,7 @@ void Ast::validateAndOptimize() {
       auto func = static_cast<Function*>(node->getData());
       TRI_ASSERT(func != nullptr);
 
-      if (func->externalName == "NOOPT") {
+      if (func->name == "NOOPT") {
         // NOOPT will turn all function optimizations off
         --ctx->stopOptimizationRequests;
       }
@@ -1859,7 +1863,7 @@ void Ast::validateAndOptimize() {
         // if canRunOnDBServer is true, then this is an indicator for a
         // document-accessing function
         std::string name("function ");
-        name.append(func->externalName);
+        name.append(func->name);
         THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION, name.c_str());
       }
 
@@ -2442,17 +2446,17 @@ AstNode* Ast::createArithmeticResultNode(double value) {
   return createNodeValueDouble(value);
 }
 
-/// @brief executes an expression with constant parameters
-AstNode* Ast::executeConstExpression(AstNode const* node) {
+/// @brief executes an expression with constant parameters in V8
+AstNode* Ast::executeConstExpressionV8(AstNode const* node) {
   // must enter v8 before we can execute any expression
   _query->enterContext();
   ISOLATE;
   v8::HandleScope scope(isolate);  // do not delete this!
 
-  // we should recycle an existing builder here
-  VPackBuilder builder;
+  TRI_ASSERT(_query->trx() != nullptr);
+  transaction::BuilderLeaser builder(_query->trx());
 
-  int res = _query->executor()->executeExpression(_query, node, builder);
+  int res = _query->v8Executor()->executeExpression(_query, node, *builder.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -2461,7 +2465,7 @@ AstNode* Ast::executeConstExpression(AstNode const* node) {
   // context is not left here, but later
   // this allows re-using the same context for multiple expressions
 
-  return nodeFromVPack(builder.slice(), true);
+  return nodeFromVPack(builder->slice(), true);
 }
 
 /// @brief optimizes the unary operators + and -
@@ -2698,7 +2702,22 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
     return node;
   }
 
-  return executeConstExpression(node);
+  TRI_ASSERT(lhs->isConstant() && rhs->isConstant());
+  
+  Expression exp(nullptr, this, node);
+  FixedVarExpressionContext context;
+  bool mustDestroy;
+  // execute the expression using the C++ variant
+  AqlValue a = exp.execute(_query->trx(), &context, mustDestroy);
+  AqlValueGuard guard(a, mustDestroy);
+
+  // we cannot create slices from types Range and Docvec easily
+  if (!a.isRange() && !a.isDocvec()) {
+    return nodeFromVPack(a.slice(), true);
+  }
+
+  // simply fall through to V8 now
+  return executeConstExpressionV8(node);
 }
 
 /// @brief optimizes the binary arithmetic operators +, -, *, / and %
@@ -2934,7 +2953,8 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
   auto func = static_cast<Function*>(node->getData());
   TRI_ASSERT(func != nullptr);
 
-  if (func->externalName == "LENGTH" || func->externalName == "COUNT") {
+  // simple replacements for some specific functions
+  if (func->name == "LENGTH" || func->name == "COUNT") {
     // shortcut LENGTH(collection) to COLLECTION_COUNT(collection)
     auto args = node->getMember(0);
     if (args->numMembers() == 1) {
@@ -2946,7 +2966,7 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
         return createNodeFunctionCall("COLLECTION_COUNT", countArgs);
       }
     }
-  } else if (func->externalName == "IS_NULL") {
+  } else if (func->name == "IS_NULL") {
     auto args = node->getMember(0);
     if (args->numMembers() == 1) {
       // replace IS_NULL(x) function call with `x == null`
@@ -2964,7 +2984,28 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
     return node;
   }
 
-  return executeConstExpression(node);
+  // when we are called, we should have a transaction object in 
+  // place. note that the transaction has not necessarily been
+  // started yet...
+  TRI_ASSERT(_query->trx() != nullptr); 
+
+  if (func->hasImplementation() && node->isSimple()) {
+    Expression exp(nullptr, this, node);
+    FixedVarExpressionContext context;
+    bool mustDestroy;
+    // execute the expression using the C++ variant
+    AqlValue a = exp.execute(_query->trx(), &context, mustDestroy);
+    AqlValueGuard guard(a, mustDestroy);
+
+    // we cannot create slices from types Range and Docvec easily
+    if (!a.isRange() && !a.isDocvec()) {
+      return nodeFromVPack(a.slice(), true);
+    }
+    // simply fall through to V8 now
+  }
+  
+  // execute the expression using V8  
+  return executeConstExpressionV8(node);
 }
 
 /// @brief optimizes a reference to a variable

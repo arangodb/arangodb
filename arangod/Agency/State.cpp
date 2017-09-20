@@ -193,13 +193,11 @@ index_t State::logNonBlocking(
   if (!persist(idx, term, slice, clientId)) {         // log to disk or die
     if (leading) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
-        << "RAFT leader fails to persist log entries!"
-        << __FILE__ << ":" << __LINE__;
+        << "RAFT leader fails to persist log entries!";
       FATAL_ERROR_EXIT();
     } else {
       LOG_TOPIC(ERR, Logger::AGENCY)
-        << "RAFT follower fails to persist log entries!"
-        << __FILE__ << ":" << __LINE__;
+        << "RAFT follower fails to persist log entries!";
       return 0;
     }
   }
@@ -209,13 +207,11 @@ index_t State::logNonBlocking(
   } catch (std::bad_alloc const&) {
     if (leading) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
-        << "RAFT leader fails to allocate volatile log entries!"
-        << __FILE__ << ":" << __LINE__;
+        << "RAFT leader fails to allocate volatile log entries!";
       FATAL_ERROR_EXIT();
     } else {
       LOG_TOPIC(ERR, Logger::AGENCY)
-        << "RAFT follower fails to allocate volatile log entries!"
-        << __FILE__ << ":" << __LINE__;
+        << "RAFT follower fails to allocate volatile log entries!";
       return 0;
     }
   }
@@ -226,8 +222,7 @@ index_t State::logNonBlocking(
         std::pair<std::string, index_t>(clientId, idx));
     } catch (...) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
-        << "RAFT leader fails to expand client lookup table!"
-        << __FILE__ << ":" << __LINE__;
+        << "RAFT leader fails to expand client lookup table!";
       FATAL_ERROR_EXIT();
     } 
   }
@@ -237,29 +232,32 @@ index_t State::logNonBlocking(
 }
 
 /// Log transactions (follower)
-index_t State::log(query_t const& transactions, size_t ndups) {
+index_t State::log(query_t const& transactions, bool gotSnapshot) {
+
   VPackSlice slices = transactions->slice();
-
-  TRI_ASSERT(slices.isArray());
-
   size_t nqs = slices.length();
 
-  TRI_ASSERT(nqs > ndups);
-  std::string clientId;
+  MUTEX_LOCKER(logLock, _logLock);
 
-  MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
+  size_t ndups = removeConflicts(transactions, gotSnapshot);
 
-  for (size_t i = ndups; i < nqs; ++i) {
-    VPackSlice const& slice = slices[i];
+  if (nqs > ndups) {
+    VPackSlice slices = transactions->slice();
+    TRI_ASSERT(slices.isArray());
+    size_t nqs = slices.length();
+    std::string clientId;
 
-    // first to disk
-    if (logNonBlocking(
-          slice.get("index").getUInt(), slice.get("query"),
-          slice.get("term").getUInt(), slice.get("clientId").copyString())==0) {
-      break;
+    for (size_t i = ndups; i < nqs; ++i) {
+
+      VPackSlice const& slice = slices[i];
+      // first to disk
+      if (logNonBlocking(
+            slice.get("index").getUInt(), slice.get("query"),
+            slice.get("term").getUInt(), slice.get("clientId").copyString())==0) {
+        break;
+      }
     }
   }
-
   return _log.empty() ? 0 : _log.back().index;
 }
 
@@ -279,7 +277,6 @@ size_t State::removeConflicts(query_t const& transactions,  bool gotSnapshot) {
 
   LOG_TOPIC(TRACE, Logger::AGENCY) << "removeConflicts " << slices.toJson();
   try {
-    MUTEX_LOCKER(logLock, _logLock);
 
     index_t lastIndex = (!_log.empty()) ? _log.back().index : 0; 
 

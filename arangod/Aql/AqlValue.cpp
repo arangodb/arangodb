@@ -788,7 +788,7 @@ v8::Handle<v8::Value> AqlValue::toV8Partial(
         continue;
       }
 
-      result->ForceSet(TRI_V8_STD_STRING((*it2)),
+      result->ForceSet(TRI_V8_STD_STRING(isolate, (*it2)),
                        TRI_VPackToV8(isolate, it.value, options, &s));
 
       if (--left == 0) {
@@ -984,7 +984,7 @@ AqlValue AqlValue::clone() const {
 }
 
 /// @brief destroy the value's internals
-void AqlValue::destroy() {
+void AqlValue::destroy() noexcept {
   switch (type()) {
     case VPACK_SLICE_POINTER:
     case VPACK_INLINE: {

@@ -13,6 +13,7 @@ set(MMFILES_SOURCES
   MMFiles/MMFilesCollectionExport.cpp
   MMFiles/MMFilesCollectionKeys.cpp
   MMFiles/MMFilesCollectorThread.cpp
+  MMFiles/MMFilesCompactionFeature.cpp
   MMFiles/MMFilesCompactorThread.cpp
   MMFiles/MMFilesDatafile.cpp
   MMFiles/MMFilesDatafileStatistics.cpp

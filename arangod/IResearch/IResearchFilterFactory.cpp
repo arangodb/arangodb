@@ -1099,10 +1099,10 @@ bool fromFCall(
     return false; // invalid args
   }
 
-  auto const entry = FCallSystemConvertionHandlers.find(fn->externalName);
+  auto const entry = FCallSystemConvertionHandlers.find(fn->name);
 
   if (entry == FCallSystemConvertionHandlers.end()) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Unable to find system function '" << fn->externalName << "'";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Unable to find system function '" << fn->name << "'";
     return false;
   }
 

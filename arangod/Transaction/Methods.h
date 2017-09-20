@@ -372,12 +372,12 @@ class Methods {
 
   arangodb::LogicalCollection* documentCollection(TRI_voc_cid_t) const;
 
-/// @brief get the index by it's identifier. Will either throw or
-///        return a valid index. nullptr is impossible.
+  /// @brief get the index by its identifier. Will either throw or
+  ///        return a valid index. nullptr is impossible.
   ENTERPRISE_VIRT IndexHandle getIndexByIdentifier(
     std::string const& collectionName, std::string const& indexHandle);
 
-/// @brief get all indexes for a collection name
+  /// @brief get all indexes for a collection name
   ENTERPRISE_VIRT std::vector<std::shared_ptr<arangodb::Index>> indexesForCollection(
       std::string const&);
 

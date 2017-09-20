@@ -1244,12 +1244,6 @@ void MMFilesCollection::figuresSpecific(
     strftime(&lastCompactionStampString[0], sizeof(lastCompactionStampString),
              "%Y-%m-%dT%H:%M:%SZ", &tb);
   }
-
-  builder->add("compactionStatus", VPackValue(VPackValueType::Object));
-  builder->add("message", VPackValue(lastCompactionStatus));
-  builder->add("time", VPackValue(&lastCompactionStampString[0]));
-  builder->close();  // compactionStatus
-
   builder->add("documentReferences",
                VPackValue(_ditches.numMMFilesDocumentMMFilesDitches()));
 
@@ -1259,17 +1253,31 @@ void MMFilesCollection::figuresSpecific(
 
   // add datafile statistics
   MMFilesDatafileStatisticsContainer dfi = _datafileStatistics.all();
+  MMFilesDatafileStatistics::CompactionStats stats = _datafileStatistics.getStats();
 
-  builder->add("alive", VPackValue(VPackValueType::Object));
-  builder->add("count", VPackValue(dfi.numberAlive));
-  builder->add("size", VPackValue(dfi.sizeAlive));
-  builder->close();  // alive
+  builder->add("alive", VPackValue(VPackValueType::Object)); {
+    builder->add("count", VPackValue(dfi.numberAlive));
+    builder->add("size", VPackValue(dfi.sizeAlive));
+    builder->close();  // alive
+  }
 
-  builder->add("dead", VPackValue(VPackValueType::Object));
-  builder->add("count", VPackValue(dfi.numberDead));
-  builder->add("size", VPackValue(dfi.sizeDead));
-  builder->add("deletion", VPackValue(dfi.numberDeletions));
-  builder->close();  // dead
+  builder->add("dead", VPackValue(VPackValueType::Object)); {
+    builder->add("count", VPackValue(dfi.numberDead));
+    builder->add("size", VPackValue(dfi.sizeDead));
+    builder->add("deletion", VPackValue(dfi.numberDeletions));
+    builder->close();  // dead
+  }
+
+  builder->add("compactionStatus", VPackValue(VPackValueType::Object)); {
+    builder->add("message", VPackValue(lastCompactionStatus));
+    builder->add("time", VPackValue(&lastCompactionStampString[0]));
+
+    builder->add("count", VPackValue(stats._compactionCount));
+    builder->add("filesCombined", VPackValue(stats._filesCombined));
+    builder->add("bytesRead", VPackValue(stats._compactionBytesRead));
+    builder->add("bytesWritten", VPackValue(stats._compactionBytesWritten));
+    builder->close();  // compactionStatus
+  }
 
   // add file statistics
   READ_LOCKER(readLocker, _filesLock);

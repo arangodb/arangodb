@@ -93,10 +93,8 @@ arangodb::aql::AqlValue noop(
 
 void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(functions, arangodb::aql::Function{
-    "EXISTS",      // external name (AQL function external names are always in upper case)
-    "exists",      // internal name
+    "EXISTS",      // name
     ".|.,.",       // positional arguments (attribute, [ "analyzer"|"type", analyzer-name|"string"|"numeric"|"bool"|"null" ])
-    false,         // cacheable
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
@@ -105,10 +103,8 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   });
 
   arangodb::iresearch::addFunction(functions, arangodb::aql::Function{
-    "STARTS_WITH", // external name (AQL function external names are always in upper case)
-    "starts_with", // internal name
+    "STARTS_WITH", // name
     ".,.|.",       // positional arguments (attribute, prefix, scoring-limit)
-    false,         // cacheable
     true,          // deterministic
     true,          // can throw
     true,          // can be run on server
@@ -117,11 +113,9 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
   });
 
   arangodb::iresearch::addFunction(functions, arangodb::aql::Function{
-    "PHRASE",      // external name (AQL function external names are always in upper case)
-    "phrase",      // internal name
+    "PHRASE",      // name
     ".,.,.|.+",    // positional arguments (attribute, input [, offset, input... ], analyzer)
-    false,         // cacheable
-    false,         // deterministic
+    true,          // deterministic
     true,          // can throw
     true,          // can be run on server
     true,          // can pass arguments by reference
@@ -131,17 +125,15 @@ void registerFilters(arangodb::aql::AqlFunctionFeature& functions) {
 
 void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
   irs::scorers::visit([&functions](const irs::string_ref& name)->bool {
-    std::string externalName = name;
+    std::string upperName = name;
 
     // AQL function external names are always in upper case
-    std::transform(externalName.begin(), externalName.end(), externalName.begin(), ::toupper);
+    std::transform(upperName.begin(), upperName.end(), upperName.begin(), ::toupper);
 
     arangodb::iresearch::addFunction(functions, arangodb::aql::Function{
-      std::move(externalName), // external name
-      name, // internal name
+      std::move(upperName), 
       ".|+", // positional arguments (attribute [, <scorer-specific properties>...])
-      false, // cacheable
-      false, // deterministic
+      true, // deterministic
       true, // can throw
       true, // can be run on server
       true, // can pass arguments by reference

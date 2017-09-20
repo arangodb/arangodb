@@ -43,6 +43,7 @@ const testPort = require('internal').testPort;
 const download = require('internal').download;
 const time = require('internal').time;
 const wait = require('internal').wait;
+const sleep = require('internal').sleep;
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -245,7 +246,21 @@ function cleanupLastDirectory (options) {
       // Avoid attempting to remove the same directory multiple times
       if ((cleanupDirectories.indexOf(cleanupDirectory) === -1) &&
           (fs.exists(cleanupDirectory))) {
-        fs.removeDirectoryRecursive(cleanupDirectory, true);
+        let i = 0;
+        while (i < 5) {
+          try {
+            fs.removeDirectoryRecursive(cleanupDirectory, true);
+            return;
+          } catch (x) {
+            print('failed to delete directory "' + cleanupDirectory + '" - "' +
+                  x + '" - Will retry in 5 seconds"');
+            sleep(5);
+          }
+          i += 1;
+        }
+        print('failed to delete directory "' + cleanupDirectory + '" - "' +
+              '" - Deferring cleanup for test run end."');
+        cleanupDirectories.unshift(cleanupDirectory);
       }
       break;
     }
@@ -1167,6 +1182,7 @@ function startInstanceSingleServer (instanceInfo, protocol, options,
 
 function startInstance (protocol, options, addArgs, testname, tmpDir) {
   let rootDir = fs.join(tmpDir || fs.getTempPath(), testname);
+
   let instanceInfo = {
     rootDir,
     arangods: []
@@ -1175,11 +1191,13 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
   const startTime = time();
   try {
     if (options.hasOwnProperty('server')) {
-      return { endpoint: options.server,
+      let rc = { endpoint: options.server,
                rootDir: options.serverRoot,
                url: options.server.replace('tcp', 'http'),
                arangods: []
-             };
+               };
+      arango.reconnect(rc.endpoint, '_system', 'root', '');
+      return rc;
     } else if (options.cluster) {
       startInstanceCluster(instanceInfo, protocol, options,
                            addArgs, rootDir);
@@ -1195,6 +1213,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
       let count = 0;
       instanceInfo.arangods.forEach(arangod => {
         while (true) {
+          wait(0.5, false);
           if (options.useReconnect) {
             try {
               arango.reconnect(instanceInfo.endpoint, '_system', options.username, options.password);
@@ -1215,7 +1234,6 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
               throw new Error('startup failed! bailing out!');
             }
           }
-          wait(0.5, false);
         }
       });
     }
@@ -1239,7 +1257,6 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
     print(e, e.stack);
     return false;
   }
-
   return instanceInfo;
 }
 

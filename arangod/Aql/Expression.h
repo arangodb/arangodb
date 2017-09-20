@@ -48,8 +48,8 @@ class AqlItemBlock;
 struct AqlValue;
 class Ast;
 class AttributeAccessor;
+class ExecutionPlan;
 class ExpressionContext;
-class V8Executor;
 struct V8Expression;
 
 /// @brief AqlExpression, used in execution plans and execution blocks
@@ -62,10 +62,10 @@ class Expression {
   Expression() = delete;
 
   /// @brief constructor, using an AST start node
-  Expression(Ast*, AstNode*);
+  Expression(ExecutionPlan* plan, Ast*, AstNode*);
 
   /// @brief constructor, using VPack
-  Expression(Ast*, arangodb::velocypack::Slice const&);
+  Expression(ExecutionPlan* plan, Ast*, arangodb::velocypack::Slice const&);
 
   ~Expression();
  
@@ -106,10 +106,10 @@ class Expression {
   }
 
   /// @brief clone the expression, needed to clone execution plans
-  Expression* clone(Ast* ast) {
+  Expression* clone(ExecutionPlan* plan, Ast* ast) {
     // We do not need to copy the _ast, since it is managed by the
     // query object and the memory management of the ASTs
-    return new Expression(ast != nullptr ? ast : _ast, _node);
+    return new Expression(plan, ast != nullptr ? ast : _ast, _node);
   }
 
   /// @brief return all variables used in the expression
@@ -329,11 +329,12 @@ class Expression {
       bool& mustDestroy);
 
  private:
+  /// @brief the query execution plan. note: this may be a nullptr for expressions
+  /// created in the early optimization stage!
+  ExecutionPlan* _plan;
+
   /// @brief the AST
   Ast* _ast;
-
-  /// @brief the V8 executor
-  V8Executor* _executor;
 
   /// @brief the AST node that contains the expression to execute
   AstNode* _node;

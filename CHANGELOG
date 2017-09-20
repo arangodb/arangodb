@@ -1,6 +1,36 @@
 devel
 -----
 
+* ui: added replicationFactor option during SmartGraph creation.
+
+* make the mmfiles compactor configurable
+
+* leader-follower replication catchup code has been rewritten in C++
+
+* early stage AQL optimization now also uses the C++ implementations of
+  AQL functions if present. Previously it always referred to the JavaScript
+  implementations and ignored the C++ implementations.
+
+* ArangoDB tty log output is now colored for log messages with levels 
+  FATAL, ERR and WARN.
+
+* changed the return values of AQL functions `REGEX_TEST` and `REGEX_REPLACE`
+  to `null` when the input regex is invalid. Previous versions of ArangoDB
+  partly returned `false` for invalid regexes and partly `null`.
+
+* added `--log.role` option for arangod
+
+  When set to `true`, this option will make the ArangoDB logger print a single 
+  character with the server's role into each logged message. The roles are: 
+  
+  - U: undefined/unclear (used at startup)
+  - S: single server
+  - C: coordinator
+  - P: primary
+  - A: agent
+
+  The default value for this option is `false`, so no roles will be logged. 
+
 * fixed issue #3106: orphan collections could not be registered in general-graph module
 
 * fixed wrong selection of the database inside the internal cluster js api
@@ -9,16 +39,20 @@ devel
   the number of memory mappings currently used by the process and compare it with
   the maximum number of allowed mappings as determined by /proc/sys/vm/max_map_count
 
+  The default value is `true`, so the checks will be performed. When the current 
+  number of mappings exceeds 90% of the maximum number of mappings, the creation
+  of further V8 contexts will be deferred.
+
   Note that this option is effective on Linux systems only.
 
-* arangoimp now has a --remove-attribute option
+* arangoimp now has a `--remove-attribute` option
 
 * added V8 context lifetime control options
   `--javascript.v8-contexts-max-invocations` and `--javascript.v8-contexts-max-age`
 
   These options allow specifying after how many invocations a used V8 context is 
   disposed, or after what time a V8 context is disposed automatically after its
-  creation. If either of the two thresholds is reached, a V8 context will be
+  creation. If either of the two thresholds is reached, an idl V8 context will be
   disposed. 
   
   The default value of `--javascript.v8-contexts-max-invocations` is 0, meaning that

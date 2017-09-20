@@ -206,10 +206,8 @@ arangodb::aql::AqlValue aqlFnTokens(
 
 void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(functions, arangodb::aql::Function{
-    "TOKENS", // external name (AQL function external names are always in upper case)
-    "tokens", // internal name
+    "TOKENS", // name 
     ".,.", // positional arguments (data,analyzer)
-    false, // cacheable
     true, // deterministic (true == called during AST optimization and will be used to calculate values for constant expressions)
     true, // can throw
     true, // can be run on server

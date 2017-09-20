@@ -10,7 +10,7 @@ mkdir -p ${ROOTDIR}/build-tmp
 
 VERSION=$(cat ${ROOTDIR}/VERSION)
 export DEBVERSION=${VERSION}-1
-DOCKERTAG=${VERSION}-local
+DOCKERTAG=${DOCKERTAG:=${VERSION}-local}
 DEBIMAGE_NAME="arangodb3-${DEBVERSION}_amd64"
 BUILDDEB_ARGS="--gcc6"
 BUILDDEB_DOCKER_ARGS=""
@@ -19,7 +19,10 @@ DOCKERFILENAME=Dockerfile$(echo ${VERSION} | cut -d '.' -f 1,2 --output-delimite
 for i in $@; do
     if test "$i" == "--enterprise"; then
         DEBIMAGE_NAME="arangodb3e-${DEBVERSION}_amd64"
-        BUILDDEB_ARGS="--enterprise git@github.com:arangodb/enterprise.git "
+        BUILDDEB_ARGS+=" --enterprise git@github.com:arangodb/enterprise.git "
+    fi
+    if test "$i" == "--maintainer"; then
+        BUILDDEB_ARGS+=" --maintainer"
     fi
 done
 if [ ! -z "${SSH_AUTH_SOCK}" ]; then

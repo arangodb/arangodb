@@ -250,7 +250,7 @@ struct IResearchAttributeScorerSetup {
     // user defined functions have ':' in the external function name
     // function arguments string format: requiredArg1[,requiredArg2]...[|optionalArg1[,optionalArg2]...]
     auto& functions = *arangodb::aql::AqlFunctionFeature::AQLFUNCTIONS;
-    arangodb::aql::Function attr("@", "internalName", ".|+", false, false, true, true, false);
+    arangodb::aql::Function attr("@", ".|+", false, true, true, false);
 
     arangodb::iresearch::addFunction(functions, attr);
 

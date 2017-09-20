@@ -40,17 +40,13 @@
 
 using namespace arangodb::aql;
 
-/// @brief minimum number of array members / object attributes for considering
-/// an array / object literal "big" and pulling it out of the expression
-size_t const V8Executor::DefaultLiteralSizeThreshold = 32;
-
 /// @brief creates an executor
 V8Executor::V8Executor(int64_t literalSizeThreshold)
     : _buffer(nullptr),
       _constantRegisters(),
       _literalSizeThreshold(literalSizeThreshold >= 0
                                 ? static_cast<size_t>(literalSizeThreshold)
-                                : DefaultLiteralSizeThreshold) {}
+                                : defaultLiteralSizeThreshold) {}
 
 /// @brief destroys an executor
 V8Executor::~V8Executor() { delete _buffer; }
@@ -76,13 +72,13 @@ V8Expression* V8Executor::generateExpression(AstNode const* node) {
     std::string name = "r";
     name.append(std::to_string(it.second));
 
-    constantValues->ForceSet(TRI_V8_STD_STRING(name), toV8(isolate, it.first));
+    constantValues->ForceSet(TRI_V8_STD_STRING(isolate, name), toV8(isolate, it.first));
   }
 
   TRI_ASSERT(_buffer != nullptr);
 
   v8::Handle<v8::Script> compiled = v8::Script::Compile(
-      TRI_V8_STD_STRING((*_buffer)), TRI_V8_ASCII_STRING("--script--"));
+      TRI_V8_STD_STRING(isolate, (*_buffer)), TRI_V8_ASCII_STRING(isolate, "--script--"));
 
   if (!compiled.IsEmpty()) {
     v8::Handle<v8::Value> func(compiled->Run());
@@ -127,11 +123,10 @@ int V8Executor::executeExpression(Query* query, AstNode const* node,
   v8::HandleScope scope(isolate);
   v8::TryCatch tryCatch;
 
-
   TRI_ASSERT(_buffer != nullptr);
 
   v8::Handle<v8::Script> compiled = v8::Script::Compile(
-      TRI_V8_STD_STRING((*_buffer)), TRI_V8_ASCII_STRING("--script--"));
+      TRI_V8_STD_STRING(isolate, (*_buffer)), TRI_V8_ASCII_STRING(isolate, "--script--"));
 
   if (!compiled.IsEmpty()) {
 
@@ -177,12 +172,6 @@ int V8Executor::executeExpression(Query* query, AstNode const* node,
     // well we're almost sure we never reach this since the above call should throw:
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to compile AQL script code");
   }
-}
-
-/// @brief returns a reference to a built-in function
-Function const* V8Executor::getFunctionByName(std::string const& name) {
-  auto functions = AqlFunctionFeature::AQLFUNCTIONS;
-  return functions->byName(name);
 }
 
 /// @brief traverse the expression and note all user-defined functions
@@ -247,7 +236,7 @@ void V8Executor::detectConstantValues(AstNode const* node, AstNodeType previous)
   }
 }
 
-/// @brief convert an AST node to a V8 object
+/// @brief convert an AST value node to a V8 object
 v8::Handle<v8::Value> V8Executor::toV8(v8::Isolate* isolate,
                                      AstNode const* node) const {
   if (node->type == NODE_TYPE_ARRAY) {
@@ -267,7 +256,7 @@ v8::Handle<v8::Value> V8Executor::toV8(v8::Isolate* isolate,
     for (size_t i = 0; i < n; ++i) {
       auto sub = node->getMember(i);
       result->ForceSet(
-          TRI_V8_PAIR_STRING(sub->getStringValue(), sub->getStringLength()),
+          TRI_V8_PAIR_STRING(isolate, sub->getStringValue(), sub->getStringLength()),
           toV8(isolate, sub->getMember(0)));
     }
     return result;
@@ -286,7 +275,7 @@ v8::Handle<v8::Value> V8Executor::toV8(v8::Isolate* isolate,
         return v8::Number::New(isolate,
                                static_cast<double>(node->value.value._double));
       case VALUE_TYPE_STRING:
-        return TRI_V8_PAIR_STRING(node->value.value._string,
+        return TRI_V8_PAIR_STRING(isolate, node->value.value._string,
                                   node->value.length);
     }
   }
@@ -318,10 +307,10 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
 
       v8::Handle<v8::Array> objValue =
           v8::Handle<v8::Array>::Cast(tryCatch.Exception());
-      v8::Handle<v8::String> errorNum = TRI_V8_ASCII_STRING("errorNum");
-      v8::Handle<v8::String> errorMessage = TRI_V8_ASCII_STRING("errorMessage");
+      v8::Handle<v8::String> errorNum = TRI_V8_ASCII_STRING(isolate, "errorNum");
+      v8::Handle<v8::String> errorMessage = TRI_V8_ASCII_STRING(isolate, "errorMessage");
 
-      TRI_Utf8ValueNFC stacktrace(TRI_UNKNOWN_MEM_ZONE, tryCatch.StackTrace());
+      TRI_Utf8ValueNFC stacktrace(tryCatch.StackTrace());
 
       if (objValue->HasOwnProperty(errorNum) &&
           objValue->HasOwnProperty(errorMessage)) {
@@ -370,7 +359,7 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
       msg += " See log for details";
     }
     // we can't figure out what kind of error occurred and throw a generic error
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, msg);
   }
 
   if (result.IsEmpty()) {
@@ -384,7 +373,7 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
       msg += " See log for details";
     }
 
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, msg);
   }
 
   // if we get here, no exception has been raised
@@ -740,12 +729,12 @@ void V8Executor::generateCodeFunctionCall(AstNode const* node) {
   TRI_ASSERT(args != nullptr);
   TRI_ASSERT(args->type == NODE_TYPE_ARRAY);
 
-  if (func->externalName != "V8") {
-    // special case for the V8 function... this is actually not a function
+  if (func->name != "V8") {
+    // special case for the V8 function... this is actually not a function 
     // call at all, but a wrapper to ensure that the following expression
     // is executed using V8
     _buffer->appendText(TRI_CHAR_LENGTH_PAIR("_AQL."));
-    _buffer->appendText(func->internalName);
+    _buffer->appendText(func->v8FunctionName());
   }
   _buffer->appendChar('(');
 
@@ -775,7 +764,7 @@ void V8Executor::generateCodeFunctionCall(AstNode const* node) {
       // the parameter at the position is not a collection name... fail
       THROW_ARANGO_EXCEPTION_PARAMS(
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH,
-          func->externalName.c_str());
+          func->name.c_str());
     } else {
       generateCodeNode(args->getMember(i));
     }
@@ -1044,7 +1033,7 @@ void V8Executor::generateCodeNode(AstNode const* node) {
 /// @brief create the string buffer
 arangodb::basics::StringBuffer* V8Executor::initializeBuffer() {
   if (_buffer == nullptr) {
-    _buffer = new arangodb::basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE, 512, false);
+    _buffer = new arangodb::basics::StringBuffer(512, false);
 
     if (_buffer->stringBuffer()->_buffer == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

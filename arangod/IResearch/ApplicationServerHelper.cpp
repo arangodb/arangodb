@@ -35,7 +35,7 @@ bool addFunction(
 ) {
   // check that a function by the given name is not registred to avoid
   // triggering an assert inside AqlFunctionFeature::add(...)
-  if (getFunction(functions, function.externalName)) {
+  if (getFunction(functions, function.name)) {
     return false;
   }
 
@@ -46,11 +46,11 @@ bool addFunction(
 
 arangodb::aql::Function const* getFunction(
     arangodb::aql::AqlFunctionFeature& functions,
-    std::string const& externalName
+    std::string const& name
 ) {
   // if a function cannot be found then return nullptr instead of throwing exception
   try {
-    return functions.byName(externalName);
+    return functions.byName(name);
   } catch (arangodb::basics::Exception& e) {
     if (TRI_ERROR_QUERY_FUNCTION_NAME_UNKNOWN != e.code()) {
       throw; // not a missing function exception

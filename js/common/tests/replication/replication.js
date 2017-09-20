@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertMatch, assertNotEqual, console,
+/*global assertEqual, assertTrue, assertMatch, assertNotEqual
   assertUndefined, assertFalse, fail, REPLICATION_LOGGER_LAST */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,7 +57,6 @@ function ReplicationLoggerSuite () {
   };
 
   var getLogEntries = function (tick, type) {
-    console.error("getLogEntries called");
     var result = [ ];
     getLastLogTick();
   
@@ -73,7 +72,6 @@ function ReplicationLoggerSuite () {
     var entries = REPLICATION_LOGGER_LAST(tick, "9999999999999999999");
 
     if (type === undefined) {
-      console.error("- no log entries produced");
       return entries;
     }
 
@@ -106,7 +104,6 @@ function ReplicationLoggerSuite () {
       });
     }
 
-    console.error("- produced: ", JSON.stringify(result));
     return result;
   };
 
@@ -442,22 +439,26 @@ function ReplicationLoggerSuite () {
       var tick = getLastLogTick();
 
       var c = db._create("_unittests", { isSystem : true });
+  
+      try {
+        var entry = getLogEntries(tick, 2000)[0];
 
-      var entry = getLogEntries(tick, 2000)[0];
+        assertEqual(2000, entry.type);
+        assertEqual(c._id, entry.cid);
+        assertEqual(c.name(), entry.data.name);
 
-      assertEqual(2000, entry.type);
-      assertEqual(c._id, entry.cid);
-      assertEqual(c.name(), entry.data.name);
+        tick = getLastLogTick();
+        c.properties({ waitForSync : true });
 
-      tick = getLastLogTick();
-      c.properties({ waitForSync : true });
+        entry = getLogEntries(tick, 2003)[0];
+        assertEqual(2003, entry.type);
+        assertEqual(c._id, entry.cid);
+        assertEqual(true, entry.data.waitForSync);
 
-      entry = getLogEntries(tick, 2003)[0];
-      assertEqual(2003, entry.type);
-      assertEqual(c._id, entry.cid);
-      assertEqual(true, entry.data.waitForSync);
-
-      tick = getLastLogTick();
+        tick = getLastLogTick();
+      } finally {
+        db._drop("_unittests", true);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

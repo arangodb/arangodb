@@ -246,7 +246,7 @@ bool fromFCall(
     return false; // invalid args
   }
 
-  auto& name = fn->externalName;
+  auto& name = fn->name;
   std::string scorerName(name);
 
   // convert name to lower case

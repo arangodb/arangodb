@@ -82,6 +82,7 @@ add_executable(
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/TypeConversionTest.cpp
+  SimpleHttpClient/CommunicatorTest.cpp
   ${IRESEARCH_TESTS_SOURCES}
   main.cpp
 )

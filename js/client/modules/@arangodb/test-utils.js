@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global print */
+/* global print db */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -44,9 +44,19 @@ const RED = require('internal').COLORS.COLOR_RED;
 const RESET = require('internal').COLORS.COLOR_RESET;
 // const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
-
 let didSplitBuckets = false;
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief get the items uniq to arr1 or arr2
+// //////////////////////////////////////////////////////////////////////////////
+
+function diffArray (arr1, arr2) {
+  return arr1.concat(arr2).filter(function (val) {
+    if (!(arr1.includes(val) && arr2.includes(val))) {
+      return val;
+    }
+  });
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief build a unix path
@@ -146,6 +156,7 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
   let continueTesting = true;
   let count = 0;
   let forceTerminate = false;
+  let graphCount = 0;
 
   for (let i = 0; i < testList.length; i++) {
     let te = testList[i];
@@ -156,6 +167,10 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
       let loopCount = 0;
       count += 1;
 
+      let collectionsBefore = [];
+      db._collections().forEach(collection => {
+        collectionsBefore.push(collection._name);
+      });
       while (first || options.loopEternal) {
         if (!continueTesting) {
           print('oops! Skipping, ' + te + ' server is gone.');
@@ -199,6 +214,38 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
         }
 
         continueTesting = pu.arangod.check.instanceAlive(instanceInfo, options);
+
+        // Check whether some collections were left behind, and if mark test as failed.
+        let collectionsAfter = [];
+        db._collections().forEach(collection => {
+          collectionsAfter.push(collection._name);
+        });
+        let delta = diffArray(collectionsBefore, collectionsAfter).filter(function(name) {
+          return (name[0] !== '_'); // exclude system collections from the comparison
+        });
+	print(delta);
+        if (delta.length !== 0) {
+          results[te] = {
+            status: false,
+            message: 'Cleanup missing - test left over collections: ' + delta + '. Original test status: ' + JSON.stringify(results[te])
+          };
+          collectionsBefore = [];
+          db._collections().forEach(collection => {
+            collectionsBefore.push(collection._name);
+          });
+        }
+
+        if (db._graphs.count() !== graphCount) {
+          results[te] = {
+            status: false,
+            message: 'Cleanup of graphs missing - found graph definitions: [ ' +
+              JSON.stringify(db._graphs.toArray()) +
+              ' ] - Original test status: ' +
+              JSON.stringify(results[te])
+          };
+          graphCount = db._graphs.count();
+        }
+
         if (startStopHandlers !== undefined && startStopHandlers.hasOwnProperty('alive')) {
           customInstanceInfos['alive'] = startStopHandlers.alive(options,
                                                                  serverOptions,
@@ -209,6 +256,10 @@ function performTests (options, testList, testname, runFn, serverOptions, startS
             continueTesting = false;
             results.setup.message = 'custom preStop failed!';
           }
+          collectionsBefore = [];
+          db._collections().forEach(collection => {
+            collectionsBefore.push(collection._name);
+          });
         }
 
         first = false;
@@ -589,3 +640,4 @@ exports.splitBuckets = splitBuckets;
 exports.doOnePathInner = doOnePathInner;
 exports.scanTestPath = scanTestPath;
 exports.makeResults = makeResults;
+exports.diffArray = diffArray;

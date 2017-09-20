@@ -400,7 +400,7 @@ ExecutionNode* ExecutionPlan::createCalculation(
 
   // generate a temporary calculation node
   auto expr =
-      std::make_unique<Expression>(_ast, const_cast<AstNode*>(expression));
+      std::make_unique<Expression>(this, _ast, const_cast<AstNode*>(expression));
 
   CalculationNode* en;
   if (conditionVariable != nullptr) {
@@ -1113,13 +1113,13 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
         // operand is a variable
         auto e = static_cast<Variable*>(arg->getData());
         aggregateVariables.emplace_back(
-            std::make_pair(v, std::make_pair(e, func->externalName)));
+            std::make_pair(v, std::make_pair(e, func->name)));
       } else {
         auto calc = createTemporaryCalculation(arg, previous);
         previous = calc;
 
         aggregateVariables.emplace_back(std::make_pair(
-            v, std::make_pair(getOutVariable(calc), func->externalName)));
+            v, std::make_pair(getOutVariable(calc), func->name)));
       }
     }
   }
@@ -1839,6 +1839,11 @@ void ExecutionPlan::unlinkNode(ExecutionNode* node, bool allowUnlinkingRoot) {
   }
 
   auto dep = node->getDependencies();  // Intentionally copy the vector!
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  for (auto const& it : dep) {
+    TRI_ASSERT(it != nullptr);
+  }
+#endif
 
   for (auto* p : parents) {
     p->removeDependency(node);
@@ -1850,6 +1855,7 @@ void ExecutionPlan::unlinkNode(ExecutionNode* node, bool allowUnlinkingRoot) {
   }
 
   for (auto* x : dep) {
+    TRI_ASSERT(x != nullptr);
     node->removeDependency(x);
   }
 
@@ -1864,6 +1870,7 @@ void ExecutionPlan::replaceNode(ExecutionNode* oldNode,
   TRI_ASSERT(oldNode->id() != newNode->id());
   TRI_ASSERT(newNode->getDependencies().empty());
   TRI_ASSERT(oldNode != _root);
+  TRI_ASSERT(newNode != nullptr);
 
   // Intentional copy
   std::vector<ExecutionNode*> deps = oldNode->getDependencies();
@@ -1896,6 +1903,7 @@ void ExecutionPlan::insertDependency(ExecutionNode* oldNode,
   TRI_ASSERT(oldNode->id() != newNode->id());
   TRI_ASSERT(newNode->getDependencies().empty());
   TRI_ASSERT(oldNode->getDependencies().size() == 1);
+  TRI_ASSERT(newNode != nullptr);
 
   auto oldDeps = oldNode->getDependencies();  // Intentional copy
   TRI_ASSERT(!oldDeps.empty());

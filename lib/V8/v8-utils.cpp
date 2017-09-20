@@ -85,12 +85,11 @@ static UniformCharacter JSSaltGenerator(
 }
 
 /// @brief Converts an object to a UTF-8-encoded and normalized character array.
-TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone,
-                                   v8::Handle<v8::Value> const obj)
-    : _str(nullptr), _length(0), _memoryZone(memoryZone) {
+TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(                                   v8::Handle<v8::Value> const obj)
+    : _str(nullptr), _length(0) {
   v8::String::Value str(obj);
 
-  _str = TRI_normalize_utf16_to_NFC(_memoryZone, *str, (size_t)str.length(),
+  _str = TRI_normalize_utf16_to_NFC(*str, (size_t)str.length(),
                                     &_length);
 }
 
@@ -100,7 +99,7 @@ TRI_Utf8ValueNFC::TRI_Utf8ValueNFC(TRI_memory_zone_t* memoryZone,
 
 TRI_Utf8ValueNFC::~TRI_Utf8ValueNFC() {
   if (_str != nullptr) {
-    TRI_Free(_memoryZone, _str);
+    TRI_Free(_str);
   }
 }
 
@@ -116,7 +115,7 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
           << "encountered out-of-memory error";
     }
 
-    v8::Handle<v8::String> errorMessage = TRI_V8_STD_STRING(message);
+    v8::Handle<v8::String> errorMessage = TRI_V8_STD_STRING(isolate, message);
 
     if (errorMessage.IsEmpty()) {
       isolate->ThrowException(v8::Object::New(isolate));
@@ -137,9 +136,9 @@ static void CreateErrorObject(v8::Isolate* isolate, int errorNumber,
       return;
     }
 
-    errorObject->Set(TRI_V8_ASCII_STRING("errorNum"),
+    errorObject->Set(TRI_V8_ASCII_STRING(isolate, "errorNum"),
                      v8::Number::New(isolate, errorNumber));
-    errorObject->Set(TRI_V8_ASCII_STRING("errorMessage"), errorMessage);
+    errorObject->Set(TRI_V8_ASCII_STRING(isolate, "errorMessage"), errorMessage);
 
     TRI_GET_GLOBALS();
     TRI_GET_GLOBAL(ArangoErrorTempl, v8::ObjectTemplate);
@@ -167,7 +166,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
   v8::HandleScope handleScope(isolate);
 
   size_t length;
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, filename, &length);
+  char* content = TRI_SlurpFile(filename, &length);
 
   if (content == nullptr) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot load java script file '"
@@ -195,9 +194,9 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
     char const* epilogue = "/* end-of-file */ })()";
 
     char* contentWrapper = TRI_Concatenate3String(
-        TRI_UNKNOWN_MEM_ZONE, prologue, content + bangOffset, epilogue);
+        prologue, content + bangOffset, epilogue);
 
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
+    TRI_FreeString(content);
 
     length += strlen(prologue) + strlen(epilogue);
     content = contentWrapper;
@@ -213,11 +212,11 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
     return false;
   }
 
-  v8::Handle<v8::String> name = TRI_V8_STRING(filename);
+  v8::Handle<v8::String> name = TRI_V8_STRING(isolate, filename);
   v8::Handle<v8::String> source =
-      TRI_V8_PAIR_STRING(content + bangOffset, (int)length);
+      TRI_V8_PAIR_STRING(isolate, content + bangOffset, (int)length);
 
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
+  TRI_FreeString(content);
 
   v8::TryCatch tryCatch;
 
@@ -263,29 +262,25 @@ static bool LoadJavaScriptDirectory(v8::Isolate* isolate, char const* path,
                                     bool stripShebang, bool execute,
                                     bool useGlobalContext) {
   v8::HandleScope scope(isolate);
-  bool result;
 
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "loading JavaScript directory: '"
                                             << path << "'";
 
   std::vector<std::string> files = TRI_FilesDirectory(path);
 
-  result = true;
+  bool result = true;
 
   for (auto const& filename : files) {
-    v8::TryCatch tryCatch;
-    bool ok;
-    char* full;
-
     if (!StringUtils::isSuffix(filename, ".js")) {
       continue;
     }
+    
+    v8::TryCatch tryCatch;
 
-    full = TRI_Concatenate2File(path, filename.c_str());
+    std::string full = FileUtils::buildFilename(path, filename);
 
-    ok = LoadJavaScriptFile(isolate, full, stripShebang, execute,
-                            useGlobalContext);
-    TRI_FreeString(TRI_CORE_MEM_ZONE, full);
+    bool ok = LoadJavaScriptFile(isolate, full.c_str(), stripShebang, execute,
+                                 useGlobalContext);
 
     result = result && ok;
 
@@ -404,7 +399,7 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() > 1) {
     filename = args[1];
   } else {
-    filename = TRI_V8_ASCII_STRING("<snippet>");
+    filename = TRI_V8_ASCII_STRING(isolate, "<snippet>");
   }
 
   if (!source->IsString()) {
@@ -421,11 +416,11 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Local<v8::Object> exceptionObj =
           tryCatch.Exception().As<v8::Object>();
       v8::Handle<v8::Message> message = tryCatch.Message();
-      exceptionObj->Set(TRI_V8_ASCII_STRING("lineNumber"),
+      exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "lineNumber"),
                         v8::Number::New(isolate, message->GetLineNumber()));
-      exceptionObj->Set(TRI_V8_ASCII_STRING("columnNumber"),
+      exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "columnNumber"),
                         v8::Number::New(isolate, message->GetStartColumn()));
-      exceptionObj->Set(TRI_V8_ASCII_STRING("fileName"), filename->ToString());
+      exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "fileName"), filename->ToString());
       tryCatch.ReThrow();
       return;
     } else {
@@ -467,14 +462,14 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("parseFile(<filename>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
   }
 
   size_t length;
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name, &length);
+  char* content = TRI_SlurpFile(*name, &length);
 
   if (content == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "cannot read file");
@@ -482,9 +477,9 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::TryCatch tryCatch;
   v8::Handle<v8::Script> script = v8::Script::Compile(
-      TRI_V8_PAIR_STRING(content, (int)length), args[0]->ToString());
+      TRI_V8_PAIR_STRING(isolate, content, (int)length), args[0]->ToString());
 
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
+  TRI_FreeString(content);
 
   // compilation failed, we have caught an exception
   if (tryCatch.HasCaught()) {
@@ -492,11 +487,11 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Local<v8::Object> exceptionObj =
           tryCatch.Exception().As<v8::Object>();
       v8::Handle<v8::Message> message = tryCatch.Message();
-      exceptionObj->Set(TRI_V8_ASCII_STRING("lineNumber"),
+      exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "lineNumber"),
                         v8::Number::New(isolate, message->GetLineNumber()));
-      exceptionObj->Set(TRI_V8_ASCII_STRING("columnNumber"),
+      exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "columnNumber"),
                         v8::Number::New(isolate, message->GetStartColumn()));
-      exceptionObj->Set(TRI_V8_ASCII_STRING("fileName"), args[0]);
+      exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "fileName"), args[0]);
       tryCatch.ReThrow();
       return;
     } else {
@@ -675,7 +670,7 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     // ssl protocol
-    if (options->Has(TRI_V8_ASCII_STRING("sslProtocol"))) {
+    if (options->Has(TRI_V8_ASCII_STRING(isolate, "sslProtocol"))) {
       if (sslProtocol >= SSL_LAST) {
         // invalid protocol
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
@@ -683,21 +678,21 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
 
       sslProtocol = TRI_ObjectToUInt64(
-          options->Get(TRI_V8_ASCII_STRING("sslProtocol")), false);
+          options->Get(TRI_V8_ASCII_STRING(isolate, "sslProtocol")), false);
     }
 
     // method
-    if (options->Has(TRI_V8_ASCII_STRING("method"))) {
+    if (options->Has(TRI_V8_ASCII_STRING(isolate, "method"))) {
       std::string methodString = TRI_ObjectToString(
-          isolate, options->Get(TRI_V8_ASCII_STRING("method")));
+          isolate, options->Get(TRI_V8_ASCII_STRING(isolate, "method")));
 
       method = HttpRequest::translateMethod(methodString);
     }
 
     // headers
-    if (options->Has(TRI_V8_ASCII_STRING("headers"))) {
+    if (options->Has(TRI_V8_ASCII_STRING(isolate, "headers"))) {
       v8::Handle<v8::Object> v8Headers =
-          options->Get(TRI_V8_ASCII_STRING("headers")).As<v8::Object>();
+          options->Get(TRI_V8_ASCII_STRING(isolate, "headers")).As<v8::Object>();
       if (v8Headers->IsObject()) {
         v8::Handle<v8::Array> props = v8Headers->GetPropertyNames();
 
@@ -710,37 +705,37 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
 
     // timeout
-    if (options->Has(TRI_V8_ASCII_STRING("timeout"))) {
-      if (!options->Get(TRI_V8_ASCII_STRING("timeout"))->IsNumber()) {
+    if (options->Has(TRI_V8_ASCII_STRING(isolate, "timeout"))) {
+      if (!options->Get(TRI_V8_ASCII_STRING(isolate, "timeout"))->IsNumber()) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                        "invalid option value for timeout");
       }
 
       timeout =
-          TRI_ObjectToDouble(options->Get(TRI_V8_ASCII_STRING("timeout")));
+          TRI_ObjectToDouble(options->Get(TRI_V8_ASCII_STRING(isolate, "timeout")));
     }
 
     // return body as a buffer?
-    if (options->Has(TRI_V8_ASCII_STRING("returnBodyAsBuffer"))) {
+    if (options->Has(TRI_V8_ASCII_STRING(isolate, "returnBodyAsBuffer"))) {
       returnBodyAsBuffer = TRI_ObjectToBoolean(
-          options->Get(TRI_V8_ASCII_STRING("returnBodyAsBuffer")));
+          options->Get(TRI_V8_ASCII_STRING(isolate, "returnBodyAsBuffer")));
     }
 
     // follow redirects
-    if (options->Has(TRI_V8_ASCII_STRING("followRedirects"))) {
+    if (options->Has(TRI_V8_ASCII_STRING(isolate, "followRedirects"))) {
       followRedirects = TRI_ObjectToBoolean(
-          options->Get(TRI_V8_ASCII_STRING("followRedirects")));
+          options->Get(TRI_V8_ASCII_STRING(isolate, "followRedirects")));
     }
 
     // max redirects
-    if (options->Has(TRI_V8_ASCII_STRING("maxRedirects"))) {
-      if (!options->Get(TRI_V8_ASCII_STRING("maxRedirects"))->IsNumber()) {
+    if (options->Has(TRI_V8_ASCII_STRING(isolate, "maxRedirects"))) {
+      if (!options->Get(TRI_V8_ASCII_STRING(isolate, "maxRedirects"))->IsNumber()) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                        "invalid option value for maxRedirects");
       }
 
       maxRedirects = (int)TRI_ObjectToInt64(
-          options->Get(TRI_V8_ASCII_STRING("maxRedirects")));
+          options->Get(TRI_V8_ASCII_STRING(isolate, "maxRedirects")));
     }
 
     if (!body.empty() && (method == rest::RequestType::GET ||
@@ -750,9 +745,9 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
           "should not provide a body value for this request method");
     }
 
-    if (options->Has(TRI_V8_ASCII_STRING("returnBodyOnError"))) {
+    if (options->Has(TRI_V8_ASCII_STRING(isolate, "returnBodyOnError"))) {
       returnBodyOnError = TRI_ObjectToBoolean(
-          options->Get(TRI_V8_ASCII_STRING("returnBodyOnError")));
+          options->Get(TRI_V8_ASCII_STRING(isolate, "returnBodyOnError")));
     }
   }
 
@@ -908,10 +903,10 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         continue;
       }
 
-      result->Set(TRI_V8_ASCII_STRING("code"),
+      result->Set(TRI_V8_ASCII_STRING(isolate, "code"),
                   v8::Number::New(isolate, returnCode));
-      result->Set(TRI_V8_ASCII_STRING("message"),
-                  TRI_V8_STD_STRING(returnMessage));
+      result->Set(TRI_V8_ASCII_STRING(isolate, "message"),
+                  TRI_V8_STD_STRING(isolate, returnMessage));
 
       // process response headers
       auto const& responseHeaders = response->getHeaderFields();
@@ -919,11 +914,11 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::Object> headers = v8::Object::New(isolate);
 
       for (auto const& it : responseHeaders) {
-        headers->ForceSet(TRI_V8_STD_STRING(it.first),
-                          TRI_V8_STD_STRING(it.second));
+        headers->ForceSet(TRI_V8_STD_STRING(isolate, it.first),
+                          TRI_V8_STD_STRING(isolate, it.second));
       }
 
-      result->ForceSet(TRI_V8_ASCII_STRING("headers"), headers);
+      result->ForceSet(TRI_V8_ASCII_STRING(isolate, "headers"), headers);
 
       if (returnBodyOnError || (returnCode >= 200 && returnCode <= 299)) {
         try {
@@ -939,9 +934,9 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
                   V8Buffer::New(isolate, sb.c_str(), sb.length());
               v8::Local<v8::Object> bufferObject =
                   v8::Local<v8::Object>::New(isolate, buffer->_handle);
-              result->Set(TRI_V8_ASCII_STRING("body"), bufferObject);
+              result->Set(TRI_V8_ASCII_STRING(isolate, "body"), bufferObject);
             } else {
-              result->Set(TRI_V8_ASCII_STRING("body"), TRI_V8_STD_STRING(sb));
+              result->Set(TRI_V8_ASCII_STRING(isolate, "body"), TRI_V8_STD_STRING(isolate, sb));
             }
           }
         } catch (...) {
@@ -949,10 +944,10 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
       }
     }
 
-    result->Set(TRI_V8_ASCII_STRING("code"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "code"),
                 v8::Number::New(isolate, returnCode));
-    result->Set(TRI_V8_ASCII_STRING("message"),
-                TRI_V8_STD_STRING(returnMessage));
+    result->Set(TRI_V8_ASCII_STRING(isolate, "message"),
+                TRI_V8_STD_STRING(isolate, returnMessage));
 
     TRI_V8_RETURN(result);
   }
@@ -1011,7 +1006,7 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::Value> value = sandbox->Get(key);
 
       if (Logger::logLevel() == arangodb::LogLevel::TRACE) {
-        TRI_Utf8ValueNFC keyName(TRI_UNKNOWN_MEM_ZONE, key);
+        TRI_Utf8ValueNFC keyName(key);
 
         if (*keyName != nullptr) {
           LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
@@ -1047,11 +1042,11 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
         v8::Local<v8::Object> exceptionObj =
             tryCatch.Exception().As<v8::Object>();
         v8::Handle<v8::Message> message = tryCatch.Message();
-        exceptionObj->Set(TRI_V8_ASCII_STRING("lineNumber"),
+        exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "lineNumber"),
                           v8::Number::New(isolate, message->GetLineNumber()));
-        exceptionObj->Set(TRI_V8_ASCII_STRING("columnNumber"),
+        exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "columnNumber"),
                           v8::Number::New(isolate, message->GetStartColumn()));
-        exceptionObj->Set(TRI_V8_ASCII_STRING("fileName"),
+        exceptionObj->Set(TRI_V8_ASCII_STRING(isolate, "fileName"),
                           filename->ToString());
         tryCatch.ReThrow();
         return;
@@ -1093,7 +1088,7 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
       v8::Handle<v8::Value> value = context->Global()->Get(key);
 
       if (Logger::logLevel() == arangodb::LogLevel::TRACE) {
-        TRI_Utf8ValueNFC keyName(TRI_UNKNOWN_MEM_ZONE, key);
+        TRI_Utf8ValueNFC keyName(key);
 
         if (*keyName != nullptr) {
           LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
@@ -1132,7 +1127,7 @@ static void JS_Exists(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("exists(<path>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
@@ -1159,7 +1154,7 @@ static void JS_ChMod(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("chmod(<path>, <mode>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
@@ -1216,7 +1211,7 @@ static void JS_SizeFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("size(<path>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
@@ -1264,7 +1259,7 @@ static void JS_GetTempPath(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string path = TRI_GetUserTempPath();
-  v8::Handle<v8::Value> result = TRI_V8_STRING(path.c_str());
+  v8::Handle<v8::Value> result = TRI_V8_STD_STRING(isolate, path);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -1294,20 +1289,17 @@ static void JS_GetTempFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     create = TRI_ObjectToBoolean(args[1]);
   }
 
-  char* result = nullptr;
+  std::string result;
   long systemError;
   std::string errorMessage;
-  if (TRI_GetTempName(p, &result, create, systemError, errorMessage) !=
+  if (TRI_GetTempName(p, result, create, systemError, errorMessage) !=
       TRI_ERROR_NO_ERROR) {
     errorMessage = std::string("could not create temp file: ") + errorMessage;
     TRI_V8_THROW_EXCEPTION_INTERNAL(errorMessage);
   }
 
-  std::string const tempfile(result);
-  TRI_Free(TRI_CORE_MEM_ZONE, result);
-
   // return result
-  TRI_V8_RETURN_STD_STRING(tempfile);
+  TRI_V8_RETURN_STD_STRING(result);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1324,7 +1316,7 @@ static void JS_IsDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("isDirectory(<path>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
@@ -1352,7 +1344,7 @@ static void JS_IsFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("isFile(<path>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
@@ -1380,7 +1372,7 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("makeAbsolute(<path>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
@@ -1398,10 +1390,10 @@ static void JS_MakeAbsolute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::String> res;
 
   if (nullptr != abs) {
-    res = TRI_V8_STRING(abs);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, abs);
+    res = TRI_V8_STRING(isolate, abs);
+    TRI_Free(abs);
   } else {
-    res = TRI_V8_STD_STRING(cwd.result());
+    res = TRI_V8_STD_STRING(isolate, cwd.result());
   }
 
   // return result
@@ -1422,7 +1414,7 @@ static void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("listTree(<path>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
@@ -1435,7 +1427,7 @@ static void JS_List(v8::FunctionCallbackInfo<v8::Value> const& args) {
   uint32_t j = 0;
 
   for (auto const& f : list) {
-    result->Set(j++, TRI_V8_STD_STRING(f));
+    result->Set(j++, TRI_V8_STD_STRING(isolate, f));
   }
 
   // return result
@@ -1456,7 +1448,7 @@ static void JS_ListTree(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("listTree(<path>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
@@ -1468,7 +1460,7 @@ static void JS_ListTree(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   uint32_t i = 0;
   for (auto const& it : files) {
-    result->Set(i++, TRI_V8_STD_STRING(it));
+    result->Set(i++, TRI_V8_STD_STRING(isolate, it));
   }
 
   // return result
@@ -1491,7 +1483,7 @@ static void JS_MakeDirectory(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("makeDirectory(<path>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
@@ -1524,7 +1516,7 @@ static void JS_MakeDirectoryRecursive(
     TRI_V8_THROW_EXCEPTION_USAGE("makeDirectoryRecursive(<path>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
@@ -1660,7 +1652,7 @@ static void JS_Adler32(v8::FunctionCallbackInfo<v8::Value> const& args) {
     useSigned = TRI_ObjectToBoolean(args[1]);
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
@@ -1702,14 +1694,14 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("load(<filename>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
   }
 
   size_t length;
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name, &length);
+  char* content = TRI_SlurpFile(*name, &length);
 
   if (content == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "cannot read file");
@@ -1719,34 +1711,33 @@ static void JS_Load(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // save state of __dirname and __filename
   v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
-  auto oldFilename = current->Get(TRI_V8_ASCII_STRING("__filename"));
-  current->ForceSet(TRI_V8_ASCII_STRING("__filename"), filename);
+  auto oldFilename = current->Get(TRI_V8_ASCII_STRING(isolate, "__filename"));
+  current->ForceSet(TRI_V8_ASCII_STRING(isolate, "__filename"), filename);
 
-  auto oldDirname = current->Get(TRI_V8_ASCII_STRING("__dirname"));
-  auto dirname = TRI_Dirname(TRI_ObjectToString(isolate, filename).c_str());
-  current->ForceSet(TRI_V8_ASCII_STRING("__dirname"), TRI_V8_STRING(dirname));
-  TRI_FreeString(TRI_CORE_MEM_ZONE, dirname);
+  auto oldDirname = current->Get(TRI_V8_ASCII_STRING(isolate, "__dirname"));
+  auto dirname = TRI_Dirname(TRI_ObjectToString(isolate, filename));
+  current->ForceSet(TRI_V8_ASCII_STRING(isolate, "__dirname"), TRI_V8_STD_STRING(isolate, dirname));
 
   v8::Handle<v8::Value> result;
   {
     v8::TryCatch tryCatch;
 
     result = TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
-                                         TRI_V8_PAIR_STRING(content, length),
+                                         TRI_V8_PAIR_STRING(isolate, content, length),
                                          filename->ToString(), false);
 
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
+    TRI_FreeString(content);
 
     // restore old values for __dirname and __filename
     if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
-      current->Delete(TRI_V8_ASCII_STRING("__filename"));
+      current->Delete(TRI_V8_ASCII_STRING(isolate, "__filename"));
     } else {
-      current->ForceSet(TRI_V8_ASCII_STRING("__filename"), oldFilename);
+      current->ForceSet(TRI_V8_ASCII_STRING(isolate, "__filename"), oldFilename);
     }
     if (oldDirname.IsEmpty() || oldDirname->IsUndefined()) {
-      current->Delete(TRI_V8_ASCII_STRING("__dirname"));
+      current->Delete(TRI_V8_ASCII_STRING(isolate, "__dirname"));
     } else {
-      current->ForceSet(TRI_V8_ASCII_STRING("__dirname"), oldDirname);
+      current->ForceSet(TRI_V8_ASCII_STRING(isolate, "__dirname"), oldDirname);
     }
     if (result.IsEmpty()) {
       if (tryCatch.CanContinue()) {
@@ -1789,7 +1780,7 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("log(<level>, <message>)");
   }
 
-  TRI_Utf8ValueNFC level(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC level(args[0]);
 
   if (*level == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<level> must be a string");
@@ -1840,7 +1831,7 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
     
     for (uint32_t i = 0; i < loglines->Length(); ++i) {
       v8::Handle<v8::Value> line = loglines->Get(i);
-      TRI_Utf8ValueNFC message(TRI_UNKNOWN_MEM_ZONE, line);
+      TRI_Utf8ValueNFC message(line);
       if (line->IsString()) {
         logLineVec.push_back(*message);
       }
@@ -1854,7 +1845,7 @@ static void JS_Log(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
   else {
-    TRI_Utf8ValueNFC message(TRI_UNKNOWN_MEM_ZONE, args[1]);
+    TRI_Utf8ValueNFC message(args[1]);
 
     if (*message == nullptr) {
       TRI_V8_THROW_TYPE_ERROR("<message> must be a string or an array");
@@ -1911,14 +1902,14 @@ static void JS_LogLevel(v8::FunctionCallbackInfo<v8::Value> const& args) {
       for (auto level : levels) {
         std::string output =
             level.first + "=" + Logger::translateLogLevel(level.second);
-        v8::Handle<v8::String> val = TRI_V8_STD_STRING(output);
+        v8::Handle<v8::String> val = TRI_V8_STD_STRING(isolate, output);
 
         object->Set(pos++, val);
       }
 
       TRI_V8_RETURN(object);
     } else {
-      TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, args[0]);
+      TRI_Utf8ValueNFC str(args[0]);
       Logger::setLogLevel(*str);
       TRI_V8_RETURN_UNDEFINED();
     }
@@ -1967,7 +1958,7 @@ static void JS_Md5(v8::FunctionCallbackInfo<v8::Value> const& args) {
   SslInterface::sslHEX(hash, 16, p, length);
 
   // and return
-  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(hex, 32);
+  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, 32);
 
   TRI_V8_RETURN(hashStr);
   TRI_V8_TRY_CATCH_END
@@ -2093,9 +2084,9 @@ static void JS_MarkNonce(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("checkAndMarkNonce(<nonce>)");
   }
 
-  TRI_Utf8ValueNFC base64u(TRI_CORE_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC base64u(args[0]);
 
-  if (base64u.length() != 16) {
+  if (*base64u == nullptr || base64u.length() != 16) {
     TRI_V8_THROW_TYPE_ERROR("expecting 16-Byte base64url-encoded nonce");
   }
 
@@ -2304,7 +2295,7 @@ static void JS_Output(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
     // convert it into a string
     v8::String::Utf8Value utf8(val);
-    // TRI_Utf8ValueNFC utf8(TRI_UNKNOWN_MEM_ZONE, val);
+    // TRI_Utf8ValueNFC utf8(val);
 
     if (*utf8 == nullptr) {
       continue;
@@ -2315,7 +2306,7 @@ static void JS_Output(v8::FunctionCallbackInfo<v8::Value> const& args) {
     size_t len = utf8.length();
 
     while (0 < len) {
-      ssize_t n = TRI_WRITE(STDOUT_FILENO, ptr, (TRI_write_t)len);
+      ssize_t n = TRI_WRITE(STDOUT_FILENO, ptr, static_cast<TRI_write_t>(len));
 
       if (n < 0) {
         break;
@@ -2382,23 +2373,23 @@ static void JS_ProcessStatistics(
     rssp = rss / TRI_PhysicalMemory;
   }
 
-  result->Set(TRI_V8_ASCII_STRING("minorPageFaults"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "minorPageFaults"),
               v8::Number::New(isolate, (double)info._minorPageFaults));
-  result->Set(TRI_V8_ASCII_STRING("majorPageFaults"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "majorPageFaults"),
               v8::Number::New(isolate, (double)info._majorPageFaults));
-  result->Set(TRI_V8_ASCII_STRING("userTime"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "userTime"),
               v8::Number::New(isolate,
                               (double)info._userTime / (double)info._scClkTck));
-  result->Set(TRI_V8_ASCII_STRING("systemTime"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "systemTime"),
               v8::Number::New(
                   isolate, (double)info._systemTime / (double)info._scClkTck));
-  result->Set(TRI_V8_ASCII_STRING("numberOfThreads"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "numberOfThreads"),
               v8::Number::New(isolate, (double)info._numberThreads));
-  result->Set(TRI_V8_ASCII_STRING("residentSize"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "residentSize"),
               v8::Number::New(isolate, rss));
-  result->Set(TRI_V8_ASCII_STRING("residentSizePercent"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "residentSizePercent"),
               v8::Number::New(isolate, rssp));
-  result->Set(TRI_V8_ASCII_STRING("virtualSize"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "virtualSize"),
               v8::Number::New(isolate, (double)info._virtualSize));
 
   TRI_V8_RETURN(result);
@@ -2459,14 +2450,14 @@ static void JS_Read(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("read(<filename>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
   }
 
   size_t length;
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name, &length);
+  char* content = TRI_SlurpFile(*name, &length);
 
   if (content == nullptr) {
     std::string msg = TRI_last_error();
@@ -2475,9 +2466,9 @@ static void JS_Read(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), msg);
   }
 
-  auto result = TRI_V8_PAIR_STRING(content, length);
+  auto result = TRI_V8_PAIR_STRING(isolate, content, length);
 
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
+  TRI_FreeString(content);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -2495,14 +2486,14 @@ static void JS_ReadBuffer(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("readBuffer(<filename>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
   }
 
   size_t length;
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name, &length);
+  char* content = TRI_SlurpFile(*name, &length);
 
   if (content == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), TRI_last_error());
@@ -2510,7 +2501,7 @@ static void JS_ReadBuffer(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   V8Buffer* buffer = V8Buffer::New(isolate, content, length);
 
-  TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
+  TRI_FreeString(content);
 
   TRI_V8_RETURN(buffer->_handle);
   TRI_V8_TRY_CATCH_END
@@ -2528,7 +2519,7 @@ static void JS_Read64(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("read(<filename>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a UTF-8 string");
@@ -2537,7 +2528,7 @@ static void JS_Read64(v8::FunctionCallbackInfo<v8::Value> const& args) {
   std::string base64;
 
   try {
-    std::string&& content = FileUtils::slurp(*name);
+    std::string content = FileUtils::slurp(*name);
     base64 = StringUtils::encodeBase64(content);
   } catch (...) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), TRI_last_error());
@@ -2559,7 +2550,7 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("append(<filename>, <content>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
@@ -2585,7 +2576,7 @@ static void JS_Append(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_RETURN_TRUE();
     }
   } else {
-    TRI_Utf8ValueNFC content(TRI_UNKNOWN_MEM_ZONE, args[1]);
+    TRI_Utf8ValueNFC content(args[1]);
 
     if (*content == nullptr) {
       TRI_V8_THROW_TYPE_ERROR("<content> must be a string");
@@ -2618,7 +2609,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("write(<filename>, <content>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
@@ -2652,7 +2643,7 @@ static void JS_Write(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_RETURN_TRUE();
     }
   } else {
-    TRI_Utf8ValueNFC content(TRI_UNKNOWN_MEM_ZONE, args[1]);
+    TRI_Utf8ValueNFC content(args[1]);
 
     if (*content == nullptr) {
       TRI_V8_THROW_TYPE_ERROR("<content> must be a string");
@@ -2689,7 +2680,7 @@ static void JS_Remove(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("remove(<filename>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
@@ -2719,7 +2710,7 @@ static void JS_RemoveDirectory(
     TRI_V8_THROW_EXCEPTION_USAGE("removeDirectory(<path>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
@@ -2735,7 +2726,8 @@ static void JS_RemoveDirectory(
   int res = TRI_RemoveEmptyDirectory(*name);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot remove directory");
+    std::string err = std::string("cannot remove directory: " ) + *name + "'";
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res, err);
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -2756,7 +2748,7 @@ static void JS_RemoveRecursiveDirectory(
     TRI_V8_THROW_EXCEPTION_USAGE("removeDirectoryRecursive(<path>)");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
@@ -2801,7 +2793,8 @@ static void JS_RemoveRecursiveDirectory(
   int res = TRI_RemoveDirectory(*name);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot remove directory");
+    std::string err = std::string("cannot remove directory: " ) + *name + "'";
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res, err);
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -2826,7 +2819,7 @@ static void JS_SPrintF(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_RETURN_STRING("");
   }
 
-  TRI_Utf8ValueNFC format(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC format(args[0]);
 
   if (*format == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<format> must be a UTF-8 string");
@@ -2881,7 +2874,7 @@ static void JS_SPrintF(v8::FunctionCallbackInfo<v8::Value> const& args) {
             result += "%";
             result += *ptr;
           } else {
-            TRI_Utf8ValueNFC text(TRI_UNKNOWN_MEM_ZONE, args[(int)p]);
+            TRI_Utf8ValueNFC text(args[(int)p]);
 
             if (*text == nullptr) {
               std::string msg = StringUtils::itoa(p) +
@@ -2909,7 +2902,7 @@ static void JS_SPrintF(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   for (size_t i = p; i < len; ++i) {
-    TRI_Utf8ValueNFC text(TRI_UNKNOWN_MEM_ZONE, args[(int)i]);
+    TRI_Utf8ValueNFC text(args[(int)i]);
 
     if (*text == nullptr) {
       std::string msg = StringUtils::itoa(i) +
@@ -2960,7 +2953,7 @@ static void JS_Sha512(v8::FunctionCallbackInfo<v8::Value> const& args) {
   delete[] hash;
 
   // and return
-  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(hex, (int)hexLen);
+  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, (int)hexLen);
 
   delete[] hex;
 
@@ -3002,7 +2995,7 @@ static void JS_Sha384(v8::FunctionCallbackInfo<v8::Value> const& args) {
   delete[] hash;
 
   // and return
-  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(hex, (int)hexLen);
+  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, (int)hexLen);
 
   delete[] hex;
 
@@ -3044,7 +3037,7 @@ static void JS_Sha256(v8::FunctionCallbackInfo<v8::Value> const& args) {
   delete[] hash;
 
   // and return
-  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(hex, (int)hexLen);
+  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, (int)hexLen);
 
   delete[] hex;
 
@@ -3086,7 +3079,7 @@ static void JS_Sha224(v8::FunctionCallbackInfo<v8::Value> const& args) {
   delete[] hash;
 
   // and return
-  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(hex, (int)hexLen);
+  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, (int)hexLen);
 
   delete[] hex;
 
@@ -3128,7 +3121,7 @@ static void JS_Sha1(v8::FunctionCallbackInfo<v8::Value> const& args) {
   delete[] hash;
 
   // and return
-  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(hex, (int)hexLen);
+  v8::Handle<v8::String> hashStr = TRI_V8_PAIR_STRING(isolate, hex, (int)hexLen);
 
   delete[] hex;
 
@@ -3404,7 +3397,7 @@ static void JS_ExecuteExternal(
         "executeExternal(<filename>[, <arguments> [,<usePipes>] ])");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
@@ -3421,10 +3414,14 @@ static void JS_ExecuteExternal(
 
       n = arr->Length();
       arguments = static_cast<char**>(
-          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*)));
+          TRI_Allocate(n * sizeof(char*)));
+
+      if (arguments == nullptr) {
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
 
       for (uint32_t i = 0; i < n; ++i) {
-        TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, arr->Get(i));
+        TRI_Utf8ValueNFC arg(arr->Get(i));
 
         if (*arg == nullptr) {
           arguments[i] = TRI_DuplicateString("");
@@ -3435,9 +3432,13 @@ static void JS_ExecuteExternal(
     } else {
       n = 1;
       arguments = static_cast<char**>(
-          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*)));
+          TRI_Allocate(n * sizeof(char*)));
+      
+      if (arguments == nullptr) {
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
 
-      TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, a);
+      TRI_Utf8ValueNFC arg(a);
 
       if (*arg == nullptr) {
         arguments[0] = TRI_DuplicateString("");
@@ -3456,25 +3457,27 @@ static void JS_ExecuteExternal(
                             (size_t)n, usePipes, &external);
   if (arguments != nullptr) {
     for (uint32_t i = 0; i < n; ++i) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, arguments[i]);
+      if (arguments[i] != nullptr) {
+        TRI_FreeString(arguments[i]);
+      }
     }
 
-    TRI_Free(TRI_CORE_MEM_ZONE, arguments);
+    TRI_Free(arguments);
   }
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");
   }
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("pid"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "pid"),
               v8::Number::New(isolate, external._pid));
 // Now report about possible stdin and stdout pipes:
 #ifndef _WIN32
   if (external._readPipe >= 0) {
-    result->Set(TRI_V8_ASCII_STRING("readPipe"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "readPipe"),
                 v8::Number::New(isolate, external._readPipe));
   }
   if (external._writePipe >= 0) {
-    result->Set(TRI_V8_ASCII_STRING("writePipe"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "writePipe"),
                 v8::Number::New(isolate, external._writePipe));
   }
 #else
@@ -3482,16 +3485,20 @@ static void JS_ExecuteExternal(
   if (0 != external._readPipe) {
     char* readPipe = TRI_EncodeHexString((char const*)external._readPipe,
                                          sizeof(HANDLE), &readPipe_len);
-    result->Set(TRI_V8_ASCII_STRING("readPipe"),
-                TRI_V8_PAIR_STRING(readPipe, (int)readPipe_len));
-    TRI_FreeString(TRI_CORE_MEM_ZONE, readPipe);
+    if (readPipe != nullptr) {
+      result->Set(TRI_V8_ASCII_STRING(isolate, "readPipe"),
+                  TRI_V8_PAIR_STRING(isolate, readPipe, (int)readPipe_len));
+      TRI_FreeString(readPipe);
+    }
   }
   if (0 != external._writePipe) {
     char* writePipe = TRI_EncodeHexString((char const*)external._writePipe,
                                           sizeof(HANDLE), &writePipe_len);
-    result->Set(TRI_V8_ASCII_STRING("writePipe"),
-                TRI_V8_PAIR_STRING(writePipe, (int)writePipe_len));
-    TRI_FreeString(TRI_CORE_MEM_ZONE, writePipe);
+    if (writePipe != nullptr) {
+      result->Set(TRI_V8_ASCII_STRING(isolate, "writePipe"),
+                  TRI_V8_PAIR_STRING(isolate, writePipe, (int)writePipe_len));
+      TRI_FreeString(writePipe);
+    }
   }
 #endif
   TRI_V8_RETURN(result);
@@ -3557,20 +3564,20 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
       break;
   }
 
-  result->Set(TRI_V8_ASCII_STRING("status"), TRI_V8_STRING(status));
+  result->Set(TRI_V8_ASCII_STRING(isolate, "status"), TRI_V8_STRING(isolate, status));
 
   if (external._status == TRI_EXT_TERMINATED) {
     result->Set(
-        TRI_V8_ASCII_STRING("exit"),
+        TRI_V8_ASCII_STRING(isolate, "exit"),
         v8::Integer::New(isolate, static_cast<int32_t>(external._exitStatus)));
   } else if (external._status == TRI_EXT_ABORTED) {
     result->Set(
-        TRI_V8_ASCII_STRING("signal"),
+        TRI_V8_ASCII_STRING(isolate, "signal"),
         v8::Integer::New(isolate, static_cast<int32_t>(external._exitStatus)));
   }
   if (external._errorMessage.length() > 0) {
-    result->Set(TRI_V8_ASCII_STRING("errorMessage"),
-                TRI_V8_STD_STRING(external._errorMessage));
+    result->Set(TRI_V8_ASCII_STRING(isolate, "errorMessage"),
+                TRI_V8_STD_STRING(isolate, external._errorMessage));
   }
   // return the result
   TRI_V8_RETURN(result);
@@ -3592,7 +3599,7 @@ static void JS_ExecuteAndWaitExternal(
         "executeAndWaitExternal(<filename>[, <arguments> [,<usePipes>] ])");
   }
 
-  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC name(args[0]);
 
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
@@ -3609,10 +3616,14 @@ static void JS_ExecuteAndWaitExternal(
 
       n = arr->Length();
       arguments = static_cast<char**>(
-          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*)));
+          TRI_Allocate(n * sizeof(char*)));
+      
+      if (arguments == nullptr) {
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
 
       for (uint32_t i = 0; i < n; ++i) {
-        TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, arr->Get(i));
+        TRI_Utf8ValueNFC arg(arr->Get(i));
 
         if (*arg == nullptr) {
           arguments[i] = TRI_DuplicateString("");
@@ -3623,9 +3634,9 @@ static void JS_ExecuteAndWaitExternal(
     } else {
       n = 1;
       arguments = static_cast<char**>(
-          TRI_Allocate(TRI_CORE_MEM_ZONE, n * sizeof(char*)));
+          TRI_Allocate(n * sizeof(char*)));
 
-      TRI_Utf8ValueNFC arg(TRI_UNKNOWN_MEM_ZONE, a);
+      TRI_Utf8ValueNFC arg(a);
 
       if (*arg == nullptr) {
         arguments[0] = TRI_DuplicateString("");
@@ -3644,25 +3655,27 @@ static void JS_ExecuteAndWaitExternal(
                             static_cast<size_t>(n), usePipes, &external);
   if (arguments != nullptr) {
     for (uint32_t i = 0; i < n; ++i) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, arguments[i]);
+      if (arguments[i] != nullptr) {
+        TRI_FreeString(arguments[i]);
+      }
     }
 
-    TRI_Free(TRI_CORE_MEM_ZONE, arguments);
+    TRI_Free(arguments);
   }
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");
   }
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("pid"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "pid"),
               v8::Number::New(isolate, external._pid));
 // Now report about possible stdin and stdout pipes:
 #ifndef _WIN32
   if (external._readPipe >= 0) {
-    result->Set(TRI_V8_ASCII_STRING("readPipe"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "readPipe"),
                 v8::Number::New(isolate, external._readPipe));
   }
   if (external._writePipe >= 0) {
-    result->Set(TRI_V8_ASCII_STRING("writePipe"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "writePipe"),
                 v8::Number::New(isolate, external._writePipe));
   }
 #else
@@ -3670,16 +3683,20 @@ static void JS_ExecuteAndWaitExternal(
   if (0 != external._readPipe) {
     char* readPipe = TRI_EncodeHexString((char const*)external._readPipe,
                                          sizeof(HANDLE), &readPipe_len);
-    result->Set(TRI_V8_ASCII_STRING("readPipe"),
-                TRI_V8_PAIR_STRING(readPipe, (int)readPipe_len));
-    TRI_FreeString(TRI_CORE_MEM_ZONE, readPipe);
+    if (readPipe != nullptr) {
+      result->Set(TRI_V8_ASCII_STRING(isolate, "readPipe"),
+                  TRI_V8_PAIR_STRING(isolate, readPipe, (int)readPipe_len));
+      TRI_FreeString(readPipe);
+    }
   }
   if (0 != external._writePipe) {
     char* writePipe = TRI_EncodeHexString((char const*)external._writePipe,
                                           sizeof(HANDLE), &writePipe_len);
-    result->Set(TRI_V8_ASCII_STRING("writePipe"),
-                TRI_V8_PAIR_STRING(writePipe, (int)writePipe_len));
-    TRI_FreeString(TRI_CORE_MEM_ZONE, writePipe);
+    if (writePipe != nullptr) {
+      result->Set(TRI_V8_ASCII_STRING(isolate, "writePipe"),
+                  TRI_V8_PAIR_STRING(isolate, writePipe, (int)writePipe_len));
+      TRI_FreeString(writePipe);
+    }
   }
 #endif
 
@@ -3719,20 +3736,20 @@ static void JS_ExecuteAndWaitExternal(
       break;
   }
 
-  result->Set(TRI_V8_ASCII_STRING("status"), TRI_V8_ASCII_STRING(status));
+  result->Set(TRI_V8_ASCII_STRING(isolate, "status"), TRI_V8_ASCII_STRING(isolate, status));
 
   if (external_status._status == TRI_EXT_TERMINATED) {
-    result->Set(TRI_V8_ASCII_STRING("exit"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "exit"),
                 v8::Integer::New(isolate, static_cast<int32_t>(
                                               external_status._exitStatus)));
   } else if (external_status._status == TRI_EXT_ABORTED) {
-    result->Set(TRI_V8_ASCII_STRING("signal"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "signal"),
                 v8::Integer::New(isolate, static_cast<int32_t>(
                                               external_status._exitStatus)));
   }
   if (external_status._errorMessage.length() > 0) {
-    result->Set(TRI_V8_ASCII_STRING("errorMessage"),
-                TRI_V8_STD_STRING(external_status._errorMessage));
+    result->Set(TRI_V8_ASCII_STRING(isolate, "errorMessage"),
+                TRI_V8_STD_STRING(isolate, external_status._errorMessage));
   }
   // return the result
   TRI_V8_RETURN(result);
@@ -4009,10 +4026,10 @@ static void JS_ArangoError(v8::FunctionCallbackInfo<v8::Value> const& args) {
     // stack trace
     v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
     v8::Handle<v8::Value> errorObject =
-        current->Get(TRI_V8_ASCII_STRING("Error"));
+        current->Get(TRI_V8_ASCII_STRING(isolate, "Error"));
     v8::Handle<v8::Object> err = v8::Handle<v8::Object>::Cast(errorObject);
     v8::Handle<v8::Function> captureStackTrace = v8::Handle<v8::Function>::Cast(
-        err->Get(TRI_V8_ASCII_STRING("captureStackTrace")));
+        err->Get(TRI_V8_ASCII_STRING(isolate, "captureStackTrace")));
 
     v8::Handle<v8::Value> arguments[] = {self};
     captureStackTrace->Call(current, 1, arguments);
@@ -4033,7 +4050,7 @@ static void JS_IsIP(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("isIP(<value>)");
   }
 
-  TRI_Utf8ValueNFC address(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC address(args[0]);
 
   if (TRI_InetPton4(*address, nullptr) == TRI_ERROR_NO_ERROR) {
     TRI_V8_RETURN(v8::Number::New(isolate, 4));
@@ -4084,7 +4101,7 @@ static void JS_SplitWordlist(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   uint32_t i = 0;
   for (std::string const& word : wordList) {
-    v8::Handle<v8::String> oneWord = TRI_V8_STD_STRING(word);
+    v8::Handle<v8::String> oneWord = TRI_V8_STD_STRING(isolate, word);
     v8WordList->Set(i, oneWord);
     i++;
   }
@@ -4101,7 +4118,7 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate,
                                      v8::TryCatch* tryCatch) {
   v8::HandleScope handle_scope(isolate);
 
-  TRI_Utf8ValueNFC exception(TRI_UNKNOWN_MEM_ZONE, tryCatch->Exception());
+  TRI_Utf8ValueNFC exception(tryCatch->Exception());
   char const* exceptionString = *exception;
   v8::Handle<v8::Message> message = tryCatch->Message();
   std::string result;
@@ -4115,8 +4132,7 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate,
       result = "JavaScript exception: " + std::string(exceptionString) + "\n";
     }
   } else {
-    TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE,
-                              message->GetScriptResourceName());
+    TRI_Utf8ValueNFC filename(                              message->GetScriptResourceName());
     char const* filenameString = *filename;
     int linenum = message->GetLineNumber();
     int start = message->GetStartColumn() + 1;
@@ -4143,7 +4159,7 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate,
       }
     }
 
-    TRI_Utf8ValueNFC sourceline(TRI_UNKNOWN_MEM_ZONE, message->GetSourceLine());
+    TRI_Utf8ValueNFC sourceline(message->GetSourceLine());
 
     if (*sourceline) {
       std::string l = *sourceline;
@@ -4168,7 +4184,7 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate,
       result += "!" + l + "\n";
     }
 
-    TRI_Utf8ValueNFC stacktrace(TRI_UNKNOWN_MEM_ZONE, tryCatch->StackTrace());
+    TRI_Utf8ValueNFC stacktrace(tryCatch->StackTrace());
 
     if (*stacktrace && stacktrace.length() > 0) {
       result += "stacktrace: " + std::string(*stacktrace) + "\n";
@@ -4185,7 +4201,7 @@ std::string TRI_StringifyV8Exception(v8::Isolate* isolate,
 void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
   v8::HandleScope handle_scope(isolate);
 
-  TRI_Utf8ValueNFC exception(TRI_UNKNOWN_MEM_ZONE, tryCatch->Exception());
+  TRI_Utf8ValueNFC exception(tryCatch->Exception());
   char const* exceptionString = *exception;
   v8::Handle<v8::Message> message = tryCatch->Message();
 
@@ -4199,8 +4215,7 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
                                               << exceptionString;
     }
   } else {
-    TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE,
-                              message->GetScriptResourceName());
+    TRI_Utf8ValueNFC filename(                              message->GetScriptResourceName());
     char const* filenameString = *filename;
     // if ifdef is not used, the compiler will complain about linenum being
     // unused
@@ -4227,7 +4242,7 @@ void TRI_LogV8Exception(v8::Isolate* isolate, v8::TryCatch* tryCatch) {
       }
     }
 
-    TRI_Utf8ValueNFC sourceline(TRI_UNKNOWN_MEM_ZONE, message->GetSourceLine());
+    TRI_Utf8ValueNFC sourceline(message->GetSourceLine());
 
     if (*sourceline) {
       std::string l = *sourceline;
@@ -4313,7 +4328,7 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(
   if (printResult && !result->IsUndefined()) {
     v8::TryCatch tryCatch;
 
-    v8::Handle<v8::String> printFuncName = TRI_V8_ASCII_STRING("print");
+    v8::Handle<v8::String> printFuncName = TRI_V8_ASCII_STRING(isolate, "print");
     v8::Handle<v8::Function> print =
         v8::Handle<v8::Function>::Cast(context->Global()->Get(printFuncName));
 
@@ -4396,14 +4411,14 @@ void TRI_normalize_V8_Obj(v8::FunctionCallbackInfo<v8::Value> const& args,
         Normalizer2::getInstance(nullptr, "nfc", UNORM2_COMPOSE, errorCode);
 
     if (U_FAILURE(errorCode)) {
-      TRI_V8_RETURN(TRI_V8_PAIR_STRING((char*)*str, (int)str_len));
+      TRI_V8_RETURN(TRI_V8_PAIR_STRING(isolate, (char*)*str, (int)str_len));
     }
 
     UnicodeString result = normalizer->normalize(
         UnicodeString((UChar*)*str, (int32_t)str_len), errorCode);
 
     if (U_FAILURE(errorCode)) {
-      TRI_V8_RETURN(TRI_V8_STRING_UTF16(*str, (int)str_len));
+      TRI_V8_RETURN(TRI_V8_STRING_UTF16(isolate, *str, (int)str_len));
     }
 
     // ..........................................................................
@@ -4412,7 +4427,7 @@ void TRI_normalize_V8_Obj(v8::FunctionCallbackInfo<v8::Value> const& args,
     // compilers. v8 expects uint16_t (2 bytes)
     // ..........................................................................
 
-    TRI_V8_RETURN(TRI_V8_STRING_UTF16((uint16_t const*)result.getBuffer(),
+    TRI_V8_RETURN(TRI_V8_STRING_UTF16(isolate, (uint16_t const*)result.getBuffer(),
                                       result.length()));
   }
 
@@ -4437,7 +4452,7 @@ v8::Handle<v8::Array> static V8PathList(v8::Isolate* isolate,
   v8::Handle<v8::Array> result = v8::Array::New(isolate, n);
 
   for (uint32_t i = 0; i < n; ++i) {
-    result->Set(i, TRI_V8_STD_STRING(paths[i]));
+    result->Set(i, TRI_V8_STD_STRING(isolate, paths[i]));
   }
 
   return scope.Escape<v8::Array>(result);
@@ -4520,9 +4535,9 @@ bool TRI_RunGarbageCollectionV8(v8::Isolate* isolate, double availableTime) {
 void TRI_ClearObjectCacheV8(v8::Isolate* isolate) {
   auto globals = isolate->GetCurrentContext()->Global();
 
-  if (globals->Has(TRI_V8_ASCII_STRING("__dbcache__"))) {
+  if (globals->Has(TRI_V8_ASCII_STRING(isolate, "__dbcache__"))) {
     v8::Handle<v8::Object> cacheObject =
-        globals->Get(TRI_V8_ASCII_STRING("__dbcache__"))->ToObject();
+        globals->Get(TRI_V8_ASCII_STRING(isolate, "__dbcache__"))->ToObject();
     if (!cacheObject.IsEmpty()) {
       v8::Handle<v8::Array> props = cacheObject->GetPropertyNames();
       for (uint32_t i = 0; i < props->Length(); i++) {
@@ -4558,21 +4573,21 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   // .............................................................................
 
   ft = v8::FunctionTemplate::New(isolate, JS_ArangoError);
-  ft->SetClassName(TRI_V8_ASCII_STRING("ArangoError"));
+  ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoError"));
 
   // ArangoError is a "sub-class" of Error
   v8::Handle<v8::Function> ArangoErrorFunc = ft->GetFunction();
   v8::Handle<v8::Value> ErrorObject =
-      context->Global()->Get(TRI_V8_ASCII_STRING("Error"));
+      context->Global()->Get(TRI_V8_ASCII_STRING(isolate, "Error"));
   v8::Handle<v8::Value> ErrorPrototype =
-      ErrorObject->ToObject()->Get(TRI_V8_ASCII_STRING("prototype"));
+      ErrorObject->ToObject()->Get(TRI_V8_ASCII_STRING(isolate, "prototype"));
 
-  ArangoErrorFunc->Get(TRI_V8_ASCII_STRING("prototype"))
+  ArangoErrorFunc->Get(TRI_V8_ASCII_STRING(isolate, "prototype"))
       ->ToObject()
       ->SetPrototype(ErrorPrototype);
 
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("ArangoError"), ArangoErrorFunc);
+      isolate, TRI_V8_ASCII_STRING(isolate, "ArangoError"), ArangoErrorFunc);
 
   rt = ft->InstanceTemplate();
   v8g->ArangoErrorTempl.Reset(isolate, rt);
@@ -4582,216 +4597,216 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   // .............................................................................
 
   TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("FS_CHMOD"), JS_ChMod);
+                               TRI_V8_ASCII_STRING(isolate, "FS_CHMOD"), JS_ChMod);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("FS_EXISTS"), JS_Exists);
+                               TRI_V8_ASCII_STRING(isolate, "FS_EXISTS"), JS_Exists);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("FS_FILESIZE"), JS_SizeFile);
+                               TRI_V8_ASCII_STRING(isolate, "FS_FILESIZE"), JS_SizeFile);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("FS_GET_TEMP_FILE"),
+                               TRI_V8_ASCII_STRING(isolate, "FS_GET_TEMP_FILE"),
                                JS_GetTempFile);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("FS_GET_TEMP_PATH"),
+                               TRI_V8_ASCII_STRING(isolate, "FS_GET_TEMP_PATH"),
                                JS_GetTempPath);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("FS_IS_DIRECTORY"), JS_IsDirectory);
+      isolate, TRI_V8_ASCII_STRING(isolate, "FS_IS_DIRECTORY"), JS_IsDirectory);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("FS_IS_FILE"), JS_IsFile);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("FS_LIST"),
+                               TRI_V8_ASCII_STRING(isolate, "FS_IS_FILE"), JS_IsFile);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "FS_LIST"),
                                JS_List);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("FS_LIST_TREE"), JS_ListTree);
+      isolate, TRI_V8_ASCII_STRING(isolate, "FS_LIST_TREE"), JS_ListTree);
   TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("FS_MAKE_ABSOLUTE"),
+                               TRI_V8_ASCII_STRING(isolate, "FS_MAKE_ABSOLUTE"),
                                JS_MakeAbsolute);
   TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("FS_MAKE_DIRECTORY"),
+                               TRI_V8_ASCII_STRING(isolate, "FS_MAKE_DIRECTORY"),
                                JS_MakeDirectory);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("FS_MAKE_DIRECTORY_RECURSIVE"),
+      isolate, TRI_V8_ASCII_STRING(isolate, "FS_MAKE_DIRECTORY_RECURSIVE"),
       JS_MakeDirectoryRecursive);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("FS_MOVE"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "FS_MOVE"),
                                JS_MoveFile);
   TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("FS_COPY_RECURSIVE"),
+                               TRI_V8_ASCII_STRING(isolate, "FS_COPY_RECURSIVE"),
                                JS_CopyRecursive);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("FS_COPY_FILE"), JS_CopyFile);
+      isolate, TRI_V8_ASCII_STRING(isolate, "FS_COPY_FILE"), JS_CopyFile);
 
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("FS_MTIME"), JS_MTime);
+                               TRI_V8_ASCII_STRING(isolate, "FS_MTIME"), JS_MTime);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("FS_REMOVE"), JS_Remove);
+                               TRI_V8_ASCII_STRING(isolate, "FS_REMOVE"), JS_Remove);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("FS_REMOVE_DIRECTORY"),
+                               TRI_V8_ASCII_STRING(isolate, "FS_REMOVE_DIRECTORY"),
                                JS_RemoveDirectory);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("FS_REMOVE_RECURSIVE_DIRECTORY"),
+      isolate, TRI_V8_ASCII_STRING(isolate, "FS_REMOVE_RECURSIVE_DIRECTORY"),
       JS_RemoveRecursiveDirectory);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("FS_UNZIP_FILE"), JS_UnzipFile);
+      isolate, TRI_V8_ASCII_STRING(isolate, "FS_UNZIP_FILE"), JS_UnzipFile);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("FS_ZIP_FILE"), JS_ZipFile);
+                               TRI_V8_ASCII_STRING(isolate, "FS_ZIP_FILE"), JS_ZipFile);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("FS_ADLER32"), JS_Adler32);
+                               TRI_V8_ASCII_STRING(isolate, "FS_ADLER32"), JS_Adler32);
 
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_APPEND"), JS_Append);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_APPEND"), JS_Append);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_BASE64DECODE"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_BASE64DECODE"),
                                JS_Base64Decode);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_BASE64ENCODE"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_BASE64ENCODE"),
                                JS_Base64Encode);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_CHECK_AND_MARK_NONCE"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_CHECK_AND_MARK_NONCE"),
                                JS_MarkNonce);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_CREATE_NONCE"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_CREATE_NONCE"),
                                JS_CreateNonce);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("SYS_DOWNLOAD"), JS_Download);
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_DOWNLOAD"), JS_Download);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_EXECUTE"), JS_Execute);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_EXECUTE"), JS_Execute);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_EXECUTE_EXTERNAL"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_EXECUTE_EXTERNAL"),
                                JS_ExecuteExternal);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("SYS_EXECUTE_EXTERNAL_AND_WAIT"),
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_EXECUTE_EXTERNAL_AND_WAIT"),
       JS_ExecuteAndWaitExternal);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("SYS_GEN_RANDOM_ALPHA_NUMBERS"),
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_GEN_RANDOM_ALPHA_NUMBERS"),
       JS_RandomAlphaNum);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_GEN_RANDOM_NUMBERS"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_GEN_RANDOM_NUMBERS"),
                                JS_RandomNumbers);
   TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("SYS_GEN_RANDOM_SALT"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_GEN_RANDOM_SALT"),
                                JS_RandomSalt);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_GETLINE"), JS_Getline);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_GETLINE"), JS_Getline);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_HMAC"), JS_HMAC);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_HMAC"), JS_HMAC);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_IS_IP"), JS_IsIP);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_IS_IP"), JS_IsIP);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_SPLIT_WORDS_ICU"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_SPLIT_WORDS_ICU"),
                                JS_SplitWordlist);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_KILL_EXTERNAL"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_KILL_EXTERNAL"),
                                JS_KillExternal);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_SUSPEND_EXTERNAL"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_SUSPEND_EXTERNAL"),
                                JS_SuspendExternal);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_CONTINUE_EXTERNAL"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_CONTINUE_EXTERNAL"),
                                JS_ContinueExternal);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_LOAD"), JS_Load);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("SYS_LOG"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_LOAD"), JS_Load);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_LOG"),
                                JS_Log);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("SYS_LOG_LEVEL"), JS_LogLevel);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("SYS_MD5"),
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_LOG_LEVEL"), JS_LogLevel);
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "SYS_MD5"),
                                JS_Md5);
   TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("SYS_OPTIONS"), JS_Options);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_OPTIONS"), JS_Options);
   TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("SYS_OUTPUT"), JS_Output);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_OUTPUT"), JS_Output);
   TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("SYS_PARSE"), JS_Parse);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_PARSE"), JS_Parse);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("SYS_PARSE_FILE"), JS_ParseFile);
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_PARSE_FILE"), JS_ParseFile);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("SYS_PBKDF2HS1"), JS_PBKDF2HS1);
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_PBKDF2HS1"), JS_PBKDF2HS1);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_PBKDF2"), JS_PBKDF2);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_PBKDF2"), JS_PBKDF2);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_PROCESS_STATISTICS"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_PROCESS_STATISTICS"),
                                JS_ProcessStatistics);
   TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("SYS_RAND"), JS_Rand);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_RAND"), JS_Rand);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_READ"), JS_Read);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_READ"), JS_Read);
   TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("SYS_READ64"), JS_Read64);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_READ64"), JS_Read64);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("SYS_READ_BUFFER"), JS_ReadBuffer);
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_READ_BUFFER"), JS_ReadBuffer);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_SHA1"), JS_Sha1);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_SHA1"), JS_Sha1);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_SHA224"), JS_Sha224);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_SHA224"), JS_Sha224);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_SHA256"), JS_Sha256);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_SHA256"), JS_Sha256);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_SHA384"), JS_Sha384);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_SHA384"), JS_Sha384);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_SHA512"), JS_Sha512);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_SHA512"), JS_Sha512);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_SLEEP"), JS_Sleep);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_SLEEP"), JS_Sleep);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_SPRINTF"), JS_SPrintF);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_SPRINTF"), JS_SPrintF);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_STATUS_EXTERNAL"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_STATUS_EXTERNAL"),
                                JS_StatusExternal);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("SYS_TEST_PORT"), JS_TestPort);
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_TEST_PORT"), JS_TestPort);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_TIME"), JS_Time);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_TIME"), JS_Time);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_WAIT"), JS_Wait);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_WAIT"), JS_Wait);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_WRITE"), JS_Write);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_WRITE"), JS_Write);
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_DEBUG_CAN_USE_FAILAT"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_DEBUG_CAN_USE_FAILAT"),
                                JS_DebugCanUseFailAt);
 
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("SYS_IS_STOPPING"), JS_IsStopping);
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_IS_STOPPING"), JS_IsStopping);
 
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("V8_TO_VPACK"), JS_V8ToVPack);
+      isolate, TRI_V8_ASCII_STRING(isolate, "V8_TO_VPACK"), JS_V8ToVPack);
 
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING("VPACK_TO_V8"), JS_VPackToV8);
+      isolate, TRI_V8_ASCII_STRING(isolate, "VPACK_TO_V8"), JS_VPackToV8);
 
   // .............................................................................
   // create the global variables
   // .............................................................................
 
-  TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING("HOME"),
-                               TRI_V8_STD_STRING(FileUtils::homeDirectory()));
+  TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "HOME"),
+                               TRI_V8_STD_STRING(isolate, FileUtils::homeDirectory()));
 
   TRI_AddGlobalVariableVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("MODULES_PATH"),
+                               TRI_V8_ASCII_STRING(isolate, "MODULES_PATH"),
                                V8PathList(isolate, modules));
 
   TRI_AddGlobalVariableVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("STARTUP_PATH"),
-                               TRI_V8_STD_STRING(startupPath));
+                               TRI_V8_ASCII_STRING(isolate, "STARTUP_PATH"),
+                               TRI_V8_STD_STRING(isolate, startupPath));
 
   TRI_AddGlobalVariableVocbase(isolate,
-                               TRI_V8_ASCII_STRING("PATH_SEPARATOR"),
-                               TRI_V8_ASCII_STRING(TRI_DIR_SEPARATOR_STR));
+                               TRI_V8_ASCII_STRING(isolate, "PATH_SEPARATOR"),
+                               TRI_V8_ASCII_STRING(isolate, TRI_DIR_SEPARATOR_STR));
 
   TRI_AddGlobalVariableVocbase(
-      isolate, TRI_V8_ASCII_STRING("VALGRIND"),
+      isolate, TRI_V8_ASCII_STRING(isolate, "VALGRIND"),
       v8::Boolean::New(isolate, (RUNNING_ON_VALGRIND > 0)));
 
 #ifdef COVERAGE
   TRI_AddGlobalVariableVocbase(
-      isolate, TRI_V8_ASCII_STRING("COVERAGE"), v8::True(isolate));
+      isolate, TRI_V8_ASCII_STRING(isolate, "COVERAGE"), v8::True(isolate));
 #else
   TRI_AddGlobalVariableVocbase(
-      isolate, TRI_V8_ASCII_STRING("COVERAGE"), v8::False(isolate));
+      isolate, TRI_V8_ASCII_STRING(isolate, "COVERAGE"), v8::False(isolate));
 #endif
 
-  TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING("VERSION"),
-                               TRI_V8_ASCII_STRING(ARANGODB_VERSION));
+  TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "VERSION"),
+                               TRI_V8_ASCII_STRING(isolate, ARANGODB_VERSION));
 
   TRI_AddGlobalVariableVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("SYS_PLATFORM"),
-                               TRI_V8_ASCII_STRING(TRI_PLATFORM));
+                               TRI_V8_ASCII_STRING(isolate, "SYS_PLATFORM"),
+                               TRI_V8_ASCII_STRING(isolate, TRI_PLATFORM));
 
   TRI_InitV8Env(isolate, context, startupPath, modules);
 }

@@ -185,6 +185,7 @@ class ExecutionNode {
 
   /// @brief add a parent
   void addParent(ExecutionNode* ep) {
+    TRI_ASSERT(ep != nullptr);
     ep->_dependencies.emplace_back(this);
     _parents.emplace_back(ep);
   }
@@ -197,6 +198,7 @@ class ExecutionNode {
     if (_dependencies.empty()) {
       return nullptr;
     }
+    TRI_ASSERT(_dependencies[0] != nullptr);
     return _dependencies[0];
   }
 
@@ -208,6 +210,7 @@ class ExecutionNode {
   //              maybe another name should be used.
   void addDependencies(std::vector<ExecutionNode*>& result) const {
     for (auto const& it : _dependencies) {
+      TRI_ASSERT(it != nullptr);
       result.emplace_back(it);
     }
   }
@@ -223,12 +226,14 @@ class ExecutionNode {
     if (_parents.empty()) {
       return nullptr;
     }
+    TRI_ASSERT(_parents[0] != nullptr);
     return _parents[0];
   }
 
   /// @brief add the node parents to a vector
   void addParents(std::vector<ExecutionNode*>& result) const {
     for (auto const& it : _parents) {
+      TRI_ASSERT(it != nullptr);
       result.emplace_back(it);
     }
   }
@@ -283,6 +288,9 @@ class ExecutionNode {
   /// @brief replace a dependency, returns true if the pointer was found and
   /// replaced, please note that this does not delete oldNode!
   bool replaceDependency(ExecutionNode* oldNode, ExecutionNode* newNode) {
+    TRI_ASSERT(oldNode != nullptr);
+    TRI_ASSERT(newNode != nullptr);
+
     auto it = _dependencies.begin();
 
     while (it != _dependencies.end()) {

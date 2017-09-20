@@ -36,7 +36,7 @@ using namespace arangodb::aql;
 std::map<int, OptimizerRule> OptimizerRulesFeature::_rules;
 
 // @brief lookup from rule name to rule level
-std::unordered_map<std::string, int> OptimizerRulesFeature::_ruleLookup;
+std::unordered_map<std::string, std::pair<int, bool>> OptimizerRulesFeature::_ruleLookup;
 
 constexpr bool CreatesAdditionalPlans = true;
 constexpr bool DoesNotCreateAdditionalPlans = false;
@@ -68,10 +68,10 @@ void OptimizerRulesFeature::registerRule(std::string const& name, RuleFunction f
   if (_ruleLookup.find(name) != _ruleLookup.end()) {
     // duplicate rule names are not allowed
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                    "duplicate optimizer rule name");
+                                   "duplicate optimizer rule name");
   }
 
-  _ruleLookup.emplace(name, level);
+  _ruleLookup.emplace(name, std::make_pair(level, canBeDisabled));
 
   if (_rules.find(level) != _rules.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -249,6 +249,14 @@ void OptimizerRulesFeature::addRules() {
                                       OptimizerRule::applyGeoIndexRule, false, true);
 
   if (arangodb::ServerState::instance()->isCoordinator()) {
+#if 0
+    registerRule("optimize-cluster-single-shard", optimizeClusterSingleShardRule,
+                 OptimizerRule::optimizeClusterSingleShardRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
+
+    registerRule("optimize-cluster-joins", optimizeClusterJoinsRule,
+                 OptimizerRule::optimizeClusterJoinsRule_pass10, DoesNotCreateAdditionalPlans, CanBeDisabled);
+#endif
+
     // distribute operations in cluster
     registerRule("scatter-in-cluster", scatterInClusterRule,
                  OptimizerRule::scatterInClusterRule_pass10, DoesNotCreateAdditionalPlans, CanNotBeDisabled);
@@ -320,22 +328,30 @@ char const* OptimizerRulesFeature::translateRule(int rule) {
 std::unordered_set<int> OptimizerRulesFeature::getDisabledRuleIds(
     std::vector<std::string> const& names) {
   std::unordered_set<int> disabled;
-
+                 
   // lookup ids of all disabled rules
   for (auto const& name : names) {
+    if (name.empty()) {
+      continue;
+    }
     if (name[0] == '-') {
       // disable rule
       if (name == "-all") {
         // disable all rules
         for (auto const& it : _rules) {
-          disabled.emplace(it.first);
+          if (it.second.canBeDisabled) {
+            disabled.emplace(it.first);
+          }
         }
       } else {
         // disable a specific rule
         auto it = _ruleLookup.find(name.c_str() + 1);
 
         if (it != _ruleLookup.end()) {
-          disabled.emplace((*it).second);
+          if ((*it).second.second) {
+            // can be disabled
+            disabled.emplace((*it).second.first);
+          }
         }
       }
     } else if (name[0] == '+') {
@@ -347,7 +363,7 @@ std::unordered_set<int> OptimizerRulesFeature::getDisabledRuleIds(
         auto it = _ruleLookup.find(name.c_str() + 1);
 
         if (it != _ruleLookup.end()) {
-          disabled.erase((*it).second);
+          disabled.erase((*it).second.first);
         }
       }
     }

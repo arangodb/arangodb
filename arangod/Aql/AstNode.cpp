@@ -22,12 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AstNode.h"
+#include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
 #include "Aql/Function.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/Scopes.h"
-#include "Aql/V8Executor.h"
 #include "Aql/types.h"
 #include "Basics/FloatingPoint.h"
 #include "Basics/StringBuffer.h"
@@ -490,7 +490,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice const& slice)
     }
     case NODE_TYPE_FCALL: {
       setData(
-          query->executor()->getFunctionByName(slice.get("name").copyString()));
+          AqlFunctionFeature::getFunctionByName(slice.get("name").copyString()));
       break;
     }
     case NODE_TYPE_OBJECT_ELEMENT: {
@@ -1071,7 +1071,7 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
   }
   if (type == NODE_TYPE_FCALL) {
     auto func = static_cast<Function*>(getData());
-    builder.add("name", VPackValue(func->externalName));
+    builder.add("name", VPackValue(func->name));
     // arguments are exported via node members
   }
 
@@ -1371,7 +1371,7 @@ bool AstNode::isAttributeAccessForVariable(
   }
   auto node = this;
   
-  basics::StringBuffer indexBuff(TRI_UNKNOWN_MEM_ZONE, false);
+  basics::StringBuffer indexBuff(false);
 
   while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS ||
          node->type == NODE_TYPE_INDEXED_ACCESS ||
@@ -1869,7 +1869,7 @@ bool AstNode::isCacheable() const {
   if (type == NODE_TYPE_FCALL) {
     // built-in functions may or may not be cacheable
     auto func = static_cast<Function*>(getData());
-    return func->isCacheable;
+    return func->isCacheable();
   }
 
   if (type == NODE_TYPE_FCALL_USER) {
@@ -1951,7 +1951,7 @@ AstNode* AstNode::clone(Ast* ast) const { return ast->clone(this); }
 void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
                         bool failIfLong) const {
   // any arrays/objects with more values than this will not be stringified if
-  // failIfLonf is set to true!
+  // failIfLong is set to true!
   static size_t const TooLongThreshold = 80;
 
   if (type == NODE_TYPE_VALUE) {
@@ -2075,7 +2075,7 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
   if (type == NODE_TYPE_FCALL) {
     // not used by V8
     auto func = static_cast<Function*>(getData());
-    buffer->appendText(func->externalName);
+    buffer->appendText(func->name);
     buffer->appendChar('(');
     getMember(0)->stringify(buffer, verbose, failIfLong);
     buffer->appendChar(')');
@@ -2225,9 +2225,9 @@ void AstNode::stringify(arangodb::basics::StringBuffer* buffer, bool verbose,
 /// note that this may throw and that the caller is responsible for
 /// catching the error
 std::string AstNode::toString() const {
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  arangodb::basics::StringBuffer buffer(false);
   stringify(&buffer, false, false);
-  return std::string(buffer.c_str(), buffer.length());
+  return std::string(buffer.data(), buffer.length());
 }
 
 /// @brief locate a variable including the direct path vector leading to it.
