@@ -730,9 +730,10 @@ void Constituent::run() {
       } else if (role == CANDIDATE) {
         callElection();  // Run for office
       } else {
-        // This is 1/10th of the minPing timeout:
+        // This is 1/4th of the minPing timeout (_cv.wait() below is in
+        // microseconds):
         uint64_t timeout =
-          static_cast<uint64_t>(100000.0 * _agent->config().minPing() *
+          static_cast<uint64_t>(250000.0 * _agent->config().minPing() *
                                 _agent->config().timeoutMult());
         {
           CONDITION_LOCKER(guardv, _cv);
@@ -741,7 +742,7 @@ void Constituent::run() {
         double now = TRI_microtime();
         if (now - _lastHeartbeatSent > _agent->config().minPing()
                                      * _agent->config().timeoutMult()
-                                     / 10.0) {
+                                     / 4.0) {
           _agent->sendEmptyAppendEntriesRPC();
         }
       }

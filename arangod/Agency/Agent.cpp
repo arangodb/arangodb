@@ -1426,7 +1426,7 @@ void Agent::rebuildDBs() {
   {
     auto logs = _state.slices(lastCompactionIndex+1, commitIndex);
     _readDB.applyLogEntries(logs, commitIndex, term,
-                            false  /* do not send callbacks */);
+        false /* do not send callbacks */);
   }
   _spearhead = _readDB;
 
