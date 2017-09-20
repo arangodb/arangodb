@@ -513,10 +513,7 @@ void Agent::sendAppendEntriesRPC() {
       
       // Really leading?
       {
-        MUTEX_LOCKER(tiLocker, _tiLock);
-
         if (challengeLeadership()) {
-          tiLocker.unlock();
           _constituent.candidate();
           _preparing = false;
           return;
@@ -819,7 +816,6 @@ trans_ret_t Agent::transact(query_t const& queries) {
   size_t failed = 0;
   ret->openArray();
   {
-    
     // Only leader else redirect
     if (challengeLeadership()) {
       _constituent.candidate();
