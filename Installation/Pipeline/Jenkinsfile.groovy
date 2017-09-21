@@ -283,6 +283,10 @@ def deleteDirDocker(os) {
     deleteDir()
 }
 
+def shellAndPipe(command, logfile) {
+  sh "(echo 1 > \"${logfile}.result\" ; ${command) ; echo \$? > \"${logfile}.result\") 2>&1 | tee -a \"${logfile}\" ; exit `cat \"${logfile}.result\"`"
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       SCRIPTS SCM
 // -----------------------------------------------------------------------------
@@ -584,7 +588,7 @@ def jslint(os, edition, maintainer) {
     def logFile = "${arch}/jslint.log"
 
     try {
-        sh "./Installation/Pipeline/test_jslint.sh 2>&1 | tee ${logFile}"
+        shellAndPipe("./Installation/Pipeline/test_jslint.sh",logFile)
         sh "if grep ERROR ${logFile}; then exit 1; fi"
     }
     catch (exc) {
@@ -745,14 +749,13 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                                     powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
                                 }
                                 else {
-                                    sh "echo \"Host: `hostname`\" | tee ${logFile}"
+                                    sh "echo \"Host: `hostname`\" | tee -a ${logFile}"
                                     sh "echo \"PWD:  `pwd`\" | tee -a ${logFile}"
                                     sh "echo \"Date: `date`\" | tee -a ${logFile}"
 
-                                    command = "(cd ${runDir} ; echo 1 > result ; ${command} ; echo \$? > result) 2>&1 | " +
-                                              "tee -a ${logFile} ; exit `cat ${runDir}/result`"
+                                    command = "(cd ${runDir} ; ${command})"
                                     echo "executing ${command}"
-                                    sh command
+                                    shellAndPipe(command, logFile)
                                 }
                             }
                         }
@@ -1032,7 +1035,7 @@ def buildEdition(os, edition, maintainer) {
 
     try {
         if (os == 'linux' || os == 'mac') {
-            sh "echo \"Host: `hostname`\" | tee ${logFile}"
+            sh "echo \"Host: `hostname`\" | tee -a ${logFile}"
             sh "echo \"PWD:  `pwd`\" | tee -a ${logFile}"
             sh "echo \"Date: `date`\" | tee -a ${logFile}"
 
@@ -1145,9 +1148,9 @@ def createDockerImage(edition, maintainer, stageName) {
 
                     withEnv(["DOCKERTAG=${packageName}-${dockerTag}"]) {
                         try {
-                            sh "scripts/build-docker.sh 2>&1 | tee ${logFile}"
-                            sh "docker tag arangodb:${packageName}-${dockerTag} c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag} 2>&1 | tee -a ${logFile}"
-                            sh "docker push c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag} 2>&1 | tee -a ${logFile}"
+                            shellAndPipe("./scripts/build-docker.sh", logFile)
+                            shellAndPipe("docker tag arangodb:${packageName}-${dockerTag} c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag}", logFile)
+                            shellAndPipe("docker push c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag}", logFile)
                         }
                         catch (exc) {
                             renameFolder(arch, archFail)
