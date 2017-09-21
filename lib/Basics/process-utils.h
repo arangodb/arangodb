@@ -168,10 +168,17 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
                                                bool wait);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether a signal is expected to be terminal
+////////////////////////////////////////////////////////////////////////////////
+bool TRI_IsDeadlySignal(int signal);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_KillExternalProcess(TRI_external_id_t pid, int signal);
+TRI_external_status_t TRI_KillExternalProcess(TRI_external_id_t pid,
+                                              int signal,
+                                              bool isTerminal);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief suspends an external process, only on Unix

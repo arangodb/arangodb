@@ -1103,72 +1103,191 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
   return status;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// @brief check for a process we didn't spawn, and check for access rights to
+//        send it signals.
 #ifndef _WIN32
-static bool OurKillProcess(TRI_external_t* pid, int signal) {
-  if (0 == kill(pid->_pid, signal)) {
-    int count;
+static TRI_external_t* getExternalProcess(TRI_pid_t pid) {
+  if (kill(pid, 0) == 0) {
+    TRI_external_t* external = static_cast<TRI_external_t*>(TRI_Allocate(sizeof(TRI_external_t)));
 
-    // Otherwise we just let it be.
-    for (count = 0; count < 10; count++) {
-      pid_t p;
-      int loc;
-
-      // And wait for it to avoid a zombie:
-      sleep(1);
-      p = waitpid(pid->_pid, &loc, WUNTRACED | WNOHANG);
-      if (p == pid->_pid) {
-        return true;
-      }
-      if (count == 8) {
-        kill(pid->_pid, SIGKILL);
-      }
+    if (external == nullptr) {
+      // gracefully handle out of memory
+      return nullptr;
     }
+
+    memset(external, 0, sizeof(TRI_external_t));
+    external->_pid = pid;
+
+    return external;
   }
-  return false;
+  
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME) <<
+    "checking for external process: '" << pid <<
+    "' failed with error: " << strerror(errno);
+  return nullptr;
 }
 #else
-static bool OurKillProcess(TRI_external_t* pid, int signal) {
-  bool ok = true;
-  UINT uExitCode = 0;
-  DWORD exitCode;
-
-  // kill worker process
-  if (0 != TerminateProcess(pid->_process, uExitCode)) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "kill of worker process succeeded";
-  } else {
-    DWORD e1 = GetLastError();
-    BOOL ok = GetExitCodeProcess(pid->_process, &exitCode);
-
-    if (ok) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "worker process already dead: " << exitCode;
-    } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "kill of worker process failed: " << exitCode;
-      ok = false;
-    }
-  }
-  return ok;
-}
-
-static bool OurKillProcessPID(DWORD pid) {
+static TRI_external_t* getExternalProcess(TRI_pid_t pid) {
   HANDLE hProcess;
-  UINT uExitCode = 0;
-
+  
   hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
   if (hProcess != nullptr) {
-    TerminateProcess(hProcess, uExitCode);
-    CloseHandle(hProcess);
-    return true;
+    TRI_external_t* external = static_cast<TRI_external_t*>(TRI_Allocate(sizeof(TRI_external_t)));
+
+    if (external == nullptr) {
+      // gracefully handle out of memory
+      return nullptr;
+    }
+
+    memset(external, 0, sizeof(TRI_external_t));
+    external->_pid = pid;
+    external->_process = handle;
+
+    return external;
   }
-  return false;
+  return nullptr;
 }
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+// @brief check for a process we didn't spawn, and check for access rights to
+//        send it signals.
+#ifndef _WIN32
+static bool killProcess(TRI_external_t* pid, int signal) {
+  if (0 == kill(pid->_pid, signal)) {
+    return true;
+  }
+  return false;
+}
+
+#else
+static bool killProcess(TRI_external_t* pid, int signal) {
+  UINT uExitCode = 0;
+
+  // kill worker process
+  if (0 != TerminateProcess(pid->_process, uExitCode)) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+#endif
+
+#ifndef _WIN32
+typedef enum e_sig_action {
+  term,
+  core,
+  cont,
+  ign,
+  logrotate,
+  stop,
+  user
+} e_sig_action;
+
+////////////////////////////////////////////////////////////////////////////////
+// @brief find out what impact a signal will have to the process we send it.
+static e_sig_action whatDoesSignal(int signal) {
+
+//     Signal       Value     Action   Comment
+//     ────────────────────────────────────────────────────────────────────
+  switch (signal) {
+  case SIGHUP:    //    1       Term    Hangup detected on controlling terminal
+    return logrotate; //             or death of controlling process
+                  //                 we say this is non-deadly since we should do a logrotate.
+  case SIGINT:    //    2       Term    Interrupt from keyboard
+    return term;
+  case SIGQUIT:   //    3       Core    Quit from keyboard
+  case SIGILL:    //    4       Core    Illegal Instruction
+  case SIGABRT:   //    6       Core    Abort signal from abort(3)
+  case SIGFPE:    //    8       Core    Floating-point exception
+  case SIGSEGV:   //   11       Core    Invalid memory reference
+    return core;
+  case SIGKILL:   //    9       Term    Kill signal
+  case SIGPIPE:   //   13       Term    Broken pipe: write to pipe with no
+                  //                   readers; see pipe(7)
+  case SIGALRM:   //   14       Term    Timer signal from alarm(2)
+  case SIGTERM:   //   15       Term    Termination signal
+  case SIGUSR1:   // 30,10,16   Term    User-defined signal 1
+  case SIGUSR2:   // 31,12,17   Term    User-defined signal 2
+    return term;
+  case SIGCHLD:   // 20,17,18   Ign     Child stopped or terminated
+    return ign;
+  case SIGCONT:   // 19,18,25   Cont    Continue if stopped
+    return cont;
+  case SIGSTOP:   // 17,19,23   Stop    Stop process
+  case SIGTSTP:   // 18,20,24   Stop    Stop typed at terminal
+  case SIGTTIN:   // 21,21,26   Stop    Terminal input for background process
+  case SIGTTOU:   // 22,22,27   Stop    Terminal output for background process
+    return stop;
+  case SIGBUS:    //  10,7,10   Core    Bus error (bad memory access)
+    return core;
+  case SIGPOLL:   //            Term    Pollable event (Sys V).
+    return term;  //                    Synonym for SIGIO
+  case SIGPROF:   //  27,27,29  Term    Profiling timer expired
+    return term;
+  case SIGSYS:    //  12,31,12  Core    Bad system call (SVr4);
+                  //                     see also seccomp(2)
+  case SIGTRAP:   //     5      Core    Trace/breakpoint trap
+    return core;
+  case SIGURG:    //  16,23,21  Ign     Urgent condition on socket (4.2BSD)
+    return ign;
+  case SIGVTALRM: //  26,26,28  Term    Virtual alarm clock (4.2BSD)
+    return term;
+  case SIGXCPU:   //  24,24,30  Core    CPU time limit exceeded (4.2BSD);
+                  //                    see setrlimit(2)
+  case SIGXFSZ:   //  25,25,31  Core    File size limit exceeded (4.2BSD);
+                  //                     see setrlimit(2)
+//case SIGIOT:    //     6      Core    IOT trap. A synonym for SIGABRT
+    return core;
+//case SIGEMT:    //   7,-,7    Term    Emulator trap
+  case SIGSTKFLT: //   -,16,-   Term    Stack fault on coprocessor (unused)
+//case SIGIO:     //  23,29,22  Term    I/O now possible (4.2BSD)
+  case SIGPWR:    //  29,30,19  Term    Power failure (System V)
+//case SIGINFO:   //   29,-,-           A synonym for SIGPWR
+//case SIGLOST:   //   -,-,-    Term    File lock lost (unused)
+    return term;
+//case SIGCLD:    //   -,-,18   Ign     A synonym for SIGCHLD
+  case SIGWINCH:  //  28,28,20  Ign     Window resize signal (4.3BSD, Sun)
+    return ign;
+//case SIGUNUSED: //   -,31,-   Core    Synonymous with SIGSYS
+//  return core;
+  default:
+    return user;
+  }
+  return term;
+}
+#endif
+bool TRI_IsDeadlySignal(int signal) {
+#ifndef _WIN32
+  switch (whatDoesSignal(signal)) {
+  case term:
+    return true;
+  case core:
+    return true;
+  case cont:
+    return false;
+  case ign:
+    return false;
+  case logrotate:
+    return false;
+  case stop:
+    return false;
+  case user: // user signals aren't supposed to be deadly.
+    return false;
+  }
+#else
+  // well windows... always deadly.
+#endif
+  return true;
+}
+////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_KillExternalProcess(TRI_external_id_t pid, int signal) {
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "killing process: " << pid._pid;
+TRI_external_status_t TRI_KillExternalProcess(TRI_external_id_t pid, int signal, bool isTerminal) {
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Sending process: " << pid._pid << " the signal: " << signal;
 
   TRI_external_t* external = nullptr;  // just to please the compiler
   {
@@ -1178,48 +1297,70 @@ bool TRI_KillExternalProcess(TRI_external_id_t pid, int signal) {
          ++it) {
       if ((*it)->_pid == pid._pid) {
         external = (*it);
-        ExternalProcesses.erase(it);
         break;
       }
     }
   }
 
   if (external == nullptr) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "kill: process not found: " << pid._pid;
-#ifndef _WIN32
-    // Kill just in case:
-    if (0 == kill(pid._pid, signal)) {
-      // Otherwise we just let it be.
-      for (int count = 0; count < 10; count++) {
-        int loc;
-        pid_t p;
+    external = getExternalProcess(pid._pid);
+    if (external == nullptr) {
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "kill: process not found: " << pid._pid << " in our starting table and it doesn't exist.";
+      TRI_external_status_t status;
+      status._status = TRI_EXT_NOT_FOUND;
+      status._exitStatus = -1;
+      return status;
+    }
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "kill: process not found: " << pid._pid << " in our starting table - adding";
 
-        // And wait for it to avoid a zombie:
-        sleep(1);
-        p = waitpid(pid._pid, &loc, WUNTRACED | WNOHANG);
-        if (p == pid._pid) {
-          return true;
-        }
-        if (count == 8) {
-          kill(pid._pid, SIGKILL);
-        }
+    // ok, we didn't spawn it, but now we claim the
+    // ownership.
+    MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+
+    try {
+      ExternalProcesses.push_back(external);
+    } catch (...) {
+      TRI_external_status_t status;
+      FreeExternal(external);
+
+      status._status = TRI_EXT_NOT_FOUND;
+      status._exitStatus = -1;
+      return status;
+    }
+  }
+  
+  if (killProcess(external, signal)) {
+    int count = 0;
+    while (true) {
+      auto status = TRI_CheckExternalProcess(pid, false);
+      if (! isTerminal) {
+        // we just sent a signal, don't care whether
+        // the process is gone by now.
+        return status;
+      }
+      if ((status._status == TRI_EXT_TERMINATED) ||
+          (status._status == TRI_EXT_ABORTED)) {
+        // Its dead and gone - good.
+        MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+        for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end();
+             ++it) {
+          if (*it == external) {
+            ExternalProcesses.erase(it);
+            break;
+          }
+        }        
+        return status;
+      }
+      sleep(1);
+      if (count >= 8) {
+        killProcess(external, SIGKILL);
+      }
+      if (count > 20) {
+        return status;
       }
     }
-    return false;
-#else
-    return OurKillProcessPID(pid._pid);
-#endif
   }
-
-  bool ok = true;
-  if (external->_status == TRI_EXT_RUNNING ||
-      external->_status == TRI_EXT_STOPPED) {
-    ok = OurKillProcess(external, signal);
-  }
-
-  FreeExternal(external);
-
-  return ok;
+  return TRI_CheckExternalProcess(pid, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
