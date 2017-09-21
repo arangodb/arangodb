@@ -39,7 +39,7 @@ MMFilesCompactionFeature* MMFilesCompactionFeature::COMPACTOR = nullptr;
 
 MMFilesCompactionFeature::MMFilesCompactionFeature(ApplicationServer* server)
   : ApplicationFeature(server, "MMFilesCompaction"),
-    _compactionSleepTime(1),
+    _compactionSleepTime(1.0),
     _compactionCollectionInterval(10.0), 
     _maxFiles(3),
     _maxSizeFactor(3),
@@ -59,7 +59,7 @@ void MMFilesCompactionFeature::collectOptions(std::shared_ptr<options::ProgramOp
   options->addSection("compaction", "Configure the MMFiles compactor thread");
   
   options->addOption("--compaction.db-sleep-time", "sleep interval between two compaction runs (in s)",
-                     new UInt64Parameter(&_compactionSleepTime));
+                     new DoubleParameter(&_compactionSleepTime));
   
   options->addOption("--compaction.min-interval", "minimum sleep time between two compaction runs (in s)",
                      new DoubleParameter(&_compactionCollectionInterval));

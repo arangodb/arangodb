@@ -212,11 +212,11 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
       uint64_t d = basics::StringUtils::uint64(info.key.copyString());
 #ifdef ARANGODB_ENABLE_MAINAINER_MODE
       auto it = _vertexExpressions.emplace(
-          d, new aql::Expression(query->ast(), info.value));
+          d, new aql::Expression(query->plan(), query->ast(), info.value));
       TRI_ASSERT(it.second);
 #else
       _vertexExpressions.emplace(d,
-                                 new aql::Expression(query->ast(), info.value));
+                                 new aql::Expression(query->plan(), query->ast(), info.value));
 #endif
     }
   }
@@ -228,7 +228,7 @@ arangodb::traverser::TraverserOptions::TraverserOptions(
           TRI_ERROR_BAD_PARAMETER,
           "The options require vertexExpressions to be an object");
     }
-    _baseVertexExpression = new aql::Expression(query->ast(), read);
+    _baseVertexExpression = new aql::Expression(query->plan(), query->ast(), read);
   }
   // Check for illegal option combination:
   TRI_ASSERT(uniqueEdges != TraverserOptions::UniquenessLevel::GLOBAL);

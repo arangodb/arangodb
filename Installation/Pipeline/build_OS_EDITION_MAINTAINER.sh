@@ -22,7 +22,7 @@ fi
 MAINTAINER=""
 
 if [ "$maintainer" == maintainer ]; then
-    MAINTAINER="-DUSE_MAINTAINER_MODE=On"
+    MAINTAINER="-DUSE_MAINTAINER_MODE=On -DUSE_FAILURE_TESTS=On"
     type="${type}_maintainer"
 elif [ "$maintainer" == user ]; then
     MAINTAINER="-DUSE_MAINTAINER_MODE=Off"
@@ -66,7 +66,6 @@ echo "PWD: `pwd`" | tee -a $logdir/build.log
         cmake \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
             -DUSE_CATCH_TESTS=On \
-            -DUSE_FAILURE_TESTS=On \
             -DDEBUG_SYNC_REPLICATION=On \
             $MAINTAINER \
             $ENTERPRISE \
