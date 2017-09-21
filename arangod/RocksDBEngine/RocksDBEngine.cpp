@@ -1255,6 +1255,22 @@ arangodb::Result RocksDBEngine::syncWal(bool waitForSync,
   return arangodb::Result();
 }
 
+Result RocksDBEngine::registerRecoveryHelper(
+    std::shared_ptr<RocksDBRecoveryHelper> helper) {
+  try {
+    _recoveryHelpers.emplace_back(helper);
+  } catch (std::bad_alloc const& ex) {
+    return {TRI_ERROR_OUT_OF_MEMORY};
+  }
+
+  return {TRI_ERROR_NO_ERROR};
+}
+
+std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const& RocksDBEngine::recoveryHelpers() const {
+  return _recoveryHelpers;
+}
+
+
 Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
                                         VPackBuilder& builder) {
   syncWal();

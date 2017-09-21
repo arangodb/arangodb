@@ -48,6 +48,7 @@ class RocksDBVPackComparator;
 class RocksDBCounterManager;
 class RocksDBReplicationManager;
 class RocksDBLogValue;
+class RocksDBRecoveryHelper;
 class TransactionCollection;
 class TransactionState;
 
@@ -186,7 +187,7 @@ class RocksDBEngine final : public StorageEngine {
                         arangodb::LogicalCollection* collection) override;
   void createView(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                   arangodb::LogicalView const*) override;
-  
+
   // asks the storage engine to persist renaming of a view
   // This will write a renameMarker if not in recovery
   arangodb::Result renameView(TRI_vocbase_t* vocbase,
@@ -271,6 +272,11 @@ class RocksDBEngine final : public StorageEngine {
                            bool waitForCollector = false,
                            bool writeShutdownFile = false);
 
+  arangodb::Result registerRecoveryHelper(
+      std::shared_ptr<RocksDBRecoveryHelper> helper);
+  std::vector<std::shared_ptr<RocksDBRecoveryHelper>> const&
+      recoveryHelpers() const;
+
  private:
   /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;
@@ -282,7 +288,7 @@ class RocksDBEngine final : public StorageEngine {
   std::string _path;
   /// path to arangodb data dir
   std::string _basePath;
-    
+
   /// repository for replication contexts
   std::unique_ptr<RocksDBReplicationManager> _replicationManager;
   /// tracks the count of documents in collections
@@ -295,6 +301,9 @@ class RocksDBEngine final : public StorageEngine {
                                       // intermediate commit is performed
   uint64_t _intermediateCommitCount;  // limit of transaction count
                                       // for intermediate commit
+
+  // hook-ins for recovery process
+  std::vector<std::shared_ptr<RocksDBRecoveryHelper>> _recoveryHelpers;
 
   mutable basics::ReadWriteLock _collectionMapLock;
   std::unordered_map<uint64_t, std::pair<TRI_voc_tick_t, TRI_voc_cid_t>>

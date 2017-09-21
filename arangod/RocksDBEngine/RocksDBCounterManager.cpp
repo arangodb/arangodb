@@ -37,6 +37,7 @@
 #include "RocksDBEngine/RocksDBEdgeIndex.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
+#include "RocksDBEngine/RocksDBRecoveryHelper.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -686,6 +687,13 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         }
       }
     }
+
+    RocksDBEngine* engine =
+        static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    for (auto helper : engine->recoveryHelpers()) {
+      helper->PutCF(column_family_id, key, value);
+    }
+
     return rocksdb::Status();
   }
 
@@ -722,7 +730,33 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
         }
       }
     }
+
+    RocksDBEngine* engine =
+        static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    for (auto helper : engine->recoveryHelpers()) {
+      helper->DeleteCF(column_family_id, key);
+    }
+
     return rocksdb::Status();
+  }
+
+  rocksdb::Status SingleDeleteCF(uint32_t column_family_id,
+                                 const rocksdb::Slice& key) override {
+    RocksDBEngine* engine =
+        static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    for (auto helper : engine->recoveryHelpers()) {
+      helper->SingleDeleteCF(column_family_id, key);
+    }
+
+    return rocksdb::Status();
+  }
+
+  void LogData(const rocksdb::Slice& blob) override {
+    RocksDBEngine* engine =
+        static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE);
+    for (auto helper : engine->recoveryHelpers()) {
+      helper->LogData(blob);
+    }
   }
 };
 
