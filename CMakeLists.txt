@@ -347,7 +347,7 @@ if (SOLARIS)
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.3")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.4")
     message(FATAL_ERROR "ArangoDB requires GCC 5.4 or newer.")
   elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "6.9.9")
     message(FATAL_ERROR "ArangoDB doesn't support GCC 7.0 yet.")
