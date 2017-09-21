@@ -56,6 +56,8 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
 
   if (col == nullptr) {
     // collection gone... should not happen
+    LOG_TOPIC(ERR, arangodb::Logger::GRAPHS) << "Could not extract indexed edge document. collection not found";
+    TRI_ASSERT(col != nullptr); // for maintainer mode
     return basics::VelocyPackHelper::NullValue();
   }
 
@@ -64,8 +66,10 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
     LOG_TOPIC(ERR, arangodb::Logger::GRAPHS) << "Could not extract indexed edge document, return 'null' instead. "
       << "This is most likely a caching issue. Try: 'db."
       << col->name() <<".unload(); db." << col->name() << ".load()' in arangosh to fix this.";
+    TRI_ASSERT(false); for maintainer mode
     return basics::VelocyPackHelper::NullValue();
   }
+
   return VPackSlice(_mmdr->vpack());
 }
 
@@ -75,9 +79,10 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
   if (pos == std::string::npos || pos + 1 == id.size()) {
     // Invalid input. If we get here somehow we managed to store invalid _from/_to
     // values or the traverser did a let an illegal start through
-    TRI_ASSERT(false);
+    TRI_ASSERT(false); // for maintainer mode
     return basics::VelocyPackHelper::NullValue();
   }
+
   Result res = _trx->documentFastPathLocal(id.substr(0, pos).toString(),
                                            id.substr(pos + 1), *_mmdr, true);
   if (res.ok()) {
