@@ -227,12 +227,10 @@ void Constituent::lead(term_t term) {
 
   _agent->beginPrepareLeadership();
   TRI_DEFER(_agent->endPrepareLeadership());
-  
+
   if (!_agent->prepareLead()) {
-    {
-      MUTEX_LOCKER(guard, _castLock);
-      followNoLock(term);
-    }
+    MUTEX_LOCKER(guard, _castLock);
+    followNoLock(term);
     return;
   }
 
@@ -732,13 +730,36 @@ void Constituent::run() {
       } else if (role == CANDIDATE) {
         callElection();  // Run for office
       } else {
-        int32_t left =
-          static_cast<int32_t>(100000.0 * _agent->config().minPing() *
-                               _agent->config().timeoutMult());
-        long randTimeout = static_cast<long>(left);
+        // This is 1/4th of the minPing timeout (_cv.wait() below is in
+        // microseconds):
+        uint64_t timeout =
+          static_cast<uint64_t>(250000.0 * _agent->config().minPing() *
+                                _agent->config().timeoutMult());
         {
           CONDITION_LOCKER(guardv, _cv);
-          _cv.wait(randTimeout);
+          _cv.wait(timeout);
+        }
+
+        double now = TRI_microtime();
+        std::string const myid = _agent->id();
+        for (auto const& followerId : _agent->config().active()) {
+          if (followerId != myid) {
+            bool needed = false;
+            {
+              MUTEX_LOCKER(guard, _heartBeatMutex);
+              auto it = _lastHeartbeatSent.find(followerId);
+              if (it == _lastHeartbeatSent.end() ||
+                  now - it->second > _agent->config().minPing()
+                                     * _agent->config().timeoutMult() / 4.0) {
+                needed = true;
+              }
+            }
+            if (needed) {
+              LOG_TOPIC(TRACE, Logger::AGENCY)
+                << "Sending empty appendEntriesRPC to follower " << followerId;
+              _agent->sendEmptyAppendEntriesRPC(followerId);
+            }
+          }
         }
       }
     }
@@ -763,3 +784,10 @@ int64_t Constituent::countRecentElectionEvents(double threshold) {
   }
   return count;
 }
+
+// Notify about heartbeat being sent out:
+void Constituent::notifyHeartbeatSent(std::string followerId) {
+  MUTEX_LOCKER(guard, _heartBeatMutex);
+  _lastHeartbeatSent[followerId] = TRI_microtime();
+}
+

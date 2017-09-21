@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -115,7 +114,7 @@ inline static bool endpointPathFromUrl(std::string const& url,
 
 /// Ctor with name
 Store::Store(Agent* agent, std::string const& name)
-  : Thread(name), _agent(agent), _node(name, this) {}
+  : _agent(agent), _node(name, this) {}
 
 /// Copy assignment operator
 Store& Store::operator=(Store const& rhs) {
@@ -144,11 +143,7 @@ Store& Store::operator=(Store&& rhs) {
 }
 
 /// Default dtor
-Store::~Store() {
-  if (!isStopping()) {
-    shutdown();
-  }
-}
+Store::~Store() {}
 
 /// Apply array of transactions multiple queries to store
 /// Return vector of according success
@@ -190,7 +185,6 @@ std::vector<apply_ret_t> Store::applyTransactions(
         default:  // Wrong
           LOG_TOPIC(ERR, Logger::AGENCY)
             << "We can only handle log entry with or without precondition!";
-            << " However, We received " << i.toJson();
           success.push_back(UNKNOWN_ERROR);
           break;
         }
@@ -213,8 +207,6 @@ std::vector<apply_ret_t> Store::applyTransactions(
   }
   return success;
 }
-
-
 /// Apply single transaction
 check_ret_t Store::applyTransaction(Slice const& query) {
 
@@ -586,13 +578,6 @@ bool Store::read(VPackSlice const& query, Builder& ret) const {
   return success;
 }
 
-/// Shutdown
-void Store::beginShutdown() {
-  Thread::beginShutdown();
-  CONDITION_LOCKER(guard, _cv);
-  guard.broadcast();
-}
-
 /// TTL clear values from store
 query_t Store::clearExpired() const {
 
@@ -642,43 +627,6 @@ void Store::dumpToBuilder(Builder& builder) const {
     for (auto const& i : _observedTable) {
       VPackObjectBuilder guard(&builder);
       builder.add(i.first, VPackValue(i.second));
-    }
-  }
-}
-
-/// Start thread
-bool Store::start() {
-  Thread::start();
-  return true;
-}
-
-/// Work ttls and callbacks
-void Store::run() {
-  while (!this->isStopping()) {  // Check timetable and remove overage entries
-
-    std::chrono::microseconds t{0};
-    query_t toClear;
-
-    {  // any entries in time table?
-      MUTEX_LOCKER(storeLocker, _storeLock);
-      if (!_timeTable.empty()) {
-        t = std::chrono::duration_cast<std::chrono::microseconds>(
-            _timeTable.begin()->first - std::chrono::system_clock::now());
-      }
-    }
-
-    {
-      CONDITION_LOCKER(guard, _cv);
-      if (t != std::chrono::microseconds{0}) {
-        _cv.wait(t.count());
-      } else {
-        _cv.wait();
-      }
-    }
-
-    toClear = clearExpired();
-    if (_agent && _agent->leading()) {
-      //_agent->write(toClear);
     }
   }
 }
@@ -735,8 +683,6 @@ Store& Store::operator=(VPackSlice const& slice) {
   TRI_ASSERT(slice.length() == 4);
 
   MUTEX_LOCKER(storeLocker, _storeLock);
-  clear();               // Reset
-  LOG_TOPIC(ERR, Logger::AGENCY) << _node;
   _node.applies(slice[0]); // Apply incoming
 
   TRI_ASSERT(slice[1].isObject());

@@ -27,13 +27,8 @@
 #include "AgentInterface.h"
 #include "Node.h"
 
-#include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
-
 namespace arangodb {
 namespace consensus {
-
-class Agent;
 
 struct check_ret_t {
 
@@ -41,7 +36,7 @@ struct check_ret_t {
   query_t failed;
   
   check_ret_t() : success(true), failed(nullptr) {}
-
+  
   explicit check_ret_t(bool s) : success(s) {}
   
   inline bool successful() const { return success; }
@@ -66,14 +61,13 @@ struct check_ret_t {
   
 };
 
+enum CheckMode {FIRST_FAIL, FULL};
+
+class Agent;
+
 /// @brief Key value tree
-class Store : public arangodb::Thread {
-
-
-  enum CheckMode {FIRST_FAIL, FULL};
-
-public:
-  
+class Store {
+ public:
   /// @brief Construct with name
   explicit Store(Agent* agent, std::string const& name = "root");
 
@@ -98,7 +92,7 @@ public:
   std::vector<apply_ret_t> applyTransactions(
     query_t const& query,
     AgentInterface::WriteMode const& wmode = AgentInterface::WriteMode());
-
+  
   /// @brief Apply single transaction in query, here query is an array and the
   /// first entry is a write transaction (i.e. an array of length 1, 2 or 3), 
   /// if present, the second entry is a precondition, and the third
@@ -116,12 +110,6 @@ public:
   bool read(arangodb::velocypack::Slice const&,
             arangodb::velocypack::Builder&) const;
   
-  /// @brief Begin shutdown of thread
-  void beginShutdown() override final;
-
-  /// @brief Start thread
-  bool start();
-
   /// @brief Dump everything to builder
   void dumpToBuilder(Builder&) const;
 
@@ -170,8 +158,6 @@ public:
   query_t clearExpired() const;
 
   /// @brief Run thread
-  void run() override final;
-
  private:
   /// @brief Condition variable guarding removal of expired entries
   mutable arangodb::basics::ConditionVariable _cv;

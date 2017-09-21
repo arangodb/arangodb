@@ -63,8 +63,7 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
           }
         }
           
-        LOG_TOPIC(DEBUG, Logger::CLUSTER)
-          << body->slice().toJson();
+        LOG_TOPIC(DEBUG, Logger::CLUSTER) << body->slice().toJson();
         _agent->reportIn(_slaveID, _last, _toLog);
       }
     }

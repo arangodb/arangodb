@@ -86,7 +86,7 @@ class Agent : public arangodb::Thread,
   bool fitness() const;
 
   /// @brief Leader ID
-  std::pair<index_t, index_t> lastCommitted() const;
+  index_t lastCommitted() const;
 
   /// @brief Leader ID
   std::string leaderID() const;
@@ -141,12 +141,22 @@ class Agent : public arangodb::Thread,
                             index_t prevIndex, term_t prevTerm,
                             index_t leaderCommitIndex, query_t const& queries);
 
+ private:
+
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
   void sendAppendEntriesRPC();
 
+public:
+
   /// @brief Reconfigure agency
   write_ret_t  reconfigure(query_t const);
+
+  /// @brief Invoked by leader to replicate log entries ($5.3);
+  ///        also used as heartbeat ($5.2). This is the version used by
+  ///        the constituent to send out empty heartbeats to keep
+  ///        the term alive.
+  void sendEmptyAppendEntriesRPC(std::string followerId);
 
   /// @brief 1. Deal with appendEntries to slaves.
   ///        2. Report success of write processes.
@@ -177,13 +187,13 @@ class Agent : public arangodb::Thread,
   void reportIn(std::string const&, index_t, size_t = 0);
 
   /// @brief Wait for slaves to confirm appended entries
-  AgentInterface::raft_commit_t waitFor(index_t last_entry, double timeout = 2.0) override;
+  AgentInterface::raft_commit_t waitFor(index_t last_entry, double timeout = 10.0) override;
 
   /// @brief Convencience size of agency
   size_t size() const;
 
   /// @brief Rebuild DBs by applying state log to empty DB
-  index_t rebuildDBs();
+  void rebuildDBs();
 
   /// @brief Rebuild DBs by applying state log to empty DB
   void compact();
@@ -288,17 +298,15 @@ class Agent : public arangodb::Thread,
   /// @brief Activate this agent in single agent mode.
   bool activateAgency();
 
-  /// @brief Assignment of persisted state
-  Agent& operator=(VPackSlice const&);
+  /// @brief Assignment of persisted state, only used at startup, one needs
+  /// to hold the _ioLock to call this
+  void setPersistedState(VPackSlice const&);
 
   /// @brief Get current term
   bool id(std::string const&);
 
   /// @brief Get current term
   bool mergeConfiguration(VPackSlice const&);
-
-  /// @brief Leader ID
-  void lastCommitted(index_t);
 
   /// @brief Leader election delegate
   Constituent _constituent;
@@ -313,17 +321,19 @@ class Agent : public arangodb::Thread,
   config_t _config;
 
   /// @brief
-  /// Leader: Last index that is "committed" in the sense that the leader
-  /// has convinced itself that an absolute majority (including the leader)
-  /// have written the entry into their log, this variable is only maintained
-  /// on the leader.
-  /// Follower: this is only kept on followers and indicates what the leader
-  /// told them it has last "committed" in the above sense.
-  index_t _commitIndex;
-
-  /// @brief Index of highest log entry applied to state achine (initialized
-  /// to 0, increases monotonically)
-  index_t _lastApplied;
+  /// Leader: Last index that is "committed" in the sense that the
+  /// leader has convinced itself that an absolute majority (including
+  /// the leader) have written the entry into their log. This is also
+  /// the index of the highest log entry applied to the state machine
+  /// _readDB (called "lastApplied" in the Raft paper).
+  /// Follower: this indicates what the leader told them it has last
+  /// "committed" in the above sense.
+  /// Locking policy: Note that this is only ever changed at startup, when
+  /// answers to appendEntriesRPC messages come in on the leader, and when
+  /// appendEntriesRPC calls are received on the follower. In each case
+  /// we hold the _ioLock when _commitIndex is changed. Reading the atomic
+  /// variable is allowed without a lock.
+  std::atomic<index_t> _commitIndex;
 
   index_t _lastReconfiguration;
 
@@ -342,32 +352,54 @@ class Agent : public arangodb::Thread,
   /// @brief Condition variable for waitFor
   arangodb::basics::ConditionVariable _waitForCV;
 
-  /// @brief Confirmed indices of all members of agency
-  std::unordered_map<std::string, index_t> _confirmed;
+  /// The following two members are strictly only used in the
+  /// Agent thread in sendAppendEntriesRPC. Therefore no protection is
+  /// necessary for these:
+
+  /// @brief stores for each follower the highest index log it has ever been
+  // sent to.
   std::unordered_map<std::string, index_t> _lastHighest;
 
-  std::unordered_map<std::string, TimePoint> _lastAcked;
+  /// @brief _lastSent stores for each follower the time stamp of the time 
+  /// when the main Agent thread has last sent a non-empty
+  /// appendEntriesRPC to that follower.
   std::unordered_map<std::string, TimePoint> _lastSent;
+
+  /// The following three members are protected by _tiLock:
+
+  /// @brief stores for each follower the highest index log it has reported as 
+  /// locally logged.
+  std::unordered_map<std::string, index_t> _confirmed;
+
+  /// @brief _lastAcked: last time we received an answer to a sendAppendEntries
+  std::unordered_map<std::string, TimePoint> _lastAcked;
+
+  /// @brief The earliest timepoint at which we will send new sendAppendEntries
+  /// to a particular follower. This is a measure to avoid bombarding a
+  /// follower, that has trouble keeping up.
   std::unordered_map<std::string, TimePoint> _earliestPackage;
+
+  // @brief Lock for the above time data about other agents. This
+  // protects _confirmed, _lastAcked and _earliestPackage:
+  mutable arangodb::Mutex _tiLock;
 
   /**< @brief RAFT consistency lock:
      _spearhead
      _readDB
-     _commitIndex (log index)
-     _lastAcked
-     _lastSent
-     _confirmed
-     _nextCompactionAfter
    */
   mutable arangodb::Mutex _ioLock;
 
-  // lock for _leaderCommitIndex
-  mutable arangodb::Mutex _liLock;
-
-  // note: when both _ioLock and _liLock are acquired,
-  // the locking order must be:
-  // 1) _ioLock
-  // 2) _liLock
+  /// Rules for the locks: This covers the following locks:
+  ///    _ioLock (here)
+  ///    _logLock (in State)
+  ///    _tiLock (here)
+  /// One may never acquire a log in this list whilst holding another one
+  /// that appears further down on this list. This is to prevent deadlock.
+  /// For _logLock: This is local to State and we make sure that the few
+  /// functions in State that call Agent methods only call those that do
+  /// not acquire the _ioLock.
+  /// For _ioLock: We put in assertions to ensure that when this lock is
+  /// acquired we do not have the _tiLock.
 
   // @brief guard _activator 
   mutable arangodb::Mutex _activatorLock;
@@ -405,9 +437,6 @@ class Agent : public arangodb::Thread,
 
   query_t _joinConfig;
  
- public:
-  mutable arangodb::Mutex _compactionLock;
-
 };
 }
 }
