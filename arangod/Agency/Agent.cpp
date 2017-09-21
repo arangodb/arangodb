@@ -247,7 +247,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     if (index > _confirmed[peerId]) {  // progress this follower?
       _confirmed[peerId] = index;
       if (toLog > 0) { // We want to reset the wait time only if a package callback
-        LOG_TOPIC(TRACE, Logger::AGENCY) << "Got call back of " << toLog << " logs";
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Got call back of " << toLog << " logs";
         _earliestPackage[peerId] = system_clock::now();
       }
     }
@@ -293,8 +293,8 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 
   duration<double> reportInTime = system_clock::now() - startTime;
   if (reportInTime.count() > 0.1) {
-    LOG_TOPIC(WARN, Logger::AGENCY)
-      << "reportIn took too long: " << reportInTime.count();
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "reportIn took longer than 0.1s: " << reportInTime.count();
   }
 
   { // Wake up rest handler
@@ -386,8 +386,8 @@ void Agent::sendAppendEntriesRPC() {
       time_point<system_clock> earliestPackage, lastAcked;
       
       {
-        MUTEX_LOCKER(tiLocker, _tiLock);
         t = this->term();
+        MUTEX_LOCKER(tiLocker, _tiLock);
         lastConfirmed = _confirmed[followerId];
         lastAcked = _lastAcked[followerId];
         earliestPackage = _earliestPackage[followerId];
@@ -437,7 +437,8 @@ void Agent::sendAppendEntriesRPC() {
 
       if (m.count() > _config.minPing() &&
           _lastSent[followerId].time_since_epoch().count() != 0) {
-        LOG_TOPIC(WARN, Logger::AGENCY) << "Oops, sent out last heartbeat "
+        LOG_TOPIC(DEBUG, Logger::AGENCY)
+          << "Note: sent out last AppendEntriesRPC "
           << "to follower " << followerId << " more than minPing ago: " 
           << m.count() << " lastAcked: " << timepointToString(lastAcked)
           << " lastSent: " << timepointToString(_lastSent[followerId]);
@@ -526,14 +527,6 @@ void Agent::sendAppendEntriesRPC() {
         }
       }
       
-      // Verbose output
-      LOG_TOPIC(TRACE, Logger::AGENCY)
-        << "Appending " << toLog << " entries up to index "
-        << highest
-        << (needSnapshot ? " and a snapshot" : "")
-        << " to follower " << followerId << ". Message: "
-        << builder.toJson();
-
       // Send request
       auto headerFields =
         std::make_unique<std::unordered_map<std::string, std::string>>();
@@ -555,8 +548,10 @@ void Agent::sendAppendEntriesRPC() {
         _earliestPackage[followerId] = earliestPackage;
       }
       LOG_TOPIC(DEBUG, Logger::AGENCY)
-        << "Appending " << unconfirmed.size() - 1 << " entries up to index "
-        << highest << " to follower " << followerId 
+        << "Appending (" << (uint64_t) (TRI_microtime() * 1000000000.0) << ") "
+        << unconfirmed.size() - 1 << " entries up to index "
+        << highest << (needSnapshot ? " and a snapshot" : "")
+        << " to follower " << followerId
         << ". Next real log contact to " << followerId<< " in: " 
         <<  std::chrono::duration<double, std::milli>(
           earliestPackage-system_clock::now()).count() << "ms";
