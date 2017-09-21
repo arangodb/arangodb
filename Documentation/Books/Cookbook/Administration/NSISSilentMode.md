@@ -12,7 +12,7 @@ and specify all choices available in the UI via commandline Arguments.
 
 The options are as all other NSIS options specified in the form of `/OPTIONNAME=value`.
 
-#Supported options
+## Supported options
 
 *For Installation*:
 
@@ -35,6 +35,6 @@ The options are as all other NSIS options specified in the form of `/OPTIONNAME=
 *For Uninstallation*:
  - PURGE_DB - [0/1] if set to 1 the database files ArangoDB created during its lifetime will be removed too.
 
-#Generic Options derived from NSIS
+## Generic Options derived from NSIS
 
  - S - silent - don't open the UI during installation
