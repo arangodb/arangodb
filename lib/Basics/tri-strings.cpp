@@ -659,10 +659,6 @@ char* TRI_SHA256String(char const* source, size_t sourceLen, size_t* dstLen) {
   }
   *dstLen = SHA256_DIGEST_LENGTH;
 
-  if (dst == nullptr) {
-    return nullptr;
-  }
-
   SHA256((unsigned char const*)source, sourceLen, dst);
 
   return (char*)dst;
