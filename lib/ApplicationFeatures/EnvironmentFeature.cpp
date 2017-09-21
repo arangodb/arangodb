@@ -26,6 +26,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 
@@ -35,15 +36,27 @@
 
 using namespace arangodb;
 using namespace arangodb::basics;
+using namespace arangodb::options;
 
 EnvironmentFeature::EnvironmentFeature(
     application_features::ApplicationServer* server)
-    : ApplicationFeature(server, "Environment") {
+    : ApplicationFeature(server, "Environment"),
+      _coredumpFilter(false) {
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Greetings");
   startsAfter("Logger");
   startsAfter("MaxMapCount");
+}
+
+void EnvironmentFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
+  options->addSection("server", "Server features");
+#ifdef __linux__
+  options->addOption("--server.coredump-filter", "filter out huge memory regions from core dumps",
+                     new BooleanParameter(&_coredumpFilter));
+#else
+  options->addObsoleteOption("--server.coredump-filter", "filter out huge memory regions from core dumps", true);
+#endif
 }
 
 void EnvironmentFeature::prepare() {
@@ -278,6 +291,37 @@ void EnvironmentFeature::start() {
     }
   } catch (...) {
     // file not found or value not convertible into integer
+  }
+
+  // finally try to adjust the coredump_filter setting so coredump sizes do not
+  // get out of hand
+  if (_coredumpFilter) {
+    try {
+      // from man (5) core:
+      // Since kernel 2.6.23, the Linux-specific /proc/[pid]/coredump_filter 
+      // file can be used to control which  memory  segments  are
+      // written to the core dump file in the event that a core dump is 
+      // performed for the process with the corresponding process ID.
+      // The  value  in  the file is a bit mask of memory mapping types 
+      // (see mmap(2)).  If a bit is set in the mask, then memory mappings
+      // of the corresponding type are dumped; otherwise they are not dumped.  
+      // The bits in this file have the  following  meanings:
+      //
+      //     bit 0  Dump anonymous private mappings.               0x1
+      //     bit 1  Dump anonymous shared mappings.                0x2
+      //     bit 2  Dump file-backed private mappings.             0x4 
+      //     bit 3  Dump file-backed shared mappings.              0x8
+      //     bit 4 (since Linux 2.6.24) Dump ELF headers.          0x10
+      //     bit 5 (since Linux 2.6.28) Dump private huge pages.   0x20
+      //     bit 6 (since Linux 2.6.28) Dump shared huge pages.
+      //     bit 7 (since Linux 4.4) Dump private DAX pages.
+      //     bit 8 (since Linux 4.4) Dump shared DAX pages.
+
+      FileUtils::spit(std::string("/proc/self/coredump_filter"), std::string("0x1"), false);
+    } catch (...) {
+      // still start if setting the coredump filter fails
+      LOG_TOPIC(DEBUG, Logger::MEMORY) << "unable to write coredump_filter";
+    }
   }
 #endif
 }
