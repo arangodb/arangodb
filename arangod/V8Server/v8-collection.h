@@ -65,7 +65,8 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context,
 #ifdef USE_ENTERPRISE
 void DropVocbaseColCoordinatorEnterprise(
   v8::FunctionCallbackInfo<v8::Value> const& args,
-  arangodb::LogicalCollection* collection);
+  arangodb::LogicalCollection* collection,
+  bool allowDropSystem);
 
 int ULVocbaseColCoordinatorEnterprise(std::string const& databaseName,
                                       std::string const& collectionCID,

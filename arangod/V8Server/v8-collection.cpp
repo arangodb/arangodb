@@ -938,11 +938,12 @@ static int ULVocbaseColCoordinator(std::string const& databaseName,
 
 static void DropVocbaseColCoordinator(
     v8::FunctionCallbackInfo<v8::Value> const& args,
-    arangodb::LogicalCollection* collection) {
+    arangodb::LogicalCollection* collection,
+    bool allowDropSystem) {
   // cppcheck-suppress *
   v8::Isolate* isolate = args.GetIsolate();
 
-  if (collection->isSystem()) {
+  if (collection->isSystem() && !allowDropSystem) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -995,35 +996,35 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const dbname = collection->dbName();
   std::string const collName = collection->name();
+    
+  bool allowDropSystem = false;
+  double timeout = -1.0;  // forever, unless specified otherwise
+  if (args.Length() > 0) {
+    // options
+    if (args[0]->IsObject()) {
+      TRI_GET_GLOBALS();
+      v8::Handle<v8::Object> optionsObject = args[0].As<v8::Object>();
+      TRI_GET_GLOBAL_STRING(IsSystemKey);
+      if (optionsObject->Has(IsSystemKey)) {
+        allowDropSystem = TRI_ObjectToBoolean(optionsObject->Get(IsSystemKey));
+      }
+      TRI_GET_GLOBAL_STRING(TimeoutKey);
+      if (optionsObject->Has(TimeoutKey)) {
+        timeout = TRI_ObjectToDouble(optionsObject->Get(TimeoutKey));
+      }
+    } else {
+      allowDropSystem = TRI_ObjectToBoolean(args[0]);
+    }
+  }
 
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
-    DropVocbaseColCoordinatorEnterprise(args, collection);
+    DropVocbaseColCoordinatorEnterprise(args, collection, allowDropSystem);
 #else
-    DropVocbaseColCoordinator(args, collection);
+    DropVocbaseColCoordinator(args, collection, allowDropSystem);
 #endif
   } else {
-    bool allowDropSystem = false;
-    double timeout = -1.0;  // forever, unless specified otherwise
-    if (args.Length() > 0) {
-      // options
-      if (args[0]->IsObject()) {
-        TRI_GET_GLOBALS();
-        v8::Handle<v8::Object> optionsObject = args[0].As<v8::Object>();
-        TRI_GET_GLOBAL_STRING(IsSystemKey);
-        if (optionsObject->Has(IsSystemKey)) {
-          allowDropSystem = TRI_ObjectToBoolean(optionsObject->Get(IsSystemKey));
-        }
-        TRI_GET_GLOBAL_STRING(TimeoutKey);
-        if (optionsObject->Has(TimeoutKey)) {
-          timeout = TRI_ObjectToDouble(optionsObject->Get(TimeoutKey));
-        }
-      } else {
-        allowDropSystem = TRI_ObjectToBoolean(args[0]);
-      }
-    }
-
     int res = collection->vocbase()->dropCollection(collection, allowDropSystem, timeout);
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot drop collection");

@@ -34,7 +34,7 @@ using namespace arangodb::cache;
 const uint32_t Table::minLogSize = 8;
 const uint32_t Table::maxLogSize = 32;
 
-bool Table::GenericBucket::lock(int64_t maxTries) {
+bool Table::GenericBucket::lock(uint64_t maxTries) {
   return _state.lock(maxTries);
 }
 
@@ -103,7 +103,7 @@ uint64_t Table::size() const { return _size; }
 uint32_t Table::logSize() const { return _logSize; }
 
 std::pair<void*, Table*> Table::fetchAndLockBucket(
-    uint32_t hash, int64_t maxTries) {
+    uint32_t hash, uint64_t maxTries) {
   GenericBucket* bucket = nullptr;
   Table* source = nullptr;
   bool ok = _lock.readLock(maxTries);
@@ -217,7 +217,7 @@ void Table::enable() {
   _lock.writeUnlock();
 }
 
-bool Table::isEnabled(int64_t maxTries) {
+bool Table::isEnabled(uint64_t maxTries) {
   bool ok = _lock.readLock(maxTries);
   if (ok) {
     ok = !_disabled;

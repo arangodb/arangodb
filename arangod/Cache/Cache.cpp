@@ -48,7 +48,7 @@ uint64_t Cache::_findStatsCapacity = 16384;
 
 Cache::ConstructionGuard::ConstructionGuard() {}
 
-Cache::Cache(ConstructionGuard guard, Manager* manager, uint64_t id, Metadata metadata,
+Cache::Cache(ConstructionGuard guard, Manager* manager, uint64_t id, Metadata&& metadata,
              std::shared_ptr<Table> table, bool enableWindowedStats,
              std::function<Table::BucketClearer(Metadata*)> bucketClearer,
              size_t slotsPerBucket)
@@ -60,7 +60,7 @@ Cache::Cache(ConstructionGuard guard, Manager* manager, uint64_t id, Metadata me
       _findMisses(),
       _manager(manager),
       _id(id),
-      _metadata(metadata),
+      _metadata(std::move(metadata)),
       _tableShrdPtr(table),
       _table(table.get()),
       _bucketClearer(bucketClearer(&_metadata)),
