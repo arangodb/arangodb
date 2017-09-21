@@ -600,6 +600,9 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
     std::make_shared<AgentCallback>(this, followerId, 0, 0),
     _config.minPing() * _config.timeoutMult(), true);
   _constituent.notifyHeartbeatSent(followerId);
+
+  LOG_TOPIC(DEBUG, Logger::AGENCY)
+    << "Sending empty appendEntriesRPC to follower " << followerId;
 }
 
 
