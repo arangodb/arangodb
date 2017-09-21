@@ -1142,7 +1142,7 @@ static TRI_external_t* getExternalProcess(TRI_pid_t pid) {
 
     memset(external, 0, sizeof(TRI_external_t));
     external->_pid = pid;
-    external->_process = handle;
+    external->_process = hProcess;
 
     return external;
   }
@@ -1172,7 +1172,7 @@ static bool killProcess(TRI_external_t* pid, int signal) {
     return false;
   }
 }
-
+#define SIGKILL 1
 #endif
 
 #ifndef _WIN32
