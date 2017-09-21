@@ -106,6 +106,9 @@ useMaintainer = params.Maintainer
 // build user mode
 useUser = params.User
 
+// build docker
+useDocker = true
+
 // run resilience tests
 //runResilience = params.runResilience
 
@@ -466,14 +469,16 @@ def checkCommitMessages() {
             ]
         }
         else {
+            echo "build of branch"
+
+            useDocker = false
+
             restrictions = [
                 // OS EDITION MAINTAINER
-                "build-linux-community-user" : true,
                 "build-linux-enterprise-maintainer" : true,
 
                 // OS EDITION MAINTAINER MODE ENGINE
-                "test-linux-enterprise-maintainer-cluster-rocksdb" : true,
-                "test-linux-community-user-singleserver-mmfiles" : true
+                "test-linux-enterprise-maintainer-cluster-rocksdb" : true
             ]
         }
     }
@@ -515,6 +520,7 @@ Building Community: ${useCommunity}
 Building Enterprise: ${useEnterprise}
 Building Maintainer: ${useMaintainer}
 Building Non-Maintainer: ${useUser}
+Building Docker: ${useDocker}
 Running Tests: ${runTests}
 """
     }
@@ -1231,7 +1237,7 @@ def runOperatingSystems(osList) {
                 def stageName = "build-${name}"
                 branches[stageName] = runEdition(os, edition, maintainer, stageName)
 
-                if (os == 'linux') {
+                if (os == 'linux' && useDocker) {
                     branches["docker-${name}"] = createDockerImage(edition, maintainer, "docker-${name}")
                 }
             }
