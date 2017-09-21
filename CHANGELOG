@@ -1,6 +1,9 @@
 devel
 -----
 
+* fix windows implementation for fs.getTempPath() to also create a
+  sub-directory as we do on linux
+
 * ui: added replicationFactor option during SmartGraph creation.
 
 * make the mmfiles compactor configurable

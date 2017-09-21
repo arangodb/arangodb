@@ -97,7 +97,7 @@ struct BucketState {
   /// locked or not. The optional second parameter is a function which will be
   /// called upon successfully locking the state.
   //////////////////////////////////////////////////////////////////////////////
-  bool lock(int64_t maxTries = -1LL, BucketState::CallbackType cb = []() -> void {});
+  bool lock(uint64_t maxTries = UINT64_MAX, BucketState::CallbackType cb = []() -> void {});
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Unlocks the state. Requires state to be locked.
