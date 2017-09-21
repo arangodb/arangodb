@@ -48,9 +48,9 @@ bool BucketState::isLocked() const {
   return ((_state.load() & static_cast<uint32_t>(Flag::locked)) > 0);
 }
 
-bool BucketState::lock(int64_t maxTries, BucketState::CallbackType cb) {
-  int64_t attempt = 0;
-  while (maxTries < 0 || attempt < maxTries) {
+bool BucketState::lock(uint64_t maxTries, BucketState::CallbackType cb) {
+  uint64_t attempt = 0;
+  while (attempt < maxTries) {
     // expect unlocked, but need to preserve migrating status
     uint32_t current = _state.load(std::memory_order_relaxed);
     uint32_t expected = current & (~static_cast<uint32_t>(Flag::locked));
