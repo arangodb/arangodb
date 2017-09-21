@@ -1928,8 +1928,98 @@ void TRI_SetApplicationName(char const* name) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the system's temporary path
 ////////////////////////////////////////////////////////////////////////////////
+#ifdef _WIN32
+static std::string getTempPath() {
+  // ..........................................................................
+  // Unfortunately we generally have little control on whether or not the
+  // application will be compiled with UNICODE defined. In some cases such as
+  // this one, we attempt to cater for both. MS provides some methods which are
+  // 'defined' for both, for example, GetTempPath (below) actually converts to
+  // GetTempPathA (ascii) or GetTempPathW (wide characters or what MS call
+  // unicode).
+  // ..........................................................................
 
-#ifndef _WIN32
+#define LOCAL_MAX_PATH_BUFFER 2049
+  TCHAR tempPathName[LOCAL_MAX_PATH_BUFFER];
+  DWORD dwReturnValue = 0;
+  // ..........................................................................
+  // Attempt to locate the path where the users temporary files are stored
+  // Note we are imposing a limit of 2048+1 characters for the maximum size of a
+  // possible path
+  // ..........................................................................
+
+  /* from MSDN:
+     The GetTempPath function checks for the existence of environment variables
+     in the following order and uses the first path found:
+
+     The path specified by the TMP environment variable.
+     The path specified by the TEMP environment variable.
+     The path specified by the USERPROFILE environment variable.
+     The Windows directory.
+  */
+  dwReturnValue = GetTempPath(LOCAL_MAX_PATH_BUFFER, tempPathName);
+
+  if ((dwReturnValue > LOCAL_MAX_PATH_BUFFER) || (dwReturnValue == 0)) {
+    // something wrong
+    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "GetTempPathA failed: LOCAL_MAX_PATH_BUFFER="
+                                              << LOCAL_MAX_PATH_BUFFER << ":dwReturnValue=" << dwReturnValue;
+  }
+
+  std::string result(tempPathName);
+  // ...........................................................................
+  // Whether or not UNICODE is defined, we assume that the temporary file name
+  // fits in the ascii set of characters. This is a small compromise so that
+  // temporary file names can be extra long if required.
+  // ...........................................................................
+
+  for (auto const& it : result) {
+    if (static_cast<uint8_t>(it) > 127) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Invalid characters in temporary path name: '" <<
+        result << "'";
+      FATAL_ERROR_ABORT();
+    }
+  }
+  if (result.empty() || (result.back() != TRI_DIR_SEPARATOR_CHAR)) {
+    result += TRI_DIR_SEPARATOR_STR;
+  }
+  return result;
+}
+
+static int mkDTemp(char *s, size_t bufferSize) {
+  auto rc = _mktemp_s(s, bufferSize);
+  if (rc == 0) {
+    rc = TRI_MKDIR(s, 0700);
+  }
+  return rc;
+}
+
+#else
+
+static std::string getTempPath() {
+  
+  std::string system = "";
+  char const* v = getenv("TMPDIR");
+
+  if (v == nullptr || *v == '\0') {
+    system = "/tmp/";
+  } else if (v[strlen(v) - 1] == '/') {
+    system = v;
+  } else {
+    system = std::string(v) + "/";
+  }
+  return system;
+}
+
+static int mkDTemp(char *s, size_t bufferSize) {
+  if (mkdtemp(s) != nullptr) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  else {
+    return errno;
+  }
+}
+
+#endif
 
 static std::unique_ptr<char[]> SystemTempPath;
 
@@ -1937,7 +2027,7 @@ static void SystemTempPathCleaner(void) {
   char* path = SystemTempPath.get();
 
   if (path != nullptr) {
-    rmdir(path);
+    TRI_RMDIR(path);
   }
 }
 
@@ -1945,16 +2035,14 @@ std::string TRI_GetTempPath() {
   char* path = SystemTempPath.get();
 
   if (path == nullptr) {
-    std::string system = "";
-    char const* v = getenv("TMPDIR");
+    std::string system = getTempPath();
 
-    // create the template
-    if (v == nullptr || *v == '\0') {
-      system = "/tmp/";
-    } else if (v[strlen(v) - 1] == '/') {
-      system = v;
-    } else {
-      system = std::string(v) + "/";
+    // Strip any double back/slashes from the string.
+    while (system.find(TRI_DIR_SEPARATOR_STR TRI_DIR_SEPARATOR_STR) !=  std::string::npos) {
+      system = StringUtils::replace(system,
+                                    std::string(TRI_DIR_SEPARATOR_STR TRI_DIR_SEPARATOR_STR),
+                                    std::string(TRI_DIR_SEPARATOR_STR)
+                                    );
     }
 
     system += TRI_ApplicationName + "_XXXXXX";
@@ -1965,146 +2053,23 @@ std::string TRI_GetTempPath() {
     TRI_CopyString(path, system.c_str(), system.size());
 
     // fill template
-    char* res = mkdtemp(SystemTempPath.get());
+    int res = mkDTemp(SystemTempPath.get(), system.size() + 1);
 
-    if (res == nullptr) {
-      system = "/tmp/arangodb";
+    if (res != 0) {
+      system = TRI_DIR_SEPARATOR_STR "tmp" TRI_DIR_SEPARATOR_STR "arangodb";
       SystemTempPath.reset(new char[system.size() + 1]);
       path = SystemTempPath.get();
       TRI_CopyString(path, system.c_str(), system.size());
+      if (TRI_MKDIR(path, 0700) != 0) {
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "failed to create a temporary directory - giving up";
+        FATAL_ERROR_ABORT();
+      }
     }
-
     atexit(SystemTempPathCleaner);
   }
 
   return std::string(path);
 }
-
-#else
-
-std::string TRI_GetTempPath() {
-// ..........................................................................
-// Unfortunately we generally have little control on whether or not the
-// application will be compiled with UNICODE defined. In some cases such as
-// this one, we attempt to cater for both. MS provides some methods which are
-// 'defined' for both, for example, GetTempPath (below) actually converts to
-// GetTempPathA (ascii) or GetTempPathW (wide characters or what MS call
-// unicode).
-// ..........................................................................
-
-#define LOCAL_MAX_PATH_BUFFER 2049
-  TCHAR tempFileName[LOCAL_MAX_PATH_BUFFER];
-  TCHAR tempPathName[LOCAL_MAX_PATH_BUFFER];
-  DWORD dwReturnValue = 0;
-  UINT uReturnValue = 0;
-  HANDLE tempFileHandle = INVALID_HANDLE_VALUE;
-  BOOL ok;
-  std::string result;
-
-  // ..........................................................................
-  // Attempt to locate the path where the users temporary files are stored
-  // Note we are imposing a limit of 2048+1 characters for the maximum size of a
-  // possible path
-  // ..........................................................................
-
-  /* from MSDN:
-    The GetTempPath function checks for the existence of environment variables
-    in the following order and uses the first path found:
-
-    The path specified by the TMP environment variable.
-    The path specified by the TEMP environment variable.
-    The path specified by the USERPROFILE environment variable.
-    The Windows directory.
-  */
-  dwReturnValue = GetTempPath(LOCAL_MAX_PATH_BUFFER, tempPathName);
-
-  if ((dwReturnValue > LOCAL_MAX_PATH_BUFFER) || (dwReturnValue == 0)) {
-    // something wrong
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "GetTempPathA failed: LOCAL_MAX_PATH_BUFFER="
-               << LOCAL_MAX_PATH_BUFFER << ":dwReturnValue=" << dwReturnValue;
-    // attempt to simply use the current directory
-    _tcscpy(tempFileName, TEXT("."));
-  }
-
-  // ...........................................................................
-  // Having obtained the temporary path, we have to determine if we can actually
-  // write to that directory
-  // ...........................................................................
-
-  uReturnValue = GetTempFileName(tempPathName, TEXT("TRI_"), 0, tempFileName);
-
-  if (uReturnValue == 0) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "GetTempFileNameA failed";
-    _tcscpy(tempFileName, TEXT("TRI_tempFile"));
-  }
-
-  tempFileHandle = CreateFile((LPTSTR)tempFileName,   // file name
-                              GENERIC_WRITE,          // open for write
-                              0,                      // do not share
-                              NULL,                   // default security
-                              CREATE_ALWAYS,          // overwrite existing
-                              FILE_ATTRIBUTE_NORMAL,  // normal file
-                              NULL);                  // no template
-
-  if (tempFileHandle == INVALID_HANDLE_VALUE) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Cannot create temporary file '" << (LPTSTR) tempFileName;
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot create temporary file"); 
-  }
-
-  ok = CloseHandle(tempFileHandle);
-
-  if (!ok) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Cannot close handle of temporary file";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot close handle of temporary file"); 
-  }
-
-  ok = DeleteFile(tempFileName);
-
-  if (!ok) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Cannot delete temporary file";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot delete temporary file"); 
-  }
-
-  // ...........................................................................
-  // Whether or not UNICODE is defined, we assume that the temporary file name
-  // fits in the ascii set of characters. This is a small compromise so that
-  // temporary file names can be extra long if required.
-  // ...........................................................................
-  {
-    size_t j;
-    size_t pathSize = _tcsclen(tempPathName);
-    char* temp = static_cast<char*>(
-        TRI_Allocate(pathSize + 1));
-
-    if (temp == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    for (j = 0; j < pathSize; ++j) {
-      if (tempPathName[j] > 127) {
-        TRI_Free(temp);
-        LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "Invalid characters in temporary path name";
-      }
-      temp[j] = (char)(tempPathName[j]);
-    }
-    temp[pathSize] = '\0';
-
-    // ok = (WideCharToMultiByte(CP_UTF8, WC_NO_BEST_FIT_CHARS, tempPathName,
-    // -1, temp, pathSize + 1,  NULL, NULL) != 0);
-
-    result = temp;
-    TRI_FreeString(temp);
-
-    // remove trailing directory separator
-    while (!result.empty() && IsDirSeparatorChar(result[result.size() - 1])) {
-      result.pop_back();
-    }
-  }
-
-  return result;
-}
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get a temporary file name
