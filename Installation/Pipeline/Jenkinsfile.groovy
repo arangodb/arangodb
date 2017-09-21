@@ -277,7 +277,7 @@ def rspecify(os, test) {
 
 def deleteDirDocker(os) {
     if (os == "linux") {
-        sh "sudo rm -rf build-deb"
+        sh "docker --rm -v $(pwd):/workspace alpine rm -rf /workspace/build-deb"
     }
 
     deleteDir()
