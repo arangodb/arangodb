@@ -118,7 +118,7 @@ function rubyTests (options, ssl) {
 
   let continueTesting = true;
   let filtered = {};
-  let result = {};
+  let results = {};
 
   let args;
   let command;
@@ -158,6 +158,7 @@ function rubyTests (options, ssl) {
   };
 
   let count = 0;
+  let graphCount = 0;
   files = tu.splitBuckets(options, files);
 
   for (let i = 0; i < files.length; i++) {
@@ -170,7 +171,7 @@ function rubyTests (options, ssl) {
         if (!continueTesting) {
           print('Skipping ' + te + ' server is gone.');
 
-          result[te] = {
+          results[te] = {
             status: false,
             message: instanceInfo.exitStatus
           };
@@ -203,7 +204,7 @@ function rubyTests (options, ssl) {
         print('\n' + Date() + ' rspec trying', tfn, '...');
         const res = pu.executeAndWait(command, args, options, 'arangosh', instanceInfo.rootDir);
 
-        result[te] = {
+        results[te] = {
           total: 0,
           failed: 0,
           status: res.status
@@ -217,15 +218,15 @@ function rubyTests (options, ssl) {
           }
 
           for (let j = 0; j < jsonResult.examples.length; ++j) {
-            result[te].failed += parseRspecJson(
-              jsonResult.examples[j], result[te],
+            results[te].failed += parseRspecJson(
+              jsonResult.examples[j], results[te],
               jsonResult.summary.duration);
           }
 
-          result[te].duration = jsonResult.summary.duration;
+          results[te].duration = jsonResult.summary.duration;
         } catch (x) {
           print('Failed to parse rspec result: ' + x);
-          result[te]['complete_' + te] = res;
+          results[te]['complete_' + te] = res;
 
           if (res.status === false) {
             options.cleanup = false;
@@ -247,14 +248,25 @@ function rubyTests (options, ssl) {
             return (name[0] !== '_'); // exclude system collections from the comparison
           });
           if (delta.length !== 0) {
-            result[te] = {
+            results[te] = {
               status: false,
-              message: 'Cleanup missing - test left over collections: ' + delta + '. Original test status: ' + JSON.stringify(result[te])
+              message: 'Cleanup missing - test left over collections! [' + delta + '] - Original test status: ' + JSON.stringify(results[te])
             };
             collectionsBefore = [];
             db._collections().forEach(collection => {
               collectionsBefore.push(collection._name);
             });
+          }
+
+          if (db._graphs.count() !== graphCount) {
+            results[te] = {
+              status: false,
+              message: 'Cleanup of graphs missing - found graph definitions: [ ' +
+                JSON.stringify(db._graphs.toArray()) +
+                ' ] - Original test status: ' +
+                JSON.stringify(results[te])
+            };
+            graphCount = db._graphs.count();
           }
         }
       } else {
@@ -268,11 +280,11 @@ function rubyTests (options, ssl) {
   print('Shutting down...');
 
   if (count === 0) {
-    result['ALLTESTS'] = {
+    results['ALLTESTS'] = {
       status: false,
       skipped: true
     };
-    result.status = false;
+    results.status = false;
     print(RED + 'No testcase matched the filter.' + RESET);
   }
 
@@ -280,7 +292,7 @@ function rubyTests (options, ssl) {
   pu.shutdownInstance(instanceInfo, options);
   print('done.');
 
-  return result;
+  return results;
 }
 
 // //////////////////////////////////////////////////////////////////////////////

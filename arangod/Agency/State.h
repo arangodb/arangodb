@@ -71,7 +71,7 @@ class State {
               std::string const& clientId = std::string());
     
   /// @brief Log entries (followers)
-  arangodb::consensus::index_t log(query_t const& queries, size_t ndups = 0);
+  arangodb::consensus::index_t log(query_t const&, bool);
   
   /// @brief Find entry at index with term
   bool find(index_t index, term_t term);

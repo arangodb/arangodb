@@ -1,6 +1,13 @@
 devel
 -----
 
+* fix windows implementation for fs.getTempPath() to also create a
+  sub-directory as we do on linux
+
+* ui: added replicationFactor option during SmartGraph creation.
+
+* make the mmfiles compactor configurable
+
 * leader-follower replication catchup code has been rewritten in C++
 
 * early stage AQL optimization now also uses the C++ implementations of

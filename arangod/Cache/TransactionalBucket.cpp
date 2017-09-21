@@ -35,7 +35,7 @@ TransactionalBucket::TransactionalBucket() {
   clear();
 }
 
-bool TransactionalBucket::lock(int64_t maxTries) {
+bool TransactionalBucket::lock(uint64_t maxTries) {
   return _state.lock(maxTries);
 }
 

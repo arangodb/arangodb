@@ -106,7 +106,8 @@ function backupTestSuite() {
 
     testGraph: function () {
       const graphs = require("@arangodb/general-graph");
-      assertTrue(graphs._exists('UnitTestGraph'));
+      const gn = 'UnitTestGraph';
+      assertTrue(graphs._exists(gn));
       const ecol = db._collection('UnitTestEdges');
       assertTrue(ecol !== null && ecol !== undefined);
       if (isCluster) {
@@ -124,6 +125,7 @@ function backupTestSuite() {
         assertEqual(props.shardKeys, ['_key']);
         assertEqual(props.replicationFactor, 2);
       }
+      graphs._drop(gn);
     }
   };
 };
