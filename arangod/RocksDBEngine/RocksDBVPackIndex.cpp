@@ -363,7 +363,7 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased, TRI_voc_rid_t revId,
       buildIndexValues(leased, revId, doc, 0, elements, sliceStack, hashes);
     } catch (arangodb::basics::Exception const& ex) {
       return ex.code();
-    } catch (std::bad_alloc const& ex) {
+    } catch (std::bad_alloc const&) {
       return TRI_ERROR_OUT_OF_MEMORY;
     } catch (...) {
       // unknown error

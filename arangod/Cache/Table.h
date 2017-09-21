@@ -45,7 +45,7 @@ class Table : public std::enable_shared_from_this<Table> {
   static const uint32_t minLogSize;
   static const uint32_t maxLogSize;
   static constexpr uint32_t standardLogSizeAdjustment = 6;
-  static constexpr int64_t triesGuarantee = -1;
+  static constexpr uint64_t triesGuarantee = UINT64_MAX;
   static constexpr uint64_t padding = BUCKET_SIZE;
 
   typedef std::function<void(void*)> BucketClearer;
@@ -54,7 +54,7 @@ class Table : public std::enable_shared_from_this<Table> {
   struct GenericBucket {
     BucketState _state;
     uint8_t _filler[BUCKET_SIZE - sizeof(BucketState)];
-    bool lock(int64_t maxTries);
+    bool lock(uint64_t maxTries);
     void unlock();
     bool isMigrated() const;
   };
@@ -119,7 +119,7 @@ class Table : public std::enable_shared_from_this<Table> {
   /// table for the bucket returned as the first member.
   //////////////////////////////////////////////////////////////////////////////
   std::pair<void*, Table*> fetchAndLockBucket(
-      uint32_t hash, int64_t maxTries = -1);
+      uint32_t hash, uint64_t maxTries = UINT64_MAX);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Sets the auxiliary table.
@@ -209,7 +209,7 @@ class Table : public std::enable_shared_from_this<Table> {
 
  private:
   void disable();
-  bool isEnabled(int64_t maxTries = triesGuarantee);
+  bool isEnabled(uint64_t maxTries = triesGuarantee);
   static void defaultClearer(void* ptr);
 };
 
