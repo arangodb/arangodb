@@ -284,7 +284,7 @@ def deleteDirDocker(os) {
 }
 
 def shellAndPipe(command, logfile) {
-  sh "(echo 1 > \"${logfile}.result\" ; ${command) ; echo \$? > \"${logfile}.result\") 2>&1 | tee -a \"${logfile}\" ; exit `cat \"${logfile}.result\"`"
+  sh "(echo 1 > \"${logfile}.result\" ; ${command} ; echo \$? > \"${logfile}.result\") 2>&1 | tee -a \"${logfile}\" ; exit `cat \"${logfile}.result\"`"
 }
 
 // -----------------------------------------------------------------------------
