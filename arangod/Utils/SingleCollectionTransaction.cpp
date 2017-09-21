@@ -63,7 +63,7 @@ SingleCollectionTransaction::SingleCollectionTransaction(
 }
 
 /// @brief get the underlying transaction collection
-TransactionCollection* SingleCollectionTransaction::trxCollection() {
+TransactionCollection* SingleCollectionTransaction::resolveTrxCollection() {
   TRI_ASSERT(_cid > 0);
 
   if (_trxCollection == nullptr) {
@@ -86,30 +86,13 @@ LogicalCollection* SingleCollectionTransaction::documentCollection() {
     return _documentCollection;
   }
  
-  trxCollection(); 
+  resolveTrxCollection();
   TRI_ASSERT(_documentCollection != nullptr);
-
   return _documentCollection;
 }
   
 /// @brief get the underlying collection's name
 std::string SingleCollectionTransaction::name() { 
-  trxCollection(); // will ensure we have the _trxCollection object set
-  TRI_ASSERT(_trxCollection != nullptr);
-  return _trxCollection->collectionName();
-}
-
-/// @brief explicitly lock the underlying collection for read access
-Result SingleCollectionTransaction::lockRead() {
-  return lock(trxCollection(), AccessMode::Type::READ);
-}
-
-/// @brief explicitly unlock the underlying collection after read access
-Result SingleCollectionTransaction::unlockRead() {
-  return unlock(trxCollection(), AccessMode::Type::READ);
-}
-
-/// @brief explicitly lock the underlying collection for write access
-Result SingleCollectionTransaction::lockWrite() {
-  return lock(trxCollection(), AccessMode::Type::WRITE);
+   // will ensure we have the _trxCollection object set
+  return resolveTrxCollection()->collectionName();
 }

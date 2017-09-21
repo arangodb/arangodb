@@ -62,8 +62,7 @@ class PhysicalCollection {
       arangodb::velocypack::Slice const& slice, bool doSync) = 0;
   virtual arangodb::Result persistProperties() = 0;
 
-  virtual PhysicalCollection* clone(LogicalCollection*,
-                                    PhysicalCollection*) = 0;
+  virtual PhysicalCollection* clone(LogicalCollection*) = 0;
 
   virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const = 0;
 
@@ -140,7 +139,11 @@ class PhysicalCollection {
       transaction::Methods*, arangodb::velocypack::Slice const&) = 0;
 
   virtual Result read(transaction::Methods*,
-                      arangodb::velocypack::Slice const key,
+                      arangodb::StringRef const& key,
+                      ManagedDocumentResult& result, bool) = 0;
+  
+  virtual Result read(transaction::Methods*,
+                      arangodb::velocypack::Slice const& key,
                       ManagedDocumentResult& result, bool) = 0;
 
   virtual bool readDocument(transaction::Methods* trx,

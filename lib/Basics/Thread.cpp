@@ -79,27 +79,37 @@ void Thread::startThread(void* arg) {
 
   ptr->_threadNumber = LOCAL_THREAD_NUMBER;
 
+  if (0 <= ptr->_affinity) {
+    TRI_SetProcessorAffinity(&ptr->_thread, ptr->_affinity);
+  }
+
   bool pushed = WorkMonitor::pushThread(ptr);
 
   try {
     ptr->runMe();
   } catch (std::exception const& ex) {
-    LOG_TOPIC(WARN, Logger::THREADS) << "caught exception in thread '" << ptr->_name
-                                     << "': " << ex.what();
+    LOG_TOPIC(WARN, Logger::THREADS)
+        << "caught exception in thread '" << ptr->_name << "': " << ex.what();
     if (pushed) {
       WorkMonitor::popThread(ptr);
     }
+
+    ptr->cleanupMe();
     throw;
   } catch (...) {
     if (pushed) {
       WorkMonitor::popThread(ptr);
     }
+
+    ptr->cleanupMe();
     throw;
   }
 
   if (pushed) {
     WorkMonitor::popThread(ptr);
   }
+
+  ptr->cleanupMe();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -156,8 +166,9 @@ std::string Thread::stringify(ThreadState state) {
 /// @brief constructs a thread
 ////////////////////////////////////////////////////////////////////////////////
 
-Thread::Thread(std::string const& name)
-    : _name(name),
+Thread::Thread(std::string const& name, bool deleteOnExit)
+    : _deleteOnExit(deleteOnExit),
+      _name(name),
       _thread(),
       _threadNumber(0),
       _threadId(),
@@ -166,8 +177,8 @@ Thread::Thread(std::string const& name)
       _affinity(-1),
       _workDescription(nullptr) {
   TRI_InitThread(&_thread);
-  
-  // allow failing memory allocations for all threads by default 
+
+  // allow failing memory allocations for all threads by default
   TRI_AllowMemoryFailures();
 }
 
@@ -177,14 +188,16 @@ Thread::Thread(std::string const& name)
 
 Thread::~Thread() {
   auto state = _state.load();
-  LOG_TOPIC(TRACE, Logger::THREADS) << "delete(" << _name
-                                    << "), state: " << stringify(state);
+  LOG_TOPIC(TRACE, Logger::THREADS)
+      << "delete(" << _name << "), state: " << stringify(state);
 
   if (state == ThreadState::STOPPED) {
-    int res = TRI_JoinThread(&_thread);
-
-    if (res != 0) {
-      LOG_TOPIC(INFO, Logger::THREADS) << "cannot detach thread";
+    if (TRI_IsSelfThread(&_thread)) {
+      // we must ignore any errors here, but TRI_DetachThread will log them
+      TRI_DetachThread(&_thread);
+    } else {
+      // we must ignore any errors here, but TRI_JoinThread will log them
+      TRI_JoinThread(&_thread);
     }
 
     _state.store(ThreadState::DETACHED);
@@ -194,8 +207,9 @@ Thread::~Thread() {
   state = _state.load();
 
   if (state != ThreadState::DETACHED && state != ThreadState::CREATED) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "thread '" << _name << "' is not detached but " << stringify(state)
-               << ". shutting down hard";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "thread '" << _name << "' is not detached but " << stringify(state)
+        << ". shutting down hard";
     FATAL_ERROR_ABORT();
   }
 }
@@ -219,9 +233,9 @@ void Thread::beginShutdown() {
     _state.compare_exchange_strong(state, ThreadState::STOPPING);
   }
 
-  LOG_TOPIC(TRACE, Logger::THREADS) << "beginShutdown(" << _name
-                                    << ") reached state "
-                                    << stringify(_state.load());
+  LOG_TOPIC(TRACE, Logger::THREADS)
+      << "beginShutdown(" << _name << ") reached state "
+      << stringify(_state.load());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -244,12 +258,11 @@ void Thread::shutdown() {
   if (_state.load() == ThreadState::STARTED) {
     beginShutdown();
 
-    if (!isSilent() && 
-        _state.load() != ThreadState::STOPPING && 
+    if (!isSilent() && _state.load() != ThreadState::STOPPING &&
         _state.load() != ThreadState::STOPPED) {
-      LOG_TOPIC(WARN, Logger::THREADS) << "forcefully shutting down thread '"
-                                       << _name << "' in state "
-                                       << stringify(_state.load());
+      LOG_TOPIC(WARN, Logger::THREADS)
+          << "forcefully shutting down thread '" << _name << "' in state "
+          << stringify(_state.load());
     }
   }
 
@@ -264,7 +277,8 @@ void Thread::shutdown() {
   }
 
   if (_state.load() != ThreadState::STOPPED) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot shutdown thread, giving up";
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "cannot shutdown thread, giving up";
     FATAL_ERROR_ABORT();
   }
 }
@@ -286,11 +300,12 @@ bool Thread::isStopping() const {
 
 bool Thread::start(ConditionVariable* finishedCondition) {
   if (!isSystem() && !ApplicationServer::isPrepared()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "trying to start a thread '" << _name
-               << "' before prepare has finished, current state: "
-               << (ApplicationServer::server == nullptr
-                       ? -1
-                       : (int)ApplicationServer::server->state());
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "trying to start a thread '" << _name
+        << "' before prepare has finished, current state: "
+        << (ApplicationServer::server == nullptr
+                ? -1
+                : (int)ApplicationServer::server->state());
     FATAL_ERROR_ABORT();
   }
 
@@ -317,16 +332,14 @@ bool Thread::start(ConditionVariable* finishedCondition) {
   bool ok =
       TRI_StartThread(&_thread, &_threadId, _name.c_str(), &startThread, this);
 
-  if (ok) {
-    if (0 <= _affinity) {
-      TRI_SetProcessorAffinity(&_thread, _affinity);
-    }
-  } else {
+  if (!ok) {
+    // could not start the thread
     _state.store(ThreadState::STOPPED);
-    LOG_TOPIC(ERR, Logger::THREADS) << "could not start thread '" << _name
-                                    << "': " << TRI_last_error();
+    LOG_TOPIC(ERR, Logger::THREADS)
+        << "could not start thread '" << _name << "': " << TRI_last_error();
 
-    return false;
+    // must cleanup to prevent memleaks
+    cleanupMe();
   }
 
   return ok;
@@ -384,34 +397,40 @@ void Thread::addStatus(VPackBuilder* b) {
   }
 }
 
-void Thread::runMe() {
-  try {
-    run();
-    _state.store(ThreadState::STOPPED);
-  } catch (Exception const& ex) {
-    LOG_TOPIC(ERR, Logger::THREADS) << "exception caught in thread '" << _name
-                                    << "': " << ex.what();
-    Logger::flush();
-    _state.store(ThreadState::STOPPED);
-    throw;
-  } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, Logger::THREADS) << "exception caught in thread '" << _name
-                                    << "': " << ex.what();
-    Logger::flush();
-    _state.store(ThreadState::STOPPED);
-    throw;
-  } catch (...) {
-    if (!isSilent()) {
-      LOG_TOPIC(ERR, Logger::THREADS) << "exception caught in thread '" << _name
-                                      << "'";
-      Logger::flush();
-    }
-    _state.store(ThreadState::STOPPED);
-    throw;
-  }
+void Thread::markAsStopped() {
+  _state.store(ThreadState::STOPPED);
 
   if (_finishedCondition != nullptr) {
     CONDITION_LOCKER(locker, *_finishedCondition);
     locker.broadcast();
+  }
+}
+
+void Thread::runMe() {
+  // make sure the thread is marked as stopped under all circumstances
+  TRI_DEFER(markAsStopped());
+
+  try {
+    run();
+  } catch (std::exception const& ex) {
+    if (!isSilent()) {
+      LOG_TOPIC(ERR, Logger::THREADS)
+          << "exception caught in thread '" << _name << "': " << ex.what();
+      Logger::flush();
+    }
+    throw;
+  } catch (...) {
+    if (!isSilent()) {
+      LOG_TOPIC(ERR, Logger::THREADS)
+          << "unknown exception caught in thread '" << _name << "'";
+      Logger::flush();
+    }
+    throw;
+  }
+}
+
+void Thread::cleanupMe() {
+  if (_deleteOnExit) {
+    delete this;
   }
 }

@@ -25,6 +25,7 @@
 #define ARANGOD_MMFILES_MMFILES_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/IndexLookupContext.h"
@@ -128,8 +129,10 @@ class MMFilesCollection final : public PhysicalCollection {
                              PhysicalCollection*);  // use in cluster only!!!!!
 
   ~MMFilesCollection();
+  
+  static constexpr uint32_t defaultIndexBuckets = 8;
 
-  constexpr static double defaultLockTimeout = 10.0 * 60.0;
+  static constexpr double defaultLockTimeout = 10.0 * 60.0;
 
   std::string const& path() const override { return _path; };
 
@@ -139,8 +142,7 @@ class MMFilesCollection final : public PhysicalCollection {
                                     bool doSync) override;
   virtual arangodb::Result persistProperties() override;
 
-  virtual PhysicalCollection* clone(LogicalCollection*,
-                                    PhysicalCollection*) override;
+  virtual PhysicalCollection* clone(LogicalCollection*) override;
 
   TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
   TRI_voc_rid_t revision() const;
@@ -168,6 +170,11 @@ class MMFilesCollection final : public PhysicalCollection {
   int close() override;
   void load() override {}
   void unload() override {}
+
+  /// @brief set the initial datafiles for the collection
+  void setInitialFiles(std::vector<MMFilesDatafile*>&& datafiles,
+                       std::vector<MMFilesDatafile*>&& journals,
+                       std::vector<MMFilesDatafile*>&& compactors);
 
   /// @brief rotate the active journal - will do nothing if there is no journal
   int rotateActiveJournal();
@@ -301,8 +308,6 @@ class MMFilesCollection final : public PhysicalCollection {
   /// @brief Drop an index with the given iid.
   bool dropIndex(TRI_idx_iid_t iid) override;
 
-  int cleanupIndexes();
-
   ////////////////////////////////////
   // -- SECTION Locking --
   ///////////////////////////////////
@@ -324,7 +329,10 @@ class MMFilesCollection final : public PhysicalCollection {
   DocumentIdentifierToken lookupKey(transaction::Methods* trx,
                                     velocypack::Slice const& key) override;
 
-  Result read(transaction::Methods*, arangodb::velocypack::Slice const key,
+  Result read(transaction::Methods*, arangodb::StringRef const& key,
+              ManagedDocumentResult& result, bool) override;
+  
+  Result read(transaction::Methods*, arangodb::velocypack::Slice const& key,
               ManagedDocumentResult& result, bool) override;
 
   bool readDocument(transaction::Methods* trx,
@@ -554,7 +562,6 @@ class MMFilesCollection final : public PhysicalCollection {
 
   // SECTION: Indexes
 
-  size_t _cleanupIndexes;
   size_t _persistentIndexes;
   uint32_t _indexBuckets;
 

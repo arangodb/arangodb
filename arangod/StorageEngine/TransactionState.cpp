@@ -114,15 +114,16 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
     // in the execution context initialized by RestServer/VocbaseContext
     AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
                                      _vocbase->name(), colName);
-
+    
     if (level == AuthLevel::NONE) {
-      LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "collection AuthLevel::NONE";
+      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << ExecContext::CURRENT->user()
+                                             << " has collection AuthLevel::NONE";
       return TRI_ERROR_FORBIDDEN;
     }
     bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
     if (level == AuthLevel::RO && collectionWillWrite) {
-      LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << "no write right for collection "
-                                              << colName;
+      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << ExecContext::CURRENT->user()
+                                              << "has no write right for collection " << colName;
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
   }
@@ -177,10 +178,6 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
       engine->createTransactionCollection(this, cid, accessType, nestingLevel);
 
   TRI_ASSERT(trxCollection != nullptr);
-
-  // std::cout << "SingleCollectionTransaction::lockRead() database: " /*<<
-  // documentCollection()->dbName()*/ << ", collection: " <<
-  // trxCollection->collectionName() << "\n";
 
   // insert collection at the correct position
   try {
@@ -296,6 +293,10 @@ void TransactionState::setType(AccessMode::Type type) {
   }
   // all right
   _type = type;
+}
+   
+bool TransactionState::isExclusiveTransactionOnSingleCollection() const {
+  return ((numCollections() == 1) && (_collections[0]->accessType() == AccessMode::Type::EXCLUSIVE));
 }
 
 /// @brief release collection locks for a transaction

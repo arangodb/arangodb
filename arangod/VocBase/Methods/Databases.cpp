@@ -37,6 +37,7 @@
 #include "V8/v8-vpack.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
+#include "V8Server/v8-dispatcher.h"
 #include "VocBase/AuthInfo.h"
 #include "VocBase/modes.h"
 #include "VocBase/vocbase.h"
@@ -283,10 +284,10 @@ arangodb::Result Databases::create(std::string const& dbName,
     // now run upgrade and copy users into context
     TRI_ASSERT(sanitizedUsers.slice().isArray());
     v8::Handle<v8::Object> userVar = v8::Object::New(ctx->_isolate);
-    userVar->Set(TRI_V8_ASCII_STRING("users"),
+    userVar->Set(TRI_V8_ASCII_STRING(isolate, "users"),
                  TRI_VPackToV8(isolate, sanitizedUsers.slice()));
     isolate->GetCurrentContext()->Global()->Set(
-        TRI_V8_ASCII_STRING("UPGRADE_ARGS"), userVar);
+        TRI_V8_ASCII_STRING(isolate, "UPGRADE_ARGS"), userVar);
 
     // initalize database
     bool allowUseDatabase = v8g->_allowUseDatabase;
@@ -334,10 +335,10 @@ arangodb::Result Databases::create(std::string const& dbName,
     // copy users into context
     TRI_ASSERT(sanitizedUsers.slice().isArray());
     v8::Handle<v8::Object> userVar = v8::Object::New(ctx->_isolate);
-    userVar->Set(TRI_V8_ASCII_STRING("users"),
+    userVar->Set(TRI_V8_ASCII_STRING(isolate, "users"),
                  TRI_VPackToV8(isolate, sanitizedUsers.slice()));
     isolate->GetCurrentContext()->Global()->Set(
-        TRI_V8_ASCII_STRING("UPGRADE_ARGS"), userVar);
+        TRI_V8_ASCII_STRING(isolate, "UPGRADE_ARGS"), userVar);
 
     // switch databases
     {
@@ -450,21 +451,22 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
       return Result(res);
     }
 
+    TRI_RemoveDatabaseTasksV8Dispatcher(dbName);
+
     // run the garbage collection in case the database held some objects which
-    // can
-    // now be freed
+    // can now be freed
     TRI_RunGarbageCollectionV8(isolate, 0.25);
 
     TRI_ExecuteJavaScriptString(
         isolate, isolate->GetCurrentContext(),
-        TRI_V8_ASCII_STRING("require('internal').executeGlobalContextFunction('"
+        TRI_V8_ASCII_STRING(isolate, "require('internal').executeGlobalContextFunction('"
                             "reloadRouting')"),
-        TRI_V8_ASCII_STRING("reload routing"), false);
+        TRI_V8_ASCII_STRING(isolate, "reload routing"), false);
   }
 
   auto auth = FeatureCacheFeature::instance()->authenticationFeature();
-  if (auth->isActive() && (ServerState::instance()->isCoordinator() ||
-                           !ServerState::instance()->isRunningInCluster())) {
+  if (ServerState::instance()->isCoordinator() ||
+      !ServerState::instance()->isRunningInCluster()) {
     auth->authInfo()->enumerateUsers(
         [&](AuthUserEntry& entry) { entry.removeDatabase(dbName); });
   }

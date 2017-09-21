@@ -77,6 +77,7 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
     for (size_t i = 0; i < 9; i++) {
       ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(uint64_t),
                                        &(values[i]), sizeof(uint64_t));
+      TRI_ASSERT(ptrs[i] != nullptr);
     }
 
     success = bucket->lock(-1LL);
@@ -94,13 +95,13 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
     }
     for (size_t i = 0; i < 7; i++) {
       CachedValue* res =
-          bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
+          bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
       REQUIRE(res == ptrs[i]);
     }
 
     // check that insert is ignored if full
     bucket->insert(hashes[8], ptrs[8]);
-    CachedValue* res = bucket->find(hashes[8], ptrs[8]->key(), ptrs[8]->keySize);
+    CachedValue* res = bucket->find(hashes[8], ptrs[8]->key(), ptrs[8]->keySize());
     REQUIRE(nullptr == res);
 
     bucket->unlock();
@@ -123,6 +124,7 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
     for (size_t i = 0; i < 3; i++) {
       ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(uint64_t),
                                        &(values[i]), sizeof(uint64_t));
+      TRI_ASSERT(ptrs[i] != nullptr);
     }
 
     success = bucket->lock(-1LL);
@@ -133,22 +135,22 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
     }
     for (size_t i = 0; i < 3; i++) {
       CachedValue* res =
-          bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
+          bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
       REQUIRE(res == ptrs[i]);
     }
 
     CachedValue* res;
-    res = bucket->remove(hashes[1], ptrs[1]->key(), ptrs[1]->keySize);
+    res = bucket->remove(hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
     REQUIRE(res == ptrs[1]);
-    res = bucket->find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize);
+    res = bucket->find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
     REQUIRE(nullptr == res);
-    res = bucket->remove(hashes[0], ptrs[0]->key(), ptrs[0]->keySize);
+    res = bucket->remove(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
     REQUIRE(res == ptrs[0]);
-    res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize);
+    res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
     REQUIRE(nullptr == res);
-    res = bucket->remove(hashes[2], ptrs[2]->key(), ptrs[2]->keySize);
+    res = bucket->remove(hashes[2], ptrs[2]->key(), ptrs[2]->keySize());
     REQUIRE(res == ptrs[2]);
-    res = bucket->find(hashes[2], ptrs[2]->key(), ptrs[2]->keySize);
+    res = bucket->find(hashes[2], ptrs[2]->key(), ptrs[2]->keySize());
     REQUIRE(nullptr == res);
 
     bucket->unlock();
@@ -172,6 +174,7 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
     for (size_t i = 0; i < 9; i++) {
       ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(uint64_t),
                                        &(values[i]), sizeof(uint64_t));
+      TRI_ASSERT(ptrs[i] != nullptr);
     }
 
     success = bucket->lock(-1LL);
@@ -189,7 +192,7 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
     }
     for (size_t i = 0; i < 8; i++) {
       CachedValue* res =
-          bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
+          bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
       REQUIRE(res == ptrs[i]);
     }
 
@@ -197,7 +200,7 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
     CachedValue* candidate = bucket->evictionCandidate();
     REQUIRE(candidate == ptrs[0]);
     bucket->evict(candidate, false);
-    CachedValue* res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize);
+    CachedValue* res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
     REQUIRE(nullptr == res);
     REQUIRE(!bucket->isFull());
 
@@ -205,13 +208,13 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
     candidate = bucket->evictionCandidate();
     REQUIRE(candidate == ptrs[1]);
     bucket->evict(candidate, true);
-    res = bucket->find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize);
+    res = bucket->find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize());
     REQUIRE(nullptr == res);
     REQUIRE(!bucket->isFull());
 
     // check that we can insert now after eviction optimized for insertion
     bucket->insert(hashes[8], ptrs[8]);
-    res = bucket->find(hashes[8], ptrs[8]->key(), ptrs[8]->keySize);
+    res = bucket->find(hashes[8], ptrs[8]->key(), ptrs[8]->keySize());
     REQUIRE(res == ptrs[8]);
 
     bucket->unlock();
@@ -235,6 +238,7 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
     for (size_t i = 0; i < 8; i++) {
       ptrs[i] = CachedValue::construct(&(keys[i]), sizeof(uint64_t),
                                        &(values[i]), sizeof(uint64_t));
+      TRI_ASSERT(ptrs[i] != nullptr);
     }
 
     success = bucket->lock(-1LL);
@@ -252,38 +256,33 @@ TEST_CASE("cache::TransactionalBucket", "[cache]") {
       }
     }
     for (size_t i = 0; i < 8; i++) {
-      res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
+      res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
       REQUIRE(res == ptrs[i]);
     }
 
     // blacklist 1-5 to fill blacklist
     for (size_t i = 1; i < 6; i++) {
-      bucket->blacklist(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
+      bucket->blacklist(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
     }
     for (size_t i = 1; i < 6; i++) {
       REQUIRE(bucket->isBlacklisted(hashes[i]));
-      res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize);
+      res = bucket->find(hashes[i], ptrs[i]->key(), ptrs[i]->keySize());
       REQUIRE(nullptr == res);
     }
     // verify actually not fully blacklisted
     REQUIRE(!bucket->isFullyBlacklisted());
     REQUIRE(!bucket->isBlacklisted(hashes[6]));
     // verify it didn't remove matching hash with non-matching key
-    res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize);
+    res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
     REQUIRE(res == ptrs[0]);
 
-    // verify we can't insert a key with a blacklisted hash
-    bucket->insert(hashes[1], ptrs[1]);
-    res = bucket->find(hashes[1], ptrs[1]->key(), ptrs[1]->keySize);
-    REQUIRE(nullptr == res);
-
     // proceed to fully blacklist
-    bucket->blacklist(hashes[6], ptrs[6]->key(), ptrs[6]->keySize);
+    bucket->blacklist(hashes[6], ptrs[6]->key(), ptrs[6]->keySize());
     REQUIRE(bucket->isBlacklisted(hashes[6]));
-    res = bucket->find(hashes[6], ptrs[6]->key(), ptrs[6]->keySize);
+    res = bucket->find(hashes[6], ptrs[6]->key(), ptrs[6]->keySize());
     REQUIRE(nullptr == res);
     // make sure it still didn't remove non-matching key
-    res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize);
+    res = bucket->find(hashes[0], ptrs[0]->key(), ptrs[0]->keySize());
     REQUIRE(ptrs[0] == res);
     // make sure it's fully blacklisted
     REQUIRE(bucket->isFullyBlacklisted());

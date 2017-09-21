@@ -76,9 +76,12 @@ class JobQueueThread final
 
           try {
             job->_callback(std::move(job->_handler));
-          } catch (std::exception& e) {
+          } catch (std::exception const& e) {
             LOG_TOPIC(WARN, Logger::THREADS)
-                << "Exception caught in a dangereous place! " << e.what();
+                << "caught exception while executing job callback: " << e.what();
+          } catch (...) {
+            LOG_TOPIC(WARN, Logger::THREADS)
+                << "caught unknown exception while executing job callback";
           }
 
           this->_jobQueue->wakeup();

@@ -34,21 +34,6 @@ var console = require('console');
 var actions = require('@arangodb/actions');
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief was docuBlock JSF_get_admin_routing_reloads
-// //////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url: '_admin/routing/reload',
-  prefix: false,
-
-  callback: function (req, res) {
-    internal.executeGlobalContextFunction('reloadRouting');
-    console.debug('about to flush the routing cache');
-    actions.resultOk(req, res, actions.HTTP_OK);
-  }
-});
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief returns the current routing information
 // //////////////////////////////////////////////////////////////////////////////
 

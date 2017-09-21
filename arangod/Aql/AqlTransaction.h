@@ -24,44 +24,31 @@
 #ifndef ARANGOD_AQL_AQL_TRANSACTION_H
 #define ARANGOD_AQL_AQL_TRANSACTION_H 1
 
+#include "Aql/Collection.h"
 #include "Basics/Common.h"
 #include "Basics/Result.h"
-#include "Aql/Collection.h"
-#include "Transaction/StandaloneContext.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
+#include "Transaction/StandaloneContext.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
 namespace aql {
 
-class AqlTransaction final : public transaction::Methods {
+class AqlTransaction : public transaction::Methods {
  public:
-  /// @brief create the transaction and add all collections from the query
-  /// context
-  AqlTransaction(
-      std::shared_ptr<transaction::Context> const& transactionContext, 
+  /// @brief create the transaction and add all collections
+  /// from the query context
+  static AqlTransaction* create(
+      std::shared_ptr<transaction::Context> const& transactionContext,
       std::map<std::string, aql::Collection*> const* collections,
-      transaction::Options const& options,
-      bool isMainTransaction)
-      : transaction::Methods(transactionContext, options),
-        _collections(*collections) {
-    if (!isMainTransaction) {
-      addHint(transaction::Hints::Hint::LOCK_NEVER);
-    } else {
-      addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
-    }
-
-    for (auto it : *collections) {
-      if (!processCollection(it.second).ok()) {
-        break;
-      }
-    }
-  }
+      transaction::Options const& options, bool isMainTransaction,
+      std::unordered_set<std::string> inaccessibleCollections =
+          std::unordered_set<std::string>());
 
   /// @brief end the transaction
   ~AqlTransaction() {}
-  
+
   /// @brief add a list of collections to the transaction
   Result addCollections(
       std::map<std::string, aql::Collection*> const& collections) {
@@ -77,7 +64,7 @@ class AqlTransaction final : public transaction::Methods {
   }
 
   /// @brief add a collection to the transaction
-  Result processCollection(aql::Collection*); 
+  Result processCollection(aql::Collection*);
 
   /// @brief add a coordinator collection to the transaction
   Result processCollectionCoordinator(aql::Collection*);
@@ -100,12 +87,37 @@ class AqlTransaction final : public transaction::Methods {
   /// order via an HTTP call. This method is used to implement that HTTP action.
   int lockCollections() override;
 
+ protected:
+  AqlTransaction(
+      std::shared_ptr<transaction::Context> const& transactionContext,
+      transaction::Options const& options)
+      : transaction::Methods(transactionContext, options) {}
+
+  /// protected so we can create different subclasses
+  AqlTransaction(
+      std::shared_ptr<transaction::Context> const& transactionContext,
+      std::map<std::string, aql::Collection*> const* collections,
+      transaction::Options const& options, bool isMainTransaction)
+      : transaction::Methods(transactionContext, options),
+        _collections(*collections) {
+    if (!isMainTransaction) {
+      addHint(transaction::Hints::Hint::LOCK_NEVER);
+    } else {
+      addHint(transaction::Hints::Hint::LOCK_ENTIRELY);
+    }
+
+    for (auto it : *collections) {
+      if (!processCollection(it.second).ok()) {
+        break;
+      }
+    }
+  }
+
+ protected:
   /// @brief keep a copy of the collections, this is needed for the clone
   /// operation
- private:
   std::map<std::string, aql::Collection*> _collections;
 };
-
 }
 }
 

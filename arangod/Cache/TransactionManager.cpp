@@ -22,7 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Cache/TransactionManager.h"
-#include "Cache/State.h"
+#include "Basics/cpu-relax.h"
 #include "Cache/Transaction.h"
 
 #include <stdint.h>
@@ -31,12 +31,12 @@
 using namespace arangodb::cache;
 
 TransactionManager::TransactionManager()
-    : _state(), _openReads(0), _openSensitive(0), _openWrites(0), _term(0) {}
+    : _openReads(0), _openSensitive(0), _openWrites(0), _term(0), _lock(false) {}
 
 Transaction* TransactionManager::begin(bool readOnly) {
   Transaction* tx = new Transaction(readOnly);
 
-  _state.lock();
+  lock();
 
   if (readOnly) {
     _openReads++;
@@ -55,15 +55,18 @@ Transaction* TransactionManager::begin(bool readOnly) {
     _openWrites++;
     _openSensitive++;
   }
-  tx->term = _term;
-  _state.unlock();
+
+  tx->term = _term.load();
+
+  unlock();
 
   return tx;
 }
 
 void TransactionManager::end(Transaction* tx) {
   TRI_ASSERT(tx != nullptr);
-  _state.lock();
+  lock();
+
   // if currently in sensitive phase, and transaction term is old, it was
   // upgraded to sensitive status
   if (((_term & static_cast<uint64_t>(1)) > 0) && (_term > tx->term)) {
@@ -80,8 +83,27 @@ void TransactionManager::end(Transaction* tx) {
     _term++;
   }
 
-  _state.unlock();
+  unlock();
+
   delete tx;
 }
 
 uint64_t TransactionManager::term() { return _term.load(); }
+
+void TransactionManager::lock() {
+  while (true) {
+    while (_lock.load(std::memory_order_relaxed)) {
+      basics::cpu_relax();
+    }
+    bool expected = false;
+    if (_lock.compare_exchange_weak(expected, true, std::memory_order_acq_rel,
+                                    std::memory_order_relaxed)) {
+      return;
+    }
+    basics::cpu_relax();
+  }
+}
+
+void TransactionManager::unlock() {
+  _lock.store(false, std::memory_order_release);
+}

@@ -316,19 +316,6 @@ RocksDBGeoIndex::~RocksDBGeoIndex() {
   }
 }
 
-size_t RocksDBGeoIndex::memory() const {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::GeoIndex(_objectId);
-  rocksdb::Range r(bounds.start(), bounds.end());
-  uint64_t out;
-  db->GetApproximateSizes(
-      RocksDBColumnFamily::geo(), &r, 1, &out,
-      static_cast<uint8_t>(
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
-          rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES));
-  return static_cast<size_t>(out);
-}
-
 /// @brief return a JSON representation of the index
 void RocksDBGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                    bool forPersistence) const {
@@ -554,23 +541,12 @@ Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
   return IndexResult(TRI_ERROR_NO_ERROR, this);
 }
 
-int RocksDBGeoIndex::unload() {
-  // create a new, empty index
-  /*auto empty = GeoIndex_new(_objectId, 0, 0);
-
-  if (empty == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  // free the old one
-  if (_geoIndex != nullptr) {
-    GeoIndex_free(_geoIndex);
-  }
-
-  // and assign it
-  _geoIndex = empty;*/
-
-  return TRI_ERROR_NO_ERROR;
+void RocksDBGeoIndex::truncate(transaction::Methods* trx) {
+  TRI_ASSERT(_geoIndex != nullptr);
+  RocksDBIndex::truncate(trx);
+  GeoIndex_setRocksMethods(_geoIndex, RocksDBTransactionState::toMethods(trx));
+  TRI_DEFER(GeoIndex_clearRocks(_geoIndex));
+  GeoIndex_reset(_geoIndex);
 }
 
 /// @brief looks up all points within a given radius

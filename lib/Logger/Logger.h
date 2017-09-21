@@ -122,6 +122,7 @@ class Logger {
 
   friend class LoggerStream;
   friend class LogThread;
+  friend class LogAppenderStream;
   friend class LogAppenderFile;
 
  public:
@@ -203,8 +204,11 @@ class Logger {
   static void setLogLevel(std::string const&);
   static void setLogLevel(std::vector<std::string> const&);
 
+  static void setRole(char role);
   static void setOutputPrefix(std::string const&);
   static void setShowLineNumber(bool);
+  static void setShowRole(bool);
+  static bool getShowRole() {return _showRole;};
   static void setShortenFilenames(bool);
   static void setShowThreadIdentifier(bool);
   static void setUseLocalTime(bool);
@@ -244,10 +248,12 @@ class Logger {
   static bool _showLineNumber;
   static bool _shortenFilenames;
   static bool _showThreadIdentifier;
+  static bool _showRole;
   static bool _threaded;
   static bool _useLocalTime;
   static bool _keepLogRotate;
   static bool _useMicrotime;
+  static char _role; // current server role to log
   static std::string _outputPrefix;
 
   static std::unique_ptr<LogThread> _loggingThread;

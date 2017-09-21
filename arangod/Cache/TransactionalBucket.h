@@ -25,9 +25,9 @@
 #define ARANGODB_CACHE_TRANSACTIONAL_BUCKET_H
 
 #include "Basics/Common.h"
+#include "Cache/BucketState.h"
 #include "Cache/CachedValue.h"
 #include "Cache/Common.h"
-#include "Cache/State.h"
 
 #include <stddef.h>
 
@@ -48,7 +48,7 @@ namespace cache {
 /// cacheline.
 ////////////////////////////////////////////////////////////////////////////////
 struct TransactionalBucket {
-  State _state;
+  BucketState _state;
 
   // blacklist entries for transactional semantics
   static constexpr size_t slotsBlacklist = 5;
@@ -112,7 +112,7 @@ struct TransactionalBucket {
   /// bucket to allow basic LRU semantics. If no matching entry is found,
   /// nothing will be changed and a nullptr will be returned.
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* find(uint32_t hash, void const* key, uint32_t keySize,
+  CachedValue* find(uint32_t hash, void const* key, size_t keySize,
                     bool moveToFront = true);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -140,7 +140,7 @@ struct TransactionalBucket {
   /// to the value. Upon removal, the empty slot generated is moved to the back
   /// of the bucket (to remove the gap).
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* remove(uint32_t hash, void const* key, uint32_t keySize);
+  CachedValue* remove(uint32_t hash, void const* key, size_t keySize);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Blacklists a key and removes it if it exists. Requires state to
@@ -150,7 +150,7 @@ struct TransactionalBucket {
   /// hash associated with the key. If there are no empty blacklist slots, fully
   /// blacklist the bucket.
   //////////////////////////////////////////////////////////////////////////////
-  CachedValue* blacklist(uint32_t hash, void const* key, uint32_t keySize);
+  CachedValue* blacklist(uint32_t hash, void const* key, size_t keySize);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks whether a given hash is blacklisted. Requires state to be

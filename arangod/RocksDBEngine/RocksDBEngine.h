@@ -226,6 +226,7 @@ class RocksDBEngine final : public StorageEngine {
   std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
       uint64_t) const;
 
+  std::vector<std::string> currentWalFiles();
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
   void pruneWalFiles();
 
@@ -255,7 +256,9 @@ class RocksDBEngine final : public StorageEngine {
   static std::string const FeatureName;
   RocksDBCounterManager* counterManager() const;
   RocksDBReplicationManager* replicationManager() const;
-  arangodb::Result syncWal();
+  arangodb::Result syncWal(bool waitForSync = false,
+                           bool waitForCollector = false,
+                           bool writeShutdownFile = false);
 
  private:
   /// single rocksdb database used in this storage engine

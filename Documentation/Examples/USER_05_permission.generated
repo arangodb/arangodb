@@ -1,0 +1,2 @@
+arangosh&gt; <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/users"</span>).permission(<span class="hljs-string">"my-user"</span>, <span class="hljs-string">"testdb"</span>);
+rw

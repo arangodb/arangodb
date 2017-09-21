@@ -379,6 +379,7 @@ class Slice {
 
     // find number of items
     if (h <= 0x05) {  // No offset table or length, need to compute:
+      VELOCYPACK_ASSERT(h != 0x00 && h != 0x01);
       ValueLength firstSubOffset = findDataOffset(h);
       Slice first(_start + firstSubOffset);
       ValueLength s = first.byteSize();
@@ -848,9 +849,14 @@ class Slice {
   }
   
   ValueLength findDataOffset(uint8_t head) const noexcept {
-    // Must be called for a nonempty array or object at start():
-    VELOCYPACK_ASSERT(head <= 0x12);
+    // Must be called for a non-empty array or object at start():
+    VELOCYPACK_ASSERT(head != 0x01 && head != 0x0a && head <= 0x14);
     unsigned int fsm = SliceStaticData::FirstSubMap[head];
+    if (fsm == 0) {
+      // need to calculate the offset by reading the dynamic length
+      VELOCYPACK_ASSERT(head == 0x13 || head == 0x14);
+      return 1 + arangodb::velocypack::getVariableValueLength(readVariableValueLength<false>(_start + 1));
+    }
     if (fsm <= 2 && _start[2] != 0) {
       return 2;
     }

@@ -47,7 +47,8 @@ using namespace arangodb::cache;
 TEST_CASE("cache::Manager", "[cache][!hide][longRunning]") {
   SECTION("test basic constructor function") {
     uint64_t requestLimit = 1024 * 1024;
-    Manager manager(nullptr, requestLimit);
+    auto postFn = [](std::function<void()>) -> bool { return false; };
+    Manager manager(postFn, requestLimit);
 
     REQUIRE(requestLimit == manager.globalLimit());
 
@@ -66,7 +67,11 @@ TEST_CASE("cache::Manager", "[cache][!hide][longRunning]") {
   SECTION("test mixed cache types under mixed load") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    Manager manager(scheduler.ioService(), 1024ULL * 1024ULL * 1024ULL);
+    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+      scheduler.post(fn);
+      return true;
+    };
+    Manager manager(postFn, 1024ULL * 1024ULL * 1024ULL);
     size_t cacheCount = 4;
     size_t threadCount = 4;
     std::vector<std::shared_ptr<Cache>> caches;
@@ -91,6 +96,7 @@ TEST_CASE("cache::Manager", "[cache][!hide][longRunning]") {
         size_t cacheIndex = item % cacheCount;
         CachedValue* value = CachedValue::construct(&item, sizeof(uint64_t),
                                                     &item, sizeof(uint64_t));
+        TRI_ASSERT(value != nullptr);
         auto status = caches[cacheIndex]->insert(value);
         if (status.fail()) {
           delete value;
@@ -123,7 +129,8 @@ TEST_CASE("cache::Manager", "[cache][!hide][longRunning]") {
           size_t cacheIndex = item % cacheCount;
           CachedValue* value = CachedValue::construct(&item, sizeof(uint64_t),
                                                       &item, sizeof(uint64_t));
-          auto status = caches[cacheIndex]->insert(value);
+          TRI_ASSERT(value != nullptr);
+           auto status = caches[cacheIndex]->insert(value);
           if (status.fail()) {
             delete value;
           }
@@ -170,7 +177,11 @@ TEST_CASE("cache::Manager", "[cache][!hide][longRunning]") {
   SECTION("test manager under cache lifecycle chaos") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    Manager manager(scheduler.ioService(), 1024ULL * 1024ULL * 1024ULL);
+    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+      scheduler.post(fn);
+      return true;
+    };
+    Manager manager(postFn, 1024ULL * 1024ULL * 1024ULL);
     size_t threadCount = 4;
     uint64_t operationCount = 4ULL * 1024ULL;
 

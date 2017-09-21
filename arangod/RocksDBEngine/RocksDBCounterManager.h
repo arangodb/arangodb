@@ -71,6 +71,8 @@ class RocksDBCounterManager {
     TRI_voc_rid_t revisionId() const { return _revisionId; }
   };
 
+  void runRecovery();
+
   /// Thread-Safe load a counter
   CounterAdjustment loadCounter(uint64_t objectId) const;
 
@@ -111,6 +113,9 @@ class RocksDBCounterManager {
 
   // Clear out key generator map for values not read by any collection.
   void clearKeyGenerators();
+
+  // Earliest sequence number needed for recovery (don't throw out newer WALs)
+  rocksdb::SequenceNumber earliestSeqNeeded() const;
 
  protected:
   struct CMValue {
@@ -159,6 +164,11 @@ class RocksDBCounterManager {
   /// @brief synced sequence numbers
   //////////////////////////////////////////////////////////////////////////////
   std::unordered_map<uint64_t, rocksdb::SequenceNumber> _syncedSeqNums;
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief last sync sequence number
+  //////////////////////////////////////////////////////////////////////////////
+  rocksdb::SequenceNumber _lastSync;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief currently syncing

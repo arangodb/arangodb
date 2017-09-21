@@ -186,21 +186,23 @@ RestStatus RestAgencyHandler::handleStores() {
     {
       VPackObjectBuilder b(&body);
       {
-        body.add(VPackValue("spearhead"));
-        { 
-          VPackArrayBuilder bb(&body);
-          _agent->spearhead().dumpToBuilder(body);
-        }
-        body.add(VPackValue("read_db"));
-        { 
-          VPackArrayBuilder bb(&body);
-          _agent->readDB().dumpToBuilder(body);
-        }
-        body.add(VPackValue("transient"));
-        { 
-          VPackArrayBuilder bb(&body);
-          _agent->transient().dumpToBuilder(body);
-        }
+        _agent->executeLocked([&]() {
+          body.add(VPackValue("spearhead"));
+          { 
+            VPackArrayBuilder bb(&body);
+            _agent->spearhead().dumpToBuilder(body);
+          }
+          body.add(VPackValue("read_db"));
+          { 
+            VPackArrayBuilder bb(&body);
+            _agent->readDB().dumpToBuilder(body);
+          }
+          body.add(VPackValue("transient"));
+          { 
+            VPackArrayBuilder bb(&body);
+            _agent->transient().dumpToBuilder(body);
+          }
+        });
       }
     }
     generateResult(rest::ResponseCode::OK, body.slice());

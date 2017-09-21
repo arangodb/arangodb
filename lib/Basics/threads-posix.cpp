@@ -128,7 +128,26 @@ bool TRI_StartThread(TRI_thread_t* thread, TRI_tid_t* threadId,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_JoinThread(TRI_thread_t* thread) {
-  return pthread_join(*thread, nullptr);
+  TRI_ASSERT(!TRI_IsSelfThread(thread));
+  int res = pthread_join(*thread, nullptr);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC(WARN, arangodb::Logger::THREADS) << "cannot join thread: " << strerror(res);
+  }
+  return res;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief detaches a thread
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_DetachThread(TRI_thread_t* thread) {
+  int res = pthread_detach(*thread);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC(WARN, arangodb::Logger::THREADS) << "cannot detach thread: " << strerror(res);
+  }
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

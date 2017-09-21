@@ -105,6 +105,8 @@ void Constituent::term(term_t t) {
 
 void Constituent::termNoLock(term_t t) {
   // Only call this when you have the _castLock
+  _castLock.assertLockedByCurrentThread();
+
   term_t tmp = _term;
   _term = t;
 
@@ -144,8 +146,7 @@ void Constituent::termNoLock(term_t t) {
         result = trx.insert("election", body.slice(), options);
       } catch (std::exception const& e) {
         LOG_TOPIC(FATAL, Logger::AGENCY)
-          << "Failed to persist RAFT election ballot: " << e.what() << ". Bailing out."
-          << __FILE__ << ":" << __LINE__;
+          << "Failed to persist RAFT election ballot: " << e.what() << ". Bailing out.";
         FATAL_ERROR_EXIT();
       }
 
@@ -200,6 +201,8 @@ void Constituent::follow(term_t t) {
 }
 
 void Constituent::followNoLock(term_t t) {
+  _castLock.assertLockedByCurrentThread();
+
   _term = t;
   _role = FOLLOWER;
 
@@ -373,13 +376,13 @@ bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
   }
   
   TRI_ASSERT(_vocbase != nullptr);
+ 
+  MUTEX_LOCKER(guard, _castLock);
   
   LOG_TOPIC(TRACE, Logger::AGENCY)
     << "vote(termOfPeer: " << termOfPeer << ", leaderId: " << id
     << ", prev-log-index: " << prevLogIndex << ", prev-log-term: " << prevLogTerm
     << ") in (my) term " << _term;
-
-  MUTEX_LOCKER(guard, _castLock);
 
   if (termOfPeer > _term) {
     termNoLock(termOfPeer);
@@ -505,7 +508,8 @@ void Constituent::callElection() {
   while (true) {
 
     if (steady_clock::now() >= timeout) {       // Timeout. 
-      follow(_term);        
+      MUTEX_LOCKER(locker, _castLock);
+      followNoLock(_term);        
       break;
     }
 
@@ -522,8 +526,12 @@ void Constituent::callElection() {
         if (slc.isObject() && slc.hasKey("term") && slc.hasKey("voteGranted")) {
           
           // Follow right away?
-          term_t t = slc.get("term").getUInt();
-          if (t > _term) {
+          term_t t = slc.get("term").getUInt(), term;
+          {
+            MUTEX_LOCKER(locker, _castLock);
+            term = _term;
+          }
+          if (t > term) {
             follow(t);
             break;
           }
@@ -542,7 +550,12 @@ void Constituent::callElection() {
     }
     // Count the vote as a nay
     if (++nay >= majority) {                  // Network: majority against?
-      follow(_term);
+      term_t term;
+      {
+        MUTEX_LOCKER(locker, _castLock);
+        term = _term;
+      }
+      follow(term);
       break;
     }
     
@@ -641,6 +654,7 @@ void Constituent::run() {
   }
 
   if (size() == 1) {
+    MUTEX_LOCKER(guard, _castLock);
     _leaderID = _agent->config().id();
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to " << _leaderID
       << " in term " << _term;
@@ -651,7 +665,14 @@ void Constituent::run() {
       _role = FOLLOWER;
     }
     while (!this->isStopping()) {
-      if (_role == FOLLOWER) {
+      
+      role_t role;
+      {
+        MUTEX_LOCKER(guard, _castLock);
+        role = _role;
+      }
+
+      if (role == FOLLOWER) {
         static double const M = 1.0e6;
         int64_t a = static_cast<int64_t>(M * _agent->config().minPing() *
                                          _agent->config().timeoutMult());
@@ -707,7 +728,8 @@ void Constituent::run() {
           candidate();
           _agent->unprepareLead();
         }
-      } else if (_role == CANDIDATE) {
+
+      } else if (role == CANDIDATE) {
         callElection();  // Run for office
       } else {
         int32_t left =

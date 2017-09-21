@@ -8031,6 +8031,8 @@ Isolate* Isolate::GetCurrent() {
 Isolate* Isolate::New(const Isolate::CreateParams& params) {
   i::Isolate* isolate = new i::Isolate(false);
   Isolate* v8_isolate = reinterpret_cast<Isolate*>(isolate);
+  isolate->set_oom_behavior(params.oom_error_callback);
+  isolate->set_exception_behavior(params.fatal_error_callback);
   CHECK(params.array_buffer_allocator != NULL);
   isolate->set_array_buffer_allocator(params.array_buffer_allocator);
   if (params.snapshot_blob != NULL) {

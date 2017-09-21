@@ -172,10 +172,14 @@ static void EdgesQuery(TRI_edge_direction_e direction,
   }
 
   std::string const queryString = "FOR doc IN @@collection " + filter + " RETURN doc";
-  v8::Handle<v8::Value> result =
-      AqlQuery(isolate, collection, queryString, bindVars).result;
+  
+  aql::QueryResultV8 queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
-  TRI_V8_RETURN(result);
+  if (!queryResult.result.IsEmpty()) {
+    TRI_V8_RETURN(queryResult.result);
+  }
+
+  TRI_V8_RETURN_NULL();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -271,10 +275,10 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // setup result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   auto documents = TRI_VPackToV8(isolate, docs, &resultOptions);
-  result->Set(TRI_V8_ASCII_STRING("documents"), documents);
-  result->Set(TRI_V8_ASCII_STRING("total"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "documents"), documents);
+  result->Set(TRI_V8_ASCII_STRING(isolate, "total"),
               v8::Number::New(isolate, count.getNumericValue<double>()));
-  result->Set(TRI_V8_ASCII_STRING("count"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "count"),
               v8::Number::New(isolate, static_cast<double>(docs.length())));
 
   TRI_V8_RETURN(result);
@@ -385,8 +389,7 @@ static void JS_ChecksumCollection(
 
 static void JS_EdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  return EdgesQuery(TRI_EDGE_ANY, args);
-
+  EdgesQuery(TRI_EDGE_ANY, args);
   // cppcheck-suppress *
   TRI_V8_TRY_CATCH_END
 }
@@ -397,8 +400,7 @@ static void JS_EdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_InEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  return EdgesQuery(TRI_EDGE_IN, args);
-
+  EdgesQuery(TRI_EDGE_IN, args);
   // cppcheck-suppress *
   TRI_V8_TRY_CATCH_END
 }
@@ -409,8 +411,7 @@ static void JS_InEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
 static void JS_OutEdgesQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
-  return EdgesQuery(TRI_EDGE_OUT, args);
-
+  EdgesQuery(TRI_EDGE_OUT, args);
   // cppcheck-suppress *
   TRI_V8_TRY_CATCH_END
 }
@@ -458,7 +459,9 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   aql::QueryResultV8 queryResult = AqlQuery(isolate, collection, queryString, bindVars);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("documents"), queryResult.result);
+  if (!queryResult.result.IsEmpty()) {
+    result->Set(TRI_V8_ASCII_STRING(isolate, "documents"), queryResult.result);
+  }
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -521,9 +524,9 @@ static void JS_RemoveByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING("removed"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "removed"),
               v8::Number::New(isolate, static_cast<double>(removed)));
-  result->Set(TRI_V8_ASCII_STRING("ignored"),
+  result->Set(TRI_V8_ASCII_STRING(isolate, "ignored"),
               v8::Number::New(isolate, static_cast<double>(ignored)));
 
   TRI_V8_RETURN(result);
@@ -547,24 +550,24 @@ void TRI_InitV8Queries(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   // generate the arangodb::LogicalCollection template
   // .............................................................................
 
-  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("ALL"),
+  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING(isolate, "ALL"),
                        JS_AllQuery, true);
-  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("ANY"),
+  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING(isolate, "ANY"),
                        JS_AnyQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl,
-                       TRI_V8_ASCII_STRING("checksum"), JS_ChecksumCollection);
-  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("EDGES"),
+                       TRI_V8_ASCII_STRING(isolate, "checksum"), JS_ChecksumCollection);
+  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING(isolate, "EDGES"),
                        JS_EdgesQuery, true);
-  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING("INEDGES"),
+  TRI_AddMethodVocbase(isolate, VocbaseColTempl, TRI_V8_ASCII_STRING(isolate, "INEDGES"),
                        JS_InEdgesQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl,
-                       TRI_V8_ASCII_STRING("OUTEDGES"), JS_OutEdgesQuery, true);
+                       TRI_V8_ASCII_STRING(isolate, "OUTEDGES"), JS_OutEdgesQuery, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl,
-                       TRI_V8_ASCII_STRING("lookupByKeys"), JS_LookupByKeys,
+                       TRI_V8_ASCII_STRING(isolate, "lookupByKeys"), JS_LookupByKeys,
                        true);  // an alias for .documents
   TRI_AddMethodVocbase(isolate, VocbaseColTempl,
-                       TRI_V8_ASCII_STRING("documents"), JS_LookupByKeys, true);
+                       TRI_V8_ASCII_STRING(isolate, "documents"), JS_LookupByKeys, true);
   TRI_AddMethodVocbase(isolate, VocbaseColTempl,
-                       TRI_V8_ASCII_STRING("removeByKeys"), JS_RemoveByKeys,
+                       TRI_V8_ASCII_STRING(isolate, "removeByKeys"), JS_RemoveByKeys,
                        true);
 }

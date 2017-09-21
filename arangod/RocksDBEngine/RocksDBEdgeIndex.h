@@ -25,6 +25,7 @@
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_EDGE_INDEX_H 1
 
 #include "Basics/Common.h"
+#include "Basics/LocalTaskQueue.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
@@ -79,8 +80,26 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   arangodb::velocypack::Builder _builder;
 };
 
+class RocksDBEdgeIndexWarmupTask : public basics::LocalTask {
+ private:
+  RocksDBEdgeIndex* _index;
+  transaction::Methods* _trx;
+  std::string const _lower;
+  std::string const _upper;
+
+ public:
+  RocksDBEdgeIndexWarmupTask(
+      std::shared_ptr<basics::LocalTaskQueue> queue,
+      RocksDBEdgeIndex* index,
+      transaction::Methods* trx,
+      rocksdb::Slice const& lower,
+      rocksdb::Slice const& upper);
+  void run();
+};
+
 class RocksDBEdgeIndex final : public RocksDBIndex {
   friend class RocksDBEdgeIndexIterator;
+  friend class RocksDBEdgeIndexWarmupTask;
 
  public:
   static uint64_t HashForKey(const rocksdb::Slice& key);
@@ -104,10 +123,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(
+  double selectivityEstimateLocal(
       arangodb::StringRef const* = nullptr) const override;
-
-  size_t memory() const override;
 
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
@@ -115,8 +132,6 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
       transaction::Methods*,
       std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
       std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override;
-
-  int drop() override;
 
   bool hasBatchInsert() const override { return false; }
 
@@ -140,9 +155,8 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
                             arangodb::velocypack::Builder&) const override;
 
   /// @brief Warmup the index caches.
-  void warmup(arangodb::transaction::Methods* trx) override;
-
-  int cleanup() override;
+  void warmup(arangodb::transaction::Methods* trx,
+              std::shared_ptr<basics::LocalTaskQueue> queue) override;
 
   void serializeEstimate(std::string& output) const override;
 
@@ -173,6 +187,11 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
   /// @brief add a single value node to the iterator's keys
   void handleValNode(VPackBuilder* keys,
                      arangodb::aql::AstNode const* valNode) const;
+  
+  void warmupInternal(transaction::Methods* trx,
+                      rocksdb::Slice const& lower, rocksdb::Slice const& upper);
+  
+ private:
 
   std::string _directionAttr;
   bool _isFromIndex;

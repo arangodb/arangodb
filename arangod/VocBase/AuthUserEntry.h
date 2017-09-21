@@ -99,7 +99,7 @@ class AuthUserEntry {
                   std::unordered_map<std::string, AuthLevel>&& coll)
         : _databaseAuthLevel(dbLvl), _collectionAccess(std::move(coll)) {}
 
-    AuthLevel collectionAuthLevel(std::string const& collectionName) const;
+    AuthLevel collectionAuthLevel(std::string const& collectionName, bool& notFound) const;
 
    public:
     AuthLevel _databaseAuthLevel;
@@ -108,7 +108,7 @@ class AuthUserEntry {
 
  private:
   std::string _key;
-  bool _active;
+  bool _active = true;
   AuthSource _source = AuthSource::COLLECTION;
 
   std::string _username;

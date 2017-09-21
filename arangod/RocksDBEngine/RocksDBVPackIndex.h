@@ -56,6 +56,40 @@ namespace transaction {
 class Methods;
 }
 
+/// @brief Iterator structure for RocksDB unique index. 
+/// This iterator can be used only for equality lookups that use all
+/// index attributes. It uses a point lookup and no seeks
+class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
+ private:
+  friend class RocksDBVPackIndex;
+
+ public:
+  RocksDBVPackUniqueIndexIterator(LogicalCollection* collection,
+                                  transaction::Methods* trx,
+                                  ManagedDocumentResult* mmdr,
+                                  arangodb::RocksDBVPackIndex const* index,
+                                  VPackSlice const& indexValues);
+
+  ~RocksDBVPackUniqueIndexIterator() = default;
+
+ public:
+  char const* typeName() const override {
+    return "rocksdb-unique-index-iterator";
+  }
+
+  /// @brief Get the next limit many element in the index
+  bool next(TokenCallback const& cb, size_t limit) override;
+
+  /// @brief Reset the cursor
+  void reset() override;
+
+ private:
+  arangodb::RocksDBVPackIndex const* _index;
+  rocksdb::Comparator const* _cmp;
+  RocksDBKeyLeaser _key;
+  bool _done;
+};
+
 /// @brief Iterator structure for RocksDB. We require a start and stop node
 class RocksDBVPackIndexIterator final : public IndexIterator {
  private:
@@ -66,14 +100,14 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
                             transaction::Methods* trx,
                             ManagedDocumentResult* mmdr,
                             arangodb::RocksDBVPackIndex const* index,
-                            bool reverse, bool singleElementFetch,
+                            bool reverse, 
                             RocksDBKeyBounds&& bounds);
 
   ~RocksDBVPackIndexIterator() = default;
 
  public:
   char const* typeName() const override {
-    return "rocksdb-unique-index-iterator";
+    return "rocksdb-index-iterator";
   }
 
   /// @brief Get the next limit many element in the index
@@ -89,7 +123,6 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   rocksdb::Comparator const* _cmp;
   std::unique_ptr<rocksdb::Iterator> _iterator;
   bool const _reverse;
-  bool const _singleElementFetch;
   RocksDBKeyBounds _bounds;
   rocksdb::Slice _upperBound;  // used for iterate_upper_bound
 };
@@ -109,10 +142,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(
+  double selectivityEstimateLocal(
       arangodb::StringRef const* = nullptr) const override;
-
-  size_t memory() const override;
 
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
@@ -131,13 +162,11 @@ class RocksDBVPackIndex : public RocksDBIndex {
 
   static constexpr size_t minimalPrefixSize() { return sizeof(TRI_voc_tick_t); }
 
-  int drop() override;
-
   /// @brief attempts to locate an entry in the index
   ///
   /// Warning: who ever calls this function is responsible for destroying
   /// the velocypack::Slice and the RocksDBVPackIndexIterator* results
-  RocksDBVPackIndexIterator* lookup(transaction::Methods*,
+  IndexIterator* lookup(transaction::Methods*,
                                     ManagedDocumentResult* mmdr,
                                     arangodb::velocypack::Slice const,
                                     bool reverse) const;
@@ -159,8 +188,6 @@ class RocksDBVPackIndex : public RocksDBIndex {
   arangodb::aql::AstNode* specializeCondition(
       arangodb::aql::AstNode*, arangodb::aql::Variable const*) const override;
 
-  int cleanup() override;
-
   void serializeEstimate(std::string& output) const override;
 
   bool deserializeEstimate(arangodb::RocksDBCounterManager* mgr) override;
@@ -170,6 +197,12 @@ class RocksDBVPackIndex : public RocksDBIndex {
  protected:
   Result insertInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
                         arangodb::velocypack::Slice const&) override;
+  
+  Result updateInternal(transaction::Methods* trx, RocksDBMethods*,
+                        TRI_voc_rid_t oldRevision,
+                        arangodb::velocypack::Slice const& oldDoc,
+                        TRI_voc_rid_t newRevision,
+                        velocypack::Slice const& newDoc) override;
 
   Result removeInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
                         arangodb::velocypack::Slice const&) override;

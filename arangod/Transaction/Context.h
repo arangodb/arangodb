@@ -118,7 +118,7 @@ class Context {
   virtual void registerTransaction(TransactionState*) = 0;
   
   /// @brief unregister the transaction
-  virtual void unregisterTransaction() = 0;
+  virtual void unregisterTransaction() noexcept = 0;
 
  protected:
   

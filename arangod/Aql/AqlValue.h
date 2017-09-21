@@ -511,7 +511,7 @@ struct AqlValue final {
   }
   
   /// @brief destroy, explicit destruction, only when needed
-  void destroy();
+  void destroy() noexcept;
   
   /// @brief returns the size of the dynamic memory allocated for the value
   size_t memoryUsage() const noexcept {
@@ -521,7 +521,11 @@ struct AqlValue final {
       case VPACK_INLINE:
         return 0;
       case VPACK_MANAGED_SLICE:
-        return VPackSlice(_data.slice).byteSize();
+        try {
+          return VPackSlice(_data.slice).byteSize();
+        } catch (...) {
+          return 0;
+        }
       case VPACK_MANAGED_BUFFER:
         return _data.buffer->size();
       case DOCVEC:

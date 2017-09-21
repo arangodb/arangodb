@@ -41,35 +41,9 @@ Finding::Finding(CachedValue* v, Result const& r) : _value(v), _result(r) {
   }
 }
 
-Finding::Finding(Finding const& other)
-    : _value(other._value), _result(other._result) {
-  if (_value != nullptr) {
-    _value->lease();
-  }
-}
-
 Finding::Finding(Finding&& other)
     : _value(other._value), _result(std::move(other._result)) {
   other._value = nullptr;
-}
-
-Finding& Finding::operator=(Finding const& other) {
-  if (&other == this) {
-    return *this;
-  }
-
-  if (_value != nullptr) {
-    _value->release();
-  }
-
-  _value = other._value;
-  if (_value != nullptr) {
-    _value->lease();
-  }
-
-  _result = other._result;
-
-  return *this;
 }
 
 Finding& Finding::operator=(Finding&& other) {
@@ -132,4 +106,4 @@ CachedValue* Finding::copy() const {
   return ((_value == nullptr) ? nullptr : _value->copy());
 }
 
-Result Finding::result() const { return _result; }
+Result const& Finding::result() const { return _result; }

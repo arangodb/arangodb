@@ -57,6 +57,7 @@
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
+#include "VocBase/Methods/Indexes.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
@@ -164,7 +165,9 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
       _vocbase(other.vocbase()),
       _keyOptions(other._keyOptions),
       _keyGenerator(KeyGenerator::factory(VPackSlice(keyOptions()))),
-      _physical(other.getPhysical()->clone(this, other.getPhysical())) {
+      _physical(other.getPhysical()->clone(this)),
+      _clusterEstimateTTL(0),
+      _planVersion(other._planVersion) {
   TRI_ASSERT(_physical != nullptr);
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
@@ -203,7 +206,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _keyOptions(nullptr),
       _keyGenerator(),
       _physical(
-          EngineSelectorFeature::ENGINE->createPhysicalCollection(this, info)) {
+          EngineSelectorFeature::ENGINE->createPhysicalCollection(this, info)),
+      _clusterEstimateTTL(0),
+      _planVersion(0) {
   // add keyoptions from slice
   TRI_ASSERT(info.isObject());
   VPackSlice keyOpts = info.get("keyOptions");
@@ -527,9 +532,15 @@ TRI_vocbase_col_status_e LogicalCollection::getStatusLocked() {
   return _status;
 }
 
+void LogicalCollection::executeWhileStatusWriteLocked(
+    std::function<void()> const& callback) {
+  WRITE_LOCKER_EVENTUAL(locker, _lock);
+  callback();
+}
+
 void LogicalCollection::executeWhileStatusLocked(
     std::function<void()> const& callback) {
-  READ_LOCKER(readLocker, _lock);
+  READ_LOCKER(locker, _lock);
   callback();
 }
 
@@ -583,6 +594,41 @@ std::unique_ptr<FollowerInfo> const& LogicalCollection::followers() const {
 void LogicalCollection::setDeleted(bool newValue) { _isDeleted = newValue; }
 
 // SECTION: Indexes
+std::unordered_map<std::string, double> LogicalCollection::clusterIndexEstimates(bool doNotUpdate){
+  READ_LOCKER(readlock, _clusterEstimatesLock);
+  if (doNotUpdate) {
+    return _clusterEstimates;
+  }
+
+  double ctime = TRI_microtime(); // in seconds
+  auto needEstimateUpdate = [this,ctime](){
+    if(_clusterEstimates.empty()) {
+      LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is not availabe";
+      return true;
+    } else if (ctime - _clusterEstimateTTL > 60.0) {
+      LOG_TOPIC(TRACE, Logger::CLUSTER) << "update because estimate is too old: " << ctime - _clusterEstimateTTL;
+      return true;
+    }
+    return false;
+  };
+
+  if (needEstimateUpdate()){
+    readlock.unlock();
+    WRITE_LOCKER(writelock, _clusterEstimatesLock);
+    if(needEstimateUpdate()){
+      selectivityEstimatesOnCoordinator(_vocbase->name(), name(), _clusterEstimates);
+      _clusterEstimateTTL = TRI_microtime();
+    }
+    return _clusterEstimates;
+  }
+  return _clusterEstimates;
+}
+
+void LogicalCollection::clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates){
+  WRITE_LOCKER(lock, _clusterEstimatesLock);
+  _clusterEstimates = std::move(estimates);
+}
+
 std::vector<std::shared_ptr<arangodb::Index>>
 LogicalCollection::getIndexes() const {
   return getPhysical()->getIndexes();
@@ -597,10 +643,16 @@ void LogicalCollection::getIndexesVPack(VPackBuilder& result, bool withFigures,
 int LogicalCollection::replicationFactor() const {
   return static_cast<int>(_replicationFactor);
 }
+void LogicalCollection::replicationFactor(int r) {
+  _replicationFactor = static_cast<size_t>(r);
+}
 
 // SECTION: Sharding
 int LogicalCollection::numberOfShards() const {
   return static_cast<int>(_numberOfShards);
+}
+void LogicalCollection::numberOfShards(int n) {
+  _numberOfShards = static_cast<size_t>(n);
 }
 
 bool LogicalCollection::allowUserKeys() const { return _allowUserKeys; }
@@ -745,7 +797,8 @@ void LogicalCollection::setStatus(TRI_vocbase_col_status_e status) {
 }
 
 void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
-                                                        bool useSystem) const {
+                                                        bool useSystem,
+                                                        bool isReady) const {
   if (_isSystem && !useSystem) {
     return;
   }
@@ -773,6 +826,8 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
 
   result.add(VPackValue("indexes"));
   getIndexesVPack(result, false, false);
+  result.add("planVersion", VPackValue(getPlanVersion()));
+  result.add("isReady", VPackValue(isReady));
   result.close();  // CollectionInfo
 }
 
@@ -905,7 +960,11 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
 
   // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
-  getPhysical()->updateProperties(slice, doSync);
+  Result res = getPhysical()->updateProperties(slice, doSync);
+
+  if (!res.ok()) {
+    return res;
+  }
 
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
 
@@ -972,7 +1031,9 @@ std::shared_ptr<Index> LogicalCollection::createIndex(transaction::Methods* trx,
 /// @brief drops an index, including index file removal and replication
 bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
+#if USE_PLAN_CACHE
   arangodb::aql::PlanCache::instance()->invalidate(_vocbase);
+#endif
   arangodb::aql::QueryCache::instance()->invalidate(_vocbase, name());
   return _physical->dropIndex(iid);
 }
@@ -1001,17 +1062,14 @@ void LogicalCollection::deferDropCollection(
 }
 
 /// @brief reads an element from the document collection
-Result LogicalCollection::read(transaction::Methods* trx,
-                               std::string const& key,
-                               ManagedDocumentResult& result, bool lock) {
-  return read(trx, StringRef(key.c_str(), key.size()), result, lock);
-}
-
 Result LogicalCollection::read(transaction::Methods* trx, StringRef const& key,
                                ManagedDocumentResult& result, bool lock) {
-  transaction::BuilderLeaser builder(trx);
-  builder->add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
-  return getPhysical()->read(trx, builder->slice(), result, lock);
+  return getPhysical()->read(trx, key, result, lock);
+}
+
+Result LogicalCollection::read(transaction::Methods* trx, arangodb::velocypack::Slice const& key,
+            ManagedDocumentResult& result, bool lock) {
+  return getPhysical()->read(trx, key, result, lock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1204,7 +1262,7 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
   Result res = trx.begin();
 
   if (!res.ok()) {
-    return ChecksumResult(res);
+    return ChecksumResult(std::move(res));
   }
 
   trx.pinData(_cid); // will throw when it fails
@@ -1267,62 +1325,27 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
     b.add("revision", VPackValue(revisionId));
   }
 
-  return ChecksumResult(b);
+  return ChecksumResult(std::move(b));
 }
 
-Result LogicalCollection::compareChecksums(VPackSlice checksumSlice) const {
-  if (!checksumSlice.isObject()) {
-    auto typeName = checksumSlice.typeName();
+Result LogicalCollection::compareChecksums(VPackSlice checksumSlice, std::string const& referenceChecksum) const {
+  if (!checksumSlice.isString()) {
     return Result(
       TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
-      std::string("Checksum must be an object but is ") + typeName
+      std::string("Checksum must be a string but is ") + checksumSlice.typeName()
     );
   }
 
-  auto revision = checksumSlice.get("revision");
-  auto checksum = checksumSlice.get("checksum");
+  auto checksum = checksumSlice.copyString();
 
-  if (!revision.isString()) {
-    return Result(
-      TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
-      "Property `revisionId` must be a string"
-    );
-  }
-  if (!checksum.isString()) {
-    return Result(
-      TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,
-      "Property `checksum` must be a string"
-    );
-  }
-
-  auto result = this->checksum(false, false);
-
-  if (!result.ok()) {
-    return Result(result);
-  }
-
-  auto referenceChecksumSlice = result.slice();
-  auto referenceChecksum = referenceChecksumSlice.get("checksum");
-  auto referenceRevision = referenceChecksumSlice.get("revision");
-  TRI_ASSERT(referenceChecksum.isString());
-  TRI_ASSERT(referenceRevision.isString());
-
-  if (!checksum.isEqualString(referenceChecksum.copyString())) {
+  if (checksum != referenceChecksum) {
     return Result(
       TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-      "`checksum` property is wrong. Expected: "
-        + referenceChecksum.copyString()
-        + ". Actual: " + checksum.copyString()
+      "'checksum' is wrong. Expected: "
+        + referenceChecksum
+        + ". Actual: " + checksum
     );
   }
- 
-  if (!revision.isEqualString(referenceRevision.copyString())) {
-    return Result(
-      TRI_ERROR_REPLICATION_WRONG_CHECKSUM,
-      "`checksum` property is wrong. Expected: "
-        + revision.copyString()
-        + ". Actual: " + referenceRevision.copyString()
-    );
-  }
+
   return Result();
 }

@@ -394,6 +394,11 @@ while [ $# -gt 0 ];  do
             shift
             CONFIGURE_OPTIONS+=(-DUSE_ENTERPRISE=On)
             ;;
+
+        --maintainer)
+            shift
+            ;;
+
         --retryPackages)
             shift
             RETRY_N_TIMES=$1
@@ -417,8 +422,6 @@ if test -n "$LASTREV"; then
         CLEAN_IT=0
     fi
 fi
-
-
 
 if [ "$GCC5" == 1 ]; then
     CC=/usr/bin/gcc-5
@@ -656,10 +659,18 @@ if test "${DOWNLOAD_STARTER}" == 1; then
         if test -f "${TN}"; then
             rm -f "${TN}"
         fi
-        curl -LO "${STARTER_URL}"
         FN=$(echo "${STARTER_URL}" |${SED} "s;.*/;;")
-        mv "${FN}" "${BUILD_DIR}/${TN}"
-        chmod a+x "${BUILD_DIR}/${TN}"
+
+        echo $FN
+        if ! test -f "${BUILD_DIR}/${FN}-${STARTER_REV}"; then
+            curl -LO "${STARTER_URL}"
+            cp "${FN}" "${BUILD_DIR}/${TN}"
+            touch "${BUILD_DIR}/${FN}-${STARTER_REV}"
+            chmod a+x "${BUILD_DIR}/${TN}"
+            echo "downloaded ${BUILD_DIR}/${FN}-${STARTER_REV} MD5: $(${MD5} < "${BUILD_DIR}/${TN}")"
+        else
+            echo "using already downloaded ${BUILD_DIR}/${FN}-${STARTER_REV} MD5: $(${MD5} < "${BUILD_DIR}/${TN}")"
+        fi
     fi
     CONFIGURE_OPTIONS+=("-DTHIRDPARTY_BIN=${BUILD_DIR}/${TN}")
 fi

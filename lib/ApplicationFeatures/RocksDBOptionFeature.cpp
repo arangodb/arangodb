@@ -26,6 +26,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/process-utils.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -90,11 +91,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     testSize >>= 1;
   }
   // setting the number of background jobs to
-  size_t procs = TRI_numberProcessors();
-  if (procs > 0) {
-    _maxBackgroundJobs = procs;
-  }
-
+  _maxBackgroundJobs = static_cast<int32_t>(std::max((size_t)2,
+                                std::min(TRI_numberProcessors(), (size_t)8)));
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Daemon");
@@ -231,12 +229,12 @@ void RocksDBOptionFeature::collectOptions(
   options->addOption(
       "--rocksdb.num-threads-priority-high",
       "number of threads for high priority operations (e.g. flush)",
-      new UInt64Parameter(&_numThreadsHigh));
+      new UInt32Parameter(&_numThreadsHigh));
 
   options->addOption(
       "--rocksdb.num-threads-priority-low",
       "number of threads for low priority operations (e.g. compaction)",
-      new UInt64Parameter(&_numThreadsLow));
+      new UInt32Parameter(&_numThreadsLow));
 
   options->addOption("--rocksdb.block-cache-size",
                      "size of block cache in bytes",
@@ -313,12 +311,14 @@ void RocksDBOptionFeature::validateOptions(
 }
 
 void RocksDBOptionFeature::start() {
+  uint32_t max = _maxBackgroundJobs / 2;
+  uint32_t clamped = std::max(std::min((uint32_t)TRI_numberProcessors(), max), 1U);
   // lets test this out
   if (_numThreadsHigh == 0) {
-    _numThreadsHigh = _maxBackgroundJobs / 2;
+    _numThreadsHigh = clamped;
   }
   if (_numThreadsLow == 0) {
-    _numThreadsLow = _maxBackgroundJobs / 2;
+    _numThreadsLow = clamped;
   }
 
   LOG_TOPIC(TRACE, Logger::ROCKSDB) << "using RocksDB options:"

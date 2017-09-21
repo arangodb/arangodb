@@ -62,7 +62,7 @@ class SingleCollectionTransaction final : public transaction::Methods {
   /// @brief get the underlying transaction collection
   //////////////////////////////////////////////////////////////////////////////
 
-  TransactionCollection* trxCollection();
+  TransactionCollection* resolveTrxCollection();
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -79,9 +79,14 @@ class SingleCollectionTransaction final : public transaction::Methods {
   
   inline TRI_voc_cid_t cid() const { return _cid; }
   
+#ifdef USE_ENTERPRISE
+  using transaction::Methods::addCollectionAtRuntime;
+#endif
   /// @brief add a collection to the transaction for read, at runtime
   /// note that this can only be ourselves
-  TRI_voc_cid_t addCollectionAtRuntime(std::string const&) override final { return _cid; }
+  TRI_voc_cid_t addCollectionAtRuntime(std::string const&) override final {
+    return _cid;
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the underlying collection's name
@@ -89,24 +94,6 @@ class SingleCollectionTransaction final : public transaction::Methods {
 
   std::string name();
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief explicitly lock the underlying collection for read access
-  //////////////////////////////////////////////////////////////////////////////
-
-  Result lockRead();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief explicitly unlock the underlying collection after read access
-  //////////////////////////////////////////////////////////////////////////////
-
-  Result unlockRead();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief explicitly lock the underlying collection for write access
-  //////////////////////////////////////////////////////////////////////////////
-
-  Result lockWrite();
-  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief collection id

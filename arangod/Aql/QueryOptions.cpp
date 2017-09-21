@@ -172,6 +172,20 @@ void QueryOptions::fromVelocyPack(VPackSlice const& slice) {
       it.next();
     }
   }
+  
+#ifdef USE_ENTERPRISE
+  value = slice.get("inaccessibleCollections");
+  if (value.isArray()) {
+    VPackArrayIterator it(value);
+    while (it.valid()) {
+      VPackSlice value = it.value();
+      if (value.isString()) {
+        inaccessibleCollections.emplace(value.copyString());
+      }
+      it.next();
+    }
+  }
+#endif
 
   // also handle transaction options
   transactionOptions.fromVelocyPack(slice);
@@ -219,6 +233,16 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder, bool disableOptimizerRule
     }
     builder.close(); // shardIds
   }
+  
+#ifdef USE_ENTERPRISE
+  if (!inaccessibleCollections.empty()) {
+    builder.add("inaccessibleCollections", VPackValue(VPackValueType::Array));
+    for (auto const& it : inaccessibleCollections) {
+      builder.add(VPackValue(it));
+    }
+    builder.close(); // inaccessibleCollections
+  }
+#endif
   
   // also handle transaction options
   transactionOptions.toVelocyPack(builder);

@@ -193,7 +193,7 @@ class BenchmarkThread : public arangodb::Thread {
     static char const boundary[] = "XXXarangobench-benchmarkXXX";
     size_t blen = strlen(boundary);
 
-    basics::StringBuffer batchPayload(TRI_UNKNOWN_MEM_ZONE);
+    basics::StringBuffer batchPayload(true);
     int ret = batchPayload.reserve(numOperations * 1024);
     if (ret != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "Failed to reserve " << numOperations * 1024
@@ -239,7 +239,7 @@ class BenchmarkThread : public arangodb::Thread {
       batchPayload.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
 
       if (mustFree) {
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, (void*)payload);
+        TRI_Free((void*)payload);
       }
     }
 
@@ -339,7 +339,7 @@ class BenchmarkThread : public arangodb::Thread {
     _time += TRI_microtime() - start;
 
     if (mustFree) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, (void*)payload);
+      TRI_Free((void*)payload);
     }
 
     if (result == nullptr || !result->isComplete()) {

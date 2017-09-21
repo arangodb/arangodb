@@ -94,6 +94,7 @@ typedef void GeoIdx;    /* to keep the structure private  */
 typedef void GeoCursor; /* to keep the structure private  */
 
 GeoIdx* GeoIndex_new(uint64_t objectId, int slo, int);
+void GeoIndex_reset(GeoIdx* gi);
 void GeoIndex_free(GeoIdx* gi);
 double GeoIndex_distance(GeoCoordinate* c1, GeoCoordinate* c2);
 int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c);

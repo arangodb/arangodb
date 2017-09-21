@@ -54,7 +54,13 @@ function proxyLocal (method, url, qs, body, headers = {}) {
   if (body) {
     headers['content-length'] = body.length;
   }
-  const res = request({method, url, qs, headers, body});
+  const res = request({
+    method,
+    url,
+    qs,
+    headers,
+    body
+  });
   if (res.json && res.json.errorNum) {
     throw new ArangoError(res.json);
   }
@@ -68,7 +74,7 @@ function resolveAppInfo (appInfo) {
   }
   if (/^git:/i.test(appInfo)) {
     const splitted = appInfo.split(':');
-    const baseUrl = process.env.FOXX_BASE_URL || 'https://github.com';
+    const baseUrl = process.env.FOXX_BASE_URL || 'https://github.com/';
     return `${baseUrl}${splitted[1]}/archive/${splitted[2] || 'master'}.zip`;
   }
   if (/^https?:/i.test(appInfo)) {
@@ -88,7 +94,7 @@ function resolveAppInfo (appInfo) {
     const tempFile = fmu.zipDirectory(appInfo);
     const buffer = fs.readFileSync(tempFile);
     try {
-      fs.remove(tempFile);
+      fs.removeDirectoryRecursive(tempFile);
     } catch (e) {
       console.warnStack(e, `Failed to remove temporary file: ${tempFile}`);
     }

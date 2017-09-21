@@ -89,6 +89,9 @@ int figuresOnCoordinator(std::string const& dbname, std::string const& collname,
 int countOnCoordinator(std::string const& dbname, std::string const& collname,
                        std::vector<std::pair<std::string, uint64_t>>& result);
 
+int selectivityEstimatesOnCoordinator(std::string const& dbname, std::string const& collname,
+                                      std::unordered_map<std::string, double>& result);
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a document in a coordinator
 ////////////////////////////////////////////////////////////////////////////////
@@ -276,7 +279,7 @@ class ClusterMethods {
 
   static std::unique_ptr<LogicalCollection> persistCollectionInAgency(
     LogicalCollection* col, bool ignoreDistributeShardsLikeErrors,
-    bool waitForSyncReplication);
+    bool waitForSyncReplication, arangodb::velocypack::Slice parameters);
 };
 
 }  // namespace arangodb

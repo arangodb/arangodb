@@ -130,15 +130,15 @@ class RocksDBGeoIndex final : public RocksDBIndex {
   bool isSorted() const override { return true; }
 
   bool hasSelectivityEstimate() const override { return false; }
-
-  size_t memory() const override;
-
+  
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
   // Uses default toVelocyPackFigures
 
   bool matchesDefinition(VPackSlice const& info) const override;
 
-  int unload() override;
+  void unload() override {}
+
+  void truncate(transaction::Methods*) override;
 
   /// @brief looks up all points within a given radius
   arangodb::rocksdbengine::GeoCoordinates* withinQuery(transaction::Methods*,

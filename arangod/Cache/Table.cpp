@@ -24,7 +24,6 @@
 #include "Cache/Table.h"
 #include "Basics/Common.h"
 #include "Cache/Common.h"
-#include "Cache/State.h"
 
 #include <stdint.h>
 #include <memory>
@@ -46,7 +45,7 @@ void Table::GenericBucket::unlock() {
 
 bool Table::GenericBucket::isMigrated() const {
   TRI_ASSERT(_state.isLocked());
-  return _state.isSet(State::Flag::migrated);
+  return _state.isSet(BucketState::Flag::migrated);
 }
 
 Table::Subtable::Subtable(std::shared_ptr<Table> source, GenericBucket* buckets,
@@ -74,7 +73,9 @@ bool Table::Subtable::applyToAllBuckets(std::function<bool(void*)> cb) {
 }
 
 Table::Table(uint32_t logSize)
-    : _state(),
+    : _lock(),
+      _disabled(true),
+      _evictions(false),
       _logSize(std::min(logSize, maxLogSize)),
       _size(static_cast<uint64_t>(1) << _logSize),
       _shift(32 - _logSize),
@@ -87,10 +88,7 @@ Table::Table(uint32_t logSize)
       _bucketClearer(defaultClearer),
       _slotsTotal(_size),
       _slotsUsed(static_cast<uint64_t>(0)) {
-  _state.lock();
-  _state.toggleFlag(State::Flag::disabled);
   memset(_buckets, 0, BUCKET_SIZE * _size);
-  _state.unlock();
 }
 
 uint64_t Table::allocationSize(uint32_t logSize) {
@@ -104,23 +102,23 @@ uint64_t Table::size() const { return _size; }
 
 uint32_t Table::logSize() const { return _logSize; }
 
-std::pair<void*, std::shared_ptr<Table>> Table::fetchAndLockBucket(
+std::pair<void*, Table*> Table::fetchAndLockBucket(
     uint32_t hash, int64_t maxTries) {
   GenericBucket* bucket = nullptr;
-  std::shared_ptr<Table> source(nullptr);
-  bool ok = _state.lock(maxTries);
+  Table* source = nullptr;
+  bool ok = _lock.readLock(maxTries);
   if (ok) {
-    ok = !_state.isSet(State::Flag::disabled);
+    ok = !_disabled;
     if (ok) {
       bucket = &(_buckets[(hash & _mask) >> _shift]);
-      source = shared_from_this();
+      source = this;
       ok = bucket->lock(maxTries);
       if (ok) {
         if (bucket->isMigrated()) {
           bucket->unlock();
           bucket = nullptr;
-          source.reset();
-          if (_auxiliary.get() != nullptr) {
+          source = nullptr;
+          if (_auxiliary) {
             auto pair = _auxiliary->fetchAndLockBucket(hash, maxTries);
             bucket = reinterpret_cast<GenericBucket*>(pair.first);
             source = pair.second;
@@ -128,10 +126,10 @@ std::pair<void*, std::shared_ptr<Table>> Table::fetchAndLockBucket(
         }
       } else {
         bucket = nullptr;
-        source.reset();
+        source = nullptr;
       }
     }
-    _state.unlock();
+    _lock.readUnlock();
   }
 
   return std::make_pair(bucket, source);
@@ -140,7 +138,7 @@ std::pair<void*, std::shared_ptr<Table>> Table::fetchAndLockBucket(
 std::shared_ptr<Table> Table::setAuxiliary(std::shared_ptr<Table> table) {
   std::shared_ptr<Table> result = table;
   if (table.get() != this) {
-    _state.lock();
+    _lock.writeLock();
     if (table.get() == nullptr) {
       result = _auxiliary;
       _auxiliary = table;
@@ -148,7 +146,7 @@ std::shared_ptr<Table> Table::setAuxiliary(std::shared_ptr<Table> table) {
       _auxiliary = table;
       result.reset();
     }
-    _state.unlock();
+    _lock.writeUnlock();
   }
   return result;
 }
@@ -169,7 +167,7 @@ std::unique_ptr<Table::Subtable> Table::auxiliaryBuckets(uint32_t index) {
   uint32_t mask;
   uint32_t shift;
 
-  _state.lock();
+  _lock.readLock();
   std::shared_ptr<Table> source = _auxiliary->shared_from_this();
   TRI_ASSERT(_auxiliary.get() != nullptr);
   if (_logSize > _auxiliary->_logSize) {
@@ -185,7 +183,7 @@ std::unique_ptr<Table::Subtable> Table::auxiliaryBuckets(uint32_t index) {
     mask = (static_cast<uint32_t>(size - 1) << _auxiliary->_shift);
     shift = _auxiliary->_shift;
   }
-  _state.unlock();
+  _lock.readUnlock();
 
   return std::make_unique<Subtable>(source, base, size, mask, shift);
 }
@@ -208,60 +206,54 @@ void Table::clear() {
 }
 
 void Table::disable() {
-  _state.lock();
-  if (!_state.isSet(State::Flag::disabled)) {
-    _state.toggleFlag(State::Flag::disabled);
-  }
-  _state.unlock();
+  _lock.writeLock();
+  _disabled = true;
+  _lock.writeUnlock();
 }
 
 void Table::enable() {
-  _state.lock();
-  if (_state.isSet(State::Flag::disabled)) {
-    _state.toggleFlag(State::Flag::disabled);
-  }
-  _state.unlock();
+  _lock.writeLock();
+  _disabled = false;
+  _lock.writeUnlock();
 }
 
 bool Table::isEnabled(int64_t maxTries) {
-  bool ok = _state.lock(maxTries);
+  bool ok = _lock.readLock(maxTries);
   if (ok) {
-    ok = !_state.isSet(State::Flag::disabled);
-    _state.unlock();
+    ok = !_disabled;
+    _lock.readUnlock();
   }
   return ok;
 }
 
 bool Table::slotFilled() {
-  return ((static_cast<double>(++_slotsUsed) /
+  size_t i = _slotsUsed.fetch_add(1, std::memory_order_acq_rel);
+  return ((static_cast<double>(i + 1) /
            static_cast<double>(_slotsTotal)) > Table::idealUpperRatio);
 }
 
 bool Table::slotEmptied() {
-  return (((static_cast<double>(--_slotsUsed) /
+  size_t i = _slotsUsed.fetch_sub(1, std::memory_order_acq_rel);
+  return (((static_cast<double>(i - 1) /
             static_cast<double>(_slotsTotal)) < Table::idealLowerRatio) &&
           (_logSize > Table::minLogSize));
 }
 
 void Table::signalEvictions() {
-  bool ok = _state.lock(triesGuarantee);
+  bool ok = _lock.writeLock(triesGuarantee);
   if (ok) {
-    if (!_state.isSet(State::Flag::evictions)) {
-      _state.toggleFlag(State::Flag::evictions);
-    }
-    _state.unlock();
+    _evictions = true;
+    _lock.writeUnlock();
   }
 }
 
 uint32_t Table::idealSize() {
-  bool ok = _state.lock(triesGuarantee);
+  bool ok = _lock.writeLock(triesGuarantee);
   bool forceGrowth = false;
   if (ok) {
-    forceGrowth = _state.isSet(State::Flag::evictions);
-    if (forceGrowth) {
-      _state.toggleFlag(State::Flag::evictions);
-    }
-    _state.unlock();
+    forceGrowth = _evictions;
+    _evictions = false;
+    _lock.writeUnlock();
   }
   if (forceGrowth) {
     return logSize() + 1;

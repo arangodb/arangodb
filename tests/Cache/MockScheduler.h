@@ -48,7 +48,7 @@ class MockScheduler {
  public:
   MockScheduler(size_t threads);
   ~MockScheduler();
-  boost::asio::io_service* ioService();
+  void post(std::function<void()> fn);
 };
 
 };  // end namespace cache

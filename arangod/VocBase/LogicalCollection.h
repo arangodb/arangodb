@@ -26,6 +26,7 @@
 #define ARANGOD_VOCBASE_LOGICAL_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
 #include "Indexes/IndexIterator.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -60,8 +61,8 @@ class Methods;
 
 class ChecksumResult: public Result {
  public:
-  ChecksumResult(Result result) : Result(result) {}
-  ChecksumResult(VPackBuilder builder): Result(TRI_ERROR_NO_ERROR), _builder(builder) {}
+  explicit ChecksumResult(Result&& result) : Result(std::move(result)) {}
+  explicit ChecksumResult(VPackBuilder&& builder): Result(TRI_ERROR_NO_ERROR), _builder(std::move(builder)) {}
 
   VPackBuilder builder() {
     return _builder;
@@ -157,6 +158,7 @@ class LogicalCollection {
   TRI_vocbase_col_status_e status() const;
   TRI_vocbase_col_status_e getStatusLocked();
 
+  void executeWhileStatusWriteLocked(std::function<void()> const& callback);
   void executeWhileStatusLocked(std::function<void()> const& callback);
   bool tryExecuteWhileStatusLocked(std::function<void()> const& callback);
 
@@ -195,17 +197,33 @@ class LogicalCollection {
       transaction::Methods* trx,
       std::function<bool(DocumentIdentifierToken const&)> callback);
 
-  // SECTION: Indexes
+  //// SECTION: Indexes
+
+  // Estimates
+  std::unordered_map<std::string, double> clusterIndexEstimates(bool doNotUpdate=false);
+  void clusterIndexEstimates(std::unordered_map<std::string, double>&& estimates);
+
+  double clusterIndexEstimatesTTL(){
+    return _clusterEstimateTTL;
+  }
+
+  void clusterIndexEstimatesTTL(double ttl){
+    _clusterEstimateTTL = ttl;
+  }
+  // End - Estimates
+
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
   void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence) const;
 
   // SECTION: Replication
   int replicationFactor() const;
+  void replicationFactor(int);
   bool isSatellite() const;
 
   // SECTION: Sharding
   int numberOfShards() const;
+  void numberOfShards(int);
   bool allowUserKeys() const;
   virtual bool usesDefaultShardKeys() const;
   std::vector<std::string> const& shardKeys() const;
@@ -237,7 +255,8 @@ class LogicalCollection {
       bool forPersistence) const;
 
   virtual void toVelocyPackForClusterInventory(velocypack::Builder&,
-                                               bool useSystem) const;
+                                               bool useSystem,
+                                               bool isReady) const;
 
   inline TRI_vocbase_t* vocbase() const { return _vocbase; }
 
@@ -269,9 +288,10 @@ class LogicalCollection {
 
   // SECTION: Index access (local only)
 
-  Result read(transaction::Methods*, std::string const&,
-              ManagedDocumentResult& result, bool);
-  Result read(transaction::Methods*, StringRef const&,
+  /// @brief reads an element from the document collection
+  Result read(transaction::Methods* trx, StringRef const& key,
+              ManagedDocumentResult& mdr, bool lock);
+  Result read(transaction::Methods*, arangodb::velocypack::Slice const&,
               ManagedDocumentResult& result, bool);
 
   /// @brief processes a truncate operation
@@ -324,8 +344,18 @@ class LogicalCollection {
 
   ChecksumResult checksum(bool, bool) const;
 
-  Result compareChecksums(velocypack::Slice) const;
+  // compares the checksum value passed in the Slice (must be of type String)
+  // with the checksum provided in the reference checksum
+  Result compareChecksums(velocypack::Slice checksumSlice, std::string const& referenceChecksum) const;
 
+  // Set and get _planVersion, this is only used if the object is used in
+  // ClusterInfo to represent a cluster wide collection in the agency.
+  void setPlanVersion(uint64_t v) {
+    _planVersion = v;
+  }
+  uint64_t getPlanVersion() const {
+    return _planVersion;
+  }
  private:
   void prepareIndexes(velocypack::Slice indexesSlice);
 
@@ -407,6 +437,16 @@ class LogicalCollection {
   mutable basics::ReadWriteLock _lock;  // lock protecting the status and name
 
   mutable basics::ReadWriteLock _infoLock;  // lock protecting the info
+
+  std::unordered_map<std::string, double> _clusterEstimates;
+  double _clusterEstimateTTL; //only valid if above vector is not empty
+  basics::ReadWriteLock _clusterEstimatesLock;
+
+  uint64_t _planVersion;   // Only set if setPlanVersion was called. This only
+                           // happens in ClusterInfo when this object is used
+                           // to represent a cluster wide collection. This is
+                           // then the version in the agency Plan that underpins
+                           // the information in this object. Otherwise 0.
 };
 
 }  // namespace arangodb

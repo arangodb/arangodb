@@ -4,15 +4,6 @@ Known Issues
 The following known issues are present in this version of ArangoDB and will be fixed
 in follow-up releases:
 
-### Cluster Deployment
-
-The beta does not yet support a DC/OS deployment. You can use the ArangoDB Starter to 
-start a cluster on bare metal.
-
-### Read-Only Users
-
-The beta allows to add read-only users. However, these are not yet supported.
-
 ### RocksDB storage engine
 
 The RocksDB storage engine is intentionally missing the following features that 
@@ -34,6 +25,8 @@ are present in the MMFiles engine:
 
   - the `rotate` method on collections
   - the `flush` method for WAL files
+
+* the RocksDB storage engine does not support volatile collections
 
 * transactions are limited in size. Transactions that get too big (in terms of
   number of operations involved or the total size of data modified by the transaction)
@@ -79,9 +72,6 @@ The following known issues will be resolved in future releases:
   in the MMFiles engine. It is therefore discouraged to call it for cases other than manual
   inspection of a few documents in a collection
 
-* the `autoincrement` key generator will not save the last assigned key permanently, so
-  it may assign an already used key after a server restart
-
 * AQL queries in the cluster still issue an extra locking HTTP request per shard though
   this would not be necessary for the RocksDB engine in most cases
 
@@ -98,18 +88,6 @@ The following known issues will be resolved in future releases:
   service is in good condition when it could not be started. In this case the
   user needs to check `/var/log/arangodb3` for further information about the
   failed startup.
-
-### Startup
-
-* We have seen the arangod process hanging during startup in slower environments. The reason
-  for this is a race in the V8 context initialization, and it has already been fixed in
-  the devel branch.
-
-### Web UI
-
- * Edition label (Community or Enterprise) next to the ArangoDB logo looks blurry in Safari on Mac OS X.
-
- * AQL Editor: Selecting "all results" as limit option will return zero results, which is wrong.
 
 ### Mac OS X
 

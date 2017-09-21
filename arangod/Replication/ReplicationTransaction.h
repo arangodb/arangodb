@@ -49,7 +49,7 @@ class ReplicationTransaction : public transaction::Methods {
 
   /// @brief get a collection by id
   /// this will automatically add the collection to the transaction
-  inline TransactionCollection* trxCollection(TRI_voc_cid_t cid) {
+  /*inline TransactionCollection* trxCollection(TRI_voc_cid_t cid, AccessMode::Type) const override {
     TRI_ASSERT(cid > 0);
     Result result;
 
@@ -71,7 +71,7 @@ class ReplicationTransaction : public transaction::Methods {
     }
 
     return trxCollection;
-  }
+  }*/
 
  private:
   DatabaseGuard _guard;

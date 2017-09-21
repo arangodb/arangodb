@@ -337,6 +337,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'indexBuckets': true,
     'replicationFactor': false,
     'distributeShardsLike': false,
+    'cacheEnabled': true
   };
   var a;
 
@@ -1407,4 +1408,5 @@ ArangoCollection.prototype.loadIndexesIntoMemory = function () {
   this._status = null;
 
   arangosh.checkRequestResult(requestResult);
+  return { result: true };
 };

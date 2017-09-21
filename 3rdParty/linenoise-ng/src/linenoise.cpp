@@ -533,8 +533,8 @@ struct linenoiseCompletions {
   vector<Utf32String> completionStrings;
 };
 
-#define LINENOISE_DEFAULT_HISTORY_MAX_LEN 100
-#define LINENOISE_MAX_LINE 4096
+#define LINENOISE_DEFAULT_HISTORY_MAX_LEN 128
+#define LINENOISE_MAX_LINE 8192
 
 // make control-characters more readable
 #define ctrlChar(upperCaseASCII) (upperCaseASCII - 0x40)
@@ -3180,7 +3180,8 @@ char* linenoise(const char* prompt) {
   gotResize = false;
 #endif
   if (isatty(STDIN_FILENO)) {  // input is from a terminal
-    char32_t buf32[LINENOISE_MAX_LINE];
+    char32_t buf32[LINENOISE_MAX_LINE + 1];
+    buf32[LINENOISE_MAX_LINE] = '\0'; // make sure the buffer is always null-terminated
     char charWidths[LINENOISE_MAX_LINE];
     if (!preloadErrorMessage.empty()) {
       printf("%s", preloadErrorMessage.c_str());
@@ -3192,10 +3193,11 @@ char* linenoise(const char* prompt) {
       if (!pi.write()) return 0;
       fflush(stdout);
       if (preloadedBufferContents.empty()) {
-        unique_ptr<char[]> buf8(new char[LINENOISE_MAX_LINE]);
+        unique_ptr<char[]> buf8(new char[LINENOISE_MAX_LINE + 1]);
         if (fgets(buf8.get(), LINENOISE_MAX_LINE, stdin) == NULL) {
           return NULL;
         }
+        *(buf8.get() + LINENOISE_MAX_LINE) = '\0'; // make sure the buffer is always null-terminated
         size_t len = strlen(buf8.get());
         while (len && (buf8[len - 1] == '\n' || buf8[len - 1] == '\r')) {
           --len;
@@ -3216,6 +3218,7 @@ char* linenoise(const char* prompt) {
         ib.preloadBuffer(preloadedBufferContents.c_str());
         preloadedBufferContents.clear();
       }
+      buf32[LINENOISE_MAX_LINE] = '\0'; // make sure the buffer is always null-terminated
       int count = ib.getInputLine(pi);
       disableRawMode();
       printf("\n");
@@ -3223,8 +3226,9 @@ char* linenoise(const char* prompt) {
         return NULL;
       }
       size_t bufferSize = sizeof(char32_t) * ib.length() + 1;
-      unique_ptr<char[]> buf8(new char[bufferSize]);
+      unique_ptr<char[]> buf8(new char[bufferSize + 1]);
       copyString32to8(buf8.get(), bufferSize, buf32);
+      *(buf8.get() + bufferSize) = '\0'; // make sure the buffer is always null-terminated
       return strdup(buf8.get());  // caller must free buffer
     }
   } else {  // input not from a terminal, we should work with piped input, i.e.

@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail */
+/*global assertEqual, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -34,7 +34,6 @@ var ArangoCollection = arangodb.ArangoCollection;
 var testHelper = require("@arangodb/test-helper").Helper;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: collection
@@ -410,8 +409,9 @@ function CollectionSuite () {
       db._drop(cn);
       var c = db._createEdgeCollection(cn);
       c.load();
-      for(i=0;i<10000;i++) {
+      for(let i=0;i<10000;i++) {
         c.insert({_from:"c/v"+(i/100), _to:"c/v"+i});
+        c.insert({_to:"c/v"+(i/100), _from:"c/v"+i});
       }
 
       // check if edge cache is present
@@ -421,7 +421,7 @@ function CollectionSuite () {
       var inital = [];
       idxs.forEach(function(idx) {
         if (idx.figures.cacheInUse) {
-          inital.push(idx.figures.cacheSize);
+          inital.push(idx.figures);
         } else {
           inital.push(-1);
         }
@@ -431,23 +431,38 @@ function CollectionSuite () {
 
       // checking if edge cach grew
       idxs = c.getIndexes(true);
-      var i = 0;
-      idxs.forEach(function(idx) {
+      idxs.forEach(function(idx, i) {
         if (idx.figures.cacheInUse) {
-          assertTrue(idx.figures.cacheSize > inital[i], idx);
+          assertTrue(idx.figures.cacheSize > inital[i].cacheSize, idx);
           assertEqual(idx.figures.cacheLifeTimeHitRate, 0, idx);
+          inital[i] = idx.figures;
         }
-        i++;
       });
 
-      for(i=0;i<10000;i++) {
+      for(let i=0;i<10000;i++) {
         c.outEdges("c/v"+(i/100));
+        c.inEdges("c/v"+(i/100));
       }
       idxs = c.getIndexes(true);
-      // cache was filled same queries, hit rate must be bigly
-      idxs.forEach(function(idx) {
+      // cache was filled same queries, hit rate must be about 
+      idxs.forEach(function(idx, i) {
         if (idx.figures.cacheInUse) {
-          assertTrue(idx.figures.cacheLifeTimeHitRate > 0.9, idx);
+          let diff = Math.abs(inital[i].cacheSize - idx.figures.cacheSize);
+          assertTrue(diff <= Math.pow(2, 21), idx);
+          assertTrue(idx.figures.cacheLifeTimeHitRate > 15, idx);
+          inital[i] = idx.figures;
+        }
+      });
+      for(let i=0;i<10000;i++) {
+        c.outEdges("c/v"+(i/100));
+        c.inEdges("c/v"+(i/100));
+      }
+      idxs = c.getIndexes(true);
+      // cache was filled same queries, hit rate must be biglier
+      idxs.forEach(function(idx, i) {
+        if (idx.figures.cacheInUse) {
+          assertTrue(Math.abs(inital[i].cacheSize - idx.figures.cacheSize) < 1024);
+          assertTrue(idx.figures.cacheLifeTimeHitRate > 30, idx);
         }
       });
 
@@ -459,8 +474,9 @@ function CollectionSuite () {
       });
 
       // lets do some reads
-      for(i=0;i<10000;i++) {
+      for(let i=0;i<10000;i++) {
         c.outEdges("c/v"+(i/100));
+        c.inEdges("c/v"+(i/100));        
       }
       idxs = c.getIndexes(true);
       // cache was empty, hit rate should be 0
@@ -471,15 +487,16 @@ function CollectionSuite () {
         }
       });
 
-      for(i=0;i<10000;i++) {
+      for(let i=0;i<10000;i++) {
         c.outEdges("c/v"+(i/100));
+        c.inEdges("c/v"+(i/100));        
       }
       idxs = c.getIndexes(true);
       // cache was partially filled same queries, lifetime hit rate 
       // should be about 50 %
       idxs.forEach(function(idx) {
         if (idx.figures.cacheInUse) {
-          assertTrue(idx.figures.cacheLifeTimeHitRate > 0.45, idx);
+          assertTrue(idx.figures.cacheLifeTimeHitRate > 15, idx);
         }
       });
 
@@ -490,9 +507,77 @@ function CollectionSuite () {
 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: collection caches
+////////////////////////////////////////////////////////////////////////////////
+
+function CollectionCacheSuite () {
+  const cn = "UnitTestsClusterCache";
+  return {
+
+    tearDown : function () {
+      try {
+        db._drop(cn);
+      }
+      catch (err) {
+      }
+    },
+    
+    testCollectionCache : function () {
+      let c = db._create(cn, {cacheEnabled:true});
+      let p = c.properties();
+      assertTrue(p.cacheEnabled, p);
+
+      let idxs = c.getIndexes(true);
+      idxs.forEach(function(idx) {
+        if (idx.type === 'primary') {
+          assertTrue(idx.figures.cacheInUse, idx);
+        }
+      });
+    },
+
+    testCollectionCacheModifyProperties : function () {
+      // create collection without cache
+      let c = db._create(cn, {cacheEnabled:false});
+      let p = c.properties();
+      assertFalse(p.cacheEnabled, p);
+      let idxs = c.getIndexes(true);
+      idxs.forEach(function(idx) {
+        if (idx.type === 'primary') {
+          assertFalse(idx.figures.cacheInUse);
+        }
+      });
+
+      // enable caches
+      c.properties({cacheEnabled:true});
+      p = c.properties();
+      assertTrue(p.cacheEnabled, p);
+      idxs = c.getIndexes(true);
+      idxs.forEach(function(idx) {
+        if (idx.type === 'primary') {
+          assertTrue(idx.figures.cacheInUse);
+        }
+      });
+
+      // disable caches again
+      c.properties({cacheEnabled:false});
+      p = c.properties();
+      assertFalse(p.cacheEnabled, p);
+      idxs = c.getIndexes(true);
+      idxs.forEach(function(idx) {
+        if (idx.type === 'primary') {
+          assertFalse(idx.figures.cacheInUse);
+        }
+      });
+    }
+  };
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(CollectionSuite);
+jsunity.run(CollectionCacheSuite);
 
 return jsunity.done();

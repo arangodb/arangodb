@@ -309,7 +309,7 @@ static v8::Handle<v8::Value> WrapV8ClientConnection(
 
 static void ClientConnection_ConstructorCallback(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
@@ -350,6 +350,7 @@ static void ClientConnection_ConstructorCallback(
   }
 
   TRI_V8_RETURN(WrapV8ClientConnection(isolate, v8connection.release()));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -358,7 +359,7 @@ static void ClientConnection_ConstructorCallback(
 
 static void ClientConnection_reconnect(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   V8ClientConnection* v8connection =
@@ -419,10 +420,31 @@ static void ClientConnection_reconnect(
   }
   
   TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
-                              TRI_V8_STRING("require('internal').db._flushCache();"),
-                              TRI_V8_ASCII_STRING("reload db object"), false);
+                              TRI_V8_STRING(isolate, "require('internal').db._flushCache();"),
+                              TRI_V8_ASCII_STRING(isolate, "reload db object"), false);
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "connectedUser"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_connectedUser(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  v8::Local<v8::External> wrap = v8::Local<v8::External>::Cast(args.Data());
+  ClientFeature* client = static_cast<ClientFeature*>(wrap->Value());
+  if (client == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+  }
+
+  TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, client->username()));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -431,7 +453,7 @@ static void ClientConnection_reconnect(
 
 static void ClientConnection_httpGetAny(
     v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -447,7 +469,7 @@ static void ClientConnection_httpGetAny(
     TRI_V8_THROW_EXCEPTION_USAGE("get(<url>[, <headers>])");
   }
 
-  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC url(args[0]);
   // check header fields
   std::unordered_map<std::string, std::string> headerFields;
 
@@ -456,6 +478,7 @@ static void ClientConnection_httpGetAny(
   }
 
   TRI_V8_RETURN(v8connection->getData(isolate, *url, headerFields, raw));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -482,7 +505,7 @@ static void ClientConnection_httpGetRaw(
 
 static void ClientConnection_httpHeadAny(
     v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -498,7 +521,7 @@ static void ClientConnection_httpHeadAny(
     TRI_V8_THROW_EXCEPTION_USAGE("head(<url>[, <headers>])");
   }
 
-  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC url(args[0]);
 
   // check header fields
   std::unordered_map<std::string, std::string> headerFields;
@@ -508,6 +531,7 @@ static void ClientConnection_httpHeadAny(
   }
 
   TRI_V8_RETURN(v8connection->headData(isolate, *url, headerFields, raw));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -534,7 +558,7 @@ static void ClientConnection_httpHeadRaw(
 
 static void ClientConnection_httpDeleteAny(
     v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -550,7 +574,7 @@ static void ClientConnection_httpDeleteAny(
     TRI_V8_THROW_EXCEPTION_USAGE("delete(<url>[, <headers>[, <body>]])");
   }
 
-  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC url(args[0]);
 
   // check header fields
   std::unordered_map<std::string, std::string> headerFields;
@@ -560,12 +584,13 @@ static void ClientConnection_httpDeleteAny(
   }
 
   if (args.Length() > 2) {
-    TRI_Utf8ValueNFC bodyUtf(TRI_UNKNOWN_MEM_ZONE, args[2]);
+    TRI_Utf8ValueNFC bodyUtf(args[2]);
     std::string body = *bodyUtf;
     TRI_V8_RETURN(v8connection->deleteData(isolate, *url, headerFields, raw, body));
   }
 
   TRI_V8_RETURN(v8connection->deleteData(isolate, *url, headerFields, raw, std::string()));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -592,7 +617,7 @@ static void ClientConnection_httpDeleteRaw(
 
 static void ClientConnection_httpOptionsAny(
     v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -609,7 +634,7 @@ static void ClientConnection_httpOptionsAny(
     TRI_V8_THROW_EXCEPTION_USAGE("options(<url>, <body>[, <headers>])");
   }
 
-  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC url(args[0]);
   v8::String::Utf8Value body(args[1]);
 
   // check header fields
@@ -621,6 +646,7 @@ static void ClientConnection_httpOptionsAny(
 
   TRI_V8_RETURN(
       v8connection->optionsData(isolate, *url, *body, headerFields, raw));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -647,7 +673,7 @@ static void ClientConnection_httpOptionsRaw(
 
 static void ClientConnection_httpPostAny(
     v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -664,7 +690,7 @@ static void ClientConnection_httpPostAny(
     TRI_V8_THROW_EXCEPTION_USAGE("post(<url>, <body>[, <headers>])");
   }
 
-  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC url(args[0]);
   v8::String::Utf8Value body(args[1]);
 
   // check header fields
@@ -676,6 +702,7 @@ static void ClientConnection_httpPostAny(
 
   TRI_V8_RETURN(
       v8connection->postData(isolate, *url, *body, headerFields, raw));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -702,7 +729,7 @@ static void ClientConnection_httpPostRaw(
 
 static void ClientConnection_httpPutAny(
     v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -719,7 +746,7 @@ static void ClientConnection_httpPutAny(
     TRI_V8_THROW_EXCEPTION_USAGE("put(<url>, <body>[, <headers>])");
   }
 
-  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC url(args[0]);
   v8::String::Utf8Value body(args[1]);
 
   // check header fields
@@ -730,6 +757,7 @@ static void ClientConnection_httpPutAny(
   }
 
   TRI_V8_RETURN(v8connection->putData(isolate, *url, *body, headerFields, raw));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -756,7 +784,7 @@ static void ClientConnection_httpPutRaw(
 
 static void ClientConnection_httpPatchAny(
     v8::FunctionCallbackInfo<v8::Value> const& args, bool raw) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -773,7 +801,7 @@ static void ClientConnection_httpPatchAny(
     TRI_V8_THROW_EXCEPTION_USAGE("patch(<url>, <body>[, <headers>])");
   }
 
-  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC url(args[0]);
   v8::String::Utf8Value body(args[1]);
 
   // check header fields
@@ -785,6 +813,7 @@ static void ClientConnection_httpPatchAny(
 
   TRI_V8_RETURN(
       v8connection->patchData(isolate, *url, *body, headerFields, raw));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -811,7 +840,7 @@ static void ClientConnection_httpPatchRaw(
 
 static void ClientConnection_httpSendFile(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -827,7 +856,7 @@ static void ClientConnection_httpSendFile(
     TRI_V8_THROW_EXCEPTION_USAGE("sendFile(<url>, <file>)");
   }
 
-  TRI_Utf8ValueNFC url(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC url(args[0]);
 
   std::string const infile = TRI_ObjectToString(isolate, args[1]);
 
@@ -857,6 +886,7 @@ static void ClientConnection_httpSendFile(
   }
 
   TRI_V8_RETURN(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -865,7 +895,7 @@ static void ClientConnection_httpSendFile(
 
 static void ClientConnection_getEndpoint(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate)
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -885,6 +915,7 @@ static void ClientConnection_getEndpoint(
   }
 
   TRI_V8_RETURN_STD_STRING(client->endpoint());
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -917,8 +948,8 @@ static void ClientConnection_importCsv(
   }
 
   // extract the options
-  v8::Handle<v8::String> separatorKey = TRI_V8_ASCII_STRING("separator");
-  v8::Handle<v8::String> quoteKey = TRI_V8_ASCII_STRING("quote");
+  v8::Handle<v8::String> separatorKey = TRI_V8_ASCII_STRING(isolate, "separator");
+  v8::Handle<v8::String> quoteKey = TRI_V8_ASCII_STRING(isolate, "quote");
 
   std::string separator = ",";
   std::string quote = "\"";
@@ -964,19 +995,19 @@ static void ClientConnection_importCsv(
   if (ih.importDelimited(collectionName, fileName, ImportHelper::CSV)) {
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-    result->Set(TRI_V8_ASCII_STRING("lines"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "lines"),
                 v8::Integer::New(isolate, (int32_t)ih.getReadLines()));
 
-    result->Set(TRI_V8_ASCII_STRING("created"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "created"),
                 v8::Integer::New(isolate, (int32_t)ih.getNumberCreated()));
 
-    result->Set(TRI_V8_ASCII_STRING("errors"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "errors"),
                 v8::Integer::New(isolate, (int32_t)ih.getNumberErrors()));
 
-    result->Set(TRI_V8_ASCII_STRING("updated"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "updated"),
                 v8::Integer::New(isolate, (int32_t)ih.getNumberUpdated()));
 
-    result->Set(TRI_V8_ASCII_STRING("ignored"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "ignored"),
                 v8::Integer::New(isolate, (int32_t)ih.getNumberIgnored()));
 
     TRI_V8_RETURN(result);
@@ -1033,19 +1064,19 @@ static void ClientConnection_importJson(
   if (ih.importJson(collectionName, fileName, false)) {
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-    result->Set(TRI_V8_ASCII_STRING("lines"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "lines"),
                 v8::Integer::New(isolate, (int32_t)ih.getReadLines()));
 
-    result->Set(TRI_V8_ASCII_STRING("created"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "created"),
                 v8::Integer::New(isolate, (int32_t)ih.getNumberCreated()));
 
-    result->Set(TRI_V8_ASCII_STRING("errors"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "errors"),
                 v8::Integer::New(isolate, (int32_t)ih.getNumberErrors()));
 
-    result->Set(TRI_V8_ASCII_STRING("updated"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "updated"),
                 v8::Integer::New(isolate, (int32_t)ih.getNumberUpdated()));
 
-    result->Set(TRI_V8_ASCII_STRING("ignored"),
+    result->Set(TRI_V8_ASCII_STRING(isolate, "ignored"),
                 v8::Integer::New(isolate, (int32_t)ih.getNumberIgnored()));
 
     TRI_V8_RETURN(result);
@@ -1066,7 +1097,7 @@ static void ClientConnection_importJson(
 
 static void ClientConnection_lastHttpReturnCode(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -1083,6 +1114,7 @@ static void ClientConnection_lastHttpReturnCode(
   }
 
   TRI_V8_RETURN(v8::Integer::New(isolate, v8connection->lastHttpReturnCode()));
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1091,7 +1123,7 @@ static void ClientConnection_lastHttpReturnCode(
 
 static void ClientConnection_lastErrorMessage(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -1108,6 +1140,7 @@ static void ClientConnection_lastErrorMessage(
   }
 
   TRI_V8_RETURN_STD_STRING(v8connection->lastErrorMessage());
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1116,7 +1149,7 @@ static void ClientConnection_lastErrorMessage(
 
 static void ClientConnection_isConnected(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -1135,6 +1168,7 @@ static void ClientConnection_isConnected(
     TRI_V8_RETURN_TRUE();
   } 
   TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1143,7 +1177,7 @@ static void ClientConnection_isConnected(
 
 static void ClientConnection_toString(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -1168,6 +1202,7 @@ static void ClientConnection_toString(
   }
 
   TRI_V8_RETURN_STD_STRING(result);
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1176,7 +1211,7 @@ static void ClientConnection_toString(
 
 static void ClientConnection_getVersion(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -1192,6 +1227,7 @@ static void ClientConnection_getVersion(
   }
 
   TRI_V8_RETURN_STD_STRING(v8connection->version());
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1200,7 +1236,7 @@ static void ClientConnection_getVersion(
 
 static void ClientConnection_getMode(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -1216,6 +1252,7 @@ static void ClientConnection_getMode(
   }
 
   TRI_V8_RETURN_STD_STRING(v8connection->mode());
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1224,7 +1261,7 @@ static void ClientConnection_getMode(
 
 static void ClientConnection_getDatabaseName(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -1240,6 +1277,7 @@ static void ClientConnection_getDatabaseName(
   }
 
   TRI_V8_RETURN_STD_STRING(v8connection->databaseName());
+  TRI_V8_TRY_CATCH_END
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1248,7 +1286,7 @@ static void ClientConnection_getDatabaseName(
 
 static void ClientConnection_setDatabaseName(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  v8::Isolate* isolate = args.GetIsolate();
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
   // get the connection
@@ -1271,6 +1309,7 @@ static void ClientConnection_setDatabaseName(
   client->setDatabaseName(dbName);
 
   TRI_V8_RETURN_TRUE();
+  TRI_V8_TRY_CATCH_END
 }
 
 v8::Handle<v8::Value> V8ClientConnection::getData(
@@ -1407,7 +1446,7 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
     _lastHttpReturnCode = static_cast<int>(rest::ResponseCode::SERVER_ERROR);
 
     result->ForceSet(
-        TRI_V8_ASCII_STRING("code"),
+        TRI_V8_ASCII_STRING(isolate, "code"),
         v8::Integer::New(isolate,
                          static_cast<int>(rest::ResponseCode::SERVER_ERROR)));
 
@@ -1431,12 +1470,12 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
         break;
     }
 
-    result->ForceSet(TRI_V8_ASCII_STRING("error"),
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "error"),
                       v8::Boolean::New(isolate, true));
-    result->ForceSet(TRI_V8_ASCII_STRING("errorNum"),
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "errorNum"),
                      v8::Integer::New(isolate, errorNumber));
-    result->ForceSet(TRI_V8_ASCII_STRING("errorMessage"),
-                     TRI_V8_STD_STRING(_lastErrorMessage));
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "errorMessage"),
+                     TRI_V8_STD_STRING(isolate, _lastErrorMessage));
 
     return result;
   }
@@ -1446,29 +1485,29 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
   _lastHttpReturnCode = _httpResult->getHttpReturnCode();
 
   // create raw response
-  result->ForceSet(TRI_V8_ASCII_STRING("code"),
+  result->ForceSet(TRI_V8_ASCII_STRING(isolate, "code"),
                    v8::Integer::New(isolate, _lastHttpReturnCode));
 
   if (_lastHttpReturnCode >= 400) {
     std::string returnMessage(_httpResult->getHttpReturnMessage());
 
-    result->ForceSet(TRI_V8_ASCII_STRING("error"),
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "error"),
                       v8::Boolean::New(isolate, true));
-    result->ForceSet(TRI_V8_ASCII_STRING("errorNum"),
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "errorNum"),
                       v8::Integer::New(isolate, _lastHttpReturnCode));
-    result->ForceSet(TRI_V8_ASCII_STRING("errorMessage"),
-                      TRI_V8_STD_STRING(returnMessage));
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "errorMessage"),
+                      TRI_V8_STD_STRING(isolate, returnMessage));
   } else {
-    result->ForceSet(TRI_V8_ASCII_STRING("error"),
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "error"),
                       v8::Boolean::New(isolate, false));
   }
 
   // got a body, copy it into the result
   StringBuffer& sb = _httpResult->getBody();
   if (sb.length() > 0) {
-    v8::Handle<v8::String> b = TRI_V8_STD_STRING(sb);
+    v8::Handle<v8::String> b = TRI_V8_STD_STRING(isolate, sb);
 
-    result->ForceSet(TRI_V8_ASCII_STRING("body"), b);
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "body"), b);
   }
 
   // copy all headers
@@ -1476,13 +1515,13 @@ v8::Handle<v8::Value> V8ClientConnection::requestDataRaw(
   auto const& hf = _httpResult->getHeaderFields();
 
   for (auto const& it : hf) {
-    v8::Handle<v8::String> key = TRI_V8_STD_STRING(it.first);
-    v8::Handle<v8::String> val = TRI_V8_STD_STRING(it.second);
+    v8::Handle<v8::String> key = TRI_V8_STD_STRING(isolate, it.first);
+    v8::Handle<v8::String> val = TRI_V8_STD_STRING(isolate, it.second);
 
     headers->ForceSet(key, val);
   }
 
-  result->ForceSet(TRI_V8_ASCII_STRING("headers"), headers);
+  result->ForceSet(TRI_V8_ASCII_STRING(isolate, "headers"), headers);
 
   // and returns
   return result;
@@ -1504,10 +1543,10 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
     _lastHttpReturnCode = static_cast<int>(rest::ResponseCode::SERVER_ERROR);
 
     v8::Local<v8::Object> result = v8::Object::New(isolate);
-    result->ForceSet(TRI_V8_ASCII_STRING("error"),
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "error"),
                      v8::Boolean::New(isolate, true));
     result->ForceSet(
-        TRI_V8_ASCII_STRING("code"),
+        TRI_V8_ASCII_STRING(isolate, "code"),
         v8::Integer::New(isolate,
                          static_cast<int>(rest::ResponseCode::SERVER_ERROR)));
 
@@ -1531,10 +1570,10 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
         break;
     }
 
-    result->ForceSet(TRI_V8_ASCII_STRING("errorNum"),
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "errorNum"),
                      v8::Integer::New(isolate, errorNumber));
-    result->ForceSet(TRI_V8_ASCII_STRING("errorMessage"),
-                     TRI_V8_STD_STRING(_lastErrorMessage));
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "errorMessage"),
+                     TRI_V8_STD_STRING(isolate, _lastErrorMessage));
 
     return result;
   }
@@ -1554,27 +1593,27 @@ v8::Handle<v8::Value> V8ClientConnection::handleResult(v8::Isolate* isolate) {
     }
 
     // return body as string
-    return TRI_V8_STD_STRING(sb);
+    return TRI_V8_STD_STRING(isolate, sb);
   }
 
   // no body
 
   v8::Local<v8::Object> result = v8::Object::New(isolate);
 
-  result->ForceSet(TRI_V8_ASCII_STRING("code"),
+  result->ForceSet(TRI_V8_ASCII_STRING(isolate, "code"),
                    v8::Integer::New(isolate, _lastHttpReturnCode));
 
   if (_lastHttpReturnCode >= 400) {
     std::string returnMessage(_httpResult->getHttpReturnMessage());
 
-    result->ForceSet(TRI_V8_ASCII_STRING("error"),
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "error"),
                      v8::Boolean::New(isolate, true));
-    result->ForceSet(TRI_V8_ASCII_STRING("errorNum"),
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "errorNum"),
                      v8::Integer::New(isolate, _lastHttpReturnCode));
-    result->ForceSet(TRI_V8_ASCII_STRING("errorMessage"),
-                     TRI_V8_STD_STRING(returnMessage));
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "errorMessage"),
+                     TRI_V8_STD_STRING(isolate, returnMessage));
   } else {
-    result->ForceSet(TRI_V8_ASCII_STRING("error"),
+    result->ForceSet(TRI_V8_ASCII_STRING(isolate, "error"),
                      v8::Boolean::New(isolate, false));
   }
 
@@ -1589,7 +1628,7 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   v8::Local<v8::FunctionTemplate> connection_templ =
       v8::FunctionTemplate::New(isolate);
 
-  connection_templ->SetClassName(TRI_V8_ASCII_STRING("ArangoConnection"));
+  connection_templ->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoConnection"));
 
   v8::Local<v8::ObjectTemplate> connection_proto =
       connection_templ->PrototypeTemplate();
@@ -1670,6 +1709,10 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_proto->Set(
       isolate, "reconnect",
       v8::FunctionTemplate::New(isolate, ClientConnection_reconnect, v8client));
+  
+  connection_proto->Set(
+      isolate, "connectedUser",
+      v8::FunctionTemplate::New(isolate, ClientConnection_connectedUser, v8client));
 
   connection_proto->Set(
       isolate, "toString",
@@ -1709,13 +1752,13 @@ void V8ClientConnection::initServer(v8::Isolate* isolate,
   connection_inst->SetInternalFieldCount(2);
 
   TRI_AddGlobalVariableVocbase(isolate,
-                               TRI_V8_ASCII_STRING("ArangoConnection"),
+                               TRI_V8_ASCII_STRING(isolate, "ArangoConnection"),
                                connection_proto->NewInstance());
 
   ConnectionTempl.Reset(isolate, connection_inst);
 
   // add the client connection to the context:
   TRI_AddGlobalVariableVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_ARANGO"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_ARANGO"),
                                WrapV8ClientConnection(isolate, this));
 }

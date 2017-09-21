@@ -221,7 +221,7 @@ MMFilesEdgeIndex::~MMFilesEdgeIndex() {
 }
 
 /// @brief return a selectivity estimate for the index
-double MMFilesEdgeIndex::selectivityEstimate(
+double MMFilesEdgeIndex::selectivityEstimateLocal(
     arangodb::StringRef const* attribute) const {
   if (_edgesFrom == nullptr || _edgesTo == nullptr ||
       ServerState::instance()->isCoordinator()) {
@@ -261,13 +261,10 @@ size_t MMFilesEdgeIndex::memory() const {
 void MMFilesEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                     bool forPersistence) const {
   builder.openObject();
-  {
-    Index::toVelocyPack(builder, withFigures, forPersistence);
-
-    // hard-coded
-    builder.add("unique", VPackValue(false));
-    builder.add("sparse", VPackValue(false));
-  }
+  Index::toVelocyPack(builder, withFigures, forPersistence);
+  // hard-coded
+  builder.add("unique", VPackValue(false));
+  builder.add("sparse", VPackValue(false));
   builder.close();
 }
 
@@ -381,11 +378,9 @@ void MMFilesEdgeIndex::batchInsert(
 }
 
 /// @brief unload the index data from memory
-int MMFilesEdgeIndex::unload() {
+void MMFilesEdgeIndex::unload() {
   _edgesFrom->truncate([](MMFilesSimpleIndexElement const&) { return true; });
   _edgesTo->truncate([](MMFilesSimpleIndexElement const&) { return true; });
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief provides a size hint for the edge index

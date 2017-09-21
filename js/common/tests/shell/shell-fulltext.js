@@ -60,6 +60,54 @@ function fulltextCreateSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief insert doc if index attribute is not present in it
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertDocumentWithoutAttribute : function () {
+      var idx = c.ensureIndex({ type: "fulltext", fields: ["foo"] });
+      c.insert({ _key: "test", value1: 1 });
+      var doc = c.document("test");
+      assertEqual(1, doc.value1);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update doc if index attribute is not present in it
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateDocumentWithoutAttribute : function () {
+      c.insert({ _key: "test", value1: 1 });
+      var idx = c.ensureIndex({ type: "fulltext", fields: ["foo"] });
+      c.update("test", { value2: "test" });
+      var doc = c.document("test");
+      assertEqual("test", doc.value2);
+      assertEqual(1, doc.value1);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief replace doc if index attribute is not present in it
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceDocumentWithoutAttribute : function () {
+      c.insert({ _key: "test", value1: 1 });
+      var idx = c.ensureIndex({ type: "fulltext", fields: ["foo"] });
+      c.replace("test", { value2: "test" });
+      var doc = c.document("test");
+      assertEqual("test", doc.value2);
+      assertFalse(doc.hasOwnProperty("value1"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove doc if index attribute is not present in it
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveDocumentWithoutAttribute : function () {
+      c.insert({ _key: "test", value1: 1 });
+      var idx = c.ensureIndex({ type: "fulltext", fields: ["foo"] });
+      c.remove("test");
+      assertFalse(c.exists("test"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create with multiple fields
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -672,9 +720,6 @@ function fulltextQuerySuite () {
       assertEqual(0, collection.fulltext("text", "tomatoes", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "others", idx).toArray().length);
 
-      require("console").log("waiting for compaction");
-      internal.wait(7);
-
       assertEqual(0, collection.fulltext("text", "bananas", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "some", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "tomatoes", idx).toArray().length);
@@ -687,9 +732,6 @@ function fulltextQuerySuite () {
 
       collection.remove(d2);
       
-      require("console").log("waiting for compaction");
-      internal.wait(7);
-      
       assertEqual(0, collection.fulltext("text", "several", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "oranges,hate", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "people", idx).toArray().length);
@@ -698,14 +740,8 @@ function fulltextQuerySuite () {
       
       collection.remove(d3);
       
-      require("console").log("waiting for compaction");
-      internal.wait(7);
-      
       assertEqual(0, collection.fulltext("text", "unrelated,text,index", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "index", idx).toArray().length);
-      
-      require("console").log("waiting for compaction");
-      internal.wait(7);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -967,9 +1003,6 @@ function fulltextQuerySuite () {
         collection.remove(docs[i]);
       }
 
-      require("console").log("waiting for compaction");
-      internal.wait(7);
-      
       assertEqual(750, collection.fulltext("text", "document", idx).toArray().length);
       assertEqual(750, collection.fulltext("text", "text", idx).toArray().length);
       assertEqual(250, collection.fulltext("text", "this", idx).toArray().length);
@@ -1453,272 +1486,30 @@ function fulltextQuerySuite () {
       assertEqual(1, collection.fulltext("text", "møguleikar", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "síðu,rættar,ritstjórni", idx).toArray().length);
       assertEqual(1, collection.fulltext("text", "prefix:læt", idx).toArray().length);
-    }
+    },
+
+    testQueryingAfterDeletion: function () {
+      for (let i = 0; i < 4000; ++i) {
+        collection.save({ _key: "test" + i, text: "test" + i });
+      }
+
+      for (let i = 2436; i < 3473; ++i) {
+        collection.remove("test" + i);
+      }
+
+      for (let i = 0; i < 4000; ++i) {
+        assertEqual((i >= 2436 && i < 3473) ? 0 : 1, collection.fulltext("text", "test" + i, idx).toArray().length);
+      }
+    } 
   };
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fulltext queries
-////////////////////////////////////////////////////////////////////////////////
-/*
-function fulltextQuerySubstringSuite () {
-  'use strict';
-  var cn = "UnitTestsFulltext";
-  var collection = null;
-  var idx = null;
-
-  return {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
-
-    setUp : function () {
-      internal.db._drop(cn);
-      collection = internal.db._create(cn);
-
-      idx = collection.ensureFulltextIndex("text").id;
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
-    
-    tearDown : function () {
-      internal.db._drop(cn);
-    },
-      
-////////////////////////////////////////////////////////////////////////////////
-/// @brief simple queries
-////////////////////////////////////////////////////////////////////////////////
-
-    testSimple: function () {
-      var texts = [
-        "some rubbish text",
-        "More rubbish test data. The index should be able to handle all this.",
-        "even MORE rubbish. Nevertheless this should be handled well, too."
-      ];
-      
-      for (var i = 0; i < texts.length; ++i) {
-        collection.save({ text: texts[i] });
-      }
-
-      assertEqual(1, collection.fulltext("text", "some", idx).toArray().length);
-      assertEqual(3, collection.fulltext("text", "rubbish", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "text", idx).toArray().length);
-      assertEqual(2, collection.fulltext("text", "More", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "test", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "data", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "The", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "index", idx).toArray().length);
-      assertEqual(2, collection.fulltext("text", "should", idx).toArray().length);
-      assertEqual(2, collection.fulltext("text", "be", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "able", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "to", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "handle", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "all", idx).toArray().length);
-      assertEqual(2, collection.fulltext("text", "this", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "even", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "Nevertheless", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "handled", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "well", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "too", idx).toArray().length);
-      
-      assertEqual(0, collection.fulltext("text", "not", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "foobar", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "it", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "BANANA", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "noncontained", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "notpresent", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "Invisible", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "unAvailaBLE", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "Neverthelessy", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "dindex", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "grubbish", idx).toArray().length);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief substring queries
-////////////////////////////////////////////////////////////////////////////////
-
-    testSubstrings: function () {
-      var texts = [
-        "Ego sum fidus. Canis sum.",
-        "Ibi est Aurelia amica. Aurelia est puelle XI annos nata. Filia est.",
-        "Claudia mater est.",
-        "Anna est ancilla. Liberta est",
-        "Flavus Germanus est servus. Coquus est.",
-        "Ibi Quintus amicus est. Quintus est X annos natus.",
-        "Gaius est frater magnus. Est XVIII annos natus et Bonnae miles.",
-        "Aurelius pater est. Est mercator."
-      ];
-      
-      for (var i = 0; i < texts.length; ++i) {
-        collection.save({ text: texts[i] });
-      }
-
-      assertEqual(1, collection.fulltext("text", "substring:fidus", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "substring:idus", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "substring:idu", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "substring:canis", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "substring:cani", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "substring:can", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "substring:anis", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "substring:ilia,substring:aurel", idx).toArray().length);
-      assertEqual(2, collection.fulltext("text", "substring:ibi,substring:mic", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "substring:ibi,substring:micus", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "substring:ibi,substring:amicus", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "substring:ibi,substring:mica", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "substring:ibi,substring:amica", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "substring:mercator,substring:aurel", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "substring:mercator,substring:aurel,substring:pat", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "substring:merca,substring:aurelius,substring:pater", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "substring:cato,substring:elius,substring:ater", idx).toArray().length);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief long substrings
-////////////////////////////////////////////////////////////////////////////////
-
-    testLongSubstrings: function () {
-      var texts = [
-        "Donaudampfschifffahrtskapitaensmuetzentraegervereinsvorstandsvorsitzenderehegattinsfreundinnenbesucheranlassversammlungsortausschilderungsherstellungsfabrikationsanlagenbetreiberliebhaberliebhaber",
-        "Donaudampfschifffahrtskapitaensmuetzentraegervereinsvorstandsvorsitzenderehegattin",
-        "autotuerendellenentfernungsfirmenmitarbeiterverguetungsbewerter",
-        "Dampfmaschinenfahrzeugsinspektionsverwaltungsstellenmitarbeiter",
-        "Dampfmaschinenfahrzeugsinspektionsverwaltungsstellenmitarbeiterinsignifikant"
-      ];
-      
-      for (var i = 0; i < texts.length; ++i) {
-        collection.save({ text: texts[i] });
-      }
-
-      assertEqual(2, collection.fulltext("text", "substring:donau", idx).toArray().length); 
-      assertEqual(4, collection.fulltext("text", "substring:fahr", idx).toArray().length);
-      assertEqual(2, collection.fulltext("text", "substring:ver", idx).toArray().length); // significance is only 40 chars
-      assertEqual(1, collection.fulltext("text", "substring:end", idx).toArray().length); // significance is only 40 chars
-      assertEqual(3, collection.fulltext("text", "substring:ent", idx).toArray().length);
-      assertEqual(4, collection.fulltext("text", "substring:damp", idx).toArray().length);
-      assertEqual(4, collection.fulltext("text", "substring:dampf", idx).toArray().length);
-      assertEqual(2, collection.fulltext("text", "substring:dampfma", idx).toArray().length);
-      assertEqual(2, collection.fulltext("text", "substring:DONAUDAMPFSCHIFF", idx).toArray().length);
-      assertEqual(2, collection.fulltext("text", "substring:DONAUDAMPFSCHIFFFAHRTSKAPITAENSMUETZE", idx).toArray().length);
-      assertEqual(2, collection.fulltext("text", "substring:kapitaen", idx).toArray().length);
-      assertEqual(2, collection.fulltext("text", "substring:kapitaensmuetze", idx).toArray().length);
-      assertEqual(2, collection.fulltext("text", "substring:inspektion", idx).toArray().length);
-
-      assertEqual(0, collection.fulltext("text", "substring:ehegattin", idx).toArray().length); // significance!
-      assertEqual(0, collection.fulltext("text", "substring:traegerverein", idx).toArray().length); // significance!
-      assertEqual(0, collection.fulltext("text", "substring:taegerverein", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "substring:hafer", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "substring:apfel", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "substring:glasur", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "substring:somethingisreallywrongwiththislongwordsyouknowbetternotputthemintheindexyouneverknowwhathappensiftheresenoughmemoryforalltheindividualcharactersinthemletssee", idx).toArray().length);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief substrings vs. prefixes
-////////////////////////////////////////////////////////////////////////////////
-
-    testSubstringsVsPrefixes: function () {
-      var texts = [
-        "bing",
-        "bingo",
-        "abing",
-        "ingo"
-      ];
-      
-      for (var i = 0; i < texts.length; ++i) {
-        collection.save({ text: texts[i] });
-      }
-
-      assertEqual(1, collection.fulltext("text", "prefix:bingo", idx).toArray().length);
-      assertEqual(2, collection.fulltext("text", "prefix:bing", idx).toArray().length);
-      assertEqual(2, collection.fulltext("text", "prefix:bin", idx).toArray().length);
-      assertEqual(2, collection.fulltext("text", "prefix:bi", idx).toArray().length);
-      assertEqual(2, collection.fulltext("text", "prefix:b", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "prefix:abing", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "prefix:abin", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "prefix:abi", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "prefix:ab", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "prefix:a", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "prefix:ingo", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "prefix:ing", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "prefix:in", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "prefix:i", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "prefix:binga", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "prefix:inga", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "prefix:abingo", idx).toArray().length);
-      
-      assertEqual(1, collection.fulltext("text", "substring:abing", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "substring:bingo", idx).toArray().length);
-      assertEqual(3, collection.fulltext("text", "substring:bing", idx).toArray().length);
-      assertEqual(3, collection.fulltext("text", "substring:bin", idx).toArray().length);
-      assertEqual(3, collection.fulltext("text", "substring:bi", idx).toArray().length);
-      assertEqual(3, collection.fulltext("text", "substring:b", idx).toArray().length);
-      assertEqual(2, collection.fulltext("text", "substring:go", idx).toArray().length);
-      assertEqual(2, collection.fulltext("text", "substring:ingo", idx).toArray().length);
-      assertEqual(4, collection.fulltext("text", "substring:ing", idx).toArray().length);
-      assertEqual(4, collection.fulltext("text", "substring:in", idx).toArray().length);
-      assertEqual(4, collection.fulltext("text", "substring:i", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "substring:a", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "substring:binga", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "substring:abingo", idx).toArray().length);
-
-      assertEqual(1, collection.fulltext("text", "complete:bing", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "complete:bingo", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "complete:abing", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "complete:ingo", idx).toArray().length);
-      assertEqual(0, collection.fulltext("text", "complete:abingo", idx).toArray().length);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief substring queries & everything else combined
-////////////////////////////////////////////////////////////////////////////////
-
-    testMultiMatching: function () {
-      var texts = [
-        "Ego sum fidus. Canis sum.",
-        "Ibi est Aurelia amica. Aurelia est puelle XI annos nata. Filia est.",
-        "Claudia mater est.",
-        "Anna est ancilla. Liberta est",
-        "Flavus Germanus est servus. Coquus est.",
-        "Ibi Quintus amicus est. Quintus est X annos natus.",
-        "Gaius est frater magnus. Est XVIII annos natus et Bonnae miles.",
-        "Aurelius pater est. Est mercator."
-      ];
-      
-      for (var i = 0; i < texts.length; ++i) {
-        collection.save({ text: texts[i] });
-      }
-
-      assertEqual(1, collection.fulltext("text", "substring:fidus,ego,sum,prefix:canis", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "claudia,substring:ater,est", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "Quintus,substring:icus,prefix:anno", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "aurelius,pater,est,substring:mercator", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "aurelius,pater,est,substring:tor", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "prefix:aur,prefix:merc,substring:merc", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "substring:puelle,substring:annos,substring:nata,substring:filia", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "puelle,prefix:annos,prefix:nata,substring:filia", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "prefix:puelle,prefix:annos,prefix:nata,substring:filia", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "puelle,annos,nata,substring:filia", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "puelle,substring:annos,nata,substring:filia", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "puelle,substring:annos,nata,prefix:filia", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "puelle,substring:nos,nata,prefix:filia", idx).toArray().length);
-      assertEqual(1, collection.fulltext("text", "puelle,substring:nos,nata,substring:ili", idx).toArray().length);
-    }
-
-  };
-}
-*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(fulltextCreateSuite);
 jsunity.run(fulltextQuerySuite);
-/// jsunity.run(fulltextQuerySubstringSuite);
 
 return jsunity.done();
 

@@ -29,10 +29,10 @@
 #include "Zip/zip.h"
 
 #include <sstream>
+#include <iosfwd>
 
 /// @brief string buffer with formatting routines
 struct TRI_string_buffer_t {
-  TRI_memory_zone_t* _memoryZone;
   char* _buffer;
   char* _current;
   size_t _len;
@@ -40,22 +40,21 @@ struct TRI_string_buffer_t {
 };
 
 /// @brief create a new string buffer and initialize it
-TRI_string_buffer_t* TRI_CreateStringBuffer(TRI_memory_zone_t*);
+TRI_string_buffer_t* TRI_CreateStringBuffer();
 
 /// @brief create a new string buffer and initialize it with a specific size
-TRI_string_buffer_t* TRI_CreateSizedStringBuffer(TRI_memory_zone_t*, size_t);
+TRI_string_buffer_t* TRI_CreateSizedStringBuffer(size_t);
 
 /// @brief initializes the string buffer
 ///
 /// @warning You must call initialize before using the string buffer.
-void TRI_InitStringBuffer(TRI_string_buffer_t*, TRI_memory_zone_t*, 
+void TRI_InitStringBuffer(TRI_string_buffer_t*, 
                           bool initializeMemory = true);
 
 /// @brief initializes the string buffer with a specific size
 ///
 /// @warning You must call initialize before using the string buffer.
-void TRI_InitSizedStringBuffer(TRI_string_buffer_t*, TRI_memory_zone_t*,
-                               size_t const, bool initializeMemory = true);
+void TRI_InitSizedStringBuffer(TRI_string_buffer_t*,                                size_t const, bool initializeMemory = true);
 
 /// @brief frees the string buffer
 ///
@@ -68,7 +67,7 @@ void TRI_DestroyStringBuffer(TRI_string_buffer_t*);
 void TRI_AnnihilateStringBuffer(TRI_string_buffer_t*);
 
 /// @brief frees the string buffer and the pointer
-void TRI_FreeStringBuffer(TRI_memory_zone_t*, TRI_string_buffer_t*);
+void TRI_FreeStringBuffer(TRI_string_buffer_t*);
 
 /// @brief compress the string buffer using deflate
 int TRI_DeflateStringBuffer(TRI_string_buffer_t*, size_t);
@@ -248,8 +247,8 @@ class StringBuffer {
 
  public:
   /// @brief initializes the string buffer
-  explicit StringBuffer(TRI_memory_zone_t* zone, bool initializeMemory = true) {
-    TRI_InitStringBuffer(&_buffer, zone, initializeMemory);
+  explicit StringBuffer(bool initializeMemory) {
+    TRI_InitStringBuffer(&_buffer, initializeMemory);
 
     if (_buffer._buffer == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -257,8 +256,8 @@ class StringBuffer {
   }
 
   /// @brief initializes the string buffer
-  StringBuffer(TRI_memory_zone_t* zone, size_t initialSize, bool initializeMemory = true) {
-    TRI_InitSizedStringBuffer(&_buffer, zone, initialSize, initializeMemory);
+  explicit StringBuffer(size_t initialSize, bool initializeMemory = true) {
+    TRI_InitSizedStringBuffer(&_buffer, initialSize, initializeMemory);
     
     if (_buffer._buffer == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -449,6 +448,8 @@ class StringBuffer {
     TRI_SwapStringBuffer(&_buffer, &other->_buffer);
     return *this;
   }
+  
+  char const* data() const { return TRI_BeginStringBuffer(&_buffer); }
 
   /// @brief returns pointer to the character buffer
   char const* c_str() const { return TRI_BeginStringBuffer(&_buffer); }
@@ -467,6 +468,7 @@ class StringBuffer {
 
   /// @brief returns length of the character buffer
   size_t length() const { return TRI_LengthStringBuffer(&_buffer); }
+  size_t size() const { return TRI_LengthStringBuffer(&_buffer); }
   
   /// @brief returns capacity of the character buffer
   size_t capacity() const { return TRI_CapacityStringBuffer(&_buffer); }
@@ -532,10 +534,9 @@ class StringBuffer {
   /// @brief set the buffer content
   void set(TRI_string_buffer_t const* other) {
     if (_buffer._buffer != nullptr) {
-      TRI_Free(_buffer._memoryZone, _buffer._buffer);
+      TRI_Free(_buffer._buffer);
     }
 
-    _buffer._memoryZone = other->_memoryZone;
     _buffer._buffer = other->_buffer;
     _buffer._current = other->_current;
     _buffer._len = other->_len;
@@ -766,5 +767,7 @@ class StringBuffer {
 };
 }
 }
+
+std::ostream& operator<<(std::ostream&, arangodb::basics::StringBuffer const&);
 
 #endif

@@ -59,15 +59,14 @@ namespace arangodb {
 
 class RocksDBOperationResult : public Result {
 public:
-  RocksDBOperationResult() : Result(), _keySize(0) {}
+  RocksDBOperationResult() 
+      : Result(), _keySize(0) {}
   
-  RocksDBOperationResult(Result const& other) : _keySize(0) {
-    cloneData(other);
-  }
+  RocksDBOperationResult(Result const& other) 
+      : Result(other), _keySize(0) {}
   
-  RocksDBOperationResult(Result&& other) : _keySize(0) {
-    cloneData(std::move(other));
-  }
+  RocksDBOperationResult(Result&& other) noexcept 
+      : Result(std::move(other)), _keySize(0) {}
   
   uint64_t keySize() const { return _keySize; }
   void keySize(uint64_t s) { _keySize = s; }
@@ -238,14 +237,14 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(uint64_t);
 std::size_t countKeys(rocksdb::DB*, rocksdb::ColumnFamilyHandle* cf);
 
 /// @brief iterate over all keys in range and count them
-std::size_t countKeyRange(rocksdb::DB*, rocksdb::ReadOptions const&,
-                          RocksDBKeyBounds const&);
+std::size_t countKeyRange(rocksdb::DB*, RocksDBKeyBounds const&, 
+                          bool prefix_same_as_start);
 
 /// @brief helper method to remove large ranges of data
 /// Should mainly be used to implement the drop() call
 Result removeLargeRange(rocksdb::TransactionDB* db,
                         RocksDBKeyBounds const& bounds,
-                        bool prefix_same_as_start = true);
+                        bool prefix_same_as_start);
 
 std::vector<std::pair<RocksDBKey, RocksDBValue>> collectionKVPairs(
     TRI_voc_tick_t databaseId);

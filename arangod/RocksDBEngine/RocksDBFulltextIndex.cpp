@@ -32,7 +32,6 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
-#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -95,19 +94,6 @@ RocksDBFulltextIndex::RocksDBFulltextIndex(
 }
 
 RocksDBFulltextIndex::~RocksDBFulltextIndex() {}
-
-size_t RocksDBFulltextIndex::memory() const {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  RocksDBKeyBounds bounds =
-      RocksDBKeyBounds::FulltextIndexPrefix(_objectId, StringRef());
-  rocksdb::Range r(bounds.start(), bounds.end());
-  uint64_t out;
-  uint8_t flags = rocksdb::DB::SizeApproximationFlags::INCLUDE_MEMTABLES |
-                  rocksdb::DB::SizeApproximationFlags::INCLUDE_FILES;
-  db->GetApproximateSizes(RocksDBColumnFamily::fulltext(), &r, 1, &out,
-                          static_cast<uint8_t>(flags));
-  return static_cast<size_t>(out);
-}
 
 /// @brief return a VelocyPack representation of the index
 void RocksDBFulltextIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
@@ -211,10 +197,10 @@ Result RocksDBFulltextIndex::insertInternal(transaction::Methods* trx,
   int res = TRI_ERROR_NO_ERROR;
   // size_t const count = words.size();
   for (std::string const& word : words) {
-    RocksDBKey key =
-        RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), revisionId);
+    RocksDBKeyLeaser key(trx);
+    key->constructFulltextIndexValue(_objectId, StringRef(word), revisionId);
 
-    Result r = mthd->Put(_cf, key, value.string(), rocksutils::index);
+    Result r = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
     if (!r.ok()) {
       res = r.errorNumber();
       break;
@@ -229,35 +215,23 @@ Result RocksDBFulltextIndex::removeInternal(transaction::Methods* trx,
                                             VPackSlice const& doc) {
   std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
-    // TODO: distinguish the cases "empty wordlist" and "out of memory"
-    // LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "could not build wordlist";
-    return IndexResult(TRI_ERROR_OUT_OF_MEMORY);
+    return IndexResult(TRI_ERROR_NO_ERROR);
   }
 
   // now we are going to construct the value to insert into rocksdb
   // unique indexes have a different key structure
   int res = TRI_ERROR_NO_ERROR;
   for (std::string const& word : words) {
-    RocksDBKey key =
-        RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), revisionId);
+    RocksDBKeyLeaser key(trx);
+    key->constructFulltextIndexValue(_objectId, StringRef(word), revisionId);
 
-    Result r = mthd->Delete(_cf, key);
+    Result r = mthd->Delete(_cf, key.ref());
     if (!r.ok()) {
       res = r.errorNumber();
       break;
     }
   }
   return IndexResult(res, this);
-}
-
-int RocksDBFulltextIndex::cleanup() {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  rocksdb::CompactRangeOptions opts;
-  RocksDBKeyBounds bounds =
-      RocksDBKeyBounds::FulltextIndexPrefix(_objectId, StringRef());
-  rocksdb::Slice b = bounds.start(), e = bounds.end();
-  db->CompactRange(opts, bounds.columnFamily(), &b, &e);
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief walk over the attribute. Also Extract sub-attributes and elements in
@@ -288,20 +262,14 @@ static void ExtractWords(std::set<std::string>& words, VPackSlice const value,
 /// words to index for a specific document
 std::set<std::string> RocksDBFulltextIndex::wordlist(VPackSlice const& doc) {
   std::set<std::string> words;
-  try {
-    VPackSlice const value = doc.get(_attr);
+  VPackSlice const value = doc.get(_attr);
 
-    if (!value.isString() && !value.isArray() && !value.isObject()) {
-      // Invalid Input
-      return words;
-    }
-
-    ExtractWords(words, value, _minWordLength, 0);
-  } catch (...) {
-    // Backwards compatibility
-    // The pre-vpack impl. did just ignore all errors and returned nulltpr
+  if (!value.isString() && !value.isArray() && !value.isObject()) {
+    // Invalid Input
     return words;
   }
+
+  ExtractWords(words, value, _minWordLength, 0);
   return words;
 }
 
@@ -380,7 +348,7 @@ Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
 
     TRI_ASSERT(end >= start);
     size_t outLength;
-    char* normalized = TRI_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, word,
+    char* normalized = TRI_normalize_utf8_to_NFC(word,
                                                  wordLength, &outLength);
     if (normalized == nullptr) {
       return Result(TRI_ERROR_OUT_OF_MEMORY);
@@ -388,14 +356,14 @@ Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
 
     // lower case string
     int32_t outLength2;
-    char* lowered = TRI_tolower_utf8(TRI_UNKNOWN_MEM_ZONE, normalized,
+    char* lowered = TRI_tolower_utf8(normalized,
                                      (int32_t)outLength, &outLength2);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, normalized);
+    TRI_Free(normalized);
     if (lowered == nullptr) {
       return Result(TRI_ERROR_OUT_OF_MEMORY);
     }
     // emplace_back below may throw
-    TRI_DEFER(TRI_Free(TRI_UNKNOWN_MEM_ZONE, lowered));
+    TRI_DEFER(TRI_Free(lowered));
 
     // calculate the proper prefix
     char* prefixEnd =
@@ -439,7 +407,7 @@ Result RocksDBFulltextIndex::executeQuery(transaction::Methods* trx,
   while (maxResults > 0 && it != resultSet.cend()) {
     RocksDBToken token(*it);
     if (token.revisionId() && physical->readDocument(trx, token, mmdr)) {
-      mmdr.addToBuilder(builder, true);
+      mmdr.addToBuilder(builder, false);
       maxResults--;
     }
     ++it;

@@ -132,7 +132,7 @@ v8::Handle<v8::Object> WrapView(v8::Isolate* isolate,
     result->ForceSet(_IdKey,
                      TRI_V8UInt64String<TRI_voc_cid_t>(isolate, view->id()),
                      v8::ReadOnly);
-    result->Set(_DbNameKey, TRI_V8_STD_STRING(view->vocbase()->name()));
+    result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, view->vocbase()->name()));
   }
 
   return scope.Escape<v8::Object>(result);
@@ -172,7 +172,7 @@ static void JS_CreateViewVocbase(
   v8::Handle<v8::Object> obj = args[2]->ToObject();
 
   // fiddle "name" attribute into the object
-  obj->Set(TRI_V8_ASCII_STRING("name"), TRI_V8_STD_STRING(name));
+  obj->Set(TRI_V8_ASCII_STRING(isolate, "name"), TRI_V8_STD_STRING(isolate, name));
 
   VPackBuilder full;
   full.openObject();
@@ -379,7 +379,7 @@ static void JS_NameViewVocbase(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_VIEW_NOT_FOUND);
   }
 
-  v8::Handle<v8::Value> result = TRI_V8_STD_STRING(name);
+  v8::Handle<v8::Value> result = TRI_V8_STD_STRING(isolate, name);
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -461,41 +461,41 @@ static void JS_TypeViewVocbase(
   LogicalView* view = v->get();
 
   std::string const type = view->type();
-  TRI_V8_RETURN(TRI_V8_STD_STRING(type));
+  TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, type));
   TRI_V8_TRY_CATCH_END
 }
 
 void TRI_InitV8Views(v8::Handle<v8::Context> context, TRI_vocbase_t* vocbase,
                      TRI_v8_global_t* v8g, v8::Isolate* isolate,
                      v8::Handle<v8::ObjectTemplate> ArangoDBNS) {
-  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_createView"),
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING(isolate, "_createView"),
                        JS_CreateViewVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_dropView"),
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING(isolate, "_dropView"),
                        JS_DropViewVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_view"),
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING(isolate, "_view"),
                        JS_ViewVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_views"),
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING(isolate, "_views"),
                        JS_ViewsVocbase);
 
   v8::Handle<v8::ObjectTemplate> rt;
   v8::Handle<v8::FunctionTemplate> ft;
 
   ft = v8::FunctionTemplate::New(isolate);
-  ft->SetClassName(TRI_V8_ASCII_STRING("ArangoView"));
+  ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoView"));
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(3);
 
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("drop"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "drop"),
                        JS_DropViewVocbaseObj);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("name"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "name"),
                        JS_NameViewVocbase);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("properties"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "properties"),
                        JS_PropertiesViewVocbase);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("type"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "type"),
                        JS_TypeViewVocbase);
 
   v8g->VocbaseViewTempl.Reset(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("ArangoView"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "ArangoView"),
                                ft->GetFunction());
 }

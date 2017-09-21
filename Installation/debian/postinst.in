@@ -1,57 +1,97 @@
 #!/bin/sh
 set -e
 
+action="$1"
+old_version="$2"
+
 ARANGODB="/usr/sbin/arangod"
 
 # source debconf library
 . /usr/share/debconf/confmodule
-set +x
+. /usr/share/arangodb3/arangodb-helper
+
 db_get @CPACK_PACKAGE_NAME@/storage_engine
 STORAGE_ENGINE=$RET
 export GLIBCXX_FORCE_NEW=1
+
+if test -d /var/lib/arangodb3 -a ! -f /usr/sbin/arangod; then
+    NEW_INSTALL_EXISTING_DIR=true
+else
+    NEW_INSTALL_EXISTING_DIR=false
+fi
+#fill in correct storage engine into arangod.conf
 sed -i /etc/arangodb3/arangod.conf -e "s;storage-engine = auto;storage-engine = $STORAGE_ENGINE;"
 
-if [ "$1" = "configure" -a -z "$2" ]; then
+if test "@CPACK_SYSTEMD_FOUND@" -eq 1 ; then
+    if deb-systemd-invoke is-active @CPACK_PACKAGE_NAME@.service 2>&1 >/dev/null ; then
+        deb-systemd-invoke stop @CPACK_PACKAGE_NAME@.service >/dev/null \
+            || ar_err "failed to stop arangodb3 service" $?
+    fi
+else
+    if [ -x "/etc/init.d/arangodb3" ]; then
+	    invoke-rc.d arangodb3 stop \
+            || ar_err "failed to stop arangodb3 service" $?
+    fi
+fi
+
+if test "$action" = "configure" -a \
+        -z "$2" -a \
+        "$NEW_INSTALL_EXISTING_DIR" = "false" ; then
+
     db_get @CPACK_PACKAGE_NAME@/password
+
     # Escape backslashes and quotes 
     if [ -n "$RET" ]; then
-        ARANGODB_DEFAULT_ROOT_PASSWORD=`echo "$RET"|sed -e 's;\\\\;\\\\\\\\;g' -e 's;";\\\\";g'` \
-                                      /usr/sbin/arango-init-database \
-	                              --server.rest-server false \
-				      --server.statistics false --foxx.queues false \
-                                      --uid arangodb --gid arangodb || true
+        ARANGODB_DEFAULT_ROOT_PASSWORD="$(echo "$RET" | sed -e 's;\\\\;\\\\\\\\;g' -e 's;";\\\\";g')" \
+            /usr/sbin/arango-init-database \
+	            --server.rest-server false \
+				--server.statistics false --foxx.queues false \
+                --uid arangodb --gid arangodb || true
     fi
+
     db_set @CPACK_PACKAGE_NAME@/password_again ""
     db_set @CPACK_PACKAGE_NAME@/password ""
     db_go
 fi
 
 # check if we should upgrade the database directory
+UPGRADE=false #requires upgrade
+set +e
+$ARANGODB --uid arangodb --gid arangodb \
+          --server.rest-server false --log.foreground-tty false \
+          --database.check-version
+exit_status=$?
+set -e
 
-UPGRADE=false
-$ARANGODB --uid arangodb --gid arangodb --server.rest-server false --log.foreground-tty false --database.check-version \
-    || UPGRADE=true
+if [ $exit_status -eq "$(ar_exitcode_string_to_num EXIT_UPGRADE_REQUIRED)" ]; then
+    UPGRADE=true
+else
+    ar_exit_by_num $exit_status
+fi
 
-db_get @CPACK_PACKAGE_NAME@/upgrade
+
+db_get @CPACK_PACKAGE_NAME@/upgrade #wants upgrade
 if [ "$RET" = "true" ];  then
     if [ "$UPGRADE" = "true" ];  then
         db_get @CPACK_PACKAGE_NAME@/backup
 
         if [ "$RET" = "true" ];  then
-            BACKUP="/var/lib/arangodb3-`date +%F-%H-%M-%S`"
-            cp -a /var/lib/arangodb3 $BACKUP
+            BACKUP="/var/lib/arangodb3-$(date +%F-%H-%M-%S)"
+            cp -a /var/lib/arangodb3 "$BACKUP"
             echo "A backup of your database files has been stored in $BACKUP."
         fi
 
         echo "Upgrading database files."
-        $ARANGODB --uid arangodb --gid arangodb --server.rest-server false --log.level error --database.auto-upgrade true
+        set +e
+        $ARANGODB --uid arangodb --gid arangodb --server.rest-server false --log.level error --database.auto-upgrade || ar_ferr $?
+        set -e
     else
         echo "Database files are up-to-date."
     fi
 elif [ "$UPGRADE" = "true" ];  then
     echo "Warning: database files need upgrade, automatic upgrade is disable, please do it manually."
     echo "After you've prepared your system for upgrade run "
-    echo "  /etc/init.d/arangodb3 upgrade"
+    echo "  /usr/share/arangodb3/arangodb-update-db"
     echo "  dpkg --pending --configure"
     echo "after the packaging system is in stable state again."
 else
@@ -62,21 +102,21 @@ db_stop
 
 if test "@CPACK_SYSTEMD_FOUND@" -eq 1 ; then
     # This will only remove masks created by d-s-h on package removal.
-    deb-systemd-helper unmask arangodb3.service >/dev/null || true
+    deb-systemd-helper unmask @CPACK_PACKAGE_NAME@.service >/dev/null || true
     # was-enabled defaults to true, so new installations run enable.
-    if deb-systemd-helper --quiet was-enabled arangodb3.service; then
+    if deb-systemd-helper --quiet was-enabled @CPACK_PACKAGE_NAME@.service; then
         # Enables the unit on first installation, creates new
         # symlinks on upgrades if the unit file has changed.
-        deb-systemd-helper enable arangodb3.service >/dev/null || true
+        deb-systemd-helper enable @CPACK_PACKAGE_NAME@.service >/dev/null || true
     else
         # Update the statefile to add new symlinks (if any), which need to be
         # cleaned up on purge. Also remove old symlinks.
-        deb-systemd-helper update-state arangodb3.service >/dev/null || true
+        deb-systemd-helper update-state @CPACK_PACKAGE_NAME@.service >/dev/null || true
     fi
     # Automatically added by dh_systemd_start
     if [ -d /run/systemd/system ]; then
         systemctl --system daemon-reload >/dev/null || true
-        deb-systemd-invoke start arangodb3.service >/dev/null || true
+        deb-systemd-invoke start @CPACK_PACKAGE_NAME@.service >/dev/null || true
     fi
     # End automatically added section
 else

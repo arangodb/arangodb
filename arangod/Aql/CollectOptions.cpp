@@ -21,7 +21,7 @@
 /// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/CollectOptions.h"
+#include "CollectOptions.h"
 #include "Basics/Exceptions.h"
 
 #include <velocypack/velocypack-aliases.h>

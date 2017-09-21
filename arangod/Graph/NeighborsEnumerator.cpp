@@ -25,8 +25,9 @@
 
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/EdgeCursor.h"
+#include "Graph/Traverser.h"
 #include "Graph/TraverserCache.h"
-#include "VocBase/Traverser.h"
+#include "Graph/TraverserOptions.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -63,7 +64,7 @@ bool NeighborsEnumerator::next() {
       _lastDepth.swap(_currentDepth);
       _currentDepth.clear();
       for (auto const& nextVertex : _lastDepth) {
-        auto callback = [&](std::unique_ptr<EdgeDocumentToken>&&,
+        auto callback = [&](EdgeDocumentToken&&,
                             VPackSlice other, size_t cursorId) {
           // Counting should be done in readAll
           StringRef v;

@@ -8,7 +8,15 @@ For string processing, AQL offers the following functions:
 `CHAR_LENGTH(value) → length`
 
 Return the number of characters in *value* (not byte length).
-This is a synonym for [LENGTH()](#length).
+
+|input|length|
+|---|---|
+|String|number of unicode characters|
+|Number|number of unicode characters that represent the number|
+|Array / Object|number of unicode characters from the resulting stringification|
+|true| 4 |
+|false| 5 |
+|null| 0 |
 
 ### CONCAT()
 
@@ -361,7 +369,7 @@ you need to define a pattern group by wrapping the subexpression in parentheses
 and place the quantifier right behind it: `(xyz)+`.
  
 If the regular expression in *search* is invalid, a warning will be raised
-and the function will return *false*.
+and the function will return *null*.
 
 ```js
 REGEX_TEST("the quick brown fox", "the.*fox") // true
@@ -387,7 +395,7 @@ For more details about the rules for characters and sequences refer
 [REGEX_TEST()](#regextest).
  
 If the regular expression in *search* is invalid, a warning will be raised
-and the function will return *false*.
+and the function will return *null*.
 
 ```js
 REGEX_REPLACE("the quick brown fox", "the.*fox", "jumped over") // jumped over

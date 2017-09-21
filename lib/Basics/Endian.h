@@ -61,7 +61,7 @@ inline uint16_t hostToLittle(uint16_t in){
   return OSSwapHostToLittleInt16(in);
 #elif __linux__
   return htole16(in);
-#elif __WIN32
+#elif _WIN32
   if(!isLittleEndian()){
     ByteSwap(&in,2);
   }
@@ -74,7 +74,7 @@ inline uint32_t hostToLittle(uint32_t in){
   return OSSwapHostToLittleInt32(in);
 #elif __linux__
   return htole32(in);
-#elif __WIN32
+#elif _WIN32
   if(!isLittleEndian()){
     ByteSwap(&in,4);
   }
@@ -87,7 +87,7 @@ inline uint64_t hostToLittle(uint64_t in){
   return OSSwapHostToLittleInt64(in);
 #elif __linux__
   return htole64(in);
-#elif __WIN32
+#elif _WIN32
   if(!isLittleEndian()){
     ByteSwap(&in,8);
   }
@@ -103,7 +103,7 @@ std::memcpy(&tmp,&in,2);
   tmp = OSSwapHostToLittleInt16(tmp);
 #elif __linux__
   tmp =  htole16(tmp);
-#elif __WIN32
+#elif _WIN32
   if(!isLittleEndian()){
     ByteSwap(&tmp,2);
   }
@@ -121,7 +121,7 @@ std::memcpy(&tmp,&in,4);
   tmp = OSSwapHostToLittleInt32(tmp);
 #elif __linux__
   tmp =  htole32(tmp);
-#elif __WIN32
+#elif _WIN32
   if(!isLittleEndian()){
     ByteSwap(&tmp,4);
   }
@@ -139,7 +139,7 @@ std::memcpy(&tmp,&in,8);
   tmp = OSSwapHostToLittleInt64(tmp);
 #elif __linux__
   tmp =  htole64(tmp);
-#elif __WIN32
+#elif _WIN32
   if(!isLittleEndian()){
     ByteSwap(&tmp,8);
   }
@@ -155,7 +155,7 @@ inline uint16_t littleToHost(uint16_t in){
   return OSSwapLittleToHostInt16(in);
 #elif __linux__
   return le16toh(in);
-#elif __WIN32
+#elif _WIN32
   if(!isLittleEndian()){
     ByteSwap(&in,2);
   }
@@ -168,7 +168,7 @@ inline uint32_t littleToHost(uint32_t in){
   return OSSwapLittleToHostInt32(in);
 #elif __linux__
   return le32toh(in);
-#elif __WIN32
+#elif _WIN32
   if(!isLittleEndian()){
     ByteSwap(&in,4);
   }
@@ -181,7 +181,7 @@ inline uint64_t littleToHost(uint64_t in){
   return OSSwapLittleToHostInt64(in);
 #elif __linux__
   return le64toh(in);
-#elif __WIN32
+#elif _WIN32
   if(!isLittleEndian()){
     ByteSwap(&in,8);
   }
@@ -196,7 +196,7 @@ std::memcpy(&tmp,&in,2);
   tmp = OSSwapLittleToHostInt16(tmp);
 #elif __linux__
   tmp = le16toh(tmp);
-#elif __WIN32
+#elif _WIN32
   if(!isLittleEndian()){
     ByteSwap(&tmp,2);
   }
@@ -212,7 +212,7 @@ std::memcpy(&tmp,&in,4);
   tmp = OSSwapLittleToHostInt32(tmp);
 #elif __linux__
   tmp = le32toh(tmp);
-#elif __WIN32
+#elif _WIN32
   if(!isLittleEndian()){
     ByteSwap(&tmp,4);
   }
@@ -228,7 +228,7 @@ std::memcpy(&tmp,&in,8);
   tmp = OSSwapLittleToHostInt64(tmp);
 #elif __linux__
   tmp = le64toh(tmp);
-#elif __WIN32
+#elif _WIN32
   if(!isLittleEndian()){
     ByteSwap(&tmp,8);
   }

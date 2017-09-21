@@ -33,7 +33,7 @@ static inline v8::Handle<v8::Value> TRI_V8UInt64String(v8::Isolate* isolate, T v
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace(static_cast<uint64_t>(value), &buffer[0]);
 
-  return TRI_V8_PAIR_STRING(&buffer[0], static_cast<int>(len));
+  return TRI_V8_PAIR_STRING(isolate, &buffer[0], static_cast<int>(len));
 }
 
 // converts a V8 object to a string

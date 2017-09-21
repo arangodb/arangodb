@@ -63,15 +63,16 @@ function dumpAuthentication (options) {
 
   print(CYAN + 'dump_authentication tests...' + RESET);
 
-  const auth1 = {
-    'server.authentication': 'true'
-  };
-
   const auth2 = {
     'server.authentication': 'true'
   };
 
-  let instanceInfo = pu.startInstance('tcp', options, auth1, 'dump_authentication');
+  let instanceInfo = pu.startInstance('tcp',
+                                      options, {
+                                        'server.authentication': 'true',
+                                        'server.jwt-secret': 'haxxmann'
+                                      },
+                                      'dump_authentication');
 
   if (instanceInfo === false) {
     return {

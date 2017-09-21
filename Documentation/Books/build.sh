@@ -1,5 +1,5 @@
 #!/bin/bash
-ALLBOOKS="HTTP AQL Manual"
+ALLBOOKS="HTTP AQL Manual Cookbook"
 OTHER_MIME="pdf epub mobi"
 
 
@@ -336,7 +336,6 @@ function build-book-symlinks()
 function build-book()
 {
     export NAME="$1"
-    NODE_MODULES_DIR="$2"
     echo "${STD_COLOR}##### Generating book ${NAME}${RESET}"
     ppbook-precheck-bad-code-sections "${NAME}"
 
@@ -602,6 +601,7 @@ function build-dist-books()
 {
     set -x
     set -e
+    rm -rf books ppbooks
     PIDFILE=/tmp/xvfb_20_0.pid
     if test -z "${DISPLAY}"; then
 	DISPLAY=:20.0
@@ -616,9 +616,6 @@ function build-dist-books()
     (
 	mv books "ArangoDB-${newVersionNumber}"
         pwd
-	if test -n "${COOKBOOK_DIR}" ; then
-	    cp -a "${COOKBOOK_DIR}" "ArangoDB-${newVersionNumber}/cookbook"
-	fi
 	tar -czf "${OUTPUT_DIR}/ArangoDB-${newVersionNumber}.tar.gz" "ArangoDB-${newVersionNumber}"
 	mv "ArangoDB-${newVersionNumber}" books
     )
@@ -641,9 +638,8 @@ Available Verbs:
 If ../../VERSION contains the string "devel" the current date will be added to all pages containing the version.
 
 Available Arguments:
-    name - if a single book is to be built its name
+    name - if a single book is to be built its name - one of [ ${ALLBOOKS} ]
     filter - if only one file should be processed (speedup) specify its md filename
-    cookBook - [dist target only] Directory where to find a checkout of a cookbook so it can be included
     outputDir - [dist target only] where to put all generated files to
     nodeModulesDir - directory pre-loaded with the required gitbook plugins so we don't need to download them
 
@@ -677,8 +673,6 @@ while [ $# -gt 0 ];  do
 	    ;;
 	--cookBook)
 	    shift
-	    COOKBOOK_DIR=$1
-	    export COOKBOOK_DIR
 	    shift
 	    ;;
 	--nodeModulesDir)

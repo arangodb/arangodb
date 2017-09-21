@@ -42,6 +42,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestHandler/RestAdminLogHandler.h"
+#include "RestHandler/RestAdminRoutingHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestBatchHandler.h"
@@ -52,7 +53,9 @@
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEchoHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
+#include "RestHandler/RestEndpointHandler.h"
 #include "RestHandler/RestEngineHandler.h"
+#include "RestHandler/RestExplainHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
@@ -64,6 +67,7 @@
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
+#include "RestHandler/RestTransactionHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestHandler/RestUsersHandler.h"
 #include "RestHandler/RestVersionHandler.h"
@@ -103,7 +107,6 @@ GeneralServerFeature::GeneralServerFeature(
   startsAfter("Database");
   startsAfter("Endpoint");
   startsAfter("FoxxQueues");
-  startsAfter("MMFilesLogfileManager");
   startsAfter("Random");
   startsAfter("Scheduler");
   startsAfter("Server");
@@ -352,7 +355,7 @@ void GeneralServerFeature::defineHandlers() {
       RestVocbaseBaseHandler::CURSOR_PATH,
       RestHandlerCreator<RestCursorHandler>::createData<aql::QueryRegistry*>,
       queryRegistry);
-  
+
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::DATABASE_PATH,
       RestHandlerCreator<RestDatabaseHandler>::createNoData);
@@ -366,9 +369,13 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<RestEdgesHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::ENDPOINT_PATH,
+      RestHandlerCreator<RestEndpointHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::IMPORT_PATH,
       RestHandlerCreator<RestImportHandler>::createNoData);
-  
+
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::INDEX_PATH,
       RestHandlerCreator<RestIndexHandler>::createNoData);
@@ -398,7 +405,7 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::UPLOAD_PATH,
       RestHandlerCreator<RestUploadHandler>::createNoData);
-  
+
   _handlerFactory->addPrefixHandler(
     RestVocbaseBaseHandler::USERS_PATH,
     RestHandlerCreator<RestUsersHandler>::createNoData);
@@ -415,6 +422,9 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_api/aql-builtin",
       RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      "/_api/explain", RestHandlerCreator<RestExplainHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       "/_api/query", RestHandlerCreator<RestQueryHandler>::createNoData);
@@ -464,6 +474,9 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addHandler(
       "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
+  
+  _handlerFactory->addHandler(
+      "/_api/transaction", RestHandlerCreator<RestTransactionHandler>::createNoData);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _handlerFactory->addHandler(
@@ -486,6 +499,10 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_admin/log",
       RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      "/_admin/routing",
+      RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       "/_admin/work-monitor",
