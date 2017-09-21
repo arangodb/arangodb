@@ -185,8 +185,6 @@ index_t State::logNonBlocking(
 
   _logLock.assertLockedByCurrentThread();
 
-  TRI_ASSERT(!_log.empty()); // log must not ever be empty
-
   auto buf = std::make_shared<Buffer<uint8_t>>();
   
   buf->append((char const*)slice.begin(), slice.byteSize());
