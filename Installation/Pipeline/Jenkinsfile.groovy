@@ -226,7 +226,24 @@ def checkEnabledMaintainer(maintainer, os, text) {
     return true
 }
 
-def checkCoresAndSave(os, runDir, name, archRun) {
+def checkCores(os, runDir, name, archRun) {
+    if (os == 'windows') {
+        def files = findFiles(glob: "${runDir}/*.dmp")
+        
+        if (files.length > 0) {
+            error("found windows core file")
+        }
+    }
+    else {
+        def files = findFiles(glob: "${runDir}/core*")
+
+        if (files.length > 0) {
+            error("found linux core file")
+        }
+    }
+}
+
+def saveCores(os, runDir, name, archRun) {
     if (os == 'windows') {
         powershell "move-item -Force -ErrorAction Ignore ${runDir}/logs ${archRun}/${name}.logs"
         powershell "move-item -Force -ErrorAction Ignore ${runDir}/out ${archRun}/${name}.logs"
@@ -241,7 +258,7 @@ def checkCoresAndSave(os, runDir, name, archRun) {
 
             powershell "copy-item .\\build\\bin\\* -Include *.exe,*.pdb,*.ilk ${archRun}"
 
-            error("found dmp file")
+            return true
         }
     }
     else {
@@ -256,9 +273,11 @@ def checkCoresAndSave(os, runDir, name, archRun) {
 
             sh "cp -a build/bin/* ${archRun}"
 
-            error("found core file")
+            return true
         }
     }
+
+    return false
 }
 
 def getStartPort(os) {
@@ -745,12 +764,12 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                     setupTestEnvironment(os, edition, maintainer, logFile, runDir)
 
                     try {
-                        // seriously...30 minutes is the super absolute max max max.
+                        // seriously...45 minutes is the super absolute max max max.
                         // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
                         // even if the features are green this is completely broken performance wise..
                         // DO NOT INCREASE!!
 
-                        timeout(os == 'linux' ? 30 : 60) {
+                        timeout(os == 'linux' ? 45 : 75) {
                             def tmpDir = pwd() + "/" + runDir + "/tmp"
 
                             withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
@@ -773,6 +792,8 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                                 }
                             }
                         }
+
+                        checkCores()
                     }
                     catch (exc) {
                         def msg = exc.toString()
@@ -797,7 +818,7 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                         def logFileRel       = "${arch}/${name}.log"
                         def logFileFailedRel = "${arch}-FAIL/${name}.log"
 
-                        checkCoresAndSave(os, runDir, name, archRun)
+                        saveCores(os, runDir, name, archRun)
 
                         archiveArtifacts allowEmptyArchive: true,
                             artifacts: "${archDir}-FAIL.txt, ${logFileRel}, ${logFileFailedRel}",
