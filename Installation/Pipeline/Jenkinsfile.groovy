@@ -226,7 +226,7 @@ def checkEnabledMaintainer(maintainer, os, text) {
     return true
 }
 
-def checkCores(os, runDir, name, archRun) {
+def checkCores(os, runDir) {
     if (os == 'windows') {
         def files = findFiles(glob: "${runDir}/*.dmp")
         
@@ -793,7 +793,7 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                             }
                         }
 
-                        checkCores()
+                        checkCores(os, runDir)
                     }
                     catch (exc) {
                         def msg = exc.toString()
