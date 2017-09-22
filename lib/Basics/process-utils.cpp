@@ -85,9 +85,15 @@ ProcessInfo::ProcessInfo():
   _scClkTck(0){}
 
 ExternalId::ExternalId():
+#ifndef _WIN32
   _pid(0),
   _readPipe(-1),
-  _writePipe(-1){}
+  _writePipe(-1) {}
+#else
+  _pid(0),
+  _readPipe(INVALID_HANDLE_VALUE),
+  _writePipe(INVALID_HANDLE_VALUE) {}
+#endif
 
 ExternalProcess::ExternalProcess():
   _executable(nullptr),
@@ -1160,7 +1166,7 @@ static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
   
   hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
   if (hProcess != nullptr) {
-    ExternalProcess* external = ExternalProcess();
+    ExternalProcess* external = new ExternalProcess();
 
     if (external == nullptr) {
       // gracefully handle out of memory
