@@ -308,7 +308,7 @@ bool Agent::recvAppendEntriesRPC(
   term_t term, std::string const& leaderId, index_t prevIndex, term_t prevTerm,
   index_t leaderCommitIndex, query_t const& queries) {
 
-  LOG_TOPIC(TRACE, Logger::AGENCY) << "Got AppendEntriesRPC from "
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Got AppendEntriesRPC from "
     << leaderId << " with term " << term;
 
   VPackSlice payload = queries->slice();
@@ -357,6 +357,9 @@ bool Agent::recvAppendEntriesRPC(
   if (_commitIndex >= _state.nextCompactionAfter()) {
     _compactor.wakeUp();
   }
+
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Finished AppendEntriesRPC from "
+    << leaderId << " with term " << term;
 
   return ok;
 }
