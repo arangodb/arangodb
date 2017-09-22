@@ -109,9 +109,7 @@ bool AuthInfo::parseUsers(VPackSlice const& slice) {
     // otherwise all following update/replace/remove operations on the
     // user will fail
 
-    // intentional copy, as we'll be moving out of auth soon
-    std::string username = auth.username(); 
-    _authInfo.emplace(std::move(username), std::move(auth));
+    _authInfo.emplace(auth.username(), std::move(auth));
   }
 
   return true;
@@ -124,7 +122,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
-
+  
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT;
@@ -146,7 +144,9 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
-    return std::shared_ptr<VPackBuilder>();
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code,
+                                   "Error executing user query");
+    //return std::shared_ptr<VPackBuilder>();
   }
 
   VPackSlice usersSlice = queryResult.result->slice();
@@ -173,7 +173,7 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
   ExecContext* oldExe = ExecContext::CURRENT;
   ExecContext::CURRENT = nullptr;
   TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  
   std::string const queryStr("FOR u IN _users FILTER u.user == @name RETURN u");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
 
@@ -192,7 +192,8 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, "query error");
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code,
+                                   "Error executing user query");
   }
 
   VPackSlice usersSlice = queryResult.result->slice();
@@ -237,7 +238,6 @@ void AuthInfo::loadFromDB() {
   }
 
   auto role = ServerState::instance()->getRole();
-
   if (role != ServerState::ROLE_SINGLE &&
       role != ServerState::ROLE_COORDINATOR) {
     _outdated = false;
@@ -300,15 +300,14 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
-
+  
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT;
   ExecContext::CURRENT = nullptr;
   TRI_DEFER(ExecContext::CURRENT = oldExe);
 
-  std::shared_ptr<transaction::Context> ctx(
-      new transaction::StandaloneContext(vocbase));
+  auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -443,15 +442,14 @@ static Result UpdateUser(VPackSlice const& user) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
-
+  
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT;
   ExecContext::CURRENT = nullptr;
   TRI_DEFER(ExecContext::CURRENT = oldExe);
 
-  std::shared_ptr<transaction::Context> ctx(
-      new transaction::StandaloneContext(vocbase));
+  auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -529,8 +527,8 @@ Result AuthInfo::accessUser(
 }
 
 VPackBuilder AuthInfo::serializeUser(std::string const& user) {
-  // loadFromDB();
-  // READ_LOCKER(guard, _authInfoLock)
+  loadFromDB();
+  // will query db directly, no need for _authInfoLock
   VPackBuilder doc = QueryUser(_queryRegistry, user);
   VPackBuilder result;
   if (!doc.isEmpty()) {
@@ -545,15 +543,14 @@ static Result RemoveUserInternal(AuthUserEntry const& entry) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
-
+  
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT;
   ExecContext::CURRENT = nullptr;
   TRI_DEFER(ExecContext::CURRENT = oldExe);
 
-  std::shared_ptr<transaction::Context> ctx(
-      new transaction::StandaloneContext(vocbase));
+  auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
 
@@ -648,7 +645,6 @@ Result AuthInfo::setConfigData(std::string const& user,
   partial.close();
 
   return UpdateUser(partial.slice());
-  ;
 }
 
 VPackBuilder AuthInfo::getUserData(std::string const& username) {
@@ -754,6 +750,8 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
 }
 
 // public called from HttpCommTask.cpp and VstCommTask.cpp
+// should only lock if required, otherwise we will serialize all
+// requests whether we need to or not
 AuthResult AuthInfo::checkAuthentication(AuthenticationMethod authType,
                                          std::string const& secret) {
   switch (authType) {

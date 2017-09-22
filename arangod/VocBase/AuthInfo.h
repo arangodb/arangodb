@@ -50,6 +50,7 @@ class AuthResult {
       : _username(username), _authorized(false) {}
 
   std::string _username;
+  /// User exists and password was checked
   bool _authorized;
 };
 
