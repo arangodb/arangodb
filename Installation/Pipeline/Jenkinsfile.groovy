@@ -121,6 +121,11 @@ restrictions = [:]
 // overview of configured builds and tests
 overview = ""
 
+// results
+resultsStart = [:]
+resultsStop = [:]
+resultsStatus = [:]
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             CONSTANTS AND HELPERS
 // -----------------------------------------------------------------------------
@@ -307,6 +312,23 @@ def deleteDirDocker(os) {
 
 def shellAndPipe(command, logfile) {
   sh "(echo 1 > \"${logfile}.result\" ; ${command} ; echo \$? > \"${logfile}.result\") 2>&1 | tee -a \"${logfile}\" ; exit `cat \"${logfile}.result\"`"
+}
+
+def logStartStage(logFile) {
+    resultsStart[logFile] = new Date()
+    resultsStatus[logFile] = "started"
+}
+
+def logStopStage(logFile) {
+    resultsStop[logFile] = new Date()
+    resultsStatus[logFile] = "succeeded"
+}
+
+def logExceptionStage(logFile, exc) {
+    def msg = exc.toString()
+
+    resultsStop[logFile] = new Date()
+    resultsStatus[logFile] = "failed ${msg}"
 }
 
 // -----------------------------------------------------------------------------
@@ -613,10 +635,16 @@ def jslint(os, edition, maintainer) {
     def logFile = "${arch}/jslint.log"
 
     try {
+        logStartStage(logFile)
+
         shellAndPipe("./Installation/Pipeline/test_jslint.sh",logFile)
         sh "if grep ERROR ${logFile}; then exit 1; fi"
+
+        logStopStage(logFile)
     }
     catch (exc) {
+        logExceptionStage(logFile, exc)
+
         renameFolder(arch, archFail)
         fileOperations([fileCreateOperation(fileContent: 'JSLINT FAILED', fileName: "${archDir}-FAIL.txt")])
         throw exc
@@ -764,6 +792,8 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                     setupTestEnvironment(os, edition, maintainer, logFile, runDir)
 
                     try {
+                        logStartStage(logFile)
+
                         // seriously...45 minutes is the super absolute max max max.
                         // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
                         // even if the features are green this is completely broken performance wise..
@@ -794,8 +824,11 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                         }
 
                         checkCores(os, runDir)
+                        logStopStage(logFile)
                     }
                     catch (exc) {
+                        logExceptionStage(logFile, exc)
+
                         def msg = exc.toString()
 
                         echo "caught error, copying log to ${logFileFailed}: ${msg}"
@@ -1069,6 +1102,8 @@ def buildEdition(os, edition, maintainer) {
     def logFile = "${arch}/build.log"
 
     try {
+        logStartStage(logFile)
+
         if (os == 'linux' || os == 'mac') {
             sh "echo \"Host: `hostname`\" | tee -a ${logFile}"
             sh "echo \"PWD:  `pwd`\" | tee -a ${logFile}"
@@ -1099,8 +1134,12 @@ def buildEdition(os, edition, maintainer) {
 
             powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}_${maintainer}.ps1"
         }
+
+        logStopStage(logFile)
     }
     catch (exc) {
+        logExceptionStage(logFile, exc)
+
         def msg = exc.toString()
         
         fileOperations([
@@ -1289,4 +1328,20 @@ timestamps {
     }
 
     runOperatingSystems(['linux', 'mac', 'windows'])
+}
+
+results = ""
+
+for (key in resultsStart.keySet()) {
+    def start = resultsStart[key] ?: ""
+    def stop = resultsStop[key] ?: ""
+    def msg = resultsStatus[key] ?: ""
+    def diff = (start != "" && stop != "") ? TimeCategory.minus(stop, start) : ""
+
+    results += "${key}: ${start} - ${stop} (${diff}) ${msg}\n"
+}
+
+node("master") {
+    fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
+    archiveArtifacts(allowEmptyArchive: true, artifacts: "results.txt")
 }
