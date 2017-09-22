@@ -2365,7 +2365,7 @@ static void JS_ProcessStatistics(
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  TRI_process_info_t info = TRI_ProcessInfoSelf();
+  ProcessInfo info = TRI_ProcessInfoSelf();
   double rss = (double)info._residentSize;
   double rssp = 0;
 
@@ -3452,7 +3452,7 @@ static void JS_ExecuteExternal(
     usePipes = TRI_ObjectToBoolean(args[2]);
   }
 
-  TRI_external_id_t external;
+  ExternalId external;
   TRI_CreateExternalProcess(*name, const_cast<char const**>(arguments),
                             (size_t)n, usePipes, &external);
   if (arguments != nullptr) {
@@ -3519,8 +3519,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "statusExternal(<external-identifier>[, <wait>])");
   }
 
-  TRI_external_id_t pid;
-  memset(&pid, 0, sizeof(TRI_external_id_t));
+  ExternalId pid;
 
 #ifndef _WIN32
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(args[0], true));
@@ -3532,7 +3531,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     wait = TRI_ObjectToBoolean(args[1]);
   }
 
-  TRI_external_status_t external = TRI_CheckExternalProcess(pid, wait);
+  ExternalProcessStatus external = TRI_CheckExternalProcess(pid, wait);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
   char const* status = "UNKNOWN";
@@ -3587,8 +3586,8 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
  static void convertStatusToV8(v8::FunctionCallbackInfo<v8::Value> const& args,
                                v8::Handle<v8::Object> &result,
-                               TRI_external_status_t &external_status,
-                               TRI_external_id_t &external) {
+                               ExternalProcessStatus &external_status,
+                               ExternalId &external) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   result->Set(TRI_V8_ASCII_STRING(isolate, "pid"),
               v8::Number::New(isolate, external._pid));
@@ -3734,7 +3733,7 @@ static void JS_ExecuteAndWaitExternal(
     usePipes = TRI_ObjectToBoolean(args[2]);
   }
 
-  TRI_external_id_t external;
+  ExternalId external;
   TRI_CreateExternalProcess(*name, const_cast<char const**>(arguments),
                             static_cast<size_t>(n), usePipes, &external);
   if (arguments != nullptr) {
@@ -3751,12 +3750,11 @@ static void JS_ExecuteAndWaitExternal(
   }
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  TRI_external_id_t pid;
-  memset(&pid, 0, sizeof(TRI_external_id_t));
+  ExternalId pid;
 
   pid._pid = external._pid;
 
-  TRI_external_status_t external_status = TRI_CheckExternalProcess(pid, true);
+  auto external_status = TRI_CheckExternalProcess(pid, true);
 
   convertStatusToV8(args, result, external_status, external);
 
@@ -3791,8 +3789,7 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     isTerminating = TRI_IsDeadlySignal(signal);
   }
 
-  TRI_external_id_t pid;
-  memset(&pid, 0, sizeof(TRI_external_id_t));
+  ExternalId pid;
 
 #ifndef _WIN32
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(args[0], true));
@@ -3802,11 +3799,10 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // return the result
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  TRI_external_id_t external;
-  memset(&external, 0, sizeof(TRI_external_t));
+  ExternalId external;
   external._pid = pid._pid;
 
-  TRI_external_status_t external_status = TRI_KillExternalProcess(pid, signal, isTerminating);
+  auto external_status = TRI_KillExternalProcess(pid, signal, isTerminating);
 
   convertStatusToV8(args, result, external_status, external);
 
@@ -3829,8 +3825,7 @@ static void JS_SuspendExternal(
     TRI_V8_THROW_EXCEPTION_USAGE("suspendExternal(<external-identifier>)");
   }
 
-  TRI_external_id_t pid;
-  memset(&pid, 0, sizeof(TRI_external_id_t));
+  ExternalId pid;
 
 #ifndef _WIN32
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(args[0], true));
@@ -3860,8 +3855,7 @@ static void JS_ContinueExternal(
     TRI_V8_THROW_EXCEPTION_USAGE("continueExternal(<external-identifier>)");
   }
 
-  TRI_external_id_t pid;
-  memset(&pid, 0, sizeof(TRI_external_id_t));
+  ExternalId pid;
 
 #ifndef _WIN32
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(args[0], true));
