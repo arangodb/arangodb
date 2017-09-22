@@ -663,7 +663,6 @@ def getTests(os, edition, maintainer, mode, engine) {
 
    if (mode == "cluster") {
         tests += [
-            ["client_resilience", "client_resilience", ""],
             ["resilience", "resilience", ""]
         ]
     }
