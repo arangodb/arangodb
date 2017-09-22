@@ -109,7 +109,9 @@ bool AuthInfo::parseUsers(VPackSlice const& slice) {
     // otherwise all following update/replace/remove operations on the
     // user will fail
 
-    _authInfo.emplace(auth.username(), std::move(auth));
+    // intentional copy, as we'll be moving out of auth soon
+    std::string username = auth.username(); 
+    _authInfo.emplace(std::move(username), std::move(auth));
   }
 
   return true;

@@ -1,11 +1,14 @@
 devel
 -----
 
-* Removed --compat28 parameter from arangodump and replication API
+* Removed `--compat28` parameter from arangodump and replication API
+
+* fix Windows implementation for fs.getTempPath() to also create a
+  sub-directory as we do on Linux
 
 * ui: added replicationFactor option during SmartGraph creation.
 
-* make the mmfiles compactor configurable
+* make the MMFiles compactor configurable
 
 * leader-follower replication catchup code has been rewritten in C++
 

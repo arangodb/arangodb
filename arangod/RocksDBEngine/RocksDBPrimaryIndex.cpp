@@ -142,7 +142,7 @@ void RocksDBPrimaryIndex::load() {
     RocksDBCollection* rdb = static_cast<RocksDBCollection*>(_collection->getPhysical());
     uint64_t numDocs = rdb->numberDocuments();
     if (numDocs > 0) {
-      _cache->sizeHint(static_cast<double>(0.3 * numDocs));
+      _cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
     }
   }
 }

@@ -36,7 +36,7 @@ class MMFilesCompactionFeature : public application_features::ApplicationFeature
   static MMFilesCompactionFeature* COMPACTOR;
  private:
   /// @brief wait time between compaction runs when idle
-  uint64_t _compactionSleepTime;
+  double _compactionSleepTime;
 
   /// @brief compaction interval in seconds
   double _compactionCollectionInterval;
@@ -79,20 +79,20 @@ class MMFilesCompactionFeature : public application_features::ApplicationFeature
   ~MMFilesCompactionFeature() {}
 
   /// @brief wait time between compaction runs when idle
-  unsigned compactionSleepTime() const { return _compactionSleepTime * 1000000; }
+  uint64_t compactionSleepTime() const { return static_cast<uint64_t>(_compactionSleepTime) * 1000000ULL; }
 
   /// @brief compaction interval in seconds
   double compactionCollectionInterval() const { return _compactionCollectionInterval; }
   
   /// @brief maximum number of files to compact and concat
-  unsigned maxFiles() const { return _maxFiles; }
+  size_t maxFiles() const { return static_cast<size_t>(_maxFiles); }
 
   /// @brief maximum multiple of journal filesize of a compacted file
   /// a value of 3 means that the maximum filesize of the compacted file is
   /// 3 x (collection->journalSize)
-  unsigned maxSizeFactor() const { return _maxSizeFactor; }
+  uint64_t maxSizeFactor() const { return _maxSizeFactor; }
 
-  unsigned smallDatafileSize() const { return _smallDatafileSize; }
+  uint64_t smallDatafileSize() const { return _smallDatafileSize; }
   
   /// @brief maximum filesize of resulting compacted file
   uint64_t maxResultFilesize() const { return _maxResultFilesize; }
