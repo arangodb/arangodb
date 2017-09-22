@@ -661,6 +661,13 @@ def getTests(os, edition, maintainer, mode, engine) {
         }
     }
 
+   if (mode == "cluster") {
+        tests += [
+            ["client_resilience", "client_resilience", ""],
+            ["resilience", "resilience", ""]
+        ]
+    }
+ 
     return tests
 }
 
@@ -669,7 +676,7 @@ def setupTestEnvironment(os, edition, maintainer, logFile, runDir) {
         folderCreateOperation("${runDir}/tmp"),
     ])
 
-    def subdirs = ['build', 'etc', 'js', 'UnitTests']
+    def subdirs = ['build', 'etc', 'js', 'scripts', 'UnitTests']
 
     if (edition == "enterprise") {
        subdirs << "enterprise"
