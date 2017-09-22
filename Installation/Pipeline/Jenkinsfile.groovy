@@ -317,11 +317,15 @@ def shellAndPipe(command, logfile) {
 def logStartStage(logFile) {
     resultsStart[logFile] = new Date()
     resultsStatus[logFile] = "started"
+
+    echo "started ${logFile}: ${resultsStart[logFile]}"
 }
 
 def logStopStage(logFile) {
     resultsStop[logFile] = new Date()
-    resultsStatus[logFile] = "succeeded"
+    resultsStatus[logFile] = "finished"
+
+    echo "finished ${logFile}: ${resultsStop[logFile]}"
 }
 
 def logExceptionStage(logFile, exc) {
@@ -329,6 +333,8 @@ def logExceptionStage(logFile, exc) {
 
     resultsStop[logFile] = new Date()
     resultsStatus[logFile] = "failed ${msg}"
+
+    echo "failed ${logFile}: ${resultsStop[logFile]} ${msg}"
 }
 
 // -----------------------------------------------------------------------------
