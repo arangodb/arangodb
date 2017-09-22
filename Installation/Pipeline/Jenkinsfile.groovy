@@ -122,6 +122,7 @@ restrictions = [:]
 overview = ""
 
 // results
+resultsKeys = []
 resultsStart = [:]
 resultsStop = [:]
 resultsStatus = [:]
@@ -315,6 +316,8 @@ def shellAndPipe(command, logfile) {
 }
 
 def logStartStage(logFile) {
+    resultsKeys << logFile
+
     resultsStart[logFile] = new Date()
     resultsStatus[logFile] = "started"
 
@@ -962,7 +965,17 @@ def testStepParallel(os, edition, maintainer, modeList) {
         }
     }
 
-    parallel branches
+    def name = "test-${os}-${edition}-${maintainer}"
+
+    try {
+        logStartStage(name)
+        parallel branches
+        logStopStage(name)
+    }
+    catch (exc) {
+        logExceptionStage(name, exc)
+        throw exc
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -1228,11 +1241,17 @@ def createDockerImage(edition, maintainer, stageName) {
 
                     withEnv(["DOCKERTAG=${packageName}-${dockerTag}"]) {
                         try {
+                            logStartStage(logFile)
+
                             shellAndPipe("./scripts/build-docker.sh", logFile)
                             shellAndPipe("docker tag arangodb:${packageName}-${dockerTag} c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag}", logFile)
                             shellAndPipe("docker push c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag}", logFile)
+
+                            logStopStage(logFile)
                         }
                         catch (exc) {
+                            logExceptionStage(logFile, exc)
+
                             renameFolder(arch, archFail)
                             fileOperations([fileCreateOperation(fileContent: 'DOCKER FAILED', fileName: "${archDir}-FAIL.txt")])
                             throw exc
@@ -1338,7 +1357,7 @@ timestamps {
 
 results = ""
 
-for (key in resultsStart.keySet()) {
+for (key in resultsKeys) {
     def start = resultsStart[key] ?: ""
     def stop = resultsStop[key] ?: ""
     def msg = resultsStatus[key] ?: ""
