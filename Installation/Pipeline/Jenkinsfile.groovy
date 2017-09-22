@@ -766,6 +766,8 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                                     sh "echo \"PWD:  `pwd`\" | tee -a ${logFile}"
                                     sh "echo \"Date: `date`\" | tee -a ${logFile}"
 
+                                    shellAndPipe("cd ${runDir} ; ./build/bin/arangod --version", logFile)
+
                                     command = "(cd ${runDir} ; ${command})"
                                     echo "executing ${command}"
                                     shellAndPipe(command, logFile)
