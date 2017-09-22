@@ -593,7 +593,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
     arangodb::rest::RequestType::POST, path.str(),
     std::make_shared<std::string>("[]"), headerFields,
     std::make_shared<AgentCallback>(this, followerId, 0, 0),
-    _config.minPing() * _config.timeoutMult(), true);
+    3 * _config.minPing() * _config.timeoutMult(), true);
   _constituent.notifyHeartbeatSent(followerId);
 
   LOG_TOPIC(DEBUG, Logger::AGENCY)
