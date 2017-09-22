@@ -512,7 +512,7 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
 
       if (static_cast<CollectNode const*>(_exeNode)->_count) {
         // only set group count in result register
-        res->emplaceValue(row, _collectRegister, static_cast<uint64_t>(_currentGroup.groupLength));
+        res->emplaceValue(row, _collectRegister, AqlValueHintUInt(static_cast<uint64_t>(_currentGroup.groupLength)));
       } else if (static_cast<CollectNode const*>(_exeNode)->_expressionVariable !=
                 nullptr) {
         // copy expression result into result register

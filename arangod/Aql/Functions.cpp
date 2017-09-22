@@ -671,7 +671,7 @@ AqlValue Functions::ToBool(arangodb::aql::Query* query,
                            transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(a.toBoolean());
+  return AqlValue(AqlValueHintBool(a.toBoolean()));
 }
 
 /// @brief function TO_ARRAY
@@ -3478,7 +3478,7 @@ AqlValue Functions::IsSameCollection(
   std::string const second = ExtractCollectionName(trx, parameters, 1);
   
   if (!first.empty() && !second.empty()) {
-    return AqlValue(first == second);
+    return AqlValue(AqlValueHintBool(first == second));
   }
 
   RegisterWarning(query, "IS_SAME_COLLECTION",

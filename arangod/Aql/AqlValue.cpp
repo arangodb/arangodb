@@ -266,7 +266,7 @@ AqlValue AqlValue::at(transaction::Methods* trx,
 
       if (position >= 0 && position < static_cast<int64_t>(n)) {
         // only look up the value if it is within array bounds
-        return AqlValue(_data.range->at(static_cast<size_t>(position)));
+        return AqlValue(AqlValueHintInt(_data.range->at(static_cast<size_t>(position))));
       }
       // fall-through intentional
       break;

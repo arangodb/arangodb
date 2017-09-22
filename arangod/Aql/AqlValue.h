@@ -199,14 +199,6 @@ struct AqlValue final {
     setType(AqlValueType::DOCVEC);
   }
 
-  // construct boolean value type
-  // DEPRECATED
-  explicit AqlValue(bool value) {
-    VPackSlice slice(value ? arangodb::basics::VelocyPackHelper::TrueValue() : arangodb::basics::VelocyPackHelper::FalseValue());
-    memcpy(_data.internal, slice.begin(), static_cast<size_t>(slice.byteSize()));
-    setType(AqlValueType::VPACK_INLINE);
-  }
-  
   explicit AqlValue(AqlValueHintNull const&) noexcept {
     _data.internal[0] = 0x18; // null in VPack
     setType(AqlValueType::VPACK_INLINE);
@@ -223,7 +215,8 @@ struct AqlValue final {
   }
 
   // construct from a double value
-  explicit AqlValue(double value) noexcept {
+  explicit AqlValue(AqlValueHintDouble const&v) noexcept {
+    double value = v.value;
     if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL || value == -HUGE_VAL) {
       // null
       _data.internal[0] = 0x18;
@@ -243,11 +236,9 @@ struct AqlValue final {
     setType(AqlValueType::VPACK_INLINE);
   }
   
-  // construct from a double value
-  explicit AqlValue(AqlValueHintDouble const&v) noexcept : AqlValue(v.value) {}
-  
   // construct from an int64 value
-  explicit AqlValue(int64_t value) noexcept {
+  explicit AqlValue(AqlValueHintInt const& v) noexcept {
+    int64_t value = v.value;
     if (value >= 0 && value <= 9) {
       // a smallint
       _data.internal[0] = static_cast<uint8_t>(0x30U + value);
@@ -276,7 +267,8 @@ struct AqlValue final {
   }
   
   // construct from a uint64 value
-  explicit AqlValue(uint64_t value) noexcept {
+  explicit AqlValue(AqlValueHintUInt const& v) noexcept {
+    uint64_t value = v.value;
     if (value <= 9) {
       // a smallint
       _data.internal[0] = static_cast<uint8_t>(0x30U + value);
@@ -293,11 +285,6 @@ struct AqlValue final {
     }
     setType(AqlValueType::VPACK_INLINE);
   }
-  
-  // construct from a uint64 value
-  explicit AqlValue(AqlValueHintUInt const& v) noexcept : AqlValue(v.value) {}
-  
-  explicit AqlValue(AqlValueHintInt const& v) noexcept : AqlValue(v.value) {}
   
   // construct from char* and length, copying the string
   AqlValue(char const* value, size_t length) {

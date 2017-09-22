@@ -965,7 +965,7 @@ AqlValue Expression::executeSimpleExpressionNot(
   bool const operandIsTrue = operand.toBoolean();
 
   mustDestroy = false; // only a boolean
-  return AqlValue(!operandIsTrue);
+  return AqlValue(AqlValueHintBool(!operandIsTrue));
 }
 
 /// @brief execute an expression of type SIMPLE with +
@@ -983,10 +983,10 @@ AqlValue Expression::executeSimpleExpressionPlus(AstNode const* node,
 
     if (s.isSmallInt() || s.isInt()) {
       // can use int64
-      return AqlValue(s.getNumber<int64_t>());
+      return AqlValue(AqlValueHintInt(s.getNumber<int64_t>()));
     } else if (s.isUInt()) {
       // can use uint64
-      return AqlValue(s.getUInt());
+      return AqlValue(AqlValueHintUInt(s.getUInt()));
     }
     // fallthrouh intentional
   }
@@ -999,7 +999,7 @@ AqlValue Expression::executeSimpleExpressionPlus(AstNode const* node,
     value = 0.0;
   }
   
-  return AqlValue(+value);
+  return AqlValue(AqlValueHintDouble(+value));
 }
 
 /// @brief execute an expression of type SIMPLE with -
@@ -1016,12 +1016,12 @@ AqlValue Expression::executeSimpleExpressionMinus(AstNode const* node,
     VPackSlice const s = operand.slice();
     if (s.isSmallInt()) {
       // can use int64
-      return AqlValue(-s.getNumber<int64_t>());
+      return AqlValue(AqlValueHintInt(-s.getNumber<int64_t>()));
     } else if (s.isInt()) {
       int64_t v = s.getNumber<int64_t>();
       if (v != INT64_MIN) {
         // can use int64
-        return AqlValue(-v);
+        return AqlValue(AqlValueHintInt(-v));
       }
     }
     // fallthrouh intentional
@@ -1035,7 +1035,7 @@ AqlValue Expression::executeSimpleExpressionMinus(AstNode const* node,
     value = 0.0;
   }
   
-  return AqlValue(-value);
+  return AqlValue(AqlValueHintDouble(-value));
 }
 
 /// @brief execute an expression of type SIMPLE with AND
@@ -1147,7 +1147,7 @@ AqlValue Expression::executeSimpleExpressionComparison(
       result = !result;
     }
       
-    return AqlValue(result);
+    return AqlValue(AqlValueHintBool(result));
   }
 
   // all other comparison operators...
@@ -1160,17 +1160,17 @@ AqlValue Expression::executeSimpleExpressionComparison(
 
   switch (node->type) {
     case NODE_TYPE_OPERATOR_BINARY_EQ:
-      return AqlValue(compareResult == 0);
+      return AqlValue(AqlValueHintBool(compareResult == 0));
     case NODE_TYPE_OPERATOR_BINARY_NE:
-      return AqlValue(compareResult != 0);
+      return AqlValue(AqlValueHintBool(compareResult != 0));
     case NODE_TYPE_OPERATOR_BINARY_LT:
-      return AqlValue(compareResult < 0);
+      return AqlValue(AqlValueHintBool(compareResult < 0));
     case NODE_TYPE_OPERATOR_BINARY_LE:
-      return AqlValue(compareResult <= 0);
+      return AqlValue(AqlValueHintBool(compareResult <= 0));
     case NODE_TYPE_OPERATOR_BINARY_GT:
-      return AqlValue(compareResult > 0);
+      return AqlValue(AqlValueHintBool(compareResult > 0));
     case NODE_TYPE_OPERATOR_BINARY_GE:
-      return AqlValue(compareResult >= 0);
+      return AqlValue(AqlValueHintBool(compareResult >= 0));
     default:
       std::string msg("unhandled type '");
       msg.append(node->getTypeString());
@@ -1305,7 +1305,7 @@ AqlValue Expression::executeSimpleExpressionArrayComparison(
   }
   
   TRI_ASSERT(!mustDestroy); 
-  return AqlValue(overallResult);
+  return AqlValue(AqlValueHintBool(overallResult));
 }
 
 /// @brief execute an expression of type SIMPLE with TERNARY
@@ -1593,5 +1593,5 @@ AqlValue Expression::executeSimpleExpressionArithmetic(
   }
   
   // this will convert NaN, +inf & -inf to null
-  return AqlValue(result);
+  return AqlValue(AqlValueHintDouble(result));
 }
