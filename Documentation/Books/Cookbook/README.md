@@ -1,11 +1,12 @@
 # Cookbook
 
-This cookbook is filled with recipes to help you understand the [multi-model database ArangoDB][1] better
+This cookbook is filled with recipes to help you understand the [multi-model database ArangoDB](https://www.arangodb.com/) better
 and to help you with specific problems.
 
-You can participate and [write your own recipes][2]. You only need to write a recipe in markdown and make a [pull request to our repository][2]. 
+You can participate and [write your own recipes][2]. 
+You only need to write a recipe in markdown and make a [pull request to our repository][2]. 
 
-##Recipes
+## Recipes
 
 There will be some simple recipes to bring you closer to ArangoDB and show you the amount of possibilities
 of our Database. 
@@ -21,5 +22,4 @@ Every recipe has tags to for a better overview:
 
 *#api*, *#aql*, *#arangosh*, *#collection*, *#database*, *#debian*, *#docker*, *#document*, *#driver*, *#foxx*, *#giantswarm*, *#graph*, *#howto*, *#java*, *#javascript*, *#join*, *#nodejs*, *#windows*
 
-[1]: https://www.arangodb.com/
 [2]: https://github.com/arangodb/arangodb/tree/devel/Documentation/Books/Cookbook

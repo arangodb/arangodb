@@ -341,7 +341,8 @@ bool Constituent::checkLeader(
     termNoLock(term);
   }
 
-  if (!logMatches(prevLogIndex, prevLogTerm)) {
+  if ((prevLogIndex != 0 || prevLogTerm != 0) &&
+      !logMatches(prevLogIndex, prevLogTerm)) {
     return false;
   }
   

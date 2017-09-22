@@ -52,7 +52,7 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
             int64_t sts = senderTimeStamp.getNumber<int64_t>();
             int64_t now = std::llround(readSystemClock() * 1000);
             if (now - sts > 1000) {  // a second round trip time!
-              LOG_TOPIC(WARN, Logger::AGENCY)
+              LOG_TOPIC(DEBUG, Logger::AGENCY)
                 << "Round trip for appendEntriesRPC took " << now - sts
                 << " milliseconds, which is way too high!";
             }
@@ -63,11 +63,12 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
           }
         }
           
-        LOG_TOPIC(DEBUG, Logger::CLUSTER) << body->slice().toJson();
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "AgentCallback: "
+          << body->slice().toJson();
         _agent->reportIn(_slaveID, _last, _toLog);
       }
     }
-    LOG_TOPIC(TRACE, Logger::AGENCY) 
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Got good callback from AppendEntriesRPC: "
       << "comm_status(" << res->status
       << "), last(" << _last << "), follower("

@@ -133,11 +133,11 @@ std::shared_ptr<Cache> Manager::createCache(CacheType type,
   if (allowed) {
     switch (type) {
       case CacheType::Plain:
-        result = PlainCache::create(this, id, metadata, table,
+        result = PlainCache::create(this, id, std::move(metadata), table,
                                     enableWindowedStats);
         break;
       case CacheType::Transactional:
-        result = TransactionalCache::create(this, id, metadata, table,
+        result = TransactionalCache::create(this, id, std::move(metadata), table,
                                             enableWindowedStats);
         break;
       default:

@@ -88,6 +88,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   std::vector<TRI_voc_tick_t> getDatabaseIdsCoordinator(bool includeSystem);
   std::vector<TRI_voc_tick_t> getDatabaseIds(bool includeSystem);
   std::vector<std::string> getDatabaseNames();
+  std::vector<std::string> getDatabaseNamesCoordinator();
   std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
 
   int createDatabaseCoordinator(TRI_voc_tick_t id, std::string const& name, TRI_vocbase_t*& result);

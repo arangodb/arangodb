@@ -273,8 +273,6 @@ index_t State::logNonBlocking(
 
   _logLock.assertLockedByCurrentThread();
 
-  TRI_ASSERT(!_log.empty()); // log must not ever be empty
-
   auto buf = std::make_shared<Buffer<uint8_t>>();
   
   buf->append((char const*)slice.begin(), slice.byteSize());
@@ -1052,8 +1050,13 @@ bool State::compact(index_t cind) {
     compactPersisted(cind);
     removeObsolete(cind);
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to compact persisted store.";
-    LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+    if (!_agent->isStopping()) {
+      LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to compact persisted store.";
+      LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+    } else {
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to compact persisted store (no problem, already in shutdown).";
+      LOG_TOPIC(INFO, Logger::AGENCY) << e.what();
+    }
   }
   _nextCompactionAfter += _agent->config().compactionStepSize();
   return true;

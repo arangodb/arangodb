@@ -113,6 +113,19 @@ function ppbook-precheck-bad-code-sections()
     fi
 }
 
+function ppbook-precheck-bad-headings()
+{
+    NAME="$1"
+    echo "${STD_COLOR}##### checking for headers that won't proper display on github in ${NAME}${RESET}"
+    if grep -qRI  '^##*[a-zA-Z]' "${NAME}"; then
+	echo "${ERR_COLOR}"
+	echo "Headlines broken on github found: "
+        grep -RI  '^##*[a-zA-Z]' "${NAME}"
+	echo "${RESET}"
+	exit 1
+    fi
+}
+
 function ppbook-check-html-link()
 {
     NAME="$1"
@@ -338,6 +351,7 @@ function build-book()
     export NAME="$1"
     echo "${STD_COLOR}##### Generating book ${NAME}${RESET}"
     ppbook-precheck-bad-code-sections "${NAME}"
+    ppbook-precheck-bad-headings "${NAME}"
 
     if test ! -d "ppbooks/${NAME}"; then
 	mkdir -p "ppbooks/${NAME}"

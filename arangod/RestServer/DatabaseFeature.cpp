@@ -828,6 +828,31 @@ std::vector<TRI_voc_tick_t> DatabaseFeature::getDatabaseIds(
 }
 
 /// @brief return the list of all database names
+std::vector<std::string> DatabaseFeature::getDatabaseNamesCoordinator() {
+  std::vector<std::string> names;
+
+  {
+    auto unuser(_databasesProtector.use());
+    auto theLists = _databasesLists.load();
+
+    for (auto& p : theLists->_coordinatorDatabases) {
+      TRI_vocbase_t* vocbase = p.second;
+      TRI_ASSERT(vocbase != nullptr);
+      if (vocbase->isDropped()) {
+        continue;
+      }
+      names.emplace_back(vocbase->name());
+    }
+  }
+
+  std::sort(
+      names.begin(), names.end(),
+      [](std::string const& l, std::string const& r) -> bool { return l < r; });
+
+  return names;
+}
+
+/// @brief return the list of all database names
 std::vector<std::string> DatabaseFeature::getDatabaseNames() {
   std::vector<std::string> names;
 

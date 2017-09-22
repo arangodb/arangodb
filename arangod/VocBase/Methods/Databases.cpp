@@ -81,7 +81,7 @@ std::vector<std::string> Databases::list(std::string const& user) {
     if (ServerState::instance()->isCoordinator()) {
       auto auth = FeatureCacheFeature::instance()->authenticationFeature();
       std::vector<std::string> names;
-      std::vector<std::string> dbs = databaseFeature->getDatabaseNames();
+      std::vector<std::string> dbs = databaseFeature->getDatabaseNamesCoordinator();
       for (std::string const& db : dbs) {
         if (auth->canUseDatabase(user, db) != AuthLevel::NONE) {
           names.push_back(db);
