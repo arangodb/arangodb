@@ -1342,7 +1342,7 @@ for (key in resultsStart.keySet()) {
     def start = resultsStart[key] ?: ""
     def stop = resultsStop[key] ?: ""
     def msg = resultsStatus[key] ?: ""
-    def diff = (start != "" && stop != "") ? TimeCategory.minus(stop, start) : ""
+    def diff = (start != "" && stop != "") ? (stop - start) : ""
 
     results += "${key}: ${start} - ${stop} (${diff}) ${msg}\n"
 }
