@@ -35,6 +35,7 @@
 #include "Agency/State.h"
 #include "Agency/Store.h"
 #include "Agency/Supervision.h"
+#include "Basics/ConditionLocker.h"
 
 struct TRI_vocbase_t;
 
@@ -182,7 +183,7 @@ class Agent : public arangodb::Thread,
   void reportIn(std::string const&, index_t, size_t = 0);
 
   /// @brief Wait for slaves to confirm appended entries
-  AgentInterface::raft_commit_t waitFor(index_t last_entry, double timeout = 10.0) override;
+  AgentInterface::raft_commit_t waitFor(index_t last_entry, double timeout = 30.0) override;
 
   /// @brief Convencience size of agency
   size_t size() const;
@@ -291,6 +292,15 @@ class Agent : public arangodb::Thread,
   /// to hold the _ioLock to call this
   void setPersistedState(VPackSlice const&);
 
+  /// @brief Wakeup main loop of the agent
+  void wakeupMainLoop() {
+    {
+      CONDITION_LOCKER(guard, _appendCV);
+      _agentNeedsWakeup = true;
+    }
+    _appendCV.broadcast();
+  }
+
   /// @brief Get current term
   bool id(std::string const&);
 
@@ -320,9 +330,10 @@ class Agent : public arangodb::Thread,
   /// Locking policy: Note that this is only ever changed at startup, when
   /// answers to appendEntriesRPC messages come in on the leader, and when
   /// appendEntriesRPC calls are received on the follower. In each case
-  /// we hold the _ioLock when _commitIndex is changed. Reading the atomic
-  /// variable is allowed without a lock.
-  std::atomic<index_t> _commitIndex;
+  /// we hold the _ioLock when _commitIndex is changed. Reading and writing
+  /// must be done under the mutex of _waitForCV to allow a thread to wait
+  /// for a change using that condition variable.
+  index_t _commitIndex;
 
   /// @brief Spearhead (write) kv-store
   Store _spearhead;
@@ -333,11 +344,23 @@ class Agent : public arangodb::Thread,
   /// @brief Committed (read) kv-store for transient data
   Store _transient;
 
-  /// @brief Condition variable for appendEntries
+  /// @brief Condition variable for appending to the log and for 
+  /// AgentCallbacks. This is used by the main agent thread to go
+  /// to sleep when all necessary checks have been performed. When
+  /// new local log entries have been appended to the log or when
+  /// followers have confirmed more replications, one needs to set the
+  /// flag _agentNeedsWakeup (under the mutex) and then broadcast on
+  /// _appendCV. This will wake up the agent thread immediately.
   arangodb::basics::ConditionVariable _appendCV;
+  bool _agentNeedsWakeup;
 
-  /// @brief Condition variable for waitFor
-  arangodb::basics::ConditionVariable _waitForCV;
+  /// @brief Condition variable for waiting for confirmation. This is used
+  /// in threads that wait until the _commitIndex has reached a certain
+  /// index. Whenever _commitIndex is advanced (by incoming confirmations
+  /// in AgentCallbacks and later discovery in advanceCommitIndex). All
+  /// changes to _commitIndex are done under the mutex of _waitForCV
+  /// and are followed by a broadcast on this condition variable.
+  mutable arangodb::basics::ConditionVariable _waitForCV;
 
   /// The following two members are strictly only used in the
   /// Agent thread in sendAppendEntriesRPC. Therefore no protection is
