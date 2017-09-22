@@ -142,6 +142,10 @@ class Agent : public arangodb::Thread,
  private:
   void sendAppendEntriesRPC();
 
+  /// @brief check whether _confirmed indexes have been advance so that we
+  /// can advance _commitIndex and apply things to readDB.
+  void advanceCommitIndex();
+
  public:
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2). This is the version used by

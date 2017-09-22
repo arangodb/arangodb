@@ -231,7 +231,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
 
   auto startTime = system_clock::now();
 
-  // First phase: update the time stamps:
+  // only update the time stamps here:
   {
     MUTEX_LOCKER(tiLocker, _tiLock);
 
@@ -253,53 +253,10 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     }
   }
 
-  // Second phase: work on the _commitIndex:
-  index_t commitIndex = _commitIndex;  // take a local copy
-  if (index > commitIndex) {  // progress last commit?
-
-    size_t n = 0;
-
-    {
-      MUTEX_LOCKER(tiLocker, _tiLock);
-      for (auto const& i : _config.active()) {
-        n += (_confirmed[i] >= index);
-      }
-    }
-
-    // catch up read database and commit index
-    if (n > size() / 2) {
-
-      LOG_TOPIC(TRACE, Logger::AGENCY)
-        << "Critical mass for commiting " << commitIndex + 1
-        << " through " << index << " to read db";
-      {
-        // Change _readDB and _commitIndex atomically together:
-        _tiLock.assertNotLockedByCurrentThread();
-        term_t t = _constituent.term();
-        MUTEX_LOCKER(guard, _ioLock); 
-        _readDB.applyLogEntries(
-          _state.slices( /* inform others by callbacks */ 
-            commitIndex + 1, index), commitIndex, t, true);
-        _commitIndex = index;
-      }
-
-      if (_commitIndex >= _state.nextCompactionAfter()) {
-        _compactor.wakeUp();
-      }
-
-    }
-
-  }
-
   duration<double> reportInTime = system_clock::now() - startTime;
   if (reportInTime.count() > 0.1) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "reportIn took longer than 0.1s: " << reportInTime.count();
-  }
-
-  { // Wake up rest handler
-    CONDITION_LOCKER(guard, _waitForCV);
-    guard.broadcast();
   }
 }
 
@@ -328,30 +285,32 @@ bool Agent::recvAppendEntriesRPC(
 
   size_t nqs = payload.length();
 
+  if (nqs == 0) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Finished empty AppendEntriesRPC from "
+      << leaderId << " with term " << term;
+    return true;
+  }
+
   bool ok = true;
   index_t lastIndex = 0;   // Index of last entry in our log
-  if (nqs > 0) {
-    
-    try {
-      lastIndex = _state.logFollower(queries);
-      if (lastIndex < payload[nqs-1].get("index").getNumber<index_t>()) {
-        // We could not log all the entries in this query, we need to report
-        // this to the leader!
-        ok = false;
-      }
-    } catch (std::exception const& e) {
-      LOG_TOPIC(DEBUG, Logger::AGENCY)
-        << "Exception during log append: " << __FILE__ << __LINE__
-        << " " << e.what();
+  try {
+    lastIndex = _state.logFollower(queries);
+    if (lastIndex < payload[nqs-1].get("index").getNumber<index_t>()) {
+      // We could not log all the entries in this query, we need to report
+      // this to the leader!
+      ok = false;
     }
-  } else {
-    lastIndex = _state.lastIndex();
+  } catch (std::exception const& e) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Exception during log append: " << __FILE__ << __LINE__
+      << " " << e.what();
   }
 
   {
     _tiLock.assertNotLockedByCurrentThread();
     MUTEX_LOCKER(ioLocker, _ioLock);  // protects writing to _commitIndex as well
-    _commitIndex = std::min(leaderCommitIndex, lastIndex);
+    _commitIndex = std::max(_commitIndex.load(),
+                            std::min(leaderCommitIndex, lastIndex));
   }
 
   if (_commitIndex >= _state.nextCompactionAfter()) {
@@ -603,6 +562,54 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
     << "Sending empty appendEntriesRPC to follower " << followerId;
 }
 
+void Agent::advanceCommitIndex() {
+  // Determine median _confirmed value of followers:
+  std::vector<index_t> temp;
+  {
+    MUTEX_LOCKER(_tiLocker, _tiLock);
+    for (auto const& id: config().active()) {
+      if (_confirmed.find(id) != _confirmed.end()) {
+        temp.push_back(_confirmed[id]);
+      }
+    }
+  }
+
+  index_t quorum = size() / 2 + 1;
+  if (temp.size() < quorum) {
+    LOG_TOPIC(WARN, Logger::AGENCY) << "_confirmed not populated, quorum: " << quorum << ".";
+    return;
+  }
+  std::sort(temp.begin(), temp.end());
+  index_t index = temp[temp.size() - quorum];
+    
+  term_t t = _constituent.term();
+  bool advanced = false;
+  {
+    _tiLock.assertNotLockedByCurrentThread();
+    MUTEX_LOCKER(_ioLocker, _ioLock);
+    if (index > _commitIndex) {
+      LOG_TOPIC(TRACE, Logger::AGENCY)
+        << "Critical mass for commiting " << _commitIndex + 1
+        << " through " << index << " to read db";
+      // Change _readDB and _commitIndex atomically together:
+      _readDB.applyLogEntries(
+        _state.slices( /* inform others by callbacks */ 
+          _commitIndex + 1, index), _commitIndex, t, true);
+      _commitIndex = index;
+      advanced = true;
+
+      if (_commitIndex >= _state.nextCompactionAfter()) {
+        _compactor.wakeUp();
+      }
+    }
+  }
+
+  if (advanced) {
+    // Wake up rest handler
+    CONDITION_LOCKER(guard, _waitForCV);
+    guard.broadcast();
+  }
+}
 
 // Check if I am member of active agency
 bool Agent::active() const {
@@ -1065,6 +1072,9 @@ void Agent::run() {
 
       // Append entries to followers
       sendAppendEntriesRPC();
+
+      // Check whether we can advance _commitIndex
+      advanceCommitIndex();
 
       // Don't panic
       _appendCV.wait(static_cast<uint64_t>(4.e3*_config.minPing()));
