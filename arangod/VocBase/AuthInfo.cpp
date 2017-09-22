@@ -227,6 +227,12 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
 void AuthInfo::loadFromDB() {
   TRI_ASSERT(_queryRegistry != nullptr);
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
+  auto role = ServerState::instance()->getRole();
+  if (role != ServerState::ROLE_SINGLE &&
+      role != ServerState::ROLE_COORDINATOR) {
+    _outdated = false;
+    return;
+  }
   if (!_outdated) {
     return;
   }
@@ -235,13 +241,6 @@ void AuthInfo::loadFromDB() {
 
   // double check to be sure after we got the lock
   if (!_outdated) {
-    return;
-  }
-
-  auto role = ServerState::instance()->getRole();
-  if (role != ServerState::ROLE_SINGLE &&
-      role != ServerState::ROLE_COORDINATOR) {
-    _outdated = false;
     return;
   }
 
@@ -256,7 +255,7 @@ void AuthInfo::loadFromDB() {
         parseUsers(usersSlice);
       }
     }
-    _outdated = !_authInfo.empty();
+    _outdated = _authInfo.empty() == true;
   } catch (...) {
     LOG_TOPIC(WARN, Logger::AUTHENTICATION)
       << "Exception when loading users from db";
@@ -267,16 +266,15 @@ void AuthInfo::loadFromDB() {
 // only call from the boostrap feature, must be sure to be the only one
 void AuthInfo::createRootUser() {
   loadFromDB();
+  
   MUTEX_LOCKER(locker, _loadFromDBLock);
   WRITE_LOCKER(writeLocker, _authInfoLock);
-  TRI_ASSERT(_authInfo.empty());
-
   auto it = _authInfo.find("root");
   if (it != _authInfo.end()) {
-    LOG_TOPIC(ERR, Logger::AUTHENTICATION) << "Trying to add root twice";
-    TRI_ASSERT(false);
+    LOG_TOPIC(TRACE, Logger::AUTHENTICATION) << "Root already exists";
     return;
   }
+  TRI_ASSERT(_authInfo.empty());
   
   try {
     // Attention:
@@ -504,7 +502,6 @@ Result AuthInfo::updateUser(std::string const& user,
   }
   loadFromDB();
   Result r;
-  VPackBuilder data;
   {  // we require an consisten view on the user object
     WRITE_LOCKER(guard, _authInfoLock);
     auto it = _authInfo.find(user);
@@ -513,7 +510,7 @@ Result AuthInfo::updateUser(std::string const& user,
     }
     TRI_ASSERT(!it->second.key().empty());
     func(it->second);
-    data = it->second.toVPackBuilder();
+    VPackBuilder data = it->second.toVPackBuilder();
     r = UpdateUser(data.slice());
     // must also clear the basic cache here because the secret may be
     // invalid now if the password was changed
