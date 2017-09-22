@@ -39,7 +39,6 @@ class ServerState {
     ROLE_UNDEFINED = 0,  // initial value
     ROLE_SINGLE,         // is set when cluster feature is off
     ROLE_PRIMARY,
-    ROLE_SECONDARY,
     ROLE_COORDINATOR,
     ROLE_AGENT
   };
@@ -51,14 +50,9 @@ class ServerState {
   enum StateEnum {
     STATE_UNDEFINED = 0,  // initial value
     STATE_STARTUP,        // used by all roles
-    STATE_SERVINGASYNC,   // primary only
-    STATE_SERVINGSYNC,    // primary only
+    STATE_SERVING,        // used by all roles
     STATE_STOPPING,       // primary only
     STATE_STOPPED,        // primary only
-    STATE_SYNCING,        // secondary only
-    STATE_INSYNC,         // secondary only
-    STATE_LOSTPRIMARY,    // secondary only
-    STATE_SERVING,        // coordinator only
     STATE_SHUTDOWN        // used by all roles
   };
 
@@ -73,6 +67,12 @@ class ServerState {
 
   /// @brief get the string representation of a role
   static std::string roleToString(RoleEnum);
+  
+  /// @brief get the key for lists of a role in the agency
+  static std::string roleToAgencyListKey(RoleEnum);
+  
+  /// @brief get the key for a role in the agency
+  static std::string roleToAgencyKey(RoleEnum role);
 
   /// @brief convert a string to a role
   static RoleEnum stringToRole(std::string const&);
@@ -117,14 +117,12 @@ class ServerState {
   /// @brief check whether the server is a DB server (primary or secondary)
   /// running in cluster mode.
   static bool isDBServer(ServerState::RoleEnum role) {
-    return (role == ServerState::ROLE_PRIMARY ||
-            role == ServerState::ROLE_SECONDARY);
+    return (role == ServerState::ROLE_PRIMARY);
   }
   
   /// @brief whether or not the role is a cluster-related role
   static bool isClusterRole(ServerState::RoleEnum role) {
     return (role == ServerState::ROLE_PRIMARY ||
-            role == ServerState::ROLE_SECONDARY ||
             role == ServerState::ROLE_COORDINATOR);
   }
   
@@ -152,7 +150,7 @@ class ServerState {
   /// @brief get the server role
   RoleEnum getRole();
   
-  bool integrateIntoCluster(RoleEnum, std::string const&, std::string const&);
+  bool integrateIntoCluster(RoleEnum role, std::string const& myAddr);
   
   bool unregister();
 
@@ -240,17 +238,12 @@ class ServerState {
   /// @brief lookup the server id by using the local info
   int lookupLocalInfoToId(std::string const& localInfo, std::string& id);
 
-  /// @brief lookup the server role by scanning Plan/Coordinators for our id
-  ServerState::RoleEnum checkCoordinatorsList(std::string const&);
-
-  /// @brief lookup the server role by scanning Plan/DBServers for our id
-  ServerState::RoleEnum checkServersList(std::string const&);
+  /// @brief lookup the server role by scanning Plan/DBServers,
+  /// Plan/Coordinators or Plan/Singles for our id
+  bool isInServerList(ServerState::RoleEnum role, std::string const& id);
 
   /// @brief validate a state transition for a primary server
   bool checkPrimaryState(StateEnum);
-
-  /// @brief validate a state transition for a secondary server
-  bool checkSecondaryState(StateEnum);
 
   /// @brief validate a state transition for a coordinator server
   bool checkCoordinatorState(StateEnum);
@@ -259,9 +252,6 @@ class ServerState {
   bool registerAtAgency(AgencyComm&, const RoleEnum&, std::string const&);
   /// @brief register shortname for an id
   bool registerShortName(std::string const& id, const RoleEnum&);
-  
-  /// @brief get the key for a role in the agency
-  static std::string roleToAgencyKey(RoleEnum);
 
   std::string getUuidFilename();
   std::string getPersistedId();

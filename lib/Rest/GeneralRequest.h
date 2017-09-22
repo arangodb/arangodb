@@ -102,14 +102,17 @@ class GeneralRequest {
   uint64_t clientTaskId() const { return _clientTaskId; }
   void setClientTaskId(uint64_t clientTaskId) { _clientTaskId = clientTaskId; }
 
+  /// Database used for this request, _system by default
   std::string const& databaseName() const { return _databaseName; }
   void setDatabaseName(std::string const& databaseName) {
     _databaseName = databaseName;
   }
 
-  // the authenticated user
+  /// @brief User exists and password was checked
   bool authorized() const { return _authorized; }
   void setAuthorized(bool a) { _authorized = a; }
+  
+  // @brief User sending this request
   std::string const& user() const { return _user; }
   void setUser(std::string const& user) { _user = user; }
   void setUser(std::string&& user) { _user = std::move(user); }

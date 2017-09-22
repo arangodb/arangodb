@@ -848,7 +848,7 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
       
       if (authMethod != AuthenticationMethod::NONE) {
         AuthResult result = _authentication->authInfo()->
-        checkAuthentication(authMethod, auth);
+          checkAuthentication(authMethod, auth);
         
         request->setAuthorized(result._authorized);
         if (result._authorized) {

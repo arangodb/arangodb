@@ -404,6 +404,7 @@ void HeartbeatThread::runDBServer() {
 
 void HeartbeatThread::runSingleServer() {
   while (!isStopping()) {
+    usleep(1000000);
 
     try {
       // send our state to the agency.
@@ -414,9 +415,9 @@ void HeartbeatThread::runSingleServer() {
         break;
       }
 
-      // TODO: implement the actual heartbeat
       AgencyReadTransaction trx(
         std::vector<std::string>({
+            AgencyCommManager::path("Shutdown"),
             AgencyCommManager::path("Current/Version"),
             AgencyCommManager::path("Sync/Commands", _myId),
             "/.agency"}));
@@ -426,15 +427,23 @@ void HeartbeatThread::runSingleServer() {
       if (!result.successful()) {
         LOG_TOPIC(WARN, Logger::HEARTBEAT)
             << "Heartbeat: Could not read from agency!";
-      } else {
-        VPackSlice agentPool =
-          result.slice()[0].get(
-            std::vector<std::string>({".agency","pool"}));
-        updateAgentPool(agentPool);
+        continue;
       }
+      
+      VPackSlice response = result.slice()[0];
+      VPackSlice agentPool = response.get(std::vector<std::string>{".agency", "pool"});
+      updateAgentPool(agentPool);
+      
+      VPackSlice shutdownSlice =
+      response.get({AgencyCommManager::path(), "Shutdown"});
+      if (shutdownSlice.isBool() && shutdownSlice.getBool()) {
+        ApplicationServer::server->beginShutdown();
+        break;
+      }
+        
+      
 
       // TODO: implement the actual heartbeat
-      usleep(1000000);
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "Got an exception in single server heartbeat: " << e.what();
@@ -734,7 +743,7 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
     // loop over all database names we got and create a local database
     // instance if not yet present:
 
-    for (auto const& options : VPackObjectIterator(databases)) {
+    for (VPackObjectIterator::ObjectPair options : VPackObjectIterator(databases)) {
       if (!options.value.isObject()) {
         continue;
       }

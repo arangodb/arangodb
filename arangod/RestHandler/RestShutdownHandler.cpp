@@ -54,6 +54,7 @@ RestStatus RestShutdownHandler::execute() {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
     return RestStatus::DONE;
   }
+  
   bool removeFromCluster;
   std::string const& remove =
       _request->value("remove_from_cluster", removeFromCluster);
@@ -62,9 +63,9 @@ RestStatus RestShutdownHandler::execute() {
   bool shutdownClusterFound;
   std::string const& shutdownCluster =
       _request->value("shutdown_cluster", shutdownClusterFound);
-  if (shutdownClusterFound && shutdownCluster == "1") {
+  if (shutdownClusterFound && shutdownCluster == "1" &&
+    AgencyCommManager::isEnabled()) {
     AgencyComm agency;
-
     VPackBuilder builder;
     builder.add(VPackValue(true));
     AgencyCommResult result = agency.setValue("Shutdown", builder.slice(), 0.0);
@@ -81,7 +82,7 @@ RestStatus RestShutdownHandler::execute() {
   }
 
   ApplicationServer::server->beginShutdown();
-
+  
   try {
     VPackBuilder result;
     result.add(VPackValue("OK"));

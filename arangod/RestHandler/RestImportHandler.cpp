@@ -902,7 +902,7 @@ int RestImportHandler::performImport(SingleCollectionTransaction& trx,
     updateReplace.openArray();
     size_t pos = 0;
 
-    for (auto const& it : VPackArrayIterator(resultSlice)) {
+    for (VPackSlice it : VPackArrayIterator(resultSlice)) {
       if (!it.hasKey("error") || !it.get("error").getBool()) {
         ++result._numCreated;
       } else {

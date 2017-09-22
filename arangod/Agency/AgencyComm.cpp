@@ -1052,7 +1052,6 @@ AgencyCommResult AgencyComm::registerCallback(std::string const& key,
     }
   }
   return res;
-
 }
 
 AgencyCommResult AgencyComm::unregisterCallback(std::string const& key,
@@ -1694,6 +1693,11 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
     builder.add(VPackValue("Current")); // Current ----------------------------
     {
       VPackObjectBuilder c(&builder);
+      builder.add(VPackValue("AsyncReplication"));
+      {
+        VPackObjectBuilder d(&builder);
+        builder.add("Master", VPackSlice::nullSlice());
+      }
       builder.add(VPackValue("Collections"));
       {
         VPackObjectBuilder d(&builder);
@@ -1705,6 +1709,7 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
       addEmptyVPackObject("Coordinators", builder);
       builder.add("Lock", VPackValue("UNLOCKED"));
       addEmptyVPackObject("DBServers", builder);
+      addEmptyVPackObject("Singles", builder);
       builder.add(VPackValue("ServersRegistered"));
       {
         VPackObjectBuilder c(&builder);
@@ -1718,6 +1723,11 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
     builder.add(VPackValue("Plan")); // Plan ----------------------------------
     {
       VPackObjectBuilder c(&builder);
+      builder.add(VPackValue("AsyncReplication"));
+      {
+        VPackObjectBuilder d(&builder);
+        //builder.add("Master", VPackSlice::nullSlice());
+      }
       addEmptyVPackObject("Coordinators", builder);
       builder.add(VPackValue("Databases"));
       {
@@ -1731,6 +1741,7 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
       }
       builder.add("Lock", VPackValue("UNLOCKED"));
       addEmptyVPackObject("DBServers", builder);
+      addEmptyVPackObject("Singles", builder);
       builder.add("Version", VPackValue(1));
       builder.add(VPackValue("Collections"));
       {
@@ -1763,23 +1774,6 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
     builder.add(VPackValue("Target")); // Target ------------------------------
     {
       VPackObjectBuilder c(&builder);
-      builder.add(VPackValue("Collections"));
-      {
-        VPackObjectBuilder d(&builder);
-        addEmptyVPackObject("_system", builder);
-      }
-      addEmptyVPackObject("Coordinators", builder);
-      addEmptyVPackObject("DBServers", builder);
-      builder.add(VPackValue("Databases"));
-      {
-        VPackObjectBuilder d(&builder);
-        builder.add(VPackValue("_system"));
-        {
-          VPackObjectBuilder d2(&builder);
-          builder.add("name", VPackValue("_system"));
-          builder.add("id", VPackValue("1"));
-        }
-      }
       builder.add("NumberOfCoordinators", VPackSlice::nullSlice());
       builder.add("NumberOfDBServers", VPackSlice::nullSlice());
       builder.add(VPackValue("CleanedServers"));

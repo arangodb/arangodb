@@ -58,7 +58,6 @@ class ClusterFeature : public application_features::ApplicationFeature {
   std::vector<std::string> _agencyEndpoints;
   std::string _agencyPrefix;
   std::string _myLocalInfo;
-  std::string _myId;
   std::string _myRole;
   std::string _myAddress;
   uint32_t _systemReplicationFactor = 2;

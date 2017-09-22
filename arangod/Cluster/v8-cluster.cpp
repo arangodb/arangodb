@@ -1130,9 +1130,10 @@ static void JS_IdOfPrimaryServerState(
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("idOfPrimary()");
   }
-
-  std::string const id = ServerState::instance()->getPrimaryId();
-  TRI_V8_RETURN_STD_STRING(id);
+  
+  
+  //std::string const id = ServerState::instance()->getPrimaryId();
+  TRI_V8_RETURN_NULL();// no more secondaries
   TRI_V8_TRY_CATCH_END
 }
 

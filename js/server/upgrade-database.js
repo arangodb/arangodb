@@ -329,7 +329,7 @@
             cluster = CLUSTER_COORDINATOR_GLOBAL;
           }
         } else {
-          cluster = CLUSTER_LOCAL;
+          cluster = CLUSTER_NONE;//CLUSTER_LOCAL;
         }
       }
 

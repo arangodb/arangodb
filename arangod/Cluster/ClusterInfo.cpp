@@ -934,7 +934,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
           std::string tmpMsg = "";
           bool tmpHaveError = false;
 
-          for (auto const& dbserver : dbs) {
+          for (VPackObjectIterator::ObjectPair dbserver : dbs) {
             VPackSlice slice = dbserver.value;
             if (arangodb::basics::VelocyPackHelper::getBooleanValue(
                   slice, "error", false)) {

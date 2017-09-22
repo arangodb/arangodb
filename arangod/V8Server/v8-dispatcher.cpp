@@ -680,9 +680,7 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("unregister(<id>)");
   }
-  
-  TRI_GET_GLOBALS();
-  
+    
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr && exec->databaseAuthLevel() != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,

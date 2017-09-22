@@ -1371,6 +1371,7 @@ function executePlanForDatabases(plannedDatabases) {
       console.topic('heartbeat=debug', "dropping local database '%s'", name);
 
       // Do we have to stop a replication applier first?
+      // Note that the secondary role no longer exists outside the schmutz -Simon 
       if (ArangoServerState.role() === 'SECONDARY') {
         try {
           db._useDatabase(name);
@@ -1533,6 +1534,7 @@ function setupReplication () {
 
 // /////////////////////////////////////////////////////////////////////////////
 // / @brief role change from secondary to primary
+// / Note that the secondary role no longer exists outside the schmutz -Simon 
 // /////////////////////////////////////////////////////////////////////////////
 
 function secondaryToPrimary () {
@@ -1568,6 +1570,7 @@ function secondaryToPrimary () {
 // /////////////////////////////////////////////////////////////////////////////
 
 function primaryToSecondary () {
+  // Note that the secondary role no longer exists outside the schmutz -Simon 
   console.topic('heartbeat=info', 'Switching role from primary to secondary...');
 }
 
@@ -1588,6 +1591,7 @@ function handleChanges (plan, current) {
       changed = ArangoServerState.redetermineRole();
     }
   } else { // role === "SECONDARY"
+    // Note that the secondary role no longer exists outside the schmutz -Simon 
     if (plan.DBServers[myId]) {
       changed = ArangoServerState.redetermineRole();
       if (!changed) {
@@ -1603,7 +1607,7 @@ function handleChanges (plan, current) {
           break;
         }
       }
-      if (found !== ArangoServerState.idOfPrimary()) {
+      if (found !== ArangoServerState.idOfPrimary()) { // this is always "" now
         // Note this includes the case that we are not found at all!
         changed = ArangoServerState.redetermineRole();
       }
@@ -1613,6 +1617,7 @@ function handleChanges (plan, current) {
   if (changed) {
     role = ArangoServerState.role();
     console.topic('heartbeat=info', 'Our role has changed to ' + role);
+    // Note that the secondary role no longer exists outside the schmutz -Simon 
     if (oldRole === 'SECONDARY' && role === 'PRIMARY') {
       secondaryToPrimary();
     } else if (oldRole === 'PRIMARY' && role === 'SECONDARY') {

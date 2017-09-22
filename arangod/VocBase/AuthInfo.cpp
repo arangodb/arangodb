@@ -238,7 +238,6 @@ void AuthInfo::loadFromDB() {
   }
 
   auto role = ServerState::instance()->getRole();
-
   if (role != ServerState::ROLE_SINGLE &&
       role != ServerState::ROLE_COORDINATOR) {
     _outdated = false;
@@ -528,8 +527,9 @@ Result AuthInfo::accessUser(
 }
 
 VPackBuilder AuthInfo::serializeUser(std::string const& user) {
-  // loadFromDB();
-  // READ_LOCKER(guard, _authInfoLock)
+  loadFromDB();
+  // no need to lock, since we will query the underlying database
+  // not the cache
   VPackBuilder doc = QueryUser(_queryRegistry, user);
   VPackBuilder result;
   if (!doc.isEmpty()) {
@@ -752,6 +752,8 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
 }
 
 // public called from HttpCommTask.cpp and VstCommTask.cpp
+// should only lock if required, otherwise we will serialize all
+// requests whether we need to or not
 AuthResult AuthInfo::checkAuthentication(AuthenticationMethod authType,
                                          std::string const& secret) {
   switch (authType) {

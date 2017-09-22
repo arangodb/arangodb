@@ -157,7 +157,7 @@ void TRI_vocbase_t::registerCollection(
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
 
       TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
-      TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
+      ///TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DUPLICATE_NAME, msg);
     }
 
@@ -175,13 +175,13 @@ void TRI_vocbase_t::registerCollection(
     } catch (...) {
       _collectionsByName.erase(name);
       TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
-      TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
+      ///TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
       throw;
     }
 
     TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
 
-    try {
+    /*try {
       auto it2 = _collectionsByUuid.emplace(collection->globallyUniqueId(), collection);
 
       if (!it2.second) {
@@ -197,7 +197,7 @@ void TRI_vocbase_t::registerCollection(
       TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
       TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
       throw;
-    }
+    }*/
 
     try {
       _collections.emplace_back(collection);
@@ -206,13 +206,13 @@ void TRI_vocbase_t::registerCollection(
       _collectionsById.erase(cid);
       _collectionsByUuid.erase(collection->globallyUniqueId());
       TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
-      TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
+      ///TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
       throw;
     }
 
     collection->setStatus(TRI_VOC_COL_STATUS_UNLOADED);
     TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
-    TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
+    ///TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
   }
 }
 
@@ -226,7 +226,7 @@ bool TRI_vocbase_t::unregisterCollection(
 
   // pre-condition
   TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
-  TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
+  ///TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
 
   // only if we find the collection by its id, we can delete it by name
   if (_collectionsById.erase(collection->cid()) > 0) {
@@ -239,7 +239,7 @@ bool TRI_vocbase_t::unregisterCollection(
 
   // post-condition
   TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
-  TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
+  ///TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
 
   return true;
 }
@@ -1217,7 +1217,7 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
     throw;
   }
   TRI_ASSERT(_collectionsByName.size() == _collectionsById.size());
-  TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
+  ///TRI_ASSERT(_collectionsByUuid.size() == _collectionsById.size());
 
   locker.unlock();
   writeLocker.unlock();
