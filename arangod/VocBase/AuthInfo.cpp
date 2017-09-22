@@ -90,9 +90,9 @@ std::string AuthInfo::jwtSecret() {
 // private, must be called with _authInfoLock in write mode
 bool AuthInfo::parseUsers(VPackSlice const& slice) {
   TRI_ASSERT(slice.isArray());
+  TRI_ASSERT(_authInfo.empty());
+  TRI_ASSERT(_authBasicCache.empty());
 
-  _authInfo.clear();
-  _authBasicCache.clear();
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
     VPackSlice s = authSlice.resolveExternal();
 
@@ -108,7 +108,6 @@ bool AuthInfo::parseUsers(VPackSlice const& slice) {
     // we also need to insert inactive users into the cache here
     // otherwise all following update/replace/remove operations on the
     // user will fail
-
     _authInfo.emplace(auth.username(), std::move(auth));
   }
 
@@ -226,6 +225,8 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
 // private, will acquire _authInfoLock in write-mode and release it.
 // will also aquire _loadFromDBLock and release it
 void AuthInfo::loadFromDB() {
+  TRI_ASSERT(_queryRegistry != nullptr);
+  TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
   if (!_outdated) {
     return;
   }
@@ -244,31 +245,39 @@ void AuthInfo::loadFromDB() {
     return;
   }
 
-  TRI_ASSERT(_queryRegistry != nullptr);
-  std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_queryRegistry);
-
   WRITE_LOCKER(writeLocker, _authInfoLock);
-  _authBasicCache.clear();
-
-  if (builder) {
-    VPackSlice usersSlice = builder->slice();
-    if (usersSlice.length() != 0) {
-      parseUsers(usersSlice);
+  try {
+    std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_queryRegistry);
+    _authInfo.clear();
+    _authBasicCache.clear();
+    if (builder) {
+      VPackSlice usersSlice = builder->slice();
+      if (usersSlice.length() != 0) {
+        parseUsers(usersSlice);
+      }
     }
+    _outdated = !_authInfo.empty();
+  } catch (...) {
+    LOG_TOPIC(WARN, Logger::AUTHENTICATION)
+      << "Exception when loading users from db";
+    _outdated = true;
   }
-
-  if (_authInfo.empty()) {
-    insertInitial();
-  }
-  _outdated = false;
 }
 
-// private, must be called with _authInfoLock in write mode
-void AuthInfo::insertInitial() {
-  if (!_authInfo.empty()) {
+// only call from the boostrap feature, must be sure to be the only one
+void AuthInfo::createRootUser() {
+  loadFromDB();
+  MUTEX_LOCKER(locker, _loadFromDBLock);
+  WRITE_LOCKER(writeLocker, _authInfoLock);
+  TRI_ASSERT(_authInfo.empty());
+
+  auto it = _authInfo.find("root");
+  if (it != _authInfo.end()) {
+    LOG_TOPIC(ERR, Logger::AUTHENTICATION) << "Trying to add root twice";
+    TRI_ASSERT(false);
     return;
   }
-
+  
   try {
     // Attention:
     // the root user needs to have a specific rights grant
@@ -276,6 +285,7 @@ void AuthInfo::insertInitial() {
     auto initDatabaseFeature =
         application_features::ApplicationServer::getFeature<
             InitDatabaseFeature>("InitDatabase");
+    TRI_ASSERT(initDatabaseFeature != nullptr);
 
     AuthUserEntry entry = AuthUserEntry::newUser(
         "root", initDatabaseFeature->defaultPassword(), AuthSource::COLLECTION);
@@ -478,6 +488,8 @@ Result AuthInfo::enumerateUsers(
         return r;
       }
     }
+    // must also clear the basic cache here because the secret may be
+    // invalid now if the password was changed
     _authBasicCache.clear();
   }
   // we need to reload data after the next callback

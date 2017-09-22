@@ -79,6 +79,10 @@ class AuthInfo {
 
   /// Trigger eventual reload, user facing API call
   void reloadAllUsers();
+  
+  /// Create the root user with a default password, will fail if the user
+  /// already exists. Only ever call if you can guarantee to be in charge
+  void createRootUser();
 
   VPackBuilder allUsers();
   /// Add user from arangodb, do not use for LDAP  users
@@ -114,14 +118,10 @@ class AuthInfo {
   std::string jwtSecret();
   std::string generateJwt(VPackBuilder const&);
   std::string generateRawJwt(VPackBuilder const&);
-  /*
-    std::shared_ptr<AuthContext> getAuthContext(std::string const& username,
-                                                std::string const& database);*/
 
  private:
   void loadFromDB();
   bool parseUsers(velocypack::Slice const& slice);
-  void insertInitial();
   Result storeUserInternal(AuthUserEntry const& user, bool replace);
 
   AuthResult checkAuthenticationBasic(std::string const& secret);
