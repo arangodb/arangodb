@@ -720,6 +720,10 @@ arangodb::Result createPersistedDataDirectory(
       );
     }
 
+    // for the case where the data directory is moved into the same physical location (possibly different path)
+    // 1. open the writer on the last index meta (will prevent cleaning files of the last index meta)
+    // 2. clear the index (new index meta)
+    // 3. populate index from the reader
     auto format = irs::formats::get(IRESEARCH_STORE_FORMAT);
     auto writer = irs::index_writer::make(*directory, format, irs::OM_CREATE_APPEND);
 
@@ -1217,7 +1221,7 @@ IResearchView::IResearchView(
 
       if (TRI_ERROR_NO_ERROR != res) {
         LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to finish commit while processing transaction callback for iResearch view '" << id() << "'";
-      } else if (trx->state()->options().waitForSync && !sync()) {
+      } else if (trx->state()->options().waitForSync && !sync(false)) {
         LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to sync while processing transaction callback for iResearch view '" << id() << "'";
       }
 
@@ -1349,10 +1353,17 @@ bool IResearchView::cleanup(size_t maxMsec /*= 0*/) {
   try {
     SCOPED_LOCK(mutex);
 
-    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting memory-store cleanup for iResearch view '" << id() << "'";
-    auto& memoryStore = activeMemoryStore();
-    memoryStore._writer->commit();
-    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "finished memory-store cleanup for iResearch view '" << id() << "'";
+    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting active memory-store cleanup for iResearch view '" << id() << "'";
+    irs::directory_utils::remove_all_unreferenced(*(_memoryNode->_store._directory));
+    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "finished active memory-store cleanup for iResearch view '" << id() << "'";
+
+    if (maxMsec && TRI_microtime() >= thresholdSec) {
+      return true; // skip if timout exceeded
+    }
+
+    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting flushing memory-store cleanup for iResearch view '" << id() << "'";
+    irs::directory_utils::remove_all_unreferenced(*(_toFlush->_store._directory));
+    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "finished flushing memory-store cleanup for iResearch view '" << id() << "'";
 
     if (maxMsec && TRI_microtime() >= thresholdSec) {
       return true; // skip if timout exceeded
@@ -1360,7 +1371,7 @@ bool IResearchView::cleanup(size_t maxMsec /*= 0*/) {
 
     if (_storePersisted) {
       LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting persisted-store cleanup for iResearch view '" << id() << "'";
-      _storePersisted._writer->commit();
+      irs::directory_utils::remove_all_unreferenced(*(_storePersisted._directory));
       LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "finished persisted-store cleanup for iResearch view '" << id() << "'";
     }
 
@@ -2150,6 +2161,10 @@ IResearchView::MemoryStore& IResearchView::activeMemoryStore() const {
 }
 
 bool IResearchView::sync(size_t maxMsec /*= 0*/) {
+  return sync(true, maxMsec);
+}
+
+bool IResearchView::sync(bool includePersisted, size_t maxMsec /*= 0*/) {
   ReadMutex mutex(_mutex);
   auto thresholdSec = TRI_microtime() + maxMsec/1000.0;
 
@@ -2165,10 +2180,10 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
       return true; // skip if timout exceeded
     }
 
-    if (_storePersisted) {
-      LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting persisted-sync cleanup for iResearch view '" << id() << "'";
+    if (includePersisted && _storePersisted) {
+      LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting persisted-sync sync for iResearch view '" << id() << "'";
       _storePersisted._writer->commit();
-      LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "finished persisted-sync cleanup for iResearch view '" << id() << "'";
+      LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "finished persisted-sync sync for iResearch view '" << id() << "'";
     }
 
     return true;
