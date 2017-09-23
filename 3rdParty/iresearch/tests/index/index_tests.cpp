@@ -345,6 +345,183 @@ const irs::columnstore_iterator::value_type EOFMAX{
 
 class index_test_case_base : public tests::index_test_base {
  public:
+  void clear_writer() {
+    tests::json_doc_generator gen(
+      resource("simple_sequential.json"),
+      [] (tests::document& doc, const std::string& name, const tests::json_doc_generator::json_value& data) {
+      if (data.is_string()) {
+        doc.insert(std::make_shared<tests::templates::string_field>(
+          ir::string_ref(name),
+          data.str
+        ));
+      }
+    });
+
+    tests::document const* doc1 = gen.next();
+    tests::document const* doc2 = gen.next();
+    tests::document const* doc3 = gen.next();
+    tests::document const* doc4 = gen.next();
+    tests::document const* doc5 = gen.next();
+    tests::document const* doc6 = gen.next();
+
+    // test import/insert/deletes/existing all empty after clear
+    {
+      irs::memory_directory data_dir;
+      auto writer = open_writer();
+
+      writer->commit(); // create initial empty segment
+
+      // populate 'import' dir
+      {
+        auto data_writer = irs::index_writer::make(data_dir, codec(), irs::OM_CREATE);
+        ASSERT_TRUE(insert(*data_writer,
+          doc1->indexed.begin(), doc1->indexed.end(),
+          doc1->stored.begin(), doc1->stored.end()
+        ));
+        ASSERT_TRUE(insert(*data_writer,
+          doc2->indexed.begin(), doc2->indexed.end(),
+          doc2->stored.begin(), doc2->stored.end()
+        ));
+        ASSERT_TRUE(insert(*data_writer,
+          doc3->indexed.begin(), doc3->indexed.end(),
+          doc3->stored.begin(), doc3->stored.end()
+        ));
+        data_writer->commit();
+
+        auto reader = irs::directory_reader::open(data_dir);
+        ASSERT_EQ(1, reader.size());
+        ASSERT_EQ(3, reader.docs_count());
+        ASSERT_EQ(3, reader.live_docs_count());
+      }
+
+      {
+        auto reader = irs::directory_reader::open(dir(), codec());
+        ASSERT_EQ(0, reader.size());
+        ASSERT_EQ(0, reader.docs_count());
+        ASSERT_EQ(0, reader.live_docs_count());
+      }
+
+      // add sealed segment
+      {
+        ASSERT_TRUE(insert(*writer,
+          doc4->indexed.begin(), doc4->indexed.end(),
+          doc4->stored.begin(), doc4->stored.end()
+        ));
+        ASSERT_TRUE(insert(*writer,
+          doc5->indexed.begin(), doc5->indexed.end(),
+          doc5->stored.begin(), doc5->stored.end()
+        ));
+        writer->commit();
+      }
+
+      {
+        auto reader = irs::directory_reader::open(dir(), codec());
+        ASSERT_EQ(1, reader.size());
+        ASSERT_EQ(2, reader.docs_count());
+        ASSERT_EQ(2, reader.live_docs_count());
+      }
+
+      // add insert/remove/import
+      {
+        auto query_doc4 = iresearch::iql::query_builder().build("name==D", std::locale::classic());
+        auto reader = irs::directory_reader::open(data_dir);
+
+        ASSERT_TRUE(insert(*writer,
+          doc6->indexed.begin(), doc6->indexed.end(),
+          doc6->stored.begin(), doc6->stored.end()
+        ));
+        writer->remove(std::move(query_doc4.filter));
+        ASSERT_TRUE(writer->import(irs::directory_reader::open(data_dir)));
+      }
+
+      size_t file_count = 0;
+
+      {
+        dir().visit([&file_count](std::string&)->bool{ ++file_count; return true; });
+      }
+
+      writer->clear();
+
+      // should be empty after clear
+      {
+        auto reader = irs::directory_reader::open(dir(), codec());
+        ASSERT_EQ(0, reader.size());
+        ASSERT_EQ(0, reader.docs_count());
+        ASSERT_EQ(0, reader.live_docs_count());
+        size_t file_count_post_clear = 0;
+        dir().visit([&file_count_post_clear](std::string&)->bool{ ++file_count_post_clear; return true; });
+        ASSERT_EQ(file_count + 1, file_count_post_clear); // 1 extra file for new empty index meta
+      }
+
+      writer->commit();
+
+      // should be empty after commit (no new files or uncomited changes)
+      {
+        auto reader = irs::directory_reader::open(dir(), codec());
+        ASSERT_EQ(0, reader.size());
+        ASSERT_EQ(0, reader.docs_count());
+        ASSERT_EQ(0, reader.live_docs_count());
+        size_t file_count_post_commit = 0;
+        dir().visit([&file_count_post_commit](std::string&)->bool{ ++file_count_post_commit; return true; });
+        ASSERT_EQ(file_count + 1, file_count_post_commit); // +1 extra file for new empty index meta
+      }
+    }
+
+    // test creation of an empty writer
+    {
+      irs::memory_directory dir;
+      auto writer = irs::index_writer::make(dir, codec(), irs::OM_CREATE);
+      ASSERT_THROW(irs::directory_reader::open(dir), irs::index_not_found); // throws due to missing index
+
+      {
+        size_t file_count = 0;
+
+        dir.visit([&file_count](std::string&)->bool{ ++file_count; return true; });
+        ASSERT_EQ(0, file_count); // empty dierctory
+      }
+
+      writer->clear();
+
+      {
+        size_t file_count = 0;
+
+        dir.visit([&file_count](std::string&)->bool{ ++file_count; return true; });
+        ASSERT_EQ(1, file_count); // +1 file for new empty index meta
+      }
+
+      auto reader = irs::directory_reader::open(dir);
+      ASSERT_EQ(0, reader.size());
+      ASSERT_EQ(0, reader.docs_count());
+      ASSERT_EQ(0, reader.live_docs_count());
+    }
+
+    // ensue double clear does not increment meta
+    {
+      auto writer = open_writer();
+
+      ASSERT_TRUE(insert(*writer,
+        doc1->indexed.begin(), doc1->indexed.end(),
+        doc1->stored.begin(), doc1->stored.end()
+      ));
+      writer->commit();
+
+      size_t file_count0 = 0;
+      dir().visit([&file_count0](std::string&)->bool{ ++file_count0; return true; });
+
+      writer->clear();
+
+      size_t file_count1 = 0;
+      dir().visit([&file_count1](std::string&)->bool{ ++file_count1; return true; });
+      ASSERT_EQ(file_count0 + 1, file_count1); // +1 extra file for new empty index meta
+
+      writer->clear();
+
+      size_t file_count2 = 0;
+      dir().visit([&file_count2](std::string&)->bool{ ++file_count2; return true; });
+      ASSERT_EQ(file_count1, file_count2);
+    }
+  }
+
   void concurrent_read_index() {
     // write test docs
     {
@@ -2332,7 +2509,9 @@ class index_test_case_base : public tests::index_test_base {
   }
 
   void read_write_doc_attributes_dense_mask() {
-    static const irs::doc_id_t MAX_DOCS = 1500;
+    static const irs::doc_id_t MAX_DOCS
+      = 1024*1024 // full index block
+      + 2051;     // tail index block
     static const iresearch::string_ref column_name = "id";
 
     // write documents
@@ -7521,6 +7700,10 @@ TEST_F(memory_index_test, read_write_doc_attributes) {
   read_empty_doc_attributes();
 }
 
+TEST_F(memory_index_test, clear_writer) {
+  clear_writer();
+}
+
 TEST_F(memory_index_test, open_writer) {
   open_writer_check_lock();
 }
@@ -10969,6 +11152,10 @@ TEST_F(memory_index_test, segment_consolidate_policy) {
 class fs_index_test 
   : public tests::cases::tfidf<tests::fs_test_case_base>{
 }; // fs_index_test
+
+TEST_F(fs_index_test, clear_writer) {
+  clear_writer();
+}
 
 TEST_F(fs_index_test, open_writer) {
   open_writer_check_lock();
