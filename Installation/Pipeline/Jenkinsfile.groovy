@@ -1,15 +1,6 @@
 //  -*- mode: groovy-mode
 
-properties(
-    [[
-      $class: 'BuildDiscarderProperty',
-      strategy: [$class: 'LogRotator',
-                 artifactDaysToKeepStr: '3',
-                 artifactNumToKeepStr: '5',
-                 daysToKeepStr: '3',
-                 numToKeepStr: '5']
-    ]]
-)
+properties [[$class: 'BuildDiscarderProperty', strategy: [$class: 'LogRotator', daysToKeepStr: '3', numToKeepStr: '5']], [$class: 'ScannerJobProperty', doNotScan: false]]
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             SELECTABLE PARAMETERS
