@@ -1361,10 +1361,10 @@ timestamps {
             def diff = (start != "" && stop != "") ? groovy.time.TimeCategory.minus(stop, start) : "-"
             def startf = start.format('yyyy/MM/dd HH:mm:ss')
             def stopf = stop.format('yyyy/MM/dd HH:mm:ss')
-            def color = "bgcolor="#FF8080""
+            def color = 'bgcolor="#FF8080"'
 
             if (msg == FINISHED) {
-                color = "bgcolor="#80FF80""
+                color = 'bgcolor="#80FF80"'
             }
 
             results += "${key}: ${startf} - ${stopf} (${diff}) ${msg}\n"
