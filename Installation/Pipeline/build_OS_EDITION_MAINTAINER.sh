@@ -68,6 +68,7 @@ echo "PWD: `pwd`" | tee -a $logdir/build.log
     CXXFLAGS=-fno-omit-frame-pointer \
         cmake \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_INSTALL_PREFIX=/ \
             -DUSE_CATCH_TESTS=On \
             -DDEBUG_SYNC_REPLICATION=On \
             $ENTERPRISE \
