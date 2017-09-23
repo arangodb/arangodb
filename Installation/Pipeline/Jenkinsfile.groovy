@@ -316,9 +316,11 @@ def logStartStage(logFile) {
     echo "started ${logFile}: ${resultsStart[logFile]}"
 }
 
+def FINISHED = "finished"
+
 def logStopStage(logFile) {
     resultsStop[logFile] = new Date()
-    resultsStatus[logFile] = "finished"
+    resultsStatus[logFile] = FINISHED
 
     echo "finished ${logFile}: ${resultsStop[logFile]}"
 }
@@ -1349,19 +1351,32 @@ timestamps {
     }
     finally {
         results = ""
+        html = "<html><body><table>\n"
+        html += "<tr><th>${key}</th><th>${start.format('yyyyMMdd HH:mm:ss')}</th><th>${stop.format('yyyyMMdd HH:mm:ss')}</th><th>${diff}</th><th></th>${msg}</tr>\n"
 
         for (key in resultsKeys) {
             def start = resultsStart[key] ?: ""
             def stop = resultsStop[key] ?: ""
             def msg = resultsStatus[key] ?: ""
             def diff = (start != "" && stop != "") ? groovy.time.TimeCategory.minus(stop, start) : "-"
+            def startf = start.format('yyyyMMdd HH:mm:ss')
+            def stopf = stop.format('yyyyMMdd HH:mm:ss')
+            def color = "bgcolor="#FF8080""
 
-            results += "${key}: ${start.format('yyyyMMdd HH:mm:ss')} - ${stop} (${diff}) ${msg}\n"
+            if (msg == FINISHED) {
+                color = "bgcolor="#80FF80""
+            }
+
+            results += "${key}: ${startf} - ${stopf} (${diff}) ${msg}\n"
+            html += "<tr><td>${key}</td><td>${startf}</td><td>${stopf}</td><td>${diff}</td><td></td>${msg}</tr>\n"
         }
+
+        html += "</table></body></html>\n"
 
         node("master") {
             fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
-            archiveArtifacts(allowEmptyArchive: true, artifacts: "results.txt")
+            fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
+            archiveArtifacts(allowEmptyArchive: true, artifacts: "results.*")
         }
     }
 }
