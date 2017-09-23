@@ -1361,7 +1361,7 @@ for (key in resultsKeys) {
     def start = resultsStart[key] ?: ""
     def stop = resultsStop[key] ?: ""
     def msg = resultsStatus[key] ?: ""
-    def diff = (start != "" && stop != "") ? (stop - start) : ""
+    def diff = (start != "" && stop != "") ? groovy.time.TimeCategory.minus(stop, start) : "-"
 
     results += "${key}: ${start} - ${stop} (${diff}) ${msg}\n"
 }
