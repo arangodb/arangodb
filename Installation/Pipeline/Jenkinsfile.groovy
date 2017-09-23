@@ -744,7 +744,7 @@ def setupTestEnvironment(os, edition, maintainer, logFile, runDir) {
 }
 
 def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch, stageName) {
-    def parallelity = (os == "linux") ? 10 : 4
+    def parallelity = (mode == "cluster") ? ((os == "linux") ? 5 : 2) : ((os == "linux") ? 10 : 4)
     def testIndex = 0
     def tests = getTests(os, edition, maintainer, mode, engine)
 
@@ -1350,7 +1350,7 @@ timestamps {
     finally {
         results = ""
         html = "<html><body><table>\n"
-        html += "<tr><th>Name</th><th>Start</th><th>Stop</th><th>Duration</th><th></th>Message</tr>\n"
+        html += "<tr><th>Name</th><th>Start</th><th>Stop</th><th>Duration</th><th>Message</th></tr>\n"
 
         for (key in resultsKeys) {
             def start = resultsStart[key] ?: ""
@@ -1366,7 +1366,7 @@ timestamps {
             }
 
             results += "${key}: ${startf} - ${stopf} (${diff}) ${msg}\n"
-            html += "<tr><td>${key}</td><td>${startf}</td><td>${stopf}</td><td>${diff}</td><td></td>${msg}</tr>\n"
+            html += "<tr ${color}><td>${key}</td><td>${startf}</td><td>${stopf}</td><td>${diff}</td><td>${msg}</td></tr>\n"
         }
 
         html += "</table></body></html>\n"
