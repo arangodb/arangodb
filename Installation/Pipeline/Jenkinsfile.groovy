@@ -744,19 +744,11 @@ def setupTestEnvironment(os, edition, maintainer, logFile, runDir) {
 }
 
 def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch, stageName) {
-    def parallelity = (mode == "cluster") ? ((os == "linux") ? 5 : 2) : ((os == "linux") ? 10 : 4)
     def testIndex = 0
     def tests = getTests(os, edition, maintainer, mode, engine)
 
-    def portInterval = (mode == "cluster") ? 40 : 10
-
     // this is an `Array.reduce()` in groovy :S
     def testSteps = tests.inject([:]) { testMap, testStruct ->
-        def lockIndex = testIndex % parallelity
-        def currentIndex = testIndex
-
-        testIndex++
-
         def name = testStruct[0]
         def test = testStruct[1]
         def testArgs = "--prefix ${os}-${edition}-${mode}-${engine} " +
@@ -772,29 +764,50 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
         }
 
         testMap["${stageName}-${name}"] = {
-            def logFile       = pwd() + "/" + "${arch}/${name}.log"
-            def logFileRel    = "${arch}/${name}.log"
-            def logFileFailed = pwd() + "/" + "${arch}-FAIL/${name}.log"
-            def archRun       = pwd() + "/" + "${arch}-RUN"
+            node(testJenkins[os]) {
+                logStartStage(logFileRel)
 
-            def runDir = "run.${currentIndex}"
-            def port   = portInit + currentIndex * portInterval
+                def logFile       = pwd() + "/" + "${arch}/${name}.log"
+                def logFileRel    = "${arch}/${name}.log"
+                def logFileFailed = pwd() + "/" + "${arch}-FAIL/${name}.log"
 
-            testArgs += " --minPort " + port
-            testArgs += " --maxPort " + (port + portInterval - 1)
+                def archDir  = "${os}-${edition}-${maintainer}"
+                def arch     = "${archDir}/03-test-${mode}-${engine}"
+                def archFail = "${arch}-FAIL"
+                def archRun  = "${arch}-RUN"
 
-            def command = "./build/bin/arangosh " +
-                          "--log.level warning " +
-                          "--javascript.execute UnitTests/unittest.js " +
-                          " ${test} -- " +
-                          testArgs
+                def runDir = "run"
 
-            try {
-                lock("test-${env.NODE_NAME}-${env.JOB_NAME}-${env.BUILD_ID}-${edition}-${maintainer}-${engine}-${lockIndex}") {
-                    setupTestEnvironment(os, edition, maintainer, logFile, runDir)
-
+                stage("${stageName}-${name}") {
                     try {
-                        logStartStage(logFileRel)
+
+                        // clean the current workspace completely
+                        deleteDirDocker(os)
+
+                        // create directories for the artifacts
+                        fileOperations([
+                            fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
+                            folderCreateOperation(arch),
+                            folderCreateOperation(archFail),
+                            folderCreateOperation(archRun)
+                        ])
+
+                        // unstash binaries
+                        unstashBinaries(os, edition, maintainer)
+
+                        // find a suitable port
+                        def port = (getStartPort(os) as Integer)
+                        echo "Using start port: ${port}"
+
+                        setupTestEnvironment(os, edition, maintainer, logFile, runDir)
+
+                        // assemble command
+                        def command = "./build/bin/arangosh " +
+                                      "--log.level warning " +
+                                      "--javascript.execute UnitTests/unittest.js " +
+                                      " ${test} -- " +
+                                      " --minPort " + port +
+                                      " --maxPort " + (port + 39)
 
                         // seriously...30 minutes is the super absolute max max max.
                         // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
@@ -850,19 +863,22 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                         throw exc
                     }
                     finally {
+                        // release the port reservation
+                        if (os == 'linux' || os == 'mac') {
+                            sh "Installation/Pipeline/port.sh --clean ${port}"
+                        }
+                        else if (os == 'windows') {
+                            powershell "remove-item -Force -ErrorAction Ignore C:\\ports\\${port}"
+                        }
+
                         def logFileFailedRel = "${arch}-FAIL/${name}.log"
 
                         saveCores(os, runDir, name, archRun)
 
                         archiveArtifacts allowEmptyArchive: true,
-                            artifacts: "${archDir}-FAIL.txt, ${logFileRel}, ${logFileFailedRel}",
+                            artifacts: "${archDir}-FAIL.txt, ${archRun}/**, ${logFileRel}, ${logFileFailedRel}",
                             defaultExcludes: false
                     }
-                }
-            }
-            catch (exc) {
-                error "test ${name} failed"
-            }
         }
 
         testMap
@@ -899,50 +915,7 @@ def testCheck(os, edition, maintainer, mode, engine) {
 def testStep(os, edition, maintainer, mode, engine, stageName) {
     return {
         if (testCheck(os, edition, maintainer, mode, engine)) {
-            node(testJenkins[os]) {
-                stage(stageName) {
-                    def archDir    = "${os}-${edition}-${maintainer}"
-                    def arch       = "${archDir}/03-test-${mode}-${engine}"
-                    def archFail   = "${arch}-FAIL"
-                    def archRun    = "${arch}-RUN"
-
-                    // clean the current workspace completely
-                    deleteDirDocker(os)
-
-                    // create directories for the artifacts
-                    fileOperations([
-                        fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
-                        folderCreateOperation(arch),
-                        folderCreateOperation(archFail),
-                        folderCreateOperation(archRun)
-                    ])
-
-                    // unstash binaries
-                    unstashBinaries(os, edition, maintainer)
-
-                    // find a suitable port
-                    def port = (getStartPort(os) as Integer)
-                    echo "Using start port: ${port}"
-
-                    try {
-                        executeTests(os, edition, maintainer, mode, engine, port, archDir, arch, stageName)
-                    }
-                    finally {
-                        // release the port reservation
-                        if (os == 'linux' || os == 'mac') {
-                            sh "Installation/Pipeline/port.sh --clean ${port}"
-                        }
-                        else if (os == 'windows') {
-                            powershell "remove-item -Force -ErrorAction Ignore C:\\ports\\${port}"
-                        }
-
-                        // archive all artifacts
-                        archiveArtifacts allowEmptyArchive: true,
-                            artifacts: "${archRun}/**",
-                            defaultExcludes: false
-                    }
-                }
-            }
+            executeTests(os, edition, maintainer, mode, engine, port, archDir, arch, stageName)
         }
     }
 }
