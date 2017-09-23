@@ -1350,7 +1350,7 @@ timestamps {
     finally {
         results = ""
         html = "<html><body><table>\n"
-        html += "<tr><th>${key}</th><th>${start.format('yyyyMMdd HH:mm:ss')}</th><th>${stop.format('yyyyMMdd HH:mm:ss')}</th><th>${diff}</th><th></th>${msg}</tr>\n"
+        html += "<tr><th>Name</th><th>${start.format('yyyyMMdd HH:mm:ss')}</th><th>${stop.format('yyyyMMdd HH:mm:ss')}</th><th>${diff}</th><th></th>${msg}</tr>\n"
 
         for (key in resultsKeys) {
             def start = resultsStart[key] ?: ""
