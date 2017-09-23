@@ -1366,7 +1366,7 @@ timestamps {
             }
 
             results += "${key}: ${startf} - ${stopf} (${diff}) ${msg}\n"
-            html += "<tr ${color}><td>${key}</td><td>${startf}</td><td>${stopf}</td><td>${diff}</td><td align=\"right\">${msg}</td></tr>\n"
+            html += "<tr ${color}><td>${key}</td><td>${startf}</td><td>${stopf}</td><td align=\"right\">${diff}</td><td align=\"right\">${msg}</td></tr>\n"
         }
 
         html += "</table></body></html>\n"
