@@ -1359,8 +1359,8 @@ timestamps {
             def stop = resultsStop[key] ?: ""
             def msg = resultsStatus[key] ?: ""
             def diff = (start != "" && stop != "") ? groovy.time.TimeCategory.minus(stop, start) : "-"
-            def startf = start.format('yyyyMMdd HH:mm:ss')
-            def stopf = stop.format('yyyyMMdd HH:mm:ss')
+            def startf = start.format('yyyy/MM/dd HH:mm:ss')
+            def stopf = stop.format('yyyy/MM/dd HH:mm:ss')
             def color = "bgcolor="#FF8080""
 
             if (msg == FINISHED) {
