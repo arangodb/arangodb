@@ -1154,8 +1154,8 @@ IResearchView::IResearchView(
     FlushTransaction(toString(*this)),
    _asyncMetaRevision(1),
    _asyncTerminate(false),
-   _memoryNode(_memoryNodes), // set current memory node
-   _toFlush(_memoryNodes),
+   _memoryNode(&_memoryNodes[0]), // set current memory node (arbitrarily 0)
+   _toFlush(&_memoryNodes[1]), // set flush-pending memory node (not same as _memoryNode)
    _threadPool(0, 0) { // 0 == create pool with no threads, i.e. not running anything
 
   // set up in-recovery insertion hooks
@@ -1221,7 +1221,7 @@ IResearchView::IResearchView(
 
       if (TRI_ERROR_NO_ERROR != res) {
         LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to finish commit while processing transaction callback for iResearch view '" << id() << "'";
-      } else if (trx->state()->options().waitForSync && !sync(false)) {
+      } else if (trx->state()->options().waitForSync && !sync()) {
         LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to sync while processing transaction callback for iResearch view '" << id() << "'";
       }
 
@@ -1578,16 +1578,21 @@ int IResearchView::finish() {
 
   try {
     memoryStore._writer->commit(); // ensure have latest view in reader
+    memoryStore._reader = memoryStore._reader.reopen(); // update reader
 
+    SCOPED_LOCK(_toFlush->_reopenMutex); // FIXME TODO remove an use lock blow once comit()+import() race is solved
     // merge memory store into persisted
-    if (!_storePersisted._writer->import(memoryStore._reader.reopen())) {
+    if (!_storePersisted._writer->import(memoryStore._reader)) {
       return TRI_ERROR_INTERNAL;
     }
 
+    //SCOPED_LOCK(_toFlush->_reopenMutex); // do not allow concurrent reopen
     _storePersisted._writer->commit(); // finishing flush transaction
+    memoryStore._writer->clear(); // prepare the store for reuse
 
-    // noexcept
-    memoryStore = std::move(tmp); // FIXME find a better way to clear the store
+    SCOPED_LOCK(_toFlush->_readMutex); // do not allow concurrent read since _storePersisted/_toFlush need to be updated atomically
+    _storePersisted._reader = _storePersisted._reader.reopen(); // update reader
+    memoryStore._reader = memoryStore._reader.reopen(); // update reader
 
     return TRI_ERROR_NO_ERROR;
   } catch (std::exception& e) {
@@ -1879,17 +1884,12 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
   }
 
   try {
-    auto& memoryStore = activeMemoryStore();
-    auto reader = memoryStore._reader.reopen();
-
-    compoundReader.add(reader); // refresh to latest version
-    memoryStore._reader = reader; // cache reopened reader for reuse by other queries
+    compoundReader.add(_memoryNode->_store._reader);
+    SCOPED_LOCK(_toFlush->_readMutex);
+    compoundReader.add(_toFlush->_store._reader);
 
     if (_storePersisted) {
-      auto reader = _storePersisted._reader.reopen(); // refresh to latest version
-
-      compoundReader.add(reader);
-      _storePersisted._reader = reader; // cache reopened reader for reuse by other queries
+      compoundReader.add(_storePersisted._reader);
     }
   } catch (std::exception& e) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while collecting readers for querying iResearch view '" << id() << "': " << e.what();
@@ -2018,8 +2018,9 @@ size_t IResearchView::memory() const {
     size += tidEntry.second._removals.size() * (sizeof(decltype(tidEntry.second._removals)::pointer) + sizeof(decltype(tidEntry.second._removals)::value_type));
   }
 
-  size += sizeof(_memoryNode) + sizeof(_memoryNodes);
-  size += directoryMemory(*activeMemoryStore()._directory, id());
+  size += sizeof(_memoryNode) + sizeof(_toFlush) + sizeof(_memoryNodes);
+  size += directoryMemory(*(_memoryNode->_store._directory), id());
+  size += directoryMemory(*(_toFlush->_store._directory), id());
 
   if (_storePersisted) {
     size += directoryMemory(*(_storePersisted._directory), id());
@@ -2161,28 +2162,46 @@ IResearchView::MemoryStore& IResearchView::activeMemoryStore() const {
 }
 
 bool IResearchView::sync(size_t maxMsec /*= 0*/) {
-  return sync(true, maxMsec);
-}
-
-bool IResearchView::sync(bool includePersisted, size_t maxMsec /*= 0*/) {
   ReadMutex mutex(_mutex);
   auto thresholdSec = TRI_microtime() + maxMsec/1000.0;
 
   try {
     SCOPED_LOCK(mutex);
 
-    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting memory-store sync for iResearch view '" << id() << "'";
-    auto& memoryStore = activeMemoryStore();
-    memoryStore._writer->commit();
+    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting active memory-store sync for iResearch view '" << id() << "'";
+    _memoryNode->_store._writer->commit();
+    _memoryNode->_store._reader = _memoryNode->_store._reader.reopen(); // update reader
     LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "finished memory-store sync for iResearch view '" << id() << "'";
 
     if (maxMsec && TRI_microtime() >= thresholdSec) {
       return true; // skip if timout exceeded
     }
 
-    if (includePersisted && _storePersisted) {
+    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting pending memory-store sync for iResearch view '" << id() << "'";
+    _toFlush->_store._writer->commit();
+
+    {
+      SCOPED_LOCK(_toFlush->_reopenMutex);
+      _toFlush->_store._reader = _toFlush->_store._reader.reopen(); // update reader
+    }
+
+    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "finished pending memory-store sync for iResearch view '" << id() << "'";
+
+    if (maxMsec && TRI_microtime() >= thresholdSec) {
+      return true; // skip if timout exceeded
+    }
+
+    // must sync persisted store as well to ensure removals are applied
+    if (_storePersisted) {
       LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting persisted-sync sync for iResearch view '" << id() << "'";
+      SCOPED_LOCK(_toFlush->_reopenMutex); // FIXME TODO remove an use lock blow once comit()+import() race is solved
       _storePersisted._writer->commit();
+
+      {
+        //SCOPED_LOCK(_toFlush->_reopenMutex);
+        _storePersisted._reader = _storePersisted._reader.reopen(); // update reader
+      }
+
       LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "finished persisted-sync sync for iResearch view '" << id() << "'";
     }
 

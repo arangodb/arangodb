@@ -39,6 +39,7 @@
 #include "Basics/ArangoGlobalContext.h"
 #include "Basics/files.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchMMFilesLink.h"
@@ -1102,6 +1103,66 @@ SECTION("test_query") {
     CHECK((0 == skipped));
 
     CHECK_NOTHROW((itr->reset()));
+  }
+
+  // query while running FlushThread
+  {
+    auto dataPath = arangodb::basics::StringUtils::replace(((irs::utf8_path()/=s.testFilesystemPath)/=std::string("deleteme")).utf8(), "\\", "/");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\" }");
+    auto viewCreateJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"properties\": { \"dataPath\": \"" + dataPath + "\" } }");
+    auto viewUpdateJson = arangodb::velocypack::Parser::fromJson("{ \"links\": { \"testCollection\": { \"includeAllFields\": true } } }");
+    auto* feature = arangodb::iresearch::getFeature<arangodb::FlushFeature>("Flush");
+    REQUIRE(feature);
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
+    auto logicalView = vocbase.createView(viewCreateJson->slice(), 0);
+    REQUIRE((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    REQUIRE((false == !view));
+    arangodb::Result res = logicalView->updateProperties(viewUpdateJson->slice(), true, false);
+    REQUIRE(true == res.ok());
+
+    // start flush thread
+    auto flush = std::make_shared<std::atomic<bool>>(true);
+    std::thread flushThread([feature, flush]()->void{
+      while (flush->load()) {
+        feature->executeCallbacks();
+      }
+    });
+    auto flushStop = irs::make_finally([flush, &flushThread]()->void{
+      flush->store(false);
+      flushThread.join();
+    });
+
+    static std::vector<std::string> const EMPTY;
+    arangodb::transaction::Options options;
+
+    options.waitForSync = true;
+
+    // test insert + query
+    for (size_t i = 1; i < 200; ++i) {
+      // insert
+      {
+        auto doc = arangodb::velocypack::Parser::fromJson(std::string("{ \"seq\": ") + std::to_string(i) + " }");
+        arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, options);
+
+        CHECK((trx.begin().ok()));
+        CHECK((trx.insert(logicalCollection->name(), doc->slice(), arangodb::OperationOptions()).successful()));
+        CHECK((trx.commit().ok()));
+      }
+
+      // query
+      {
+        arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+        CHECK((trx.begin().ok()));
+        std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
+        CHECK((false == !itr));
+
+        size_t count = 0;
+        CHECK((!itr->next([&count](arangodb::DocumentIdentifierToken const&)->void{ ++count; }, i + 1)));
+        REQUIRE((i == count));
+      }
+    }
   }
 
   // FIXME TODO implement
