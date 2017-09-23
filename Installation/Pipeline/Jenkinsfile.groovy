@@ -316,11 +316,9 @@ def logStartStage(logFile) {
     echo "started ${logFile}: ${resultsStart[logFile]}"
 }
 
-def FINISHED = "finished"
-
 def logStopStage(logFile) {
     resultsStop[logFile] = new Date()
-    resultsStatus[logFile] = FINISHED
+    resultsStatus[logFile] = "finished"
 
     echo "finished ${logFile}: ${resultsStop[logFile]}"
 }
@@ -1363,7 +1361,7 @@ timestamps {
             def stopf = stop.format('yyyy/MM/dd HH:mm:ss')
             def color = 'bgcolor="#FF8080"'
 
-            if (msg == FINISHED) {
+            if (msg == "finished") {
                 color = 'bgcolor="#80FF80"'
             }
 
