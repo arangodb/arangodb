@@ -879,6 +879,8 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                             artifacts: "${archDir}-FAIL.txt, ${archRun}/**, ${logFileRel}, ${logFileFailedRel}",
                             defaultExcludes: false
                     }
+                }
+            }
         }
 
         testMap
@@ -1351,4 +1353,3 @@ timestamps {
         }
     }
 }
-
