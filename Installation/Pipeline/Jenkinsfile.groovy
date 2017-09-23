@@ -796,12 +796,12 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                     try {
                         logStartStage(logFileRel)
 
-                        // seriously...45 minutes is the super absolute max max max.
+                        // seriously...30 minutes is the super absolute max max max.
                         // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
                         // even if the features are green this is completely broken performance wise..
                         // DO NOT INCREASE!!
 
-                        timeout(os == 'linux' ? 5 : 75) {
+                        timeout(os == 'linux' ? 30 : 60) {
                             def tmpDir = pwd() + "/" + runDir + "/tmp"
 
                             withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
