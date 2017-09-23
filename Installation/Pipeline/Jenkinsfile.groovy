@@ -1341,32 +1341,36 @@ def runOperatingSystems(osList) {
 }
 
 timestamps {
-    node("master") {
-        echo sh(returnStdout: true, script: 'env')
+    try {
+        node("master") {
+            echo sh(returnStdout: true, script: 'env')
+        }
+
+        checkCommitMessages()
+
+        node("master") {
+            fileOperations([fileCreateOperation(fileContent: overview, fileName: "overview.txt")])
+            archiveArtifacts(allowEmptyArchive: true, artifacts: "overview.txt")
+        }
+
+        runOperatingSystems(['linux', 'mac', 'windows'])
     }
+    finally {
+        results = ""
 
-    checkCommitMessages()
+        for (key in resultsKeys) {
+            def start = resultsStart[key] ?: ""
+            def stop = resultsStop[key] ?: ""
+            def msg = resultsStatus[key] ?: ""
+            def diff = (start != "" && stop != "") ? groovy.time.TimeCategory.minus(stop, start) : "-"
 
-    node("master") {
-        fileOperations([fileCreateOperation(fileContent: overview, fileName: "overview.txt")])
-        archiveArtifacts(allowEmptyArchive: true, artifacts: "overview.txt")
+            results += "${key}: ${start} - ${stop} (${diff}) ${msg}\n"
+        }
+
+        node("master") {
+            fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
+            archiveArtifacts(allowEmptyArchive: true, artifacts: "results.txt")
+        }
     }
-
-    runOperatingSystems(['linux', 'mac', 'windows'])
 }
 
-results = ""
-
-for (key in resultsKeys) {
-    def start = resultsStart[key] ?: ""
-    def stop = resultsStop[key] ?: ""
-    def msg = resultsStatus[key] ?: ""
-    def diff = (start != "" && stop != "") ? groovy.time.TimeCategory.minus(stop, start) : "-"
-
-    results += "${key}: ${start} - ${stop} (${diff}) ${msg}\n"
-}
-
-node("master") {
-    fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
-    archiveArtifacts(allowEmptyArchive: true, artifacts: "results.txt")
-}
