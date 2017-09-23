@@ -773,6 +773,7 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
 
         testMap["${stageName}-${name}"] = {
             def logFile       = pwd() + "/" + "${arch}/${name}.log"
+            def logFileRel    = "${arch}/${name}.log"
             def logFileFailed = pwd() + "/" + "${arch}-FAIL/${name}.log"
             def archRun       = pwd() + "/" + "${arch}-RUN"
 
@@ -793,7 +794,7 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                     setupTestEnvironment(os, edition, maintainer, logFile, runDir)
 
                     try {
-                        logStartStage(logFile)
+                        logStartStage(logFileRel)
 
                         // seriously...45 minutes is the super absolute max max max.
                         // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
@@ -825,10 +826,10 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                         }
 
                         checkCores(os, runDir)
-                        logStopStage(logFile)
+                        logStopStage(logFileRel)
                     }
                     catch (exc) {
-                        logExceptionStage(logFile, exc)
+                        logExceptionStage(logFileRel, exc)
 
                         def msg = exc.toString()
 
@@ -849,7 +850,6 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                         throw exc
                     }
                     finally {
-                        def logFileRel       = "${arch}/${name}.log"
                         def logFileFailedRel = "${arch}-FAIL/${name}.log"
 
                         saveCores(os, runDir, name, archRun)
@@ -1356,7 +1356,7 @@ timestamps {
             def msg = resultsStatus[key] ?: ""
             def diff = (start != "" && stop != "") ? groovy.time.TimeCategory.minus(stop, start) : "-"
 
-            results += "${key}: ${start} - ${stop} (${diff}) ${msg}\n"
+            results += "${key}: ${start.format('yyyyMMdd HH:mm:ss')} - ${stop} (${diff}) ${msg}\n"
         }
 
         node("master") {
