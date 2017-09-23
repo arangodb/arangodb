@@ -142,6 +142,7 @@ void collect_terms_between(
           return; // skipped current term and no more terms in segment
         }
       } else if (!include_end_term
+                 && !end_term.null() // (begin .. end of granularity range]
                  && !(mask_value(begin_term, prefix_size) < mask_value(end_term, prefix_size))) { // don't use '==' since it compares size
         return; // empty range because end > begin
       }
