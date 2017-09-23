@@ -743,7 +743,7 @@ def setupTestEnvironment(os, edition, maintainer, logFile, runDir) {
     }
 }
 
-def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch, stageName) {
+def executeTests(os, edition, maintainer, mode, engine, stageName) {
     def testIndex = 0
     def tests = getTests(os, edition, maintainer, mode, engine)
 
@@ -917,7 +917,7 @@ def testCheck(os, edition, maintainer, mode, engine) {
 def testStep(os, edition, maintainer, mode, engine, stageName) {
     return {
         if (testCheck(os, edition, maintainer, mode, engine)) {
-            executeTests(os, edition, maintainer, mode, engine, port, archDir, arch, stageName)
+            executeTests(os, edition, maintainer, mode, engine, stageName)
         }
     }
 }
