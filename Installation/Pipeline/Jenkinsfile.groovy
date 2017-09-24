@@ -365,6 +365,9 @@ def generateResult() {
             if (msg == "finished") {
                 color = 'bgcolor="#80FF80"'
             }
+            else if (msg == "started") {
+                color = 'bgcolor="#8080FF"'
+            }
 
             def la = ""
             def lb = ""
