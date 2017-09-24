@@ -808,10 +808,12 @@ def singleTest(os, edition, maintainer, mode, engine, test, stageName, name) {
                     // unstash binaries
                     unstashBinaries(os, edition, maintainer)
 
+                    // setup links
                     setupTestEnvironment(os, edition, maintainer, logFile, runDir)
 
                     // assemble command
                     def command = "./build/bin/arangosh " +
+                                  "-c etc/jenkins/arangosh.conf " +
                                   "--log.level warning " +
                                   "--javascript.execute UnitTests/unittest.js " +
                                   " ${test} -- " +
