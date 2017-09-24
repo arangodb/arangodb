@@ -583,6 +583,23 @@ Running Tests: ${runTests}
 // --SECTION--                                                     SCRIPTS STASH
 // -----------------------------------------------------------------------------
 
+def stashBuild(os, edition, maintainer) {
+    if (os == 'linux' || os == 'mac') {
+        def name = "build.tar.gz"
+
+        sh "rm -f ${name}"
+        sh "GZIP=-1 tar cpzf ${name} build"
+        sh "scp ${name} c1:/vol/cache/build-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.tar.gz"
+    }
+    else if (os == 'windows') {
+        def name = "build.zip"
+
+        bat "del /F /Q ${name}"
+        powershell "7z a ${name} -r -bd -mx=1 build"
+        powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk ${name} jenkins@c1:/vol/cache/build-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip"
+    }
+}
+
 def stashBinaries(os, edition, maintainer) {
     def paths = ["build/etc", "etc", "Installation/Pipeline", "js", "scripts", "UnitTests"]
 
@@ -1153,6 +1170,10 @@ def buildEdition(os, edition, maintainer) {
         throw exc
     }
     finally {
+        if (os == "linux") {
+            stashBuild(os, edition, maintainer)
+        }
+
         archiveArtifacts allowEmptyArchive: true,
             artifacts: "${archDir}-FAIL.txt, ${arch}/**, ${archFail}/**",
             defaultExcludes: false

@@ -50,9 +50,9 @@ mkdir -p build
 
 if [ ! -f build/location ]; then
     if [ "$os" == mac ]; then
-        (ls -l  && echo "$edition $os") | md5 | awk '{print $1}' > build/location
+        (ls -l  && echo "$os-$edition-$maintainer") | md5 | awk '{print $1}' > build/location
     else
-        (ls -l  && echo "$edition $os") | md5sum | awk '{print $1}' > build/location
+        (ls -l  && echo "$os-$edition-$maintainer") | md5sum | awk '{print $1}' > build/location
     fi
 fi
 
