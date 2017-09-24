@@ -642,7 +642,20 @@ def stashBuild(os, edition, maintainer) {
 
             bat "del /F /Q ${name}"
             powershell "7z a ${name} -r -bd -mx=1 build"
-            powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk ${name} jenkins@c1:/vol/cache/build-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip"
+            powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk ${name} jenkins@c1:/vol/cache/build-${os}-${edition}-${maintainer}.zip"
+        }
+    }
+}
+
+def unstashBuild(os, edition, maintainer) {
+    lock("stashing-${os}-${edition}-${maintainer}") {
+        if (os == "windows") {
+            powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/build-${os}-${edition}-${maintainer}.zip build.zip"
+            powershell "Expand-Archive -Path build.zip -Force -DestinationPath ."
+        }
+        else {
+            sh "scp c1:/vol/cache/build-${os}-${edition}-${maintainer}.tar.gz build.tar.gz"
+            sh "tar xpzf build.tar.gz"
         }
     }
 }
@@ -1172,6 +1185,10 @@ def buildEdition(os, edition, maintainer) {
         logStartStage(logFile, logFile)
 
         if (os == 'linux' || os == 'mac') {
+            if (! fileExists('build/Makefile')) {
+                unstashBuild(os, edition, maintainer)
+            }
+
             sh "echo \"Host: `hostname`\" | tee -a ${logFile}"
             sh "echo \"PWD:  `pwd`\" | tee -a ${logFile}"
             sh "echo \"Date: `date`\" | tee -a ${logFile}"
