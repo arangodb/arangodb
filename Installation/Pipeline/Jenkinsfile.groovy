@@ -754,7 +754,7 @@ def setupTestEnvironment(os, edition, maintainer, logFile, runDir) {
     }
 }
 
-def singleTest(os, edition, maintainer, mode, engine, stageName, name) {
+def singleTest(os, edition, maintainer, mode, engine, test, stageName, name) {
   return {
       node(testJenkins[os]) {
           stage("${stageName}-${name}") {
@@ -891,7 +891,7 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
             testArgs += " --cluster true"
         }
 
-        testMap["${stageName}-${name}"] = singleTest(os, edition, maintainer, mode, engine, stageName, name)
+        testMap["${stageName}-${name}"] = singleTest(os, edition, maintainer, mode, engine, test, stageName, name)
 
         return testMap
     }
