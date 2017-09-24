@@ -25,10 +25,14 @@
 #include "search/scorers.hpp"
 
 #include "IResearchFeature.h"
+#include "IResearchRocksDBRecoveryHelper.h"
 #include "IResearchView.h"
 #include "ApplicationServerHelper.h"
 
 #include "RestServer/ViewTypesFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 
 #include "Aql/AqlValue.h"
 #include "Aql/AqlFunctionFeature.h"
@@ -131,7 +135,7 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
     std::transform(upperName.begin(), upperName.end(), upperName.begin(), ::toupper);
 
     arangodb::iresearch::addFunction(functions, arangodb::aql::Function{
-      std::move(upperName), 
+      std::move(upperName),
       ".|+", // positional arguments (attribute [, <scorer-specific properties>...])
       true, // deterministic
       true, // can throw
@@ -142,6 +146,15 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
 
     return true;
   });
+}
+
+void registerRecoveryHelper() {
+  auto rawEngine = arangodb::EngineSelectorFeature::ENGINE;
+  if (rawEngine->typeName() == arangodb::RocksDBEngine::EngineName) {
+    auto engine = static_cast<arangodb::RocksDBEngine*>(rawEngine);
+    auto helper = std::make_shared<arangodb::iresearch::IResearchRocksDBRecoveryHelper>();
+    engine->registerRecoveryHelper(helper);
+  }
 }
 
 std::string const FEATURE_NAME("IResearch");
@@ -170,7 +183,7 @@ IResearchFeature::IResearchFeature(arangodb::application_features::ApplicationSe
   startsAfter("AQLFunctions");
   // TODO FIXME: we need the MMFilesLogfileManager to be available here if we
   // use the MMFiles engine. But it does not feel right to have such storage engine-
-  // specific dependency here. Better create a "StorageEngineFeature" and make 
+  // specific dependency here. Better create a "StorageEngineFeature" and make
   // ourselves start after it!
   startsAfter("MMFilesLogfileManager");
   startsAfter("TransactionManager");
@@ -220,7 +233,10 @@ void IResearchFeature::start() {
     } else {
       LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failure to find feature 'AQLFunctions' while registering iresearch filters";
     }
+
   }
+
+  registerRecoveryHelper();
 
   _running = true;
 }
