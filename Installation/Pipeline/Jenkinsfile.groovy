@@ -288,6 +288,15 @@ def getStartPort(os) {
     }
 }
 
+def releaseStartPort(os, port) {
+    if (os == 'linux' || os == 'mac') {
+        sh "Installation/Pipeline/port.sh --clean ${port}"
+    }
+    else if (os == 'windows') {
+        powershell "remove-item -Force -ErrorAction Ignore C:\\ports\\${port}"
+    }
+}
+
 def rspecify(os, test) {
     if (os == "windows") {
         return [test, test, "--rspec C:\\tools\\ruby23\\bin\\rspec.bat"]
@@ -781,6 +790,10 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
                 logStartStage(logFileRel, logFileRel)
 
                 stage("${stageName}-${name}") {
+                    // find a suitable port
+                    def port = (getStartPort(os) as Integer)
+                    echo "Using start port: ${port}"
+
                     try {
 
                         // clean the current workspace completely
@@ -796,10 +809,6 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
 
                         // unstash binaries
                         unstashBinaries(os, edition, maintainer)
-
-                        // find a suitable port
-                        def port = (getStartPort(os) as Integer)
-                        echo "Using start port: ${port}"
 
                         setupTestEnvironment(os, edition, maintainer, logFile, runDir)
 
@@ -865,13 +874,7 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
                         throw exc
                     }
                     finally {
-                        // release the port reservation
-                        if (os == 'linux' || os == 'mac') {
-                            sh "Installation/Pipeline/port.sh --clean ${port}"
-                        }
-                        else if (os == 'windows') {
-                            powershell "remove-item -Force -ErrorAction Ignore C:\\ports\\${port}"
-                        }
+                        releaseStartPort(os, port)
 
                         def logFileFailedRel = "${arch}-FAIL/${name}.log"
 
