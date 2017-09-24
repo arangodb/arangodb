@@ -822,7 +822,7 @@ def setupTestEnvironment(os, edition, maintainer, logFile, runDir) {
         folderCreateOperation("${runDir}/tmp"),
     ])
 
-    def subdirs = ['build', 'etc', 'js', 'scripts', 'UnitTests', 'Installation/Pipeline']
+    def subdirs = ['build', 'etc', 'js', 'scripts', 'UnitTests']
 
     if (edition == "enterprise") {
        subdirs << "enterprise"
@@ -859,10 +859,6 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, stageName,
 
                 logStartStage(logFileRel, logFileRel)
 
-                // find a suitable port
-                def port = (getStartPort(os) as Integer)
-                echo "Using start port: ${port}"
-
                 try {
 
                     // clean the current workspace completely
@@ -878,6 +874,10 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, stageName,
 
                     // unstash binaries
                     unstashBinaries(os, edition, maintainer)
+
+                    // find a suitable port
+                    def port = (getStartPort(os) as Integer)
+                    echo "Using start port: ${port}"
 
                     // setup links
                     setupTestEnvironment(os, edition, maintainer, logFile, runDir)
