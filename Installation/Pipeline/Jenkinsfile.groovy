@@ -765,18 +765,18 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
 
         testMap["${stageName}-${name}"] = {
             node(testJenkins[os]) {
-                def logFile       = pwd() + "/" + "${arch}/${name}.log"
-                def logFileRel    = "${arch}/${name}.log"
-                def logFileFailed = pwd() + "/" + "${arch}-FAIL/${name}.log"
-
-                logStartStage(logFileRel)
-
                 def archDir  = "${os}-${edition}-${maintainer}"
                 def arch     = "${archDir}/03-test-${mode}-${engine}"
                 def archFail = "${arch}-FAIL"
                 def archRun  = "${arch}-RUN"
 
+                def logFile       = pwd() + "/" + "${arch}/${name}.log"
+                def logFileRel    = "${arch}/${name}.log"
+                def logFileFailed = pwd() + "/" + "${arch}-FAIL/${name}.log"
+
                 def runDir = "run"
+
+                logStartStage(logFileRel)
 
                 stage("${stageName}-${name}") {
                     try {
