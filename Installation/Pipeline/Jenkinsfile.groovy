@@ -118,6 +118,7 @@ resultsKeys = []
 resultsStart = [:]
 resultsStop = [:]
 resultsStatus = [:]
+resultsLink = [:]
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             CONSTANTS AND HELPERS
@@ -307,10 +308,11 @@ def shellAndPipe(command, logfile) {
   sh "(echo 1 > \"${logfile}.result\" ; ${command} ; echo \$? > \"${logfile}.result\") 2>&1 | tee -a \"${logfile}\" ; exit `cat \"${logfile}.result\"`"
 }
 
-def logStartStage(logFile) {
+def logStartStage(logFile, link) {
     resultsKeys << logFile
 
     resultsStart[logFile] = new Date()
+    resultsLink[logFile] = link
     resultsStatus[logFile] = "started"
 
     echo "started ${logFile}: ${resultsStart[logFile]}"
@@ -636,7 +638,7 @@ def jslint(os, edition, maintainer) {
     def logFile = "${arch}/jslint.log"
 
     try {
-        logStartStage(logFile)
+        logStartStage(logFile, logFile)
 
         shellAndPipe("./Installation/Pipeline/test_jslint.sh",logFile)
         sh "if grep ERROR ${logFile}; then exit 1; fi"
@@ -776,7 +778,7 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
 
                 def runDir = "run"
 
-                logStartStage(logFileRel)
+                logStartStage(logFileRel, logFileRel)
 
                 stage("${stageName}-${name}") {
                     try {
@@ -935,7 +937,7 @@ def testStepParallel(os, edition, maintainer, modeList) {
     def name = "test-${os}-${edition}-${maintainer}"
 
     try {
-        logStartStage(name)
+        logStartStage(name, null)
         parallel branches
         logStopStage(name)
     }
@@ -1088,7 +1090,7 @@ def buildEdition(os, edition, maintainer) {
     def logFile = "${arch}/build.log"
 
     try {
-        logStartStage(logFile)
+        logStartStage(logFile, logFile)
 
         if (os == 'linux' || os == 'mac') {
             sh "echo \"Host: `hostname`\" | tee -a ${logFile}"
@@ -1208,7 +1210,7 @@ def createDockerImage(edition, maintainer, stageName) {
 
                     withEnv(["DOCKERTAG=${packageName}-${dockerTag}"]) {
                         try {
-                            logStartStage(logFile)
+                            logStartStage(logFile, logFile)
 
                             shellAndPipe("./scripts/build-docker.sh", logFile)
                             shellAndPipe("docker tag arangodb:${packageName}-${dockerTag} c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag}", logFile)
@@ -1331,6 +1333,7 @@ timestamps {
             def start = resultsStart[key] ?: ""
             def stop = resultsStop[key] ?: ""
             def msg = resultsStatus[key] ?: ""
+            def link = resultsLink[key] ?: ""
             def diff = (start != "" && stop != "") ? groovy.time.TimeCategory.minus(stop, start) : "-"
             def startf = start.format('yyyy/MM/dd HH:mm:ss')
             def stopf = stop.format('yyyy/MM/dd HH:mm:ss')
@@ -1340,8 +1343,16 @@ timestamps {
                 color = 'bgcolor="#80FF80"'
             }
 
+            def la = ""
+            def lb = ""
+
+            if (link != null) {
+                la = "<a href=\"$link\">"
+                lb = "</a>
+            }
+
             results += "${key}: ${startf} - ${stopf} (${diff}) ${msg}\n"
-            html += "<tr ${color}><td>${key}</td><td>${startf}</td><td>${stopf}</td><td align=\"right\">${diff}</td><td align=\"right\">${msg}</td></tr>\n"
+            html += "<tr ${color}><td>${la}${key}${lb}</td><td>${startf}</td><td>${stopf}</td><td align=\"right\">${diff}</td><td align=\"right\">${msg}</td></tr>\n"
         }
 
         html += "</table></body></html>\n"
