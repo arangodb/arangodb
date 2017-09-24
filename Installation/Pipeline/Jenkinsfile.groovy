@@ -771,7 +771,7 @@ def setupTestEnvironment(os, edition, maintainer, logFile, runDir) {
     }
 }
 
-def singleTest(os, edition, maintainer, mode, engine, test, stageName, name) {
+def singleTest(os, edition, maintainer, mode, engine, test, testArgs, stageName, name) {
   return {
       node(testJenkins[os]) {
           stage("${stageName}-${name}") {
@@ -816,9 +816,10 @@ def singleTest(os, edition, maintainer, mode, engine, test, stageName, name) {
                                   "-c etc/jenkins/arangosh.conf " +
                                   "--log.level warning " +
                                   "--javascript.execute UnitTests/unittest.js " +
-                                  " ${test} -- " +
-                                  " --minPort " + port +
-                                  " --maxPort " + (port + 39)
+                                  "${test} -- " +
+                                  "${testArgs} " + 
+                                  "--minPort " + port + " " +
+                                  "--maxPort " + (port + 39)
 
                     // 30 minutes is the super absolute max max max.
                     // even in the worst situations ArangoDB MUST be able to
@@ -910,7 +911,7 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
             testArgs += " --cluster true"
         }
 
-        testMap["${stageName}-${name}"] = singleTest(os, edition, maintainer, mode, engine, test, stageName, name)
+        testMap["${stageName}-${name}"] = singleTest(os, edition, maintainer, mode, engine, test, testArgs, stageName, name)
 
         return testMap
     }
