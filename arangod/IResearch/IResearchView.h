@@ -321,6 +321,8 @@ class IResearchView final: public arangodb::ViewImplementation,
   struct MemoryStoreNode {
     MemoryStore _store;
     MemoryStoreNode* _next; // pointer to the next MemoryStore
+    std::mutex _readMutex; // for use with obtaining _reader FIXME TODO find a better way
+    std::mutex _reopenMutex; // for use with _reader.reopen() FIXME TODO find a better way
   };
 
   typedef std::unordered_map<TRI_voc_tid_t, TidStore> MemoryStoreByTid;
@@ -363,14 +365,6 @@ class IResearchView final: public arangodb::ViewImplementation,
   /// @brief process a finished transaction and release resources held by it
   ////////////////////////////////////////////////////////////////////////////////
   int finish(TRI_voc_tid_t tid, bool commit);
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief wait for a flush of all index data to its respective stores
-  /// @param maxMsec try not to exceed the specified time, casues partial sync
-  ///                0 == full sync
-  /// @return success
-  ////////////////////////////////////////////////////////////////////////////////
-  bool sync(bool includePersisted, size_t maxMsec = 0);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief wait for a flush of all index data to its respective stores

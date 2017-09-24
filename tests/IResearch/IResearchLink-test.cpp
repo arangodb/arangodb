@@ -33,6 +33,7 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Basics/files.h"
+#include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchFeature.h"
 #include "IResearch/IResearchMMFilesLink.h"
@@ -320,6 +321,8 @@ SECTION("test_write") {
   auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
   REQUIRE((false == !view));
   view->open();
+  auto* flush = arangodb::iresearch::getFeature<arangodb::FlushFeature>("Flush");
+  REQUIRE((flush));
 
   irs::fs_directory directory(dataPath);
   auto reader = irs::directory_reader::open(directory);
@@ -335,6 +338,7 @@ SECTION("test_write") {
     CHECK((trx.commit().ok()));
   }
 
+  flush->executeCallbacks(); // prepare memory store to be flushed to persisted storage
   CHECK((TRI_ERROR_NO_ERROR == view->finish()));
   CHECK((true == view->sync()));
   CHECK((1 == reader.reopen().live_docs_count()));
@@ -346,6 +350,7 @@ SECTION("test_write") {
     CHECK((trx.commit().ok()));
   }
 
+  flush->executeCallbacks(); // prepare memory store to be flushed to persisted storage
   CHECK((TRI_ERROR_NO_ERROR == view->finish()));
   CHECK((true == view->sync()));
   CHECK((2 == reader.reopen().live_docs_count()));
@@ -357,6 +362,7 @@ SECTION("test_write") {
     CHECK((trx.commit().ok()));
   }
 
+  flush->executeCallbacks(); // prepare memory store to be flushed to persisted storage
   CHECK((TRI_ERROR_NO_ERROR == view->finish()));
   CHECK((true == view->sync()));
   CHECK((1 == reader.reopen().live_docs_count()));

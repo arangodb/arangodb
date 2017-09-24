@@ -245,6 +245,12 @@ class IRESEARCH_API index_writer : util::noncopyable {
   uint64_t buffered_docs() const;
 
   ////////////////////////////////////////////////////////////////////////////
+  /// @brief Clears the existing index repository by staring an empty index.
+  ///        Previously opened readers still remain valid.
+  ////////////////////////////////////////////////////////////////////////////
+  void clear();
+
+  ////////////////////////////////////////////////////////////////////////////
   /// @brief inserts document to be filled by the specified functor into index
   /// @note that changes are not visible until commit()
   /// @note the specified 'func' should return false in order to break the

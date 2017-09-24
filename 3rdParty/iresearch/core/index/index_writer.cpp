@@ -124,6 +124,39 @@ index_writer::index_writer(
   flush_context_pool_[flush_context_pool_.size() - 1].next_context_ = &flush_context_pool_[0];
 }
 
+void index_writer::clear() {
+  assert(write_lock_);
+  SCOPED_LOCK(commit_lock_);
+
+  if (!pending_state_
+      && meta_.empty()
+      && type_limits<type_t::index_gen_t>::valid(meta_.last_gen_)) {
+    return; // already empty
+  }
+
+  auto ctx = get_flush_context(false);
+  SCOPED_LOCK(ctx->mutex_); // ensure there are no active struct update operations
+
+  auto pending_meta = memory::make_unique<index_meta>();
+
+  cached_segment_readers_.clear(); // original readers no longer required
+  pending_meta->update_generation(meta_); // clone index metadata generation
+  pending_meta->seg_counter_.store(meta_.counter()); // ensure counter() >= max(seg#)
+  //ctx.reset(); // clear context to avoid writing anything
+
+  // write 1st phase of index_meta transaction
+  if (!writer_->prepare(*(ctx->dir_), *(pending_meta))) {
+    throw illegal_state();
+  }
+
+  // 1st phase of the transaction successfully finished here
+  meta_.update_generation(*pending_meta); // ensure new generation reflected in 'meta_'
+  pending_state_.ctx = std::move(ctx); // retain flush context reference
+  pending_state_.meta = std::move(pending_meta); // retain meta pending flush
+  finish();
+  meta_.segments_.clear(); // noexcept op (clear after finish(), to match reset of pending_state_ inside finish(), allows recovery on clear() failure)
+}
+
 index_writer::ptr index_writer::make(directory& dir, format::ptr codec, OPEN_MODE mode) {
   // lock the directory
   auto lock = dir.make_lock(WRITE_LOCK_NAME);
@@ -975,6 +1008,7 @@ void index_writer::finish() {
   committed_state.second.emplace_back(iresearch::directory_utils::reference(dir, writer_->filename(meta), true));
   append_segments_refs(committed_state.second, dir, meta);
   writer_->commit();
+  meta_.last_gen_ = meta.gen_; // update 'last_gen_' to last commited/valid generation
 
   // ...........................................................................
   // after here transaction successfull

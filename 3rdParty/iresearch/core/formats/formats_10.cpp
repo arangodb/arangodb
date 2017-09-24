@@ -3514,7 +3514,7 @@ class dense_fixed_length_column<dense_mask_block> final : public column {
 
       // skip offsets, they point to "garbage" data
       encode::avg::visit_block_packed_tail(
-        in, INDEX_BLOCK_SIZE, buf,
+        in, blocks_count, buf,
         [](uint64_t ) { }
       );
     }
