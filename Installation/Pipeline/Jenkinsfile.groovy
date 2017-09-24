@@ -784,6 +784,7 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
             testArgs += " --maxPort " + (port + portInterval - 1)
 
             def command = "./build/bin/arangosh " +
+                          "-c etc/jenkins/arangosh.conf " +
                           "--log.level warning " +
                           "--javascript.execute UnitTests/unittest.js " +
                           " ${test} -- " +
