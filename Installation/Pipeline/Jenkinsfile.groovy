@@ -822,7 +822,7 @@ def setupTestEnvironment(os, edition, maintainer, logFile, runDir) {
         folderCreateOperation("${runDir}/tmp"),
     ])
 
-    def subdirs = ['build', 'etc', 'js', 'scripts', 'UnitTests']
+    def subdirs = ['build', 'etc', 'js', 'scripts', 'UnitTests', 'Installation/Pipeline']
 
     if (edition == "enterprise") {
        subdirs << "enterprise"
