@@ -649,13 +649,17 @@ def stashBuild(os, edition, maintainer) {
 
 def unstashBuild(os, edition, maintainer) {
     lock("stashing-${os}-${edition}-${maintainer}") {
-        if (os == "windows") {
-            powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/build-${os}-${edition}-${maintainer}.zip build.zip"
-            powershell "Expand-Archive -Path build.zip -Force -DestinationPath ."
+        try {
+            if (os == "windows") {
+                powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/build-${os}-${edition}-${maintainer}.zip build.zip"
+                powershell "Expand-Archive -Path build.zip -Force -DestinationPath ."
+            }
+            else {
+                sh "scp c1:/vol/cache/build-${os}-${edition}-${maintainer}.tar.gz build.tar.gz"
+                sh "tar xpzf build.tar.gz"
+            }
         }
-        else {
-            sh "scp c1:/vol/cache/build-${os}-${edition}-${maintainer}.tar.gz build.tar.gz"
-            sh "tar xpzf build.tar.gz"
+        catch (exc) {
         }
     }
 }
