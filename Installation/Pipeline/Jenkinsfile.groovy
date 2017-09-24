@@ -1348,7 +1348,7 @@ timestamps {
 
             if (link != null) {
                 la = "<a href=\"$link\">"
-                lb = "</a>
+                lb = "</a>"
             }
 
             results += "${key}: ${startf} - ${stopf} (${diff}) ${msg}\n"
