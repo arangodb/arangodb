@@ -325,6 +325,7 @@ def logStartStage(logFile, link) {
     resultsStatus[logFile] = "started"
 
     echo "started ${logFile}: ${resultsStart[logFile]}"
+    generateResult()
 }
 
 def logStopStage(logFile) {
@@ -332,6 +333,7 @@ def logStopStage(logFile) {
     resultsStatus[logFile] = "finished"
 
     echo "finished ${logFile}: ${resultsStop[logFile]}"
+    generateResult()
 }
 
 def logExceptionStage(logFile, exc) {
@@ -341,6 +343,49 @@ def logExceptionStage(logFile, exc) {
     resultsStatus[logFile] = "failed ${msg}"
 
     echo "failed ${logFile}: ${resultsStop[logFile]} ${msg}"
+    generateResult()
+}
+
+def generateResult() {
+    lock("result") {
+        results = ""
+        html = "<html><body><table>\n"
+        html += "<tr><th>Name</th><th>Start</th><th>Stop</th><th>Duration</th><th>Message</th></tr>\n"
+
+        for (key in resultsKeys) {
+            def start = resultsStart[key] ?: ""
+            def stop = resultsStop[key] ?: ""
+            def msg = resultsStatus[key] ?: ""
+            def link = resultsLink[key] ?: ""
+            def diff = (start != "" && stop != "") ? groovy.time.TimeCategory.minus(stop, start) : "-"
+            def startf = start == "" ? "-" : start.format('yyyy/MM/dd HH:mm:ss')
+            def stopf = stop == "" ? "-" : stop.format('yyyy/MM/dd HH:mm:ss')
+            def color = 'bgcolor="#FF8080"'
+
+            if (msg == "finished") {
+                color = 'bgcolor="#80FF80"'
+            }
+
+            def la = ""
+            def lb = ""
+
+            if (link != null) {
+                la = "<a href=\"$link\">"
+                lb = "</a>"
+            }
+
+            results += "${key}: ${startf} - ${stopf} (${diff}) ${msg}\n"
+            html += "<tr ${color}><td>${la}${key}${lb}</td><td>${startf}</td><td>${stopf}</td><td align=\"right\">${diff}</td><td align=\"right\">${msg}</td></tr>\n"
+        }
+
+        html += "</table></body></html>\n"
+
+        node("master") {
+            fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
+            fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
+            archiveArtifacts(allowEmptyArchive: true, artifacts: "results.*")
+        }
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -584,64 +629,70 @@ Running Tests: ${runTests}
 // -----------------------------------------------------------------------------
 
 def stashBuild(os, edition, maintainer) {
-    if (os == 'linux' || os == 'mac') {
-        def name = "build.tar.gz"
+    lock("stashing-${os}-${edition}-${maintainer}") {
+        if (os == 'linux' || os == 'mac') {
+            def name = "build.tar.gz"
 
-        sh "rm -f ${name}"
-        sh "GZIP=-1 tar cpzf ${name} build"
-        sh "scp ${name} c1:/vol/cache/build-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.tar.gz"
-    }
-    else if (os == 'windows') {
-        def name = "build.zip"
+            sh "rm -f ${name}"
+            sh "GZIP=-1 tar cpzf ${name} build"
+            sh "scp ${name} c1:/vol/cache/build-${os}-${edition}-${maintainer}.tar.gz"
+        }
+        else if (os == 'windows') {
+            def name = "build.zip"
 
-        bat "del /F /Q ${name}"
-        powershell "7z a ${name} -r -bd -mx=1 build"
-        powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk ${name} jenkins@c1:/vol/cache/build-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip"
+            bat "del /F /Q ${name}"
+            powershell "7z a ${name} -r -bd -mx=1 build"
+            powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk ${name} jenkins@c1:/vol/cache/build-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip"
+        }
     }
 }
 
 def stashBinaries(os, edition, maintainer) {
-    def paths = ["build/etc", "etc", "Installation/Pipeline", "js", "scripts", "UnitTests"]
+    lock("stashing-${os}-${edition}-${maintainer}") {
+        def paths = ["build/etc", "etc", "Installation/Pipeline", "js", "scripts", "UnitTests"]
 
-    if (edition == "enterprise") {
-       paths << "enterprise/js"
-    }
+        if (edition == "enterprise") {
+           paths << "enterprise/js"
+        }
 
-    if (os == "windows") {
-        paths << "build/bin/RelWithDebInfo"
-        paths << "build/tests/RelWithDebInfo"
+        if (os == "windows") {
+            paths << "build/bin/RelWithDebInfo"
+            paths << "build/tests/RelWithDebInfo"
 
-        // so frustrating...compress-archive is built in but it simply won't include the relative path to
-        // the archive :(
-        // powershell "Compress-Archive -Force -Path (Get-ChildItem -Recurse -Path " + paths.join(',') + ") -DestinationPath stash.zip -Confirm -CompressionLevel Fastest"
-        // install 7z portable (https://chocolatey.org/packages/7zip.portable)
+            // so frustrating...compress-archive is built in but it simply won't include the relative path to
+            // the archive :(
+            // powershell "Compress-Archive -Force -Path (Get-ChildItem -Recurse -Path " + paths.join(',') + ") -DestinationPath stash.zip -Confirm -CompressionLevel Fastest"
+            // install 7z portable (https://chocolatey.org/packages/7zip.portable)
 
-        powershell "7z a stash.zip -r -bd -mx=1 " + paths.join(" ")
+            powershell "7z a stash.zip -r -bd -mx=1 " + paths.join(" ")
 
-        // this is a super mega mess...scp will run as the system user and not as jenkins when run as a server
-        // I couldn't figure out how to properly get it running for hours...so last resort was to install putty
+            // this is a super mega mess...scp will run as the system user and not as jenkins when run as a server
+            // I couldn't figure out how to properly get it running for hours...so last resort was to install putty
 
-        powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk stash.zip jenkins@c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip"
-    }
-    else {
-        paths << "build/bin/"
-        paths << "build/tests/"
+            powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk stash.zip jenkins@c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip"
+        }
+        else {
+            paths << "build/bin/"
+            paths << "build/tests/"
 
-        sh "GZIP=-1 tar cpzf stash.tar.gz " + paths.join(" ")
-        sh "scp stash.tar.gz c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.tar.gz"
+            sh "GZIP=-1 tar cpzf stash.tar.gz " + paths.join(" ")
+            sh "scp stash.tar.gz c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.tar.gz"
+        }
     }
 }
 
 def unstashBinaries(os, edition, maintainer) {
-    if (os == "windows") {
-        powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip stash.zip"
-        powershell "Expand-Archive -Path stash.zip -Force -DestinationPath ."
-        powershell "copy build\\tests\\RelWithDebInfo\\* build\\bin"
-        powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
-    }
-    else {
-        sh "scp c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.tar.gz stash.tar.gz"
-        sh "tar xpzf stash.tar.gz"
+    lock("stashing-${os}-${edition}-${maintainer}") {
+        if (os == "windows") {
+            powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.zip stash.zip"
+            powershell "Expand-Archive -Path stash.zip -Force -DestinationPath ."
+            powershell "copy build\\tests\\RelWithDebInfo\\* build\\bin"
+            powershell "copy build\\bin\\RelWithDebInfo\\* build\\bin"
+        }
+        else {
+            sh "scp c1:/vol/cache/binaries-${env.BUILD_TAG}-${os}-${edition}-${maintainer}.tar.gz stash.tar.gz"
+            sh "tar xpzf stash.tar.gz"
+        }
     }
 }
 
@@ -1357,42 +1408,6 @@ timestamps {
         runOperatingSystems(['linux', 'mac', 'windows'])
     }
     finally {
-        results = ""
-        html = "<html><body><table>\n"
-        html += "<tr><th>Name</th><th>Start</th><th>Stop</th><th>Duration</th><th>Message</th></tr>\n"
-
-        for (key in resultsKeys) {
-            def start = resultsStart[key] ?: ""
-            def stop = resultsStop[key] ?: ""
-            def msg = resultsStatus[key] ?: ""
-            def link = resultsLink[key] ?: ""
-            def diff = (start != "" && stop != "") ? groovy.time.TimeCategory.minus(stop, start) : "-"
-            def startf = start.format('yyyy/MM/dd HH:mm:ss')
-            def stopf = stop.format('yyyy/MM/dd HH:mm:ss')
-            def color = 'bgcolor="#FF8080"'
-
-            if (msg == "finished") {
-                color = 'bgcolor="#80FF80"'
-            }
-
-            def la = ""
-            def lb = ""
-
-            if (link != null) {
-                la = "<a href=\"$link\">"
-                lb = "</a>"
-            }
-
-            results += "${key}: ${startf} - ${stopf} (${diff}) ${msg}\n"
-            html += "<tr ${color}><td>${la}${key}${lb}</td><td>${startf}</td><td>${stopf}</td><td align=\"right\">${diff}</td><td align=\"right\">${msg}</td></tr>\n"
-        }
-
-        html += "</table></body></html>\n"
-
-        node("master") {
-            fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
-            fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
-            archiveArtifacts(allowEmptyArchive: true, artifacts: "results.*")
-        }
+        generateResult()
     }
 }
