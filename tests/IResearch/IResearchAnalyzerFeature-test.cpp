@@ -120,17 +120,17 @@ struct Analyzer {
 std::map<irs::string_ref, Analyzer>const& staticAnalyzers() {
   static const std::map<irs::string_ref, Analyzer> analyzers = {
     { "identity", { "identity", irs::string_ref::nil, irs::flags::empty_instance() } },
-    {"text_de", { "text", "{ \"locale\": \"de\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
-    {"text_en", { "text", "{ \"locale\": \"en\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
-    {"text_es", { "text", "{ \"locale\": \"es\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
-    {"text_fi", { "text", "{ \"locale\": \"fi\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
-    {"text_fr", { "text", "{ \"locale\": \"fr\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
-    {"text_it", { "text", "{ \"locale\": \"it\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
-    {"text_nl", { "text", "{ \"locale\": \"nl\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
-    {"text_no", { "text", "{ \"locale\": \"no\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
-    {"text_pt", { "text", "{ \"locale\": \"pt\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
-    {"text_ru", { "text", "{ \"locale\": \"ru\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
-    {"text_sv", { "text", "{ \"locale\": \"sv\", \"ignored_words\": [ ] }", { irs::norm::type() } } },
+    {"text_de", { "text", "{ \"locale\": \"de\", \"ignored_words\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() } } },
+    {"text_en", { "text", "{ \"locale\": \"en\", \"ignored_words\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() } } },
+    {"text_es", { "text", "{ \"locale\": \"es\", \"ignored_words\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() } } },
+    {"text_fi", { "text", "{ \"locale\": \"fi\", \"ignored_words\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() } } },
+    {"text_fr", { "text", "{ \"locale\": \"fr\", \"ignored_words\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() } } },
+    {"text_it", { "text", "{ \"locale\": \"it\", \"ignored_words\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() } } },
+    {"text_nl", { "text", "{ \"locale\": \"nl\", \"ignored_words\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() } } },
+    {"text_no", { "text", "{ \"locale\": \"no\", \"ignored_words\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() } } },
+    {"text_pt", { "text", "{ \"locale\": \"pt\", \"ignored_words\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() } } },
+    {"text_ru", { "text", "{ \"locale\": \"ru\", \"ignored_words\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() } } },
+    {"text_sv", { "text", "{ \"locale\": \"sv\", \"ignored_words\": [ ] }", { irs::frequency::type(), irs::norm::type(), irs::position::type() } } },
   };
 
   return analyzers;

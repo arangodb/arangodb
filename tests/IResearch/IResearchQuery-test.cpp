@@ -1124,6 +1124,46 @@ SECTION("StringTerm") {
     CHECK(expectedDocs.empty());
   }
 
+  // existing unique term, unordered (not all documents contain field)
+  {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
+
+    for (auto const& doc: insertedDocs) {
+      arangodb::velocypack::Slice docSlice(doc.vpack());
+      auto const keySlice = docSlice.get("name");
+      auto const fieldSlice = docSlice.get("duplicated");
+
+      if (!fieldSlice.isNone() && "vczc" == arangodb::iresearch::getStringRef(fieldSlice)) {
+        continue;
+      }
+
+      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.duplicated != 'vczc' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
   // missing term, seq DESC
   {
     auto& expectedDocs = insertedDocs;
@@ -1155,6 +1195,7 @@ SECTION("StringTerm") {
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice(doc.vpack());
       auto const fieldSlice = docSlice.get("duplicated");
+
       if (!fieldSlice.isNone() && "abcd" == arangodb::iresearch::getStringRef(fieldSlice)) {
         continue;
       }
@@ -3079,9 +3120,11 @@ SECTION("NumericTerm") {
       auto const keySlice = docSlice.get("seq");
       auto const key = keySlice.getNumber<size_t>();
       auto const valueSlice = docSlice.get("value");
+
       if (!valueSlice.isNone() && valueSlice.getNumber<ptrdiff_t>() == 100) {
         continue;
       }
+
       expectedDocs.emplace(key, &doc);
     }
 
@@ -3147,7 +3190,18 @@ SECTION("NumericTerm") {
 
   // missing term, seq DESC
   {
-    auto& expectedDocs = insertedDocs;
+    std::vector<arangodb::ManagedDocumentResult const*> expectedDocs;
+
+    for (auto const& doc: insertedDocs) {
+      arangodb::velocypack::Slice docSlice(doc.vpack());
+      auto const fieldSlice = docSlice.get("value");
+
+      if (!fieldSlice.isNone() && (fieldSlice.isNumber() && -1. == fieldSlice.getNumber<double>())) {
+        continue;
+      }
+
+      expectedDocs.emplace_back(&doc);
+    }
 
     auto queryResult = executeQuery(
       vocbase,
@@ -3164,7 +3218,7 @@ SECTION("NumericTerm") {
     auto expectedDoc = expectedDocs.rbegin();
     for (auto const actualDoc : resultIt) {
       auto const resolved = actualDoc.resolveExternals();
-      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->vpack()), resolved, true));
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice((*expectedDoc)->vpack()), resolved, true));
       ++expectedDoc;
     }
     CHECK(expectedDoc == expectedDocs.rend());
@@ -3176,6 +3230,7 @@ SECTION("NumericTerm") {
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice(doc.vpack());
       auto const valueSlice = docSlice.get("value");
+
       if (!valueSlice.isNone() && 123 == valueSlice.getNumber<ptrdiff_t>()) {
         continue;
       }
@@ -5849,9 +5904,16 @@ SECTION("BooleanTerm") {
   // invalid type
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
+
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const keySlice = docSlice.get("seq");
+      auto const fieldSlice = docSlice.get("value");
+
+      if (!fieldSlice.isNone() && (fieldSlice.isString() && "true"  == arangodb::iresearch::getStringRef(fieldSlice))) {
+        continue;
+      }
+
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
@@ -5883,9 +5945,16 @@ SECTION("BooleanTerm") {
   // invalid type
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
+
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const keySlice = docSlice.get("seq");
+      auto const fieldSlice = docSlice.get("value");
+
+      if (!fieldSlice.isNone() && (fieldSlice.isString() && "false"  == arangodb::iresearch::getStringRef(fieldSlice))) {
+        continue;
+      }
+
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
@@ -5917,9 +5986,16 @@ SECTION("BooleanTerm") {
   // invalid type
   {
     std::map<ptrdiff_t, arangodb::velocypack::Slice> expectedDocs;
+
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const keySlice = docSlice.get("seq");
+      auto const fieldSlice = docSlice.get("value");
+
+      if (!fieldSlice.isNone() && (fieldSlice.isNumber() && 0. == fieldSlice.getNumber<double>())) {
+        continue;
+      }
+
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
@@ -5954,6 +6030,12 @@ SECTION("BooleanTerm") {
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const keySlice = docSlice.get("seq");
+      auto const fieldSlice = docSlice.get("value");
+
+      if (!fieldSlice.isNone() && (fieldSlice.isNumber() && 1. == fieldSlice.getNumber<double>())) {
+        continue;
+      }
+
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
@@ -5988,6 +6070,12 @@ SECTION("BooleanTerm") {
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const keySlice = docSlice.get("seq");
+      auto const fieldSlice = docSlice.get("value");
+
+      if (!fieldSlice.isNone() && fieldSlice.isNull()) {
+        continue;
+      }
+
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
@@ -6022,9 +6110,11 @@ SECTION("BooleanTerm") {
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
-      if (valueSlice.isBoolean() && valueSlice.getBoolean()) {
+
+      if (!valueSlice.isNone() && (valueSlice.isBoolean() && valueSlice.getBoolean())) {
         continue;
       }
+
       auto const keySlice = docSlice.get("seq");
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
@@ -6060,9 +6150,11 @@ SECTION("BooleanTerm") {
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
-      if (valueSlice.isBoolean() && !valueSlice.getBoolean()) {
+
+      if (!valueSlice.isNone() && (valueSlice.isBoolean() && !valueSlice.getBoolean())) {
         continue;
       }
+
       auto const keySlice = docSlice.get("seq");
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
@@ -6098,9 +6190,11 @@ SECTION("BooleanTerm") {
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
-      if (valueSlice.isBoolean() && !valueSlice.getBoolean()) {
+
+      if (!valueSlice.isNone() && (valueSlice.isBoolean() && !valueSlice.getBoolean())) {
         continue;
       }
+
       auto const keySlice = docSlice.get("seq");
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
@@ -7835,9 +7929,11 @@ SECTION("NullTerm") {
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
-      if (!valueSlice.isNull()) {
+
+      if (valueSlice.isNone() || !valueSlice.isNull()) {
         continue;
       }
+
       auto const keySlice = docSlice.get("seq");
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
@@ -7873,9 +7969,11 @@ SECTION("NullTerm") {
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
-      if (!valueSlice.isNull()) {
+
+      if (valueSlice.isNone() || !valueSlice.isNull()) {
         continue;
       }
+
       auto const keySlice = docSlice.get("seq");
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
@@ -7911,6 +8009,12 @@ SECTION("NullTerm") {
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const keySlice = docSlice.get("seq");
+      auto const fieldSlice = docSlice.get("value");
+
+      if (!fieldSlice.isNone() && "null"  == arangodb::iresearch::getStringRef(fieldSlice)) {
+        continue;
+      }
+
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
@@ -7945,6 +8049,12 @@ SECTION("NullTerm") {
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const keySlice = docSlice.get("seq");
+      auto const fieldSlice = docSlice.get("value");
+
+      if (!fieldSlice.isNone() && (fieldSlice.isNumber() && 0. == fieldSlice.getNumber<double>())) {
+        continue;
+      }
+
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
@@ -7979,9 +8089,11 @@ SECTION("NullTerm") {
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
-      if (valueSlice.isNull()) {
+
+      if (!valueSlice.isNone() && valueSlice.isNull()) {
         continue;
       }
+
       auto const keySlice = docSlice.get("seq");
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
@@ -8017,9 +8129,11 @@ SECTION("NullTerm") {
     for (auto const& doc : insertedDocs) {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
-      if (valueSlice.isNull()) {
+
+      if (!valueSlice.isNone() && valueSlice.isNull()) {
         continue;
       }
+
       auto const keySlice = docSlice.get("seq");
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
