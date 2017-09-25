@@ -1301,7 +1301,8 @@ void Agent::lead() {
   
   {
     CONDITION_LOCKER(guard, _waitForCV);
-    while(_commitIndex != _state.lastIndex()) {
+    // Note that when we are stopping
+    while(!isStopping() && _commitIndex != _state.lastIndex()) {
       _waitForCV.wait(10000);
     }
   }
