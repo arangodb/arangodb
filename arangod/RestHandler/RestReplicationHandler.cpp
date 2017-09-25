@@ -28,10 +28,12 @@
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterMethods.h"
 #include "Replication/InitialSyncer.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/replication-applier.h"
 
@@ -207,6 +209,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
       body, "ignoreErrors", defaults._ignoreErrors);
   config._maxConnectRetries = VelocyPackHelper::getNumericValue<uint64_t>(
       body, "maxConnectRetries", defaults._maxConnectRetries);
+  config._lockTimeoutRetries = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "lockTimeoutRetries", defaults._lockTimeoutRetries);
   config._sslProtocol = VelocyPackHelper::getNumericValue<uint32_t>(
       body, "sslProtocol", defaults._sslProtocol);
   config._chunkSize = VelocyPackHelper::getNumericValue<uint64_t>(
@@ -476,7 +480,22 @@ void RestReplicationHandler::handleCommandClusterInventory() {
   resultBuilder.add(VPackValue("collections"));
   resultBuilder.openArray();
   for (auto const& c : cols) {
-    c->toVelocyPackForClusterInventory(resultBuilder, includeSystem);
+    // We want to check if the collection is usable and all followers
+    // are in sync:
+    auto shardMap = c->shardIds();
+      // shardMap is an unordered_map from ShardId (string) to a vector of
+      // servers (strings), wrapped in a shared_ptr
+    auto cic = ci->getCollectionCurrent(dbName,
+                                        basics::StringUtils::itoa(c->cid()));
+    // Check all shards:
+    bool isReady = true;
+    for (auto const& p : *shardMap) {
+      auto currentServerList = cic->servers(p.first  /* shardId */);
+      if (!ClusterHelpers::compareServerLists(p.second, currentServerList)) {
+        isReady = false;
+      }
+    }
+    c->toVelocyPackForClusterInventory(resultBuilder, includeSystem, isReady);
   }
   resultBuilder.close();  // collections
   TRI_voc_tick_t tick = TRI_CurrentTickServer();

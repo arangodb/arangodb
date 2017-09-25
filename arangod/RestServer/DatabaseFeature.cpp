@@ -158,8 +158,14 @@ void DatabaseManagerThread::run() {
               TRI_RemoveDirectory(path.c_str());
             }
           }
-          
-          engine->dropDatabase(database);
+         
+          try { 
+            engine->dropDatabase(database);
+          } catch (std::exception const& ex) {
+            LOG_TOPIC(ERR, Logger::FIXME) << "dropping database '" << database->name() << "' failed: " << ex.what();
+          } catch (...) {
+            LOG_TOPIC(ERR, Logger::FIXME) << "dropping database '" << database->name() << "' failed";
+          }
         }
 
         delete database;
@@ -736,7 +742,9 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
     vocbase->setIsOwnAppsDirectory(removeAppsDirectory);
 
     // invalidate all entries for the database
+#if USE_PLAN_CACHE
     arangodb::aql::PlanCache::instance()->invalidate(vocbase);
+#endif
     arangodb::aql::QueryCache::instance()->invalidate(vocbase);
 
     engine->prepareDropDatabase(vocbase, !engine->inRecovery(), res);
@@ -817,6 +825,31 @@ std::vector<TRI_voc_tick_t> DatabaseFeature::getDatabaseIds(
   }
 
   return ids;
+}
+
+/// @brief return the list of all database names
+std::vector<std::string> DatabaseFeature::getDatabaseNamesCoordinator() {
+  std::vector<std::string> names;
+
+  {
+    auto unuser(_databasesProtector.use());
+    auto theLists = _databasesLists.load();
+
+    for (auto& p : theLists->_coordinatorDatabases) {
+      TRI_vocbase_t* vocbase = p.second;
+      TRI_ASSERT(vocbase != nullptr);
+      if (vocbase->isDropped()) {
+        continue;
+      }
+      names.emplace_back(vocbase->name());
+    }
+  }
+
+  std::sort(
+      names.begin(), names.end(),
+      [](std::string const& l, std::string const& r) -> bool { return l < r; });
+
+  return names;
 }
 
 /// @brief return the list of all database names

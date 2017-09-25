@@ -25,7 +25,6 @@
 
 #include "GeneralCommTask.h"
 
-#include "Basics/HybridLogicalClock.h"
 #include "Basics/Locking.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
@@ -38,7 +37,6 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Meta/conversion.h"
-#include "Rest/VstResponse.h"
 #include "Scheduler/Job.h"
 #include "Scheduler/JobQueue.h"
 #include "Scheduler/Scheduler.h"
@@ -49,6 +47,13 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+
+namespace {
+// some static URL path prefixes 
+static std::string const AdminAardvark("/_admin/aardvark/");
+static std::string const ApiUser("/_api/user/");
+static std::string const Open("/_open/");
+} 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -360,20 +365,28 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
   }
   
   std::string const& path = request->requestPath();
+  std::string const& dbname = request->databaseName();
+  std::string const& username = request->user();
   rest::ResponseCode result = request->authorized() ? rest::ResponseCode::OK :
     rest::ResponseCode::UNAUTHORIZED;
   
+  AuthLevel dbLevel = AuthLevel::NONE;
+
   // mop: inside authenticateRequest() request->user will be populated
   bool forceOpen = false;  
-  if (request->authorized() && !request->user().empty()) {
-    AuthLevel sysLevel = _authentication->canUseDatabase(request->user(),
-                                                         TRI_VOC_SYSTEM_DATABASE);
-    AuthLevel dbLevel = _authentication->canUseDatabase(request->user(),
-                                                        request->databaseName());
-    request->setExecContext(new ExecContext(request->user(),
-                                            request->databaseName(),
-                                            sysLevel,
-                                            dbLevel));
+  if (request->authorized() && !username.empty()) {
+    AuthLevel sysLevel = _authentication->canUseDatabase(username, StaticStrings::SystemDatabase);
+    if (dbname == StaticStrings::SystemDatabase) {
+      // the request is made in the system database, and we have already queried our
+      // privileges for it. simply reuse the already queried privileges now
+      dbLevel = sysLevel;
+    } else {
+      // we have to query again but for a different database
+      dbLevel = _authentication->canUseDatabase(username, dbname);
+    }
+
+    request->setExecContext(new ExecContext(username, dbname,
+                                            sysLevel, dbLevel));
   }
   
   if (!request->authorized()) {
@@ -397,22 +410,18 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
       
       if (!path.empty()) {
         // check if path starts with /_
-        if (path[0] != '/') {
-          forceOpen = true;
-          result = rest::ResponseCode::OK;
-        }
-        
-        // path begins with /
-        if (path.size() > 1 && path[1] != '_') {
+        // or path begins with /
+        if (path[0] != '/' || (path.size() > 1 && path[1] != '_')) {
           forceOpen = true;
           result = rest::ResponseCode::OK;
         }
       }
     }
-    
+ 
     if (result != rest::ResponseCode::OK) {
-      if (StringUtils::isPrefix(path, "/_open/") ||
-          StringUtils::isPrefix(path, "/_admin/aardvark/") || path == "/") {
+      if (path == "/" ||
+          StringUtils::isPrefix(path, Open) ||
+          StringUtils::isPrefix(path, AdminAardvark)) {
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
@@ -426,7 +435,6 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
     return result;
   }
   
-  std::string const& username = request->user();
   // mop: internal request => no username present
   if (username.empty()) {
     // mop: set user to root so that the foxx stuff
@@ -436,27 +444,20 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
   
   // check that we are allowed to see the database
   if (!forceOpen) {
-    // check for GET /_db/_system/_api/user/USERNAME/database
-    std::string pathWithUser = std::string("/_api/user/") + username;
-    
-    if (request->requestType() == RequestType::GET &&
-        (StringUtils::isPrefix(path, pathWithUser) ||
-         (StringUtils::isPrefix(path, "/_admin/aardvark/"))) ) {
-      request->setExecContext(nullptr);
-      return rest::ResponseCode::OK;
+    if (!request->authorized()) {
+      if (request->requestType() == RequestType::GET &&
+          (StringUtils::isPrefix(path, ApiUser + username + '/') ||
+           StringUtils::isPrefix(path, AdminAardvark))) {
+        // check for GET /_db/_system/_api/user/USERNAME/database
+        request->setExecContext(nullptr);
+        return rest::ResponseCode::OK;
+      }
     }
     
-    if (!StringUtils::isPrefix(path, "/_api/user/")) {
-      std::string const& dbname = request->databaseName();
-      if (!username.empty() || !dbname.empty()) {
-        AuthLevel level =
-        _authentication->canUseDatabase(username, dbname);
-        
-        if (level == AuthLevel::NONE) {
-          events::NotAuthorized(request);
-          result = rest::ResponseCode::UNAUTHORIZED;
-        }
-      }
+    if (dbLevel == AuthLevel::NONE &&
+        !StringUtils::isPrefix(path, ApiUser)) {
+      events::NotAuthorized(request);
+      result = rest::ResponseCode::UNAUTHORIZED;
     }
   }
   

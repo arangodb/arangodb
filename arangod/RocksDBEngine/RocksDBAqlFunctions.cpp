@@ -259,7 +259,7 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
   } else {
     for (auto& it : distances) {
       if (collection->readDocument(trx, it._token, mmdr)) {
-        mmdr.addToBuilder(*builder.get(), true);
+        mmdr.addToBuilder(*builder.get(), false);
       }
     }
   }
@@ -391,11 +391,11 @@ void RocksDBAqlFunctions::registerResources() {
   TRI_ASSERT(functions != nullptr);
 
   // fulltext functions
-  functions->add({"FULLTEXT", "AQL_FULLTEXT", ".h,.,.|.", true, false, true,
+  functions->add({"FULLTEXT", ".h,.,.|.", false, true,
                   false, true, &RocksDBAqlFunctions::Fulltext,
                   NotInCoordinator});
-  functions->add({"NEAR", "AQL_NEAR", ".h,.,.|.,.", true, false, true, false,
+  functions->add({"NEAR", ".h,.,.|.,.", false, true, false,
                   true, &RocksDBAqlFunctions::Near, NotInCoordinator});
-  functions->add({"WITHIN", "AQL_WITHIN", ".h,.,.,.|.", true, false, true,
+  functions->add({"WITHIN", ".h,.,.,.|.", false, true,
                   false, true, &RocksDBAqlFunctions::Within, NotInCoordinator});
 }

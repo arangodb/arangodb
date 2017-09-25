@@ -163,7 +163,7 @@ int IndexBlock::initialize() {
   auto instantiateExpression = [&](size_t i, size_t j, size_t k,
                                    AstNode* a) -> void {
     // all new AstNodes are registered with the Ast in the Query
-    auto e = std::make_unique<Expression>(ast, a);
+    auto e = std::make_unique<Expression>(en->_plan, ast, a);
 
     TRI_IF_FAILURE("IndexBlock::initialize") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -301,17 +301,9 @@ bool IndexBlock::initIndexes() {
       }
     } else {
       // no V8 context required!
-
-      Functions::InitializeThreadContext();
-      try {
-        executeExpressions();
-        TRI_IF_FAILURE("IndexBlock::executeExpression") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-        Functions::DestroyThreadContext();
-      } catch (...) {
-        Functions::DestroyThreadContext();
-        throw;
+      executeExpressions();
+      TRI_IF_FAILURE("IndexBlock::executeExpression") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
     }
   }
@@ -405,11 +397,11 @@ bool IndexBlock::skipIndex(size_t atMost) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    uint64_t returned = (uint64_t) _returned;
-    bool ok = _cursor->skip(atMost - returned, returned);
-    _returned = (size_t) returned;
+    uint64_t returned = static_cast<uint64_t>(_returned);
+    int res = _cursor->skip(atMost - returned, returned);
+    _returned = static_cast<size_t>(returned);
 
-    if (ok) {
+    if (res == TRI_ERROR_NO_ERROR) {
       // We have skipped enough.
       // And this index could return more.
       // We are good.

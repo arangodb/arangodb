@@ -250,12 +250,17 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
     try {
       _hasMore = _iter->next(cb, chunkSize);
 
+      if (lowKey.empty()) {
+        // if lowKey is empty, no new documents were found
+        break;
+      }
       b.add(VPackValue(VPackValueType::Object));
       b.add("low", VPackValue(lowKey));
       b.add("high", VPackValue(highKey.copyString()));
       b.add("hash", VPackValue(std::to_string(hash)));
       b.close();
       lowKey.clear();  // reset string
+      hash = 0x012345678;   // the next block ought to start with a clean sheet
     } catch (std::exception const&) {
       return rv.reset(TRI_ERROR_INTERNAL);
     }

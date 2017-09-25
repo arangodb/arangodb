@@ -25,7 +25,7 @@
 #define ARANGODB_CACHE_TRANSACTION_WINDOW_H
 
 #include "Basics/Common.h"
-#include "Cache/State.h"
+#include "Basics/ReadWriteSpinLock.h"
 #include "Cache/Transaction.h"
 
 #include <stdint.h>
@@ -71,11 +71,14 @@ class TransactionManager {
   uint64_t term();
 
  private:
-  State _state;
   std::atomic<uint64_t> _openReads;
   std::atomic<uint64_t> _openSensitive;
   std::atomic<uint64_t> _openWrites;
   std::atomic<uint64_t> _term;
+  std::atomic<bool> _lock;
+
+  void lock();
+  void unlock();
 };
 
 };  // end namespace cache

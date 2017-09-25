@@ -28,7 +28,7 @@
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
 #include "Aql/TraversalNode.h"
-#include "VocBase/TraverserOptions.h"
+#include "Graph/TraverserOptions.h"
 
 using namespace arangodb::aql;
 using namespace arangodb::basics;
@@ -733,7 +733,7 @@ bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathV
   TRI_ASSERT(_plan->getAst() != nullptr);
 
   bool mustDestroy = false;
-  Expression tmpExp(_plan->getAst(), node);
+  Expression tmpExp(_plan, _plan->getAst(), node);
 
   TRI_ASSERT(_plan->getAst()->query() != nullptr);
   auto trx = _plan->getAst()->query()->trx();

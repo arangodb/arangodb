@@ -87,7 +87,7 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
     localContext->Enter();
     {
       v8::Context::Scope contextScope(localContext);
-      for (auto script : scripts) {
+      for (auto const& script : scripts) {
         LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "executing script '" << script << "'";
         bool r = TRI_ExecuteGlobalJavaScriptFile(isolate, script.c_str(), true);
 
@@ -104,14 +104,14 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
       // parameter array
       v8::Handle<v8::Array> params = v8::Array::New(isolate);
 
-      params->Set(0, TRI_V8_STD_STRING(scripts[scripts.size() - 1]));
+      params->Set(0, TRI_V8_STD_STRING(isolate, scripts[scripts.size() - 1]));
 
       for (size_t i = 0; i < _scriptParameters.size(); ++i) {
-        params->Set((uint32_t)(i + 1), TRI_V8_STD_STRING(_scriptParameters[i]));
+        params->Set((uint32_t)(i + 1), TRI_V8_STD_STRING(isolate, _scriptParameters[i]));
       }
 
       // call main
-      v8::Handle<v8::String> mainFuncName = TRI_V8_ASCII_STRING("main");
+      v8::Handle<v8::String> mainFuncName = TRI_V8_ASCII_STRING(isolate, "main");
       v8::Handle<v8::Function> main = v8::Handle<v8::Function>::Cast(
           localContext->Global()->Get(mainFuncName));
 

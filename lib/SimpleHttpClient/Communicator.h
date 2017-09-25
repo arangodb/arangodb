@@ -50,8 +50,9 @@ struct RequestInProgress {
         _requestBody(requestBody),
         _requestHeaders(nullptr),
         _startTime(0.0),
-        _responseBody(new basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE, false)),
-        _options(options) {
+        _responseBody(new basics::StringBuffer(false)),
+        _options(options),
+        _aborted(false) {
     _errorBuffer[0] = '\0';
   }
 
@@ -77,6 +78,7 @@ struct RequestInProgress {
   Options _options;
 
   char _errorBuffer[CURL_ERROR_SIZE];
+  bool _aborted;
 };
 
 struct CurlHandle {
@@ -166,6 +168,7 @@ class Communicator {
   static size_t readHeaders(char* buffer, size_t size, size_t nitems,
                             void* userdata);
   static int curlDebug(CURL*, curl_infotype, char*, size_t, void*);
+  static int curlProgress(void*, curl_off_t, curl_off_t, curl_off_t, curl_off_t);
   static void logHttpHeaders(std::string const&, std::string const&);
   static void logHttpBody(std::string const&, std::string const&);
 };

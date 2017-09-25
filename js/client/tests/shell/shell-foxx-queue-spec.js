@@ -51,9 +51,13 @@ describe('Foxx service', () => {
     foxxManager.uninstall(mount, {force: true});
   });
   afterEach(() => {
+    waitForJob();
     download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
       method: 'delete'
     });
+    if (db._collection('foxx_queue_test')) {
+      db.foxx_queue_test.truncate();
+    }
   });
   it('should support queue registration', () => {
     const queuesBefore = db._query(aql`
@@ -79,6 +83,7 @@ describe('Foxx service', () => {
       method: 'post'
     });
     expect(res.code).to.equal(204);
+    waitForJob();
     res = download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
       method: 'post'
     });

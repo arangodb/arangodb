@@ -33,7 +33,6 @@
 #include "Cache/Manager.h"
 #include "Cache/ManagerTasks.h"
 #include "Cache/Metadata.h"
-#include "Cache/State.h"
 #include "Cache/Table.h"
 #include "Cache/TransactionalBucket.h"
 
@@ -62,8 +61,8 @@ namespace cache {
 ////////////////////////////////////////////////////////////////////////////////
 class TransactionalCache final : public Cache {
  public:
-  TransactionalCache(Cache::ConstructionGuard guard, Manager* manager,
-                     Metadata metadata, std::shared_ptr<Table> table,
+  TransactionalCache(Cache::ConstructionGuard guard, Manager* manager, uint64_t id,
+                     Metadata&& metadata, std::shared_ptr<Table> table,
                      bool enableWindowedStats);
   ~TransactionalCache();
 
@@ -122,7 +121,7 @@ class TransactionalCache final : public Cache {
 
  private:
   static uint64_t allocationSize(bool enableWindowedStats);
-  static std::shared_ptr<Cache> create(Manager* manager, Metadata metadata,
+  static std::shared_ptr<Cache> create(Manager* manager, uint64_t id, Metadata&& metadata,
                                        std::shared_ptr<Table> table,
                                        bool enableWindowedStats);
 
@@ -132,8 +131,8 @@ class TransactionalCache final : public Cache {
                              std::shared_ptr<Table> newTable);
 
   // helpers
-  std::tuple<Result, TransactionalBucket*, std::shared_ptr<Table>> getBucket(
-      uint32_t hash, int64_t maxTries, bool singleOperation = true);
+  std::tuple<Result, TransactionalBucket*, Table*> getBucket(
+      uint32_t hash, uint64_t maxTries, bool singleOperation = true);
   uint32_t getIndex(uint32_t hash, bool useAuxiliary) const;
 
   static Table::BucketClearer bucketClearer(Metadata* metadata);

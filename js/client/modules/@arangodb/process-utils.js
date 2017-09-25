@@ -43,6 +43,7 @@ const testPort = require('internal').testPort;
 const download = require('internal').download;
 const time = require('internal').time;
 const wait = require('internal').wait;
+const sleep = require('internal').sleep;
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -112,7 +113,7 @@ function setupBinaries (builddir, buildType, configDir) {
   }
 
   BIN_DIR = fs.join(builddir, 'bin');
-  if(!fs.exists(BIN_DIR)){
+  if (!fs.exists(BIN_DIR)) {
     BIN_DIR = fs.join(TOP_DIR, BIN_DIR);
   }
 
@@ -131,8 +132,8 @@ function setupBinaries (builddir, buildType, configDir) {
   ARANGOEXPORT_BIN = fs.join(BIN_DIR, 'arangoexport' + executableExt);
   ARANGOSH_BIN = fs.join(BIN_DIR, 'arangosh' + executableExt);
 
-  CONFIG_ARANGODB_DIR = fs.join(builddir, 'etc', 'arangodb3'); 
-  if(!fs.exists(CONFIG_ARANGODB_DIR)){
+  CONFIG_ARANGODB_DIR = fs.join(builddir, 'etc', 'arangodb3');
+  if (!fs.exists(CONFIG_ARANGODB_DIR)) {
     CONFIG_ARANGODB_DIR = fs.join(TOP_DIR, CONFIG_ARANGODB_DIR);
   }
 
@@ -238,13 +239,42 @@ function readImportantLogLines (logPath) {
 // / @brief cleans up the database direcory
 // //////////////////////////////////////////////////////////////////////////////
 
+function cleanupLastDirectory (options) {
+  if (options.cleanup) {
+    while (cleanupDirectories.length) {
+      const cleanupDirectory = cleanupDirectories.shift();
+      // Avoid attempting to remove the same directory multiple times
+      if ((cleanupDirectories.indexOf(cleanupDirectory) === -1) &&
+          (fs.exists(cleanupDirectory))) {
+        let i = 0;
+        while (i < 5) {
+          try {
+            fs.removeDirectoryRecursive(cleanupDirectory, true);
+            return;
+          } catch (x) {
+            print('failed to delete directory "' + cleanupDirectory + '" - "' +
+                  x + '" - Will retry in 5 seconds"');
+            sleep(5);
+          }
+          i += 1;
+        }
+        print('failed to delete directory "' + cleanupDirectory + '" - "' +
+              '" - Deferring cleanup for test run end."');
+        cleanupDirectories.unshift(cleanupDirectory);
+      }
+      break;
+    }
+  }
+}
+
 function cleanupDBDirectories (options) {
   if (options.cleanup) {
     while (cleanupDirectories.length) {
       const cleanupDirectory = cleanupDirectories.shift();
 
       // Avoid attempting to remove the same directory multiple times
-      if (cleanupDirectories.indexOf(cleanupDirectory) === -1) {
+      if ((cleanupDirectories.indexOf(cleanupDirectory) === -1) &&
+          (fs.exists(cleanupDirectory))) {
         fs.removeDirectoryRecursive(cleanupDirectory, true);
       }
     }
@@ -252,7 +282,7 @@ function cleanupDBDirectories (options) {
 }
 
 function cleanupDBDirectoriesAppend (appendThis) {
-  cleanupDirectories.push(appendThis);
+  cleanupDirectories.unshift(appendThis);
 }
 
 function getCleanupDBDirectories () {
@@ -265,10 +295,12 @@ function getCleanupDBDirectories () {
 
 function makeAuthorizationHeaders (options) {
   if (options['server.jwt-secret']) {
-    var jwt = crypto.jwtEncode(options['server.jwt-secret'], 
-                             {"server_id": "none", 
-                              "iss": "arangodb"}, 'HS256');
-    //print("Using jwt token:     " + jwt);
+    var jwt = crypto.jwtEncode(options['server.jwt-secret'],
+                             {'server_id': 'none',
+                              'iss': 'arangodb'}, 'HS256');
+    if (options.extremeVerbosity) {
+      print('Using jwt token:     ' + jwt);
+    }
     return {
       'headers': {
         'Authorization': 'bearer ' + jwt
@@ -306,12 +338,15 @@ function endpointToURL (endpoint) {
 // / @brief arguments for testing (server)
 // //////////////////////////////////////////////////////////////////////////////
 
-function makeArgsArangod (options, appDir, role) {
+function makeArgsArangod (options, appDir, role, tmpDir) {
+  console.assert(tmpDir !== undefined);
   if (appDir === undefined) {
     appDir = fs.getTempPath();
   }
 
   fs.makeDirectoryRecursive(appDir, true);
+
+  fs.makeDirectoryRecursive(tmpDir, true);
 
   let config = 'arangod.conf';
 
@@ -325,7 +360,8 @@ function makeArgsArangod (options, appDir, role) {
     'wal.flush-timeout': options.walFlushTimeout,
     'javascript.app-path': appDir,
     'http.trusted-origin': options.httpTrustedOrigin || 'all',
-    'cluster.create-waits-for-sync-replication': false
+    'cluster.create-waits-for-sync-replication': false,
+    'temp.path': tmpDir
   };
   if (options.storageEngine !== undefined) {
     args['server.storage-engine'] = options.storageEngine;
@@ -522,6 +558,9 @@ function runArangoImp (options, instanceInfo, what) {
 
   if (what.convert !== undefined) {
     args['convert'] = what.convert ? 'true' : 'false';
+  }
+  if (what.removeAttribute !== undefined) {
+    args['remove-attribute'] = what.removeAttribute;
   }
 
   return executeAndWait(ARANGOIMP_BIN, toArgv(args), options, 'arangoimp', instanceInfo.rootDir);
@@ -738,7 +777,9 @@ function shutdownArangod (arangod, options, forceTerminate) {
       requestOptions.method = 'DELETE';
       print(arangod.url + '/_admin/shutdown');
       const reply = download(arangod.url + '/_admin/shutdown', '', requestOptions);
-      //print("Shutdown response: " + JSON.stringify(reply));
+      if (options.extremeVerbosity) {
+        print('Shutdown response: ' + JSON.stringify(reply));
+      }
     }
   } else {
     print('Server already dead, doing nothing.');
@@ -765,13 +806,13 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     .filter(arangod => arangod.role !== 'agent');
   nonagencies.sort((a, b) => {
     if (a.role === b.role) return 0;
-    if (a.role === 'coordinator' && 
+    if (a.role === 'coordinator' &&
         b.role === 'dbserver') return -1;
-    if (b.role === 'coordinator' && 
+    if (b.role === 'coordinator' &&
         a.role === 'dbserver') return 1;
     return 0;
   });
-  print("Shutdown order " + JSON.stringify(nonagencies));
+  print('Shutdown order ' + JSON.stringify(nonagencies));
   nonagencies.forEach(arangod => {
     wait(0.025);
     shutdownArangod(arangod, options, forceTerminate);
@@ -855,7 +896,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
     });
   }
 
-  cleanupDirectories.push(instanceInfo.rootDir);
+  cleanupDirectories.unshift(instanceInfo.rootDir);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -872,7 +913,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
     let subDir = fs.join(rootDir, name);
     fs.makeDirectoryRecursive(subDir);
 
-    let subArgs = makeArgsArangod(options, fs.join(subDir, 'apps'), role);
+    let subArgs = makeArgsArangod(options, fs.join(subDir, 'apps'), role, fs.join(subDir, 'tmp'));
     // FIXME: someone should decide on the order of preferences
     subArgs = Object.assign(subArgs, addArgs);
     subArgs = Object.assign(subArgs, args);
@@ -936,7 +977,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
   let count = 0;
   while (true) {
     ++count;
-    
+
     instanceInfo.arangods.forEach(arangod => {
       const reply = download(arangod.url + '/_api/version', '', makeAuthorizationHeaders(authOpts));
       if (!reply.error && reply.code === 200) {
@@ -972,7 +1013,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
         killExternal(arangod.pid, abortSignal);
         analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
       });
-      throw new Error("cluster startup timed out after 10 minutes!");
+      throw new Error('cluster startup timed out after 10 minutes!');
     }
   }
 
@@ -989,11 +1030,13 @@ function startInstanceCluster (instanceInfo, protocol, options,
 function startArango (protocol, options, addArgs, rootDir, role) {
   const dataDir = fs.join(rootDir, 'data');
   const appDir = fs.join(rootDir, 'apps');
+  const tmpDir = fs.join(rootDir, 'tmp');
 
   fs.makeDirectoryRecursive(dataDir);
   fs.makeDirectoryRecursive(appDir);
+  fs.makeDirectoryRecursive(tmpDir);
 
-  let args = makeArgsArangod(options, appDir, role);
+  let args = makeArgsArangod(options, appDir, role, tmpDir);
   let endpoint;
   let port;
 
@@ -1053,7 +1096,7 @@ function startArango (protocol, options, addArgs, rootDir, role) {
       instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
     } catch (x) {
       print('failed to start procdump - is it installed?');
-      //throw x;
+      // throw x;
     }
   }
   return instanceInfo;
@@ -1138,7 +1181,8 @@ function startInstanceSingleServer (instanceInfo, protocol, options,
 // //////////////////////////////////////////////////////////////////////////////
 
 function startInstance (protocol, options, addArgs, testname, tmpDir) {
-  let rootDir = fs.join(tmpDir || fs.getTempFile(), testname);
+  let rootDir = fs.join(tmpDir || fs.getTempPath(), testname);
+
   let instanceInfo = {
     rootDir,
     arangods: []
@@ -1147,10 +1191,13 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
   const startTime = time();
   try {
     if (options.hasOwnProperty('server')) {
-      return { endpoint: options.server,
+      let rc = { endpoint: options.server,
+               rootDir: options.serverRoot,
                url: options.server.replace('tcp', 'http'),
                arangods: []
-             };
+               };
+      arango.reconnect(rc.endpoint, '_system', 'root', '');
+      return rc;
     } else if (options.cluster) {
       startInstanceCluster(instanceInfo, protocol, options,
                            addArgs, rootDir);
@@ -1166,6 +1213,7 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
       let count = 0;
       instanceInfo.arangods.forEach(arangod => {
         while (true) {
+          wait(0.5, false);
           if (options.useReconnect) {
             try {
               arango.reconnect(instanceInfo.endpoint, '_system', options.username, options.password);
@@ -1186,7 +1234,6 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
               throw new Error('startup failed! bailing out!');
             }
           }
-          wait(0.5, false);
         }
       });
     }
@@ -1210,7 +1257,6 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
     print(e, e.stack);
     return false;
   }
-
   return instanceInfo;
 }
 
@@ -1253,6 +1299,7 @@ exports.serverCrashed = serverCrashed;
 
 exports.cleanupDBDirectoriesAppend = cleanupDBDirectoriesAppend;
 exports.cleanupDBDirectories = cleanupDBDirectories;
+exports.cleanupLastDirectory = cleanupLastDirectory;
 exports.getCleanupDBDirectories = getCleanupDBDirectories;
 
 exports.makeAuthorizationHeaders = makeAuthorizationHeaders;

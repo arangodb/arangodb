@@ -175,7 +175,8 @@ void RocksDBCounterManager::removeCounter(uint64_t objectId) {
   WRITE_LOCKER(guard, _rwLock);
   auto const& it = _counters.find(objectId);
   if (it != _counters.end()) {
-    RocksDBKey key = RocksDBKey::CounterValue(it->first);
+    RocksDBKey key;
+    key.constructCounterValue(it->first);
     rocksdb::WriteOptions options;
     rocksdb::Status s = _db->Delete(options, RocksDBColumnFamily::definitions(), key.string());
     if (!s.ok()) {
@@ -236,7 +237,8 @@ Result RocksDBCounterManager::sync(bool force) {
     b.clear();
     pair.second.serialize(b);
 
-    RocksDBKey key = RocksDBKey::CounterValue(pair.first);
+    RocksDBKey key;
+    key.constructCounterValue(pair.first);
     rocksdb::Slice value((char*)b.start(), b.size());
     rocksdb::Status s = rtrx->Put(RocksDBColumnFamily::definitions(),
                                   key.string(), value);
@@ -259,7 +261,8 @@ Result RocksDBCounterManager::sync(bool force) {
   VPackSlice slice = b.slice();
   LOG_TOPIC(TRACE, Logger::ENGINES) << "writing settings: " << slice.toJson();
 
-  RocksDBKey key = RocksDBKey::SettingsValue(RocksDBSettingsType::ServerTick);
+  RocksDBKey key;
+  key.constructSettingsValue(RocksDBSettingsType::ServerTick);
   rocksdb::Slice value(slice.startAs<char>(), slice.byteSize());
 
   rocksdb::Status s = rtrx->Put(RocksDBColumnFamily::definitions(),
@@ -336,7 +339,8 @@ Result RocksDBCounterManager::sync(bool force) {
 }
 
 void RocksDBCounterManager::readSettings() {
-  RocksDBKey key = RocksDBKey::SettingsValue(RocksDBSettingsType::ServerTick);
+  RocksDBKey key;
+  key.constructSettingsValue(RocksDBSettingsType::ServerTick);
 
   rocksdb::PinnableSlice result;
   rocksdb::Status status =
@@ -378,10 +382,11 @@ void RocksDBCounterManager::readIndexEstimates() {
   WRITE_LOCKER(guard, _rwLock);
   RocksDBKeyBounds bounds = RocksDBKeyBounds::IndexEstimateValues();
 
-  rocksdb::Comparator const* cmp = _db->GetOptions().comparator;
+  auto cf = RocksDBColumnFamily::definitions();
+  rocksdb::Comparator const* cmp = cf->GetComparator();
   rocksdb::ReadOptions readOptions;
   std::unique_ptr<rocksdb::Iterator> iter(
-      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
+      _db->NewIterator(readOptions, cf));
   iter->Seek(bounds.start());
 
   for (; iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0;
@@ -416,10 +421,11 @@ void RocksDBCounterManager::readKeyGenerators() {
   WRITE_LOCKER(guard, _rwLock);
   RocksDBKeyBounds bounds = RocksDBKeyBounds::KeyGenerators();
 
-  rocksdb::Comparator const* cmp = _db->GetOptions().comparator;
+  auto cf = RocksDBColumnFamily::definitions();
+  rocksdb::Comparator const* cmp = cf->GetComparator();
   rocksdb::ReadOptions readOptions;
   std::unique_ptr<rocksdb::Iterator> iter(
-      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
+      _db->NewIterator(readOptions, cf));
   iter->Seek(bounds.start());
 
   for (; iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0;
@@ -480,10 +486,11 @@ void RocksDBCounterManager::readCounterValues() {
   WRITE_LOCKER(guard, _rwLock);
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CounterValues();
 
-  rocksdb::Comparator const* cmp = _db->GetOptions().comparator;
+  auto cf = RocksDBColumnFamily::definitions();
+  rocksdb::Comparator const* cmp = cf->GetComparator();
   rocksdb::ReadOptions readOptions;
   std::unique_ptr<rocksdb::Iterator> iter(
-      _db->NewIterator(readOptions, RocksDBColumnFamily::definitions()));
+      _db->NewIterator(readOptions, cf));
   iter->Seek(bounds.start());
 
   while (iter->Valid() && cmp->Compare(iter->key(), bounds.end()) < 0) {

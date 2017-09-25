@@ -89,7 +89,8 @@ class Index {
     TRI_IDX_TYPE_EDGE_INDEX,
     TRI_IDX_TYPE_FULLTEXT_INDEX,
     TRI_IDX_TYPE_SKIPLIST_INDEX,
-    TRI_IDX_TYPE_PERSISTENT_INDEX
+    TRI_IDX_TYPE_PERSISTENT_INDEX,
+    TRI_IDX_TYPE_NO_ACCESS_INDEX
   };
 
  public:
@@ -298,7 +299,8 @@ class Index {
   virtual void expandInSearchValues(arangodb::velocypack::Slice const,
                                     arangodb::velocypack::Builder&) const;
 
-  virtual void warmup(arangodb::transaction::Methods* trx);
+  virtual void warmup(arangodb::transaction::Methods* trx,
+                      std::shared_ptr<basics::LocalTaskQueue> queue);
 
   // needs to be called when the _colllection is guaranteed to be valid!
   // unfortunatly access the logical collection on the coordinator is not always safe!

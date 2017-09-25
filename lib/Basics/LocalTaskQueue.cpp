@@ -27,6 +27,8 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/asio-helper.h"
 #include "Logger/Logger.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 
 using namespace arangodb::basics;
 
@@ -37,15 +39,15 @@ using namespace arangodb::basics;
 LocalTask::LocalTask(std::shared_ptr<LocalTaskQueue> const& queue) : _queue(queue) {}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dispatch this task to the underlying io_service
+/// @brief dispatch this task to the scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
 void LocalTask::dispatch() {
   auto self = shared_from_this();
-  _queue->ioService()->post([self, this]() { 
+  SchedulerFeature::SCHEDULER->post([self, this]() {
     _queue->startTask();
-    try { 
-      run(); 
+    try {
+      run();
       _queue->stopTask();
     } catch (...) {
       _queue->stopTask();
@@ -75,50 +77,41 @@ void LocalCallbackTask::run() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief dispatch this task to the underlying io_service
+/// @brief dispatch the callback task to the scheduler
 ////////////////////////////////////////////////////////////////////////////////
 
 void LocalCallbackTask::dispatch() {
   auto self = shared_from_this();
-  _queue->ioService()->post([self, this]() { run(); });
+  SchedulerFeature::SCHEDULER->post([self, this]() { run(); });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a queue using the specified io_service
+/// @brief create a queue
 ////////////////////////////////////////////////////////////////////////////////
 
-LocalTaskQueue::LocalTaskQueue(boost::asio::io_service* ioService)
-    : _ioService(ioService),
-      _queue(),
+LocalTaskQueue::LocalTaskQueue()
+    : _queue(),
       _callbackQueue(),
       _condition(),
       _mutex(),
       _missing(0),
       _started(0),
-      _status(TRI_ERROR_NO_ERROR) {
-  TRI_ASSERT(_ioService != nullptr);
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief exposes underlying io_service
-//////////////////////////////////////////////////////////////////////////////
-
-boost::asio::io_service* LocalTaskQueue::ioService() { return _ioService; }
+      _status(TRI_ERROR_NO_ERROR) {}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the queue.
 ////////////////////////////////////////////////////////////////////////////////
 
 LocalTaskQueue::~LocalTaskQueue() {}
-  
-void LocalTaskQueue::startTask() { 
+
+void LocalTaskQueue::startTask() {
   CONDITION_LOCKER(guard, _condition);
-  ++_started; 
+  ++_started;
 }
 
-void LocalTaskQueue::stopTask() { 
+void LocalTaskQueue::stopTask() {
   CONDITION_LOCKER(guard, _condition);
-  --_started; 
+  --_started;
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -183,7 +176,7 @@ void LocalTaskQueue::dispatchAndWait() {
 
       if (_missing > 0 &&
           _started == 0 &&
-          _ioService->stopped()) {
+          SchedulerFeature::SCHEDULER->isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 
@@ -210,10 +203,10 @@ void LocalTaskQueue::dispatchAndWait() {
       if (_missing == 0) {
         break;
       }
-      
+
       if (_missing > 0 &&
           _started == 0 &&
-          _ioService->stopped()) {
+          SchedulerFeature::SCHEDULER->isStopping()) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
       }
 

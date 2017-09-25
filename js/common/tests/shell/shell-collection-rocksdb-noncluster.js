@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail */
+/*global assertEqual, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -507,9 +507,77 @@ function CollectionSuite () {
 
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: collection caches
+////////////////////////////////////////////////////////////////////////////////
+
+function CollectionCacheSuite () {
+  const cn = "UnitTestsClusterCache";
+  return {
+
+    tearDown : function () {
+      try {
+        db._drop(cn);
+      }
+      catch (err) {
+      }
+    },
+    
+    testCollectionCache : function () {
+      let c = db._create(cn, {cacheEnabled:true});
+      let p = c.properties();
+      assertTrue(p.cacheEnabled, p);
+
+      let idxs = c.getIndexes(true);
+      idxs.forEach(function(idx) {
+        if (idx.type === 'primary') {
+          assertTrue(idx.figures.cacheInUse, idx);
+        }
+      });
+    },
+
+    testCollectionCacheModifyProperties : function () {
+      // create collection without cache
+      let c = db._create(cn, {cacheEnabled:false});
+      let p = c.properties();
+      assertFalse(p.cacheEnabled, p);
+      let idxs = c.getIndexes(true);
+      idxs.forEach(function(idx) {
+        if (idx.type === 'primary') {
+          assertFalse(idx.figures.cacheInUse);
+        }
+      });
+
+      // enable caches
+      c.properties({cacheEnabled:true});
+      p = c.properties();
+      assertTrue(p.cacheEnabled, p);
+      idxs = c.getIndexes(true);
+      idxs.forEach(function(idx) {
+        if (idx.type === 'primary') {
+          assertTrue(idx.figures.cacheInUse);
+        }
+      });
+
+      // disable caches again
+      c.properties({cacheEnabled:false});
+      p = c.properties();
+      assertFalse(p.cacheEnabled, p);
+      idxs = c.getIndexes(true);
+      idxs.forEach(function(idx) {
+        if (idx.type === 'primary') {
+          assertFalse(idx.figures.cacheInUse);
+        }
+      });
+    }
+  };
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(CollectionSuite);
+jsunity.run(CollectionCacheSuite);
 
 return jsunity.done();

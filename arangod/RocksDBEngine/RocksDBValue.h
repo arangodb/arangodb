@@ -47,7 +47,6 @@ class RocksDBValue {
 
   static RocksDBValue Database(VPackSlice const& data);
   static RocksDBValue Collection(VPackSlice const& data);
-  static RocksDBValue Document(VPackSlice const& data);
   static RocksDBValue PrimaryIndexValue(TRI_voc_rid_t revisionId);
   static RocksDBValue EdgeIndexValue(arangodb::StringRef const& vertexId);
   static RocksDBValue VPackIndexValue();
@@ -110,9 +109,18 @@ class RocksDBValue {
 
   RocksDBValue(RocksDBEntryType type, rocksdb::Slice slice)
       : _type(type), _buffer(slice.data(), slice.size()) {}
+  
+  RocksDBValue(RocksDBValue const&) = delete;
+  RocksDBValue& operator=(RocksDBValue const&) = delete;
 
   RocksDBValue(RocksDBValue&& other) noexcept
       : _type(other._type), _buffer(std::move(other._buffer)) {}
+  
+  RocksDBValue& operator=(RocksDBValue&& other) noexcept {
+    TRI_ASSERT(_type == other._type);
+    _buffer = std::move(other._buffer);
+    return *this;
+  }
 
  private:
   RocksDBValue();

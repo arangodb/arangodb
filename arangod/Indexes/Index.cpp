@@ -184,6 +184,9 @@ Index::IndexType Index::type(char const* type) {
   if (::strcmp(type, "geo2") == 0) {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
+  if (::strcmp(type, "noaccess") == 0) {
+    return TRI_IDX_TYPE_NO_ACCESS_INDEX;
+  }
 
   return TRI_IDX_TYPE_UNKNOWN;
 }
@@ -211,6 +214,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "geo1";
     case TRI_IDX_TYPE_GEO2_INDEX:
       return "geo2";
+    case TRI_IDX_TYPE_NO_ACCESS_INDEX:
+      return "noaccess";
     case TRI_IDX_TYPE_UNKNOWN: {
     }
   }
@@ -856,7 +861,8 @@ void Index::expandInSearchValues(VPackSlice const base,
   }
 }
 
-void Index::warmup(arangodb::transaction::Methods*) {
+void Index::warmup(arangodb::transaction::Methods*,
+                   std::shared_ptr<basics::LocalTaskQueue>) {
   // Do nothing. If an index needs some warmup
   // it has to explicitly implement it.
 }

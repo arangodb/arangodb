@@ -91,8 +91,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     testSize >>= 1;
   }
   // setting the number of background jobs to
-  _maxBackgroundJobs = std::max((size_t)2,
-                                std::min(TRI_numberProcessors(), (size_t)8));
+  _maxBackgroundJobs = static_cast<int32_t>(std::max((size_t)2,
+                                std::min(TRI_numberProcessors(), (size_t)8)));
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Daemon");

@@ -34,7 +34,7 @@ var jsunity = require("jsunity");
 var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
 var assertQueryError = helper.assertQueryError;
-var assertQueryWarningAndFalse = helper.assertQueryWarningAndFalse;
+var assertQueryWarningAndNull = helper.assertQueryWarningAndNull;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -162,14 +162,14 @@ function ahuacatlStringFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REGEX_TEST(\"test\")"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REGEX_TEST(\"test\", \"meow\", \"foo\", \"bar\")"); 
       
-      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"[\")");
-      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"[^\")");
-      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"a.(\")");
-      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"(a\")");
-      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"(a]\")");
-      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"**\")");
-      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"?\")");
-      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"*\")");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"[\")");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"[^\")");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"a.(\")");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"(a\")");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"(a]\")");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"**\")");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"?\")");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_TEST(\"test\", \"*\")");
     },
 
     testRegex : function () {
@@ -331,6 +331,18 @@ function ahuacatlStringFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test regex function, cache
+////////////////////////////////////////////////////////////////////////////////
+    
+    testRegexCache : function () {
+      var actual = getQueryResults("FOR i IN 1..100 RETURN REGEX_TEST(CONCAT('test', i), 'test')");
+      assertEqual(100, actual.length);
+      for (var i = 0; i < actual.length; ++i) {
+        assertTrue(actual[i]);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test REGEX_REPLACE, invalid arguments
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -339,8 +351,8 @@ function ahuacatlStringFunctionsTestSuite () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REGEX_REPLACE(\"test\")");
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN REGEX_TEST(\"test\", \"meow\", \"woof\", \"foo\", \"bar\")");
 
-      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_REPLACE(\"test\", \"?\", \"hello\")");
-      assertQueryWarningAndFalse(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_REPLACE(\"test\", \"*\", \"hello\")");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_REPLACE(\"test\", \"?\", \"hello\")");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_REGEX.code, "RETURN REGEX_REPLACE(\"test\", \"*\", \"hello\")");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -522,6 +534,18 @@ function ahuacatlStringFunctionsTestSuite () {
         actual = getQueryResults("RETURN " + JSON.stringify(value) + " LIKE " + JSON.stringify(value));
         assertEqual([ true ], actual);
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test like function, cache
+////////////////////////////////////////////////////////////////////////////////
+    
+    testLikeCache : function () {
+      var actual = getQueryResults("FOR i IN 1..100 RETURN LIKE(CONCAT('test', i), 'test%')");
+      assertEqual(100, actual.length);
+      for (var i = 0; i < actual.length; ++i) {
+        assertTrue(actual[i]);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////

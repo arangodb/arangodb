@@ -108,7 +108,7 @@ class GeneralRequest {
   }
 
   // the authenticated user
-  bool authorized() { return _authorized; }
+  bool authorized() const { return _authorized; }
   void setAuthorized(bool a) { _authorized = a; }
   std::string const& user() const { return _user; }
   void setUser(std::string const& user) { _user = user; }

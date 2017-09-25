@@ -32,7 +32,6 @@
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
-#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
@@ -198,10 +197,10 @@ Result RocksDBFulltextIndex::insertInternal(transaction::Methods* trx,
   int res = TRI_ERROR_NO_ERROR;
   // size_t const count = words.size();
   for (std::string const& word : words) {
-    RocksDBKey key =
-        RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), revisionId);
+    RocksDBKeyLeaser key(trx);
+    key->constructFulltextIndexValue(_objectId, StringRef(word), revisionId);
 
-    Result r = mthd->Put(_cf, key, value.string(), rocksutils::index);
+    Result r = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
     if (!r.ok()) {
       res = r.errorNumber();
       break;
@@ -223,10 +222,10 @@ Result RocksDBFulltextIndex::removeInternal(transaction::Methods* trx,
   // unique indexes have a different key structure
   int res = TRI_ERROR_NO_ERROR;
   for (std::string const& word : words) {
-    RocksDBKey key =
-        RocksDBKey::FulltextIndexValue(_objectId, StringRef(word), revisionId);
+    RocksDBKeyLeaser key(trx);
+    key->constructFulltextIndexValue(_objectId, StringRef(word), revisionId);
 
-    Result r = mthd->Delete(_cf, key);
+    Result r = mthd->Delete(_cf, key.ref());
     if (!r.ok()) {
       res = r.errorNumber();
       break;
@@ -349,7 +348,7 @@ Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
 
     TRI_ASSERT(end >= start);
     size_t outLength;
-    char* normalized = TRI_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, word,
+    char* normalized = TRI_normalize_utf8_to_NFC(word,
                                                  wordLength, &outLength);
     if (normalized == nullptr) {
       return Result(TRI_ERROR_OUT_OF_MEMORY);
@@ -357,14 +356,14 @@ Result RocksDBFulltextIndex::parseQueryString(std::string const& qstr,
 
     // lower case string
     int32_t outLength2;
-    char* lowered = TRI_tolower_utf8(TRI_UNKNOWN_MEM_ZONE, normalized,
+    char* lowered = TRI_tolower_utf8(normalized,
                                      (int32_t)outLength, &outLength2);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, normalized);
+    TRI_Free(normalized);
     if (lowered == nullptr) {
       return Result(TRI_ERROR_OUT_OF_MEMORY);
     }
     // emplace_back below may throw
-    TRI_DEFER(TRI_Free(TRI_UNKNOWN_MEM_ZONE, lowered));
+    TRI_DEFER(TRI_Free(lowered));
 
     // calculate the proper prefix
     char* prefixEnd =
@@ -408,7 +407,7 @@ Result RocksDBFulltextIndex::executeQuery(transaction::Methods* trx,
   while (maxResults > 0 && it != resultSet.cend()) {
     RocksDBToken token(*it);
     if (token.revisionId() && physical->readDocument(trx, token, mmdr)) {
-      mmdr.addToBuilder(builder, true);
+      mmdr.addToBuilder(builder, false);
       maxResults--;
     }
     ++it;

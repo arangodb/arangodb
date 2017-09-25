@@ -64,24 +64,11 @@ TRI_voc_cid_t Collection::cid() const {
 /// @brief count the number of documents in the collection
 size_t Collection::count(transaction::Methods* trx) const {
   if (numDocuments == UNINITIALIZED) {
-    if (arangodb::ServerState::instance()->isCoordinator()) {
-      // cluster case
-      std::vector<std::pair<std::string, uint64_t>> result;
-      int res = arangodb::countOnCoordinator(vocbase->name(), name, result);
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            res, "could not determine number of documents in collection");
-      }
-      uint64_t count = 0;
-      for (auto const& it : result) {
-        count += it.second;
-      }
-      numDocuments = static_cast<int64_t>(count);
-    } else {
-      // local case
-      // cache the result
-      numDocuments = static_cast<int64_t>(collection->numberDocuments(trx));
+    OperationResult res = trx->count(name, true);
+    if (res.failed()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(res.code, res.errorMessage);
     }
+    numDocuments = res.slice().getInt();
   }
 
   return static_cast<size_t>(numDocuments);
@@ -90,6 +77,35 @@ size_t Collection::count(transaction::Methods* trx) const {
 /// @brief returns the collection's plan id
 TRI_voc_cid_t Collection::getPlanId() const {
   return getCollection()->cid();
+}
+
+std::unordered_set<std::string> Collection::responsibleServers() const {
+  std::unordered_set<std::string> result;
+  auto clusterInfo = arangodb::ClusterInfo::instance();
+
+  auto shardIds = this->shardIds();
+  for (auto const& it : *shardIds) {
+    auto servers = clusterInfo->getResponsibleServer(it);
+    result.emplace((*servers)[0]);
+  }
+  return result;
+}
+
+size_t Collection::responsibleServers(std::unordered_set<std::string>& result) const {
+  auto clusterInfo = arangodb::ClusterInfo::instance();
+
+  size_t n = 0;
+  auto shardIds = this->shardIds();
+  for (auto const& it : *shardIds) {
+    auto servers = clusterInfo->getResponsibleServer(it);
+    result.emplace((*servers)[0]);
+    ++n;
+  }
+  return n;
+}
+
+std::string Collection::distributeShardsLike() const {
+  return getCollection()->distributeShardsLike();
 }
 
 /// @brief returns the shard ids of a collection
@@ -164,6 +180,7 @@ void Collection::setCollection(arangodb::LogicalCollection* coll) {
 /// @brief either use the set collection or get one from ClusterInfo:
 std::shared_ptr<LogicalCollection> Collection::getCollection() const {
   if (collection == nullptr) {
+    TRI_ASSERT(ServerState::instance()->isRunningInCluster());
     auto clusterInfo = arangodb::ClusterInfo::instance();
     return clusterInfo->getCollection(vocbase->name(), name);
   }

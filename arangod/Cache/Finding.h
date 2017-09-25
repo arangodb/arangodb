@@ -45,9 +45,9 @@ class Finding {
   Finding();
   explicit Finding(CachedValue* v);
   explicit Finding(CachedValue* v, Result const& r);
-  Finding(Finding const& other);
+  Finding(Finding const& other) = delete;
   Finding(Finding&& other);
-  Finding& operator=(Finding const& other);
+  Finding& operator=(Finding const& other) = delete;
   Finding& operator=(Finding&& other);
   ~Finding();
 
@@ -90,7 +90,7 @@ class Finding {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the status result object associated with the lookup.
   /////////////////////////////////////////////////////////////////////////////
-  Result result() const;
+  Result const& result() const;
 
  private:
   CachedValue* _value;

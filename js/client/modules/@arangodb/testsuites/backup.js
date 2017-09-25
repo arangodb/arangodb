@@ -26,7 +26,10 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'backup': 'complete backup tests with and without authentication'
+  'BackupNoAuthSysTests':   'complete backup tests without authentication, with    system collections',
+  'BackupNoAuthNoSysTests': 'complete backup tests without authentication, without system collections',
+  'BackupAuthSysTests':     'complete backup tests with    authentication, with    system collections',
+  'BackupAuthNoSysTests':   'complete backup tests with    authentication, without system collections'
 };
 const optionsDocumentation = [
 ];
@@ -38,7 +41,7 @@ const tu = require('@arangodb/test-utils');
 const CYAN = require('internal').COLORS.COLOR_CYAN;
 const RESET = require('internal').COLORS.COLOR_RESET;
 const log = (text) => {
-  print(`${CYAN}${Date()}: Backup - ${text}${RESET}`); 
+  print(`${CYAN}${Date()}: Backup - ${text}${RESET}`);
 };
 const makePath = (name) => {
   return tu.makePathUnix(`js/server/tests/backup/${name}`);
@@ -56,25 +59,31 @@ const asRoot = {
 const syssys = 'systemsystem';
 const sysNoSys = 'systemnosystem';
 
-const failMessage = (msg) => {
+const failPreStartMessage = (msg) => {
   return {
-      failed: 1,
-      'backup': {
-        status: false,
-        message: msg
-      }
-    };
+    state: false,
+    message: msg
+  };
 };
 
-const generateDumpData = (options, useAuth, user) => {
-   const auth = {
-    'server.authentication': useAuth ? 'true' : 'false'
+var dumpPath;
+
+// //////////////////////////////////////////////////////////////////////////////
+// / We start a temporary system to generate the dumps that are agnostic
+// / of whether its a cluster or not.
+// //////////////////////////////////////////////////////////////////////////////
+const generateDumpData = (options) => {
+  if (dumpPath !== undefined) {
+    return dumpPath;
+  }
+  const auth = {
+    'server.authentication': 'false'
   };
 
   let instanceInfo = pu.startInstance('tcp', options, auth, 'backup');
 
   if (instanceInfo === false) {
-    return failMessage('failed to start dataGenerator server!');
+    return failPreStartMessage('failed to start dataGenerator server!');
   }
 
   log('Setting up');
@@ -85,6 +94,7 @@ const generateDumpData = (options, useAuth, user) => {
     if (!setup.status === true || !isAlive(instanceInfo, options)) {
       log('Setup failed');
       setup.failed = 1;
+      setup.state = false;
       return setup;
     }
 
@@ -97,6 +107,7 @@ const generateDumpData = (options, useAuth, user) => {
     if (dump.status === false || !isAlive(instanceInfo, options)) {
       log('Dump failed');
       dump.failed = 1;
+      dump.state = false;
       return dump;
     }
 
@@ -106,10 +117,11 @@ const generateDumpData = (options, useAuth, user) => {
     if (dump.status === false || !isAlive(instanceInfo, options)) {
       log('Dump failed');
       dump.failed = 1;
+      dump.state = false;
       return dump;
     }
 
-    log('Dump successful, using auth ' + useAuth);
+    log('Dump successful');
   } finally {
     log('Shutting down dump server');
     if (isAlive(instanceInfo, options)) {
@@ -119,106 +131,161 @@ const generateDumpData = (options, useAuth, user) => {
     print();
   }
 
+  dumpPath = path;
   return path;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: backup
+// / set up the test according to the testcase.
 // //////////////////////////////////////////////////////////////////////////////
-
-const allBackupTests = (options) => {
-  log("Starting tests");
-
-  log("Test dump without authentication");
-  let path = generateDumpData(options, false);
-  if (path.failed === 1) {
-    // Sorry dumping failed.
+const setServerOptions = (options, serverOptions, customInstanceInfos, startStopHandlers) => {
+  let path = generateDumpData(_.clone(options));
+  if (typeof path === 'object' && path.failed === 1) {
+    log('DUMPING FAILED!');
     return path;
   }
 
-  let res;
-  log("Switch off Authentication");
+  startStopHandlers['path'] = path;
 
-  log("Test restore _system incl system collections");
-  res = backupTest(options, '_system', path, syssys, 'backup-system-incl-system.js', false);
-  if (res.failed === 1) {
-    return res;
+  const auth = { };
+  if (startStopHandlers.useAuth) {
+    serverOptions['server.authentication'] = 'true';
+    serverOptions['server.jwt-secret'] = 'haxxmann';
+  } else {
+    serverOptions['server.authentication'] = 'false';
   }
-
-  log("Test restore _system excl system collections");
-  res = backupTest(options, '_system', path, sysNoSys, 'backup-system-excl-system.js', false);
-  if (res.failed === 1) {
-    return res;
-  }
-
-  log("Switch on Authentication");
-
-  log("Test restore _system incl system collections");
-  res = backupTest(options, '_system', path, syssys, 'backup-system-incl-system.js', true, asRoot);
-  if (res.failed === 1) {
-    return res;
-  }
-
-  log("Test restore _system excl system collections");
-  res = backupTest(options, '_system', path, sysNoSys, 'backup-system-excl-system.js', true, asRoot);
-  if (res.failed === 1) {
-    return res;
-  }
-
-  return res;
+  return {
+    state: true
+  };
 };
 
+// //////////////////////////////////////////////////////////////////////////////
+// / set up the test according to the testcase.
+// //////////////////////////////////////////////////////////////////////////////
+const setupBackupTest = (options, serverOptions, instanceInfo, customInstanceInfos, startStopHandlers) => {
+  let restore = pu.run.arangoDumpRestore(startStopHandlers.user,
+                                         instanceInfo,
+                                         'restore',
+                                         '_system',
+                                         startStopHandlers.path,
+                                         startStopHandlers.restoreDir);
 
-const backupTest = (options, db, path, folder, testFile, useAuth, user = {}) => {
-  const auth = { };
-  if (useAuth) {
-    auth['server.authentication'] = 'true';
-    auth['server.jwt-secret'] = 'haxxmann';
-  } else {
-    auth['server.authentication'] = 'false';
+  if (restore.status === false || !isAlive(instanceInfo, options)) {
+    log('Restore failed');
+    restore.failed = 1;
+    return {
+      state: false,
+      message: restore.message
+    };
   }
 
-  log('Reboot fresh instance');
-  let instanceInfo = pu.startInstance('tcp', options, auth, 'backup');
-  if (instanceInfo === false) {
-    return failMessage('failed to start fresh server for backup!');
-  }
+  return {
+    state: true
+  };
+};
 
-  try {
-    let restore = pu.run.arangoDumpRestore(user, instanceInfo, 'restore', db, path, folder);
-    if (restore.status === false || !isAlive(instanceInfo, options)) {
-      log('Restore failed');
-      restore.failed = 1;
-      return restore;
-    }
+// //////////////////////////////////////////////////////////////////////////////
+// / testcases themselves
+// //////////////////////////////////////////////////////////////////////////////
 
-    log('Validate Result');
-    let test = tu.runInArangosh(user, instanceInfo, makePath(testFile), { 'server.database': db });
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: backup No Authentication, with System collections
+// //////////////////////////////////////////////////////////////////////////////
 
-    if (test.status === false || !isAlive(instanceInfo, options)) {
-      log('Validation failed');
-      test.failed = 1;
-      return test;
-    }
-  } finally {
-    log('Shutting down...');
-    if (useAuth) {
-      options['server.authentication'] = auth['server.authentication'];
-      options['server.jwt-secret'] = auth['server.jwt-secret'];
-    }
-    if (isAlive(instanceInfo, options)) {
-      pu.shutdownInstance(instanceInfo, options);
-    }
-    log('done.');
-    print();
-  }
+const BackupNoAuthSysTests = (options) => {
+  log('Test dump without authentication, restore _system incl system collections');
 
-  return { failed: 0 };
+  let startStopHandlers = {
+    preStart: setServerOptions,
+    postStart: setupBackupTest,
+    useAuth: false,
+    user: {},
+    restoreDir: syssys
+  };
+
+  return tu.performTests(options,
+                         ['js/server/tests/backup/backup-system-incl-system.js'],
+                         'BackupNoAuthSysTests',
+                         tu.runInArangosh, {},
+                         startStopHandlers);
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: backup No Authentication, no System collections
+// //////////////////////////////////////////////////////////////////////////////
+
+const BackupNoAuthNoSysTests = (options) => {
+  log('Test dump without authentication, restore _system excl system collections');
+
+  let startStopHandlers = {
+    preStart: setServerOptions,
+    postStart: setupBackupTest,
+    useAuth: false,
+    user: {},
+    restoreDir: sysNoSys
+  };
+
+  return tu.performTests(options,
+                         ['js/server/tests/backup/backup-system-excl-system.js'],
+                         'BackupNoAuthNoSysTests',
+                         tu.runInArangosh, {},
+                         startStopHandlers);
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: backup with Authentication, with System collections
+// //////////////////////////////////////////////////////////////////////////////
+
+const BackupAuthSysTests = (options) => {
+  log('Test dump with authentication, restore _system incl system collections');
+
+  let startStopHandlers = {
+    preStart: setServerOptions,
+    postStart: setupBackupTest,
+    useAuth: true,
+    user: asRoot,
+    restoreDir: syssys
+  };
+
+  return tu.performTests(options,
+                         ['js/server/tests/backup/backup-system-incl-system.js'],
+                         'BackupAuthSysTests',
+                         tu.runInArangosh, {},
+                         startStopHandlers);
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief TEST: backup with Authentication, no System collections
+// //////////////////////////////////////////////////////////////////////////////
+
+const BackupAuthNoSysTests = (options) => {
+  log('Test dump with authentication, restore _system excl system collections');
+
+  let startStopHandlers = {
+    preStart: setServerOptions,
+    postStart: setupBackupTest,
+    useAuth: true,
+    user: asRoot,
+    restoreDir: sysNoSys
+  };
+
+  return tu.performTests(options,
+                         ['js/server/tests/backup/backup-system-excl-system.js'],
+                         'BackupAuthNoSysTests',
+                         tu.runInArangosh, {},
+                         startStopHandlers);
 };
 
 exports.setup = function (testFns, defaultFns, opts, fnDocs, optionsDoc) {
-  testFns['backup'] = allBackupTests;
-  defaultFns.push('backup');
+  testFns['BackupNoAuthSysTests'] = BackupNoAuthSysTests;
+  testFns['BackupNoAuthNoSysTests'] = BackupNoAuthNoSysTests;
+  testFns['BackupAuthSysTests'] = BackupAuthSysTests;
+  testFns['BackupAuthNoSysTests'] = BackupAuthNoSysTests;
+
+  defaultFns.push('BackupNoAuthSysTests');
+  defaultFns.push('BackupNoAuthNoSysTests');
+  defaultFns.push('BackupAuthSysTests');
+  defaultFns.push('BackupAuthNoSysTests');
 
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }

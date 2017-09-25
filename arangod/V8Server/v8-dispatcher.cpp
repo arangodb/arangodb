@@ -71,6 +71,7 @@ class V8Task : public std::enable_shared_from_this<V8Task> {
   static std::shared_ptr<VPackBuilder> registeredTask(std::string const& id);
   static std::shared_ptr<VPackBuilder> registeredTasks();
   static void shutdownTasks();
+  static void removeTasksForDatabase(std::string const&);
 
  private:
   static Mutex _tasksLock;
@@ -79,6 +80,7 @@ class V8Task : public std::enable_shared_from_this<V8Task> {
  public:
   V8Task(std::string const& id, std::string const& name, TRI_vocbase_t*,
          std::string const& command, bool allowUseDatabase);
+  ~V8Task();
 
  public:
   void setOffset(double offset);
@@ -87,15 +89,20 @@ class V8Task : public std::enable_shared_from_this<V8Task> {
       std::shared_ptr<arangodb::velocypack::Builder> const& parameters);
   void setUser(std::string const& user);
 
-  void start(boost::asio::io_service*);
+  void start();
   void cancel();
 
   std::shared_ptr<VPackBuilder> toVelocyPack() const;
 
+  bool databaseMatches(std::string const&) const;
+
  private:
   void toVelocyPack(VPackBuilder&) const;
   void work();
+  void queue(std::chrono::microseconds offset);
+  void unqueue() noexcept;
   std::function<void(boost::system::error_code const&)> callbackFunction();
+  std::string const& name() const { return _name; }
 
  private:
   std::string const _id;
@@ -115,6 +122,9 @@ class V8Task : public std::enable_shared_from_this<V8Task> {
   std::chrono::microseconds _offset;
   std::chrono::microseconds _interval;
   bool _periodic = false;
+
+  Mutex _queueMutex;
+  bool _queued; 
 };
 
 Mutex V8Task::_tasksLock;
@@ -208,6 +218,24 @@ void V8Task::shutdownTasks() {
   _tasks.clear();
 }
 
+void V8Task::removeTasksForDatabase(std::string const& name) {
+  MUTEX_LOCKER(guard, _tasksLock);
+    
+  for (auto it = _tasks.begin(); it != _tasks.end(); /* no hoisting */) {
+    if (!(*it).second->databaseMatches(name)) {
+      ++it;
+    } else {
+      auto task = (*it).second;
+      task->cancel();
+      it = _tasks.erase(it);
+    }
+  }
+}
+  
+bool V8Task::databaseMatches(std::string const& name) const {
+  return (_vocbaseGuard->vocbase()->name() == name);
+}
+
 V8Task::V8Task(std::string const& id, std::string const& name,
                TRI_vocbase_t* vocbase, std::string const& command,
                bool allowUseDatabase)
@@ -218,7 +246,10 @@ V8Task::V8Task(std::string const& id, std::string const& name,
       _command(command),
       _allowUseDatabase(allowUseDatabase),
       _offset(0),
-      _interval(0) {}
+      _interval(0),
+      _queued(false) {}
+
+V8Task::~V8Task() { unqueue(); }
 
 void V8Task::setOffset(double offset) {
   _offset = std::chrono::microseconds(static_cast<long long>(offset * 1000000));
@@ -246,6 +277,8 @@ V8Task::callbackFunction() {
   auto self = shared_from_this();
 
   return [self, this](const boost::system::error_code& error) {
+    unqueue();
+    
     // First tell the scheduler that this thread is working:
     JobGuard guard(SchedulerFeature::SCHEDULER);
     guard.work();
@@ -289,8 +322,8 @@ V8Task::callbackFunction() {
     work();
 
     if (_periodic && !SchedulerFeature::SCHEDULER->isStopping()) {
-      _timer->expires_from_now(_interval);
-      _timer->async_wait(callbackFunction());
+      // requeue the task
+      queue(_interval);
     } else {
       // in case of one-off tasks or in case of a shutdown, simply
       // remove the task from the list
@@ -299,15 +332,47 @@ V8Task::callbackFunction() {
   };
 }
 
-void V8Task::start(boost::asio::io_service* ioService) {
+void V8Task::start() {
   TRI_ASSERT(ExecContext::CURRENT == nullptr ||
              (!_user.empty() && ExecContext::CURRENT->user() == _user));
+  
+  auto ioService = SchedulerFeature::SCHEDULER->ioService();
   _timer.reset(new boost::asio::steady_timer(*ioService));
   if (_offset.count() <= 0) {
     _offset = std::chrono::microseconds(1);
   }
-  _timer->expires_from_now(_offset);
+
+  // initially queue the task
+  queue(_offset);
+}
+
+void V8Task::queue(std::chrono::microseconds offset) {
+  {
+    MUTEX_LOCKER(locker, _queueMutex);
+    TRI_ASSERT(!_queued);
+    _queued = true; 
+  }
+
+  SchedulerFeature::SCHEDULER->queueJob();
+
+  _timer->expires_from_now(offset);
   _timer->async_wait(callbackFunction());
+}
+
+void V8Task::unqueue() noexcept {
+  bool wasQueued;
+
+  {
+    MUTEX_LOCKER(locker, _queueMutex);
+    wasQueued = _queued;
+    if (wasQueued) {
+      _queued = false;
+    }
+  }
+    
+  if (wasQueued && SchedulerFeature::SCHEDULER != nullptr) {
+    SchedulerFeature::SCHEDULER->unqueueJob();
+  }
 }
 
 void V8Task::cancel() {
@@ -316,6 +381,8 @@ void V8Task::cancel() {
 
   boost::system::error_code ec;
   _timer->cancel(ec);
+
+  unqueue();
 }
 
 std::shared_ptr<VPackBuilder> V8Task::toVelocyPack() const {
@@ -368,13 +435,13 @@ void V8Task::work() {
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
     auto current = isolate->GetCurrentContext()->Global();
     auto ctor = v8::Local<v8::Function>::Cast(
-        current->Get(TRI_V8_ASCII_STRING("Function")));
+        current->Get(TRI_V8_ASCII_STRING(isolate, "Function")));
 
     // Invoke Function constructor to create function with the given body and
     // no
     // arguments
-    v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING("params"),
-                                     TRI_V8_STD_STRING(_command)};
+    v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
+                                     TRI_V8_STD_STRING(isolate, _command)};
     v8::Local<v8::Object> function = ctor->NewInstance(2, args);
 
     v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
@@ -429,12 +496,12 @@ static bool TryCompile(v8::Isolate* isolate, std::string const& command) {
   // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
   auto current = isolate->GetCurrentContext()->Global();
   auto ctor = v8::Local<v8::Function>::Cast(
-      current->Get(TRI_V8_ASCII_STRING("Function")));
+      current->Get(TRI_V8_ASCII_STRING(isolate, "Function")));
 
   // Invoke Function constructor to create function with the given body and no
   // arguments
-  v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING("params"),
-                                   TRI_V8_STD_STRING(command)};
+  v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
+                                   TRI_V8_STD_STRING(isolate, command)};
   v8::Local<v8::Object> function = ctor->NewInstance(2, args);
 
   v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
@@ -446,8 +513,8 @@ static std::string GetTaskId(v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
   if (arg->IsObject()) {
     // extract "id" from object
     v8::Handle<v8::Object> obj = arg.As<v8::Object>();
-    if (obj->Has(TRI_V8_ASCII_STRING("id"))) {
-      return TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("id")));
+    if (obj->Has(TRI_V8_ASCII_STRING(isolate, "id"))) {
+      return TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "id")));
     }
   }
 
@@ -481,9 +548,9 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // job id
   std::string id;
 
-  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("id"))) {
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "id"))) {
     // user-specified id
-    id = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("id")));
+    id = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "id")));
   } else {
     // auto-generated id
     id = std::to_string(TRI_NewTickServer());
@@ -492,30 +559,30 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // job name
   std::string name;
 
-  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("name"))) {
-    name = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("name")));
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "name"))) {
+    name = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "name")));
   } else {
     name = "user-defined task";
   }
 
   bool isSystem = false;
 
-  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("isSystem"))) {
-    isSystem = TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING("isSystem")));
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "isSystem"))) {
+    isSystem = TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING(isolate, "isSystem")));
   }
 
   // offset in seconds into period or from now on if no period
   double offset = 0.0;
 
-  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("offset"))) {
-    offset = TRI_ObjectToDouble(obj->Get(TRI_V8_ASCII_STRING("offset")));
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "offset"))) {
+    offset = TRI_ObjectToDouble(obj->Get(TRI_V8_ASCII_STRING(isolate, "offset")));
   }
 
   // period in seconds & count
   double period = 0.0;
 
-  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("period"))) {
-    period = TRI_ObjectToDouble(obj->Get(TRI_V8_ASCII_STRING("period")));
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "period"))) {
+    period = TRI_ObjectToDouble(obj->Get(TRI_V8_ASCII_STRING(isolate, "period")));
 
     if (period <= 0.0) {
       TRI_V8_THROW_EXCEPTION_PARAMETER(
@@ -524,12 +591,12 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string runAsUser;
-  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("runAsUser"))) {
-    runAsUser = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("runAsUser")));
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "runAsUser"))) {
+    runAsUser = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "runAsUser")));
   }
   // only the superroot is allowed to run tasks as an arbitrary user
   if (ExecContext::CURRENT != nullptr) {
-    if (runAsUser.empty()) { // execute task as in the same use
+    if (runAsUser.empty()) { // execute task as the same use
       runAsUser = ExecContext::CURRENT->user();
     } else if (ExecContext::CURRENT->user() != runAsUser) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
@@ -537,18 +604,18 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // extract the command
-  if (!obj->HasOwnProperty(TRI_V8_ASCII_STRING("command"))) {
+  if (!obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "command"))) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("command must be specified");
   }
 
   std::string command;
-  if (obj->Get(TRI_V8_ASCII_STRING("command"))->IsFunction()) {
+  if (obj->Get(TRI_V8_ASCII_STRING(isolate, "command"))->IsFunction()) {
     // need to add ( and ) around function because call would otherwise break
     command = "(" +
-              TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("command"))) +
+              TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "command"))) +
               ")(params)";
   } else {
-    command = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("command")));
+    command = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "command")));
   }
 
   if (!TryCompile(isolate, command)) {
@@ -558,9 +625,9 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // extract the parameters
   auto parameters = std::make_shared<VPackBuilder>();
 
-  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("params"))) {
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "params"))) {
     int res = TRI_V8ToVPack(isolate, *parameters,
-                            obj->Get(TRI_V8_ASCII_STRING("params")), false);
+                            obj->Get(TRI_V8_ASCII_STRING(isolate, "params")), false);
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -600,9 +667,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  // and start
-  auto ioService = SchedulerFeature::SCHEDULER->ioService();
-  task->start(ioService);
+  task->start();
 
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
 
@@ -771,24 +836,26 @@ void TRI_InitV8Dispatcher(v8::Isolate* isolate,
 
   // _queues is a RO collection and can only be written in C++, as superroot
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_CREATE_QUEUE"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_CREATE_QUEUE"),
                                JS_CreateQueue);
 
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_DELETE_QUEUE"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_DELETE_QUEUE"),
                                JS_DeleteQueue);
 
   // we need a scheduler and a dispatcher to define periodic tasks
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_REGISTER_TASK"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_REGISTER_TASK"),
                                JS_RegisterTask);
 
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_UNREGISTER_TASK"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_UNREGISTER_TASK"),
                                JS_UnregisterTask);
 
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_GET_TASK"), JS_GetTask);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_GET_TASK"), JS_GetTask);
 }
 
 void TRI_ShutdownV8Dispatcher() { V8Task::shutdownTasks(); }
+
+void TRI_RemoveDatabaseTasksV8Dispatcher(std::string const& name) { V8Task::removeTasksForDatabase(name); }

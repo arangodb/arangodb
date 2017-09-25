@@ -28,14 +28,35 @@
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/Transaction/IgnoreNoAccessAqlTransaction.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
+AqlTransaction* AqlTransaction::create(
+    std::shared_ptr<transaction::Context> const& transactionContext,
+    std::map<std::string, aql::Collection*> const* collections,
+    transaction::Options const& options, bool isMainTransaction,
+    std::unordered_set<std::string> inaccessibleCollections) {
+#ifdef USE_ENTERPRISE
+  if (options.skipInaccessibleCollections) {
+    return new transaction::IgnoreNoAccessAqlTransaction(
+        transactionContext, collections, options, isMainTransaction,
+        inaccessibleCollections);
+  }
+#endif
+  return new AqlTransaction(transactionContext, collections, options,
+                            isMainTransaction);
+}
+
 /// @brief clone, used to make daughter transactions for parts of a
 /// distributed AQL query running on the coordinator
-transaction::Methods* AqlTransaction::clone(transaction::Options const& options) const {
+transaction::Methods* AqlTransaction::clone(
+    transaction::Options const& options) const {
   return new AqlTransaction(transaction::StandaloneContext::Create(vocbase()),
-      &_collections, options, false);
+                            &_collections, options, false);
 }
 
 /// @brief add a collection to the transaction
@@ -48,7 +69,8 @@ Result AqlTransaction::processCollection(aql::Collection* collection) {
 
 /// @brief add a coordinator collection to the transaction
 
-Result AqlTransaction::processCollectionCoordinator(aql::Collection*  collection) {
+Result AqlTransaction::processCollectionCoordinator(
+    aql::Collection* collection) {
   TRI_voc_cid_t cid = resolver()->getCollectionId(collection->getName());
 
   return addCollection(cid, collection->getName().c_str(),
@@ -78,7 +100,8 @@ Result AqlTransaction::processCollectionNormal(aql::Collection* collection) {
     cid = col->cid();
   }
 
-  Result res = addCollection(cid, collection->getName(), collection->accessType);
+  Result res =
+      addCollection(cid, collection->getName(), collection->accessType);
 
   if (res.ok() && col != nullptr) {
     collection->setCollection(const_cast<arangodb::LogicalCollection*>(col));
@@ -100,7 +123,4 @@ LogicalCollection* AqlTransaction::documentCollection(TRI_voc_cid_t cid) {
 /// in a second round, we need to lock the shards in exactly the right
 /// order via an HTTP call. This method is used to implement that HTTP action.
 
-int AqlTransaction::lockCollections() {
-  return state()->lockCollections();
-}
-
+int AqlTransaction::lockCollections() { return state()->lockCollections(); }

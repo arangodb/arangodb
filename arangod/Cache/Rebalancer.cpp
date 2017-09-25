@@ -29,7 +29,7 @@ using namespace arangodb::cache;
 
 Rebalancer::Rebalancer(Manager* manager) : _manager(manager) {}
 
-bool Rebalancer::rebalance() {
+int Rebalancer::rebalance() {
   if (_manager != nullptr) {
     return _manager->rebalance();
   }

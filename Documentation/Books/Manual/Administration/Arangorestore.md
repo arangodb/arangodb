@@ -177,3 +177,12 @@ follows:
 
     unix> arangorestore --collection clonedCollection --server.database mydb --input-directory "dump" --ignore-distribute-shards-like-errors
 
+### Restore into an authentication enabled ArangoDB
+
+Of course you can restore data into a password protected ArangoDB as well.
+However this requires certain user rights for the user used in the restore process.
+The rights are described in detail in the [Managing Users](ManagingUsers/README.md) chapter.
+For restore this short overview is sufficient:
+
+* When importing into an existing database, the given user needs `Administrate` access on this database.
+* When creating a new Database during restore, the given user needs `Administrate` access on `_system`. The user will be promoted with `Administrate` access on the newly created database.

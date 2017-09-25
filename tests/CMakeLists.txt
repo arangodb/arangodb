@@ -36,6 +36,7 @@ add_executable(
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
   Basics/VelocyPackHelper-test.cpp
+  Cache/BucketState.cpp
   Cache/CachedValue.cpp
   Cache/FrequencyBuffer.cpp
   Cache/Manager.cpp
@@ -44,7 +45,6 @@ add_executable(
   Cache/PlainBucket.cpp
   Cache/PlainCache.cpp
   Cache/Rebalancer.cpp
-  Cache/State.cpp
   Cache/Table.cpp
   Cache/TransactionalBucket.cpp
   Cache/TransactionalCache.cpp
@@ -57,6 +57,7 @@ add_executable(
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/TypeConversionTest.cpp
+  SimpleHttpClient/CommunicatorTest.cpp
   main.cpp
 )
 

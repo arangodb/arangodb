@@ -26,6 +26,8 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
 #include "Aql/AttributeAccessor.h"
+#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/BaseExpressionContext.h"
 #include "Aql/Function.h"
@@ -80,9 +82,9 @@ static void RegisterWarning(arangodb::aql::Ast const* ast,
 }
 
 /// @brief create the expression
-Expression::Expression(Ast* ast, AstNode* node)
-    : _ast(ast),
-      _executor(_ast->query()->executor()),
+Expression::Expression(ExecutionPlan* plan, Ast* ast, AstNode* node)
+    : _plan(plan),
+      _ast(ast),
       _node(node),
       _type(UNPROCESSED),
       _canThrow(true),
@@ -93,13 +95,12 @@ Expression::Expression(Ast* ast, AstNode* node)
       _attributes(),
       _expressionContext(nullptr) {
   TRI_ASSERT(_ast != nullptr);
-  TRI_ASSERT(_executor != nullptr);
   TRI_ASSERT(_node != nullptr);
 }
 
 /// @brief create an expression from VPack
-Expression::Expression(Ast* ast, arangodb::velocypack::Slice const& slice)
-    : Expression(ast, new AstNode(ast, slice.get("expression"))) {}
+Expression::Expression(ExecutionPlan* plan, Ast* ast, arangodb::velocypack::Slice const& slice)
+    : Expression(plan, ast, new AstNode(ast, slice.get("expression"))) {}
 
 /// @brief destroy the expression
 Expression::~Expression() {
@@ -180,7 +181,7 @@ AqlValue Expression::execute(transaction::Methods* trx, ExpressionContext* ctx,
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                 "invalid simple expression");
+                                 "invalid expression type");
 
 }
 
@@ -406,8 +407,20 @@ void Expression::analyzeExpression() {
       if (member->type == NODE_TYPE_REFERENCE) {
         auto v = static_cast<Variable const*>(member->getData());
 
+        bool dataIsFromCollection = false;
+        if (_plan != nullptr) {
+          // check if the variable we are referring to is set by
+          // a collection enumeration/index enumeration
+          auto setter = _plan->getVarSetBy(v->id);
+          if (setter != nullptr && 
+              (setter->getType() == ExecutionNode::INDEX || setter->getType() == ExecutionNode::ENUMERATE_COLLECTION)) {
+            // it is
+            dataIsFromCollection = true;
+          }
+        }
+
         // specialize the simple expression into an attribute accessor
-        _accessor = new AttributeAccessor(std::move(parts), v);
+        _accessor = new AttributeAccessor(std::move(parts), v, dataIsFromCollection);
         if (_accessor->isDynamic()) {
           _type = ATTRIBUTE_DYNAMIC;
         } else {
@@ -463,7 +476,7 @@ void Expression::buildExpression(transaction::Methods* trx) {
     memcpy(_data, builder->data(), static_cast<size_t>(builder->size()));
   } else if (_type == V8) {
     // generate a V8 expression
-    _func = _executor->generateExpression(_node);
+    _func = _ast->query()->v8Executor()->generateExpression(_node);
 
     // optimizations for the generated function
     if (_func != nullptr && !_attributes.empty()) {

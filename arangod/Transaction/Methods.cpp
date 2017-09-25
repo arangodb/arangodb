@@ -52,7 +52,6 @@
 #include "Utils/Events.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/Methods/Indexes.h"
@@ -616,11 +615,11 @@ CollectionNameResolver const* transaction::Methods::resolver() const {
 
 /// @brief return the transaction collection for a document collection
 TransactionCollection* transaction::Methods::trxCollection(
-    TRI_voc_cid_t cid) const {
+    TRI_voc_cid_t cid, AccessMode::Type type) const {
   TRI_ASSERT(_state != nullptr);
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
-  return _state->collection(cid, AccessMode::Type::READ);
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING ||
+             _state->status() == transaction::Status::CREATED);
+  return _state->collection(cid, type);
 }
 
 /// @brief order a ditch for a collection
@@ -629,17 +628,14 @@ void transaction::Methods::pinData(TRI_voc_cid_t cid) {
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING ||
              _state->status() == transaction::Status::CREATED);
 
-  TransactionCollection* trxCollection =
-      _state->collection(cid, AccessMode::Type::READ);
-
-  if (trxCollection == nullptr) {
+  TransactionCollection* trxColl = trxCollection(cid, AccessMode::Type::READ);
+  if (trxColl == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, "unable to determine transaction collection");
   }
 
-  TRI_ASSERT(trxCollection->collection() != nullptr);
-
-  _transactionContextPtr->pinData(trxCollection->collection());
+  TRI_ASSERT(trxColl->collection() != nullptr);
+  _transactionContextPtr->pinData(trxColl->collection());
 }
 
 /// @brief whether or not a ditch has been created for the collection
@@ -797,11 +793,6 @@ std::string transaction::Methods::name(TRI_voc_cid_t cid) const {
   return c->collectionName();
 }
 
-/// @brief read any (random) document
-OperationResult transaction::Methods::any(std::string const& collectionName) {
-  return any(collectionName, 0, 1);
-}
-
 /// @brief read all master pointers, using skip and limit.
 /// The resualt guarantees that all documents are contained exactly once
 /// as long as the collection is not modified.
@@ -830,7 +821,7 @@ OperationResult transaction::Methods::anyLocal(
 
   pinData(cid);  // will throw when it fails
 
-  Result res = lock(trxCollection(cid), AccessMode::Type::READ);
+  Result res = lock(cid, AccessMode::Type::READ);
 
   if (!res.ok()) {
     return OperationResult(res);
@@ -850,7 +841,7 @@ OperationResult transaction::Methods::anyLocal(
 
   resultBuilder.close();
 
-  res = unlock(trxCollection(cid), AccessMode::Type::READ);
+  res = unlock(cid, AccessMode::Type::READ);
 
   if (!res.ok()) {
     return OperationResult(res);
@@ -908,19 +899,19 @@ TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(
 }
 
 /// @brief return the type of a collection
-bool transaction::Methods::isEdgeCollection(std::string const& collectionName) {
+bool transaction::Methods::isEdgeCollection(std::string const& collectionName) const {
   return getCollectionType(collectionName) == TRI_COL_TYPE_EDGE;
 }
 
 /// @brief return the type of a collection
 bool transaction::Methods::isDocumentCollection(
-    std::string const& collectionName) {
+    std::string const& collectionName) const {
   return getCollectionType(collectionName) == TRI_COL_TYPE_DOCUMENT;
 }
 
 /// @brief return the type of a collection
 TRI_col_type_e transaction::Methods::getCollectionType(
-    std::string const& collectionName) {
+    std::string const& collectionName) const {
   if (_state->isCoordinator()) {
     return resolver()->getCollectionTypeCluster(collectionName);
   }
@@ -936,26 +927,27 @@ std::string transaction::Methods::collectionName(TRI_voc_cid_t cid) {
 void transaction::Methods::invokeOnAllElements(
     std::string const& collectionName,
     std::function<bool(DocumentIdentifierToken const&)> callback) {
-  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-  if (_state->isCoordinator()) {
+  TRI_ASSERT(_state != nullptr && _state->status() == transaction::Status::RUNNING);
+  if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_INTERNAL);
+  } else if (_state->isCoordinator()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
-  TransactionCollection* trxCol = trxCollection(cid);
+  TransactionCollection* trxCol = trxCollection(cid, AccessMode::Type::READ);
   LogicalCollection* logical = documentCollection(trxCol);
+  TRI_ASSERT(logical != nullptr);
+  _transactionContextPtr->pinData(logical);
 
-  pinData(cid);  // will throw when it fails
-
-  Result res = lock(trxCol, AccessMode::Type::READ);
-
+  Result res = trxCol->lock(AccessMode::Type::READ, _state->nestingLevel());
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
   logical->invokeOnAllElements(this, callback);
 
-  res = unlock(trxCol, AccessMode::Type::READ);
+  res = trxCol->unlock(AccessMode::Type::READ, _state->nestingLevel());
 
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -1032,28 +1024,26 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
 ///        Does not care for revision handling!
 ///        Must only be called on a local server, not in cluster case!
 Result transaction::Methods::documentFastPathLocal(
-    std::string const& collectionName, std::string const& key,
-    ManagedDocumentResult& result) {
+    std::string const& collectionName, StringRef const& key,
+    ManagedDocumentResult& result, bool shouldLock) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
-  LogicalCollection* collection = documentCollection(trxCollection(cid));
-
-  pinData(cid);  // will throw when it fails
+  TransactionCollection* trxColl = trxCollection(cid);
+  LogicalCollection* collection = documentCollection(trxColl);
+  TRI_ASSERT(collection != nullptr);
+  _transactionContextPtr->pinData(collection); // will throw when it fails
 
   if (key.empty()) {
     return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
   }
 
-  Result res = collection->read(this, key, result,
-                                !isLocked(collection, AccessMode::Type::READ));
-
-  if (res.fail()) {
-    return res;
-  }
-
-  TRI_ASSERT(isPinned(cid));
-  return TRI_ERROR_NO_ERROR;
+  bool isLocked = trxColl->isLocked(AccessMode::Type::READ,
+                                    _state->nestingLevel());
+  Result res = collection->read(this, key, result, shouldLock && !isLocked);
+  TRI_ASSERT(res.fail() || isPinned(cid));
+  return res;
 }
 
 /// @brief Create Cluster Communication result for document
@@ -1709,7 +1699,7 @@ OperationResult transaction::Methods::modifyLocal(
 
   // Update/replace are a read and a write, let's get the write lock already
   // for the read operation:
-  Result res = lock(trxCollection(cid), AccessMode::Type::WRITE);
+  Result res = lock(cid, AccessMode::Type::WRITE);
 
   if (!res.ok()) {
     return OperationResult(res);
@@ -2234,7 +2224,7 @@ OperationResult transaction::Methods::allLocal(
 
   pinData(cid);  // will throw when it fails
 
-  Result res = lock(trxCollection(cid), AccessMode::Type::READ);
+  Result res = lock(cid, AccessMode::Type::READ);
 
   if (!res.ok()) {
     return OperationResult(res);
@@ -2259,7 +2249,7 @@ OperationResult transaction::Methods::allLocal(
 
   resultBuilder.close();
 
-  res = unlock(trxCollection(cid), AccessMode::Type::READ);
+  res = unlock(cid, AccessMode::Type::READ);
 
   if (res.ok()) {
     return OperationResult(res);
@@ -2325,7 +2315,7 @@ OperationResult transaction::Methods::truncateLocal(
 
   pinData(cid);  // will throw when it fails
 
-  Result res = lock(trxCollection(cid), AccessMode::Type::WRITE);
+  Result res = lock(cid, AccessMode::Type::WRITE);
 
   if (!res.ok()) {
     return OperationResult(res);
@@ -2334,7 +2324,7 @@ OperationResult transaction::Methods::truncateLocal(
   try {
     collection->truncate(this, options);
   } catch (basics::Exception const& ex) {
-    unlock(trxCollection(cid), AccessMode::Type::WRITE);
+    unlock(cid, AccessMode::Type::WRITE);
     return OperationResult(ex.code(), ex.what());
   }
 
@@ -2402,7 +2392,7 @@ OperationResult transaction::Methods::truncateLocal(
     }
   }
 
-  res = unlock(trxCollection(cid), AccessMode::Type::WRITE);
+  res = unlock(cid, AccessMode::Type::WRITE);
 
   return OperationResult(res);
 }
@@ -2440,7 +2430,7 @@ OperationResult transaction::Methods::countLocal(
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
   LogicalCollection* collection = documentCollection(trxCollection(cid));
 
-  Result res = lock(trxCollection(cid), AccessMode::Type::READ);
+  Result res = lock(cid, AccessMode::Type::READ);
 
   if (!res.ok()) {
     return OperationResult(res);
@@ -2448,7 +2438,7 @@ OperationResult transaction::Methods::countLocal(
 
   uint64_t num = collection->numberDocuments(this);
 
-  res = unlock(trxCollection(cid), AccessMode::Type::READ);
+  res = unlock(cid, AccessMode::Type::READ);
 
   if (!res.ok()) {
     return OperationResult(res);
@@ -2682,12 +2672,18 @@ std::unique_ptr<OperationCursor> transaction::Methods::indexScan(
   }
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
-  LogicalCollection* logical = documentCollection(trxCollection(cid));
+  TransactionCollection* trxColl = trxCollection(cid);
+  if (trxColl == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, "unable to determine transaction collection");
+  }
+  LogicalCollection* logical = documentCollection(trxColl);
+  TRI_ASSERT(logical != nullptr);
 
-  pinData(cid);  // will throw when it fails
+  // will throw when it fails
+  _transactionContextPtr->pinData(logical);
 
   std::unique_ptr<IndexIterator> iterator = nullptr;
-
   switch (cursorType) {
     case CursorType::ANY: {
       iterator = logical->getAnyIterator(this, mmdr);
@@ -2718,7 +2714,6 @@ arangodb::LogicalCollection* transaction::Methods::documentCollection(
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(trxCollection != nullptr);
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
-
   TRI_ASSERT(trxCollection->collection() != nullptr);
 
   return trxCollection->collection();
@@ -2730,16 +2725,15 @@ arangodb::LogicalCollection* transaction::Methods::documentCollection(
   TRI_ASSERT(_state != nullptr);
   TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
 
-  auto trxCollection = _state->collection(cid, AccessMode::Type::READ);
-
-  if (trxCollection == nullptr) {
+  auto trxColl = trxCollection(cid, AccessMode::Type::READ);
+  if (trxColl == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "could not find collection");
   }
 
-  TRI_ASSERT(trxCollection != nullptr);
-  TRI_ASSERT(trxCollection->collection() != nullptr);
-  return trxCollection->collection();
+  TRI_ASSERT(trxColl != nullptr);
+  TRI_ASSERT(trxColl->collection() != nullptr);
+  return trxColl->collection();
 }
 
 /// @brief add a collection by id, with the name supplied
@@ -2793,36 +2787,36 @@ Result transaction::Methods::addCollection(std::string const& name,
 
 /// @brief test if a collection is already locked
 bool transaction::Methods::isLocked(LogicalCollection* document,
-                                    AccessMode::Type type) {
+                                    AccessMode::Type type) const {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     return false;
   }
 
-  TransactionCollection* trxCollection =
-      _state->collection(document->cid(), type);
-
-  TRI_ASSERT(trxCollection != nullptr);
-  return trxCollection->isLocked(type, _state->nestingLevel());
+  TransactionCollection* trxColl = trxCollection(document->cid(), type);
+  TRI_ASSERT(trxColl != nullptr);
+  return trxColl->isLocked(type, _state->nestingLevel());
 }
 
 /// @brief read- or write-lock a collection
-Result transaction::Methods::lock(TransactionCollection* trxCollection,
+Result transaction::Methods::lock(TRI_voc_cid_t cid,
                                   AccessMode::Type type) {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
-
-  return trxCollection->lock(type, _state->nestingLevel());
+  TransactionCollection* trxColl = trxCollection(cid, type);
+  TRI_ASSERT(trxColl != nullptr);
+  return trxColl->lock(type, _state->nestingLevel());
 }
 
 /// @brief read- or write-unlock a collection
-Result transaction::Methods::unlock(TransactionCollection* trxCollection,
+Result transaction::Methods::unlock(TRI_voc_cid_t cid,
                                     AccessMode::Type type) {
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
-
-  return trxCollection->unlock(type, _state->nestingLevel());
+  TransactionCollection* trxColl = trxCollection(cid, type);
+  TRI_ASSERT(trxColl != nullptr);
+  return trxColl->unlock(type, _state->nestingLevel());
 }
 
 /// @brief get list of indexes for a collection

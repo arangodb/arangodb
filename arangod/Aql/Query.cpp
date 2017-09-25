@@ -207,7 +207,7 @@ Query::~Query() {
   }
   cleanupPlanAndEngine(TRI_ERROR_INTERNAL);  // abort the transaction
 
-  _executor.reset();
+  _v8Executor.reset();
 
   exitContext();
 
@@ -347,11 +347,10 @@ void Query::prepare(QueryRegistry* registry, uint64_t queryHash) {
       TRI_ASSERT(_collections.empty());
   
       // create the transaction object, but do not start it yet
-      AqlTransaction* trx = new AqlTransaction(
-        createTransactionContext(), _collections.collections(),
-        _queryOptions.transactionOptions,
-        _part == PART_MAIN);
-      _trx = trx;
+      _trx = AqlTransaction::create(
+              createTransactionContext(), _collections.collections(),
+              _queryOptions.transactionOptions,
+              _part == PART_MAIN);
 
       VPackBuilder* builder = planCacheEntry->builder.get();
       VPackSlice slice = builder->slice();
@@ -433,15 +432,25 @@ ExecutionPlan* Query::prepare() {
     _isModificationQuery = parser.isModificationQuery();
   }
 
-  TRI_ASSERT(_trx == nullptr); 
-
+  TRI_ASSERT(_trx == nullptr);
+  
+  // TODO: Remove once we have cluster wide transactions
+  std::unordered_set<std::string> inaccessibleCollections;
+#ifdef USE_ENTERPRISE
+  if (_queryOptions.transactionOptions.skipInaccessibleCollections) {
+    inaccessibleCollections = _queryOptions.inaccessibleCollections;
+  }
+#endif
+  
+  std::unique_ptr<AqlTransaction> trx(AqlTransaction::create(
+                     createTransactionContext(), _collections.collections(),
+                     _queryOptions.transactionOptions,
+                     _part == PART_MAIN, inaccessibleCollections));
+  TRI_DEFER(trx.release());
   // create the transaction object, but do not start it yet
-  AqlTransaction* trx = new AqlTransaction(
-      createTransactionContext(), _collections.collections(), 
-      _queryOptions.transactionOptions, _part == PART_MAIN);
-  _trx = trx;
-    
-  // As soon as we start du instantiate the plan we have to clean it
+  _trx = trx.get();
+  
+  // As soon as we start to instantiate the plan we have to clean it
   // up before killing the unique_ptr
   if (!_queryString.empty()) {
     // we have an AST
@@ -461,7 +470,7 @@ ExecutionPlan* Query::prepare() {
     enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
     plan.reset(ExecutionPlan::instantiateFromAst(_ast.get()));
 
-    if (plan.get() == nullptr) {
+    if (plan == nullptr) {
       // oops
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "failed to create query execution engine");
     }
@@ -486,7 +495,6 @@ ExecutionPlan* Query::prepare() {
     enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
     
     Result res = trx->addCollections(*_collections.collections());
-
     if (res.ok()) {
       res = _trx->begin();
     }
@@ -499,7 +507,7 @@ ExecutionPlan* Query::prepare() {
 
     // we have an execution plan in VelocyPack format
     plan.reset(ExecutionPlan::instantiateFromVelocyPack(_ast.get(), _queryBuilder->slice()));
-    if (plan.get() == nullptr) {
+    if (plan == nullptr) {
       // oops
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not create plan from vpack");
     }
@@ -952,7 +960,7 @@ QueryResult Query::explain() {
     enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
     
     // create the transaction object, but do not start it yet
-    _trx = new AqlTransaction(createTransactionContext(),
+    _trx = AqlTransaction::create(createTransactionContext(),
                               _collections.collections(), 
                               _queryOptions.transactionOptions, true);
 
@@ -972,7 +980,7 @@ QueryResult Query::explain() {
 
     if (plan == nullptr) {
       // oops
-      return QueryResult(TRI_ERROR_INTERNAL);
+      return QueryResult(TRI_ERROR_INTERNAL, "unable to create plan from AST");
     }
 
     // Run the query optimizer:
@@ -1039,19 +1047,24 @@ QueryResult Query::explain() {
   }
 }
    
-void Query::engine(ExecutionEngine* engine) {
-  _engine.reset(engine); 
+void Query::setEngine(ExecutionEngine* engine) {
+  TRI_ASSERT(engine != nullptr);
+  _engine.reset(engine);
+}
+
+void Query::releaseEngine() {
+  _engine.release();
 }
 
 /// @brief get v8 executor
-V8Executor* Query::executor() {
-  if (_executor == nullptr) {
+V8Executor* Query::v8Executor() {
+  if (_v8Executor == nullptr) {
     // the executor is a singleton per query
-    _executor.reset(new V8Executor(_queryOptions.literalSizeThreshold));
+    _v8Executor.reset(new V8Executor(_queryOptions.literalSizeThreshold));
   }
 
-  TRI_ASSERT(_executor != nullptr);
-  return _executor.get();
+  TRI_ASSERT(_v8Executor != nullptr);
+  return _v8Executor.get();
 }
 
 /// @brief enter a V8 context
@@ -1061,8 +1074,8 @@ void Query::enterContext() {
       _context = V8DealerFeature::DEALER->enterContext(_vocbase, false);
 
       if (_context == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "cannot enter V8 context");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_RESOURCE_LIMIT,
+                                       "unable to enter V8 context for query execution");
       }
 
       // register transaction and resolver in context
