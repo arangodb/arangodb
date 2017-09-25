@@ -25,8 +25,8 @@
 #include "TailingSyncer.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/Result.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
@@ -38,12 +38,12 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Hints.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -79,15 +79,13 @@ TailingSyncer::TailingSyncer(
   } else if (configuration->_restrictType == "exclude") {
     _restrictType = RESTRICT_EXCLUDE;
   }
-        
-  // FIXME: move this into engine code  
+
+  // FIXME: move this into engine code
   std::string engineName = EngineSelectorFeature::ENGINE->typeName();
   _supportsSingleOperations = (engineName == "mmfiles");
 }
 
-TailingSyncer::~TailingSyncer() {
-  abortOngoingTransactions(); 
-}
+TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
 
 /// @brief abort all ongoing transactions
 void TailingSyncer::abortOngoingTransactions() {
@@ -110,7 +108,7 @@ void TailingSyncer::abortOngoingTransactions() {
 
 /// @brief whether or not a marker should be skipped
 bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
-                                  VPackSlice const& slice) const {
+                               VPackSlice const& slice) const {
   bool tooOld = false;
   std::string const tick = VelocyPackHelper::getStringValue(slice, "tick", "");
 
@@ -121,7 +119,8 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
     if (tooOld) {
       int typeValue = VelocyPackHelper::getNumericValue<int>(slice, "type", 0);
       // handle marker type
-      TRI_replication_operation_e type = static_cast<TRI_replication_operation_e>(typeValue);
+      TRI_replication_operation_e type =
+          static_cast<TRI_replication_operation_e>(typeValue);
 
       if (type == REPLICATION_MARKER_DOCUMENT ||
           type == REPLICATION_MARKER_REMOVE ||
@@ -129,7 +128,8 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
           type == REPLICATION_TRANSACTION_ABORT ||
           type == REPLICATION_TRANSACTION_COMMIT) {
         // read "tid" entry from marker
-        std::string const id = VelocyPackHelper::getStringValue(slice, "tid", "");
+        std::string const id =
+            VelocyPackHelper::getStringValue(slice, "tid", "");
 
         if (!id.empty()) {
           TRI_voc_tid_t tid = static_cast<TRI_voc_tid_t>(
@@ -155,13 +155,13 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
     if (_restrictType == RESTRICT_NONE && _includeSystem) {
       return false;
     }
-    
+
     VPackSlice const name = slice.get("cname");
     if (name.isString()) {
       return isExcludedCollection(name.copyString());
     }
   }
-  
+
   return false;
 }
 
@@ -192,8 +192,8 @@ bool TailingSyncer::isExcludedCollection(std::string const& masterName) const {
 
 /// @brief inserts a document, based on the VelocyPack provided
 int TailingSyncer::processDocument(TRI_replication_operation_e type,
-                                      VPackSlice const& slice,
-                                      std::string& errorMsg) {
+                                   VPackSlice const& slice,
+                                   std::string& errorMsg) {
   // extract "cid"
   TRI_voc_cid_t cid = getCid(slice);
 
@@ -209,7 +209,8 @@ int TailingSyncer::processDocument(TRI_replication_operation_e type,
     std::string const cnameString = cname.copyString();
     isSystem = (!cnameString.empty() && cnameString[0] == '_');
 
-    arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, cnameString);
+    arangodb::LogicalCollection* col =
+        getCollectionByIdOrName(cid, cnameString);
 
     if (col != nullptr && col->cid() != cid) {
       // cid change? this may happen for system collections or if we restored
@@ -236,7 +237,7 @@ int TailingSyncer::processDocument(TRI_replication_operation_e type,
 
   // extract "rev"
   VPackSlice const rev = doc.get(StaticStrings::RevString);
-  
+
   if (!rev.isString()) {
     errorMsg = "invalid document revision format";
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
@@ -251,13 +252,14 @@ int TailingSyncer::processDocument(TRI_replication_operation_e type,
   VPackSlice const old = _documentBuilder.slice();
 
   // extract "tid"
-  std::string const transactionId = VelocyPackHelper::getStringValue(slice, "tid", "");
+  std::string const transactionId =
+      VelocyPackHelper::getStringValue(slice, "tid", "");
   TRI_voc_tid_t tid = 0;
 
   if (!transactionId.empty()) {
     // operation is part of a transaction
-    tid =
-        static_cast<TRI_voc_tid_t>(StringUtils::uint64(transactionId.c_str(), transactionId.size()));
+    tid = static_cast<TRI_voc_tid_t>(
+        StringUtils::uint64(transactionId.c_str(), transactionId.size()));
   }
 
   if (tid > 0) {
@@ -275,8 +277,9 @@ int TailingSyncer::processDocument(TRI_replication_operation_e type,
       return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
     }
 
-    trx->addCollectionAtRuntime(cid, "", AccessMode::Type::EXCLUSIVE); 
-    int res = applyCollectionDumpMarker(*trx, trx->name(cid), type, old, doc, errorMsg);
+    trx->addCollectionAtRuntime(cid, "", AccessMode::Type::EXCLUSIVE);
+    int res = applyCollectionDumpMarker(*trx, trx->name(cid), type, old, doc,
+                                        errorMsg);
 
     if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
       // ignore unique constraint violations for system collections
@@ -289,22 +292,26 @@ int TailingSyncer::processDocument(TRI_replication_operation_e type,
   else {
     // standalone operation
     // update the apply tick for all standalone operations
-    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase),
-                                            cid, AccessMode::Type::EXCLUSIVE);
-  
+    SingleCollectionTransaction trx(
+        transaction::StandaloneContext::Create(_vocbase), cid,
+        AccessMode::Type::EXCLUSIVE);
+
     if (_supportsSingleOperations) {
       trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
     }
 
     Result res = trx.begin();
 
-    // fix error handling here when function returns result    
+    // fix error handling here when function returns result
     if (!res.ok()) {
-      errorMsg = "unable to create replication transaction: " + res.errorMessage();
-      res.reset(res.errorNumber(),errorMsg);
+      errorMsg =
+          "unable to create replication transaction: " + res.errorMessage();
+      res.reset(res.errorNumber(), errorMsg);
     } else {
-      res = applyCollectionDumpMarker(trx, trx.name(), type, old, doc, errorMsg); 
-      if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
+      res =
+          applyCollectionDumpMarker(trx, trx.name(), type, old, doc, errorMsg);
+      if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED &&
+          isSystem) {
         // ignore unique constraint violations for system collections
         res.reset();
       }
@@ -346,7 +353,8 @@ int TailingSyncer::startTransaction(VPackSlice const& slice) {
 
   TRI_ASSERT(tid > 0);
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "starting replication transaction " << tid;
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "starting replication transaction "
+                                        << tid;
 
   auto trx = std::make_unique<ReplicationTransaction>(_vocbase);
   Result res = trx->begin();
@@ -382,7 +390,8 @@ int TailingSyncer::abortTransaction(VPackSlice const& slice) {
 
   TRI_ASSERT(tid > 0);
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "aborting replication transaction " << tid;
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "aborting replication transaction "
+                                        << tid;
 
   auto trx = (*it).second;
   _ongoingTransactions.erase(tid);
@@ -420,7 +429,8 @@ int TailingSyncer::commitTransaction(VPackSlice const& slice) {
 
   TRI_ASSERT(tid > 0);
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "committing replication transaction " << tid;
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "committing replication transaction "
+                                        << tid;
 
   auto trx = (*it).second;
   _ongoingTransactions.erase(tid);
@@ -450,7 +460,8 @@ int TailingSyncer::renameCollection(VPackSlice const& slice) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  std::string const name = VelocyPackHelper::getStringValue(collection, "name", "");
+  std::string const name =
+      VelocyPackHelper::getStringValue(collection, "name", "");
   std::string const cname = getCName(slice);
 
   if (name.empty()) {
@@ -477,7 +488,7 @@ int TailingSyncer::changeCollection(VPackSlice const& slice) {
   TRI_voc_cid_t cid = getCid(slice);
   std::string const cname = getCName(slice);
   arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, cname);
-  
+
   if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
@@ -492,7 +503,10 @@ int TailingSyncer::changeCollection(VPackSlice const& slice) {
   }
 
   arangodb::CollectionGuard guard(_vocbase, cid);
-  bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
+  bool doSync =
+      application_features::ApplicationServer::getFeature<DatabaseFeature>(
+          "Database")
+          ->forceSyncProperties();
   return guard.collection()->updateProperties(data, doSync).errorNumber();
 }
 
@@ -512,7 +526,7 @@ int TailingSyncer::applyLogMarker(VPackSlice const& slice,
 
   if (!tick.empty()) {
     TRI_voc_tick_t newTick = static_cast<TRI_voc_tick_t>(
-       StringUtils::uint64(tick.c_str(), tick.size()));
+        StringUtils::uint64(tick.c_str(), tick.size()));
     appliedMarker(firstRegularTick, newTick);
   }
 
@@ -525,7 +539,7 @@ int TailingSyncer::applyLogMarker(VPackSlice const& slice,
     // TODO
     return TRI_ERROR_NO_ERROR;
   } else if (type == REPLICATION_MARKER_DOCUMENT ||
-      type == REPLICATION_MARKER_REMOVE) {
+             type == REPLICATION_MARKER_REMOVE) {
     return processDocument(type, slice, errorMsg);
   }
 
@@ -577,19 +591,22 @@ int TailingSyncer::applyLogMarker(VPackSlice const& slice,
   else if (type == REPLICATION_INDEX_DROP) {
     return dropIndex(slice);
   }
-  
+
   else if (type == REPLICATION_VIEW_CREATE) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "view create not yet implemented");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "view create not yet implemented");
   }
-  
+
   else if (type == REPLICATION_VIEW_DROP) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "view drop not yet implemented");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "view drop not yet implemented");
   }
-  
+
   else if (type == REPLICATION_VIEW_CHANGE) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "view change not yet implemented");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
+                                   "view change not yet implemented");
   }
-   
+
   else if (_ignoreRenameCreateDrop) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -601,17 +618,16 @@ int TailingSyncer::applyLogMarker(VPackSlice const& slice,
 
 /// @brief apply the data from the continuous log
 int TailingSyncer::applyLog(SimpleHttpResult* response,
-                               TRI_voc_tick_t firstRegularTick,
-                               std::string& errorMsg,
-                               uint64_t& processedMarkers,
-                               uint64_t& ignoreCount) {
+                            TRI_voc_tick_t firstRegularTick,
+                            std::string& errorMsg, uint64_t& processedMarkers,
+                            uint64_t& ignoreCount) {
   StringBuffer& data = response->getBody();
   char const* p = data.begin();
   char const* end = p + data.length();
 
   // buffer must end with a NUL byte
   TRI_ASSERT(*end == '\0');
-  
+
   auto builder = std::make_shared<VPackBuilder>();
 
   while (p < end) {
@@ -637,8 +653,7 @@ int TailingSyncer::applyLog(SimpleHttpResult* response,
     try {
       VPackParser parser(builder);
       parser.parse(p, static_cast<size_t>(q - p));
-    }
-    catch (...) {
+    } catch (...) {
       // TODO: improve error reporting
       return TRI_ERROR_OUT_OF_MEMORY;
     }
@@ -656,7 +671,7 @@ int TailingSyncer::applyLog(SimpleHttpResult* response,
     int res;
     bool skipped;
 
-    //LOG_TOPIC(ERR, Logger::FIXME) << slice.toJson();
+    // LOG_TOPIC(ERR, Logger::FIXME) << slice.toJson();
     if (skipMarker(firstRegularTick, slice)) {
       // entry is skipped
       res = TRI_ERROR_NO_ERROR;
@@ -683,13 +698,16 @@ int TailingSyncer::applyLog(SimpleHttpResult* response,
               ", offending marker: " + std::string(lineStart, lineLength);
         }
 
-        // LOG_TOPIC(ERR, Logger::REPLICATION) << "replication applier error: " << errorMsg;
+        // LOG_TOPIC(ERR, Logger::REPLICATION) << "replication applier error: "
+        // << errorMsg;
 
         return res;
       }
 
       ignoreCount--;
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "ignoring replication error for database '" << _databaseName << "': " << errorMsg;
+      LOG_TOPIC(WARN, Logger::REPLICATION)
+          << "ignoring replication error for database '" << _databaseName
+          << "': " << errorMsg;
       errorMsg = "";
     }
 
@@ -704,7 +722,7 @@ int TailingSyncer::applyLog(SimpleHttpResult* response,
 /// @brief finalize the synchronization of a collection by tailing the WAL
 /// and filtering on the collection name until no more data is available
 int TailingSyncer::syncCollectionFinalize(std::string& errorMsg,
-                                             std::string const& collectionName) {
+                                          std::string const& collectionName) {
   // fetch master state just once
   int res = getMasterState(errorMsg);
   if (res != TRI_ERROR_NO_ERROR) {
@@ -715,22 +733,22 @@ int TailingSyncer::syncCollectionFinalize(std::string& errorMsg,
   _verbose = true;
   // we do not want to apply rename, create and drop collection operations
   _ignoreRenameCreateDrop = true;
-  
+
   TRI_voc_tick_t fromTick = _initialTick;
-  
+
   while (true) {
     if (application_features::ApplicationServer::isStopping()) {
       return TRI_ERROR_SHUTTING_DOWN;
     }
 
-    std::string const baseUrl = BaseUrl + 
-                                "/logger-follow?chunkSize=" + _chunkSize + 
-                                "&from=" + StringUtils::itoa(fromTick) +
-                                "&serverId=" + _localServerIdString + 
-                                "&collection=" + StringUtils::urlEncode(collectionName);
+    std::string const baseUrl =
+        BaseUrl + "/logger-follow?chunkSize=" + _chunkSize + "&from=" +
+        StringUtils::itoa(fromTick) + "&serverId=" + _localServerIdString +
+        "&collection=" + StringUtils::urlEncode(collectionName);
 
     // send request
-    std::unique_ptr<SimpleHttpResult> response(_client->request(rest::RequestType::GET, baseUrl, nullptr, 0));
+    std::unique_ptr<SimpleHttpResult> response(
+        _client->request(rest::RequestType::GET, baseUrl, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg = "got invalid response from master at " +
@@ -762,10 +780,11 @@ int TailingSyncer::syncCollectionFinalize(std::string& errorMsg,
     bool checkMore = false;
     if (found) {
       checkMore = StringUtils::boolean(header);
-    } 
+    }
 
     TRI_voc_tick_t lastIncludedTick;
-    header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
+    header =
+        response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
     if (found) {
       lastIncludedTick = StringUtils::uint64(header);
     } else {
@@ -774,31 +793,36 @@ int TailingSyncer::syncCollectionFinalize(std::string& errorMsg,
                  ": required header is missing";
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
-    
+
     // was the specified from value included the result?
     bool fromIncluded = false;
-    header = response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
+    header =
+        response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
     if (found) {
       fromIncluded = StringUtils::boolean(header);
     }
-    if (!fromIncluded && fromTick > 0) {// && _requireFromPresent
+    if (!fromIncluded && fromTick > 0) {  // && _requireFromPresent
       res = TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
-      errorMsg = "required follow tick value '" + StringUtils::itoa(lastIncludedTick) +
-      "' is not present (anymore?) on master at " + _masterInfo._endpoint +
-      ". Last tick available on master is " + StringUtils::itoa(lastIncludedTick) +
-      ". It may be required to do a full resync and increase the "
-      "number of historic logfiles on the master.";
+      errorMsg = "required follow tick value '" +
+                 StringUtils::itoa(lastIncludedTick) +
+                 "' is not present (anymore?) on master at " +
+                 _masterInfo._endpoint + ". Last tick available on master is " +
+                 StringUtils::itoa(lastIncludedTick) +
+                 ". It may be required to do a full resync and increase the "
+                 "number of historic logfiles on the master.";
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
-    
+
     uint64_t processedMarkers = 0;
     uint64_t ignoreCount = 0;
-    int res = applyLog(response.get(), fromTick, errorMsg, processedMarkers, ignoreCount);
+    int res = applyLog(response.get(), fromTick, errorMsg, processedMarkers,
+                       ignoreCount);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
 
-    if (!checkMore) { // || processedMarkers == 0) { // TODO: check if we need this!
+    if (!checkMore) {  // || processedMarkers == 0) { // TODO: check if we need
+                       // this!
       // done!
       return TRI_ERROR_NO_ERROR;
     }

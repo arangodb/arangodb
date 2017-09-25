@@ -52,14 +52,12 @@ enum RestrictType : uint32_t {
 
 class TailingSyncer : public Syncer {
  public:
-  TailingSyncer(TRI_vocbase_t*,
-                TRI_replication_applier_configuration_t const*,
+  TailingSyncer(TRI_vocbase_t*, TRI_replication_applier_configuration_t const*,
                 TRI_voc_tick_t initialTick);
 
   virtual ~TailingSyncer();
 
  public:
-  
   /// @brief finalize the synchronization of a collection by tailing the WAL
   /// and filtering on the collection name until no more data is available
   int syncCollectionFinalize(std::string& errorMsg,
@@ -88,8 +86,8 @@ class TailingSyncer : public Syncer {
   int commitTransaction(arangodb::velocypack::Slice const&);
 
   /// @brief process a document operation, based on the VelocyPack provided
-  int processDocument(TRI_replication_operation_e, arangodb::velocypack::Slice const&,
-                      std::string&);
+  int processDocument(TRI_replication_operation_e,
+                      arangodb::velocypack::Slice const&, std::string&);
 
   /// @brief renames a collection, based on the VelocyPack provided
   int renameCollection(arangodb::velocypack::Slice const&);
@@ -99,7 +97,8 @@ class TailingSyncer : public Syncer {
   int changeCollection(arangodb::velocypack::Slice const&);
 
   /// @brief apply a single marker from the continuous log
-  int applyLogMarker(arangodb::velocypack::Slice const&, TRI_voc_tick_t, std::string&);
+  int applyLogMarker(arangodb::velocypack::Slice const&, TRI_voc_tick_t,
+                     std::string&);
 
   /// @brief apply the data from the continuous log
   int applyLog(httpclient::SimpleHttpResult*, TRI_voc_tick_t, std::string&,
@@ -115,15 +114,14 @@ class TailingSyncer : public Syncer {
   /// @brief run the continuous synchronization
   int followMasterLog(std::string&, TRI_voc_tick_t&, TRI_voc_tick_t, uint64_t&,
                       bool&, bool&);
-  
+
   /// @brief called before marker is processed
   virtual void appliedMarker(TRI_voc_tick_t firstRegularTick,
                              TRI_voc_tick_t newTick) {}
   /// @brief called after a marker was processed
   virtual void processedMarker(uint64_t processedMarkers, bool skipped) {}
-  
- protected:
 
+ protected:
   /// @brief stringified chunk size
   std::string _chunkSize;
 
@@ -161,14 +159,14 @@ class TailingSyncer : public Syncer {
 
   /// @brief ignore rename, create and drop operations for collections
   bool _ignoreRenameCreateDrop;
-  
+
   /// @brief ignore create / drop database
   bool _ignoreDatabaseMarkers;
 
   /// @brief which transactions were open and need to be treated specially
   std::unordered_map<TRI_voc_tid_t, ReplicationTransaction*>
       _ongoingTransactions;
-  
+
   /// @brief recycled builder for repeated document creation
   arangodb::velocypack::Builder _documentBuilder;
 };

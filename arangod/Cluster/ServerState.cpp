@@ -873,7 +873,8 @@ bool ServerState::storeRole(RoleEnum role) {
           return false;
       }
     } catch (...) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "out of memory";
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << __FUNCTION__
+        << " out of memory storing server role";
       FATAL_ERROR_EXIT();
     }
   }

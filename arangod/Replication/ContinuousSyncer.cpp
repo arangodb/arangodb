@@ -24,8 +24,8 @@
 #include "ContinuousSyncer.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/Result.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
@@ -38,12 +38,12 @@
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/Hints.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -59,8 +59,7 @@ using namespace arangodb::rest;
 ContinuousSyncer::ContinuousSyncer(
     TRI_vocbase_t* vocbase,
     TRI_replication_applier_configuration_t const* configuration,
-    TRI_voc_tick_t initialTick, bool useTick,
-    TRI_voc_tick_t barrierId)
+    TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
     : TailingSyncer(vocbase, configuration, initialTick),
       _applier(vocbase->replicationApplier()),
       _useTick(useTick),
@@ -85,15 +84,13 @@ ContinuousSyncer::ContinuousSyncer(
     _barrierId = barrierId;
     _barrierUpdateTime = TRI_microtime();
   }
-  
-  // FIXME: move this into engine code  
+
+  // FIXME: move this into engine code
   std::string engineName = EngineSelectorFeature::ENGINE->typeName();
   _supportsSingleOperations = (engineName == "mmfiles");
 }
 
-ContinuousSyncer::~ContinuousSyncer() { 
-  abortOngoingTransactions(); 
-}
+ContinuousSyncer::~ContinuousSyncer() { abortOngoingTransactions(); }
 
 /// @brief run method, performs continuous synchronization
 int ContinuousSyncer::run() {
@@ -181,7 +178,9 @@ retry:
     if (res == TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT ||
         res == TRI_ERROR_REPLICATION_NO_START_TICK) {
       if (res == TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT) {
-        LOG_TOPIC(WARN, Logger::REPLICATION) << "replication applier stopped for database '" << _databaseName << "' because required tick is not present on master";
+        LOG_TOPIC(WARN, Logger::REPLICATION)
+            << "replication applier stopped for database '" << _databaseName
+            << "' because required tick is not present on master";
       }
 
       // remove previous applier state
@@ -192,7 +191,13 @@ retry:
       {
         WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
-        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "stopped replication applier for database '" << _databaseName << "' with lastProcessedContinuousTick: " << _applier->_state._lastProcessedContinuousTick << ", lastAppliedContinuousTick: " << _applier->_state._lastAppliedContinuousTick << ", safeResumeTick: " << _applier->_state._safeResumeTick;
+        LOG_TOPIC(DEBUG, Logger::REPLICATION)
+            << "stopped replication applier for database '" << _databaseName
+            << "' with lastProcessedContinuousTick: "
+            << _applier->_state._lastProcessedContinuousTick
+            << ", lastAppliedContinuousTick: "
+            << _applier->_state._lastAppliedContinuousTick
+            << ", safeResumeTick: " << _applier->_state._safeResumeTick;
 
         _applier->_state._lastProcessedContinuousTick = 0;
         _applier->_state._lastAppliedContinuousTick = 0;
@@ -220,10 +225,14 @@ retry:
       if (shortTermFailsInRow > _configuration._autoResyncRetries) {
         if (_configuration._autoResyncRetries > 0) {
           // message only makes sense if there's at least one retry
-          LOG_TOPIC(WARN, Logger::REPLICATION) << "aborting automatic resynchronization for database '" << _databaseName << "' after " << _configuration._autoResyncRetries << " retries";
-        }
-        else {
-          LOG_TOPIC(WARN, Logger::REPLICATION) << "aborting automatic resynchronization for database '" << _databaseName << "' because autoResyncRetries is 0";
+          LOG_TOPIC(WARN, Logger::REPLICATION)
+              << "aborting automatic resynchronization for database '"
+              << _databaseName << "' after "
+              << _configuration._autoResyncRetries << " retries";
+        } else {
+          LOG_TOPIC(WARN, Logger::REPLICATION)
+              << "aborting automatic resynchronization for database '"
+              << _databaseName << "' because autoResyncRetries is 0";
         }
 
         // always abort if we get here
@@ -231,7 +240,10 @@ retry:
       }
 
       // do an automatic full resync
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "restarting initial synchronization for database '" << _databaseName << "' because autoResync option is set. retry #" << shortTermFailsInRow;
+      LOG_TOPIC(WARN, Logger::REPLICATION)
+          << "restarting initial synchronization for database '"
+          << _databaseName << "' because autoResync option is set. retry #"
+          << shortTermFailsInRow;
 
       // start initial synchronization
       errorMsg = "";
@@ -245,7 +257,11 @@ retry:
 
         if (res == TRI_ERROR_NO_ERROR) {
           TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
-          LOG_TOPIC(INFO, Logger::REPLICATION) << "automatic resynchronization for database '" << _databaseName << "' finished. restarting continuous replication applier from tick " << lastLogTick;
+          LOG_TOPIC(INFO, Logger::REPLICATION)
+              << "automatic resynchronization for database '" << _databaseName
+              << "' finished. restarting continuous replication applier from "
+                 "tick "
+              << lastLogTick;
           _initialTick = lastLogTick;
           _useTick = true;
           goto retry;
@@ -267,8 +283,7 @@ retry:
 void ContinuousSyncer::setProgress(char const* msg) {
   if (_verbose) {
     LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
-  }
-  else {
+  } else {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
   }
 
@@ -282,12 +297,17 @@ void ContinuousSyncer::setProgress(std::string const& msg) {
 
 /// @brief save the current applier state
 int ContinuousSyncer::saveApplierState() {
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "saving replication applier state. last applied continuous tick: " << _applier->_state._lastAppliedContinuousTick << ", safe resume tick: " << _applier->_state._safeResumeTick;
+  LOG_TOPIC(TRACE, Logger::REPLICATION)
+      << "saving replication applier state. last applied continuous tick: "
+      << _applier->_state._lastAppliedContinuousTick
+      << ", safe resume tick: " << _applier->_state._safeResumeTick;
 
   int res = TRI_SaveStateReplicationApplier(_vocbase, &_applier->_state, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(WARN, Logger::REPLICATION) << "unable to save replication applier state: " << TRI_errno_string(res);
+    LOG_TOPIC(WARN, Logger::REPLICATION)
+        << "unable to save replication applier state: "
+        << TRI_errno_string(res);
   }
 
   return res;
@@ -297,18 +317,18 @@ int ContinuousSyncer::saveApplierState() {
 int ContinuousSyncer::getLocalState(std::string& errorMsg) {
   uint64_t oldTotalRequests = _applier->_state._totalRequests;
   uint64_t oldTotalFailedConnects = _applier->_state._totalFailedConnects;
-  
+
   int res = TRI_LoadStateReplicationApplier(_vocbase, &_applier->_state);
   _applier->_state._active = true;
   _applier->_state._totalRequests = oldTotalRequests;
   _applier->_state._totalFailedConnects = oldTotalFailedConnects;
-  
+
   if (res == TRI_ERROR_FILE_NOT_FOUND) {
     // no state file found, so this is the initialization
     _applier->_state._serverId = _masterInfo._serverId;
-    
+
     res = TRI_SaveStateReplicationApplier(_vocbase, &_applier->_state, true);
-    
+
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "could not save replication state information";
     }
@@ -317,20 +337,20 @@ int ContinuousSyncer::getLocalState(std::string& errorMsg) {
         _applier->_state._serverId != 0) {
       res = TRI_ERROR_REPLICATION_MASTER_CHANGE;
       errorMsg =
-      "encountered wrong master id in replication state file. "
-      "found: " +
-      StringUtils::itoa(_masterInfo._serverId) +
-      ", "
-      "expected: " +
-      StringUtils::itoa(_applier->_state._serverId);
+          "encountered wrong master id in replication state file. "
+          "found: " +
+          StringUtils::itoa(_masterInfo._serverId) +
+          ", "
+          "expected: " +
+          StringUtils::itoa(_applier->_state._serverId);
     }
   } else {
     // some error occurred
     TRI_ASSERT(res != TRI_ERROR_NO_ERROR);
-    
+
     errorMsg = TRI_errno_string(res);
   }
-  
+
   return res;
 }
 
@@ -364,7 +384,10 @@ int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
     }
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "requesting continuous synchronization, fromTick: " << fromTick << ", safeResumeTick " << safeResumeTick << ", useTick: " << _useTick << ", initialTick: " << _initialTick;
+  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+      << "requesting continuous synchronization, fromTick: " << fromTick
+      << ", safeResumeTick " << safeResumeTick << ", useTick: " << _useTick
+      << ", initialTick: " << _initialTick;
 
   if (fromTick == 0) {
     return TRI_ERROR_REPLICATION_NO_START_TICK;
@@ -485,7 +508,9 @@ int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
       }
     }
 
-    LOG_TOPIC(TRACE, Logger::REPLICATION) << "master active: " << masterActive << ", worked: " << worked << ", sleepTime: " << sleepTime;
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "master active: " << masterActive
+                                          << ", worked: " << worked
+                                          << ", sleepTime: " << sleepTime;
 
     // this will make the applier thread sleep if there is nothing to do,
     // but will also check for cancelation
@@ -563,8 +588,7 @@ int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
   if (!fromIncluded && _requireFromPresent && fromTick > 0) {
     errorMsg = "required init tick value '" + StringUtils::itoa(fromTick) +
                "' is not present (anymore?) on master at " +
-               _masterInfo._endpoint +
-               ". Last tick available on master is " +
+               _masterInfo._endpoint + ". Last tick available on master is " +
                StringUtils::itoa(readTick) +
                ". It may be required to do a full resync and increase the "
                "number of historic logfiles on the master.";
@@ -576,7 +600,7 @@ int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
   if (startTick == 0) {
     startTick = toTick;
   }
-  
+
   auto builder = std::make_shared<VPackBuilder>();
   int res = parseResponse(builder, response.get());
 
@@ -622,15 +646,16 @@ int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
 
   return TRI_ERROR_NO_ERROR;
 }
-  
+
 /// @brief run the continuous synchronization
 int ContinuousSyncer::followMasterLog(std::string& errorMsg,
                                       TRI_voc_tick_t& fetchTick,
                                       TRI_voc_tick_t firstRegularTick,
                                       uint64_t& ignoreCount, bool& worked,
                                       bool& masterActive) {
-  std::string const baseUrl =
-      BaseUrl + "/logger-follow?chunkSize=" + _chunkSize + "&barrier=" + StringUtils::itoa(_barrierId);
+  std::string const baseUrl = BaseUrl + "/logger-follow?chunkSize=" +
+                              _chunkSize + "&barrier=" +
+                              StringUtils::itoa(_barrierId);
 
   worked = false;
 
@@ -643,9 +668,9 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
   // send request
   std::string const progress =
       "fetching master log from tick " + StringUtils::itoa(fetchTick) +
-      ", first regular tick " + StringUtils::itoa(firstRegularTick) + 
-      ", barrier: " + StringUtils::itoa(_barrierId) +  
-      ", open transactions: " + std::to_string(_ongoingTransactions.size());
+      ", first regular tick " + StringUtils::itoa(firstRegularTick) +
+      ", barrier: " + StringUtils::itoa(_barrierId) + ", open transactions: " +
+      std::to_string(_ongoingTransactions.size());
   setProgress(progress);
 
   std::string body;
@@ -669,8 +694,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
   }
 
   std::unique_ptr<SimpleHttpResult> response(
-      _client->request(rest::RequestType::PUT,
-                       url, body.c_str(), body.size()));
+      _client->request(rest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "got invalid response from master at " +
@@ -737,7 +761,8 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
         if (!checkMore && tick > lastIncludedTick) {
           // the master has a tick value which is not contained in this result
           // but it claims it does not have any more data
-          // so it's probably a tick from an invisible operation (such as closing
+          // so it's probably a tick from an invisible operation (such as
+          // closing
           // a WAL file)
           bumpTick = true;
         }
@@ -760,8 +785,8 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
     res = TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
     errorMsg = "required follow tick value '" + StringUtils::itoa(fetchTick) +
                "' is not present (anymore?) on master at " +
-               _masterInfo._endpoint +
-               ". Last tick available on master is " + StringUtils::itoa(tick) +
+               _masterInfo._endpoint + ". Last tick available on master is " +
+               StringUtils::itoa(tick) +
                ". It may be required to do a full resync and increase the "
                "number of historic logfiles on the master.";
   }
@@ -791,11 +816,11 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
       }
     } else if (bumpTick) {
       WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-      
+
       if (_applier->_state._lastProcessedContinuousTick < tick) {
         _applier->_state._lastProcessedContinuousTick = tick;
       }
-      
+
       if (_ongoingTransactions.empty() &&
           _applier->_state._safeResumeTick == 0) {
         _applier->_state._safeResumeTick = tick;
@@ -850,19 +875,20 @@ void ContinuousSyncer::appliedMarker(TRI_voc_tick_t firstRegularTick,
   }
 }
 
-void ContinuousSyncer::processedMarker(uint64_t processedMarkers, bool skipped) {
+void ContinuousSyncer::processedMarker(uint64_t processedMarkers,
+                                       bool skipped) {
   WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-  
+
   if (_applier->_state._lastProcessedContinuousTick >
       _applier->_state._lastAppliedContinuousTick) {
     _applier->_state._lastAppliedContinuousTick =
-    _applier->_state._lastProcessedContinuousTick;
+        _applier->_state._lastProcessedContinuousTick;
   }
-  
+
   if (skipped) {
     ++_applier->_state._skippedOperations;
   } else if (_ongoingTransactions.empty()) {
     _applier->_state._safeResumeTick =
-    _applier->_state._lastProcessedContinuousTick;
+        _applier->_state._lastProcessedContinuousTick;
   }
 }
