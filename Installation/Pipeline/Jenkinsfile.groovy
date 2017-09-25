@@ -327,6 +327,11 @@ def logStartStage(logFile, link) {
     resultsStatus[logFile] = "started"
 
     echo "started ${logFile}: ${resultsStart[logFile]}"
+
+    node ("linux") {
+        sh "echo 'started ${logFile}: ${resultsStart[logFile]}' | tee -a ${logFile}"
+    }
+
     generateResult()
 }
 
@@ -335,6 +340,11 @@ def logStopStage(logFile) {
     resultsStatus[logFile] = "finished"
 
     echo "finished ${logFile}: ${resultsStop[logFile]}"
+
+    node ("linux") {
+        sh "echo 'finished ${logFile}: ${resultsStop[logFile]}' | tee -a ${logFile}"
+    }
+
     generateResult()
 }
 
@@ -345,6 +355,11 @@ def logExceptionStage(logFile, exc) {
     resultsStatus[logFile] = "failed ${msg}"
 
     echo "failed ${logFile}: ${resultsStop[logFile]} ${msg}"
+
+    node ("linux") {
+        sh "echo 'failed ${logFile}: ${resultsStart[logFile]} ${msg}' | tee -a ${logFile}"
+    }
+
     generateResult()
 }
 
