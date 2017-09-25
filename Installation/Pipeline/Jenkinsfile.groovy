@@ -371,16 +371,18 @@ def generateResult() {
         def la = ""
         def lb = ""
 
+        if (link != null) {
+            la = "<a href=\"$link\">"
+            lb = "</a>"
+        }
+
         if (msg == "finished") {
             color = 'bgcolor="#80FF80"'
-
-            if (link != null) {
-                la = "<a href=\"$link\">"
-                lb = "</a>"
-            }
         }
         else if (msg == "started") {
             color = 'bgcolor="#8080FF"'
+            la = ""
+            lb = ""
         }
 
         results += "${key}: ${startf} - ${stopf} (${diff}) ${msg}\n"
