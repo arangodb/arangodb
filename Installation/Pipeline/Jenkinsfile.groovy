@@ -868,17 +868,6 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
 
               try {
 
-                  // clean the current workspace completely
-                  deleteDirDocker(os)
-
-                  // create directories for the artifacts
-                  fileOperations([
-                      fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
-                      folderCreateOperation(arch),
-                      folderCreateOperation(archFail),
-                      folderCreateOperation(archRun)
-                  ])
-
                   // setup links
                   setupTestEnvironment(os, edition, maintainer, logFile, runDir)
 
@@ -964,6 +953,17 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
     def tests = getTests(os, edition, maintainer, mode, engine)
 
     node(testJenkins[os]) {
+
+        // clean the current workspace completely
+        deleteDirDocker(os)
+
+        // create directories for the artifacts
+        fileOperations([
+            fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
+            folderCreateOperation(arch),
+            folderCreateOperation(archFail),
+            folderCreateOperation(archRun)
+        ])
 
         // unstash binaries
         unstashBinaries(os, edition, maintainer)
