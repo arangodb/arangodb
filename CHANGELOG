@@ -1,12 +1,16 @@
 devel
 -----
 
-* fix windows implementation for fs.getTempPath() to also create a
+* increase the recommended value for `/proc/sys/vm/max_map_count` to a value
+  eight times as high as the previous recommended value. Increasing the 
+  values helps to prevent an ArangoDB server from running out of memory mappings.
+
+* fix Windows implementation for fs.getTempPath() to also create a
   sub-directory as we do on linux
 
-* ui: added replicationFactor option during SmartGraph creation.
+* UI: added replicationFactor option during SmartGraph creation.
 
-* make the mmfiles compactor configurable
+* make the MMFiles compactor configurable
 
 * leader-follower replication catchup code has been rewritten in C++
 
