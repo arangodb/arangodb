@@ -848,124 +848,114 @@ def setupTestEnvironment(os, edition, maintainer, logFile, runDir) {
     }
 }
 
-def singleTest(os, edition, maintainer, mode, engine, test, testArgs, stageName, name) {
+def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex, stageName, name, port) {
   return {
-      node(testJenkins[os]) {
+          def portInterval = 40
+
           stage("${stageName}-${name}") {
               def archDir  = "${os}-${edition}-${maintainer}"
-                def arch     = "${archDir}/03-test-${mode}-${engine}"
-                def archFail = "${arch}-FAIL"
-                def archRun  = "${arch}-RUN"
+              def arch     = "${archDir}/03-test-${mode}-${engine}"
+              def archFail = "${arch}-FAIL"
+              def archRun  = "${arch}-RUN"
 
-                def logFile       = pwd() + "/" + "${arch}/${name}.log"
-                def logFileRel    = "${arch}/${name}.log"
-                def logFileFailed = pwd() + "/" + "${arch}-FAIL/${name}.log"
+              def logFile       = pwd() + "/" + "${arch}/${name}.log"
+              def logFileRel    = "${arch}/${name}.log"
+              def logFileFailed = pwd() + "/" + "${arch}-FAIL/${name}.log"
 
-                def runDir = "run"
-                def port = 0
+              def runDir = "run.${testIndex}"
 
-                logStartStage(logFileRel, logFileRel)
+              logStartStage(logFileRel, logFileRel)
 
-                try {
+              try {
 
-                    // clean the current workspace completely
-                    deleteDirDocker(os)
+                  // clean the current workspace completely
+                  deleteDirDocker(os)
 
-                    // create directories for the artifacts
-                    fileOperations([
-                        fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
-                        folderCreateOperation(arch),
-                        folderCreateOperation(archFail),
-                        folderCreateOperation(archRun)
-                    ])
+                  // create directories for the artifacts
+                  fileOperations([
+                      fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
+                      folderCreateOperation(arch),
+                      folderCreateOperation(archFail),
+                      folderCreateOperation(archRun)
+                  ])
 
-                    // unstash binaries
-                    unstashBinaries(os, edition, maintainer)
+                  // setup links
+                  setupTestEnvironment(os, edition, maintainer, logFile, runDir)
 
-                    // find a suitable port
-                    port = (getStartPort(os) as Integer)
-                    echo "Using start port: ${port}"
+                  // assemble command
+                  def command = "./build/bin/arangosh " +
+                                "-c etc/jenkins/arangosh.conf " +
+                                "--log.level warning " +
+                                "--javascript.execute UnitTests/unittest.js " +
+                                "${test} -- " +
+                                "${testArgs} " + 
+                                "--minPort " + (port + testIndex * portInterval) + " " +
+                                "--maxPort " + (port + (testIndex + 1) * portInterval - 1)
 
-                    // setup links
-                    setupTestEnvironment(os, edition, maintainer, logFile, runDir)
+                  // 30 minutes is the super absolute max max max.
+                  // even in the worst situations ArangoDB MUST be able to
+                  // finish within 60 minutes. Even if the features are green
+                  // this is completely broken performance wise...
+                  // DO NOT INCREASE!!
 
-                    // assemble command
-                    def command = "./build/bin/arangosh " +
-                                  "-c etc/jenkins/arangosh.conf " +
-                                  "--log.level warning " +
-                                  "--javascript.execute UnitTests/unittest.js " +
-                                  "${test} -- " +
-                                  "${testArgs} " + 
-                                  "--minPort " + port + " " +
-                                  "--maxPort " + (port + 39)
+                  timeout(os == 'linux' ? 30 : 60) {
+                      def tmpDir = pwd() + "/" + runDir + "/tmp"
 
-                    // 30 minutes is the super absolute max max max.
-                    // even in the worst situations ArangoDB MUST be able to
-                    // finish within 60 minutes. Even if the features are green
-                    // this is completely broken performance wise...
-                    // DO NOT INCREASE!!
+                      withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
+                          if (os == "windows") {
+                              def hostname = powershell(returnStdout: true, script: "hostname")
 
-                    timeout(os == 'linux' ? 30 : 60) {
-                        def tmpDir = pwd() + "/" + runDir + "/tmp"
+                              echo "executing ${command} on ${hostname}"
+                              powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
+                          }
+                          else {
+                              sh "echo \"Host: `hostname`\" | tee -a ${logFile}"
+                              sh "echo \"PWD:  `pwd`\" | tee -a ${logFile}"
+                              sh "echo \"Date: `date`\" | tee -a ${logFile}"
 
-                        withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
-                            if (os == "windows") {
-                                def hostname = powershell(returnStdout: true, script: "hostname")
+                              shellAndPipe("cd ${runDir} ; ./build/bin/arangosh --version", logFile)
 
-                                echo "executing ${command} on ${hostname}"
-                                powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
-                            }
-                            else {
-                                sh "echo \"Host: `hostname`\" | tee -a ${logFile}"
-                                sh "echo \"PWD:  `pwd`\" | tee -a ${logFile}"
-                                sh "echo \"Date: `date`\" | tee -a ${logFile}"
+                              command = "(cd ${runDir} ; ${command})"
+                              echo "executing ${command}"
+                              shellAndPipe(command, logFile)
+                          }
+                      }
+                  }
 
-                                shellAndPipe("cd ${runDir} ; ./build/bin/arangosh --version", logFile)
+                  checkCores(os, runDir)
+                  logStopStage(logFileRel)
+              }
+              catch (exc) {
+                  logExceptionStage(logFileRel, exc)
 
-                                command = "(cd ${runDir} ; ${command})"
-                                echo "executing ${command}"
-                                shellAndPipe(command, logFile)
-                            }
-                        }
-                    }
+                  def msg = exc.toString()
 
-                    checkCores(os, runDir)
-                    logStopStage(logFileRel)
-                }
-                catch (exc) {
-                    logExceptionStage(logFileRel, exc)
+                  echo "caught error, copying log to ${logFileFailed}: ${msg}"
 
-                    def msg = exc.toString()
+                  fileOperations([
+                      fileCreateOperation(fileContent: "TEST FAILED: ${msg}", fileName: "${archDir}-FAIL.txt")
+                  ])
 
-                    echo "caught error, copying log to ${logFileFailed}: ${msg}"
+                  if (os == 'linux' || os == 'mac') {
+                      sh "echo \"${msg}\" >> ${logFile}"
+                  }
+                  else {
+                      powershell "echo \"${msg}\" | Out-File -filepath ${logFile} -append"
+                  }
 
-                    fileOperations([
-                        fileCreateOperation(fileContent: "TEST FAILED: ${msg}", fileName: "${archDir}-FAIL.txt")
-                    ])
+                  copyFile(os, logFile, logFileFailed)
+                  throw exc
+              }
+              finally {
+                  def logFileFailedRel = "${arch}-FAIL/${name}.log"
 
-                    if (os == 'linux' || os == 'mac') {
-                        sh "echo \"${msg}\" >> ${logFile}"
-                    }
-                    else {
-                        powershell "echo \"${msg}\" | Out-File -filepath ${logFile} -append"
-                    }
+                  saveCores(os, runDir, name, archRun)
 
-                    copyFile(os, logFile, logFileFailed)
-                    throw exc
-                }
-                finally {
-                    releaseStartPort(os, port)
-
-                    def logFileFailedRel = "${arch}-FAIL/${name}.log"
-
-                    saveCores(os, runDir, name, archRun)
-
-                    archiveArtifacts allowEmptyArchive: true,
-                        artifacts: "${archDir}-FAIL.txt, ${archRun}/**, ${logFileRel}, ${logFileFailedRel}",
-                        defaultExcludes: false
-                }
-            }
-        }
+                  archiveArtifacts allowEmptyArchive: true,
+                      artifacts: "${archDir}-FAIL.txt, ${archRun}/**, ${logFileRel}, ${logFileFailedRel}",
+                      defaultExcludes: false
+              }
+          }
     }
 }
 
@@ -973,28 +963,47 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
     def testIndex = 0
     def tests = getTests(os, edition, maintainer, mode, engine)
 
-    // this is an `Array.reduce()` in groovy :S
-    def testSteps = tests.inject([:]) { testMap, testStruct ->
-        def name = testStruct[0]
-        def test = testStruct[1]
-        def testArgs = "--prefix ${os}-${edition}-${mode}-${engine} " +
-                       "--configDir etc/jenkins " +
-                       "--skipLogAnalysis true " +
-                       "--skipTimeCritical true " +
-                       "--skipNondeterministic true " +
-                       "--storageEngine ${engine} " +
-                       testStruct[2]
+    node(testJenkins[os]) {
 
-        if (mode == "cluster") {
-            testArgs += " --cluster true"
+        // unstash binaries
+        unstashBinaries(os, edition, maintainer)
+
+        // find a suitable port
+        def port = (getStartPort(os) as Integer)
+        echo "Using start port: ${port}"
+
+        try {
+            // this is an `Array.reduce()` in groovy :S
+            def testIndex = 0
+            def testSteps = tests.inject([:]) { testMap, testStruct ->
+                def name = testStruct[0]
+                def test = testStruct[1]
+                def testArgs = "--prefix ${os}-${edition}-${mode}-${engine} " +
+                               "--configDir etc/jenkins " +
+                               "--skipLogAnalysis true " +
+                               "--skipTimeCritical true " +
+                               "--skipNondeterministic true " +
+                               "--storageEngine ${engine} " +
+                               testStruct[2]
+
+                if (mode == "cluster") {
+                    testArgs += " --cluster true"
+                }
+
+                testIndex++
+
+                testMap["${stageName}-${name}"] = singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex, stageName, name, port)
+
+                return testMap
+            }
+        }
+        finally {
+            releaseStartPort(os, port)
         }
 
-        testMap["${stageName}-${name}"] = singleTest(os, edition, maintainer, mode, engine, test, testArgs, stageName, name)
-
-        return testMap
+        // fire all tests
+        parallel testSteps
     }
-
-    parallel testSteps
 }
 
 def testCheck(os, edition, maintainer, mode, engine) {
