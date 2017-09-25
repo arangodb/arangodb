@@ -363,6 +363,9 @@ struct TRI_vocbase_t {
 
  private:
 
+  /// @brief check some invariants on the various lists of collections
+  void checkCollectionInvariants() const;
+
   arangodb::LogicalCollection* useCollectionInternal(
       arangodb::LogicalCollection* collection, TRI_vocbase_col_status_e& status);
   

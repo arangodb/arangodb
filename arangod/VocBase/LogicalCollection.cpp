@@ -221,7 +221,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
   }
   
   TRI_ASSERT(!_globallyUniqueId.empty());
-
+ 
   // add keyOptions from slice
   TRI_ASSERT(info.isObject());
   VPackSlice keyOpts = info.get("keyOptions");
@@ -1379,19 +1379,22 @@ std::string LogicalCollection::generateGloballyUniqueId() const {
   if (_vocbase->isSystem()) {
     result.reserve(32);
     result.append(StaticStrings::SystemDatabase);
-    result.push_back('/');
   } else {
     result.reserve(64);
     result.append(ServerState::instance()->getId());
     result.push_back('/');
     result.append(_vocbase->name());
-    result.push_back('/');
   }
+  result.push_back('/');
   if (isSystem()) {
     result.append(_name);
   } else {
     result.append(std::to_string(_cid));
   }
-
+ 
+  if (_planId > 0 && ServerState::instance()->isDBServer()) {
+    result.push_back('/');
+    result.append(std::to_string(_cid));
+  }
   return result;
 }
