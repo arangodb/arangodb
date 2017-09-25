@@ -994,7 +994,9 @@ SECTION("BinaryNotEq") {
   // simple string attribute
   {
     irs::Or expected;
-    expected.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("a")).term("1");
+    auto& conjunction = expected.add<irs::And>();
+    conjunction.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("a")).term("1");
+    conjunction.add<irs::by_column_existence>().field("a").prefix_match(true);
 
     assertFilterSuccess("FOR d IN collection FILTER d.a != '1' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d['a'] != '1' RETURN d", expected);
@@ -1005,7 +1007,9 @@ SECTION("BinaryNotEq") {
   // simple offset
   {
     irs::Or expected;
-    expected.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("[4]")).term("1");
+    auto& conjunction = expected.add<irs::And>();
+    conjunction.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("[4]")).term("1");
+    conjunction.add<irs::by_column_existence>().field("[4]").prefix_match(true);
 
     assertFilterSuccess("FOR d IN collection FILTER d[4] != '1' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' != d[4] RETURN d", expected);
@@ -1014,7 +1018,9 @@ SECTION("BinaryNotEq") {
   // complex attribute name, string
   {
     irs::Or expected;
-    expected.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("a.b.c")).term("1");
+    auto& conjunction = expected.add<irs::And>();
+    conjunction.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("a.b.c")).term("1");
+    conjunction.add<irs::by_column_existence>().field("a.b.c").prefix_match(true);
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c != '1' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d['a'].b.c != '1' RETURN d", expected);
@@ -1029,7 +1035,9 @@ SECTION("BinaryNotEq") {
   // complex attribute name with offset, string
   {
     irs::Or expected;
-    expected.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("a.b[23].c")).term("1");
+    auto& conjunction = expected.add<irs::And>();
+    conjunction.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("a.b[23].c")).term("1");
+    conjunction.add<irs::by_column_existence>().field("a.b[23].c").prefix_match(true);
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b[23].c != '1' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d['a'].b[23].c != '1' RETURN d", expected);
@@ -1044,7 +1052,9 @@ SECTION("BinaryNotEq") {
   // complex boolean attribute, true
   {
     irs::Or expected;
-    expected.add<irs::Not>().filter<irs::by_term>().field(mangleBool("a.b.c")).term(irs::boolean_token_stream::value_true());
+    auto& conjunction = expected.add<irs::And>();
+    conjunction.add<irs::Not>().filter<irs::by_term>().field(mangleBool("a.b.c")).term(irs::boolean_token_stream::value_true());
+    conjunction.add<irs::by_column_existence>().field("a.b.c").prefix_match(true);
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c != true RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d['a'].b.c != true RETURN d", expected);
@@ -1055,7 +1065,9 @@ SECTION("BinaryNotEq") {
   // complex boolean attribute, false
   {
     irs::Or expected;
-    expected.add<irs::Not>().filter<irs::by_term>().field(mangleBool("a.b.c.bool")).term(irs::boolean_token_stream::value_false());
+    auto& conjunction = expected.add<irs::And>();
+    conjunction.add<irs::Not>().filter<irs::by_term>().field(mangleBool("a.b.c.bool")).term(irs::boolean_token_stream::value_false());
+    conjunction.add<irs::by_column_existence>().field("a.b.c.bool").prefix_match(true);
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.bool != false RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d['a']['b']['c'].bool != false RETURN d", expected);
@@ -1066,7 +1078,9 @@ SECTION("BinaryNotEq") {
   // complex boolean attribute with offset, false
   {
     irs::Or expected;
-    expected.add<irs::Not>().filter<irs::by_term>().field(mangleBool("a[12].b.c.bool")).term(irs::boolean_token_stream::value_false());
+    auto& conjunction = expected.add<irs::And>();
+    conjunction.add<irs::Not>().filter<irs::by_term>().field(mangleBool("a[12].b.c.bool")).term(irs::boolean_token_stream::value_false());
+    conjunction.add<irs::by_column_existence>().field("a[12].b.c.bool").prefix_match(true);
 
     assertFilterSuccess("FOR d IN collection FILTER d.a[12].b.c.bool != false RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d['a'][12]['b']['c'].bool != false RETURN d", expected);
@@ -1077,7 +1091,9 @@ SECTION("BinaryNotEq") {
   // complex boolean attribute, null
   {
     irs::Or expected;
-    expected.add<irs::Not>().filter<irs::by_term>().field(mangleNull("a.b.c.bool")).term(irs::null_token_stream::value_null());
+    auto& conjunction = expected.add<irs::And>();
+    conjunction.add<irs::Not>().filter<irs::by_term>().field(mangleNull("a.b.c.bool")).term(irs::null_token_stream::value_null());
+    conjunction.add<irs::by_column_existence>().field("a.b.c.bool").prefix_match(true);
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.bool != null RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d.a['b']['c'].bool != null RETURN d", expected);
@@ -1088,7 +1104,9 @@ SECTION("BinaryNotEq") {
   // complex boolean attribute with offset, null
   {
     irs::Or expected;
-    expected.add<irs::Not>().filter<irs::by_term>().field(mangleNull("a.b.c[3].bool")).term(irs::null_token_stream::value_null());
+    auto& conjunction = expected.add<irs::And>();
+    conjunction.add<irs::Not>().filter<irs::by_term>().field(mangleNull("a.b.c[3].bool")).term(irs::null_token_stream::value_null());
+    conjunction.add<irs::by_column_existence>().field("a.b.c[3].bool").prefix_match(true);
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c[3].bool != null RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d.a['b']['c'][3].bool != null RETURN d", expected);
@@ -1104,7 +1122,9 @@ SECTION("BinaryNotEq") {
     auto& term = stream.attributes().get<irs::term_attribute>();
 
     irs::Or expected;
-    expected.add<irs::Not>().filter<irs::by_term>().field(mangleNumeric("a.b.c.numeric")).term(term->value());
+    auto& conjunction = expected.add<irs::And>();
+    conjunction.add<irs::Not>().filter<irs::by_term>().field(mangleNumeric("a.b.c.numeric")).term(term->value());
+    conjunction.add<irs::by_column_existence>().field("a.b.c.numeric").prefix_match(true);
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.numeric != 3 RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d['a']['b'].c.numeric != 3 RETURN d", expected);
@@ -1122,7 +1142,9 @@ SECTION("BinaryNotEq") {
     auto& term = stream.attributes().get<irs::term_attribute>();
 
     irs::Or expected;
-    expected.add<irs::Not>().filter<irs::by_term>().field(mangleNumeric("a.b.c.numeric[1]")).term(term->value());
+    auto& conjunction = expected.add<irs::And>();
+    conjunction.add<irs::Not>().filter<irs::by_term>().field(mangleNumeric("a.b.c.numeric[1]")).term(term->value());
+    conjunction.add<irs::by_column_existence>().field("a.b.c.numeric[1]").prefix_match(true);
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.numeric[1] != 3 RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d['a']['b'].c.numeric[1] != 3 RETURN d", expected);

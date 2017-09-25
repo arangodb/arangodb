@@ -430,11 +430,23 @@ bool fromBinaryEq(
   }
 
   if (filter) {
-    auto& termFilter = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE == node.type
-                     ? filter->add<irs::Not>().filter<irs::by_term>()
-                     : filter->add<irs::by_term>();
+    if (arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ == node.type) {
+      auto& termFilter = filter->add<irs::by_term>();
+
+      byTerm(termFilter, *normalized.attribute, *normalized.value);
+
+      return true;
+    }
+
+    // for negation need to get all documents with the field but not matching term
+    auto fieldName = arangodb::iresearch::nameFromAttributeAccess(*normalized.attribute);
+    auto& conjunction = filter->add<irs::And>();
+    auto& termFilter = conjunction.add<irs::Not>().filter<irs::by_term>();
 
     byTerm(termFilter, *normalized.attribute, *normalized.value);
+    conjunction.add<irs::by_column_existence>()
+      .field(fieldName) // root of field name without type FIXME TODO ensure do not match fields starting with same characters
+      .prefix_match(true); // match all possible value type suffixes
   }
 
   return true;
