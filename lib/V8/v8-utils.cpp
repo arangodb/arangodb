@@ -3481,23 +3481,18 @@ static void JS_ExecuteExternal(
                 v8::Number::New(isolate, external._writePipe));
   }
 #else
-  size_t readPipe_len, writePipe_len;
-  if (0 != external._readPipe) {
-    char* readPipe = TRI_EncodeHexString((char const*)external._readPipe,
-                                         sizeof(HANDLE), &readPipe_len);
-    if (readPipe != nullptr) {
+  if (external._readPipe != INVALID_HANDLE_VALUE) {
+    auto fn = getFileNameFromHandle(external._readPipe);
+    if (fn.length() > 0) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "readPipe"),
-                  TRI_V8_PAIR_STRING(isolate, readPipe, (int)readPipe_len));
-      TRI_FreeString(readPipe);
+                  TRI_V8_STD_STRING(isolate, fn));
     }
   }
-  if (0 != external._writePipe) {
-    char* writePipe = TRI_EncodeHexString((char const*)external._writePipe,
-                                          sizeof(HANDLE), &writePipe_len);
-    if (writePipe != nullptr) {
+  if (external._writePipe != INVALID_HANDLE_VALUE) {
+    auto fn = getFileNameFromHandle(external._writePipe);
+    if (fn.length() > 0) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "writePipe"),
-                  TRI_V8_PAIR_STRING(isolate, writePipe, (int)writePipe_len));
-      TRI_FreeString(writePipe);
+                  TRI_V8_STD_STRING(isolate, fn));
     }
   }
 #endif
@@ -3602,23 +3597,18 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
                 v8::Number::New(isolate, external._writePipe));
   }
 #else
-  size_t readPipe_len, writePipe_len;
-  if (0 != external._readPipe) {
-    char* readPipe = TRI_EncodeHexString((char const*)external._readPipe,
-                                         sizeof(HANDLE), &readPipe_len);
-    if (readPipe != nullptr) {
+  if (external._readPipe != INVALID_HANDLE_VALUE) {
+    auto fn = getFileNameFromHandle(external._readPipe);
+    if (fn.length() > 0) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "readPipe"),
-                  TRI_V8_PAIR_STRING(isolate, readPipe, (int)readPipe_len));
-      TRI_FreeString(readPipe);
+                  TRI_V8_STD_STRING(isolate, fn));
     }
   }
-  if (0 != external._writePipe) {
-    char* writePipe = TRI_EncodeHexString((char const*)external._writePipe,
-                                          sizeof(HANDLE), &writePipe_len);
-    if (writePipe != nullptr) {
+  if (external._writePipe != INVALID_HANDLE_VALUE) {
+    auto fn = getFileNameFromHandle(external._writePipe);
+    if (fn.length() > 0) {
       result->Set(TRI_V8_ASCII_STRING(isolate, "writePipe"),
-                  TRI_V8_PAIR_STRING(isolate, writePipe, (int)writePipe_len));
-      TRI_FreeString(writePipe);
+                  TRI_V8_STD_STRING(isolate, fn));
     }
   }
 #endif

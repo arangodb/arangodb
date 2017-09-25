@@ -106,8 +106,8 @@ ExternalProcess::ExternalProcess():
 #else
   _pid(0),
   _process(nullptr),
-  _readPipe(nullptr),
-  _writePipe(nullptr),
+  _readPipe(INVALID_HANDLE_VALUE),
+  _writePipe(INVALID_HANDLE_VALUE),
 #endif
   _status(TRI_EXT_NOT_STARTED),
   _exitStatus(0) {}
@@ -136,10 +136,10 @@ ExternalProcess::~ExternalProcess() {
   }
 #else
   CloseHandle(_process);
-  if (_readPipe != nullptr) {
+  if (_readPipe != INVALID_HANDLE_VALUE) {
     CloseHandle(_readPipe);
   }
-  if (_writePipe != nullptr) {
+  if (_writePipe != INVALID_HANDLE_VALUE) {
     CloseHandle(_writePipe);
   }
 #endif
