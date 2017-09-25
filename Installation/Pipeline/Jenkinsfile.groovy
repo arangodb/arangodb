@@ -289,11 +289,13 @@ def getStartPort(os) {
 }
 
 def releaseStartPort(os, port) {
-    if (os == 'linux' || os == 'mac') {
-        sh "Installation/Pipeline/port.sh --clean ${port}"
-    }
-    else if (os == 'windows') {
-        powershell "remove-item -Force -ErrorAction Ignore C:\\ports\\${port}"
+    if (port != 0) {
+        if (os == 'linux' || os == 'mac') {
+            sh "Installation/Pipeline/port.sh --clean ${port}"
+        }
+        else if (os == 'windows') {
+            powershell "remove-item -Force -ErrorAction Ignore C:\\ports\\${port}"
+        }
     }
 }
 
@@ -856,6 +858,7 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, stageName,
                 def logFileFailed = pwd() + "/" + "${arch}-FAIL/${name}.log"
 
                 def runDir = "run"
+                def port = 0
 
                 logStartStage(logFileRel, logFileRel)
 
@@ -876,7 +879,7 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, stageName,
                     unstashBinaries(os, edition, maintainer)
 
                     // find a suitable port
-                    def port = (getStartPort(os) as Integer)
+                    port = (getStartPort(os) as Integer)
                     echo "Using start port: ${port}"
 
                     // setup links
