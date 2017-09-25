@@ -359,6 +359,11 @@ def generateResult() {
             def stop = resultsStop[key] ?: ""
             def msg = resultsStatus[key] ?: ""
             def link = resultsLink[key] ?: ""
+
+            if (start != "" && stop == "") {
+                stop = new Date()
+            }
+
             def diff = (start != "" && stop != "") ? groovy.time.TimeCategory.minus(stop, start) : "-"
             def startf = start == "" ? "-" : start.format('yyyy/MM/dd HH:mm:ss')
             def stopf = stop == "" ? "-" : stop.format('yyyy/MM/dd HH:mm:ss')
