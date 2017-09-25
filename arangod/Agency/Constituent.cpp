@@ -63,7 +63,7 @@ void Constituent::configure(Agent* agent) {
 
   if (size() == 1) {
     _role = LEADER;
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to LEADER in term " << _term;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to LEADER in term " << _term;
   }
   
 }
@@ -111,7 +111,7 @@ void Constituent::termNoLock(term_t t) {
   _term = t;
 
   if (tmp != t) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << _id << ": changing term, current role:"
+    LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": changing term, current role:"
       << roleStr[_role] << " new term " << t;
 
     _cast = false;
@@ -206,7 +206,7 @@ void Constituent::followNoLock(term_t t) {
   _term = t;
   _role = FOLLOWER;
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to FOLLOWER in term " << _term;
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to FOLLOWER in term " << _term;
 
   if (_leaderID == _id) {
     _leaderID = NO_LEADER;
@@ -339,6 +339,12 @@ bool Constituent::checkLeader(
   
   if (term > _term) {
     termNoLock(term);
+    if (_role != FOLLOWER) {
+      followNoLock(term);
+    }
+
+    _cast = false;
+    _votedFor = "";
   }
 
   if ((prevLogIndex != 0 || prevLogTerm != 0) &&
@@ -576,7 +582,7 @@ void Constituent::update(std::string const& leaderID, term_t t) {
   _term = t;
 
   if (_leaderID != leaderID) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC(INFO, Logger::AGENCY)
       << "Constituent::update: setting _leaderID to " << leaderID
       << " in term " << _term;
     _leaderID = leaderID;
@@ -655,12 +661,14 @@ void Constituent::run() {
   if (size() == 1) {
     MUTEX_LOCKER(guard, _castLock);
     _leaderID = _agent->config().id();
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to " << _leaderID
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to " << _leaderID
       << " in term " << _term;
   } else {
 
     {
       MUTEX_LOCKER(guard, _castLock);
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Setting role to follower"
+        " in term " << _term;
       _role = FOLLOWER;
     }
     while (!this->isStopping()) {
