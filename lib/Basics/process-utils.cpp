@@ -215,12 +215,6 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes) {
       fcntl(2, F_SETFD, 0);
     }
 
-    // ignore signals in worker process
-    signal(SIGINT, SIG_IGN);
-    signal(SIGTERM, SIG_IGN);
-    signal(SIGHUP, SIG_IGN);
-    signal(SIGUSR1, SIG_IGN);
-
     // execute worker
     execvp(external->_executable, external->_arguments);
 
