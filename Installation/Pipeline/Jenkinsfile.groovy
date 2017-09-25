@@ -349,8 +349,8 @@ def logExceptionStage(logFile, exc) {
 }
 
 def generateResult() {
-    results = ""
-    html = "<html><body><table>\n"
+    def results = ""
+    def html = "<html><body><table>\n"
     html += "<tr><th>Name</th><th>Start</th><th>Stop</th><th>Duration</th><th>Message</th></tr>\n"
 
     for (key in resultsKeys) {
