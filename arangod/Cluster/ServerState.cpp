@@ -79,12 +79,6 @@ ServerState* ServerState::instance() { return &Instance; }
 /// @brief get the string representation of a role
 ////////////////////////////////////////////////////////////////////////////////
 
-const std::vector<std::string> ServerState::RoleStr ({
-    "NONE", "SNGL", "PRMR", "SCND", "CRDN", "AGNT"});
-
-const std::vector<std::string> ServerState::RoleStrReadable ({
-    "none", "single", "dbserver", "secondary", "coordinator", "agent"});
-
 std::string ServerState::roleToString(ServerState::RoleEnum role) {
   switch (role) {
     case ROLE_UNDEFINED:
@@ -103,6 +97,24 @@ std::string ServerState::roleToString(ServerState::RoleEnum role) {
   return "";
 }
 
+std::string ServerState::roleToShortString(ServerState::RoleEnum role) {
+  switch (role) {
+    case ROLE_UNDEFINED:
+      return "NONE";
+    case ROLE_SINGLE:
+      return "SNGL";
+    case ROLE_PRIMARY:
+      return "PRMR";
+    case ROLE_COORDINATOR:
+      return "CRDN";
+    case ROLE_AGENT:
+      return "AGNT";
+  }
+
+  TRI_ASSERT(false);
+  return "";
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a string to a role
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,6 +126,8 @@ ServerState::RoleEnum ServerState::stringToRole(std::string const& value) {
     return ROLE_PRIMARY;
   } else if (value == "COORDINATOR") {
     return ROLE_COORDINATOR;
+  } else if (value == "AGENT") {
+    return ROLE_AGENT;
   }
 
   return ROLE_UNDEFINED;
@@ -313,7 +327,7 @@ bool ServerState::writePersistedId(std::string const& id) {
 }
 
 std::string ServerState::generatePersistedId(RoleEnum const& role) {
-  std::string id = RoleStr.at(role) + "-" +
+  std::string id = roleToShortString(role) + "-" +
     to_string(boost::uuids::random_generator()());
   writePersistedId(id);
   return id;

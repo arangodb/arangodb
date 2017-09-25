@@ -43,9 +43,6 @@ class ServerState {
     ROLE_AGENT
   };
 
-  static const std::vector<std::string> RoleStr;
-  static const std::vector<std::string> RoleStrReadable;
-
   /// @brief an enum describing the possible states a server can have
   enum StateEnum {
     STATE_UNDEFINED = 0,  // initial value
@@ -67,6 +64,8 @@ class ServerState {
 
   /// @brief get the string representation of a role
   static std::string roleToString(RoleEnum);
+  
+  static std::string roleToShortString(RoleEnum);
   
   /// @brief get the key for lists of a role in the agency
   static std::string roleToAgencyListKey(RoleEnum);
