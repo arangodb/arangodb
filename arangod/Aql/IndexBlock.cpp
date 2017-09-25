@@ -698,7 +698,7 @@ arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
     IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
     _cursors[currentIndex].reset(_trx->indexScanForCondition(
         _indexes[currentIndex], conditionNode, node->outVariable(), _mmdr.get(),
-        UINT64_MAX, transaction::Methods::defaultBatchSize(), node->_reverse));
+        node->_reverse));
   } else {
     // cursor for index already exists, reset and reuse it
     _cursors[currentIndex]->reset();

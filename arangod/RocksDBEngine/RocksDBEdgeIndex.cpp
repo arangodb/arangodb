@@ -328,6 +328,7 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
     if (needRocksLookup) {
       lookupInRocksDB(fromTo);
     }
+
     _keysIterator.next();
   }
   TRI_ASSERT(limit == 0);
