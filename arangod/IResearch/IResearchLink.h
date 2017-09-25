@@ -132,6 +132,16 @@ class IResearchLink {
     bool isRollback
   ); // arangodb::Index override
 
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief remove an ArangoDB document from an iResearch View without
+  /// document data
+  //////////////////////////////////////////////////////////////////////////////
+  arangodb::Result remove(
+    transaction::Methods* trx,
+    TRI_voc_rid_t rid,
+    bool isRollback
+  );
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief set the iResearch link 'type' field in the builder to the proper
   ///        value

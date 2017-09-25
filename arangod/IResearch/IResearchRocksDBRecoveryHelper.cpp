@@ -92,14 +92,12 @@ void IResearchRocksDBRecoveryHelper::DeleteCF(uint32_t column_family_id,
     }
 
     auto rev = RocksDBKey::revisionId(RocksDBEntryType::Document, key);
-    // TODO: get doc data somehow?
-    VPackSlice doc;
 
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(vocbase), coll->cid(),
         arangodb::AccessMode::Type::WRITE);
     for (auto link : links) {
-      link->remove(&trx, rev, doc, false);
+      link->remove(&trx, rev, false);
     }
 
     return;
