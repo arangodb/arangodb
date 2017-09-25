@@ -995,13 +995,13 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
 
                 return testMap
             }
+
+            // fire all tests
+            parallel testSteps
         }
         finally {
             releaseStartPort(os, port)
         }
-
-        // fire all tests
-        parallel testSteps
     }
 }
 
