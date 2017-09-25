@@ -1,13 +1,12 @@
 v3.2.4 (2017-XX-XX)
-
-* ui: added replicationFactor option during SmartGraph creation.
-
-v3.2.3 (2017-09-07)
 -------------------
 
 * ui: added replicationFactor option during SmartGraph creation.
 
 * make the mmfiles compactor configurable
+
+* fix windows implementation for fs.getTempPath() to also create a
+  sub-directory as we do on linux
 
 * leader-follower replication catchup code has been rewritten in C++
 
@@ -15,7 +14,7 @@ v3.2.3 (2017-09-07)
   AQL functions if present. Previously it always referred to the JavaScript
   implementations and ignored the C++ implementations.
 
-* ArangoDB tty log output is now colored for log messages with levels 
+* ArangoDB tty log output is now colored for log messages with levels
   FATAL, ERR and WARN.
 
 * changed the return values of AQL functions `REGEX_TEST` and `REGEX_REPLACE`
@@ -24,9 +23,77 @@ v3.2.3 (2017-09-07)
 
 * added `--log.role` option for arangod
 
-  When set to `true`, this option will make the ArangoDB logger print a single 
-  character with the server's role into each logged message. The roles are: 
-  
+  When set to `true`, this option will make the ArangoDB logger print a single
+  character with the server's role into each logged message. The roles are:
+
+  - U: undefined/unclear (used at startup)
+  - S: single server
+  - C: coordinator
+  - P: primary
+  - A: agent
+
+  The default value for this option is `false`, so no roles will be logged.
+
+* fixed issue #3106: orphan collections could not be registered in general-graph module
+
+* fixed wrong selection of the database inside the internal cluster js api
+
+* added startup option `--server.check-max-memory-mappings` to make arangod check
+  the number of memory mappings currently used by the process and compare it with
+  the maximum number of allowed mappings as determined by /proc/sys/vm/max_map_count
+
+  The default value is `true`, so the checks will be performed. When the current
+  number of mappings exceeds 90% of the maximum number of mappings, the creation
+  of further V8 contexts will be deferred.
+
+  Note that this option is effective on Linux systems only.
+
+* arangoimp now has a `--remove-attribute` option
+
+* added V8 context lifetime control options
+  `--javascript.v8-contexts-max-invocations` and `--javascript.v8-contexts-max-age`
+
+  These options allow specifying after how many invocations a used V8 context is
+  disposed, or after what time a V8 context is disposed automatically after its
+  creation. If either of the two thresholds is reached, an idl V8 context will be
+  disposed.
+
+  The default value of `--javascript.v8-contexts-max-invocations` is 0, meaning that
+  the maximum number of invocations per context is unlimited. The default value
+  for `--javascript.v8-contexts-max-age` is 60 seconds.
+
+* fixed wrong ui cluster health information
+
+* fixed issue #3070: Add index in _jobs collection
+
+* fixed issue #3125: HTTP Foxx API JSON parsing
+
+* fixed issue #3120: Foxx queue: job isn't running when server.authentication = true
+
+
+v3.2.3 (2017-09-07)
+-------------------
+
+* ui: added replicationFactor option during SmartGraph creation.
+
+* leader-follower replication catchup code has been rewritten in C++
+
+* early stage AQL optimization now also uses the C++ implementations of
+  AQL functions if present. Previously it always referred to the JavaScript
+  implementations and ignored the C++ implementations.
+
+* ArangoDB tty log output is now colored for log messages with levels
+  FATAL, ERR and WARN.
+
+* changed the return values of AQL functions `REGEX_TEST` and `REGEX_REPLACE`
+  to `null` when the input regex is invalid. Previous versions of ArangoDB
+  partly returned `false` for invalid regexes and partly `null`.
+
+* added `--log.role` option for arangod
+
+  When set to `true`, this option will make the ArangoDB logger print a single
+  character with the server's role into each logged message. The roles are:
+
   - U: undefined/unclear (used at startup)
   - S: single server
   - C: coordinator
@@ -56,80 +123,7 @@ v3.2.3 (2017-09-07)
 v3.2.2 (2017-08-23)
 -------------------
 
-* fix windows implementation for fs.getTempPath() to also create a
-  sub-directory as we do on linux
-
-* ui: added replicationFactor option during SmartGraph creation.
-
-* make the mmfiles compactor configurable
-
-* leader-follower replication catchup code has been rewritten in C++
-
-* early stage AQL optimization now also uses the C++ implementations of
-  AQL functions if present. Previously it always referred to the JavaScript
-  implementations and ignored the C++ implementations.
-
-* ArangoDB tty log output is now colored for log messages with levels 
-  FATAL, ERR and WARN.
-
-* changed the return values of AQL functions `REGEX_TEST` and `REGEX_REPLACE`
-  to `null` when the input regex is invalid. Previous versions of ArangoDB
-  partly returned `false` for invalid regexes and partly `null`.
-
-* added `--log.role` option for arangod
-
-  When set to `true`, this option will make the ArangoDB logger print a single 
-  character with the server's role into each logged message. The roles are: 
-  
-  - U: undefined/unclear (used at startup)
-  - S: single server
-  - C: coordinator
-  - P: primary
-  - A: agent
-
-  The default value for this option is `false`, so no roles will be logged. 
-
-* fixed issue #3106: orphan collections could not be registered in general-graph module
-
-* fixed wrong selection of the database inside the internal cluster js api
-
-* added startup option `--server.check-max-memory-mappings` to make arangod check
-  the number of memory mappings currently used by the process and compare it with
-  the maximum number of allowed mappings as determined by /proc/sys/vm/max_map_count
-
-  The default value is `true`, so the checks will be performed. When the current 
-  number of mappings exceeds 90% of the maximum number of mappings, the creation
-  of further V8 contexts will be deferred.
-
-  Note that this option is effective on Linux systems only.
-
-* arangoimp now has a `--remove-attribute` option
-
-* added V8 context lifetime control options
-  `--javascript.v8-contexts-max-invocations` and `--javascript.v8-contexts-max-age`
-
-  These options allow specifying after how many invocations a used V8 context is 
-  disposed, or after what time a V8 context is disposed automatically after its
-  creation. If either of the two thresholds is reached, an idl V8 context will be
-  disposed. 
-  
-  The default value of `--javascript.v8-contexts-max-invocations` is 0, meaning that
-  the maximum number of invocations per context is unlimited. The default value
-  for `--javascript.v8-contexts-max-age` is 60 seconds.
-
-* fixed wrong ui cluster health information
-
-* fixed issue #3070: Add index in _jobs collection
-
-* fixed issue #3125: HTTP Foxx API JSON parsing
-
-* fixed issue #3120: Foxx queue: job isn't running when server.authentication = true
-
-
-v3.2.2 (2017-08-23)
--------------------
-
-* make "Rebalance shards" button work in selected database only, and not make 
+* make "Rebalance shards" button work in selected database only, and not make
   it rebalance the shards of all databases
 
 * fixed issue #2847: adjust the response of the DELETE `/_api/users/database/*` calls
