@@ -281,7 +281,7 @@ void handleOnStatus(
     // TOOD: do something
   } else {
     LOG_TOPIC(ERR, Logger::SUPERVISION)
-      << "Unknown server type. No supervision action taken.";
+      << "Unknown server type. No supervision action taken. " << serverID;
   }
   
 }

@@ -84,6 +84,9 @@ class TailingSyncer : public Syncer {
 
   /// @brief commits a transaction, based on the VelocyPack provided
   int commitTransaction(arangodb::velocypack::Slice const&);
+  
+  /// @brief process db create or drop markers
+  int processDBMarker(TRI_replication_operation_e, velocypack::Slice const&);
 
   /// @brief process a document operation, based on the VelocyPack provided
   int processDocument(TRI_replication_operation_e,

@@ -402,9 +402,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
     // Arguments are already checked, there is exactly one argument
-    auto databaseFeature =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database");
+    DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
     TRI_vocbase_t* vocbase = databaseFeature->useDatabaseCoordinator(dbName);
 
     if (vocbase == nullptr) {
@@ -439,10 +437,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
     }
 
   } else {
-    DatabaseFeature* databaseFeature =
-        application_features::ApplicationServer::getFeature<DatabaseFeature>(
-            "Database");
-    int res = databaseFeature->dropDatabase(dbName, false, true);
+    int res = DatabaseFeature::DATABASE->dropDatabase(dbName, false, true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return Result(res);
@@ -471,3 +466,21 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
   }
   return res;
 }
+
+
+Result Databases::dropLocal(TRI_voc_tick_t dbId) {
+  TRI_ASSERT(ServerState::instance()->isSingleServer() ||
+             ServerState::instance()->isDBServer());
+  
+  TRI_vocbase_t* systemVocbase = DatabaseFeature::DATABASE->systemDatabase();
+  
+  TRI_vocbase_t *localDB = DatabaseFeature::DATABASE->useDatabase(dbId);
+  if (localDB == nullptr) {
+    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+  }
+  std::string dbName = localDB->name();
+  localDB->release();
+  
+  return Databases::drop(systemVocbase, dbName);
+}
+

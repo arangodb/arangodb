@@ -26,6 +26,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include "Basics/Result.h"
+#include "VocBase/voc-types.h"
 
 struct TRI_vocbase_t;
 
@@ -35,6 +36,7 @@ namespace methods {
 /// Common code for the db._database(),
 struct Databases {
   static TRI_vocbase_t* lookup(std::string const& dbname);
+  static TRI_vocbase_t* lookup(TRI_voc_tick_t);
   static std::vector<std::string> list(std::string const& user = "");
   static arangodb::Result info(TRI_vocbase_t* vocbase,
                                arangodb::velocypack::Builder& result);
@@ -43,6 +45,8 @@ struct Databases {
                                  arangodb::velocypack::Slice const& options);
   static arangodb::Result drop(TRI_vocbase_t* systemVocbase,
                                std::string const& dbName);
+  /// @brief drop db on single server or dbserver
+  static arangodb::Result dropLocal(TRI_voc_tick_t dbId);
 };
 }
 }

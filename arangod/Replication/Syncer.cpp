@@ -65,6 +65,8 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
       _barrierId(0),
       _barrierUpdateTime(0),
       _barrierTtl(600) {
+  TRI_ASSERT(ServerState::instance()->isSingleServer() ||
+             ServerState::instance()->isDBServer());
   if (configuration->_database.empty()) {
     // use name of current database
     _databaseName = vocbase->name();

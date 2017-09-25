@@ -44,6 +44,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+#include "VocBase/Methods/Databases.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -189,6 +190,49 @@ bool TailingSyncer::isExcludedCollection(std::string const& masterName) const {
 
   return false;
 }
+
+
+/// @brief process db create or drop markers
+int TailingSyncer::processDBMarker(TRI_replication_operation_e type,
+                                   velocypack::Slice const& slice) {
+  TRI_ASSERT(!_ignoreDatabaseMarkers);
+  
+  VPackSlice idSlice = slice.get("database");
+  if (!idSlice.isString()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                                   "create database marker did not contain dbID");
+  }
+  TRI_voc_tick_t id = StringUtils::uint64(idSlice.copyString());
+  TRI_ASSERT(id != 0);
+  
+  if (type == REPLICATION_DATABASE_CREATE) {
+    VPackSlice const data = slice.get("data");
+    if (!data.isObject()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                                     "create database marker did not contain data");
+    }
+    VPackSlice name = data.get("name");
+    if (!data.isString()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                                     "create database marker did not contain name");
+    }
+    VPackSlice users = VPackSlice::emptyArraySlice();
+    VPackBuilder optionsBuilder;
+    optionsBuilder.openObject();
+    optionsBuilder.add("id", VPackValue((uint64_t)id));
+    optionsBuilder.close();
+    
+    Result res = methods::Databases::create(name.copyString(), users, optionsBuilder.slice());
+    return res.errorNumber();
+  } else if (type == REPLICATION_DATABASE_DROP) {
+    
+    Result res = methods::Databases::dropLocal(id);
+    return res.errorNumber();
+  } else {
+    TRI_ASSERT(false);
+  }
+}
+
 
 /// @brief inserts a document, based on the VelocyPack provided
 int TailingSyncer::processDocument(TRI_replication_operation_e type,
@@ -533,12 +577,15 @@ int TailingSyncer::applyLogMarker(VPackSlice const& slice,
   // handle marker type
   TRI_replication_operation_e type = (TRI_replication_operation_e)typeValue;
 
-  if (type == REPLICATION_DATABASE_CREATE) {
-    return TRI_ERROR_NO_ERROR;
-  } else if (type == REPLICATION_DATABASE_DROP) {
-    // TODO
-    return TRI_ERROR_NO_ERROR;
-  } else if (type == REPLICATION_MARKER_DOCUMENT ||
+  if      (type == REPLICATION_DATABASE_CREATE ||
+           type == REPLICATION_DATABASE_DROP) {
+    if (_ignoreDatabaseMarkers) {
+      return TRI_ERROR_NO_ERROR;
+    }
+    return processDBMarker(type, slice);
+  }
+  
+  else if (type == REPLICATION_MARKER_DOCUMENT ||
              type == REPLICATION_MARKER_REMOVE) {
     return processDocument(type, slice, errorMsg);
   }
@@ -828,3 +875,4 @@ int TailingSyncer::syncCollectionFinalize(std::string& errorMsg,
     }
   }
 }
+
