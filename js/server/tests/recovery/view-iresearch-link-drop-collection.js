@@ -46,9 +46,9 @@ function runSetup () {
   v.properties(meta);
 
   c.drop();
-  
+
   c = db._create('UnitTestsRecoveryDummy2');
-  c.save({ _key: 'crashme' }, true);
+  c.save({ name: 'crashme' }, true);
 
   internal.debugSegfault('crashing server');
 }

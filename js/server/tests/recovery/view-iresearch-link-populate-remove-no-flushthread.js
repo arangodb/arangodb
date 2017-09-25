@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, assertFalse, assertNull, fail */
+/* global assertEqual, assertTrue, assertFalse, assertNull, fail, AQL_EXECUTE */
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief recovery tests for views
 // /
@@ -38,19 +38,25 @@ function runSetup () {
   db._drop('UnitTestsRecoveryDummy');
   var c = db._create('UnitTestsRecoveryDummy');
 
-  db._dropView('UnitTestsRecoveryEmpty');
-  db._createView('UnitTestsRecoveryEmpty', 'iresearch', {});
+  db._dropView('UnitTestsRecoveryView');
+  db._createView('UnitTestsRecoveryView', 'iresearch', {});
 
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
-  db._dropView('UnitTestsRecoveryFail');
-  db._createView('UnitTestsRecoveryFail', 'iresearch', meta);
+  db._view('UnitTestsRecoveryView').properties(meta);
 
-  db._dropView('UnitTestsRecoveryWithLink');
-  db._createView('UnitTestsRecoveryWithLink', 'iresearch', {});
-  // store link
-  db._view('UnitTestsRecoveryWithLink').properties(meta);
+  internal.wal.flush(true, true);
+  internal.debugSetFailAt("FlushThreadSync");
+  internal.wait(2); // make sure failure point takes effect
 
-  c.save({ name: 'crashme' }, true);
+  for (let i = 0; i < 20000; i++) {
+    c.save({ a: "foo_" + i, b: "bar_" + i, c: i, _key: "doc_" + i });
+  }
+
+  for (let i = 10000; i < 20000; i++) {
+    c.remove("doc_" + i);
+  }
+
+  c.save({ name: 'crashme' }, { waitForSync: true });
 
   internal.debugSegfault('crashing server');
 }
@@ -72,24 +78,18 @@ function recoverySuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testLinks: function () {
-      var v = db._view('UnitTestsRecoveryEmpty');
-      assertEqual(v.name(), 'UnitTestsRecoveryEmpty');
-      assertEqual(v.type(), 'iresearch');
-      assertEqual(v.properties().links, {});
+      require('internal').wait(2); // make sure iresearch has had time to sync
+                                   // after recovery
 
-      v = db._view('UnitTestsRecoveryFail');
-      assertEqual(v.name(), 'UnitTestsRecoveryFail');
+      var v = db._view('UnitTestsRecoveryView');
+      assertEqual(v.name(), 'UnitTestsRecoveryView');
       assertEqual(v.type(), 'iresearch');
       var p = v.properties().links;
-      assertEqual(v.properties().links, {});
-
-      var meta = { links : { "UnitTestsRecoveryDummy" : { includeAllFields : true } } };
-      v = db._view('UnitTestsRecoveryWithLink');
-      assertEqual(v.name(), 'UnitTestsRecoveryWithLink');
-      assertEqual(v.type(), 'iresearch');
-      p = v.properties().links;
       assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
       assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
+
+      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsRecoveryView FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length", null, { }).json;
+      assertEqual(result[0], 10000);
     }
 
   };

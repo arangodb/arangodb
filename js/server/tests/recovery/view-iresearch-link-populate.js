@@ -48,7 +48,7 @@ function runSetup () {
     c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
   }
 
-  c.save({ _key: 'crashme' }, { waitForSync: true });
+  c.save({ name: 'crashme' }, { waitForSync: true });
 
   internal.debugSegfault('crashing server');
 }
