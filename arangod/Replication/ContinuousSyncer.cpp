@@ -293,6 +293,47 @@ int ContinuousSyncer::saveApplierState() {
   return res;
 }
 
+/// @brief get local replication apply state
+int ContinuousSyncer::getLocalState(std::string& errorMsg) {
+  uint64_t oldTotalRequests = _applier->_state._totalRequests;
+  uint64_t oldTotalFailedConnects = _applier->_state._totalFailedConnects;
+  
+  int res = TRI_LoadStateReplicationApplier(_vocbase, &_applier->_state);
+  _applier->_state._active = true;
+  _applier->_state._totalRequests = oldTotalRequests;
+  _applier->_state._totalFailedConnects = oldTotalFailedConnects;
+  
+  if (res == TRI_ERROR_FILE_NOT_FOUND) {
+    // no state file found, so this is the initialization
+    _applier->_state._serverId = _masterInfo._serverId;
+    
+    res = TRI_SaveStateReplicationApplier(_vocbase, &_applier->_state, true);
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      errorMsg = "could not save replication state information";
+    }
+  } else if (res == TRI_ERROR_NO_ERROR) {
+    if (_masterInfo._serverId != _applier->_state._serverId &&
+        _applier->_state._serverId != 0) {
+      res = TRI_ERROR_REPLICATION_MASTER_CHANGE;
+      errorMsg =
+      "encountered wrong master id in replication state file. "
+      "found: " +
+      StringUtils::itoa(_masterInfo._serverId) +
+      ", "
+      "expected: " +
+      StringUtils::itoa(_applier->_state._serverId);
+    }
+  } else {
+    // some error occurred
+    TRI_ASSERT(res != TRI_ERROR_NO_ERROR);
+    
+    errorMsg = TRI_errno_string(res);
+  }
+  
+  return res;
+}
+
 /// @brief perform a continuous sync with the master
 int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
   static uint64_t const MinWaitTime = 300 * 1000;        // 0.30 seconds

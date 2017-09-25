@@ -25,7 +25,7 @@
 #include "Basics/ReadLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
-#include "Replication/ContinuousSyncer.h"
+#include "Replication/TailingSyncer.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
@@ -503,7 +503,7 @@ static void JS_SynchronizeReplicationFinalize(
   DatabaseGuard guard(database);
 
   std::string errorMsg = "";
-  ContinuousSyncer syncer(guard.database(), &config, 0, false, 0);
+  TailingSyncer syncer(guard.database(), &config, fromTick);
   
   if (!leaderId.empty()) {
     syncer.setLeaderId(leaderId);
@@ -513,7 +513,7 @@ static void JS_SynchronizeReplicationFinalize(
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   try {
-    res = syncer.syncCollectionFinalize(errorMsg, collection, fromTick);
+    res = syncer.syncCollectionFinalize(errorMsg, collection);
   } catch (arangodb::basics::Exception const& ex) {
     res = ex.code();
     if (errorMsg.empty()) {

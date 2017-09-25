@@ -63,8 +63,7 @@ class TailingSyncer : public Syncer {
   /// @brief finalize the synchronization of a collection by tailing the WAL
   /// and filtering on the collection name until no more data is available
   int syncCollectionFinalize(std::string& errorMsg,
-                             std::string const& collectionName,
-                             TRI_voc_tick_t fetchTick);
+                             std::string const& collectionName);
 
  protected:
   /// @brief abort all ongoing transactions

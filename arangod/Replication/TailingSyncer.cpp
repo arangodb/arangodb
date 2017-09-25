@@ -704,19 +704,19 @@ int TailingSyncer::applyLog(SimpleHttpResult* response,
 /// @brief finalize the synchronization of a collection by tailing the WAL
 /// and filtering on the collection name until no more data is available
 int TailingSyncer::syncCollectionFinalize(std::string& errorMsg,
-                                             std::string const& collectionName,
-                                             TRI_voc_tick_t fromTick) {
+                                             std::string const& collectionName) {
   // fetch master state just once
   int res = getMasterState(errorMsg);
-
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
+  // print extra info for debugging
   _verbose = true;
-
   // we do not want to apply rename, create and drop collection operations
   _ignoreRenameCreateDrop = true;
+  
+  TRI_voc_tick_t fromTick = _initialTick;
   
   while (true) {
     if (application_features::ApplicationServer::isStopping()) {
