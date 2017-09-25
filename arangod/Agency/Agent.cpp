@@ -213,7 +213,7 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
       return Agent::raft_commit_t::UNKNOWN;
     }
 
-    LOG_TOPIC(INFO, Logger::AGENCY) << "waitFor: index: " << index <<
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "waitFor: index: " << index <<
       " _commitIndex: " << _commitIndex
       << " _lastCommitIndex: " << lastCommitIndex << " startTime: "
       << timepointToString(startTime) << " now: "
