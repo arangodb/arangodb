@@ -319,7 +319,7 @@ def shellAndPipe(command, logfile) {
   sh "(echo 1 > \"${logfile}.result\" ; ${command} ; echo \$? > \"${logfile}.result\") 2>&1 | tee -a \"${logfile}\" ; exit `cat \"${logfile}.result\"`"
 }
 
-def logStartStage(logFile, link) {
+def logStartStage(os, logFile, link) {
     resultsKeys << logFile
 
     resultsStart[logFile] = new Date()
@@ -328,27 +328,27 @@ def logStartStage(logFile, link) {
 
     echo "started ${logFile}: ${resultsStart[logFile]}"
 
-    node ("linux") {
+    if (os == "linux") {
         sh "echo 'started ${logFile}: ${resultsStart[logFile]}' | tee -a ${logFile}"
     }
 
     generateResult()
 }
 
-def logStopStage(logFile) {
+def logStopStage(os, logFile) {
     resultsStop[logFile] = new Date()
     resultsStatus[logFile] = "finished"
 
     echo "finished ${logFile}: ${resultsStop[logFile]}"
 
-    node ("linux") {
+    if (os == "linux") {
         sh "echo 'finished ${logFile}: ${resultsStop[logFile]}' | tee -a ${logFile}"
     }
 
     generateResult()
 }
 
-def logExceptionStage(logFile, exc) {
+def logExceptionStage(os, logFile, exc) {
     def msg = exc.toString()
 
     resultsStop[logFile] = new Date()
@@ -356,7 +356,7 @@ def logExceptionStage(logFile, exc) {
 
     echo "failed ${logFile}: ${resultsStop[logFile]} ${msg}"
 
-    node ("linux") {
+    if (os == "linux") {
         sh "echo 'failed ${logFile}: ${resultsStart[logFile]} ${msg}' | tee -a ${logFile}"
     }
 
@@ -756,15 +756,15 @@ def jslint(os, edition, maintainer) {
     def logFile = "${arch}/jslint.log"
 
     try {
-        logStartStage(logFile, logFile)
+        logStartStage(os, logFile, logFile)
 
         shellAndPipe("./Installation/Pipeline/test_jslint.sh",logFile)
         sh "if grep ERROR ${logFile}; then exit 1; fi"
 
-        logStopStage(logFile)
+        logStopStage(os, logFile)
     }
     catch (exc) {
-        logExceptionStage(logFile, exc)
+        logExceptionStage(os, logFile, exc)
 
         renameFolder(arch, archFail)
         fileOperations([fileCreateOperation(fileContent: 'JSLINT FAILED', fileName: "${archDir}-FAIL.txt")])
@@ -879,7 +879,7 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
 
               def runDir = "run.${testIndex}"
 
-              logStartStage(logFileRel, logFileRel)
+              logStartStage(os, logFileRel, logFileRel)
 
               try {
 
@@ -927,10 +927,10 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
                   }
 
                   checkCores(os, runDir)
-                  logStopStage(logFileRel)
+                  logStopStage(os, logFileRel)
               }
               catch (exc) {
-                  logExceptionStage(logFileRel, exc)
+                  logExceptionStage(os, logFileRel, exc)
 
                   def msg = exc.toString()
 
@@ -1071,12 +1071,12 @@ def testStepParallel(os, edition, maintainer, modeList) {
     def name = "test-${os}-${edition}-${maintainer}"
 
     try {
-        logStartStage(name, null)
+        logStartStage(null, name, null)
         parallel branches
-        logStopStage(name)
+        logStopStage(null, name)
     }
     catch (exc) {
-        logExceptionStage(name, exc)
+        logExceptionStage(null, name, exc)
         throw exc
     }
 }
@@ -1224,7 +1224,7 @@ def buildEdition(os, edition, maintainer) {
     def logFile = "${arch}/build.log"
 
     try {
-        logStartStage(logFile, logFile)
+        logStartStage(os, logFile, logFile)
 
         if (os == 'linux' || os == 'mac') {
             if (! fileExists('build/Makefile')) {
@@ -1261,10 +1261,10 @@ def buildEdition(os, edition, maintainer) {
             powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}_${maintainer}.ps1"
         }
 
-        logStopStage(logFile)
+        logStopStage(os, logFile)
     }
     catch (exc) {
-        logExceptionStage(logFile, exc)
+        logExceptionStage(os, logFile, exc)
 
         def msg = exc.toString()
         
@@ -1352,16 +1352,16 @@ def createDockerImage(edition, maintainer, stageName) {
 
                     withEnv(["DOCKERTAG=${packageName}-${dockerTag}"]) {
                         try {
-                            logStartStage(logFile, logFile)
+                            logStartStage(os, logFile, logFile)
 
                             shellAndPipe("./scripts/build-docker.sh", logFile)
                             shellAndPipe("docker tag arangodb:${packageName}-${dockerTag} c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag}", logFile)
                             shellAndPipe("docker push c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag}", logFile)
 
-                            logStopStage(logFile)
+                            logStopStage(os, logFile)
                         }
                         catch (exc) {
-                            logExceptionStage(logFile, exc)
+                            logExceptionStage(os, logFile, exc)
 
                             renameFolder(arch, archFail)
                             fileOperations([fileCreateOperation(fileContent: 'DOCKER FAILED', fileName: "${archDir}-FAIL.txt")])
