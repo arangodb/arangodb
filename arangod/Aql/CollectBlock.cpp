@@ -871,3 +871,234 @@ bool HashedCollectBlock::GroupKeyEqual::operator()(
 
   return true;
 }
+
+DistinctCollectBlock::DistinctCollectBlock(ExecutionEngine* engine,
+                                           CollectNode const* en)
+    : ExecutionBlock(engine, en),
+      _groupRegisters() {
+  for (auto const& p : en->_groupVariables) {
+    // We know that planRegisters() has been run, so
+    // getPlanNode()->_registerPlan is set up
+    auto itOut = en->getRegisterPlan()->varInfo.find(p.first->id);
+    TRI_ASSERT(itOut != en->getRegisterPlan()->varInfo.end());
+
+    auto itIn = en->getRegisterPlan()->varInfo.find(p.second->id);
+    TRI_ASSERT(itIn != en->getRegisterPlan()->varInfo.end());
+    TRI_ASSERT((*itIn).second.registerId < ExecutionNode::MaxRegisterId);
+    TRI_ASSERT((*itOut).second.registerId < ExecutionNode::MaxRegisterId);
+    _groupRegisters.emplace_back(
+        std::make_pair((*itOut).second.registerId, (*itIn).second.registerId));
+  }
+
+  TRI_ASSERT(!_groupRegisters.empty());
+      
+  _seen.reset(new std::unordered_set<std::vector<AqlValue>, GroupKeyHash, GroupKeyEqual>(
+      1024, GroupKeyHash(transaction(), _groupRegisters.size()), GroupKeyEqual(transaction())));
+}
+
+DistinctCollectBlock::~DistinctCollectBlock() {
+  clearValues();
+}
+
+/// @brief initialize
+int DistinctCollectBlock::initialize() {
+  int res = ExecutionBlock::initialize();
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+int DistinctCollectBlock::initializeCursor(AqlItemBlock* items,
+                                           size_t pos) {
+  DEBUG_BEGIN_BLOCK();
+  int res = ExecutionBlock::initializeCursor(items, pos);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  DEBUG_BEGIN_BLOCK();
+  _pos = 0;
+  clearValues();
+  DEBUG_END_BLOCK();
+
+  return TRI_ERROR_NO_ERROR;
+
+  // cppcheck-suppress style
+  DEBUG_END_BLOCK();
+}
+
+void DistinctCollectBlock::clearValues() {
+  if (_seen) {
+    for (auto& it : *_seen) {
+      for (auto& it2 : it) {
+        const_cast<AqlValue*>(&it2)->destroy();
+      }
+    }
+    _seen->clear(); 
+  }
+}
+
+int DistinctCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
+                                        bool skipping, AqlItemBlock*& result,
+                                        size_t& skipped) {
+  TRI_ASSERT(result == nullptr && skipped == 0);
+
+  if (_done) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
+  std::vector<AqlValue> groupValues;
+  groupValues.reserve(_groupRegisters.size());
+
+  std::unique_ptr<AqlItemBlock> res;
+
+  if (_buffer.empty()) {
+    if (!ExecutionBlock::getBlock(atLeast, atMost)) {
+      // done
+      _done = true;
+      return TRI_ERROR_NO_ERROR;
+    }
+    _pos = 0;  // this is in the first block
+  }
+
+  // If we get here, we do have _buffer.front()
+  AqlItemBlock* cur = _buffer.front();
+  TRI_ASSERT(cur != nullptr);
+
+  if (!skipping) {
+    res.reset(requestBlock(atMost, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+
+    TRI_ASSERT(cur->getNrRegs() <= res->getNrRegs());
+    inheritRegisters(cur, res.get(), _pos);
+  }
+
+  while (skipped < atMost) {
+    // read the next input row
+    TRI_IF_FAILURE("DistinctCollectBlock::getOrSkipSomeOuter") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+
+    throwIfKilled();  // check if we were aborted
+   
+    groupValues.clear(); 
+    // for hashing simply re-use the aggregate registers, without cloning
+    // their contents
+    for (size_t i = 0; i < _groupRegisters.size(); ++i) {
+      groupValues.emplace_back(
+          cur->getValueReference(_pos, _groupRegisters[i].second));
+    }
+
+    // now check if we already know this group
+    auto it = _seen->find(groupValues);
+
+    if (it == _seen->end()) {
+      if (!skipping) {
+        size_t i = 0;
+        for (auto& it : _groupRegisters) {
+          res->setValue(skipped, it.first, groupValues[i].clone());
+          ++i;
+        }
+      }
+      // transfer ownership 
+      std::vector<AqlValue> copy;
+      copy.reserve(groupValues.size());
+      for (auto const& it : groupValues) {
+        copy.emplace_back(it.clone());
+      }
+      _seen->emplace(std::move(copy));
+      ++skipped;
+    }
+
+    if (++_pos >= cur->size()) {
+      _buffer.pop_front();
+      _pos = 0;
+
+      bool hasMore = !_buffer.empty();
+
+      if (!hasMore) {
+        try {
+          TRI_IF_FAILURE("DistinctCollectBlock::hasMore") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+          hasMore = ExecutionBlock::getBlock(atLeast, atMost);
+        } catch (...) {
+          // prevent leak
+          returnBlock(cur);
+          throw;
+        }
+      }
+
+      if (!hasMore) {
+        // no more input. we're done
+        try {
+          // emit last buffered group
+          if (!skipping) {
+            TRI_IF_FAILURE("DistinctCollectBlock::getOrSkipSome") {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+            }
+
+            TRI_ASSERT(cur != nullptr);
+            res->shrink(skipped, false);
+          } 
+          returnBlock(cur);
+          _done = true;
+          result = res.release();
+          return TRI_ERROR_NO_ERROR;
+        } catch (...) {
+          returnBlock(cur);
+          throw;
+        }
+      }
+
+      // hasMore
+      returnBlock(cur);
+      cur = _buffer.front();
+    }
+  }
+
+  if (!skipping) {
+    TRI_ASSERT(skipped > 0);
+    res->shrink(skipped, false);
+  }
+
+  result = res.release();
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief hasher for groups
+size_t DistinctCollectBlock::GroupKeyHash::operator()(
+    std::vector<AqlValue> const& value) const {
+  uint64_t hash = 0x12345678;
+
+  TRI_ASSERT(value.size() == _num);
+
+  for (auto const& it : value) {
+    // we must use the slow hash function here, because a value may have 
+    // different representations in case its an array/object/number
+    // (calls normalizedHash() internally)
+    hash = it.hash(_trx, hash);
+  }
+
+  return static_cast<size_t>(hash);
+}
+
+/// @brief comparator for groups
+bool DistinctCollectBlock::GroupKeyEqual::operator()(
+    std::vector<AqlValue> const& lhs, std::vector<AqlValue> const& rhs) const {
+  size_t const n = lhs.size();
+
+  for (size_t i = 0; i < n; ++i) {
+    int res =
+        AqlValue::Compare(_trx, lhs[i], rhs[i], false);
+
+    if (res != 0) {
+      return false;
+    }
+  }
+
+  return true;
+}

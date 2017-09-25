@@ -48,6 +48,7 @@ class CollectNode : public ExecutionNode {
   friend class HashedCollectBlock;
   friend class RedundantCalculationsReplacer;
   friend class SortedCollectBlock;
+  friend class DistinctCollectBlock;
 
  public:
   CollectNode(

@@ -173,6 +173,51 @@ class HashedCollectBlock : public ExecutionBlock {
   };
 };
 
+class DistinctCollectBlock : public ExecutionBlock {
+ public:
+  DistinctCollectBlock(ExecutionEngine*, CollectNode const*);
+  ~DistinctCollectBlock();
+
+  int initialize() override final;
+  
+  /// @brief initializeCursor
+  int initializeCursor(AqlItemBlock* items, size_t pos) override;
+
+ private:
+  int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+                    AqlItemBlock*& result, size_t& skipped) override;
+
+  void clearValues();
+
+ private:
+  /// @brief pairs, consisting of out register and in register
+  std::vector<std::pair<RegisterId, RegisterId>> _groupRegisters;
+  
+  /// @brief hasher for a vector of AQL values
+  struct GroupKeyHash {
+    GroupKeyHash(transaction::Methods* trx, size_t num)
+        : _trx(trx), _num(num) {}
+
+    size_t operator()(std::vector<AqlValue> const& value) const;
+
+    transaction::Methods* _trx;
+    size_t const _num;
+  };
+
+  /// @brief comparator for a vector of AQL values
+  struct GroupKeyEqual {
+    explicit GroupKeyEqual(transaction::Methods* trx)
+        : _trx(trx) {}
+
+    bool operator()(std::vector<AqlValue> const&,
+                    std::vector<AqlValue> const&) const;
+
+    transaction::Methods* _trx;
+  };
+  
+  std::unique_ptr<std::unordered_set<std::vector<AqlValue>, GroupKeyHash, GroupKeyEqual>> _seen;
+};
+
 }  // namespace arangodb::aql
 }  // namespace arangodb
 
