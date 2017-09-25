@@ -71,6 +71,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
     for (auto link : links) {
       link->insert(&trx, rev, doc, false);
     }
+    trx.commit();
 
     return;
   }
@@ -99,6 +100,7 @@ void IResearchRocksDBRecoveryHelper::DeleteCF(uint32_t column_family_id,
     for (auto link : links) {
       link->remove(&trx, rev, false);
     }
+    trx.commit();
 
     return;
   }
