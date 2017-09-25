@@ -1133,7 +1133,7 @@ SECTION("StringTerm") {
       auto const keySlice = docSlice.get("name");
       auto const fieldSlice = docSlice.get("duplicated");
 
-      if (fieldSlice.isNone() || "vczc" == arangodb::iresearch::getStringRef(fieldSlice)) {
+      if (!fieldSlice.isNone() && "vczc" == arangodb::iresearch::getStringRef(fieldSlice)) {
         continue;
       }
 
@@ -1196,7 +1196,7 @@ SECTION("StringTerm") {
       arangodb::velocypack::Slice docSlice(doc.vpack());
       auto const fieldSlice = docSlice.get("duplicated");
 
-      if (fieldSlice.isNone() || "abcd" == arangodb::iresearch::getStringRef(fieldSlice)) {
+      if (!fieldSlice.isNone() && "abcd" == arangodb::iresearch::getStringRef(fieldSlice)) {
         continue;
       }
 
@@ -3121,7 +3121,7 @@ SECTION("NumericTerm") {
       auto const key = keySlice.getNumber<size_t>();
       auto const valueSlice = docSlice.get("value");
 
-      if (valueSlice.isNone() || valueSlice.getNumber<ptrdiff_t>() == 100) {
+      if (!valueSlice.isNone() && valueSlice.getNumber<ptrdiff_t>() == 100) {
         continue;
       }
 
@@ -3196,7 +3196,7 @@ SECTION("NumericTerm") {
       arangodb::velocypack::Slice docSlice(doc.vpack());
       auto const fieldSlice = docSlice.get("value");
 
-      if (fieldSlice.isNone()|| (fieldSlice.isNumber() && -1. == fieldSlice.getNumber<double>())) {
+      if (!fieldSlice.isNone() && (fieldSlice.isNumber() && -1. == fieldSlice.getNumber<double>())) {
         continue;
       }
 
@@ -3231,7 +3231,7 @@ SECTION("NumericTerm") {
       arangodb::velocypack::Slice docSlice(doc.vpack());
       auto const valueSlice = docSlice.get("value");
 
-      if (valueSlice.isNone() || 123 == valueSlice.getNumber<ptrdiff_t>()) {
+      if (!valueSlice.isNone() && 123 == valueSlice.getNumber<ptrdiff_t>()) {
         continue;
       }
 
@@ -5910,7 +5910,7 @@ SECTION("BooleanTerm") {
       auto const keySlice = docSlice.get("seq");
       auto const fieldSlice = docSlice.get("value");
 
-      if (fieldSlice.isNone() || (fieldSlice.isString() && "true"  == arangodb::iresearch::getStringRef(fieldSlice))) {
+      if (!fieldSlice.isNone() && (fieldSlice.isString() && "true"  == arangodb::iresearch::getStringRef(fieldSlice))) {
         continue;
       }
 
@@ -5951,7 +5951,7 @@ SECTION("BooleanTerm") {
       auto const keySlice = docSlice.get("seq");
       auto const fieldSlice = docSlice.get("value");
 
-      if (fieldSlice.isNone() || (fieldSlice.isString() && "false"  == arangodb::iresearch::getStringRef(fieldSlice))) {
+      if (!fieldSlice.isNone() && (fieldSlice.isString() && "false"  == arangodb::iresearch::getStringRef(fieldSlice))) {
         continue;
       }
 
@@ -5992,7 +5992,7 @@ SECTION("BooleanTerm") {
       auto const keySlice = docSlice.get("seq");
       auto const fieldSlice = docSlice.get("value");
 
-      if (fieldSlice.isNone() || (fieldSlice.isNumber() && 0. == fieldSlice.getNumber<double>())) {
+      if (!fieldSlice.isNone() && (fieldSlice.isNumber() && 0. == fieldSlice.getNumber<double>())) {
         continue;
       }
 
@@ -6032,7 +6032,7 @@ SECTION("BooleanTerm") {
       auto const keySlice = docSlice.get("seq");
       auto const fieldSlice = docSlice.get("value");
 
-      if (fieldSlice.isNone() || (fieldSlice.isNumber() && 1. == fieldSlice.getNumber<double>())) {
+      if (!fieldSlice.isNone() && (fieldSlice.isNumber() && 1. == fieldSlice.getNumber<double>())) {
         continue;
       }
 
@@ -6072,7 +6072,7 @@ SECTION("BooleanTerm") {
       auto const keySlice = docSlice.get("seq");
       auto const fieldSlice = docSlice.get("value");
 
-      if (fieldSlice.isNone() || fieldSlice.isNull()) {
+      if (!fieldSlice.isNone() && fieldSlice.isNull()) {
         continue;
       }
 
@@ -6111,7 +6111,7 @@ SECTION("BooleanTerm") {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
 
-      if (valueSlice.isNone() || (valueSlice.isBoolean() && valueSlice.getBoolean())) {
+      if (!valueSlice.isNone() && (valueSlice.isBoolean() && valueSlice.getBoolean())) {
         continue;
       }
 
@@ -6151,7 +6151,7 @@ SECTION("BooleanTerm") {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
 
-      if (valueSlice.isNone() || (valueSlice.isBoolean() && !valueSlice.getBoolean())) {
+      if (!valueSlice.isNone() && (valueSlice.isBoolean() && !valueSlice.getBoolean())) {
         continue;
       }
 
@@ -6191,7 +6191,7 @@ SECTION("BooleanTerm") {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
 
-      if (valueSlice.isNone() || (valueSlice.isBoolean() && !valueSlice.getBoolean())) {
+      if (!valueSlice.isNone() && (valueSlice.isBoolean() && !valueSlice.getBoolean())) {
         continue;
       }
 
@@ -8011,7 +8011,7 @@ SECTION("NullTerm") {
       auto const keySlice = docSlice.get("seq");
       auto const fieldSlice = docSlice.get("value");
 
-      if (fieldSlice.isNone() || "null"  == arangodb::iresearch::getStringRef(fieldSlice)) {
+      if (!fieldSlice.isNone() && "null"  == arangodb::iresearch::getStringRef(fieldSlice)) {
         continue;
       }
 
@@ -8051,7 +8051,7 @@ SECTION("NullTerm") {
       auto const keySlice = docSlice.get("seq");
       auto const fieldSlice = docSlice.get("value");
 
-      if (fieldSlice.isNone() || (fieldSlice.isNumber() && 0. == fieldSlice.getNumber<double>())) {
+      if (!fieldSlice.isNone() && (fieldSlice.isNumber() && 0. == fieldSlice.getNumber<double>())) {
         continue;
       }
 
@@ -8090,7 +8090,7 @@ SECTION("NullTerm") {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
 
-      if (valueSlice.isNone() || valueSlice.isNull()) {
+      if (!valueSlice.isNone() && valueSlice.isNull()) {
         continue;
       }
 
@@ -8130,7 +8130,7 @@ SECTION("NullTerm") {
       arangodb::velocypack::Slice docSlice = doc.slice().resolveExternals();
       auto const valueSlice = docSlice.get("value");
 
-      if (valueSlice.isNone() || valueSlice.isNull()) {
+      if (!valueSlice.isNone() && valueSlice.isNull()) {
         continue;
       }
 
