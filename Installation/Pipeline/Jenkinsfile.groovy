@@ -974,7 +974,6 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
 
         try {
             // this is an `Array.reduce()` in groovy :S
-            def testIndex = 0
             def testSteps = tests.inject([:]) { testMap, testStruct ->
                 def name = testStruct[0]
                 def test = testStruct[1]
