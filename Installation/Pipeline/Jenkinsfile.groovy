@@ -949,6 +949,11 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
 }
 
 def executeTests(os, edition, maintainer, mode, engine, stageName) {
+    def archDir  = "${os}-${edition}-${maintainer}"
+    def arch     = "${archDir}/03-test-${mode}-${engine}"
+    def archFail = "${arch}-FAIL"
+    def archRun  = "${arch}-RUN"
+
     def testIndex = 0
     def tests = getTests(os, edition, maintainer, mode, engine)
 
