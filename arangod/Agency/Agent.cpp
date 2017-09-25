@@ -254,6 +254,8 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     }
   }
 
+  wakeupMainLoop();
+
   duration<double> reportInTime = system_clock::now() - startTime;
   if (reportInTime.count() > 0.1) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
