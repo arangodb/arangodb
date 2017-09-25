@@ -368,19 +368,19 @@ def generateResult() {
         def stopf = stop == "" ? "-" : stop.format('yyyy/MM/dd HH:mm:ss')
         def color = 'bgcolor="#FF8080"'
 
-        if (msg == "finished") {
-            color = 'bgcolor="#80FF80"'
-        }
-        else if (msg == "started") {
-            color = 'bgcolor="#8080FF"'
-        }
-
         def la = ""
         def lb = ""
 
-        if (link != null) {
-            la = "<a href=\"$link\">"
-            lb = "</a>"
+        if (msg == "finished") {
+            color = 'bgcolor="#80FF80"'
+
+            if (link != null) {
+                la = "<a href=\"$link\">"
+                lb = "</a>"
+            }
+        }
+        else if (msg == "started") {
+            color = 'bgcolor="#8080FF"'
         }
 
         results += "${key}: ${startf} - ${stopf} (${diff}) ${msg}\n"
