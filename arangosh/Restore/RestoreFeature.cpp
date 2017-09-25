@@ -345,9 +345,9 @@ int RestoreFeature::sendRestoreData(std::string const& cname,
   return TRI_ERROR_NO_ERROR;
 }
 
-static bool SortCollections(VPackSlice const& l, VPackSlice const& r) {
-  VPackSlice const left = l.get("parameters");
-  VPackSlice const right = r.get("parameters");
+static bool SortCollections(VPackBuilder const& l, VPackBuilder const& r) {
+  VPackSlice const left = l.slice().get("parameters");
+  VPackSlice const right = r.slice().get("parameters");
 
   // First we sort by distribution.
   // We first have to create collections defining the distribution.
@@ -389,8 +389,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
     std::vector<std::string> const files =
         FileUtils::listFiles(_inputDirectory);
     std::string const suffix = std::string(".structure.json");
-    std::vector<VPackBuilder> collectionBuilders;
-    std::vector<VPackSlice> collections;
+    std::vector<VPackBuilder> collections;
 
     // Step 1 determine all collections to process
     {
@@ -472,18 +471,17 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
           // Ich muss nur diesen namen überschreiben, der Rest soll identisch
           // bleiben.
         } else {
-          collectionBuilders.emplace_back(std::move(fileContentBuilder));
-          collections.emplace_back(fileContent);
+          //std::shared_ptr<VPackBuffer<uint8_t>> buff = fileContentBuilder.steal();
+          collections.emplace_back(std::move(fileContentBuilder));
         }
       }
     }
-
     std::sort(collections.begin(), collections.end(), SortCollections);
-
+    
     StringBuffer buffer(true);
-
     // step2: run the actual import
-    for (VPackSlice const& collection : collections) {
+    for (VPackBuilder const& b : collections) {
+      VPackSlice const collection = b.slice();
       VPackSlice const parameters = collection.get("parameters");
       VPackSlice const indexes = collection.get("indexes");
       std::string const cname =
@@ -550,7 +548,6 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
             if (buffer.reserve(16384) != TRI_ERROR_NO_ERROR) {
               TRI_TRACKED_CLOSE_FILE(fd);
               errorMsg = "out of memory";
-
               return TRI_ERROR_OUT_OF_MEMORY;
             }
 
@@ -652,8 +649,12 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
         }
       }
     }
+  } catch (std::exception const& ex) {
+    errorMsg = "arangorestore terminated because of an unhandled exception: ";
+    errorMsg.append(ex.what());
+    return TRI_ERROR_INTERNAL;
   } catch (...) {
-    errorMsg = "out of memory";
+    errorMsg = "arangorestore out of memory";
     return TRI_ERROR_OUT_OF_MEMORY;
   }
   return TRI_ERROR_NO_ERROR;

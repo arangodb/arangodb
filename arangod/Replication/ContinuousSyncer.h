@@ -34,7 +34,8 @@ class ContinuousSyncer : public TailingSyncer {
  public:
   ContinuousSyncer(TRI_vocbase_t*,
                    TRI_replication_applier_configuration_t const*,
-                   TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
+                   TRI_voc_tick_t initialTick, bool useTick,
+                   TRI_voc_tick_t barrierId);
 
   ~ContinuousSyncer();
 
@@ -44,9 +45,8 @@ class ContinuousSyncer : public TailingSyncer {
 
   /// @brief return the syncer's replication applier
   TRI_replication_applier_t* applier() const { return _applier; }
-  
+
  private:
-  
   /// @brief called before marker is processed
   void appliedMarker(TRI_voc_tick_t firstRegularTick,
                      TRI_voc_tick_t newTick) override;
@@ -73,7 +73,7 @@ class ContinuousSyncer : public TailingSyncer {
   /// @brief run the continuous synchronization
   int followMasterLog(std::string&, TRI_voc_tick_t&, TRI_voc_tick_t, uint64_t&,
                       bool&, bool&);
-  
+
  private:
   /// @brief pointer to the applier state
   TRI_replication_applier_t* _applier;
