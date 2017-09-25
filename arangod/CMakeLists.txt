@@ -272,6 +272,7 @@ SET(ARANGOD_SOURCES
   Pregel/WorkerConfig.cpp
   Replication/ContinuousSyncer.cpp
   Replication/InitialSyncer.cpp
+  Replication/TailingSyncer.cpp
   Replication/Syncer.cpp
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminRoutingHandler.cpp

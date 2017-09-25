@@ -510,7 +510,6 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
     // copy default options
     VPackOptions options = VPackOptions::Defaults;
     options.checkAttributeUniqueness = true;
-    std::shared_ptr<VPackBuilder> parsedRequest;
     VPackSlice slice;
     try {
       slice = _request->payload(&options);

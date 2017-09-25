@@ -420,8 +420,7 @@ void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
   // StringUtils::itoa(dump._lastFoundTick));
   _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK, "0");
   _response->setContentType(rest::ContentType::DUMP);
-  //_response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
-  // dump._fromTickIncluded ? "true" : "false");
+  // always true to satisfy continuous syncer
   _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT, "true");
   VPackSlice slice = VelocyPackHelper::EmptyArrayValue();
   if (useVst) {
