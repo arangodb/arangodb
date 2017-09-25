@@ -498,6 +498,14 @@ std::string AgencyCommManager::path(std::string const& p1,
          basics::StringUtils::trim(p2, "/");
 }
 
+std::vector<std::string> AgencyCommManager::slicePath(std::string const& path) {
+  std::vector<std::string> split = basics::StringUtils::split(path, '/');
+  if (split.size() > 0 && split[0] != AgencyCommManager::path()) {
+    split.insert(split.begin(), AgencyCommManager::path());
+  }
+  return split;
+}
+
 std::string AgencyCommManager::generateStamp() {
   time_t tt = time(0);
   struct tm tb;
@@ -1693,11 +1701,7 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
     builder.add(VPackValue("Current")); // Current ----------------------------
     {
       VPackObjectBuilder c(&builder);
-      builder.add(VPackValue("AsyncReplication"));
-      {
-        VPackObjectBuilder d(&builder);
-        builder.add("Master", VPackSlice::nullSlice());
-      }
+      addEmptyVPackObject("AsyncReplication", builder);
       builder.add(VPackValue("Collections"));
       {
         VPackObjectBuilder d(&builder);
@@ -1723,11 +1727,7 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
     builder.add(VPackValue("Plan")); // Plan ----------------------------------
     {
       VPackObjectBuilder c(&builder);
-      builder.add(VPackValue("AsyncReplication"));
-      {
-        VPackObjectBuilder d(&builder);
-        //builder.add("Master", VPackSlice::nullSlice());
-      }
+      addEmptyVPackObject("AsyncReplication", builder);
       addEmptyVPackObject("Coordinators", builder);
       builder.add(VPackValue("Databases"));
       {

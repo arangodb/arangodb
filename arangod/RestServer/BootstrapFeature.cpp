@@ -70,7 +70,7 @@ static bool raceForBoostrapLead() {
     if (!result.successful()) {
       // Error in communication, note that value not found is not an error
       LOG_TOPIC(TRACE, Logger::STARTUP)
-      << "raceForClusterBootstrap: no agency communication";
+        << "raceForClusterBootstrap: no agency communication";
       sleep(1);
       continue;
     }
@@ -79,14 +79,21 @@ static bool raceForBoostrapLead() {
       std::vector<std::string>({AgencyCommManager::path(), boostrapKey}));
     if (value.isString()) {
       // key was found and is a string
-      if (value.copyString().find("done") != std::string::npos) {
+      std::string val = value.copyString();
+      if (val.find("done") != std::string::npos) {
         // all done, let's get out of here:
         LOG_TOPIC(TRACE, Logger::STARTUP)
           << "raceForClusterBootstrap: bootstrap already done";
         return false;
       }
+      if (val == arangodb::ServerState::instance()->getId()) {
+        // OK, we handle things now
+        LOG_TOPIC(DEBUG, Logger::STARTUP)
+          << "raceForClusterBootstrap: race won, we do the bootstrap";
+        return true;
+      }
       LOG_TOPIC(DEBUG, Logger::STARTUP)
-      << "raceForClusterBootstrap: somebody else does the bootstrap";
+        << "raceForClusterBootstrap: somebody else does the bootstrap";
       sleep(1);
       continue;
     }
@@ -223,25 +230,29 @@ void BootstrapFeature::start() {
     // single server with an agency attached to it
     if (AgencyCommManager::isEnabled()) {
       
+      AgencyComm agency;
+      std::string const path = "/Plan/AsyncReplication/Master";
+      std::vector<std::string> slicePath = AgencyCommManager::slicePath(path);
+      
       while (true) {
         /// returns if we are boostrap lead or bootstrap is done
         bool inCharge = raceForBoostrapLead();
         if (!inCharge) {
+          LOG_TOPIC(TRACE, Logger::STARTUP) << "We are slave";
           break;
         }
-        
-        // TODO
-        AgencyComm agency;
+
         VPackBuilder newJson;
         newJson.add(VPackValue(ServerState::instance()->getId()));
-        AgencyCommResult r = agency.casValue("/Plan/AsyncReplication/Master", VPackSlice::nullSlice(),
+        AgencyCommResult r = agency.casValue(path, VPackSlice::nullSlice(),
                                              newJson.slice(), 0, 300.0);
         if (r.successful()) {
+          LOG_TOPIC(TRACE, Logger::STARTUP) << "We are master now";
           break;
         }
         
         // lets try again
-        usleep(500000);
+        sleep(1);
       }
     }
   }

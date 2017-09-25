@@ -524,7 +524,8 @@ class AgencyCommManager {
   static std::string path();
   static std::string path(std::string const&);
   static std::string path(std::string const&, std::string const&);
-
+  static std::vector<std::string> slicePath(std::string const&);
+  
   static std::string generateStamp();
 
  public:
