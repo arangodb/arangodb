@@ -1017,6 +1017,20 @@ bool State::compact(index_t cind) {
   //   cind <= _commitIndex
   // and usually it is < because compactionKeepSize > 0. We start at the
   // latest compaction state and advance from there:
+  {
+    MUTEX_LOCKER(_logLocker, _logLock);
+    if (cind <= _cur) {
+      LOG_TOPIC(INFO, Logger::AGENCY)
+        << "Not compacting log at index " << cind
+        << ", because we already have a later snapshot at index " << _cur;
+      return true;
+    }
+  }
+
+  // Move next compaction index forward to avoid a compaction wakeup 
+  // whilst we are working:
+  _nextCompactionAfter += _agent->config().compactionStepSize();
+
   Store snapshot(_agent, "snapshot");
   index_t index;
   term_t term;
@@ -1058,7 +1072,6 @@ bool State::compact(index_t cind) {
       LOG_TOPIC(INFO, Logger::AGENCY) << e.what();
     }
   }
-  _nextCompactionAfter += _agent->config().compactionStepSize();
   return true;
 }
 
