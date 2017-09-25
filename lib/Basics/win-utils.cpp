@@ -722,6 +722,7 @@ bool terminalKnowsANSIColors()
   return IsWindows8OrGreater();
 }
 
+#include <atlstr.h>
 std::string getFileNameFromHandle(HANDLE fileHandle) {
   char  buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR)*MAX_PATH];
   FILE_NAME_INFO *FileInformation = (FILE_NAME_INFO*) buff;
