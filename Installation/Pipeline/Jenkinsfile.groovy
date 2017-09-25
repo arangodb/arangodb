@@ -391,7 +391,7 @@ def generateResult() {
 
     html += "</table></body></html>\n"
 
-    node("master") {
+    node("linux") {
         fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
         fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
 
@@ -1444,7 +1444,7 @@ timestamps {
 
         checkCommitMessages()
 
-        node("master") {
+        node("linux") {
             fileOperations([fileCreateOperation(fileContent: overview, fileName: "overview.txt")])
             archiveArtifacts(allowEmptyArchive: true, artifacts: "overview.txt")
         }
