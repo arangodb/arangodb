@@ -32,7 +32,10 @@ else
     exit 1
 fi
 
+PACKAGING=
+
 if [ "$os" == linux ]; then
+    PACKAGING="-DPACKAGING=DEB"
     type="${type}_linux"
     load=40
 elif [ "$os" == mac ]; then
@@ -65,10 +68,12 @@ echo "PWD: `pwd`" | tee -a $logdir/build.log
     CXXFLAGS=-fno-omit-frame-pointer \
         cmake \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_INSTALL_PREFIX=/ \
             -DUSE_CATCH_TESTS=On \
             -DDEBUG_SYNC_REPLICATION=On \
-            $MAINTAINER \
             $ENTERPRISE \
+            $MAINTAINER \
+            $PACKAGING \
             ..  2>&1 | tee -a ../$logdir/build.log
 
     echo "`date +%T` building..."

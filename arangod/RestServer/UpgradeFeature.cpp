@@ -107,7 +107,8 @@ void UpgradeFeature::start() {
   if (_upgradeCheck) {
     upgradeDatabase();
 
-    if (!init->restoreAdmin() && !init->defaultPassword().empty()) {
+    if (!init->restoreAdmin() && !init->defaultPassword().empty() &&
+        ServerState::instance()->isSingleServerOrCoordinator()) {
       ai->updateUser("root", [&](AuthUserEntry& entry) {
         entry.updatePassword(init->defaultPassword());
       });
@@ -115,11 +116,10 @@ void UpgradeFeature::start() {
   }
 
   // change admin user
-  if (init->restoreAdmin()) {
-    Result res;
-
-    res = ai->removeAllUsers();
-
+  if (init->restoreAdmin() &&
+      ServerState::instance()->isSingleServerOrCoordinator()) {
+    
+    Result res = ai->removeAllUsers();
     if (res.fail()) {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to create clear users: "
                                                << res.errorMessage();
@@ -128,7 +128,6 @@ void UpgradeFeature::start() {
     }
 
     res = ai->storeUser(true, "root", init->defaultPassword(), true);
-
     if (res.fail() && res.errorNumber() == TRI_ERROR_USER_NOT_FOUND) {
       res = ai->storeUser(false, "root", init->defaultPassword(), true);
     }
@@ -139,7 +138,6 @@ void UpgradeFeature::start() {
       *_result = EXIT_FAILURE;
       return;
     }
-
     *_result = EXIT_SUCCESS;
   }
 

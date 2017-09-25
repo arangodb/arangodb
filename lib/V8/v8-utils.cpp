@@ -615,7 +615,9 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         pos = fullurl.find("//[::]");
 
         if (pos != std::string::npos) {
-          fullurl.replace(pos, strlen("//[::]"), "//[::1]");
+          // if the server does not support ipv6, the bind will still
+          // succeed, but you need to connect to 127.0.0.1
+          fullurl.replace(pos, strlen("//[::]"), "//127.0.0.1");
         }
       }
 
