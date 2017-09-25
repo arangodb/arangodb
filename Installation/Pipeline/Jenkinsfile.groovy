@@ -140,6 +140,10 @@ if (env.JOB_BASE_NAME == "arangodb-ci-devel") {
     env.BRANCH_NAME = "devel"
 }
 
+if (env.JOB_BASE_NAME == "arangodb-ci-3.2") {
+    env.BRANCH_NAME = "3.2"
+}
+
 sourceBranchLabel = env.BRANCH_NAME
 
 if (env.BRANCH_NAME =~ /^PR-/) {
