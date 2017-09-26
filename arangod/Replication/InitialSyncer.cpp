@@ -1149,7 +1149,7 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
     
     setProgress(progress.c_str());
 
-    int res = createCollection(parameters, &col);
+    int res = createCollection(vocbase(), parameters, &col);
 
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg =

@@ -105,7 +105,8 @@ class Syncer {
                                 std::string&);
 
   /// @brief creates a collection, based on the VelocyPack provided
-  int createCollection(arangodb::velocypack::Slice const&,
+  int createCollection(TRI_vocbase_t *vocbase,
+                       arangodb::velocypack::Slice const&,
                        arangodb::LogicalCollection**);
 
   /// @brief drops a collection, based on the VelocyPack provided
@@ -125,7 +126,7 @@ class Syncer {
   
   TRI_vocbase_t* loadVocbase(TRI_voc_tick_t dbId);
   
-  LogicalCollection* resolveCollection(VPackSlice const& slice);
+  LogicalCollection* resolveCollection(TRI_vocbase_t*, VPackSlice const& slice);
   
   /// @brief extract the collection by either id or name, may return nullptr!
   LogicalCollection* getCollectionByIdOrName(TRI_vocbase_t*, TRI_voc_cid_t,

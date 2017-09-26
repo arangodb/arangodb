@@ -242,7 +242,7 @@ int TailingSyncer::processDocument(TRI_replication_operation_e type,
   if (vocbase == nullptr) {
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
-  arangodb::LogicalCollection* col = resolveCollection(slice);
+  arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
   if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
@@ -507,7 +507,7 @@ int TailingSyncer::renameCollection(VPackSlice const& slice) {
   if (vocbase == nullptr) {
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
-  arangodb::LogicalCollection* col = resolveCollection(slice);
+  arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
   if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
@@ -525,7 +525,7 @@ int TailingSyncer::changeCollection(VPackSlice const& slice) {
   if (vocbase == nullptr) {
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
-  arangodb::LogicalCollection* col = resolveCollection(slice);
+  arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
   if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
@@ -596,10 +596,14 @@ int TailingSyncer::applyLogMarker(VPackSlice const& slice,
     if (_ignoreRenameCreateDrop) {
       return TRI_ERROR_NO_ERROR;
     }
-    if (slice.get("collection").isObject()) {
-      return createCollection(slice.get("collection"), nullptr);
+    TRI_vocbase_t* vocbase = loadVocbase(getDbId(slice));
+    if (vocbase == nullptr) {
+      return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
     }
-    return createCollection(slice.get("data"), nullptr);
+    if (slice.get("collection").isObject()) {
+      return createCollection(vocbase, slice.get("collection"), nullptr);
+    }
+    return createCollection(vocbase, slice.get("data"), nullptr);
   }
 
   else if (type == REPLICATION_COLLECTION_DROP) {
