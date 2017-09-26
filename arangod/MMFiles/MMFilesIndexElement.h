@@ -206,7 +206,7 @@ struct MMFilesSimpleIndexElement {
  public:
   constexpr MMFilesSimpleIndexElement() : _revisionId(0), _hashAndOffset(0) {}
   MMFilesSimpleIndexElement(TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const& value, uint32_t offset); 
-  MMFilesSimpleIndexElement(MMFilesSimpleIndexElement const& other) : _revisionId(other._revisionId), _hashAndOffset(other._hashAndOffset) {}
+  MMFilesSimpleIndexElement(MMFilesSimpleIndexElement const& other) noexcept : _revisionId(other._revisionId), _hashAndOffset(other._hashAndOffset) {}
   MMFilesSimpleIndexElement& operator=(MMFilesSimpleIndexElement const& other) noexcept {
     _revisionId = other._revisionId;
     _hashAndOffset = other._hashAndOffset;
@@ -214,16 +214,16 @@ struct MMFilesSimpleIndexElement {
   }
 
   /// @brief get the revision id of the document
-  inline TRI_voc_rid_t revisionId() const { return _revisionId; }
-  inline uint64_t hash() const { return _hashAndOffset & 0xFFFFFFFFULL; }
-  inline uint32_t offset() const { return static_cast<uint32_t>((_hashAndOffset & 0xFFFFFFFF00000000ULL) >> 32); }
+  inline TRI_voc_rid_t revisionId() const noexcept { return _revisionId; }
+  inline uint64_t hash() const noexcept { return _hashAndOffset & 0xFFFFFFFFULL; }
+  inline uint32_t offset() const noexcept { return static_cast<uint32_t>((_hashAndOffset & 0xFFFFFFFF00000000ULL) >> 32); }
   arangodb::velocypack::Slice slice(IndexLookupContext*) const;
   
-  inline operator bool() const { return _revisionId != 0; }
-  inline bool operator==(MMFilesSimpleIndexElement const& other) const {
+  inline operator bool() const noexcept { return _revisionId != 0; }
+  inline bool operator==(MMFilesSimpleIndexElement const& other) const noexcept {
     return _revisionId == other._revisionId && _hashAndOffset == other._hashAndOffset;
   }
-  inline bool operator<(MMFilesSimpleIndexElement const& other) const {
+  inline bool operator<(MMFilesSimpleIndexElement const& other) const noexcept {
     return _revisionId < other._revisionId;
   }
   
