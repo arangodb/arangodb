@@ -72,42 +72,6 @@ MMFilesRestReplicationHandler::MMFilesRestReplicationHandler(
 
 MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() {}
 
-/// @brief comparator to sort collections
-/// sort order is by collection type first (vertices before edges, this is
-/// because edges depend on vertices being there), then name
-bool MMFilesRestReplicationHandler::sortCollections(
-    arangodb::LogicalCollection const* l,
-    arangodb::LogicalCollection const* r) {
-  if (l->type() != r->type()) {
-    return l->type() < r->type();
-  }
-  std::string const leftName = l->name();
-  std::string const rightName = r->name();
-
-  return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
-}
-
-/// @brief filter a collection based on collection attributes
-bool MMFilesRestReplicationHandler::filterCollection(
-    arangodb::LogicalCollection* collection, void* data) {
-  bool includeSystem = *((bool*)data);
-
-  std::string const collectionName(collection->name());
-
-  if (!includeSystem && collectionName[0] == '_') {
-    // exclude all system collections
-    return false;
-  }
-
-  if (TRI_ExcludeCollectionReplication(collectionName.c_str(), includeSystem)) {
-    // collection is excluded from replication
-    return false;
-  }
-
-  // all other cases should be included
-  return true;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief insert the applier action into an action list
 ////////////////////////////////////////////////////////////////////////////////
@@ -716,12 +680,25 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
   if (found) {
     includeSystem = StringUtils::boolean(value);
   }
+  
+  auto nameFilter = [includeSystem](LogicalCollection const* collection) {
+    std::string const cname = collection->name();
+    if (!includeSystem && !cname.empty() && cname[0] == '_') {
+      // exclude all system collections
+      return false;
+    }
+
+    if (TRI_ExcludeCollectionReplication(cname, includeSystem)) {
+      // collection is excluded from replication
+      return false;
+    }
+
+    // all other cases should be included
+    return true;
+  };
 
   // collections and indexes
-  std::shared_ptr<VPackBuilder> collectionsBuilder;
-  collectionsBuilder =
-      _vocbase->inventory(tick, &filterCollection, (void*)&includeSystem, true,
-                          MMFilesRestReplicationHandler::sortCollections);
+  std::shared_ptr<VPackBuilder> collectionsBuilder = _vocbase->inventory(tick, nameFilter);
   VPackSlice const collections = collectionsBuilder->slice();
 
   TRI_ASSERT(collections.isArray());
@@ -748,7 +725,7 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
 
   std::string const tickString(std::to_string(tick));
   builder.add("tick", VPackValue(tickString));
-  builder.close();  // Toplevel
+  builder.close();  // top level
 
   generateResult(rest::ResponseCode::OK, builder.slice());
 }

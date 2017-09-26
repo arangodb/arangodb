@@ -291,9 +291,7 @@ struct TRI_vocbase_t {
   /// and optionally indexes
   /// the result is sorted by type and name (vertices before edges)
   std::shared_ptr<arangodb::velocypack::Builder> inventory(
-      TRI_voc_tick_t, bool (*)(arangodb::LogicalCollection*, void*), void*,
-      bool, std::function<bool(arangodb::LogicalCollection*,
-                               arangodb::LogicalCollection*)>);
+      TRI_voc_tick_t, std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
   /// @brief renames a collection
   int renameCollection(arangodb::LogicalCollection* collection,

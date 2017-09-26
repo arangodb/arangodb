@@ -788,11 +788,7 @@ std::vector<std::string> TRI_vocbase_t::collectionNames() {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::shared_ptr<VPackBuilder> TRI_vocbase_t::inventory(
-    TRI_voc_tick_t maxTick, bool (*filter)(arangodb::LogicalCollection*, void*),
-    void* data, bool shouldSort,
-    std::function<bool(arangodb::LogicalCollection*,
-                       arangodb::LogicalCollection*)>
-        sortCallback) {
+    TRI_voc_tick_t maxTick, std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter) {
   std::vector<arangodb::LogicalCollection*> collections;
 
   // cycle on write-lock
@@ -805,8 +801,17 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_t::inventory(
     collections = _collections;
   }
 
-  if (shouldSort && collections.size() > 1) {
-    std::sort(collections.begin(), collections.end(), sortCallback);
+  if (collections.size() > 1) {
+    // sort by type first and then only name
+    // sorting by type ensures that document collections are reported before edge collections
+    std::sort(collections.begin(), collections.end(), [](LogicalCollection const* lhs,
+                                                         LogicalCollection const* rhs) {
+      if (lhs->type() != rhs->type()) {
+        return lhs->type() < rhs->type();
+      }
+
+      return lhs->name() < rhs->name();
+    });
   }
 
   auto builder = std::make_shared<VPackBuilder>();
@@ -829,7 +834,7 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_t::inventory(
     }
 
     // check if we want this collection
-    if (filter != nullptr && !filter(collection, data)) {
+    if (!nameFilter(collection)) {
       continue;
     }
 

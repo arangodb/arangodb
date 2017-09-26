@@ -465,13 +465,31 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
 
   // include system collections?
   bool includeSystem = true;
-  std::string const& value = _request->value("includeSystem", found);
-  if (found) {
-    includeSystem = StringUtils::boolean(value);
+  {
+    std::string const& value = _request->value("includeSystem", found);
+    if (found) {
+      includeSystem = StringUtils::boolean(value);
+    }
+  }
+
+  // produce inventory for all databases?
+  bool global = false;
+  {
+    std::string const& value = _request->value("global", found);
+    if (found) {
+      global = StringUtils::boolean(value);
+    }
+  }
+    
+  if (global &&
+      _request->databaseName() != StaticStrings::SystemDatabase) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "global inventory can only be created from within _system database");
+    return;
   }
 
   std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>> result =
-      ctx->getInventory(this->_vocbase, includeSystem);
+      ctx->getInventory(this->_vocbase, includeSystem, global);
   if (!result.first.ok()) {
     generateError(rest::ResponseCode::BAD, result.first.errorNumber(),
                   "inventory could not be created");

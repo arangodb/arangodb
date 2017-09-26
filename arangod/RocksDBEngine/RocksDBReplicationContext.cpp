@@ -137,7 +137,8 @@ int RocksDBReplicationContext::bindCollection(
 // returns inventory
 std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>>
 RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
-                                        bool includeSystem) {
+                                        bool includeSystem,
+                                        bool global) {
   TRI_ASSERT(vocbase != nullptr);
   if (_trx.get() == nullptr) {
     return std::make_pair(
@@ -145,12 +146,37 @@ RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
         std::shared_ptr<VPackBuilder>(nullptr));
   }
 
-  auto tick = TRI_CurrentTickServer();
-  std::shared_ptr<VPackBuilder> inventory = vocbase->inventory(
-      tick, filterCollection, &includeSystem, true, sortCollections);
+  auto nameFilter = [includeSystem](LogicalCollection const* collection) {
+    std::string const cname = collection->name();
+    if (!includeSystem && !cname.empty() && cname[0] == '_') {
+      // exclude all system collections
+      return false;
+    }
 
-  return std::make_pair(RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick),
-                        inventory);
+    if (TRI_ExcludeCollectionReplication(cname, includeSystem)) {
+      // collection is excluded from replication
+      return false;
+    }
+
+    // all other cases should be included
+    return true;
+  };
+
+  auto tick = TRI_CurrentTickServer();
+
+  if (global) {
+    // global inventory
+    std::shared_ptr<VPackBuilder> inventory = vocbase->inventory(tick, nameFilter);
+
+    return std::make_pair(RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick),
+                          inventory);
+  } else {
+    // database-specific inventory
+    std::shared_ptr<VPackBuilder> inventory = vocbase->inventory(tick, nameFilter);
+
+    return std::make_pair(RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick),
+                          inventory);
+  }
 }
 
 // iterates over at most 'limit' documents in the collection specified,
@@ -476,37 +502,4 @@ void RocksDBReplicationContext::releaseDumpingResources() {
   }
   _collection = nullptr;
   _guard.reset();
-}
-
-/// @brief filter a collection based on collection attributes
-bool RocksDBReplicationContext::filterCollection(
-    arangodb::LogicalCollection* collection, void* data) {
-  bool includeSystem = *((bool*)data);
-
-  std::string const collectionName(collection->name());
-
-  if (!includeSystem && collectionName[0] == '_') {
-    // exclude all system collections
-    return false;
-  }
-
-  if (TRI_ExcludeCollectionReplication(collectionName.c_str(), includeSystem)) {
-    // collection is excluded from replication
-    return false;
-  }
-
-  // all other cases should be included
-  return true;
-}
-
-bool RocksDBReplicationContext::sortCollections(
-    arangodb::LogicalCollection const* l,
-    arangodb::LogicalCollection const* r) {
-  if (l->type() != r->type()) {
-    return l->type() < r->type();
-  }
-  std::string const leftName = l->name();
-  std::string const rightName = r->name();
-
-  return strcasecmp(leftName.c_str(), rightName.c_str()) < 0;
 }

@@ -1294,7 +1294,7 @@ int InitialSyncer::handleInventoryResponse(VPackSlice const& slice,
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
-    if (TRI_ExcludeCollectionReplication(masterName.c_str(), _includeSystem)) {
+    if (TRI_ExcludeCollectionReplication(masterName, _includeSystem)) {
       continue;
     }
 
