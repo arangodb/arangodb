@@ -671,14 +671,32 @@ void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
 
 void MMFilesRestReplicationHandler::handleCommandInventory() {
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
+  bool found;
 
   // include system collections?
   bool includeSystem = true;
-  bool found;
-  std::string const& value = _request->value("includeSystem", found);
+  {
+    std::string const& value = _request->value("includeSystem", found);
 
-  if (found) {
-    includeSystem = StringUtils::boolean(value);
+    if (found) {
+      includeSystem = StringUtils::boolean(value);
+    }
+  }
+  
+  // produce inventory for all databases?
+  bool global = false;
+  {
+    std::string const& value = _request->value("global", found);
+    if (found) {
+      global = StringUtils::boolean(value);
+    }
+  }
+    
+  if (global &&
+      _request->databaseName() != StaticStrings::SystemDatabase) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "global inventory can only be created from within _system database");
+    return;
   }
   
   auto nameFilter = [includeSystem](LogicalCollection const* collection) {
@@ -698,17 +716,25 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
   };
 
   // collections and indexes
-  VPackBuilder collectionsBuilder;
-  _vocbase->inventory(collectionsBuilder, tick, nameFilter);
-  VPackSlice const collections = collectionsBuilder.slice();
-
-  TRI_ASSERT(collections.isArray());
+  VPackBuilder inventoryBuilder;
+  if (global) {
+    application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->inventory(inventoryBuilder, tick, nameFilter);
+  } else {
+    _vocbase->inventory(inventoryBuilder, tick, nameFilter);
+  }
+  VPackSlice const inventory = inventoryBuilder.slice();
 
   VPackBuilder builder;
   builder.openObject();
 
-  // add collections data
-  builder.add("collections", collections);
+  if (global) {
+    TRI_ASSERT(inventory.isObject());
+    builder.add("databases", inventory);
+  } else {
+    // add collections data
+    TRI_ASSERT(inventory.isArray());
+    builder.add("collections", inventory);
+  }
 
   // "state"
   builder.add("state", VPackValue(VPackValueType::Object));
