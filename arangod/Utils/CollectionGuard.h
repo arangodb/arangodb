@@ -84,7 +84,18 @@ class CollectionGuard {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     }
   }
-
+  
+  CollectionGuard(TRI_vocbase_t* vocbase, LogicalCollection* collection)
+  : _vocbase(vocbase),
+  _collection(collection),
+  _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
+  _restoreOriginalStatus(false) {
+    int res = _vocbase->useCollection(collection, _originalStatus);
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+  }
+  
   /// @brief destroy the guard
   ~CollectionGuard() {
     if (_collection != nullptr) {

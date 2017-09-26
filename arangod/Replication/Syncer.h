@@ -48,19 +48,16 @@ class SimpleHttpResult;
 namespace transaction {
 class Methods;
 }
-;
 
 class Syncer {
  public:
   Syncer(Syncer const&) = delete;
   Syncer& operator=(Syncer const&) = delete;
 
-  Syncer(TRI_vocbase_t*, TRI_replication_applier_configuration_t const*);
+  Syncer(TRI_replication_applier_configuration_t const*);
 
   virtual ~Syncer();
   
-  TRI_vocbase_t* vocbase() { return _vocbase; }
-
   /// @brief sleeps (nanoseconds)
   void sleep(uint64_t time) {
     usleep(static_cast<TRI_usleep_t>(time));
@@ -90,16 +87,14 @@ class Syncer {
 
   /// @brief send a "remove barrier" command
   int sendRemoveBarrier();
+  
+  TRI_voc_tick_t getDbId(velocypack::Slice const&) const;
 
   /// @brief extract the collection id from VelocyPack
-  TRI_voc_cid_t getCid(arangodb::velocypack::Slice const&) const;
+  TRI_voc_cid_t getCid(velocypack::Slice const&) const;
 
   /// @brief extract the collection name from VelocyPack
   std::string getCName(arangodb::velocypack::Slice const&) const;
-
-  /// @brief extract the collection by either id or name, may return nullptr!
-  arangodb::LogicalCollection* getCollectionByIdOrName(TRI_voc_cid_t cid,
-                                                       std::string const& name);
 
   /// @brief apply a single marker from the collection dump
   int applyCollectionDumpMarker(transaction::Methods&,
@@ -127,8 +122,15 @@ class Syncer {
 
   /// @brief handle the state response of the master
   int handleStateResponse(arangodb::velocypack::Slice const&, std::string&);
+  
+  TRI_vocbase_t* loadVocbase(TRI_voc_tick_t dbId);
+  
+  LogicalCollection* resolveCollection(VPackSlice const& slice);
+  
+  /// @brief extract the collection by either id or name, may return nullptr!
+  LogicalCollection* getCollectionByIdOrName(TRI_vocbase_t*, TRI_voc_cid_t,
+                                             std::string const&);
 
-  /// @brief set leader ID for synchronous replication in cluster
  private:
   /// @brief apply a single marker from the collection dump
   int applyCollectionDumpMarkerInternal(transaction::Methods&,
@@ -137,11 +139,12 @@ class Syncer {
                                         arangodb::velocypack::Slice const&, 
                                         arangodb::velocypack::Slice const&, 
                                         std::string&);
-
+  
  protected:
-  /// @brief vocbase base pointer
-  TRI_vocbase_t* _vocbase;
-
+  
+  /// @brief lazy loaded list of vocbases
+  std::map<TRI_voc_tick_t, VocbaseGuard> _vocbaseCache;
+  
   /// @brief configuration
   TRI_replication_applier_configuration_t _configuration;
 
@@ -195,7 +198,6 @@ class Syncer {
   /// follower and thus only accepts modifications that are replications
   /// from the leader. Leave empty if there is no concept of a "leader".
   std::string _leaderId;
-
 };
 }
 

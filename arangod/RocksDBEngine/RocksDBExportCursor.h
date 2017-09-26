@@ -34,9 +34,6 @@
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
-namespace velocypack {
-class Slice;
-}
 namespace transaction {
 class Methods;
 }
@@ -60,7 +57,7 @@ class RocksDBExportCursor final : public Cursor {
 
   size_t count() const override final;
 
-  void dump(VPackBuilder&) override final;
+  void dump(velocypack::Builder&) override final;
 
  private:
   VocbaseGuard _vocbaseGuard;

@@ -73,6 +73,7 @@ ContinuousSyncer::ContinuousSyncer(
   TRI_ASSERT(c > 0);
 
   _chunkSize = StringUtils::itoa(c);
+  _vocbaseCache.emplace(vocbase->id(), vocbase);
 
   if (configuration->_restrictType == "include") {
     _restrictType = RESTRICT_INCLUDE;
@@ -115,7 +116,7 @@ retry:
     _applier->_state._failedConnects = 0;
   }
 
-  while (_vocbase->state() == TRI_vocbase_t::State::NORMAL) {
+  while (vocbase()->state() == TRI_vocbase_t::State::NORMAL) {
     setProgress("fetching master state information");
     res = getMasterState(errorMsg);
 
@@ -186,7 +187,7 @@ retry:
       // remove previous applier state
       abortOngoingTransactions();
 
-      TRI_RemoveStateReplicationApplier(_vocbase);
+      TRI_RemoveStateReplicationApplier(vocbase());
 
       {
         WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
@@ -250,7 +251,7 @@ retry:
 
       try {
         InitialSyncer syncer(
-            _vocbase, &_configuration, _configuration._restrictCollections,
+            vocbase(), &_configuration, _configuration._restrictCollections,
             _configuration._restrictType, _configuration._verbose, false);
 
         res = syncer.run(errorMsg, _configuration._incremental);
@@ -302,7 +303,7 @@ int ContinuousSyncer::saveApplierState() {
       << _applier->_state._lastAppliedContinuousTick
       << ", safe resume tick: " << _applier->_state._safeResumeTick;
 
-  int res = TRI_SaveStateReplicationApplier(_vocbase, &_applier->_state, false);
+  int res = TRI_SaveStateReplicationApplier(vocbase(), &_applier->_state, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(WARN, Logger::REPLICATION)
@@ -318,7 +319,7 @@ int ContinuousSyncer::getLocalState(std::string& errorMsg) {
   uint64_t oldTotalRequests = _applier->_state._totalRequests;
   uint64_t oldTotalFailedConnects = _applier->_state._totalFailedConnects;
 
-  int res = TRI_LoadStateReplicationApplier(_vocbase, &_applier->_state);
+  int res = TRI_LoadStateReplicationApplier(vocbase(), &_applier->_state);
   _applier->_state._active = true;
   _applier->_state._totalRequests = oldTotalRequests;
   _applier->_state._totalFailedConnects = oldTotalFailedConnects;
@@ -327,7 +328,7 @@ int ContinuousSyncer::getLocalState(std::string& errorMsg) {
     // no state file found, so this is the initialization
     _applier->_state._serverId = _masterInfo._serverId;
 
-    res = TRI_SaveStateReplicationApplier(_vocbase, &_applier->_state, true);
+    res = TRI_SaveStateReplicationApplier(vocbase(), &_applier->_state, true);
 
     if (res != TRI_ERROR_NO_ERROR) {
       errorMsg = "could not save replication state information";

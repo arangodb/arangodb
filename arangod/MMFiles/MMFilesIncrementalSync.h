@@ -306,7 +306,7 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
   if (n > 0) {
     // first chunk
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer._vocbase), col->cid(),
+        transaction::StandaloneContext::Create(syncer.vocbase()), col->cid(),
         AccessMode::Type::WRITE);
 
     Result res = trx.begin();
@@ -380,7 +380,7 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
     }
 
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer._vocbase), col->cid(),
+        transaction::StandaloneContext::Create(syncer.vocbase()), col->cid(),
         AccessMode::Type::WRITE);
 
     Result res = trx.begin();

@@ -61,7 +61,7 @@ TailingSyncer::TailingSyncer(
     TRI_vocbase_t* vocbase,
     TRI_replication_applier_configuration_t const* configuration,
     TRI_voc_tick_t initialTick)
-    : Syncer(vocbase, configuration),
+    : Syncer(configuration),
       _chunkSize("262144"),
       _restrictType(RESTRICT_NONE),
       _initialTick(initialTick),
@@ -233,36 +233,23 @@ int TailingSyncer::processDBMarker(TRI_replication_operation_e type,
   }
 }
 
-
 /// @brief inserts a document, based on the VelocyPack provided
 int TailingSyncer::processDocument(TRI_replication_operation_e type,
                                    VPackSlice const& slice,
                                    std::string& errorMsg) {
-  // extract "cid"
-  TRI_voc_cid_t cid = getCid(slice);
-
-  if (cid == 0) {
+  
+  TRI_vocbase_t *vocbase = loadVocbase(getDbId(slice));
+  if (vocbase == nullptr) {
+    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+  }
+  arangodb::LogicalCollection* col = resolveCollection(slice);
+  if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-
-  // extract optional "cname"
-  bool isSystem = false;
-  VPackSlice const cname = slice.get("cname");
-
-  if (cname.isString()) {
-    std::string const cnameString = cname.copyString();
-    isSystem = (!cnameString.empty() && cnameString[0] == '_');
-
-    arangodb::LogicalCollection* col =
-        getCollectionByIdOrName(cid, cnameString);
-
-    if (col != nullptr && col->cid() != cid) {
-      // cid change? this may happen for system collections or if we restored
-      // from a dump
-      cid = col->cid();
-    }
-  }
-
+  
+  TRI_voc_cid_t cid = col->cid();
+  bool isSystem = col->isSystem();
+  
   // extract "data"
   VPackSlice const doc = slice.get("data");
 
@@ -337,7 +324,7 @@ int TailingSyncer::processDocument(TRI_replication_operation_e type,
     // standalone operation
     // update the apply tick for all standalone operations
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(_vocbase), cid,
+        transaction::StandaloneContext::Create(vocbase), cid,
         AccessMode::Type::EXCLUSIVE);
 
     if (_supportsSingleOperations) {
@@ -368,10 +355,14 @@ int TailingSyncer::processDocument(TRI_replication_operation_e type,
 
 /// @brief starts a transaction, based on the VelocyPack provided
 int TailingSyncer::startTransaction(VPackSlice const& slice) {
-  // {"type":2200,"tid":"230920705812199","collections":[{"cid":"230920700700391","operations":10}]}
-
+  // {"type":2200,"tid":"230920705812199", "database": "123", "collections":[{"cid":"230920700700391","operations":10}]}
+  
+  TRI_vocbase_t* vocbase = loadVocbase(getDbId(slice));
+  if (vocbase == nullptr) {
+    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+  }
+  
   std::string const id = VelocyPackHelper::getStringValue(slice, "tid", "");
-
   if (id.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -400,7 +391,7 @@ int TailingSyncer::startTransaction(VPackSlice const& slice) {
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "starting replication transaction "
                                         << tid;
 
-  auto trx = std::make_unique<ReplicationTransaction>(_vocbase);
+  auto trx = std::make_unique<ReplicationTransaction>(vocbase);
   Result res = trx->begin();
 
   if (res.ok()) {
@@ -512,14 +503,15 @@ int TailingSyncer::renameCollection(VPackSlice const& slice) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  TRI_voc_cid_t const cid = getCid(slice);
-  arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, cname);
-
+  TRI_vocbase_t *vocbase = loadVocbase(getDbId(slice));
+  if (vocbase == nullptr) {
+    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+  }
+  arangodb::LogicalCollection* col = resolveCollection(slice);
   if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
-
-  return _vocbase->renameCollection(col, name, true);
+  return vocbase->renameCollection(col, name, true);
 }
 
 /// @brief changes the properties of a collection, based on the VelocyPack
@@ -528,11 +520,12 @@ int TailingSyncer::changeCollection(VPackSlice const& slice) {
   if (!slice.isObject()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
-
-  TRI_voc_cid_t cid = getCid(slice);
-  std::string const cname = getCName(slice);
-  arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, cname);
-
+  
+  TRI_vocbase_t *vocbase = loadVocbase(getDbId(slice));
+  if (vocbase == nullptr) {
+    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+  }
+  arangodb::LogicalCollection* col = resolveCollection(slice);
   if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
@@ -546,11 +539,8 @@ int TailingSyncer::changeCollection(VPackSlice const& slice) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  arangodb::CollectionGuard guard(_vocbase, cid);
-  bool doSync =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database")
-          ->forceSyncProperties();
+  arangodb::CollectionGuard guard(vocbase, col);
+  bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
   return guard.collection()->updateProperties(data, doSync).errorNumber();
 }
 

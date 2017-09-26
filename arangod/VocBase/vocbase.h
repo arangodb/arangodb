@@ -30,23 +30,19 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/StringUtils.h"
+#include "Basics/StringRef.h"
 #include "Basics/voc-errors.h"
 #include "VocBase/ViewImplementation.h"
 #include "VocBase/voc-types.h"
 
 #include "velocypack/Builder.h"
 #include "velocypack/Slice.h"
-#include "velocypack/velocypack-aliases.h"
 
 #include <functional>
 
 class TRI_replication_applier_t;
 
 namespace arangodb {
-namespace velocypack {
-class Builder;
-class Slice;
-}
 namespace aql {
 class QueryList;
 }
@@ -276,7 +272,7 @@ struct TRI_vocbase_t {
   std::string collectionName(TRI_voc_cid_t id);
 
   /// @brief looks up a collection by uuid
-  arangodb::LogicalCollection* lookupCollectionByUuid(std::string const& uuid) const;
+  arangodb::LogicalCollection* lookupCollectionByUuid(arangodb::StringRef const&) const;
   /// @brief looks up a collection by name
   arangodb::LogicalCollection* lookupCollection(std::string const& name) const;
   /// @brief looks up a collection by identifier
@@ -426,14 +422,16 @@ class VocbaseGuard {
 };
 
 /// @brief extract the _rev attribute from a slice
-TRI_voc_rid_t TRI_ExtractRevisionId(VPackSlice const slice);
+TRI_voc_rid_t TRI_ExtractRevisionId(arangodb::velocypack::Slice const slice);
 
 /// @brief extract the _rev attribute from a slice as a slice
-VPackSlice TRI_ExtractRevisionIdAsSlice(VPackSlice const slice);
+arangodb::velocypack::Slice TRI_ExtractRevisionIdAsSlice(arangodb::velocypack::Slice const slice);
 
 /// @brief sanitize an object, given as slice, builder must contain an
 /// open object which will remain open
-void TRI_SanitizeObject(VPackSlice const slice, VPackBuilder& builder);
-void TRI_SanitizeObjectWithEdges(VPackSlice const slice, VPackBuilder& builder);
+void TRI_SanitizeObject(arangodb::velocypack::Slice const slice,
+                        arangodb::velocypack::Builder& builder);
+void TRI_SanitizeObjectWithEdges(arangodb::velocypack::Slice const slice,
+                                 arangodb::velocypack::Builder& builder);
 
 #endif
