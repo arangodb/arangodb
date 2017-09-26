@@ -1565,8 +1565,6 @@ int IResearchView::finish(TRI_voc_tid_t tid, bool commit) {
 }
 
 int IResearchView::finish() {
-  MemoryStore tmp; // new clear store
-
   ReadMutex mutex(_mutex); // '_storePersisted' can be asynchronously updated
   SCOPED_LOCK(mutex);
 
@@ -1578,15 +1576,18 @@ int IResearchView::finish() {
 
   try {
     memoryStore._writer->commit(); // ensure have latest view in reader
-    memoryStore._reader = memoryStore._reader.reopen(); // update reader
 
-    SCOPED_LOCK(_toFlush->_reopenMutex); // FIXME TODO remove an use lock blow once comit()+import() race is solved
+    // intentional copy since `memoryStore._reader` may be updated
+    const auto reader = (
+      memoryStore._reader = memoryStore._reader.reopen() // update reader
+    );
+
     // merge memory store into persisted
-    if (!_storePersisted._writer->import(memoryStore._reader)) {
+    if (!_storePersisted._writer->import(reader)) {
       return TRI_ERROR_INTERNAL;
     }
 
-    //SCOPED_LOCK(_toFlush->_reopenMutex); // do not allow concurrent reopen
+    SCOPED_LOCK(_toFlush->_reopenMutex); // do not allow concurrent reopen
     _storePersisted._writer->commit(); // finishing flush transaction
     memoryStore._writer->clear(); // prepare the store for reuse
 
@@ -2194,11 +2195,10 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
     // must sync persisted store as well to ensure removals are applied
     if (_storePersisted) {
       LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting persisted-sync sync for iResearch view '" << id() << "'";
-      SCOPED_LOCK(_toFlush->_reopenMutex); // FIXME TODO remove an use lock blow once comit()+import() race is solved
       _storePersisted._writer->commit();
 
       {
-        //SCOPED_LOCK(_toFlush->_reopenMutex);
+        SCOPED_LOCK(_toFlush->_reopenMutex);
         _storePersisted._reader = _storePersisted._reader.reopen(); // update reader
       }
 
