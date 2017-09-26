@@ -48,6 +48,20 @@ fi
 
 mkdir -p build
 
+if [ ! -f build/location ]; then
+    if [ "$os" == mac ]; then
+        (ls -l  && echo "$os-$edition-$maintainer") | md5 | awk '{print $1}' > build/location
+    else
+        (ls -l  && echo "$os-$edition-$maintainer") | md5sum | awk '{print $1}' > build/location
+    fi
+fi
+
+GENPATH="/tmp/`cat build/location`"
+
+rm -f $GENPATH
+ln -s `pwd` $GENPATH
+cd $GENPATH
+
 if [ -z "$logdir" ]; then
   logdir=log-output
   rm -rf $logdir
