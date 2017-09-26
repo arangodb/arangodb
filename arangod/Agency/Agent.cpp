@@ -341,8 +341,6 @@ bool Agent::recvAppendEntriesRPC(
 
 /// Leader's append entries
 void Agent::sendAppendEntriesRPC() {
-  std::chrono::duration<int, std::ratio<1, 1000>> const dt (
-    (_config.waitForSync() ? 40 : 2));
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr only happens during controlled shutdown
@@ -515,13 +513,15 @@ void Agent::sendAppendEntriesRPC() {
         arangodb::rest::RequestType::POST, path.str(),
         std::make_shared<std::string>(builder.toJson()), headerFields,
         std::make_shared<AgentCallback>(this, followerId, highest, toLog),
-        std::max(5.0e-3 * toLog * dt.count(), 
-                 _config.minPing() * _config.timeoutMult()), true);
+        3600.0, true);
+      // Note the timeout is essentially indefinite. We let TCP/IP work its
+      // magic here, because all we could do would be to resend the same 
+      // message if a timeout occurs.
 
       _lastSent[followerId]    = system_clock::now();
       _constituent.notifyHeartbeatSent(followerId);
 
-      earliestPackage = system_clock::now() + 5 * toLog * dt;
+      earliestPackage = system_clock::now() + std::chrono::seconds(3600);
       {
         MUTEX_LOCKER(tiLocker, _tiLock);
         _earliestPackage[followerId] = earliestPackage;
