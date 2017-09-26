@@ -295,7 +295,7 @@ function ReplicationLoggerSuite () {
         var df = ranges[i];
         assertTrue(typeof df === 'object');
         assertTrue(df.hasOwnProperty('datafile'));
-        assertTrue(df.hasOwnProperty('state'));
+        assertTrue(df.hasOwnProperty('status'));
         assertTrue(df.hasOwnProperty('tickMin'));
         assertTrue(df.hasOwnProperty('tickMax'));
 
