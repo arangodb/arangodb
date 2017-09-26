@@ -3,20 +3,67 @@ devel
 
 * Removed `--compat28` parameter from arangodump and replication API
 
-* fix Windows implementation for fs.getTempPath() to also create a
-  sub-directory as we do on Linux
 
-* ui: added replicationFactor option during SmartGraph creation.
+v3.2.4 (2017-XX-XX)
+-------------------
+
+* UI: added replicationFactor option during SmartGraph creation
+
+* make the MMFiles compactor perform less writes during normal compaction
+  operation
+
+  This partially fixes issue #3144
 
 * make the MMFiles compactor configurable
 
+  The following options have been added:
+  
+  * `--compaction.db-sleep-time`: sleep interval between two compaction runs 
+    (in s)
+  * `--compaction.min-interval"`: minimum sleep time between two compaction 
+     runs (in s)
+  * `--compaction.min-small-data-file-size`: minimal filesize threshold 
+    original datafiles have to be below for a compaction
+  * `--compaction.dead-documents-threshold`: minimum unused count of documents 
+    in a datafile
+  * `--compaction.dead-size-threshold`: how many bytes of the source data file 
+    are allowed to be unused at most
+  * `--compaction.dead-size-percent-threshold`: how many percent of the source 
+    datafile should be unused at least
+  * `--compaction.max-files`: Maximum number of files to merge to one file
+  * `--compaction.max-result-file-size`: how large may the compaction result 
+    file become (in bytes)
+  * `--compaction.max-file-size-factor`: how large the resulting file may 
+    be in comparison to the collection's `--database.maximal-journal-size' setting`
+
+* fix downwards-incompatibility in /_api/explain REST handler
+
+* fix Windows implementation for fs.getTempPath() to also create a
+  sub-directory as we do on linux
+
+* fixed a multi-threading issue in cluster-internal communication
+
+* performance improvements for traversals and edge lookups
+
+* removed internal memory zone handling code. the memory zones were a leftover
+  from the early ArangoDB days and did not provide any value in the current
+  implementation.
+
+* (Enterprise only) added `skipInaccessibleCollections` option for AQL queries: 
+  if set, AQL queries (especially graph traversals) will treat collections to 
+  which a user has no access rights to as if these collections were empty.
+
+* adjusted scheduler thread handling to start and stop less threads in
+  normal operations
+  
 * leader-follower replication catchup code has been rewritten in C++
 
 * early stage AQL optimization now also uses the C++ implementations of
   AQL functions if present. Previously it always referred to the JavaScript
-  implementations and ignored the C++ implementations.
+  implementations and ignored the C++ implementations. This change gives
+  more flexibility to the AQL optimizer.
 
-* ArangoDB tty log output is now colored for log messages with levels 
+* ArangoDB tty log output is now colored for log messages with levels
   FATAL, ERR and WARN.
 
 * changed the return values of AQL functions `REGEX_TEST` and `REGEX_REPLACE`
@@ -25,16 +72,20 @@ devel
 
 * added `--log.role` option for arangod
 
-  When set to `true`, this option will make the ArangoDB logger print a single 
-  character with the server's role into each logged message. The roles are: 
-  
+  When set to `true`, this option will make the ArangoDB logger print a single
+  character with the server's role into each logged message. The roles are:
+
   - U: undefined/unclear (used at startup)
   - S: single server
   - C: coordinator
   - P: primary
   - A: agent
 
-  The default value for this option is `false`, so no roles will be logged. 
+  The default value for this option is `false`, so no roles will be logged.
+
+
+v3.2.3 (2017-09-07)
+-------------------
 
 * fixed issue #3106: orphan collections could not be registered in general-graph module
 
@@ -44,7 +95,7 @@ devel
   the number of memory mappings currently used by the process and compare it with
   the maximum number of allowed mappings as determined by /proc/sys/vm/max_map_count
 
-  The default value is `true`, so the checks will be performed. When the current 
+  The default value is `true`, so the checks will be performed. When the current
   number of mappings exceeds 90% of the maximum number of mappings, the creation
   of further V8 contexts will be deferred.
 
@@ -55,16 +106,16 @@ devel
 * added V8 context lifetime control options
   `--javascript.v8-contexts-max-invocations` and `--javascript.v8-contexts-max-age`
 
-  These options allow specifying after how many invocations a used V8 context is 
+  These options allow specifying after how many invocations a used V8 context is
   disposed, or after what time a V8 context is disposed automatically after its
   creation. If either of the two thresholds is reached, an idl V8 context will be
-  disposed. 
-  
+  disposed.
+
   The default value of `--javascript.v8-contexts-max-invocations` is 0, meaning that
   the maximum number of invocations per context is unlimited. The default value
   for `--javascript.v8-contexts-max-age` is 60 seconds.
 
-* fixed wrong ui cluster health information
+* fixed wrong UI cluster health information
 
 * fixed issue #3070: Add index in _jobs collection
 
@@ -72,11 +123,14 @@ devel
 
 * fixed issue #3120: Foxx queue: job isn't running when server.authentication = true
 
+* fixed supervision failure detection and handling, which happened with simultaneous 
+  agency leadership change
+
 
 v3.2.2 (2017-08-23)
 -------------------
 
-* make "Rebalance shards" button work in selected database only, and not make 
+* make "Rebalance shards" button work in selected database only, and not make
   it rebalance the shards of all databases
 
 * fixed issue #2847: adjust the response of the DELETE `/_api/users/database/*` calls
@@ -182,6 +236,8 @@ v3.2.1 (2017-08-09)
 * fixed issue #1751: Slow Query API should provide bind parameters, webui should display them
 
 * ui: fixed a bug when moving multiple documents was not possible
+
+* fixed docs for issue #2968: Collection _key autoincrement value increases on error
 
 * AQL CHAR_LENGTH(null) returns now 0. Since AQL TO_STRING(null) is '' (string of length 0)
 
@@ -1050,16 +1106,16 @@ v3.1.10 (2017-02-02)
       db.test.count(true);
 
       {
-	"s100058" : 99,
-	"s100057" : 103,
-	"s100056" : 100,
-	"s100050" : 94,
-	"s100055" : 90,
-	"s100054" : 122,
-	"s100051" : 109,
-	"s100059" : 99,
-	"s100053" : 95,
-	"s100052" : 89
+        "s100058" : 99,
+        "s100057" : 103,
+        "s100056" : 100,
+        "s100050" : 94,
+        "s100055" : 90,
+        "s100054" : 122,
+        "s100051" : 109,
+        "s100059" : 99,
+        "s100053" : 95,
+        "s100052" : 89
       }
 
 * added optional memory limit for AQL queries:
