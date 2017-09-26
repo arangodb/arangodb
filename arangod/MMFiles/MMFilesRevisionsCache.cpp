@@ -24,38 +24,13 @@
 #include "MMFilesRevisionsCache.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/xxhash.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 
 using namespace arangodb;
 
-namespace {
-static inline uint64_t HashKey(void*, TRI_voc_rid_t const* key) {
-  return std::hash<TRI_voc_rid_t>()(*key);
-//  return XXH64(key, sizeof(TRI_voc_rid_t), 0x12345678);
-}
-
-static inline uint64_t HashElement(void*, MMFilesDocumentPosition const& element) {
-  return std::hash<TRI_voc_rid_t>()(element.revisionId());
-//  TRI_voc_rid_t revisionId = element.revisionId();
-//  return HashKey(nullptr, &revisionId);
-}
-
-static bool IsEqualKeyElement(void*, TRI_voc_rid_t const* key,
-                              uint64_t hash, MMFilesDocumentPosition const& element) {
-  return *key == element.revisionId();
-}
-
-static bool IsEqualElementElement(void*, MMFilesDocumentPosition const& left,
-                                  MMFilesDocumentPosition const& right) {
-  return left.revisionId() == right.revisionId();
-}
-
-} // namespace
-
 MMFilesRevisionsCache::MMFilesRevisionsCache() 
-    : _positions(HashKey, HashElement, IsEqualKeyElement, IsEqualElementElement, IsEqualElementElement, 8, []() -> std::string { return "mmfiles revisions"; }) {}
+    : _positions(MMFilesRevisionsCacheHelper(), 8, []() -> std::string { return "mmfiles revisions"; }) {}
 
 MMFilesRevisionsCache::~MMFilesRevisionsCache() {}
 
@@ -64,6 +39,19 @@ MMFilesDocumentPosition MMFilesRevisionsCache::lookup(TRI_voc_rid_t revisionId) 
   READ_LOCKER(locker, _lock);
 
   return _positions.findByKey(nullptr, &revisionId);
+}
+
+void MMFilesRevisionsCache::batchLookup(std::vector<std::pair<TRI_voc_rid_t, uint8_t const*>>& revisions) const {
+  READ_LOCKER(locker, _lock);
+
+  for (auto& it : revisions) {
+    MMFilesDocumentPosition const old = _positions.findByKey(nullptr, &it.first);
+    if (old) {
+      uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
+      TRI_ASSERT(VPackSlice(vpack).isObject());
+      it.second = vpack;
+    }
+  }
 }
 
 void MMFilesRevisionsCache::sizeHint(int64_t hint) {
@@ -121,7 +109,7 @@ void MMFilesRevisionsCache::update(TRI_voc_rid_t revisionId, uint8_t const* data
   WRITE_LOCKER(locker, _lock);
   
   MMFilesDocumentPosition* old = _positions.findByKeyRef(nullptr, &revisionId);
-  if (old == nullptr) {
+  if (old == nullptr || !(*old)) {
     return;
   }
      
@@ -133,12 +121,12 @@ void MMFilesRevisionsCache::update(TRI_voc_rid_t revisionId, uint8_t const* data
 bool MMFilesRevisionsCache::updateConditional(TRI_voc_rid_t revisionId, MMFilesMarker const* oldPosition, MMFilesMarker const* newPosition, TRI_voc_fid_t newFid, bool isInWal) {
   WRITE_LOCKER(locker, _lock);
 
-  MMFilesDocumentPosition old = _positions.findByKey(nullptr, &revisionId);
-  if (!old) {
+  MMFilesDocumentPosition* old = _positions.findByKeyRef(nullptr, &revisionId);
+  if (old == nullptr || !(*old)) {
     return false;
   }
      
-  uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
+  uint8_t const* vpack = static_cast<uint8_t const*>(old->dataptr());
   TRI_ASSERT(vpack != nullptr);
 
   MMFilesMarker const* markerPtr = reinterpret_cast<MMFilesMarker const*>(vpack - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
@@ -148,12 +136,8 @@ bool MMFilesRevisionsCache::updateConditional(TRI_voc_rid_t revisionId, MMFilesM
     return false;
   }
   
-  _positions.removeByKey(nullptr, &revisionId);
-
-  old.dataptr(reinterpret_cast<char const*>(newPosition) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
-  old.fid(newFid, isInWal); 
-
-  _positions.insert(nullptr, old);
+  old->dataptr(reinterpret_cast<char const*>(newPosition) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+  old->fid(newFid, isInWal); 
   
   return true;
 }

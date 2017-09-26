@@ -296,10 +296,8 @@ class AqlItemBlock {
   inline size_t capacity() const { return _data.size(); }
 
   /// @brief shrink the block to the specified number of rows
-  /// if sweep is set, then the superfluous rows are cleaned
-  /// if sweep is not set, the caller has to ensure that the
-  /// superfluous rows are empty
-  void shrink(size_t nrItems, bool sweep);
+  /// the superfluous rows are cleaned
+  void shrink(size_t nrItems);
 
   /// @brief rescales the block to the specified dimensions
   /// note that the block should be empty before rescaling to prevent

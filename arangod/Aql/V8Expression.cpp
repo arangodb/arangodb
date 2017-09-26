@@ -145,7 +145,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
   if (result->IsUndefined()) {
     // expression does not have any (defined) value. replace with null
     mustDestroy = false;
-    return AqlValue(basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   } 
   
   // expression had a result. convert it to JSON
