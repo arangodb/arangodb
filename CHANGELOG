@@ -117,7 +117,7 @@ v3.2.3 (2017-09-07)
 
 * fixed issue #3120: Foxx queue: job isn't running when server.authentication = true
 
-* fixed supervision failure detection and handling, which happened with	simultaneous 
+* fixed supervision failure detection and handling, which happened with simultaneous 
   agency leadership change
 
 
@@ -1100,16 +1100,16 @@ v3.1.10 (2017-02-02)
       db.test.count(true);
 
       {
-	"s100058" : 99,
-	"s100057" : 103,
-	"s100056" : 100,
-	"s100050" : 94,
-	"s100055" : 90,
-	"s100054" : 122,
-	"s100051" : 109,
-	"s100059" : 99,
-	"s100053" : 95,
-	"s100052" : 89
+        "s100058" : 99,
+        "s100057" : 103,
+        "s100056" : 100,
+        "s100050" : 94,
+        "s100055" : 90,
+        "s100054" : 122,
+        "s100051" : 109,
+        "s100059" : 99,
+        "s100053" : 95,
+        "s100052" : 89
       }
 
 * added optional memory limit for AQL queries:
