@@ -108,6 +108,12 @@ struct CurlHandle {
 namespace arangodb {
 namespace communicator {
 
+#ifdef MAINTAINER_MODE
+const static double CALLBACK_WARN_TIME = 0.01;
+#else
+const static double CALLBACK_WARN_TIME = 0.1;
+#endif
+
 class Communicator {
  public:
   Communicator();
@@ -123,6 +129,7 @@ class Communicator {
   void abortRequests();
   void disable() { _enabled = false; };
   void enable()  { _enabled = true; };
+
 
  private:
   struct NewRequest {
@@ -162,6 +169,10 @@ class Communicator {
   /// @brief curl will strip standalone ".". ArangoDB allows using . as a key
   /// so this thing will analyse the url and urlencode any unsafe .'s
   std::string createSafeDottedCurlUrl(std::string const& originalUrl);
+
+  void callErrorFn(RequestInProgress*, int const&, std::unique_ptr<GeneralResponse>);
+  void callErrorFn(Ticket const&, Destination const&, Callbacks const&, int const&, std::unique_ptr<GeneralResponse>);
+  void callSuccessFn(Ticket const&, Destination const&, Callbacks const&, std::unique_ptr<GeneralResponse>);
 
  private:
   static size_t readBody(void*, size_t, size_t, void*);
