@@ -79,6 +79,7 @@ class ClusterFeature : public application_features::ApplicationFeature {
 
   void setUnregisterOnShutdown(bool);
   bool createWaitsForSyncReplication() { return _createWaitsForSyncReplication; };
+  uint32_t systemReplicationFactor() { return _systemReplicationFactor; };
 
   void stop() override final;
 

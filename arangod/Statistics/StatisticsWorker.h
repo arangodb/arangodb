@@ -32,18 +32,33 @@ namespace arangodb {
 class StatisticsWorker final : public Thread {
 
   public:
-    StatisticsWorker() : Thread("StatisticsWorker") {}
+    StatisticsWorker();
+
     ~StatisticsWorker() { shutdown(); }
     void run() override;
 
   private:
-    uint64_t const HISTORY_INTERVAL = 15 * 60; // 15 min
     void collectGarbage();
     void historian();
     void historianAverage();
+    void createCollections();
+    void _createCollection(std::string const&);
     void _collectGarbage(std::string const& collection, uint64_t time);
     std::shared_ptr<arangodb::velocypack::Builder> _lastEntry(std::string const& collection, uint64_t start, std::string const& clusterId);
     VPackBuilder _compute15Minute(uint64_t start, std::string const& clusterId);
+    VPackBuilder _computePerSeconds(VPackSlice const&, VPackSlice const&, std::string const&);
+    VPackBuilder _avgPercentDistributon(VPackSlice const&, VPackSlice const&, VPackBuilder const&);
+
+    VPackBuilder _generateRawStatistics(std::string const& clusterId, double const& now);
+
+    void _saveSlice(VPackSlice const&, std::string const&);
+
+    uint64_t const HISTORY_INTERVAL = 15 * 60; // 15 min
+    uint64_t const INTERVAL = 10;
+
+    VPackBuilder _bytesSentDistribution;
+    VPackBuilder _bytesReceivedDistribution;
+    VPackBuilder _requestTimeDistribution;
 };
 
 }
