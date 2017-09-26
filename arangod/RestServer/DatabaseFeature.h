@@ -35,6 +35,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class LogicalCollection;
 
 namespace aql {
 class QueryRegistry;
@@ -96,6 +97,10 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   int dropDatabaseCoordinator(TRI_voc_tick_t id, bool force);
   int dropDatabase(std::string const& name, bool waitForDeletion, bool removeAppsDirectory);
   int dropDatabase(TRI_voc_tick_t id, bool waitForDeletion, bool removeAppsDirectory);
+
+  void inventory(arangodb::velocypack::Builder& result,
+                 TRI_voc_tick_t, 
+                 std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
   TRI_vocbase_t* useDatabaseCoordinator(std::string const& name);
   TRI_vocbase_t* useDatabaseCoordinator(TRI_voc_tick_t id);

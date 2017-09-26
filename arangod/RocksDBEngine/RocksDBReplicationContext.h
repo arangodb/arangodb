@@ -69,7 +69,7 @@ class RocksDBReplicationContext {
 
   // returns inventory
   std::pair<RocksDBReplicationResult, std::shared_ptr<velocypack::Builder>>
-  getInventory(TRI_vocbase_t* vocbase, bool includeSystem);
+  getInventory(TRI_vocbase_t* vocbase, bool includeSystem, bool global);
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
@@ -103,12 +103,6 @@ class RocksDBReplicationContext {
 
  private:
   void releaseDumpingResources();
-
-  static bool filterCollection(arangodb::LogicalCollection* collection,
-                               void* data);
-
-  static bool sortCollections(arangodb::LogicalCollection const* l,
-                              arangodb::LogicalCollection const* r);
 
  private:
   TRI_voc_tick_t _id; // batch id

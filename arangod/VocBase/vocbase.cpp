@@ -778,6 +778,16 @@ std::vector<std::string> TRI_vocbase_t::collectionNames() {
   return result;
 }
 
+void TRI_vocbase_t::inventory(
+    VPackBuilder& result,
+    TRI_voc_tick_t maxTick, std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter) {
+
+  // cycle on write-lock
+  WRITE_LOCKER_EVENTUAL(writeLock, _inventoryLock);
+  
+  inventoryNoLock(result, maxTick, nameFilter);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all known (document) collections with their parameters
 /// and indexes, up to a specific tick value
@@ -786,16 +796,10 @@ std::vector<std::string> TRI_vocbase_t::collectionNames() {
 /// The list of collections will be sorted if sort function is given
 ////////////////////////////////////////////////////////////////////////////////
 
-std::shared_ptr<VPackBuilder> TRI_vocbase_t::inventory(
-    TRI_voc_tick_t maxTick, bool (*filter)(arangodb::LogicalCollection*, void*),
-    void* data, bool shouldSort,
-    std::function<bool(arangodb::LogicalCollection*,
-                       arangodb::LogicalCollection*)>
-        sortCallback) {
+void TRI_vocbase_t::inventoryNoLock(
+    VPackBuilder& result,
+    TRI_voc_tick_t maxTick, std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter) {
   std::vector<arangodb::LogicalCollection*> collections;
-
-  // cycle on write-lock
-  WRITE_LOCKER_EVENTUAL(writeLock, _inventoryLock);
 
   // copy collection pointers into vector so we can work with the copy without
   // the global lock
@@ -804,12 +808,20 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_t::inventory(
     collections = _collections;
   }
 
-  if (shouldSort && collections.size() > 1) {
-    std::sort(collections.begin(), collections.end(), sortCallback);
+  if (collections.size() > 1) {
+    // sort by type first and then only name
+    // sorting by type ensures that document collections are reported before edge collections
+    std::sort(collections.begin(), collections.end(), [](LogicalCollection const* lhs,
+                                                         LogicalCollection const* rhs) {
+      if (lhs->type() != rhs->type()) {
+        return lhs->type() < rhs->type();
+      }
+
+      return lhs->name() < rhs->name();
+    });
   }
 
-  auto builder = std::make_shared<VPackBuilder>();
-  builder->openArray();
+  result.openArray();
 
   for (auto& collection : collections) {
     READ_LOCKER(readLocker, collection->_lock);
@@ -828,18 +840,16 @@ std::shared_ptr<VPackBuilder> TRI_vocbase_t::inventory(
     }
 
     // check if we want this collection
-    if (filter != nullptr && !filter(collection, data)) {
+    if (!nameFilter(collection)) {
       continue;
     }
 
-    TRI_ASSERT(!builder->isClosed());
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     engine->getCollectionInfo(collection->vocbase(), collection->cid(),
-                              *(builder.get()), true, maxTick);
+                              result, true, maxTick);
   }
 
-  builder->close();
-  return builder;
+  result.close();
 }
 
 /// @brief gets a collection name by a collection id

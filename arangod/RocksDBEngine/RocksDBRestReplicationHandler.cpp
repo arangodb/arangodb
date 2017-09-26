@@ -465,33 +465,53 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
 
   // include system collections?
   bool includeSystem = true;
-  std::string const& value = _request->value("includeSystem", found);
-  if (found) {
-    includeSystem = StringUtils::boolean(value);
+  {
+    std::string const& value = _request->value("includeSystem", found);
+    if (found) {
+      includeSystem = StringUtils::boolean(value);
+    }
+  }
+
+  // produce inventory for all databases?
+  bool global = false;
+  {
+    std::string const& value = _request->value("global", found);
+    if (found) {
+      global = StringUtils::boolean(value);
+    }
+  }
+    
+  if (global &&
+      _request->databaseName() != StaticStrings::SystemDatabase) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "global inventory can only be created from within _system database");
+    return;
   }
 
   std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>> result =
-      ctx->getInventory(this->_vocbase, includeSystem);
+      ctx->getInventory(this->_vocbase, includeSystem, global);
   if (!result.first.ok()) {
     generateError(rest::ResponseCode::BAD, result.first.errorNumber(),
                   "inventory could not be created");
     return;
   }
 
-  VPackSlice const collections = result.second->slice();
-  TRI_ASSERT(collections.isArray());
+  VPackSlice const inventory = result.second->slice();
 
   VPackBuilder builder;
   builder.openObject();
 
-  // add collections data
-  builder.add("collections", collections);
+  if (global) {
+    TRI_ASSERT(inventory.isObject());
+    builder.add("databases", inventory);
+  } else {
+    // add collections data
+    TRI_ASSERT(inventory.isArray());
+    builder.add("collections", inventory);
+  }
 
   // "state"
   builder.add("state", VPackValue(VPackValueType::Object));
-
-  // RocksDBLogfileManagerState const s =
-  // RocksDBLogfileManager::instance()->state();
 
   builder.add("running", VPackValue(true));
   builder.add("lastLogTick", VPackValue(std::to_string(ctx->lastTick())));

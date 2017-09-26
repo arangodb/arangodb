@@ -109,6 +109,7 @@ void TRI_GetTimeStampReplication(double, char*, size_t);
 /// @brief determine whether a collection should be included in replication
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExcludeCollectionReplication(char const*, bool);
+bool TRI_ExcludeCollectionReplication(char const* name, bool includeSystem);
+bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSystem);
 
 #endif

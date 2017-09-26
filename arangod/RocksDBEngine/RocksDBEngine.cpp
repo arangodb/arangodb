@@ -1736,9 +1736,9 @@ Result RocksDBEngine::createTickRanges(VPackBuilder& builder) {
     // filename and state are already of type string
     builder.add("datafile", VPackValue(logfile->PathName()));
     if (logfile->Type() == rocksdb::WalFileType::kAliveLogFile) {
-      builder.add("state", VPackValue("open"));
+      builder.add("status", VPackValue("open"));
     } else if (logfile->Type() == rocksdb::WalFileType::kArchivedLogFile) {
-      builder.add("state", VPackValue("collected"));
+      builder.add("status", VPackValue("collected"));
     }
     rocksdb::SequenceNumber min = logfile->StartSequence();
     builder.add("tickMin", VPackValue(std::to_string(min)));

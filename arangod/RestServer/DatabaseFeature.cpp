@@ -32,6 +32,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/WriteLocker.h"
 #include "Basics/files.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngineRegistry.h"
@@ -909,6 +910,34 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
       [](std::string const& l, std::string const& r) -> bool { return l < r; });
 
   return names;
+}
+
+/// @brief return the list of all database names
+void DatabaseFeature::inventory(VPackBuilder& result,
+                                TRI_voc_tick_t maxTick, 
+                                std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter) {
+  result.openObject();
+  {
+    auto unuser(_databasesProtector.use());
+    auto theLists = _databasesLists.load();
+
+    for (auto& p : theLists->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
+      TRI_ASSERT(vocbase != nullptr);
+      if (vocbase->isDropped()) {
+        continue;
+      }
+
+      result.add(VPackValue(vocbase->name()));
+      result.add(VPackValue(VPackValueType::Object));
+      result.add("id", VPackValue(std::to_string(vocbase->id())));
+      result.add("name", VPackValue(vocbase->name()));
+      result.add(VPackValue("collections"));
+      vocbase->inventory(result, maxTick, nameFilter);
+      result.close();
+    }
+  }
+  result.close();
 }
 
 void DatabaseFeature::useSystemDatabase() {

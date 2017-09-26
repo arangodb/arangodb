@@ -47,15 +47,6 @@ class MMFilesRestReplicationHandler : public RestReplicationHandler {
 
  public:
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief comparator to sort collections
-  /// sort order is by collection type first (vertices before edges, this is
-  /// because edges depend on vertices being there), then name
-  //////////////////////////////////////////////////////////////////////////////
-
-  static bool sortCollections(arangodb::LogicalCollection const*,
-                              arangodb::LogicalCollection const*);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief filter a collection based on collection attributes
   //////////////////////////////////////////////////////////////////////////////
 

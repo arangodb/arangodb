@@ -475,8 +475,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     if (!_includeSystem && collectionName[0] == '_') {
       return false;
     }
-    if (TRI_ExcludeCollectionReplication(collectionName.c_str(),
-                                         _includeSystem)) {
+    if (TRI_ExcludeCollectionReplication(collectionName, _includeSystem)) {
       return false;
     }
 

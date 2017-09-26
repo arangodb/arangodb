@@ -184,7 +184,7 @@ bool TailingSyncer::isExcludedCollection(std::string const& masterName) const {
     return true;
   }
 
-  if (TRI_ExcludeCollectionReplication(masterName.c_str(), true)) {
+  if (TRI_ExcludeCollectionReplication(masterName, true)) {
     return true;
   }
 
