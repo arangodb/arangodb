@@ -406,13 +406,11 @@ def generateResult() {
 
     html += "</table></body></html>\n"
 
-    node("linux") {
+    node("master") {
         fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
         fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
 
-        lock("result") {
-            archiveArtifacts(allowEmptyArchive: true, artifacts: "results.*")
-        }
+        archiveArtifacts(allowEmptyArchive: true, artifacts: "results.*")
     }
 }
 
@@ -1459,7 +1457,7 @@ timestamps {
 
         checkCommitMessages()
 
-        node("linux") {
+        node("master") {
             fileOperations([fileCreateOperation(fileContent: overview, fileName: "overview.txt")])
             archiveArtifacts(allowEmptyArchive: true, artifacts: "overview.txt")
         }
