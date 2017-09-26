@@ -27,12 +27,38 @@
 #include "Basics/Common.h"
 #include "Basics/AssocUnique.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/fasthash.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
 #include "VocBase/voc-types.h"
 
 struct MMFilesMarker;
 
 namespace arangodb {
+
+struct MMFilesRevisionsCacheHelper {
+  static inline uint64_t HashKey(void*, TRI_voc_rid_t const* key) {
+    return fasthash64_uint64(*key, 0xdeadbeef);
+  }
+
+  static inline uint64_t HashElement(void*, MMFilesDocumentPosition const& element, bool) {
+    return fasthash64_uint64(element.revisionId(), 0xdeadbeef);
+  }
+
+  inline bool IsEqualKeyElement(void*, TRI_voc_rid_t const* key,
+                                MMFilesDocumentPosition const& element) const {
+    return *key == element.revisionId();
+  }
+
+  inline bool IsEqualElementElement(void*, MMFilesDocumentPosition const& left,
+                                    MMFilesDocumentPosition const& right) const {
+    return left.revisionId() == right.revisionId();
+  }
+
+  inline bool IsEqualElementElementByKey(void* userData, MMFilesDocumentPosition const& left,
+                                         MMFilesDocumentPosition const& right) const {
+    return IsEqualElementElement(userData, left, right);
+  }
+};
 
 class MMFilesRevisionsCache {
  public:
@@ -46,6 +72,7 @@ class MMFilesRevisionsCache {
   size_t memoryUsage();
   void clear();
   MMFilesDocumentPosition lookup(TRI_voc_rid_t revisionId) const;
+  void batchLookup(std::vector<std::pair<TRI_voc_rid_t, uint8_t const*>>& revisions) const;
   MMFilesDocumentPosition insert(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock);
   void insert(MMFilesDocumentPosition const& position, bool shouldLock);
   void update(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal);
@@ -54,9 +81,9 @@ class MMFilesRevisionsCache {
   MMFilesDocumentPosition fetchAndRemove(TRI_voc_rid_t revisionId);
 
  private:
-  mutable arangodb::basics::ReadWriteLock _lock; 
-  
-  arangodb::basics::AssocUnique<TRI_voc_rid_t, MMFilesDocumentPosition> _positions;
+  mutable basics::ReadWriteLock _lock; 
+ 
+  basics::AssocUnique<TRI_voc_rid_t, MMFilesDocumentPosition, MMFilesRevisionsCacheHelper> _positions;
 };
 
 } // namespace arangodb

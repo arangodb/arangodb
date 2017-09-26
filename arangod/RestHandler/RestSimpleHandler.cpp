@@ -323,11 +323,8 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
     auto bindVars = std::make_shared<VPackBuilder>();
     bindVars->openObject();
     bindVars->add("@collection", VPackValue(collectionName));
-    VPackBuilder strippedBuilder =
-        arangodb::aql::BindParameters::StripCollectionNames(
-            keys, collectionName.c_str());
-
-    bindVars->add("keys", strippedBuilder.slice());
+    bindVars->add(VPackValue("keys"));
+    arangodb::aql::BindParameters::stripCollectionNames(keys, collectionName, *bindVars.get());
     bindVars->close();
 
     std::string const aql(
@@ -351,12 +348,6 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
       return;
     }
 
-    size_t resultSize = 10;
-    VPackSlice qResult = queryResult.result->slice();
-    if (qResult.isArray()) {
-      resultSize = static_cast<size_t>(qResult.length());
-    }
-
     VPackBuffer<uint8_t> resultBuffer;
     VPackBuilder result(resultBuffer);
     {
@@ -364,34 +355,25 @@ void RestSimpleHandler::lookupByKeys(VPackSlice const& slice) {
       resetResponse(rest::ResponseCode::OK);
 
       response->setContentType(rest::ContentType::JSON);
+      result.add(VPackValue("documents"));
 
+      VPackSlice qResult = queryResult.result->slice();
       if (qResult.isArray()) {
         // This is for internal use of AQL Traverser only.
         // Should not be documented
         VPackSlice const postFilter = slice.get("filter");
         TRI_ASSERT(postFilter.isNone());
-        result.add(VPackValue("documents"));
-        result.add(qResult);
-        queryResult.result = nullptr;
-      } else {
-        result.add(VPackValue("documents"));
-        result.add(qResult);
-        queryResult.result = nullptr;
       }
+      result.addExternal(queryResult.result->slice().begin());
       result.add("error", VPackValue(false));
       result.add("code",
                  VPackValue(static_cast<int>(_response->responseCode())));
-
-      // reserve a few bytes per result document by default
-      int res = response->reservePayload(32 * resultSize);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        THROW_ARANGO_EXCEPTION(res);
-      }
     }
 
     generateResult(rest::ResponseCode::OK, std::move(resultBuffer),
                    queryResult.context);
+
+    queryResult.result = nullptr;
   } catch (...) {
     unregisterQuery();
     throw;
