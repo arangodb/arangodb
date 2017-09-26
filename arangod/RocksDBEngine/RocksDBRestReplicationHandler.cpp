@@ -496,20 +496,22 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
     return;
   }
 
-  VPackSlice const collections = result.second->slice();
-  TRI_ASSERT(collections.isArray());
+  VPackSlice const inventory = result.second->slice();
 
   VPackBuilder builder;
   builder.openObject();
 
-  // add collections data
-  builder.add("collections", collections);
+  if (global) {
+    TRI_ASSERT(inventory.isObject());
+    builder.add("databases", inventory);
+  } else {
+    // add collections data
+    TRI_ASSERT(inventory.isArray());
+    builder.add("collections", inventory);
+  }
 
   // "state"
   builder.add("state", VPackValue(VPackValueType::Object));
-
-  // RocksDBLogfileManagerState const s =
-  // RocksDBLogfileManager::instance()->state();
 
   builder.add("running", VPackValue(true));
   builder.add("lastLogTick", VPackValue(std::to_string(ctx->lastTick())));

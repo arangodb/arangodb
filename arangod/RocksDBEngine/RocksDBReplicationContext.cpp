@@ -27,6 +27,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Logger/Logger.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBIterators.h"
@@ -167,7 +168,7 @@ RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
   if (global) {
     // global inventory
     auto builder = std::make_shared<VPackBuilder>();
-    vocbase->inventory(*builder.get(), tick, nameFilter);
+    application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->inventory(*builder.get(), tick, nameFilter);
 
     return std::make_pair(RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick),
                           builder);
