@@ -31,13 +31,10 @@
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
-#include <velocypack/Buffer.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 namespace arangodb {
-
-namespace velocypack {
-class Slice;
-}
 
 typedef std::string ServerID;      // ID of a server
 typedef std::string DatabaseID;    // ID/name of a database
@@ -62,18 +59,18 @@ class Methods;
 class ChecksumResult: public Result {
  public:
   explicit ChecksumResult(Result&& result) : Result(std::move(result)) {}
-  explicit ChecksumResult(VPackBuilder&& builder): Result(TRI_ERROR_NO_ERROR), _builder(std::move(builder)) {}
+  explicit ChecksumResult(velocypack::Builder&& builder): Result(TRI_ERROR_NO_ERROR), _builder(std::move(builder)) {}
 
-  VPackBuilder builder() {
+  velocypack::Builder builder() {
     return _builder;
   }
 
-  VPackSlice slice() {
+  velocypack::Slice slice() {
     return _builder.slice();
   }
 
  private:
-  VPackBuilder _builder;
+  velocypack::Builder _builder;
 };
 
 class LogicalCollection {

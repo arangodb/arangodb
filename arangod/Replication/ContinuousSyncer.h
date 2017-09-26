@@ -73,6 +73,11 @@ class ContinuousSyncer : public TailingSyncer {
   /// @brief run the continuous synchronization
   int followMasterLog(std::string&, TRI_voc_tick_t&, TRI_voc_tick_t, uint64_t&,
                       bool&, bool&);
+  
+  TRI_vocbase_t* vocbase() const {
+    TRI_ASSERT(_vocbaseCache.size() == 1);
+    return _vocbaseCache.begin()->second.vocbase();
+  }
 
  private:
   /// @brief pointer to the applier state

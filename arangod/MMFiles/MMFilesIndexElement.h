@@ -29,11 +29,6 @@
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
-
-namespace velocypack {
-class Slice;
-}
-
 class IndexLookupContext;
 
 /// @brief velocypack sub-object (for indexes, as part of IndexElement, 
@@ -49,8 +44,8 @@ struct MMFilesIndexElementValue {
   ~MMFilesIndexElementValue() {}
 
   /// @brief fill an MMFilesIndexElementValue structure with a subvalue
-  void fill(VPackSlice const value, uint32_t offset) {
-    VPackValueLength len = value.byteSize();
+  void fill(velocypack::Slice const value, uint32_t offset) {
+    velocypack::ValueLength len = value.byteSize();
     if (len <= maxValueLength()) {
       setInline(value.start(), static_cast<size_t>(len));
     } else {
@@ -62,7 +57,7 @@ struct MMFilesIndexElementValue {
   /// if offset is non-zero, then it is an offset into the VelocyPack data in
   /// the data or WAL file. If offset is 0, then data contains the actual data
   /// in place.
-  arangodb::velocypack::Slice slice(IndexLookupContext* context) const;
+  velocypack::Slice slice(IndexLookupContext* context) const;
   
   inline bool isOffset() const noexcept {
     return !isInline();
@@ -102,7 +97,8 @@ static_assert(sizeof(MMFilesIndexElementValue) == 12, "invalid size of MMFilesIn
 struct MMFilesHashIndexElement {
   // Do not use new for this struct, use create()!
  private:
-  MMFilesHashIndexElement(TRI_voc_rid_t revisionId, std::vector<std::pair<VPackSlice, uint32_t>> const& values);
+  MMFilesHashIndexElement(TRI_voc_rid_t revisionId,
+                          std::vector<std::pair<velocypack::Slice, uint32_t>> const& values);
 
   MMFilesHashIndexElement() = delete;
   MMFilesHashIndexElement(MMFilesHashIndexElement const&) = delete;
@@ -159,7 +155,8 @@ struct MMFilesHashIndexElement {
 struct MMFilesSkiplistIndexElement {
   // Do not use new for this struct, use create()!
  private:
-  MMFilesSkiplistIndexElement(TRI_voc_rid_t revisionId, std::vector<std::pair<VPackSlice, uint32_t>> const& values);
+  MMFilesSkiplistIndexElement(TRI_voc_rid_t revisionId,
+                              std::vector<std::pair<velocypack::Slice, uint32_t>> const& values);
 
   MMFilesSkiplistIndexElement() = delete;
   MMFilesSkiplistIndexElement(MMFilesSkiplistIndexElement const&) = delete;

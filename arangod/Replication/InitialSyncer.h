@@ -93,7 +93,8 @@ class InitialSyncer : public Syncer {
   } sync_phase_e;
 
  public:
-  InitialSyncer(TRI_vocbase_t*, TRI_replication_applier_configuration_t const*,
+  InitialSyncer(TRI_vocbase_t*,
+                TRI_replication_applier_configuration_t const*,
                 std::unordered_map<std::string, bool> const&,
                 std::string const&, bool verbose, bool skipCreateDrop);
 
@@ -129,22 +130,16 @@ class InitialSyncer : public Syncer {
   }
 
   std::string progress() { return _progress; }
+  
+  TRI_vocbase_t* vocbase() const {
+    TRI_ASSERT(_vocbaseCache.size() == 1);
+    return _vocbaseCache.begin()->second.vocbase();
+  }
 
  private:
+  
   /// @brief set a progress message
-  void setProgress(std::string const& msg) {
-    _progress = msg;
-
-    if (_verbose) {
-      LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
-    } else {
-      LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
-    }
-
-    if (_vocbase->replicationApplier() != nullptr) {
-      _vocbase->replicationApplier()->setProgress(msg.c_str(), true);
-    }
-  }
+  void setProgress(std::string const& msg);
 
   /// @brief send a WAL flush command
   int sendFlush(std::string&);

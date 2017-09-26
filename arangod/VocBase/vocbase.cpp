@@ -38,7 +38,6 @@
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
@@ -869,12 +868,11 @@ std::string TRI_vocbase_t::collectionName(TRI_voc_cid_t id) {
 }
 
 /// @brief looks up a collection by uuid
-LogicalCollection* TRI_vocbase_t::lookupCollectionByUuid(std::string const& uuid) const {
+LogicalCollection* TRI_vocbase_t::lookupCollectionByUuid(StringRef const& uuid) const {
   // otherwise we'll look up the collection by name
   READ_LOCKER(readLocker, _collectionsLock);
 
-  auto it = _collectionsByUuid.find(uuid);
-
+  auto it = _collectionsByUuid.find(uuid.toString());
   if (it == _collectionsByUuid.end()) {
     return nullptr;
   }

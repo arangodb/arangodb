@@ -557,6 +557,7 @@ TRI_replication_applier_configuration_t::toVelocyPack(
 int TRI_ConfigureReplicationApplier(
     TRI_replication_applier_t* applier,
     TRI_replication_applier_configuration_t const* config) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (applier->_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }

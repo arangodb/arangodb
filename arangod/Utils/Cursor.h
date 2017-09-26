@@ -97,7 +97,7 @@ class Cursor {
 
   virtual size_t count() const = 0;
 
-  virtual void dump(VPackBuilder&) = 0;
+  virtual void dump(velocypack::Builder&) = 0;
 
  protected:
   CursorId const _id;
@@ -130,7 +130,7 @@ class VelocyPackCursor final : public Cursor {
 
   size_t count() const override final;
 
-  void dump(VPackBuilder&) override final;
+  void dump(velocypack::Builder&) override final;
 
  private:
   VocbaseGuard _vocbaseGuard;
