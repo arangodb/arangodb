@@ -866,8 +866,8 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
   return TRI_ERROR_NO_ERROR;
 }
 
-void ContinuousSyncer::appliedMarker(TRI_voc_tick_t firstRegularTick,
-                                     TRI_voc_tick_t newTick) {
+void ContinuousSyncer::preApplyMarker(TRI_voc_tick_t firstRegularTick,
+                                      TRI_voc_tick_t newTick) {
   if (newTick >= firstRegularTick) {
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
     if (newTick > _applier->_state._lastProcessedContinuousTick) {
@@ -876,7 +876,7 @@ void ContinuousSyncer::appliedMarker(TRI_voc_tick_t firstRegularTick,
   }
 }
 
-void ContinuousSyncer::processedMarker(uint64_t processedMarkers,
+void ContinuousSyncer::postApplyMarker(uint64_t processedMarkers,
                                        bool skipped) {
   WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 

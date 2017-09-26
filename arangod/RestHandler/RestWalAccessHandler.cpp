@@ -46,7 +46,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 struct MyTypeHandler final : public VPackCustomTypeHandler {
-  MyTypeHandler(TRI_vocbase_t* vocbase) : resolver(vocbase) {}
+  explicit MyTypeHandler(TRI_vocbase_t* vocbase) : resolver(vocbase) {}
 
   ~MyTypeHandler() {}
 

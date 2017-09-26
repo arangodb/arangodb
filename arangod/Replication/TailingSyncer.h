@@ -119,10 +119,10 @@ class TailingSyncer : public Syncer {
                       bool&, bool&);
 
   /// @brief called before marker is processed
-  virtual void appliedMarker(TRI_voc_tick_t firstRegularTick,
+  virtual void preApplyMarker(TRI_voc_tick_t firstRegularTick,
                              TRI_voc_tick_t newTick) {}
   /// @brief called after a marker was processed
-  virtual void processedMarker(uint64_t processedMarkers, bool skipped) {}
+  virtual void postApplyMarker(uint64_t processedMarkers, bool skipped) {}
 
  protected:
   /// @brief stringified chunk size
@@ -144,18 +144,6 @@ class TailingSyncer : public Syncer {
 
   /// @brief whether or not the applier should be verbose
   bool _verbose;
-
-  /// @brief whether or not the replication state file has been written at least
-  /// once with non-empty values. this is required in situations when the
-  /// replication applier is manually started and the master has absolutely no
-  /// new data to provide, and the slave get shut down. in that case, the state
-  /// file would never have been written with the initial start tick, so the
-  /// start tick would be lost. re-starting the slave and the replication
-  /// applier
-  /// with the ticks from the file would then result in a "no start tick
-  /// provided"
-  /// error
-  bool _hasWrittenState;
 
   /// @brief whether we can use single operation transactions
   bool _supportsSingleOperations;

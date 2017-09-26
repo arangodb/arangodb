@@ -362,7 +362,6 @@ LogicalCollection* Syncer::getCollectionByIdOrName(TRI_vocbase_t* vocbase,
 
 arangodb::LogicalCollection* Syncer::resolveCollection(TRI_vocbase_t* vocbase,
                                                        VPackSlice const& slice) {
-  LogicalCollection* coll = nullptr;
   VPackSlice uuid = slice.get("uuid");
   if (uuid.isString()) {
     return vocbase->lookupCollectionByUuid(StringRef(uuid));

@@ -69,7 +69,8 @@ TailingSyncer::TailingSyncer(
       _requireFromPresent(configuration->_requireFromPresent),
       _verbose(configuration->_verbose),
       _supportsSingleOperations(false),
-      _ignoreRenameCreateDrop(false) {
+      _ignoreRenameCreateDrop(false),
+      _ignoreDatabaseMarkers(true) {
   uint64_t c = configuration->_chunkSize;
   if (c > 0) {
     _chunkSize = StringUtils::itoa(c);
@@ -497,8 +498,6 @@ int TailingSyncer::renameCollection(VPackSlice const& slice) {
 
   std::string const name =
       VelocyPackHelper::getStringValue(collection, "name", "");
-  std::string const cname = getCName(slice);
-
   if (name.empty()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -561,7 +560,7 @@ int TailingSyncer::applyLogMarker(VPackSlice const& slice,
   if (!tick.empty()) {
     TRI_voc_tick_t newTick = static_cast<TRI_voc_tick_t>(
         StringUtils::uint64(tick.c_str(), tick.size()));
-    appliedMarker(firstRegularTick, newTick);
+    preApplyMarker(firstRegularTick, newTick);
   }
 
   // handle marker type
@@ -753,7 +752,7 @@ int TailingSyncer::applyLog(SimpleHttpResult* response,
     }
 
     // update tick value
-    processedMarker(processedMarkers, skipped);
+    postApplyMarker(processedMarkers, skipped);
   }
 
   // reached the end
@@ -842,8 +841,7 @@ int TailingSyncer::syncCollectionFinalize(std::string& errorMsg,
     if (found) {
       fromIncluded = StringUtils::boolean(header);
     }
-    if (!fromIncluded && fromTick > 0) {  // && _requireFromPresent
-      res = TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
+    if (!fromIncluded && fromTick > 0) { // && _requireFromPresent
       errorMsg = "required follow tick value '" +
                  StringUtils::itoa(lastIncludedTick) +
                  "' is not present (anymore?) on master at " +
@@ -851,7 +849,7 @@ int TailingSyncer::syncCollectionFinalize(std::string& errorMsg,
                  StringUtils::itoa(lastIncludedTick) +
                  ". It may be required to do a full resync and increase the "
                  "number of historic logfiles on the master.";
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      return TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
     }
 
     uint64_t processedMarkers = 0;

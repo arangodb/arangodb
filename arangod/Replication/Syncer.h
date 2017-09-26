@@ -54,7 +54,7 @@ class Syncer {
   Syncer(Syncer const&) = delete;
   Syncer& operator=(Syncer const&) = delete;
 
-  Syncer(TRI_replication_applier_configuration_t const*);
+  explicit Syncer(TRI_replication_applier_configuration_t const*);
 
   virtual ~Syncer();
   

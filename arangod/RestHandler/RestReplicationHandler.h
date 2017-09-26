@@ -180,6 +180,39 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   void handleCommandGetIdForReadLockCollection();
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the state of the replication logger
+  /// @route GET logger-state
+  /// @caller Syncer::getMasterState
+  /// @response VPackObject describing the ServerState in a certain point
+  ///           * state (server state)
+  ///           * server (version / id)
+  ///           * clients (list of followers)
+  //////////////////////////////////////////////////////////////////////////////
+  
+  void handleCommandLoggerState();
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the first tick available in a logfile
+  /// @route GET logger-first-tick
+  /// @caller js/client/modules/@arangodb/replication.js
+  /// @response VPackObject with minTick of LogfileManager->ranges()
+  //////////////////////////////////////////////////////////////////////////////
+  
+  void handleCommandLoggerFirstTick();
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief return the available logfile range
+  /// @route GET logger-tick-ranges
+  /// @caller js/client/modules/@arangodb/replication.js
+  /// @response VPackArray, containing info about each datafile
+  ///           * filename
+  ///           * status
+  ///           * tickMin - tickMax
+  //////////////////////////////////////////////////////////////////////////////
+  
+  void handleCommandLoggerTickRanges();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief determine chunk size from request
@@ -297,39 +330,6 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// SECTION:
   /// Functions to be implemented by specialisation
   //////////////////////////////////////////////////////////////////////////////
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the state of the replication logger
-  /// @route GET logger-state
-  /// @caller Syncer::getMasterState
-  /// @response VPackObject describing the ServerState in a certain point
-  ///           * state (server state)
-  ///           * server (version / id)
-  ///           * clients (list of followers)
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void handleCommandLoggerState() = 0;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the available logfile range
-  /// @route GET logger-tick-ranges
-  /// @caller js/client/modules/@arangodb/replication.js
-  /// @response VPackArray, containing info about each datafile
-  ///           * filename
-  ///           * status
-  ///           * tickMin - tickMax
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void handleCommandLoggerTickRanges() = 0;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the first tick available in a logfile
-  /// @route GET logger-first-tick
-  /// @caller js/client/modules/@arangodb/replication.js
-  /// @response VPackObject with minTick of LogfileManager->ranges()
-  //////////////////////////////////////////////////////////////////////////////
-
-  virtual void handleCommandLoggerFirstTick() = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle a follow command for the replication log
