@@ -1993,6 +1993,20 @@ bool MMFilesCollection::readDocumentWithCallback(transaction::Methods* trx,
   return false;
 }
 
+size_t MMFilesCollection::readDocumentWithCallback(transaction::Methods* trx,
+                                                   std::vector<std::pair<TRI_voc_rid_t, uint8_t const*>>& tokens,
+                                                   IndexIterator::DocumentCallback const& cb) {
+  size_t count = 0;
+  batchLookupRevisionVPack(tokens);
+  for (auto const& it : tokens) {
+    if (it.second) {
+      cb(MMFilesToken{it.first}, VPackSlice(it.second));
+      ++count;
+    }
+  }
+  return count;
+}
+
 bool MMFilesCollection::readDocumentConditional(
     transaction::Methods* trx, DocumentIdentifierToken const& token,
     TRI_voc_tick_t maxTick, ManagedDocumentResult& result) {
@@ -2984,6 +2998,10 @@ uint8_t const* MMFilesCollection::lookupRevisionVPackConditional(
   }
 
   return vpack;
+}
+
+void MMFilesCollection::batchLookupRevisionVPack(std::vector<std::pair<TRI_voc_rid_t, uint8_t const*>>& revisions) const {
+  _revisionsCache.batchLookup(revisions);
 }
 
 MMFilesDocumentPosition MMFilesCollection::insertRevision(

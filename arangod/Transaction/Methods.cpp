@@ -832,8 +832,7 @@ OperationResult transaction::Methods::anyLocal(
 
   ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, transaction::Methods::CursorType::ANY, &mmdr,
-                skip, limit, 1000, false);
+      indexScan(collectionName, transaction::Methods::CursorType::ANY, &mmdr, false);
 
   cursor->allDocuments([&resultBuilder](DocumentIdentifierToken const& token, VPackSlice slice) {
     resultBuilder.add(slice);
@@ -2232,8 +2231,7 @@ OperationResult transaction::Methods::allLocal(
 
   ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor =
-      indexScan(collectionName, transaction::Methods::CursorType::ALL, &mmdr,
-                skip, limit, 1000, false);
+      indexScan(collectionName, transaction::Methods::CursorType::ALL, &mmdr, false);
 
   if (cursor->failed()) {
     return OperationResult(cursor->code);
@@ -2620,15 +2618,10 @@ std::pair<bool, bool> transaction::Methods::getIndexForSortCondition(
 OperationCursor* transaction::Methods::indexScanForCondition(
     IndexHandle const& indexId, arangodb::aql::AstNode const* condition,
     arangodb::aql::Variable const* var, ManagedDocumentResult* mmdr,
-    uint64_t limit, uint64_t batchSize, bool reverse) {
+    bool reverse) {
   if (_state->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
-  }
-
-  if (limit == 0) {
-    // nothing to do
-    return new OperationCursor(TRI_ERROR_NO_ERROR);
   }
 
   auto idx = indexId.getIndex();
@@ -2646,7 +2639,7 @@ OperationCursor* transaction::Methods::indexScanForCondition(
     return new OperationCursor(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  return new OperationCursor(iterator.release(), limit, batchSize);
+  return new OperationCursor(iterator.release(), defaultBatchSize());
 }
 
 /// @brief factory for OperationCursor objects
@@ -2654,18 +2647,13 @@ OperationCursor* transaction::Methods::indexScanForCondition(
 /// calling this method
 std::unique_ptr<OperationCursor> transaction::Methods::indexScan(
     std::string const& collectionName, CursorType cursorType,
-    ManagedDocumentResult* mmdr, uint64_t skip, uint64_t limit,
-    uint64_t batchSize, bool reverse) {
+    ManagedDocumentResult* mmdr,
+    bool reverse) {
   // For now we assume indexId is the iid part of the index.
 
   if (_state->isCoordinator()) {
     // The index scan is only available on DBServers and Single Server.
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_ONLY_ON_DBSERVER);
-  }
-
-  if (limit == 0) {
-    // nothing to do
-    return std::make_unique<OperationCursor>(TRI_ERROR_NO_ERROR);
   }
 
   TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
@@ -2696,13 +2684,8 @@ std::unique_ptr<OperationCursor> transaction::Methods::indexScan(
     return std::make_unique<OperationCursor>(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  if (skip > 0) {
-    uint64_t unused = 0;
-    iterator->skip(skip, unused);
-  }
-
-  return std::make_unique<OperationCursor>(iterator.release(), limit,
-                                           batchSize);
+  return std::make_unique<OperationCursor>(iterator.release(),
+                                           defaultBatchSize());
 }
 
 /// @brief return the collection

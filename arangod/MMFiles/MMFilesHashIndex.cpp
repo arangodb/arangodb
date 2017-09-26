@@ -211,82 +211,6 @@ void MMFilesHashIndexLookupBuilder::buildNextSearchValue() {
   _builder->close();  // End of search Array
 }
 
-/// @brief determines if two elements are equal
-static bool IsEqualElementElementUnique(void*,
-                                        MMFilesHashIndexElement const* left,
-                                        MMFilesHashIndexElement const* right) {
-  // this is quite simple
-  return left->revisionId() == right->revisionId();
-}
-
-/// @brief determines if two elements are equal
-static bool IsEqualElementElementMulti(void* userData,
-                                       MMFilesHashIndexElement const* left,
-                                       MMFilesHashIndexElement const* right) {
-  TRI_ASSERT(left != nullptr);
-  TRI_ASSERT(right != nullptr);
-
-  if (left->revisionId() != right->revisionId()) {
-    return false;
-  }
-  if (left->hash() != right->hash()) {
-    return false;
-  }
-
-  IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
-  TRI_ASSERT(context != nullptr);
-
-  for (size_t i = 0; i < context->numFields(); ++i) {
-    VPackSlice leftData = left->slice(context, i);
-    VPackSlice rightData = right->slice(context, i);
-
-    int res =
-        arangodb::basics::VelocyPackHelper::compare(leftData, rightData, false);
-
-    if (res != 0) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-/// @brief given a key generates a hash integer
-static uint64_t HashKey(void*, VPackSlice const* key) {
-  return MMFilesHashIndexElement::hash(*key);
-}
-
-/// @brief determines if a key corresponds to an element
-static bool IsEqualKeyElementMulti(void* userData, VPackSlice const* left,
-                                   MMFilesHashIndexElement const* right) {
-  TRI_ASSERT(left->isArray());
-  TRI_ASSERT(right->revisionId() != 0);
-  IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
-  TRI_ASSERT(context != nullptr);
-
-  // TODO: is it a performance improvement to compare the hash values first?
-  VPackArrayIterator it(*left);
-
-  while (it.valid()) {
-    int res = arangodb::basics::VelocyPackHelper::compare(it.value(), right->slice(context, it.index()), false);
-
-    if (res != 0) {
-      return false;
-    }
-
-    it.next();
-  }
-
-  return true;
-}
-
-/// @brief determines if a key corresponds to an element
-static bool IsEqualKeyElementUnique(void* userData, VPackSlice const* left,
-                                    uint64_t,
-                                    MMFilesHashIndexElement const* right) {
-  return IsEqualKeyElementMulti(userData, left, right);
-}
-
 MMFilesHashIndexIterator::MMFilesHashIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, MMFilesHashIndex const* index,
@@ -390,42 +314,18 @@ void MMFilesHashIndexIteratorVPack::reset() {
 
 /// @brief create the unique array
 MMFilesHashIndex::UniqueArray::UniqueArray(
-    size_t numPaths, TRI_HashArray_t* hashArray, HashElementFunc* hashElement,
-    IsEqualElementElementByKey* isEqualElElByKey)
-    : _hashArray(hashArray),
-      _hashElement(hashElement),
-      _isEqualElElByKey(isEqualElElByKey),
+    size_t numPaths, std::unique_ptr<TRI_HashArray_t> hashArray)
+    : _hashArray(std::move(hashArray)),
       _numPaths(numPaths) {
   TRI_ASSERT(_hashArray != nullptr);
-  TRI_ASSERT(_hashElement != nullptr);
-  TRI_ASSERT(_isEqualElElByKey != nullptr);
-}
-
-/// @brief destroy the unique array
-MMFilesHashIndex::UniqueArray::~UniqueArray() {
-  delete _hashArray;
-  delete _hashElement;
-  delete _isEqualElElByKey;
 }
 
 /// @brief create the multi array
 MMFilesHashIndex::MultiArray::MultiArray(
-    size_t numPaths, TRI_HashArrayMulti_t* hashArray,
-    HashElementFunc* hashElement, IsEqualElementElementByKey* isEqualElElByKey)
-    : _hashArray(hashArray),
-      _hashElement(hashElement),
-      _isEqualElElByKey(isEqualElElByKey),
+    size_t numPaths, std::unique_ptr<TRI_HashArrayMulti_t> hashArray)
+    : _hashArray(std::move(hashArray)),
       _numPaths(numPaths) {
   TRI_ASSERT(_hashArray != nullptr);
-  TRI_ASSERT(_hashElement != nullptr);
-  TRI_ASSERT(_isEqualElElByKey != nullptr);
-}
-
-/// @brief destroy the multi array
-MMFilesHashIndex::MultiArray::~MultiArray() {
-  delete _hashArray;
-  delete _hashElement;
-  delete _isEqualElElByKey;
 }
 
 MMFilesHashIndex::MMFilesHashIndex(TRI_idx_iid_t iid,
@@ -442,35 +342,23 @@ MMFilesHashIndex::MMFilesHashIndex(TRI_idx_iid_t iid,
     indexBuckets = static_cast<size_t>(physical->indexBuckets());
   }
 
-  auto func = std::make_unique<HashElementFunc>();
-  auto compare = std::make_unique<IsEqualElementElementByKey>(_paths.size(),
-                                                              _useExpansion);
-
   if (_unique) {
     auto array = std::make_unique<TRI_HashArray_t>(
-        HashKey, *(func.get()), IsEqualKeyElementUnique,
-        IsEqualElementElementUnique, *(compare.get()), indexBuckets,
+        MMFilesUniqueHashIndexHelper(_paths.size(), _useExpansion), 
+        indexBuckets,
         [this]() -> std::string { return this->context(); });
 
-    _uniqueArray = new MMFilesHashIndex::UniqueArray(numPaths(), array.get(),
-                                                     func.get(), compare.get());
-    array.release();
+    _uniqueArray = new MMFilesHashIndex::UniqueArray(numPaths(), std::move(array));
   } else {
     _multiArray = nullptr;
 
     auto array = std::make_unique<TRI_HashArrayMulti_t>(
-        HashKey, *(func.get()), IsEqualKeyElementMulti,
-        IsEqualElementElementMulti, *(compare.get()), indexBuckets, 64,
+        MMFilesMultiHashIndexHelper(_paths.size(), _useExpansion), 
+        indexBuckets, 64,
         [this]() -> std::string { return this->context(); });
 
-    _multiArray = new MMFilesHashIndex::MultiArray(numPaths(), array.get(),
-                                                   func.get(), compare.get());
-
-    array.release();
+    _multiArray = new MMFilesHashIndex::MultiArray(numPaths(), std::move(array));
   }
-  compare.release();
-
-  func.release();
 }
 
 /// @brief destroys the index

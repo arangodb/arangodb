@@ -48,7 +48,6 @@ struct OperationCursor {
   std::unique_ptr<IndexIterator> _indexIterator;
   bool _hasMore;
   uint64_t _limit;
-  uint64_t const _originalLimit;
   uint64_t const _batchSize;
 
  public:
@@ -56,20 +55,14 @@ struct OperationCursor {
       : code(code),
         _hasMore(false),
         _limit(0),
-        _originalLimit(0),
         _batchSize(1000) {}
 
-  OperationCursor(IndexIterator* iterator, uint64_t limit, uint64_t batchSize)
+  OperationCursor(IndexIterator* iterator, uint64_t batchSize)
       : code(TRI_ERROR_NO_ERROR),
         _indexIterator(iterator),
-        _hasMore(true),
-        _limit(limit),  // _limit is modified later on
-        _originalLimit(limit),
-        _batchSize(batchSize) {
-    if (_indexIterator == nullptr) {
-      _hasMore = false;
-    }
-  }
+        _hasMore(_indexIterator != nullptr),
+        _limit(UINT64_MAX),  // _limit is modified later on
+        _batchSize(batchSize) {}
 
   ~OperationCursor() {}
   

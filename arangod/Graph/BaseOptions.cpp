@@ -418,8 +418,7 @@ EdgeCursor* BaseOptions::nextCursorLocal(ManagedDocumentResult* mmdr,
     std::vector<OperationCursor*> csrs;
     csrs.reserve(info.idxHandles.size());
     for (auto const& it : info.idxHandles) {
-      csrs.emplace_back(_trx->indexScanForCondition(it, node, _tmpVar, mmdr,
-                                                    UINT64_MAX, 1000, false));
+      csrs.emplace_back(_trx->indexScanForCondition(it, node, _tmpVar, mmdr, false));
     }
     opCursors.emplace_back(std::move(csrs));
   }
