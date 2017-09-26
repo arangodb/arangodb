@@ -1216,7 +1216,18 @@ typedef enum e_sig_action {
 ////////////////////////////////////////////////////////////////////////////////
 // @brief find out what impact a signal will have to the process we send it.
 static e_sig_action whatDoesSignal(int signal) {
-
+  // Some platforms don't have these. To keep our table clean
+  // we just define them here:
+#ifndef SIGPOLL
+#define SIGPOLL 23
+#endif
+#ifndef SIGSTKFLT
+#define SIGSTKFLT 16
+#endif
+#ifndef SIGPWR
+#define SIGPWR 29
+#endif
+  
 //     Signal       Value     Action   Comment
 //     ────────────────────────────────────────────────────────────────────
   switch (signal) {
