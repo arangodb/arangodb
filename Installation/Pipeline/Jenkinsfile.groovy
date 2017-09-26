@@ -1225,7 +1225,7 @@ def buildEdition(os, edition, maintainer) {
         logStartStage(os, logFile, logFile)
 
         if (os == 'linux' || os == 'mac') {
-            if (! fileExists('build/Makefile')) {
+            if (! fileExists('build/Makefile') && ! cleanBuild) {
                 unstashBuild(os, edition, maintainer)
             }
 
