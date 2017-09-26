@@ -1,4 +1,4 @@
-shell> curl --dump - http://localhost:8529/_api/collection/10169/properties
+shell> curl --dump - http://localhost:8529/_api/collection/10176/properties
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
@@ -6,7 +6,7 @@ x-content-type-options: nosniff
 location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/products/properties
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10169"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"10176"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 

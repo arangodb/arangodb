@@ -73,7 +73,7 @@ endif ()
 
 set(ARANGODB_VERSION_MAJOR      "3")
 set(ARANGODB_VERSION_MINOR      "2")
-set(ARANGODB_VERSION_REVISION   "3")
+set(ARANGODB_VERSION_REVISION   "4")
 set(ARANGODB_PACKAGE_REVISION   "1")
 
 # version for the windows rc file needs to be numeric:

@@ -14,7 +14,7 @@ arangosh&gt; db._query(<span class="hljs-string">`
     <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0010099411010742188</span> 
+    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0008890628814697266</span> 
   }, 
   <span class="hljs-string">"warnings"</span> : [ ] 
 }
@@ -33,7 +33,7 @@ arangosh&gt; db._query({
     <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0009171962738037109</span> 
+    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.0009179115295410156</span> 
   }, 
   <span class="hljs-string">"warnings"</span> : [ ] 
 }

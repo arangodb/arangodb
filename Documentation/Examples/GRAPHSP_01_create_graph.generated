@@ -5,158 +5,148 @@ arangosh&gt; db.circles.toArray();
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"I"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"circles/I"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRcd2--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAe--A"</span>, 
     <span class="hljs-string">"label"</span> : <span class="hljs-string">"9"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"G"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"circles/G"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRcd2--_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAe---"</span>, 
     <span class="hljs-string">"label"</span> : <span class="hljs-string">"7"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"F"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"circles/F"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRcd2---"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAa--A"</span>, 
     <span class="hljs-string">"label"</span> : <span class="hljs-string">"6"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"A"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"circles/A"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRcdy---"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAS---"</span>, 
     <span class="hljs-string">"label"</span> : <span class="hljs-string">"1"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"E"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"circles/E"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRcdy--C"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAa--_"</span>, 
     <span class="hljs-string">"label"</span> : <span class="hljs-string">"5"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"C"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"circles/C"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRcdy--A"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAW--_"</span>, 
     <span class="hljs-string">"label"</span> : <span class="hljs-string">"3"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"D"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"circles/D"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRcdy--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAa---"</span>, 
     <span class="hljs-string">"label"</span> : <span class="hljs-string">"4"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"J"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"circles/J"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRcd2--C"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAi---"</span>, 
     <span class="hljs-string">"label"</span> : <span class="hljs-string">"10"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"B"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"circles/B"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRcdy--_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAW---"</span>, 
     <span class="hljs-string">"label"</span> : <span class="hljs-string">"2"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"H"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"circles/H"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRcd2--A"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAe--_"</span>, 
     <span class="hljs-string">"label"</span> : <span class="hljs-string">"8"</span> 
   }, 
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"K"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"circles/K"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRcd6---"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAi--_"</span>, 
     <span class="hljs-string">"label"</span> : <span class="hljs-string">"11"</span> 
   } 
 ]
 arangosh&gt; db.edges.toArray();
 [ 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7585"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7585"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"circles/G"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"circles/H"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRce---B"</span>, 
-    <span class="hljs-string">"theFalse"</span> : <span class="hljs-literal">false</span>, 
-    <span class="hljs-string">"theTruth"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"label"</span> : <span class="hljs-string">"right_blob"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7576"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7576"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"circles/B"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"circles/E"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRce----"</span>, 
-    <span class="hljs-string">"theFalse"</span> : <span class="hljs-literal">false</span>, 
-    <span class="hljs-string">"theTruth"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"label"</span> : <span class="hljs-string">"left_blub"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7594"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7594"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"circles/J"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"circles/K"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRceC--A"</span>, 
-    <span class="hljs-string">"theFalse"</span> : <span class="hljs-literal">false</span>, 
-    <span class="hljs-string">"theTruth"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"label"</span> : <span class="hljs-string">"right_zup"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7566"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7566"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"circles/A"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"circles/B"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRcd6--_"</span>, 
-    <span class="hljs-string">"theFalse"</span> : <span class="hljs-literal">false</span>, 
-    <span class="hljs-string">"theTruth"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"label"</span> : <span class="hljs-string">"left_bar"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7579"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7579"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"circles/E"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"circles/F"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRce---_"</span>, 
-    <span class="hljs-string">"theFalse"</span> : <span class="hljs-literal">false</span>, 
-    <span class="hljs-string">"theTruth"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"label"</span> : <span class="hljs-string">"left_schubi"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7570"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7570"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"circles/B"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"circles/C"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRcd6--A"</span>, 
-    <span class="hljs-string">"theFalse"</span> : <span class="hljs-literal">false</span>, 
-    <span class="hljs-string">"theTruth"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"label"</span> : <span class="hljs-string">"left_blarg"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7582"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7582"</span>, 
-    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"circles/A"</span>, 
-    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"circles/G"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRce---A"</span>, 
-    <span class="hljs-string">"theFalse"</span> : <span class="hljs-literal">false</span>, 
-    <span class="hljs-string">"theTruth"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"label"</span> : <span class="hljs-string">"right_foo"</span> 
-  }, 
-  { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7591"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7591"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7598"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7598"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"circles/G"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"circles/J"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRceC--_"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAy--A"</span>, 
     <span class="hljs-string">"theFalse"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"theTruth"</span> : <span class="hljs-literal">true</span>, 
     <span class="hljs-string">"label"</span> : <span class="hljs-string">"right_zip"</span> 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7588"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7588"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7586"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7586"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"circles/E"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"circles/F"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAu---"</span>, 
+    <span class="hljs-string">"theFalse"</span> : <span class="hljs-literal">false</span>, 
+    <span class="hljs-string">"theTruth"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"left_schubi"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7577"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7577"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"circles/B"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"circles/C"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAm--_"</span>, 
+    <span class="hljs-string">"theFalse"</span> : <span class="hljs-literal">false</span>, 
+    <span class="hljs-string">"theTruth"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"left_blarg"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7589"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7589"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"circles/A"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"circles/G"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAu--_"</span>, 
+    <span class="hljs-string">"theFalse"</span> : <span class="hljs-literal">false</span>, 
+    <span class="hljs-string">"theTruth"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"right_foo"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7592"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7592"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"circles/G"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"circles/H"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAy---"</span>, 
+    <span class="hljs-string">"theFalse"</span> : <span class="hljs-literal">false</span>, 
+    <span class="hljs-string">"theTruth"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"right_blob"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7583"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7583"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"circles/B"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"circles/E"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAq--_"</span>, 
+    <span class="hljs-string">"theFalse"</span> : <span class="hljs-literal">false</span>, 
+    <span class="hljs-string">"theTruth"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"left_blub"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7601"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7601"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"circles/J"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"circles/K"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccA2---"</span>, 
+    <span class="hljs-string">"theFalse"</span> : <span class="hljs-literal">false</span>, 
+    <span class="hljs-string">"theTruth"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"right_zup"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7595"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7595"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"circles/H"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"circles/I"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRceC---"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAy--_"</span>, 
     <span class="hljs-string">"theFalse"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"theTruth"</span> : <span class="hljs-literal">true</span>, 
     <span class="hljs-string">"label"</span> : <span class="hljs-string">"right_blub"</span> 
@@ -164,9 +154,19 @@ arangosh&gt; db.edges.toArray();
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7573"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7573"</span>, 
+    <span class="hljs-string">"_from"</span> : <span class="hljs-string">"circles/A"</span>, 
+    <span class="hljs-string">"_to"</span> : <span class="hljs-string">"circles/B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAm---"</span>, 
+    <span class="hljs-string">"theFalse"</span> : <span class="hljs-literal">false</span>, 
+    <span class="hljs-string">"theTruth"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"label"</span> : <span class="hljs-string">"left_bar"</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"7580"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"edges/7580"</span>, 
     <span class="hljs-string">"_from"</span> : <span class="hljs-string">"circles/C"</span>, 
     <span class="hljs-string">"_to"</span> : <span class="hljs-string">"circles/D"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VjyRcd6--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_Vp0ccAq---"</span>, 
     <span class="hljs-string">"theFalse"</span> : <span class="hljs-literal">false</span>, 
     <span class="hljs-string">"theTruth"</span> : <span class="hljs-literal">true</span>, 
     <span class="hljs-string">"label"</span> : <span class="hljs-string">"left_blorg"</span> 

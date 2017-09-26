@@ -3,7 +3,7 @@ shell> curl --dump - http://localhost:8529/_api/replication/dump?collection=test
 HTTP/1.1 200 OK
 content-type: application/x-arango-dump; charset=utf-8
 x-content-type-options: nosniff
-x-arango-replication-lastincluded: 11660
+x-arango-replication-lastincluded: 11667
 x-arango-replication-checkmore: false
 
-"{\"tick\":\"11654\",\"type\":2300,\"data\":{\"_id\":\"testCollection/123456\",\"_key\":\"123456\",\"_rev\":\"_VjySVrG---\",\"b\":1,\"c\":false,\"d\":\"additional value\"}}\n{\"tick\":\"11658\",\"type\":2302,\"data\":{\"_key\":\"foobar\",\"_rev\":\"_VjySVrG--A\"}}\n{\"tick\":\"11660\",\"type\":2302,\"data\":{\"_key\":\"abcdef\",\"_rev\":\"_VjySVrG--B\"}}\n"
+"{\"tick\":\"11661\",\"type\":2300,\"data\":{\"_id\":\"testCollection/123456\",\"_key\":\"123456\",\"_rev\":\"_Vp0dWxK---\",\"b\":1,\"c\":false,\"d\":\"additional value\"}}\n{\"tick\":\"11665\",\"type\":2302,\"data\":{\"_key\":\"foobar\",\"_rev\":\"_Vp0dWxK--A\"}}\n{\"tick\":\"11667\",\"type\":2302,\"data\":{\"_key\":\"abcdef\",\"_rev\":\"_Vp0dWxK--B\"}}\n"
