@@ -85,8 +85,12 @@ class ClientFeature final : public application_features::ApplicationFeature,
   void setRetries(size_t retries) { _retries = retries; }
 
   void setWarn(bool warn) { _warn = warn; }
-                              
+
   bool getWarn() { return _warn; }
+
+  void setWarnConnect(bool warnConnect) { _warnConnect = warnConnect; }
+
+  bool getWarnConnect() { return _warnConnect; }
 
   static int runMain(int argc, char* argv[],
                      std::function<int(int argc, char* argv[])> const& mainFunc);
@@ -105,6 +109,7 @@ class ClientFeature final : public application_features::ApplicationFeature,
  private:
   size_t _retries;
   bool _warn;
+  bool _warnConnect;
   bool _haveServerPassword;
 };
 }
