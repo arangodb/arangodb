@@ -129,7 +129,7 @@ AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
         std::unique_ptr<AqlItemBlock> res(
             ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
 
-        if (res.get() == nullptr) {
+        if (res == nullptr) {
           break;
         }
 
@@ -142,7 +142,7 @@ AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
 
         replyBlocks.reset(work(blocks));
 
-        if (replyBlocks.get() != nullptr) {
+        if (replyBlocks != nullptr) {
           break;
         }
       }

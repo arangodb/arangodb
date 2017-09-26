@@ -80,11 +80,11 @@ std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getEdges(
   if (_dir == TRI_EDGE_OUT) {
     res.reset(_trx->indexScanForCondition(
         _forwardIndexId, _searchBuilder.getOutboundCondition(),
-        _searchBuilder.getVariable(), mmdr, UINT64_MAX, 1000, false));
+        _searchBuilder.getVariable(), mmdr, false));
   } else {
     res.reset(_trx->indexScanForCondition(
         _forwardIndexId, _searchBuilder.getInboundCondition(),
-        _searchBuilder.getVariable(), mmdr, UINT64_MAX, 1000, false));
+        _searchBuilder.getVariable(), mmdr, false));
   }
   return res;
 }
@@ -117,11 +117,11 @@ std::unique_ptr<arangodb::OperationCursor> EdgeCollectionInfo::getReverseEdges(
   if (_dir == TRI_EDGE_OUT) {
     res.reset(_trx->indexScanForCondition(
         _backwardIndexId, _searchBuilder.getInboundCondition(),
-        _searchBuilder.getVariable(), mmdr, UINT64_MAX, 1000, false));
+        _searchBuilder.getVariable(), mmdr, false));
   } else {
     res.reset(_trx->indexScanForCondition(
         _backwardIndexId, _searchBuilder.getOutboundCondition(),
-        _searchBuilder.getVariable(), mmdr, UINT64_MAX, 1000, false));
+        _searchBuilder.getVariable(), mmdr, false));
   }
   return res;
 }
