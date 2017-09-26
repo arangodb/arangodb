@@ -505,6 +505,12 @@ void Agent::sendAppendEntriesRPC() {
         }
       }
       
+      earliestPackage = system_clock::now() + std::chrono::seconds(3600);
+      {
+        MUTEX_LOCKER(tiLocker, _tiLock);
+        _earliestPackage[followerId] = earliestPackage;
+      }
+
       // Send request
       auto headerFields =
         std::make_unique<std::unordered_map<std::string, std::string>>();
@@ -521,11 +527,6 @@ void Agent::sendAppendEntriesRPC() {
       _lastSent[followerId]    = system_clock::now();
       _constituent.notifyHeartbeatSent(followerId);
 
-      earliestPackage = system_clock::now() + std::chrono::seconds(3600);
-      {
-        MUTEX_LOCKER(tiLocker, _tiLock);
-        _earliestPackage[followerId] = earliestPackage;
-      }
       LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Appending (" << (uint64_t) (TRI_microtime() * 1000000000.0) << ") "
         << unconfirmed.size() - 1 << " entries up to index "
