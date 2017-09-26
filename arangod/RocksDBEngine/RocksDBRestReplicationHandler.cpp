@@ -74,66 +74,6 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
     : RestReplicationHandler(request, response),
       _manager(globalRocksEngine()->replicationManager()) {}
 
-RocksDBRestReplicationHandler::~RocksDBRestReplicationHandler() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_replication_logger_return_state
-////////////////////////////////////////////////////////////////////////////////
-
-void RocksDBRestReplicationHandler::handleCommandLoggerState() {
-  VPackBuilder builder;
-  auto res = globalRocksEngine()->createLoggerState(_vocbase, builder);
-  if (res.fail()) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "failed to create logger-state"
-                                          << res.errorMessage();
-    generateError(rest::ResponseCode::BAD, res.errorNumber(),
-                  res.errorMessage());
-    return;
-  }
-  generateResult(rest::ResponseCode::OK, builder.slice());
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief return the available logfile range
-/// @route GET logger-tick-ranges
-/// @caller js/client/modules/@arangodb/replication.js
-/// @response VPackArray, containing info about each datafile
-///           * filename
-///           * status
-///           * tickMin - tickMax
-//////////////////////////////////////////////////////////////////////////////
-void RocksDBRestReplicationHandler::handleCommandLoggerTickRanges() {
-  VPackBuilder b;
-  Result res = globalRocksEngine()->createTickRanges(b);
-  if (res.ok()) {
-    generateResult(rest::ResponseCode::OK, b.slice());
-  } else {
-    generateError(res);
-  }
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief return the first tick available in a logfile
-/// @route GET logger-first-tick
-/// @caller js/client/modules/@arangodb/replication.js
-/// @response VPackObject with minTick of LogfileManager->ranges()
-//////////////////////////////////////////////////////////////////////////////
-void RocksDBRestReplicationHandler::handleCommandLoggerFirstTick() {
-  TRI_voc_tick_t tick = UINT64_MAX;
-  Result res = EngineSelectorFeature::ENGINE->firstTick(tick);
-
-  VPackBuilder b;
-  b.add(VPackValue(VPackValueType::Object));
-  if (tick == UINT64_MAX || res.fail()) {
-    b.add("firstTick", VPackValue(VPackValueType::Null));
-  } else {
-    auto tickString = std::to_string(tick);
-    b.add("firstTick", VPackValue(tickString));
-  }
-  b.close();
-  generateResult(rest::ResponseCode::OK, b.slice());
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_delete_batch_replication
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,9 +188,6 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
         static_cast<TRI_voc_tick_t>(StringUtils::uint64(suffixes[1]));
 
     bool found = _manager->remove(id);
-    // StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    // int res = engine->removeCompactionBlocker(_vocbase, id);
-
     if (found) {
       resetResponse(rest::ResponseCode::NO_CONTENT);
     } else {

@@ -38,7 +38,7 @@ namespace arangodb {
 class RocksDBRestReplicationHandler : public RestReplicationHandler {
  public:
   RocksDBRestReplicationHandler(GeneralRequest*, GeneralResponse*);
-  ~RocksDBRestReplicationHandler();
+  ~RocksDBRestReplicationHandler() {};
 
  public:
 
@@ -47,38 +47,6 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   }
 
  private:
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the state of the replication logger
-  /// @route GET logger-state
-  /// @caller Syncer::getMasterState
-  /// @response VPackObject describing the ServerState in a certain point
-  ///           * state (server state)
-  ///           * server (version / id)
-  ///           * clients (list of followers)
-  //////////////////////////////////////////////////////////////////////////////
-
-  void handleCommandLoggerState() override;
-  
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the available logfile range
-  /// @route GET logger-tick-ranges
-  /// @caller js/client/modules/@arangodb/replication.js
-  /// @response VPackArray, containing info about each datafile
-  ///           * filename
-  ///           * status
-  ///           * tickMin - tickMax
-  //////////////////////////////////////////////////////////////////////////////
-  
-  void handleCommandLoggerTickRanges() override;
-  
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief return the first tick available in a logfile
-  /// @route GET logger-first-tick
-  /// @caller js/client/modules/@arangodb/replication.js
-  /// @response VPackObject with minTick of LogfileManager->ranges()
-  //////////////////////////////////////////////////////////////////////////////
-  
-  void handleCommandLoggerFirstTick() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle a follow command for the replication log

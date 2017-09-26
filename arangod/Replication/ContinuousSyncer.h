@@ -48,10 +48,10 @@ class ContinuousSyncer : public TailingSyncer {
 
  private:
   /// @brief called before marker is processed
-  void appliedMarker(TRI_voc_tick_t firstRegularTick,
+  void preApplyMarker(TRI_voc_tick_t firstRegularTick,
                      TRI_voc_tick_t newTick) override;
   /// @brief called after a marker was processed
-  void processedMarker(uint64_t processedMarkers, bool skipped) override;
+  void postApplyMarker(uint64_t processedMarkers, bool skipped) override;
 
   /// @brief set the applier progress
   void setProgress(char const*);
