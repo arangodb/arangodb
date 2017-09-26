@@ -50,10 +50,8 @@ aql::AqlValue ClusterTraverserCache::fetchEdgeAqlResult(EdgeDocumentToken const&
   TRI_ASSERT(ServerState::instance()->isCoordinator());
   // FIXME: the ClusterTraverserCache lifetime is shorter then the query lifetime
   // therefore we cannot get away here without copying the result
-  // return aql::AqlValue(aql::AqlValueHintNoCopy(token.vpack()));
   return aql::AqlValue(VPackSlice(token.vpack())); // will copy slice
 }
-
 
 aql::AqlValue ClusterTraverserCache::fetchVertexAqlResult(StringRef id) {
   // FIXME: this is only used for ShortestPath, where the shortestpath stuff
@@ -63,11 +61,10 @@ aql::AqlValue ClusterTraverserCache::fetchVertexAqlResult(StringRef id) {
   if (it == _cache.end()) {
     LOG_TOPIC(ERR, Logger::GRAPHS) << __FUNCTION__ << " vertex '" << id << "' not found";
     // Document not found return NULL
-    return aql::AqlValue(VelocyPackHelper::NullValue());
+    return aql::AqlValue(aql::AqlValueHintNull());
   }
   // FIXME: the ClusterTraverserCache lifetime is shorter then the query lifetime
   // therefore we cannot get away here without copying the result
-  // return aql::AqlValue(aql::AqlValueHintNoCopy(it->second.begin()));
   return aql::AqlValue(it->second); // will copy slice
 }
 

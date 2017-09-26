@@ -1179,7 +1179,7 @@ function GET_DOCUMENTS (collection, func) {
     return COLLECTION(collection, func).all().toArray();
   }
 
-  return COLLECTION(collection, func).ALL(0, null).documents;
+  return COLLECTION(collection, func).ALL().documents;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
