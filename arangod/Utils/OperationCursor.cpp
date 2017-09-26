@@ -50,7 +50,6 @@ void OperationCursor::reset() {
   if (_indexIterator != nullptr) {
     _indexIterator->reset();
     _hasMore = true;
-    _limit = _originalLimit;
   }
 }
 
@@ -65,32 +64,8 @@ bool OperationCursor::next(IndexIterator::TokenCallback const& callback, uint64_
     batchSize = _batchSize;
   }
 
-  size_t atMost = static_cast<size_t>(batchSize > _limit ? _limit : batchSize);
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // We add wrapper around Callback that validates that
-  // the callback has been called at least once.
-  bool called = false;
-  auto cb = [&](DocumentIdentifierToken const& token) {
-    called = true;
-    callback(token);
-  };
-  _hasMore = _indexIterator->next(cb, atMost);
-  if (_hasMore) {
-    // If the index says it has more elements than it need
-    // to call callback at least once.
-    // Otherweise progress is not guaranteed.
-    TRI_ASSERT(called);
-  }
-#else
+  size_t atMost = static_cast<size_t>(batchSize); 
   _hasMore = _indexIterator->next(callback, atMost);
-#endif
-
-  if (_hasMore) {
-    // We got atMost many callbacks
-    TRI_ASSERT(_limit >= atMost);
-    _limit -= atMost;
-  }
   return _hasMore;
 }
 
@@ -104,32 +79,8 @@ bool OperationCursor::nextDocument(IndexIterator::DocumentCallback const& callba
     batchSize = _batchSize;
   }
   
-  size_t atMost = static_cast<size_t>(batchSize > _limit ? _limit : batchSize);
-  
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // We add wrapper around Callback that validates that
-  // the callback has been called at least once.
-  bool called = false;
-  auto cb = [&](DocumentIdentifierToken const& token, VPackSlice slice) {
-    called = true;
-    callback(token, slice);
-  };
-  _hasMore = _indexIterator->nextDocument(cb, atMost);
-  if (_hasMore) {
-    // If the index says it has more elements than it need
-    // to call callback at least once.
-    // Otherweise progress is not guaranteed.
-    TRI_ASSERT(called);
-  }
-#else
+  size_t atMost = static_cast<size_t>(batchSize);
   _hasMore = _indexIterator->nextDocument(callback, atMost);
-#endif
-  
-  if (_hasMore) {
-    // We got atMost many callbacks
-    TRI_ASSERT(_limit >= atMost);
-    _limit -= atMost;
-  }
   return _hasMore;
 }
 
@@ -150,32 +101,9 @@ bool OperationCursor::nextWithExtra(IndexIterator::ExtraCallback const& callback
   if (batchSize == UINT64_MAX) {
     batchSize = _batchSize;
   }
-  size_t atMost = static_cast<size_t>(batchSize > _limit ? _limit : batchSize);
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // We add wrapper around Callback that validates that
-  // the callback has been called at least once.
-  bool called = false;
-  auto cb = [&](DocumentIdentifierToken const& token, VPackSlice extra) {
-    called = true;
-    callback(token, extra);
-  };
-  _hasMore = _indexIterator->nextExtra(cb, atMost);
-  if (_hasMore) {
-    // If the index says it has more elements than it need
-    // to call callback at least once.
-    // Otherweise progress is not guaranteed.
-    TRI_ASSERT(called);
-  }
-#else
+  
+  size_t atMost = static_cast<size_t>(batchSize);
   _hasMore = _indexIterator->nextExtra(callback, atMost);
-#endif
-
-  if (_hasMore) {
-    // We got atMost many callbacks
-    TRI_ASSERT(_limit >= atMost);
-    _limit -= atMost;
-  }
   return _hasMore;
 }
 
@@ -192,13 +120,11 @@ int OperationCursor::skip(uint64_t toSkip, uint64_t& skipped) {
 
   if (toSkip > _limit) {
     // Short-cut, we jump to the end
-    _limit = 0;
     _hasMore = false;
     return TRI_ERROR_NO_ERROR;
   }
 
   _indexIterator->skip(toSkip, skipped);
-  _limit -= skipped;
   if (skipped != toSkip || _limit == 0) {
     _hasMore = false;
   }
