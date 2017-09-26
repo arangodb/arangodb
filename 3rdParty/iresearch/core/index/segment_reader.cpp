@@ -87,7 +87,7 @@ class masked_docs_iterator
 };
 
 bool read_columns_meta(
-    const iresearch::format& codec, 
+    const iresearch::format& codec,
     const iresearch::directory& dir,
     const irs::segment_meta& meta,
     std::vector<iresearch::column_meta>& columns,
@@ -143,11 +143,6 @@ NS_ROOT
 // -------------------------------------------------------------------
 // segment_reader
 // -------------------------------------------------------------------
-
-class segment_reader::atomic_helper:
-  public atomic_base<segment_reader::impl_ptr>,
-  public singleton<segment_reader::atomic_helper> {
-};
 
 class segment_reader_impl : public sub_reader {
  public:
@@ -220,27 +215,17 @@ segment_reader::segment_reader(impl_ptr&& impl) NOEXCEPT
   : impl_(std::move(impl)) {
 }
 
-segment_reader::segment_reader(const segment_reader& other) {
+segment_reader::segment_reader(const segment_reader& other) NOEXCEPT {
   *this = other;
 }
 
-segment_reader::segment_reader(segment_reader&& other) NOEXCEPT {
-  *this = std::move(other);
-}
-
-segment_reader& segment_reader::operator=(const segment_reader& other) {
+segment_reader& segment_reader::operator=(
+    const segment_reader& other) NOEXCEPT {
   if (this != &other) {
-    auto impl = atomic_helper::instance().atomic_load(&(other.impl_));
+    // make a copy
+    impl_ptr impl = atomic_utils::atomic_load(&other.impl_);
 
-    atomic_helper::instance().atomic_exchange(&impl_, impl);
-  }
-
-  return *this;
-}
-
-segment_reader& segment_reader::operator=(segment_reader&& other) NOEXCEPT {
-  if (this != &other) {
-    atomic_helper::instance().atomic_exchange(&impl_, other.impl_);
+    atomic_utils::atomic_store(&impl_, impl);
   }
 
   return *this;
@@ -269,16 +254,19 @@ template<>
 }
 
 segment_reader segment_reader::reopen(const segment_meta& meta) const {
+  // make a copy
+  impl_ptr impl = atomic_utils::atomic_load(&impl_);
+
 #ifdef IRESEARCH_DEBUG
-  auto& impl = dynamic_cast<segment_reader_impl&>(*impl_);
+  auto& reader_impl = dynamic_cast<segment_reader_impl&>(*impl);
 #else
-  auto& impl = static_cast<segment_reader_impl&>(*impl_);
+  auto& reader_impl = static_cast<segment_reader_impl&>(*impl);
 #endif
 
   // reuse self if no changes to meta
-  return impl.meta_version() == meta.version
+  return reader_impl.meta_version() == meta.version
     ? *this
-    : segment_reader_impl::open(impl.dir(), meta);
+    : segment_reader_impl::open(reader_impl.dir(), meta);
 }
 
 // -------------------------------------------------------------------
