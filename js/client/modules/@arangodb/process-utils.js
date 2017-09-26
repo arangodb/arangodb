@@ -1228,7 +1228,12 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
           wait(0.5, false);
           if (options.useReconnect) {
             try {
-              arango.reconnect(instanceInfo.endpoint, '_system', options.username, options.password);
+              arango.reconnect(instanceInfo.endpoint,
+                               '_system',
+                               options.username,
+                               options.password,
+                               count > 50
+                              );
               break;
             } catch (e) {
             }
