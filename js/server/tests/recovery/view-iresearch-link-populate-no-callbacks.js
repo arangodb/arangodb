@@ -44,11 +44,14 @@ function runSetup () {
   var meta = { links: { 'UnitTestsRecoveryDummy': { includeAllFields: true } } };
   db._view('UnitTestsRecoveryView').properties(meta);
 
+  internal.wal.flush(true, true);
+  internal.debugSetFailAt("FlushThreadCrashAfterWalSync");
+
   for (let i = 0; i < 10000; i++) {
     c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
   }
 
-  c.save({ _key: 'crashme' }, { waitForSync: true });
+  c.save({ name: 'crashme' }, { waitForSync: true });
 
   internal.debugSegfault('crashing server');
 }
@@ -81,7 +84,7 @@ function recoverySuite () {
       assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
 
       var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsRecoveryView FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length", null, { }).json;
-      assertEqual(result[0], 10000);
+      assertTrue(result[0] > 0);
     }
 
   };

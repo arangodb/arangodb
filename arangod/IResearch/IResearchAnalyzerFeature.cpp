@@ -667,7 +667,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
           {"text_ru", "{ \"locale\": \"ru\", \"ignored_words\": [ ] }" }, // empty stop word list
           {"text_sv", "{ \"locale\": \"sv\", \"ignored_words\": [ ] }" }, // empty stop word list
         };
-        static const irs::flags extraFeatures = { irs::norm::type() }; // add norms
+        static const irs::flags extraFeatures = { irs::frequency::type(), irs::norm::type(), irs::position::type() }; // add norms + frequency/position for by_phrase
         static const irs::string_ref type("text");
 
         for (auto& entry: textAnalzyers) {

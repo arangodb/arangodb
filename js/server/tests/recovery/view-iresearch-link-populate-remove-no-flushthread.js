@@ -48,11 +48,15 @@ function runSetup () {
   internal.debugSetFailAt("FlushThreadSync");
   internal.wait(2); // make sure failure point takes effect
 
-  for (let i = 0; i < 10000; i++) {
-    c.save({ a: "foo_" + i, b: "bar_" + i, c: i });
+  for (let i = 0; i < 20000; i++) {
+    c.save({ a: "foo_" + i, b: "bar_" + i, c: i, _key: "doc_" + i });
   }
 
-  c.save({ _key: 'crashme' }, { waitForSync: true });
+  for (let i = 10000; i < 20000; i++) {
+    c.remove("doc_" + i);
+  }
+
+  c.save({ name: 'crashme' }, { waitForSync: true });
 
   internal.debugSegfault('crashing server');
 }

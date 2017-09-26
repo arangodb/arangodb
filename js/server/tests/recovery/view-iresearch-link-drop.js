@@ -48,7 +48,7 @@ function runSetup () {
   // remove link
   v.properties({ links: { 'UnitTestsRecoveryDummy': null } });
 
-  c.save({ _key: 'crashme' }, true);
+  c.save({ name: 'crashme' }, true);
 
   internal.debugSegfault('crashing server');
 }

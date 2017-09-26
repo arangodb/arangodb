@@ -403,6 +403,26 @@ Result IResearchLink::remove(
   return _view->remove(*trx, _collection->cid(), rid);
 }
 
+Result IResearchLink::remove(
+  transaction::Methods* trx,
+  TRI_voc_rid_t rid,
+  bool isRollback
+) {
+  ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
+  SCOPED_LOCK(mutex);
+
+  if (!_collection || !_view) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_LOADED; // '_collection' and '_view' required
+  }
+
+  if (!trx) {
+    return TRI_ERROR_BAD_PARAMETER; // 'trx' required
+  }
+
+  // remove documents matching on cid and rid
+  return _view->remove(*trx, _collection->cid(), rid);
+}
+
 /*static*/ bool IResearchLink::setType(arangodb::velocypack::Builder& builder) {
   if (!builder.isOpenObject()) {
     return false;

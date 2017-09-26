@@ -185,7 +185,7 @@ function iResearchAqlTestSuite () {
     testAttributeNeqFilter : function () {
       var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsView FILTER doc.a != 'foo'  RETURN doc", null, { }).json;
 
-      assertEqual(result.length, 10);
+      assertEqual(result.length, 14); // include documents without attribute 'a'
       result.forEach(function(res) {
         assertFalse(res.a === 'foo');
       });
