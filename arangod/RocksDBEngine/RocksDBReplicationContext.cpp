@@ -166,16 +166,18 @@ RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
 
   if (global) {
     // global inventory
-    std::shared_ptr<VPackBuilder> inventory = vocbase->inventory(tick, nameFilter);
+    auto builder = std::make_shared<VPackBuilder>();
+    vocbase->inventory(*builder.get(), tick, nameFilter);
 
     return std::make_pair(RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick),
-                          inventory);
+                          builder);
   } else {
     // database-specific inventory
-    std::shared_ptr<VPackBuilder> inventory = vocbase->inventory(tick, nameFilter);
+    auto builder = std::make_shared<VPackBuilder>();
+    vocbase->inventory(*builder.get(), tick, nameFilter);
 
     return std::make_pair(RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick),
-                          inventory);
+                          builder);
   }
 }
 

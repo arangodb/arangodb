@@ -698,8 +698,9 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
   };
 
   // collections and indexes
-  std::shared_ptr<VPackBuilder> collectionsBuilder = _vocbase->inventory(tick, nameFilter);
-  VPackSlice const collections = collectionsBuilder->slice();
+  VPackBuilder collectionsBuilder;
+  _vocbase->inventory(collectionsBuilder, tick, nameFilter);
+  VPackSlice const collections = collectionsBuilder.slice();
 
   TRI_ASSERT(collections.isArray());
 
