@@ -80,17 +80,19 @@ void BindParameters::process() {
 
 /// @brief strip collection name prefixes from the parameters
 /// the values must be a VelocyPack array
-VPackBuilder BindParameters::StripCollectionNames(VPackSlice const& keys,
-                                                  char const* collectionName) {
+void BindParameters::stripCollectionNames(VPackSlice const& keys,
+                                          std::string const& collectionName,
+                                          VPackBuilder& result) {
+  char const* c = collectionName.c_str();
+
   TRI_ASSERT(keys.isArray());
-  VPackBuilder result;
   result.openArray();
   for (auto const& element : VPackArrayIterator(keys)) {
     if (element.isString()) {
       VPackValueLength l;
       char const* s = element.getString(l);
       auto p = static_cast<char const*>(memchr(s, '/', static_cast<size_t>(l)));
-      if (p != nullptr && strncmp(s, collectionName, p - s) == 0) {
+      if (p != nullptr && strncmp(s, c, p - s) == 0) {
         // key begins with collection name + '/', now strip it in place for
         // further comparisons
         result.add(VPackValue(
@@ -101,6 +103,5 @@ VPackBuilder BindParameters::StripCollectionNames(VPackSlice const& keys,
     result.add(element);
   }
   result.close();
-  return result;
 }
 

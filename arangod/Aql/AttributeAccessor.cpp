@@ -89,7 +89,7 @@ AqlValue AttributeAccessor::getSystem(transaction::Methods* trx,
       return value.getToAttribute(trx, mustDestroy, true);
     default: {
       mustDestroy = false;
-      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      return AqlValue(AqlValueHintNull());
     }
   }
 }
@@ -108,7 +108,7 @@ AqlValue AttributeAccessor::getDynamic(transaction::Methods* trx,
       return value.get(trx, _attributeParts, mustDestroy, true);
     default: {
       mustDestroy = false;
-      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      return AqlValue(AqlValueHintNull());
     }
   }
 }
