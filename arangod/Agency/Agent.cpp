@@ -888,6 +888,10 @@ trans_ret_t Agent::transact(query_t const& queries) {
   // Report that leader has persisted
   reportIn(id(), maxind);
 
+  if (size() == 1) {
+    advanceCommitIndex();
+  }
+
   return trans_ret_t(true, id(), maxind, failed, ret);
 }
 
@@ -1051,6 +1055,10 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
 
   // Report that leader has persisted
   reportIn(id(), maxind);
+
+  if (size() == 1) {
+    advanceCommitIndex();
+  }
 
   return write_ret_t(true, id(), applied, indices);
 }
