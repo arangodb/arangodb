@@ -300,7 +300,7 @@ function ReplicationLoggerSuite () {
         assertTrue(df.hasOwnProperty('tickMax'));
 
         assertTrue(typeof df.datafile === 'string');
-        assertTrue(typeof df.state === 'string');
+        assertTrue(typeof df.status === 'string');
         assertTrue(typeof df.tickMin === 'string');
         assertMatch(/^\d+$/, df.tickMin);
         assertTrue(typeof df.tickMax === 'string');
