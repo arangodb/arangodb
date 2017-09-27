@@ -186,8 +186,11 @@ void V8ClientConnection::reconnect(ClientFeature* client) {
               << "database '" << _databaseName << "', "
               << "username: '" << _username << "'";
   } else {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Could not connect to endpoint '" << client->endpoint()
-             << "', username: '" << client->username() << "'";
+    if (client->getWarnConnect()) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+        << "Could not connect to endpoint '" << client->endpoint()
+        << "', username: '" << client->username() << "'";
+    }
 
     std::string errorMsg = "could not connect";
 
@@ -404,12 +407,18 @@ static void ClientConnection_reconnect(
   } else {
     password = TRI_ObjectToString(isolate, args[3]);
   }
-  
+
+  bool warnConnect = true;
+  if (args.Length() > 4) {
+    warnConnect = TRI_ObjectToBoolean(args[4]);
+  }
+
   client->setEndpoint(endpoint);
   client->setDatabaseName(databaseName);
   client->setUsername(username);
   client->setPassword(password);
-  
+  client->setWarnConnect(warnConnect);
+
   try {
     v8connection->reconnect(client);
   } catch (std::string const& errorMessage) {
@@ -418,7 +427,7 @@ static void ClientConnection_reconnect(
     std::string errorMessage = "error in '" + endpoint + "'";
     TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage.c_str());
   }
-  
+
   TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(),
                               TRI_V8_STRING(isolate, "require('internal').db._flushCache();"),
                               TRI_V8_ASCII_STRING(isolate, "reload db object"), false);

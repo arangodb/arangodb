@@ -277,6 +277,17 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
   }
 }
 
+/// @brief Report a failed append entry call from AgentCallback
+void Agent::reportFailed(std::string const& slaveId, size_t toLog) {
+  if (toLog > 0) {
+    // This is only used for non-empty appendEntriesRPC calls. If such calls
+    // fail, we have to set this earliestPackage time to now such that the
+    // main thread tries again immediately:
+    MUTEX_LOCKER(guard, _tiLock);
+    _earliestPackage[slaveId] = system_clock::now();
+  }
+}
+
 /// Followers' append entries
 bool Agent::recvAppendEntriesRPC(
   term_t term, std::string const& leaderId, index_t prevIndex, term_t prevTerm,
@@ -508,6 +519,12 @@ void Agent::sendAppendEntriesRPC() {
         }
       }
       
+      earliestPackage = system_clock::now() + std::chrono::seconds(3600);
+      {
+        MUTEX_LOCKER(tiLocker, _tiLock);
+        _earliestPackage[followerId] = earliestPackage;
+      }
+
       // Send request
       auto headerFields =
         std::make_unique<std::unordered_map<std::string, std::string>>();
@@ -524,11 +541,6 @@ void Agent::sendAppendEntriesRPC() {
       _lastSent[followerId]    = system_clock::now();
       _constituent.notifyHeartbeatSent(followerId);
 
-      earliestPackage = system_clock::now() + std::chrono::seconds(3600);
-      {
-        MUTEX_LOCKER(tiLocker, _tiLock);
-        _earliestPackage[followerId] = earliestPackage;
-      }
       LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Appending (" << (uint64_t) (TRI_microtime() * 1000000000.0) << ") "
         << unconfirmed.size() - 1 << " entries up to index "

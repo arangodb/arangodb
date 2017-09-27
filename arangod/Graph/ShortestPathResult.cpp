@@ -53,7 +53,7 @@ void ShortestPathResult::clear() {
 AqlValue ShortestPathResult::edgeToAqlValue(TraverserCache* cache, size_t position) const {
   if (position == 0) {
     // First Edge is defined as NULL
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
   TRI_ASSERT(position - 1 < _edges.size());
   return cache->fetchEdgeAqlResult(_edges[position - 1]);
