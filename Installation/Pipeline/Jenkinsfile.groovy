@@ -659,7 +659,7 @@ Running Tests: ${runTests}
 // -----------------------------------------------------------------------------
 
 def stashBuild(os, edition, maintainer) {
-    lock("stashing-${os}-${edition}-${maintainer}") {
+    lock("stashing-${sourceBranchLabel}-${os}-${edition}-${maintainer}") {
         if (os == 'linux' || os == 'mac') {
             def name = "build.tar.gz"
 
@@ -678,7 +678,7 @@ def stashBuild(os, edition, maintainer) {
 }
 
 def unstashBuild(os, edition, maintainer) {
-    lock("stashing-${os}-${edition}-${maintainer}") {
+    lock("stashing-${sourceBranchLabel}-${os}-${edition}-${maintainer}") {
         try {
             if (os == "windows") {
                 powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/build-${sourceBranchLabel}-${os}-${edition}-${maintainer}.zip build.zip"
