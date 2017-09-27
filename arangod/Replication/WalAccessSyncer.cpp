@@ -31,6 +31,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
+#include "Replication/ApplierState.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
@@ -58,37 +59,14 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
-WalAccess::WalAccess(
+WalAccessSyncer::WalAccessSyncer(
     TRI_replication_applier_configuration_t const* configuration,
     TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
-    : TailingSyncer(vocbase, configuration, initialTick),
-      _applier(vocbase->replicationApplier()),
+    : TailingSyncer(configuration, initialTick),
+      _applierState(new ReplicationApplierState()),
       _useTick(useTick),
       _verbose(configuration->_verbose),
-      _hasWrittenState(false) {
-  uint64_t c = configuration->_chunkSize;
-  if (c == 0) {
-    c = static_cast<uint64_t>(256 * 1024);  // 256 kb
-  }
-
-  TRI_ASSERT(c > 0);
-
-  _chunkSize = StringUtils::itoa(c);
-  if (configuration->_restrictType == "include") {
-    _restrictType = RESTRICT_INCLUDE;
-  } else if (configuration->_restrictType == "exclude") {
-    _restrictType = RESTRICT_EXCLUDE;
-  }
-
-  if (barrierId > 0) {
-    _barrierId = barrierId;
-    _barrierUpdateTime = TRI_microtime();
-  }
-
-  // FIXME: move this into engine code
-  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
-  _supportsSingleOperations = (engineName == "mmfiles");
-}
+      _hasWrittenState(false) {}
 
 WalAccessSyncer::WalAccessSyncer() { abortOngoingTransactions(); }
 

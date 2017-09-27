@@ -27,6 +27,9 @@
 #include "Replication/TailingSyncer.h"
 
 class TRI_replication_applier_t;
+namespace arangodb {
+  struct ReplicationApplierState;
+}
 
 namespace arangodb {
 
@@ -75,6 +78,9 @@ class WalAccessSyncer : public TailingSyncer {
   }
 
  private:
+
+  // current state
+  std::unique_ptr<ReplicationApplierState> _applierState;
   
   /// @brief use the initial tick
   bool _useTick;

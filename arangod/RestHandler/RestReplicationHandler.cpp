@@ -235,7 +235,7 @@ RestStatus RestReplicationHandler::execute() {
       }
       handleCommandBarrier();
     } else if (command == "inventory") {
-      // get overview of collections and idexes followed by some extra data
+      // get overview of collections and indexes followed by some extra data
       // example call: curl --dump -
       // http://localhost:5555/_api/replication/inventory?batchId=75
 

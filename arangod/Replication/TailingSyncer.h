@@ -52,16 +52,10 @@ enum RestrictType : uint32_t {
 
 class TailingSyncer : public Syncer {
  public:
-  TailingSyncer(TRI_vocbase_t*, TRI_replication_applier_configuration_t const*,
+  TailingSyncer(TRI_replication_applier_configuration_t const*,
                 TRI_voc_tick_t initialTick);
 
   virtual ~TailingSyncer();
-
- public:
-  /// @brief finalize the synchronization of a collection by tailing the WAL
-  /// and filtering on the collection name until no more data is available
-  int syncCollectionFinalize(std::string& errorMsg,
-                             std::string const& collectionName);
 
  protected:
   /// @brief abort all ongoing transactions

@@ -45,6 +45,11 @@ class ContinuousSyncer : public TailingSyncer {
 
   /// @brief return the syncer's replication applier
   TRI_replication_applier_t* applier() const { return _applier; }
+  
+  /// @brief finalize the synchronization of a collection by tailing the WAL
+  /// and filtering on the collection name until no more data is available
+  int syncCollectionFinalize(std::string& errorMsg,
+                             std::string const& collectionName);
 
  private:
   /// @brief called before marker is processed

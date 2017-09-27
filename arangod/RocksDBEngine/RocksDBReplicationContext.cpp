@@ -168,8 +168,7 @@ RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
   if (global) {
     // global inventory
     auto builder = std::make_shared<VPackBuilder>();
-    application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->inventory(*builder.get(), tick, nameFilter);
-
+    DatabaseFeature::DATABASE->inventory(*builder.get(), tick, nameFilter);
     return std::make_pair(RocksDBReplicationResult(TRI_ERROR_NO_ERROR, _lastTick),
                           builder);
   } else {

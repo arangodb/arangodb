@@ -778,16 +778,6 @@ std::vector<std::string> TRI_vocbase_t::collectionNames() {
   return result;
 }
 
-void TRI_vocbase_t::inventory(
-    VPackBuilder& result,
-    TRI_voc_tick_t maxTick, std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter) {
-
-  // cycle on write-lock
-  WRITE_LOCKER_EVENTUAL(writeLock, _inventoryLock);
-  
-  inventoryNoLock(result, maxTick, nameFilter);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all known (document) collections with their parameters
 /// and indexes, up to a specific tick value
@@ -795,19 +785,21 @@ void TRI_vocbase_t::inventory(
 /// that there will be consistent view of collections & their properties
 /// The list of collections will be sorted if sort function is given
 ////////////////////////////////////////////////////////////////////////////////
-
-void TRI_vocbase_t::inventoryNoLock(
+void TRI_vocbase_t::inventory(
     VPackBuilder& result,
     TRI_voc_tick_t maxTick, std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter) {
-  std::vector<arangodb::LogicalCollection*> collections;
 
+  // cycle on write-lock
+  WRITE_LOCKER_EVENTUAL(writeLock, _inventoryLock);
+  
+  std::vector<arangodb::LogicalCollection*> collections;
   // copy collection pointers into vector so we can work with the copy without
   // the global lock
   {
     READ_LOCKER(readLocker, _collectionsLock);
     collections = _collections;
   }
-
+  
   if (collections.size() > 1) {
     // sort by type first and then only name
     // sorting by type ensures that document collections are reported before edge collections
@@ -816,39 +808,37 @@ void TRI_vocbase_t::inventoryNoLock(
       if (lhs->type() != rhs->type()) {
         return lhs->type() < rhs->type();
       }
-
+      
       return lhs->name() < rhs->name();
     });
   }
-
+  
   result.openArray();
-
   for (auto& collection : collections) {
     READ_LOCKER(readLocker, collection->_lock);
-
+    
     if (collection->status() == TRI_VOC_COL_STATUS_DELETED ||
         collection->status() == TRI_VOC_COL_STATUS_CORRUPTED) {
       // we do not need to care about deleted or corrupted collections
       continue;
     }
-
+    
     // In cluster case cids are not created by ticks but by cluster uniqIds
     if (!ServerState::instance()->isRunningInCluster() &&
         collection->cid() > maxTick) {
       // collection is too new
       continue;
     }
-
+    
     // check if we want this collection
     if (!nameFilter(collection)) {
       continue;
     }
-
+    
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     engine->getCollectionInfo(collection->vocbase(), collection->cid(),
                               result, true, maxTick);
   }
-
   result.close();
 }
 
@@ -868,39 +858,45 @@ std::string TRI_vocbase_t::collectionName(TRI_voc_cid_t id) {
 }
 
 /// @brief looks up a collection by uuid
-LogicalCollection* TRI_vocbase_t::lookupCollectionByUuid(StringRef const& uuid) const {
+LogicalCollection* TRI_vocbase_t::lookupCollectionByUuid(std::string const& uuid) const {
   // otherwise we'll look up the collection by name
   READ_LOCKER(readLocker, _collectionsLock);
 
-  auto it = _collectionsByUuid.find(uuid.toString());
+  auto it = _collectionsByUuid.find(uuid);
   if (it == _collectionsByUuid.end()) {
     return nullptr;
   }
   return (*it).second;
 }
 
-/// @brief looks up a collection by name
+/// @brief looks up a collection by name, identifier (cid) or uuid
 LogicalCollection* TRI_vocbase_t::lookupCollection(std::string const& name) const {
   if (name.empty()) {
     return nullptr;
   }
 
-  // if collection name is passed as a stringified id, we'll use the lookupbyid
-  // function
+  // if collection name is passed as a stringified id, we'll use the
+  // lookupbyid function
   // this is safe because collection names must not start with a digit
   if (name[0] >= '0' && name[0] <= '9') {
     return lookupCollection(StringUtils::uint64(name));
   }
-
-  // otherwise we'll look up the collection by name
+  
   READ_LOCKER(readLocker, _collectionsLock);
 
+  // otherwise we'll look up the collection by name
   auto it = _collectionsByName.find(name);
-
-  if (it == _collectionsByName.end()) {
-    return nullptr;
+  if (it != _collectionsByName.end()) {
+    return (*it).second;
   }
-  return (*it).second;
+  
+  // otherwise try the UUID
+  auto it2 = _collectionsByUuid.find(name);
+  if (it2 != _collectionsByUuid.end()) {
+    return (*it2).second;
+  }
+  
+  return nullptr;
 }
 
 /// @brief looks up a collection by name

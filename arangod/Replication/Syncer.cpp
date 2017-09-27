@@ -362,11 +362,11 @@ LogicalCollection* Syncer::getCollectionByIdOrName(TRI_vocbase_t* vocbase,
 
 arangodb::LogicalCollection* Syncer::resolveCollection(TRI_vocbase_t* vocbase,
                                                        VPackSlice const& slice) {
-  VPackSlice uuid = slice.get("uuid");
-  if (uuid.isString()) {
-    return vocbase->lookupCollectionByUuid(StringRef(uuid));
+  VPackSlice uuid;
+  if ((uuid = slice.get("uuid")).isString()) {
+    return vocbase->lookupCollectionByUuid(uuid.copyString());
   } else if ((uuid = slice.get("globallyUniqueId")).isString()) {
-    return vocbase->lookupCollectionByUuid(StringRef(uuid));
+    return vocbase->lookupCollectionByUuid(uuid.copyString());
   } else {
     // extract "cid"
     TRI_voc_cid_t cid = getCid(slice);

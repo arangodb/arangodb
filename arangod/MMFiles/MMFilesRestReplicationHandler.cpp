@@ -612,7 +612,7 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
   // collections and indexes
   VPackBuilder inventoryBuilder;
   if (global) {
-    application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->inventory(inventoryBuilder, tick, nameFilter);
+    DatabaseFeature::DATABASE->inventory(inventoryBuilder, tick, nameFilter);
   } else {
     _vocbase->inventory(inventoryBuilder, tick, nameFilter);
   }

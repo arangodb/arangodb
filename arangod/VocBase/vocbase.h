@@ -30,7 +30,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/StringUtils.h"
-#include "Basics/StringRef.h"
 #include "Basics/voc-errors.h"
 #include "VocBase/ViewImplementation.h"
 #include "VocBase/voc-types.h"
@@ -272,8 +271,8 @@ struct TRI_vocbase_t {
   std::string collectionName(TRI_voc_cid_t id);
 
   /// @brief looks up a collection by uuid
-  arangodb::LogicalCollection* lookupCollectionByUuid(arangodb::StringRef const&) const;
-  /// @brief looks up a collection by name
+  arangodb::LogicalCollection* lookupCollectionByUuid(std::string const&) const;
+  /// @brief looks up a collection by name, identifier (cid) or uuid
   arangodb::LogicalCollection* lookupCollection(std::string const& name) const;
   /// @brief looks up a collection by identifier
   arangodb::LogicalCollection* lookupCollection(TRI_voc_cid_t id) const;
@@ -289,10 +288,6 @@ struct TRI_vocbase_t {
   void inventory(arangodb::velocypack::Builder& result,
                  TRI_voc_tick_t, 
                  std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
-
-  void inventoryNoLock(arangodb::velocypack::Builder& result,
-                       TRI_voc_tick_t, 
-                       std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
   /// @brief renames a collection
   int renameCollection(arangodb::LogicalCollection* collection,

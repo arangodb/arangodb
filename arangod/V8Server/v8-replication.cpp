@@ -25,7 +25,7 @@
 #include "Basics/ReadLocker.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
-#include "Replication/TailingSyncer.h"
+#include "Replication/ContinuousSyncer.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
@@ -503,7 +503,7 @@ static void JS_SynchronizeReplicationFinalize(
   DatabaseGuard guard(database);
 
   std::string errorMsg = "";
-  TailingSyncer syncer(guard.database(), &config, fromTick);
+  ContinuousSyncer syncer(guard.database(), &config, fromTick, true, 0);
   
   if (!leaderId.empty()) {
     syncer.setLeaderId(leaderId);

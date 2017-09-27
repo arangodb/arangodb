@@ -433,11 +433,10 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
     return;
   }
 
-  VPackSlice const inventory = result.second->slice();
-
   VPackBuilder builder;
   builder.openObject();
 
+  VPackSlice const inventory = result.second->slice();
   if (global) {
     TRI_ASSERT(inventory.isObject());
     builder.add("databases", inventory);
@@ -478,9 +477,9 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
                   "invalid collection parameter");
     return;
   }
-
+  // to is ignored because the snapshot time is the latest point in time
+  
   RocksDBReplicationContext* ctx = nullptr;
-
   //get batchId from url parameters
   bool found, busy;
   std::string batchId = _request->value("batchId", found);
@@ -496,7 +495,6 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   }
   RocksDBReplicationContextGuard(_manager, ctx);
 
-  // to is ignored because the snapshot time is the latest point in time
  
   // TRI_voc_tick_t tickEnd = UINT64_MAX;
   // determine end tick for keys
@@ -504,10 +502,6 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   // if (found) {
   //  tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value));
   //}
-
-  // arangodb::LogicalCollection* c = _vocbase->lookupCollection(collection);
-  // arangodb::CollectionGuard guard(_vocbase, c->cid(), false);
-  // arangodb::LogicalCollection* col = guard.collection();
 
   // bind collection to context - will initialize iterator
   int res = ctx->bindCollection(collection);

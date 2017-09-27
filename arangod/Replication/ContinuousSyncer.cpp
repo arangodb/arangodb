@@ -60,35 +60,12 @@ ContinuousSyncer::ContinuousSyncer(
     TRI_vocbase_t* vocbase,
     TRI_replication_applier_configuration_t const* configuration,
     TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
-    : TailingSyncer(vocbase, configuration, initialTick),
+    : TailingSyncer(configuration, initialTick),
       _applier(vocbase->replicationApplier()),
       _useTick(useTick),
       _verbose(configuration->_verbose),
       _hasWrittenState(false) {
-  uint64_t c = configuration->_chunkSize;
-  if (c == 0) {
-    c = static_cast<uint64_t>(256 * 1024);  // 256 kb
-  }
-
-  TRI_ASSERT(c > 0);
-
-  _chunkSize = StringUtils::itoa(c);
   _vocbaseCache.emplace(vocbase->id(), vocbase);
-
-  if (configuration->_restrictType == "include") {
-    _restrictType = RESTRICT_INCLUDE;
-  } else if (configuration->_restrictType == "exclude") {
-    _restrictType = RESTRICT_EXCLUDE;
-  }
-
-  if (barrierId > 0) {
-    _barrierId = barrierId;
-    _barrierUpdateTime = TRI_microtime();
-  }
-
-  // FIXME: move this into engine code
-  std::string engineName = EngineSelectorFeature::ENGINE->typeName();
-  _supportsSingleOperations = (engineName == "mmfiles");
 }
 
 ContinuousSyncer::~ContinuousSyncer() { abortOngoingTransactions(); }
@@ -891,5 +868,115 @@ void ContinuousSyncer::postApplyMarker(uint64_t processedMarkers,
   } else if (_ongoingTransactions.empty()) {
     _applier->_state._safeResumeTick =
         _applier->_state._lastProcessedContinuousTick;
+  }
+}
+
+
+/// @brief finalize the synchronization of a collection by tailing the WAL
+/// and filtering on the collection name until no more data is available
+int ContinuousSyncer::syncCollectionFinalize(std::string& errorMsg,
+                                          std::string const& collectionName) {
+  // fetch master state just once
+  int res = getMasterState(errorMsg);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+  
+  // print extra info for debugging
+  _verbose = true;
+  // we do not want to apply rename, create and drop collection operations
+  _ignoreRenameCreateDrop = true;
+  
+  TRI_voc_tick_t fromTick = _initialTick;
+  
+  while (true) {
+    if (application_features::ApplicationServer::isStopping()) {
+      return TRI_ERROR_SHUTTING_DOWN;
+    }
+    
+    std::string const baseUrl =
+    BaseUrl + "/logger-follow?chunkSize=" + _chunkSize + "&from=" +
+    StringUtils::itoa(fromTick) + "&serverId=" + _localServerIdString +
+    "&collection=" + StringUtils::urlEncode(collectionName);
+    
+    // send request
+    std::unique_ptr<SimpleHttpResult> response(
+                                               _client->request(rest::RequestType::GET, baseUrl, nullptr, 0));
+    
+    if (response == nullptr || !response->isComplete()) {
+      errorMsg = "got invalid response from master at " +
+      std::string(_masterInfo._endpoint) + ": " +
+      _client->getErrorMessage();
+      
+      return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    }
+    
+    TRI_ASSERT(response != nullptr);
+    
+    if (response->wasHttpError()) {
+      errorMsg = "got invalid response from master at " +
+      std::string(_masterInfo._endpoint) + ": HTTP " +
+      StringUtils::itoa(response->getHttpReturnCode()) + ": " +
+      response->getHttpReturnMessage();
+      
+      return TRI_ERROR_REPLICATION_MASTER_ERROR;
+    }
+    
+    if (response->getHttpReturnCode() == 204) {
+      // No content: this means we are done
+      return TRI_ERROR_NO_ERROR;
+    }
+    
+    bool found;
+    std::string header =
+    response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
+    bool checkMore = false;
+    if (found) {
+      checkMore = StringUtils::boolean(header);
+    }
+    
+    TRI_voc_tick_t lastIncludedTick;
+    header =
+    response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
+    if (found) {
+      lastIncludedTick = StringUtils::uint64(header);
+    } else {
+      errorMsg = "got invalid response from master at " +
+      std::string(_masterInfo._endpoint) +
+      ": required header is missing";
+      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    }
+    
+    // was the specified from value included the result?
+    bool fromIncluded = false;
+    header =
+    response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
+    if (found) {
+      fromIncluded = StringUtils::boolean(header);
+    }
+    if (!fromIncluded && fromTick > 0) { // && _requireFromPresent
+      errorMsg = "required follow tick value '" +
+      StringUtils::itoa(lastIncludedTick) +
+      "' is not present (anymore?) on master at " +
+      _masterInfo._endpoint + ". Last tick available on master is " +
+      StringUtils::itoa(lastIncludedTick) +
+      ". It may be required to do a full resync and increase the "
+      "number of historic logfiles on the master.";
+      return TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
+    }
+    
+    uint64_t processedMarkers = 0;
+    uint64_t ignoreCount = 0;
+    int res = applyLog(response.get(), fromTick, errorMsg, processedMarkers,
+                       ignoreCount);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+    
+    if (!checkMore) {  // || processedMarkers == 0) { // TODO: check if we need
+      // this!
+      // done!
+      return TRI_ERROR_NO_ERROR;
+    }
   }
 }
