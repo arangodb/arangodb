@@ -1222,7 +1222,7 @@ static e_sig_action whatDoesSignal(int signal) {
 #define SIGPOLL 23
 #endif
 #ifndef SIGSTKFLT
-#define SIGSTKFLT 16
+#define SIGSTKFLT 255
 #endif
 #ifndef SIGPWR
 #define SIGPWR 29
