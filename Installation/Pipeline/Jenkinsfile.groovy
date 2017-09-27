@@ -1,15 +1,7 @@
 //  -*- mode: groovy-mode
 
-properties(
-    [[
-      $class: 'BuildDiscarderProperty',
-      strategy: [$class: 'LogRotator',
-                 artifactDaysToKeepStr: '3',
-                 artifactNumToKeepStr: '5',
-                 daysToKeepStr: '3',
-                 numToKeepStr: '5']
-    ]]
-)
+properties([buildDiscarder(logRotator(artifactDaysToKeepStr: '3', artifactNumToKeepStr: '5', daysToKeepStr: '3', numToKeepStr: '5'))])
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             SELECTABLE PARAMETERS
@@ -121,6 +113,12 @@ restrictions = [:]
 // overview of configured builds and tests
 overview = ""
 
+// results
+resultsKeys = []
+resultsStart = [:]
+resultsStop = [:]
+resultsStatus = [:]
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                             CONSTANTS AND HELPERS
 // -----------------------------------------------------------------------------
@@ -226,7 +224,24 @@ def checkEnabledMaintainer(maintainer, os, text) {
     return true
 }
 
-def checkCoresAndSave(os, runDir, name, archRun) {
+def checkCores(os, runDir) {
+    if (os == 'windows') {
+        def files = findFiles(glob: "${runDir}/*.dmp")
+        
+        if (files.length > 0) {
+            error("found windows core file")
+        }
+    }
+    else {
+        def files = findFiles(glob: "${runDir}/core*")
+
+        if (files.length > 0) {
+            error("found linux core file")
+        }
+    }
+}
+
+def saveCores(os, runDir, name, archRun) {
     if (os == 'windows') {
         powershell "move-item -Force -ErrorAction Ignore ${runDir}/logs ${archRun}/${name}.logs"
         powershell "move-item -Force -ErrorAction Ignore ${runDir}/out ${archRun}/${name}.logs"
@@ -241,7 +256,7 @@ def checkCoresAndSave(os, runDir, name, archRun) {
 
             powershell "copy-item .\\build\\bin\\* -Include *.exe,*.pdb,*.ilk ${archRun}"
 
-            error("found dmp file")
+            return true
         }
     }
     else {
@@ -256,9 +271,11 @@ def checkCoresAndSave(os, runDir, name, archRun) {
 
             sh "cp -a build/bin/* ${archRun}"
 
-            error("found core file")
+            return true
         }
     }
+
+    return false
 }
 
 def getStartPort(os) {
@@ -288,6 +305,31 @@ def deleteDirDocker(os) {
 
 def shellAndPipe(command, logfile) {
   sh "(echo 1 > \"${logfile}.result\" ; ${command} ; echo \$? > \"${logfile}.result\") 2>&1 | tee -a \"${logfile}\" ; exit `cat \"${logfile}.result\"`"
+}
+
+def logStartStage(logFile) {
+    resultsKeys << logFile
+
+    resultsStart[logFile] = new Date()
+    resultsStatus[logFile] = "started"
+
+    echo "started ${logFile}: ${resultsStart[logFile]}"
+}
+
+def logStopStage(logFile) {
+    resultsStop[logFile] = new Date()
+    resultsStatus[logFile] = "finished"
+
+    echo "finished ${logFile}: ${resultsStop[logFile]}"
+}
+
+def logExceptionStage(logFile, exc) {
+    def msg = exc.toString()
+
+    resultsStop[logFile] = new Date()
+    resultsStatus[logFile] = "failed ${msg}"
+
+    echo "failed ${logFile}: ${resultsStop[logFile]} ${msg}"
 }
 
 // -----------------------------------------------------------------------------
@@ -594,10 +636,16 @@ def jslint(os, edition, maintainer) {
     def logFile = "${arch}/jslint.log"
 
     try {
+        logStartStage(logFile)
+
         shellAndPipe("./Installation/Pipeline/test_jslint.sh",logFile)
         sh "if grep ERROR ${logFile}; then exit 1; fi"
+
+        logStopStage(logFile)
     }
     catch (exc) {
+        logExceptionStage(logFile, exc)
+
         renameFolder(arch, archFail)
         fileOperations([fileCreateOperation(fileContent: 'JSLINT FAILED', fileName: "${archDir}-FAIL.txt")])
         throw exc
@@ -696,7 +744,7 @@ def setupTestEnvironment(os, edition, maintainer, logFile, runDir) {
 }
 
 def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch, stageName) {
-    def parallelity = 4
+    def parallelity = (mode == "cluster") ? ((os == "linux") ? 5 : 2) : ((os == "linux") ? 10 : 4)
     def testIndex = 0
     def tests = getTests(os, edition, maintainer, mode, engine)
 
@@ -725,6 +773,7 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
 
         testMap["${stageName}-${name}"] = {
             def logFile       = pwd() + "/" + "${arch}/${name}.log"
+            def logFileRel    = "${arch}/${name}.log"
             def logFileFailed = pwd() + "/" + "${arch}-FAIL/${name}.log"
             def archRun       = pwd() + "/" + "${arch}-RUN"
 
@@ -735,6 +784,7 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
             testArgs += " --maxPort " + (port + portInterval - 1)
 
             def command = "./build/bin/arangosh " +
+                          "-c etc/jenkins/arangosh.conf " +
                           "--log.level warning " +
                           "--javascript.execute UnitTests/unittest.js " +
                           " ${test} -- " +
@@ -745,6 +795,8 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                     setupTestEnvironment(os, edition, maintainer, logFile, runDir)
 
                     try {
+                        logStartStage(logFileRel)
+
                         // seriously...30 minutes is the super absolute max max max.
                         // even in the worst situations ArangoDB MUST be able to finish within 60 minutes
                         // even if the features are green this is completely broken performance wise..
@@ -773,8 +825,13 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                                 }
                             }
                         }
+
+                        checkCores(os, runDir)
+                        logStopStage(logFileRel)
                     }
                     catch (exc) {
+                        logExceptionStage(logFileRel, exc)
+
                         def msg = exc.toString()
 
                         echo "caught error, copying log to ${logFileFailed}: ${msg}"
@@ -794,10 +851,9 @@ def executeTests(os, edition, maintainer, mode, engine, portInit, archDir, arch,
                         throw exc
                     }
                     finally {
-                        def logFileRel       = "${arch}/${name}.log"
                         def logFileFailedRel = "${arch}-FAIL/${name}.log"
 
-                        checkCoresAndSave(os, runDir, name, archRun)
+                        saveCores(os, runDir, name, archRun)
 
                         archiveArtifacts allowEmptyArchive: true,
                             artifacts: "${archDir}-FAIL.txt, ${logFileRel}, ${logFileFailedRel}",
@@ -902,7 +958,17 @@ def testStepParallel(os, edition, maintainer, modeList) {
         }
     }
 
-    parallel branches
+    def name = "test-${os}-${edition}-${maintainer}"
+
+    try {
+        logStartStage(name)
+        parallel branches
+        logStopStage(name)
+    }
+    catch (exc) {
+        logExceptionStage(name, exc)
+        throw exc
+    }
 }
 
 // -----------------------------------------------------------------------------
@@ -1048,6 +1114,8 @@ def buildEdition(os, edition, maintainer) {
     def logFile = "${arch}/build.log"
 
     try {
+        logStartStage(logFile)
+
         if (os == 'linux' || os == 'mac') {
             sh "echo \"Host: `hostname`\" | tee -a ${logFile}"
             sh "echo \"PWD:  `pwd`\" | tee -a ${logFile}"
@@ -1078,8 +1146,12 @@ def buildEdition(os, edition, maintainer) {
 
             powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}_${maintainer}.ps1"
         }
+
+        logStopStage(logFile)
     }
     catch (exc) {
+        logExceptionStage(logFile, exc)
+
         def msg = exc.toString()
         
         fileOperations([
@@ -1162,11 +1234,17 @@ def createDockerImage(edition, maintainer, stageName) {
 
                     withEnv(["DOCKERTAG=${packageName}-${dockerTag}"]) {
                         try {
+                            logStartStage(logFile)
+
                             shellAndPipe("./scripts/build-docker.sh", logFile)
                             shellAndPipe("docker tag arangodb:${packageName}-${dockerTag} c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag}", logFile)
                             shellAndPipe("docker push c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag}", logFile)
+
+                            logStopStage(logFile)
                         }
                         catch (exc) {
+                            logExceptionStage(logFile, exc)
+
                             renameFolder(arch, archFail)
                             fileOperations([fileCreateOperation(fileContent: 'DOCKER FAILED', fileName: "${archDir}-FAIL.txt")])
                             throw exc
@@ -1256,16 +1334,49 @@ def runOperatingSystems(osList) {
 }
 
 timestamps {
-    node("master") {
-        echo sh(returnStdout: true, script: 'env')
+    try {
+        node("master") {
+            echo sh(returnStdout: true, script: 'env')
+        }
+
+        checkCommitMessages()
+
+        node("master") {
+            fileOperations([fileCreateOperation(fileContent: overview, fileName: "overview.txt")])
+            archiveArtifacts(allowEmptyArchive: true, artifacts: "overview.txt")
+        }
+
+        runOperatingSystems(['linux', 'mac', 'windows'])
     }
+    finally {
+        results = ""
+        html = "<html><body><table>\n"
+        html += "<tr><th>Name</th><th>Start</th><th>Stop</th><th>Duration</th><th>Message</th></tr>\n"
 
-    checkCommitMessages()
+        for (key in resultsKeys) {
+            def start = resultsStart[key] ?: ""
+            def stop = resultsStop[key] ?: ""
+            def msg = resultsStatus[key] ?: ""
+            def diff = (start != "" && stop != "") ? groovy.time.TimeCategory.minus(stop, start) : "-"
+            def startf = start.format('yyyy/MM/dd HH:mm:ss')
+            def stopf = stop.format('yyyy/MM/dd HH:mm:ss')
+            def color = 'bgcolor="#FF8080"'
 
-    node("master") {
-        fileOperations([fileCreateOperation(fileContent: overview, fileName: "overview.txt")])
-        archiveArtifacts(allowEmptyArchive: true, artifacts: "overview.txt")
+            if (msg == "finished") {
+                color = 'bgcolor="#80FF80"'
+            }
+
+            results += "${key}: ${startf} - ${stopf} (${diff}) ${msg}\n"
+            html += "<tr ${color}><td>${key}</td><td>${startf}</td><td>${stopf}</td><td align=\"right\">${diff}</td><td align=\"right\">${msg}</td></tr>\n"
+        }
+
+        html += "</table></body></html>\n"
+
+        node("master") {
+            fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
+            fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
+            archiveArtifacts(allowEmptyArchive: true, artifacts: "results.*")
+        }
     }
-
-    runOperatingSystems(['linux', 'mac', 'windows'])
 }
+

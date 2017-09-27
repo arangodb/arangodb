@@ -196,18 +196,30 @@ AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
   }
 
   TimePoint startTime = system_clock::now();
+  index_t lastCommitIndex = 0;
 
   // Wait until woken up through AgentCallback
   while (true) {
     /// success?
     CONDITION_LOCKER(guard, _waitForCV);
     if (leading()) {
-      if (_commitIndex >= index) {
+      if (lastCommitIndex != _commitIndex) {
+        // We restart the timeout computation if there has been progress:
+        startTime = system_clock::now();
+      }
+      lastCommitIndex = _commitIndex;
+      if (lastCommitIndex >= index) {
         return Agent::raft_commit_t::OK;
       }
     } else {
       return Agent::raft_commit_t::UNKNOWN;
     }
+
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "waitFor: index: " << index <<
+      " _commitIndex: " << _commitIndex
+      << " _lastCommitIndex: " << lastCommitIndex << " startTime: "
+      << timepointToString(startTime) << " now: "
+      << timepointToString(system_clock::now());
 
     duration<double> d = system_clock::now() - startTime;
     if (d.count() >= timeout) {
@@ -253,10 +265,10 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
         LOG_TOPIC(DEBUG, Logger::AGENCY) << "Got call back of " << toLog << " logs";
         _earliestPackage[peerId] = system_clock::now();
       }
+      wakeupMainLoop();   // only necessary for non-empty callbacks
     }
   }
 
-  wakeupMainLoop();
 
   duration<double> reportInTime = system_clock::now() - startTime;
   if (reportInTime.count() > 0.1) {
@@ -332,15 +344,13 @@ bool Agent::recvAppendEntriesRPC(
 
 /// Leader's append entries
 void Agent::sendAppendEntriesRPC() {
-  std::chrono::duration<int, std::ratio<1, 1000>> const dt (
-    (_config.waitForSync() ? 40 : 2));
   auto cc = ClusterComm::instance();
   if (cc == nullptr) {
     // nullptr only happens during controlled shutdown
     return;
   }
 
-  // _lastSent, _lastHighest only accessed in main thread
+  // _lastSent only accessed in main thread
   std::string const myid = id();
   
   for (auto const& followerId : _config.active()) {
@@ -392,17 +402,15 @@ void Agent::sendAppendEntriesRPC() {
 
       TRI_ASSERT(!unconfirmed.empty());
 
-      index_t highest = unconfirmed.back().index;
-
-      duration<double> m = system_clock::now() - _lastSent[followerId];
-
-      if (highest == _lastHighest[followerId]) {
-        // I intentionally left here _config.minPing() without the
-        // _config.timeoutMult(), if things are getting tight on the
-        // system, we still send out empty heartbeats every 1/4 minpings,
-        // even if we increase tolerance by a multiplier.
+      if (unconfirmed.size() == 1) {
+        // Note that this case means that everything we have is already
+        // confirmed, since we always get everything from (and including!)
+        // the last confirmed entry.
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Nothing to append.";
         continue;
       }
+
+      duration<double> m = system_clock::now() - _lastSent[followerId];
 
       if (m.count() > _config.minPing() &&
           _lastSent[followerId].time_since_epoch().count() != 0) {
@@ -475,6 +483,7 @@ void Agent::sendAppendEntriesRPC() {
       }
 
       size_t toLog = 0;
+      index_t highest = 0;
       for (size_t i = 0; i < unconfirmed.size(); ++i) {
         auto const& entry = unconfirmed.at(i);
         if (entry.index > lastConfirmed) {
@@ -507,14 +516,15 @@ void Agent::sendAppendEntriesRPC() {
         arangodb::rest::RequestType::POST, path.str(),
         std::make_shared<std::string>(builder.toJson()), headerFields,
         std::make_shared<AgentCallback>(this, followerId, highest, toLog),
-        std::max(5.0e-3 * toLog * dt.count(), 
-                 _config.minPing() * _config.timeoutMult()), true);
+        3600.0, true);
+      // Note the timeout is essentially indefinite. We let TCP/IP work its
+      // magic here, because all we could do would be to resend the same 
+      // message if a timeout occurs.
 
       _lastSent[followerId]    = system_clock::now();
-      _lastHighest[followerId] = highest;
       _constituent.notifyHeartbeatSent(followerId);
 
-      earliestPackage = system_clock::now() + toLog * dt;
+      earliestPackage = system_clock::now() + std::chrono::seconds(3600);
       {
         MUTEX_LOCKER(tiLocker, _tiLock);
         _earliestPackage[followerId] = earliestPackage;
@@ -1104,10 +1114,9 @@ void Agent::run() {
       {
         CONDITION_LOCKER(guard, _appendCV);
         if (!_agentNeedsWakeup) {
-          // wait up to 1/100 of minPing():
-          _appendCV.wait(static_cast<uint64_t>(_config.minPing()
-                                               * (10000.0/1000000.0)));
-          // Again, we leave minPing here without the multiplier to run this
+          // wait up to minPing():
+          _appendCV.wait(static_cast<uint64_t>(1.0e6 * _config.minPing()));
+          // We leave minPing here without the multiplier to run this
           // loop often enough in cases of high load.
         }
       }
@@ -1249,7 +1258,8 @@ void Agent::lead() {
   
   {
     CONDITION_LOCKER(guard, _waitForCV);
-    while(_commitIndex != _state.lastIndex()) {
+    // Note that when we are stopping
+    while(!isStopping() && _commitIndex != _state.lastIndex()) {
       _waitForCV.wait(10000);
     }
   }

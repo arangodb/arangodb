@@ -192,7 +192,7 @@ public:
   void reportIn(std::string const&, index_t, size_t = 0);
 
   /// @brief Wait for slaves to confirm appended entries
-  AgentInterface::raft_commit_t waitFor(index_t last_entry, double timeout = 30.0) override;
+  AgentInterface::raft_commit_t waitFor(index_t last_entry, double timeout = 10.0) override;
 
   /// @brief Convencience size of agency
   size_t size() const;
@@ -382,10 +382,6 @@ public:
   /// The following two members are strictly only used in the
   /// Agent thread in sendAppendEntriesRPC. Therefore no protection is
   /// necessary for these:
-
-  /// @brief stores for each follower the highest index log it has ever been
-  // sent to.
-  std::unordered_map<std::string, index_t> _lastHighest;
 
   /// @brief _lastSent stores for each follower the time stamp of the time 
   /// when the main Agent thread has last sent a non-empty
