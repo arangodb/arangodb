@@ -954,8 +954,6 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
                   throw exc
               }
               finally {
-                  def logFileFailedRel = "${arch}-FAIL/${name}.log"
-
                   saveCores(os, runDir, name, archRun)
 
                   archiveArtifacts allowEmptyArchive: true,
