@@ -324,7 +324,9 @@ def deleteDirDocker(os) {
 }
 
 def shellAndPipe(command, logfile) {
-  sh "(echo 1 > \"${logfile}.result\" ; ${command} ; echo \$? > \"${logfile}.result\") 2>&1 | ts '[%Y-%m-%d %H:%M:%S]' | tee -a \"${logfile}\" ; exit `cat \"${logfile}.result\"`"
+    def cmd = command.replaceAll(/"/, "\\\"")
+
+    sh "(echo 1 > \"${logfile}.result\" ; ${cmd} ; echo \$? > \"${logfile}.result\") 2>&1 | ts '[%Y-%m-%d %H:%M:%S]' | tee -a \"${logfile}\" ; exit `cat \"${logfile}.result\"`"
 }
 
 def logStartStage(os, logFile, link) {
