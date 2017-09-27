@@ -30,7 +30,6 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class ExecContext;
 class GeneralRequest;
 class GeneralResponse;
 }

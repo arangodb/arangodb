@@ -2566,8 +2566,13 @@ void RestReplicationHandler::handleCommandGetIdForReadLockCollection() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandLoggerState() {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  TRI_ASSERT(engine);
+  
+  engine->waitForSync(10.0); // only for mmfiles
+  
   VPackBuilder builder;
-  auto res = EngineSelectorFeature::ENGINE->createLoggerState(_vocbase, builder);
+  auto res = engine->createLoggerState(_vocbase, builder);
   if (res.fail()) {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "failed to create logger-state"
     << res.errorMessage();
