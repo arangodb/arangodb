@@ -92,7 +92,7 @@ RocksDBPrimaryIndexIterator::~RocksDBPrimaryIndexIterator() {
   }
 }
 
-bool RocksDBPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool RocksDBPrimaryIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   if (limit == 0 || !_iterator.valid()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
@@ -102,10 +102,12 @@ bool RocksDBPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
   while (limit > 0) {
     // TODO: prevent copying of the value into result, as we don't need it here!
-    LocalDocumentId token = _index->lookupKey(_trx, StringRef(*_iterator));
-    cb(token);
+    LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(*_iterator));
+    if (documentId.isSet()) {
+      cb(documentId);
+      --limit;
+    }
 
-    --limit;
     _iterator.next();
     if (!_iterator.valid()) {
       return false;
@@ -140,7 +142,7 @@ void RocksDBPrimaryIndex::load() {
     RocksDBCollection* rdb = static_cast<RocksDBCollection*>(_collection->getPhysical());
     uint64_t numDocs = rdb->numberDocuments();
     if (numDocs > 0) {
-      _cache->sizeHint(static_cast<double>(0.3 * numDocs));
+      _cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
     }
   }
 }

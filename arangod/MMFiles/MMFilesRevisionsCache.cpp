@@ -24,35 +24,13 @@
 #include "MMFilesRevisionsCache.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/xxhash.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
 
 using namespace arangodb;
 
-namespace {
-static inline uint64_t HashKey(void*, LocalDocumentId::BaseType const* key) {
-  return std::hash<LocalDocumentId::BaseType>()(*key);
-}
-
-static inline uint64_t HashElement(void*, MMFilesDocumentPosition const& element) {
-  return std::hash<LocalDocumentId::BaseType>()(element.localDocumentIdValue());
-}
-
-static bool IsEqualKeyElement(void*, LocalDocumentId::BaseType const* key,
-                              uint64_t hash, MMFilesDocumentPosition const& element) {
-  return *key == element.localDocumentIdValue();
-}
-
-static bool IsEqualElementElement(void*, MMFilesDocumentPosition const& left,
-                                  MMFilesDocumentPosition const& right) {
-  return left.localDocumentIdValue() == right.localDocumentIdValue();
-}
-
-} // namespace
-
 MMFilesRevisionsCache::MMFilesRevisionsCache() 
-    : _positions(HashKey, HashElement, IsEqualKeyElement, IsEqualElementElement, IsEqualElementElement, 8, []() -> std::string { return "mmfiles revisions"; }) {}
+    : _positions(MMFilesRevisionsCacheHelper(), 8, []() -> std::string { return "mmfiles revisions"; }) {}
 
 MMFilesRevisionsCache::~MMFilesRevisionsCache() {}
 
@@ -61,6 +39,21 @@ MMFilesDocumentPosition MMFilesRevisionsCache::lookup(LocalDocumentId const& doc
   READ_LOCKER(locker, _lock);
 
   return _positions.findByKey(nullptr, documentId.data());
+}
+
+void MMFilesRevisionsCache::batchLookup(std::vector<std::pair<LocalDocumentId, uint8_t const*>>& documentIds) const {
+  READ_LOCKER(locker, _lock);
+
+  for (auto& it : documentIds) {
+    MMFilesDocumentPosition const old = _positions.findByKey(nullptr, it.first.data());
+    if (old) {
+      uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
+      TRI_ASSERT(VPackSlice(vpack).isObject());
+      it.second = vpack;
+    } else {
+      it.second = nullptr;
+    }
+  }
 }
 
 void MMFilesRevisionsCache::sizeHint(int64_t hint) {
@@ -120,7 +113,9 @@ void MMFilesRevisionsCache::update(LocalDocumentId const& documentId,
   WRITE_LOCKER(locker, _lock);
   
   MMFilesDocumentPosition* old = _positions.findByKeyRef(nullptr, documentId.data());
-  if (old == nullptr) {
+  TRI_ASSERT(old != nullptr);
+
+  if (!(*old)) {
     return;
   }
      
@@ -133,12 +128,14 @@ bool MMFilesRevisionsCache::updateConditional(LocalDocumentId const& documentId,
                                               MMFilesMarker const* oldPosition, MMFilesMarker const* newPosition, TRI_voc_fid_t newFid, bool isInWal) {
   WRITE_LOCKER(locker, _lock);
 
-  MMFilesDocumentPosition old = _positions.findByKey(nullptr, documentId.data());
-  if (!old) {
+  MMFilesDocumentPosition* old = _positions.findByKeyRef(nullptr, documentId.data());
+  TRI_ASSERT(old != nullptr);
+
+  if (!(*old)) {
     return false;
   }
      
-  uint8_t const* vpack = static_cast<uint8_t const*>(old.dataptr());
+  uint8_t const* vpack = static_cast<uint8_t const*>(old->dataptr());
   TRI_ASSERT(vpack != nullptr);
 
   MMFilesMarker const* markerPtr = reinterpret_cast<MMFilesMarker const*>(vpack - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
@@ -148,12 +145,8 @@ bool MMFilesRevisionsCache::updateConditional(LocalDocumentId const& documentId,
     return false;
   }
   
-  _positions.removeByKey(nullptr, documentId.data());
-
-  old.dataptr(reinterpret_cast<char const*>(newPosition) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
-  old.fid(newFid, isInWal); 
-
-  _positions.insert(nullptr, old);
+  old->dataptr(reinterpret_cast<char const*>(newPosition) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
+  old->fid(newFid, isInWal); 
   
   return true;
 }

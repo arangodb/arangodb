@@ -120,12 +120,6 @@ fi
 
 COMPILE_MATTERS="3rdParty"
 
-# setup make options
-if test -z "${CXX}"; then
-    CC="/usr/bin/gcc-4.9"
-    CXX="/usr/bin/g++-4.9"
-fi
-
 CFLAGS="-g -fno-omit-frame-pointer"
 CXXFLAGS="-g -fno-omit-frame-pointer"
 if test "${isCygwin}" == 1; then
@@ -159,7 +153,7 @@ CLANG=0
 COVERAGE=0
 CPACK=
 FAILURE_TESTS=0
-GCC5=0
+GCC5=1
 GCC6=0
 GOLD=0
 SANITIZE=0
@@ -216,11 +210,13 @@ CLEAN_IT=0
 while [ $# -gt 0 ];  do
     case "$1" in
         --clang)
+            GCC5=0
             CLANG=1
             shift
             ;;
 
         --clang36)
+            GCC5=0
             CLANG36=1
             shift
             ;;
@@ -231,6 +227,7 @@ while [ $# -gt 0 ];  do
             ;;
 
         --gcc6)
+            GCC5=0
             GCC6=1
             shift
             ;;
@@ -634,8 +631,8 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
 fi
 
 if test "${DOWNLOAD_STARTER}" == 1; then
-    if test -f ${SRC}/STARTER_REV; then
-        STARTER_REV=$(cat ${SRC}/STARTER_REV)
+    if test -f "${SRC}/STARTER_REV"; then
+        STARTER_REV=$(cat "${SRC}/STARTER_REV")
     else
         # we utilize https://developer.github.com/v3/repos/ to get the newest release:
         STARTER_REV=$(curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases | \
@@ -661,7 +658,7 @@ if test "${DOWNLOAD_STARTER}" == 1; then
         fi
         FN=$(echo "${STARTER_URL}" |${SED} "s;.*/;;")
 
-        echo $FN
+        echo "$FN"
         if ! test -f "${BUILD_DIR}/${FN}-${STARTER_REV}"; then
             curl -LO "${STARTER_URL}"
             cp "${FN}" "${BUILD_DIR}/${TN}"

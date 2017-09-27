@@ -78,7 +78,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   }
 
   /// @brief Get the next limit many element in the index
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
   /// @brief Reset the cursor
   void reset() override;
@@ -111,7 +111,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   }
 
   /// @brief Get the next limit many element in the index
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
   /// @brief Reset the cursor
   void reset() override;

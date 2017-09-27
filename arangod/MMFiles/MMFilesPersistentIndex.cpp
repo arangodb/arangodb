@@ -124,7 +124,7 @@ void MMFilesPersistentIndexIterator::reset() {
   }
 }
 
-bool MMFilesPersistentIndexIterator::next(TokenCallback const& cb,
+bool MMFilesPersistentIndexIterator::next(LocalDocumentIdCallback const& cb,
                                           size_t limit) {
   auto comparator = MMFilesPersistentIndexFeature::instance()->comparator();
   while (limit > 0) {

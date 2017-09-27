@@ -58,7 +58,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "all-index-iterator"; }
 
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
   bool nextDocument(DocumentCallback const& cb, size_t limit) override;
   void skip(uint64_t count, uint64_t& skipped) override;
 
@@ -84,7 +84,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "any-index-iterator"; }
 
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
   bool nextDocument(DocumentCallback const& cb, size_t limit) override;
 
   void reset() override;
@@ -117,7 +117,7 @@ class RocksDBSortedAllIterator final : public IndexIterator {
 
   char const* typeName() const override { return "sorted-all-index-iterator"; }
 
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
   void reset() override;
 
   // engine specific optimizations

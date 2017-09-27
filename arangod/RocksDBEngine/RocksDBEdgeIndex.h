@@ -57,7 +57,7 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   ~RocksDBEdgeIndexIterator();
   char const* typeName() const override { return "edge-index-iterator"; }
   bool hasExtra() const override { return true; }
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
   bool nextExtra(ExtraCallback const& cb, size_t limit) override;
   void reset() override;
 

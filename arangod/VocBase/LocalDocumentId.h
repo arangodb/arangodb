@@ -49,6 +49,9 @@ class LocalDocumentId {
   /// @brief return the document id
   inline BaseType id() const noexcept { return _id; }
   inline BaseType const* data() const noexcept { return &_id; }
+ 
+  // same as isSet() 
+  inline operator bool() const noexcept { return _id != 0; }
   
   /// @brief check if two LocalDocumentIds are equal
   inline bool operator==(LocalDocumentId const& other) const {

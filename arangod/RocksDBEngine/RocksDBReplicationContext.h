@@ -45,7 +45,7 @@ class RocksDBReplicationContext {
 
  private:
   typedef std::function<void(LocalDocumentId const& token)>
-      TokenCallback;
+      LocalDocumentIdCallback;
 
  public:
   RocksDBReplicationContext();

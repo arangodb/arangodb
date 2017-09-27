@@ -351,8 +351,7 @@ class Methods {
   OperationCursor* indexScanForCondition(IndexHandle const&,
                                          arangodb::aql::AstNode const*,
                                          arangodb::aql::Variable const*,
-                                         ManagedDocumentResult*,
-                                         uint64_t, uint64_t, bool);
+                                         ManagedDocumentResult*, bool reverse);
 
   /// @brief factory for OperationCursor objects
   /// note: the caller must have read-locked the underlying collection when
@@ -361,8 +360,7 @@ class Methods {
   std::unique_ptr<OperationCursor> indexScan(std::string const& collectionName,
                                              CursorType cursorType,
                                              ManagedDocumentResult*,
-                                             uint64_t skip, uint64_t limit,
-                                             uint64_t batchSize, bool reverse);
+                                             bool reverse);
 
   /// @brief test if a collection is already locked
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*,

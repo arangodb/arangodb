@@ -142,7 +142,7 @@ size_t MMFilesGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
   return numDocs;
 }
 
-bool MMFilesGeoIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool MMFilesGeoIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   if (!_cursor) {
     createCursor(_lat, _lon);
 

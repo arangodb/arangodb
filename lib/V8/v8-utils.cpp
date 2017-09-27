@@ -615,7 +615,9 @@ void JS_Download(v8::FunctionCallbackInfo<v8::Value> const& args) {
         pos = fullurl.find("//[::]");
 
         if (pos != std::string::npos) {
-          fullurl.replace(pos, strlen("//[::]"), "//[::1]");
+          // if the server does not support ipv6, the bind will still
+          // succeed, but you need to connect to 127.0.0.1
+          fullurl.replace(pos, strlen("//[::]"), "//127.0.0.1");
         }
       }
 
@@ -2726,7 +2728,8 @@ static void JS_RemoveDirectory(
   int res = TRI_RemoveEmptyDirectory(*name);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot remove directory");
+    std::string err = std::string("cannot remove directory: " ) + *name + "'";
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res, err);
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -2792,7 +2795,8 @@ static void JS_RemoveRecursiveDirectory(
   int res = TRI_RemoveDirectory(*name);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot remove directory");
+    std::string err = std::string("cannot remove directory: " ) + *name + "'";
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res, err);
   }
 
   TRI_V8_RETURN_UNDEFINED();

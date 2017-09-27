@@ -22,7 +22,7 @@ fi
 MAINTAINER=""
 
 if [ "$maintainer" == maintainer ]; then
-    MAINTAINER="-DUSE_MAINTAINER_MODE=On"
+    MAINTAINER="-DUSE_MAINTAINER_MODE=On -DUSE_FAILURE_TESTS=On"
     type="${type}_maintainer"
 elif [ "$maintainer" == user ]; then
     MAINTAINER="-DUSE_MAINTAINER_MODE=Off"
@@ -32,7 +32,10 @@ else
     exit 1
 fi
 
+PACKAGING=
+
 if [ "$os" == linux ]; then
+    PACKAGING="-DPACKAGING=DEB"
     type="${type}_linux"
     load=40
 elif [ "$os" == mac ]; then
@@ -44,6 +47,20 @@ else
 fi
 
 mkdir -p build
+
+if [ ! -f build/location ]; then
+    if [ "$os" == mac ]; then
+        (ls -l  && echo "$os-$edition-$maintainer") | md5 | awk '{print $1}' > build/location
+    else
+        (ls -l  && echo "$os-$edition-$maintainer") | md5sum | awk '{print $1}' > build/location
+    fi
+fi
+
+GENPATH="/tmp/`cat build/location`"
+
+rm -f $GENPATH
+ln -s `pwd` $GENPATH
+cd $GENPATH
 
 if [ -z "$logdir" ]; then
   logdir=log-output
@@ -65,11 +82,12 @@ echo "PWD: `pwd`" | tee -a $logdir/build.log
     CXXFLAGS=-fno-omit-frame-pointer \
         cmake \
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_INSTALL_PREFIX=/ \
             -DUSE_CATCH_TESTS=On \
-            -DUSE_FAILURE_TESTS=On \
             -DDEBUG_SYNC_REPLICATION=On \
-            $MAINTAINER \
             $ENTERPRISE \
+            $MAINTAINER \
+            $PACKAGING \
             ..  2>&1 | tee -a ../$logdir/build.log
 
     echo "`date +%T` building..."

@@ -124,7 +124,7 @@ void RocksDBEdgeIndexIterator::reset() {
       VPackArrayIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
 }
 
-bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool RocksDBEdgeIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 #ifdef USE_MAINTAINER_MODE
   TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -326,6 +326,7 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
     if (needRocksLookup) {
       lookupInRocksDB(fromTo);
     }
+
     _keysIterator.next();
   }
   TRI_ASSERT(limit == 0);

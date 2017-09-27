@@ -209,7 +209,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
   char const* typeName() const override { return "skiplist-index-iterator"; }
 
   /// @brief Get the next elements in the skiplist
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
   /// @brief Reset the cursor
   void reset() override;

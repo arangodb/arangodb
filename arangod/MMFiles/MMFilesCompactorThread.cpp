@@ -404,9 +404,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       int res = copyMarker(context->_compactor, marker, &result);
 
       if (res != TRI_ERROR_NO_ERROR) {
-        // TODO: dont fail but recover from this state
-        LOG_TOPIC(FATAL, Logger::COMPACTOR) << "cannot write compactor file: " << TRI_errno_string(res); 
-        FATAL_ERROR_EXIT();
+        THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("cannot write document marker into compactor file: ") + TRI_errno_string(res)); 
       }
 
       // let marker point to the new position
@@ -425,9 +423,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
         int res = copyMarker(context->_compactor, marker, &result);
 
         if (res != TRI_ERROR_NO_ERROR) {
-          // TODO: dont fail but recover from this state
-          LOG_TOPIC(FATAL, Logger::COMPACTOR) << "cannot write document marker to compactor file: " << TRI_errno_string(res);
-          FATAL_ERROR_EXIT();
+          THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("cannot write remove marker into compactor file: ") + TRI_errno_string(res));
         }
 
         // update datafile info
@@ -485,7 +481,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   }
 
   // now compact all datafiles
-  uint64_t noCombined = 0;
+  uint64_t nrCombined = 0;
   uint64_t compactionBytesRead = 0;
   for (size_t i = 0; i < n; ++i) {
     auto compaction = toCompact[i];
@@ -495,27 +491,32 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
     LOG_TOPIC(DEBUG, Logger::COMPACTOR) << "compacting datafile '" << df->getName() << "' into '" << compactor->getName() << "', number: " << i << ", keep deletions: " << compaction._keepDeletions;
 
     // if this is the first datafile in the list of datafiles, we can also
-    // collect
-    // deletion markers
+    // collect deletion markers
     context->_keepDeletions = compaction._keepDeletions;
 
     // run the actual compaction of a single datafile
-    bool ok = TRI_IterateDatafile(df, compactifier);
+    bool ok;
+    try {
+      ok = TRI_IterateDatafile(df, compactifier);
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(WARN, Logger::COMPACTOR) << "failed to compact datafile '" << df->getName() << "': " << ex.what();
+      throw;
+    }
 
     if (!ok) {
       LOG_TOPIC(WARN, Logger::COMPACTOR) << "failed to compact datafile '" << df->getName() << "'";
       // compactor file does not need to be removed now. will be removed on next
       // startup
-      // TODO: Remove file
       return;
     }
-    noCombined ++;
+
+    ++nrCombined;
   }  // next file
 
   TRI_ASSERT(context->_dfi.numberDead == 0);
   TRI_ASSERT(context->_dfi.sizeDead == 0);
 
-  physical->_datafileStatistics.compactionRun(noCombined, compactionBytesRead, context->_dfi.sizeAlive);
+  physical->_datafileStatistics.compactionRun(nrCombined, compactionBytesRead, context->_dfi.sizeAlive);
   physical->_datafileStatistics.replace(compactor->fid(), context->_dfi);
 
   trx.commit();

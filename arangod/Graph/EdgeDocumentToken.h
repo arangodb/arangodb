@@ -37,7 +37,11 @@ namespace graph {
 struct EdgeDocumentToken {
   
   EdgeDocumentToken() noexcept
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    : _data(0, LocalDocumentId()), _type(TokenType::NONE) {}
+#else
     : _data(0, LocalDocumentId()) {}
+#endif
   
   EdgeDocumentToken(EdgeDocumentToken&& edtkn) noexcept {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

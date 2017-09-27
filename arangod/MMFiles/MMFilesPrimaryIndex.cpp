@@ -52,44 +52,6 @@ static std::vector<std::vector<arangodb::basics::AttributeName>> const
     IndexAttributes{{arangodb::basics::AttributeName("_id", false)},
                     {arangodb::basics::AttributeName("_key", false)}};
 
-static inline uint64_t HashKey(void*, uint8_t const* key) {
-  return MMFilesSimpleIndexElement::hash(VPackSlice(key));
-}
-
-static inline uint64_t HashElement(void*,
-                                   MMFilesSimpleIndexElement const& element) {
-  return element.hash();
-}
-
-/// @brief determines if a key corresponds to an element
-static bool IsEqualKeyElement(void* userData, uint8_t const* key, uint64_t hash,
-                              MMFilesSimpleIndexElement const& right) {
-  IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
-  TRI_ASSERT(context != nullptr);
-
-  try {
-    VPackSlice tmp = right.slice(context);
-    TRI_ASSERT(tmp.isString());
-    return VPackSlice(key).equals(tmp);
-  } catch (...) {
-    return false;
-  }
-}
-
-/// @brief determines if two elements are equal
-static bool IsEqualElementElement(void* userData,
-                                  MMFilesSimpleIndexElement const& left,
-                                  MMFilesSimpleIndexElement const& right) {
-  IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
-  TRI_ASSERT(context != nullptr);
-
-  VPackSlice l = left.slice(context);
-  VPackSlice r = right.slice(context);
-  TRI_ASSERT(l.isString());
-  TRI_ASSERT(r.isString());
-  return l.equals(r);
-}
-
 MMFilesPrimaryIndexIterator::MMFilesPrimaryIndexIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, MMFilesPrimaryIndex const* index,
@@ -109,7 +71,7 @@ MMFilesPrimaryIndexIterator::~MMFilesPrimaryIndexIterator() {
   }
 }
 
-bool MMFilesPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool MMFilesPrimaryIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(limit > 0);
   if (!_iterator.valid() || limit == 0) {
     return false;
@@ -137,7 +99,7 @@ MMFilesAllIndexIterator::MMFilesAllIndexIterator(
       _reverse(reverse),
       _total(0) {}
 
-bool MMFilesAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool MMFilesAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   while (limit > 0) {
     MMFilesSimpleIndexElement element;
     if (_reverse) {
@@ -153,6 +115,32 @@ bool MMFilesAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
     }
   }
   return true;
+}
+
+bool MMFilesAllIndexIterator::nextDocument(DocumentCallback const& cb, size_t limit) {
+  _documentIds.clear();
+  _documentIds.reserve(limit);
+
+  bool done = false;
+  while (limit > 0) {
+    MMFilesSimpleIndexElement element;
+    if (_reverse) {
+      element = _index->findSequentialReverse(&_context, _position);
+    } else {
+      element = _index->findSequential(&_context, _position, _total);
+    }
+    if (element) {
+      _documentIds.emplace_back(std::make_pair(element.localDocumentId(), nullptr));
+      --limit;
+    } else {
+      done = true;
+      break;
+    }
+  }
+
+  auto physical = static_cast<MMFilesCollection*>(_collection->getPhysical());
+  physical->readDocumentWithCallback(_trx, _documentIds, cb);
+  return !done;
 }
 
 // Skip the first count-many entries
@@ -184,7 +172,7 @@ MMFilesAnyIndexIterator::MMFilesAnyIndexIterator(
       _step(0),
       _total(0) {}
 
-bool MMFilesAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool MMFilesAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   while (limit > 0) {
     MMFilesSimpleIndexElement element =
         _index->findRandom(&_context, _initial, _position, _step, _total);
@@ -210,8 +198,7 @@ MMFilesPrimaryIndex::MMFilesPrimaryIndex(
             std::vector<std::vector<arangodb::basics::AttributeName>>(
                 {{arangodb::basics::AttributeName(StaticStrings::KeyString,
                                                   false)}}),
-            /*unique*/ true , /*sparse*/ false),
-      _primaryIndex(nullptr) {
+            /*unique*/ true , /*sparse*/ false) {
   size_t indexBuckets = 1;
 
   if (collection != nullptr) {
@@ -222,13 +209,9 @@ MMFilesPrimaryIndex::MMFilesPrimaryIndex(
     indexBuckets = static_cast<size_t>(physical->indexBuckets());
   }
 
-  _primaryIndex = new MMFilesPrimaryIndexImpl(
-      HashKey, HashElement, IsEqualKeyElement, IsEqualElementElement,
-      IsEqualElementElement, indexBuckets,
-      [this]() -> std::string { return this->context(); });
+  _primaryIndex.reset(new MMFilesPrimaryIndexImpl(MMFilesPrimaryIndexHelper(), indexBuckets,
+      [this]() -> std::string { return this->context(); }));
 }
-
-MMFilesPrimaryIndex::~MMFilesPrimaryIndex() { delete _primaryIndex; }
 
 /// @brief return the number of documents from the index
 size_t MMFilesPrimaryIndex::size() const { return _primaryIndex->size(); }
@@ -309,7 +292,8 @@ MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(
   TRI_ASSERT(key.isString());
   MMFilesSimpleIndexElement* element =
       _primaryIndex->findByKeyRef(&context, key.begin());
-  if (element != nullptr && !element->isSet()) {
+  TRI_ASSERT(element != nullptr);
+  if (!element->isSet()) {
     return nullptr;
   }
   return element;
@@ -323,7 +307,8 @@ MMFilesSimpleIndexElement* MMFilesPrimaryIndex::lookupKeyRef(
   TRI_ASSERT(key.isString());
   MMFilesSimpleIndexElement* element =
       _primaryIndex->findByKeyRef(&context, key.begin());
-  if (element != nullptr && !element->isSet()) {
+  TRI_ASSERT(element != nullptr);
+  if (!element->isSet()) {
     return nullptr;
   }
   return element;
@@ -348,7 +333,7 @@ IndexIterator* MMFilesPrimaryIndex::allIterator(transaction::Methods* trx,
                                                 ManagedDocumentResult* mmdr,
                                                 bool reverse) const {
   return new MMFilesAllIndexIterator(_collection, trx, mmdr, this,
-                                     _primaryIndex, reverse);
+                                     _primaryIndex.get(), reverse);
 }
 
 /// @brief request an iterator over all elements in the index in
@@ -357,7 +342,7 @@ IndexIterator* MMFilesPrimaryIndex::allIterator(transaction::Methods* trx,
 IndexIterator* MMFilesPrimaryIndex::anyIterator(
     transaction::Methods* trx, ManagedDocumentResult* mmdr) const {
   return new MMFilesAnyIndexIterator(_collection, trx, mmdr, this,
-                                     _primaryIndex);
+                                     _primaryIndex.get());
 }
 
 /// @brief a method to iterate over all elements in the index in

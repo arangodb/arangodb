@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/AssocUnique.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/fasthash.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
 #include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
@@ -34,6 +35,31 @@
 struct MMFilesMarker;
 
 namespace arangodb {
+
+struct MMFilesRevisionsCacheHelper {
+  static inline uint64_t HashKey(void*, LocalDocumentId::BaseType const* key) {
+    return fasthash64_uint64(*key, 0xdeadbeef);
+  }
+
+  static inline uint64_t HashElement(void*, MMFilesDocumentPosition const& element, bool) {
+    return fasthash64_uint64(element.localDocumentIdValue(), 0xdeadbeef);
+  }
+
+  inline bool IsEqualKeyElement(void*, LocalDocumentId::BaseType const* key,
+                                MMFilesDocumentPosition const& element) const {
+    return *key == element.localDocumentIdValue();
+  }
+
+  inline bool IsEqualElementElement(void*, MMFilesDocumentPosition const& left,
+                                    MMFilesDocumentPosition const& right) const {
+    return left.localDocumentIdValue() == right.localDocumentIdValue();
+  }
+
+  inline bool IsEqualElementElementByKey(void* userData, MMFilesDocumentPosition const& left,
+                                         MMFilesDocumentPosition const& right) const {
+    return IsEqualElementElement(userData, left, right);
+  }
+};
 
 class MMFilesRevisionsCache {
  public:
@@ -48,6 +74,7 @@ class MMFilesRevisionsCache {
   void clear();
   MMFilesDocumentPosition lookup(LocalDocumentId const& documentId) const;
   MMFilesDocumentPosition insert(LocalDocumentId const& documentId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock);
+  void batchLookup(std::vector<std::pair<LocalDocumentId, uint8_t const*>>& documentIds) const;
   void insert(MMFilesDocumentPosition const& position, bool shouldLock);
   void update(LocalDocumentId const& documentId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal);
   bool updateConditional(LocalDocumentId const& documentId, MMFilesMarker const* oldPosition, MMFilesMarker const* newPosition, TRI_voc_fid_t newFid, bool isInWal);
@@ -57,7 +84,7 @@ class MMFilesRevisionsCache {
  private:
   mutable arangodb::basics::ReadWriteLock _lock; 
   
-  arangodb::basics::AssocUnique<LocalDocumentId::BaseType, MMFilesDocumentPosition> _positions;
+  arangodb::basics::AssocUnique<LocalDocumentId::BaseType, MMFilesDocumentPosition, MMFilesRevisionsCacheHelper> _positions;
 };
 
 } // namespace arangodb

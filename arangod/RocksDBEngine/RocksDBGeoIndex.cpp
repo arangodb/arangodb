@@ -146,7 +146,7 @@ size_t RocksDBGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
   return numDocs;
 }
 
-bool RocksDBGeoIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool RocksDBGeoIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   if (!_cursor) {
     createCursor(_lat, _lon);
 

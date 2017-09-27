@@ -57,7 +57,7 @@ class RocksDBGeoIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "geo-index-iterator"; }
 
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
   void reset() override;
 

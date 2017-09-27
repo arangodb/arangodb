@@ -91,7 +91,7 @@ void IndexIterator::skip(uint64_t count, uint64_t& skipped) {
 ///        If one iterator is exhausted, the next one is used.
 ///        If callback is called less than limit many times
 ///        all iterators are exhausted
-bool MultiIndexIterator::next(TokenCallback const& callback, size_t limit) {
+bool MultiIndexIterator::next(LocalDocumentIdCallback const& callback, size_t limit) {
   auto cb = [&limit, &callback] (LocalDocumentId const& token) {
     --limit;
     callback(token);

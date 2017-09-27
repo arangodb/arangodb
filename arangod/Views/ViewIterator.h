@@ -40,7 +40,7 @@ class Slice;
 
 class ViewIterator {
  public:
-  typedef std::function<void(LocalDocumentId const& token)> TokenCallback;
+  typedef std::function<void(LocalDocumentId const& token)> LocalDocumentIdCallback;
 
   typedef std::function<void(LocalDocumentId const& token, arangodb::velocypack::Slice extra)> ExtraCallback; 
 
@@ -64,7 +64,7 @@ class ViewIterator {
   // slice stays valid while the callback is executed.
   // the method must return `true` if there may be more results available.
   // if no more results are available, the method must return `false`.
-  virtual bool next(TokenCallback const& callback, size_t limit) = 0;
+  virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) = 0;
 
   // reset the iterator to its beginning
   virtual void reset();

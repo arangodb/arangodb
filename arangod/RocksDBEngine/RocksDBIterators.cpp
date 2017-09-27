@@ -81,7 +81,7 @@ bool RocksDBAllIndexIterator::outOfRange() const {
   }
 }
 
-bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -212,7 +212,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
   }
 }
 
-bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool RocksDBAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -305,7 +305,7 @@ bool RocksDBSortedAllIterator::outOfRange() const {
   return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
 }
 
-bool RocksDBSortedAllIterator::next(TokenCallback const& cb, size_t limit) {
+bool RocksDBSortedAllIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {

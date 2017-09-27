@@ -97,7 +97,7 @@ void RocksDBVPackUniqueIndexIterator::reset() {
   _done = false;
 }
 
-bool RocksDBVPackUniqueIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool RocksDBVPackUniqueIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   if (limit == 0 || _done) {
@@ -168,7 +168,7 @@ bool RocksDBVPackIndexIterator::outOfRange() const {
   }
 }
 
-bool RocksDBVPackIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool RocksDBVPackIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -363,7 +363,7 @@ int RocksDBVPackIndex::fillElement(VPackBuilder& leased,
       buildIndexValues(leased, documentId, doc, 0, elements, sliceStack, hashes);
     } catch (arangodb::basics::Exception const& ex) {
       return ex.code();
-    } catch (std::bad_alloc const& ex) {
+    } catch (std::bad_alloc const&) {
       return TRI_ERROR_OUT_OF_MEMORY;
     } catch (...) {
       // unknown error

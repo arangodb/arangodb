@@ -1991,6 +1991,20 @@ bool MMFilesCollection::readDocumentWithCallback(transaction::Methods* trx,
   return false;
 }
 
+size_t MMFilesCollection::readDocumentWithCallback(transaction::Methods* trx,
+                                                   std::vector<std::pair<LocalDocumentId, uint8_t const*>>& documentIds,
+                                                   IndexIterator::DocumentCallback const& cb) {
+  size_t count = 0;
+  batchLookupRevisionVPack(documentIds);
+  for (auto const& it : documentIds) {
+    if (it.second) {
+      cb(it.first, VPackSlice(it.second));
+      ++count;
+    }
+  }
+  return count;
+}
+
 bool MMFilesCollection::readDocumentConditional(
     transaction::Methods* trx, LocalDocumentId const& documentId,
     TRI_voc_tick_t maxTick, ManagedDocumentResult& result) {
@@ -2971,6 +2985,10 @@ uint8_t const* MMFilesCollection::lookupDocumentVPackConditional(
   return vpack;
 }
 
+void MMFilesCollection::batchLookupRevisionVPack(std::vector<std::pair<LocalDocumentId, uint8_t const*>>& documentIds) const {
+  _revisionsCache.batchLookup(documentIds);
+}
+
 MMFilesDocumentPosition MMFilesCollection::insertLocalDocumentId(
     LocalDocumentId const& documentId, uint8_t const* dataptr, TRI_voc_fid_t fid,
     bool isInWal, bool shouldLock) {
@@ -3550,7 +3568,7 @@ Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
   // we found a document to remove
   try {
     operation.setDocumentIds(MMFilesDocumentDescriptor(oldDocumentId, oldDoc.begin()),
-                           MMFilesDocumentDescriptor());
+                             MMFilesDocumentDescriptor());
 
     // delete from indexes
     res = deleteSecondaryIndexes(trx, oldDocumentId, oldDoc, false);

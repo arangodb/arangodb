@@ -556,7 +556,7 @@ void MMFilesSkiplistIterator::reset() {
   }
 }
 
-bool MMFilesSkiplistIterator::next(TokenCallback const& cb, size_t limit) {
+bool MMFilesSkiplistIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   while (limit > 0) {
     if (_cursor == nullptr) {
       // We are exhausted already, sorry

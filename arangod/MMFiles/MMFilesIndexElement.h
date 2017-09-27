@@ -212,8 +212,11 @@ struct MMFilesSkiplistIndexElement {
 struct MMFilesSimpleIndexElement {
  public:
   constexpr MMFilesSimpleIndexElement() : _localDocumentId(LocalDocumentId::none()), _hashAndOffset(0) {}
+
   MMFilesSimpleIndexElement(LocalDocumentId const& documentId, arangodb::velocypack::Slice const& value, uint32_t offset); 
-  MMFilesSimpleIndexElement(MMFilesSimpleIndexElement const& other) : _localDocumentId(other._localDocumentId), _hashAndOffset(other._hashAndOffset) {}
+
+  MMFilesSimpleIndexElement(MMFilesSimpleIndexElement const& other) noexcept : _localDocumentId(other._localDocumentId), _hashAndOffset(other._hashAndOffset) {}
+
   MMFilesSimpleIndexElement& operator=(MMFilesSimpleIndexElement const& other) noexcept {
     _localDocumentId = other._localDocumentId;
     _hashAndOffset = other._hashAndOffset;
@@ -224,20 +227,27 @@ struct MMFilesSimpleIndexElement {
 
   /// @brief get the local document id
   inline LocalDocumentId localDocumentId() const { return _localDocumentId; }
+  
   inline LocalDocumentId::BaseType localDocumentIdValue() const { return _localDocumentId.id(); }
-  inline uint64_t hash() const { return _hashAndOffset & 0xFFFFFFFFULL; }
-  inline uint32_t offset() const { return static_cast<uint32_t>((_hashAndOffset & 0xFFFFFFFF00000000ULL) >> 32); }
+  
+  inline uint64_t hash() const noexcept { return _hashAndOffset & 0xFFFFFFFFULL; }
+  
+  inline uint32_t offset() const noexcept { return static_cast<uint32_t>((_hashAndOffset & 0xFFFFFFFF00000000ULL) >> 32); }
+  
   arangodb::velocypack::Slice slice(IndexLookupContext*) const;
   
-  inline operator bool() const { return _localDocumentId.isSet(); }
-  inline bool operator==(MMFilesSimpleIndexElement const& other) const {
+  inline operator bool() const noexcept { return _localDocumentId.isSet(); }
+  
+  inline bool operator==(MMFilesSimpleIndexElement const& other) const noexcept {
     return _localDocumentId == other._localDocumentId && _hashAndOffset == other._hashAndOffset;
   }
-  inline bool operator<(MMFilesSimpleIndexElement const& other) const {
+  
+  inline bool operator<(MMFilesSimpleIndexElement const& other) const noexcept {
     return _localDocumentId < other._localDocumentId;
   }
   
   static uint64_t hash(arangodb::velocypack::Slice const& value);
+  
   inline void updateLocalDocumentId(LocalDocumentId const& documentId, uint32_t offset) { 
     _localDocumentId = documentId; 
     _hashAndOffset &= 0xFFFFFFFFULL; 

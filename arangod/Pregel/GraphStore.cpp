@@ -360,8 +360,8 @@ void GraphStore<V, E>::_loadVertices(size_t i,
 
   ManagedDocumentResult mmdr;
   std::unique_ptr<OperationCursor> cursor =
-      trx->indexScan(vertexShard, transaction::Methods::CursorType::ALL, &mmdr,
-                     0, UINT64_MAX, 1000, false);
+      trx->indexScan(vertexShard, transaction::Methods::CursorType::ALL, &mmdr, false);
+
   if (cursor->failed()) {
     THROW_ARANGO_EXCEPTION_FORMAT(cursor->code, "while looking up shard '%s'",
                                   vertexShard.c_str());

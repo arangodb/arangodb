@@ -77,7 +77,7 @@ class MMFilesPersistentIndexIterator final : public IndexIterator {
   char const* typeName() const override { return "rocksdb-index-iterator"; }
 
   /// @brief Get the next limit many element in the index
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
   /// @brief Reset the cursor
   void reset() override;
