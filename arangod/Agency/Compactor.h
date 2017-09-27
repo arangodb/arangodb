@@ -60,6 +60,7 @@ private:
   
   Agent* _agent; //< @brief Agent
   basics::ConditionVariable _cv;
+  bool _wakeupCompactor;
   long _waitInterval; //< @brief Wait interval 
   
 };
