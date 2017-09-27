@@ -556,13 +556,13 @@ query_t config_t::toBuilder() const {
       }
     }
 
-    ret->add(VPackValue(activeStr));
+/*    ret->add(VPackValue(activeStr));
     {
       VPackArrayBuilder bb(ret.get());
       for (auto const& i : _active) {
         ret->add(VPackValue(i));
       }
-    }
+      }*/
 
     ret->add(idStr, VPackValue(_id));
     ret->add(agencySizeStr, VPackValue(_agencySize));
