@@ -65,10 +65,7 @@ echo "CONCURRENY: $concurrency"
 echo "HOST: `hostname`"
 echo "PWD: `pwd`"
 
-(
-    set -eo pipefail
-    cd build
-
+function configureBuild {
     echo "`date +%T` configuring..."
     CXXFLAGS=-fno-omit-frame-pointer \
         cmake \
@@ -80,6 +77,13 @@ echo "PWD: `pwd`"
             $MAINTAINER \
             $PACKAGING \
             ..
+}
+
+(
+    set -eo pipefail
+    cd build
+
+    configureBuild
 
     echo "`date +%T` building..."
     make -j $concurrency -l $load 2>&1
