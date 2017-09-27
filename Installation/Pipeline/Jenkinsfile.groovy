@@ -665,14 +665,14 @@ def stashBuild(os, edition, maintainer) {
 
             sh "rm -f ${name}"
             sh "GZIP=-1 tar cpzf ${name} build"
-            sh "scp ${name} c1:/vol/cache/build-${os}-${edition}-${maintainer}.tar.gz"
+            sh "scp ${name} c1:/vol/cache/build-${sourceBranchLabel}-${os}-${edition}-${maintainer}.tar.gz"
         }
         else if (os == 'windows') {
             def name = "build.zip"
 
             bat "del /F /Q ${name}"
             powershell "7z a ${name} -r -bd -mx=1 build"
-            powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk ${name} jenkins@c1:/vol/cache/build-${os}-${edition}-${maintainer}.zip"
+            powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk ${name} jenkins@c1:/vol/cache/build-${sourceBranchLabel}-${os}-${edition}-${maintainer}.zip"
         }
     }
 }
@@ -681,11 +681,11 @@ def unstashBuild(os, edition, maintainer) {
     lock("stashing-${os}-${edition}-${maintainer}") {
         try {
             if (os == "windows") {
-                powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/build-${os}-${edition}-${maintainer}.zip build.zip"
+                powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/build-${sourceBranchLabel}-${os}-${edition}-${maintainer}.zip build.zip"
                 powershell "Expand-Archive -Path build.zip -Force -DestinationPath ."
             }
             else {
-                sh "scp c1:/vol/cache/build-${os}-${edition}-${maintainer}.tar.gz build.tar.gz"
+                sh "scp c1:/vol/cache/build-${sourceBranchLabel}-${os}-${edition}-${maintainer}.tar.gz build.tar.gz"
                 sh "tar xpzf build.tar.gz"
             }
         }

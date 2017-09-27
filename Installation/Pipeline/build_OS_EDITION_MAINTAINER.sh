@@ -74,10 +74,7 @@ echo "CONCURRENY: $concurrency" | tee -a $logdir/build.log
 echo "HOST: `hostname`" | tee -a $logdir/build.log
 echo "PWD: `pwd`" | tee -a $logdir/build.log
 
-(
-    set -eo pipefail
-    cd build
-
+function configureBuild {
     echo "`date +%T` configuring..."
     CXXFLAGS=-fno-omit-frame-pointer \
         cmake \
@@ -89,6 +86,23 @@ echo "PWD: `pwd`" | tee -a $logdir/build.log
             $MAINTAINER \
             $PACKAGING \
             ..  2>&1 | tee -a ../$logdir/build.log
+}
+
+(
+    set -eo pipefail
+    cd build
+
+    configureBuild
+
+    if grep -q "Re-run cmake with a different source directory" ../$logdir/build.log; then
+        cd ..
+        mv build/location location.$$
+        rm -rf build
+        mkdir build
+        mv location.$$ build
+        cd build
+        configureBuild
+    fi
 
     echo "`date +%T` building..."
     make -j $concurrency -l $load 2>&1 | tee -a ../$logdir/build.log
