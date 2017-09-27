@@ -450,6 +450,7 @@ def checkoutCommunity(os) {
         }
         catch (exc) {
             echo "GITHUB checkout failed, retrying in 1min"
+            deleteDirDocker(os)
             sleep 60
             throw exc
         }
