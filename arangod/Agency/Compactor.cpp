@@ -91,9 +91,6 @@ void Compactor::beginShutdown() {
     
   Thread::beginShutdown();
 
-  {
-    CONDITION_LOCKER(guard, _cv);
-    guard.broadcast();
-  }
-  
+  wakeUp();
+
 }
