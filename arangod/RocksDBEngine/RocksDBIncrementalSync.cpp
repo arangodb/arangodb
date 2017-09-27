@@ -93,7 +93,7 @@ int syncChunkRocksDB(
     return TRI_ERROR_REPLICATION_MASTER_ERROR;
   }
 
-  auto builder = std::make_shared<VPackBuilder>();
+  VPackBuilder builder;
   int res = syncer.parseResponse(builder, response.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -103,7 +103,7 @@ int syncChunkRocksDB(
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  VPackSlice const responseBody = builder->slice();
+  VPackSlice const responseBody = builder.slice();
   if (!responseBody.isArray()) {
     errorMsg = "got invalid response from master at " +
                syncer._masterInfo._endpoint + ": response is no array";
@@ -266,7 +266,7 @@ int syncChunkRocksDB(
       return TRI_ERROR_REPLICATION_MASTER_ERROR;
     }
 
-    auto builder = std::make_shared<VPackBuilder>();
+    VPackBuilder builder;
     int res = syncer.parseResponse(builder, response.get());
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -277,7 +277,7 @@ int syncChunkRocksDB(
       return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
     }
 
-    VPackSlice const slice = builder->slice();
+    VPackSlice const slice = builder.slice();
     if (!slice.isArray()) {
       errorMsg = "got invalid response from master at " +
                  syncer._masterInfo._endpoint + ": response is no array";
@@ -379,7 +379,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
     return TRI_ERROR_REPLICATION_MASTER_ERROR;
   }
 
-  auto builder = std::make_shared<VPackBuilder>();
+  VPackBuilder builder;
   int res = syncer.parseResponse(builder, response.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -390,7 +390,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  VPackSlice const chunkSlice = builder->slice();
+  VPackSlice const chunkSlice = builder.slice();
 
   if (!chunkSlice.isArray()) {
     errorMsg = "got invalid response from master at " +

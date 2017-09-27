@@ -63,10 +63,6 @@ class Syncer {
     usleep(static_cast<TRI_usleep_t>(time));
   }
 
-  /// @brief parse a velocypack response
-  int parseResponse(std::shared_ptr<arangodb::velocypack::Builder>,
-                    arangodb::httpclient::SimpleHttpResult const*) const;
-
   /// @brief request location rewriter (injects database name)
   static std::string rewriteLocation(void*, std::string const&);
 
@@ -78,6 +74,10 @@ class Syncer {
   }
 
  protected:
+  
+  /// @brief parse a velocypack response
+  int parseResponse(arangodb::velocypack::Builder&,
+                    arangodb::httpclient::SimpleHttpResult const*) const;
 
   /// @brief send a "create barrier" command
   int sendCreateBarrier(std::string&, TRI_voc_tick_t);

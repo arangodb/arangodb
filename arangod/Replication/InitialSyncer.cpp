@@ -57,7 +57,6 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
-using namespace arangodb::rocksutils;
 
 size_t const InitialSyncer::MaxChunkSize = 10 * 1024 * 1024;
 
@@ -151,62 +150,11 @@ int InitialSyncer::run(std::string& errorMsg, bool incremental) {
       return res;
     }
 
-    std::string url = BaseUrl + "/inventory?serverId=" + _localServerIdString +
-                      "&batchId=" + std::to_string(_batchId);
-    if (_includeSystem) {
-      url += "&includeSystem=true";
-    }
-
-    // send request
-    std::string const progress = "fetching master inventory from " + url;
-    setProgress(progress);
-
-    std::unique_ptr<SimpleHttpResult> response(
-        _client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
-
-    if (response == nullptr || !response->isComplete()) {
-      errorMsg = "could not connect to master at " + _masterInfo._endpoint +
-                 ": " + _client->getErrorMessage();
-
-      sendFinishBatch();
-
-      return TRI_ERROR_REPLICATION_NO_RESPONSE;
-    }
-
-    TRI_ASSERT(response != nullptr);
-
-    if (response->wasHttpError()) {
-      res = TRI_ERROR_REPLICATION_MASTER_ERROR;
-
-      errorMsg = "got invalid response from master at " +
-                 _masterInfo._endpoint + ": HTTP " +
-                 StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-                 response->getHttpReturnMessage();
-    } else {
-      auto builder = std::make_shared<VPackBuilder>();
-      res = parseResponse(builder, response.get());
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        errorMsg = "got invalid response from master at " +
-                   std::string(_masterInfo._endpoint) +
-                   ": invalid response type for initial data. expecting array";
-
-        return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-      }
-
-      VPackSlice const slice = builder->slice();
-      if (!slice.isObject()) {
-        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: InitialSyncer::run - "
-                                                 "inventoryResponse is not an "
-                                                 "object";
-        res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-
-        errorMsg = "got invalid response from master at " +
-                   _masterInfo._endpoint + ": invalid JSON";
-      } else {
-        auto pair = stripObjectIds(slice);
-        res = handleInventoryResponse(pair.first, incremental, errorMsg);
-      }
+    VPackBuilder inventoryResponse;
+    int res = fetchInventory(inventoryResponse, errorMsg);
+    if (res == TRI_ERROR_NO_ERROR) {
+      auto pair = rocksutils::stripObjectIds(inventoryResponse.slice());
+      res = handleInventoryResponse(pair.first, incremental, errorMsg);
     }
 
     sendFinishBatch();
@@ -311,14 +259,14 @@ int InitialSyncer::sendStartBatch(std::string& errorMsg) {
     return TRI_ERROR_REPLICATION_MASTER_ERROR;
   }
 
-  auto builder = std::make_shared<VPackBuilder>();
+  VPackBuilder builder;
   int res = parseResponse(builder, response.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  VPackSlice const slice = builder->slice();
+  VPackSlice const slice = builder.slice();
   if (!slice.isObject()) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
@@ -872,7 +820,7 @@ int InitialSyncer::handleCollectionSync(arangodb::LogicalCollection* col,
     this->sleep(static_cast<uint64_t>(sleepTime * 1000.0 * 1000.0));
   }
 
-  auto builder = std::make_shared<VPackBuilder>();
+  VPackBuilder builder;
   int res = parseResponse(builder, response.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -882,7 +830,7 @@ int InitialSyncer::handleCollectionSync(arangodb::LogicalCollection* col,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  VPackSlice const slice = builder->slice();
+  VPackSlice const slice = builder.slice();
   if (!slice.isObject()) {
     errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
                ": response is no object";
@@ -1262,12 +1210,67 @@ int InitialSyncer::handleCollection(VPackSlice const& parameters,
   return TRI_ERROR_INTERNAL;
 }
 
+int InitialSyncer::fetchInventory(VPackBuilder& builder,
+                                  std::string& errorMsg) {
+  
+  std::string url = BaseUrl + "/inventory?serverId=" + _localServerIdString +
+  "&batchId=" + std::to_string(_batchId);
+  if (_includeSystem) {
+    url += "&includeSystem=true";
+  }
+  
+  // send request
+  std::string const progress = "fetching master inventory from " + url;
+  setProgress(progress);
+  
+  std::unique_ptr<SimpleHttpResult> response(
+                                             _client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
+  
+  if (response == nullptr || !response->isComplete()) {
+    errorMsg = "could not connect to master at " + _masterInfo._endpoint +
+    ": " + _client->getErrorMessage();
+    
+    sendFinishBatch();
+    
+    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+  }
+  
+  TRI_ASSERT(response != nullptr);
+  
+  if (response->wasHttpError()) {
+    errorMsg = "got invalid response from master at " +
+    _masterInfo._endpoint + ": HTTP " +
+    StringUtils::itoa(response->getHttpReturnCode()) + ": " +
+    response->getHttpReturnMessage();
+    return TRI_ERROR_REPLICATION_MASTER_ERROR;
+  }
+  int res = parseResponse(builder, response.get());
+  if (res != TRI_ERROR_NO_ERROR) {
+    errorMsg = "got invalid response from master at " +
+    std::string(_masterInfo._endpoint) +
+    ": invalid response type for initial data. expecting array";
+    
+    return res;
+  }
+  
+  VPackSlice const slice = builder.slice();
+  if (!slice.isObject()) {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: InitialSyncer::run - "
+    "inventoryResponse is not an "
+    "object";
+    
+    errorMsg = "got invalid response from master at " +
+    _masterInfo._endpoint + ": invalid JSON";
+    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  }
+  return res;
+}
+
 /// @brief handle the inventory response of the master
 int InitialSyncer::handleInventoryResponse(VPackSlice const& slice,
                                            bool incremental,
                                            std::string& errorMsg) {
   VPackSlice const data = slice.get("collections");
-
   if (!data.isArray()) {
     errorMsg = "collections section is missing from response";
 
@@ -1275,8 +1278,7 @@ int InitialSyncer::handleInventoryResponse(VPackSlice const& slice,
   }
 
   std::vector<std::pair<VPackSlice, VPackSlice>> collections;
-
-  for (auto const& it : VPackArrayIterator(data)) {
+  for (VPackSlice it : VPackArrayIterator(data)) {
     if (!it.isObject()) {
       errorMsg = "collection declaration is invalid in response";
 

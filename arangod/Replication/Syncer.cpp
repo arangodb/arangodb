@@ -130,7 +130,7 @@ Syncer::~Syncer() {
 }
 
 /// @brief parse a velocypack response
-int Syncer::parseResponse(std::shared_ptr<VPackBuilder> builder, 
+int Syncer::parseResponse(VPackBuilder& builder,
                           SimpleHttpResult const* response) const {
   try {
     VPackParser parser(builder);
@@ -196,11 +196,11 @@ int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
                ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
                ": " + response->getHttpReturnMessage();
   } else {
-    auto builder = std::make_shared<VPackBuilder>();
+    VPackBuilder builder;
     res = parseResponse(builder, response.get());
 
     if (res == TRI_ERROR_NO_ERROR) {
-      VPackSlice const slice = builder->slice();
+      VPackSlice const slice = builder.slice();
       std::string const id = VelocyPackHelper::getStringValue(slice, "id", "");
 
       if (id.empty()) {
@@ -710,11 +710,11 @@ int Syncer::getMasterState(std::string& errorMsg) {
     return TRI_ERROR_REPLICATION_MASTER_ERROR;
   }
 
-  auto builder = std::make_shared<VPackBuilder>();
+  VPackBuilder builder;
   int res = parseResponse(builder, response.get());
 
   if (res == TRI_ERROR_NO_ERROR) {
-    VPackSlice const slice = builder->slice();
+    VPackSlice const slice = builder.slice();
 
     if (!slice.isObject()) {
       LOG_TOPIC(DEBUG, Logger::REPLICATION) << "syncer::getMasterState - state is not an object";

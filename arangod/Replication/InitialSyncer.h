@@ -181,6 +181,9 @@ class InitialSyncer : public Syncer {
   int handleCollection(arangodb::velocypack::Slice const&,
                        arangodb::velocypack::Slice const&, bool, std::string&,
                        sync_phase_e);
+  
+  /// @brief fetch the server's inventory
+  int fetchInventory(arangodb::velocypack::Builder& builder, std::string& errorMsg);
 
   /// @brief handle the inventory response of the master
   int handleInventoryResponse(arangodb::velocypack::Slice const&, bool,

@@ -579,7 +579,7 @@ int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
     startTick = toTick;
   }
 
-  auto builder = std::make_shared<VPackBuilder>();
+  VPackBuilder builder;
   int res = parseResponse(builder, response.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -590,7 +590,7 @@ int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  VPackSlice const slice = builder->slice();
+  VPackSlice const slice = builder.slice();
   if (!slice.isArray()) {
     errorMsg = "got invalid response from master at " +
                std::string(_masterInfo._endpoint) +
