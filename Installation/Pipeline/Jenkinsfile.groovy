@@ -348,11 +348,15 @@ def logStopStage(os, logFile) {
     generateResult()
 }
 
-def logExceptionStage(os, logFile, exc) {
+def logExceptionStage(os, logFile, link, exc) {
     def msg = exc.toString()
 
     resultsStop[logFile] = new Date()
     resultsStatus[logFile] = "failed ${msg}"
+
+    if (link != null) {
+        resultsLink[logFile] = link
+    }
 
     echo "failed ${logFile}: ${resultsStop[logFile]} ${msg}"
 
@@ -762,7 +766,7 @@ def jslint(os, edition, maintainer) {
         logStopStage(os, logFile)
     }
     catch (exc) {
-        logExceptionStage(os, logFile, exc)
+        logExceptionStage(os, logFile, "${archFail}/jslint.log", exc)
 
         renameFolder(arch, archFail)
         fileOperations([fileCreateOperation(fileContent: 'JSLINT FAILED', fileName: "${archDir}-FAIL.txt")])
@@ -871,9 +875,10 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
               def archFail = "${arch}-FAIL"
               def archRun  = "${arch}-RUN"
 
-              def logFile       = pwd() + "/" + "${arch}/${name}.log"
-              def logFileRel    = "${arch}/${name}.log"
-              def logFileFailed = pwd() + "/" + "${arch}-FAIL/${name}.log"
+              def logFile          = pwd() + "/" + "${arch}/${name}.log"
+              def logFileRel       = "${arch}/${name}.log"
+              def logFileFailed    = pwd() + "/" + "${arch}-FAIL/${name}.log"
+              def logFileFailedRel = "${arch}-FAIL/${name}.log"
 
               def runDir = "run.${testIndex}"
 
@@ -928,7 +933,7 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
                   logStopStage(os, logFileRel)
               }
               catch (exc) {
-                  logExceptionStage(os, logFileRel, exc)
+                  logExceptionStage(os, logFileRel, logFileFailedRel, exc)
 
                   def msg = exc.toString()
 
@@ -949,8 +954,6 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
                   throw exc
               }
               finally {
-                  def logFileFailedRel = "${arch}-FAIL/${name}.log"
-
                   saveCores(os, runDir, name, archRun)
 
                   archiveArtifacts allowEmptyArchive: true,
@@ -1074,7 +1077,7 @@ def testStepParallel(os, edition, maintainer, modeList) {
         logStopStage(null, name)
     }
     catch (exc) {
-        logExceptionStage(null, name, exc)
+        logExceptionStage(null, name, null, exc)
         throw exc
     }
 }
@@ -1225,7 +1228,7 @@ def buildEdition(os, edition, maintainer) {
         logStartStage(os, logFile, logFile)
 
         if (os == 'linux' || os == 'mac') {
-            if (! fileExists('build/Makefile')) {
+            if (! fileExists('build/Makefile') && ! cleanBuild) {
                 unstashBuild(os, edition, maintainer)
             }
 
@@ -1262,7 +1265,7 @@ def buildEdition(os, edition, maintainer) {
         logStopStage(os, logFile)
     }
     catch (exc) {
-        logExceptionStage(os, logFile, exc)
+        logExceptionStage(os, logFile, "${archFail}/build.log", exc)
 
         def msg = exc.toString()
         
@@ -1359,7 +1362,7 @@ def createDockerImage(edition, maintainer, stageName) {
                             logStopStage(os, logFile)
                         }
                         catch (exc) {
-                            logExceptionStage(os, logFile, exc)
+                            logExceptionStage(os, logFile, "${archFail}/build.log", exc)
 
                             renameFolder(arch, archFail)
                             fileOperations([fileCreateOperation(fileContent: 'DOCKER FAILED', fileName: "${archDir}-FAIL.txt")])
