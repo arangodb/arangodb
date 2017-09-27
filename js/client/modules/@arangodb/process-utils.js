@@ -770,6 +770,18 @@ function shutdownArangod (arangod, options, forceTerminate) {
     } else if (options.useKillExternal) {
       arangod.exitStatus = killExternal(arangod.pid);
     } else {
+      if (arango.isConnected()) {
+        try {
+          arango.DELETE('/_admin/shutdown');
+          if (options.extremeVerbosity) {
+            print('Shutdown response: ' + JSON.stringify(reply));
+          }
+          return;
+        } catch (x) {
+          print('failed to shut down arangod via our connection!');
+          print(x);
+        }
+      }
       const requestOptions = makeAuthorizationHeaders(options);
       requestOptions.method = 'DELETE';
       print(arangod.url + '/_admin/shutdown');
@@ -1213,7 +1225,12 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
           wait(0.5, false);
           if (options.useReconnect) {
             try {
-              arango.reconnect(instanceInfo.endpoint, '_system', options.username, options.password);
+              arango.reconnect(instanceInfo.endpoint,
+                               '_system',
+                               options.username,
+                               options.password,
+                               count > 50
+                              );
               break;
             } catch (e) {
             }
