@@ -340,7 +340,7 @@ def logStartStage(os, logFile, link) {
     echo "started ${logFile}: ${resultsStart[logFile]}"
 
     if (os == "linux") {
-        shellAndPipe("echo 'started ${logFile}: ${resultsStart[logFile]}'", logfile)
+        shellAndPipe("echo 'started ${logFile}: ${resultsStart[logFile]}'", logFile)
     }
 
     generateResult()
