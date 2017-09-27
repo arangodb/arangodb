@@ -50,6 +50,7 @@ class StatisticsWorker final : public Thread {
     VPackBuilder _avgPercentDistributon(VPackSlice const&, VPackSlice const&, VPackBuilder const&);
 
     VPackBuilder _generateRawStatistics(std::string const& clusterId, double const& now);
+    VPackBuilder _fillDistribution(basics::StatisticsDistribution const& dist);
 
     void _saveSlice(VPackSlice const&, std::string const&);
 

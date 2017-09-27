@@ -1,5 +1,6 @@
 
 #include "ConnectionStatistics.h"
+#include "RequestStatistics.h"
 #include "ServerStatistics.h"
 #include "StatisticsFeature.h"
 #include "StatisticsWorker.h"
@@ -646,24 +647,26 @@ VPackBuilder StatisticsWorker::_generateRawStatistics(std::string const& cluster
   builder.add("client", VPackValue(VPackValueType::Object));
   builder.add("httpConnections", VPackValue(httpConnections._count));
 
+  VPackBuilder tmp = _fillDistribution(connectionTime);
+  builder.add("connectionTime", tmp.slice());
 
+  tmp = _fillDistribution(totalTime);
+  builder.add("totalTime", tmp.slice());
 
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "connectionTime"),
-                   connectionTime);
+  tmp = _fillDistribution(requestTime);
+  builder.add("requestTime", tmp.slice());
 
+  tmp = _fillDistribution(queueTime);
+  builder.add("queueTime", tmp.slice());
 
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "totalTime"),
-                   totalTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "requestTime"),
-                   requestTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "queueTime"),
-                   queueTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "ioTime"), ioTime);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "bytesSent"),
-                   bytesSent);
-  FillDistribution(isolate, result, TRI_V8_ASCII_STRING(isolate, "bytesReceived"),
-                   bytesReceived);
+  tmp = _fillDistribution(ioTime);
+  builder.add("ioTime", tmp.slice());
 
+  tmp = _fillDistribution(bytesSent);
+  builder.add("bytesSent", tmp.slice());
+
+  tmp = _fillDistribution(bytesReceived);
+  builder.add("bytesReceived", tmp.slice());
   builder.close();
 
   // _httpStatistics()
@@ -684,6 +687,24 @@ VPackBuilder StatisticsWorker::_generateRawStatistics(std::string const& cluster
   builder.add("server", VPackValue(VPackValueType::Object));
   builder.add("uptime", VPackValue(serverInfo._uptime));
   builder.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
+  builder.close();
+
+  builder.close();
+
+  return builder;
+}
+
+VPackBuilder StatisticsWorker::_fillDistribution(StatisticsDistribution const& dist) {
+  VPackBuilder builder;
+  builder.openObject();
+
+  builder.add("sum", VPackValue(dist._total));
+  builder.add("count", VPackValue(dist._count));
+
+  builder.add("counts", VPackValue(VPackValueType::Array));
+  for (auto const& val : dist._counts) {
+    builder.add(VPackValue(val));
+  }
   builder.close();
 
   builder.close();
