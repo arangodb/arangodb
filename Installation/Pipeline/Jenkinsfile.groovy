@@ -322,7 +322,7 @@ def deleteDirDocker(os) {
 }
 
 def shellAndPipe(command, logfile) {
-  sh "(echo 1 > \"${logfile}.result\" ; ${command} ; echo \$? > \"${logfile}.result\") 2>&1 | tee -a \"${logfile}\" ; exit `cat \"${logfile}.result\"`"
+  sh "(echo 1 > \"${logfile}.result\" ; ${command} ; echo \$? > \"${logfile}.result\") 2>&1 | ts '[%Y-%m-%d %H:%M:%S]' | tee -a \"${logfile}\" ; exit `cat \"${logfile}.result\"`"
 }
 
 def logStartStage(os, logFile, link) {
@@ -335,7 +335,7 @@ def logStartStage(os, logFile, link) {
     echo "started ${logFile}: ${resultsStart[logFile]}"
 
     if (os == "linux") {
-        sh "echo 'started ${logFile}: ${resultsStart[logFile]}' | tee -a ${logFile}"
+        sheelAndPipe("echo 'started ${logFile}: ${resultsStart[logFile]}'")
     }
 
     generateResult()
@@ -348,7 +348,7 @@ def logStopStage(os, logFile) {
     echo "finished ${logFile}: ${resultsStop[logFile]}"
 
     if (os == "linux") {
-        sh "echo 'finished ${logFile}: ${resultsStop[logFile]}' | tee -a ${logFile}"
+        shellAndPipe("echo 'finished ${logFile}: ${resultsStop[logFile]}'", logFile)
     }
 
     generateResult()
@@ -367,7 +367,7 @@ def logExceptionStage(os, logFile, link, exc) {
     echo "failed ${logFile}: ${resultsStop[logFile]} ${msg}"
 
     if (os == "linux") {
-        sh "echo 'failed ${logFile}: ${resultsStart[logFile]} ${msg}' | tee -a ${logFile}"
+        shellAndPipe("echo 'failed ${logFile}: ${resultsStart[logFile]} ${msg}'", logFile)
     }
 
     generateResult()
@@ -767,7 +767,7 @@ def jslint(os, edition, maintainer) {
     try {
         logStartStage(os, logFile, logFile)
 
-        shellAndPipe("./Installation/Pipeline/test_jslint.sh",logFile)
+        shellAndPipe("./Installation/Pipeline/test_jslint.sh", logFile)
         sh "if grep ERROR ${logFile}; then exit 1; fi"
 
         logStopStage(os, logFile)
@@ -923,9 +923,9 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
                               powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
                           }
                           else {
-                              sh "echo \"Host: `hostname`\" | tee -a ${logFile}"
-                              sh "echo \"PWD:  `pwd`\" | tee -a ${logFile}"
-                              sh "echo \"Date: `date`\" | tee -a ${logFile}"
+                              shellAndPipe("echo \"Host: `hostname`\"", logFile)
+                              shellAndPipe("echo \"PWD:  `pwd`\"", logFile)
+                              shellAndPipe("echo \"Date: `date`\"", logFile)
 
                               shellAndPipe("cd ${runDir} ; ./build/bin/arangosh --version", logFile)
 
@@ -1241,15 +1241,15 @@ def buildEdition(os, edition, maintainer) {
                 unstashBuild(os, edition, maintainer)
             }
 
-            sh "echo \"Host: `hostname`\" | tee -a ${logFile}"
-            sh "echo \"PWD:  `pwd`\" | tee -a ${logFile}"
-            sh "echo \"Date: `date`\" | tee -a ${logFile}"
+            shellAndPipe("echo \"Host: `hostname`\"", logFile)
+            shellAndPipe("echo \"PWD:  `pwd`\"", logFile)
+            shellAndPipe("echo \"Date: `date`\"", logFile)
 
             if (os == 'linux') {
-                sh "./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 64 ${os} ${edition} ${maintainer} ${arch}"
+                shellAndPipe("./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 64 ${os} ${edition} ${maintainer}", logFile)
             }
             else if (os == 'mac') {
-                sh "./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 16 ${os} ${edition} ${maintainer} ${arch}"
+                shellAndPipe("./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 16 ${os} ${edition} ${maintainer}", logFile)
             }
         }
         else if (os == 'windows') {

@@ -3,7 +3,6 @@ concurrency=$1
 os=$2
 edition=$3
 maintainer=$4
-logdir=$5
 
 ENTERPRISE=""
 type="build"
@@ -62,17 +61,9 @@ rm -f $GENPATH
 ln -s `pwd` $GENPATH
 cd $GENPATH
 
-if [ -z "$logdir" ]; then
-  logdir=log-output
-  rm -rf $logdir
-  mkdir -p $logdir
-fi
-
-touch $logdir/build.log
-
-echo "CONCURRENY: $concurrency" | tee -a $logdir/build.log
-echo "HOST: `hostname`" | tee -a $logdir/build.log
-echo "PWD: `pwd`" | tee -a $logdir/build.log
+echo "CONCURRENY: $concurrency"
+echo "HOST: `hostname`"
+echo "PWD: `pwd`"
 
 (
     set -eo pipefail
@@ -88,10 +79,10 @@ echo "PWD: `pwd`" | tee -a $logdir/build.log
             $ENTERPRISE \
             $MAINTAINER \
             $PACKAGING \
-            ..  2>&1 | tee -a ../$logdir/build.log
+            ..
 
     echo "`date +%T` building..."
-    make -j $concurrency -l $load 2>&1 | tee -a ../$logdir/build.log
+    make -j $concurrency -l $load 2>&1
 ) || exit 1
 
 echo "`date +%T` done..."
