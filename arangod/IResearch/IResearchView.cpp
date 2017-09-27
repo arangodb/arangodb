@@ -156,23 +156,22 @@ class CompoundReader: public irs::index_reader {
     SubReadersType::const_iterator _itr;
   };
 
-  std::unique_lock<ReadMutex> _lock;
+  // order is important
   ReadMutex _mutex;
+  std::unique_lock<ReadMutex> _lock;
   std::vector<irs::directory_reader> _readers;
   SubReadersType _subReaders;
 };
 
 CompoundReader::CompoundReader(irs::async_utils::read_write_mutex& mutex)
-  : _mutex(mutex) {
-  SCOPED_LOCK_NAMED(_mutex, lock);
-  _lock = std::move(lock);
+  : _mutex(mutex), _lock(_mutex) {
 }
 
 CompoundReader::CompoundReader(CompoundReader&& other) noexcept
-  : _mutex(std::move(other._mutex)),
+  : _mutex(other._mutex),
+    _lock(_mutex, std::adopt_lock),
     _readers(std::move(other._readers)),
     _subReaders(std::move(other._subReaders)) {
-  _lock = std::unique_lock<ReadMutex>(_mutex, std::adopt_lock);
   other._lock.release();
 }
 
@@ -233,7 +232,7 @@ uint64_t CompoundReader::live_docs_count() const {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief base class for iterators of query results from iResearch View
 ////////////////////////////////////////////////////////////////////////////////
-class ViewIteratorBase: public arangodb::ViewIterator {
+class ViewIteratorBase : public arangodb::ViewIterator {
  public:
   DECLARE_PTR(arangodb::ViewIterator);
   ViewIteratorBase(
@@ -374,7 +373,7 @@ char const* ViewIteratorBase::typeName() const {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterator for ordered set of query results from iResearch View
 ////////////////////////////////////////////////////////////////////////////////
-class OrderedViewIterator: public ViewIteratorBase {
+class OrderedViewIterator final : public ViewIteratorBase {
  public:
   OrderedViewIterator(
     arangodb::ViewImplementation& view,
@@ -428,7 +427,7 @@ OrderedViewIterator::OrderedViewIterator(
   }
 
   _filter = filter.prepare(_reader, _order);
-  reset();
+  reset(); // class marked as final
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -552,7 +551,7 @@ void OrderedViewIterator::skip(uint64_t count, uint64_t& skipped) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief iterator for unordered set of query results from iResearch View
 ////////////////////////////////////////////////////////////////////////////////
-class UnorderedViewIterator: public ViewIteratorBase {
+class UnorderedViewIterator final : public ViewIteratorBase {
  public:
   UnorderedViewIterator(
     arangodb::ViewImplementation& view,
@@ -575,13 +574,13 @@ class UnorderedViewIterator: public ViewIteratorBase {
 };
 
 UnorderedViewIterator::UnorderedViewIterator(
-  arangodb::ViewImplementation& view,
+    arangodb::ViewImplementation& view,
     arangodb::transaction::Methods& trx,
     CompoundReader&& reader,
     irs::filter const& filter
 ): ViewIteratorBase("iresearch-unordered-iterator", view, trx, std::move(reader)),
    _filter(filter.prepare(_reader)) {
-  reset();
+  reset(); // class marked as final
 }
 
 ////////////////////////////////////////////////////////////////////////////////
