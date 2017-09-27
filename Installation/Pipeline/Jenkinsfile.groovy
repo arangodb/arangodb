@@ -1252,21 +1252,6 @@ def buildEdition(os, edition, maintainer) {
             }
         }
         else if (os == 'windows') {
-            // def tmpDir = "${arch}/tmp"
-
-            // fileOperations([
-            //     folderCreateOperation(tmpDir)
-            // ])
-
-            // withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}",
-            //          "_MSPDBSRV_ENDPOINT_=${edition}-${env.BUILD_TAG}", "GYP_USE_SEPARATE_MSPDBSRV=1"]) {
-            //    powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
-            // }
-
-            // fileOperations([
-            //     folderDeleteOperation(tmpDir)
-            // ])
-
             powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}_${maintainer}.ps1"
         }
 
