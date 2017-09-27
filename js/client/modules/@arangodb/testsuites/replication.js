@@ -91,9 +91,7 @@ function replicationOngoing (options) {
                        instanceInfo,
                        customInstanceInfos,
                        startStopHandlers) {
-      arango.reconnect(customInstanceInfos.postStart.instanceInfo.endpoint, '_system', 'root', '');
       pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
-      arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
 
       return {};
     },
@@ -170,9 +168,7 @@ function replicationStatic (options) {
                        instanceInfo,
                        customInstanceInfos,
                        startStopHandlers) {
-      arango.reconnect(customInstanceInfos.postStart.instanceInfo.endpoint, '_system', 'root', '');
       pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
-      arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
       return {};
     },
 
@@ -253,9 +249,7 @@ function replicationSync (options) {
                        instanceInfo,
                        customInstanceInfos,
                        startStopHandlers) {
-      arango.reconnect(customInstanceInfos.postStart.instanceInfo.endpoint, '_system', 'root', '');
       pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
-      arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
 
       return {};
     },

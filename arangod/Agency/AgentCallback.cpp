@@ -45,6 +45,7 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
       if (!body->slice().get("success").isTrue()) {
         LOG_TOPIC(DEBUG, Logger::CLUSTER)
           << "Got negative answer from follower, will retry later.";
+        _agent->reportFailed(_slaveID, _toLog);
       } else {
         Slice senderTimeStamp = body->slice().get("senderTimeStamp");
         if (senderTimeStamp.isInteger()) {
@@ -52,7 +53,7 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
             int64_t sts = senderTimeStamp.getNumber<int64_t>();
             int64_t now = std::llround(readSystemClock() * 1000);
             if (now - sts > 1000) {  // a second round trip time!
-              LOG_TOPIC(WARN, Logger::AGENCY)
+              LOG_TOPIC(DEBUG, Logger::AGENCY)
                 << "Round trip for appendEntriesRPC took " << now - sts
                 << " milliseconds, which is way too high!";
             }
@@ -63,24 +64,30 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
           }
         }
           
-        LOG_TOPIC(DEBUG, Logger::CLUSTER)
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "AgentCallback: "
           << body->slice().toJson();
         _agent->reportIn(_slaveID, _last, _toLog);
       }
     }
-    LOG_TOPIC(TRACE, Logger::AGENCY) 
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Got good callback from AppendEntriesRPC: "
       << "comm_status(" << res->status
       << "), last(" << _last << "), follower("
       << _slaveID << "), time("
       << TRI_microtime() - _startTime << ")";
   } else {
-    LOG_TOPIC(WARN, Logger::AGENCY) 
-      << "Got bad callback from AppendEntriesRPC: "
-      << "comm_status(" << res->status
-      << "), last(" << _last << "), follower("
-      << _slaveID << "), time("
-      << TRI_microtime() - _startTime << ")";
+    if (_agent == nullptr || !_agent->isStopping()) {
+      // Do not warn if we are already shutting down:
+      LOG_TOPIC(WARN, Logger::AGENCY) 
+        << "Got bad callback from AppendEntriesRPC: "
+        << "comm_status(" << res->status
+        << "), last(" << _last << "), follower("
+        << _slaveID << "), time("
+        << TRI_microtime() - _startTime << ")";
+    }
+    if (_agent != nullptr) {
+      _agent->reportFailed(_slaveID, _toLog);
+    }
   }
   return true;
 }
