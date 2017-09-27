@@ -398,7 +398,7 @@ def generateResult() {
         def la = ""
         def lb = ""
 
-        if (link != null) {
+        if (link != "") {
             la = "<a href=\"$link\">"
             lb = "</a>"
         }
@@ -1082,14 +1082,16 @@ def testStepParallel(os, edition, maintainer, modeList) {
 
     def name = "test-${os}-${edition}-${maintainer}"
 
-    try {
-        logStartStage(null, name, null)
-        parallel branches
-        logStopStage(null, name)
-    }
-    catch (exc) {
-        logExceptionStage(null, name, null, exc)
-        throw exc
+    if (branches) {
+        try {
+            logStartStage(null, name, null)
+            parallel branches
+            logStopStage(null, name)
+        }
+        catch (exc) {
+            logExceptionStage(null, name, null, exc)
+            throw exc
+        }
     }
 }
 
