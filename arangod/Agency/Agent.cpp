@@ -275,6 +275,17 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
   }
 }
 
+/// @brief Report a failed append entry call from AgentCallback
+void Agent::reportFailed(std::string const& slaveId, size_t toLog) {
+  if (toLog > 0) {
+    // This is only used for non-empty appendEntriesRPC calls. If such calls
+    // fail, we have to set this earliestPackage time to now such that the
+    // main thread tries again immediately:
+    MUTEX_LOCKER(guard, _tiLock);
+    _earliestPackage[slaveId] = system_clock::now();
+  }
+}
+
 /// Followers' append entries
 bool Agent::recvAppendEntriesRPC(
   term_t term, std::string const& leaderId, index_t prevIndex, term_t prevTerm,

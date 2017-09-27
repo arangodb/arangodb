@@ -45,6 +45,7 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
       if (!body->slice().get("success").isTrue()) {
         LOG_TOPIC(DEBUG, Logger::CLUSTER)
           << "Got negative answer from follower, will retry later.";
+        _agent->reportFailed(_slaveID, _toLog);
       } else {
         Slice senderTimeStamp = body->slice().get("senderTimeStamp");
         if (senderTimeStamp.isInteger()) {
@@ -83,6 +84,9 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
         << "), last(" << _last << "), follower("
         << _slaveID << "), time("
         << TRI_microtime() - _startTime << ")";
+    }
+    if (_agent != nullptr) {
+      _agent->reportFailed(_slaveID, _toLog);
     }
   }
   return true;
