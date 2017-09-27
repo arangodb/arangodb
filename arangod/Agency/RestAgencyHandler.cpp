@@ -222,7 +222,7 @@ RestStatus RestAgencyHandler::handleStore() {
     try {
       index = query->slice().getUInt();
     } catch (...) {
-      index = _agent->lastCommitted().second;
+      index = _agent->lastCommitted();
     }
     
     try {
@@ -627,8 +627,7 @@ RestStatus RestAgencyHandler::handleConfig() {
     VPackObjectBuilder b(&body);
     body.add("term", Value(_agent->term()));
     body.add("leaderId", Value(_agent->leaderID()));
-    body.add("lastApplied", Value(last.first));
-    body.add("commitIndex", Value(last.second));
+    body.add("commitIndex", Value(last));
     body.add("lastAcked", _agent->lastAckedAgo()->slice());
     body.add("configuration", _agent->config().toBuilder()->slice());
   }
