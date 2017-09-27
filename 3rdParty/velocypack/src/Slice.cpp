@@ -707,6 +707,7 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
   // find the number of items
   ValueLength n;
   if (h <= 0x05) {  // No offset table or length, need to compute:
+    VELOCYPACK_ASSERT(h != 0x00 && h != 0x01);
     dataOffset = findDataOffset(h);
     Slice first(_start + dataOffset);
     ValueLength s = first.byteSize();
@@ -731,6 +732,7 @@ ValueLength Slice::getNthOffset(ValueLength index) const {
     // no index table, but all array items have the same length
     // now fetch first item and determine its length
     if (dataOffset == 0) {
+      VELOCYPACK_ASSERT(h != 0x00 && h != 0x01);
       dataOffset = findDataOffset(h);
     }
     return dataOffset + index * Slice(_start + dataOffset).byteSize();
@@ -778,13 +780,15 @@ Slice Slice::makeKey() const {
 
 // get the offset for the nth member from a compact Array or Object type
 ValueLength Slice::getNthOffsetFromCompact(ValueLength index) const {
+  auto const h = head();
+  VELOCYPACK_ASSERT(h == 0x13 || h == 0x14);
+
   ValueLength end = readVariableValueLength<false>(_start + 1);
   ValueLength n = readVariableValueLength<true>(_start + end - 1);
   if (index >= n) {
     throw Exception(Exception::IndexOutOfBounds);
   }
 
-  auto const h = head();
   ValueLength offset = 1 + getVariableValueLength(end);
   ValueLength current = 0;
   while (current != index) {
