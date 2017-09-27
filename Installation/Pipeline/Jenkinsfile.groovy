@@ -1018,7 +1018,9 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
 
                 testIndex++
 
-                testMap["${stageName}-${name}"] = singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex, stageName, name, port)
+                testMap["${stageName}-${name}"] = singleTest(os, edition, maintainer, mode, engine,
+                                                             test, testArgs, testIndex,
+                                                             stageName, name, port)
 
                 return testMap
             }
@@ -1428,9 +1430,9 @@ def runEdition(os, edition, maintainer, stageName) {
                     }
                 }
             }
-
-            testStepParallel(os, edition, maintainer, ['cluster', 'singleserver'])
         }
+
+        testStepParallel(os, edition, maintainer, ['cluster', 'singleserver'])
     }
 }
 
