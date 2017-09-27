@@ -11,6 +11,7 @@ def defaultLinux = true
 def defaultMac = false
 def defaultWindows = false
 def defaultBuild = true
+def defaultDocker = false
 def defaultCleanBuild = false
 def defaultCommunity = true
 def defaultEnterprise = true
@@ -35,6 +36,11 @@ properties([
             defaultValue: defaultWindows,
             description: 'build and run tests in Windows',
             name: 'Windows'
+        ),
+        booleanParam(
+            defaultValue: defaultDocker,
+            description: 'build docker images',
+            name: 'Docker'
         ),
         booleanParam(
             defaultValue: defaultCleanBuild,
@@ -86,6 +92,9 @@ useMac = params.Mac
 // build windows
 useWindows = params.Windows
 
+// build docker image
+useDocker = params.Docker
+
 // build and test community
 useCommunity = params.Community
 
@@ -97,9 +106,6 @@ useMaintainer = params.Maintainer
 
 // build user mode
 useUser = params.User
-
-// build docker
-useDocker = true
 
 // run resilience tests
 //runResilience = params.runResilience
@@ -385,7 +391,7 @@ def generateResult() {
         def diff = (start != "" && stop != "") ? groovy.time.TimeCategory.minus(stop, start) : "-"
         def startf = start == "" ? "-" : start.format('yyyy/MM/dd HH:mm:ss')
         def stopf = stop == "" ? "-" : stop.format('yyyy/MM/dd HH:mm:ss')
-        def color = 'bgcolor="#FF8080"'
+        def color = 'bgcolor="#FFA0A0"'
 
         def la = ""
         def lb = ""
@@ -396,10 +402,10 @@ def generateResult() {
         }
 
         if (msg == "finished") {
-            color = 'bgcolor="#80FF80"'
+            color = 'bgcolor="#A0FFA0"'
         }
         else if (msg == "started") {
-            color = 'bgcolor="#8080FF"'
+            color = 'bgcolor="#A0A0FF"'
             la = ""
             lb = ""
         }
