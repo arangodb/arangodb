@@ -80,6 +80,9 @@ class Constituent : public Thread {
   // Check leader
   bool checkLeader(term_t, std::string, index_t, term_t);
 
+  // Notify about heartbeat being sent out:
+  void notifyHeartbeatSent(std::string followerId);
+
   // My daily business
   void run() override final;
 
@@ -150,7 +153,9 @@ class Constituent : public Thread {
   std::string _leaderID; // Current leader
   std::string _id;       // My own id
 
-  double _lastHeartbeatSeen;
+  // Last time an AppendEntriesRPC message has arrived, this is used to
+  // organise out-of-patience in the follower:
+  std::atomic<double> _lastHeartbeatSeen;
 
   role_t _role;  // My role
   Agent* _agent; // My boss
@@ -162,6 +167,15 @@ class Constituent : public Thread {
   // Keep track of times of last few elections:
   mutable arangodb::Mutex _recentElectionsMutex;
   std::list<double> _recentElections;
+
+  // For leader case: Last time we have sent out AppendEntriesRPC message
+  // to some follower, this is used to find out if additional empty
+  // heartbeats have to be sent out by the Constituent:
+  std::unordered_map<std::string, double> _lastHeartbeatSent;
+
+  /// @brief _heartBeatMutex, protection for _lastHeartbeatSent
+  mutable arangodb::Mutex _heartBeatMutex;
+
 };
 }
 }

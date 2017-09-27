@@ -63,7 +63,7 @@ void Constituent::configure(Agent* agent) {
 
   if (size() == 1) {
     _role = LEADER;
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to LEADER in term " << _term;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to LEADER in term " << _term;
   }
   
 }
@@ -111,7 +111,7 @@ void Constituent::termNoLock(term_t t) {
   _term = t;
 
   if (tmp != t) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << _id << ": changing term, current role:"
+    LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": changing term, current role:"
       << roleStr[_role] << " new term " << t;
 
     _cast = false;
@@ -203,7 +203,7 @@ void Constituent::followNoLock(term_t t) {
   _term = t;
   _role = FOLLOWER;
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to FOLLOWER in term " << _term;
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to FOLLOWER in term " << _term;
 
   if (_leaderID == _id) {
     _leaderID = NO_LEADER;
@@ -224,12 +224,10 @@ void Constituent::lead(term_t term) {
 
   _agent->beginPrepareLeadership();
   TRI_DEFER(_agent->endPrepareLeadership());
-  
+
   if (!_agent->prepareLead()) {
-    {
-      MUTEX_LOCKER(guard, _castLock);
-      followNoLock(term);
-    }
+    MUTEX_LOCKER(guard, _castLock);
+    followNoLock(term);
     return;
   }
 
@@ -338,9 +336,16 @@ bool Constituent::checkLeader(
   
   if (term > _term) {
     termNoLock(term);
+    if (_role != FOLLOWER) {
+      followNoLock(term);
+    }
+
+    _cast = false;
+    _votedFor = "";
   }
 
-  if (!logMatches(prevLogIndex, prevLogTerm)) {
+  if ((prevLogIndex != 0 || prevLogTerm != 0) &&
+      !logMatches(prevLogIndex, prevLogTerm)) {
     return false;
   }
   
@@ -574,7 +579,7 @@ void Constituent::update(std::string const& leaderID, term_t t) {
   _term = t;
 
   if (_leaderID != leaderID) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC(INFO, Logger::AGENCY)
       << "Constituent::update: setting _leaderID to " << leaderID
       << " in term " << _term;
     _leaderID = leaderID;
@@ -653,12 +658,14 @@ void Constituent::run() {
   if (size() == 1) {
     MUTEX_LOCKER(guard, _castLock);
     _leaderID = _agent->config().id();
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to " << _leaderID
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to " << _leaderID
       << " in term " << _term;
   } else {
 
     {
       MUTEX_LOCKER(guard, _castLock);
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Setting role to follower"
+        " in term " << _term;
       _role = FOLLOWER;
     }
     while (!this->isStopping()) {
@@ -729,13 +736,34 @@ void Constituent::run() {
       } else if (role == CANDIDATE) {
         callElection();  // Run for office
       } else {
-        int32_t left =
-          static_cast<int32_t>(100000.0 * _agent->config().minPing() *
-                               _agent->config().timeoutMult());
-        long randTimeout = static_cast<long>(left);
+        // This is 1/4th of the minPing timeout (_cv.wait() below is in
+        // microseconds):
+        uint64_t timeout =
+          static_cast<uint64_t>(250000.0 * _agent->config().minPing() *
+                                _agent->config().timeoutMult());
         {
           CONDITION_LOCKER(guardv, _cv);
-          _cv.wait(randTimeout);
+          _cv.wait(timeout);
+        }
+
+        double now = TRI_microtime();
+        std::string const myid = _agent->id();
+        for (auto const& followerId : _agent->config().active()) {
+          if (followerId != myid) {
+            bool needed = false;
+            {
+              MUTEX_LOCKER(guard, _heartBeatMutex);
+              auto it = _lastHeartbeatSent.find(followerId);
+              if (it == _lastHeartbeatSent.end() ||
+                  now - it->second > _agent->config().minPing()
+                                     * _agent->config().timeoutMult() / 4.0) {
+                needed = true;
+              }
+            }
+            if (needed) {
+              _agent->sendEmptyAppendEntriesRPC(followerId);
+            }
+          }
         }
       }
     }
@@ -760,3 +788,10 @@ int64_t Constituent::countRecentElectionEvents(double threshold) {
   }
   return count;
 }
+
+// Notify about heartbeat being sent out:
+void Constituent::notifyHeartbeatSent(std::string followerId) {
+  MUTEX_LOCKER(guard, _heartBeatMutex);
+  _lastHeartbeatSent[followerId] = TRI_microtime();
+}
+
