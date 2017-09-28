@@ -24,7 +24,8 @@
 #ifndef ARANGOD_REPLICATION_CONTINUOUS_SYNCER_H
 #define ARANGOD_REPLICATION_CONTINUOUS_SYNCER_H 1
 
-#include "Replication/TailingSyncer.h"
+#include "TailingSyncer.h"
+#include "Replication/ReplicationApplierConfiguration.h"
 
 class TRI_replication_applier_t;
 
@@ -33,7 +34,7 @@ namespace arangodb {
 class ContinuousSyncer : public TailingSyncer {
  public:
   ContinuousSyncer(TRI_vocbase_t*,
-                   TRI_replication_applier_configuration_t const*,
+                   ReplicationApplierConfiguration const*,
                    TRI_voc_tick_t initialTick, bool useTick,
                    TRI_voc_tick_t barrierId);
 

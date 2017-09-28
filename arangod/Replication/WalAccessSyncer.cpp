@@ -60,7 +60,7 @@ using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
 WalAccessSyncer::WalAccessSyncer(
-    TRI_replication_applier_configuration_t const* configuration,
+    ReplicationApplierConfiguration const* configuration,
     TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
     : TailingSyncer(configuration, initialTick),
       _applierState(new ReplicationApplierState()),

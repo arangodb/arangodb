@@ -21,47 +21,29 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_STATUS_H
-#define ARANGOD_TRANSACTION_STATUS_H 1
+#include "GlobalReplicationApplier.h"
 
-#include "Basics/Common.h"
+#include <velocypack/Builder.h>
 
-#include <iosfwd>
+using namespace arangodb;
 
-namespace arangodb {
-namespace transaction {
+/// @brief server-global replication applier for all databases
+GlobalReplicationApplier::GlobalReplicationApplier() {}
 
-/// @brief transaction statuses
-enum class Status : uint32_t {
-  UNDEFINED = 0,
-  CREATED = 1,
-  RUNNING = 2,
-  COMMITTED = 3,
-  ABORTED = 4
-};
-
-/// @brief return the status of the transaction as a string
-static inline char const* statusString(Status status) {
-  switch (status) {
-    case transaction::Status::UNDEFINED:
-      return "undefined";
-    case transaction::Status::CREATED:
-      return "created";
-    case transaction::Status::RUNNING:
-      return "running";
-    case transaction::Status::COMMITTED:
-      return "committed";
-    case transaction::Status::ABORTED:
-      return "aborted";
-  }
-
-  TRI_ASSERT(false);
-  return "unknown";
+GlobalReplicationApplier::~GlobalReplicationApplier() {}
+  
+/// @brief load the applier state from persistent storage
+void GlobalReplicationApplier::loadState() {}
+  
+/// @brief store the applier state in persistent storage
+void GlobalReplicationApplier::persistState() {}
+ 
+/// @brief store the current applier state in the passed vpack builder 
+void GlobalReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) const {
 }
 
-}
-}
-
-std::ostream& operator<<(std::ostream& stream, arangodb::transaction::Status const& s);
-
-#endif
+/// @brief start the applier
+void GlobalReplicationApplier::start() {}
+  
+/// @brief stop the applier
+void GlobalReplicationApplier::stop() {}

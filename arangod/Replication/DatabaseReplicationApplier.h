@@ -21,47 +21,41 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_TRANSACTION_STATUS_H
-#define ARANGOD_TRANSACTION_STATUS_H 1
+#ifndef ARANGOD_REPLICATION_DATABASE_REPLICATION_APPLIER_H
+#define ARANGOD_REPLICATION_DATABASE_REPLICATION_APPLIER_H 1
 
 #include "Basics/Common.h"
+#include "Replication/ReplicationApplier.h"
 
-#include <iosfwd>
+struct TRI_vocbase_t;
 
 namespace arangodb {
-namespace transaction {
 
-/// @brief transaction statuses
-enum class Status : uint32_t {
-  UNDEFINED = 0,
-  CREATED = 1,
-  RUNNING = 2,
-  COMMITTED = 3,
-  ABORTED = 4
+/// @brief replication applier for a single database
+class DatabaseReplicationApplier : public ReplicationApplier {
+ public:
+  explicit DatabaseReplicationApplier(TRI_vocbase_t* vocbase);
+  ~DatabaseReplicationApplier();
+  
+  /// @brief load the applier state from persistent storage
+  void loadState() override;
+  
+  /// @brief store the applier state in persistent storage
+  void persistState() override;
+ 
+  /// @brief store the current applier state in the passed vpack builder 
+  void toVelocyPack(arangodb::velocypack::Builder& result) const override;
+
+  /// @brief start the applier
+  void start() override;
+  
+  /// @brief stop the applier
+  void stop() override;
+
+ private:
+  TRI_vocbase_t* _vocbase;
 };
 
-/// @brief return the status of the transaction as a string
-static inline char const* statusString(Status status) {
-  switch (status) {
-    case transaction::Status::UNDEFINED:
-      return "undefined";
-    case transaction::Status::CREATED:
-      return "created";
-    case transaction::Status::RUNNING:
-      return "running";
-    case transaction::Status::COMMITTED:
-      return "committed";
-    case transaction::Status::ABORTED:
-      return "aborted";
-  }
-
-  TRI_ASSERT(false);
-  return "unknown";
 }
-
-}
-}
-
-std::ostream& operator<<(std::ostream& stream, arangodb::transaction::Status const& s);
 
 #endif

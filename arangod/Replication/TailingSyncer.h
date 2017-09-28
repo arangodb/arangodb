@@ -26,6 +26,7 @@
 #define ARANGOD_REPLICATION_TAILING_SYNCER_H 1
 
 #include "Basics/Common.h"
+#include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/Syncer.h"
 
 #include <velocypack/Builder.h>
@@ -46,7 +47,7 @@ class ReplicationTransaction;
 
 class TailingSyncer : public Syncer {
  public:
-  TailingSyncer(TRI_replication_applier_configuration_t const*,
+  TailingSyncer(ReplicationApplierConfiguration const*,
                 TRI_voc_tick_t initialTick);
 
   virtual ~TailingSyncer();

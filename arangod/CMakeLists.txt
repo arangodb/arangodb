@@ -270,9 +270,12 @@ SET(ARANGOD_SOURCES
   Pregel/Utils.cpp
   Pregel/Worker.cpp
   Pregel/WorkerConfig.cpp
-  Replication/ApplierState.cpp
   Replication/ContinuousSyncer.cpp
+  Replication/DatabaseReplicationApplier.cpp
+  Replication/GlobalReplicationApplier.cpp
   Replication/InitialSyncer.cpp
+  Replication/ReplicationApplierConfiguration.cpp
+  Replication/ReplicationApplierState.cpp
   Replication/Syncer.cpp
   Replication/TailingSyncer.cpp
   RestHandler/RestAdminLogHandler.cpp
@@ -359,6 +362,7 @@ SET(ARANGOD_SOURCES
   Transaction/Methods.cpp
   Transaction/Options.cpp
   Transaction/StandaloneContext.cpp
+  Transaction/Status.cpp
   Transaction/V8Context.cpp
   Utils/Authentication.cpp
   Utils/CollectionKeys.cpp

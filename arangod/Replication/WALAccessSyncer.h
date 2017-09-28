@@ -25,17 +25,18 @@
 #define ARANGOD_REPLICATION_WAL_ACCESS_SYNCER_H 1
 
 #include "Replication/TailingSyncer.h"
+#include "Replication/ReplicationApplierConfiguration.h"
 
 class TRI_replication_applier_t;
 namespace arangodb {
-  struct ReplicationApplierState;
+struct ReplicationApplierState;
 }
 
 namespace arangodb {
 
 class WalAccessSyncer : public TailingSyncer {
  public:
-  WalAccessSyncer(TRI_replication_applier_configuration_t const*,
+  WalAccessSyncer(ReplicationApplierConfiguration const*,
                   TRI_voc_tick_t initialTick, bool useTick);
 
   ~WalAccessSyncer();

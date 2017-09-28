@@ -27,6 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/threads.h"
+#include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationTransaction.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/voc-types.h"
@@ -34,75 +35,6 @@
 #include <velocypack/Builder.h>
 
 struct TRI_vocbase_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief struct containing a replication apply configuration
-////////////////////////////////////////////////////////////////////////////////
-
-class TRI_replication_applier_configuration_t {
-  // leftover from struct
- public:
-  std::string _endpoint;
-  std::string _database;
-  std::string _username;
-  std::string _password;
-  std::string _jwt;
-  double _requestTimeout;
-  double _connectTimeout;
-  uint64_t _ignoreErrors;
-  uint64_t _maxConnectRetries;
-  uint64_t _lockTimeoutRetries;
-  uint64_t _chunkSize;
-  uint64_t _connectionRetryWaitTime;
-  uint64_t _idleMinWaitTime;  // 500 * 1000
-  uint64_t _idleMaxWaitTime;  // 5 * 500 * 1000
-  uint64_t _initialSyncMaxWaitTime;
-  uint64_t _autoResyncRetries;
-  uint32_t _sslProtocol;
-  bool _autoStart;
-  bool _adaptivePolling;
-  bool _autoResync;
-  bool _includeSystem;
-  bool _requireFromPresent;
-  bool _incremental;
-  bool _verbose;
-  bool _useCollectionId;
-  std::string _restrictType;
-  std::unordered_map<std::string, bool> _restrictCollections;
-
- public:
-  TRI_replication_applier_configuration_t(TRI_replication_applier_configuration_t const&) = delete;
-  TRI_replication_applier_configuration_t& operator=(TRI_replication_applier_configuration_t const&) = delete;
-
-  TRI_replication_applier_configuration_t();
-
-  ~TRI_replication_applier_configuration_t() {}
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief copy an applier configuration
-  //////////////////////////////////////////////////////////////////////////////
-
-  void update(TRI_replication_applier_configuration_t const*);
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief reset the configuration to defaults
-  //////////////////////////////////////////////////////////////////////////////
-
-  void reset();
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get a VelocyPack representation
-  ///        Expects builder to be in an open Object state
-  //////////////////////////////////////////////////////////////////////////////
-
-  void toVelocyPack(bool, arangodb::velocypack::Builder&) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get a VelocyPack representation
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool) const;
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief struct containing a replication apply error
@@ -266,7 +198,7 @@ class TRI_replication_applier_t {
   mutable arangodb::basics::ReadWriteLock _statusLock;
   std::atomic<bool> _terminateThread;
   TRI_replication_applier_state_t _state;
-  TRI_replication_applier_configuration_t _configuration;
+  arangodb::ReplicationApplierConfiguration _configuration;
   TRI_thread_t _thread;
 };
 
@@ -281,7 +213,7 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier(TRI_vocbase_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ConfigureReplicationApplier(
-    TRI_replication_applier_t*, TRI_replication_applier_configuration_t const*);
+    TRI_replication_applier_t*, arangodb::ReplicationApplierConfiguration const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the current replication apply state
@@ -328,6 +260,6 @@ int TRI_LoadStateReplicationApplier(TRI_vocbase_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_SaveConfigurationReplicationApplier(
-    TRI_vocbase_t*, TRI_replication_applier_configuration_t const*, bool);
+    TRI_vocbase_t*, arangodb::ReplicationApplierConfiguration const*, bool);
 
 #endif
