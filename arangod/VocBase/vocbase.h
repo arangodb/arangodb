@@ -39,8 +39,6 @@
 
 #include <functional>
 
-class TRI_replication_applier_t;
-
 namespace arangodb {
 namespace aql {
 class QueryList;
@@ -48,6 +46,7 @@ class QueryList;
 class CollectionNameResolver;
 class CollectionKeysRepository;
 class CursorRepository;
+class DatabaseReplicationApplier;
 class LogicalCollection;
 class LogicalView;
 class StorageEngine;
@@ -178,7 +177,7 @@ struct TRI_vocbase_t {
   std::unique_ptr<arangodb::CursorRepository> _cursorRepository;
   std::unique_ptr<arangodb::CollectionKeysRepository> _collectionKeys;
 
-  std::unique_ptr<TRI_replication_applier_t> _replicationApplier;
+  std::unique_ptr<arangodb::DatabaseReplicationApplier> _replicationApplier;
 
   arangodb::basics::ReadWriteLock _replicationClientsLock;
   std::unordered_map<TRI_server_id_t, std::pair<double, TRI_voc_tick_t>>
@@ -210,10 +209,10 @@ struct TRI_vocbase_t {
   /// garbage collect replication clients
   void garbageCollectReplicationClients(double ttl);
   
-  TRI_replication_applier_t* replicationApplier() const {
+  arangodb::DatabaseReplicationApplier* replicationApplier() const {
     return _replicationApplier.get();
   }
-  void addReplicationApplier(TRI_replication_applier_t* applier);
+  void addReplicationApplier();
 
   arangodb::aql::QueryList* queryList() const { return _queries.get(); }
   arangodb::CursorRepository* cursorRepository() const {

@@ -64,37 +64,18 @@ class ReplicationApplierConfiguration {
   std::unordered_map<std::string, bool> _restrictCollections;
 
  public:
-  ReplicationApplierConfiguration(ReplicationApplierConfiguration const&) = delete;
-  ReplicationApplierConfiguration& operator=(ReplicationApplierConfiguration const&) = delete;
-
   ReplicationApplierConfiguration();
-
   ~ReplicationApplierConfiguration() {}
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief copy an applier configuration
-  //////////////////////////////////////////////////////////////////////////////
+  ReplicationApplierConfiguration(ReplicationApplierConfiguration const&) = default;
+  ReplicationApplierConfiguration& operator=(ReplicationApplierConfiguration const&) = default;
 
-  void update(ReplicationApplierConfiguration const*);
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief reset the configuration to defaults
-  //////////////////////////////////////////////////////////////////////////////
-
   void reset();
 
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief get a VelocyPack representation
-  ///        Expects builder to be in an open Object state
-  //////////////////////////////////////////////////////////////////////////////
-
-  void toVelocyPack(bool, arangodb::velocypack::Builder&) const;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief get a VelocyPack representation
-  //////////////////////////////////////////////////////////////////////////////
-
-  std::shared_ptr<arangodb::velocypack::Builder> toVelocyPack(bool) const;
+  /// expects builder to be in an open Object state
+  void toVelocyPack(arangodb::velocypack::Builder&, bool includePassword) const;
 };
 
 }

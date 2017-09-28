@@ -71,8 +71,8 @@
 #include "RocksDBEngine/RocksDBValue.h"
 #include "RocksDBEngine/RocksDBWalAccess.h"
 #include "RocksDBEngine/RocksDBView.h"
+#include "Transaction/Context.h"
 #include "Transaction/Options.h"
-#include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 
 #include <rocksdb/convenience.h>

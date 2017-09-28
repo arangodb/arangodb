@@ -52,10 +52,7 @@ MMFilesRestReplicationHandler::MMFilesRestReplicationHandler(
 
 MMFilesRestReplicationHandler::~MMFilesRestReplicationHandler() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief insert the applier action into an action list
-////////////////////////////////////////////////////////////////////////////////
-
 void MMFilesRestReplicationHandler::insertClient(
     TRI_voc_tick_t lastServedTick) {
   bool found;
@@ -69,10 +66,6 @@ void MMFilesRestReplicationHandler::insertClient(
     }
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_delete_batch_replication
-////////////////////////////////////////////////////////////////////////////////
 
 void MMFilesRestReplicationHandler::handleCommandBatch() {
   // extract the request type
@@ -162,10 +155,7 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief add or remove a WAL logfile barrier
-////////////////////////////////////////////////////////////////////////////////
-
 void MMFilesRestReplicationHandler::handleCommandBarrier() {
   // extract the request type
   auto const type = _request->requestType();
@@ -282,10 +272,6 @@ void MMFilesRestReplicationHandler::handleCommandBarrier() {
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_replication_logger_returns
-////////////////////////////////////////////////////////////////////////////////
 
 void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
   bool useVst = false;
@@ -462,13 +448,10 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
   }
   // if no error
 }
-////////////////////////////////////////////////////////////////////////////////
 /// @brief run the command that determines which transactions were open at
 /// a given tick value
 /// this is an internal method use by ArangoDB's replication that should not
 /// be called by client drivers directly
-////////////////////////////////////////////////////////////////////////////////
-
 void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
   // determine start and end tick
   MMFilesLogfileManagerState const state =
@@ -538,10 +521,6 @@ void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
     }
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_replication_inventory
-////////////////////////////////////////////////////////////////////////////////
 
 void MMFilesRestReplicationHandler::handleCommandInventory() {
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
@@ -631,9 +610,7 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief apply the data from a collection dump or the continuous log
-////////////////////////////////////////////////////////////////////////////////
 /*
 int MMFilesRestReplicationHandler::applyCollectionDumpMarker(
     transaction::Methods& trx, CollectionNameResolver const& resolver,
@@ -695,10 +672,7 @@ int MMFilesRestReplicationHandler::applyCollectionDumpMarker(
   return TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
 }*/
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief produce list of keys for a specific collection
-////////////////////////////////////////////////////////////////////////////////
-
 void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
   std::string const& collection = _request->value("collection");
 
@@ -762,10 +736,7 @@ void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
   generateResult(rest::ResponseCode::OK, result.slice());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all key ranges
-////////////////////////////////////////////////////////////////////////////////
-
 void MMFilesRestReplicationHandler::handleCommandGetKeys() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
@@ -840,10 +811,7 @@ void MMFilesRestReplicationHandler::handleCommandGetKeys() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns date for a key range
-////////////////////////////////////////////////////////////////////////////////
-
 void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
@@ -972,10 +940,6 @@ void MMFilesRestReplicationHandler::handleCommandRemoveKeys() {
 
   generateResult(rest::ResponseCode::ACCEPTED, resultBuilder.slice());
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_replication_dump
-////////////////////////////////////////////////////////////////////////////////
 
 void MMFilesRestReplicationHandler::handleCommandDump() {
   std::string const& collection = _request->value("collection");

@@ -34,6 +34,7 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
@@ -89,7 +90,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const* configuration)
   _localServerId = ServerIdFeature::getId();
   _localServerIdString = StringUtils::itoa(_localServerId);
 
-  _configuration.update(configuration);
+  _configuration = *configuration;
   _useCollectionId = _configuration._useCollectionId;
 
   _masterInfo._endpoint = configuration->_endpoint;

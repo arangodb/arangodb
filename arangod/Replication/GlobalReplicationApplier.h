@@ -32,23 +32,25 @@ namespace arangodb {
 /// @brief server-global replication applier for all databases
 class GlobalReplicationApplier : public ReplicationApplier {
  public:
-  GlobalReplicationApplier();
+  explicit GlobalReplicationApplier(ReplicationApplierConfiguration const& configuration);
+
   ~GlobalReplicationApplier();
+
+  /// @brief remove the replication application state file
+  void removeState() override;
   
   /// @brief load the applier state from persistent storage
-  void loadState() override;
+  /// returns whether a previous state was found
+  bool loadState() override;
   
   /// @brief store the applier state in persistent storage
-  void persistState() override;
+  void persistState(bool doSync) override;
  
   /// @brief store the current applier state in the passed vpack builder 
   void toVelocyPack(arangodb::velocypack::Builder& result) const override;
-
-  /// @brief start the applier
-  void start() override;
   
-  /// @brief stop the applier
-  void stop() override;
+  /// @brief return the current configuration
+  ReplicationApplierConfiguration configuration() const override;
 };
 
 }

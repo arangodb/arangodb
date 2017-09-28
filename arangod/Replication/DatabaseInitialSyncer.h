@@ -185,12 +185,6 @@ private:
 
   /// @brief maximum internal value for chunkSize
   static size_t const MaxChunkSize;
-
-  // in the cluster case it is a total NOGO to create or drop collections
-  // because this HAS to be handled in the schmutz. otherwise it forgets who
-  // the leader was etc.
-  bool _skipCreateDrop;
-
 };
 }
 

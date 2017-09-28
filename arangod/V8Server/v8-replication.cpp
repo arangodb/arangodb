@@ -27,12 +27,14 @@
 #include "Cluster/ClusterFeature.h"
 #include "Replication/ContinuousSyncer.h"
 #include "Replication/DatabaseInitialSyncer.h"
+#include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/V8Context.h"
+#include "Utils/DatabaseGuard.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -582,38 +584,27 @@ static void JS_ConfigureApplierReplication(
   if (vocbase->replicationApplier() == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find replicationApplier");
   }
+    
+  // get current configuration 
+  ReplicationApplierConfiguration configuration = vocbase->replicationApplier()->configuration();
 
   if (args.Length() == 0) {
     // no argument: return the current configuration
+    VPackBuilder builder;
+    builder.openObject();
+    configuration.toVelocyPack(builder, true);
+    builder.close();
 
-    ReplicationApplierConfiguration config;
-
-    {
-      READ_LOCKER(readLocker, vocbase->replicationApplier()->_statusLock);
-      config.update(&vocbase->replicationApplier()->_configuration);
-    }
-
-    std::shared_ptr<VPackBuilder> builder = config.toVelocyPack(true);
-
-    v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
+    v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
 
     TRI_V8_RETURN(result);
   }
 
   else {
     // set the configuration
-
     if (args.Length() != 1 || !args[0]->IsObject()) {
       TRI_V8_THROW_EXCEPTION_USAGE(
           "REPLICATION_APPLIER_CONFIGURE(<configuration>)");
-    }
-
-    ReplicationApplierConfiguration config;
-
-    // fill with previous configuration
-    {
-      READ_LOCKER(readLocker, vocbase->replicationApplier()->_statusLock);
-      config.update(&vocbase->replicationApplier()->_configuration);
     }
 
     // treat the argument as an object from now on
@@ -621,92 +612,92 @@ static void JS_ConfigureApplierReplication(
 
     if (object->Has(TRI_V8_ASCII_STRING(isolate, "endpoint"))) {
       if (object->Get(TRI_V8_ASCII_STRING(isolate, "endpoint"))->IsString()) {
-        config._endpoint =
+        configuration._endpoint =
             TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "endpoint")));
       }
     }
 
     if (object->Has(TRI_V8_ASCII_STRING(isolate, "database"))) {
       if (object->Get(TRI_V8_ASCII_STRING(isolate, "database"))->IsString()) {
-        config._database =
+        configuration._database =
             TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "database")));
       }
     } else {
-      if (config._database.empty()) {
+      if (configuration._database.empty()) {
         // no database set, use current
-        config._database = vocbase->name();
+        configuration._database = vocbase->name();
       }
     }
 
-    addReplicationAuthentication(isolate, object, config);
-    addConnectionSettings(isolate, object, config);
+    addReplicationAuthentication(isolate, object, configuration);
+    addConnectionSettings(isolate, object, configuration);
 
     if (object->Has(TRI_V8_ASCII_STRING(isolate, "ignoreErrors"))) {
       if (object->Get(TRI_V8_ASCII_STRING(isolate, "ignoreErrors"))->IsNumber()) {
-        config._ignoreErrors = TRI_ObjectToUInt64(
+        configuration._ignoreErrors = TRI_ObjectToUInt64(
             object->Get(TRI_V8_ASCII_STRING(isolate, "ignoreErrors")), false);
       }
     }
 
     if (object->Has(TRI_V8_ASCII_STRING(isolate, "lockTimeoutRetries"))) {
       if (object->Get(TRI_V8_ASCII_STRING(isolate, "lockTimeoutRetries"))->IsNumber()) {
-        config._lockTimeoutRetries = TRI_ObjectToUInt64(
+        configuration._lockTimeoutRetries = TRI_ObjectToUInt64(
             object->Get(TRI_V8_ASCII_STRING(isolate, "lockTimeoutRetries")), false);
       }
     }
 
     if (object->Has(TRI_V8_ASCII_STRING(isolate, "autoStart"))) {
       if (object->Get(TRI_V8_ASCII_STRING(isolate, "autoStart"))->IsBoolean()) {
-        config._autoStart =
+        configuration._autoStart =
             TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING(isolate, "autoStart")));
       }
     }
 
     if (object->Has(TRI_V8_ASCII_STRING(isolate, "adaptivePolling"))) {
       if (object->Get(TRI_V8_ASCII_STRING(isolate, "adaptivePolling"))->IsBoolean()) {
-        config._adaptivePolling = TRI_ObjectToBoolean(
+        configuration._adaptivePolling = TRI_ObjectToBoolean(
             object->Get(TRI_V8_ASCII_STRING(isolate, "adaptivePolling")));
       }
     }
 
     if (object->Has(TRI_V8_ASCII_STRING(isolate, "autoResync"))) {
       if (object->Get(TRI_V8_ASCII_STRING(isolate, "autoResync"))->IsBoolean()) {
-        config._autoResync =
+        configuration._autoResync =
             TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING(isolate, "autoResync")));
       }
     }
 
     if (object->Has(TRI_V8_ASCII_STRING(isolate, "includeSystem"))) {
       if (object->Get(TRI_V8_ASCII_STRING(isolate, "includeSystem"))->IsBoolean()) {
-        config._includeSystem = TRI_ObjectToBoolean(
+        configuration._includeSystem = TRI_ObjectToBoolean(
             object->Get(TRI_V8_ASCII_STRING(isolate, "includeSystem")));
       }
     }
 
     if (object->Has(TRI_V8_ASCII_STRING(isolate, "requireFromPresent"))) {
       if (object->Get(TRI_V8_ASCII_STRING(isolate, "requireFromPresent"))->IsBoolean()) {
-        config._requireFromPresent = TRI_ObjectToBoolean(
+        configuration._requireFromPresent = TRI_ObjectToBoolean(
             object->Get(TRI_V8_ASCII_STRING(isolate, "requireFromPresent")));
       }
     }
 
     if (object->Has(TRI_V8_ASCII_STRING(isolate, "incremental"))) {
       if (object->Get(TRI_V8_ASCII_STRING(isolate, "incremental"))->IsBoolean()) {
-        config._incremental = TRI_ObjectToBoolean(
+        configuration._incremental = TRI_ObjectToBoolean(
             object->Get(TRI_V8_ASCII_STRING(isolate, "incremental")));
       }
     }
 
     if (object->Has(TRI_V8_ASCII_STRING(isolate, "verbose"))) {
       if (object->Get(TRI_V8_ASCII_STRING(isolate, "verbose"))->IsBoolean()) {
-        config._verbose =
+        configuration._verbose =
             TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING(isolate, "verbose")));
       }
     }
 
     if (object->Has(TRI_V8_ASCII_STRING(isolate, "restrictCollections")) &&
         object->Get(TRI_V8_ASCII_STRING(isolate, "restrictCollections"))->IsArray()) {
-      config._restrictCollections.clear();
+      configuration._restrictCollections.clear();
       v8::Handle<v8::Array> a = v8::Handle<v8::Array>::Cast(
           object->Get(TRI_V8_ASCII_STRING(isolate, "restrictCollections")));
 
@@ -716,23 +707,23 @@ static void JS_ConfigureApplierReplication(
         v8::Handle<v8::Value> cname = a->Get(i);
 
         if (cname->IsString()) {
-          config._restrictCollections.insert(
+          configuration._restrictCollections.insert(
               std::pair<std::string, bool>(TRI_ObjectToString(cname), true));
         }
       }
     }
 
     if (object->Has(TRI_V8_ASCII_STRING(isolate, "restrictType"))) {
-      config._restrictType =
+      configuration._restrictType =
           TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "restrictType")));
     }
 
-    if ((config._restrictType.empty() &&
-         !config._restrictCollections.empty()) ||
-        (!config._restrictType.empty() &&
-         config._restrictCollections.empty()) ||
-        (!config._restrictType.empty() && config._restrictType != "include" &&
-         config._restrictType != "exclude")) {
+    if ((configuration._restrictType.empty() &&
+         !configuration._restrictCollections.empty()) ||
+        (!configuration._restrictType.empty() &&
+         configuration._restrictCollections.empty()) ||
+        (!configuration._restrictType.empty() && configuration._restrictType != "include" &&
+         configuration._restrictType != "exclude")) {
       TRI_V8_THROW_EXCEPTION_PARAMETER(
           "invalid value for <restrictCollections> or <restrictType>");
     }
@@ -743,7 +734,7 @@ static void JS_ConfigureApplierReplication(
         double value = TRI_ObjectToDouble(
             object->Get(TRI_V8_ASCII_STRING(isolate, "connectionRetryWaitTime")));
         if (value > 0.0) {
-          config._connectionRetryWaitTime =
+          configuration._connectionRetryWaitTime =
               static_cast<uint64_t>(value * 1000.0 * 1000.0);
         }
       }
@@ -755,7 +746,7 @@ static void JS_ConfigureApplierReplication(
         double value = TRI_ObjectToDouble(
             object->Get(TRI_V8_ASCII_STRING(isolate, "initialSyncMaxWaitTime")));
         if (value > 0.0) {
-          config._initialSyncMaxWaitTime =
+          configuration._initialSyncMaxWaitTime =
               static_cast<uint64_t>(value * 1000.0 * 1000.0);
         }
       }
@@ -766,7 +757,7 @@ static void JS_ConfigureApplierReplication(
         double value = TRI_ObjectToDouble(
             object->Get(TRI_V8_ASCII_STRING(isolate, "idleMinWaitTime")));
         if (value > 0.0) {
-          config._idleMinWaitTime =
+          configuration._idleMinWaitTime =
               static_cast<uint64_t>(value * 1000.0 * 1000.0);
         }
       }
@@ -777,7 +768,7 @@ static void JS_ConfigureApplierReplication(
         double value = TRI_ObjectToDouble(
             object->Get(TRI_V8_ASCII_STRING(isolate, "idleMaxWaitTime")));
         if (value > 0.0) {
-          config._idleMaxWaitTime =
+          configuration._idleMaxWaitTime =
               static_cast<uint64_t>(value * 1000.0 * 1000.0);
         }
       }
@@ -787,20 +778,18 @@ static void JS_ConfigureApplierReplication(
       if (object->Get(TRI_V8_ASCII_STRING(isolate, "autoResyncRetries"))->IsNumber()) {
         double value = TRI_ObjectToDouble(
             object->Get(TRI_V8_ASCII_STRING(isolate, "autoResyncRetries")));
-        config._autoResyncRetries = static_cast<uint64_t>(value);
+        configuration._autoResyncRetries = static_cast<uint64_t>(value);
       }
     }
 
-    int res =
-        TRI_ConfigureReplicationApplier(vocbase->replicationApplier(), &config);
+    vocbase->replicationApplier()->reconfigure(configuration);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
-
-    std::shared_ptr<VPackBuilder> builder = config.toVelocyPack(true);
-
-    v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
+    VPackBuilder builder;
+    builder.openObject();
+    configuration.toVelocyPack(builder, true);
+    builder.close();
+   
+    v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
 
     TRI_V8_RETURN(result);
   }
@@ -910,9 +899,12 @@ static void JS_StateApplierReplication(
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find replicationApplier");
   }
 
-  std::shared_ptr<VPackBuilder> builder = vocbase->replicationApplier()->toVelocyPack();
+  VPackBuilder builder;
+  builder.openObject();
+  vocbase->replicationApplier()->toVelocyPack(builder);
+  builder.close();
 
-  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder->slice());
+  v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END

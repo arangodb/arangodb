@@ -33,6 +33,7 @@
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Logger/Logger.h"
+#include "Replication/DatabaseReplicationApplier.h"
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -40,6 +41,7 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
@@ -173,9 +175,9 @@ void DatabaseInitialSyncer::setProgress(std::string const& msg) {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
   }
   
-  TRI_replication_applier_t* applier = vocbase()->replicationApplier();
+  DatabaseReplicationApplier* applier = vocbase()->replicationApplier();
   if (applier != nullptr) {
-    applier->setProgress(msg.c_str(), true);
+    applier->setProgress(msg);
   }
 }
 

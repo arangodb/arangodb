@@ -22,29 +22,761 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "DatabaseReplicationApplier.h"
+#include "Basics/Exceptions.h"
+#include "Basics/FileUtils.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/WriteLocker.h"
+#include "Basics/threads.h"
+#include "Cluster/ServerState.h"
+#include "Logger/Logger.h"
+#include "Replication/ContinuousSyncer.h"
+#include "RestServer/ServerIdFeature.h"
+#include "Rest/Version.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
+
+/// TODO
+/// @brief applier thread main function
+static void ApplyThread(void* data) {
+  auto syncer = static_cast<arangodb::ContinuousSyncer*>(data);
+
+  try {
+    syncer->run();
+  } catch (...) {
+  }
+  delete syncer;
+}
+
+
+namespace {
+/// @brief read a tick value from a VelocyPack struct
+static void readTick(VPackSlice const& slice, char const* attributeName,
+                     TRI_voc_tick_t& dst, bool allowNull) {
+  TRI_ASSERT(slice.isObject());
+
+  VPackSlice const tick = slice.get(attributeName);
+
+  if ((tick.isNull() || tick.isNone()) && allowNull) {
+    dst = 0;
+  } else { 
+    if (!tick.isString()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE);
+    }
+
+    dst = static_cast<TRI_voc_tick_t>(arangodb::basics::StringUtils::uint64(tick.copyString()));
+  }
+}
+}
+
 /// @brief replication applier for a single database
 DatabaseReplicationApplier::DatabaseReplicationApplier(TRI_vocbase_t* vocbase)
-    : _vocbase(vocbase) {}
+    : ReplicationApplier(ReplicationApplierConfiguration()),
+      _vocbase(vocbase),
+      _starts(0),
+      _terminateThread(false) {
+  
+  setProgress("applier initially created");
+}
 
-DatabaseReplicationApplier::~DatabaseReplicationApplier() {}
+/// @brief replication applier for a single database
+DatabaseReplicationApplier::DatabaseReplicationApplier(ReplicationApplierConfiguration const& configuration,
+                                                       TRI_vocbase_t* vocbase)
+    : ReplicationApplier(configuration), 
+      _vocbase(vocbase),
+      _starts(0),
+      _terminateThread(false) {
+  
+  setProgress("applier initially created");
+}
+
+DatabaseReplicationApplier::~DatabaseReplicationApplier() {
+  stop(true, false);
+}
+
+/// @brief remove the replication application state file
+void DatabaseReplicationApplier::removeState() {
+  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
+    // unsupported
+    return; 
+  }
+
+  WRITE_LOCKER(writeLocker, _statusLock);
+  _state.reset();
+
+  std::string const filename = getStateFilename();
+
+  if (TRI_ExistsFile(filename.c_str())) {
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "removing replication state file '"
+                                          << filename << "'";
+    int res = TRI_UnlinkFile(filename.c_str());
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("unable to remove replication state file '") + filename + "'");
+    }
+  } 
+}
+
+/// @brief configure the replication applier
+void DatabaseReplicationApplier::reconfigure(ReplicationApplierConfiguration const& configuration) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
+    // unsupported
+    return;
+  }
+
+  if (configuration._endpoint.empty()) {
+    // no endpoint
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
+  }
+
+  if (configuration._database.empty()) {
+    // no database
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no database configured");
+  }
+
+
+  WRITE_LOCKER(writeLocker, _statusLock);
+
+  if (_state._active) {
+    // cannot change the configuration while the replication is still running
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_RUNNING);
+  }
+
+  _configuration = configuration;
+  storeConfiguration(true);
+}
   
 /// @brief load the applier state from persistent storage
-void DatabaseReplicationApplier::loadState() {}
+/// must currently be called while holding the write-lock
+/// returns whether a previous state was found
+bool DatabaseReplicationApplier::loadState() {
+  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
+    // unsupported
+    return false;
+  }
+
+  std::string const filename = getStateFilename();
+
+  LOG_TOPIC(TRACE, Logger::REPLICATION)
+      << "looking for replication state file '" << filename << "'";
+
+  if (!TRI_ExistsFile(filename.c_str())) {
+    // no existing state found
+    return false;
+  }
+
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "replication state file '" << filename << "' found";
+
+  VPackBuilder builder;
+  try {
+    builder = basics::VelocyPackHelper::velocyPackFromFile(filename);
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE, std::string("cannot read replication applier state from file '") + filename + "'");
+  }
+
+  VPackSlice const slice = builder.slice();
+  if (!slice.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE, std::string("invalid replication applier state found in file '") + filename + "'");
+  }
+
+  _state.reset();
+
+  // read the server id
+  VPackSlice const serverId = slice.get("serverId");
+  if (!serverId.isString()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE);
+  }
+  _state._serverId = arangodb::basics::StringUtils::uint64(serverId.copyString());
+
+  // read the ticks
+  readTick(slice, "lastAppliedContinuousTick", _state._lastAppliedContinuousTick, false);
+
+  // set processed = applied
+  _state._lastProcessedContinuousTick = _state._lastAppliedContinuousTick;
+
+  // read the safeResumeTick. note: this is an optional attribute
+  _state._safeResumeTick = 0;
+  readTick(slice, "safeResumeTick", _state._safeResumeTick, true);
+
+  return true;
+}
   
 /// @brief store the applier state in persistent storage
-void DatabaseReplicationApplier::persistState() {}
+/// must currently be called while holding the write-lock
+void DatabaseReplicationApplier::persistState(bool doSync) {
+  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
+    // unsupported
+    return;
+  }
+
+  VPackBuilder builder;
+  _state.toVelocyPack(builder, false);
+
+  std::string const filename = getStateFilename();
+  LOG_TOPIC(TRACE, Logger::REPLICATION)
+      << "saving replication applier state to file '" << filename << "'";
+
+  if (!basics::VelocyPackHelper::velocyPackToFile(filename, builder.slice(), doSync)) {
+    THROW_ARANGO_EXCEPTION(TRI_errno());
+  }
+}
+
+/// @brief whether or not autostart option was set
+bool DatabaseReplicationApplier::autoStart() const {
+  READ_LOCKER(readLocker, _statusLock);
+  return _configuration._autoStart;
+}
+
+/// @brief return the current configuration
+ReplicationApplierConfiguration DatabaseReplicationApplier::configuration() const {
+  READ_LOCKER(readLocker, _statusLock);
+  return _configuration;
+}
  
 /// @brief store the current applier state in the passed vpack builder 
-void DatabaseReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) const {}
+/// expects builder to be in an open Object state
+void DatabaseReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) const {
+  TRI_ASSERT(!result.isClosed());
 
-/// @brief start the applier
-void DatabaseReplicationApplier::start() {}
+  ReplicationApplierConfiguration configuration;
+  ReplicationApplierState state;
+
+  {
+    // copy current config and state under the lock
+    READ_LOCKER(readLocker, _statusLock);
+    configuration = _configuration;
+    state = _state;
+  }
+
+  // add state
+  result.add(VPackValue("state"));
+  state.toVelocyPack(result, true);
+
+  // add server info
+  result.add("server", VPackValue(VPackValueType::Object));
+  result.add("version", VPackValue(ARANGODB_VERSION));
+  result.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
+  result.close();  // server
   
-/// @brief stop the applier
-void DatabaseReplicationApplier::stop() {}
+  if (!configuration._endpoint.empty()) {
+    result.add("endpoint", VPackValue(configuration._endpoint));
+  }
+  if (!configuration._database.empty()) {
+    result.add("database", VPackValue(configuration._database));
+  }
+}
+
+int DatabaseReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
+  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
+    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+  }
+
+  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+      << "requesting replication applier start. initialTick: " << initialTick
+      << ", useTick: " << useTick;
+
+  // wait until previous applier thread is shut down
+  while (!wait(10 * 1000));
+
+  WRITE_LOCKER(writeLocker, _statusLock);
+  
+  if (_state._preventStart) {
+    return TRI_ERROR_LOCKED;
+  }
+
+  if (_state._active) {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
+  if (_configuration._endpoint.empty() || _configuration._database.empty()) {
+    return setErrorNoLock(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
+  }
+
+  auto syncer = std::make_unique<arangodb::ContinuousSyncer>(_vocbase, &_configuration, initialTick, useTick, barrierId);
+
+  // reset error
+  _state._lastError.reset();
+
+  // save previous counter value
+  uint64_t oldStarts = _starts.load();
+
+  setTermination(false);
+  _state._active = true;
+  
+  TRI_InitThread(&_thread);
+
+  if (!TRI_StartThread(&_thread, nullptr, "Applier", ApplyThread,
+                       static_cast<void*>(syncer.get()))) {
+    return TRI_ERROR_INTERNAL;
+  }
+  syncer.release();
+
+  uint64_t iterations = 0;
+  while (oldStarts == _starts.load() && ++iterations < 50 * 10) {
+    usleep(20000);
+  }
+
+  if (useTick) {
+    LOG_TOPIC(INFO, Logger::REPLICATION)
+        << "started replication applier for database '" << _vocbase->name()
+        << "', endpoint '" << _configuration._endpoint << "' from tick "
+        << initialTick;
+  } else {
+    LOG_TOPIC(INFO, Logger::REPLICATION)
+        << "re-started replication applier for database '"
+        << _vocbase->name() << "', endpoint '" << _configuration._endpoint
+        << "'";
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+  
+/// @brief stop the replication applier
+int DatabaseReplicationApplier::stop(bool resetError, bool joinThread) {
+  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
+    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+  }
+
+  {
+    WRITE_LOCKER(writeLocker, _statusLock);
+
+    // always stop initial synchronization
+    _state._stopInitialSynchronization = true;
+
+    if (!_state._active) {
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    _state._active = false;
+
+    setTermination(true);
+    setProgressNoLock("applier shut down");
+
+    if (resetError) {
+      _state.clearError();
+    }
+  }
+
+  // join the thread without the status lock (otherwise it would probably not
+  // join)
+  int res = TRI_ERROR_NO_ERROR;
+
+  if (joinThread) {
+    res = TRI_JoinThread(&_thread);
+  }
+
+  setTermination(false);
+
+  LOG_TOPIC(INFO, Logger::REPLICATION)
+      << "stopped replication applier for database '" << _vocbase->name() << "'";
+
+  return res;
+}
+
+/// @brief shut down the replication applier
+int DatabaseReplicationApplier::shutdown() {
+  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
+    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+  }
+
+  {
+    WRITE_LOCKER(writeLocker, _statusLock);
+
+    if (!_state._active) {
+      return TRI_ERROR_NO_ERROR;
+    }
+
+    _state._active = false;
+    _state.clearError();
+
+    setTermination(true);
+    setProgressNoLock("applier stopped");
+  }
+
+  // join the thread without the status lock (otherwise it would probably not
+  // join)
+  int res = TRI_JoinThread(&_thread);
+
+  setTermination(false);
+
+  LOG_TOPIC(INFO, Logger::REPLICATION)
+      << "shut down replication applier for database '" << _vocbase->name() << "'";
+
+  return res;
+}
+
+/// @brief test if the replication applier is running
+bool DatabaseReplicationApplier::isRunning() const {
+  READ_LOCKER(readLocker, _statusLock);
+  return _state._active;
+}
+
+/// @brief block the replication applier from starting
+int DatabaseReplicationApplier::preventStart() {
+  WRITE_LOCKER(writeLocker, _statusLock);
+
+  if (_state._active) {
+    // already running
+    return TRI_ERROR_REPLICATION_RUNNING;
+  }
+
+  if (_state._preventStart) {
+    // someone else requested start prevention
+    return TRI_ERROR_LOCKED;
+  }
+
+  _state._stopInitialSynchronization = false;
+  _state._preventStart = true;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief unblock the replication applier from starting
+int DatabaseReplicationApplier::allowStart() {
+  WRITE_LOCKER(writeLocker, _statusLock);
+
+  if (!_state._preventStart) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  _state._stopInitialSynchronization = false;
+  _state._preventStart = false;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief check whether the initial synchronization should be stopped
+bool DatabaseReplicationApplier::stopInitialSynchronization() const {
+  READ_LOCKER(readLocker, _statusLock);
+
+  return _state._stopInitialSynchronization;
+}
+
+/// @brief stop the initial synchronization
+void DatabaseReplicationApplier::stopInitialSynchronization(bool value) {
+  WRITE_LOCKER(writeLocker, _statusLock);
+  _state._stopInitialSynchronization = value;
+}
+
+/// @brief stop the applier and "forget" everything
+int DatabaseReplicationApplier::forget() {
+  int res = stop(true, true);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+
+  removeState();
+
+  if (_vocbase->type() != TRI_VOCBASE_TYPE_COORDINATOR) {
+    StorageEngine* engine = EngineSelectorFeature::ENGINE;
+    engine->removeReplicationApplierConfiguration(_vocbase);
+  }
+  _configuration.reset();
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief pauses and checks whether the apply thread should terminate
+bool DatabaseReplicationApplier::wait(uint64_t sleepTime) {
+  if (isTerminated()) {
+    return false;
+  }
+
+  if (sleepTime > 0) {
+    LOG_TOPIC(TRACE, Logger::REPLICATION)
+        << "replication applier going to sleep for " << sleepTime << " ns";
+
+    static uint64_t const SleepChunk = 500 * 1000;
+
+    while (sleepTime >= SleepChunk) {
+      usleep(static_cast<TRI_usleep_t>(SleepChunk));
+      sleepTime -= SleepChunk;
+
+      if (isTerminated()) {
+        return false;
+      }
+    }
+
+    if (sleepTime > 0) {
+      usleep(static_cast<TRI_usleep_t>(sleepTime));
+
+      if (isTerminated()) {
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+/// @brief set the progress 
+void DatabaseReplicationApplier::setProgress(char const* msg) {
+  return setProgress(std::string(msg));
+}
+
+void DatabaseReplicationApplier::setProgress(std::string const& msg) {
+  WRITE_LOCKER(writeLocker, _statusLock);
+  setProgressNoLock(msg);
+}
+
+void DatabaseReplicationApplier::setProgressNoLock(std::string const& msg) {
+  _state._progressMsg = msg;
+
+  // write time into buffer
+  TRI_GetTimeStampReplication(_state._progressTime, sizeof(_state._progressTime) - 1);
+}
+
+/// @brief register an applier error
+int DatabaseReplicationApplier::setError(int errorCode, char const* msg) {
+  return setErrorNoLock(errorCode, std::string(msg));
+}
+
+int DatabaseReplicationApplier::setError(int errorCode, std::string const& msg) {
+  WRITE_LOCKER(writeLocker, _statusLock);
+  return setErrorNoLock(errorCode, msg);
+}
+
+/// @brief register an applier error
+int DatabaseReplicationApplier::setErrorNoLock(int errorCode, std::string const& msg) {
+  // log error message
+  if (errorCode != TRI_ERROR_REPLICATION_APPLIER_STOPPED) {
+    LOG_TOPIC(ERR, Logger::REPLICATION)
+        << "replication applier error for database '" << _vocbase->name()
+        << "': " << (msg.empty() ? TRI_errno_string(errorCode) : msg);
+  }
+
+  _state.setError(errorCode, msg.empty() ? TRI_errno_string(errorCode) : msg);
+  return errorCode;
+}
+
+/// @brief factory function for creating a database-specific replication applier
+DatabaseReplicationApplier* DatabaseReplicationApplier::create(TRI_vocbase_t* vocbase) {
+  std::unique_ptr<DatabaseReplicationApplier> applier;
+
+  if (vocbase->type() == TRI_VOCBASE_TYPE_NORMAL) {
+    applier = std::make_unique<DatabaseReplicationApplier>(DatabaseReplicationApplier::loadConfiguration(vocbase), vocbase);
+    applier->loadState();
+  } else {
+    applier = std::make_unique<DatabaseReplicationApplier>(vocbase);
+  }
+
+  return applier.release();
+}
+
+/// @brief load a persisted configuration for the applier
+ReplicationApplierConfiguration DatabaseReplicationApplier::loadConfiguration(TRI_vocbase_t* vocbase) {
+  ReplicationApplierConfiguration configuration;
+  
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  int res = TRI_ERROR_INTERNAL;
+  VPackBuilder builder = engine->getReplicationApplierConfiguration(vocbase, res);
+
+  if (res == TRI_ERROR_FILE_NOT_FOUND) {
+    // file not found
+    TRI_ASSERT(builder.isEmpty());
+    return configuration;
+  }
+
+  TRI_ASSERT(!builder.isEmpty());
+
+  VPackSlice const slice = builder.slice();
+  
+  // read the database name
+  VPackSlice value = slice.get("database");
+  if (!value.isString()) {
+    configuration._database = vocbase->name();
+  } else {
+    configuration._database = value.copyString();
+  }
+
+  // read username / password
+  value = slice.get("username");
+  bool hasUsernamePassword = false;
+  if (value.isString()) {
+    hasUsernamePassword = true;
+    configuration._username = value.copyString();
+  }
+
+  value = slice.get("password");
+  if (value.isString()) {
+    hasUsernamePassword = true;
+    configuration._password = value.copyString();
+  }
+
+  if (!hasUsernamePassword) {
+    value = slice.get("jwt");
+    if (value.isString()) {
+      configuration._jwt = value.copyString();
+    }
+  }
+
+  value = slice.get("requestTimeout");
+  if (value.isNumber()) {
+    configuration._requestTimeout = value.getNumber<double>();
+  }
+
+  value = slice.get("connectTimeout");
+  if (value.isNumber()) {
+    configuration._connectTimeout = value.getNumber<double>();
+  }
+
+  value = slice.get("maxConnectRetries");
+  if (value.isNumber()) {
+    configuration._maxConnectRetries = value.getNumber<int64_t>();
+  }
+  
+  value = slice.get("lockTimeoutRetries");
+  if (value.isNumber()) {
+    configuration._lockTimeoutRetries = value.getNumber<int64_t>();
+  }
+
+  value = slice.get("sslProtocol");
+  if (value.isNumber()) {
+    configuration._sslProtocol = value.getNumber<uint32_t>();
+  }
+
+  value = slice.get("chunkSize");
+  if (value.isNumber()) {
+    configuration._chunkSize = value.getNumber<uint64_t>();
+  }
+
+  value = slice.get("autoStart");
+  if (value.isBoolean()) {
+    configuration._autoStart = value.getBoolean();
+  }
+
+  value = slice.get("adaptivePolling");
+  if (value.isBoolean()) {
+    configuration._adaptivePolling = value.getBoolean();
+  }
+
+  value = slice.get("autoResync");
+  if (value.isBoolean()) {
+    configuration._autoResync = value.getBoolean();
+  }
+
+  value = slice.get("includeSystem");
+  if (value.isBoolean()) {
+    configuration._includeSystem = value.getBoolean();
+  }
+
+  value = slice.get("requireFromPresent");
+  if (value.isBoolean()) {
+    configuration._requireFromPresent = value.getBoolean();
+  }
+
+  value = slice.get("verbose");
+  if (value.isBoolean()) {
+    configuration._verbose = value.getBoolean();
+  }
+
+  value = slice.get("incremental");
+  if (value.isBoolean()) {
+    configuration._incremental = value.getBoolean();
+  }
+
+  value = slice.get("useCollectionId");
+  if (value.isBoolean()) {
+    configuration._useCollectionId = value.getBoolean();
+  }
+
+  value = slice.get("ignoreErrors");
+  if (value.isNumber()) {
+    configuration._ignoreErrors = value.getNumber<uint64_t>();
+  } else if (value.isBoolean()) {
+    if (value.getBoolean()) {
+      configuration._ignoreErrors = UINT64_MAX;
+    } else {
+      configuration._ignoreErrors = 0;
+    }
+  }
+
+  value = slice.get("restrictType");
+  if (value.isString()) {
+    configuration._restrictType = value.copyString();
+  }
+
+  value = slice.get("restrictCollections");
+  if (value.isArray()) {
+    configuration._restrictCollections.clear();
+
+    for (auto const& it : VPackArrayIterator(value)) {
+      if (it.isString()) {
+        configuration._restrictCollections.emplace(it.copyString(), true);
+      }
+    }
+  }
+
+  value = slice.get("connectionRetryWaitTime");
+  if (value.isNumber()) {
+    configuration._connectionRetryWaitTime = static_cast<uint64_t>(value.getNumber<double>() * 1000.0 * 1000.0);
+  }
+
+  value = slice.get("initialSyncMaxWaitTime");
+  if (value.isNumber()) {
+    configuration._initialSyncMaxWaitTime = static_cast<uint64_t>(value.getNumber<double>() * 1000.0 * 1000.0);
+  }
+
+  value = slice.get("idleMinWaitTime");
+  if (value.isNumber()) {
+    configuration._idleMinWaitTime = static_cast<uint64_t>(value.getNumber<double>() * 1000.0 * 1000.0);
+  }
+
+  value = slice.get("idleMaxWaitTime");
+  if (value.isNumber()) {
+    configuration._idleMaxWaitTime = static_cast<uint64_t>(value.getNumber<double>() * 1000.0 * 1000.0);
+  }
+
+  value = slice.get("autoResyncRetries");
+  if (value.isNumber()) {
+    configuration._autoResyncRetries = value.getNumber<uint64_t>();
+  }
+
+  // read the endpoint
+  value = slice.get("endpoint");
+  if (!value.isString()) {
+    // we haven't found an endpoint. now don't let the start fail but continue
+    configuration._autoStart = false;
+  } else {
+    configuration._endpoint = value.copyString();
+  }
+
+  return configuration;
+}
+
+/// @brief store the configuration for the applier
+void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
+  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
+    // unsupported
+    return;
+  }
+
+  VPackBuilder builder;
+  builder.openObject();
+  _configuration.toVelocyPack(builder, true);
+  builder.close();
+
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  int res = engine->saveReplicationApplierConfiguration(_vocbase, builder.slice(), doSync);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+}
+  
+std::string DatabaseReplicationApplier::getStateFilename() const {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  return arangodb::basics::FileUtils::buildFilename(engine->databasePath(_vocbase), "REPLICATION-APPLIER-STATE");
+}

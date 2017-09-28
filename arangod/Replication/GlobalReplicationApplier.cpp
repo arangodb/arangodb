@@ -28,22 +28,24 @@
 using namespace arangodb;
 
 /// @brief server-global replication applier for all databases
-GlobalReplicationApplier::GlobalReplicationApplier() {}
+GlobalReplicationApplier::GlobalReplicationApplier(ReplicationApplierConfiguration const& configuration)
+      : ReplicationApplier(configuration) {}
 
 GlobalReplicationApplier::~GlobalReplicationApplier() {}
   
+void GlobalReplicationApplier::removeState() {}
+  
 /// @brief load the applier state from persistent storage
-void GlobalReplicationApplier::loadState() {}
+/// returns whether a previous state was found
+bool GlobalReplicationApplier::loadState() { return false; }
   
 /// @brief store the applier state in persistent storage
-void GlobalReplicationApplier::persistState() {}
+void GlobalReplicationApplier::persistState(bool doSync) {}
  
 /// @brief store the current applier state in the passed vpack builder 
-void GlobalReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) const {
-}
+void GlobalReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) const {}
 
-/// @brief start the applier
-void GlobalReplicationApplier::start() {}
-  
-/// @brief stop the applier
-void GlobalReplicationApplier::stop() {}
+/// @brief return the current configuration
+ReplicationApplierConfiguration GlobalReplicationApplier::configuration() const {
+  return _configuration;
+}

@@ -25,6 +25,7 @@
 #define ARANGOD_REPLICATION_REPLICATION_APPLIER_STATE_H 1
 
 #include "Basics/Common.h"
+#include "VocBase/replication-common.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -55,6 +56,14 @@ struct ReplicationApplierState {
   char _progressTime[24];
   TRI_server_id_t _serverId;
 
+  void setError(int code, std::string const& msg) {
+    _lastError.set(code, msg);
+  }
+
+  void clearError() {
+    _lastError.reset();
+  }
+
   // last error that occurred during replication
   struct LastError {
     LastError() : code(TRI_ERROR_NO_ERROR), message() { 
@@ -65,6 +74,14 @@ struct ReplicationApplierState {
       code = TRI_ERROR_NO_ERROR;
       message.clear();
       time[0] = '\0';
+      TRI_GetTimeStampReplication(time, sizeof(time) - 1);
+    }
+
+    void set(int errorCode, std::string const& msg) {
+      code = errorCode;
+      message = msg;
+      time[0] = '\0';
+      TRI_GetTimeStampReplication(time, sizeof(time) - 1);
     }
 
     void toVelocyPack(arangodb::velocypack::Builder& result) const {

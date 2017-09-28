@@ -25,40 +25,45 @@
 #define ARANGOD_REPLICATION_REPLICATION_APPLIER_H 1
 
 #include "Basics/Common.h"
+#include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationApplierState.h"
 
 namespace arangodb {
 namespace velocypack {
 class Builder;
 }
 
-class ReplicationApplierState;
-
 /// @brief replication applier interface
 class ReplicationApplier {
  public:
-  ReplicationApplier();
-  virtual ~ReplicationApplier();
+  explicit ReplicationApplier(ReplicationApplierConfiguration const& configuration) 
+      : _configuration(configuration) {}
+
+  virtual ~ReplicationApplier() {}
   
   ReplicationApplier(ReplicationApplier const&) = delete;
   ReplicationApplier& operator=(ReplicationApplier const&) = delete;
 
+  /// @brief remove the replication application state file
+  virtual void removeState() = 0;
+  
   /// @brief load the applier state from persistent storage
-  virtual void loadState() = 0;
+  /// returns whether a previous state was found
+  virtual bool loadState() = 0;
   
   /// @brief store the applier state in persistent storage
-  virtual void persistState() = 0;
+  virtual void persistState(bool doSync) = 0;
  
   /// @brief store the current applier state in the passed vpack builder 
   virtual void toVelocyPack(arangodb::velocypack::Builder& result) const = 0;
-
-  /// @brief start the applier
-  virtual void start() = 0;
   
-  /// @brief stop the applier
-  virtual void stop() = 0;
+  /// @brief return the current configuration
+  virtual ReplicationApplierConfiguration configuration() const = 0;
 
  protected:
-  std::unique_ptr<ReplicationApplierState> _state;
+  ReplicationApplierConfiguration _configuration;
+
+  ReplicationApplierState _state;
 };
 
 }
