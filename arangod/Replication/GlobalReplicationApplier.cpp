@@ -21,36 +21,29 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_GLOBAL_REPLICATION_APPLIER_H
-#define ARANGOD_REPLICATION_GLOBAL_REPLICATION_APPLIER_H 1
+#include "GlobalReplicationApplier.h"
 
-#include "Basics/Common.h"
-#include "Replication/ReplicationApplier.h"
+#include <velocypack/Builder.h>
 
-namespace arangodb {
+using namespace arangodb;
 
 /// @brief server-global replication applier for all databases
-class GlobalReplicationApplier : public ReplicationApplier {
- public:
-  GlobalReplicationApplier();
-  ~GlobalReplicationApplier();
+GlobalReplicationApplier::GlobalReplicationApplier() {}
+
+GlobalReplicationApplier::~GlobalReplicationApplier() {}
   
-  /// @brief load the applier state from persistent storage
-  void loadState() override;
+/// @brief load the applier state from persistent storage
+void GlobalReplicationApplier::loadState() {}
   
-  /// @brief store the applier state in persistent storage
-  void persistState() override;
+/// @brief store the applier state in persistent storage
+void GlobalReplicationApplier::persistState() {}
  
-  /// @brief store the current applier state in the passed vpack builder 
-  void toVelocyPack(arangodb::velocypack::Builder& result) const override;
-
-  /// @brief start the applier
-  void start() override;
-  
-  /// @brief stop the applier
-  void stop() override;
-};
-
+/// @brief store the current applier state in the passed vpack builder 
+void GlobalReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) const {
 }
 
-#endif
+/// @brief start the applier
+void GlobalReplicationApplier::start() {}
+  
+/// @brief stop the applier
+void GlobalReplicationApplier::stop() {}

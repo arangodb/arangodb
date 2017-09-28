@@ -21,19 +21,21 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_GLOBAL_REPLICATION_APPLIER_H
-#define ARANGOD_REPLICATION_GLOBAL_REPLICATION_APPLIER_H 1
+#ifndef ARANGOD_REPLICATION_DATABASE_REPLICATION_APPLIER_H
+#define ARANGOD_REPLICATION_DATABASE_REPLICATION_APPLIER_H 1
 
 #include "Basics/Common.h"
 #include "Replication/ReplicationApplier.h"
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
 
-/// @brief server-global replication applier for all databases
-class GlobalReplicationApplier : public ReplicationApplier {
+/// @brief replication applier for a single database
+class DatabaseReplicationApplier : public ReplicationApplier {
  public:
-  GlobalReplicationApplier();
-  ~GlobalReplicationApplier();
+  explicit DatabaseReplicationApplier(TRI_vocbase_t* vocbase);
+  ~DatabaseReplicationApplier();
   
   /// @brief load the applier state from persistent storage
   void loadState() override;
@@ -49,6 +51,9 @@ class GlobalReplicationApplier : public ReplicationApplier {
   
   /// @brief stop the applier
   void stop() override;
+
+ private:
+  TRI_vocbase_t* _vocbase;
 };
 
 }
