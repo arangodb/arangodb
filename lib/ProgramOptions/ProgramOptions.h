@@ -194,7 +194,7 @@ class ProgramOptions {
   std::string translateShorthand(std::string const& name) const;
   
   void walk(std::function<void(Section const&, Option const&)> const& callback,
-            bool onlyTouched) const;
+            bool onlyTouched, bool includeObsolete = false) const;
 
   // checks whether a specific option exists
   // if the option does not exist, this will flag an error
