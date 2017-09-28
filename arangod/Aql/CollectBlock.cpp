@@ -1042,7 +1042,7 @@ int DistinctCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
             }
 
             TRI_ASSERT(cur != nullptr);
-            res->shrink(skipped, false);
+            res->shrink(skipped);
           } 
           returnBlock(cur);
           _done = true;
@@ -1062,7 +1062,7 @@ int DistinctCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
   if (!skipping) {
     TRI_ASSERT(skipped > 0);
-    res->shrink(skipped, false);
+    res->shrink(skipped);
   }
 
   result = res.release();
