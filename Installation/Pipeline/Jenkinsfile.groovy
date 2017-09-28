@@ -383,7 +383,7 @@ def generateResult() {
     def html = "<html><body><table>\n"
     html += "<tr><th>Name</th><th>Start</th><th>Stop</th><th>Duration</th><th>Message</th></tr>\n"
 
-    for (key in resultsKeys) {
+    for (key in resultsKeys.sort()) {
         def start = resultsStart[key] ?: ""
         def stop = resultsStop[key] ?: ""
         def msg = resultsStatus[key] ?: ""
@@ -421,12 +421,10 @@ def generateResult() {
 
     html += "</table></body></html>\n"
 
-    node("master") {
-        fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
-        fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
+    fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
+    fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
 
-        archiveArtifacts(allowEmptyArchive: true, artifacts: "results.*")
-    }
+    archiveArtifacts(allowEmptyArchive: true, artifacts: "results.*")
 }
 
 // -----------------------------------------------------------------------------
@@ -1084,16 +1082,16 @@ def testStepParallel(os, edition, maintainer, modeList) {
         }
     }
 
-    def name = "test-${os}-${edition}-${maintainer}"
+    def name = "${os}-${edition}-${maintainer}"
 
     if (branches) {
         try {
-            logStartStage(null, name, null)
+            node("linux") { logStartStage(null, name, null) }
             parallel branches
-            logStopStage(null, name)
+            node("linux") { logStopStage(null, name) }
         }
         catch (exc) {
-            logExceptionStage(null, name, null, exc)
+            node("linux") { logExceptionStage(null, name, null, exc) }
             throw exc
         }
     }
@@ -1455,13 +1453,13 @@ def runOperatingSystems(osList) {
 
 timestamps {
     try {
-        node("master") {
+        node("linux") {
             echo sh(returnStdout: true, script: 'env')
         }
 
         checkCommitMessages()
 
-        node("master") {
+        node("linux") {
             fileOperations([fileCreateOperation(fileContent: overview, fileName: "overview.txt")])
             archiveArtifacts(allowEmptyArchive: true, artifacts: "overview.txt")
         }
@@ -1469,6 +1467,8 @@ timestamps {
         runOperatingSystems(['linux', 'mac', 'windows'])
     }
     finally {
-        generateResult()
+        node("linux") {
+            generateResult()
+        }
     }
 }
