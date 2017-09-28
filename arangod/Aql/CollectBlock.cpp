@@ -626,10 +626,10 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
   TRI_ASSERT(_aggregateRegisters.size() == en->_aggregateVariables.size());
 
-  std::unordered_map<std::vector<AqlValue>, AggregateValuesType*, GroupKeyHash,
-                     GroupKeyEqual> allGroups(1024,
-                                              GroupKeyHash(_trx, _groupRegisters.size()),
-                                              GroupKeyEqual(_trx));
+  std::unordered_map<std::vector<AqlValue>, AggregateValuesType*, AqlValueGroupHash,
+                     AqlValueGroupEqual> allGroups(1024,
+                                              AqlValueGroupHash(_trx, _groupRegisters.size()),
+                                              AqlValueGroupEqual(_trx));
 
   // cleanup function for group values
   auto cleanup = [&allGroups]() -> void {
@@ -838,40 +838,6 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
   return TRI_ERROR_NO_ERROR;
 }
 
-/// @brief hasher for groups
-size_t HashedCollectBlock::GroupKeyHash::operator()(
-    std::vector<AqlValue> const& value) const {
-  uint64_t hash = 0x12345678;
-
-  TRI_ASSERT(value.size() == _num);
-
-  for (auto const& it : value) {
-    // we must use the slow hash function here, because a value may have 
-    // different representations in case its an array/object/number
-    // (calls normalizedHash() internally)
-    hash = it.hash(_trx, hash);
-  }
-
-  return static_cast<size_t>(hash);
-}
-
-/// @brief comparator for groups
-bool HashedCollectBlock::GroupKeyEqual::operator()(
-    std::vector<AqlValue> const& lhs, std::vector<AqlValue> const& rhs) const {
-  size_t const n = lhs.size();
-
-  for (size_t i = 0; i < n; ++i) {
-    int res =
-        AqlValue::Compare(_trx, lhs[i], rhs[i], false);
-
-    if (res != 0) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 DistinctCollectBlock::DistinctCollectBlock(ExecutionEngine* engine,
                                            CollectNode const* en)
     : ExecutionBlock(engine, en),
@@ -892,8 +858,8 @@ DistinctCollectBlock::DistinctCollectBlock(ExecutionEngine* engine,
 
   TRI_ASSERT(!_groupRegisters.empty());
       
-  _seen.reset(new std::unordered_set<std::vector<AqlValue>, GroupKeyHash, GroupKeyEqual>(
-      1024, GroupKeyHash(transaction(), _groupRegisters.size()), GroupKeyEqual(transaction())));
+  _seen.reset(new std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual>(
+      1024, AqlValueGroupHash(transaction(), _groupRegisters.size()), AqlValueGroupEqual(transaction())));
 }
 
 DistinctCollectBlock::~DistinctCollectBlock() {
@@ -1067,38 +1033,4 @@ int DistinctCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
   result = res.release();
   return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief hasher for groups
-size_t DistinctCollectBlock::GroupKeyHash::operator()(
-    std::vector<AqlValue> const& value) const {
-  uint64_t hash = 0x12345678;
-
-  TRI_ASSERT(value.size() == _num);
-
-  for (auto const& it : value) {
-    // we must use the slow hash function here, because a value may have 
-    // different representations in case its an array/object/number
-    // (calls normalizedHash() internally)
-    hash = it.hash(_trx, hash);
-  }
-
-  return static_cast<size_t>(hash);
-}
-
-/// @brief comparator for groups
-bool DistinctCollectBlock::GroupKeyEqual::operator()(
-    std::vector<AqlValue> const& lhs, std::vector<AqlValue> const& rhs) const {
-  size_t const n = lhs.size();
-
-  for (size_t i = 0; i < n; ++i) {
-    int res =
-        AqlValue::Compare(_trx, lhs[i], rhs[i], false);
-
-    if (res != 0) {
-      return false;
-    }
-  }
-
-  return true;
 }
