@@ -31,6 +31,8 @@
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
@@ -40,29 +42,25 @@ using namespace arangodb::aql;
 
 EnumerateCollectionBlock::EnumerateCollectionBlock(
     ExecutionEngine* engine, EnumerateCollectionNode const* ep)
-    : ExecutionBlock(engine, ep),
+    : ExecutionBlock(engine, ep), 
+      DocumentProducingBlock(ep, _trx),
       _collection(ep->_collection),
       _mmdr(new ManagedDocumentResult),
       _cursor(
           _trx->indexScan(_collection->getName(),
                           (ep->_random ? transaction::Methods::CursorType::ANY
                                        : transaction::Methods::CursorType::ALL),
-                          _mmdr.get(), 0, UINT64_MAX, 1000, false)),
-      _mustStoreResult(true) {
+                          _mmdr.get(), false)) {
   TRI_ASSERT(_cursor->successful());
 }
 
 int EnumerateCollectionBlock::initialize() {
   DEBUG_BEGIN_BLOCK();
-  auto ep = static_cast<EnumerateCollectionNode const*>(_exeNode);
-  _mustStoreResult = ep->isVarUsedLater(ep->_outVariable);
 
   if (_collection->isSatellite()) {
     auto logicalCollection = _collection->getCollection();
     auto cid = logicalCollection->planId();
     auto dbName = logicalCollection->dbName();
-    auto collectionInfoCurrent = ClusterInfo::instance()->getCollectionCurrent(
-        dbName, std::to_string(cid));
 
     double maxWait = _engine->getQuery()->queryOptions().satelliteSyncWait;
     bool inSync = false;
@@ -72,6 +70,8 @@ int EnumerateCollectionBlock::initialize() {
     double endTime = startTime + maxWait;
 
     while (!inSync) {
+      auto collectionInfoCurrent = ClusterInfo::instance()->getCollectionCurrent(
+        dbName, std::to_string(cid));
       auto followers = collectionInfoCurrent->servers(_collection->getName());
       inSync = std::find(followers.begin(), followers.end(),
                          ServerState::instance()->getId()) != followers.end();
@@ -90,7 +90,7 @@ int EnumerateCollectionBlock::initialize() {
     if (!inSync) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_CLUSTER_AQL_COLLECTION_OUT_OF_SYNC,
-          "collection " + _collection->name);
+          "collection " + _collection->name + " did not come into sync in time (" + std::to_string(maxWait) +")");
     }
   }
 
@@ -135,7 +135,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
     traceGetSomeEnd(nullptr);
     return nullptr;
   }
-
+    
   bool needMore;
   AqlItemBlock* cur = nullptr;
   size_t send = 0;
@@ -185,51 +185,26 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
     // only copy 1st row of registers inherited from previous frame(s)
     inheritRegisters(cur, res.get(), _pos);
 
-    auto col = _collection->getCollection();
-    LogicalCollection* c = col.get();
-    std::function<void(DocumentIdentifierToken const& tkn)> cb;
-    if (_mustStoreResult) {
-      cb = [&](DocumentIdentifierToken const& tkn) {
-        if (c->readDocument(_trx, tkn, *_mmdr)) {
-          // The result is in the first variable of this depth,
-          // we do not need to do a lookup in
-          // getPlanNode()->_registerPlan->varInfo,
-          // but can just take cur->getNrRegs() as registerId:
-          uint8_t const* vpack = _mmdr->vpack();
-          if (_mmdr->canUseInExternal()) {
-            res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs),
-                          AqlValue(vpack, AqlValueFromManagedDocument()));
-          } else {
-            AqlValue a(_mmdr->createAqlValue());
-            AqlValueGuard guard(a, true);
-            res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs), a);
-            guard.steal();
-          }
-        }
-
-        if (send > 0) {
-          // re-use already copied AQLValues
-          res->copyValuesFromFirstRow(send, static_cast<RegisterId>(curRegs));
-        }
-        ++send;
-      };
-    } else {
-      cb = [&](DocumentIdentifierToken const& tkn) {
-        if (send > 0) {
-          // re-use already copied AQLValues
-          res->copyValuesFromFirstRow(send, static_cast<RegisterId>(curRegs));
-        }
-        ++send;
-      };
-    }
-
     throwIfKilled();  // check if we were aborted
     
     TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-
-    bool tmp = _cursor->next(cb, atMost);
+   
+    bool tmp;
+    if (produceResult()) {
+      // properly build up results by fetching the actual documents
+      // using nextDocument()
+      tmp = _cursor->nextDocument([&](DocumentIdentifierToken const&, VPackSlice slice) {
+        _documentProducer(res.get(), slice, curRegs, send, 0);
+      }, atMost);
+    } else {
+      // performance optimization: we do not need the documents at all,
+      // so just call next()
+      tmp = _cursor->next([&](DocumentIdentifierToken const&) {
+        _documentProducer(res.get(), VPackSlice::nullSlice(), curRegs, send, 0);
+      }, atMost);
+    }
     if (!tmp) {
       TRI_ASSERT(!_cursor->hasMore());
     }
@@ -241,7 +216,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
 
   if (send < atMost) {
     // The collection did not have enough results
-    res->shrink(send, false);
+    res->shrink(send);
   }
 
   // Clear out registers no longer needed later:

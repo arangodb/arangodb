@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertFalse, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertEqual, assertTrue, assertFalse, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ COUNT
@@ -310,6 +310,38 @@ function optimizerCollectMethodsTestSuite () {
       });
     },
 
+    testSkip : function () {
+      for (var i = 0; i < 10000; ++i) {
+        c.insert({ value: "test" + i });
+      }
+
+      var query = "FOR doc IN " + c.name() + " COLLECT v = doc.value INTO group LIMIT 1, 2 RETURN group"; 
+        
+      var plan = AQL_EXPLAIN(query).plan;
+
+      var aggregateNodes = 0;
+      var sortNodes = 0;
+      plan.nodes.map(function(node) {
+        if (node.type === "CollectNode") {
+          ++aggregateNodes;
+          assertEqual("sorted", node.collectOptions.method);
+        }
+        if (node.type === "SortNode") {
+          ++sortNodes;
+        }
+      });
+        
+      assertEqual(1, aggregateNodes);
+      assertEqual(1, sortNodes);
+
+      var result = AQL_EXECUTE(query).json;
+      assertEqual(2, result.length);
+      assertTrue(Array.isArray(result[0]));
+      assertTrue(Array.isArray(result[1]));
+      assertEqual(1, result[0].length);
+      assertEqual(1, result[1].length);
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test override of collect method
 ////////////////////////////////////////////////////////////////////////////////
@@ -393,6 +425,18 @@ function optimizerCollectMethodsTestSuite () {
 
       assertEqual([ 1, 2, 3, 4 ], result[0]);
       assertEqual([ 2, 3, 4, 5, 6 ], result[1]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test collect result bigger than block size
+////////////////////////////////////////////////////////////////////////////////
+
+    testCollectResultBiggerThanBlocksize : function () {
+      var result = AQL_EXECUTE("FOR doc IN " + c.name() + " COLLECT id = doc.value INTO g RETURN { id, g }").json;
+      assertEqual(1500, result.length);
+      
+      result = AQL_EXECUTE("FOR doc IN " + c.name() + " COLLECT id = doc.group INTO g RETURN { id, g }").json;
+      assertEqual(10, result.length);
     }
 
   };

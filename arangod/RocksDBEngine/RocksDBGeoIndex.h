@@ -130,24 +130,15 @@ class RocksDBGeoIndex final : public RocksDBIndex {
   bool isSorted() const override { return true; }
 
   bool hasSelectivityEstimate() const override { return false; }
-
-  size_t memory() const override;
-
+  
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
   // Uses default toVelocyPackFigures
 
   bool matchesDefinition(VPackSlice const& info) const override;
 
-  int insert(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
-  int insertRaw(RocksDBMethods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&) override;
-  int remove(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
-  int removeRaw(RocksDBMethods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&) override;
+  void unload() override {}
 
-  int unload() override;
+  void truncate(transaction::Methods*) override;
 
   /// @brief looks up all points within a given radius
   arangodb::rocksdbengine::GeoCoordinates* withinQuery(transaction::Methods*,
@@ -168,6 +159,15 @@ class RocksDBGeoIndex final : public RocksDBIndex {
     return (!_latitude.empty() && !_longitude.empty() &&
             _latitude == latitude && _longitude == longitude);
   }
+
+  /// insert index elements into the specified write batch.
+  Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
+                        TRI_voc_rid_t,
+                        arangodb::velocypack::Slice const&) override;
+
+  /// remove index elements and put it in the specified write batch.
+  Result removeInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
+                        arangodb::velocypack::Slice const&) override;
 
  private:
   /// internal insert function, set batch or trx before calling

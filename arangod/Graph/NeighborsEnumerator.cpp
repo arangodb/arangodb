@@ -25,8 +25,9 @@
 
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/EdgeCursor.h"
+#include "Graph/Traverser.h"
 #include "Graph/TraverserCache.h"
-#include "VocBase/Traverser.h"
+#include "Graph/TraverserOptions.h"
 
 using namespace arangodb;
 using namespace arangodb::graph;
@@ -58,21 +59,35 @@ bool NeighborsEnumerator::next() {
         // We are finished.
         return false;
       }
+      TRI_ASSERT(!_opts->vertexHasFilter(_searchDepth));
 
       _lastDepth.swap(_currentDepth);
       _currentDepth.clear();
       for (auto const& nextVertex : _lastDepth) {
-        auto callback = [&](std::unique_ptr<EdgeDocumentToken>&&,
+        auto callback = [&](EdgeDocumentToken&&,
                             VPackSlice other, size_t cursorId) {
           // Counting should be done in readAll
           StringRef v;
-          if (_traverser->getSingleVertex(other, nextVertex, _searchDepth, v)) {
-            if (_allFound.find(v) == _allFound.end()) {
-              _currentDepth.emplace(v);
-              _allFound.emplace(v);
+          if (other.isString()) {
+            v = _opts->cache()->persistString(StringRef(other));
+          } else {
+            TRI_ASSERT(other.isObject());
+            VPackSlice tmp = transaction::helpers::extractFromFromDocument(other);
+            if (tmp.compareString(nextVertex.data(), nextVertex.length()) == 0) {
+              tmp = transaction::helpers::extractToFromDocument(other);
             }
+            TRI_ASSERT(tmp.isString());
+            v = _opts->cache()->persistString(StringRef(tmp));
+          }
+
+          if (_allFound.find(v) == _allFound.end()) {
+            _currentDepth.emplace(v);
+            _allFound.emplace(v);
+          } else {
+            _opts->cache()->increaseFilterCounter();
           }
         };
+
         std::unique_ptr<arangodb::graph::EdgeCursor> cursor(
             _opts->nextCursor(_traverser->mmdr(), nextVertex, _searchDepth));
         cursor->readAll(callback);

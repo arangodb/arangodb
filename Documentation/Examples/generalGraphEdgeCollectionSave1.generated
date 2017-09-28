@@ -4,5 +4,5 @@ arangosh&gt; graph.relation.save(<span class="hljs-string">"male/bob"</span>, <s
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/bobAndAlice"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bobAndAlice"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qEngS---"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VRerH_i--_"</span> 
 }

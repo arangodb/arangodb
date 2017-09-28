@@ -23,9 +23,9 @@
 
 #include "V8Expression.h"
 #include "Aql/AqlItemBlock.h"
-#include "Aql/Executor.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
+#include "Aql/V8Executor.h"
 #include "Aql/Variable.h"
 #include "Basics/VelocyPackHelper.h"
 #include "V8/v8-conv.h"
@@ -86,7 +86,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
       if (it != _attributeRestrictions.end()) {
         // build a partial object
         values->ForceSet(
-            TRI_V8_STD_STRING(varname),
+            TRI_V8_STD_STRING(isolate, varname),
             value.toV8Partial(isolate, trx, (*it).second));
         continue;
       }
@@ -95,7 +95,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
     // fallthrough to building the complete object
 
     // build the regular object
-    values->ForceSet(TRI_V8_STD_STRING(varname),
+    values->ForceSet(TRI_V8_STD_STRING(isolate, varname),
                      value.toV8(isolate, trx));
   }
 
@@ -133,7 +133,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
 
     v8g->_query = old;
 
-    Executor::HandleV8Error(tryCatch, result, nullptr, false);
+    V8Executor::HandleV8Error(tryCatch, result, nullptr, false);
   } catch (...) {
     v8g->_query = old;
     // bubble up exception
@@ -145,7 +145,7 @@ AqlValue V8Expression::execute(v8::Isolate* isolate, Query* query,
   if (result->IsUndefined()) {
     // expression does not have any (defined) value. replace with null
     mustDestroy = false;
-    return AqlValue(basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   } 
   
   // expression had a result. convert it to JSON

@@ -43,9 +43,10 @@ using namespace arangodb::aql;
 /// @brief hashes the value
 uint64_t AqlValue::hash(transaction::Methods* trx, uint64_t seed) const {
   switch (type()) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
-    case VPACK_MANAGED: {
+    case VPACK_SLICE_POINTER:
+    case VPACK_MANAGED_SLICE:
+    case VPACK_MANAGED_BUFFER: {
       // we must use the slow hash function here, because a value may have
       // different representations in case it's an array/object/number
       return slice().normalizedHash(seed);
@@ -158,41 +159,32 @@ bool AqlValue::isArray() const noexcept {
   }
 }
 
-std::array<std::string const, 8> AqlValue::typeStrings = { {
-  "none",
-  "null",
-  "bool",
-  "number",
-  "string",
-  "object",
-  "array",
-  "unknown"} };
-
-std::string const & AqlValue::getTypeString() const noexcept {
-  if(isNone()) {
-    return typeStrings[0];
-  } else if(isNull(true)) {
-     return typeStrings[1];
-  } else if(isBoolean()) {
-     return typeStrings[2];
-  } else if(isNumber()) {
-     return typeStrings[3];
-  } else if(isString()) {
-     return typeStrings[4];
-  } else if(isObject()) {
-     return typeStrings[5];
-  } else if(isArray()){
-     return typeStrings[6];
+char const* AqlValue::getTypeString() const noexcept {
+  if (isNone()) {
+    return "none";
+  } else if (isNull(true)) {
+     return "null";
+  } else if (isBoolean()) {
+     return "bool";
+  } else if (isNumber()) {
+     return "number";
+  } else if (isString()) {
+     return "string";
+  } else if (isObject()) {
+     return "object";
+  } else if (isArray()){
+     return "array";
   }
-  return typeStrings[7];
+  return "none";
 }
 
 /// @brief get the (array) length (note: this treats ranges as arrays, too!)
 size_t AqlValue::length() const {
   switch (type()) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
-    case VPACK_MANAGED: {
+    case VPACK_SLICE_POINTER:
+    case VPACK_MANAGED_SLICE:
+    case VPACK_MANAGED_BUFFER: {
       return static_cast<size_t>(slice().length());
     }
     case DOCVEC: {
@@ -217,7 +209,9 @@ AqlValue AqlValue::at(transaction::Methods* trx,
     // fall-through intentional
     case VPACK_INLINE:
     // fall-through intentional
-    case VPACK_MANAGED: {
+    case VPACK_MANAGED_SLICE:
+    // fall-through intentional
+    case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isArray()) {
         int64_t const n = static_cast<int64_t>(s.length());
@@ -272,7 +266,7 @@ AqlValue AqlValue::at(transaction::Methods* trx,
 
       if (position >= 0 && position < static_cast<int64_t>(n)) {
         // only look up the value if it is within array bounds
-        return AqlValue(_data.range->at(static_cast<size_t>(position)));
+        return AqlValue(AqlValueHintInt(_data.range->at(static_cast<size_t>(position))));
       }
       // fall-through intentional
       break;
@@ -280,7 +274,7 @@ AqlValue AqlValue::at(transaction::Methods* trx,
   }
 
   // default is to return null
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief get the _key attribute from an object/document
@@ -289,11 +283,13 @@ AqlValue AqlValue::getKeyAttribute(transaction::Methods* trx,
   mustDestroy = false;
   switch (type()) {
     case VPACK_SLICE_POINTER:
-    // fall-through intentional
       doCopy = false;
+    // fall-through intentional
     case VPACK_INLINE:
     // fall-through intentional
-    case VPACK_MANAGED: {
+    case VPACK_MANAGED_SLICE:
+    // fall-through intentional
+    case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isObject()) {
         VPackSlice found = transaction::helpers::extractKeyFromDocument(s);
@@ -317,7 +313,7 @@ AqlValue AqlValue::getKeyAttribute(transaction::Methods* trx,
   }
 
   // default is to return null
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief get the _id attribute from an object/document
@@ -330,7 +326,9 @@ AqlValue AqlValue::getIdAttribute(transaction::Methods* trx,
     // fall-through intentional
     case VPACK_INLINE:
     // fall-through intentional
-    case VPACK_MANAGED: {
+    case VPACK_MANAGED_SLICE:
+    // fall-through intentional
+    case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isObject()) {
         VPackSlice found = transaction::helpers::extractIdFromDocument(s);
@@ -359,7 +357,7 @@ AqlValue AqlValue::getIdAttribute(transaction::Methods* trx,
   }
 
   // default is to return null
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief get the _from attribute from an object/document
@@ -372,7 +370,9 @@ AqlValue AqlValue::getFromAttribute(transaction::Methods* trx,
     // fall-through intentional
     case VPACK_INLINE:
     // fall-through intentional
-    case VPACK_MANAGED: {
+    case VPACK_MANAGED_SLICE:
+    // fall-through intentional
+    case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isObject()) {
         VPackSlice found = transaction::helpers::extractFromFromDocument(s);
@@ -396,7 +396,7 @@ AqlValue AqlValue::getFromAttribute(transaction::Methods* trx,
   }
 
   // default is to return null
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief get the _to attribute from an object/document
@@ -409,7 +409,9 @@ AqlValue AqlValue::getToAttribute(transaction::Methods* trx,
     // fall-through intentional
     case VPACK_INLINE:
     // fall-through intentional
-    case VPACK_MANAGED: {
+    case VPACK_MANAGED_SLICE:
+    // fall-through intentional
+    case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isObject()) {
         VPackSlice found = transaction::helpers::extractToFromDocument(s);
@@ -433,7 +435,7 @@ AqlValue AqlValue::getToAttribute(transaction::Methods* trx,
   }
 
   // default is to return null
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief get the (object) element by name
@@ -447,7 +449,9 @@ AqlValue AqlValue::get(transaction::Methods* trx,
     // fall-through intentional
     case VPACK_INLINE:
     // fall-through intentional
-    case VPACK_MANAGED: {
+    case VPACK_MANAGED_SLICE:
+    // fall-through intentional
+    case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isObject()) {
         VPackSlice found(s.get(name));
@@ -476,7 +480,7 @@ AqlValue AqlValue::get(transaction::Methods* trx,
   }
 
   // default is to return null
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief get the (object) element(s) by name
@@ -485,7 +489,7 @@ AqlValue AqlValue::get(transaction::Methods* trx,
                        bool& mustDestroy, bool doCopy) const {
   mustDestroy = false;
   if (names.empty()) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   switch (type()) {
@@ -494,7 +498,9 @@ AqlValue AqlValue::get(transaction::Methods* trx,
     // fall-through intentional
     case VPACK_INLINE:
     // fall-through intentional
-    case VPACK_MANAGED: {
+    case VPACK_MANAGED_SLICE:
+    // fall-through intentional
+    case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isObject()) {
         if (s.isExternal()) {
@@ -512,7 +518,7 @@ AqlValue AqlValue::get(transaction::Methods* trx,
 
           if (s.isNone()) {
             // not found
-            return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+            return AqlValue(AqlValueHintNull());
           } else if (s.isCustom()) {
             // _id needs special treatment
             if (i + 1 == n) {
@@ -521,9 +527,9 @@ AqlValue AqlValue::get(transaction::Methods* trx,
               return AqlValue(transaction::helpers::extractIdString(trx->resolver(), s, prev));
             }
             // x._id.y
-            return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+            return AqlValue(AqlValueHintNull());
           } else if (i + 1 < n && !s.isObject()) {
-            return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+            return AqlValue(AqlValueHintNull());
           }
         }
 
@@ -547,16 +553,17 @@ AqlValue AqlValue::get(transaction::Methods* trx,
   }
 
   // default is to return null
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief check whether an object has a specific key
 bool AqlValue::hasKey(transaction::Methods* trx,
                       std::string const& name) const {
   switch (type()) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
-    case VPACK_MANAGED: {
+    case VPACK_SLICE_POINTER:
+    case VPACK_MANAGED_SLICE:
+    case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       return (s.isObject() && s.hasKey(name));
     }
@@ -579,9 +586,10 @@ double AqlValue::toDouble(transaction::Methods* trx) const {
 double AqlValue::toDouble(transaction::Methods* trx, bool& failed) const {
   failed = false;
   switch (type()) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
-    case VPACK_MANAGED: {
+    case VPACK_SLICE_POINTER:
+    case VPACK_MANAGED_SLICE:
+    case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isNull()) {
         return 0.0;
@@ -645,9 +653,10 @@ double AqlValue::toDouble(transaction::Methods* trx, bool& failed) const {
 /// @brief get the numeric value of an AqlValue
 int64_t AqlValue::toInt64(transaction::Methods* trx) const {
   switch (type()) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
-    case VPACK_MANAGED: {
+    case VPACK_SLICE_POINTER:
+    case VPACK_MANAGED_SLICE:
+    case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isNumber()) {
         return s.getNumber<int64_t>();
@@ -696,9 +705,10 @@ int64_t AqlValue::toInt64(transaction::Methods* trx) const {
 /// @brief whether or not the contained value evaluates to true
 bool AqlValue::toBoolean() const {
   switch (type()) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
-    case VPACK_MANAGED: {
+    case VPACK_SLICE_POINTER:
+    case VPACK_MANAGED_SLICE:
+    case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isBoolean()) {
         return s.getBoolean();
@@ -768,7 +778,7 @@ v8::Handle<v8::Value> AqlValue::toV8Partial(
         continue;
       }
 
-      result->ForceSet(TRI_V8_STD_STRING((*it2)),
+      result->ForceSet(TRI_V8_STD_STRING(isolate, (*it2)),
                        TRI_VPackToV8(isolate, it.value, options, &s));
 
       if (--left == 0) {
@@ -790,9 +800,10 @@ v8::Handle<v8::Value> AqlValue::toV8(
     v8::Isolate* isolate, transaction::Methods* trx) const {
   
   switch (type()) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
-    case VPACK_MANAGED: {
+    case VPACK_SLICE_POINTER:
+    case VPACK_MANAGED_SLICE:
+    case VPACK_MANAGED_BUFFER: {
       VPackOptions* options = trx->transactionContext()->getVPackOptions();
       return TRI_VPackToV8(isolate, slice(), options);
     }
@@ -851,7 +862,8 @@ void AqlValue::toVelocyPack(transaction::Methods* trx,
         break;
       }  // fallthrough intentional
     case VPACK_INLINE:
-    case VPACK_MANAGED: {
+    case VPACK_MANAGED_SLICE:
+    case VPACK_MANAGED_BUFFER: {
       if (resolveExternals) {
         bool const sanitizeExternals = true;
         bool const sanitizeCustom = true;
@@ -889,9 +901,10 @@ void AqlValue::toVelocyPack(transaction::Methods* trx,
 AqlValue AqlValue::materialize(transaction::Methods* trx, bool& hasCopied,
                                bool resolveExternals) const {
   switch (type()) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
-    case VPACK_MANAGED: {
+    case VPACK_SLICE_POINTER:
+    case VPACK_MANAGED_SLICE:
+    case VPACK_MANAGED_BUFFER: {
       hasCopied = false;
       return *this;
     }
@@ -916,25 +929,24 @@ AqlValue AqlValue::materialize(transaction::Methods* trx, bool& hasCopied,
 /// @brief clone a value
 AqlValue AqlValue::clone() const {
   switch (type()) {
-    case VPACK_SLICE_POINTER: {
-      if (isManagedDocument()) {
-        // copy from externally managed document. this will not copy the data
-        return AqlValue(_data.pointer, AqlValueFromManagedDocument());
-      }
-      // copy from regular pointer. this may copy the data
-      return AqlValue(_data.pointer);
-    }
     case VPACK_INLINE: {
       // copy internal data
       return AqlValue(slice());
     }
-    case VPACK_MANAGED: {
+    case VPACK_SLICE_POINTER: {
+      if (isManagedDocument()) {
+        // copy from externally managed document. this will not copy the data
+        return AqlValue(AqlValueHintDocumentNoCopy(_data.pointer));
+      }
+      // copy from regular pointer. this may copy the data
+      return AqlValue(_data.pointer);
+    }
+    case VPACK_MANAGED_SLICE: {
+      return AqlValue(AqlValueHintCopy(_data.slice));
+    }
+    case VPACK_MANAGED_BUFFER: {
       // copy buffer
-      VPackValueLength length = _data.buffer->size();
-      auto buffer = new VPackBuffer<uint8_t>(length);
-      buffer->append(reinterpret_cast<char const*>(_data.buffer->data()),
-                     length);
-      return AqlValue(buffer);
+      return AqlValue(VPackSlice(_data.buffer->data()));
     }
     case DOCVEC: {
       auto c = std::make_unique<std::vector<AqlItemBlock*>>();
@@ -962,14 +974,18 @@ AqlValue AqlValue::clone() const {
 }
 
 /// @brief destroy the value's internals
-void AqlValue::destroy() {
+void AqlValue::destroy() noexcept {
   switch (type()) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE: {
+    case VPACK_SLICE_POINTER:
       // nothing to do
       return;
     }
-    case VPACK_MANAGED: {
+    case VPACK_MANAGED_SLICE: {
+      delete[] _data.slice;
+      break;
+    }
+    case VPACK_MANAGED_BUFFER: {
       delete _data.buffer;
       break;
     }
@@ -992,9 +1008,6 @@ void AqlValue::destroy() {
 /// @brief return the slice from the value
 VPackSlice AqlValue::slice() const {
   switch (type()) {
-    case VPACK_SLICE_POINTER: {
-      return VPackSlice(_data.pointer);
-    }
     case VPACK_INLINE: {
       VPackSlice s(&_data.internal[0]);
       if (s.isExternal()) {
@@ -1002,7 +1015,17 @@ VPackSlice AqlValue::slice() const {
       }
       return s;
     }
-    case VPACK_MANAGED: {
+    case VPACK_SLICE_POINTER: {
+      return VPackSlice(_data.pointer);
+    }
+    case VPACK_MANAGED_SLICE: {
+      VPackSlice s(_data.slice);
+      if (s.isExternal()) {
+        s = s.resolveExternal();
+      }
+      return s;
+    }
+    case VPACK_MANAGED_BUFFER: {
       VPackSlice s(_data.buffer->data());
       if (s.isExternal()) {
         s = s.resolveExternal();
@@ -1082,8 +1105,6 @@ AqlValue AqlValue::CreateFromBlocks(
 /// @brief 3-way comparison for AqlValue objects
 int AqlValue::Compare(transaction::Methods* trx, AqlValue const& left,
                       AqlValue const& right, bool compareUtf8) {
-  VPackOptions* options = trx->transactionContextPtr()->getVPackOptions();
-
   AqlValue::AqlValueType const leftType = left.type();
   AqlValue::AqlValueType const rightType = right.type();
 
@@ -1098,7 +1119,7 @@ int AqlValue::Compare(transaction::Methods* trx, AqlValue const& left,
       right.toVelocyPack(trx, rightBuilder, false);
 
       return arangodb::basics::VelocyPackHelper::compare(
-          leftBuilder.slice(), rightBuilder.slice(), compareUtf8, options);
+          leftBuilder.slice(), rightBuilder.slice(), compareUtf8, trx->transactionContextPtr()->getVPackOptions());
     }
     // fall-through to other types intentional
   }
@@ -1106,11 +1127,12 @@ int AqlValue::Compare(transaction::Methods* trx, AqlValue const& left,
   // if we get here, types are equal or can be treated as being equal
 
   switch (leftType) {
-    case VPACK_SLICE_POINTER:
     case VPACK_INLINE:
-    case VPACK_MANAGED: {
+    case VPACK_SLICE_POINTER:
+    case VPACK_MANAGED_SLICE: 
+    case VPACK_MANAGED_BUFFER: {
       return arangodb::basics::VelocyPackHelper::compare(
-          left.slice(), right.slice(), compareUtf8, options);
+          left.slice(), right.slice(), compareUtf8, trx->transactionContextPtr()->getVPackOptions());
     }
     case DOCVEC: {
       // use lexicographic ordering of AqlValues regardless of block,

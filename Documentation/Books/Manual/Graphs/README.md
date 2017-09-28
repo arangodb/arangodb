@@ -9,6 +9,11 @@ Which collections are used within a named graph is defined via *edge definitions
 A named graph can contain more than one *edge definition*, at least one is needed.
 Graphs allow you to structure your models in line with your domain and group them logically in collections and giving you the power to query them in the same graph queries.
 
+{% hint 'info' %}
+New to graphs? [**Take our free graph course for freshers**](https://www.arangodb.com/arangodb-graph-course/)
+and get from zero knowledge to advanced query techniques.
+{% endhint %}
+
 ### Coming from a relational background - what's a graph?
 
 In SQL you commonly have the construct of a relation table to store *n:m* relations between two data tables.
@@ -74,7 +79,7 @@ i.e. `"friends"`, `"family"`, `"married"` or `"workmates"`, so you can later `FI
 if you only want to follow the friend edges.
 
 Another way, which may be more efficient in some cases, is to use different edge collections for different
-types of edges, so you have `friend_eges`, `family_edges`, `married_edges` and `workmate_edges` as collection names.
+types of edges, so you have `friend_edges`, `family_edges`, `married_edges` and `workmate_edges` as collection names.
 You can then configure several named graphs including a subset of the available edge and vertex collections -
 or you use anonymous graph queries, where you specify a list of edge collections to take into account in that query.
 To only follow friend edges, you would specify `friend_edges` as sole edge collection.
@@ -145,6 +150,11 @@ and [Arangorestore](../Administration/Arangorestore.md) to restore a backup into
 
 - you need the system collection `_graphs` if you backup named graphs.
 - you need to backup the complete set of all edge and vertex collections your graph consists of. Partial dump/restore may not work.
+
+### Managing graphs
+By default you should use [the interface your driver provides to manage graphs](../HTTP/Gharial/Management.html).
+
+This is i.e. documented [in Graphs-Section of the ArangoDB Java driver](https://github.com/arangodb/arangodb-java-driver#graphs).
 
 ### Example Graphs
 
@@ -265,11 +275,11 @@ It is used to demonstrate raw traversal operations.
 
 The above referenced chapters describe the various APIs of ArangoDBs graph engine with small examples. Our cookbook has some more real life examples:
 
- - [Traversing a graph in full depth](https://docs.arangodb.com/cookbook/Graph/FulldepthTraversal.html)
- - [Using an example vertex with the java driver](https://docs.arangodb.com/cookbook/Graph/JavaDriverGraphExampleVertex.html)
+ - [Traversing a graph in full depth](../../Cookbook/Graph/FulldepthTraversal.html)
+ - [Using an example vertex with the java driver](../../Cookbook/Graph/JavaDriverGraphExampleVertex.html)
  - [Retrieving documents from ArangoDB without knowing the structure](https://docs.arangodb.com/cookbook/Graph/JavaDriverBaseDocument.html)
- - [Using a custom visitor from node.js](https://docs.arangodb.com/cookbook/Graph/CustomVisitorFromNodeJs.html)
- - [AQL Example Queries on an Actors and Movies Database](https://docs.arangodb.com/cookbook/Graph/ExampleActorsAndMovies.html)
+ - [Using a custom visitor from node.js](../../Cookbook/Graph/CustomVisitorFromNodeJs.html)
+ - [AQL Example Queries on an Actors and Movies Database](../../Cookbook/Graph/ExampleActorsAndMovies.html)
 
 ### Higher volume graph examples
 

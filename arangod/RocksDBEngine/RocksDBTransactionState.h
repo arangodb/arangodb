@@ -56,15 +56,15 @@ struct Options;
 }
 class TransactionCollection;
 class RocksDBMethods;
-  
+
 /// @brief transaction type
 class RocksDBTransactionState final : public TransactionState {
   friend class RocksDBMethods;
   friend class RocksDBReadOnlyMethods;
-  friend class RocksDBGlobalMethods;
   friend class RocksDBTrxMethods;
+  friend class RocksDBTrxUntrackedMethods;
   friend class RocksDBBatchedMethods;
-  
+
  public:
   RocksDBTransactionState(TRI_vocbase_t* vocbase, transaction::Options const&);
   ~RocksDBTransactionState();
@@ -106,9 +106,32 @@ class RocksDBTransactionState final : public TransactionState {
   RocksDBMethods* rocksdbMethods();
 
   uint64_t sequenceNumber() const;
-  
-private:
-  
+
+  static RocksDBTransactionState* toState(transaction::Methods* trx) {
+    TRI_ASSERT(trx != nullptr);
+    TransactionState* state = trx->state();
+    TRI_ASSERT(state != nullptr);
+    return static_cast<RocksDBTransactionState*>(state);
+  }
+
+  static RocksDBMethods* toMethods(transaction::Methods* trx) {
+    TRI_ASSERT(trx != nullptr);
+    TransactionState* state = trx->state();
+    TRI_ASSERT(state != nullptr);
+    return static_cast<RocksDBTransactionState*>(state)->rocksdbMethods();
+  }
+
+  /// @brief make some internal preparations for accessing this state in
+  /// parallel from multiple threads. READ-ONLY transactions
+  void prepareForParallelReads();
+  /// @brief in parallel mode. READ-ONLY transactions
+  bool inParallelMode() const { return _parallel; }
+  /// @brief temporarily lease a Builder object
+  RocksDBKey* leaseRocksDBKey();
+  /// @brief return a temporary RocksDBKey object
+  void returnRocksDBKey(RocksDBKey* key);
+
+ private:
   void createTransaction();
   arangodb::Result internalCommit();
 
@@ -135,10 +158,29 @@ private:
   /// Last collection used for transaction
   TRI_voc_cid_t _lastUsedCollection;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  /// store the number of log entries in WAL 
+  /// store the number of log entries in WAL
   uint64_t _numLogdata = 0;
 #endif
+  SmallVector<RocksDBKey*, 32>::allocator_type::arena_type _arena;
+  SmallVector<RocksDBKey*, 32> _keys;
+  bool _parallel;
 };
+
+class RocksDBKeyLeaser {
+ public:
+  explicit RocksDBKeyLeaser(transaction::Methods*);
+  ~RocksDBKeyLeaser();
+  inline RocksDBKey* builder() const { return _key; }
+  inline RocksDBKey* operator->() const { return _key; }
+  inline RocksDBKey* get() const { return _key; }
+  inline RocksDBKey& ref() const {return *_key; }
+ private:
+  RocksDBTransactionState* _rtrx;
+  bool _parallel;
+  RocksDBKey* _key;
+  RocksDBKey _internal;
+};
+
 }  // namespace arangodb
 
 #endif

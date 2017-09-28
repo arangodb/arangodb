@@ -1,5 +1,5 @@
 arangosh&gt; col = db.example;
-[ArangoCollection <span class="hljs-number">14615</span>, <span class="hljs-string">"example"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+[ArangoCollection <span class="hljs-number">14614</span>, <span class="hljs-string">"example"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
 arangosh&gt; col.drop();
 arangosh&gt; col;
-[ArangoCollection <span class="hljs-number">14615</span>, <span class="hljs-string">"example"</span> (type <span class="hljs-built_in">document</span>, status deleted)]
+[ArangoCollection <span class="hljs-number">14614</span>, <span class="hljs-string">"example"</span> (type <span class="hljs-built_in">document</span>, status deleted)]

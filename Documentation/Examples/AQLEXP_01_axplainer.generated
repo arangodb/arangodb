@@ -1,16 +1,17 @@
 arangosh&gt; db._create("test");
-[ArangoCollection 6944, "test" (type document, status loaded)]
+[ArangoCollection 6941, "test" (type document, status loaded)]
 arangosh&gt; for (i = 0; i &lt; 100; ++i) { db.test.save({ value: i }); }
 arangosh&gt; db.test.ensureIndex({ type: "skiplist", fields: [ "value" ] });
 { 
-  "id" : "test/7248", 
-  "type" : "skiplist", 
+  "deduplicate" : true, 
   "fields" : [ 
     "value" 
   ], 
-  "unique" : false, 
-  "sparse" : false, 
+  "id" : "test/7245", 
   "isNewlyCreated" : true, 
+  "sparse" : false, 
+  "type" : "skiplist", 
+  "unique" : false, 
   "code" : 201 
 }
 arangosh&gt; var explain = require("@arangodb/aql/explainer").explain;

@@ -4,12 +4,12 @@ arangosh&gt; graph.relation.save(<span class="hljs-string">"female/alice"</span>
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndDiana"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndDiana"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qEoM6---"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VRerHna---"</span> 
 }
 arangosh&gt; graph.relation.update(<span class="hljs-string">"relation/aliceAndDiana"</span>, {<span class="hljs-attr">type</span>: <span class="hljs-string">"quarreled"</span>, <span class="hljs-attr">_key</span>: <span class="hljs-string">"aliceAndDiana"</span>});
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndDiana"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndDiana"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qEoN----"</span>, 
-  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_V_qEoM6---"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VRerHne---"</span>, 
+  <span class="hljs-string">"_oldRev"</span> : <span class="hljs-string">"_VRerHna---"</span> 
 }

@@ -1,80 +1,83 @@
 #!/bin/sh
 set -e
 
+action="$1"
+version="$2"
+
 # source debconf stuff
 . /usr/share/debconf/confmodule
 
 db_version 2.0
 
-db_capb backup 
+db_capb backup
 
 DO_CONFIGURE=no
 
-if test -n "$2"; then
-# do we want to reconfigure?
-    if test "`echo $2 | sed -e 's/[a-zA-Z.-]//g' -e 's;ubuntu;;'`" -lt 127 \
-	-o "$1" = reconfigure
-	then
-	DO_CONFIGURE=yes
+if test -n "$version"; then
+    # do we want to reconfigure?
+    short_version="$(echo "$version" | sed -e 's/[a-zA-Z.-]//g' -e 's;ubuntu;;')"
+    if test "$short_version" -lt 127 -o "$action" = reconfigure; then
+        DO_CONFIGURE=yes
     fi
-else 
-# are we in first install?
-    if test "$1" = "configure"; then
-	DO_CONFIGURE=yes
+else
+    # are we in first install?
+    if test "$action" = "configure"; then
+        DO_CONFIGURE=yes
     fi
 fi
 
+#do the actual configure
 if test "$DO_CONFIGURE" = "yes"; then
     STATE=1
     LASTSTATE=5
-    while [ "$STATE" != 0 -a "$STATE" -le "$LASTSTATE" ]; do
+    while test "$STATE" -ne 0 -a \
+               "$STATE" -le "$LASTSTATE" ; do
 
-	case "$STATE" in
-	    1)
-		db_input high @CPACK_PACKAGE_NAME@/password || true
+        case "$STATE" in
+            1)
+                db_input high @CPACK_PACKAGE_NAME@/password || true
                 db_go
                 db_get @CPACK_PACKAGE_NAME@/password
-                #if [ -z "$RET" ]; then
-                #fi
-                ROOT_PW="${RET}"
-                ;;
+                ROOT_PW="$RET"
+            ;;
             2)
-		db_input high @CPACK_PACKAGE_NAME@/password_again || true
+                db_input high @CPACK_PACKAGE_NAME@/password_again || true
                 db_go
                 db_get @CPACK_PACKAGE_NAME@/password_again
-                if [ "${ROOT_PW}" = "${RET}" ]; then
+                if [ "$ROOT_PW" = "$RET" ]; then
                     ROOT_PW=""
                 else
                     db_input critical @CPACK_PACKAGE_NAME@/password_mismatch
-	            STATE=$(($STATE - 1))
+	                  STATE=$(($STATE - 2))
                     db_set @CPACK_PACKAGE_NAME@/password_again ""
                 fi
-		;;
-	    3)
+            ;;
+            3)
                 db_input high @CPACK_PACKAGE_NAME@/upgrade || true
-		;;
+            ;;
             4)
                 db_input high @CPACK_PACKAGE_NAME@/storage_engine || true
-                ;;
-	    5)
+                db_go
+            ;;
+            5)
                 db_get @CPACK_PACKAGE_NAME@/upgrade
-
                 if [ "$RET" = "true" ]; then
                     db_input high @CPACK_PACKAGE_NAME@/backup || true
                     db_go
                 else
                     db_set @CPACK_PACKAGE_NAME@/backup "false"
                 fi
-		;;
+            ;;
 
-	esac
-	if db_go; then
-	    STATE=$(($STATE + 1))
-	else
-	    STATE=$(($STATE - 1))
-	fi
-	
-    done
-fi
+        esac
+
+        if db_go; then
+            STATE=$((STATE + 1))
+        else
+            STATE=$((STATE - 1))
+        fi
+
+    done # STATE LOOP
+fi # DO_CONFIGURE
 
 exit 0

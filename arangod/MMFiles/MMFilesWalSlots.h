@@ -54,10 +54,11 @@ struct MMFilesWalSlotInfoCopy {
 
 struct MMFilesWalSlotInfo {
   explicit MMFilesWalSlotInfo(int errorCode)
-      : slot(nullptr), mem(nullptr), size(0), errorCode(errorCode) {}
+      : slot(nullptr), logfile(nullptr), mem(nullptr), size(0), errorCode(errorCode) {}
 
   explicit MMFilesWalSlotInfo(MMFilesWalSlot* slot)
       : slot(slot),
+        logfile(slot->logfile()),
         mem(slot->mem()),
         size(slot->size()),
         errorCode(TRI_ERROR_NO_ERROR) {}
@@ -65,6 +66,7 @@ struct MMFilesWalSlotInfo {
   MMFilesWalSlotInfo() : MMFilesWalSlotInfo(TRI_ERROR_NO_ERROR) {}
 
   MMFilesWalSlot* slot;
+  MMFilesWalLogfile* logfile;
   void const* mem;
   uint32_t size;
   int errorCode;
@@ -91,6 +93,9 @@ class MMFilesWalSlots {
 
   /// @brief execute a flush operation
   int flush(bool);
+  
+  /// @brief initially set the last ticks on start
+  void setLastTick(MMFilesWalSlot::TickType const&);
 
   /// @brief return the last committed tick
   MMFilesWalSlot::TickType lastCommittedTick();

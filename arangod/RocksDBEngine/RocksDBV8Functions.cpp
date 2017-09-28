@@ -46,7 +46,41 @@ static void JS_FlushWal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::Result ret = static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->syncWal();
+  bool waitForSync = false;
+  bool waitForCollector = false;
+  bool writeShutdownFile = false;
+
+  if (args.Length() > 0) {
+    if (args[0]->IsObject()) {
+      v8::Handle<v8::Object> obj = args[0]->ToObject();
+      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "waitForSync"))) {
+        waitForSync =
+            TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSync")));
+      }
+      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "waitForCollector"))) {
+        waitForCollector = TRI_ObjectToBoolean(
+            obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForCollector")));
+      }
+      if (obj->Has(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile"))) {
+        writeShutdownFile = TRI_ObjectToBoolean(
+            obj->Get(TRI_V8_ASCII_STRING(isolate, "writeShutdownFile")));
+      }
+    } else {
+      waitForSync = TRI_ObjectToBoolean(args[0]);
+
+      if (args.Length() > 1) {
+        waitForCollector = TRI_ObjectToBoolean(args[1]);
+
+        if (args.Length() > 2) {
+          writeShutdownFile = TRI_ObjectToBoolean(args[2]);
+        }
+      }
+    }
+  }
+
+  arangodb::Result ret =
+      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->syncWal(
+          waitForSync, waitForCollector, writeShutdownFile);
   if (!ret.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(ret.errorNumber(), ret.errorMessage());
   }
@@ -121,42 +155,42 @@ static void JS_RecalculateCounts(
 }
 
 static void JS_CompactCollection(
-                                 v8::FunctionCallbackInfo<v8::Value> const& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   arangodb::LogicalCollection* collection =
-  TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                               WRP_VOCBASE_COL_TYPE);
-  
+      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
+                                                   WRP_VOCBASE_COL_TYPE);
+
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
-  
+
   RocksDBCollection* physical = toRocksDBCollection(collection);
   physical->compact();
-  
+
   TRI_V8_RETURN_UNDEFINED();
   TRI_V8_TRY_CATCH_END
 }
 
 static void JS_EstimateCollectionSize(
-                                 v8::FunctionCallbackInfo<v8::Value> const& args) {
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-  
+
   arangodb::LogicalCollection* collection =
-  TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
-                                               WRP_VOCBASE_COL_TYPE);
-  
+      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
+                                                   WRP_VOCBASE_COL_TYPE);
+
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
-  
+
   RocksDBCollection* physical = toRocksDBCollection(collection);
   VPackBuilder builder;
   physical->estimateSize(builder);
-  
+
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -172,21 +206,22 @@ void RocksDBV8Functions::registerResources() {
   v8::Handle<v8::ObjectTemplate> rt =
       v8::Handle<v8::ObjectTemplate>::New(isolate, v8g->VocbaseColTempl);
   TRI_ASSERT(!rt.IsEmpty());
-  
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("recalculateCount"),
+
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "recalculateCount"),
                        JS_RecalculateCounts, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("compact"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "compact"),
                        JS_CompactCollection);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("estimatedSize"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "estimatedSize"),
                        JS_EstimateCollectionSize);
-  
+
   // add global WAL handling functions
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("WAL_FLUSH"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "WAL_FLUSH"),
                                JS_FlushWal, true);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("WAL_WAITCOLLECTOR"),
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "WAL_WAITCOLLECTOR"),
                                JS_WaitCollectorWal, true);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("WAL_PROPERTIES"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "WAL_PROPERTIES"),
                                JS_PropertiesWal, true);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("WAL_TRANSACTIONS"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "WAL_TRANSACTIONS"),
                                JS_TransactionsWal, true);
 }

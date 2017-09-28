@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global arangoHelper, Backbone, window, $ */
+/* global arangoHelper, Backbone, window, $, frontendConfig */
 
 (function () {
   'use strict';
@@ -21,6 +21,12 @@
       window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Info');
 
       this.renderInfoView();
+      // check permissions and adjust views
+      arangoHelper.checkCollectionPermissions(this.collectionName, this.changeViewToReadOnly);
+    },
+
+    changeViewToReadOnly: function () {
+      $('.breadcrumb').html($('.breadcrumb').html() + ' (read-only)');
     },
 
     breadcrumb: function () {
@@ -38,6 +44,21 @@
           arangoHelper.arangoError('Figures', 'Could not get revision.');
         } else {
           var buttons = [];
+          // analyse figures in cluster
+          if (frontendConfig.isCluster) {
+            if (figures.figures.alive.size === 0 &&
+              figures.figures.alive.count === 0 &&
+              figures.figures.datafiles.count === 0 &&
+              figures.figures.datafiles.fileSize === 0 &&
+              figures.figures.journals.count === 0 &&
+              figures.figures.journals.fileSize === 0 &&
+              figures.figures.compactors.count === 0 &&
+              figures.figures.compactors.fileSize === 0 &&
+              figures.figures.dead.size === 0 &&
+              figures.figures.dead.count === 0) {
+              figures.walMessage = ' - not ready yet - ';
+            }
+          }
           var tableContent = {
             figures: figures,
             revision: revision,

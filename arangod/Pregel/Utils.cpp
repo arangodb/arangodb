@@ -22,11 +22,8 @@
 
 #include "Utils.h"
 #include "Basics/StringUtils.h"
-
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Utils/SingleCollectionTransaction.h"
-
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 

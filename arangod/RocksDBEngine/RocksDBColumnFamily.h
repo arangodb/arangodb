@@ -27,41 +27,73 @@
 
 namespace arangodb {
 
-/// Globally defined column families. If you do change the number of column families
-/// consider if there is a need for an upgrade script. Added column families can be
-/// created automatically by rocksdb. Do check the RocksDB WAL tailing code and the
-/// counter manager. Maybe the the number of families in the shouldHandle method needs
+/// Globally defined column families. If you do change the number of column
+/// families
+/// consider if there is a need for an upgrade script. Added column families can
+/// be
+/// created automatically by rocksdb. Do check the RocksDB WAL tailing code and
+/// the
+/// counter manager. Maybe the the number of families in the shouldHandle method
+/// needs
 /// to be changed
 struct RocksDBColumnFamily {
   friend class RocksDBEngine;
 
-  static constexpr size_t numberOfColumnFamilies = 8;
-  
-  static rocksdb::ColumnFamilyHandle* other() { return _other; }
-  
-  static rocksdb::ColumnFamilyHandle* documents() { return _documents; }
+  static constexpr size_t minNumberOfColumnFamilies = 7;
+  static constexpr size_t numberOfColumnFamilies = 7;
 
-  static rocksdb::ColumnFamilyHandle* primary() { return _primary; }
+  static inline rocksdb::ColumnFamilyHandle* definitions() { return _definitions; }
 
-  static rocksdb::ColumnFamilyHandle* edge() { return _edge; }
+  static inline rocksdb::ColumnFamilyHandle* documents() { return _documents; }
 
-  static rocksdb::ColumnFamilyHandle* geo() { return _geo; }
+  static inline rocksdb::ColumnFamilyHandle* primary() { return _primary; }
 
-  static rocksdb::ColumnFamilyHandle* fulltext() { return _fulltext; }
+  static inline rocksdb::ColumnFamilyHandle* edge() { return _edge; }
 
-  static rocksdb::ColumnFamilyHandle* index() { return _index; }
+  /// unique and non unique vpack indexes (skiplist, permanent indexes)
+  static inline rocksdb::ColumnFamilyHandle* vpack() { return _vpack; }
 
-  static rocksdb::ColumnFamilyHandle* uniqueIndex() { return _uniqueIndex; }
+  static inline rocksdb::ColumnFamilyHandle* geo() { return _geo; }
+
+  static inline rocksdb::ColumnFamilyHandle* fulltext() { return _fulltext; }
+
+  static char const* columnFamilyName(rocksdb::ColumnFamilyHandle* cf) {
+    if (cf == _definitions) {
+      return "definitions";
+    } 
+    if (cf == _documents) {
+      return "documents";
+    }
+    if (cf == _primary) {
+      return "primary";
+    }
+    if (cf == _edge) {
+      return "edge";
+    } 
+    if (cf == _vpack) {
+      return "vpack";
+    }
+    if (cf == _geo) {
+      return "geo";
+    }
+    if (cf == _fulltext) {
+      return "fulltext";
+    }
+    TRI_ASSERT(false);
+    return "unknown";
+  }
 
  private:
-  static rocksdb::ColumnFamilyHandle* _other;
+  // static variables for all existing column families
+  // note that these are initialized in RocksDBEngine.cpp
+  // as there is no RocksDBColumnFamily.cpp
+  static rocksdb::ColumnFamilyHandle* _definitions;
   static rocksdb::ColumnFamilyHandle* _documents;
   static rocksdb::ColumnFamilyHandle* _primary;
   static rocksdb::ColumnFamilyHandle* _edge;
+  static rocksdb::ColumnFamilyHandle* _vpack;
   static rocksdb::ColumnFamilyHandle* _geo;
   static rocksdb::ColumnFamilyHandle* _fulltext;
-  static rocksdb::ColumnFamilyHandle* _index;
-  static rocksdb::ColumnFamilyHandle* _uniqueIndex;
   static std::vector<rocksdb::ColumnFamilyHandle*> _allHandles;
 };
 

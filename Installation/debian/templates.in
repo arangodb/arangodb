@@ -2,17 +2,19 @@ Template: @CPACK_PACKAGE_NAME@/upgrade
 Type: boolean
 Default: true
 Description: Automatically upgrade database files?
- Your database files must be upgraded before they can be used with a
- newer version of ArangoDB. If you say "yes" here, the files will be
- automatically upgraded, when a newer version of ArangoDB is installed.
- if you say "no" here, you need to manually invoke the upgrade once.
- This will render the package 'unstable' on upgrade.
+ On subsequent updates of this package your database files will have to be
+ upgraded before they can be used with the newer version of ArangoDB.
+ If you select "yes" here, the files will be automatically upgraded
+ whenever a newer version of ArangoDB is installed in the future.
+ If you select "no" here, the package will be rendered 'unstable' and you
+ will need to manually invoke the upgrade procedure on each package upgrade.
 
 Template: @CPACK_PACKAGE_NAME@/backup
 Type: boolean
 Default: false
 Description: Backup database files before upgrading?
- If you say "yes" here, a backup of your database files is created before
+ On subsequent updates of this package upgrades of the database files will happen.
+ If you specify "yes" here, a backup of your database files is created before
  upgrading the files. The backup will be stored in /var/lib/arangodb-DATE.
 
 Template: @CPACK_PACKAGE_NAME@/password
@@ -37,5 +39,7 @@ Default: auto
 Description: Database storage engine
  Choose which storage engine you want to use.
  Please note that you can't switch storage engines of existing installations,
- auto will pick the pre-existing one.
+ a dump and restore is required therefore.
+ 
+ 'auto' will pick the existing one or default to mmfiles.
 

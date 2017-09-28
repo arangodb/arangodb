@@ -20,12 +20,16 @@ The request body can be any of the following formats:
 
 A service definition is an object or form with the following properties or fields:
 
-- *configuration*: a (stringified) JSON object describing configuration values
-- *dependencies*: a (stringified) JSON object describing dependency settings
+- *configuration*: a JSON object describing configuration values
+- *dependencies*: a JSON object describing dependency settings
 - *source*: a fully qualified URL or an absolute path on the server's file system
 
 When using multipart data, the *source* field can also alternatively be a file field
 containing either a zip bundle or a standalone JavaScript file.
+
+When using a standalone JavaScript file the given file will be executed
+to define our service's HTTP endpoints. It is the same which would be defined
+in the field `main` of the service manifest.
 
 If *source* is a URL, the URL must be reachable from the server.
 If *source* is a file system path, the path will be resolved on the server.

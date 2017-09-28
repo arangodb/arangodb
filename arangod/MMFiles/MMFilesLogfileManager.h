@@ -78,11 +78,23 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   // get the logfile manager instance
   static MMFilesLogfileManager* instance() {
     TRI_ASSERT(Instance != nullptr);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(SafeToUseInstance);
+#endif
     return Instance;
   }
 
  private:
+  // logfile manager instance
   static MMFilesLogfileManager* Instance;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // whether or not it is safe to retrieve the instance yet
+  static bool SafeToUseInstance;
+#endif
+
+  // status of whether the last tick value was found on startup
+  static int FoundLastTick;
 
   struct LogfileBarrier {
     LogfileBarrier() = delete;
@@ -162,15 +174,22 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   // set the number of historic logfiles
   inline void historicLogfiles(uint32_t value) { _historicLogfiles = value; }
 
-  // whether or not there was a SHUTDOWN file with a tick value
-  /// at server start
-  inline bool hasFoundLastTick() const { return _hasFoundLastTick; }
-
   // whether or not we are in the recovery phase
   inline bool isInRecovery() const { return _inRecovery; }
 
   // whether or not we are in the shutdown phase
   inline bool isInShutdown() const { return (_shutdown != 0); }
+
+  // whether or not there was a SHUTDOWN file with a last tick at
+  // server start
+  static bool hasFoundLastTick() { 
+    // validate that the value is already initialized
+    // -1 = uninitialized
+    //  0 = last tick not found
+    //  1 = last tick found
+    TRI_ASSERT(FoundLastTick != -1);
+    return (FoundLastTick == 1); 
+  }
 
   // return the slots manager
   MMFilesWalSlots* slots() { return _slots; }
@@ -475,10 +494,6 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   // whether or not writes to the WAL are allowed
   bool _allowWrites;
 
-  // this is true if there was a SHUTDOWN file with a last tick at
-  /// server start
-  bool _hasFoundLastTick;
-
   // whether or not the recovery procedure is running
   bool _inRecovery;
 
@@ -499,6 +514,9 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // the collector thread
   MMFilesCollectorThread* _collectorThread;
+  
+  // lock protecting the destruction of the collector thread
+  basics::ReadWriteLock _collectorThreadLock;
 
   // the logfile remover thread
   MMFilesRemoverThread* _removerThread;

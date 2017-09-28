@@ -19,13 +19,7 @@ echo "CXX: $CXX"
 echo
 echo "$0: compiling ArangoDB"
 
-(cd build && make -j4)
-
-echo
-echo "$0: testing ArangoDB"
-
-ulimit -c unlimited -S # enable core files
-./scripts/quickieTest.sh
+(cd build && make -j6)
 
 echo
 echo "$0: done"

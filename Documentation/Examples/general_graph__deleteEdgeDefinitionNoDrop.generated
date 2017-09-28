@@ -4,4 +4,4 @@ arangosh&gt; <span class="hljs-keyword">var</span> ed2 = graph_module._relation(
 arangosh&gt; <span class="hljs-keyword">var</span> graph = graph_module._create(<span class="hljs-string">"myGraph"</span>, [ed1, ed2]);
 arangosh&gt; graph._deleteEdgeDefinition(<span class="hljs-string">"myEC1"</span>);
 arangosh&gt; db._collection(<span class="hljs-string">"myEC1"</span>);
-[ArangoCollection <span class="hljs-number">20035</span>, <span class="hljs-string">"myEC1"</span> (type edge, status loaded)]
+[ArangoCollection <span class="hljs-number">20025</span>, <span class="hljs-string">"myEC1"</span> (type edge, status loaded)]

@@ -51,7 +51,7 @@ class GeneralListenTask : public ListenTask {
 
  private:
   GeneralServer* _server;
-  ProtocolType _connectionType;
+  ProtocolType const _connectionType;
   double _keepAliveTimeout = 300.0;
 };
 }

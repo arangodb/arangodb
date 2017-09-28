@@ -60,8 +60,7 @@ std::atomic<bool> HeartbeatThread::HasRunOnce(false);
 
 HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
                                  uint64_t interval,
-                                 uint64_t maxFailsBeforeWarning,
-                                 boost::asio::io_service* ioService)
+                                 uint64_t maxFailsBeforeWarning) 
     : Thread("Heartbeat"),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _statusLock(std::make_shared<Mutex>()),
@@ -77,11 +76,11 @@ HeartbeatThread::HeartbeatThread(AgencyCallbackRegistry* agencyCallbackRegistry,
       _currentVersions(0, 0),
       _desiredVersions(std::make_shared<AgencyVersions>(0, 0)),
       _wasNotified(false),
-      _ioService(ioService),
       _backgroundJobsPosted(0),
       _backgroundJobsLaunched(0),
       _backgroundJobScheduledOrRunning(false),
-      _launchAnotherBackgroundJob(false) {
+      _launchAnotherBackgroundJob(false),
+      _lastSyncTime(0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,8 +153,7 @@ void HeartbeatThread::runBackgroundJob() {
       _launchAnotherBackgroundJob = false;
 
       // the JobGuard is in the operator() of HeartbeatBackgroundJob
-      _ioService->post(HeartbeatBackgroundJob(shared_from_this(),
-                                              TRI_microtime()));
+      SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), TRI_microtime()));
     } else {
       _backgroundJobScheduledOrRunning = false;
       _launchAnotherBackgroundJob = false;
@@ -259,7 +257,7 @@ void HeartbeatThread::runDBServer() {
   while (!isStopping()) {
 
     try {
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sending heartbeat to agency";
+      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "sending heartbeat to agency";
 
       double const start = TRI_microtime();
       // send our state to the agency.
@@ -424,7 +422,7 @@ void HeartbeatThread::runCoordinator() {
 
   while (!isStopping()) {
     try {
-      LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "sending heartbeat to agency";
+      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "sending heartbeat to agency";
 
       double const start = TRI_microtime();
       // send our state to the agency.
@@ -537,7 +535,7 @@ void HeartbeatThread::runCoordinator() {
 
           if (userVersion > 0 && userVersion != oldUserVersion) {
             oldUserVersion = userVersion;
-            if (authentication->isEnabled()) {
+            if (authentication->isActive()) {
               authentication->authInfo()->outdate();
             }
           }
@@ -811,6 +809,11 @@ void HeartbeatThread::syncDBServerStatusQuo() {
     becauseOfCurrent = true;
   }
 
+  double now = TRI_microtime();
+  if (now > _lastSyncTime + 7.4) {
+    shouldUpdate = true;
+  }
+
   if (!shouldUpdate) {
     return;
   }
@@ -835,8 +838,9 @@ void HeartbeatThread::syncDBServerStatusQuo() {
   _backgroundJobScheduledOrRunning = true;
 
   // the JobGuard is in the operator() of HeartbeatBackgroundJob
-  _ioService->
-    post(HeartbeatBackgroundJob(shared_from_this(), TRI_microtime()));
+  _lastSyncTime = TRI_microtime();
+  SchedulerFeature::SCHEDULER->post(HeartbeatBackgroundJob(shared_from_this(), _lastSyncTime));
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////

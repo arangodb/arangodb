@@ -46,12 +46,12 @@ Returned if no graph with this name, no edge collection or no edge with this id 
   var examples = require("@arangodb/graph-examples/example-graph.js");
 ~ examples.dropGraph("social");
   examples.loadGraph("social");
-  var url = "/_api/gharial/social/edge/relation/aliceAndBob";
+  var any = require("@arangodb").db.relation.any();
+  var url = "/_api/gharial/social/edge/relation/" + any._key;
   body = {
     since: "01.01.2001"
   }
   var response = logCurlRequest('PATCH', url, body);
-
   assert(response.code === 202);
 
   logJsonResponse(response);

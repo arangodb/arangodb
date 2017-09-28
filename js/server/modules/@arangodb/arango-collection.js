@@ -120,7 +120,7 @@ ArangoCollection.prototype.toArray = function () {
     return this.all().toArray();
   }
 
-  return this.ALL(null, null).documents;
+  return this.ALL().documents;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -517,84 +517,4 @@ ArangoCollection.prototype.lookupFulltextIndex = function (field, minLength) {
     fields: field,
     minLength: minLength || undefined
   });
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief getIndex() wrapper to ensure consistency between mmfiles and rocksdb
-// //////////////////////////////////////////////////////////////////////////////
-
-ArangoCollection.prototype.getIndexes = function (withFigures) {
-  'use strict';
-  var indexes = this.getIndexesPrivate(withFigures);
-  if (this.type() === 3) {
-    // edge collections
-    let fromI = -1;
-    let toI = -1;
-    for (let i = 0; i < indexes.length; i++) {
-      if (indexes[i].type === 'edge') {
-        if (indexes[i].fields.length === 2) {
-          // We have an edgeIndex representation on [_from, _to]
-          // Nothing to do
-          break;
-        } else {
-          if (indexes[i].fields[0] === '_from') {
-            fromI = i;
-            if (toI !== -1) {
-              break;
-            }
-            continue;
-          }
-
-          if (indexes[i].fields[0] === '_to') {
-            toI = i;
-            if (fromI !== -1) {
-              break;
-            }
-            continue;
-          }
-        }
-      }
-    }
-    if (fromI !== -1 && toI !== -1) {
-      // We got two edge indexes.
-      // Merge them to pretend we only have one...
-      let fromIdx = indexes[fromI];
-      let toIdx = indexes[toI];
-      // Adjust fields
-      fromIdx.fields.push('_to');
-
-      // Adjust estimate
-      if (fromIdx.hasOwnProperty('selectivityEstimate') &&
-          toIdx.hasOwnProperty('selectivityEstimate')) {
-          fromIdx.selectivityEstimate += toIdx.selectivityEstimate;
-          fromIdx.selectivityEstimate /= 2;
-      }
-
-      if (fromIdx.hasOwnProperty('figures') &&
-          toIdx.hasOwnProperty('figures')) {
-        // merge Figures
-        if (fromIdx.figures.hasOwnProperty('memory') &&
-            toIdx.figures.hasOwnProperty('memory')) {
-          fromIdx.figures.memory += toIdx.figures.memory;
-        }
-
-        if (fromIdx.figures.hasOwnProperty('cacheLiftimeHitRate') &&
-            toIdx.figures.hasOwnProperty('cacheLiftimeHitRate')) {
-          fromIdx.figures.cacheLiftimeHitRate += toIdx.figures.cacheLiftimeHitRate;
-          fromIdx.figures.cacheLiftimeHitRate /= 2;
-        }
-
-        if (fromIdx.figures.hasOwnProperty('cacheWindowHitRate') &&
-            toIdx.figures.hasOwnProperty('cacheWindowHitRate')) {
-          fromIdx.figures.cacheWindowHitRate += toIdx.figures.cacheWindowHitRate;
-          fromIdx.figures.cacheWindowHitRate /= 2;
-        }
-
-      }
-
-      // Splice out _to Index
-      indexes.splice(toI, 1);
-    }
-  }
-  return indexes;
 };

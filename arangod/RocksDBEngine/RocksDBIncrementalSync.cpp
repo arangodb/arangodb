@@ -24,10 +24,10 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Indexes/IndexIterator.h"
-#include "SimpleHttpClient/SimpleHttpClient.h"
-#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Replication/InitialSyncer.h"
 #include "RocksDBEngine/RocksDBCollection.h"
+#include "SimpleHttpClient/SimpleHttpClient.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Utils/OperationOptions.h"
@@ -40,12 +40,12 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
-int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
-                     std::string const& keysId, uint64_t chunkId,
-                     std::string const& lowString,
-                     std::string const& highString,
-                     std::vector<std::pair<std::string, uint64_t>> markers,
-                     std::string& errorMsg) {
+int syncChunkRocksDB(
+    InitialSyncer& syncer, SingleCollectionTransaction* trx,
+    std::string const& keysId, uint64_t chunkId, std::string const& lowString,
+    std::string const& highString,
+    std::vector<std::pair<std::string, uint64_t>> const& markers,
+    std::string& errorMsg) {
   std::string const baseUrl = syncer.BaseUrl + "/keys";
   TRI_voc_tick_t const chunkSize = 5000;
   std::string const& collectionName = trx->documentCollection()->name();
@@ -54,6 +54,12 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
+  if (!syncer._leaderId.empty()) {
+    options.isSynchronousReplicationFrom = syncer._leaderId;
+  }
+
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "synching chunk. low: '" << lowString
+                                        << "', high: '" << highString << "'";
 
   // no match
   // must transfer keys for non-matching range
@@ -66,7 +72,7 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
   syncer.setProgress(progress);
 
   std::unique_ptr<httpclient::SimpleHttpResult> response(
-      syncer._client->retryRequest(rest::RequestType::PUT, url, nullptr, 0));
+      syncer._client->retryRequest(rest::RequestType::PUT, url, nullptr, 0, syncer.createHeaders()));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " +
@@ -106,24 +112,6 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
   }
 
   transaction::BuilderLeaser keyBuilder(trx);
-  /*size_t nextStart = 0;
-  // delete all keys at start of the range
-  while (nextStart < markers.size()) {
-    std::string const& localKey = markers[nextStart].first;
-
-    if ( localKey.compare(lowString) < 0) {
-      // we have a local key that is not present remotely
-      keyBuilder.clear();
-      keyBuilder.openObject();
-      keyBuilder.add(StaticStrings::KeyString, VPackValue(localKey));
-      keyBuilder.close();
-
-      trx.remove(collectionName, keyBuilder.slice(), options);
-      ++nextStart;
-    } else {
-      break;
-    }
-  }*/
 
   std::vector<size_t> toFetch;
 
@@ -166,12 +154,14 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
       continue;
     }
 
+    bool mustRefetch = false;
+
     // remove keys not present anymore
     while (nextStart < markers.size()) {
       std::string const& localKey = markers[nextStart].first;
 
       int res = keySlice.compareString(localKey);
-      if (res != 0) {
+      if (res > 0) {
         // we have a local key that is not present remotely
         keyBuilder->clear();
         keyBuilder->openObject();
@@ -179,25 +169,36 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
         keyBuilder->close();
 
         trx->remove(collectionName, keyBuilder->slice(), options);
+
         ++nextStart;
-      } else {
+      } else if (res == 0) {
         // key match
+        break;
+      } else {
+        // we have a remote key that is not present locally
+        TRI_ASSERT(res < 0);
+        mustRefetch = true;
         break;
       }
     }
 
-    // see if key exists
-    DocumentIdentifierToken token = physical->lookupKey(trx, keySlice);
-    if (token._data == 0) {
-      // key not found locally
+    if (mustRefetch) {
       toFetch.emplace_back(i);
-    } else if (TRI_RidToString(token._data) != pair.at(1).copyString()) {
-      // key found, but revision id differs
-      toFetch.emplace_back(i);
-      ++nextStart;
     } else {
-      // a match - nothing to do!
-      ++nextStart;
+      // see if key exists
+      DocumentIdentifierToken token = physical->lookupKey(trx, keySlice);
+      if (token._data == 0) {
+        // key not found locally
+        toFetch.emplace_back(i);
+      } else if (token._data !=
+                 basics::StringUtils::uint64(pair.at(1).copyString())) {
+        // key found, but revision id differs
+        toFetch.emplace_back(i);
+        ++nextStart;
+      } else {
+        // a match - nothing to do!
+        ++nextStart;
+      }
     }
 
     i++;
@@ -207,18 +208,20 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
   while (nextStart < markers.size()) {
     std::string const& localKey = markers[nextStart].first;
 
-    TRI_ASSERT(localKey.compare(highString) > 0);
-    // if (localKey.compare(highString) > 0) {
-    // we have a local key that is not present remotely
-    keyBuilder->clear();
-    keyBuilder->openObject();
-    keyBuilder->add(StaticStrings::KeyString, VPackValue(localKey));
-    keyBuilder->close();
+    if (localKey.compare(highString) > 0) {
+      // we have a local key that is not present remotely
+      keyBuilder->clear();
+      keyBuilder->openObject();
+      keyBuilder->add(StaticStrings::KeyString, VPackValue(localKey));
+      keyBuilder->close();
 
-    trx->remove(collectionName, keyBuilder->slice(), options);
-    //}
+      trx->remove(collectionName, keyBuilder->slice(), options);
+    }
     ++nextStart;
   }
+
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "will refetch " << toFetch.size()
+                                        << " documents for this chunk";
 
   if (!toFetch.empty()) {
     VPackBuilder keysBuilder;
@@ -238,10 +241,11 @@ int syncChunkRocksDB(InitialSyncer& syncer, SingleCollectionTransaction* trx,
 
     std::string const keyJsonString(keysBuilder.slice().toJson());
 
+    
     std::unique_ptr<httpclient::SimpleHttpResult> response(
         syncer._client->retryRequest(rest::RequestType::PUT, url,
                                      keyJsonString.c_str(),
-                                     keyJsonString.size()));
+                                     keyJsonString.size(), syncer.createHeaders()));
 
     if (response == nullptr || !response->isComplete()) {
       errorMsg = "could not connect to master at " +
@@ -352,9 +356,9 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
   progress = "fetching remote keys chunks for collection '" + collectionName +
              "' from " + url;
   syncer.setProgress(progress);
-
+  auto const headers = syncer.createHeaders();
   std::unique_ptr<httpclient::SimpleHttpResult> response(
-      syncer._client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
+      syncer._client->retryRequest(rest::RequestType::GET, url, nullptr, 0, headers));
 
   if (response == nullptr || !response->isComplete()) {
     errorMsg = "could not connect to master at " +
@@ -400,6 +404,9 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
+  if (!syncer._leaderId.empty()) {
+    options.isSynchronousReplicationFrom = syncer._leaderId;
+  }
 
   VPackBuilder keyBuilder;
   size_t const numChunks = static_cast<size_t>(chunkSlice.length());
@@ -409,7 +416,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
     // first chunk
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(syncer._vocbase), col->cid(),
-        AccessMode::Type::WRITE);
+        AccessMode::Type::EXCLUSIVE);
 
     Result res = trx.begin();
 
@@ -455,7 +462,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
         },
         UINT64_MAX);
 
-    trx.commit();
+    res = trx.commit();
   }
 
   {
@@ -465,7 +472,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
 
     SingleCollectionTransaction trx(
         transaction::StandaloneContext::Create(syncer._vocbase), col->cid(),
-        AccessMode::Type::WRITE);
+        AccessMode::Type::EXCLUSIVE);
 
     Result res = trx.begin();
 

@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global Backbone, window, ArangoQuery, $, _, arangoHelper */
+/* global Backbone, _, frontendConfig, window, ArangoQuery, $, arangoHelper */
 (function () {
   'use strict';
 
@@ -19,6 +19,13 @@
       );
     },
 
+    fetch: function (options) {
+      if (window.App.currentUser && window.App.currentDB.get('name') !== '_system') {
+        this.url = frontendConfig.basePath + '/_api/user/' + encodeURIComponent(window.App.currentUser);
+      }
+      return Backbone.Collection.prototype.fetch.call(this, options);
+    },
+
     url: arangoHelper.databaseUrl('/_api/user/'),
 
     model: ArangoQuery,
@@ -31,15 +38,22 @@
         this.activeUser = 'root';
       }
 
-      _.each(response.result, function (val) {
-        if (val.user === self.activeUser) {
-          try {
-            if (val.extra.queries) {
-              toReturn = val.extra.queries;
+      if (response.user === self.activeUser) {
+        try {
+          if (response.extra.queries) {
+            toReturn = response.extra.queries;
+          }
+        } catch (e) {}
+      } else {
+        if (response.result && response.result instanceof Array) {
+          _.each(response.result, function (userobj) {
+            if (userobj.user === self.activeUser) {
+              toReturn = userobj.extra.queries;
             }
-          } catch (e) {}
+          });
         }
-      });
+      }
+
       return toReturn;
     },
 

@@ -29,6 +29,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
+#include "Indexes/IndexResult.h"
 #include "MMFiles/MMFilesCollection.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
@@ -216,35 +217,21 @@ size_t MMFilesPersistentIndex::memory() const {
   return 0;  // TODO
 }
 
-/// @brief return a VelocyPack representation of the index
-void MMFilesPersistentIndex::toVelocyPack(VPackBuilder& builder,
-                                          bool withFigures,
-                                          bool forPersistence) const {
-  builder.openObject();
-  Index::toVelocyPack(builder, withFigures, forPersistence);
-  builder.add("unique", VPackValue(_unique));
-  builder.add("sparse", VPackValue(_sparse));
-  builder.close();
-}
-
-/// @brief return a VelocyPack representation of the index figures
-void MMFilesPersistentIndex::toVelocyPackFigures(VPackBuilder& builder) const {
-  TRI_ASSERT(builder.isOpenObject());
-  builder.add("memory", VPackValue(memory()));
-}
-
 /// @brief inserts a document into the index
-int MMFilesPersistentIndex::insert(transaction::Methods* trx,
-                                   TRI_voc_rid_t revisionId,
-                                   VPackSlice const& doc, bool isRollback) {
-  auto comparator = MMFilesPersistentIndexFeature::instance()->comparator();
+Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
+                                      TRI_voc_rid_t revisionId,
+                                      VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
   try {
     res = fillElement(elements, revisionId, doc);
-  } catch (...) {
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
+  } catch (std::bad_alloc const&) {
     res = TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
   }
 
   // make sure we clean up before we leave this method
@@ -257,7 +244,7 @@ int MMFilesPersistentIndex::insert(transaction::Methods* trx,
   TRI_DEFER(cleanup());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+    return IndexResult(res, this);
   }
 
   ManagedDocumentResult result;
@@ -332,6 +319,7 @@ int MMFilesPersistentIndex::insert(transaction::Methods* trx,
       static_cast<MMFilesTransactionState*>(trx->state())->rocksTransaction();
   TRI_ASSERT(rocksTransaction != nullptr);
 
+  auto comparator = MMFilesPersistentIndexFeature::instance()->comparator();
   rocksdb::ReadOptions readOptions;
 
   size_t const count = elements.size();
@@ -391,20 +379,24 @@ int MMFilesPersistentIndex::insert(transaction::Methods* trx,
     }
   }
 
-  return res;
+  return IndexResult(res, this);
 }
 
 /// @brief removes a document from the index
-int MMFilesPersistentIndex::remove(transaction::Methods* trx,
-                                   TRI_voc_rid_t revisionId,
-                                   VPackSlice const& doc, bool isRollback) {
+Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
+                                      TRI_voc_rid_t revisionId,
+                                      VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
   try {
     res = fillElement(elements, revisionId, doc);
-  } catch (...) {
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
+  } catch (std::bad_alloc const&) {
     res = TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
   }
 
   // make sure we clean up before we leave this method
@@ -417,7 +409,7 @@ int MMFilesPersistentIndex::remove(transaction::Methods* trx,
   TRI_DEFER(cleanup());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+    return IndexResult(res, this);
   }
 
   ManagedDocumentResult result;
@@ -461,12 +453,7 @@ int MMFilesPersistentIndex::remove(transaction::Methods* trx,
     }
   }
 
-  return res;
-}
-
-int MMFilesPersistentIndex::unload() {
-  // nothing to do
-  return TRI_ERROR_NO_ERROR;
+  return IndexResult(res, this);
 }
 
 /// @brief called when the index is dropped

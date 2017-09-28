@@ -36,6 +36,7 @@
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBSkiplistIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 
@@ -56,42 +57,38 @@ static int ProcessIndexFields(VPackSlice const definition,
   TRI_ASSERT(builder.isOpenObject());
   std::unordered_set<StringRef> fields;
 
-  try {
-    VPackSlice fieldsSlice = definition.get("fields");
-    builder.add(VPackValue("fields"));
-    builder.openArray();
-    if (fieldsSlice.isArray()) {
-      // "fields" is a list of fields
-      for (auto const& it : VPackArrayIterator(fieldsSlice)) {
-        if (!it.isString()) {
-          return TRI_ERROR_BAD_PARAMETER;
-        }
-
-        StringRef f(it);
-
-        if (f.empty() || (create && f == StaticStrings::IdString)) {
-          // accessing internal attributes is disallowed
-          return TRI_ERROR_BAD_PARAMETER;
-        }
-
-        if (fields.find(f) != fields.end()) {
-          // duplicate attribute name
-          return TRI_ERROR_BAD_PARAMETER;
-        }
-
-        fields.insert(f);
-        builder.add(it);
+  VPackSlice fieldsSlice = definition.get("fields");
+  builder.add(VPackValue("fields"));
+  builder.openArray();
+  if (fieldsSlice.isArray()) {
+    // "fields" is a list of fields
+    for (auto const& it : VPackArrayIterator(fieldsSlice)) {
+      if (!it.isString()) {
+        return TRI_ERROR_BAD_PARAMETER;
       }
-    }
 
-    if (fields.empty() || (numFields > 0 && (int)fields.size() != numFields)) {
-      return TRI_ERROR_BAD_PARAMETER;
-    }
+      StringRef f(it);
 
-    builder.close();
-  } catch (...) {
-    return TRI_ERROR_OUT_OF_MEMORY;
+      if (f.empty() || (create && f == StaticStrings::IdString)) {
+        // accessing internal attributes is disallowed
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
+      if (fields.find(f) != fields.end()) {
+        // duplicate attribute name
+        return TRI_ERROR_BAD_PARAMETER;
+      }
+
+      fields.insert(f);
+      builder.add(it);
+    }
   }
+
+  if (fields.empty() || (numFields > 0 && (int)fields.size() != numFields)) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  builder.close();
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -123,6 +120,17 @@ static void ProcessIndexSparseFlag(VPackSlice const definition,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief process the deduplicate flag and add it to the json
+////////////////////////////////////////////////////////////////////////////////
+
+static void ProcessIndexDeduplicateFlag(VPackSlice const definition,
+                                        VPackBuilder& builder) {
+  bool dup =
+      basics::VelocyPackHelper::getBooleanValue(definition, "deduplicate", true);
+  builder.add("deduplicate", VPackValue(dup));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief enhances the json of a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -132,6 +140,7 @@ static int EnhanceJsonIndexHash(VPackSlice const definition,
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
     ProcessIndexUniqueFlag(definition, builder);
+    ProcessIndexDeduplicateFlag(definition, builder);
   }
   return res;
 }
@@ -146,6 +155,7 @@ static int EnhanceJsonIndexSkiplist(VPackSlice const definition,
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
     ProcessIndexUniqueFlag(definition, builder);
+    ProcessIndexDeduplicateFlag(definition, builder);
   }
   return res;
 }
@@ -160,6 +170,7 @@ static int EnhanceJsonIndexPersistent(VPackSlice const definition,
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
     ProcessIndexUniqueFlag(definition, builder);
+    ProcessIndexDeduplicateFlag(definition, builder);
   }
   return res;
 }
@@ -170,9 +181,14 @@ static int EnhanceJsonIndexPersistent(VPackSlice const definition,
 
 static void ProcessIndexGeoJsonFlag(VPackSlice const definition,
                                     VPackBuilder& builder) {
-  bool geoJson =
-      basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", false);
-  builder.add("geoJson", VPackValue(geoJson));
+  VPackSlice fieldsSlice = definition.get("fields");
+  if (fieldsSlice.isArray() && fieldsSlice.length() == 1) {
+    // only add geoJson for indexes with a single field (with needs to be an
+    // array)
+    bool geoJson =
+        basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", false);
+    builder.add("geoJson", VPackValue(geoJson));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -213,7 +229,6 @@ static int EnhanceJsonIndexGeo2(VPackSlice const definition,
   return res;
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enhances the json of a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
@@ -222,6 +237,10 @@ static int EnhanceJsonIndexFulltext(VPackSlice const definition,
                                     VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 1, create);
   if (res == TRI_ERROR_NO_ERROR) {
+    // hard-coded defaults
+    builder.add("sparse", VPackValue(true));
+    builder.add("unique", VPackValue(false));
+
     // handle "minLength" attribute
     int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
     VPackSlice minLength = definition.get("minLength");
@@ -237,7 +256,8 @@ static int EnhanceJsonIndexFulltext(VPackSlice const definition,
 
 int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
                                                 VPackBuilder& enhanced,
-                                                bool create, bool isCoordinator) const {
+                                                bool create,
+                                                bool isCoordinator) const {
   // extract index type
   Index::IndexType type = Index::TRI_IDX_TYPE_UNKNOWN;
   VPackSlice current = definition.get("type");
@@ -269,77 +289,64 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
   }
 
   TRI_ASSERT(enhanced.isEmpty());
+
+  VPackObjectBuilder b(&enhanced);
+  current = definition.get("id");
+  uint64_t id = 0;
+  if (current.isNumber()) {
+    id = current.getNumericValue<uint64_t>();
+  } else if (current.isString()) {
+    id = basics::StringUtils::uint64(current.copyString());
+  }
+  if (id > 0) {
+    enhanced.add("id", VPackValue(std::to_string(id)));
+  }
+
+  if (create && !isCoordinator) {
+    if (!definition.hasKey("objectId")) {
+      enhanced.add("objectId",
+                    VPackValue(std::to_string(TRI_NewTickServer())));
+    }
+  }
+
+  enhanced.add("type", VPackValue(Index::oldtypeName(type)));
+
   int res = TRI_ERROR_INTERNAL;
 
-  try {
-    VPackObjectBuilder b(&enhanced);
-    current = definition.get("id");
-    uint64_t id = 0;
-    if (current.isNumber()) {
-      id = current.getNumericValue<uint64_t>();
-    } else if (current.isString()) {
-      id = basics::StringUtils::uint64(current.copyString());
-    }
-    if (id > 0) {
-      enhanced.add("id", VPackValue(std::to_string(id)));
+  switch (type) {
+    case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
+    case Index::TRI_IDX_TYPE_EDGE_INDEX: {
+      break;
     }
 
-    if (create && !isCoordinator) {
-      if (!definition.hasKey("objectId")) {
-        enhanced.add("objectId",
-                     VPackValue(std::to_string(TRI_NewTickServer())));
-      }
+    case Index::TRI_IDX_TYPE_GEO1_INDEX:
+      res = EnhanceJsonIndexGeo1(definition, enhanced, create);
+      break;
+
+    case Index::TRI_IDX_TYPE_GEO2_INDEX:
+      res = EnhanceJsonIndexGeo2(definition, enhanced, create);
+      break;
+
+    case Index::TRI_IDX_TYPE_HASH_INDEX:
+      res = EnhanceJsonIndexHash(definition, enhanced, create);
+      break;
+
+    case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
+      res = EnhanceJsonIndexSkiplist(definition, enhanced, create);
+      break;
+
+    case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
+      res = EnhanceJsonIndexPersistent(definition, enhanced, create);
+      break;
+
+    case Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
+      res = EnhanceJsonIndexFulltext(definition, enhanced, create);
+      break;
+
+    default: {
+      res = TRI_ERROR_BAD_PARAMETER;
+      break;
     }
-    // breaks lookupIndex()
-    /*else {
-      if (!definition.hasKey("objectId")) {
-        // objectId missing, but must be present
-        return TRI_ERROR_INTERNAL;
-      }
-    }*/
-
-    enhanced.add("type", VPackValue(Index::oldtypeName(type)));
-
-    switch (type) {
-      case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-      case Index::TRI_IDX_TYPE_EDGE_INDEX: {
-        break;
-      }
-
-      case Index::TRI_IDX_TYPE_GEO1_INDEX:
-        res = EnhanceJsonIndexGeo1(definition, enhanced, create);
-        break;
-
-      case Index::TRI_IDX_TYPE_GEO2_INDEX:
-        res = EnhanceJsonIndexGeo2(definition, enhanced, create);
-        break;
-
-      case Index::TRI_IDX_TYPE_HASH_INDEX:
-        res = EnhanceJsonIndexHash(definition, enhanced, create);
-        break;
-
-      case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
-        res = EnhanceJsonIndexSkiplist(definition, enhanced, create);
-        break;
-
-      case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
-        res = EnhanceJsonIndexPersistent(definition, enhanced, create);
-        break;
-        
-      case Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
-        res = EnhanceJsonIndexFulltext(definition, enhanced, create);
-        break;
-
-      case Index::TRI_IDX_TYPE_UNKNOWN:
-      default: {
-        res = TRI_ERROR_BAD_PARAMETER;
-        break;
-      }
-    }
-
-  } catch (...) {
-    // TODO Check for different type of Errors
-    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   return res;
@@ -357,12 +364,8 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
 
   if (!value.isString()) {
     // Compatibility with old v8-vocindex.
-    if (generateKey) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "invalid index type definition");
-    }
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                   "invalid index type definition");
   }
 
   std::string const typeString = value.copyString();
@@ -431,7 +434,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX:{
+    case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
       newIdx.reset(new arangodb::RocksDBGeoIndex(iid, col, info));
       break;
     }
@@ -442,7 +445,8 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
 
     case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
     default: {
-      std::string msg = "invalid or unsupported index type '" + typeString + "'";
+      std::string msg =
+          "invalid or unsupported index type '" + typeString + "'";
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, msg);
     }
   }
@@ -471,6 +475,6 @@ void RocksDBIndexFactory::fillSystemIndexes(
 }
 
 std::vector<std::string> RocksDBIndexFactory::supportedIndexes() const {
-  return std::vector<std::string>{"primary", "edge", "hash", "skiplist",
-                                  "persistent", "geo", "fulltext"};
+  return std::vector<std::string>{"primary",    "edge", "hash",    "skiplist",
+                                  "persistent", "geo",  "fulltext"};
 }

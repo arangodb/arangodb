@@ -85,7 +85,7 @@ SET(ARANGOD_SOURCES
   Agency/GossipCallback.cpp
   Agency/Inception.cpp
   Agency/Job.cpp
-  Agency/JobContext.cpp  
+  Agency/JobContext.cpp
   Agency/MoveShard.cpp
   Agency/Node.cpp
   Agency/NotifyCallback.cpp
@@ -120,6 +120,8 @@ SET(ARANGOD_SOURCES
   Aql/Collections.cpp
   Aql/Condition.cpp
   Aql/ConditionFinder.cpp
+  Aql/DocumentProducingBlock.cpp
+  Aql/DocumentProducingNode.cpp
   Aql/EnumerateCollectionBlock.cpp
   Aql/EnumerateListBlock.cpp
   Aql/ExecutionBlock.cpp
@@ -127,7 +129,6 @@ SET(ARANGOD_SOURCES
   Aql/ExecutionNode.cpp
   Aql/ExecutionPlan.cpp
   Aql/ExecutionStats.cpp
-  Aql/Executor.cpp
   Aql/Expression.cpp
   Aql/FixedVarExpressionContext.cpp
   Aql/Function.cpp
@@ -156,6 +157,7 @@ SET(ARANGOD_SOURCES
   Aql/QueryResources.cpp
   Aql/QueryString.cpp
   Aql/Range.cpp
+  Aql/RegexCache.cpp
   Aql/RestAqlHandler.cpp
   Aql/Scopes.cpp
   Aql/ShortStringStorage.cpp
@@ -168,11 +170,13 @@ SET(ARANGOD_SOURCES
   Aql/TraversalBlock.cpp
   Aql/TraversalConditionFinder.cpp
   Aql/TraversalNode.cpp
+  Aql/V8Executor.cpp
   Aql/V8Expression.cpp
   Aql/Variable.cpp
   Aql/VariableGenerator.cpp
   Aql/grammar.cpp
   Aql/tokens.cpp
+  Cache/BucketState.cpp
   Cache/Cache.cpp
   Cache/CacheManagerFeature.cpp
   Cache/CacheManagerFeatureThreads.cpp
@@ -184,7 +188,6 @@ SET(ARANGOD_SOURCES
   Cache/PlainBucket.cpp
   Cache/PlainCache.cpp
   Cache/Rebalancer.cpp
-  Cache/State.cpp
   Cache/Table.cpp
   Cache/Transaction.cpp
   Cache/TransactionalBucket.cpp
@@ -210,7 +213,6 @@ SET(ARANGOD_SOURCES
   Cluster/v8-cluster.cpp
   GeneralServer/AsyncJobManager.cpp
   GeneralServer/AuthenticationFeature.cpp
-  GeneralServer/AuthenticationHandler.cpp
   GeneralServer/GeneralCommTask.cpp
   GeneralServer/GeneralListenTask.cpp
   GeneralServer/GeneralServer.cpp
@@ -226,16 +228,21 @@ SET(ARANGOD_SOURCES
   Graph/BreadthFirstEnumerator.cpp
   Graph/ConstantWeightShortestPathFinder.cpp
   Graph/ClusterTraverserCache.cpp
-  Graph/EdgeDocumentToken.cpp
+  Graph/EdgeCollectionInfo.cpp
   Graph/NeighborsEnumerator.cpp
+  Graph/PathEnumerator.cpp
   Graph/ShortestPathOptions.cpp
   Graph/ShortestPathResult.cpp
   Graph/SingleServerEdgeCursor.cpp
+  Graph/SingleServerTraverser.cpp
   Graph/TraverserCache.cpp
   Graph/TraverserCacheFactory.cpp
   Graph/TraverserDocumentCache.cpp
+  Graph/Traverser.cpp
+  Graph/TraverserOptions.cpp
   Indexes/Index.cpp
   Indexes/IndexIterator.cpp
+  Indexes/IndexLookupContext.cpp
   Indexes/SimpleAttributeEqualityMatcher.cpp
   InternalRestHandler/InternalRestTraverserHandler.cpp
   Pregel/AggregatorHandler.cpp
@@ -267,27 +274,35 @@ SET(ARANGOD_SOURCES
   Replication/InitialSyncer.cpp
   Replication/Syncer.cpp
   RestHandler/RestAdminLogHandler.cpp
+  RestHandler/RestAdminRoutingHandler.cpp
   RestHandler/RestAqlFunctionsHandler.cpp
   RestHandler/RestAuthHandler.cpp
   RestHandler/RestBaseHandler.cpp
   RestHandler/RestBatchHandler.cpp
   RestHandler/RestCursorHandler.cpp
+  RestHandler/RestDatabaseHandler.cpp
   RestHandler/RestDebugHandler.cpp
   RestHandler/RestDemoHandler.cpp
   RestHandler/RestDocumentHandler.cpp
   RestHandler/RestEchoHandler.cpp
   RestHandler/RestEdgesHandler.cpp
+  RestHandler/RestEndpointHandler.cpp
   RestHandler/RestEngineHandler.cpp
+  RestHandler/RestExplainHandler.cpp
   RestHandler/RestImportHandler.cpp
+  RestHandler/RestIndexHandler.cpp
   RestHandler/RestJobHandler.cpp
   RestHandler/RestPleaseUpgradeHandler.cpp
   RestHandler/RestPregelHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
+  RestHandler/RestReplicationHandler.cpp
   RestHandler/RestShutdownHandler.cpp
   RestHandler/RestSimpleHandler.cpp
   RestHandler/RestSimpleQueryHandler.cpp
+  RestHandler/RestTransactionHandler.cpp
   RestHandler/RestUploadHandler.cpp
+  RestHandler/RestUsersHandler.cpp
   RestHandler/RestVersionHandler.cpp
   RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
@@ -341,12 +356,15 @@ SET(ARANGOD_SOURCES
   Transaction/Methods.cpp
   Transaction/Options.cpp
   Transaction/StandaloneContext.cpp
+  Transaction/Status.cpp
   Transaction/V8Context.cpp
+  Utils/Authentication.cpp
   Utils/CollectionKeys.cpp
   Utils/CollectionKeysRepository.cpp
   Utils/CollectionNameResolver.cpp
   Utils/Cursor.cpp
   Utils/CursorRepository.cpp
+  Utils/ExecContext.cpp
   Utils/OperationCursor.cpp
   Utils/SingleCollectionTransaction.cpp
   Utils/WorkMonitorArangod.cpp
@@ -360,6 +378,7 @@ SET(ARANGOD_SOURCES
   V8Server/v8-query.cpp
   V8Server/v8-replication.cpp
   V8Server/v8-statistics.cpp
+  V8Server/v8-users.cpp
   V8Server/v8-user-structures.cpp
   V8Server/v8-util.cpp
   V8Server/v8-views.cpp
@@ -367,17 +386,17 @@ SET(ARANGOD_SOURCES
   V8Server/v8-voccursor.cpp
   V8Server/v8-vocindex.cpp
   Views/LoggerView.cpp
+  VocBase/Methods/Collections.cpp
+  VocBase/Methods/Databases.cpp
+  VocBase/Methods/Indexes.cpp
+  VocBase/Methods/Transactions.cpp
   VocBase/AuthInfo.cpp
-  VocBase/EdgeCollectionInfo.cpp
+  VocBase/AuthUserEntry.cpp
   VocBase/Graphs.cpp
   VocBase/KeyGenerator.cpp
   VocBase/LogicalCollection.cpp
   VocBase/LogicalView.cpp
   VocBase/ManagedDocumentResult.cpp
-  VocBase/PathEnumerator.cpp
-  VocBase/SingleServerTraverser.cpp
-  VocBase/Traverser.cpp
-  VocBase/TraverserOptions.cpp
   VocBase/modes.cpp
   VocBase/replication-applier.cpp
   VocBase/replication-common.cpp
@@ -395,10 +414,6 @@ include(MMFiles/CMakeLists.txt)
 
 add_library(arangoserver STATIC ${ARANGOD_SOURCES} ${MMFILES_SOURCES} ${ROCKSDB_SOURCES})
 
-if (USE_SSL)
-  target_compile_definitions(${BIN_ARANGOD} PUBLIC "ARANGODB_SSL_ENABLED=1")
-endif()
-
 target_link_libraries(arangoserver
   ${LIB_ARANGO_FE}
   ${LIB_ARANGO_V8}
@@ -413,6 +428,8 @@ target_link_libraries(arangoserver
 )
 
 if (USE_ENTERPRISE)
+  target_compile_definitions(arangoserver PUBLIC "-DUSE_ENTERPRISE=1")
+  target_include_directories(arangoserver PUBLIC "${PROJECT_SOURCE_DIR}/${ENTERPRISE_INCLUDE_DIR}")
   if (MSVC)
     target_link_libraries(arangoserver
       Wldap32.lib
@@ -446,6 +463,10 @@ if (NOT USE_PRECOMPILED_V8)
   add_dependencies(arangod zlibstatic v8_build)
 else ()
   add_dependencies(arangod zlibstatic)
+endif ()
+
+if (USE_JEMALLOC)
+  add_dependencies(arangod jemalloc)
 endif ()
 
 ################################################################################

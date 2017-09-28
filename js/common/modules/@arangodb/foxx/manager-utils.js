@@ -30,7 +30,6 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 var fs = require('fs');
-var _ = require('lodash');
 var arangodb = require('@arangodb');
 var db = arangodb.db;
 var internal = require('internal');
@@ -224,14 +223,35 @@ function updateService (mount, update) {
 }
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief Joins the last two diretories to one subdir, removes the unwanted original
+// //////////////////////////////////////////////////////////////////////////////
+function joinLastPath (tempPath) {
+  var pathParts = tempPath.split(fs.pathSeparator).reverse();
+  var individual = pathParts.shift();
+
+  // we already have a directory which would be shared amongst tasks.
+  // since we don't want that we remove it here.
+  var voidDir = pathParts.slice().reverse().join(fs.pathSeparator);
+  if (fs.isDirectory(voidDir)) {
+    fs.removeDirectoryRecursive(voidDir);
+  }
+
+  var base = pathParts.shift();
+  pathParts.unshift(base + '-' + individual);
+  var rc = pathParts.reverse().join(fs.pathSeparator);
+
+  return rc;
+}
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief creates a zip archive of a foxx app. Returns the absolute path
 // //////////////////////////////////////////////////////////////////////////////
 function zipDirectory (directory, zipFilename) {
   if (!fs.isDirectory(directory)) {
-    throw directory + ' is not a directory.';
+    throw new Error(directory + ' is not a directory.');
   }
   if (!zipFilename) {
-    zipFilename = fs.getTempFile('bundles', false);
+    zipFilename = joinLastPath((fs.getTempFile('bundles', false)));
   }
 
   var tree = fs.listTree(directory);
@@ -239,7 +259,7 @@ function zipDirectory (directory, zipFilename) {
   var i;
   var filename;
 
-  for (i = 0;  i < tree.length;  ++i) {
+  for (i = 0; i < tree.length; i++) {
     filename = fs.join(directory, tree[i]);
 
     if (fs.isFile(filename)) {
@@ -249,6 +269,9 @@ function zipDirectory (directory, zipFilename) {
   if (files.length === 0) {
     throwFileNotFound("Directory '" + String(directory) + "' is empty");
   }
+  // sort files to be sure they are always in same order within the zip file
+  // independent of the OS and file system
+  files.sort();
   fs.zipFile(zipFilename, directory, files);
   return zipFilename;
 }
@@ -268,3 +291,4 @@ exports.zipDirectory = zipDirectory;
 exports.getStorage = getStorage;
 exports.getBundleStorage = getBundleStorage;
 exports.pathRegex = pathRegex;
+exports.joinLastPath = joinLastPath;

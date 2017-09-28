@@ -74,13 +74,8 @@ public:
 
   Agent* _agent;                           //< @brief The agent
   arangodb::basics::ConditionVariable _cv; //< @brief For proper shutdown
-  std::vector<double> _pings;              //< @brief pings
-  std::map<std::string,size_t> _acked;     //< @brief acknowledged config version
+  std::unordered_map<std::string,size_t> _acked;     //< @brief acknowledged config version
   mutable arangodb::Mutex _vLock;          //< @brieg Guard _acked
-  mutable arangodb::Mutex _pLock;          //< @brief Guard _pings
-  std::vector<std::vector<double>> _measurements; //< @brief measurements
-  mutable arangodb::Mutex _mLock;          //< @brief Guard _measurements
-  
 };
 
 }}

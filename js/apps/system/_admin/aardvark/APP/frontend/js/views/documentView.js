@@ -15,6 +15,7 @@
 
   window.DocumentView = Backbone.View.extend({
     el: '#content',
+    readOnly: false,
     colid: 0,
     docid: 0,
 
@@ -56,8 +57,10 @@
       }
     },
 
-    addDocument: function () {
-      window.App.documentsView.addDocumentModal();
+    addDocument: function (e) {
+      if (!this.readOnly) {
+        window.App.documentsView.addDocumentModal(e);
+      }
     },
 
     storeMode: function () {
@@ -91,6 +94,7 @@
           this.breadcrumb();
           this.fillInfo();
           this.fillEditor();
+          arangoHelper.checkCollectionPermissions(this.colid, this.changeViewToReadOnly.bind(this));
         }
       }.bind(this);
 
@@ -98,22 +102,24 @@
     },
 
     deleteDocumentModal: function () {
-      var buttons = []; var tableContent = [];
-      tableContent.push(
-        window.modalView.createReadOnlyEntry(
-          'doc-delete-button',
-          'Confirm delete, document id is',
-          this.type._id,
-          undefined,
-          undefined,
-          false,
-          /[<>&'"]/
-        )
-      );
-      buttons.push(
-        window.modalView.createDeleteButton('Delete', this.deleteDocument.bind(this))
-      );
-      window.modalView.show('modalTable.ejs', 'Delete Document', buttons, tableContent);
+      if (!this.readOnly) {
+        var buttons = []; var tableContent = [];
+        tableContent.push(
+          window.modalView.createReadOnlyEntry(
+            'doc-delete-button',
+            'Confirm delete, document id is',
+            this.type._id,
+            undefined,
+            undefined,
+            false,
+            /[<>&'"]/
+          )
+        );
+        buttons.push(
+          window.modalView.createDeleteButton('Delete', this.deleteDocument.bind(this))
+        );
+        window.modalView.show('modalTable.ejs', 'Delete Document', buttons, tableContent);
+      }
     },
 
     deleteDocument: function () {
@@ -150,6 +156,12 @@
 
     navigateToDocument: function (e) {
       var navigateTo = $(e.target).attr('documentLink');
+      var test = (navigateTo.split('%').length - 1) % 3;
+
+      if (decodeURIComponent(navigateTo) !== navigateTo && test !== 0) {
+        navigateTo = decodeURIComponent(navigateTo);
+      }
+
       if (navigateTo) {
         window.App.navigate(navigateTo, {trigger: true});
       }
@@ -216,12 +228,27 @@
         ace: window.ace
         // iconlib: 'fontawesome4'
       };
+
       this.editor = new JSONEditor(container, options);
       if (this.defaultMode) {
         this.editor.setMode(this.defaultMode);
       }
 
       return this;
+    },
+
+    changeViewToReadOnly: function () {
+      this.readOnly = true;
+      // breadcrumb
+      $('.breadcrumb').find('a').html($('.breadcrumb').find('a').html() + ' (read-only)');
+      // editor read only mode
+      this.editor.setMode('view');
+      $('.jsoneditor-modes').hide();
+      // bottom buttons
+      $('.bottomButtonBar button').addClass('disabled');
+      $('.bottomButtonBar button').unbind('click');
+      // top add document button
+      $('#addDocument').addClass('disabled');
     },
 
     cleanupEditor: function () {

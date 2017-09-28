@@ -86,6 +86,8 @@ class MMFilesEngine final : public StorageEngine {
   void stop() override;
   
   bool supportsDfdb() const override { return true; }
+  
+  bool useRawDocumentPointers() override { return true; }
 
   std::shared_ptr<arangodb::velocypack::Builder>
   getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
@@ -400,8 +402,6 @@ class MMFilesEngine final : public StorageEngine {
                             TRI_voc_cid_t collectionId,
                             TRI_idx_iid_t indexId) const;
   std::string indexFilename(TRI_idx_iid_t indexId) const;
-
-  int openDatabases();
 
   /// @brief open an existing database. internal function
   TRI_vocbase_t* openExistingDatabase(TRI_voc_tick_t id,

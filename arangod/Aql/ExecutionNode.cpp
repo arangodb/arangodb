@@ -111,7 +111,7 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
 
   for (auto const& it : VPackArrayIterator(elementsSlice)) {
     bool ascending = it.get("ascending").getBoolean();
-    Variable* v = varFromVPack(plan->getAst(), it, "inVariable");
+    Variable* v = Variable::varFromVPack(plan->getAst(), it, "inVariable");
     elements.emplace_back(v, ascending);
     // Is there an attribute path?
     VPackSlice path = it.get("paths");
@@ -156,9 +156,9 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
     }
     case COLLECT: {
       Variable* expressionVariable =
-          varFromVPack(plan->getAst(), slice, "expressionVariable", Optional);
+          Variable::varFromVPack(plan->getAst(), slice, "expressionVariable", Optional);
       Variable* outVariable =
-          varFromVPack(plan->getAst(), slice, "outVariable", Optional);
+          Variable::varFromVPack(plan->getAst(), slice, "outVariable", Optional);
 
       // keepVariables
       std::vector<Variable const*> keepVariables;
@@ -166,7 +166,7 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       if (keepVariablesSlice.isArray()) {
         for (auto const& it : VPackArrayIterator(keepVariablesSlice)) {
           Variable const* variable =
-              varFromVPack(plan->getAst(), it, "variable");
+              Variable::varFromVPack(plan->getAst(), it, "variable");
           keepVariables.emplace_back(variable);
         }
       }
@@ -182,8 +182,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       {
         groupVariables.reserve(groupsSlice.length());
         for (auto const& it : VPackArrayIterator(groupsSlice)) {
-          Variable* outVar = varFromVPack(plan->getAst(), it, "outVariable");
-          Variable* inVar = varFromVPack(plan->getAst(), it, "inVariable");
+          Variable* outVar = Variable::varFromVPack(plan->getAst(), it, "outVariable");
+          Variable* inVar = Variable::varFromVPack(plan->getAst(), it, "inVariable");
 
           groupVariables.emplace_back(std::make_pair(outVar, inVar));
         }
@@ -202,8 +202,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(
       {
         aggregateVariables.reserve(aggregatesSlice.length());
         for (auto const& it : VPackArrayIterator(aggregatesSlice)) {
-          Variable* outVar = varFromVPack(plan->getAst(), it, "outVariable");
-          Variable* inVar = varFromVPack(plan->getAst(), it, "inVariable");
+          Variable* outVar = Variable::varFromVPack(plan->getAst(), it, "outVariable");
+          Variable* inVar = Variable::varFromVPack(plan->getAst(), it, "inVariable");
 
           std::string const type = it.get("type").copyString();
           aggregateVariables.emplace_back(
@@ -441,12 +441,13 @@ void ExecutionNode::cloneHelper(ExecutionNode* other, ExecutionPlan* plan,
 void ExecutionNode::cloneDependencies(ExecutionPlan* plan,
                                       ExecutionNode* theClone,
                                       bool withProperties) const {
+  TRI_ASSERT(theClone != nullptr);
   auto it = _dependencies.begin();
   while (it != _dependencies.end()) {
     auto c = (*it)->clone(plan, true, withProperties);
+    TRI_ASSERT(c != nullptr);
     try {
       c->_parents.emplace_back(theClone);
-      TRI_ASSERT(c != nullptr);
       theClone->_dependencies.emplace_back(c);
     } catch (...) {
       delete c;
@@ -556,25 +557,6 @@ ExecutionNode const* ExecutionNode::getLoop() const {
   }
 
   return nullptr;
-}
-
-/// @brief factory for (optional) variables from VPack
-Variable* ExecutionNode::varFromVPack(Ast* ast,
-                                      arangodb::velocypack::Slice const& base,
-                                      char const* variableName, bool optional) {
-  VPackSlice variable = base.get(variableName);
-
-  if (variable.isNone()) {
-    if (optional) {
-      return nullptr;
-    }
-
-    std::string msg;
-    msg +=
-        "mandatory variable \"" + std::string(variableName) + "\" not found.";
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
-  }
-  return ast->variables()->createVariable(variable);
 }
 
 /// @brief toVelocyPackHelper, for a generic node
@@ -1153,14 +1135,20 @@ double SingletonNode::estimateCost(size_t& nrItems) const {
 EnumerateCollectionNode::EnumerateCollectionNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
+      DocumentProducingNode(plan, base), 
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
           base.get("collection").copyString())),
-      _outVariable(varFromVPack(plan->getAst(), base, "outVariable")),
       _random(base.get("random").getBoolean()) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
-  TRI_ASSERT(_outVariable != nullptr);
+  
+  if (_collection == nullptr) {
+    std::string msg("collection '");
+    msg.append(base.get("collection").copyString());
+    msg.append("' not found");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+  }
 }
 
 /// @brief toVelocyPack, for EnumerateCollectionNode
@@ -1172,10 +1160,11 @@ void EnumerateCollectionNode::toVelocyPackHelper(VPackBuilder& nodes,
   // Now put info about vocbase and cid in there
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
-  nodes.add(VPackValue("outVariable"));
-  _outVariable->toVelocyPack(nodes);
   nodes.add("random", VPackValue(_random));
   nodes.add("satellite", VPackValue(_collection->isSatellite()));
+
+  // add outvariable and projection
+  DocumentProducingNode::toVelocyPack(nodes);
 
   // And close it:
   nodes.close();
@@ -1194,6 +1183,8 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
   auto c = new EnumerateCollectionNode(plan, _id, _vocbase, _collection,
                                        outVariable, _random);
 
+  c->setProjection(_projection);
+
   cloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
@@ -1203,6 +1194,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
 /// its unique dependency
 double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
   size_t incoming;
+  TRI_ASSERT(!_dependencies.empty());
   double depCost = _dependencies.at(0)->getCost(incoming);
   transaction::Methods* trx = _plan->getAst()->query()->trx();
   size_t count = _collection->count(trx);
@@ -1217,8 +1209,8 @@ double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
 EnumerateListNode::EnumerateListNode(ExecutionPlan* plan,
                                      arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _inVariable(varFromVPack(plan->getAst(), base, "inVariable")),
-      _outVariable(varFromVPack(plan->getAst(), base, "outVariable")) {}
+      _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")),
+      _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")) {}
 
 /// @brief toVelocyPack, for EnumerateListNode
 void EnumerateListNode::toVelocyPackHelper(VPackBuilder& nodes,
@@ -1256,6 +1248,7 @@ ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
 
 /// @brief the cost of an enumerate list node
 double EnumerateListNode::estimateCost(size_t& nrItems) const {
+  TRI_ASSERT(!_dependencies.empty());
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
 
@@ -1325,6 +1318,7 @@ void LimitNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 
 /// @brief estimateCost
 double LimitNode::estimateCost(size_t& nrItems) const {
+  TRI_ASSERT(!_dependencies.empty());
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
   nrItems = (std::min)(_limit,
@@ -1336,9 +1330,9 @@ double LimitNode::estimateCost(size_t& nrItems) const {
 CalculationNode::CalculationNode(ExecutionPlan* plan,
                                  arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _conditionVariable(varFromVPack(plan->getAst(), base, "conditionVariable", true)),
-      _outVariable(varFromVPack(plan->getAst(), base, "outVariable")),
-      _expression(new Expression(plan->getAst(), base)),
+      _conditionVariable(Variable::varFromVPack(plan->getAst(), base, "conditionVariable", true)),
+      _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
+      _expression(new Expression(plan, plan->getAst(), base)),
       _canRemoveIfThrows(false) {}
 
 /// @brief toVelocyPack, for CalculationNode
@@ -1379,7 +1373,7 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
 
-  auto c = new CalculationNode(plan, _id, _expression->clone(plan->getAst()),
+  auto c = new CalculationNode(plan, _id, _expression->clone(plan, plan->getAst()),
                                conditionVariable, outVariable);
   c->_canRemoveIfThrows = _canRemoveIfThrows;
 
@@ -1399,7 +1393,7 @@ SubqueryNode::SubqueryNode(ExecutionPlan* plan,
                            arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _subquery(nullptr),
-      _outVariable(varFromVPack(plan->getAst(), base, "outVariable")) {}
+      _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")) {}
 
 /// @brief toVelocyPack, for SubqueryNode
 void SubqueryNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
@@ -1483,6 +1477,7 @@ void SubqueryNode::replaceOutVariable(Variable const* var) {
 
 /// @brief estimateCost
 double SubqueryNode::estimateCost(size_t& nrItems) const {
+  TRI_ASSERT(!_dependencies.empty());
   double depCost = _dependencies.at(0)->getCost(nrItems);
   size_t nrItemsSubquery;
   double subCost = _subquery->getCost(nrItemsSubquery);
@@ -1618,7 +1613,7 @@ bool SubqueryNode::isDeterministic() {
 
 FilterNode::FilterNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _inVariable(varFromVPack(plan->getAst(), base, "inVariable")) {}
+      _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
 
 /// @brief toVelocyPack, for FilterNode
 void FilterNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
@@ -1648,6 +1643,7 @@ ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 /// @brief estimateCost
 double FilterNode::estimateCost(size_t& nrItems) const {
+  TRI_ASSERT(!_dependencies.empty());
   double depCost = _dependencies.at(0)->getCost(nrItems);
   // We are pessimistic here by not reducing the nrItems. However, in the
   // worst case the filter does not reduce the items at all. Furthermore,
@@ -1663,7 +1659,7 @@ double FilterNode::estimateCost(size_t& nrItems) const {
 
 ReturnNode::ReturnNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
-      _inVariable(varFromVPack(plan->getAst(), base, "inVariable")) {}
+      _inVariable(Variable::varFromVPack(plan->getAst(), base, "inVariable")) {}
 
 /// @brief toVelocyPack, for ReturnNode
 void ReturnNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
@@ -1696,6 +1692,7 @@ ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 /// @brief estimateCost
 double ReturnNode::estimateCost(size_t& nrItems) const {
+  TRI_ASSERT(!_dependencies.empty());
   double depCost = _dependencies.at(0)->getCost(nrItems);
   return depCost + nrItems;
 }

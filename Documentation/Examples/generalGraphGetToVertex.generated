@@ -4,6 +4,6 @@ arangosh&gt; graph._toVertex(<span class="hljs-string">"relation/aliceAndBob"</s
 { 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"bob"</span>, 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"male/bob"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qEo5a---"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VRerIQq--_"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"Bob"</span> 
 }

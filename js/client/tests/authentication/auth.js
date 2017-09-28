@@ -83,6 +83,7 @@ function AuthSuite () {
     testNewUser : function () {
       users.save("hackers@arangodb.com", "foobar");
       users.grantDatabase('hackers@arangodb.com', db._name());
+      users.grantCollection('hackers@arangodb.com', db._name(), "*");
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "foobar");
@@ -116,6 +117,7 @@ function AuthSuite () {
     testEmptyPassword : function () {
       users.save("hackers@arangodb.com", "");
       users.grantDatabase('hackers@arangodb.com', db._name());
+      users.grantCollection('hackers@arangodb.com', db._name(), "*");
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "");
@@ -141,6 +143,7 @@ function AuthSuite () {
     testPasswordCase : function () {
       users.save("hackers@arangodb.com", "FooBar");
       users.grantDatabase('hackers@arangodb.com', db._name());
+      users.grantCollection('hackers@arangodb.com', db._name(), "*", "ro");
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "FooBar");
@@ -192,6 +195,7 @@ function AuthSuite () {
     testColon : function () {
       users.save("hackers@arangodb.com", "fuxx::bar");
       users.grantDatabase('hackers@arangodb.com', db._name());
+      users.grantCollection('hackers@arangodb.com', db._name(), "*", "ro");
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", "fuxx::bar");
@@ -242,6 +246,7 @@ function AuthSuite () {
     testSpecialChars : function () {
       users.save("hackers@arangodb.com", ":\\abc'def:foobar@04. x-a");
       users.grantDatabase('hackers@arangodb.com', db._name());
+      users.grantCollection('hackers@arangodb.com', db._name(), "*", "ro");
       users.reload();
 
       arango.reconnect(arango.getEndpoint(), db._name(), "hackers@arangodb.com", ":\\abc'def:foobar@04. x-a");
@@ -303,10 +308,8 @@ function AuthSuite () {
       expect(res.body).to.be.an('string');
       var obj = JSON.parse(res.body);
       expect(obj).to.have.property('jwt');
-      expect(obj).to.have.property('must_change_password');
       expect(obj.jwt).to.be.a('string');
       expect(obj.jwt.split('.').length).to.be.equal(3);
-      expect(obj.must_change_password).to.be.a('boolean');
     },
     
     testAuthNewUser: function() {
@@ -322,10 +325,8 @@ function AuthSuite () {
       expect(res.body).to.be.an('string');
       var obj = JSON.parse(res.body);
       expect(obj).to.have.property('jwt');
-      expect(obj).to.have.property('must_change_password');
       expect(obj.jwt).to.be.a('string');
       expect(obj.jwt.split('.').length).to.be.equal(3);
-      expect(obj.must_change_password).to.be.a('boolean');
     },
     
     testAuthNewWrongPassword: function() {

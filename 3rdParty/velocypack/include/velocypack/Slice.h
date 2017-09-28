@@ -261,6 +261,46 @@ class Slice {
 
   // check if slice is any Number-type object
   bool isNumber() const noexcept { return isInteger() || isDouble(); }
+ 
+  // check if slice is convertible to a variable of a certain
+  // number type 
+  template<typename T>
+  bool isNumber() const noexcept {
+    try { 
+      if (std::is_integral<T>()) {
+        if (std::is_signed<T>()) {
+          // signed integral type
+          if (isDouble()) {
+            auto v = getDouble();
+            return (v >= static_cast<double>((std::numeric_limits<T>::min)()) &&
+                    v <= static_cast<double>((std::numeric_limits<T>::max)()));
+          }
+
+          int64_t v = getInt();
+          return (v >= static_cast<int64_t>((std::numeric_limits<T>::min)()) &&
+                  v <= static_cast<int64_t>((std::numeric_limits<T>::max)()));
+        } else {
+          // unsigned integral type
+          if (isDouble()) {
+            auto v = getDouble();
+            return (v >= 0.0 && v <= static_cast<double>(UINT64_MAX) &&
+                    v <= static_cast<double>((std::numeric_limits<T>::max)()));
+          }
+
+          // may throw if value is < 0
+          uint64_t v = getUInt();
+          return (v <= static_cast<uint64_t>((std::numeric_limits<T>::max)()));
+        }
+      }
+      
+      // floating point type
+      return isNumber();
+    } catch (...) {
+      // something went wrong
+      return false;
+    }
+  }
+
 
   bool isSorted() const noexcept {
     auto const h = head();
@@ -339,6 +379,7 @@ class Slice {
 
     // find number of items
     if (h <= 0x05) {  // No offset table or length, need to compute:
+      VELOCYPACK_ASSERT(h != 0x00 && h != 0x01);
       ValueLength firstSubOffset = findDataOffset(h);
       Slice first(_start + firstSubOffset);
       ValueLength s = first.byteSize();
@@ -516,7 +557,7 @@ class Slice {
 
   // return the value for a SmallInt object
   int64_t getSmallInt() const;
-
+  
   template <typename T>
   T getNumber() const {
     if (std::is_integral<T>()) {
@@ -548,6 +589,7 @@ class Slice {
           return static_cast<T>(v);
         }
 
+        // may fail if number is < 0!
         uint64_t v = getUInt();
         if (v > static_cast<uint64_t>((std::numeric_limits<T>::max)())) {
           throw Exception(Exception::NumberOutOfRange);
@@ -562,10 +604,10 @@ class Slice {
       return static_cast<T>(getDouble());
     }
     if (isInt() || isSmallInt()) {
-      return static_cast<T>(getInt());
+      return static_cast<T>(getIntUnchecked());
     }
     if (isUInt()) {
-      return static_cast<T>(getUInt());
+      return static_cast<T>(getUIntUnchecked());
     }
 
     throw Exception(Exception::InvalidValueType, "Expecting numeric type");
@@ -713,6 +755,9 @@ class Slice {
         }
 
         VELOCYPACK_ASSERT(h > 0x00 && h <= 0x0e);
+        if (h >= sizeof(SliceStaticData::WidthMap) / sizeof(SliceStaticData::WidthMap[0])) {
+          throw Exception(Exception::InternalError, "invalid Array/Object type");
+        }
         return readIntegerNonEmpty<ValueLength>(_start + 1,
                                                 SliceStaticData::WidthMap[h]);
       }
@@ -804,9 +849,14 @@ class Slice {
   }
   
   ValueLength findDataOffset(uint8_t head) const noexcept {
-    // Must be called for a nonempty array or object at start():
-    VELOCYPACK_ASSERT(head <= 0x12);
+    // Must be called for a non-empty array or object at start():
+    VELOCYPACK_ASSERT(head != 0x01 && head != 0x0a && head <= 0x14);
     unsigned int fsm = SliceStaticData::FirstSubMap[head];
+    if (fsm == 0) {
+      // need to calculate the offset by reading the dynamic length
+      VELOCYPACK_ASSERT(head == 0x13 || head == 0x14);
+      return 1 + arangodb::velocypack::getVariableValueLength(readVariableValueLength<false>(_start + 1));
+    }
     if (fsm <= 2 && _start[2] != 0) {
       return 2;
     }
@@ -860,6 +910,12 @@ class Slice {
   std::string toString(Options const* options = &Options::Defaults) const;
   std::string hexType() const;
   
+  int64_t getIntUnchecked() const;
+
+  // return the value for a UInt object, without checks
+  // returns 0 for invalid values/types
+  uint64_t getUIntUnchecked() const;
+  
  private:
   // get the total byte size for a String slice, including the head byte
   // not check is done if the type of the slice is actually String 
@@ -873,11 +929,7 @@ class Slice {
     }
     return static_cast<ValueLength>(1 + h - 0x40);
   }
-
-  // return the value for a UInt object, without checks
-  // returns 0 for invalid values/types
-  uint64_t getUIntUnchecked() const;
-
+  
   // translates an integer key into a string, without checks
   Slice translateUnchecked() const;
 

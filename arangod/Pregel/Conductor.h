@@ -116,14 +116,10 @@ class Conductor {
   void start();
   void cancel();
   void startRecovery();
-  AggregatorHandler const* aggregators() const { return _aggregators.get(); }
-
-  ExecutionState getState() const { return _state; }
-  StatsManager workerStats() const { return _statistics; }
-  uint64_t globalSuperstep() const { return _globalSuperstep; }
-
   VPackBuilder collectAQLResults();
-  double totalRuntimeSecs() {
+  VPackBuilder toVelocyPack() const;
+
+  double totalRuntimeSecs() const {
     return _endTimeSecs == 0 ? TRI_microtime() - _startTimeSecs
                              : _endTimeSecs - _startTimeSecs;
   }

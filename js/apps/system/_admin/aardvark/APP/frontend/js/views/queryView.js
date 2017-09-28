@@ -73,6 +73,7 @@
       'click #explainQuery': 'explainQuery',
       'click #clearQuery': 'clearQuery',
       'click .outputEditorWrapper #downloadQueryResult': 'downloadQueryResult',
+      'click .outputEditorWrapper #downloadCsvResult': 'downloadCsvResult',
       'click .outputEditorWrapper .switchAce span': 'switchAce',
       'click .outputEditorWrapper .closeResult': 'closeResult',
       'click #toggleQueries1': 'toggleQueries',
@@ -89,6 +90,7 @@
       'click .closeProfile': 'closeProfile',
       'keydown #arangoBindParamTable input': 'updateBindParams',
       'change #arangoBindParamTable input': 'updateBindParams',
+      'change #querySize': 'storeQuerySize',
       'click #arangoMyQueriesTable tbody tr': 'showQueryPreview',
       'dblclick #arangoMyQueriesTable tbody tr': 'selectQueryFromTable',
       'click #arangoMyQueriesTable #copyQuery': 'selectQueryFromTable',
@@ -110,6 +112,20 @@
           $(elem).fadeOut('fast').remove();
         }
       });
+    },
+
+    storeQuerySize: function (e) {
+      if (typeof (Storage) !== 'undefined') {
+        localStorage.setItem('querySize', $(e.currentTarget).val());
+      }
+    },
+
+    restoreQuerySize: function () {
+      if (typeof (Storage) !== 'undefined') {
+        if (localStorage.getItem('querySize')) {
+          $('#querySize').val(localStorage.getItem('querySize'));
+        }
+      }
     },
 
     toggleBindParams: function () {
@@ -185,6 +201,11 @@
       _.each($('.outputEditorWrapper'), function (v) {
         self.closeAceResults(v.id.replace(/^\D+/g, ''));
       });
+    },
+
+    removeInputEditors: function () {
+      this.closeAceResults(null, $('#aqlEditor'));
+      this.closeAceResults(null, $('#bindParamAceEditor'));
     },
 
     getCustomQueryParameterByName: function (qName) {
@@ -484,6 +505,7 @@
       outputEditor.setReadOnly(true);
       outputEditor.getSession().setMode('ace/mode/json');
       outputEditor.setOption('vScrollBarAlwaysVisible', true);
+      outputEditor.setOption('showPrintMargin', false);
       this.setEditorAutoHeight(outputEditor);
 
       // Store sent query and bindParameter
@@ -522,7 +544,7 @@
           contentType: 'application/json',
           processData: false,
           success: function (data) {
-            if (data.msg.includes('errorMessage')) {
+            if (data.msg && data.msg.errorMessage) {
               self.removeOutputEditor(counter);
               arangoHelper.arangoError('Explain', data.msg);
             } else {
@@ -641,7 +663,11 @@
 
     closeAceResults: function (counter, target) {
       var self = this;
-      ace.edit('outputEditor' + counter).destroy();
+      if (counter) {
+        ace.edit('outputEditor' + counter).destroy();
+      } else {
+        ace.edit($(target).attr('id')).destroy();
+      }
       $('#outputEditorWrapper' + this.outputCounter).hide();
 
       var cleanup = function (target) {
@@ -710,6 +736,7 @@
       this.renderBindParamTable(true);
       this.restoreCachedQueries();
       this.delegateEvents();
+      this.restoreQuerySize();
     },
 
     cleanupGraphs: function () {
@@ -1732,6 +1759,7 @@
 
     renderQueryResult: function (data, counter, cached, queryID) {
       var self = this;
+      var result;
 
       if (window.location.hash === '#queries') {
         var outputEditor = ace.edit('outputEditor' + counter);
@@ -1741,7 +1769,7 @@
         // handle explain query case
         if (!data.msg) {
           // handle usual query
-          var result = self.analyseQuery(data.result);
+          result = self.analyseQuery(data.result);
           if (result.defaultType === 'table') {
             $('#outputEditorWrapper' + counter + ' .arangoToolbarTop').after(
               '<div id="outputTable' + counter + '" class="outputTable"></div>'
@@ -1883,6 +1911,11 @@
           $('#outputEditorWrapper' + counter + ' .toolbarType').html('Explain');
           outputEditor.setValue(data.msg, 1);
         }
+
+        if (result.defaultType === 'table') {
+          // show csv download button
+          self.checkCSV(counter);
+        }
       } else {
         // if result comes in when view is not active
         // store the data into cachedQueries obj
@@ -1953,6 +1986,9 @@
       } catch (e) {
         arangoHelper.arangoError('Parse Error', 'Could not parse defined user limit.');
       }
+      if (isNaN(userLimit)) {
+        userLimit = true;
+      }
 
       var pushQueryResults = function (data) {
         if (self.tmpQueryResult === null) {
@@ -1967,8 +2003,10 @@
             self.tmpQueryResult[key] = val;
           } else {
             _.each(data.result, function (d) {
-              if (self.tmpQueryResult.result.length < userLimit) {
-                self.tmpQueryResult.result.push(d);
+              if (self.tmpQueryResult.result.length <= userLimit || userLimit === true) {
+                if (self.tmpQueryResult.result.length < userLimit || userLimit === true) {
+                  self.tmpQueryResult.result.push(d);
+                }
               } else {
                 self.tmpQueryResult.complete = false;
               }
@@ -1991,20 +2029,29 @@
           processData: false,
           success: function (data, textStatus, xhr) {
             // query finished, now fetch results using cursor
+            var flag = true;
+            if (self.tmpQueryResult && self.tmpQueryResult.result && self.tmpQueryResult.result.length) {
+              if (self.tmpQueryResult.result.length < userLimit || userLimit === true) {
+                flag = true;
+              } else {
+                flag = false;
+              }
+            }
 
             if (xhr.status === 201 || xhr.status === 200) {
-              if (data.hasMore) {
+              if (data.hasMore && flag) {
                 pushQueryResults(data);
 
                 // continue to fetch result
                 checkQueryStatus(data.id);
               } else {
+                // finished fetching
                 pushQueryResults(data);
                 self.renderQueryResult(self.tmpQueryResult, counter, false, queryID);
                 self.tmpQueryResult = null;
+                // SCROLL TO RESULT BOX
+                $('.centralRow').animate({ scrollTop: $('#queryContent').height() }, 'fast');
               }
-              // SCROLL TO RESULT BOX
-              $('.centralRow').animate({ scrollTop: $('#queryContent').height() }, 'fast');
             } else if (xhr.status === 204) {
             // query not ready yet, retry
               self.checkQueryTimer = window.setTimeout(function () {
@@ -2042,7 +2089,7 @@
               if (error.code === 409) {
                 return;
               }
-              if (error.code !== 400 && error.code !== 404 && error.code !== 500) {
+              if (error.code !== 400 && error.code !== 404 && error.code !== 500 && error.code !== 403) {
                 arangoHelper.arangoNotification('Query', 'Successfully aborted.');
               }
             }
@@ -2074,7 +2121,7 @@
           var profileWidth = 590;
 
           var legend = [
-            'A', 'B', 'C', 'D', 'E', 'F', 'G'
+            'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'
           ];
 
           var colors = [
@@ -2084,7 +2131,8 @@
             'rgb(93, 165, 218)',
             'rgb(250, 164, 58)',
             'rgb(64, 74, 83)',
-            'rgb(96, 189, 104)'
+            'rgb(96, 189, 104)',
+            'rgb(221, 224, 114)'
           ];
 
           var descs = [
@@ -2094,7 +2142,8 @@
             'loading collections',
             'instanciation of initial execution plan',
             'execution plan optimization and permutation',
-            'query execution'
+            'query execution',
+            'query finalization'
           ];
 
           queryProfile.append(
@@ -2107,8 +2156,10 @@
           );
 
           var total = 0;
-          _.each(data, function (value) {
-            total += value * 1000;
+          _.each(data, function (value, key) {
+            if (key !== 'finished') {
+              total += value * 1000;
+            }
           });
 
           var pos = 0;
@@ -2117,60 +2168,62 @@
 
           var time = '';
           _.each(data, function (value, key) {
-            if (value > 1) {
-              time = numeral(value).format('0.000');
-              time += ' s';
-            } else {
-              time = numeral(value * 1000).format('0.000');
-              time += ' ms';
-            }
-
-            queryProfile.find('.pure-g').append(
-              '<div class="pure-table-row noHover">' +
-              '<div class="pure-u-1-24 left"><p class="bold" style="background:' + colors[pos] + '">' + legend[pos] + '</p></div>' +
-              '<div class="pure-u-4-24 left">' + time + '</div>' +
-              '<div class="pure-u-6-24 left">' + key + '</div>' +
-              '<div class="pure-u-13-24 left">' + descs[pos] + '</div>' +
-              '</div>'
-            );
-
-            width = Math.floor((value * 1000) / total * 100);
-            if (width === 0) {
-              width = 1;
-              adjustWidth++;
-            }
-
-            if (pos !== 6) {
-              queryProfile.find('.prof-progress').append(
-                '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
-              );
-              if (width > 1) {
-                queryProfile.find('.prof-progress-label').append(
-                  '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
-                );
+            if (key !== 'finished') {
+              if (value > 1) {
+                time = numeral(value).format('0.000');
+                time += ' s';
               } else {
-                queryProfile.find('.prof-progress-label').append(
-                  '<div style="width: ' + width + '%; font-size: 9px">' + legend[pos] + '</div>'
-                );
+                time = numeral(value * 1000).format('0.000');
+                time += ' ms';
               }
-            } else {
-              if (adjustWidth > 0) {
-                width = width - adjustWidth;
-              }
-              queryProfile.find('.prof-progress').append(
-                '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
+
+              queryProfile.find('.pure-g').append(
+                '<div class="pure-table-row noHover">' +
+                '<div class="pure-u-1-24 left"><p class="bold" style="background:' + colors[pos] + '">' + legend[pos] + '</p></div>' +
+                '<div class="pure-u-4-24 left">' + time + '</div>' +
+                '<div class="pure-u-6-24 left">' + key + '</div>' +
+                '<div class="pure-u-13-24 left">' + descs[pos] + '</div>' +
+                '</div>'
               );
-              if (width > 1) {
-                queryProfile.find('.prof-progress-label').append(
-                  '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
-                );
-              } else {
-                queryProfile.find('.prof-progress-label').append(
-                  '<div style="width: ' + width + '%; font-size: 9px">' + legend[pos] + '</div>'
-                );
+
+              width = Math.floor((value * 1000) / total * 100);
+              if (width === 0) {
+                width = 1;
+                adjustWidth++;
               }
+
+              if (pos !== 7) {
+                queryProfile.find('.prof-progress').append(
+                  '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
+                );
+                if (width > 1) {
+                  queryProfile.find('.prof-progress-label').append(
+                    '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
+                  );
+                } else {
+                  queryProfile.find('.prof-progress-label').append(
+                    '<div style="width: ' + width + '%; font-size: 9px">' + legend[pos] + '</div>'
+                  );
+                }
+              } else {
+                if (adjustWidth > 0) {
+                  width = width - adjustWidth;
+                }
+                queryProfile.find('.prof-progress').append(
+                  '<div style="width: ' + width + '%; background-color: ' + colors[pos] + '"></div>'
+                );
+                if (width > 1) {
+                  queryProfile.find('.prof-progress-label').append(
+                    '<div style="width: ' + width + '%;">' + legend[pos] + '</div>'
+                  );
+                } else {
+                  queryProfile.find('.prof-progress-label').append(
+                    '<div style="width: ' + width + '%; font-size: 9px">' + legend[pos] + '</div>'
+                  );
+                }
+              }
+              pos++;
             }
-            pos++;
           });
 
           queryProfile.width(profileWidth);
@@ -2495,6 +2548,67 @@
           }
         }
       });
+    },
+
+    checkCSV: function (counter) {
+      var outputEditor = ace.edit('outputEditor' + counter);
+      var val = outputEditor.getValue();
+      var status = false;
+
+      var tmp;
+      // method: do not parse nested values
+      try {
+        val = JSON.parse(val);
+        status = true;
+        _.each(val, function (row, key1) {
+          _.each(row, function (entry, key2) {
+            // if nested array or object found, do not offer csv download
+            try {
+              tmp = JSON.parse(entry);
+              // if parse succes -> arr or obj found
+              if (typeof tmp === 'object') {
+                status = false;
+              }
+            } catch (ignore) {
+            }
+          });
+        });
+      } catch (ignore) {
+      }
+
+      if (status) {
+        $('#outputEditorWrapper' + counter + ' #downloadCsvResult').show();
+      }
+    },
+
+    doCSV: function (json) {
+      var inArray = this.arrayFrom(json);
+      var outArray = [];
+      for (var row in inArray) {
+        outArray[outArray.length] = this.parse_object(inArray[row]);
+      }
+
+      return $.csv.fromObjects(outArray);
+    },
+
+    downloadCsvResult: function (e) {
+      var counter = $(e.currentTarget).attr('counter');
+
+      var csv;
+      var outputEditor = ace.edit('outputEditor' + counter);
+      var val = outputEditor.getValue();
+      val = JSON.parse(val);
+
+      csv = $.csv.fromObjects(val, {
+        justArrays: true
+      });
+
+      if (csv.length > 0) {
+        arangoHelper.downloadLocalBlob(csv, 'csv');
+      } else {
+        arangoHelper.arangoError('Query error', 'Could not download the result.');
+      }
     }
+
   });
 }());

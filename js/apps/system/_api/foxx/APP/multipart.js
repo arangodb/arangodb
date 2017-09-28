@@ -27,16 +27,23 @@ module.exports = {
       if (disposition.type !== 'form-data' || !disposition.parameters.name) {
         continue;
       }
+      const name = disposition.parameters.name;
       const filename = disposition.parameters.filename;
       const type = headers['content-type'];
-      const value = (type || filename) ? part.data : part.data.toString('utf-8');
-      if (filename) {
-        value.filename = filename;
-      }
       if (type || filename) {
-        value.headers = _.omit(headers, ['content-disposition']);
+        parsedBody[name] = Object.assign(part.data, {
+          headers: _.omit(headers, ['content-disposition']),
+          filename
+        });
+      } else {
+        let value = part.data.toString('utf-8');
+        try {
+          value = JSON.parse(value);
+        } catch (e) {
+          // noop
+        }
+        parsedBody[name] = value;
       }
-      parsedBody[disposition.parameters.name] = value;
     }
     return parsedBody;
   }

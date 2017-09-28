@@ -33,13 +33,27 @@ REST API
 --------
 
 * Removed undocumented internal HTTP API:
-  * PUT _api/edges
+  * PUT /_api/edges
 
-  The documented GET _api/edges and the undocumented POST _api/edges remains unmodified.
+  The documented GET /_api/edges and the undocumented POST /_api/edges remains unmodified.
 
 * change undocumented behaviour in case of invalid revision ids in
   `If-Match` and `If-None-Match` headers from returning HTTP status code 400 (bad request) 
   to returning HTTP status code 412 (precondition failed).
+
+* the REST API for fetching the list of currently running AQL queries and the REST API
+  for fetching the list of slow AQL queries now return an extra *bindVars* attribute which
+  contains the bind parameters used by the queries.
+
+  This affects the return values of the following API endpoints:
+  * GET /_api/query/current
+  * GET /_api/query/slow
+
+* The REST API for retrieving indexes (GET /_api/index) now returns the *deduplicate*
+  attribute for each index
+
+* The REST API for creating indexes (POST /_api/index) now accepts the optional *deduplicate*
+  attribute
 
 
 JavaScript API
@@ -48,6 +62,10 @@ JavaScript API
 * change undocumented behaviour in case of invalid revision ids in
   JavaScript document operations from returning error code 1239 ("illegal document revision")
   to returning error code 1200 ("conflict").
+
+* the `collection.getIndexes()` function now returns the *deduplicate* attribute for each index
+
+* the `collection.ensureIndex()` function now accepts the optional *deduplicate* attribute
 
 
 Foxx
@@ -95,3 +113,32 @@ Command-line options changed
 
   the minimum number of V8 contexts to create at startup can be configured via
   the new startup option `--javascript.v8-contexts-minimum`.
+
+* added command-line option `--javascript.allow-admin-execute`
+
+  This option can be used to control whether user-defined JavaScript code
+  is allowed to be executed on server by sending via HTTP to the API endpoint
+  `/_admin/execute`  with an authenticated user account. 
+  The default value is `false`, which disables the execution of user-defined
+  code. This is also the recommended setting for production. In test environments,
+  it may be convenient to turn the option on in order to send arbitrary setup
+  or teardown commands for execution on the server.
+
+  The introduction of this option changes the default behavior of ArangoDB 3.2:
+  3.2 now by default disables the execution of JavaScript code via this API,
+  whereas earlier versions allowed it. To restore the old behavior, it is
+  necessary to set the option to `true`.
+
+
+Users Management
+----------------------
+
+* It is no longer supported to access the `_users` collecction in any way directly, except through the official `@arangodb/users` module or the `_apit/users` REST API.
+
+* The access to the `_users` collection from outside of the arangod server process is now forbidden (Through drivers, arangosh or the REST API). Foxx services are still be able to access the `_users` collection for now, but this might change in future minor releases.
+
+* The internal format of the documents in the `_users` collection has changed from previous versions
+
+* The `_queues` collection only allows read-only access from outside of the arangod server process.
+
+* Accessing `_queues` is only supported through the official `@arangodb/queues` module for Foxx apps.

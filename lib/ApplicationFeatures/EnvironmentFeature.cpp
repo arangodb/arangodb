@@ -21,9 +21,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EnvironmentFeature.h"
+#include "ApplicationFeatures/MaxMapCountFeature.h"
+#include "Basics/process-utils.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StringUtils.h"
 #include "Logger/Logger.h"
+#include "RocksDBEngine/RocksDBEngine.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+
+#ifdef __linux__
+#include <sys/sysinfo.h>
+#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -35,6 +43,7 @@ EnvironmentFeature::EnvironmentFeature(
   requiresElevatedPrivileges(false);
   startsAfter("Greetings");
   startsAfter("Logger");
+  startsAfter("MaxMapCount");
 }
 
 void EnvironmentFeature::prepare() {
@@ -58,8 +67,8 @@ void EnvironmentFeature::prepare() {
       uint64_t upper = basics::StringUtils::uint64(parts[1]);
 
       if (lower > upper || (upper - lower) < 16384) {
-        LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION) 
-            << "local port range for ipv4/ipv6 ports is " << lower << " - " << upper 
+        LOG_TOPIC(WARN, arangodb::Logger::COMMUNICATION)
+            << "local port range for ipv4/ipv6 ports is " << lower << " - " << upper
             << ", which does not look right. it is recommended to make at least 16K ports available";
         LOG_TOPIC(WARN, Logger::MEMORY) << "execute 'sudo bash -c \"echo -e \\\"32768\\t60999\\\" > "
                                            "/proc/sys/net/ipv4/ip_local_port_range\"' or use an even bigger port range";
@@ -68,7 +77,7 @@ void EnvironmentFeature::prepare() {
   } catch (...) {
     // file not found or values not convertible into integers
   }
-  
+
   // test value tcp_tw_recycle
   // https://vincent.bernat.im/en/blog/2014-tcp-time-wait-state-linux
   // https://stackoverflow.com/questions/8893888/dropping-of-connections-with-tcp-tw-recycle
@@ -101,30 +110,21 @@ void EnvironmentFeature::prepare() {
         << "execute 'export GLIBCXX_FORCE_NEW=1'";
   }
 #endif
-
-  try {
-    std::string value =
-        basics::FileUtils::slurp("/proc/sys/vm/overcommit_memory");
-    uint64_t v = basics::StringUtils::uint64(value);
-    if (v != 0 && v != 1) {
-      // from https://www.kernel.org/doc/Documentation/sysctl/vm.txt:
-      //
-      //   When this flag is 0, the kernel attempts to estimate the amount
-      //   of free memory left when userspace requests more memory.
-      //   When this flag is 1, the kernel pretends there is always enough
-      //   memory until it actually runs out.
-      //   When this flag is 2, the kernel uses a "never overcommit"
-      //   policy that attempts to prevent any overcommit of memory.
-      LOG_TOPIC(WARN, Logger::MEMORY)
-          << "/proc/sys/vm/overcommit_memory is set to '" << v
-          << "'. It is recommended to set it to a value of 0 or 1";
-      LOG_TOPIC(WARN, Logger::MEMORY) << "execute 'sudo bash -c \"echo 0 > "
-                                         "/proc/sys/vm/overcommit_memory\"'";
-    }
-  } catch (...) {
-    // file not found or value not convertible into integer
-  }
   
+  // test max_map_count
+  if (MaxMapCountFeature::needsChecking()) {
+    uint64_t actual = MaxMapCountFeature::actualMaxMappings();
+    uint64_t expected = MaxMapCountFeature::minimumExpectedMaxMappings();
+
+    if (actual < expected) {
+      LOG_TOPIC(WARN, arangodb::Logger::MEMORY)
+          << "maximum number of memory mappings per process is " << actual
+          << ", which seems too low. it is recommended to set it to at least " << expected;
+      LOG_TOPIC(WARN, Logger::MEMORY) << "execute 'sudo sysctl -w \"vm.max_map_count=" << expected << "\"'";
+    }
+  }
+
+  // test zone_reclaim_mode
   try {
     std::string value =
         basics::FileUtils::slurp("/proc/sys/vm/zone_reclaim_mode");
@@ -207,5 +207,77 @@ void EnvironmentFeature::prepare() {
     }
   }
 
+#endif
+}
+
+void EnvironmentFeature::start() {
+#ifdef __linux__
+  bool usingRocksDB =
+    (EngineSelectorFeature::engineName() == RocksDBEngine::EngineName);
+  try {
+    std::string value =
+        basics::FileUtils::slurp("/proc/sys/vm/overcommit_memory");
+    uint64_t v = basics::StringUtils::uint64(value);
+    // from https://www.kernel.org/doc/Documentation/sysctl/vm.txt:
+    //
+    //   When this flag is 0, the kernel attempts to estimate the amount
+    //   of free memory left when userspace requests more memory.
+    //   When this flag is 1, the kernel pretends there is always enough
+    //   memory until it actually runs out.
+    //   When this flag is 2, the kernel uses a "never overcommit"
+    //   policy that attempts to prevent any overcommit of memory.
+    std::string ratio =
+        basics::FileUtils::slurp("/proc/sys/vm/overcommit_ratio");
+    uint64_t r = basics::StringUtils::uint64(ratio);
+    // from https://www.kernel.org/doc/Documentation/sysctl/vm.txt:
+    //
+    //  When overcommit_memory is set to 2, the committed address
+    //  space is not permitted to exceed swap plus this percentage
+    //  of physical RAM.
+
+    if (usingRocksDB) {
+      if (v != 2) {
+        LOG_TOPIC(WARN, Logger::MEMORY)
+          << "/proc/sys/vm/overcommit_memory is set to '" << v
+          << "'. It is recommended to set it to a value of 2";
+        LOG_TOPIC(WARN, Logger::MEMORY) << "execute 'sudo bash -c \"echo 2 > "
+                                        << "/proc/sys/vm/overcommit_memory\"'";
+      }
+    } else {
+      if (v == 1) {
+        LOG_TOPIC(WARN, Logger::MEMORY)
+          << "/proc/sys/vm/overcommit_memory is set to '" << v
+          << "'. It is recommended to set it to a value of 0 or 2";
+        LOG_TOPIC(WARN, Logger::MEMORY) << "execute 'sudo bash -c \"echo 2 > "
+                                        << "/proc/sys/vm/overcommit_memory\"'";
+      }
+    }
+    if (v == 2) {
+      struct sysinfo info;
+      int res = sysinfo(&info);
+      if (res == 0) {
+        double swapSpace = static_cast<double>(info.totalswap);
+        double ram = static_cast<double>(TRI_PhysicalMemory);
+        double rr = (ram >= swapSpace)
+            ? 100.0 * ((ram - swapSpace) / ram)
+            : 0.0;
+        if (static_cast<double>(r) < 0.99 * rr) {
+          LOG_TOPIC(WARN, Logger::MEMORY)
+            << "/proc/sys/vm/overcommit_ratio is set to '" << r
+            << "'. It is recommended to set it to at least '" << std::llround(rr)
+            << "' (100 * (max(0, (RAM - Swap Space)) / RAM)) to utilize all "
+            << "available RAM. Setting it to this value will minimize swap "
+            << "usage, but may result in more out-of-memory errors, while "
+            << "setting it to 100 will allow the system to use both all "
+            << "available RAM and swap space.";
+          LOG_TOPIC(WARN, Logger::MEMORY) << "execute 'sudo bash -c \"echo "
+                                          << std::llround(rr) << " > "
+                                          << "/proc/sys/vm/overcommit_ratio\"'";
+        }
+      }
+    }
+  } catch (...) {
+    // file not found or value not convertible into integer
+  }
 #endif
 }

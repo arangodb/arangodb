@@ -87,7 +87,7 @@ void MMFilesOptimizerRules::removeSortRandRule(Optimizer* opt, std::unique_ptr<E
 
     // we're looking for "RAND()", which is a function call
     // with an empty parameters array
-    if (func->externalName != "RAND" || funcNode->numMembers() != 1 ||
+    if (func->name != "RAND" || funcNode->numMembers() != 1 ||
         funcNode->getMember(0)->numMembers() != 0) {
       continue;
     }

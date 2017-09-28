@@ -38,6 +38,8 @@ using namespace arangodb::basics;
 using namespace arangodb::options;
 using namespace arangodb::rest;
 
+consensus::Agent* AgencyFeature::AGENT = nullptr;
+
 AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
     : ApplicationFeature(server, "Agency"),
       _activated(false),
@@ -52,18 +54,16 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _compactionKeepSize(10000),
       _maxAppendSize(250),
       _supervisionGracePeriod(10.0),
-      _cmdLineTimings(false)
-{
+      _cmdLineTimings(false) {
   setOptional(true);
   requiresElevatedPrivileges(false);
+  startsAfter("Cluster");
   startsAfter("Database");
   startsAfter("Endpoint");
   startsAfter("QueryRegistry");
   startsAfter("Random");
-  startsAfter("MMFilesWalRecovery");
   startsAfter("Scheduler");
   startsAfter("Server");
-  startsAfter("Cluster");
 }
 
 AgencyFeature::~AgencyFeature() {}
@@ -190,8 +190,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (_maxElectionTimeout <= 2. * _minElectionTimeout) {
     LOG_TOPIC(WARN, Logger::AGENCY)
-        << "agency.election-timeout-max should probably be chosen longer!"
-        << " " << __FILE__ << __LINE__;
+        << "agency.election-timeout-max should probably be chosen longer!";
   }
 
   if (_compactionKeepSize == 0) {
@@ -216,7 +215,6 @@ void AgencyFeature::prepare() {
 }
 
 void AgencyFeature::start() {
-
   if (!isEnabled()) {
     return;
   }
@@ -255,11 +253,17 @@ void AgencyFeature::start() {
   }
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agency endpoint " << endpoint;
 
+  if (_waitForSync) {
+    _maxAppendSize /= 10;
+  }
+
   _agent.reset(new consensus::Agent(consensus::config_t(
       _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
       _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
       _compactionStepSize, _compactionKeepSize, _supervisionGracePeriod,
       _cmdLineTimings, _maxAppendSize)));
+
+  AGENT = _agent.get();
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";
   _agent->start();
@@ -282,7 +286,7 @@ void AgencyFeature::stop() {
     return;
   }
 
-  if (_agent->inception() != nullptr) {
+  if (_agent->inception() != nullptr) { // can only exist in resilient agents
     int counter = 0;
     while (_agent->inception()->isRunning()) {
       usleep(100000);
@@ -303,4 +307,6 @@ void AgencyFeature::stop() {
       }
     }
   }
+
+  AGENT = nullptr;
 }

@@ -4,7 +4,7 @@ arangosh&gt; graph.relation.save(<span class="hljs-string">"female/alice"</span>
 { 
   <span class="hljs-string">"_id"</span> : <span class="hljs-string">"relation/aliceAndDiana"</span>, 
   <span class="hljs-string">"_key"</span> : <span class="hljs-string">"aliceAndDiana"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qEmz----"</span> 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VRerGRe---"</span> 
 }
 arangosh&gt; db._exists(<span class="hljs-string">"relation/aliceAndDiana"</span>)
 <span class="hljs-literal">true</span>

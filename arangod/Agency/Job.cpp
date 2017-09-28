@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
@@ -22,12 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Job.h"
+#include "Basics/StringUtils.h"
 #include "Random/RandomGenerator.h"
 
 #include <numeric>
 
 static std::string const DBServer = "DBServer";
 
+using namespace arangodb::basics;
 using namespace arangodb::consensus;
 
 Job::Job(JOB_STATUS status, Node const& snapshot, AgentInterface* agent,
@@ -232,7 +234,7 @@ std::vector<std::string> sortedShardList(Node const& shards) {
   std::vector<size_t> sids;
   auto const& shardMap = shards.children();
   for (const auto& shard : shardMap) {
-    sids.push_back(std::stoul(shard.first.substr(1)));
+    sids.push_back(StringUtils::uint64(shard.first.substr(1)));
   }
 
   std::vector<size_t> idx(idxsort(sids));
@@ -285,13 +287,13 @@ std::string Job::findNonblockedCommonHealthyInSyncFollower( // Which is in "GOOD
 
   auto cs = clones(snap, db, col, shrd);       // clones
   auto nclones = cs.size();                    // #clones
-  std::map<std::string,bool> good;
+  std::unordered_map<std::string,bool> good;
 
   for (const auto& i : snap(healthPrefix).children()) {
     good[i.first] = ((*i.second)("Status").toJson() == "GOOD");
   }
 
-  std::map<std::string,size_t> currentServers;
+  std::unordered_map<std::string,size_t> currentServers;
   for (const auto& clone : cs) {
     auto currentShardPath =
       curColPrefix + db + "/" + clone.collection + "/"
@@ -412,16 +414,16 @@ void Job::addIncreasePlanVersion(Builder& trx) {
   }
 }
 
-void Job::addRemoveJobFromSomewhere(Builder& trx, std::string where,
-  std::string jobId) {
+void Job::addRemoveJobFromSomewhere(Builder& trx, std::string const& where,
+  std::string const& jobId) {
   trx.add(VPackValue("/Target/" + where + "/" + jobId));
   { VPackObjectBuilder guard(&trx);
     trx.add("op", VPackValue("delete"));
   }
 }
 
-void Job::addPutJobIntoSomewhere(Builder& trx, std::string where, Slice job,
-    std::string reason) {
+void Job::addPutJobIntoSomewhere(Builder& trx, std::string const& where, Slice job,
+    std::string const& reason) {
   Slice jobIdSlice = job.get("jobId");
   TRI_ASSERT(jobIdSlice.isString());
   std::string jobId = jobIdSlice.copyString();
@@ -444,7 +446,7 @@ void Job::addPutJobIntoSomewhere(Builder& trx, std::string where, Slice job,
 }
 
 void Job::addPreconditionCollectionStillThere(Builder& pre,
-    std::string database, std::string collection) {
+    std::string const& database, std::string const& collection) {
   std::string planPath
       = planColPrefix + database + "/" + collection;
   pre.add(VPackValue(planPath));
@@ -453,21 +455,21 @@ void Job::addPreconditionCollectionStillThere(Builder& pre,
   }
 }
 
-void Job::addPreconditionServerNotBlocked(Builder& pre, std::string server) {
+void Job::addPreconditionServerNotBlocked(Builder& pre, std::string const& server) {
 	pre.add(VPackValue(blockedServersPrefix + server));
 	{ VPackObjectBuilder serverLockEmpty(&pre);
 		pre.add("oldEmpty", VPackValue(true));
 	}
 }
 
-void Job::addPreconditionServerGood(Builder& pre, std::string server) {
+void Job::addPreconditionServerGood(Builder& pre, std::string const& server) {
 	pre.add(VPackValue(healthPrefix + server + "/Status"));
 	{ VPackObjectBuilder serverGood(&pre);
 		pre.add("old", VPackValue("GOOD"));
 	}
 }
 
-void Job::addPreconditionShardNotBlocked(Builder& pre, std::string shard) {
+void Job::addPreconditionShardNotBlocked(Builder& pre, std::string const& shard) {
 	pre.add(VPackValue(blockedShardsPrefix + shard));
 	{ VPackObjectBuilder shardLockEmpty(&pre);
 		pre.add("oldEmpty", VPackValue(true));
@@ -475,29 +477,29 @@ void Job::addPreconditionShardNotBlocked(Builder& pre, std::string shard) {
 }
 
 void Job::addPreconditionUnchanged(Builder& pre,
-    std::string key, Slice value) {
+    std::string const& key, Slice value) {
   pre.add(VPackValue(key));
   { VPackObjectBuilder guard(&pre);
     pre.add("old", value);
   }
 }
 
-void Job::addBlockServer(Builder& trx, std::string server, std::string jobId) {
+void Job::addBlockServer(Builder& trx, std::string const& server, std::string const& jobId) {
   trx.add(blockedServersPrefix + server, VPackValue(jobId));
 }
 
-void Job::addBlockShard(Builder& trx, std::string shard, std::string jobId) {
+void Job::addBlockShard(Builder& trx, std::string const& shard, std::string const& jobId) {
   trx.add(blockedShardsPrefix + shard, VPackValue(jobId));
 }
 
-void Job::addReleaseServer(Builder& trx, std::string server) {
+void Job::addReleaseServer(Builder& trx, std::string const& server) {
   trx.add(VPackValue(blockedServersPrefix + server));
   { VPackObjectBuilder guard(&trx);
     trx.add("op", VPackValue("delete"));
   }
 }
 
-void Job::addReleaseShard(Builder& trx, std::string shard) {
+void Job::addReleaseShard(Builder& trx, std::string const& shard) {
   trx.add(VPackValue(blockedShardsPrefix + shard));
   { VPackObjectBuilder guard(&trx);
     trx.add("op", VPackValue("delete"));

@@ -35,11 +35,12 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Cluster/SmartGraphTraverser.h"
 #endif
+#include "Graph/SingleServerTraverser.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
-#include "VocBase/SingleServerTraverser.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>
@@ -188,6 +189,7 @@ int TraversalBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   _posInPaths = 0;
   _usedConstant = false;
   freeCaches();
+  _traverser->done();
   return ExecutionBlock::initializeCursor(items, pos);
 }
 
@@ -293,7 +295,7 @@ size_t TraversalBlock::skipPaths(size_t hint) {
 
 void TraversalBlock::initializeExpressions(AqlItemBlock const* items, size_t pos) {
   // Initialize the Expressions within the options.
-  // We need to find the variable and read it's value here. Everything is computed right now.
+  // We need to find the variable and read its value here. Everything is computed right now.
   _opts->clearVariableValues();
   TRI_ASSERT(_inVars.size() == _inRegs.size());
   for (size_t i = 0; i < _inVars.size(); ++i) {
@@ -374,7 +376,7 @@ AqlItemBlock* TraversalBlock::getSome(size_t,  // atLeast,
     AqlItemBlock* cur = _buffer.front();
     size_t const curRegs = cur->getNrRegs();
 
-    if (_pos == 0) {
+    if (_pos == 0 && !_traverser->hasMore()) {
       // Initial initialization
       initializePaths(cur, _pos);
     }
@@ -462,38 +464,45 @@ size_t TraversalBlock::skipSome(size_t atLeast, size_t atMost) {
     return skipped;
   }
 
-  if (_buffer.empty()) {
-    size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
-    if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
-      _done = true;
-      return skipped;
+  if (_posInPaths < _vertices.size()) {
+    skipped += (std::min)(atMost, _vertices.size() - _posInPaths);
+    _posInPaths += skipped;
+  }
+
+  while (skipped < atLeast) {
+    if (_buffer.empty()) {
+      size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
+      if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
+        _done = true;
+        return skipped;
+      }
+      _pos = 0;  // this is in the first block
     }
-    _pos = 0;  // this is in the first block
-  }
 
-  // If we get here, we do have _buffer.front()
-  AqlItemBlock* cur = _buffer.front();
-
-  if (_pos == 0) {
-    // Initial initialisation
+    // If we get here, we do have _buffer.front()
+    AqlItemBlock* cur = _buffer.front();
     initializePaths(cur, _pos);
-  }
+  
+    while (atMost > skipped) {
+      TRI_ASSERT(atMost >= skipped);
+      skipped += skipPaths(atMost - skipped);
+  
+      if (_traverser->hasMore()) {
+        continue;
+      }
 
-  size_t available = _vertices.size() - _posInPaths;
-  // We have not yet fetched any paths. We can skip the next atMost many
-  if (available == 0) {
-    return skipPaths(atMost);
+      if (++_pos >= cur->size()) {
+        _buffer.pop_front();  // does not throw
+        delete cur;
+        _pos = 0;
+        break;
+      }
+    
+      initializePaths(cur, _pos);
+    }
   }
-  // We have fewer paths available in our list, so we clear the list and thereby
-  // skip these.
-  if (available <= atMost) {
-    freeCaches();
-    _posInPaths = 0;
-    return available;
-  }
-  _posInPaths += atMost;
-  // Skip the next atMost many paths.
-  return atMost;
+  
+  return skipped;
 
   // cppcheck-suppress style
   DEBUG_END_BLOCK();

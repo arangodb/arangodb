@@ -10,11 +10,11 @@ arangosh&gt; g._shortestPath([{<span class="hljs-attr">_id</span>: <span class="
     ], 
     <span class="hljs-string">"edges"</span> : [ 
       { 
-        <span class="hljs-string">"_key"</span> : <span class="hljs-string">"19746"</span>, 
-        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"internationalHighway/19746"</span>, 
+        <span class="hljs-string">"_key"</span> : <span class="hljs-string">"19745"</span>, 
+        <span class="hljs-string">"_id"</span> : <span class="hljs-string">"internationalHighway/19745"</span>, 
         <span class="hljs-string">"_from"</span> : <span class="hljs-string">"germanCity/Cologne"</span>, 
         <span class="hljs-string">"_to"</span> : <span class="hljs-string">"frenchCity/Lyon"</span>, 
-        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qFKEK--_"</span>, 
+        <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VRerlw6---"</span>, 
         <span class="hljs-string">"distance"</span> : <span class="hljs-number">700</span> 
       } 
     ], 

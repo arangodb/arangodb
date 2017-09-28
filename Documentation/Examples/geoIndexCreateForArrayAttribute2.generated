@@ -1,16 +1,16 @@
 arangosh&gt; db.geo2.ensureIndex({ <span class="hljs-attr">type</span>: <span class="hljs-string">"geo"</span>, <span class="hljs-attr">fields</span>: [ <span class="hljs-string">"location.latitude"</span>, <span class="hljs-string">"location.longitude"</span> ] });
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"geo2/24545"</span>, 
-  <span class="hljs-string">"type"</span> : <span class="hljs-string">"geo2"</span>, 
+  <span class="hljs-string">"constraint"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"location.latitude"</span>, 
     <span class="hljs-string">"location.longitude"</span> 
   ], 
-  <span class="hljs-string">"constraint"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"geo2/24545"</span>, 
   <span class="hljs-string">"ignoreNull"</span> : <span class="hljs-literal">true</span>, 
-  <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-string">"geo2"</span>, 
+  <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
 }
 arangosh&gt; <span class="hljs-keyword">for</span> (i = <span class="hljs-number">-90</span>;  i &lt;= <span class="hljs-number">90</span>;  i += <span class="hljs-number">10</span>) {
@@ -23,7 +23,7 @@ arangosh&gt; db.geo2.near(<span class="hljs-number">0</span>, <span class="hljs-
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"25602"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo2/25602"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qFRxG--C"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VRertny--_"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/0"</span>, 
     <span class="hljs-string">"location"</span> : { 
       <span class="hljs-string">"latitude"</span> : <span class="hljs-number">0</span>, 
@@ -33,7 +33,7 @@ arangosh&gt; db.geo2.near(<span class="hljs-number">0</span>, <span class="hljs-
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"25605"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo2/25605"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qFRxK---"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VRertny--A"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/0/10"</span>, 
     <span class="hljs-string">"location"</span> : { 
       <span class="hljs-string">"latitude"</span> : <span class="hljs-number">0</span>, 
@@ -43,7 +43,7 @@ arangosh&gt; db.geo2.near(<span class="hljs-number">0</span>, <span class="hljs-
   { 
     <span class="hljs-string">"_key"</span> : <span class="hljs-string">"25491"</span>, 
     <span class="hljs-string">"_id"</span> : <span class="hljs-string">"geo2/25491"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qFRwq--B"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VRertnG--A"</span>, 
     <span class="hljs-string">"name"</span> : <span class="hljs-string">"Name/-10/0"</span>, 
     <span class="hljs-string">"location"</span> : { 
       <span class="hljs-string">"latitude"</span> : <span class="hljs-number">-10</span>, 

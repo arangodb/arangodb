@@ -64,10 +64,10 @@ function prepareServiceRequestBody (req, res, next) {
     req.body = {source: req.body};
   }
   try {
-    if (req.body.dependencies) {
+    if (typeof req.body.dependencies === 'string') {
       req.body.dependencies = JSON.parse(req.body.dependencies);
     }
-    if (req.body.configuration) {
+    if (typeof req.body.configuration === 'string') {
       req.body.configuration = JSON.parse(req.body.configuration);
     }
   } catch (e) {
@@ -100,6 +100,10 @@ router.use((req, res, next) => {
 router.get((req, res) => {
   res.json(
     FoxxManager.installedServices()
+    .filter((service) => (
+      !req.queryParams.excludeSystem ||
+      !service.mount.startsWith('/_')
+    ))
     .map((service) => (
       {
         mount: service.mount,
@@ -112,26 +116,18 @@ router.get((req, res) => {
     ))
   );
 })
+.queryParam('excludeSystem', schemas.flag.default(false))
 .response(200, joi.array().items(schemas.shortInfo).required());
 
 router.post(prepareServiceRequestBody, (req, res) => {
   const mount = req.queryParams.mount;
-  FoxxManager.install(req.body.source, mount, _.omit(req.queryParams, ['mount', 'development']));
-  if (req.body.configuration) {
-    FoxxManager.setConfiguration(mount, {
+  FoxxManager.install(req.body.source, mount, Object.assign(
+    _.omit(req.queryParams, ['mount']),
+    {
       configuration: req.body.configuration,
-      replace: true
-    });
-  }
-  if (req.body.dependencies) {
-    FoxxManager.setDependencies(mount, {
-      dependencies: req.body.dependencies,
-      replace: true
-    });
-  }
-  if (req.queryParams.development) {
-    FoxxManager.development(mount);
-  }
+      dependencies: req.body.dependencies
+    }
+  ));
   const service = FoxxManager.lookupService(mount);
   res.json(serviceToJson(service));
 })
@@ -170,19 +166,13 @@ serviceRouter.get((req, res) => {
 
 serviceRouter.patch(prepareServiceRequestBody, (req, res) => {
   const mount = req.queryParams.mount;
-  FoxxManager.upgrade(req.body.source, mount, _.omit(req.queryParams, ['mount']));
-  if (req.body.configuration) {
-    FoxxManager.setConfiguration(mount, {
+  FoxxManager.upgrade(req.body.source, mount, Object.assign(
+    _.omit(req.queryParams, ['mount']),
+    {
       configuration: req.body.configuration,
-      replace: false
-    });
-  }
-  if (req.body.dependencies) {
-    FoxxManager.setDependencies(mount, {
-      dependencies: req.body.dependencies,
-      replace: false
-    });
-  }
+      dependencies: req.body.dependencies
+    }
+  ));
   const service = FoxxManager.lookupService(mount);
   res.json(serviceToJson(service));
 })
@@ -194,19 +184,13 @@ serviceRouter.patch(prepareServiceRequestBody, (req, res) => {
 
 serviceRouter.put(prepareServiceRequestBody, (req, res) => {
   const mount = req.queryParams.mount;
-  FoxxManager.replace(req.body.source, mount, _.omit(req.queryParams, ['mount']));
-  if (req.body.configuration) {
-    FoxxManager.setConfiguration(mount, {
+  FoxxManager.replace(req.body.source, mount, Object.assign(
+    _.omit(req.queryParams, ['mount']),
+    {
       configuration: req.body.configuration,
-      replace: true
-    });
-  }
-  if (req.body.dependencies) {
-    FoxxManager.setDependencies(mount, {
-      dependencies: req.body.dependencies,
-      replace: true
-    });
-  }
+      dependencies: req.body.dependencies
+    }
+  ));
   const service = FoxxManager.lookupService(mount);
   res.json(serviceToJson(service));
 })
@@ -343,18 +327,19 @@ scriptsRouter.post('/:name', (req, res) => {
 
 instanceRouter.post('/tests', (req, res) => {
   const service = req.service;
+  const idiomatic = req.queryParams.idiomatic;
   const reporter = req.queryParams.reporter || null;
   const result = FoxxManager.runTests(service.mount, {reporter});
-  if (reporter === 'stream' && req.accepts(LDJSON, 'json') === LDJSON) {
+  if (reporter === 'stream' && (idiomatic || req.accepts(LDJSON, 'json') === LDJSON)) {
     res.type(LDJSON);
     for (const row of result) {
       res.write(JSON.stringify(row) + '\r\n');
     }
-  } else if (reporter === 'xunit' && req.accepts('xml', 'json') === 'xml') {
+  } else if (reporter === 'xunit' && (idiomatic || req.accepts('xml', 'json') === 'xml')) {
     res.type('xml');
     res.write('<?xml version="1.0" encoding="utf-8"?>\n');
     res.write(jsonml2xml(result) + '\n');
-  } else if (reporter === 'tap' && req.accepts('text', 'json') === 'text') {
+  } else if (reporter === 'tap' && (idiomatic || req.accepts('text', 'json') === 'text')) {
     res.type('text');
     for (const row of result) {
       res.write(row + '\n');
@@ -364,6 +349,7 @@ instanceRouter.post('/tests', (req, res) => {
   }
 })
 .queryParam('reporter', joi.only(...reporters).optional())
+.queryParam('idiomatic', schemas.flag.default(false))
 .response(200, ['json', LDJSON, 'xml', 'text']);
 
 instanceRouter.post('/download', (req, res) => {
@@ -406,7 +392,9 @@ instanceRouter.get('/swagger', (req, res) => {
 
 router.post('/commit', (req, res) => {
   FoxxManager.commitLocalState(req.queryParams.replace);
-});
+  res.status(204);
+})
+.response(204, null);
 
 const localRouter = createRouter();
 router.use('/_local', localRouter);

@@ -349,7 +349,8 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     [ 'waitForSync', 'journalSize', 'isSystem', 'isVolatile',
       'doCompact', 'keyOptions', 'shardKeys', 'numberOfShards',
       'distributeShardsLike', 'indexBuckets', 'id', 'isSmart',
-      'replicationFactor', 'smartGraphAttribute', 'avoidServers'].forEach(function (p) {
+      'replicationFactor', 'smartGraphAttribute', 'avoidServers',
+      'cacheEnabled'].forEach(function (p) {
       if (properties.hasOwnProperty(p)) {
         body[p] = properties[p];
       }
@@ -574,6 +575,18 @@ ArangoDatabase.prototype._dropIndex = function (id) {
 
 ArangoDatabase.prototype._engine = function () {
   var requestResult = this._connection.GET('/_api/engine');
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief returns the engine statistics
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._engineStats = function () {
+  var requestResult = this._connection.GET('/_api/engine/stats');
 
   arangosh.checkRequestResult(requestResult);
 
@@ -937,6 +950,28 @@ ArangoDatabase.prototype._explain = function (query, bindVars, options) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
+// / @brief parses a query
+// //////////////////////////////////////////////////////////////////////////////
+
+ArangoDatabase.prototype._parse = function (query) {
+  if (typeof query === 'object' && typeof query.toAQL === 'function') {
+    query = { query: query.toAQL() };
+  } else {
+    query = { query: query };
+  }
+
+  const requestResult = this._connection.POST('/_api/query', JSON.stringify(query));
+
+  if (requestResult && requestResult.error === true) {
+    throw new ArangoError(requestResult);
+  }
+
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
+// //////////////////////////////////////////////////////////////////////////////
 // / @brief create a new database
 // //////////////////////////////////////////////////////////////////////////////
 
@@ -1088,8 +1123,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
     data.action = String(data.action);
   }
 
-  var requestResult = this._connection.POST('/_api/transaction',
-    JSON.stringify(data));
+  var requestResult = this._connection.POST('/_api/transaction', JSON.stringify(data));
 
   if (requestResult !== null && requestResult.error === true) {
     throw new ArangoError(requestResult);

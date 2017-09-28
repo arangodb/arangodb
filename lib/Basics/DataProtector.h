@@ -65,22 +65,24 @@ namespace basics {
 ///       instantiation for all values of Nr used in the executable.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define DATA_PROTECTOR_MULTIPLICITY 64
-
 // TODO: Make this a template again once everybody has gcc >= 4.9.2
 // template<int Nr>
 class DataProtector {
+  static constexpr int DATA_PROTECTOR_MULTIPLICITY = 64;
+
 #ifdef _WIN32
-	struct Entry {  // 64 is the size of a cache line,
+  struct Entry {  // 64 is the size of a cache line,
 #else
-	struct alignas(64) Entry {  // 64 is the size of a cache line,
+  struct alignas(64) Entry {  // 64 is the size of a cache line,
 #endif
     // it is important that different list entries lie in different
     // cache lines.
     std::atomic<int> _count;
+
+    Entry() : _count(0) {}
   };
 
-  Entry* _list;
+  typename std::aligned_storage<sizeof(Entry), alignof(Entry)>::type _list[DATA_PROTECTOR_MULTIPLICITY];
 
   static std::atomic<int> _last;
 
@@ -116,25 +118,29 @@ class DataProtector {
     UnUser() = delete;
   };
 
-  DataProtector() : _list(nullptr) {
-    _list = new Entry[DATA_PROTECTOR_MULTIPLICITY];
-    // Just to be sure:
-    for (size_t i = 0; i < DATA_PROTECTOR_MULTIPLICITY; i++) {
-      _list[i]._count = 0;
+  DataProtector() {
+    // initialize uninitialized memory
+    for (int i = 0; i < DATA_PROTECTOR_MULTIPLICITY; i++) {
+      new (_list + i) Entry;
     }
   }
 
-  ~DataProtector() { delete[] _list; }
+  ~DataProtector() { 
+    for (int i = 0; i < DATA_PROTECTOR_MULTIPLICITY; i++) {
+      reinterpret_cast<Entry*>(_list + i)->~Entry();
+    }
+  }
 
   UnUser use() {
     int id = getMyId();
-    _list[id]._count++;       // this is implicitly using memory_order_seq_cst
+    // this is implicitly using memory_order_seq_cst
+    reinterpret_cast<Entry*>(_list + id)->_count++;
     return UnUser(this, id);  // return value optimization!
   }
 
   void scan() {
-    for (size_t i = 0; i < DATA_PROTECTOR_MULTIPLICITY; i++) {
-      while (_list[i]._count > 0) {
+    for (int i = 0; i < DATA_PROTECTOR_MULTIPLICITY; i++) {
+      while (reinterpret_cast<Entry*>(_list + i)->_count > 0) {
         // let other threads do some work while we're waiting
         usleep(250);
       }
@@ -143,7 +149,8 @@ class DataProtector {
 
  private:
   void unUse(int id) {
-    _list[id]._count--;  // this is implicitly using memory_order_seq_cst
+    // this is implicitly using memory_order_seq_cst
+    reinterpret_cast<Entry*>(_list + id)->_count--;
   }
 
     int getMyId();

@@ -337,6 +337,7 @@ ArangoCollection.prototype.properties = function (properties) {
     'indexBuckets': true,
     'replicationFactor': false,
     'distributeShardsLike': false,
+    'cacheEnabled': true
   };
   var a;
 
@@ -1398,13 +1399,14 @@ ArangoCollection.prototype.removeByKeys = function (keys) {
 };
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief warmup indexes of a collection
+// / @brief load indexes of a collection into memory
 // //////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.warmup = function () {
+ArangoCollection.prototype.loadIndexesIntoMemory = function () {
   this._status = null;
-  var requestResult = this._database._connection.PUT(this._baseurl('warmup'), '');
+  var requestResult = this._database._connection.PUT(this._baseurl('loadIndexesIntoMemory'), '');
   this._status = null;
 
   arangosh.checkRequestResult(requestResult);
+  return { result: true };
 };

@@ -1,21 +1,21 @@
 arangosh&gt; a1 = db.example.insert({ <span class="hljs-attr">a</span> : <span class="hljs-number">1</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/14896"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14896"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qEbny---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/14888"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14888"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VReq9oO---"</span> 
 }
 arangosh&gt; db.example.document(a1);
 { 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14896"</span>, 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/14896"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qEbny---"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14888"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/14888"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VReq9oO---"</span>, 
   <span class="hljs-string">"a"</span> : <span class="hljs-number">1</span> 
 }
 arangosh&gt; db.example.remove(a1);
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/14896"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14896"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qEbny---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"example/14888"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"14888"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VReq9oO---"</span> 
 }
 arangosh&gt; db.example.document(a1);
 [ArangoError <span class="hljs-number">1202</span>: <span class="hljs-built_in">document</span> not found]

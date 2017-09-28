@@ -29,10 +29,10 @@
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
+#include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBValue.h"
-//#include "RocksDB/RocksDBLogfileManager.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -77,11 +77,12 @@ void RocksDBView::open() {}
 
 void RocksDBView::drop() {
   auto db = rocksutils::globalRocksDB();
-  auto key =
-      RocksDBKey::View(_logicalView->vocbase()->id(), _logicalView->id());
+  RocksDBKey key;
+  key.constructView(_logicalView->vocbase()->id(), _logicalView->id());
 
+  rocksdb::WriteOptions options;  // TODO: check which options would make sense
   auto status = rocksutils::convertStatus(
-      db->Delete(rocksdb::WriteOptions(), key.string()));
+      db->Delete(options, RocksDBColumnFamily::definitions(), key.string()));
   if (!status.ok()) {
     THROW_ARANGO_EXCEPTION(status.errorNumber());
   }
@@ -94,8 +95,9 @@ arangodb::Result RocksDBView::updateProperties(VPackSlice const& slice,
 }
 
 arangodb::Result RocksDBView::persistProperties() {
-  auto key =
-      RocksDBKey::View(_logicalView->vocbase()->id(), _logicalView->id());
+  auto db = rocksutils::globalRocksDB();
+  RocksDBKey key;
+  key.constructView(_logicalView->vocbase()->id(), _logicalView->id());
 
   VPackBuilder infoBuilder;
   infoBuilder.openObject();
@@ -103,7 +105,11 @@ arangodb::Result RocksDBView::persistProperties() {
   infoBuilder.close();
   auto value = RocksDBValue::View(infoBuilder.slice());
 
-  return rocksutils::globalRocksDBPut(key.string(), value.string());
+  rocksdb::WriteOptions options;  // TODO: check which options would make sense
+  rocksdb::Status res = db->Put(options, RocksDBColumnFamily::definitions(),
+                                key.string(), value.string());
+
+  return rocksutils::convertStatus(res);
 }
 
 PhysicalView* RocksDBView::clone(LogicalView* logical, PhysicalView* physical) {

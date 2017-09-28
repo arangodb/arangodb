@@ -26,6 +26,7 @@
 #define ARANGODB_REST_GENERAL_REQUEST_H 1
 
 #include "Basics/Common.h"
+#include "Utils/ExecContext.h"
 
 #include "Endpoint/ConnectionInfo.h"
 #include "Rest/CommonDefines.h"
@@ -83,6 +84,7 @@ class GeneralRequest {
         _clientTaskId(0),
         _authorized(false),
         _requestContext(nullptr),
+        _execContext(nullptr),
         _isRequestContextOwner(false),
         _type(RequestType::ILLEGAL),
         _contentType(ContentType::UNSET),
@@ -106,7 +108,7 @@ class GeneralRequest {
   }
 
   // the authenticated user
-  bool authorized() { return _authorized; }
+  bool authorized() const { return _authorized; }
   void setAuthorized(bool a) { _authorized = a; }
   std::string const& user() const { return _user; }
   void setUser(std::string const& user) { _user = user; }
@@ -114,6 +116,9 @@ class GeneralRequest {
 
   RequestContext* requestContext() const { return _requestContext; }
   void setRequestContext(RequestContext*, bool);
+
+  ExecContext* execContext() const { return _execContext; }
+  void setExecContext(ExecContext*);
 
   RequestType requestType() const { return _type; }
   void setRequestType(RequestType type) { _type = type; }
@@ -206,6 +211,8 @@ class GeneralRequest {
 
   // request context
   RequestContext* _requestContext;
+  ExecContext* _execContext;
+
   bool _isRequestContextOwner;
   rest::AuthenticationMethod _authenticationMethod =
       rest::AuthenticationMethod::NONE;

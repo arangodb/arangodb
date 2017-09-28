@@ -147,7 +147,7 @@ function selfHealAll (skipReloadRouting) {
         db._useDatabase(name);
         modified = selfHeal() || modified;
       } catch (e) {
-        console.warnStack(e);
+        console.debugStack(e);
       }
     }
   } finally {
@@ -343,13 +343,17 @@ function commitLocalState (replace) {
       RETURN service
     `).next();
     if (!serviceDefinition) {
-      const service = FoxxService.create({mount});
-      service.updateChecksum();
-      if (!bundleCollection.exists(service.checksum)) {
-        bundleCollection._binaryInsert({_key: service.checksum}, bundlePath);
+      try {
+        const service = FoxxService.create({mount});
+        service.updateChecksum();
+        if (!bundleCollection.exists(service.checksum)) {
+          bundleCollection._binaryInsert({_key: service.checksum}, bundlePath);
+        }
+        collection.save(service.toJSON());
+        modified = true;
+      } catch (e) {
+        console.errorStack(e);
       }
-      collection.save(service.toJSON());
-      modified = true;
     } else {
       const checksum = safeChecksum(mount);
       if (!serviceDefinition.checksum || (replace && serviceDefinition.checksum !== checksum)) {
@@ -379,11 +383,15 @@ function reloadRouting () {
 }
 
 function propagateSelfHeal () {
-  parallelClusterRequests(function * () {
-    for (const coordId of getPeerCoordinatorIds()) {
-      yield [coordId, 'POST', '/_api/foxx/_local/heal'];
-    }
-  }());
+  try {
+    parallelClusterRequests(function * () {
+      for (const coordId of getPeerCoordinatorIds()) {
+        yield [coordId, 'POST', '/_api/foxx/_local/heal'];
+      }
+    }());
+  } catch (e) {
+    console.errorStack(e, 'Failure during propagate self heal');
+  }
   reloadRouting();
 }
 
@@ -514,8 +522,8 @@ function patchManifestFile (servicePath, patchData) {
 }
 
 function _prepareService (serviceInfo, options = {}) {
-  const tempServicePath = fs.getTempFile('services', false);
-  const tempBundlePath = fs.getTempFile('bundles', false);
+  const tempServicePath = utils.joinLastPath(fs.getTempFile('services', false));
+  const tempBundlePath = utils.joinLastPath(fs.getTempFile('bundles', false));
   try {
     if (isZipBuffer(serviceInfo)) {
       // Buffer (zip)
@@ -610,21 +618,48 @@ function _buildServiceInPath (mount, tempServicePath, tempBundlePath) {
   fs.move(tempBundlePath, bundlePath);
 }
 
-function _install (mount, options = {}) {
-  const collection = utils.getStorage();
-  const service = FoxxService.create({
-    mount,
-    options,
-    noisy: true
-  });
-  GLOBAL_SERVICE_MAP.get(db._name()).set(mount, service);
-  if (options.setup !== false) {
+function _deleteServiceFromPath (mount, options) {
+  const servicePath = FoxxService.basePath(mount);
+  if (fs.exists(servicePath)) {
     try {
-      service.executeScript('setup');
+      fs.removeDirectoryRecursive(servicePath, true);
     } catch (e) {
       if (!options.force) {
         throw e;
       }
+      console.warnStack(e);
+    }
+  }
+  const bundlePath = FoxxService.bundlePath(mount);
+  if (fs.exists(bundlePath)) {
+    try {
+      fs.remove(bundlePath);
+    } catch (e) {
+      if (!options.force) {
+        throw e;
+      }
+      console.warnStack(e);
+    }
+  }
+}
+
+function _install (mount, options = {}) {
+  const collection = utils.getStorage();
+  let service;
+  try {
+    service = FoxxService.create({
+      mount,
+      options,
+      noisy: true
+    });
+    if (options.setup !== false) {
+      service.executeScript('setup');
+    }
+  } catch (e) {
+    if (!options.force) {
+      _deleteServiceFromPath(mount, options);
+      throw e;
+    } else {
       console.warnStack(e);
     }
   }
@@ -642,13 +677,15 @@ function _install (mount, options = {}) {
     RETURN NEW
   `).next();
   service._rev = meta._rev;
+  GLOBAL_SERVICE_MAP.get(db._name()).set(mount, service);
   try {
     ensureServiceExecuted(service, true);
   } catch (e) {
     if (!options.force) {
-      throw e;
+      console.errorStack(e);
+    } else {
+      console.warnStack(e);
     }
-    console.warnStack(e);
   }
   return service;
 }
@@ -696,28 +733,7 @@ function _uninstall (mount, options = {}) {
     }
   }
   GLOBAL_SERVICE_MAP.get(db._name()).delete(mount);
-  const servicePath = FoxxService.basePath(mount);
-  if (fs.exists(servicePath)) {
-    try {
-      fs.removeDirectoryRecursive(servicePath, true);
-    } catch (e) {
-      if (!options.force) {
-        throw e;
-      }
-      console.warnStack(e);
-    }
-  }
-  const bundlePath = FoxxService.bundlePath(mount);
-  if (fs.exists(bundlePath)) {
-    try {
-      fs.remove(bundlePath);
-    } catch (e) {
-      if (!options.force) {
-        throw e;
-      }
-      console.warnStack(e);
-    }
-  }
+  _deleteServiceFromPath(mount, options);
   return service;
 }
 
@@ -757,7 +773,7 @@ function downloadServiceBundleFromRemote (url) {
 }
 
 function extractServiceBundle (archive, targetPath) {
-  const tempFolder = fs.getTempFile('services', false);
+  const tempFolder = utils.joinLastPath(fs.getTempFile('services', false));
   fs.makeDirectory(tempFolder);
   fs.unzipFile(archive, tempFolder, false, true);
 
@@ -765,7 +781,7 @@ function extractServiceBundle (archive, targetPath) {
   // find the manifest with the shortest path
   const filenames = fs.listTree(tempFolder).sort((a, b) => a.length - b.length);
   for (const filename of filenames) {
-    if (filename === 'manifest.json' || filename.endsWith('/manifest.json')) {
+    if (filename === 'manifest.json' || filename.endsWith('/manifest.json') || filename.endsWith('\\manifest.json')) {
       manifestPath = filename;
       break;
     }
@@ -787,7 +803,7 @@ function extractServiceBundle (archive, targetPath) {
   }
   fs.move(basePath, targetPath);
 
-  if (manifestPath.endsWith('/manifest.json')) {
+  if (manifestPath.endsWith('/manifest.json') || manifestPath.endsWith('\\manifest.json')) {
     // service basePath is a subfolder of tempFolder
     // so tempFolder still exists and needs to be removed
     fs.removeDirectoryRecursive(tempFolder, true);

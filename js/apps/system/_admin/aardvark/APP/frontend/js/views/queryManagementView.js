@@ -46,7 +46,7 @@
 
     tableDescription: {
       id: 'arangoQueryManagementTable',
-      titles: ['ID', 'Query String', 'Runtime', 'Started', ''],
+      titles: ['ID', 'Query String', 'Bind parameter', 'Runtime', 'Started', ''],
       rows: [],
       unescaped: [false, false, false, false, true]
     },
@@ -156,7 +156,13 @@
 
     renderActive: function () {
       this.$el.html(this.templateActive.render({}));
-      $(this.id).append(this.table.render({content: this.tableDescription}));
+      $(this.id).append(this.table.render({
+        content: this.tableDescription,
+        type: {
+          1: 'pre',
+          2: 'pre'
+        }
+      }));
       $('#activequeries').addClass('arango-active-tab');
       this.addEvents();
     },
@@ -164,7 +170,11 @@
     renderSlow: function () {
       this.$el.html(this.templateSlow.render({}));
       $(this.id).append(this.table.render({
-        content: this.tableDescription
+        content: this.tableDescription,
+        type: {
+          1: 'pre',
+          2: 'pre'
+        }
       }));
       $('#slowqueries').addClass('arango-active-tab');
       this.addEvents();
@@ -190,6 +200,7 @@
             rowsArray.push([
               model.get('id'),
               model.get('query'),
+              JSON.stringify(model.get('bindVars'), null, 2),
               model.get('runTime').toFixed(2) + ' s',
               model.get('started'),
               button

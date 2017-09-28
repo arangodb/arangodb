@@ -383,8 +383,88 @@ function ClusterCollectionSuite () {
       catch (err) {
         assertEqual(ERRORS.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code, err.errorNum);
       }
-      db._drop('bigreplication');    }
+      db._drop('bigreplication');
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test creation / deleting of documents with replication set
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateReplicated : function () {
+      var cn = "UnitTestsClusterCrudRepl";
+      var c = db._create(cn, { numberOfShards: 2, replicationFactor: 2});
+
+      // store and delete document
+      c.save({foo: 'bar'});
+      db._query(`FOR x IN @@cn REMOVE x IN @@cn`, {'@cn': cn});
+      assertEqual(0, c.toArray().length);
+
+      //insert
+      var cursor = db._query(`
+        let x = (FOR a IN [1]
+                 INSERT {
+                   "_key" : "ulf",
+                   "super" : "dog"
+                 } IN @@cn)
+        return x`,
+        {'@cn' : cn});
+      assertEqual(1, c.toArray().length);
+
+      //update
+      cursor = db._query(`
+        let x = (UPDATE 'ulf' WITH {
+                   "super" : "cat"
+                 } IN @@cn RETURN NEW)
+        RETURN x`,
+        {'@cn' : cn});
+      assertEqual(1, c.toArray().length);
+      var doc = c.any();
+      assertTrue(doc.super === "cat");
+      doc = cursor.next();                // should be: cursor >>= id
+      assertTrue(doc[0].super === "cat");  // extra [] buy subquery return
+
+      //remove
+      cursor = db._query(`
+        let x = (REMOVE 'ulf' IN @@cn)
+        return x`,
+        {'@cn' : cn});
+      assertEqual(0, c.toArray().length);
+
+      db._drop(cn);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+    testIndexEstimates : function () {
+      // index estimate only availalbe with rocksdb for skiplist
+      if (db._engine().name === 'rocksdb') {
+        var cn = "UnitTestsClusterCrudRepl";
+        // numer of shards is one so the estimages behave like in the single server
+        // if the shard number is higher we could just ensure theat the estimate
+        // should be between 0 and 1
+        var c = db._create(cn, { numberOfShards: 1, replicationFactor: 1});
+
+        c.ensureIndex({type:"skiplist", fields:["foo"]});
+
+        var i;
+        var indexes;
+
+        for(i=0; i < 10; ++i){
+          c.save({foo: i});
+        }
+        indexes = c.getIndexes(true);
+        assertEqual(indexes[1].selectivityEstimate, 1);
+
+        for(i=0; i < 10; ++i){
+          c.save({foo: i});
+        }
+        indexes = c.getIndexes(true);
+        assertEqual(indexes[1].selectivityEstimate, 0.5);
+
+        db._drop(cn);
+      }
+    }
+
+////////////////////////////////////////////////////////////////////////////////
   };
 }
 

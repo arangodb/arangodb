@@ -61,6 +61,7 @@ MMFilesPersistentIndexFeature::MMFilesPersistentIndexFeature(
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("RocksDBOption");
+  startsBefore("Database");
   onlyEnabledWith("MMFilesEngine");
 }
 
@@ -94,7 +95,7 @@ void MMFilesPersistentIndexFeature::start() {
   auto database = ApplicationServer::getFeature<DatabasePathFeature>("DatabasePath");
   _path = database->subdirectoryName("rocksdb");
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "initializing rocksdb, path: " << _path;
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "initializing rocksdb for persistent indexes, path: " << _path;
 
   _comparator = new MMFilesPersistentIndexKeyComparator();
 
@@ -118,17 +119,12 @@ void MMFilesPersistentIndexFeature::start() {
   _options.num_levels = static_cast<int>(opts->_numLevels);
   _options.max_bytes_for_level_base = opts->_maxBytesForLevelBase;
   _options.max_bytes_for_level_multiplier = static_cast<int>(opts->_maxBytesForLevelMultiplier);
-  _options.verify_checksums_in_compaction = opts->_verifyChecksumsInCompaction;
   _options.optimize_filters_for_hits = opts->_optimizeFiltersForHits;
 
-  _options.base_background_compactions = static_cast<int>(opts->_baseBackgroundCompactions);
-  _options.max_background_compactions = static_cast<int>(opts->_maxBackgroundCompactions);
-
+  _options.max_background_jobs = static_cast<int>(opts->_maxBackgroundJobs);
   _options.compaction_readahead_size = static_cast<size_t>(opts->_compactionReadaheadSize);
-
-  if (_options.base_background_compactions > 1 || _options.max_background_compactions > 1) {
-    _options.env->SetBackgroundThreads(
-      (std::max)(_options.base_background_compactions, _options.max_background_compactions),
+  if (_options.max_background_jobs > 1) {
+    _options.env->SetBackgroundThreads(std::max(1, _options.max_background_jobs),
       rocksdb::Env::Priority::LOW);
   }
 
@@ -138,7 +134,11 @@ void MMFilesPersistentIndexFeature::start() {
   rocksdb::Status status = rocksdb::OptimisticTransactionDB::Open(_options, _path, &_db);
 
   if (! status.ok()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to initialize RocksDB: " << status.ToString();
+    std::string error;
+    if (status.IsIOError()) {
+      error = "; Maybe your filesystem doesn't provide required features? (Cifs? NFS?)";
+    }
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to initialize RocksDB engine for persistent indexes: " << status.ToString() << error;
     FATAL_ERROR_EXIT();
   }
 }
@@ -148,7 +148,7 @@ void MMFilesPersistentIndexFeature::unprepare() {
     return;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "shutting down RocksDB";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "shutting down RocksDB for persistent indexes";
 
   // flush
   rocksdb::FlushOptions options;
@@ -156,7 +156,7 @@ void MMFilesPersistentIndexFeature::unprepare() {
   rocksdb::Status status = _db->GetBaseDB()->Flush(options);
 
   if (! status.ok()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error flushing data to RocksDB: " << status.ToString();
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error flushing data to RocksDB for persistent indexes: " << status.ToString();
   }
 
   syncWal();
@@ -173,12 +173,12 @@ int MMFilesPersistentIndexFeature::syncWal() {
     return TRI_ERROR_NO_ERROR;
   }
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "syncing RocksDB WAL";
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "syncing RocksDB WAL for persistent indexes";
 
   rocksdb::Status status = Instance->db()->GetBaseDB()->SyncWAL();
 
-  if (! status.ok()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error syncing RocksDB WAL: " << status.ToString();
+  if (!status.ok()) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error syncing RocksDB WAL for persistent indexes: " << status.ToString();
     return TRI_ERROR_INTERNAL;
   }
 #endif
@@ -248,20 +248,6 @@ int MMFilesPersistentIndexFeature::dropPrefix(std::string const& prefix) {
       u.append(reinterpret_cast<char const*>(&value), sizeof(uint64_t));
     }
     u.append(builder.slice().startAs<char const>(), builder.slice().byteSize());
-
-#if 0
-    for (size_t i = 0; i < prefix.size(); i += sizeof(TRI_idx_iid_t)) {
-      char const* x = prefix.c_str() + i;
-      size_t o;
-      char* q = TRI_EncodeHexString(x, 8, &o);
-      if (q != nullptr) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "RocksDB prefix part: " << q;
-        TRI_FreeString(TRI_CORE_MEM_ZONE, q);
-      }
-    }
-
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dropping RocksDB range: " << VPackSlice(l.c_str() + MMFilesPersistentIndex::keyPrefixSize()).toJson() << " - " << VPackSlice(u.c_str() + MMFilesPersistentIndex::keyPrefixSize()).toJson();
-#endif
 
     // delete files in range lower..upper
     rocksdb::Slice lower(l.c_str(), l.size());

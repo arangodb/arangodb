@@ -28,6 +28,7 @@
 #include "Basics/tri-strings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/voc-errors.h"
+#include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
 #include <array>
@@ -35,16 +36,10 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief lookup table for key checks
-////////////////////////////////////////////////////////////////////////////////
-
 std::array<bool, 256> KeyGenerator::LookupTable;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initialize the lookup table for key checks
-////////////////////////////////////////////////////////////////////////////////
-
 void KeyGenerator::Initialize() {
   for (int c = 0; c < 256; ++c) {
     if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
@@ -59,23 +54,14 @@ void KeyGenerator::Initialize() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the key enerator
-////////////////////////////////////////////////////////////////////////////////
-
+/// @brief create the key generator
 KeyGenerator::KeyGenerator(bool allowUserKeys)
     : _allowUserKeys(allowUserKeys) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the key enerator
-////////////////////////////////////////////////////////////////////////////////
-
+/// @brief destroy the key generator
 KeyGenerator::~KeyGenerator() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the generator type from VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
 KeyGenerator::GeneratorType KeyGenerator::generatorType(
     VPackSlice const& parameters) {
   if (!parameters.isObject()) {
@@ -102,10 +88,7 @@ KeyGenerator::GeneratorType KeyGenerator::generatorType(
   return KeyGenerator::TYPE_UNKNOWN;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a key generator based on the options specified
-////////////////////////////////////////////////////////////////////////////////
-
 KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
   KeyGenerator::GeneratorType type;
 
@@ -178,23 +161,20 @@ KeyGenerator* KeyGenerator::factory(VPackSlice const& options) {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_INVALID_KEY_GENERATOR, "invalid key generator type");
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief check global key attributes
-////////////////////////////////////////////////////////////////////////////////
-
-int KeyGenerator::globalCheck(std::string const& key, bool isRestore) {
+int KeyGenerator::globalCheck(char const* p, size_t length, bool isRestore) {
   // user has specified a key
-  if (!key.empty() && !_allowUserKeys && !isRestore) {
+  if (length > 0 && !_allowUserKeys && !isRestore) {
     // we do not allow user-generated keys
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED;
   }
 
-  if (key.empty()) {
+  if (length == 0) {
     // user key is empty
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
 
-  if (key.size() > TRI_VOC_KEY_MAX_LENGTH) {
+  if (length > TRI_VOC_KEY_MAX_LENGTH) {
     // user key is too long
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
@@ -202,11 +182,8 @@ int KeyGenerator::globalCheck(std::string const& key, bool isRestore) {
   return TRI_ERROR_NO_ERROR;
 }
 
-//////////////////////////////////////////////////////////////////////////////
 /// @brief return a VelocyPack representation of the generator
 ///        Not virtual because this is identical for all of them
-//////////////////////////////////////////////////////////////////////////////
-
 std::shared_ptr<VPackBuilder> KeyGenerator::toVelocyPack() const {
   auto builder = std::make_shared<VPackBuilder>();
   toVelocyPack(*builder);
@@ -214,23 +191,14 @@ std::shared_ptr<VPackBuilder> KeyGenerator::toVelocyPack() const {
   return builder;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the key enerator
-////////////////////////////////////////////////////////////////////////////////
-
+/// @brief create the key generator
 TraditionalKeyGenerator::TraditionalKeyGenerator(bool allowUserKeys)
-    : KeyGenerator(allowUserKeys) {}
+    : KeyGenerator(allowUserKeys), _lastValue(0) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the key enerator
-////////////////////////////////////////////////////////////////////////////////
-
+/// @brief destroy the key generator
 TraditionalKeyGenerator::~TraditionalKeyGenerator() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a key
-////////////////////////////////////////////////////////////////////////////////
-
 bool TraditionalKeyGenerator::validateKey(char const* key, size_t len) {
   unsigned char const* p = reinterpret_cast<unsigned char const*>(key);
   size_t pos = 0;
@@ -249,55 +217,80 @@ bool TraditionalKeyGenerator::validateKey(char const* key, size_t len) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a key
-////////////////////////////////////////////////////////////////////////////////
+std::string TraditionalKeyGenerator::generate() {
+  TRI_voc_tick_t tick = TRI_NewTickServer();
+  
+  {
+    MUTEX_LOCKER(mutexLocker, _lock);
 
-std::string TraditionalKeyGenerator::generate(TRI_voc_tick_t tick) {
+    if (tick <= _lastValue) {
+      tick = ++_lastValue;
+    } else {
+      _lastValue = tick;
+    }
+  }
+
+  if (tick == UINT64_MAX) {
+    // sanity check
+    return "";
+  }
   return arangodb::basics::StringUtils::itoa(tick);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a key
-////////////////////////////////////////////////////////////////////////////////
-
-int TraditionalKeyGenerator::validate(std::string const& key, bool isRestore) {
-  int res = globalCheck(key, isRestore);
+int TraditionalKeyGenerator::validate(char const* p, size_t length, bool isRestore) {
+  int res = globalCheck(p, length, isRestore);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
   // validate user-supplied key
-  if (!validateKey(key.c_str(), key.size())) {
+  if (!validateKey(p, length)) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
+  }
+  
+  if (length > 0 && p[0] >= '0' && p[0] <= '9') {
+    // potentially numeric key
+    uint64_t value = StringUtils::uint64(p, length);
+
+    MUTEX_LOCKER(mutexLocker, _lock);
+
+    if (value > _lastValue) {
+      // and update our last value
+      _lastValue = value;
+    }
   }
 
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief track usage of a key
-////////////////////////////////////////////////////////////////////////////////
+void TraditionalKeyGenerator::track(char const* p, size_t length) {
+  // check the numeric key part
+  if (length > 0 && p[0] >= '0' && p[0] <= '9') {
+    // potentially numeric key
+    uint64_t value = StringUtils::uint64(p, length);
 
-void TraditionalKeyGenerator::track(char const*, VPackValueLength) {
-  TRI_ASSERT(false);
+    MUTEX_LOCKER(mutexLocker, _lock);
+
+    if (value > _lastValue) {
+      // and update our last value
+      _lastValue = value;
+    }
+  }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a VPack representation of the generator
-////////////////////////////////////////////////////////////////////////////////
-
 void TraditionalKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
   TRI_ASSERT(!builder.isClosed());
   builder.add("type", VPackValue(name()));
   builder.add("allowUserKeys", VPackValue(_allowUserKeys));
+  builder.add("lastValue", VPackValue(_lastValue));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create the generator
-////////////////////////////////////////////////////////////////////////////////
-
 AutoIncrementKeyGenerator::AutoIncrementKeyGenerator(bool allowUserKeys,
                                                      uint64_t offset,
                                                      uint64_t increment)
@@ -306,16 +299,10 @@ AutoIncrementKeyGenerator::AutoIncrementKeyGenerator(bool allowUserKeys,
       _offset(offset),
       _increment(increment) {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the generator
-////////////////////////////////////////////////////////////////////////////////
-
 AutoIncrementKeyGenerator::~AutoIncrementKeyGenerator() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a numeric key
-////////////////////////////////////////////////////////////////////////////////
-
 bool AutoIncrementKeyGenerator::validateKey(char const* key, size_t len) {
   char const* p = key;
   size_t pos = 0;
@@ -334,11 +321,8 @@ bool AutoIncrementKeyGenerator::validateKey(char const* key, size_t len) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generate a key
-////////////////////////////////////////////////////////////////////////////////
-
-std::string AutoIncrementKeyGenerator::generate(TRI_voc_tick_t tick) {
+std::string AutoIncrementKeyGenerator::generate() {
   uint64_t keyValue;
 
   {
@@ -365,27 +349,24 @@ std::string AutoIncrementKeyGenerator::generate(TRI_voc_tick_t tick) {
   return arangodb::basics::StringUtils::itoa(keyValue);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a key
-////////////////////////////////////////////////////////////////////////////////
-
-int AutoIncrementKeyGenerator::validate(std::string const& key,
-                                        bool isRestore) {
-  int res = globalCheck(key, isRestore);
+int AutoIncrementKeyGenerator::validate(char const* p, size_t length, bool isRestore) {
+  int res = globalCheck(p, length, isRestore);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
   // validate user-supplied key
-  if (!validateKey(key.c_str(), key.size())) {
+  if (!validateKey(p, length)) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   }
 
-  uint64_t intValue = arangodb::basics::StringUtils::uint64(key);
+  uint64_t intValue = arangodb::basics::StringUtils::uint64(p, length);
+    
+  MUTEX_LOCKER(mutexLocker, _lock);
 
   if (intValue > _lastValue) {
-    MUTEX_LOCKER(mutexLocker, _lock);
     // update our last value
     _lastValue = intValue;
   }
@@ -393,36 +374,32 @@ int AutoIncrementKeyGenerator::validate(std::string const& key,
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief track usage of a key
-////////////////////////////////////////////////////////////////////////////////
-
-void AutoIncrementKeyGenerator::track(char const* p, VPackValueLength length) {
+void AutoIncrementKeyGenerator::track(char const* p, size_t length) {
   // check the numeric key part
-  uint64_t value = StringUtils::uint64(p, length);
+  if (length > 0 && p[0] >= '0' && p[0] <= '9') {
+    uint64_t value = StringUtils::uint64(p, length);
+  
+    MUTEX_LOCKER(mutexLocker, _lock);
 
-  if (value > _lastValue) {
-    // and update our last value
-    _lastValue = value;
+    if (value > _lastValue) {
+      // and update our last value
+      _lastValue = value;
+    }
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief create a VelocyPack representation of the generator
-////////////////////////////////////////////////////////////////////////////////
-
 void AutoIncrementKeyGenerator::toVelocyPack(VPackBuilder& builder) const {
   TRI_ASSERT(!builder.isClosed());
   builder.add("type", VPackValue(name()));
   builder.add("allowUserKeys", VPackValue(_allowUserKeys));
   builder.add("offset", VPackValue(_offset));
   builder.add("increment", VPackValue(_increment));
+  builder.add("lastValue", VPackValue(_lastValue));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a document id (collection name + / + document key)
-////////////////////////////////////////////////////////////////////////////////
-
 bool TRI_ValidateDocumentIdKeyGenerator(char const* key, size_t len,
                                         size_t* split) {
   if (len == 0) {

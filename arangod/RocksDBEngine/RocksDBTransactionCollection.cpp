@@ -35,9 +35,9 @@
 using namespace arangodb;
 
 RocksDBTransactionCollection::RocksDBTransactionCollection(
-    TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel)
-    : TransactionCollection(trx, cid),
-      _accessType(accessType),
+    TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType,
+    int nestingLevel)
+    : TransactionCollection(trx, cid, accessType),
       _lockType(AccessMode::Type::NONE),
       _nestingLevel(nestingLevel),
       _initialNumberDocuments(0),
@@ -56,7 +56,8 @@ int RocksDBTransactionCollection::lock() { return lock(_accessType, 0); }
 /// @brief request a lock for a collection
 int RocksDBTransactionCollection::lock(AccessMode::Type accessType,
                                        int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) && !AccessMode::isWriteOrExclusive(_accessType)) {
+  if (AccessMode::isWriteOrExclusive(accessType) &&
+      !AccessMode::isWriteOrExclusive(_accessType)) {
     // wrong lock type
     return TRI_ERROR_INTERNAL;
   }
@@ -72,7 +73,8 @@ int RocksDBTransactionCollection::lock(AccessMode::Type accessType,
 /// @brief request an unlock for a collection
 int RocksDBTransactionCollection::unlock(AccessMode::Type accessType,
                                          int nestingLevel) {
-  if (AccessMode::isWriteOrExclusive(accessType) && !AccessMode::isWriteOrExclusive(_accessType)) {
+  if (AccessMode::isWriteOrExclusive(accessType) &&
+      !AccessMode::isWriteOrExclusive(_accessType)) {
     // wrong lock type: write-unlock requested but collection is read-only
     return TRI_ERROR_INTERNAL;
   }
@@ -88,7 +90,8 @@ int RocksDBTransactionCollection::unlock(AccessMode::Type accessType,
 /// @brief check if a collection is locked in a specific mode in a transaction
 bool RocksDBTransactionCollection::isLocked(AccessMode::Type accessType,
                                             int nestingLevel) const {
-  if (AccessMode::isWriteOrExclusive(accessType) && !AccessMode::isWriteOrExclusive(_accessType)) {
+  if (AccessMode::isWriteOrExclusive(accessType) &&
+      !AccessMode::isWriteOrExclusive(_accessType)) {
     // wrong lock type
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
         << "logic error. checking wrong lock type";
@@ -138,7 +141,7 @@ int RocksDBTransactionCollection::updateUsage(AccessMode::Type accessType,
     // upgrade collection type to write-access
     _accessType = accessType;
   }
-  
+
   if (nestingLevel < _nestingLevel) {
     _nestingLevel = nestingLevel;
   }
@@ -153,6 +156,8 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
     return TRI_ERROR_NO_ERROR;
   }
 
+  bool doSetup = false;
+
   if (_collection == nullptr) {
     // open the collection
     if (!_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER) &&
@@ -163,9 +168,10 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       _collection = _transaction->vocbase()->useCollection(_cid, status);
       if (_collection != nullptr) {
         _usageLocked = true;
-        
+
         // geo index needs exclusive write access
-        RocksDBCollection* rc = static_cast<RocksDBCollection*>(_collection->getPhysical());
+        RocksDBCollection* rc =
+            static_cast<RocksDBCollection*>(_collection->getPhysical());
         if (AccessMode::isWrite(_accessType) && rc->hasGeoIndex()) {
           _accessType = AccessMode::Type::EXCLUSIVE;
         }
@@ -193,10 +199,10 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
 
-    RocksDBCollection* rc = static_cast<RocksDBCollection*>(_collection->getPhysical());
-    _initialNumberDocuments = rc->numberDocuments();
-    _revision = rc->revision();
+    doSetup = true;
   }
+
+  TRI_ASSERT(_collection != nullptr);
 
   if (AccessMode::isWriteOrExclusive(_accessType) && !isLocked()) {
     // r/w lock the collection
@@ -206,7 +212,14 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       return res;
     }
   }
-  
+    
+  if (doSetup) {
+    RocksDBCollection* rc =
+        static_cast<RocksDBCollection*>(_collection->getPhysical());
+    _initialNumberDocuments = rc->numberDocuments();
+    _revision = rc->revision();
+  }
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -220,7 +233,7 @@ void RocksDBTransactionCollection::release() {
     doUnlock(_accessType, 0);
     _lockType = AccessMode::Type::NONE;
   }
-  
+
   // the top level transaction releases all collections
   if (_collection != nullptr) {
     // unuse collection, remove usage-lock
@@ -267,16 +280,17 @@ void RocksDBTransactionCollection::commitCounts() {
 }
 
 /// @brief lock a collection
-int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel) {
+int RocksDBTransactionCollection::doLock(AccessMode::Type type,
+                                         int nestingLevel) {
   if (!AccessMode::isWriteOrExclusive(type)) {
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   if (_transaction->hasHint(transaction::Hints::Hint::LOCK_NEVER)) {
     // never lock
     return TRI_ERROR_NO_ERROR;
   }
-  
+
   TRI_ASSERT(_collection != nullptr);
 
   if (CollectionLockState::_noLockHeaders != nullptr) {
@@ -301,29 +315,36 @@ int RocksDBTransactionCollection::doLock(AccessMode::Type type, int nestingLevel
     // give up early if we cannot acquire the lock instantly
     timeout = 0.00000001;
   }
-  
+
   LOG_TRX(_transaction, nestingLevel) << "write-locking collection " << _cid;
   int res;
   if (AccessMode::isExclusive(type)) {
-    // exclusive locking means we'll be acquiring the collection's RW lock in write mode
+    // exclusive locking means we'll be acquiring the collection's RW lock in
+    // write mode
     res = physical->lockWrite(timeout);
   } else {
-    // write locking means we'll be acquiring the collection's RW lock in read mode
+    // write locking means we'll be acquiring the collection's RW lock in read
+    // mode
     res = physical->lockRead(timeout);
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
     _lockType = type;
   } else if (res == TRI_ERROR_LOCK_TIMEOUT && timeout >= 0.1) {
-    LOG_TOPIC(WARN, Logger::QUERIES) << "timed out after " << timeout << " s waiting for " << AccessMode::typeString(type) << "-lock on collection '" << _collection->name() << "'";
-  } 
-  
+    LOG_TOPIC(WARN, Logger::QUERIES)
+        << "timed out after " << timeout << " s waiting for "
+        << AccessMode::typeString(type) << "-lock on collection '"
+        << _collection->name() << "'";
+  }
+
   return res;
 }
 
 /// @brief unlock a collection
-int RocksDBTransactionCollection::doUnlock(AccessMode::Type type, int nestingLevel) {
-  if (!AccessMode::isWriteOrExclusive(type) || !AccessMode::isWriteOrExclusive(_lockType)) {
+int RocksDBTransactionCollection::doUnlock(AccessMode::Type type,
+                                           int nestingLevel) {
+  if (!AccessMode::isWriteOrExclusive(type) ||
+      !AccessMode::isWriteOrExclusive(_lockType)) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -349,12 +370,14 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
     // only process our own collections
     return TRI_ERROR_NO_ERROR;
   }
-  
-  if (!AccessMode::isWriteOrExclusive(type) && AccessMode::isWriteOrExclusive(_lockType)) {
+
+  if (!AccessMode::isWriteOrExclusive(type) &&
+      AccessMode::isWriteOrExclusive(_lockType)) {
     // do not remove a write-lock if a read-unlock was requested!
     return TRI_ERROR_NO_ERROR;
-  } 
-  if (AccessMode::isWriteOrExclusive(type) && !AccessMode::isWriteOrExclusive(_lockType)) {
+  }
+  if (AccessMode::isWriteOrExclusive(type) &&
+      !AccessMode::isWriteOrExclusive(_lockType)) {
     // we should never try to write-unlock a collection that we have only
     // read-locked
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "logic error in doUnlock";
@@ -370,10 +393,12 @@ int RocksDBTransactionCollection::doUnlock(AccessMode::Type type, int nestingLev
 
   LOG_TRX(_transaction, nestingLevel) << "write-unlocking collection " << _cid;
   if (!AccessMode::isExclusive(type)) {
-    // exclusive locking means we'll be releasing the collection's RW lock in write mode
+    // exclusive locking means we'll be releasing the collection's RW lock in
+    // write mode
     physical->unlockWrite();
   } else {
-    // write locking means we'll be releasing the collection's RW lock in read mode
+    // write locking means we'll be releasing the collection's RW lock in read
+    // mode
     physical->unlockRead();
   }
 

@@ -152,14 +152,14 @@ std::string ProgramOptions::translateShorthand(std::string const& name) const {
 }
 
 void ProgramOptions::walk(std::function<void(Section const&, Option const&)> const& callback,
-          bool onlyTouched) const {
+          bool onlyTouched, bool includeObsolete) const {
   for (auto const& it : _sections) {
-    if (it.second.obsolete) {
+    if (!includeObsolete && it.second.obsolete) {
       // obsolete section. ignore it
       continue;
     }
     for (auto const& it2 : it.second.options) {
-      if (it2.second.obsolete) {
+      if (!includeObsolete && it2.second.obsolete) {
         // obsolete option. ignore it
         continue;
       }
@@ -352,12 +352,24 @@ bool ProgramOptions::fail(std::string const& message) {
   std::cerr << "Error while processing " << _context << ":" << std::endl;
   failNotice(message);
   std::cerr << std::endl;
+#ifdef _WIN32
+  // additionally log these errors to the debug output window in MSVC so
+  // we can see them during development
+  OutputDebugString(message.c_str());
+  OutputDebugString("\r\n");
+#endif
   return false;
 }
 
 void ProgramOptions::failNotice(std::string const& message) {
   _processingResult.failed(true);
   std::cerr << "  " << message << std::endl;
+#ifdef _WIN32
+  // additionally log these errors to the debug output window in MSVC so
+  // we can see them during development
+  OutputDebugString(message.c_str());
+  OutputDebugString("\r\n");
+#endif
 }
 
 // add a positional argument (callback from parser)

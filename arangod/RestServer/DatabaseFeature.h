@@ -76,16 +76,19 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   void stop() override final;
   void unprepare() override final;
 
-  int recoveryDone();
+  /// @brief will be called when the recovery phase has run
+  /// this will call the engine-specific recoveryDone() procedures
+  /// and will execute engine-unspecific operations (such as starting
+  /// the replication appliers) for all databases
+  void recoveryDone();
 
  public:
-
-  static constexpr uint32_t defaultIndexBuckets() { return 8; }
 
    /// @brief get the ids of all local coordinator databases
   std::vector<TRI_voc_tick_t> getDatabaseIdsCoordinator(bool includeSystem);
   std::vector<TRI_voc_tick_t> getDatabaseIds(bool includeSystem);
   std::vector<std::string> getDatabaseNames();
+  std::vector<std::string> getDatabaseNamesCoordinator();
   std::vector<std::string> getDatabaseNamesForUser(std::string const& user);
 
   int createDatabaseCoordinator(TRI_voc_tick_t id, std::string const& name, TRI_vocbase_t*& result);

@@ -1,40 +1,7 @@
 arangosh&gt; <span class="hljs-keyword">var</span> graph_module = <span class="hljs-built_in">require</span>(<span class="hljs-string">"@arangodb/general-graph"</span>);
 arangosh&gt; <span class="hljs-keyword">var</span> edgeDefinitions = [ { <span class="hljs-attr">collection</span>: <span class="hljs-string">"edges"</span>, <span class="hljs-string">"from"</span>: [ <span class="hljs-string">"vertices"</span> ], <span class="hljs-string">"to"</span> : [ <span class="hljs-string">"vertices"</span> ] } ];
 arangosh&gt; graph = graph_module._create(<span class="hljs-string">"myGraph"</span>, edgeDefinitions);
-{ 
-  <span class="hljs-string">"_edgeCollections"</span> : () { ... }, 
-  <span class="hljs-string">"_vertexCollections"</span> : (excludeOrphans) { ... }, 
-  <span class="hljs-string">"_EDGES"</span> : (vertexId) { ... }, 
-  <span class="hljs-string">"_INEDGES"</span> : (vertexId) { ... }, 
-  <span class="hljs-string">"_OUTEDGES"</span> : (vertexId) { ... }, 
-  <span class="hljs-string">"_edges"</span> : (vertexExample, options) { ... }, 
-  <span class="hljs-string">"_vertices"</span> : (vertexExample, options) { ... }, 
-  <span class="hljs-string">"_fromVertex"</span> : (edgeId) { ... }, 
-  <span class="hljs-string">"_toVertex"</span> : (edgeId) { ... }, 
-  <span class="hljs-string">"_getEdgeCollectionByName"</span> : (name) { ... }, 
-  <span class="hljs-string">"_getVertexCollectionByName"</span> : (name) { ... }, 
-  <span class="hljs-string">"_neighbors"</span> : (vertexExample, options) { ... }, 
-  <span class="hljs-string">"_commonNeighbors"</span> : (vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) { ... }, 
-  <span class="hljs-string">"_countCommonNeighbors"</span> : (vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) { ... }, 
-  <span class="hljs-string">"_commonProperties"</span> : (vertex1Example, vertex2Example, options) { ... }, 
-  <span class="hljs-string">"_countCommonProperties"</span> : (vertex1Example, vertex2Example, options) { ... }, 
-  <span class="hljs-string">"_paths"</span> : (options) { ... }, 
-  <span class="hljs-string">"_shortestPath"</span> : (startVertexExample, endVertexExample, options) { ... }, 
-  <span class="hljs-string">"_distanceTo"</span> : (startVertexExample, endVertexExample, options) { ... }, 
-  <span class="hljs-string">"_absoluteEccentricity"</span> : (vertexExample, options) { ... }, 
-  <span class="hljs-string">"_farness"</span> : (vertexExample, options) { ... }, 
-  <span class="hljs-string">"_absoluteCloseness"</span> : (vertexExample, options) { ... }, 
-  <span class="hljs-string">"_eccentricity"</span> : (options) { ... }, 
-  <span class="hljs-string">"_closeness"</span> : (options) { ... }, 
-  <span class="hljs-string">"_absoluteBetweenness"</span> : (example, options) { ... }, 
-  <span class="hljs-string">"_betweenness"</span> : (options) { ... }, 
-  <span class="hljs-string">"_radius"</span> : (options) { ... }, 
-  <span class="hljs-string">"_diameter"</span> : (options) { ... }, 
-  <span class="hljs-string">"_extendEdgeDefinitions"</span> : (edgeDefinition) { ... }, 
-  <span class="hljs-string">"_editEdgeDefinitions"</span> : (edgeDefinition) { ... }, 
-  <span class="hljs-string">"_deleteEdgeDefinition"</span> : (edgeCollection, dropCollection) { ... }, 
-  <span class="hljs-string">"_addVertexCollection"</span> : (vertexCollectionName, createCollection) { ... }, 
-  <span class="hljs-string">"_orphanCollections"</span> : () { ... }, 
-  <span class="hljs-string">"_removeVertexCollection"</span> : (vertexCollectionName, dropCollection) { ... }, 
-  <span class="hljs-string">"_getConnectingEdges"</span> : (vertexExample1, vertexExample2, options) { ... } 
+{[Graph] 
+  <span class="hljs-string">"edges"</span> : [ArangoCollection <span class="hljs-number">15651</span>, <span class="hljs-string">"edges"</span> (type edge, status loaded)], 
+  <span class="hljs-string">"vertices"</span> : [ArangoCollection <span class="hljs-number">15649</span>, <span class="hljs-string">"vertices"</span> (type <span class="hljs-built_in">document</span>, status loaded)] 
 }

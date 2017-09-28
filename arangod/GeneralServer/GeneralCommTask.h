@@ -35,6 +35,7 @@
 #include "Scheduler/Socket.h"
 
 namespace arangodb {
+class AuthenticationFeature;
 class GeneralRequest;
 class GeneralResponse;
 
@@ -77,7 +78,7 @@ class GeneralServer;
 //     called. This will call `addResponse()` with an error indicator, which in
 //     turn will end the responding request.
 //
-
+  
 class GeneralCommTask : public SocketTask {
   GeneralCommTask(GeneralCommTask const&) = delete;
   GeneralCommTask const& operator=(GeneralCommTask const&) = delete;
@@ -99,9 +100,9 @@ class GeneralCommTask : public SocketTask {
 
   virtual void addResponse(GeneralResponse*, RequestStatistics*) = 0;
 
-  virtual void handleSimpleError(rest::ResponseCode, uint64_t messageId) = 0;
+  virtual void handleSimpleError(rest::ResponseCode, GeneralRequest const&, uint64_t messageId) = 0;
 
-  virtual void handleSimpleError(rest::ResponseCode, int code,
+  virtual void handleSimpleError(rest::ResponseCode, GeneralRequest const&, int code,
                                  std::string const& errorMessage,
                                  uint64_t messageId) = 0;
 
@@ -120,6 +121,7 @@ class GeneralCommTask : public SocketTask {
 
  protected:
   GeneralServer* const _server;
+  AuthenticationFeature* _authentication;
 
   // protocol to use http, vst
   char const* _protocol = "unknown";
@@ -127,10 +129,16 @@ class GeneralCommTask : public SocketTask {
 
   arangodb::Mutex _statisticsMutex;
   std::unordered_map<uint64_t, RequestStatistics*> _statisticsMap;
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief checks the access rights for a specified path, includes automatic
+  ///        exceptions for /_api/users to allow logins without authorization
+  ////////////////////////////////////////////////////////////////////////////////
+  rest::ResponseCode canAccessPath(GeneralRequest*) const;
 
  private:
   bool handleRequest(std::shared_ptr<RestHandler>);
-  void handleRequestDirectly(std::shared_ptr<RestHandler>);
+  void handleRequestDirectly(bool doLock, std::shared_ptr<RestHandler>);
   bool handleRequestAsync(std::shared_ptr<RestHandler>,
                           uint64_t* jobId = nullptr);
 };

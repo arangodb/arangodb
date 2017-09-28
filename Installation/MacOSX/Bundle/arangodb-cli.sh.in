@@ -3,10 +3,15 @@ WD=$(dirname "$0")
 ROOTDIR=$(cd "$WD" && pwd)
 # create start script
 
+ARANGOD_CONF_DIR="${HOME}@INC_CPACK_INSTALL_SYSCONFDIR@/"
+ARANGOD_CONF="${ARANGOD_CONF_DIR}/arangod.conf"
 mkdir -p "${HOME}@INC_CPACK_ARANGO_DATA_DIR@"
 mkdir -p "${HOME}@INC_CPACK_ARANGO_LOG_DIR@"
 mkdir -p "${HOME}@INC_CPACK_ARANGODB_APPS_DIRECTORY@"
 
+if test ! -f "${HOME}@INC_CPACK_INSTALL_SYSCONFDIR@"; then
+    cp -R "${ROOTDIR}@CPACK_PACKAGING_INSTALL_PREFIX@/@CMAKE_INSTALL_SYSCONFDIR_ARANGO@" "${ARANGOD_CONF_DIR}/"
+fi
 if test ! -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/SERVER" -a ! -f "${HOME}@INC_CPACK_ARANGO_DATA_DIR@/ENGINE"; then
     STORAGE_ENGINE=$(
         /usr/bin/osascript <<-EOF
@@ -20,9 +25,9 @@ EOF
         STORAGE_ENGINE=auto
     fi
 
-    sed -i -e "s;storage-engine = auto;storage-engine = $STORAGE_ENGINE;" "${ROOTDIR}/@CMAKE_INSTALL_SYSCONFDIR_ARANGO@/arangod.conf"
+    sed -i -e "s;storage-engine = auto;storage-engine = $STORAGE_ENGINE;" "${ARANGOD_CONF}"
 else
-    if "${ROOTDIR}/arangod" --database.check-version true; then
+    if "${ROOTDIR}/arangod" -c "${ARANGOD_CONF}" --database.check-version true; then
         echo "database doesn't need an upgrade."
     else
         UPGRADE_DB=$(/usr/bin/osascript<<END
@@ -33,7 +38,7 @@ end tell
 END
               )
         if test "${UPGRADE_DB}" == "Yes"; then
-            "${ROOTDIR}/arangod" --database.auto-upgrade
+            "${ROOTDIR}/arangod" --database.auto-upgrade -c "${ARANGOD_CONF}"
         else
             echo "Can't continue with not updated database."
             exit 1
@@ -52,7 +57,7 @@ for script in $SCRIPTS; do
     echo "export ROOTDIR=\"${ROOTDIR}@CMAKE_INSTALL_PREFIX@\""
     echo
 
-    echo "exec \"\${ROOTDIR}/$script\" -c \"\${ROOTDIR}/@CMAKE_INSTALL_SYSCONFDIR_ARANGO@/${base}.conf\" \$*"
+    echo "exec \"\${ROOTDIR}/$script\" -c \"${ARANGOD_CONF_DIR}/${base}.conf\" \$*"
   ) > "${ROOTDIR}/$base.$$"
 
   chmod 755 "${ROOTDIR}/$base.$$"
@@ -61,7 +66,7 @@ done
 
 # start the server
 
-PIDFILE="${ROOTDIR}@INC_CPACK_ARANGO_PID_DIR@/arangod.pid"
+PIDFILE="${HOMEDIR}@INC_CPACK_ARANGO_PID_DIR@/arangod.pid"
 
 if [ -f "${PIDFILE}" ];  then
 result=$(
@@ -80,7 +85,7 @@ fi
 
 
 test -d "${ROOTDIR}@INC_CPACK_ARANGO_PID_DIR@" || mkdir "${ROOTDIR}@INC_CPACK_ARANGO_PID_DIR@"
-"${ROOTDIR}/arangod" --daemon --pid-file "${PIDFILE}"
+"${ROOTDIR}/arangod" -c "${ARANGOD_CONF}" --daemon --pid-file "${PIDFILE}"
 
 # create some information for the user
 

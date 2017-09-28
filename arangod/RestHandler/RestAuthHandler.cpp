@@ -30,6 +30,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "Ssl/SslInterface.h"
 #include "VocBase/AuthInfo.h"
 
@@ -46,7 +47,7 @@ bool RestAuthHandler::isDirect() const { return false; }
 
 std::string RestAuthHandler::generateJwt(std::string const& username,
                                          std::string const& password) {
-  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
+  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
   TRI_ASSERT(authentication != nullptr);
 
   std::chrono::seconds exp =
@@ -93,9 +94,7 @@ RestStatus RestAuthHandler::execute() {
   _username = usernameSlice.copyString();
   std::string const password = passwordSlice.copyString();
   
-  auto authentication =
-      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-          "Authentication");
+  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
   AuthResult auth =
     authentication->authInfo()->checkPassword(_username, password);
 
@@ -105,7 +104,6 @@ RestStatus RestAuthHandler::execute() {
       VPackObjectBuilder b(&resultBuilder);
       std::string jwt = generateJwt(_username, password);
       resultBuilder.add("jwt", VPackValue(jwt));
-      resultBuilder.add("must_change_password", VPackValue(auth._mustChange));
     }
 
     _isValid = true;

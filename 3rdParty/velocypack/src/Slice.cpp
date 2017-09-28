@@ -340,7 +340,9 @@ unsigned int const SliceStaticData::FirstSubMap[32] = {
     3,  // 0x0f, object with unsorted index table
     5,  // 0x10, object with unsorted index table
     9,  // 0x11, object with unsorted index table
-    9,  // 0x12, object with unsorted index table
+    9,  // 0x12, object with unsorted index table,
+    0,  // 0x13, compact array, no index table - note: the offset is dynamic!
+    0,  // 0x14, compact object, no index table - note: the offset is dynamic!
     0};
 
 // creates a Slice from Json and adds it to a scope
@@ -508,7 +510,7 @@ Slice Slice::get(std::string const& attribute) const {
 
   // only use binary search for attributes if we have at least this many entries
   // otherwise we'll always use the linear search
-  static ValueLength const SortedSearchEntriesThreshold = 4;
+  constexpr ValueLength SortedSearchEntriesThreshold = 4;
 
   // bool const isSorted = (h >= 0x0b && h <= 0x0e);
   if (n >= SortedSearchEntriesThreshold && (h >= 0x0b && h <= 0x0e)) {
@@ -528,6 +530,27 @@ Slice Slice::get(std::string const& attribute) const {
   }
 
   return searchObjectKeyLinear(attribute, ieBase, offsetSize, n);
+}
+
+// return the value for an Int object
+int64_t Slice::getIntUnchecked() const {
+  uint8_t const h = head();
+
+  if (h >= 0x20 && h <= 0x27) {
+    // Int  T
+    uint64_t v = readIntegerNonEmpty<uint64_t>(_start + 1, h - 0x1f);
+    if (h == 0x27) {
+      return toInt64(v);
+    } else {
+      int64_t vv = static_cast<int64_t>(v);
+      int64_t shift = 1LL << ((h - 0x1f) * 8 - 1);
+      return vv < shift ? vv : vv - (shift << 1);
+    }
+  }
+
+  // SmallInt
+  VELOCYPACK_ASSERT(h >= 0x30 && h <= 0x3f);
+  return getSmallInt();
 }
 
 // return the value for an Int object

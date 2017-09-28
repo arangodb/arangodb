@@ -75,7 +75,7 @@ function agencyTestSuite () {
   }
 
   var compactionConfig = findAgencyCompactionIntervals();
-  require("console").warn("Agency compaction configuration: ", compactionConfig);
+  require("console").topic("agency=info", "Agency compaction configuration: ", compactionConfig);
 
   function accessAgency(api, list) {
     // We simply try all agency servers in turn until one gives us an HTTP
@@ -85,7 +85,9 @@ function agencyTestSuite () {
       res = request({url: agencyLeader + "/_api/agency/" + api,
                      method: "POST", followRedirect: false,
                      body: JSON.stringify(list),
-                     headers: {"Content-Type": "application/json"}});
+                     headers: {"Content-Type": "application/json"},
+                     timeout: 240  /* essentially for the huge trx package
+                                      running under ASAN in the CI */ });
       if(res.statusCode === 307) {
         agencyLeader = res.headers.location;
         var l = 0;
@@ -93,17 +95,18 @@ function agencyTestSuite () {
           l = agencyLeader.indexOf('/', l+1);
         }
         agencyLeader = agencyLeader.substring(0,l);
-        require('console').warn('Redirected to ' + agencyLeader);
+        require('console').topic("agency=info", 'Redirected to ' + agencyLeader);
       } else if (res.statusCode !== 503) {
         break;
       } else {
-        require('console').warn('Waiting for leader ... ');
+        require('console').topic("agency=info", 'Waiting for leader ... ');
+        wait(1.0);
       }
     }
     try {
       res.bodyParsed = JSON.parse(res.body);
     } catch(e) {
-      require("console").error("Exception in body parse:", res.body, JSON.stringify(e), api, list);
+      require("console").error("Exception in body parse:", res.body, JSON.stringify(e), api, list, JSON.stringify(res));
     }
     return res;
   }
@@ -922,13 +925,13 @@ function agencyTestSuite () {
           bodyParsed.results[0];
 
       let count = compactionConfig.compactionStepSize - 100 - cur;
-      require("console").warn("Avoiding log compaction for now with", count,
+      require("console").topic("agency=info", "Avoiding log compaction for now with", count,
         "keys, from log entry", cur, "on.");
       doCountTransactions(count, 0);
 
       // Now trigger one log compaction and check all keys:
       let count2 = compactionConfig.compactionStepSize + 100 - (cur + count);
-      require("console").warn("Provoking log compaction for now with", count2,
+      require("console").topic("agency=info", "Provoking log compaction for now with", count2,
         "keys, from log entry", cur + count, "on.");
       doCountTransactions(count2, count);
 
@@ -936,9 +939,22 @@ function agencyTestSuite () {
       // comparison to the compaction interval (with the default settings),
       let count3 = 2 * compactionConfig.compactionStepSize + 100 
         - (cur + count + count2);
-      require("console").warn("Provoking second log compaction for now with", 
+      require("console").topic("agency=info", "Provoking second log compaction for now with",
         count3, "keys, from log entry", cur + count + count2, "on.");
       doCountTransactions(count3, count + count2);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Huge transaction package
+////////////////////////////////////////////////////////////////////////////////
+
+    testHugeTransactionPackage : function() {
+      var huge = [];
+      for (var i = 0; i < 20000; ++i) {
+        huge.push([{"a":{"op":"increment"}}]);
+      }
+      writeAndCheck(huge);
+      assertEqual(readAndCheck([["a"]]), [{"a":20000}]);
     }
 
   };

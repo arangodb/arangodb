@@ -302,7 +302,7 @@
             );
             buttons.push(
               window.modalView.createDeleteButton(
-                'Warmup',
+                'Load Indexes in Memory',
                 this.warumupCollection.bind(this)
               )
             );

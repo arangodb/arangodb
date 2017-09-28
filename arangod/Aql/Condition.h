@@ -70,16 +70,22 @@ struct ConditionPart {
   inline int whichCompareOperation() const {
     switch (operatorType) {
       case NODE_TYPE_OPERATOR_BINARY_EQ:
+      case NODE_TYPE_OPERATOR_BINARY_ARRAY_EQ:
         return 0;
       case NODE_TYPE_OPERATOR_BINARY_NE:
+      case NODE_TYPE_OPERATOR_BINARY_ARRAY_NE:
         return 1;
       case NODE_TYPE_OPERATOR_BINARY_LT:
+      case NODE_TYPE_OPERATOR_BINARY_ARRAY_LT:
         return 2;
       case NODE_TYPE_OPERATOR_BINARY_LE:
+      case NODE_TYPE_OPERATOR_BINARY_ARRAY_LE:
         return 3;
       case NODE_TYPE_OPERATOR_BINARY_GE:
+      case NODE_TYPE_OPERATOR_BINARY_ARRAY_GE:
         return 4;
       case NODE_TYPE_OPERATOR_BINARY_GT:
+      case NODE_TYPE_OPERATOR_BINARY_ARRAY_GT:
         return 5;
       default:
         return 6;  // not a compare operator.
@@ -178,6 +184,11 @@ class Condition {
   ~Condition();
 
  public:
+  static void CollectOverlappingMembers(
+      ExecutionPlan const* plan, Variable const* variable, AstNode* andNode,
+      AstNode* otherAndNode, std::unordered_set<size_t>& toRemove,
+                                        bool isFromTraverser);
+
   /// @brief return the condition root
   inline AstNode* root() const { return _root; }
 
@@ -219,6 +230,9 @@ class Condition {
 
   /// @brief removes condition parts from another
   AstNode* removeIndexCondition(ExecutionPlan const*, Variable const*, AstNode*);
+  
+  /// @brief removes condition parts from another
+  AstNode* removeTraversalCondition(ExecutionPlan const*, Variable const*, AstNode*);
 
   /// @brief remove (now) invalid variables from the condition
   bool removeInvalidVariables(std::unordered_set<Variable const*> const&);
@@ -235,6 +249,7 @@ class Condition {
   std::vector<std::vector<arangodb::basics::AttributeName>> getConstAttributes (Variable const*, bool);
 
  private:
+
   /// @brief sort ORs for the same attribute so they are in ascending value
   /// order. this will only work if the condition is for a single attribute
   bool sortOrs(Variable const*, std::vector<Index const*>&);
@@ -254,7 +269,8 @@ class Condition {
 #endif
 
   /// @brief checks if the current condition covers the other
-  bool canRemove(ExecutionPlan const*, ConditionPart const&, AstNode const*) const;
+  static bool CanRemove(ExecutionPlan const*, ConditionPart const&, AstNode const*,
+                        bool isFromTraverser);
 
   /// @brief deduplicate IN condition values
   /// this may modify the node in place

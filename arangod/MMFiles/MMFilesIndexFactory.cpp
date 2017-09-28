@@ -22,11 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesIndexFactory.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
-
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "MMFiles/MMFilesEdgeIndex.h"
@@ -37,6 +37,7 @@
 #include "MMFiles/MMFilesPrimaryIndex.h"
 #include "MMFiles/MMFilesSkiplistIndex.h"
 #include "MMFiles/mmfiles-fulltext-index.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -89,8 +90,10 @@ static int ProcessIndexFields(VPackSlice const definition,
     }
 
     builder.close();
-  } catch (...) {
+  } catch (std::bad_alloc const&) {
     return TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
   }
   return TRI_ERROR_NO_ERROR;
 }
@@ -123,6 +126,19 @@ static void ProcessIndexSparseFlag(VPackSlice const definition,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief process the deduplicate flag and add it to the json
+////////////////////////////////////////////////////////////////////////////////
+
+static void ProcessIndexDeduplicateFlag(VPackSlice const definition,
+                                        VPackBuilder& builder) {
+  bool dup = true;
+  if (definition.hasKey("deduplicate")) {
+    dup = basics::VelocyPackHelper::getBooleanValue(definition, "deduplicate", true);
+  }
+  builder.add("deduplicate", VPackValue(dup));
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief enhances the json of a hash index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -132,6 +148,7 @@ static int EnhanceJsonIndexHash(VPackSlice const definition,
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
     ProcessIndexUniqueFlag(definition, builder);
+    ProcessIndexDeduplicateFlag(definition, builder);
   }
   return res;
 }
@@ -146,6 +163,7 @@ static int EnhanceJsonIndexSkiplist(VPackSlice const definition,
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
     ProcessIndexUniqueFlag(definition, builder);
+    ProcessIndexDeduplicateFlag(definition, builder);
   }
   return res;
 }
@@ -160,6 +178,7 @@ static int EnhanceJsonIndexPersistent(VPackSlice const definition,
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
     ProcessIndexUniqueFlag(definition, builder);
+    ProcessIndexDeduplicateFlag(definition, builder);
   }
   return res;
 }
@@ -170,9 +189,13 @@ static int EnhanceJsonIndexPersistent(VPackSlice const definition,
 
 static void ProcessIndexGeoJsonFlag(VPackSlice const definition,
                                     VPackBuilder& builder) {
-  bool geoJson =
-      basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", false);
-  builder.add("geoJson", VPackValue(geoJson));
+  VPackSlice fieldsSlice = definition.get("fields");
+  if (fieldsSlice.isArray() && fieldsSlice.length() == 1) {
+    // only add geoJson for indexes with a single field (with needs to be an array) 
+    bool geoJson =
+        basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", false);
+    builder.add("geoJson", VPackValue(geoJson));
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -221,6 +244,10 @@ static int EnhanceJsonIndexFulltext(VPackSlice const definition,
                                     VPackBuilder& builder, bool create) {
   int res = ProcessIndexFields(definition, builder, 1, create);
   if (res == TRI_ERROR_NO_ERROR) {
+    // hard-coded defaults
+    builder.add("sparse", VPackValue(true));
+    builder.add("unique", VPackValue(false));
+
     // handle "minLength" attribute
     int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
     VPackSlice minLength = definition.get("minLength");
@@ -327,10 +354,12 @@ int MMFilesIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
       }
 
     }
-
-  } catch (...) {
-    // TODO Check for different type of Errors
+  } catch (basics::Exception const& ex) {
+    return ex.code();
+  } catch (std::exception const&) {
     return TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    return TRI_ERROR_INTERNAL;
   }
 
   return res;

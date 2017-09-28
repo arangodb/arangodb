@@ -1,12 +1,12 @@
 shell> curl --dump - http://localhost:8529/_api/collection/products/count
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+x-content-type-options: nosniff
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/products/count
-x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9231"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9214"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"doCompact"</span> : <span class="hljs-literal">true</span>, 
@@ -14,7 +14,8 @@ x-content-type-options: nosniff
   <span class="hljs-string">"journalSize"</span> : <span class="hljs-number">33554432</span>, 
   <span class="hljs-string">"keyOptions"</span> : { 
     <span class="hljs-string">"type"</span> : <span class="hljs-string">"traditional"</span>, 
-    <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span> 
+    <span class="hljs-string">"allowUserKeys"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"lastValue"</span> : <span class="hljs-number">9515</span> 
   }, 
   <span class="hljs-string">"waitForSync"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"indexBuckets"</span> : <span class="hljs-number">8</span>, 

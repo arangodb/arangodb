@@ -31,6 +31,7 @@
 #include <list>
 
 #include "Basics/Mutex.h"
+#include "Basics/SmallVector.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/asio-helper.h"
 #include "Endpoint/ConnectionInfo.h"
@@ -43,6 +44,7 @@ class ConnectionStatistics;
 namespace rest {
 class SocketTask : virtual public Task {
   friend class HttpCommTask;
+
   explicit SocketTask(SocketTask const&) = delete;
   SocketTask& operator=(SocketTask const&) = delete;
 
@@ -59,8 +61,8 @@ class SocketTask : virtual public Task {
   void start();
 
  protected:
-  // caller will hold the _readLock
-  virtual bool processRead(double start_time) = 0;
+  // caller will hold the _lock
+  virtual bool processRead(double startTime) = 0;
   virtual void compactify() {}
 
   // This function is used during the protocol switch from http
@@ -79,13 +81,13 @@ class SocketTask : virtual public Task {
     WriteBuffer(WriteBuffer const&) = delete;
     WriteBuffer& operator=(WriteBuffer const&) = delete;
 
-    WriteBuffer(WriteBuffer&& other) 
+    WriteBuffer(WriteBuffer&& other) noexcept
         : _buffer(other._buffer), _statistics(other._statistics) {
       other._buffer = nullptr;
       other._statistics = nullptr;
     }
 
-    WriteBuffer& operator=(WriteBuffer&& other) {
+    WriteBuffer& operator=(WriteBuffer&& other) noexcept {
       if (this != &other) {
         // release our own memory to prevent memleaks
         release();
@@ -102,16 +104,16 @@ class SocketTask : virtual public Task {
 
     ~WriteBuffer() { release(); }
 
-    bool empty() const {
+    bool empty() const noexcept {
       return _buffer == nullptr;
     }
     
-    void clear() {
+    void clear() noexcept {
       _buffer = nullptr;
       _statistics = nullptr;
     }
 
-    void release() {
+    void release() noexcept {
       if (_buffer != nullptr) {
         delete _buffer;
         _buffer = nullptr;
@@ -122,31 +124,39 @@ class SocketTask : virtual public Task {
         _statistics = nullptr;
       }
     }
+    
+    void release(SocketTask* task) {
+      if (_buffer != nullptr) {
+        task->returnStringBuffer(_buffer);
+        _buffer = nullptr;
+      }
+
+      if (_statistics != nullptr) {
+        _statistics->release();
+        _statistics = nullptr;
+      }
+    }
   };
 
-  // will acquire the _writeLock
+  // will acquire the _lock
   void addWriteBuffer(WriteBuffer&);
 
-  // will acquire the _writeLock
+  // will acquire the _lock
   void closeStream();
-
-  // will acquire the _writeLock
-  void resetKeepAlive();
-
-  // will acquire the _writeLock
-  void cancelKeepAlive();
-
- protected:
-  ConnectionStatistics* _connectionStatistics;
-  ConnectionInfo _connectionInfo;
-
-  Mutex _readLock;
-  basics::StringBuffer _readBuffer; // needs _readLock
-
- private:
-  // caller must hold the _writeLock
+  
+  // caller must hold the _lock
   void closeStreamNoLock();
 
+  // caller must hold the _lock
+  void resetKeepAlive();
+
+  // caller must hold the _lock
+  void cancelKeepAlive();
+      
+  basics::StringBuffer* leaseStringBuffer(size_t length);
+  void returnStringBuffer(basics::StringBuffer*);
+ 
+ private:
   void writeWriteBuffer();
   bool completedWriteBuffer();
 
@@ -154,10 +164,18 @@ class SocketTask : virtual public Task {
   bool trySyncRead();
   bool processAll();
   void asyncReadSome();
-  void closeReceiveStream();
-
+  bool abandon();
+  
+ protected:
+  Mutex _lock;
+  ConnectionStatistics* _connectionStatistics;
+  ConnectionInfo _connectionInfo;
+  basics::StringBuffer _readBuffer; // needs _lock
+  
  private:
-  Mutex _writeLock;
+  SmallVector<basics::StringBuffer*, 32>::allocator_type::arena_type _stringBuffersArena;
+  SmallVector<basics::StringBuffer*, 32> _stringBuffers; // needs _lock
+
   WriteBuffer _writeBuffer;
   std::list<WriteBuffer> _writeBuffers;
 
@@ -167,10 +185,9 @@ class SocketTask : virtual public Task {
   bool const _useKeepAliveTimer;
   bool _keepAliveTimerActive;
   bool _closeRequested;
-  std::atomic_bool _abandoned;
-
-  bool _closedSend = false;
-  bool _closedReceive = false;
+  bool _abandoned;
+  bool _closedSend;
+  bool _closedReceive;
 };
 }
 }

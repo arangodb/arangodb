@@ -70,6 +70,15 @@ void ManagedDocumentResult::setManaged(uint8_t const* vpack, TRI_voc_rid_t revis
   _managed = true;
 }
 
+void ManagedDocumentResult::setManagedAfterStringUsage(TRI_voc_rid_t revisionId) {
+  TRI_ASSERT(!_string.empty());
+  TRI_ASSERT(_useString);
+  
+  _vpack = reinterpret_cast<uint8_t*>(const_cast<char*>(_string.data()));
+  _lastRevisionId = revisionId;
+  _useString = true;
+}
+
 void ManagedDocumentResult::setManaged(std::string&& str, TRI_voc_rid_t revisionId) {
   reset();
   _string = std::move(str);
@@ -79,16 +88,16 @@ void ManagedDocumentResult::setManaged(std::string&& str, TRI_voc_rid_t revision
 }
 
 void ManagedDocumentResult::reset() noexcept {
-  if(_managed) {
+  if (_managed) {
     delete[] _vpack;
   }
   _managed = false;
   _length = 0;
 
-  if(_useString){
+  if (_useString) {
     _string.clear();
+    _useString = false;
   }
-  _useString = false;
 
   _lastRevisionId = 0;
   _vpack = nullptr;
@@ -96,23 +105,11 @@ void ManagedDocumentResult::reset() noexcept {
 
 void ManagedDocumentResult::addToBuilder(velocypack::Builder& builder, bool allowExternals) const {
   TRI_ASSERT(!empty());
+  auto slice = velocypack::Slice(_vpack);
+  TRI_ASSERT(!slice.isExternal());
   if (allowExternals && canUseInExternal()) {
-    builder.addExternal(_vpack);
+    builder.addExternal(slice.begin());
   } else {
-    builder.add(velocypack::Slice(_vpack));
+    builder.add(slice);
   }
-}
-
-// @brief Creates an AQLValue with the content of this ManagedDocumentResult
-// The caller is responsible to properly destroy() the
-// returned value
-AqlValue ManagedDocumentResult::createAqlValue() const {
-  TRI_ASSERT(!empty());
-  if (canUseInExternal()) {
-    // No need to copy. Underlying structure guarantees that Slices stay
-    // valid
-    return AqlValue(_vpack, AqlValueFromManagedDocument());
-  }
-  // Do copy. Otherwise the slice may go out of scope
-  return AqlValue(VPackSlice(_vpack));
 }

@@ -8,6 +8,8 @@ main(){
     fi
 
     local suite=${1:-all}
+    shift
+
     local tasks="suite_$suite"
     type -t function $tasks &>/dev/null|| die "suite $suite not defined"
     echo "using function name: $tasks"
@@ -21,7 +23,7 @@ main(){
     local cols=$((((panes>1)) * 2))
     spawn_panes "$session_name" $rows $cols
     tmux select-pane -t $session_name.0
-    execute_tasks "$(pwd)" "$tasks"
+    execute_tasks "$(pwd)" "$tasks" "$@"
     tmux -2 attach-session -t $session_name
 }
 
@@ -31,16 +33,19 @@ suite_all(){
     local count="$1"
     shift 1
     local args="$@"
-    local args_default=( )
+    local args_default=( '--cluster' 'false' )
 
     local tests=""
     case $count in
         num)
-            echo "11"
+            echo "12"
             return
         ;;
         name)
             echo "test_all"
+            return
+        ;;
+        delay)
             return
         ;;
         0)
@@ -54,30 +59,154 @@ suite_all(){
             tests="shell_client"
         ;;
         3)
-            tests="shell_server_aql"
+            tests="shell_server_aql --testBuckets 2/0"
         ;;
         4)
-            tests="http_server"
+            tests="shell_server_aql --testBuckets 2/1"
         ;;
         5)
-            tests="server_http"
+            tests="http_server"
         ;;
         6)
-            tests="dump importing"
+            tests="server_http"
         ;;
         7)
-            tests="export arangobench upgrade"
+            tests="dump importing"
         ;;
         8)
-            tests="replication_sync replication_static"
+            tests="export arangobench upgrade"
         ;;
         9)
-            tests="replication_ongoing http_replication shell_replication"
+            tests="replication_sync replication_static"
         ;;
         10)
+            tests="replication_ongoing http_replication shell_replication"
+        ;;
+        11)
             tests="agency cluster_sync"
         ;;
         *)
+    esac
+
+    echoerr "./scripts/unittest $tests ${args_default[@]} ${args[@]} && exit 0"
+    echo    "./scripts/unittest $tests ${args_default[@]} ${args[@]} && exit 0"
+}
+
+portrange() {
+    local count="$1"
+    local portStart=1240
+    local portOffset=20
+    echo "--minPort $(( portStart + count * portOffset )) --maxPort $(( portStart + (count + 1) * portOffset - 1))"
+}
+
+## suite_all_cluster(){
+##     local count="$1"
+##     shift 1
+##     local args="$@"
+##     local args_default=( '--cluster' 'true' )
+## 
+##     local tests=""
+##     case $count in
+##         num)
+##             echo "12"
+##             return
+##         ;;
+##         name)
+##             echo "test_all_cluster"
+##             return
+##         ;;
+##         delay)
+##             echo "10"
+##             return
+##         ;;
+##         0)
+##             echo "./scripts/quickieTest.sh ${args[@]} && exit 0"
+##             return
+##         ;;
+##         1)
+##             tests="shell_server $(portrange $count)"
+##         ;;
+##         2)
+##             tests="shell_client $(portrange $count)"
+##         ;;
+##         3)
+##             tests="shell_server_aql --testBuckets 3/0 $(portrange $count)"
+##         ;;
+##         4)
+##             tests="shell_server_aql --testBuckets 3/1 $(portrange $count)"
+##         ;;
+##         5)
+##             tests="shell_server_aql --testBuckets 3/2 $(portrange $count)"
+##         ;;
+##         6)
+##             tests="http_server $(portrange $count)"
+##         ;;
+##         7)
+##             tests="ssl_server $(portrange $count)"
+##         ;;
+##         8)
+##             tests="server_http $(portrange $count)"
+##         ;;
+##         9)
+##             tests="dump $(portrange $count)"
+##         ;;
+##         10)
+##             tests="agency $(portrange $count)"
+##         ;;
+##         11)
+##             tests="resilience $(portrange $count)"
+##         ;;
+##         *)
+##             echo "exit 0"
+##             return
+##     esac
+## 
+##     echo "./scripts/unittest $tests ${args_default[@]} ${args[@]} && exit 0"
+## }
+
+
+suite_all_cluster(){
+    local count="$1"
+    shift 1
+    local args="$@"
+    local args_default=( '--cluster' 'true' )
+
+    local tests=""
+    case $count in
+        num)
+            echo "6"
+            return
+        ;;
+        name)
+            echo "test_all_cluster"
+            return
+        ;;
+        delay)
+            echo "10"
+            return
+        ;;
+        0)
+            echo "./scripts/quickieTest.sh ${args[@]} && exit 0"
+            return
+        ;;
+        1)
+            tests="shell_server $(portrange $count)"
+        ;;
+        2)
+            tests="shell_client $(portrange $count)"
+        ;;
+        3)
+            tests="shell_server_aql $(portrange $count)"
+        ;;
+        4)
+            tests="http_server ssl_server server_http $(portrange $count)"
+        ;;
+        5)
+            tests="dump agency resilience $(portrange $count)"
+        ;;
+        *)
+            echo "exit 0"
+            return
     esac
 
     echo "./scripts/unittest $tests ${args_default[@]} ${args[@]} && exit 0"
@@ -99,6 +228,21 @@ suite_all_rocksdb(){
     esac
 }
 
+suite_all_rocksdb_cluster(){
+    local count="$1"
+    shift 1
+    local args="$@"
+
+    case $count in
+        name)
+            echo "test_all_rocksdb_cluster"
+            return
+        ;;
+        *)
+            suite_all_cluster "$count" "--storageEngine rocksdb" "${args[@]}"
+        ;;
+    esac
+}
 # tmux
 kill_old_session(){
     local session_name="$1"
@@ -146,15 +290,23 @@ execute_tasks(){
     shift 2
     local args="$@"
     local count=0
+    local delay=""
+    delay="$($tasks 'delay')"
     while (( count < $($tasks 'num') )); do
         local exec_cmd="$($tasks $count "${args[@]}")"
         echo "running: ${exec_cmd[@]}"
+        if [[ -n "$delay" ]]; then
+            echo "sleep for $delay"
+            sleep "$delay"
+        fi
         tmux send-keys -t $session_name.$count "${exec_cmd[@]}" Enter
         (( count++ ))
     done
 }
 
 # helper
+echoerr() { printf "%s\n" "$*" >&2; }
+
 die(){
     echo "FATAL: ${1-this should not happen}"
     exit 1

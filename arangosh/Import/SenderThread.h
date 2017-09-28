@@ -58,7 +58,9 @@ class SenderThread : public arangodb::Thread {
   void sendData(std::string const& url, basics::StringBuffer* sender);
 
   bool hasError();
+  /// Ready to start sending
   bool isReady();
+  /// Currently not sending data
   bool isIdle();
   bool isDone();
 

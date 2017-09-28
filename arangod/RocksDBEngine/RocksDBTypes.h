@@ -42,14 +42,15 @@ enum class RocksDBEntryType : char {
   Document = '3',
   PrimaryIndexValue = '4',
   EdgeIndexValue = '5',
-  IndexValue = '6',
-  UniqueIndexValue = '7',
-  View = '8',
-  SettingsValue = '9',
-  ReplicationApplierConfig = ':',
-  FulltextIndexValue = ';',
-  GeoIndexValue = '<',
-  IndexEstimateValue = '='
+  VPackIndexValue = '6',
+  UniqueVPackIndexValue = '7',
+  SettingsValue = '8',
+  ReplicationApplierConfig = '9',
+  FulltextIndexValue = ':',
+  GeoIndexValue = ';',
+  IndexEstimateValue = '<',
+  KeyGeneratorValue = '=',
+  View = '>'
 };
 
 char const* rocksDBEntryTypeName(RocksDBEntryType);
@@ -73,10 +74,16 @@ enum class RocksDBLogType : char {
   SinglePut = '?',
   SingleRemove = '@'
 };
+  
+enum class RocksDBSettingsType : char {
+  Invalid = 0,
+  Version = 'V',
+  ServerTick = 'S'
+};
 
 char const* rocksDBLogTypeName(RocksDBLogType);
-
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);
+char rocksDBFormatVersion();
 }  // namespace arangodb
 
 #endif

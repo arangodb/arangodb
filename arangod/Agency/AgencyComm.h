@@ -226,6 +226,9 @@ class AgencyCommResult {
   ~AgencyCommResult() = default;
 
  public:
+  void set(int code, std::string const& message,
+           std::string const& clientId);
+
   bool successful() const { return (_statusCode >= 200 && _statusCode <= 299); }
 
   bool connected() const;
@@ -258,7 +261,7 @@ class AgencyCommResult {
   std::string _body;
   std::string _realBody;
 
-  std::map<std::string, AgencyCommResultEntry> _values;
+  std::unordered_map<std::string, AgencyCommResultEntry> _values;
   int _statusCode;
   bool _connected;
   bool _sent;
@@ -531,15 +534,31 @@ class AgencyCommManager {
   bool start();
   void stop();
 
+  // Get a connection to the current endpoint, which will be filled in to
+  // `endpoint`, if that is empty. Otherwise, a connection to the non-empty
+  // endpoint `endpoint` is returned, regardless of what is the current
+  // endpoint.
   std::unique_ptr<httpclient::GeneralClientConnection> acquire(
       std::string& endpoint);
 
+  // Returns a connection to the manager. `endpoint` must be the string
+  // description under which it was `acquire`d. Call this if you are done
+  // using the connection and no error occurred.
   void release(std::unique_ptr<httpclient::GeneralClientConnection>,
                std::string const& endpoint);
 
+  // Returns a connection to the manager. `endpoint` must be the string
+  // description under which it was `acquire`d. Call this if you are done
+  // using the connection and an error occurred. The connection object will
+  // be destroyed and the current endpoint will be rotated.
   void failed(std::unique_ptr<httpclient::GeneralClientConnection>,
               std::string const& endpoint);
 
+  // If a request receives a redirect HTTP 307, one should call the following
+  // method to make the new location the current one. The method returns the
+  // new endpoint specification. If anything goes wrong (for example, some
+  // other thread has in the meantime changed the active endpoint), an empty
+  // string is returned, which means that one has to acquire a new endpoint.
   std::string redirect(std::unique_ptr<httpclient::GeneralClientConnection>,
                        std::string const& endpoint, std::string const& location,
                        std::string& url);
@@ -548,12 +567,17 @@ class AgencyCommManager {
   void removeEndpoint(std::string const&);
   std::string endpointsString() const;
   std::vector<std::string> endpoints() const;
+  std::shared_ptr<VPackBuilder> summery() const;
 
  private:
 
   // caller must hold _lock
   void failedNonLocking(std::unique_ptr<httpclient::GeneralClientConnection>,
               std::string const& endpoint);
+
+  // caller must hold lock
+  void releaseNonLocking(std::unique_ptr<httpclient::GeneralClientConnection>,
+                         std::string const& endpoint);
 
   // caller must hold _lock
   std::unique_ptr<httpclient::GeneralClientConnection> createNewConnection();
@@ -567,9 +591,22 @@ class AgencyCommManager {
   // protects all the members
   mutable Mutex _lock;
 
+  // The following structure contains a list of string descriptions of the
+  // known agency endpoints. The front one is the one currently used for
+  // communication. If there is a redirect, we add the redirected one to
+  // the list (if not already there) and move it to the front. If we fail
+  // with the communication with the front one, we move it to the back and
+  // try the next.
   std::deque<std::string> _endpoints;
 
-  std::map<std::string,
+  // In the following map we cache GeneralClientConnections to the above
+  // endpoints. One can acquire one of them for use, in which case it is
+  // removed from the corresponding vector. If one calls `release` on it, 
+  // it is sent back to the ununsed vector. If an error occurs one
+  // should call `failed` such that the manager can switch to a new
+  // current endpoint. In case a redirect is received, one has to inform
+  // the manager by calling `redirect`.
+  std::unordered_map<std::string,
            std::vector<std::unique_ptr<httpclient::GeneralClientConnection>>>
   _unusedConnections;
 };
@@ -655,7 +692,7 @@ class AgencyComm {
   bool ensureStructureInitialized();
 
   AgencyCommResult sendWithFailover(arangodb::rest::RequestType, double,
-                                    std::string const&, std::string const&,
+                                    std::string const&, VPackSlice,
                                     std::string const& clientId = std::string());
 
  private:

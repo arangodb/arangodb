@@ -1831,7 +1831,11 @@ function arangoErrorToHttpCode (num) {
     case arangodb.ERROR_ARANGO_DOCUMENT_REV_BAD:
       return exports.HTTP_BAD;
     case arangodb.ERROR_CLUSTER_BACKEND_UNAVAILABLE:
+    case arangodb.ERROR_CLUSTER_SHARD_LEADER_RESIGNED:
       return exports.HTTP_SERVICE_UNAVAILABLE;
+    case arangodb.ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION:
+    case arangodb.ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION:
+      return exports.HTTP_NOT_ACCEPTABLE;
   }
 
   return exports.HTTP_BAD;

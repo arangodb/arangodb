@@ -409,8 +409,6 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
 * `interchange-adjacent-enumerations`: will appear if a query contains multiple
   *FOR* statements whose order were permuted. Permutation of *FOR* statements is
   performed because it may enable further optimizations by other rules.
-* `remove-sort-rand`: will appear when a *SORT RAND()* expression is removed by
-  moving the random iteration into an *EnumerateCollectionNode*. (MMFiles-specific)
 * `remove-collect-variables`: will appear if an *INTO* clause was removed from a *COLLECT*
   statement because the result of *INTO* is not used. May also appear if a result
   of a *COLLECT* statement's *AGGREGATE* variables is not used.
@@ -423,8 +421,10 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
 * `use-indexes`: will appear when an index is used to iterate over a collection.
   As a consequence, an *EnumerateCollectionNode* was replaced with an
   *IndexNode* in the plan.
-* `remove-filters-covered-by-index`: will appear if a *FilterNode* was removed or replaced
+* `remove-filter-covered-by-index`: will appear if a *FilterNode* was removed or replaced
   because the filter condition is already covered by an *IndexNode*.
+* `remove-filter-covered-by-traversal`: will appear if a *FilterNode* was removed or replaced
+  because the filter condition is already covered by an *TraversalNode*.
 * `use-index-for-sort`: will appear if an index can be used to avoid a *SORT*
   operation. If the rule was applied, a *SortNode* was removed from the plan.
 * `move-calculations-down`: will appear if a *CalculationNode* was moved down in a plan.
@@ -441,7 +441,13 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
 * `inline-subqueries`: will appear when a subquery was pulled out in its surrounding scope,
   e.g. `FOR x IN (FOR y IN collection FILTER y.value >= 5 RETURN y.test) RETURN x.a`
   would become `FOR tmp IN collection FILTER tmp.value >= 5 LET x = tmp.test RETURN x.a`
-* `geo-index-optimizer`: will appear when a geo index is utilized (MMFiles-specific)
+* `geo-index-optimizer`: will appear when a geo index is utilized.
+* `remove-sort-rand`: will appear when a *SORT RAND()* expression is removed by
+  moving the random iteration into an *EnumerateCollectionNode*. This optimizer rule
+  is specific for the MMFiles storage engine.
+* `reduce-extraction-to-projection`: will appear when an *EnumerationCollectionNode* that
+  would have extracted an entire document was modified to return only a projection of each
+  document. This optimizer rule is specific for the RocksDB storage engine.
 
 The following optimizer rules may appear in the `rules` attribute of cluster plans:
 

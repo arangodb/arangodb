@@ -30,6 +30,9 @@
 #include "Logger/Logger.h"
 #include "Rest/GeneralRequest.h"
 #include "Statistics/RequestStatistics.h"
+#include "Utils/ExecContext.h"
+
+#include <iostream>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -155,11 +158,15 @@ int RestHandler::finalizeEngine() {
     _engine.setState(RestEngine::State::FAILED);
     _storeResult(this);
   }
-
+  
   return res;
 }
 
 int RestHandler::executeEngine() {
+  TRI_ASSERT(ExecContext::CURRENT == nullptr);
+  ExecContext::CURRENT = _request->execContext();
+  TRI_DEFER(ExecContext::CURRENT = nullptr);
+  
   try {
     RestStatus result = execute();
 
@@ -227,6 +234,10 @@ int RestHandler::executeEngine() {
 }
 
 int RestHandler::runEngine(bool synchron) {
+  TRI_ASSERT(ExecContext::CURRENT == nullptr);
+  ExecContext::CURRENT = _request->execContext();
+  TRI_DEFER(ExecContext::CURRENT = nullptr);
+  
   try {
     while (_engine.hasSteps()) {
       std::shared_ptr<RestStatusElement> result = _engine.popStep();

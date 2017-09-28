@@ -29,7 +29,7 @@
 #include "Indexes/IndexLookupContext.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "StorageEngine/PhysicalCollection.h"
-#include "VocBase/KeyGenerator.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
 namespace rocksdb {
@@ -69,8 +69,7 @@ class RocksDBCollection final : public PhysicalCollection {
                                     bool doSync) override;
   virtual arangodb::Result persistProperties() override;
 
-  virtual PhysicalCollection* clone(LogicalCollection*,
-                                    PhysicalCollection*) override;
+  virtual PhysicalCollection* clone(LogicalCollection*) override;
 
   void getPropertiesVPack(velocypack::Builder&) const override;
   void getPropertiesVPackCoordinator(velocypack::Builder&) const override;
@@ -79,7 +78,7 @@ class RocksDBCollection final : public PhysicalCollection {
   int close() override;
   void load() override;
   void unload() override;
-  
+
   TRI_voc_rid_t revision() const;
   TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
   uint64_t numberDocuments() const;
@@ -133,45 +132,52 @@ class RocksDBCollection final : public PhysicalCollection {
       transaction::Methods* trx,
       arangodb::velocypack::Slice const& key) override;
 
-  int read(transaction::Methods*, arangodb::velocypack::Slice const key,
-           ManagedDocumentResult& result, bool) override;
+  Result read(transaction::Methods*, arangodb::StringRef const& key,
+              ManagedDocumentResult& result, bool) override;
+
+  Result read(transaction::Methods* trx, arangodb::velocypack::Slice const& key,
+              ManagedDocumentResult& result, bool locked) override {
+    return this->read(trx, arangodb::StringRef(key), result, locked);
+  }
 
   bool readDocument(transaction::Methods* trx,
                     DocumentIdentifierToken const& token,
                     ManagedDocumentResult& result) override;
 
-  bool readDocumentNoCache(transaction::Methods* trx,
-                           DocumentIdentifierToken const& token,
-                           ManagedDocumentResult& result);
+  bool readDocumentWithCallback(
+      transaction::Methods* trx, DocumentIdentifierToken const& token,
+      IndexIterator::DocumentCallback const& cb) override;
 
-  int insert(arangodb::transaction::Methods* trx,
-             arangodb::velocypack::Slice const newSlice,
-             arangodb::ManagedDocumentResult& result, OperationOptions& options,
-             TRI_voc_tick_t& resultMarkerTick, bool lock) override;
+  Result insert(arangodb::transaction::Methods* trx,
+                arangodb::velocypack::Slice const newSlice,
+                arangodb::ManagedDocumentResult& result,
+                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+                bool lock) override;
 
-  int update(arangodb::transaction::Methods* trx,
-             arangodb::velocypack::Slice const newSlice,
-             arangodb::ManagedDocumentResult& result, OperationOptions& options,
-             TRI_voc_tick_t& resultMarkerTick, bool lock,
-             TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-             TRI_voc_rid_t const& revisionId,
-             arangodb::velocypack::Slice const key) override;
+  Result update(arangodb::transaction::Methods* trx,
+                arangodb::velocypack::Slice const newSlice,
+                arangodb::ManagedDocumentResult& result,
+                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+                bool lock, TRI_voc_rid_t& prevRev,
+                ManagedDocumentResult& previous,
+                TRI_voc_rid_t const& revisionId,
+                arangodb::velocypack::Slice const key) override;
 
-  int replace(transaction::Methods* trx,
-              arangodb::velocypack::Slice const newSlice,
-              ManagedDocumentResult& result, OperationOptions& options,
-              TRI_voc_tick_t& resultMarkerTick, bool lock,
-              TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-              TRI_voc_rid_t const revisionId,
-              arangodb::velocypack::Slice const fromSlice,
-              arangodb::velocypack::Slice const toSlice) override;
+  Result replace(transaction::Methods* trx,
+                 arangodb::velocypack::Slice const newSlice,
+                 ManagedDocumentResult& result, OperationOptions& options,
+                 TRI_voc_tick_t& resultMarkerTick, bool lock,
+                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                 TRI_voc_rid_t const revisionId,
+                 arangodb::velocypack::Slice const fromSlice,
+                 arangodb::velocypack::Slice const toSlice) override;
 
-  int remove(arangodb::transaction::Methods* trx,
-             arangodb::velocypack::Slice const slice,
-             arangodb::ManagedDocumentResult& previous,
-             OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-             bool lock, TRI_voc_rid_t const& revisionId,
-             TRI_voc_rid_t& prevRev) override;
+  Result remove(arangodb::transaction::Methods* trx,
+                arangodb::velocypack::Slice const slice,
+                arangodb::ManagedDocumentResult& previous,
+                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+                bool lock, TRI_voc_rid_t const& revisionId,
+                TRI_voc_rid_t& prevRev) override;
 
   void deferDropCollection(
       std::function<bool(LogicalCollection*)> callback) override;
@@ -179,9 +185,6 @@ class RocksDBCollection final : public PhysicalCollection {
   void setRevision(TRI_voc_rid_t revisionId);
   void adjustNumberDocuments(int64_t adjustment);
   uint64_t objectId() const { return _objectId; }
-
-  Result lookupDocumentToken(transaction::Methods* trx, arangodb::StringRef key,
-                             RocksDBToken& token) const;
 
   int lockWrite(double timeout = 0.0);
   int unlockWrite();
@@ -202,6 +205,11 @@ class RocksDBCollection final : public PhysicalCollection {
 
   void recalculateIndexEstimates();
 
+  Result serializeKeyGenerator(rocksdb::Transaction*) const;
+  void deserializeKeyGenerator(arangodb::RocksDBCounterManager* mgr);
+
+  inline bool cacheEnabled() const { return _cacheEnabled; }
+
  private:
   /// @brief return engine-specific figures
   void figuresSpecific(
@@ -216,7 +224,14 @@ class RocksDBCollection final : public PhysicalCollection {
   arangodb::Result fillIndexes(transaction::Methods*,
                                std::shared_ptr<arangodb::Index>);
 
-  arangodb::RocksDBPrimaryIndex* primaryIndex() const;
+  // @brief return the primary index
+  // WARNING: Make sure that this instance
+  // is somehow protected. If it goes out of all scopes
+  // or it's indexes are freed the pointer returned will get invalidated.
+  arangodb::RocksDBPrimaryIndex* primaryIndex() const {
+    TRI_ASSERT(_primaryIndex != nullptr);
+    return _primaryIndex;
+  }
 
   arangodb::RocksDBOperationResult insertDocument(
       arangodb::transaction::Methods* trx, TRI_voc_rid_t revisionId,
@@ -228,7 +243,7 @@ class RocksDBCollection final : public PhysicalCollection {
       bool& waitForSync) const;
 
   arangodb::RocksDBOperationResult lookupDocument(
-      transaction::Methods* trx, arangodb::velocypack::Slice key,
+      transaction::Methods* trx, arangodb::velocypack::Slice const& key,
       ManagedDocumentResult& result) const;
 
   arangodb::RocksDBOperationResult updateDocument(
@@ -240,13 +255,19 @@ class RocksDBCollection final : public PhysicalCollection {
                                        arangodb::ManagedDocumentResult&,
                                        bool withCache) const;
 
-  void recalculateIndexEstimates(std::vector<std::shared_ptr<Index>>& indexes);
+  arangodb::Result lookupRevisionVPack(
+      TRI_voc_rid_t, transaction::Methods*,
+      IndexIterator::DocumentCallback const& cb, bool withCache) const;
+
+  void recalculateIndexEstimates(
+      std::vector<std::shared_ptr<Index>> const& indexes);
 
   void createCache() const;
 
-  void disableCache() const;
+  void destroyCache() const;
 
-  inline bool useCache() const { return (_useCache && _cachePresent); }
+  /// is this collection using a cache
+  inline bool useCache() const { return (_cacheEnabled && _cachePresent); }
 
   void blackListKey(char const* data, std::size_t len) const;
 
@@ -258,12 +279,16 @@ class RocksDBCollection final : public PhysicalCollection {
 
   /// upgrade write locks to exclusive locks if this flag is set
   bool _hasGeoIndex;
+  /// cache the primary index for performance, do not delete
+  RocksDBPrimaryIndex* _primaryIndex;
+
   mutable basics::ReadWriteLock _exclusiveLock;
   mutable std::shared_ptr<cache::Cache> _cache;
+
   // we use this boolean for testing whether _cache is set.
   // it's quicker than accessing the shared_ptr each time
   mutable bool _cachePresent;
-  bool _useCache;
+  bool _cacheEnabled;
 };
 
 inline RocksDBCollection* toRocksDBCollection(PhysicalCollection* physical) {

@@ -9,13 +9,14 @@
 
 # Source function library.
 . /etc/rc.d/init.d/functions
+. /usr/share/arangodb3/arangodb-helper
 
 # Path to the server binary
 ARANGO_BIN=/usr/sbin/arangod
-test -x $ARANGO_BIN || exit 5
+test -x $ARANGO_BIN || ar_exit_by_string EXIT_BINARY_NOT_FOUND
 
 ARANGO_SYSCONFIG=/etc/arangodb3/arangod.conf
-test -r $ARANGO_SYSCONFIG || exit 6
+test -r $ARANGO_SYSCONFIG || ar_exit_by_string EXIT_CONFIG_NOT_FOUND
 
 pidfile=/var/run/arangodb/arangod.pid
 
@@ -25,12 +26,11 @@ start() {
   echo -n $"Starting $ARANGO_BIN: "
 
   PIDDIR=`dirname $pidfile`
-  [ -d $PIDDIR ] || mkdir $PIDDIR || exit 1
+  [ -d $PIDDIR ] || mkdir $PIDDIR || ar_ferr "failed to create $PIDDIR"
 
-  ( cd /var/log/arangodb3 && chown -R arangodb:arangodb . && chmod 700 .) || exit 1
-  ( cd /var/lib/arangodb3 && chown -R arangodb:arangodb . && chmod 700 .) || exit 1
-  ( cd /var/lib/arangodb3-apps && chown -R arangodb:arangodb . && chmod 700 .) || exit 1
-  ( cd $PIDDIR && chown arangodb:arangodb . && chmod 700 .) || exit 1
+  ( cd /var/lib/arangodb3 && chown -R arangodb:arangodb . && chmod 700 .) || ar_ferr "failed to set permissions on /var/lib/arangodb3"
+  ( cd /var/lib/arangodb3-apps && chown -R arangodb:arangodb . && chmod 700 .) || ar_ferr "failed to set permissions on /var/lib/arangodb3-apps"
+  ( cd $PIDDIR && chown arangodb:arangodb . && chmod 700 .) || ar_ferr "failed to set permissions on $PIDDIR"
 
   ulimit -H -n 131072 || true
   ulimit -S -n 131072 || true
@@ -58,14 +58,11 @@ start() {
           if [ "$RETVAL" -eq 0 ];  then
               $ARANGO_BIN --uid arangodb --gid arangodb --log.foreground-tty false --pid-file "$pidfile" --temp.path "/var/tmp/arangod"  --supervisor $@
 	      RETVAL=$?
-          else
-	      echo "database version check failed, maybe you need to run 'upgrade'?"
           fi
           ;;
   esac
 
-  echo
-  return $RETVAL
+  ar_exit_by_num ${RETVAL}
 }
 
 
@@ -73,9 +70,8 @@ start() {
 stop() {
   echo -n $"Stopping $ARANGO_BIN: "
   killproc -p "${pidfile}" -d 10 $ARANGO_BIN
-
   RETVAL=$?
-  echo
+  ar_ferr "could not kill arangod" $RETVAL
 }
 
 
@@ -95,7 +91,7 @@ case "$1" in
     ;;
 
   restart)
-    stop
+    stop # will exit on fail
     start
     ;;
 
@@ -104,7 +100,7 @@ case "$1" in
 
     start --upgrade
     ;;
-  
+
   reload-log)
     log_daemon_msg "Re-Opening Logfiles $DESC" "$NAME"
 

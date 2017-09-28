@@ -42,7 +42,7 @@
 
 /// @brief replication dump container
 struct MMFilesReplicationDumpContext {
-  MMFilesReplicationDumpContext(std::shared_ptr<arangodb::transaction::StandaloneContext>
+  MMFilesReplicationDumpContext(std::shared_ptr<arangodb::transaction::StandaloneContext> const&
                              transactionContext,
                          size_t chunkSize, bool includeSystem,
                          TRI_voc_cid_t restrictCollection, bool useVst = false)
@@ -68,7 +68,7 @@ struct MMFilesReplicationDumpContext {
     }
 
     if (!useVst) {
-      _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, _chunkSize);
+      _buffer = TRI_CreateSizedStringBuffer(_chunkSize);
 
       if (_buffer == nullptr) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -78,7 +78,7 @@ struct MMFilesReplicationDumpContext {
 
   ~MMFilesReplicationDumpContext() {
     if (_buffer != nullptr) {
-      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, _buffer);
+      TRI_FreeStringBuffer(_buffer);
       _buffer = nullptr;
     }
   }

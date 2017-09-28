@@ -93,8 +93,13 @@ RestHandler* RestHandlerFactory::createHandler(
     std::unique_ptr<GeneralResponse> response) const {
   std::string const& path = request->requestPath();
   
+  // In the shutdown phase we simply return 503:
+  if (application_features::ApplicationServer::isStopping()) {
+    return new MaintenanceHandler(request.release(), response.release());
+  }
+
   // In the bootstrap phase, we would like that coordinators answer the
-  // following to endpoints, but not yet others:
+  // following endpoints, but not yet others:
   if (_maintenanceMode.load()) {
     if ((!ServerState::instance()->isCoordinator() &&
          path.find("/_api/agency/agency-callbacks") == std::string::npos) ||

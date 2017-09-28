@@ -81,6 +81,9 @@
 ///   Will be raised when an URI is unknown.
 /// - 405: @LIT{method not supported}
 ///   Will be raised when an unsupported HTTP method is used for an operation.
+/// - 406: @LIT{request not acceptable}
+///   Will be raised when an unsupported HTTP content type is used for an
+///   operation, or if a request is not acceptable for a leader or follower.
 /// - 412: @LIT{precondition failed}
 ///   Will be raised when a precondition for an HTTP request is not met.
 /// - 500: @LIT{internal server error}
@@ -285,6 +288,10 @@
 /// - 1414: @LIT{start tick not present}
 ///   Will be raised when the replication applier fetches data using a start
 ///   tick, but that start tick is not present on the logger server anymore.
+/// - 1415: @LIT{the checksum format is wrong}
+///    "Will be raised when the format of the checksum is wrong")
+/// - 1416: @LIT{wrong checksum}
+///   Will be raised when a new born follower submits a wrong checksum
 /// - 1450: @LIT{could not connect to agency}
 ///   Will be raised when none of the agency servers can be connected to.
 /// - 1451: @LIT{missing coordinator header}
@@ -400,6 +407,26 @@
 /// - 1487: @LIT{the number of current dbservers is lower than the requested replicationFactor}
 ///   Will be raised if one tries to create a collection with a
 ///   replicationFactor greater than the available number of DBServers.
+/// - 1488: @LIT{a follower could not be dropped in agency}
+///   Will be raised if a follower that ought to be dropped could not be
+///   dropped in the agency (under Current).
+/// - 1489: @LIT{a shard leader refuses to perform a replication operation}
+///   Will be raised if a replication operation is refused by a shard leader.
+/// - 1490: @LIT{a shard follower refuses to perform an operation that is not a replication}
+///   Will be raised if a non-replication operation is refused by a shard
+///   follower.
+/// - 1491: @LIT{a (former) shard leader refuses to perform an operation, because it has resigned in the meantime}
+///   Will be raised if a non-replication operation is refused by a former
+///   shard leader that has found out that it is no longer the leader.
+/// - 1492: @LIT{some agency operation failed}
+///   Will be raised if after various retries an agency operation could not be
+///   performed successfully.
+/// - 1493: @LIT{conflicting replication factor with distributeShardsLike parameter assignment}
+///   Will be raised if intended replication factor does not match that of the
+///   prototype shard given in ditributeShardsLike parameter.
+/// - 1494: @LIT{conflicting shard number with distributeShardsLike parameter assignment}
+///   Will be raised if intended number of shards does not match that of the
+///   prototype shard given in ditributeShardsLike parameter.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -647,6 +674,8 @@
 ///   Will be raised when the client could not read data.
 /// - 2100: @LIT{Request aborted}
 ///   Request was aborted.
+/// - 2101: @LIT{Communication was disabled}
+///   Communication was disabled.
 /// - 3000: @LIT{failed to parse manifest file}
 ///   The service manifest file is not well-formed JSON.
 /// - 3001: @LIT{manifest file is invalid}
@@ -694,6 +723,8 @@
 /// - 4004: @LIT{attribute cannot be used as smart graph attribute}
 ///   The given smartGraph attribute is illegal and connot be used for
 ///   sharding. All system attributes are forbidden.
+/// - 20001: @LIT{Illegal inquiry syntax}
+///   Inquiry handles a list of string clientIds: [<clientId>,...].
 /// - 20011: @LIT{Inform message must be an object.}
 ///   The inform message in the agency must be an object.
 /// - 20012: @LIT{Inform message must contain uint parameter 'term'}
@@ -704,6 +735,12 @@
 ///   The inform message in the agency must contain an array 'active'.
 /// - 20015: @LIT{Inform message must contain object 'pool'}
 ///   The inform message in the agency must contain an object 'pool'.
+/// - 20016: @LIT{Inform message must contain object 'min ping'}
+///   The inform message in the agency must contain an object 'min ping'.
+/// - 20017: @LIT{Inform message must contain object 'max ping'}
+///   The inform message in the agency must contain an object 'max ping'.
+/// - 20018: @LIT{Inform message must contain object 'timeoutMult'}
+///   The inform message in the agency must contain an object 'timeoutMult'.
 /// - 20020: @LIT{Inquiry failed}
 ///   Inquiry by clientId failed
 /// - 20021: @LIT{Cannot rebuild readDB and spearHead}
@@ -1084,6 +1121,17 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_HTTP_METHOD_NOT_ALLOWED                                 (405)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 406: ERROR_HTTP_NOT_ACCEPTABLE
+///
+/// request not acceptable
+///
+/// Will be raised when an unsupported HTTP content type is used for an
+/// operation, or if a request is not acceptable for a leader or follower.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_HTTP_NOT_ACCEPTABLE                                     (406)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 412: ERROR_HTTP_PRECONDITION_FAILED
@@ -1950,6 +1998,26 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT                      (1414)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 1415: ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT
+///
+/// the checksum format is wrong
+///
+///  "Will be raised when the format of the checksum is wrong")
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT                       (1415)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1416: ERROR_REPLICATION_WRONG_CHECKSUM
+///
+/// wrong checksum
+///
+/// Will be raised when a new born follower submits a wrong checksum
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_REPLICATION_WRONG_CHECKSUM                              (1416)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 1450: ERROR_CLUSTER_NO_AGENCY
 ///
 /// could not connect to agency
@@ -2369,6 +2437,84 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS                          (1487)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1488: ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER
+///
+/// a follower could not be dropped in agency
+///
+/// Will be raised if a follower that ought to be dropped could not be dropped
+/// in the agency (under Current).
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER                         (1488)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1489: ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION
+///
+/// a shard leader refuses to perform a replication operation
+///
+/// Will be raised if a replication operation is refused by a shard leader.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION                (1489)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1490: ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION
+///
+/// a shard follower refuses to perform an operation that is not a replication
+///
+/// Will be raised if a non-replication operation is refused by a shard
+/// follower.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION                (1490)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1491: ERROR_CLUSTER_SHARD_LEADER_RESIGNED
+///
+/// a (former) shard leader refuses to perform an operation, because it has
+/// resigned in the meantime
+///
+/// Will be raised if a non-replication operation is refused by a former shard
+/// leader that has found out that it is no longer the leader.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED                           (1491)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1492: ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED
+///
+/// some agency operation failed
+///
+/// Will be raised if after various retries an agency operation could not be
+/// performed successfully.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED                     (1492)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1493: ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR
+///
+/// conflicting replication factor with distributeShardsLike parameter
+/// assignment
+///
+/// Will be raised if intended replication factor does not match that of the
+/// prototype shard given in ditributeShardsLike parameter.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR       (1493)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1494: ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS
+///
+/// conflicting shard number with distributeShardsLike parameter assignment
+///
+/// Will be raised if intended number of shards does not match that of the
+/// prototype shard given in ditributeShardsLike parameter.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS         (1494)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
@@ -3476,6 +3622,16 @@ void TRI_InitializeErrorMessages ();
 #define TRI_COMMUNICATOR_REQUEST_ABORTED                                  (2100)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 2101: COMMUNICATOR_DISABLED
+///
+/// Communication was disabled
+///
+/// Communication was disabled.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_COMMUNICATOR_DISABLED                                         (2101)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 3000: ERROR_MALFORMED_MANIFEST_FILE
 ///
 /// failed to parse manifest file
@@ -3699,6 +3855,16 @@ void TRI_InitializeErrorMessages ();
 #define TRI_ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE                           (4004)
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief 20001: ERROR_AGENCY_INQUIRY_SYNTAX
+///
+/// Illegal inquiry syntax
+///
+/// Inquiry handles a list of string clientIds: [<clientId>,...].
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AGENCY_INQUIRY_SYNTAX                                   (20001)
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief 20011: ERROR_AGENCY_INFORM_MUST_BE_OBJECT
 ///
 /// Inform message must be an object.
@@ -3747,6 +3913,36 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL                         (20015)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20016: ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING
+///
+/// Inform message must contain object 'min ping'
+///
+/// The inform message in the agency must contain an object 'min ping'.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING                     (20016)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20017: ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING
+///
+/// Inform message must contain object 'max ping'
+///
+/// The inform message in the agency must contain an object 'max ping'.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING                     (20017)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 20018: ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT
+///
+/// Inform message must contain object 'timeoutMult'
+///
+/// The inform message in the agency must contain an object 'timeoutMult'.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT                 (20018)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 20020: ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING

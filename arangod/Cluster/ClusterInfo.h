@@ -56,22 +56,17 @@ class CollectionInfoCurrent {
   friend class ClusterInfo;
 
  public:
-  CollectionInfoCurrent();
+  explicit CollectionInfoCurrent(uint64_t currentVersion);
 
-  CollectionInfoCurrent(ShardID const&, VPackSlice);
+  CollectionInfoCurrent(CollectionInfoCurrent const&) = delete;
 
-  CollectionInfoCurrent(CollectionInfoCurrent const&);
+  CollectionInfoCurrent(CollectionInfoCurrent&&) = delete;
 
-  CollectionInfoCurrent(CollectionInfoCurrent&&);
+  CollectionInfoCurrent& operator=(CollectionInfoCurrent const&) = delete;
 
-  CollectionInfoCurrent& operator=(CollectionInfoCurrent const&);
-
-  CollectionInfoCurrent& operator=(CollectionInfoCurrent&&);
+  CollectionInfoCurrent& operator=(CollectionInfoCurrent&&) = delete;
 
   ~CollectionInfoCurrent();
-
- private:
-  void copyAllVPacks();
 
  public:
   bool add(ShardID const& shardID, VPackSlice slice) {
@@ -133,8 +128,7 @@ class CollectionInfoCurrent {
     TRI_voc_size_t s;
 
     for (auto const& it: _vpacks) {
-      s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(), "errorNum",
-                                                             0);
+      s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(), "errorNum", 0);
       m.insert(std::make_pair(it.first, s));
     }
     return m;
@@ -179,6 +173,14 @@ class CollectionInfoCurrent {
   }
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief get version that underlies this info in Current in the agency
+  //////////////////////////////////////////////////////////////////////////////
+
+  uint64_t getCurrentVersion() const {
+    return _currentVersion;
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief local helper to return boolean flags
   //////////////////////////////////////////////////////////////////////////////
 
@@ -207,6 +209,9 @@ class CollectionInfoCurrent {
 
  private:
   std::unordered_map<ShardID, std::shared_ptr<VPackBuilder>> _vpacks;
+
+  uint64_t _currentVersion;    // Version of Current in the agency that
+                               // underpins the data presented in this object
 };
 
 class ClusterInfo {
@@ -508,12 +513,14 @@ class ClusterInfo {
 
   std::shared_ptr<VPackBuilder> getCurrent();
 
-  std::vector<std::string> const& getFailedServers() { MUTEX_LOCKER(guard, _failedServersMutex); return _failedServers; }
+  std::vector<std::string> getFailedServers() { MUTEX_LOCKER(guard, _failedServersMutex); return _failedServers; }
   void setFailedServers(std::vector<std::string> const& failedServers) { MUTEX_LOCKER(guard, _failedServersMutex); _failedServers = failedServers; }
 
   std::unordered_map<ServerID, std::string> getServerAliases();
   
  private:
+
+  void loadClusterId();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get an operation timeout
@@ -602,10 +609,18 @@ class ClusterInfo {
   std::shared_ptr<VPackBuilder> _plan;
   std::shared_ptr<VPackBuilder> _current;
 
+  std::string _clusterId;
+
   std::unordered_map<DatabaseID, VPackSlice> _plannedDatabases;  // from Plan/Databases
 
   ProtectionData _planProt;
 
+  uint64_t _planVersion;   // This is the version in the Plan which underlies
+                           // the data in _plannedCollections, _shards and
+                           // _shardKeys
+  uint64_t _currentVersion;  // This is the version in Current which underlies
+                             // the data in _currentDatabases,
+                             // _currentCollections and _shardsIds
   std::unordered_map<DatabaseID,
                      std::unordered_map<ServerID, VPackSlice>>
       _currentDatabases;  // from Current/Databases

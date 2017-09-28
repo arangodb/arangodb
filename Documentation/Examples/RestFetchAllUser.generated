@@ -5,29 +5,26 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
   <span class="hljs-string">"result"</span> : [ 
-    { 
-      <span class="hljs-string">"user"</span> : <span class="hljs-string">"tester"</span>, 
-      <span class="hljs-string">"active"</span> : <span class="hljs-literal">false</span>, 
-      <span class="hljs-string">"extra"</span> : { 
-      }, 
-      <span class="hljs-string">"changePassword"</span> : <span class="hljs-literal">false</span> 
-    }, 
     { 
       <span class="hljs-string">"user"</span> : <span class="hljs-string">"root"</span>, 
       <span class="hljs-string">"active"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"extra"</span> : { 
-      }, 
-      <span class="hljs-string">"changePassword"</span> : <span class="hljs-literal">false</span> 
+      } 
+    }, 
+    { 
+      <span class="hljs-string">"user"</span> : <span class="hljs-string">"tester"</span>, 
+      <span class="hljs-string">"active"</span> : <span class="hljs-literal">false</span>, 
+      <span class="hljs-string">"extra"</span> : { 
+      } 
     }, 
     { 
       <span class="hljs-string">"user"</span> : <span class="hljs-string">"admin"</span>, 
       <span class="hljs-string">"active"</span> : <span class="hljs-literal">true</span>, 
       <span class="hljs-string">"extra"</span> : { 
-      }, 
-      <span class="hljs-string">"changePassword"</span> : <span class="hljs-literal">false</span> 
+      } 
     } 
-  ], 
-  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
+  ] 
 }

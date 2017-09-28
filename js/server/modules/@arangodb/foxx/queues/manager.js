@@ -22,10 +22,9 @@
 // / @author Alan Plum
 // //////////////////////////////////////////////////////////////////////////////
 
-const isCluster = require("@arangodb/cluster").isCluster();
+const isCluster = require('@arangodb/cluster').isCluster();
 var tasks = require('@arangodb/tasks');
 var db = require('@arangodb').db;
-var qb = require('aqb');
 
 var runInDatabase = function () {
   var busy = false;
@@ -46,25 +45,22 @@ var runInDatabase = function () {
             busy = true;
             return;
           }
+          // should always call the user who called createQueue
+          // registerTask will throw a forbidden exception if anyone
+          // other than superroot uses this option
+          let runAsUser = queue.runAsUser || '';
 
-          var jobs = db._createStatement({
-            query: (
-            qb.for('job').in('_jobs')
-              .filter(
-                qb('pending').eq('job.status')
-                  .and(qb.ref('@queue').eq('job.queue'))
-                  .and(qb.ref('@now').gte('job.delayUntil'))
-            )
-              .sort('job.delayUntil', 'ASC')
-              .limit('@max')
-              .return('job')
-            ),
-            bindVars: {
-              queue: queue._key,
-              now: Date.now(),
-              max: queue.maxWorkers - numBusy
-            }
-          }).execute().toArray();
+          var now = Date.now();
+          var max = queue.maxWorkers - numBusy;
+          var queueName = queue._key;
+          var query = global.aqlQuery`
+          FOR job IN _jobs
+            FILTER ((job.queue      == ${queueName}) &&
+                    (job.status     == 'pending') &&
+                    (job.delayUntil <= ${now}))
+            SORT job.delayUntil ASC LIMIT ${max} RETURN job`;
+
+          var jobs = db._query(query).toArray();
 
           if (jobs.length > 0) {
             busy = true;
@@ -86,6 +82,7 @@ var runInDatabase = function () {
               },
               offset: 0,
               isSystem: true,
+              runAsUser: runAsUser,
               params: {
                 job: Object.assign({}, job, {
                   status: 'progress'
@@ -111,7 +108,7 @@ exports.manage = function () {
     var foxxQueues = require('@arangodb/foxx/queues');
     foxxQueues._updateQueueDelay();
     global.ArangoAgency.set('Current/FoxxmasterQueueupdate', false);
-    //global.ArangoServerState.setFoxxmasterQueueupdate(false);
+    // global.ArangoServerState.setFoxxmasterQueueupdate(false);
   }
 
   var initialDatabase = db._name();
@@ -124,7 +121,7 @@ exports.manage = function () {
   if (expires < now || databases.length === 0) {
     databases = db._databases();
     global.KEY_SET('queue-control', 'databases', databases);
-    // make list of databases expire in 30 seconds from now 
+    // make list of databases expire in 30 seconds from now
     global.KEY_SET('queue-control', 'databases-expire', Date.now() + 30 * 1000);
   }
 

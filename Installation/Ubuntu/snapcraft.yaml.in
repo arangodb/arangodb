@@ -24,7 +24,7 @@ parts:
 
 apps:
   arangod:
-    command: arangod  \
+    command: env GLIBCXX_FORCE_NEW=1 arangod  \
       --configuration=none \
       --server.endpoint=tcp://0.0.0.0:@SNAP_PORT@ \
       --javascript.startup-directory=${SNAP}/@CMAKE_INSTALL_DATAROOTDIR_ARANGO@/js \

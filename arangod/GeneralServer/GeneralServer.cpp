@@ -26,6 +26,7 @@
 
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/exitcodes.h"
 #include "Endpoint/EndpointList.h"
 #include "GeneralServer/GeneralDefinitions.h"
 #include "GeneralServer/GeneralListenTask.h"
@@ -68,7 +69,7 @@ void GeneralServer::startListening() {
                  << "'. Please check whether another instance is already "
                     "running using this endpoint and review your endpoints "
                     "configuration.";
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT_CODE(TRI_EXIT_COULD_NOT_BIND_PORT);
     }
   }
 }

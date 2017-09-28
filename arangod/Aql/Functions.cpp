@@ -23,13 +23,10 @@
 
 #include "Functions.h"
 
-#include <velocypack/Collection.h>
-#include <velocypack/Dumper.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/velocypack-aliases.h>
-
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Function.h"
 #include "Aql/Query.h"
+#include "Aql/RegexCache.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringBuffer.h"
@@ -48,21 +45,19 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
+#include <velocypack/Collection.h>
+#include <velocypack/Dumper.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/velocypack-aliases.h>
+
+#include "unicode/unistr.h"
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
-/// @brief thread-local cache for compiled regexes (REGEX function)
-thread_local std::unordered_map<std::string, RegexMatcher*>* RegexCache =
-    nullptr;
-/// @brief thread-local cache for compiled regexes (LIKE function)
-thread_local std::unordered_map<std::string, RegexMatcher*>* LikeCache =
-    nullptr;
-
 /// @brief convert a number value into an AqlValue
-static AqlValue NumberValue(transaction::Methods* trx, int value) {
-  transaction::BuilderLeaser builder(trx);
-  builder->add(VPackValue(value));
-  return AqlValue(builder.get());
+static inline AqlValue NumberValue(transaction::Methods* trx, int value) {
+  return AqlValue(AqlValueHintInt(value));
 }
 
 /// @brief convert a number value into an AqlValue
@@ -70,15 +65,13 @@ static AqlValue NumberValue(transaction::Methods* trx, double value, bool nullif
   if (std::isnan(value) || !std::isfinite(value) || value == HUGE_VAL || value == -HUGE_VAL) {
     if (nullify) {
       // convert to null
-      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      return AqlValue(AqlValueHintNull());
     }
     // convert to 0
-    return AqlValue(arangodb::basics::VelocyPackHelper::ZeroValue());
+    return AqlValue(AqlValueHintZero());
   }
   
-  transaction::BuilderLeaser builder(trx);
-  builder->add(VPackValue(value));
-  return AqlValue(builder.get());
+  return AqlValue(AqlValueHintDouble(value));
 }
 
 /// @brief validate the number of parameters
@@ -96,110 +89,6 @@ void Functions::ValidateParameters(VPackFunctionParameters const& parameters,
                                    char const* function, int minParams) {
   return ValidateParameters(parameters, function, minParams,
                             static_cast<int>(Function::MaxArguments));
-}
-
-/// @brief clear the regex cache in a thread
-static void ClearRegexCache() {
-  if (RegexCache != nullptr) {
-    for (auto& it : *RegexCache) {
-      delete it.second;
-    }
-    delete RegexCache;
-    RegexCache = nullptr;
-  }
-}
-
-/// @brief clear the like cache in a thread
-static void ClearLikeCache() {
-  if (LikeCache != nullptr) {
-    for (auto& it : *LikeCache) {
-      delete it.second;
-    }
-    delete LikeCache;
-    LikeCache = nullptr;
-  }
-}
-
-/// @brief compile a LIKE pattern from a string
-static std::string BuildLikePattern(char const* ptr, size_t length,
-                                    bool caseInsensitive) {
-  std::string pattern;
-  pattern.reserve(length + 8); // reserve some room
-  
-  // pattern is always anchored
-  pattern.push_back('^');
-  if (caseInsensitive) {
-    pattern.append("(?i)");
-  }
-
-  bool escaped = false;
-
-  for (size_t i = 0; i < length; ++i) {
-    char const c = ptr[i];
-
-    if (c == '\\') {
-      if (escaped) {
-        // literal backslash
-        pattern.append("\\\\");
-      }
-      escaped = !escaped;
-    } else {
-      if (c == '%') {
-        if (escaped) {
-          // literal %
-          pattern.push_back('%');
-        } else {
-          // wildcard
-          pattern.append("(.|[\r\n])*");
-        }
-      } else if (c == '_') {
-        if (escaped) {
-          // literal underscore
-          pattern.push_back('_');
-        } else {
-          // wildcard character
-          pattern.append("(.|[\r\n])");
-        }
-      } else if (c == '?' || c == '+' || c == '[' || c == '(' || c == ')' ||
-                 c == '{' || c == '}' || c == '^' || c == '$' || c == '|' ||
-                 c == '\\' || c == '.') {
-        // character with special meaning in a regex
-        pattern.push_back('\\');
-        pattern.push_back(c);
-      } else {
-        if (escaped) {
-          // found a backslash followed by no special character
-          pattern.append("\\\\");
-        }
-
-        // literal character
-        pattern.push_back(c);
-      }
-
-      escaped = false;
-    }
-  }
-
-  // always anchor the pattern
-  pattern.push_back('$');
-
-  return pattern;
-}
-
-/// @brief compile a REGEX pattern from a string
-static std::string BuildRegexPattern(char const* ptr, size_t length,
-                                     bool caseInsensitive) {
-  std::string pattern;
-  if (caseInsensitive) {
-    pattern.reserve(length + 4);
-    pattern.append("(?i)");
-  } else {
-    pattern.reserve(length);
-  }
-
-  pattern.append(ptr, length);
-
-  return pattern;
 }
 
 /// @brief extract a function parameter from the arguments
@@ -633,32 +522,24 @@ AqlValue Functions::MergeParameters(arangodb::aql::Query* query,
 
   if (initial.isArray() && n == 1) {
     // special case: a single array parameter
-    try {
-      // Create an empty document as start point
-      builder.openObject();
-      builder.close();
-    } catch (...) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
+    // Create an empty document as start point
+    builder.openObject();
+    builder.close();
     // merge in all other arguments
     for (auto const& it : VPackArrayIterator(initialSlice)) {
       if (!it.isObject()) {
         RegisterInvalidArgumentWarning(query, funcName);
-        return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+        return AqlValue(AqlValueHintNull());
       }
-      try {
-        builder = arangodb::basics::VelocyPackHelper::merge(builder.slice(), it, false,
-                                                            recursive);
-      } catch (...) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-      }
+      builder = arangodb::basics::VelocyPackHelper::merge(builder.slice(), it, false,
+                                                          recursive);
     }
     return AqlValue(builder);
   }
 
   if (!initial.isObject()) {
     RegisterInvalidArgumentWarning(query, funcName);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   // merge in all other arguments
@@ -667,19 +548,15 @@ AqlValue Functions::MergeParameters(arangodb::aql::Query* query,
 
     if (!param.isObject()) {
       RegisterInvalidArgumentWarning(query, funcName);
-      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      return AqlValue(AqlValueHintNull());
     }
     
     AqlValueMaterializer materializer(trx);
     VPackSlice slice = materializer.slice(param, false);
 
-    try {
-      builder = arangodb::basics::VelocyPackHelper::merge(initialSlice, slice, false,
-                                                          recursive);
-      initialSlice = builder.slice();
-    } catch (...) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
+    builder = arangodb::basics::VelocyPackHelper::merge(initialSlice, slice, false,
+                                                        recursive);
+    initialSlice = builder.slice();
   }
   if (n == 1) {
     // only one parameter. now add original document
@@ -702,20 +579,12 @@ static void FlattenList(VPackSlice const& array, size_t maxDepth,
   }
 }
 
-/// @brief called before a query starts
-/// has the chance to set up any thread-local storage
-void Functions::InitializeThreadContext() {}
-
-/// @brief called when a query ends
-/// its responsibility is to clear any thread-local storage
-void Functions::DestroyThreadContext() { ClearRegexCache(); ClearLikeCache(); }
-
 /// @brief function IS_NULL
 AqlValue Functions::IsNull(arangodb::aql::Query* query,
                            transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(a.isNull(true));
+  return AqlValue(AqlValueHintBool(a.isNull(true)));
 }
 
 /// @brief function IS_BOOL
@@ -723,7 +592,7 @@ AqlValue Functions::IsBool(arangodb::aql::Query* query,
                            transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(a.isBoolean());
+  return AqlValue(AqlValueHintBool(a.isBoolean()));
 }
 
 /// @brief function IS_NUMBER
@@ -731,7 +600,7 @@ AqlValue Functions::IsNumber(arangodb::aql::Query* query,
                              transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(a.isNumber());
+  return AqlValue(AqlValueHintBool(a.isNumber()));
 }
 
 /// @brief function IS_STRING
@@ -739,7 +608,7 @@ AqlValue Functions::IsString(arangodb::aql::Query* query,
                              transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(a.isString());
+  return AqlValue(AqlValueHintBool(a.isString()));
 }
 
 /// @brief function IS_ARRAY
@@ -747,7 +616,7 @@ AqlValue Functions::IsArray(arangodb::aql::Query* query,
                             transaction::Methods* trx,
                             VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(a.isArray());
+  return AqlValue(AqlValueHintBool(a.isArray()));
 }
 
 /// @brief function IS_OBJECT
@@ -755,7 +624,7 @@ AqlValue Functions::IsObject(arangodb::aql::Query* query,
                              transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(a.isObject());
+  return AqlValue(AqlValueHintBool(a.isObject()));
 }
 
 /// @brief function TYPENAME
@@ -763,23 +632,9 @@ AqlValue Functions::Typename(arangodb::aql::Query* query,
                              transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  char const* type = value.getTypeString();
 
-  if (value.isObject()) {
-    return AqlValue(TRI_CHAR_LENGTH_PAIR("object"));
-  }
-  if (value.isArray()) {
-    return AqlValue(TRI_CHAR_LENGTH_PAIR("array"));
-  }
-  if (value.isString()) {
-    return AqlValue(TRI_CHAR_LENGTH_PAIR("string"));
-  }
-  if (value.isNumber()) {
-    return AqlValue(TRI_CHAR_LENGTH_PAIR("number"));
-  }
-  if (value.isBoolean()) {
-    return AqlValue(TRI_CHAR_LENGTH_PAIR("bool"));
-  }
-  return AqlValue(TRI_CHAR_LENGTH_PAIR("null"));
+  return AqlValue(TRI_CHAR_LENGTH_PAIR(type));
 }
 
 /// @brief function TO_NUMBER
@@ -791,12 +646,10 @@ AqlValue Functions::ToNumber(arangodb::aql::Query* query,
   double value = a.toDouble(trx, failed);
 
   if (failed) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::ZeroValue());
+    return AqlValue(AqlValueHintZero());
   }
-  
-  transaction::BuilderLeaser builder(trx);
-  builder->add(VPackValue(value));
-  return AqlValue(builder.get());
+ 
+  return AqlValue(AqlValueHintDouble(value));
 }
 
 /// @brief function TO_STRING
@@ -810,11 +663,7 @@ AqlValue Functions::ToString(arangodb::aql::Query* query,
 
   AppendAsString(trx, adapter, value);
   transaction::BuilderLeaser builder(trx);
-  try {
-    return AqlValue(buffer->begin(), buffer->length());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  return AqlValue(buffer->begin(), buffer->length());
 }
 
 /// @brief function TO_BOOL
@@ -822,7 +671,7 @@ AqlValue Functions::ToBool(arangodb::aql::Query* query,
                            transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
   AqlValue a = ExtractFunctionParameterValue(trx, parameters, 0);
-  return AqlValue(a.toBoolean());
+  return AqlValue(AqlValueHintBool(a.toBoolean()));
 }
 
 /// @brief function TO_ARRAY
@@ -865,13 +714,13 @@ AqlValue Functions::ToArray(arangodb::aql::Query* query,
 AqlValue Functions::Length(arangodb::aql::Query* query,
                            transaction::Methods* trx,
                            VPackFunctionParameters const& parameters) {
-  transaction::BuilderLeaser builder(trx);
+
+  ValidateParameters(parameters, "LENGTH", 1, 1);
 
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
   if (value.isArray()) {
     // shortcut!
-    builder->add(VPackValue(value.length()));
-    return AqlValue(builder->slice());
+    return AqlValue(AqlValueHintUInt(value.length()));
   }
 
   size_t length = 0;
@@ -898,8 +747,8 @@ AqlValue Functions::Length(arangodb::aql::Query* query,
   } else if (value.isObject()) {
     length = static_cast<size_t>(value.length());
   }
-  builder->add(VPackValue(static_cast<uint64_t>(length)));
-  return AqlValue(builder.get());
+    
+  return AqlValue(AqlValueHintUInt(length));
 }
 
 /// @brief function FIRST
@@ -912,11 +761,11 @@ AqlValue Functions::First(arangodb::aql::Query* query,
   if (!value.isArray()) {
     // not an array
     RegisterWarning(query, "FIRST", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   if (value.length() == 0) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   bool mustDestroy;
@@ -933,13 +782,13 @@ AqlValue Functions::Last(arangodb::aql::Query* query,
   if (!value.isArray()) {
     // not an array
     RegisterWarning(query, "LAST", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   VPackValueLength const n = value.length();
 
   if (n == 0) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   bool mustDestroy;
@@ -956,20 +805,20 @@ AqlValue Functions::Nth(arangodb::aql::Query* query,
   if (!value.isArray()) {
     // not an array
     RegisterWarning(query, "NTH", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   VPackValueLength const n = value.length();
 
   if (n == 0) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   AqlValue position = ExtractFunctionParameterValue(trx, parameters, 1);
   int64_t index = position.toInt64(trx);
 
   if (index < 0 || index >= static_cast<int64_t>(n)) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   bool mustDestroy;
@@ -1037,7 +886,7 @@ AqlValue Functions::Contains(arangodb::aql::Query* query,
   }
 
   // return boolean
-  return AqlValue(result != -1);
+  return AqlValue(AqlValueHintBool(result != -1));
 }
 
 /// @brief function CONCAT
@@ -1077,11 +926,7 @@ AqlValue Functions::Concat(arangodb::aql::Query* query,
     AppendAsString(trx, adapter, member);
   }
 
-  try {
-    return AqlValue(buffer->c_str(), buffer->length());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  return AqlValue(buffer->c_str(), buffer->length());
 }
 
 /// @brief function CONCAT_SEPARATOR
@@ -1142,11 +987,98 @@ AqlValue Functions::ConcatSeparator(arangodb::aql::Query* query,
     found = true;
   }
 
-  try {
-    return AqlValue(buffer->c_str(), buffer->length());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  return AqlValue(buffer->c_str(), buffer->length());
+}
+
+/// @brief function CHAR_LENGTH
+AqlValue Functions::CharLength(arangodb::aql::Query* query,
+                                    transaction::Methods* trx,
+                                    VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "CHAR_LENGTH", 1, 1);
+
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+  size_t length = 0;
+
+  if (value.isArray() || value.isObject()) {
+    AqlValueMaterializer materializer(trx);
+    VPackSlice slice = materializer.slice(value, false);
+
+    transaction::StringBufferLeaser buffer(trx);
+    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+    VPackDumper dumper(&adapter, trx->transactionContextPtr()->getVPackOptions());
+    dumper.dump(slice);
+
+    length = buffer->length();
+
+  } else if (value.isNull(true)) {
+    length = 0;
+
+  } else if (value.isBoolean()) {
+    if (value.toBoolean()) {
+      length = 4;
+    } else {
+      length = 5;
+    }
+
+  } else if (value.isNumber()) {
+    double tmp = value.toDouble(trx);
+    if (std::isnan(tmp) || !std::isfinite(tmp)) {
+      length = 0;
+    } else {
+      char buffer[24];
+      length = static_cast<size_t>(fpconv_dtoa(tmp, buffer));
+    }
+
+  } else if (value.isString()) {
+    VPackValueLength l;
+    char const* p = value.slice().getString(l);
+    length = TRI_CharLengthUtf8String(p, l);
   }
+
+  return AqlValue(AqlValueHintUInt(length));
+}
+
+/// @brief function LOWER
+AqlValue Functions::Lower(arangodb::aql::Query* query,
+                                    transaction::Methods* trx,
+                                    VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "LOWER", 1, 1);
+
+  std::string utf8;
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  AppendAsString(trx, adapter, value);
+
+  UnicodeString s(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  s.toLower(NULL);
+  s.toUTF8String(utf8);
+
+  return AqlValue(utf8);
+}
+
+/// @brief function UPPER
+AqlValue Functions::Upper(arangodb::aql::Query* query,
+                                    transaction::Methods* trx,
+                                    VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "UPPER", 1, 1);
+
+  std::string utf8;
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  AppendAsString(trx, adapter, value);
+
+  UnicodeString s(buffer->c_str(), static_cast<int32_t>(buffer->length()));
+  s.toUpper(NULL);
+  s.toUTF8String(utf8);
+
+  return AqlValue(utf8);
 }
 
 /// @brief function LIKE
@@ -1161,41 +1093,14 @@ AqlValue Functions::Like(arangodb::aql::Query* query,
   // build pattern from parameter #1
   AqlValue regex = ExtractFunctionParameterValue(trx, parameters, 1);
   AppendAsString(trx, adapter, regex);
-
-  std::string const pattern =
-      BuildLikePattern(buffer->c_str(), buffer->length(), caseInsensitive);
-  RegexMatcher* matcher = nullptr;
-
-  if (LikeCache != nullptr) {
-    auto it = LikeCache->find(pattern);
-
-    // check regex cache
-    if (it != LikeCache->end()) {
-      matcher = (*it).second;
-    }
-  }
-
-  if (matcher == nullptr) {
-    matcher =
-        arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
-
-    try {
-      if (LikeCache == nullptr) {
-        LikeCache = new std::unordered_map<std::string, RegexMatcher*>();
-      }
-      // insert into cache, no matter if pattern is valid or not
-      LikeCache->emplace(pattern, matcher);
-    } catch (...) {
-      delete matcher;
-      ClearLikeCache();
-      throw;
-    }
-  }
+  
+  // the matcher is owned by the query!
+  ::RegexMatcher* matcher = query->regexCache()->buildLikeMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
     RegisterWarning(query, "LIKE", TRI_ERROR_QUERY_INVALID_REGEX);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   // extract value
@@ -1210,10 +1115,10 @@ AqlValue Functions::Like(arangodb::aql::Query* query,
   if (error) {
     // compiling regular expression failed
     RegisterWarning(query, "LIKE", TRI_ERROR_QUERY_INVALID_REGEX);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   } 
   
-  return AqlValue(result);
+  return AqlValue(AqlValueHintBool(result));
 }
 
 /// @brief function REGEX_TEST
@@ -1229,40 +1134,13 @@ AqlValue Functions::RegexTest(arangodb::aql::Query* query,
   AqlValue regex = ExtractFunctionParameterValue(trx, parameters, 1);
   AppendAsString(trx, adapter, regex);
 
-  std::string const pattern =
-      BuildRegexPattern(buffer->c_str(), buffer->length(), caseInsensitive);
-  RegexMatcher* matcher = nullptr;
-
-  if (RegexCache != nullptr) {
-    auto it = RegexCache->find(pattern);
-
-    // check regex cache
-    if (it != RegexCache->end()) {
-      matcher = (*it).second;
-    }
-  }
-
-  if (matcher == nullptr) {
-    matcher =
-        arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
-
-    try {
-      if (RegexCache == nullptr) {
-        RegexCache = new std::unordered_map<std::string, RegexMatcher*>();
-      }
-      // insert into cache, no matter if pattern is valid or not
-      RegexCache->emplace(pattern, matcher);
-    } catch (...) {
-      delete matcher;
-      ClearRegexCache();
-      throw;
-    }
-  }
+  // the matcher is owned by the query!
+  ::RegexMatcher* matcher = query->regexCache()->buildRegexMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
     RegisterWarning(query, "REGEX_TEST", TRI_ERROR_QUERY_INVALID_REGEX);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   // extract value
@@ -1277,10 +1155,10 @@ AqlValue Functions::RegexTest(arangodb::aql::Query* query,
   if (error) {
     // compiling regular expression failed
     RegisterWarning(query, "REGEX_TEST", TRI_ERROR_QUERY_INVALID_REGEX);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   } 
   
-  return AqlValue(result);
+  return AqlValue(AqlValueHintBool(result));
 }
 
 /// @brief function REGEX_REPLACE
@@ -1296,40 +1174,13 @@ AqlValue Functions::RegexReplace(arangodb::aql::Query* query,
   AqlValue regex = ExtractFunctionParameterValue(trx, parameters, 1);
   AppendAsString(trx, adapter, regex);
 
-  std::string const pattern =
-      BuildRegexPattern(buffer->c_str(), buffer->length(), caseInsensitive);
-  RegexMatcher* matcher = nullptr;
-
-  if (RegexCache != nullptr) {
-    auto it = RegexCache->find(pattern);
-
-    // check regex cache
-    if (it != RegexCache->end()) {
-      matcher = (*it).second;
-    }
-  }
-
-  if (matcher == nullptr) {
-    matcher =
-        arangodb::basics::Utf8Helper::DefaultUtf8Helper.buildMatcher(pattern);
-
-    try {
-      if (RegexCache == nullptr) {
-        RegexCache = new std::unordered_map<std::string, RegexMatcher*>();
-      }
-      // insert into cache, no matter if pattern is valid or not
-      RegexCache->emplace(pattern, matcher);
-    } catch (...) {
-      delete matcher;
-      ClearRegexCache();
-      throw;
-    }
-  }
+  // the matcher is owned by the query!
+  ::RegexMatcher* matcher = query->regexCache()->buildRegexMatcher(buffer->c_str(), buffer->length(), caseInsensitive);
 
   if (matcher == nullptr) {
     // compiling regular expression failed
     RegisterWarning(query, "REGEX_REPLACE", TRI_ERROR_QUERY_INVALID_REGEX);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   // extract value
@@ -1348,7 +1199,7 @@ AqlValue Functions::RegexReplace(arangodb::aql::Query* query,
   if (error) {
     // compiling regular expression failed
     RegisterWarning(query, "REGEX_REPLACE", TRI_ERROR_QUERY_INVALID_REGEX);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   } 
   
   return AqlValue(result);
@@ -1359,7 +1210,7 @@ AqlValue Functions::Passthru(arangodb::aql::Query* query,
                              transaction::Methods* trx,
                              VPackFunctionParameters const& parameters) {
   if (parameters.empty()) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   return ExtractFunctionParameterValue(trx, parameters, 0).clone();
@@ -1374,21 +1225,17 @@ AqlValue Functions::Unset(arangodb::aql::Query* query,
 
   if (!value.isObject()) {
     RegisterInvalidArgumentWarning(query, "UNSET");
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   std::unordered_set<std::string> names;
   ExtractKeys(names, query, trx, parameters, 1, "UNSET");
 
-  try {
-    AqlValueMaterializer materializer(trx);
-    VPackSlice slice = materializer.slice(value, false);
-    transaction::BuilderLeaser builder(trx);
-    UnsetOrKeep(trx, slice, names, true, false, *builder.get());
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+  transaction::BuilderLeaser builder(trx);
+  UnsetOrKeep(trx, slice, names, true, false, *builder.get());
+  return AqlValue(builder.get());
 }
 
 /// @brief function UNSET_RECURSIVE
@@ -1400,21 +1247,17 @@ AqlValue Functions::UnsetRecursive(arangodb::aql::Query* query,
 
   if (!value.isObject()) {
     RegisterInvalidArgumentWarning(query, "UNSET_RECURSIVE");
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   std::unordered_set<std::string> names;
   ExtractKeys(names, query, trx, parameters, 1, "UNSET_RECURSIVE");
 
-  try {
-    AqlValueMaterializer materializer(trx);
-    VPackSlice slice = materializer.slice(value, false);
-    transaction::BuilderLeaser builder(trx);
-    UnsetOrKeep(trx, slice, names, true, true, *builder.get());
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+  transaction::BuilderLeaser builder(trx);
+  UnsetOrKeep(trx, slice, names, true, true, *builder.get());
+  return AqlValue(builder.get());
 }
 
 /// @brief function KEEP
@@ -1426,22 +1269,18 @@ AqlValue Functions::Keep(arangodb::aql::Query* query,
 
   if (!value.isObject()) {
     RegisterInvalidArgumentWarning(query, "KEEP");
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   std::unordered_set<std::string> names;
 
   ExtractKeys(names, query, trx, parameters, 1, "KEEP");
 
-  try {
-    AqlValueMaterializer materializer(trx);
-    VPackSlice slice = materializer.slice(value, false);
-    transaction::BuilderLeaser builder(trx);
-    UnsetOrKeep(trx, slice, names, false, false, *builder.get());
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(value, false);
+  transaction::BuilderLeaser builder(trx);
+  UnsetOrKeep(trx, slice, names, false, false, *builder.get());
+  return AqlValue(builder.get());
 }
 
 /// @brief function MERGE
@@ -1465,14 +1304,14 @@ AqlValue Functions::Has(arangodb::aql::Query* query,
   size_t const n = parameters.size();
   if (n < 2) {
     // no parameters
-    return AqlValue(false);
+    return AqlValue(AqlValueHintBool(false));
   }
 
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (!value.isObject()) {
     // not an object
-    return AqlValue(false);
+    return AqlValue(AqlValueHintBool(false));
   }
 
   AqlValue name = ExtractFunctionParameterValue(trx, parameters, 1);
@@ -1486,7 +1325,7 @@ AqlValue Functions::Has(arangodb::aql::Query* query,
     p = name.slice().copyString();
   }
 
-  return AqlValue(value.hasKey(trx, p));
+  return AqlValue(AqlValueHintBool(value.hasKey(trx, p)));
 }
 
 /// @brief function ATTRIBUTES
@@ -1497,7 +1336,7 @@ AqlValue Functions::Attributes(arangodb::aql::Query* query,
 
   if (n < 1) {
     // no parameters
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
@@ -1505,7 +1344,7 @@ AqlValue Functions::Attributes(arangodb::aql::Query* query,
     // not an object
     RegisterWarning(query, "ATTRIBUTES",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   bool const removeInternal = GetBooleanParameter(trx, parameters, 1, false);
@@ -1561,7 +1400,7 @@ AqlValue Functions::Values(arangodb::aql::Query* query,
 
   if (n < 1) {
     // no parameters
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
@@ -1569,7 +1408,7 @@ AqlValue Functions::Values(arangodb::aql::Query* query,
     // not an object
     RegisterWarning(query, "VALUES",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   bool const removeInternal = GetBooleanParameter(trx, parameters, 1, false);
@@ -1616,7 +1455,7 @@ AqlValue Functions::Min(arangodb::aql::Query* query,
   if (!value.isArray()) {
     // not an array
     RegisterWarning(query, "MIN", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   AqlValueMaterializer materializer(trx);
@@ -1633,7 +1472,7 @@ AqlValue Functions::Min(arangodb::aql::Query* query,
     }
   }
   if (minValue.isNone()) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
   return AqlValue(minValue);
 }
@@ -1647,7 +1486,7 @@ AqlValue Functions::Max(arangodb::aql::Query* query,
   if (!value.isArray()) {
     // not an array
     RegisterWarning(query, "MAX", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   AqlValueMaterializer materializer(trx);
@@ -1660,7 +1499,7 @@ AqlValue Functions::Max(arangodb::aql::Query* query,
     }
   }
   if (maxValue.isNone()) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
   return AqlValue(maxValue);
 }
@@ -1674,7 +1513,7 @@ AqlValue Functions::Sum(arangodb::aql::Query* query,
   if (!value.isArray()) {
     // not an array
     RegisterWarning(query, "SUM", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   AqlValueMaterializer materializer(trx);
@@ -1685,7 +1524,7 @@ AqlValue Functions::Sum(arangodb::aql::Query* query,
       continue;
     }
     if (!it.isNumber()) {
-      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      return AqlValue(AqlValueHintNull());
     }
     double const number = it.getNumericValue<double>();
 
@@ -1706,7 +1545,7 @@ AqlValue Functions::Average(arangodb::aql::Query* query,
   if (!value.isArray()) {
     // not an array
     RegisterWarning(query, "AVERAGE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
   
   AqlValueMaterializer materializer(trx);
@@ -1720,7 +1559,7 @@ AqlValue Functions::Average(arangodb::aql::Query* query,
     }
     if (!v.isNumber()) {
       RegisterWarning(query, "AVERAGE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      return AqlValue(AqlValueHintNull());
     }
 
     // got a numeric value
@@ -1736,7 +1575,7 @@ AqlValue Functions::Average(arangodb::aql::Query* query,
     return NumberValue(trx, sum / static_cast<size_t>(count), false);
   } 
 
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief function SLEEP
@@ -1748,20 +1587,21 @@ AqlValue Functions::Sleep(arangodb::aql::Query* query,
   if (!value.isNumber() || value.toDouble(trx) < 0) {
     RegisterWarning(query, "SLEEP",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
   
   double const until = TRI_microtime() + value.toDouble(trx);
 
   while (TRI_microtime() < until) {
-    usleep(25000);
+    usleep(30000);
 
     if (query->killed()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+    } else if (application_features::ApplicationServer::isStopping()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
     }
   }
-
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief function RANDOM_TOKEN
@@ -1844,9 +1684,7 @@ AqlValue Functions::Hash(arangodb::aql::Query* query,
   // without precision loss when storing in JavaScript etc.
   uint64_t hash = value.hash(trx) & 0x0007ffffffffffffULL;
 
-  transaction::BuilderLeaser builder(trx);
-  builder->add(VPackValue(hash));
-  return AqlValue(builder.get());
+  return AqlValue(AqlValueHintUInt(hash));
 }
 
 /// @brief function UNIQUE
@@ -1860,7 +1698,7 @@ AqlValue Functions::Unique(arangodb::aql::Query* query,
   if (!value.isArray()) {
     // not an array
     RegisterWarning(query, "UNIQUE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   AqlValueMaterializer materializer(trx);
@@ -1879,16 +1717,12 @@ AqlValue Functions::Unique(arangodb::aql::Query* query,
   }
 
   transaction::BuilderLeaser builder(trx);
-  try {
-    builder->openArray();
-    for (auto const& it : values) {
-      builder->add(it);
-    }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  builder->openArray();
+  for (auto const& it : values) {
+    builder->add(it);
   }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function SORTED_UNIQUE
@@ -1901,7 +1735,7 @@ AqlValue Functions::SortedUnique(arangodb::aql::Query* query,
   if (!value.isArray()) {
     // not an array
     // this is an internal function - do NOT issue a warning here
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
   
   AqlValueMaterializer materializer(trx);
@@ -1916,16 +1750,12 @@ AqlValue Functions::SortedUnique(arangodb::aql::Query* query,
   }
 
   transaction::BuilderLeaser builder(trx);
-  try {
-    builder->openArray();
-    for (auto const& it : values) {
-      builder->add(it);
-    }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  builder->openArray();
+  for (auto const& it : values) {
+    builder->add(it);
   }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function UNION
@@ -1934,47 +1764,39 @@ AqlValue Functions::Union(arangodb::aql::Query* query,
                           VPackFunctionParameters const& parameters) {
   ValidateParameters(parameters, "UNION", 2);
 
-  try {
-    transaction::BuilderLeaser builder(trx);
-    builder->openArray();
-    size_t const n = parameters.size();
-    for (size_t i = 0; i < n; ++i) {
-      AqlValue value = ExtractFunctionParameterValue(trx, parameters, i);
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+  size_t const n = parameters.size();
+  for (size_t i = 0; i < n; ++i) {
+    AqlValue value = ExtractFunctionParameterValue(trx, parameters, i);
 
-      if (!value.isArray()) {
-        // not an array
-        RegisterInvalidArgumentWarning(query, "UNION");
-        return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
-      }
-
-      TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-
-      AqlValueMaterializer materializer(trx);
-      VPackSlice slice = materializer.slice(value, false);
-
-      // this passes ownership for the JSON contens into result
-      for (auto const& it : VPackArrayIterator(slice)) {
-        builder->add(it);
-        TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-        }
-      }
+    if (!value.isArray()) {
+      // not an array
+      RegisterInvalidArgumentWarning(query, "UNION");
+      return AqlValue(AqlValueHintNull());
     }
-    builder->close();
-    TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
+
+    TRI_IF_FAILURE("AqlFunctions::OutOfMemory1") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
 
-    return AqlValue(builder.get());
-  } catch (arangodb::basics::Exception const&) {
-    // Rethrow arangodb Errors
-    throw;
-  } catch (std::exception const&) {
-    // All other exceptions are OUT_OF_MEMORY
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    AqlValueMaterializer materializer(trx);
+    VPackSlice slice = materializer.slice(value, false);
+
+    // this passes ownership for the JSON contens into result
+    for (auto const& it : VPackArrayIterator(slice)) {
+      builder->add(it);
+      TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+    }
   }
+  builder->close();
+  TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  return AqlValue(builder.get());
 }
 
 /// @brief function UNION_DISTINCT
@@ -1998,7 +1820,7 @@ AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
     if (!value.isArray()) {
       // not an array
       RegisterInvalidArgumentWarning(query, "UNION_DISTINCT");
-      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      return AqlValue(AqlValueHintNull());
     }
 
     materializers.emplace_back(trx);
@@ -2018,25 +1840,19 @@ AqlValue Functions::UnionDistinct(arangodb::aql::Query* query,
   TRI_IF_FAILURE("AqlFunctions::OutOfMemory2") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
-  try {
-    transaction::BuilderLeaser builder(trx);
-    builder->openArray();
-    for (auto const& it : values) {
-      builder->add(it);
-    }
-    builder->close();
- 
-    TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-
-    return AqlValue(builder.get());
-  } catch (arangodb::basics::Exception const&) {
-    // Rethrow arangodb Errors
-    throw;
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+  for (auto const& it : values) {
+    builder->add(it);
   }
+  builder->close();
+
+  TRI_IF_FAILURE("AqlFunctions::OutOfMemory3") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
+  return AqlValue(builder.get());
 }
 
 /// @brief function INTERSECTION
@@ -2061,7 +1877,7 @@ AqlValue Functions::Intersection(arangodb::aql::Query* query,
     if (!value.isArray()) {
       // not an array
       RegisterWarning(query, "INTERSECTION", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      return AqlValue(AqlValueHintNull());
     }
     
     materializers.emplace_back(trx);
@@ -2132,7 +1948,7 @@ AqlValue Functions::Outersection(arangodb::aql::Query* query,
     if (!value.isArray()) {
       // not an array
       RegisterWarning(query, "OUTERSECTION", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      return AqlValue(AqlValueHintNull());
     }
     
     materializers.emplace_back(trx);
@@ -2185,7 +2001,7 @@ AqlValue Functions::Distance(arangodb::aql::Query* query,
   if (!lat1.isNumber() || !lon1.isNumber() || !lat2.isNumber() || !lon2.isNumber()) {
     RegisterWarning(query, "DISTANCE",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   bool failed;
@@ -2202,7 +2018,7 @@ AqlValue Functions::Distance(arangodb::aql::Query* query,
   if (error) {
     RegisterWarning(query, "DISTANCE",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   auto toRadians = [](double degrees) -> double {
@@ -2233,7 +2049,7 @@ AqlValue Functions::Flatten(arangodb::aql::Query* query,
   AqlValue list = ExtractFunctionParameterValue(trx, parameters, 0);
   if (!list.isArray()) {
     RegisterWarning(query, "FLATTEN", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   size_t maxDepth = 1;
@@ -2251,15 +2067,11 @@ AqlValue Functions::Flatten(arangodb::aql::Query* query,
   AqlValueMaterializer materializer(trx);
   VPackSlice listSlice = materializer.slice(list, false);
 
-  try {
-    transaction::BuilderLeaser builder(trx);
-    builder->openArray();
-    FlattenList(listSlice, maxDepth, 0, *builder.get());
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+  FlattenList(listSlice, maxDepth, 0, *builder.get());
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function ZIP
@@ -2275,34 +2087,30 @@ AqlValue Functions::Zip(arangodb::aql::Query* query,
       keys.length() != values.length()) {
     RegisterWarning(query, "ZIP",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   VPackValueLength n = keys.length();
 
-  try {
-    AqlValueMaterializer keyMaterializer(trx);
-    VPackSlice keysSlice = keyMaterializer.slice(keys, false);
-    
-    AqlValueMaterializer valueMaterializer(trx);
-    VPackSlice valuesSlice = valueMaterializer.slice(values, false);
+  AqlValueMaterializer keyMaterializer(trx);
+  VPackSlice keysSlice = keyMaterializer.slice(keys, false);
+  
+  AqlValueMaterializer valueMaterializer(trx);
+  VPackSlice valuesSlice = valueMaterializer.slice(values, false);
 
-    transaction::BuilderLeaser builder(trx);
-    builder->openObject();
+  transaction::BuilderLeaser builder(trx);
+  builder->openObject();
 
-    // Buffer will temporarily hold the keys
-    transaction::StringBufferLeaser buffer(trx);
-    arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
-    for (VPackValueLength i = 0; i < n; ++i) {
-      buffer->reset();
-      Stringify(trx, adapter, keysSlice.at(i));
-      builder->add(buffer->c_str(), buffer->length(), valuesSlice.at(i));
-    }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  // Buffer will temporarily hold the keys
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+  for (VPackValueLength i = 0; i < n; ++i) {
+    buffer->reset();
+    Stringify(trx, adapter, keysSlice.at(i));
+    builder->add(buffer->c_str(), buffer->length(), valuesSlice.at(i));
   }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function JSON_STRINGIFY
@@ -2337,7 +2145,7 @@ AqlValue Functions::JsonParse(arangodb::aql::Query* query,
   if (!slice.isString()) { 
     RegisterWarning(query, "JSON_PARSE",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   VPackValueLength l;
@@ -2349,7 +2157,7 @@ AqlValue Functions::JsonParse(arangodb::aql::Query* query,
   } catch (...) {
     RegisterWarning(query, "JSON_PARSE",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 }
 
@@ -2376,7 +2184,7 @@ AqlValue Functions::ParseIdentifier(
   if (identifier.empty()) {
     RegisterWarning(query, "PARSE_IDENTIFIER",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   std::vector<std::string> parts =
@@ -2385,19 +2193,15 @@ AqlValue Functions::ParseIdentifier(
   if (parts.size() != 2) {
     RegisterWarning(query, "PARSE_IDENTIFIER",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
-  try {
-    transaction::BuilderLeaser builder(trx);
-    builder->openObject();
-    builder->add("collection", VPackValue(parts[0]));
-    builder->add("key", VPackValue(parts[1]));
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
+  transaction::BuilderLeaser builder(trx);
+  builder->openObject();
+  builder->add("collection", VPackValue(parts[0]));
+  builder->add("key", VPackValue(parts[1]));
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function Slice
@@ -2411,7 +2215,7 @@ AqlValue Functions::Slice(arangodb::aql::Query* query,
   if (!baseArray.isArray()) {
     RegisterWarning(query, "SLICE",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
  
   // determine lower bound 
@@ -2477,7 +2281,7 @@ AqlValue Functions::Minus(arangodb::aql::Query* query,
   if (!baseArray.isArray()) {
     RegisterWarning(query, "MINUS",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
@@ -2504,7 +2308,7 @@ AqlValue Functions::Minus(arangodb::aql::Query* query,
     if (!next.isArray()) {
       RegisterWarning(query, "MINUS",
                       TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      return AqlValue(AqlValueHintNull());
     }
   
     AqlValueMaterializer materializer(trx);
@@ -2520,17 +2324,13 @@ AqlValue Functions::Minus(arangodb::aql::Query* query,
   }
 
   // We omit the normalize part from js, cannot occur here
-  try {
-    transaction::BuilderLeaser builder(trx);
-    builder->openArray();
-    for (auto const& it : contains) {
-      builder->add(it.first);
-    }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+  for (auto const& it : contains) {
+    builder->add(it.first);
   }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function Document
@@ -2548,7 +2348,7 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
       GetDocumentByIdentifier(trx, colName, identifier, true, *builder.get());
       if (builder->isEmpty()) {
         // not found
-        return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+        return AqlValue(AqlValueHintNull());
       }
       return AqlValue(builder.get());
     } 
@@ -2566,14 +2366,14 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
       builder->close();
       return AqlValue(builder.get());
     } 
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   AqlValue collectionValue = ExtractFunctionParameterValue(trx, parameters, 0);
   if (!collectionValue.isString()) {
     RegisterWarning(query, "DOCUMENT",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
   std::string collectionName(collectionValue.slice().copyString());
 
@@ -2583,7 +2383,7 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
     std::string identifier(id.slice().copyString());
     GetDocumentByIdentifier(trx, collectionName, identifier, true, *builder.get());
     if (builder->isEmpty()) {
-      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      return AqlValue(AqlValueHintNull());
     }
     return AqlValue(builder.get());
   }
@@ -2606,7 +2406,7 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
   }
 
   // Id has invalid format
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief function ROUND
@@ -2890,7 +2690,7 @@ AqlValue Functions::FirstDocument(arangodb::aql::Query* query,
     }
   }
 
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief function FIRST_LIST
@@ -2905,7 +2705,7 @@ AqlValue Functions::FirstList(arangodb::aql::Query* query,
     }
   }
 
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief function PUSH
@@ -2930,7 +2730,7 @@ AqlValue Functions::Push(arangodb::aql::Query* query,
   
   if (!list.isArray()) {
     RegisterInvalidArgumentWarning(query, "PUSH");
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   transaction::BuilderLeaser builder(trx);
@@ -2962,31 +2762,27 @@ AqlValue Functions::Pop(arangodb::aql::Query* query,
   AqlValue list = ExtractFunctionParameterValue(trx, parameters, 0);
 
   if (list.isNull(true)) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   if (!list.isArray()) {
     RegisterWarning(query, "POP",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
-  try {
-    AqlValueMaterializer materializer(trx);
-    VPackSlice slice = materializer.slice(list, false);
+  AqlValueMaterializer materializer(trx);
+  VPackSlice slice = materializer.slice(list, false);
 
-    transaction::BuilderLeaser builder(trx);
-    builder->openArray();
-    auto iterator = VPackArrayIterator(slice);
-    while (iterator.valid() && !iterator.isLast()) {
-      builder->add(iterator.value());
-      iterator.next();
-    }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  } 
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+  auto iterator = VPackArrayIterator(slice);
+  while (iterator.valid() && !iterator.isLast()) {
+    builder->add(iterator.value());
+    iterator.next();
+  }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function APPEND
@@ -3023,7 +2819,7 @@ AqlValue Functions::Append(arangodb::aql::Query* query,
     
   if (!l.isArray()) {
     RegisterInvalidArgumentWarning(query, "APPEND");
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
   
   std::unordered_set<VPackSlice> added;
@@ -3074,7 +2870,7 @@ AqlValue Functions::Unshift(arangodb::aql::Query* query,
 
   if (!list.isNull(true) && !list.isArray()) {
     RegisterInvalidArgumentWarning(query, "UNSHIFT");
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   AqlValue toAppend = ExtractFunctionParameterValue(trx, parameters, 1);
@@ -3118,12 +2914,12 @@ AqlValue Functions::Shift(arangodb::aql::Query* query,
   
   AqlValue list = ExtractFunctionParameterValue(trx, parameters, 0);
   if (list.isNull(true)) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   if (!list.isArray()) {
     RegisterInvalidArgumentWarning(query, "SHIFT");
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   transaction::BuilderLeaser builder(trx);
@@ -3160,48 +2956,45 @@ AqlValue Functions::RemoveValue(arangodb::aql::Query* query,
 
   if (!list.isArray()) {
     RegisterInvalidArgumentWarning(query, "REMOVE_VALUE");
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  try {
-    transaction::BuilderLeaser builder(trx);
-    builder->openArray();
-    bool useLimit = false;
-    int64_t limit = list.length();
+  
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+  bool useLimit = false;
+  int64_t limit = list.length();
 
-    if (parameters.size() == 3) {
-      AqlValue limitValue = ExtractFunctionParameterValue(trx, parameters, 2);
-      if (!limitValue.isNull(true)) {
-        limit = limitValue.toInt64(trx);
-        useLimit = true;
-      }
+  if (parameters.size() == 3) {
+    AqlValue limitValue = ExtractFunctionParameterValue(trx, parameters, 2);
+    if (!limitValue.isNull(true)) {
+      limit = limitValue.toInt64(trx);
+      useLimit = true;
     }
-    
-    AqlValue toRemove = ExtractFunctionParameterValue(trx, parameters, 1);
-    AqlValueMaterializer toRemoveMaterializer(trx);
-    VPackSlice r = toRemoveMaterializer.slice(toRemove, false);
-
-    AqlValueMaterializer materializer(trx);
-    VPackSlice v = materializer.slice(list, false);
-
-    for (auto const& it : VPackArrayIterator(v)) {
-      if (useLimit && limit == 0) {
-        // Just copy
-        builder->add(it);
-        continue;
-      }
-      if (arangodb::basics::VelocyPackHelper::compare(r, it, false, options) == 0) {
-        --limit;
-        continue;
-      }
-      builder->add(it);
-    }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+  
+  AqlValue toRemove = ExtractFunctionParameterValue(trx, parameters, 1);
+  AqlValueMaterializer toRemoveMaterializer(trx);
+  VPackSlice r = toRemoveMaterializer.slice(toRemove, false);
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice v = materializer.slice(list, false);
+
+  for (auto const& it : VPackArrayIterator(v)) {
+    if (useLimit && limit == 0) {
+      // Just copy
+      builder->add(it);
+      continue;
+    }
+    if (arangodb::basics::VelocyPackHelper::compare(r, it, false, options) == 0) {
+      --limit;
+      continue;
+    }
+    builder->add(it);
+  }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function REMOVE_VALUES
@@ -3223,29 +3016,25 @@ AqlValue Functions::RemoveValues(arangodb::aql::Query* query,
 
   if (!list.isArray() || !values.isArray()) {
     RegisterInvalidArgumentWarning(query, "REMOVE_VALUES");
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
   
   auto options = trx->transactionContextPtr()->getVPackOptions();
-  try {
-    AqlValueMaterializer valuesMaterializer(trx);
-    VPackSlice v = valuesMaterializer.slice(values, false);
+  AqlValueMaterializer valuesMaterializer(trx);
+  VPackSlice v = valuesMaterializer.slice(values, false);
 
-    AqlValueMaterializer listMaterializer(trx);
-    VPackSlice l = listMaterializer.slice(list, false);
+  AqlValueMaterializer listMaterializer(trx);
+  VPackSlice l = listMaterializer.slice(list, false);
 
-    transaction::BuilderLeaser builder(trx);
-    builder->openArray();
-    for (auto const& it : VPackArrayIterator(l)) {
-      if (!ListContainsElement(options, v, it)) {
-        builder->add(it);
-      }
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+  for (auto const& it : VPackArrayIterator(l)) {
+    if (!ListContainsElement(options, v, it)) {
+      builder->add(it);
     }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (std::bad_alloc const&) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function REMOVE_NTH
@@ -3262,7 +3051,7 @@ AqlValue Functions::RemoveNth(arangodb::aql::Query* query,
 
   if (!list.isArray()) {
     RegisterInvalidArgumentWarning(query, "REMOVE_NTH");
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   double const count = static_cast<double>(list.length());
@@ -3277,25 +3066,21 @@ AqlValue Functions::RemoveNth(arangodb::aql::Query* query,
     p += count;
   }
 
-  try {
-    AqlValueMaterializer materializer(trx);
-    VPackSlice v = materializer.slice(list, false);
+  AqlValueMaterializer materializer(trx);
+  VPackSlice v = materializer.slice(list, false);
 
-    transaction::BuilderLeaser builder(trx);
-    size_t target = static_cast<size_t>(p);
-    size_t cur = 0;
-    builder->openArray();
-    for (auto const& it : VPackArrayIterator(v)) {
-      if (cur != target) {
-        builder->add(it);
-      }
-      cur++;
+  transaction::BuilderLeaser builder(trx);
+  size_t target = static_cast<size_t>(p);
+  size_t cur = 0;
+  builder->openArray();
+  for (auto const& it : VPackArrayIterator(v)) {
+    if (cur != target) {
+      builder->add(it);
     }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    cur++;
   }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function NOT_NULL
@@ -3309,7 +3094,7 @@ AqlValue Functions::NotNull(arangodb::aql::Query* query,
       return element.clone();
     }
   }
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 /// @brief function CURRENT_DATABASE
@@ -3335,21 +3120,14 @@ AqlValue Functions::CollectionCount(
         TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "COLLECTION_COUNT");
   }
 
-  std::string const collectionName(element.slice().copyString());
-
-  auto resolver = trx->resolver();
-  TRI_voc_cid_t cid = resolver->getCollectionIdLocal(collectionName);
-  trx->addCollectionAtRuntime(cid, collectionName);
-  auto collection = trx->documentCollection(cid);
-
-  if (collection == nullptr) {
-    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
-                                  "'%s'", collectionName.c_str());
+  TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
+  std::string const collectionName = element.slice().copyString();
+  OperationResult res = trx->count(collectionName, true);
+  if (res.failed()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(res.code, res.errorMessage);
   }
 
-  transaction::BuilderLeaser builder(trx);
-  builder->add(VPackValue(collection->numberDocuments(trx)));
-  return AqlValue(builder.get());
+  return AqlValue(res.slice());
 }
 
 /// @brief function VARIANCE_SAMPLE
@@ -3362,7 +3140,7 @@ AqlValue Functions::VarianceSample(
 
   if (!list.isArray()) {
     RegisterWarning(query, "VARIANCE_SAMPLE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   double value = 0.0;
@@ -3371,11 +3149,11 @@ AqlValue Functions::VarianceSample(
   if (!Variance(trx, list, value, count)) {
     RegisterWarning(query, "VARIANCE_SAMPLE",
                     TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   if (count < 2) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   return NumberValue(trx, value / (count - 1), true);
@@ -3392,7 +3170,7 @@ AqlValue Functions::VariancePopulation(
   if (!list.isArray()) {
     RegisterWarning(query, "VARIANCE_POPULATION",
                     TRI_ERROR_QUERY_ARRAY_EXPECTED);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   double value = 0.0;
@@ -3401,11 +3179,11 @@ AqlValue Functions::VariancePopulation(
   if (!Variance(trx, list, value, count)) {
     RegisterWarning(query, "VARIANCE_POPULATION",
                     TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   if (count < 1) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   return NumberValue(trx, value / count, true);
@@ -3421,7 +3199,7 @@ AqlValue Functions::StdDevSample(
 
   if (!list.isArray()) {
     RegisterWarning(query, "STDDEV_SAMPLE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   double value = 0.0;
@@ -3430,11 +3208,11 @@ AqlValue Functions::StdDevSample(
   if (!Variance(trx, list, value, count)) {
     RegisterWarning(query, "STDDEV_SAMPLE",
                     TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   if (count < 2) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   return NumberValue(trx, std::sqrt(value / (count - 1)), true);
@@ -3450,7 +3228,7 @@ AqlValue Functions::StdDevPopulation(
 
   if (!list.isArray()) {
     RegisterWarning(query, "STDDEV_POPULATION", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   double value = 0.0;
@@ -3459,11 +3237,11 @@ AqlValue Functions::StdDevPopulation(
   if (!Variance(trx, list, value, count)) {
     RegisterWarning(query, "STDDEV_POPULATION",
                     TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   if (count < 1) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   return NumberValue(trx, std::sqrt(value / count), true);
@@ -3479,17 +3257,17 @@ AqlValue Functions::Median(arangodb::aql::Query* query,
 
   if (!list.isArray()) {
     RegisterWarning(query, "MEDIAN", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   std::vector<double> values;
   if (!SortNumberList(trx, list, values)) {
     RegisterWarning(query, "MEDIAN", TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   if (values.empty()) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
   size_t const l = values.size();
   size_t midpoint = l / 2;
@@ -3510,7 +3288,7 @@ AqlValue Functions::Percentile(arangodb::aql::Query* query,
 
   if (!list.isArray()) {
     RegisterWarning(query, "PERCENTILE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   AqlValue border = ExtractFunctionParameterValue(trx, parameters, 1);
@@ -3518,7 +3296,7 @@ AqlValue Functions::Percentile(arangodb::aql::Query* query,
   if (!border.isNumber()) {
     RegisterWarning(query, "PERCENTILE",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   bool unused = false;
@@ -3526,7 +3304,7 @@ AqlValue Functions::Percentile(arangodb::aql::Query* query,
   if (p <= 0.0 || p > 100.0) {
     RegisterWarning(query, "PERCENTILE",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   bool useInterpolation = false;
@@ -3536,7 +3314,7 @@ AqlValue Functions::Percentile(arangodb::aql::Query* query,
     if (!methodValue.isString()) {
       RegisterWarning(query, "PERCENTILE",
                       TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      return AqlValue(AqlValueHintNull());
     }
     std::string method = methodValue.slice().copyString();
     if (method == "interpolation") {
@@ -3546,7 +3324,7 @@ AqlValue Functions::Percentile(arangodb::aql::Query* query,
     } else {
       RegisterWarning(query, "PERCENTILE",
                       TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      return AqlValue(AqlValueHintNull());
     }
   }
 
@@ -3554,11 +3332,11 @@ AqlValue Functions::Percentile(arangodb::aql::Query* query,
   if (!SortNumberList(trx, list, values)) {
     RegisterWarning(query, "PERCENTILE",
                     TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   if (values.empty()) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   size_t l = values.size();
@@ -3576,7 +3354,7 @@ AqlValue Functions::Percentile(arangodb::aql::Query* query,
       return NumberValue(trx, values[l - 1], true);
     } 
     if (pos <= 0) {
-      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      return AqlValue(AqlValueHintNull());
     } 
     
     double const delta = idx - pos;
@@ -3591,7 +3369,7 @@ AqlValue Functions::Percentile(arangodb::aql::Query* query,
     return NumberValue(trx, values[l - 1], true);
   } 
   if (pos <= 0) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   } 
     
   return NumberValue(trx, values[static_cast<size_t>(pos) - 1], true);
@@ -3624,26 +3402,22 @@ AqlValue Functions::Range(arangodb::aql::Query* query,
   if (step == 0.0 || (from < to && step < 0.0) || (from > to && step > 0.0)) {
     RegisterWarning(query, "RANGE",
                     TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
-  try {
-    transaction::BuilderLeaser builder(trx);
-    builder->openArray();
-    if (step < 0.0 && to <= from) {
-      for (; from >= to; from += step) {
-        builder->add(VPackValue(from));
-      }
-    } else {
-      for (; from <= to; from += step) {
-        builder->add(VPackValue(from));
-      }
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+  if (step < 0.0 && to <= from) {
+    for (; from >= to; from += step) {
+      builder->add(VPackValue(from));
     }
-    builder->close();
-    return AqlValue(builder.get());
-  } catch (...) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  } else {
+    for (; from <= to; from += step) {
+      builder->add(VPackValue(from));
+    }
   }
+  builder->close();
+  return AqlValue(builder.get());
 }
 
 /// @brief function POSITION
@@ -3656,7 +3430,7 @@ AqlValue Functions::Position(arangodb::aql::Query* query,
 
   if (!list.isArray()) {
     RegisterWarning(query, "POSITION", TRI_ERROR_QUERY_ARRAY_EXPECTED);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   bool returnIndex = false;
@@ -3704,12 +3478,12 @@ AqlValue Functions::IsSameCollection(
   std::string const second = ExtractCollectionName(trx, parameters, 1);
   
   if (!first.empty() && !second.empty()) {
-    return AqlValue(first == second);
+    return AqlValue(AqlValueHintBool(first == second));
   }
 
   RegisterWarning(query, "IS_SAME_COLLECTION",
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-  return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+  return AqlValue(AqlValueHintNull());
 }
 
 #include "Pregel/PregelFeature.h"

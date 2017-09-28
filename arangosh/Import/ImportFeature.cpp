@@ -118,6 +118,11 @@ void ImportFeature::collectOptions(
                      "translate an attribute name (use as --translate "
                      "\"from=to\", for csv and tsv only)",
                      new VectorParameter<StringParameter>(&_translations));
+  
+  options->addOption("--remove-attribute",
+                     "remove an attribute before inserting an attribute"
+                     " into a collection (for csv and tsv only)",
+                     new VectorParameter<StringParameter>(&_removeAttributes));
 
   std::unordered_set<std::string> types = {"document", "edge"};
   std::vector<std::string> typesVector(types.begin(), types.end());
@@ -222,6 +227,14 @@ void ImportFeature::validateOptions(
       FATAL_ERROR_EXIT();
     }
   }
+  for (std::string& str : _removeAttributes) {
+    StringUtils::trimInPlace(str);
+    if (str.empty()) {
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+        << "cannot remove an empty attribute";
+      FATAL_ERROR_EXIT();
+    }
+  }
 }
 
 void ImportFeature::start() {
@@ -235,20 +248,20 @@ void ImportFeature::start() {
   if (_typeImport == "auto") {
     std::regex re = std::regex(".*?\\.([a-zA-Z]+)", std::regex::ECMAScript);
     std::smatch match;
-    if (!std::regex_match(_filename, match, re)) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-          << "Cannot auto-detect file type from filename '" << _filename << "'";
-      FATAL_ERROR_EXIT();
-    }
-
-    std::string extension = match[1].str();
-    if (extension == "json" || extension == "jsonl" || extension == "csv" ||
-        extension == "tsv") {
-      _typeImport = extension;
+    if (std::regex_match(_filename, match, re)) {
+      std::string extension = StringUtils::tolower(match[1].str());
+      if (extension == "json" || extension == "jsonl" || extension == "csv" ||
+          extension == "tsv") {
+        _typeImport = extension;
+      } else {
+        LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+            << "Unsupported file extension '" << extension << "'";
+        FATAL_ERROR_EXIT();
+      }
     } else {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
-          << "Unsupported file extension '" << extension << "'";
-      FATAL_ERROR_EXIT();
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "Unable to auto-detect file type from filename '" << _filename << "'. using filetype 'json'";
+      _typeImport = "json";
     }
   }
 
@@ -347,6 +360,7 @@ void ImportFeature::start() {
   }
 
   ih.setTranslations(translations);
+  ih.setRemoveAttributes(_removeAttributes);
 
   // quote
   if (_quote.length() <= 1) {
@@ -462,8 +476,10 @@ void ImportFeature::start() {
       }
 
     } else {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error message:    "
-                                              << ih.getErrorMessage();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error message(s):";
+      for (std::string const& msg : ih.getErrorMessages()) {
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg;
+      }
     }
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Caught exception " << ex.what()

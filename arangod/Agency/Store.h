@@ -25,7 +25,6 @@
 #define ARANGOD_CONSENSUS_STORE_H 1
 
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
 #include "Node.h"
 
 namespace arangodb {
@@ -67,7 +66,7 @@ enum CheckMode {FIRST_FAIL, FULL};
 class Agent;
 
 /// @brief Key value tree
-class Store : public arangodb::Thread {
+class Store {
  public:
   /// @brief Construct with name
   explicit Store(Agent* agent, std::string const& name = "root");
@@ -99,7 +98,7 @@ class Store : public arangodb::Thread {
   check_ret_t applyTransaction(Slice const& query);
 
   /// @brief Apply log entries in query, also process callbacks
-  std::vector<bool> applyLogEntries(std::vector<Slice> const& query,
+  std::vector<bool> applyLogEntries(arangodb::velocypack::Builder const& query,
                           index_t index, term_t term, bool inform);
 
   /// @brief Read specified query from store
@@ -109,12 +108,6 @@ class Store : public arangodb::Thread {
   bool read(arangodb::velocypack::Slice const&,
             arangodb::velocypack::Builder&) const;
   
-  /// @brief Begin shutdown of thread
-  void beginShutdown() override final;
-
-  /// @brief Start thread
-  bool start();
-
   /// @brief Dump everything to builder
   void dumpToBuilder(Builder&) const;
 
@@ -143,7 +136,7 @@ class Store : public arangodb::Thread {
 
   /// @brief Apply single slice
   bool applies(arangodb::velocypack::Slice const&);
-
+ 
  private:
 
   /// @brief Remove time to live entries for uri
@@ -151,10 +144,10 @@ class Store : public arangodb::Thread {
 
   std::multimap<TimePoint, std::string>& timeTable();
   std::multimap<TimePoint, std::string> const& timeTable() const;
-  std::multimap<std::string, std::string>& observerTable();
-  std::multimap<std::string, std::string> const& observerTable() const;
-  std::multimap<std::string, std::string>& observedTable();
-  std::multimap<std::string, std::string> const& observedTable() const;
+  std::unordered_multimap<std::string, std::string>& observerTable();
+  std::unordered_multimap<std::string, std::string> const& observerTable() const;
+  std::unordered_multimap<std::string, std::string>& observedTable();
+  std::unordered_multimap<std::string, std::string> const& observedTable() const;
 
   /// @brief Check precondition
   check_ret_t check(arangodb::velocypack::Slice const&, CheckMode = FIRST_FAIL) const;
@@ -163,15 +156,14 @@ class Store : public arangodb::Thread {
   query_t clearExpired() const;
 
   /// @brief Run thread
-  void run() override final;
-
+ private:
   /// @brief Condition variable guarding removal of expired entries
   mutable arangodb::basics::ConditionVariable _cv;
 
   /// @brief Read/Write mutex on database
   /// guard _node, _timeTable, _observerTable, _observedTable
   mutable arangodb::Mutex _storeLock;
-
+ 
   /// @brief My own agent
   Agent* _agent;
 
@@ -179,8 +171,8 @@ class Store : public arangodb::Thread {
   std::multimap<TimePoint, std::string> _timeTable;
 
   /// @brief Table of observers in tree (only used in root node)
-  std::multimap<std::string, std::string> _observerTable;
-  std::multimap<std::string, std::string> _observedTable;
+  std::unordered_multimap<std::string, std::string> _observerTable;
+  std::unordered_multimap<std::string, std::string> _observedTable;
 
   /// @brief Root node
   Node _node;

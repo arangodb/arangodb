@@ -304,10 +304,11 @@ bool Inception::restartingActiveAgent() {
               agency->openObject();
               agency->add("term", theirConfig.get("term"));
               agency->add("id", VPackValue(theirLeaderId));
-              agency->add("active",   tcc.get("active"));
-              agency->add("pool",     tcc.get("pool"));
-              agency->add("min ping", tcc.get("min ping"));
-              agency->add("max ping", tcc.get("max ping"));
+              agency->add("active",      tcc.get("active"));
+              agency->add("pool",        tcc.get("pool"));
+              agency->add("min ping",    tcc.get("min ping"));
+              agency->add("max ping",    tcc.get("max ping"));
+              agency->add("timeoutMult", tcc.get("timeoutMult"));
               agency->close();
               _agent->notify(agency);
               return true;
@@ -338,7 +339,7 @@ bool Inception::restartingActiveAgent() {
             if (!this->isStopping()) {
               LOG_TOPIC(FATAL, Logger::AGENCY)
                 << "Assumed active RAFT peer has no active agency list: "
-                << e.what() << "Administrative intervention needed.";
+                << e.what() << ", administrative intervention needed.";
               FATAL_ERROR_EXIT();
             }
             return false;
@@ -372,23 +373,7 @@ bool Inception::restartingActiveAgent() {
 }
 
 void Inception::reportIn(query_t const& query) {
-
-  VPackSlice slice = query->slice();
-
-  TRI_ASSERT(slice.isObject());
-  TRI_ASSERT(slice.hasKey("mean"));
-  TRI_ASSERT(slice.hasKey("stdev"));
-  TRI_ASSERT(slice.hasKey("min"));
-  TRI_ASSERT(slice.hasKey("max"));
-
-  MUTEX_LOCKER(lock, _mLock);
-  _measurements.push_back(
-    std::vector<double>(
-      {slice.get("mean").getNumber<double>(),
-          slice.get("stdev").getNumber<double>(),
-          slice.get("max").getNumber<double>(),
-          slice.get("min").getNumber<double>()} ));
-  
+  // does nothing at the moment
 }
 
 

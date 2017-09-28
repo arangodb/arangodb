@@ -22,6 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterComm.h"
+
+#include "Agency/AgencyFeature.h"
+#include "Agency/Agent.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/StringUtils.h"
@@ -30,6 +33,7 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
@@ -221,9 +225,9 @@ ClusterComm::ClusterComm()
       _authenticationEnabled(false),
       _jwt(""),
       _jwtAuthorization("") {
-  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
+  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
   TRI_ASSERT(authentication != nullptr);
-  if (authentication->isEnabled()) {
+  if (authentication->isActive()) {
     _authenticationEnabled = true;
     VPackBuilder bodyBuilder;
     {
@@ -418,7 +422,7 @@ OperationID ClusterComm::asyncRequest(
             << "cannot create connection to server '" << result->serverID
             << "' at endpoint '" << result->endpoint << "'";
         } else {
-          LOG_TOPIC(ERR, Logger::CLUSTER)
+          LOG_TOPIC(INFO, Logger::CLUSTER)
             << "cannot create connection to server '" << result->serverID
             << "' at endpoint '" << result->endpoint << "'";
         }
@@ -437,7 +441,7 @@ OperationID ClusterComm::asyncRequest(
       TRI_ASSERT(ret == true);
     };
   } else {
-    callbacks._onError = [callback, result, doLogConnectionErrors, this](int errorCode, std::unique_ptr<GeneralResponse> response) {
+    callbacks._onError = [result, doLogConnectionErrors, this](int errorCode, std::unique_ptr<GeneralResponse> response) {
       CONDITION_LOCKER(locker, somethingReceived);
       result->fromError(errorCode, std::move(response));
       if (result->status == CL_COMM_BACKEND_UNAVAILABLE) {
@@ -832,7 +836,8 @@ void ClusterCommThread::beginShutdown() {
 
 size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
                                     ClusterCommTimeout timeout, size_t& nrDone,
-                                    arangodb::LogTopic const& logTopic) {
+                                    arangodb::LogTopic const& logTopic,
+                                    bool retryOnCollNotFound) {
   if (requests.size() == 0) {
     nrDone = 0;
     return 0;
@@ -857,7 +862,8 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
   try {
     while (true) {
       now = TRI_microtime();
-      if (now > endTime) {
+      if (now > endTime ||
+          application_features::ApplicationServer::isStopping()) {
         break;
       }
       if (nrDone >= requests.size()) {
@@ -924,6 +930,23 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         continue;
       }
       size_t index = it->second;
+
+      if (retryOnCollNotFound) {
+        // If this flag is set we treat a 404 collection not found as
+        // a CL_COMM_BACKEND_UNAVAILABLE, which leads to a retry:
+        if (res.status == CL_COMM_RECEIVED &&
+            res.answer_code == rest::ResponseCode::NOT_FOUND) {
+          VPackSlice payload = res.answer->payload();
+          VPackSlice errorNum = payload.get("errorNum");
+          if (errorNum.isInteger() &&
+              errorNum.getInt() == TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
+            res.status = CL_COMM_BACKEND_UNAVAILABLE;
+            // This is a fake, but it will lead to a retry. If we timeout
+            // here and now, then the customer will get this result.
+          }
+        }
+      }
+
       if (res.status == CL_COMM_RECEIVED) {
         requests[index].result = res;
         requests[index].done = true;
@@ -938,7 +961,10 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
           << requests[index].path << " with return code "
           << (int)res.answer_code;
       } else if (res.status == CL_COMM_BACKEND_UNAVAILABLE ||
-         (res.status == CL_COMM_TIMEOUT && !res.sendWasComplete)) {
+                 (res.status == CL_COMM_TIMEOUT && !res.sendWasComplete)) {
+        // Note that this case includes the refusal of a leader to accept
+        // the operation, in which we have to flush ClusterInfo:
+        ClusterInfo::instance()->loadCurrent();
         requests[index].result = res;
 
         // In this case we will retry:
@@ -956,7 +982,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         LOG_TOPIC(ERR, Logger::CLUSTER) << "ClusterComm::performRequests: "
             << "got BACKEND_UNAVAILABLE or TIMEOUT from "
             << requests[index].destination << ":" << requests[index].path;
-      } else {  // a "proper error"
+      } else {  // a "proper error" which has to be returned to the client
         requests[index].result = res;
         requests[index].done = true;
         nrDone++;
@@ -1098,6 +1124,18 @@ std::pair<ClusterCommResult*, HttpRequest*> ClusterComm::prepareRequest(std::str
   headersCopy[StaticStrings::HLCHeader] =
     arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp);
 
+  auto state = ServerState::instance();
+
+  if (state->isCoordinator() || state->isDBServer()) {
+    headersCopy[StaticStrings::ClusterCommSource] = state->getId();
+  } else if (state->isAgent()) {
+    auto agent = AgencyFeature::AGENT;
+
+    if (agent != nullptr) {
+      headersCopy[StaticStrings::ClusterCommSource] = "AGENT-" + agent->id();
+    }
+  }
+
 #ifdef DEBUG_CLUSTER_COMM
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #if ARANGODB_ENABLE_BACKTRACE
@@ -1138,6 +1176,11 @@ std::vector<communicator::Ticket> ClusterComm::activeServerTickets(std::vector<s
   return tickets;
 }
 
+void ClusterComm::disable() {
+   _communicator->disable();
+   _communicator->abortRequests();
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ClusterComm main loop
 ////////////////////////////////////////////////////////////////////////////////
@@ -1161,6 +1204,7 @@ void ClusterCommThread::run() {
       abortRequestsToFailedServers();
       _cc->communicator()->work_once();
       _cc->communicator()->wait();
+      LOG_TOPIC(TRACE, Logger::CLUSTER) << "done waiting in ClusterCommThread";
     } catch (std::exception const& ex) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception in ClusterCommThread: " << ex.what();
     } catch (...) {
@@ -1168,6 +1212,10 @@ void ClusterCommThread::run() {
     }
   }
   _cc->communicator()->abortRequests();
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "waiting for curl to stop remaining handles";
+  while (_cc->communicator()->work_once() > 0) {
+    usleep(10);
+  }
 
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "stopped ClusterComm thread";
 }

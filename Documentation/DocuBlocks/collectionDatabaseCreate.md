@@ -16,24 +16,16 @@ to the [naming conventions](../NamingConventions/README.md).
   a document will only return after the data was synced to disk.
 
 * *journalSize* (optional, default is a
-  configuration parameter: The maximal
+  global config parameter, **mmfiles-only**): The maximal
   size of a journal or datafile.  Note that this also limits the maximal
   size of a single object. Must be at least 1MB.
+  This option is meaningful for the MMFiles storage engine only.
 
 * *isSystem* (optional, default is *false*): If *true*, create a
   system collection. In this case *collection-name* should start with
   an underscore. End users should normally create non-system collections
   only. API implementors may be required to create system collections in
   very special occasions, but normally a regular collection will do.
-
-* *isVolatile* (optional, default is *false*): If *true* then the
-  collection data is kept in-memory only and not made persistent. Unloading
-  the collection will cause the collection data to be discarded. Stopping
-  or re-starting the server will also cause full loss of data in the
-  collection. Setting this option will make the resulting collection be
-  slightly faster than regular collections because ArangoDB does not
-  enforce any synchronization to disk and does not calculate any CRC
-  checksums for datafiles (as there are no datafiles).
 
 * *keyOptions* (optional): additional options for key generation. If
   specified, then *keyOptions* should be a JSON array containing the
@@ -60,8 +52,7 @@ to the [naming conventions](../NamingConventions/README.md).
   values they have in their shard key attributes. The values of all shard
   key attributes in a document are hashed, and the hash value is used to
   determine the target shard. Note that values of shard key attributes cannot
-  be changed once set.
-  This option is meaningless in a single server setup.
+  be changed once set. This option is meaningless in a single server setup.
 
   When choosing the shard keys, one must be aware of the following
   rules and limitations: In a sharded collection with more than
@@ -76,6 +67,36 @@ to the [naming conventions](../NamingConventions/README.md).
   the database has to enforce the unique constraint on the *_key*
   attribute and this can only be done efficiently if this is the
   only shard key by delegating to the individual shards.
+
+<!---
+ *cacheEnabled* (optional, default is *false*, **rocksdb-only**): Enable in-memory
+ caching for documents. This can potentially speed up point-lookups significantly,
+  especially if your collections has a subset of frequently accessed keys.
+-->
+
+* *isVolatile* (optional, default is *false*, **mmfiles-only**): If *true* then the
+  collection data is kept in-memory only and not made persistent. Unloading
+  the collection will cause the collection data to be discarded. Stopping
+  or re-starting the server will also cause full loss of data in the
+  collection. Setting this option will make the resulting collection be
+  slightly faster than regular collections because ArangoDB does not
+  enforce any synchronization to disk and does not calculate any CRC
+  checksums for datafiles (as there are no datafiles).
+  This option is meaningful for the MMFiles storage engine only.
+
+* *indexBuckets* (optional, default is *16*, **mmfiles-only**): The number of buckets 
+  into which indexes using a hash table are split. The default is 16 and 
+  this number has to be a power of 2 and less than or equal to 1024. 
+
+  For very large collections one should increase this to avoid long pauses 
+  when the hash table has to be initially built or resized, since buckets 
+  are resized individually and can be initially built in parallel. For 
+  example, 64 might be a sensible value for a collection with 100
+  000 000 documents. Currently, only the edge index respects this
+  value, but other index types might follow in future ArangoDB versions. 
+  Changes (see below) are applied when the collection is loaded the next 
+  time.
+  This option is meaningful for the MMFiles storage engine only.
 
 `db._create(collection-name, properties, type)`
 

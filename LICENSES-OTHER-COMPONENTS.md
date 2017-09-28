@@ -45,6 +45,11 @@
 * License: gtest [BSD-style 3-Clause License](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8/v5.7.0.0/testing/gtest/include/gtest/gtest_prod.h)
 * License: gyp [BSD-style 3-Clause license](https://github.com/arangodb/arangodb/blob/devel/3rdParty/V8/v5.7.0.0/tools/gyp/LICENSE)
 
+### Googletest
+
+* Project Home: https://github.com/google/googletest
+* License: [BSD License](https://github.com/google/googletest/blob/master/googletest/LICENSE) 
+
 ### ICU 58.1
 
 * Project Home: http://site.icu-project.org/
@@ -1376,3 +1381,8 @@ exception from the GPL license:
 
 * GitHub: https://github.com/softwaretailoring/wheelnav
 * License: [MIT License](https://github.com/softwaretailoring/wheelnav/blob/master/LICENSE)
+
+#### jquery-csv
+
+* GitHub: https://github.com/evanplaice/jquery-csv
+* License: [MIT License](https://github.com/evanplaice/jquery-csv)

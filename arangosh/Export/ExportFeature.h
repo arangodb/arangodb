@@ -51,7 +51,9 @@ class ExportFeature final : public application_features::ApplicationFeature,
 
  private:
   void collectionExport(httpclient::SimpleHttpClient* httpClient);
-  void writeCollectionBatch(int fd, VPackArrayIterator it, std::string const& fileName);
+  void queryExport(httpclient::SimpleHttpClient* httpClient);
+  void writeFirstLine(int fd, std::string const& fileName, std::string const& collection);
+  void writeBatch(int fd, VPackArrayIterator it, std::string const& fileName);
   void graphExport(httpclient::SimpleHttpClient* httpClient);
   void writeGraphBatch(int fd, VPackArrayIterator it, std::string const& fileName);
   void xgmmlWriteOneAtt(int fd, std::string const& fileName, VPackSlice const& slice, std::string const& name, int deep = 0);
@@ -61,6 +63,7 @@ class ExportFeature final : public application_features::ApplicationFeature,
 
  private:
   std::vector<std::string> _collections;
+  std::string _query;
   std::string _graphName;
   std::string _xgmmlLabelAttribute;
   std::string _typeExport;

@@ -27,8 +27,8 @@
 #ifndef ARANGOD_ROCKSDB_GEO_INDEX_IMPL_H
 #define ARANGOD_ROCKSDB_GEO_INDEX_IMPL_H 1
 
-#include "Basics/Common.h"
 #include <cstdint>
+#include "Basics/Common.h"
 
 namespace arangodb {
 class RocksDBMethods;
@@ -90,10 +90,11 @@ typedef struct {
   double* distances;
 } GeoCoordinates;
 
-typedef void GeoIdx;  /* to keep the structure private  */
+typedef void GeoIdx;    /* to keep the structure private  */
 typedef void GeoCursor; /* to keep the structure private  */
 
 GeoIdx* GeoIndex_new(uint64_t objectId, int slo, int);
+void GeoIndex_reset(GeoIdx* gi);
 void GeoIndex_free(GeoIdx* gi);
 double GeoIndex_distance(GeoCoordinate* c1, GeoCoordinate* c2);
 int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c);
@@ -104,17 +105,19 @@ GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, GeoCoordinate* c,
 GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, GeoCoordinate* c,
                                             int count);
 GeoCursor* GeoIndex_NewCursor(GeoIdx* gi, GeoCoordinate* c);
-GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count, bool returnDistances = true, double maxDistance = -1.0);
+GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count,
+                                    bool returnDistances = true,
+                                    double maxDistance = -1.0);
 void GeoIndex_CursorFree(GeoCursor* gc);
 void GeoIndex_CoordinatesFree(GeoCoordinates* clist);
 #ifdef TRI_GEO_DEBUG
 void GeoIndex_INDEXDUMP(GeoIdx* gi, FILE* f);
 int GeoIndex_INDEXVALID(GeoIdx* gi);
 #endif
-  
+
 void GeoIndex_setRocksMethods(GeoIdx* gi, RocksDBMethods*);
 void GeoIndex_clearRocks(GeoIdx* gi);
-
-}}
+}
+}
 #endif
 /* end of GeoIdx.h  */

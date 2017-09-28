@@ -31,11 +31,12 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
+#include "Aql/Variable.h"
 #include "Cluster/ClusterComm.h"
 #include "Graph/BaseOptions.h"
 #include "Indexes/Index.h"
 #include "Utils/CollectionNameResolver.h"
-#include "VocBase/TraverserOptions.h"
+#include "Graph/TraverserOptions.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Iterator.h>
@@ -170,7 +171,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
       _toCondition(nullptr) {
   // In Vertex
   if (base.hasKey("inVariable")) {
-    _inVariable = varFromVPack(plan->getAst(), base, "inVariable");
+    _inVariable = Variable::varFromVPack(plan->getAst(), base, "inVariable");
   } else {
     VPackSlice v = base.get("vertexId");
     if (!v.isString()) {
@@ -203,7 +204,7 @@ TraversalNode::TraversalNode(ExecutionPlan* plan,
 
   // Out variables
  if (base.hasKey("pathOutVariable")) {
-    _pathOutVariable = varFromVPack(plan->getAst(), base, "pathOutVariable");
+    _pathOutVariable = Variable::varFromVPack(plan->getAst(), base, "pathOutVariable");
   }
 
   // Filter Condition Parts
@@ -496,12 +497,12 @@ void TraversalNode::prepareOptions() {
     switch (dir) {
       case TRI_EDGE_IN:
         _options->addLookupInfo(
-            ast, _edgeColls[i]->getName(), StaticStrings::ToString,
+            _plan, _edgeColls[i]->getName(), StaticStrings::ToString,
             globalEdgeConditionBuilder.getInboundCondition()->clone(ast));
         break;
       case TRI_EDGE_OUT:
         _options->addLookupInfo(
-            ast, _edgeColls[i]->getName(), StaticStrings::FromString,
+            _plan, _edgeColls[i]->getName(), StaticStrings::FromString,
             globalEdgeConditionBuilder.getOutboundCondition()->clone(ast));
         break;
       case TRI_EDGE_ANY:
@@ -529,12 +530,12 @@ void TraversalNode::prepareOptions() {
       switch (dir) {
         case TRI_EDGE_IN:
           opts->addDepthLookupInfo(
-              ast, _edgeColls[i]->getName(), StaticStrings::ToString,
+              _plan, _edgeColls[i]->getName(), StaticStrings::ToString,
               builder->getInboundCondition()->clone(ast), depth);
           break;
         case TRI_EDGE_OUT:
           opts->addDepthLookupInfo(
-              ast, _edgeColls[i]->getName(), StaticStrings::FromString,
+              _plan, _edgeColls[i]->getName(), StaticStrings::FromString,
               builder->getOutboundCondition()->clone(ast), depth);
           break;
         case TRI_EDGE_ANY:
@@ -549,7 +550,7 @@ void TraversalNode::prepareOptions() {
     for (auto const& jt : _globalVertexConditions) {
       it.second->addMember(jt);
     }
-    opts->_vertexExpressions.emplace(it.first, new Expression(ast, it.second));
+    opts->_vertexExpressions.emplace(it.first, new Expression(_plan, ast, it.second));
     TRI_ASSERT(!opts->_vertexExpressions[it.first]->isV8());
   }
   if (!_globalVertexConditions.empty()) {
@@ -558,7 +559,7 @@ void TraversalNode::prepareOptions() {
     for (auto const& it : _globalVertexConditions) {
       cond->addMember(it);
     }
-    opts->_baseVertexExpression = new Expression(ast, cond);
+    opts->_baseVertexExpression = new Expression(_plan, ast, cond);
     TRI_ASSERT(!opts->_baseVertexExpression->isV8());
   }
   // If we use the path output the cache should activate document

@@ -34,7 +34,6 @@
 #include "Cache/ManagerTasks.h"
 #include "Cache/Metadata.h"
 #include "Cache/PlainBucket.h"
-#include "Cache/State.h"
 #include "Cache/Table.h"
 
 #include <stdint.h>
@@ -54,8 +53,8 @@ namespace cache {
 ////////////////////////////////////////////////////////////////////////////////
 class PlainCache final : public Cache {
  public:
-  PlainCache(Cache::ConstructionGuard guard, Manager* manager,
-             Metadata metadata, std::shared_ptr<Table> table,
+  PlainCache(Cache::ConstructionGuard guard, Manager* manager, uint64_t id,
+             Metadata&& metadata, std::shared_ptr<Table> table,
              bool enableWindowedStats);
   ~PlainCache();
 
@@ -68,34 +67,35 @@ class PlainCache final : public Cache {
   /// @brief Looks up the given key.
   ///
   /// May report a false negative if it fails to acquire a lock in a timely
-  /// fashion. Should not block for long.
+  /// fashion. The Result contained in the return value should report an error
+  /// code in this case. Should not block for long.
   //////////////////////////////////////////////////////////////////////////////
   Finding find(void const* key, uint32_t keySize);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempts to insert the given value.
   ///
-  /// Returns true if inserted, false otherwise. Will not insert value if this
+  /// Returns ok if inserted, error otherwise. Will not insert value if this
   /// would cause the total usage to exceed the limits. May also not insert
   /// value if it fails to acquire a lock in a timely fashion. Should not block
   /// for long.
   //////////////////////////////////////////////////////////////////////////////
-  bool insert(CachedValue* value);
+  Result insert(CachedValue* value);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Attempts to remove the given key.
   ///
-  /// Returns true if the key guaranteed not to be in the cache, false if the
+  /// Returns ok if the key guaranteed not to be in the cache, error if the
   /// key may remain in the cache. May leave the key in the cache if it fails to
   /// acquire a lock in a timely fashion. Makes more attempts to acquire a lock
   /// before quitting, so may block for longer than find or insert.
   //////////////////////////////////////////////////////////////////////////////
-  bool remove(void const* key, uint32_t keySize);
+  Result remove(void const* key, uint32_t keySize);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Does nothing; convenience method inheritance compliance
   //////////////////////////////////////////////////////////////////////////////
-  bool blacklist(void const* key, uint32_t keySize);
+  Result blacklist(void const* key, uint32_t keySize);
 
  private:
   // friend class manager and tasks
@@ -105,7 +105,7 @@ class PlainCache final : public Cache {
 
  private:
   static uint64_t allocationSize(bool enableWindowedStats);
-  static std::shared_ptr<Cache> create(Manager* manager, Metadata metadata,
+  static std::shared_ptr<Cache> create(Manager* manager, uint64_t id, Metadata&& metadata,
                                        std::shared_ptr<Table> table,
                                        bool enableWindowedStats);
 
@@ -115,8 +115,8 @@ class PlainCache final : public Cache {
                              std::shared_ptr<Table> newTable);
 
   // helpers
-  std::tuple<bool, PlainBucket*, std::shared_ptr<Table>> getBucket(
-      uint32_t hash, int64_t maxTries, bool singleOperation = true);
+  std::tuple<Result, PlainBucket*, Table*> getBucket(
+      uint32_t hash, uint64_t maxTries, bool singleOperation = true);
   uint32_t getIndex(uint32_t hash, bool useAuxiliary) const;
 
   static Table::BucketClearer bucketClearer(Metadata* metadata);

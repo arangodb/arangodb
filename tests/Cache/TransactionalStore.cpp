@@ -70,7 +70,7 @@ TransactionalStore::Transaction::Transaction(arangodb::cache::Transaction* c,
 
 TransactionalStore::TransactionalStore(Manager* manager)
     : _manager(manager),
-      _directory(TRI_UNKNOWN_MEM_ZONE),
+      _directory(true),
       _id(++_sequence),
       _readOptions(rocksdb::ReadOptions()),
       _writeOptions(rocksdb::WriteOptions()),
@@ -258,9 +258,11 @@ TransactionalStore::Document TransactionalStore::lookup(
       memcpy(&result, buffer.data(), sizeof(Document));
       CachedValue* value = CachedValue::construct(&key, sizeof(uint64_t),
                                                   &result, sizeof(Document));
-      bool inserted = _cache->insert(value);
-      if (!inserted) {
-        delete value;
+      if (value) {
+        auto status = _cache->insert(value);
+        if (status.fail()) {
+          delete value;
+        }
       }
     }
   }

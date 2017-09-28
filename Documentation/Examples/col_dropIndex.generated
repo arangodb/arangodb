@@ -1,38 +1,40 @@
 arangosh&gt; db.example.ensureSkiplist(<span class="hljs-string">"a"</span>, <span class="hljs-string">"b"</span>);
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/14499"</span>, 
-  <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
+  <span class="hljs-string">"deduplicate"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"a"</span>, 
     <span class="hljs-string">"b"</span> 
   ], 
-  <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
-  <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/14501"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
+  <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">201</span> 
 }
 arangosh&gt; <span class="hljs-keyword">var</span> indexInfo = db.example.getIndexes();
 arangosh&gt; indexInfo;
 [ 
   { 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/0"</span>, 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
     <span class="hljs-string">"fields"</span> : [ 
       <span class="hljs-string">"_key"</span> 
     ], 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/0"</span>, 
     <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
-    <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
+    <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
+    <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span> 
   }, 
   { 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/14499"</span>, 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
+    <span class="hljs-string">"deduplicate"</span> : <span class="hljs-literal">true</span>, 
     <span class="hljs-string">"fields"</span> : [ 
       <span class="hljs-string">"a"</span>, 
       <span class="hljs-string">"b"</span> 
     ], 
-    <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span>, 
-    <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/14501"</span>, 
+    <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
+    <span class="hljs-string">"unique"</span> : <span class="hljs-literal">false</span> 
   } 
 ]
 arangosh&gt; db.example.dropIndex(indexInfo[<span class="hljs-number">0</span>])
@@ -42,13 +44,13 @@ arangosh&gt; db.example.dropIndex(indexInfo[<span class="hljs-number">1</span>].
 arangosh&gt; indexInfo = db.example.getIndexes();
 [ 
   { 
-    <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/0"</span>, 
-    <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
     <span class="hljs-string">"fields"</span> : [ 
       <span class="hljs-string">"_key"</span> 
     ], 
+    <span class="hljs-string">"id"</span> : <span class="hljs-string">"example/0"</span>, 
     <span class="hljs-string">"selectivityEstimate"</span> : <span class="hljs-number">1</span>, 
-    <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span>, 
-    <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span> 
+    <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
+    <span class="hljs-string">"type"</span> : <span class="hljs-string">"primary"</span>, 
+    <span class="hljs-string">"unique"</span> : <span class="hljs-literal">true</span> 
   } 
 ]

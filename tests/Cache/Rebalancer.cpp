@@ -50,7 +50,11 @@ TEST_CASE("cache::Rebalancer", "[cache][!hide][longRunning]") {
   SECTION("test rebalancing with PlainCache") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    Manager manager(scheduler.ioService(), 128 * 1024 * 1024);
+    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+      scheduler.post(fn);
+      return true;
+    };
+    Manager manager(postFn, 128 * 1024 * 1024);
     Rebalancer rebalancer(&manager);
 
     size_t cacheCount = 4;
@@ -63,11 +67,11 @@ TEST_CASE("cache::Rebalancer", "[cache][!hide][longRunning]") {
     bool doneRebalancing = false;
     auto rebalanceWorker = [&rebalancer, &doneRebalancing]() -> void {
       while (!doneRebalancing) {
-        bool rebalanced = rebalancer.rebalance();
-        if (rebalanced) {
+        int status = rebalancer.rebalance();
+        if (status != TRI_ERROR_ARANGO_BUSY) {
           usleep(500 * 1000);
         } else {
-          usleep(100);
+          usleep(10 * 1000);
         }
       }
     };
@@ -87,8 +91,9 @@ TEST_CASE("cache::Rebalancer", "[cache][!hide][longRunning]") {
         size_t cacheIndex = item % cacheCount;
         CachedValue* value = CachedValue::construct(&item, sizeof(uint64_t),
                                                     &item, sizeof(uint64_t));
-        bool ok = caches[cacheIndex]->insert(value);
-        if (!ok) {
+        TRI_ASSERT(value != nullptr);
+        auto status = caches[cacheIndex]->insert(value);
+        if (status.fail()) {
           delete value;
         }
       }
@@ -119,8 +124,9 @@ TEST_CASE("cache::Rebalancer", "[cache][!hide][longRunning]") {
           size_t cacheIndex = item % cacheCount;
           CachedValue* value = CachedValue::construct(&item, sizeof(uint64_t),
                                                       &item, sizeof(uint64_t));
-          bool ok = caches[cacheIndex]->insert(value);
-          if (!ok) {
+          TRI_ASSERT(value != nullptr);
+          auto status = caches[cacheIndex]->insert(value);
+          if (status.fail()) {
             delete value;
           }
         } else {  // lookup something
@@ -170,7 +176,11 @@ TEST_CASE("cache::Rebalancer", "[cache][!hide][longRunning]") {
   SECTION("test rebalancing with TransactionalCache") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    Manager manager(scheduler.ioService(), 128 * 1024 * 1024);
+    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+      scheduler.post(fn);
+      return true;
+    };
+    Manager manager(postFn, 128 * 1024 * 1024);
     Rebalancer rebalancer(&manager);
 
     size_t cacheCount = 4;
@@ -183,11 +193,11 @@ TEST_CASE("cache::Rebalancer", "[cache][!hide][longRunning]") {
     bool doneRebalancing = false;
     auto rebalanceWorker = [&rebalancer, &doneRebalancing]() -> void {
       while (!doneRebalancing) {
-        bool rebalanced = rebalancer.rebalance();
-        if (rebalanced) {
+        int status = rebalancer.rebalance();
+        if (status != TRI_ERROR_ARANGO_BUSY) {
           usleep(500 * 1000);
         } else {
-          usleep(100);
+          usleep(10 * 1000);
         }
       }
     };
@@ -208,8 +218,9 @@ TEST_CASE("cache::Rebalancer", "[cache][!hide][longRunning]") {
         size_t cacheIndex = item % cacheCount;
         CachedValue* value = CachedValue::construct(&item, sizeof(uint64_t),
                                                     &item, sizeof(uint64_t));
-        bool ok = caches[cacheIndex]->insert(value);
-        if (!ok) {
+        TRI_ASSERT(value != nullptr);
+        auto status = caches[cacheIndex]->insert(value);
+        if (status.fail()) {
           delete value;
         }
       }
@@ -244,8 +255,9 @@ TEST_CASE("cache::Rebalancer", "[cache][!hide][longRunning]") {
           size_t cacheIndex = item % cacheCount;
           CachedValue* value = CachedValue::construct(&item, sizeof(uint64_t),
                                                       &item, sizeof(uint64_t));
-          bool ok = caches[cacheIndex]->insert(value);
-          if (!ok) {
+          TRI_ASSERT(value != nullptr);
+          auto status = caches[cacheIndex]->insert(value);
+          if (status.fail()) {
             delete value;
           }
         } else if (r >= 80) {  // blacklist something

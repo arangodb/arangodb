@@ -517,8 +517,8 @@ Dependencies to build documentation:
 Generate users documentation
 ============================
 If you've edited examples, see below how to regenerate them with `./utils/generateExamples.sh`.
-If you've edited REST documentation, first invoke `./utils/generateSwagger.sh`.
-Run the `make` command in `arangodb/Documentation/Books` to generate it.
+If you've edited REST (AKA HTTP) documentation, first invoke `./utils/generateSwagger.sh`.
+Run `cd Documentation/Books && ./build.sh` to generate it.
 The documentation will be generated in subfolders in `arangodb/Documentation/Books/books` -
 use your favorite browser to read it.
 
@@ -555,9 +555,13 @@ To only regereneate one file (faster) you may specify a filter:
 Using Gitbook
 =============
 
-The `make` command in `arangodb/Documentation/Books/` generates a website
-version of the manual. If you want to generate PDF, ePUB etc., run below
-build commands in `arangodb/Documentation/Books/books/Manual/`. Calibre's
+The `arangodb/Documentation/Books/build.sh` script generates a website
+version of the manual.
+
+If you want to generate all media ala PDF, ePUB, run `arangodb/Documentation/books/build.sh  build-dist-books` (takes some time to complete).
+
+If you want to generate only one of them, run below 
+build commands in `arangodb/Documentation/Books/books/[Manual|HTTP|AQL]/`. Calibre's
 `ebook-convert` will be used for the conversion.
 
 Generate a PDF:

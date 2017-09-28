@@ -41,6 +41,7 @@ static const std::string agencySizeStr = "agency size";
 static const std::string poolSizeStr = "pool size";
 static const std::string minPingStr = "min ping";
 static const std::string maxPingStr = "max ping";
+static const std::string timeoutMultStr = "timeoutMult";
 static const std::string endpointStr = "endpoint";
 static const std::string uuidStr = "uuid";
 static const std::string poolStr = "pool";
@@ -62,8 +63,9 @@ struct config_t {
   size_t _poolSize;
   double _minPing;
   double _maxPing;
+  int64_t _timeoutMult;
   std::string _endpoint;
-  std::map<std::string, std::string> _pool;
+  std::unordered_map<std::string, std::string> _pool;
   std::vector<std::string> _gossipPeers;
   std::vector<std::string> _active;
   bool _supervision;
@@ -171,7 +173,7 @@ struct config_t {
   std::string endpoint() const;
 
   /// @brief copy of pool
-  std::map<std::string, std::string> pool() const;
+  std::unordered_map<std::string, std::string> pool() const;
 
   /// @brief get one pair out of pool
   std::string poolAt(std::string const& id) const;
@@ -185,8 +187,14 @@ struct config_t {
   /// @brief Get maximum RAFT timeout
   double maxPing() const;
 
+  /// @brief Get timeout multiplier
+  int64_t timeoutMult() const;
+
   /// @brief Reset RAFT timing
   void pingTimes(double, double);
+
+  /// @brief Reset timeout multiplier
+  void setTimeoutMult(int64_t);
 
   /// @brief Supervision grace period
   bool cmdLineTimings() const;

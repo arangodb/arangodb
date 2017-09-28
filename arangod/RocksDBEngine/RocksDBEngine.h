@@ -31,6 +31,10 @@
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/AccessMode.h"
 
+#ifdef USE_ENTERPRISE
+#include "Enterprise/RocksDBEngine/RocksDBEngineEE.h"
+#endif
+
 #include <rocksdb/db.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Builder.h>
@@ -40,7 +44,7 @@ namespace arangodb {
 class PhysicalCollection;
 class PhysicalView;
 class RocksDBBackgroundThread;
-class RocksDBComparator;
+class RocksDBVPackComparator;
 class RocksDBCounterManager;
 class RocksDBReplicationManager;
 class RocksDBLogValue;
@@ -78,10 +82,12 @@ class RocksDBEngine final : public StorageEngine {
   void unprepare() override;
 
   bool supportsDfdb() const override { return false; }
+  bool useRawDocumentPointers() override { return false; }
 
   TransactionManager* createTransactionManager() override;
   transaction::ContextData* createTransactionContextData() override;
-  TransactionState* createTransactionState(TRI_vocbase_t*, transaction::Options const&) override;
+  TransactionState* createTransactionState(
+      TRI_vocbase_t*, transaction::Options const&) override;
   TransactionCollection* createTransactionCollection(
       TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
       int nestingLevel) override;
@@ -220,6 +226,7 @@ class RocksDBEngine final : public StorageEngine {
   std::pair<TRI_voc_tick_t, TRI_voc_cid_t> mapObjectToCollection(
       uint64_t) const;
 
+  std::vector<std::string> currentWalFiles();
   void determinePrunableWalFiles(TRI_voc_tick_t minTickToKeep);
   void pruneWalFiles();
 
@@ -234,12 +241,24 @@ class RocksDBEngine final : public StorageEngine {
 
   std::string getCompressionSupport() const;
 
+#ifdef USE_ENTERPRISE
+  void collectEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
+  void validateEnterpriseOptions(std::shared_ptr<options::ProgramOptions>);
+  void prepareEnterprise();
+  void startEnterprise();
+  void configureEnterpriseRocksDBOptions(rocksdb::Options& options);
+
+  enterprise::RocksDBEngineEEData _eeData;
+#endif
+
  public:
   static std::string const EngineName;
   static std::string const FeatureName;
   RocksDBCounterManager* counterManager() const;
   RocksDBReplicationManager* replicationManager() const;
-  arangodb::Result syncWal();
+  arangodb::Result syncWal(bool waitForSync = false,
+                           bool waitForCollector = false,
+                           bool writeShutdownFile = false);
 
  private:
   /// single rocksdb database used in this storage engine
@@ -247,19 +266,19 @@ class RocksDBEngine final : public StorageEngine {
   /// default read options
   rocksdb::Options _options;
   /// arangodb comparator - requried because of vpack in keys
-  std::unique_ptr<RocksDBComparator> _vpackCmp;
+  std::unique_ptr<RocksDBVPackComparator> _vpackCmp;
   /// path used by rocksdb (inside _basePath)
   std::string _path;
   /// path to arangodb data dir
   std::string _basePath;
-
+    
   /// repository for replication contexts
   std::unique_ptr<RocksDBReplicationManager> _replicationManager;
   /// tracks the count of documents in collections
   std::unique_ptr<RocksDBCounterManager> _counterManager;
   /// Background thread handling garbage collection etc
   std::unique_ptr<RocksDBBackgroundThread> _backgroundThread;
-  uint64_t _maxTransactionSize;  // maximum allowed size for a transaction
+  uint64_t _maxTransactionSize;       // maximum allowed size for a transaction
   uint64_t _intermediateCommitSize;   // maximum size for a
                                       // transaction before an
                                       // intermediate commit is performed

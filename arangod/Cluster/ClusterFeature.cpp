@@ -36,6 +36,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "SimpleHttpClient/ConnectionManager.h"
@@ -91,6 +92,23 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addObsoleteOption("--cluster.disable-dispatcher-frontend",
                              "The dispatcher feature isn't available anymore; Use ArangoDBStarter for this now!",
                              true);
+  options->addObsoleteOption("--cluster.dbserver-config",
+                             "The dbserver-config is not available anymore, Use ArangoDBStarter",
+                             true);
+  options->addObsoleteOption("--cluster.coordinator-config",
+                             "The coordinator-config is not available anymore, Use ArangoDBStarter",
+                             true);
+  options->addObsoleteOption("--cluster.data-path",
+                             "path to cluster database directory",
+                             true);
+  options->addObsoleteOption("--cluster.log-path",
+                             "path to log directory for the cluster",
+                             true);
+  options->addObsoleteOption("--cluster.arangod-path",
+                             "path to the arangod for the cluster",
+                             true);
+  
+
                              
   options->addOption("--cluster.agency-endpoint",
                      "agency endpoint to connect to",
@@ -110,26 +128,6 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addOption("--cluster.my-address", "this server's endpoint",
                      new StringParameter(&_myAddress));
-
-  options->addOption("--cluster.data-path",
-                     "path to cluster database directory",
-                     new StringParameter(&_dataPath));
-
-  options->addOption("--cluster.log-path",
-                     "path to log directory for the cluster",
-                     new StringParameter(&_logPath));
-
-  options->addOption("--cluster.arangod-path",
-                     "path to the arangod for the cluster",
-                     new StringParameter(&_arangodPath));
-
-  options->addOption("--cluster.dbserver-config",
-                     "path to the DBserver configuration",
-                     new StringParameter(&_dbserverConfig));
-
-  options->addOption("--cluster.coordinator-config",
-                     "path to the coordinator configuration",
-                     new StringParameter(&_coordinatorConfig));
 
   options->addOption("--cluster.system-replication-factor",
                      "replication factor for system collections",
@@ -212,12 +210,6 @@ void ClusterFeature::reportRole(arangodb::ServerState::RoleEnum role) {
 
 void ClusterFeature::prepare() {
 
-  ServerState::instance()->setDataPath(_dataPath);
-  ServerState::instance()->setLogPath(_logPath);
-  ServerState::instance()->setArangodPath(_arangodPath);
-  ServerState::instance()->setDBserverConfig(_dbserverConfig);
-  ServerState::instance()->setCoordinatorConfig(_coordinatorConfig);
-
   auto v8Dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
   v8Dealer->defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM",
@@ -247,11 +239,8 @@ void ClusterFeature::prepare() {
 
   if (agency->isEnabled() || _enableCluster) {
     startClusterComm = true;
-    auto authenticationFeature =
-      application_features::ApplicationServer::getFeature<AuthenticationFeature>(
-        "Authentication");
-
-    if (authenticationFeature->isEnabled() && !authenticationFeature->hasUserdefinedJwt()) {
+    auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
+    if (authentication->isActive() && !authentication->hasUserdefinedJwt()) {
       LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Cluster authentication enabled but jwt not set via command line. Please"
         << " provide --server.jwt-secret which is used throughout the cluster.";
       FATAL_ERROR_EXIT();
@@ -435,8 +424,7 @@ void ClusterFeature::start() {
 
     // start heartbeat thread
     _heartbeatThread = std::make_shared<HeartbeatThread>(
-        _agencyCallbackRegistry.get(), _heartbeatInterval * 1000, 5,
-        SchedulerFeature::SCHEDULER->ioService());
+        _agencyCallbackRegistry.get(), _heartbeatInterval * 1000, 5);
 
     if (!_heartbeatThread->init() || !_heartbeatThread->start()) {
       LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "heartbeat could not connect to agency endpoints ("
@@ -485,6 +473,9 @@ void ClusterFeature::start() {
   }
 }
 
+void ClusterFeature::beginShutdown() {
+  ClusterComm::instance()->disable();
+}
 
 void ClusterFeature::stop() {
 

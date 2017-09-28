@@ -18,6 +18,12 @@ set(CPACK_DEBIAN_PACKAGE_HOMEPAGE ${ARANGODB_URL_INFO_ABOUT})
 set(CPACK_COMPONENTS_ALL debian-extras)
 set(CPACK_GENERATOR "DEB")
 
+if (SYSTEMD_FOUND)
+  set(CPACK_SYSTEMD_FOUND "1")
+else()
+  set(CPACK_SYSTEMD_FOUND "0")
+endif()
+
 # substitute the package name so debconf works:
 configure_file (
   "${PROJECT_SOURCE_DIR}/Installation/debian/templates.in"
@@ -31,16 +37,18 @@ configure_file (
   "${PROJECT_SOURCE_DIR}/Installation/debian/postinst.in"
   "${PROJECT_BINARY_DIR}/Installation/debian/postinst"
   NEWLINE_STYLE UNIX)
-
-
+configure_file (
+  "${PROJECT_SOURCE_DIR}/Installation/debian/prerm.in"
+  "${PROJECT_BINARY_DIR}/Installation/debian/prerm"
+  NEWLINE_STYLE UNIX)
+  
 list(APPEND CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
   "${PROJECT_BINARY_DIR}/Installation/debian/templates"
   "${PROJECT_BINARY_DIR}/Installation/debian/config"
   "${PROJECT_BINARY_DIR}/Installation/debian/postinst"
   
   "${PROJECT_SOURCE_DIR}/Installation/debian/preinst"
-  "${PROJECT_SOURCE_DIR}/Installation/debian/postrm"
-  "${PROJECT_SOURCE_DIR}/Installation/debian/prerm")
+  "${PROJECT_SOURCE_DIR}/Installation/debian/postrm")
 
 ################################################################################
 # specify which target archcitecture the package is going to be:
@@ -65,11 +73,12 @@ set(DH_CONFFILES_NAME "${PROJECT_BINARY_DIR}/conffiles")
 FILE(WRITE ${DH_CONFFILES_NAME} "${conffiles_list}")
 list(APPEND CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA "${DH_CONFFILES_NAME}")
 
+
 if (SYSTEMD_FOUND)
   # deploy the Init script:
   install(
     FILES ${PROJECT_BINARY_DIR}/arangodb3.service
-    PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE
+    PERMISSIONS OWNER_READ OWNER_WRITE GROUP_READ WORLD_READ
     DESTINATION ${SYSTEMD_UNIT_DIR}/
     RENAME ${SERVICE_NAME}.service
     COMPONENT debian-extras

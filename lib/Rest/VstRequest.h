@@ -42,7 +42,6 @@ class RestBatchHandler;
 namespace rest {
 class GeneralCommTask;
 class VstCommTask;
-// class VstsCommTask;
 }
 
 namespace velocypack {
@@ -54,13 +53,12 @@ using rest::VstInputMessage;
 
 class VstRequest final : public GeneralRequest {
   friend class rest::VstCommTask;
-  // friend class rest::VstsCommTask;
   friend class rest::GeneralCommTask;
   friend class RestBatchHandler;  // TODO must be removed
 
  private:
   VstRequest(ConnectionInfo const& connectionInfo, VstInputMessage&& message,
-             uint64_t messageId);
+             uint64_t messageId, bool isFake = false);
 
  public:
   ~VstRequest() {}

@@ -4,18 +4,18 @@ EOF
 
 HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">202</span> Accepted
 content-type: application/json; charset=utf<span class="hljs-number">-8</span>
-etag: <span class="hljs-string">"_V_qD6HS---"</span>
-location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">9972</span>
 x-content-type-options: nosniff
+etag: <span class="hljs-string">"_VReqkAW---"</span>
+location: <span class="hljs-regexp">/_db/</span>_system/_api/<span class="hljs-built_in">document</span>/products/<span class="hljs-number">9948</span>
 
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9972"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9972"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qD6HS---"</span>, 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9948"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9948"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VReqkAW---"</span>, 
   <span class="hljs-string">"new"</span> : { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9972"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9972"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qD6HS---"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"9948"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/9948"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VReqkAW---"</span>, 
     <span class="hljs-string">"Hello"</span> : <span class="hljs-string">"World"</span> 
   } 
 }

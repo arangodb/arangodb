@@ -47,7 +47,7 @@ class Hints {
     NO_USAGE_LOCK = 256,
     RECOVERY = 512,
     NO_DLD = 1024, // disable deadlock detection
-    READ_WRITES = 2048 // do not use snapshot
+    READ_OWN_WRITES = 2048 // do not use snapshot
   };
 
   Hints() : _value(0) {}

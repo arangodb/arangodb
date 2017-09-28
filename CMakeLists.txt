@@ -59,8 +59,6 @@ set(ENTERPRISE_INCLUDE_DIR "enterprise")
 option(USE_ENTERPRISE "enable enterprise build" OFF)
 
 if (USE_ENTERPRISE)
-  add_definitions("-DUSE_ENTERPRISE=1")
-  include_directories(${ENTERPRISE_INCLUDE_DIR})
   add_subdirectory(enterprise)
 endif ()
 
@@ -74,7 +72,7 @@ endif ()
 # ------------------------------------------------------------------------------
 
 set(ARANGODB_VERSION_MAJOR      "3")
-set(ARANGODB_VERSION_MINOR      "2")
+set(ARANGODB_VERSION_MINOR      "3")
 set(ARANGODB_VERSION_REVISION   "devel")
 set(ARANGODB_PACKAGE_REVISION   "1")
 
@@ -282,9 +280,23 @@ get_filename_component(PYTHON_EXECUTABLE "${PYTHON_EXECUTABLE}" REALPATH)
 
 set($ENV{PYTHON_EXECUTABLE} ${PYTHON_EXECUTABLE})
 
+# FIXME the build containers seem to have a
+# /usr/bin/ch(mod|own) to prevent the search
+# to find those files the NO_DEFAULT_PATH
+# argument is passed
 if (NOT WINDOWS)
-  find_program(CHMOD_EXECUTABLE chmod)
-  find_program(CHOWN_EXECUTABLE chown)
+  find_program(
+    CHMOD_EXECUTABLE chmod
+    PATHS "/bin/" "/usr/bin/"
+    NO_DEFAULT_PATH
+  )
+  message(STATUS "chmod found in ${CHMOD_EXECUTABLE}")
+  find_program(
+    CHOWN_EXECUTABLE chown
+    PATHS "/bin" "/usr/bin"
+    NO_DEFAULT_PATH
+  )
+  message(STATUS "chown found in ${CHOWN_EXECUTABLE}")
 endif()
 
 ################################################################################
@@ -335,6 +347,11 @@ if (SOLARIS)
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.4")
+    message(FATAL_ERROR "ArangoDB requires GCC 5.4 or newer.")
+  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "6.9.9")
+    message(FATAL_ERROR "ArangoDB doesn't support GCC 7.0 yet.")
+  endif()
   set(BASE_C_FLAGS "${BASE_C_FLAGS} -std=gnu89")
 endif ()
 
@@ -347,6 +364,9 @@ if (CMAKE_COMPILER_IS_CLANG)
     set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++")
     add_definitions("-Wno-deprecated-declarations")
   else ()
+    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "3.3")
+      message(FATAL_ERROR "ArangoDB requires clang 3.3 or newer.")
+    endif()
     list(APPEND BASE_LIBS atomic)
   endif ()
 endif ()
@@ -408,7 +428,7 @@ endif ()
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/include)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/linenoise-ng/src)
 include_directories(${PROJECT_SOURCE_DIR}/3rdParty/velocypack/include)
-include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.1.4/include)
+include_directories(${PROJECT_SOURCE_DIR}/3rdParty/rocksdb/v5.6.X/include)
 
 include_directories(${PROJECT_BINARY_DIR})
 include_directories(${PROJECT_BINARY_DIR}/lib)
@@ -460,7 +480,6 @@ else ()
 
   set(BASE_FLAGS "${Vc_COMPILE_FLAGS} ${BASE_FLAGS}")
 endif ()
-
 
 ################################################################################
 ## BACKTRACE
@@ -514,6 +533,9 @@ option(USE_MAINTAINER_MODE
 
 if (USE_MAINTAINER_MODE)
   add_definitions("-DARANGODB_ENABLE_MAINTAINER_MODE=1")
+  if (CMAKE_COMPILER_IS_GNUCC)
+    add_definitions("-D_FORTIFY_SOURCE=2")
+  endif()
 
   find_package(FLEX)
   find_package(BISON)
@@ -582,7 +604,7 @@ if (USE_JEMALLOC)
   include_directories("${JEMALLOC_HOME}/include")
   link_directories("${JEMALLOC_HOME}/lib")
 
-  set(SYS_LIBS ${SYS_LIBS} jemalloc.a)
+  set(SYS_LIBS ${SYS_LIBS} ${JEMALLOC_LIB})
 
   if (LINUX OR DARWIN)
     add_definitions("-DARANGODB_MMAP_JEMALLOC=1")
@@ -725,23 +747,6 @@ if(ARANGODB_DEBUG_CMAKE)
   message( STATUS "DirDefs: ${DirDefs}" )
 endif()
 
-# ------------------------------------------------------------------------------
-# RocksDB
-# ------------------------------------------------------------------------------
-
-add_subdirectory(3rdParty/rocksdb)
- 
-add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
-include_directories(${ROCKSDB_INCLUDE_DIR})
- 
-set(ROCKSDB_LIBS rocksdblib;snappystatic)
-
-add_dependencies(rocksdblib snappystatic)
-
-if (USE_JEMALLOC)
-  add_dependencies(rocksdblib jemalloc)
-endif ()
-
 ################################################################################
 ## 3RD PARTY
 ################################################################################
@@ -764,6 +769,23 @@ add_subdirectory(3rdParty)
 
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/3rdParty/boost)
 add_definitions("-DARANGODB_BOOST_VERSION=\"${BOOST_VERSION}\"")
+
+# ------------------------------------------------------------------------------
+# RocksDB
+# ------------------------------------------------------------------------------
+
+add_subdirectory(3rdParty/rocksdb)
+
+add_definitions(-DARANGODB_ROCKSDB_VERSION=\"${ROCKSDB_VERSION}\")
+include_directories(${ROCKSDB_INCLUDE_DIR})
+
+set(ROCKSDB_LIBS rocksdb;snappystatic)
+
+add_dependencies(rocksdb snappystatic)
+
+if (USE_JEMALLOC)
+  add_dependencies(rocksdb jemalloc)
+endif ()
 
 ################################################################################
 ## VELOCYPACK
@@ -790,6 +812,8 @@ find_package(OpenSSL REQUIRED)
 
 include_directories(${OPENSSL_INCLUDE_DIR})
 add_definitions(-DARANGODB_OPENSSL_VERSION=\"${OPENSSL_VERSION}\")
+add_definitions(-DOPENSSL_VERSION_MAJOR=${OPENSSL_VERSION_MAJOR})
+add_definitions(-DOPENSSL_VERSION_MINOR=${OPENSSL_VERSION_MINOR})
 
 if (OPENSSL_VERSION)
   string(REPLACE "." ";" OPENSSL_VERSION_LIST ${OPENSSL_VERSION})
@@ -869,7 +893,9 @@ if (USE_MAINTAINER_MODE)
   foreach (m IN LISTS ERROR_FILES)
     add_custom_command(
       OUTPUT ${CMAKE_SOURCE_DIR}/${m}
-      COMMAND ./utils/generateErrorfile.sh ./${ERRORS_DAT} ./${m}
+      COMMAND ${PYTHON_EXECUTABLE} ./utils/generateErrorfile.py ./${ERRORS_DAT} ./${m}.tmp
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
+      COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
       DEPENDS ${CMAKE_SOURCE_DIR}/${ERRORS_DAT}
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       COMMENT  "Building errors files ${m}"
@@ -880,6 +906,33 @@ if (USE_MAINTAINER_MODE)
   endforeach ()
 
   add_custom_target(errorfiles ALL DEPENDS ${ERROR_FILES_GEN})
+ 
+  set(EXIT_CODE_FILES
+    lib/Basics/exitcodes.h
+    lib/Basics/exitcodes.cpp
+    js/common/bootstrap/exitcodes.js
+    Installation/Windows/Plugins/exitcodes.nsh
+  )
+
+  set(EXIT_CODE_FILES_GEN)
+  set(EXIT_CODES_DAT lib/Basics/exitcodes.dat)
+
+  foreach (m IN LISTS EXIT_CODE_FILES)
+    add_custom_command(
+      OUTPUT ${CMAKE_SOURCE_DIR}/${m}
+      COMMAND ${PYTHON_EXECUTABLE} ./utils/generateExitCodesFiles.py ./${EXIT_CODES_DAT} ./${m}.tmp
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
+      COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
+      DEPENDS ${CMAKE_SOURCE_DIR}/${EXIT_CODES_DAT}
+      WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
+      COMMENT  "Building exitcode files ${m}"
+      VERBATIM
+    )
+
+    list(APPEND EXIT_CODE_FILES_GEN ${CMAKE_SOURCE_DIR}/${m})
+  endforeach ()
+
+  add_custom_target(exitcodefiles ALL DEPENDS ${EXIT_CODE_FILES_GEN})
 endif ()
 
 ################################################################################
@@ -898,7 +951,9 @@ if (USE_MAINTAINER_MODE)
   foreach (m IN LISTS MIMETYPES_FILES)
     add_custom_command(
       OUTPUT ${CMAKE_SOURCE_DIR}/${m}
-      COMMAND ./utils/generateMimetypes.sh ./${MIMETYPES_DAT} ./${m}
+      COMMAND ${PYTHON_EXECUTABLE} ./utils/generateMimetypes.py ./${MIMETYPES_DAT} ./${m}.tmp
+      COMMAND ${CMAKE_COMMAND} -E copy_if_different ./${m}.tmp ./${m}
+      COMMAND ${CMAKE_COMMAND} -E remove ./${m}.tmp
       DEPENDS ${CMAKE_SOURCE_DIR}/${MIMETYPES_DAT}
       WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
       COMMENT "Building mimetypes files ${m}"

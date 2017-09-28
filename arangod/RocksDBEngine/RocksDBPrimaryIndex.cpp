@@ -29,6 +29,7 @@
 #include "Cache/CachedValue.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ServerState.h"
+#include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -59,6 +60,10 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
+
+namespace {
+constexpr bool PrimaryIndexFillBlockCache = false;
+}
 
 // ================ Primary Index Iterator ================
 
@@ -99,9 +104,12 @@ bool RocksDBPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
   while (limit > 0) {
     // TODO: prevent copying of the value into result, as we don't need it here!
     RocksDBToken token = _index->lookupKey(_trx, StringRef(*_iterator));
-    cb(token);
+    if (token.revisionId()) {
+      cb(token);
 
-    --limit;
+      --limit;
+    }
+
     _iterator.next();
     if (!_iterator.valid()) {
       return false;
@@ -122,36 +130,23 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                            StaticStrings::KeyString, false)}}),
                    true, false, RocksDBColumnFamily::primary(),
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
-                   false) {
-  // !ServerState::instance()->isCoordinator() /*useCache*/) {
+                   static_cast<RocksDBCollection*>(collection->getPhysical())->cacheEnabled()) {
+  TRI_ASSERT(_cf == RocksDBColumnFamily::primary());
   TRI_ASSERT(_objectId != 0);
 }
 
 RocksDBPrimaryIndex::~RocksDBPrimaryIndex() {}
 
-/// @brief return the number of documents from the index
-size_t RocksDBPrimaryIndex::size() const {
-  // TODO
-  return 0;
-}
-
-/// @brief return the memory usage of the index
-size_t RocksDBPrimaryIndex::memory() const {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::PrimaryIndex(_objectId);
-  rocksdb::Range r(bounds.start(), bounds.end());
-  uint64_t out;
-  db->GetApproximateSizes(&r, 1, &out, true);
-  return (size_t)out;
-}
-
-int RocksDBPrimaryIndex::cleanup() {
-  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
-  rocksdb::CompactRangeOptions opts;
-  RocksDBKeyBounds bounds = RocksDBKeyBounds::PrimaryIndex(_objectId);
-  rocksdb::Slice b = bounds.start(), e = bounds.end();
-  db->CompactRange(opts, &b, &e);
-  return TRI_ERROR_NO_ERROR;
+void RocksDBPrimaryIndex::load() {
+  RocksDBIndex::load();
+  if (useCache()) {
+    // FIXME: make the factor configurable
+    RocksDBCollection* rdb = static_cast<RocksDBCollection*>(_collection->getPhysical());
+    uint64_t numDocs = rdb->numberDocuments();
+    if (numDocs > 0) {
+      _cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
+    }
+  }
 }
 
 /// @brief return a VelocyPack representation of the index
@@ -167,99 +162,115 @@ void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 
 RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
                                             arangodb::StringRef keyRef) const {
-  auto key = RocksDBKey::PrimaryIndexValue(_objectId, keyRef);
+  RocksDBKeyLeaser key(trx);
+  key->constructPrimaryIndexValue(_objectId, keyRef);
   auto value = RocksDBValue::Empty(RocksDBEntryType::PrimaryIndexValue);
 
+  bool lockTimeout = false;
   if (useCache()) {
     TRI_ASSERT(_cache != nullptr);
     // check cache first for fast path
-    auto f = _cache->find(key.string().data(),
-                          static_cast<uint32_t>(key.string().size()));
+    auto f = _cache->find(key->string().data(),
+                          static_cast<uint32_t>(key->string().size()));
     if (f.found()) {
-      value.buffer()->append(reinterpret_cast<char const*>(f.value()->value()),
-                             static_cast<size_t>(f.value()->valueSize));
-      return RocksDBToken(RocksDBValue::revisionId(value));
+      rocksdb::Slice s(reinterpret_cast<char const*>(f.value()->value()),
+                       f.value()->valueSize());
+      return RocksDBToken(RocksDBValue::revisionId(s));
+    } else if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+      // assuming someone is currently holding a write lock, which
+      // is why we cannot access the TransactionalBucket.
+      lockTimeout = true; // we skip the insert in this case
     }
   }
 
   // acquire rocksdb transaction
-  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
-  auto& options = mthds->readOptions();
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
+  auto options = mthds->readOptions();  // intentional copy
+  options.fill_cache = PrimaryIndexFillBlockCache;
   TRI_ASSERT(options.snapshot != nullptr);
 
-  arangodb::Result r = mthds->Get(_cf, key, value.buffer());
+  arangodb::Result r = mthds->Get(_cf, key.ref(), value.buffer());
   if (!r.ok()) {
     return RocksDBToken();
   }
 
-  if (useCache()) {
+  if (useCache() && !lockTimeout) {
     TRI_ASSERT(_cache != nullptr);
+
     // write entry back to cache
     auto entry = cache::CachedValue::construct(
-        key.string().data(), static_cast<uint32_t>(key.string().size()),
+        key->string().data(), static_cast<uint32_t>(key->string().size()),
         value.buffer()->data(), static_cast<uint64_t>(value.buffer()->size()));
-    bool cached = _cache->insert(entry);
-    if (!cached) {
-      delete entry;
+    if (entry) {
+      Result status = _cache->insert(entry);
+      if (status.errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
+        //the writeLock uses cpu_relax internally, so we can try yield
+        std::this_thread::yield();
+        status = _cache->insert(entry);
+      }
+      if (status.fail()) {
+        delete entry;
+      }
     }
   }
 
   return RocksDBToken(RocksDBValue::revisionId(value));
 }
 
-int RocksDBPrimaryIndex::insert(transaction::Methods* trx,
-                                TRI_voc_rid_t revisionId,
-                                VPackSlice const& slice, bool) {
-  auto key = RocksDBKey::PrimaryIndexValue(
-      _objectId, StringRef(slice.get(StaticStrings::KeyString)));
+Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
+                                           RocksDBMethods* mthd,
+                                           TRI_voc_rid_t revisionId,
+                                           VPackSlice const& slice) {
+  VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
+  RocksDBKeyLeaser key(trx);
+  key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
   auto value = RocksDBValue::PrimaryIndexValue(revisionId);
 
-  // acquire rocksdb transaction
-  RocksDBMethods* mthd = rocksutils::toRocksMethods(trx);
-  if (mthd->Exists(_cf, key)) {
-    return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+  if (mthd->Exists(_cf, key.ref())) {
+    return IndexResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, this);
   }
 
-  blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
+  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
-  Result status = mthd->Put(_cf, key, value.string(), rocksutils::index);
-  return status.errorNumber();
+  Result status = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
+  return IndexResult(status.errorNumber(), this);
 }
 
-int RocksDBPrimaryIndex::insertRaw(RocksDBMethods*, TRI_voc_rid_t,
-                                   VPackSlice const&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
+                                           RocksDBMethods* mthd,
+                      TRI_voc_rid_t oldRevision,
+                      arangodb::velocypack::Slice const& oldDoc,
+                      TRI_voc_rid_t newRevision,
+                      velocypack::Slice const& newDoc) {
+  VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
+  TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
+  RocksDBKeyLeaser key(trx);
+  key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
+  auto value = RocksDBValue::PrimaryIndexValue(newRevision);
+
+  TRI_ASSERT(mthd->Exists(_cf, key.ref()));
+  blackListKey(key->string().data(),
+              static_cast<uint32_t>(key->string().size()));
+  Result status = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
+  return IndexResult(status.errorNumber(), this);
 }
 
-int RocksDBPrimaryIndex::remove(transaction::Methods* trx,
-                                TRI_voc_rid_t revisionId,
-                                VPackSlice const& slice, bool) {
+Result RocksDBPrimaryIndex::removeInternal(transaction::Methods* trx,
+                                           RocksDBMethods* mthd,
+                                           TRI_voc_rid_t revisionId,
+                                           VPackSlice const& slice) {
   // TODO: deal with matching revisions?
-  auto key = RocksDBKey::PrimaryIndexValue(
+  RocksDBKeyLeaser key(trx);
+  key->constructPrimaryIndexValue(
       _objectId, StringRef(slice.get(StaticStrings::KeyString)));
 
-  blackListKey(key.string().data(), static_cast<uint32_t>(key.string().size()));
+  blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
 
   // acquire rocksdb transaction
-  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
-  Result r = mthds->Delete(_cf, key);
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
+  Result r = mthds->Delete(_cf, key.ref());
   // rocksutils::convertStatus(status, rocksutils::StatusHint::index);
-  return r.errorNumber();
-}
-
-/// optimization for truncateNoTrx, never called in fillIndex
-int RocksDBPrimaryIndex::removeRaw(RocksDBMethods*, TRI_voc_rid_t,
-                                   VPackSlice const&) {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-}
-
-/// @brief called when the index is dropped
-int RocksDBPrimaryIndex::drop() {
-  // First drop the cache all indexes can work without it.
-  RocksDBIndex::drop();
-  return rocksutils::removeLargeRange(rocksutils::globalRocksDB(),
-                                      RocksDBKeyBounds::PrimaryIndex(_objectId))
-      .errorNumber();
+  return IndexResult(r.errorNumber(), this);
 }
 
 /// @brief checks whether the index supports the condition

@@ -52,6 +52,14 @@ variant. A sparse index will be created if the *sparse* attribute in
 the index details is set to *true*. Sparse indexes do not index documents
 for which any of the index attributes is either not set or is *null*. 
 
+The optional attribute **deduplicate** is supported by array indexes of
+type *hash* or *skiplist*. It controls whether inserting duplicate index values 
+from the same document into a unique array index will lead to a unique constraint
+error or not. The default value is *true*, so only a single instance of each
+non-unique index value will be inserted into the index per document. Trying to
+insert a value into the index that already exists in the index will always fail,
+regardless of the value of this attribute.
+
 @RESTRETURNCODES
 
 @RESTRETURNCODE{200}

@@ -227,10 +227,13 @@ ArangoDB 3 (https://www.arangodb.com)
   or JavaScript extensions.
 
 First Steps with ArangoDB:
-  https://www.arangodb.com/quickstart
+  https://docs.arangodb.com/latest/Manual/GettingStarted/
 
 Upgrading ArangoDB:
   https://docs.arangodb.com/Installing/Upgrading.html
+
+Configuring the storage Engine:
+  https://docs.arangodb.com/latest/Manual/Administration/Configuration/GeneralArangod.html#storage-engine
 
 Upgrading ArangoDB database files:
   > /etc/init.d/arangodb3 upgrade
@@ -259,9 +262,8 @@ export ARANGODB_DEFAULT_ROOT_PASSWORD=`(uname -a ; cat /etc/hostname) | md5sum |
 
 echo "SECURITY HINT:"
 echo "run 'arango-secure-installation' to set a root password"
-echo "the current password is $ARANGODB_DEFAULT_ROOT_PASSWORD"
-echo "(in case this a FRESH install, for UPGRADE the password"
-echo "will not be changed)"
+echo "the current password is '$ARANGODB_DEFAULT_ROOT_PASSWORD'"
+echo "(You should do this for a FRESH install! For an UPGRADE the password does not need to be changed)"
 
 /usr/sbin/arango-init-database --uid arangodb --gid arangodb --server.rest-server false --server.statistics false --foxx.queues false || true
 

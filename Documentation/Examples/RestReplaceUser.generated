@@ -13,7 +13,6 @@ x-content-type-options: nosniff
   <span class="hljs-string">"active"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"extra"</span> : { 
   }, 
-  <span class="hljs-string">"changePassword"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }

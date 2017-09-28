@@ -112,8 +112,10 @@
 
           if (Object.keys(window.clusterHealth).length !== 0) {
             _.each(window.clusterHealth, function (node) {
-              if (node.Status !== 'GOOD') {
-                error++;
+              if (node.Role === 'DBServer' || node.Role === 'Coordinator') {
+                if (node.Status !== 'GOOD') {
+                  error++;
+                }
               }
             });
 

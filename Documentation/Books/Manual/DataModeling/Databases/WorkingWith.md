@@ -150,7 +150,7 @@ If no initial users are specified, a default user *root* will be created
 with an empty string password. This ensures that the new database will be
 accessible via HTTP after it is created.
 
-You can create users in a database if no initial user is specified. Switch 
+You can create users in a database if no initial user is specified. Switch
 into the new database (username and password must be identical to the current
 session) and add or modify users with the following commands.
 
@@ -162,7 +162,7 @@ session) and add or modify users with the following commands.
 Alternatively, you can specify user data directly. For example:
 
 ```js
-  db._createDatabase("newDB", [], [{ username: "newUser", passwd: "123456", active: true}])
+  db._createDatabase("newDB", {}, [{ username: "newUser", passwd: "123456", active: true}])
 ```
 
 Those methods can only be used from within the *_system* database.
@@ -184,3 +184,12 @@ database. The *_system* database itself cannot be dropped.
 Databases are dropped asynchronously, and will be physically removed if
 all clients have disconnected and references have been garbage-collected.
 
+### Engine statistics
+
+retrieve statistics related to the storage engine-rocksdb
+`db._engineStats()`
+
+Returns some statistics related to storage engine activity, including figures
+about data size, cache usage, etc.
+
+**Note**: Currently this only produces useful output for the RocksDB engine.

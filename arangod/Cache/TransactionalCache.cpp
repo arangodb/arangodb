@@ -29,7 +29,6 @@
 #include "Cache/Finding.h"
 #include "Cache/FrequencyBuffer.h"
 #include "Cache/Metadata.h"
-#include "Cache/State.h"
 #include "Cache/Table.h"
 #include "Cache/TransactionalBucket.h"
 #include "Logger/Logger.h"
@@ -39,6 +38,7 @@
 #include <chrono>
 #include <list>
 
+using namespace arangodb;
 using namespace arangodb::cache;
 
 Finding TransactionalCache::find(void const* key, uint32_t keySize) {
@@ -46,157 +46,162 @@ Finding TransactionalCache::find(void const* key, uint32_t keySize) {
   Finding result;
   uint32_t hash = hashKey(key, keySize);
 
-  bool ok;
+  Result status;
   TransactionalBucket* bucket;
-  std::shared_ptr<Table> source;
-  std::tie(ok, bucket, source) = getBucket(hash, Cache::triesFast);
-
-  if (ok) {
-    result.set(bucket->find(hash, key, keySize));
-    recordStat(result.found() ? Stat::findHit : Stat::findMiss);
-    bucket->unlock();
-    endOperation();
+  Table* source;
+  std::tie(status, bucket, source) = getBucket(hash, Cache::triesFast);
+  if (status.fail()) {
+    result.reportError(status);
+    return result;
   }
+
+  result.set(bucket->find(hash, key, keySize));
+  if (result.found()) {
+    recordStat(Stat::findHit);
+  } else {
+    recordStat(Stat::findMiss);
+    status.reset(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+    result.reportError(status);
+  }
+  recordStat(result.found() ? Stat::findHit : Stat::findMiss);
+  bucket->unlock();
 
   return result;
 }
 
-bool TransactionalCache::insert(CachedValue* value) {
+Result TransactionalCache::insert(CachedValue* value) {
   TRI_ASSERT(value != nullptr);
-  bool inserted = false;
-  uint32_t hash = hashKey(value->key(), value->keySize);
+  uint32_t hash = hashKey(value->key(), value->keySize());
 
-  bool ok;
+  Result status;
   TransactionalBucket* bucket;
-  std::shared_ptr<Table> source;
-  std::tie(ok, bucket, source) = getBucket(hash, Cache::triesFast);
+  Table* source;
+  std::tie(status, bucket, source) = getBucket(hash, Cache::triesFast);
+  if (status.fail()) {
+    return status;
+  }
 
-  if (ok) {
-    bool maybeMigrate = false;
-    bool allowed = !bucket->isBlacklisted(hash);
-    if (allowed) {
-      int64_t change = value->size();
-      CachedValue* candidate = bucket->find(hash, value->key(), value->keySize);
+  bool maybeMigrate = false;
+  bool allowed = !bucket->isBlacklisted(hash);
+  if (allowed) {
+    int64_t change = static_cast<int64_t>(value->size());
+    CachedValue* candidate = bucket->find(hash, value->key(), value->keySize());
 
-      if (candidate == nullptr && bucket->isFull()) {
-        candidate = bucket->evictionCandidate();
-        if (candidate == nullptr) {
-          allowed = false;
-        }
+    if (candidate == nullptr && bucket->isFull()) {
+      candidate = bucket->evictionCandidate();
+      if (candidate == nullptr) {
+        allowed = false;
+        status.reset(TRI_ERROR_ARANGO_BUSY);
       }
+    }
+
+    if (allowed) {
+      if (candidate != nullptr) {
+        change -= static_cast<int64_t>(candidate->size());
+      }
+
+      _metadata.readLock();
+      allowed = _metadata.adjustUsageIfAllowed(change);
+      _metadata.readUnlock();
 
       if (allowed) {
+        bool eviction = false;
         if (candidate != nullptr) {
-          change -= candidate->size();
-        }
-
-        _metadata.lock();
-        allowed = _metadata.adjustUsageIfAllowed(change);
-        _metadata.unlock();
-
-        if (allowed) {
-          bool eviction = false;
-          if (candidate != nullptr) {
-            bucket->evict(candidate, true);
-            if (!candidate->sameKey(value->key(), value->keySize)) {
-              eviction = true;
-            }
-            freeValue(candidate);
+          bucket->evict(candidate, true);
+          if (!candidate->sameKey(value->key(), value->keySize())) {
+            eviction = true;
           }
-          bucket->insert(hash, value);
-          inserted = true;
-          if (!eviction) {
-            maybeMigrate = source->slotFilled();
-          }
-          maybeMigrate |= reportInsert(eviction);
-        } else {
-          requestGrow();  // let function do the hard work
+          freeValue(candidate);
         }
+        bucket->insert(hash, value);
+        if (!eviction) {
+          maybeMigrate = source->slotFilled();
+        }
+        maybeMigrate |= reportInsert(eviction);
+      } else {
+        requestGrow();  // let function do the hard work
+        status.reset(TRI_ERROR_RESOURCE_LIMIT);
       }
     }
-
-    bucket->unlock();
-    if (maybeMigrate) {
-      requestMigrate(_table->idealSize());  // let function do the hard work
-    }
-    endOperation();
+  } else {
+    status.reset(TRI_ERROR_ARANGO_CONFLICT);
   }
 
-  return inserted;
+  bucket->unlock();
+  if (maybeMigrate) {
+    requestMigrate(_table->idealSize());  // let function do the hard work
+  }
+
+  return status;
 }
 
-bool TransactionalCache::remove(void const* key, uint32_t keySize) {
+Result TransactionalCache::remove(void const* key, uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
-  bool removed = false;
   uint32_t hash = hashKey(key, keySize);
 
-  bool ok;
+  Result status;
   TransactionalBucket* bucket;
-  std::shared_ptr<Table> source;
-  std::tie(ok, bucket, source) = getBucket(hash, Cache::triesSlow);
-
-  if (ok) {
-    bool maybeMigrate = false;
-    CachedValue* candidate = bucket->remove(hash, key, keySize);
-
-    if (candidate != nullptr) {
-      int64_t change = -static_cast<int64_t>(candidate->size());
-
-      _metadata.lock();
-      bool allowed = _metadata.adjustUsageIfAllowed(change);
-      TRI_ASSERT(allowed);
-      _metadata.unlock();
-
-      freeValue(candidate);
-      maybeMigrate = source->slotEmptied();
-    }
-
-    removed = true;
-    bucket->unlock();
-    if (maybeMigrate) {
-      requestMigrate(_table->idealSize());
-    }
-    endOperation();
+  Table* source;
+  std::tie(status, bucket, source) = getBucket(hash, Cache::triesSlow);
+  if (status.fail()) {
+    return status;
   }
 
-  return removed;
+  bool maybeMigrate = false;
+  CachedValue* candidate = bucket->remove(hash, key, keySize);
+
+  if (candidate != nullptr) {
+    int64_t change = -static_cast<int64_t>(candidate->size());
+     _metadata.readLock();
+    bool allowed = _metadata.adjustUsageIfAllowed(change);
+    TRI_ASSERT(allowed);
+    _metadata.readUnlock();
+
+    freeValue(candidate);
+    maybeMigrate = source->slotEmptied();
+  }
+
+  bucket->unlock();
+  if (maybeMigrate) {
+    requestMigrate(_table->idealSize());
+  }
+
+  return status;
 }
 
-bool TransactionalCache::blacklist(void const* key, uint32_t keySize) {
+Result TransactionalCache::blacklist(void const* key, uint32_t keySize) {
   TRI_ASSERT(key != nullptr);
-  bool blacklisted = false;
   uint32_t hash = hashKey(key, keySize);
 
-  bool ok;
+  Result status;
   TransactionalBucket* bucket;
-  std::shared_ptr<Table> source;
-  std::tie(ok, bucket, source) = getBucket(hash, Cache::triesSlow);
-
-  if (ok) {
-    bool maybeMigrate = false;
-    CachedValue* candidate = bucket->blacklist(hash, key, keySize);
-    blacklisted = true;
-
-    if (candidate != nullptr) {
-      int64_t change = -static_cast<int64_t>(candidate->size());
-
-      _metadata.lock();
-      bool allowed = _metadata.adjustUsageIfAllowed(change);
-      TRI_ASSERT(allowed);
-      _metadata.unlock();
-
-      freeValue(candidate);
-      maybeMigrate = source->slotEmptied();
-    }
-
-    bucket->unlock();
-    if (maybeMigrate) {
-      requestMigrate(_table->idealSize());
-    }
-    endOperation();
+  Table* source;
+  std::tie(status, bucket, source) = getBucket(hash, Cache::triesSlow);
+  if (status.fail()) {
+    return status;
   }
 
-  return blacklisted;
+  bool maybeMigrate = false;
+  CachedValue* candidate = bucket->blacklist(hash, key, keySize);
+
+  if (candidate != nullptr) {
+    int64_t change = -static_cast<int64_t>(candidate->size());
+
+    _metadata.readLock();
+    bool allowed = _metadata.adjustUsageIfAllowed(change);
+    TRI_ASSERT(allowed);
+    _metadata.readUnlock();
+
+    freeValue(candidate);
+    maybeMigrate = source->slotEmptied();
+  }
+
+  bucket->unlock();
+  if (maybeMigrate) {
+    requestMigrate(_table->idealSize());
+  }
+
+  return status;
 }
 
 uint64_t TransactionalCache::allocationSize(bool enableWindowedStats) {
@@ -207,56 +212,55 @@ uint64_t TransactionalCache::allocationSize(bool enableWindowedStats) {
 }
 
 std::shared_ptr<Cache> TransactionalCache::create(Manager* manager,
-                                                  Metadata metadata,
+                                                  uint64_t id,
+                                                  Metadata&& metadata,
                                                   std::shared_ptr<Table> table,
                                                   bool enableWindowedStats) {
   return std::make_shared<TransactionalCache>(Cache::ConstructionGuard(),
-                                              manager, metadata, table,
+                                              manager, id, std::move(metadata), table,
                                               enableWindowedStats);
 }
 
 TransactionalCache::TransactionalCache(Cache::ConstructionGuard guard,
-                                       Manager* manager, Metadata metadata,
+                                       Manager* manager, uint64_t id, Metadata&& metadata,
                                        std::shared_ptr<Table> table,
                                        bool enableWindowedStats)
-    : Cache(guard, manager, metadata, table, enableWindowedStats,
+    : Cache(guard, manager, id, std::move(metadata), table, enableWindowedStats,
             TransactionalCache::bucketClearer, TransactionalBucket::slotsData) {
 }
 
 TransactionalCache::~TransactionalCache() {
-  _state.lock();
-  if (!_state.isSet(State::Flag::shutdown)) {
-    _state.unlock();
+  if (!_shutdown) {
     shutdown();
-  }
-  if (_state.isLocked()) {
-    _state.unlock();
   }
 }
 
 uint64_t TransactionalCache::freeMemoryFrom(uint32_t hash) {
   uint64_t reclaimed = 0;
-  bool ok;
+  Result status;
   TransactionalBucket* bucket;
-  std::shared_ptr<Table> source;
-  std::tie(ok, bucket, source) = getBucket(hash, Cache::triesFast, false);
+  Table* source;
+  std::tie(status, bucket, source) = getBucket(hash, Cache::triesFast, false);
+  if (status.fail()) {
+    return 0;
+  }
 
-  if (ok) {
-    bool maybeMigrate = false;
-    // evict LRU freeable value if exists
-    CachedValue* candidate = bucket->evictionCandidate();
+  bool maybeMigrate = false;
+  // evict LRU freeable value if exists
+  CachedValue* candidate = bucket->evictionCandidate();
 
-    if (candidate != nullptr) {
-      reclaimed = candidate->size();
-      bucket->evict(candidate);
-      freeValue(candidate);
-      maybeMigrate = source->slotEmptied();
-    }
+  if (candidate != nullptr) {
+    reclaimed = candidate->size();
+    bucket->evict(candidate);
+    freeValue(candidate);
+    maybeMigrate = source->slotEmptied();
+  }
 
-    bucket->unlock();
-    if (maybeMigrate) {
-      requestMigrate(_table->idealSize());
-    }
+  bucket->unlock();
+
+  uint32_t size = _table->idealSize();
+  if (maybeMigrate) {
+    requestMigrate(size);
   }
 
   return reclaimed;
@@ -273,10 +277,9 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
   term = std::max(term, source->_blacklistTerm);
 
   // lock target bucket(s)
-  int64_t tries = Cache::triesGuarantee;
-  targets->applyToAllBuckets([&term, tries](void* ptr) -> bool {
+  targets->applyToAllBuckets([&term](void* ptr) -> bool {
     auto targetBucket = reinterpret_cast<TransactionalBucket*>(ptr);
-    bool locked = targetBucket->lock(tries);
+    bool locked = targetBucket->lock(Cache::triesGuarantee);
     term = std::max(term, targetBucket->_blacklistTerm);
     return locked;
   });
@@ -293,7 +296,7 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
     targets->applyToAllBuckets([](void* ptr) -> bool {
       auto targetBucket = reinterpret_cast<TransactionalBucket*>(ptr);
       if (!targetBucket->isFullyBlacklisted()) {
-        targetBucket->_state.toggleFlag(State::Flag::blacklisted);
+        targetBucket->_state.toggleFlag(BucketState::Flag::blacklisted);
       }
       return true;
     });
@@ -365,57 +368,52 @@ void TransactionalCache::migrateBucket(void* sourcePtr,
   });
 
   // finish up this bucket's migration
-  source->_state.toggleFlag(State::Flag::migrated);
+  source->_state.toggleFlag(BucketState::Flag::migrated);
   source->unlock();
 }
 
-std::tuple<bool, TransactionalBucket*, std::shared_ptr<Table>>
-TransactionalCache::getBucket(uint32_t hash, int64_t maxTries,
+std::tuple<Result, TransactionalBucket*, Table*>
+TransactionalCache::getBucket(uint32_t hash, uint64_t maxTries,
                               bool singleOperation) {
+  Result status;
   TransactionalBucket* bucket = nullptr;
-  std::shared_ptr<Table> source(nullptr);
+  Table* source = nullptr;
 
-  bool ok = _state.lock(maxTries);
-  if (ok) {
-    bool started = false;
-    ok = isOperational();
-    if (ok) {
-      if (singleOperation) {
-        startOperation();
-        started = true;
-        _manager->reportAccess(shared_from_this());
-      }
-
-      uint64_t term = _manager->_transactions.term();
-      auto pair = _table->fetchAndLockBucket(hash, maxTries);
-      bucket = reinterpret_cast<TransactionalBucket*>(pair.first);
-      source = pair.second;
-      ok = (bucket != nullptr);
-      if (ok) {
-        bucket->updateBlacklistTerm(term);
-      }
-    }
-    if (!ok && started) {
-      endOperation();
-    }
-    _state.unlock();
+  Table* table = _table;
+  if (isShutdown() || table == nullptr) {
+    status.reset(TRI_ERROR_SHUTTING_DOWN);
+    return std::make_tuple(status, bucket, source);
   }
 
-  return std::make_tuple(ok, bucket, source);
+  if (singleOperation) {
+    _manager->reportAccess(_id);
+  }
+
+  uint64_t term = _manager->_transactions.term();
+  auto pair = table->fetchAndLockBucket(hash, maxTries);
+  bucket = reinterpret_cast<TransactionalBucket*>(pair.first);
+  source = pair.second;
+  bool ok = (bucket != nullptr);
+  if (ok) {
+    bucket->updateBlacklistTerm(term);
+  } else {
+    status.reset(TRI_ERROR_LOCK_TIMEOUT);
+  }
+
+  return std::make_tuple(status, bucket, source);
 }
 
 Table::BucketClearer TransactionalCache::bucketClearer(Metadata* metadata) {
-  int64_t tries = Cache::triesGuarantee;
-  return [metadata, tries](void* ptr) -> void {
+  return [metadata](void* ptr) -> void {
     auto bucket = reinterpret_cast<TransactionalBucket*>(ptr);
-    bucket->lock(tries);
+    bucket->lock(Cache::triesGuarantee);
     for (size_t j = 0; j < TransactionalBucket::slotsData; j++) {
       if (bucket->_cachedData[j] != nullptr) {
         uint64_t size = bucket->_cachedData[j]->size();
         freeValue(bucket->_cachedData[j]);
-        metadata->lock();
+        metadata->readLock();
         metadata->adjustUsageIfAllowed(-static_cast<int64_t>(size));
-        metadata->unlock();
+        metadata->readUnlock();
       }
     }
     bucket->clear();

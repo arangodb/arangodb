@@ -23,13 +23,8 @@
 
 #include "VstCommTask.h"
 
-#include <iostream>
-#include <limits>
-#include <stdexcept>
-
-#include <boost/optional.hpp>
-
 #include "Basics/HybridLogicalClock.h"
+#include "Basics/MutexUnlocker.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -45,6 +40,10 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
+
+#include <iostream>
+#include <limits>
+#include <stdexcept>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -86,13 +85,9 @@ VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
     : Task(loop, "VstCommTask"),
       GeneralCommTask(loop, server, std::move(socket), std::move(info), timeout,
                       skipInit),
+      _authorized(false),
       _authenticatedUser(),
-      _authentication(nullptr),
       _protocolVersion(protocolVersion) {
-  _authentication = application_features::ApplicationServer::getFeature<
-      AuthenticationFeature>("Authentication");
-  TRI_ASSERT(_authentication != nullptr);
-
   _protocol = "vst";
 
   // ATTENTION <- this is required so we do not lose information during a resize
@@ -104,13 +99,17 @@ VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
 }
 
 void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
+  _lock.assertLockedByCurrentThread();
+
   VPackMessageNoOwnBuffer response_message = response->prepareForNetwork();
   uint64_t const id = response_message._id;
 
   std::vector<VPackSlice> slices;
-  slices.push_back(response_message._header);
 
   if (response->generateBody()) {
+    slices.reserve(1 + response_message._payloads.size());
+    slices.push_back(response_message._header);
+
     for (auto& payload : response_message._payloads) {
       LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-result\",\""
                                          << (void*)this << "/" << id << "\","
@@ -118,6 +117,9 @@ void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
 
       slices.push_back(payload);
     }
+  } else {
+    // header only
+    slices.push_back(response_message._header);
   }
 
   // set some sensible maxchunk size and compression
@@ -239,43 +241,45 @@ bool VstCommTask::isChunkComplete(char* start) {
   return true;
 }
 
-void VstCommTask::handleAuthentication(VPackSlice const& header,
+void VstCommTask::handleAuthHeader(VPackSlice const& header,
                                        uint64_t messageId) {
-  bool authOk = false;
-  if (!_authentication->isEnabled()) {
-    authOk = true;
-  } else {
-    std::string auth;
-    AuthInfo::AuthType authType;
-    std::string user;
+  _authorized = false;
+  if (_authentication->isActive()) {
+    std::string auth, user;
+    AuthenticationMethod authType = AuthenticationMethod::NONE;
 
     std::string encryption = header.at(2).copyString();
-    if (encryption != "jwt") {
+    if (encryption == "jwt") {// doing JWT
+      auth = header.at(3).copyString();
+      authType = AuthenticationMethod::JWT;
+    } else if (encryption == "plain") {
       user = header.at(3).copyString();
       std::string pass = header.at(4).copyString();
       auth = basics::StringUtils::encodeBase64(user + ":" + pass);
-      authType = AuthInfo::AuthType::BASIC;
-    } else {   // doing JWT
-      auth = header.at(3).copyString();
-      authType = AuthInfo::AuthType::JWT;
+      authType = AuthenticationMethod::BASIC;
+    } else {
+      LOG_TOPIC(ERR, Logger::REQUESTS) << "Unknown VST encryption type";
     }
     AuthResult result = _authentication->authInfo()->checkAuthentication(
         authType, auth);
 
-    authOk = result._authorized;
-    if (authOk) {
+    _authorized = result._authorized;
+    if (_authorized) {
       _authenticatedUser = std::move(result._username);
     }
+  } else {
+    _authorized = true;
   }
-
-  if (authOk) {
+  
+ VstRequest fakeRequest( _connectionInfo, VstInputMessage{}, 0, true /*fakeRequest*/);
+  if (_authorized) {
     // mop: hmmm...user should be completely ignored if there is no auth IMHO
     // obi: user who sends authentication expects a reply
-    handleSimpleError(rest::ResponseCode::OK, TRI_ERROR_NO_ERROR,
+    handleSimpleError(rest::ResponseCode::OK, fakeRequest, TRI_ERROR_NO_ERROR,
                       "authentication successful", messageId);
   } else {
     _authenticatedUser.clear();
-    handleSimpleError(rest::ResponseCode::UNAUTHORIZED,
+    handleSimpleError(rest::ResponseCode::UNAUTHORIZED, fakeRequest,
                       TRI_ERROR_HTTP_UNAUTHORIZED, "authentication failed",
                       messageId);
   }
@@ -283,6 +287,8 @@ void VstCommTask::handleAuthentication(VPackSlice const& header,
 
 // reads data from the socket
 bool VstCommTask::processRead(double startTime) {
+  _lock.assertLockedByCurrentThread();
+
   auto& prv = _processReadVariables;
 
   auto chunkBegin = _readBuffer.begin() + prv._readBufferOffset;
@@ -344,7 +350,8 @@ bool VstCommTask::processRead(double startTime) {
     try {
       type = header.at(1).getNumber<int>();
     } catch (std::exception const& e) {
-      handleSimpleError(rest::ResponseCode::BAD, chunkHeader._messageID);
+      VstRequest fakeRequest( _connectionInfo, VstInputMessage{}, 0);
+      handleSimpleError(rest::ResponseCode::BAD, fakeRequest, chunkHeader._messageID);
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
           << "VstCommTask: "
           << "VPack Validation failed: " << e.what();
@@ -354,49 +361,53 @@ bool VstCommTask::processRead(double startTime) {
 
     // handle request types
     if (type == 1000) {
-      handleAuthentication(header, chunkHeader._messageID);
+      handleAuthHeader(header, chunkHeader._messageID);
     } else {
       // the handler will take ownership of this pointer
       std::unique_ptr<VstRequest> request(new VstRequest(
           _connectionInfo, std::move(message), chunkHeader._messageID));
-      GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
+      request->setAuthorized(_authorized);
       request->setUser(_authenticatedUser);
-
-      // check authentication
-      AuthLevel level = AuthLevel::RW;
-      if (_authentication->isEnabled()) {  // only check authorization if
-                                           // authentication is enabled
-        std::string const& path = request->requestPath();
-        if (!StringUtils::isPrefix(path, "/_open/") &&
-            !StringUtils::isPrefix(path, "/_api/user/")) {
-          std::string const& dbname = request->databaseName();
-          if (!(_authenticatedUser.empty() && dbname.empty())) {
-            level = _authentication->canUseDatabase(_authenticatedUser, dbname);
-          }
-        }
-      }
-
-      if (level != AuthLevel::RW) {
-        events::NotAuthorized(request.get());
-        handleSimpleError(rest::ResponseCode::UNAUTHORIZED, TRI_ERROR_FORBIDDEN,
-                          "not authorized to execute this request",
+      GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
+      
+      if (request->requestContext() == nullptr) {
+        handleSimpleError(
+                          rest::ResponseCode::NOT_FOUND, *request,
+                          TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+                          TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
                           chunkHeader._messageID);
       } else {
-        // now that we are authorized we do the request
-        // make sure we have a database
-        if (request->requestContext() == nullptr) {
-          handleSimpleError(
-              rest::ResponseCode::NOT_FOUND,
-              TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
-              TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
-              chunkHeader._messageID);
-        } else {
-          request->setClientTaskId(_taskId);
+        request->setClientTaskId(_taskId);
 
-          std::unique_ptr<VstResponse> response(new VstResponse(
-              rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
-          response->setContentTypeRequested(request->contentTypeResponse());
-          executeRequest(std::move(request), std::move(response));
+        // will determine if the user can access this path.
+        // checks db permissions and contains exceptions for the
+        // users API to allow logins
+        rest::ResponseCode code = GeneralCommTask::canAccessPath(request.get());
+        if (code != rest::ResponseCode::OK) {
+          events::NotAuthorized(request.get());
+          handleSimpleError(rest::ResponseCode::UNAUTHORIZED, *request, TRI_ERROR_FORBIDDEN,
+                            "not authorized to execute this request",
+                            chunkHeader._messageID);
+        } else {
+          // now that we are authorized we do the request
+          // make sure we have a database
+          if (request->requestContext() == nullptr) {
+            handleSimpleError(
+                              rest::ResponseCode::NOT_FOUND, *request,
+                              TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+                              TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
+                              chunkHeader._messageID);
+          } else {
+            request->setClientTaskId(_taskId);
+            
+            // temporarily release the mutex
+            MUTEX_UNLOCKER(locker, _lock);
+            
+            std::unique_ptr<VstResponse> response(new VstResponse(
+                 rest::ResponseCode::SERVER_ERROR, chunkHeader._messageID));
+            response->setContentTypeRequested(request->contentTypeResponse());
+            executeRequest(std::move(request), std::move(response));
+          }
         }
       }
     }
@@ -428,25 +439,6 @@ void VstCommTask::closeTask(rest::ResponseCode code) {
   closeStream();
 }
 
-rest::ResponseCode VstCommTask::authenticateRequest(GeneralRequest* request) {
-  auto context = (request == nullptr) ? nullptr : request->requestContext();
-
-  if (context == nullptr && request != nullptr) {
-    bool res =
-        GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
-
-    if (!res) {
-      return rest::ResponseCode::NOT_FOUND;
-    }
-    context = request->requestContext();
-  }
-
-  if (context == nullptr) {
-    return rest::ResponseCode::SERVER_ERROR;
-  }
-  return context->authenticate();
-}
-
 std::unique_ptr<GeneralResponse> VstCommTask::createResponse(
     rest::ResponseCode responseCode, uint64_t messageId) {
   return std::unique_ptr<GeneralResponse>(
@@ -454,10 +446,12 @@ std::unique_ptr<GeneralResponse> VstCommTask::createResponse(
 }
 
 void VstCommTask::handleSimpleError(rest::ResponseCode responseCode,
+                                    GeneralRequest const& req,
                                     int errorNum,
                                     std::string const& errorMessage,
                                     uint64_t messageId) {
   VstResponse response(responseCode, messageId);
+  response.setContentType(req.contentTypeResponse());
 
   VPackBuilder builder;
   builder.openObject();
@@ -489,7 +483,8 @@ bool VstCommTask::getMessageFromSingleChunk(
   try {
     payloads = validateAndCount(vpackBegin, chunkEnd);
   } catch (std::exception const& e) {
-    handleSimpleError(rest::ResponseCode::BAD,
+    VstRequest fakeRequest( _connectionInfo, VstInputMessage{}, 0, true /*isFake*/);
+    handleSimpleError(rest::ResponseCode::BAD, fakeRequest,
                       TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
                       chunkHeader._messageID);
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
@@ -498,7 +493,8 @@ bool VstCommTask::getMessageFromSingleChunk(
     closeTask(rest::ResponseCode::BAD);
     return false;
   } catch (...) {
-    handleSimpleError(rest::ResponseCode::BAD, chunkHeader._messageID);
+    VstRequest fakeRequest( _connectionInfo, VstInputMessage{}, 0, true /*isFake*/);
+    handleSimpleError(rest::ResponseCode::BAD, fakeRequest, chunkHeader._messageID);
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                             << "VPack Validation failed";
     closeTask(rest::ResponseCode::BAD);
@@ -580,7 +576,8 @@ bool VstCommTask::getMessageFromMultiChunks(
                                  im._buffer.data() + im._buffer.byteSize()));
 
       } catch (std::exception const& e) {
-        handleSimpleError(rest::ResponseCode::BAD,
+        VstRequest fakeRequest( _connectionInfo, VstInputMessage{}, 0, true /*isFake*/);
+        handleSimpleError(rest::ResponseCode::BAD, fakeRequest,
                           TRI_ERROR_ARANGO_DATABASE_NOT_FOUND, e.what(),
                           chunkHeader._messageID);
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
@@ -589,7 +586,8 @@ bool VstCommTask::getMessageFromMultiChunks(
         closeTask(rest::ResponseCode::BAD);
         return false;
       } catch (...) {
-        handleSimpleError(rest::ResponseCode::BAD, chunkHeader._messageID);
+        VstRequest fakeRequest( _connectionInfo, VstInputMessage{}, 0, true /*isFake*/);
+        handleSimpleError(rest::ResponseCode::BAD, fakeRequest, chunkHeader._messageID);
         LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "VstCommTask: "
                                                 << "VPack Validation failed!";
         closeTask(rest::ResponseCode::BAD);

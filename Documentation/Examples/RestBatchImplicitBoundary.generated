@@ -13,8 +13,8 @@ DELETE _api/collection/notexisting2 HTTP/1.1
 EOF
 
 HTTP/1.1 200 OK
-content-type: 
 x-content-type-options: nosniff
+content-type: 
 x-arango-errors: 2
 
 "--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\n\r\nHTTP/1.1 404 Not Found\r\nServer: \r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 92\r\n\r\n{\"error\":true,\"code\":404,\"errorNum\":1203,\"errorMessage\":\"unknown collection 'notexisting1'\"}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\n\r\nHTTP/1.1 404 Not Found\r\nServer: \r\nConnection: \r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 101\r\n\r\n{\"error\":true,\"code\":404,\"errorNum\":404,\"errorMessage\":\"unknown path '_api/collection/notexisting2'\"}\r\n--SomeBoundaryValue--"

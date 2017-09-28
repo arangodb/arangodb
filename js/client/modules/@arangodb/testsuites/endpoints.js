@@ -32,6 +32,7 @@ const optionsDocumentation = [
   '   - `skipEndpoints`: if set to true endpoints tests are skipped'
 ];
 
+const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
 
@@ -58,9 +59,13 @@ function endpoints (options) {
       if (platform.substr(0, 3) === 'win') {
         return undefined;
       }
-      return 'unix:///tmp/arangodb-tmp.sock';
+      return 'unix://./arangodb-tmp.sock';
     }
   };
+  // we append one cleanup directory for the invoking logic...
+  let dummyDir = fs.join(fs.getTempPath(), 'enpointsdummy');
+  fs.makeDirectory(dummyDir);
+  pu.cleanupDBDirectoriesAppend(dummyDir);
 
   return Object.keys(endpoints).reduce((results, endpointName) => {
     results.failed = 0;
@@ -96,6 +101,8 @@ function endpoints (options) {
 
         if (!result.status) {
           result.failed += 1;
+        } else {
+          pu.cleanupLastDirectory(options);
         }
         return result;
       }

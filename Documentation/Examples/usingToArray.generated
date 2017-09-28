@@ -1,36 +1,36 @@
 arangosh&gt; db._create(<span class="hljs-string">"five"</span>)
-[ArangoCollection <span class="hljs-number">34278</span>, <span class="hljs-string">"five"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
+[ArangoCollection <span class="hljs-number">34273</span>, <span class="hljs-string">"five"</span> (type <span class="hljs-built_in">document</span>, status loaded)]
 arangosh&gt; <span class="hljs-keyword">for</span> (i = <span class="hljs-number">0</span>; i &lt; <span class="hljs-number">5</span>; i++) db.five.save({<span class="hljs-attr">value</span>:i})
 arangosh&gt; db.five.toArray()
 [ 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34285"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/34285"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qFWrK---"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34276"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/34276"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VRerygi---"</span>, 
+    <span class="hljs-string">"value"</span> : <span class="hljs-number">0</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34280"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/34280"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VRerygi--_"</span>, 
     <span class="hljs-string">"value"</span> : <span class="hljs-number">1</span> 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34294"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/34294"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qFWrS---"</span>, 
-    <span class="hljs-string">"value"</span> : <span class="hljs-number">4</span> 
-  }, 
-  { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34291"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/34291"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qFWrO--_"</span>, 
-    <span class="hljs-string">"value"</span> : <span class="hljs-number">3</span> 
-  }, 
-  { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34288"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/34288"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qFWrO---"</span>, 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34283"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/34283"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VRerygm---"</span>, 
     <span class="hljs-string">"value"</span> : <span class="hljs-number">2</span> 
   }, 
   { 
-    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34281"</span>, 
-    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/34281"</span>, 
-    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V_qFWrG---"</span>, 
-    <span class="hljs-string">"value"</span> : <span class="hljs-number">0</span> 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34286"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/34286"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VRerygm--_"</span>, 
+    <span class="hljs-string">"value"</span> : <span class="hljs-number">3</span> 
+  }, 
+  { 
+    <span class="hljs-string">"_key"</span> : <span class="hljs-string">"34289"</span>, 
+    <span class="hljs-string">"_id"</span> : <span class="hljs-string">"five/34289"</span>, 
+    <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VRerygq---"</span>, 
+    <span class="hljs-string">"value"</span> : <span class="hljs-number">4</span> 
   } 
 ]

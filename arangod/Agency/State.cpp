@@ -56,12 +56,13 @@ using namespace arangodb::consensus;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
-/// Construct with endpoint
-State::State(std::string const& endpoint)
+/// Constructor:
+State::State()
     : _agent(nullptr),
       _vocbase(nullptr),
       _collectionsChecked(false),
       _collectionsLoaded(false),
+      _nextCompactionAfter(0),
       _queryRegistry(nullptr),
       _cur(0) {}
 
@@ -132,11 +133,9 @@ bool State::persist(index_t index, term_t term,
 
 
 /// Log transaction (leader)
-std::vector<index_t> State::log(
+std::vector<index_t> State::logLeaderMulti(
   query_t const& transactions, std::vector<bool> const& applicable, term_t term) {
 
-  TRI_ASSERT(!_log.empty()); // log must not ever be empty
-      
   std::vector<index_t> idx(applicable.size());
   size_t j = 0;
   auto const& slice = transactions->slice();
@@ -148,6 +147,8 @@ std::vector<index_t> State::log(
 
   TRI_ASSERT(slice.length() == applicable.size());
   MUTEX_LOCKER(mutexLocker, _logLock); 
+  
+  TRI_ASSERT(!_log.empty()); // log must never be empty
   
   for (auto const& i : VPackArrayIterator(slice)) {
 
@@ -170,7 +171,7 @@ std::vector<index_t> State::log(
 }
 
 
-index_t State::log(velocypack::Slice const& slice, term_t term,
+index_t State::logLeaderSingle(velocypack::Slice const& slice, term_t term,
                    std::string const& clientId) {
   MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
   return logNonBlocking(_log.back().index+1, slice, term, clientId, true);
@@ -182,7 +183,7 @@ index_t State::logNonBlocking(
   index_t idx, velocypack::Slice const& slice, term_t term,
   std::string const& clientId, bool leading) {
 
-  TRI_ASSERT(!_log.empty()); // log must not ever be empty
+  _logLock.assertLockedByCurrentThread();
 
   auto buf = std::make_shared<Buffer<uint8_t>>();
   
@@ -191,29 +192,25 @@ index_t State::logNonBlocking(
   if (!persist(idx, term, slice, clientId)) {         // log to disk or die
     if (leading) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
-        << "RAFT leader fails to persist log entries!"
-        << __FILE__ << ":" << __LINE__;
+        << "RAFT leader fails to persist log entries!";
       FATAL_ERROR_EXIT();
     } else {
       LOG_TOPIC(ERR, Logger::AGENCY)
-        << "RAFT follower fails to persist log entries!"
-        << __FILE__ << ":" << __LINE__;
+        << "RAFT follower fails to persist log entries!";
       return 0;
     }
   }
 
   try {
     _log.push_back(log_t(idx, term, buf, clientId));  // log to RAM or die
-  } catch (std::bad_alloc const& e) {                 
+  } catch (std::bad_alloc const&) {
     if (leading) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
-        << "RAFT leader fails to allocate volatile log entries!"
-        << __FILE__ << ":" << __LINE__;
+        << "RAFT leader fails to allocate volatile log entries!";
       FATAL_ERROR_EXIT();
     } else {
       LOG_TOPIC(ERR, Logger::AGENCY)
-        << "RAFT follower fails to allocate volatile log entries!"
-        << __FILE__ << ":" << __LINE__;
+        << "RAFT follower fails to allocate volatile log entries!";
       return 0;
     }
   }
@@ -224,48 +221,104 @@ index_t State::logNonBlocking(
         std::pair<std::string, index_t>(clientId, idx));
     } catch (...) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
-        << "RAFT leader fails to expand client lookup table!"
-        << __FILE__ << ":" << __LINE__;
+        << "RAFT leader fails to expand client lookup table!";
       FATAL_ERROR_EXIT();
     } 
   }
   
   return _log.back().index;
-  
 }
 
 /// Log transactions (follower)
-index_t State::log(query_t const& transactions, size_t ndups) {
-  
+index_t State::logFollower(query_t const& transactions) {
+
   VPackSlice slices = transactions->slice();
-
-  TRI_ASSERT(slices.isArray());
-
   size_t nqs = slices.length();
 
-  TRI_ASSERT(nqs > ndups);
+  MUTEX_LOCKER(logLock, _logLock);
 
-  MUTEX_LOCKER(mutexLocker, _logLock);  // log entries must stay in order
-  std::string clientId;
+  // Check whether we have got a snapshot in the first position:
+  bool gotSnapshot = slices.length() > 0 &&
+                     slices[0].isObject() &&
+                     !slices[0].get("readDB").isNone();
 
-  for (size_t i = ndups; i < nqs; ++i) {
-    VPackSlice const& slice = slices[i];
+  // In case of a snapshot, there are three possibilities:
+  //   1. Our highest log index is smaller than the snapshot index, in this 
+  //      case we must throw away our complete local log and start from the
+  //      snapshot (note that snapshot indexes are always committed by a 
+  //      majority).
+  //   2. For the snapshot index we have an entry with this index in 
+  //      our log (and it is not yet compacted), in this case we verify
+  //      that the terms match and if so, we can simply ignore the
+  //      snapshot. If the term in our log entry is smaller (cannot be
+  //      larger because compaction snapshots are always committed), then
+  //      our complete log must be deleted as in 1.
+  //   3. Our highest log index is larger than the snapshot index but we
+  //      no longer have an entry in the log for the snapshot index due to
+  //      our own compaction. In this case we have compacted away the
+  //      snapshot index, therefore we know it was committed by a majority
+  //      and thus the snapshot can be ignored safely as well.
+  if (gotSnapshot) {
+    bool useSnapshot = false;   // if this remains, we ignore the snapshot
 
-    // first to disk
-    if (logNonBlocking(
-          slice.get("index").getUInt(), slice.get("query"),
-          slice.get("term").getUInt(), slice.get("clientId").copyString())==0) {
-      break;
+    index_t snapshotIndex
+        = static_cast<index_t>(slices[0].get("index").getNumber<index_t>());
+    term_t snapshotTerm
+        = static_cast<term_t>(slices[0].get("term").getNumber<index_t>());
+    index_t ourLastIndex = _log.back().index;
+    if (ourLastIndex < snapshotIndex) {
+      useSnapshot = true;   // this implies that we completely eradicate our log
+    } else {
+      try {
+        log_t logEntry = atNoLock(snapshotIndex);
+        if (logEntry.term != snapshotTerm) {  // can only be < as in 2.
+          useSnapshot = true;
+        }
+      } catch (...) {
+        // Simply ignore that we no longer have the entry, useSnapshot remains
+        // false and we will ignore the snapshot as in 3. above
+      }
     }
-
+    if (useSnapshot) {
+      // Now we must completely erase our log and compaction snapshots and
+      // start from the snapshot
+      Store snapshot(_agent, "snapshot");
+      snapshot = slices[0].get("readDB");
+      if (!storeLogFromSnapshot(snapshot, snapshotIndex, snapshotTerm)) {
+        LOG_TOPIC(FATAL, Logger::AGENCY)
+          << "Could not restore received log snapshot.";
+        FATAL_ERROR_EXIT();
+      }
+      // Now the log is empty, but this will soon be rectified.
+      _nextCompactionAfter
+        = snapshotIndex + _agent->config().compactionStepSize();
+    }
   }
 
-  return _log.empty() ? 0 : _log.back().index;
+  size_t ndups = removeConflicts(transactions, gotSnapshot);
+
+  if (nqs > ndups) {
+    VPackSlice slices = transactions->slice();
+    TRI_ASSERT(slices.isArray());
+    size_t nqs = slices.length();
+    std::string clientId;
+
+    for (size_t i = ndups; i < nqs; ++i) {
+
+      VPackSlice const& slice = slices[i];
+      // first to disk
+      if (logNonBlocking(
+            slice.get("index").getUInt(), slice.get("query"),
+            slice.get("term").getUInt(), slice.get("clientId").copyString())==0) {
+        break;
+      }
+    }
+  }
+  return _log.back().index;   // never empty
 }
 
-size_t State::removeConflicts(query_t const& transactions,
-                              bool gotSnapshot) { 
-  // Under MUTEX in Agent
+size_t State::removeConflicts(query_t const& transactions,  bool gotSnapshot) { 
+  // Under _logLock MUTEX from _log, which is the only place calling this.
   // Note that this will ignore a possible snapshot in the first position!
   // This looks through the transactions and skips over those that are
   // already present (or even already compacted). As soon as we find one
@@ -280,9 +333,9 @@ size_t State::removeConflicts(query_t const& transactions,
 
   LOG_TOPIC(TRACE, Logger::AGENCY) << "removeConflicts " << slices.toJson();
   try {
-    MUTEX_LOCKER(logLock, _logLock);
 
-    index_t lastIndex = (!_log.empty()) ? _log.back().index : 0; 
+    // _log is never empty, but for now, we leave this Vorsichtsmassnahme:
+    index_t lastIndex = _log.back().index;
 
     while (ndups < slices.length()) {
       VPackSlice slice = slices[ndups];
@@ -301,7 +354,11 @@ size_t State::removeConflicts(query_t const& transactions,
       TRI_ASSERT(pos < _log.size());
       if (idx == _log.at(pos).index && trm != _log.at(pos).term) {
         // Found an outdated entry, remove everything from here in our local
-        // log:
+        // log. Note that if a snapshot is taken at index cind, then at the
+        // entry with index cind is kept in _log to avoid it being
+        // empty. Furthermore, compacted indices are always committed by
+        // a majority, thus they will never be overwritten. This means
+        // that pos here is always a positive index.
         LOG_TOPIC(DEBUG, Logger::AGENCY)
             << "Removing " << _log.size() - pos
             << " entries from log starting with " << idx
@@ -327,7 +384,8 @@ size_t State::removeConflicts(query_t const& transactions,
                                          queryResult.details);
         }
 
-        // volatile logs
+        // volatile logs, as mentioned above, this will never make _log
+        // completely empty!
         _log.erase(_log.begin() + pos, _log.end());
             
         LOG_TOPIC(TRACE, Logger::AGENCY)
@@ -347,8 +405,8 @@ size_t State::removeConflicts(query_t const& transactions,
 }
 
 /// Get log entries from indices "start" to "end"
-std::vector<log_t> State::get(index_t start,
-                              index_t end) const {
+std::vector<log_t> State::get(index_t start, index_t end) const {
+  
   std::vector<log_t> entries;
   MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
 
@@ -356,15 +414,28 @@ std::vector<log_t> State::get(index_t start,
     return entries;
   }
 
-  if (end == (std::numeric_limits<uint64_t>::max)() || end > _log.back().index) {
+  // start must be greater than or equal to the lowest index
+  // and smaller than or equal to the largest index
+  if (start < _log[0].index) {
+    start = _log.front().index;
+  } else if (start > _log.back().index) {
+    start = _log.back().index;
+  }
+
+  // end must be greater than or equal to start
+  // and smaller than or equal to the largest index
+  if (end <= start) {
+    end = start;
+  } else if (
+    end == (std::numeric_limits<uint64_t>::max)() || end > _log.back().index) {
     end = _log.back().index;
   }
 
-  if (start < _log[0].index) {
-    start = _log[0].index;
-  }
+  // subtract offset _cur
+  start -= _cur;
+  end -= (_cur-1);
 
-  for (size_t i = start - _cur; i <= end - _cur; ++i) {
+  for (size_t i = start; i < end; ++i) {
     entries.push_back(_log[i]);
   }
 
@@ -376,8 +447,10 @@ std::vector<log_t> State::get(index_t start,
 log_t State::at(index_t index) const {
 
   MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
+  return atNoLock(index);
+}
 
-  
+log_t State::atNoLock(index_t index) const {
   if (_cur > index) {
     std::string excMessage = 
       std::string(
@@ -441,35 +514,40 @@ bool State::has(index_t index, term_t term) const {
 
 
 /// Get vector of past transaction from 'start' to 'end'
-std::vector<VPackSlice> State::slices(index_t start,
-                                      index_t end) const {
-  std::vector<VPackSlice> slices;
+VPackBuilder State::slices(index_t start,
+                           index_t end) const {
+  VPackBuilder slices;
+  slices.openArray();
+
   MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
 
-  if (_log.empty()) {
-    return slices;
-  }
+  if (!_log.empty()) {
+    if (start < _log.front().index) {  // no start specified
+      start = _log.front().index;
+    }
 
-  if (start < _log.front().index) {  // no start specified
-    start = _log.front().index;
-  }
+    if (start > _log.back().index) {  // no end specified
+      slices.close();
+      return slices;
+    }
 
-  if (start > _log.back().index) {  // no end specified
-    return slices;
-  }
+    if (end == (std::numeric_limits<uint64_t>::max)() ||
+        end > _log.back().index) {
+      end = _log.back().index;
+    }
 
-  if (end == (std::numeric_limits<uint64_t>::max)() ||
-      end > _log.back().index) {
-    end = _log.back().index;
-  }
-
-  for (size_t i = start - _cur; i <= end - _cur; ++i) {
-    try {
-      slices.push_back(VPackSlice(_log.at(i).entry->data()));
-    } catch (std::exception const&) {
-      break;
+    for (size_t i = start - _cur; i <= end - _cur; ++i) {
+      try {
+        slices.add(VPackSlice(_log.at(i).entry->data()));
+      } catch (std::exception const&) {
+        break;
+      }
     }
   }
+
+  mutexLocker.unlock();
+
+  slices.close();
 
   return slices;
 }
@@ -493,6 +571,7 @@ log_t State::lastLog() const {
 /// Configure with agent
 bool State::configure(Agent* agent) {
   _agent = agent;
+  _nextCompactionAfter = _agent->config().compactionStepSize();
   _collectionsChecked = false;
   return true;
 }
@@ -581,9 +660,9 @@ bool State::loadPersisted() {
   loadOrPersistConfiguration();
 
   if (checkCollection("log") && checkCollection("compact")) {
-      bool lc = loadCompacted();
-      bool lr = loadRemaining();
-        return (lc && lr);
+    bool lc = loadCompacted();
+    bool lr = loadRemaining();
+    return (lc && lr);
   }
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Couldn't find persisted log";
@@ -614,15 +693,15 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index,
   }
 
   VPackSlice result = queryResult.result->slice();
-
+  
   if (result.isArray()) {
     if (result.length() == 1) {
       VPackSlice i = result[0];
       VPackSlice ii = i.resolveExternals();
       try {
         store = ii.get("readDB");
-        index = std::stoul(ii.get("_key").copyString());
-        term = static_cast<term_t>(ii.get("term").getDouble());
+        index = basics::StringUtils::uint64(ii.get("_key").copyString());
+        term = ii.get("term").getNumber<uint64_t>();
         return true;
       } catch (std::exception const& e) {
         LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__
@@ -634,6 +713,11 @@ bool State::loadLastCompactedSnapshot(Store& store, index_t& index,
       term = 0;
       return true;
     }
+  } else {
+    // We should never be here! Just die!
+    LOG_TOPIC(FATAL, Logger::AGENCY)
+      << "Error retrieving last persisted compaction. The result was not an Array";
+    FATAL_ERROR_EXIT();
   }
 
   return false;
@@ -658,25 +742,22 @@ bool State::loadCompacted() {
 
   VPackSlice result = queryResult.result->slice();
 
-  if (result.isArray() && result.length()) {
-    MUTEX_LOCKER(logLock, _logLock);
-    for (auto const& i : VPackArrayIterator(result)) {
-      auto ii = i.resolveExternals();
-      buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
-      (*_agent) = ii;
-      try {
-        _cur = std::stoul(ii.get("_key").copyString());
-      } catch (std::exception const& e) {
-        LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__
-                                       << __LINE__;
-      }
-    }
-  }
+  MUTEX_LOCKER(logLock, _logLock);
 
-  // We can be sure that every compacted snapshot only contains index entries
-  // that have been written and agreed upon by an absolute majority of agents.
-  if (!_log.empty()) {
-    _agent->lastCommitted(lastLog().index);
+  if (result.isArray() && result.length()) {
+    // Result can only have length 0 or 1.
+    VPackSlice ii = result[0].resolveExternals();
+    buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
+    _agent->setPersistedState(ii);
+    try {
+      _cur = basics::StringUtils::uint64(ii.get("_key").copyString());
+      _log.clear();   // will be filled in loadRemaining
+      // Schedule next compaction:
+      _nextCompactionAfter = _cur + _agent->config().compactionStepSize();
+    } catch (std::exception const& e) {
+      LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__
+                                     << __LINE__;
+    }
   }
 
   return true;
@@ -776,40 +857,42 @@ bool State::loadRemaining() {
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
-      
+ 
   auto result = queryResult.result->slice();
 
-  {
-    MUTEX_LOCKER(logLock, _logLock);
-    if (result.isArray()) {
-      
-      _log.clear();
-      std::string clientId;
-      for (auto const& i : VPackArrayIterator(result)) {
+  MUTEX_LOCKER(logLock, _logLock);
+  if (result.isArray() && result.length() > 0) {
+    
+    TRI_ASSERT(_log.empty());  // was cleared in loadCompacted
+    std::string clientId;
+    for (auto const& i : VPackArrayIterator(result)) {
 
-        buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
+      buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
 
-        auto ii = i.resolveExternals();
-        auto req = ii.get("request");
-        tmp->append(req.startAs<char const>(), req.byteSize());
+      auto ii = i.resolveExternals();
+      auto req = ii.get("request");
+      tmp->append(req.startAs<char const>(), req.byteSize());
 
-        clientId = req.hasKey("clientId") ?
-          req.get("clientId").copyString() : std::string();
+      clientId = req.hasKey("clientId") ?
+        req.get("clientId").copyString() : std::string();
 
-        try {
-          _log.push_back(
-            log_t(std::stoi(ii.get(StaticStrings::KeyString).copyString()),
-                  static_cast<term_t>(ii.get("term").getUInt()), tmp, clientId));
-        } catch (std::exception const& e) {
-          LOG_TOPIC(ERR, Logger::AGENCY)
-            << "Failed to convert " +
-            ii.get(StaticStrings::KeyString).copyString() +
-            " to integer via std::stoi."
-            << e.what();
-        }
+      try {
+        _log.push_back(
+          log_t(
+            basics::StringUtils::uint64(
+              ii.get(StaticStrings::KeyString).copyString()),
+            ii.get("term").getNumber<uint64_t>(), tmp, clientId));
+      } catch (std::exception const& e) {
+        LOG_TOPIC(ERR, Logger::AGENCY)
+          << "Failed to convert " +
+          ii.get(StaticStrings::KeyString).copyString() +
+          " to integer."
+          << e.what();
       }
     }
-    TRI_ASSERT(!_log.empty());
+  }
+  if (_log.empty()) {
+    return false;
   }
 
   return true;
@@ -827,9 +910,23 @@ bool State::find(index_t prevIndex, term_t prevTerm) {
 /// Log compaction
 bool State::compact(index_t cind) {
   // We need to compute the state at index cind and 
-  //   cind <= _lastAppliedIndex
+  //   cind <= _commitIndex
   // and usually it is < because compactionKeepSize > 0. We start at the
   // latest compaction state and advance from there:
+  {
+    MUTEX_LOCKER(_logLocker, _logLock);
+    if (cind <= _cur) {
+      LOG_TOPIC(INFO, Logger::AGENCY)
+        << "Not compacting log at index " << cind
+        << ", because we already have a later snapshot at index " << _cur;
+      return true;
+    }
+  }
+
+  // Move next compaction index forward to avoid a compaction wakeup 
+  // whilst we are working:
+  _nextCompactionAfter += _agent->config().compactionStepSize();
+
   Store snapshot(_agent, "snapshot");
   index_t index;
   term_t term;
@@ -849,6 +946,7 @@ bool State::compact(index_t cind) {
     log_t last = at(cind);
     snapshot.applyLogEntries(logs, cind, last.term,
         false  /* do not perform callbacks */);
+
     if (!persistCompactionSnapshot(cind, last.term, snapshot)) {
       LOG_TOPIC(ERR, Logger::AGENCY)
         << "Could not persist compaction snapshot.";
@@ -862,8 +960,13 @@ bool State::compact(index_t cind) {
     compactPersisted(cind);
     removeObsolete(cind);
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to compact persisted store.";
-    LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+    if (!_agent->isStopping()) {
+      LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to compact persisted store.";
+      LOG_TOPIC(ERR, Logger::AGENCY) << e.what();
+    } else {
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Failed to compact persisted store (no problem, already in shutdown).";
+      LOG_TOPIC(INFO, Logger::AGENCY) << e.what();
+    }
   }
   return true;
 }
@@ -906,10 +1009,6 @@ bool State::compactPersisted(index_t cind) {
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
 
-  if (queryResult.code != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
-  }
-
   return true;
 }
 
@@ -936,42 +1035,6 @@ bool State::removeObsolete(index_t cind) {
     }
   }
   return true;
-}
-
-
-/// Persist the globally commited truth
-bool State::persistReadDB(index_t cind) {
-  if (checkCollection("compact")) {
-    std::stringstream i_str;
-    i_str << std::setw(20) << std::setfill('0') << cind;
-
-    Builder store;
-    { VPackObjectBuilder s(&store);
-      store.add(VPackValue("readDB"));
-      { VPackArrayBuilder a(&store);
-        _agent->readDB().dumpToBuilder(store); }
-      store.add("_key", VPackValue(i_str.str())); }
-
-    TRI_ASSERT(_vocbase != nullptr);
-    auto transactionContext =
-        std::make_shared<transaction::StandaloneContext>(_vocbase);
-    SingleCollectionTransaction trx(
-      transactionContext, "compact", AccessMode::Type::WRITE);
-
-    Result res = trx.begin();
-
-    if (!res.ok()) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-
-    auto result = trx.insert("compact", store.slice(), _options);
-    res = trx.finish(result.code);
-
-    return res.ok();
-  }
-
-  LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to persist read DB for compaction!";
-  return false;
 }
 
 /// Persist a compaction snapshot
@@ -1015,10 +1078,10 @@ bool State::persistCompactionSnapshot(index_t cind,
 /// @brief restoreLogFromSnapshot, needed in the follower, this erases the
 /// complete log and persists the given snapshot. After this operation, the
 /// log is empty and something ought to be appended to it rather quickly.
-bool State::restoreLogFromSnapshot(Store& snapshot,
+bool State::storeLogFromSnapshot(Store& snapshot,
                                    index_t index,
                                    term_t term) {
-  MUTEX_LOCKER(locker, _logLock);
+  _logLock.assertLockedByCurrentThread();
   if (!persistCompactionSnapshot(index, term, snapshot)) {
     LOG_TOPIC(ERR, Logger::AGENCY)
       << "Could not persist received log snapshot.";
@@ -1125,19 +1188,17 @@ query_t State::allLogs() const {
 }
 
 std::vector<std::vector<log_t>> State::inquire(query_t const& query) const {
-
-  std::vector<std::vector<log_t>> result;
-  MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
-
   if (!query->slice().isArray()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-        210002,
+        20001, 
         std::string("Inquiry handles a list of string clientIds: [<clientId>] ")
         + ". We got " + query->toJson());
-    return result;
   }
-
+  
+  std::vector<std::vector<log_t>> result;
   size_t pos = 0;
+  
+  MUTEX_LOCKER(mutexLocker, _logLock); // Cannot be read lock (Compaction)
   for (auto const& i : VPackArrayIterator(query->slice())) {
 
     if (!i.isString()) {
@@ -1157,16 +1218,15 @@ std::vector<std::vector<log_t>> State::inquire(query_t const& query) const {
     result.push_back(transactions);
 
     pos++;
-    
   }
 
   return result;
-  
 }
 
 // Index of last log entry
 index_t State::lastIndex() const {
   MUTEX_LOCKER(mutexLocker, _logLock); 
-  return (!_log.empty()) ? _log.back().index : 0; 
+  TRI_ASSERT(!_log.empty());
+  return _log.back().index;
 }
 

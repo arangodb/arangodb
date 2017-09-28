@@ -34,6 +34,7 @@ const ArangoCollection = arangodb.ArangoCollection;
 const ArangoError = arangodb.ArangoError;
 const db = arangodb.db;
 const errors = arangodb.errors;
+const users = require('@arangodb/users');
 const _ = require('lodash');
 
 let fixWeight = function (options) {
@@ -75,14 +76,22 @@ var isValidCollectionsParameter = function (x) {
 // / @brief find or create a collection by name
 // //////////////////////////////////////////////////////////////////////////////
 
-var findOrCreateCollectionByName = function (name, type, noCreate) {
+var findOrCreateCollectionByName = function (name, type, noCreate, options) {
   let col = db._collection(name);
   let res = false;
   if (col === null && !noCreate) {
     if (type === ArangoCollection.TYPE_DOCUMENT) {
-      col = db._create(name);
+      if (options) {
+        col = db._create(name, options);
+      } else {
+        col = db._create(name);
+      }
     } else {
-      col = db._createEdgeCollection(name);
+      if (options) {
+        col = db._createEdgeCollection(name, options);
+      } else {
+        col = db._createEdgeCollection(name);
+      }
     }
     res = true;
   } else if (!(col instanceof ArangoCollection)) {
@@ -103,7 +112,7 @@ var findOrCreateCollectionByName = function (name, type, noCreate) {
 // / @brief find or create a collection by name
 // //////////////////////////////////////////////////////////////////////////////
 
-var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCreate) {
+var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCreate, options) {
   let vertexCollections = {};
   let edgeCollections = {};
   edgeDefinitions.forEach(function (e) {
@@ -119,15 +128,15 @@ var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCrea
     }
 
     e.from.forEach(function (v) {
-      findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT, noCreate);
+      findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT, noCreate, options);
       vertexCollections[v] = db[v];
     });
     e.to.forEach(function (v) {
-      findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT, noCreate);
+      findOrCreateCollectionByName(v, ArangoCollection.TYPE_DOCUMENT, noCreate, options);
       vertexCollections[v] = db[v];
     });
 
-    findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE, noCreate);
+    findOrCreateCollectionByName(e.collection, ArangoCollection.TYPE_EDGE, noCreate, options);
     edgeCollections[e.collection] = db[e.collection];
   });
   return [
@@ -562,6 +571,25 @@ var updateBindCollections = function (graph) {
   bindVertexCollections(graph, graph.__orphanCollections);
 };
 
+var checkRWPermission = function (c) {
+  if (!users.isAuthActive()) {
+    return;
+  }
+
+  let user = users.currentUser();
+  if (user) {
+    let p = users.permission(user, db._name(), c);
+    //print(`${user}: ${db._name()}/${c} = ${p}`);
+    if (p !== 'rw') {
+      //print(`Denied ${user} access to ${db._name()}/${c}`);
+      var err = new ArangoError();
+      err.errorNum = arangodb.errors.ERROR_FORBIDDEN.code;
+      err.errorMessage = arangodb.errors.ERROR_FORBIDDEN.message;
+      throw err;
+    }
+  }
+};
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief internal function for editing edge definitions
 // //////////////////////////////////////////////////////////////////////////////
@@ -642,6 +670,7 @@ var changeEdgeDefinitionsForGraph = function (graph, edgeDefinition, newCollecti
 
 var checkIfMayBeDropped = function (colName, graphName, graphs) {
   var result = true;
+
   graphs.forEach(
     function (graph) {
       if (result === false) {
@@ -685,7 +714,6 @@ class Graph {
   constructor (info) {
     // We assume well-formedness of the input.
     // User cannot directly call this constructor.
-
     let vertexCollections = {};
     let edgeCollections = {};
 
@@ -721,6 +749,11 @@ class Graph {
     createHiddenProperty(this, '__id', info._id);
     createHiddenProperty(this, '__rev', info._rev);
     createHiddenProperty(this, '__orphanCollections', info.orphanCollections || []);
+
+    if (info.numberOfShards) {
+      createHiddenProperty(this, '__numberOfShards', info.numberOfShards);
+    }
+    createHiddenProperty(this, '__replicationFactor', info.replicationFactor || 1);
 
     // Create Hidden Functions
     createHiddenProperty(this, '__updateBindCollections', updateBindCollections);
@@ -1630,6 +1663,9 @@ class Graph {
       err.errorMessage = arangodb.errors.ERROR_GRAPH_EDGE_COLLECTION_NOT_USED.message;
       throw err;
     }
+    if (dropCollection) {
+      checkRWPermission(edgeCollection);
+    }
 
     let edgeDefinitions = this.__edgeDefinitions;
     let self = this;
@@ -1733,6 +1769,7 @@ class Graph {
       err.errorMessage = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.message;
       throw err;
     }
+
     var index = this.__orphanCollections.indexOf(vertexCollectionName);
     if (index === -1) {
       err = new ArangoError();
@@ -1740,6 +1777,11 @@ class Graph {
       err.errorMessage = arangodb.errors.ERROR_GRAPH_NOT_IN_ORPHAN_COLLECTION.message;
       throw err;
     }
+
+    if (dropCollection) {
+      checkRWPermission(vertexCollectionName);
+    }
+
     this.__orphanCollections.splice(index, 1);
     delete this[vertexCollectionName];
     db._graphs.update(this.__name, {orphanCollections: this.__orphanCollections});
@@ -1757,7 +1799,7 @@ class Graph {
 // / @brief was docuBlock JSF_general_graph_connectingEdges
 // //////////////////////////////////////////////////////////////////////////////
 
-  _connectingEdges (vertexExample1, vertexExample2, options) {
+  _getConnectingEdges (vertexExample1, vertexExample2, options) {
     options = options || {};
     if (options.vertex1CollectionRestriction) {
       if (!Array.isArray(options.vertex1CollectionRestriction)) {
@@ -1933,6 +1975,7 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
   if (!Array.isArray(orphanCollections)) {
     orphanCollections = [];
   }
+  options = options || {};
   let gdb = getGraphCollection();
   let graphAlreadyExists = true;
   if (!graphName) {
@@ -2004,10 +2047,10 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
   }
 
   db._flushCache();
-  let collections = findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions, false);
+  let collections = findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions, false, options);
   orphanCollections.forEach(
     (oC) => {
-      findOrCreateCollectionByName(oC, ArangoCollection.TYPE_DOCUMENT);
+      findOrCreateCollectionByName(oC, ArangoCollection.TYPE_DOCUMENT, false, options);
     }
   );
 
@@ -2022,7 +2065,9 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
   var data = gdb.save({
     'orphanCollections': orphanCollections,
     'edgeDefinitions': edgeDefinitions,
-    '_key': graphName
+    '_key': graphName,
+    'numberOfShards': options.numberOfShards || 1,
+    'replicationFactor': options.replicationFactor || 1
   }, options);
   data.orphanCollections = orphanCollections;
   data.edgeDefinitions = edgeDefinitions;
@@ -2044,26 +2089,26 @@ exports._drop = function (graphId, dropCollections) {
     throw err;
   }
 
+  checkRWPermission("_graphs");
   var graph = gdb.document(graphId);
-
   if (dropCollections === true) {
     graphs = exports._listObjects();
     // Here we collect all collections
     // that are leading for distribution
-    var initialCollections = new Set();
+    let leaderCollections = new Set();
+    let followerCollections = new Set();
     let dropColCB = (name) => {
       if (checkIfMayBeDropped(name, graph._key, graphs)) {
-        try {
-          let colObj = db[name];
-          if (colObj !== undefined) {
-            // If it is undefined the collection is gone already
-            if (colObj.properties().distributeShardsLike !== undefined) {
-              db._drop(name);
-            } else {
-              initialCollections.add(name);
-            }
+        checkRWPermission(name);
+        let colObj = db[name];
+        if (colObj !== undefined) {
+          // If it is undefined the collection is gone already
+          if (colObj.properties().distributeShardsLike === undefined) {
+            leaderCollections.add(name);
+          } else {
+            followerCollections.add(name);
           }
-        } catch (ignore) {}
+        }
       }
     };
     // drop orphans
@@ -2082,13 +2127,15 @@ exports._drop = function (graphId, dropCollections) {
         to.forEach(dropColCB);
       }
     );
-    for (let c of initialCollections) {
+    let dropColl = (c) => {
       try {
         db._drop(c);
       } catch (e) {
-        console.error("Failed to Drop: '" + c + "' reason: " + e.message);
+        internal.print("Failed to Drop: '" + c + "' reason: " + e.message);
       }
-    }
+    };
+    followerCollections.forEach(dropColl);
+    leaderCollections.forEach(dropColl);
   }
 
   gdb.remove(graphId);

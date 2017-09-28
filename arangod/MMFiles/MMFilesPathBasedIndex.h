@@ -29,6 +29,8 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
+#include <velocypack/Builder.h>
+
 namespace arangodb {
 namespace aql {
 enum AstNodeType : uint32_t;
@@ -47,6 +49,11 @@ class MMFilesPathBasedIndex : public Index {
   ~MMFilesPathBasedIndex();
 
  public:
+  void toVelocyPackFigures(arangodb::velocypack::Builder&) const override;
+
+  void toVelocyPack(arangodb::velocypack::Builder& builder,
+                    bool withFigures,
+                    bool forPersistence) const override;
 
   /// @brief return the attribute paths
   std::vector<std::vector<std::string>> const& paths()
@@ -61,7 +68,7 @@ class MMFilesPathBasedIndex : public Index {
   }
 
   bool implicitlyUnique() const override;
-  int load() override { return 0; }
+  void load() override {}
 
  protected:
   /// @brief helper function to insert a document into any index type
@@ -94,6 +101,9 @@ class MMFilesPathBasedIndex : public Index {
 
   /// @brief ... and which of them expands
   std::vector<int> _expanding;
+
+  /// @brief whether or not array indexes will de-duplicate their input values
+  bool _deduplicate;
 
   /// @brief whether or not at least one attribute is expanded
   bool _useExpansion;

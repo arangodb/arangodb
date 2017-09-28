@@ -28,6 +28,21 @@ Whether or not this option is specified, the server will always perform a
 version check on startup. Running the server with a non-matching version number
 in the VERSION file will make the server refuse to start.
 
+### Storage Engine
+As of ArangoDB 3.2 two storage engines are supported. The "traditional"
+engine is called `MMFiles`, which is also the default storage engine.
+
+An alternative engine based on [RocksDB](http://rocksdb.org) is also provided and
+can be turned on manually.
+
+One storage engine type is supported per server per installation. 
+Live switching of storage engines on already installed systems isn't supported.
+Configuring the wrong engine (not matching the previously used one) will result
+in the server refusing to start. You may however use `auto` to let ArangoDB choose 
+the previously used one. 
+
+
+`--server.storage-engine [auto|mmfiles|rocksdb]`
 
 ### Daemon
 
@@ -126,6 +141,19 @@ This parameter is related to the parameter uid.
 The name of the process ID file to use when running the server as a
 daemon. This parameter must be specified if either the flag *daemon* or
 *supervisor* is set.
+
+### Check max memory mappings
+
+`--server.check-max-memory-mappings` can be used on Linux to make arangod 
+check the number of memory mappings currently used by the process (as reported in
+*/proc/<pid>/maps*) and compare it with the maximum number of allowed mappings as 
+determined by */proc/sys/vm/max_map_count*. If the current number of memory
+mappings gets near the maximum allowed value, arangod will log a warning
+and disallow the creation of further V8 contexts temporarily until the current
+number of mappings goes down again. 
+
+If the option is set to false, no such checks will be performed. All non-Linux
+operating systems do not provide this option and will ignore it.
 
 
 ### Console
@@ -366,6 +394,17 @@ default. Tracking of queries can be disabled by setting the option to *false*.
 The default is *true*.
 
 
+### Enable/disable tracking of bind variables in AQL queries 
+
+`--query.tracking-with-bindvars flag`
+
+If *true*, then the bind variables will be tracked for all running and slow
+AQL queries. This option only has an effect if `--query.tracking` was set to
+*true*. Tracking of bind variables can be disabled by setting the option to *false*.
+
+The default is *true*.
+
+
 ### Threshold for slow AQL queries
 
 `--query.slow-threshold value`
@@ -430,6 +469,19 @@ This option only has an effect if the query cache mode is set to either *on* or
 *demand*.
 
 
+### JavaScript code execution
+
+`--javascript.allow-admin-execute`
+
+This option can be used to control whether user-defined JavaScript code
+is allowed to be executed on server by sending via HTTP to the API endpoint
+`/_admin/execute`  with an authenticated user account. 
+The default value is *false*, which disables the execution of user-defined
+code. This is also the recommended setting for production. In test environments,
+it may be convenient to turn the option on in order to send arbitrary setup
+or teardown commands for execution on the server.
+
+
 ### V8 contexts
 
 `--javascript.v8-contexts number`
@@ -457,6 +509,23 @@ value, but it may go up as high as specified via the option `--javascript.v8-con
 When there are unused V8 contexts that linger around and the number of V8 contexts
 is greater than `--javascript.v8-contexts-minimum` the server's garbage collector 
 thread will automatically delete them.
+ 
+  
+`--javascript.v8-contexts-max-invocations`
+
+Specifies the maximum number of invocations after which a used V8 context is 
+disposed. The default value of `--javascript.v8-contexts-max-invocations` is 0, 
+meaning that the maximum number of invocations per context is unlimited. 
+
+`--javascript.v8-contexts-max-age`
+
+Specifies the time duration (in seconds) after which time a V8 context is disposed 
+automatically after its creation. If the time is elapsed, the context will be disposed.
+The default value for `--javascript.v8-contexts-max-age` is 60 seconds.
+
+If both `--javascript.v8-contexts-max-invocations` and `--javascript.v8-contexts-max-age`
+are set, then the context will be destroyed when either of the specified threshold 
+values is reached.
 
 
 ### Garbage collection frequency (time-based)

@@ -57,12 +57,12 @@ class ArrayIterator {
         _current(other._current) {}
 
   ArrayIterator& operator=(ArrayIterator const& other) = delete;
-  ArrayIterator& operator=(ArrayIterator && other) = default;
+  ArrayIterator& operator=(ArrayIterator&& other) = default;
 
   // prefix ++
   ArrayIterator& operator++() {
     ++_position;
-    if (_position <= _size && _current != nullptr) {
+    if (_position < _size && _current != nullptr) {
       _current += Slice(_current).byteSize();
     } else {
       _current = nullptr;
@@ -157,6 +157,7 @@ class ArrayIterator {
     _current = nullptr;
     if (_size > 0) {
       auto h = _slice.head();
+      VELOCYPACK_ASSERT(h != 0x01); // no empty array allowed here
       if (h == 0x13) {
         _current = _slice.at(0).start();
       } else {
@@ -194,6 +195,7 @@ class ObjectIterator {
 
     if (_size > 0) {
       auto h = slice.head();
+      VELOCYPACK_ASSERT(h != 0x0a); // no empty object allowed here
       if (h == 0x14) {
         _current = slice.keyAt(0, false).start();
       } else if (useSequentialIteration) {
@@ -210,12 +212,12 @@ class ObjectIterator {
         _useSequentialIteration(other._useSequentialIteration) {}
 
   ObjectIterator& operator=(ObjectIterator const& other) = delete;
-  ObjectIterator& operator=(ObjectIterator && other) = default;
+  ObjectIterator& operator=(ObjectIterator&& other) = default;
 
   // prefix ++
   ObjectIterator& operator++() {
     ++_position;
-    if (_position <= _size && _current != nullptr) {
+    if (_position < _size && _current != nullptr) {
       // skip over key
       _current += Slice(_current).byteSize();
       // skip over value

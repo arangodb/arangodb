@@ -228,7 +228,7 @@ void SupervisorFeature::daemonize() {
           // give information about cause of death
           if (WEXITSTATUS(status) == 0) {
             LOG_TOPIC(INFO, Logger::STARTUP) << "child process " << _clientPid
-                                             << " died of natural causes. " << noRestartMessage;
+                                             << " terminated normally. " << noRestartMessage;
 
             done = true;
             horrible = false;
@@ -237,16 +237,17 @@ void SupervisorFeature::daemonize() {
 
             if (t < MIN_TIME_ALIVE_IN_SEC) {
               LOG_TOPIC(ERR, Logger::STARTUP)
-                    << "child process " << _clientPid << " died a horrible death, exit status"
+                    << "child process " << _clientPid << " terminated unexpectedly, exit status "
                     << WEXITSTATUS(status) << ". the child process only survived for " << t
                     << " seconds. this is lower than the minimum threshold value of " << MIN_TIME_ALIVE_IN_SEC
                     << " s. " << noRestartMessage << ". " << fixErrorMessage;
 
+              TRI_ASSERT(horrible);
               done = true;
             } else {
               LOG_TOPIC(ERR, Logger::STARTUP)
                   << "child process " << _clientPid
-                  << " died a horrible death, exit status " << WEXITSTATUS(status)
+                  << " terminated unexpectedly, exit status " << WEXITSTATUS(status)
                   << ". " << restartMessage;
 
               done = false;
@@ -260,7 +261,7 @@ void SupervisorFeature::daemonize() {
             case 15: // SIGTERM
               LOG_TOPIC(INFO, Logger::STARTUP)
                   << "child process " << _clientPid
-                  << " died of natural causes, exit status " << s
+                  << " terminated normally, exit status " << s
                   << " (" << translateSignal(s) << "). " << noRestartMessage;
 
               done = true;
@@ -273,7 +274,7 @@ void SupervisorFeature::daemonize() {
 
               if (t < MIN_TIME_ALIVE_IN_SEC) {
                 LOG_TOPIC(ERR, Logger::STARTUP)
-                    << "child process " << _clientPid << " died a horrible death, signal "
+                    << "child process " << _clientPid << " terminated unexpectedly, signal "
                     << s << " (" << translateSignal(s) << "). the child process only survived for " << t
                     << " seconds. this is lower than the minimum threshold value of " << MIN_TIME_ALIVE_IN_SEC
                     << " s. " << noRestartMessage << ". " << fixErrorMessage;
@@ -289,7 +290,7 @@ void SupervisorFeature::daemonize() {
 #endif
               } else {
                 LOG_TOPIC(ERR, Logger::STARTUP) << "child process " << _clientPid
-                                                << " died a horrible death, signal "
+                                                << " terminated unexpectedly, signal "
                                                 << s << " (" << translateSignal(s) << "). "
                                                 << restartMessage;
 
@@ -301,7 +302,7 @@ void SupervisorFeature::daemonize() {
         } else {
           LOG_TOPIC(ERR, Logger::STARTUP)
               << "child process " << _clientPid
-              << " died a horrible death, unknown cause. " << restartMessage;
+              << " terminated unexpectedly, unknown cause. " << restartMessage;
           
           done = false;
         }
@@ -337,8 +338,8 @@ void SupervisorFeature::daemonize() {
       return;
     }
   }
-    
-  LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor mode: finished";
+
+  LOG_TOPIC(DEBUG, Logger::STARTUP) << "supervisor mode: finished (exit " << result << ")";
 
   Logger::flush();
   Logger::shutdown();

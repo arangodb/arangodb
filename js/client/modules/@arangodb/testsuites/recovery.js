@@ -34,6 +34,7 @@ const optionsDocumentation = [
 const fs = require('fs');
 const pu = require('@arangodb/process-utils');
 const tu = require('@arangodb/test-utils');
+const _ = require('lodash');
 
 const toArgv = require('internal').toArgv;
 
@@ -44,19 +45,26 @@ const RESET = require('internal').COLORS.COLOR_RESET;
 // / @brief TEST: recovery
 // //////////////////////////////////////////////////////////////////////////////
 
-function runArangodRecovery (instanceInfo, options, script, setup) {
-  if (!instanceInfo.tmpDataDir) {
-    let td = fs.join(fs.getTempFile(), 'data');
-    fs.makeDirectoryRecursive(td);
-
-    instanceInfo.tmpDataDir = td;
-  }
-
+function runArangodRecovery (instanceInfo, options, script, setup, count) {
   if (!instanceInfo.recoveryArgs) {
-    let args = pu.makeArgs.arangod(options);
+    let tempDir = fs.getTempPath();
+    let td = fs.join(tempDir, `${count}`);
+    if (setup) {
+      pu.cleanupDBDirectoriesAppend(td);
+    }
+    td = fs.join(td, 'data');
+    fs.makeDirectoryRecursive(td);
+    instanceInfo.tmpDataDir = td;
+
+    let appDir = fs.join(td, 'app');
+    fs.makeDirectoryRecursive(appDir);
+    let tmpDir = fs.join(td, 'tmp');
+    fs.makeDirectoryRecursive(tmpDir);
+
+    let args = pu.makeArgs.arangod(options, appDir, '', tmpDir);
     args['server.threads'] = 1;
     args['wal.reserve-logfiles'] = 1;
-    args['database.directory'] = instanceInfo.tmpDataDir;
+    args['database.directory'] = instanceInfo.tmpDataDir + '/db';
 
     instanceInfo.recoveryArgv = toArgv(args).concat(['--server.rest-server', 'false']);
   }
@@ -65,12 +73,10 @@ function runArangodRecovery (instanceInfo, options, script, setup) {
 
   if (setup) {
     argv = argv.concat([
-      '--log.level', 'fatal',
       '--javascript.script-parameter', 'setup'
     ]);
   } else {
     argv = argv.concat([
-      '--log.level', 'info',
       '--wal.ignore-logfile-errors', 'true',
       '--javascript.script-parameter', 'recovery'
     ]);
@@ -113,21 +119,26 @@ function recovery (options) {
   let recoveryTests = tu.scanTestPath('js/server/tests/recovery');
   let count = 0;
 
+  let orgTmp = process.env.TMPDIR;
+  let tempDir = fs.join(fs.getTempPath(), 'crashtmp');
+  fs.makeDirectoryRecursive(tempDir);
+  process.env.TMPDIR = tempDir;
+  pu.cleanupDBDirectoriesAppend(tempDir);
+
   for (let i = 0; i < recoveryTests.length; ++i) {
     let test = recoveryTests[i];
     let filtered = {};
+    let localOptions = _.cloneDeep(options);
 
-    if (tu.filterTestcaseByOptions(test, options, filtered)) {
+    if (tu.filterTestcaseByOptions(test, localOptions, filtered)) {
       let instanceInfo = {};
       count += 1;
 
-      runArangodRecovery(instanceInfo, options, test, true);
+      runArangodRecovery(instanceInfo, localOptions, test, true, count);
 
-      runArangodRecovery(instanceInfo, options, test, false);
+      runArangodRecovery(instanceInfo, localOptions, test, false, count);
 
-      if (instanceInfo.tmpDataDir) {
-        fs.removeDirectoryRecursive(instanceInfo.tmpDataDir, true);
-      }
+      pu.cleanupLastDirectory(localOptions);
 
       results[test] = instanceInfo.pid;
 
@@ -140,7 +151,7 @@ function recovery (options) {
       }
     }
   }
-
+  process.env.TMPDIR = orgTmp;
   if (count === 0) {
     results['ALLTESTS'] = {
       status: false,

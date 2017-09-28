@@ -35,8 +35,11 @@ void SocketUnixDomain::asyncWrite(boost::asio::mutable_buffers_1 const& buffer, 
 size_t SocketUnixDomain::read(boost::asio::mutable_buffers_1 const& buffer, boost::system::error_code& ec) {
   return socketcommon::doRead(_socket, buffer, ec);
 }
-void SocketUnixDomain::shutdownReceive() {
-  _socket.shutdown(boost::asio::local::stream_protocol::socket::shutdown_receive);
+std::size_t SocketUnixDomain::available(boost::system::error_code& ec) {
+  return _socket.available(ec);
+}
+void SocketUnixDomain::asyncRead(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) {
+  return socketcommon::doAsyncRead(_socket, buffer, handler);
 }
 void SocketUnixDomain::shutdownReceive(boost::system::error_code& ec) {
   _socket.shutdown(boost::asio::local::stream_protocol::socket::shutdown_receive, ec);
@@ -44,9 +47,12 @@ void SocketUnixDomain::shutdownReceive(boost::system::error_code& ec) {
 void SocketUnixDomain::shutdownSend(boost::system::error_code& ec) {
   _socket.shutdown(boost::asio::local::stream_protocol::socket::shutdown_send, ec);
 }
-std::size_t SocketUnixDomain::available(boost::system::error_code& ec) {
-  return _socket.available(ec);
-}
-void SocketUnixDomain::asyncRead(boost::asio::mutable_buffers_1 const& buffer, AsyncHandler const& handler) {
-  return socketcommon::doAsyncRead(_socket, buffer, handler);
+void SocketUnixDomain::close(boost::system::error_code& ec) {
+  if (_socket.is_open()) {
+    _socket.close(ec); 
+    if (ec && ec != boost::asio::error::not_connected) {
+      LOG_TOPIC(DEBUG, Logger::COMMUNICATION)
+          << "closing socket failed with: " << ec.message();
+    }
+  }
 }

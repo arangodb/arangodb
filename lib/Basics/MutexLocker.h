@@ -59,7 +59,7 @@ class MutexLocker {
 
  public:
   /// @brief acquires a mutex
-  /// The constructor acquires a read lock, the destructor unlocks the mutex.
+  /// The constructor acquires the mutex, the destructor unlocks the mutex.
   MutexLocker(LockType* mutex, LockerType type, bool condition, char const* file, int line)
       : _mutex(mutex), _file(file), _line(line), 
 #ifdef TRI_SHOW_LOCK_TIME
@@ -132,8 +132,8 @@ class MutexLocker {
   /// @brief unlocks the mutex if we own it
   bool unlock() {
     if (_isLocked) {
-      _mutex->unlock();
       _isLocked = false;
+      _mutex->unlock();
       return true;
     }
     return false;

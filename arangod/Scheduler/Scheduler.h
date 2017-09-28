@@ -30,10 +30,8 @@
 #include <boost/asio/steady_timer.hpp>
 
 #include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
 #include "Basics/asio-helper.h"
 #include "Basics/socket-utils.h"
-#include "Logger/Logger.h"
 #include "Scheduler/EventLoop.h"
 #include "Scheduler/Job.h"
 
@@ -76,17 +74,22 @@ class Scheduler {
   void post(std::function<void()> callback);
 
   bool start(basics::ConditionVariable*);
-  bool isRunning() { return _nrRunning.load() > 0; }
+  bool isRunning() const { return numRunning(_counters) > 0; }
 
   void beginShutdown();
-  bool isStopping() { return _stopping; }
+  void stopRebalancer() noexcept;
+  bool isStopping() { return (_counters & (1ULL << 63)) != 0; }
   void shutdown();
 
- private:
-  static void initializeSignalHandlers();
-
  public:
-  bool shouldStopThread() const;
+  // decrements the nrRunning counter for the thread
+  void stopThread();
+
+  // check if the current thread should be stopped
+  // returns true if yes, otherwise false. when the function returns
+  // true, it has already decremented the nrRunning counter!
+  bool stopThreadIfTooMany(double now);
+
   bool shouldQueueMore() const;
   bool hasQueueCapacity() const;
 
@@ -94,23 +97,47 @@ class Scheduler {
 
   uint64_t minimum() const { return _nrMinimum; }
 
-  uint64_t incRunning() { return ++_nrRunning; }
-  uint64_t decRunning() { return --_nrRunning; }
-
   std::string infoStatus();
 
+  inline void queueJob() noexcept { ++_nrQueued; } 
+  inline void unqueueJob() noexcept { 
+    if (--_nrQueued == UINT64_MAX) {
+      TRI_ASSERT(false);
+    }
+  }
+ 
+ private:
   void startNewThread();
-  void threadDone(Thread*);
-  void deleteOldThreads();
-  
-  void stopRebalancer() noexcept;
+ 
+  static void initializeSignalHandlers();
 
  private:
-  void workThread() { ++_nrWorking; }
-  void unworkThread() { --_nrWorking; }
+  // we store most of the threads status info in a single atomic uint64_t
+  // the encoding of the values inside this variable is (left to right means
+  // high to low bytes):
+  // 
+  //   AA BB CC DD
+  // 
+  // we use the lowest 2 bytes (DD) to store the number of running threads
+  // the next lowest bytes (CC) are used to store the number of currently working threads
+  // the next bytes (BB) are used to store the number of currently blocked threads
+  // the highest bytes (AA) are used only to encode a stopping bit. when this bit is
+  // set, the scheduler is stopping (or already stopped)
+  inline void setStopping() noexcept { _counters |= (1ULL << 63); }
 
-  void blockThread() { ++_nrBlocked; }
-  void unblockThread() { --_nrBlocked; }
+  inline void incRunning() noexcept { _counters += 1ULL << 0; }
+  inline void decRunning() noexcept { _counters -= 1ULL << 0; }
+
+  inline void workThread() noexcept { _counters += 1ULL << 16; } 
+  inline void unworkThread() noexcept { _counters -= 1ULL << 16; }
+
+  inline void blockThread() noexcept { _counters += 1ULL << 32; }
+  inline void unblockThread() noexcept { _counters -= 1ULL << 32; }
+
+  inline uint64_t numRunning(uint64_t value) const noexcept { return value & 0xFFFFULL; }
+  inline uint64_t numWorking(uint64_t value) const noexcept { return (value >> 16) & 0xFFFFULL; }
+  inline uint64_t numBlocked(uint64_t value) const noexcept { return (value >> 32) & 0xFFFFULL; }
+  inline bool isStopping(uint64_t value) const noexcept { return (value & (1ULL << 63)) != 0; }
 
   void startIoService();
   void startRebalancer();
@@ -118,32 +145,21 @@ class Scheduler {
   void rebalanceThreads();
 
  private:
-  std::atomic<bool> _stopping;
-
   // maximal number of outstanding user requests
   uint64_t const _maxQueueSize;
 
   // minimum number of running SchedulerThreads
   uint64_t const _nrMinimum;
 
-  // desired number of running SchedulerThreads
-  uint64_t const _nrDesired;
-
   // maximal number of outstanding user requests
   uint64_t const _nrMaximum;
 
-  // number of jobs currently been worked on
-  // use signed values just in case we have an underflow
-  std::atomic<uint64_t> _nrWorking;
+  // current counters. refer to the above description of the 
+  // meaning of its individual bits
+  std::atomic<uint64_t> _counters;
 
   // number of jobs that are currently been queued, but not worked on
   std::atomic<uint64_t> _nrQueued;
-
-  // number of jobs that entered a potentially blocking situation
-  std::atomic<uint64_t> _nrBlocked;
-
-  // number of SchedulerThread that are running
-  std::atomic<uint64_t> _nrRunning;
 
   std::unique_ptr<JobQueue> _jobQueue;
 
@@ -156,9 +172,8 @@ class Scheduler {
   std::unique_ptr<boost::asio::steady_timer> _threadManager;
   std::function<void(const boost::system::error_code&)> _threadHandler;
 
-  Mutex _threadsLock;
-  std::unordered_set<Thread*> _threads;
-  std::unordered_set<Thread*> _deadThreads;
+  mutable Mutex _threadCreateLock;
+  double _lastAllBusyStamp;
 };
 }
 }

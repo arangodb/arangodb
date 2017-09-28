@@ -24,10 +24,14 @@
 #include "TraversalConditionFinder.h"
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
 #include "Aql/Quantifier.h"
+#include "Aql/Query.h"
 #include "Aql/TraversalNode.h"
+#include "Graph/TraverserOptions.h"
 
 using namespace arangodb::aql;
+using namespace arangodb::basics;
 using EN = arangodb::aql::ExecutionNode;
 
 static AstNodeType BuildSingleComparatorType (AstNode const* condition) {
@@ -217,7 +221,9 @@ static bool IsSupportedNode(Variable const* pathVar, AstNode const* node) {
 static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
                                             size_t testIndex, TraversalNode* tn,
                                             Variable const* pathVar,
-                                            bool& conditionIsImpossible) {
+                                            bool& conditionIsImpossible,
+                                            size_t& swappedIndex,
+                                            int64_t& indexedAccessDepth) {
   AstNode* node = parent->getMemberUnchecked(testIndex);
   if (!IsSupportedNode(pathVar, node)) {
     return false;
@@ -255,7 +261,8 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
   };
 
   auto searchPattern = [&patternStep, &isEdge, &depth, &pathVar, &notSupported,
-                        &parentOfReplace, &replaceIdx](AstNode* node, void* unused) -> AstNode* {
+                        &parentOfReplace, &replaceIdx,
+                        &indexedAccessDepth](AstNode* node, void* unused) -> AstNode* {
     if (notSupported) {
       // Short circuit, this condition cannot be fulfilled.
       return node;
@@ -320,6 +327,16 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
           // Search for the parent having this node.
           patternStep = 6;
           parentOfReplace = node;
+          
+          // we need to know the depth at which a filter condition will
+          // access a path. Otherwise there are too many results
+          TRI_ASSERT(node->numMembers() == 2);
+          AstNode* indexVal = node->getMemberUnchecked(1);
+          if (indexVal->isIntValue()) {
+            indexedAccessDepth = indexVal->getIntValue() + (isEdge?1:0);
+          } else { // should cause the caller to not remove a filter
+            indexedAccessDepth = INT64_MAX;
+          }
           return node;
         }
         if (node->type == NODE_TYPE_EXPANSION) {
@@ -401,7 +418,7 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
     if (patternStep == 5) {
       // The first item is direct child of the parent.
       // Use parent to replace
-      // This is only the case on Expansion beeing
+      // This is only the case on Expansion being
       // the node we have to replace.
       TRI_ASSERT(parentOfReplace->type == NODE_TYPE_EXPANSION);
       if (parentOfReplace != node->getMemberUnchecked(0)) {
@@ -424,9 +441,13 @@ static bool checkPathVariableAccessFeasible(Ast* ast, AstNode* parent,
       }
       patternStep++;
     }
+    if (patternStep == 7) {
+      swappedIndex = i;
+      patternStep++;
+    }
   }
 
-  if (patternStep < 7) {
+  if (patternStep < 8) {
     // We found sth. that is not matching the pattern complete.
     // => Do not optimize
     return false;
@@ -532,7 +553,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
         // No condition, no optimize
         break;
       }
-
+      auto options = static_cast<traverser::TraverserOptions*>(node->options());
       auto const& varsValidInTraversal = node->getVarsValid();
 
       bool conditionIsImpossible = false;
@@ -566,7 +587,8 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       TRI_ASSERT(andNode->type == NODE_TYPE_OPERATOR_NARY_AND);
 
       std::unordered_set<Variable const*> varsUsedByCondition;
-
+      
+      auto originalFilterConditions = std::make_unique<Condition>(_plan->getAst());
       for (size_t i = andNode->numMembers(); i > 0; --i) {
         // Whenever we do not support a of the condition we have to throw it out
 
@@ -604,10 +626,16 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
           continue;
         }
 
+        AstNode* cloned = andNode->getMember(i - 1)->clone(_plan->getAst());
+        int64_t indexedAccessDepth = -1;
+        
+        size_t swappedIndex = 0;
         // If we get here we can optimize this condition
         if (!checkPathVariableAccessFeasible(_plan->getAst(), andNode, i - 1,
                                              node, pathVar,
-                                             conditionIsImpossible)) {
+                                             conditionIsImpossible,
+                                             swappedIndex,
+                                             indexedAccessDepth)) {
           andNode->removeMemberUnchecked(i - 1);
           if (conditionIsImpossible) {
             // If we get here we cannot fulfill the condition
@@ -615,6 +643,25 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
             andNode->clearMembers();
             break;
           }
+
+        } else {
+          TRI_ASSERT(!conditionIsImpossible);
+          
+          // remember the original filter conditions if we can remove them later
+          if (indexedAccessDepth == -1) {
+            originalFilterConditions->andCombine(cloned);
+          } else if ((uint64_t)indexedAccessDepth <= options->maxDepth) {
+            // if we had an  index access then indexedAccessDepth
+            // is in [0..maxDepth], if the depth is not a concrete value
+            // then indexedAccessDepth would be INT64_MAX
+            originalFilterConditions->andCombine(cloned);
+            
+            if ((int64_t)options->minDepth < indexedAccessDepth && !isTrueOnNull(cloned, pathVar)) {
+              // do not return paths shorter than the deepest path access
+              // Unless the condition evaluates to true on `null`.
+              options->minDepth = indexedAccessDepth;
+            }
+          } // otherwise do not remove the filter statement
         }
       }
 
@@ -650,7 +697,9 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       }
 
       if (!isEmpty) {
-        node->setCondition(_condition.release());
+        //node->setCondition(_condition.release());
+        originalFilterConditions->normalize();
+        node->setCondition(originalFilterConditions.release());
         // We restart here with an empty condition.
         // All Filters that have been collected thus far
         // depend on sth issued by this traverser or later
@@ -666,4 +715,42 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
 
 bool TraversalConditionFinder::enterSubquery(ExecutionNode*, ExecutionNode*) {
   return false;
+}
+
+bool TraversalConditionFinder::isTrueOnNull(AstNode* node, Variable const* pathVar) const {
+  std::unordered_set<Variable const*> vars;
+  Ast::getReferencedVariables(node, vars);
+  if (vars.size() > 1) {
+    // More then one variable.
+    // Too complex, would require to figure out all
+    // possible values for all others vars and play them through
+    // Do not opt.
+    return false;
+  }
+  TRI_ASSERT(vars.size() == 1);
+  TRI_ASSERT(vars.find(pathVar) != vars.end());
+
+  TRI_ASSERT(_plan->getAst() != nullptr);
+
+  bool mustDestroy = false;
+  Expression tmpExp(_plan, _plan->getAst(), node);
+
+  TRI_ASSERT(_plan->getAst()->query() != nullptr);
+  auto trx = _plan->getAst()->query()->trx();
+  TRI_ASSERT(trx != nullptr);
+
+  auto ctxt = std::make_unique<FixedVarExpressionContext>();
+  ctxt->setVariableValue(pathVar, {});
+  AqlValue res = tmpExp.execute(trx, ctxt.get(), mustDestroy);
+  TRI_ASSERT(res.isBoolean());
+
+  if (mustDestroy) {
+    // Slower case, first copy out the result, then destroy, then return copy.
+    bool result = res.toBoolean();
+    res.destroy();
+    return result;
+  }
+
+  // Opt Case directly return the outcome of the result.
+  return res.toBoolean();
 }

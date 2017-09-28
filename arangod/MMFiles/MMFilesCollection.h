@@ -25,7 +25,9 @@
 #define ARANGOD_MMFILES_MMFILES_COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Mutex.h"
 #include "Basics/ReadWriteLock.h"
+#include "Indexes/IndexIterator.h"
 #include "Indexes/IndexLookupContext.h"
 #include "MMFiles/MMFilesDatafileStatistics.h"
 #include "MMFiles/MMFilesDatafileStatisticsContainer.h"
@@ -34,6 +36,7 @@
 #include "MMFiles/MMFilesRevisionsCache.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/KeyGenerator.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
 struct MMFilesDatafile;
@@ -126,8 +129,10 @@ class MMFilesCollection final : public PhysicalCollection {
                              PhysicalCollection*);  // use in cluster only!!!!!
 
   ~MMFilesCollection();
+  
+  static constexpr uint32_t defaultIndexBuckets = 8;
 
-  constexpr static double defaultLockTimeout = 10.0 * 60.0;
+  static constexpr double defaultLockTimeout = 10.0 * 60.0;
 
   std::string const& path() const override { return _path; };
 
@@ -137,8 +142,7 @@ class MMFilesCollection final : public PhysicalCollection {
                                     bool doSync) override;
   virtual arangodb::Result persistProperties() override;
 
-  virtual PhysicalCollection* clone(LogicalCollection*,
-                                    PhysicalCollection*) override;
+  virtual PhysicalCollection* clone(LogicalCollection*) override;
 
   TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
   TRI_voc_rid_t revision() const;
@@ -166,6 +170,11 @@ class MMFilesCollection final : public PhysicalCollection {
   int close() override;
   void load() override {}
   void unload() override {}
+
+  /// @brief set the initial datafiles for the collection
+  void setInitialFiles(std::vector<MMFilesDatafile*>&& datafiles,
+                       std::vector<MMFilesDatafile*>&& journals,
+                       std::vector<MMFilesDatafile*>&& compactors);
 
   /// @brief rotate the active journal - will do nothing if there is no journal
   int rotateActiveJournal();
@@ -299,8 +308,6 @@ class MMFilesCollection final : public PhysicalCollection {
   /// @brief Drop an index with the given iid.
   bool dropIndex(TRI_idx_iid_t iid) override;
 
-  int cleanupIndexes();
-
   ////////////////////////////////////
   // -- SECTION Locking --
   ///////////////////////////////////
@@ -322,46 +329,59 @@ class MMFilesCollection final : public PhysicalCollection {
   DocumentIdentifierToken lookupKey(transaction::Methods* trx,
                                     velocypack::Slice const& key) override;
 
-  int read(transaction::Methods*, arangodb::velocypack::Slice const key,
-           ManagedDocumentResult& result, bool) override;
+  Result read(transaction::Methods*, arangodb::StringRef const& key,
+              ManagedDocumentResult& result, bool) override;
+  
+  Result read(transaction::Methods*, arangodb::velocypack::Slice const& key,
+              ManagedDocumentResult& result, bool) override;
 
   bool readDocument(transaction::Methods* trx,
                     DocumentIdentifierToken const& token,
                     ManagedDocumentResult& result) override;
+  
+  bool readDocumentWithCallback(transaction::Methods* trx,
+                                DocumentIdentifierToken const& token,
+                                IndexIterator::DocumentCallback const& cb) override;
+  
+  size_t readDocumentWithCallback(transaction::Methods* trx,
+                                  std::vector<std::pair<TRI_voc_rid_t, uint8_t const*>>& tokens,
+                                  IndexIterator::DocumentCallback const& cb);
 
   bool readDocumentConditional(transaction::Methods* trx,
                                DocumentIdentifierToken const& token,
                                TRI_voc_tick_t maxTick,
                                ManagedDocumentResult& result);
 
-  int insert(arangodb::transaction::Methods* trx,
-             arangodb::velocypack::Slice const newSlice,
-             arangodb::ManagedDocumentResult& result, OperationOptions& options,
-             TRI_voc_tick_t& resultMarkerTick, bool lock) override;
+  Result insert(arangodb::transaction::Methods* trx,
+                arangodb::velocypack::Slice const newSlice,
+                arangodb::ManagedDocumentResult& result,
+                OperationOptions& options,
+                TRI_voc_tick_t& resultMarkerTick, bool lock) override;
 
-  int update(arangodb::transaction::Methods* trx,
-             arangodb::velocypack::Slice const newSlice,
-             arangodb::ManagedDocumentResult& result, OperationOptions& options,
-             TRI_voc_tick_t& resultMarkerTick, bool lock,
-             TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-             TRI_voc_rid_t const& revisionId,
-             arangodb::velocypack::Slice const key) override;
+  Result update(arangodb::transaction::Methods* trx,
+                arangodb::velocypack::Slice const newSlice,
+                arangodb::ManagedDocumentResult& result,
+                OperationOptions& options,
+                TRI_voc_tick_t& resultMarkerTick, bool lock,
+                TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                TRI_voc_rid_t const& revisionId,
+                arangodb::velocypack::Slice const key) override;
 
-  int replace(transaction::Methods* trx,
-              arangodb::velocypack::Slice const newSlice,
-              ManagedDocumentResult& result, OperationOptions& options,
-              TRI_voc_tick_t& resultMarkerTick, bool lock,
-              TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-              TRI_voc_rid_t const revisionId,
-              arangodb::velocypack::Slice const fromSlice,
-              arangodb::velocypack::Slice const toSlice) override;
+  Result replace(transaction::Methods* trx,
+                 arangodb::velocypack::Slice const newSlice,
+                 ManagedDocumentResult& result, OperationOptions& options,
+                 TRI_voc_tick_t& resultMarkerTick, bool lock,
+                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
+                 TRI_voc_rid_t const revisionId,
+                 arangodb::velocypack::Slice const fromSlice,
+                 arangodb::velocypack::Slice const toSlice) override;
 
-  int remove(arangodb::transaction::Methods* trx,
-             arangodb::velocypack::Slice const slice,
-             arangodb::ManagedDocumentResult& previous,
-             OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-             bool lock, TRI_voc_rid_t const& revisionId,
-             TRI_voc_rid_t& prevRev) override;
+  Result remove(arangodb::transaction::Methods* trx,
+                arangodb::velocypack::Slice const slice,
+                arangodb::ManagedDocumentResult& previous,
+                OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
+                bool lock, TRI_voc_rid_t const& revisionId,
+                TRI_voc_rid_t& prevRev) override;
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop
@@ -370,11 +390,11 @@ class MMFilesCollection final : public PhysicalCollection {
   void deferDropCollection(
       std::function<bool(LogicalCollection*)> callback) override;
 
-  int rollbackOperation(transaction::Methods*, TRI_voc_document_operation_e,
-                        TRI_voc_rid_t oldRevisionId,
-                        velocypack::Slice const& oldDoc,
-                        TRI_voc_rid_t newRevisionId,
-                        velocypack::Slice const& newDoc);
+  Result rollbackOperation(transaction::Methods*, TRI_voc_document_operation_e,
+                           TRI_voc_rid_t oldRevisionId,
+                           velocypack::Slice const& oldDoc,
+                           TRI_voc_rid_t newRevisionId,
+                           velocypack::Slice const& newDoc);
 
   MMFilesDocumentPosition insertRevision(TRI_voc_rid_t revisionId,
                                          uint8_t const* dataptr,
@@ -411,11 +431,12 @@ class MMFilesCollection final : public PhysicalCollection {
 
   int openWorker(bool ignoreErrors);
 
-  int removeFastPath(arangodb::transaction::Methods* trx,
-                     TRI_voc_rid_t oldRevisionId,
-                     arangodb::velocypack::Slice const oldDoc,
-                     OperationOptions& options, TRI_voc_rid_t const& revisionId,
-                     arangodb::velocypack::Slice const toRemove);
+  Result removeFastPath(arangodb::transaction::Methods* trx,
+                        TRI_voc_rid_t oldRevisionId,
+                        arangodb::velocypack::Slice const oldDoc,
+                        OperationOptions& options,
+                        TRI_voc_rid_t const& revisionId,
+                        arangodb::velocypack::Slice const toRemove);
 
   static int OpenIteratorHandleDocumentMarker(MMFilesMarker const* marker,
                                               MMFilesDatafile* datafile,
@@ -454,17 +475,18 @@ class MMFilesCollection final : public PhysicalCollection {
 
   MMFilesDocumentPosition lookupRevision(TRI_voc_rid_t revisionId) const;
 
-  int insertDocument(arangodb::transaction::Methods* trx,
-                     TRI_voc_rid_t revisionId,
-                     arangodb::velocypack::Slice const& doc,
-                     MMFilesDocumentOperation& operation,
-                     MMFilesWalMarker const* marker, bool& waitForSync);
+  Result insertDocument(arangodb::transaction::Methods* trx,
+                        TRI_voc_rid_t revisionId,
+                        arangodb::velocypack::Slice const& doc,
+                        MMFilesDocumentOperation& operation,
+                        MMFilesWalMarker const* marker, bool& waitForSync);
 
  private:
   uint8_t const* lookupRevisionVPack(TRI_voc_rid_t revisionId) const;
   uint8_t const* lookupRevisionVPackConditional(TRI_voc_rid_t revisionId,
                                                 TRI_voc_tick_t maxTick,
                                                 bool excludeWal) const;
+  void batchLookupRevisionVPack(std::vector<std::pair<TRI_voc_rid_t, uint8_t const*>>& revisions) const;
 
   bool addIndex(std::shared_ptr<arangodb::Index> idx);
   void addIndexLocal(std::shared_ptr<arangodb::Index> idx);
@@ -484,29 +506,30 @@ class MMFilesCollection final : public PhysicalCollection {
   /// @brief Detect all indexes form file
   int detectIndexes(transaction::Methods* trx);
 
-  int insertIndexes(transaction::Methods* trx, TRI_voc_rid_t revisionId,
-                    velocypack::Slice const& doc);
+  Result insertIndexes(transaction::Methods* trx, TRI_voc_rid_t revisionId,
+                       velocypack::Slice const& doc);
 
-  int insertPrimaryIndex(transaction::Methods*, TRI_voc_rid_t revisionId,
-                         velocypack::Slice const&);
+  Result insertPrimaryIndex(transaction::Methods*, TRI_voc_rid_t revisionId,
+                            velocypack::Slice const&);
 
-  int deletePrimaryIndex(transaction::Methods*, TRI_voc_rid_t revisionId,
-                         velocypack::Slice const&);
+  Result deletePrimaryIndex(transaction::Methods*, TRI_voc_rid_t revisionId,
+                            velocypack::Slice const&);
 
-  int insertSecondaryIndexes(transaction::Methods*, TRI_voc_rid_t revisionId,
-                             velocypack::Slice const&, bool isRollback);
+  Result insertSecondaryIndexes(transaction::Methods*, TRI_voc_rid_t revisionId,
+                                velocypack::Slice const&, bool isRollback);
 
-  int deleteSecondaryIndexes(transaction::Methods*, TRI_voc_rid_t revisionId,
-                             velocypack::Slice const&, bool isRollback);
+  Result deleteSecondaryIndexes(transaction::Methods*, TRI_voc_rid_t revisionId,
+                                velocypack::Slice const&, bool isRollback);
 
-  int lookupDocument(transaction::Methods*, velocypack::Slice,
-                     ManagedDocumentResult& result);
+  Result lookupDocument(transaction::Methods*, velocypack::Slice,
+                        ManagedDocumentResult& result);
 
-  int updateDocument(transaction::Methods*, TRI_voc_rid_t oldRevisionId,
-                     velocypack::Slice const& oldDoc,
-                     TRI_voc_rid_t newRevisionId,
-                     velocypack::Slice const& newDoc, MMFilesDocumentOperation&,
-                     MMFilesWalMarker const*, bool& waitForSync);
+  Result updateDocument(transaction::Methods*, TRI_voc_rid_t oldRevisionId,
+                        velocypack::Slice const& oldDoc,
+                        TRI_voc_rid_t newRevisionId,
+                        velocypack::Slice const& newDoc,
+                        MMFilesDocumentOperation&,
+                        MMFilesWalMarker const*, bool& waitForSync);
 
  private:
   mutable arangodb::MMFilesDitches _ditches;
@@ -544,7 +567,6 @@ class MMFilesCollection final : public PhysicalCollection {
 
   // SECTION: Indexes
 
-  size_t _cleanupIndexes;
   size_t _persistentIndexes;
   uint32_t _indexBuckets;
 

@@ -12,17 +12,9 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"exception"</span> : <span class="hljs-string">"ArangoError 1210: unique constraint violated"</span>, 
-  <span class="hljs-string">"stacktrace"</span> : [ 
-    <span class="hljs-string">"ArangoError: unique constraint violated"</span>, 
-    <span class="hljs-string">"    at eval (eval at post_api_transaction (/local/home/willi/src/devel/js/actions/api-transaction.js:48:16), &lt;anonymous&gt;:3:100)"</span>, 
-    <span class="hljs-string">"    at eval (eval at post_api_transaction (/local/home/willi/src/devel/js/actions/api-transaction.js:48:16), &lt;anonymous&gt;:3:123)"</span>, 
-    <span class="hljs-string">"    at post_api_transaction (/local/home/willi/src/devel/js/actions/api-transaction.js:48:16)"</span>, 
-    <span class="hljs-string">"    at Function.callback (/local/home/willi/src/devel/js/actions/api-transaction.js:64:11)"</span> 
-  ], 
-  <span class="hljs-string">"message"</span> : <span class="hljs-string">"unique constraint violated"</span>, 
+  <span class="hljs-string">"message"</span> : <span class="hljs-string">"unique constraint violated - in index 0 of type primary over [\"_key\"]"</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">400</span>, 
   <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1210</span>, 
-  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"unique constraint violated"</span> 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"unique constraint violated - in index 0 of type primary over [\"_key\"]"</span> 
 }

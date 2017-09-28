@@ -554,5 +554,105 @@ describe ArangoDB do
       end
     end
 
+################################################################################
+## operations on non-existing users (that had existed before...)
+################################################################################
+
+    it "operate on non-existing users that existed before" do
+      doc = ArangoDB.log_delete("#{prefix}-nonexist", api + "/users-1") 
+      doc.code.should eq(404)
+      doc.parsed_response['error'].should eq(true)
+      doc.parsed_response['code'].should eq(404)
+      doc.parsed_response['errorNum'].should eq(1703)
+        
+      doc = ArangoDB.log_put("#{prefix}-non-exist", api + "/users-1") 
+      doc.code.should eq(404)
+      doc.parsed_response['error'].should eq(true)
+      doc.parsed_response['code'].should eq(404)
+      doc.parsed_response['errorNum'].should eq(1703)
+      
+      doc = ArangoDB.log_patch("#{prefix}-non-exist", api + "/users-1") 
+      doc.code.should eq(404)
+      doc.parsed_response['error'].should eq(true)
+      doc.parsed_response['code'].should eq(404)
+      doc.parsed_response['errorNum'].should eq(1703)
+
+      doc = ArangoDB.log_get("#{prefix}-nonexist", api + "/users-1")
+      doc.code.should eq(404)
+      doc.parsed_response['error'].should eq(true)
+      doc.parsed_response['code'].should eq(404)
+      doc.parsed_response['errorNum'].should eq(1703)
+    end
+
   end
+
+################################################################################
+## Modifying database permissions 
+################################################################################
+
+  context "Modifying permissions" do
+    it "granting database" do
+      body = "{ \"user\" : \"users-1\", \"passwd\" : \"\" }"
+      doc = ArangoDB.log_post("#{prefix}-create user", api, :body => body)
+      doc.code.should eq(201)
+
+      body = "{ \"passwd\" : \"\" }"
+      doc = ArangoDB.log_post("#{prefix}-validate", api + "/users-1", :body => body)
+      doc.code.should eq(200)
+      doc.parsed_response['result'].should eq(true)
+
+      body = "{ \"grant\" : \"rw\"}"
+      doc = ArangoDB.log_put("#{prefix}-grant", api + "/users-1/database/test", :body => body)
+      doc.code.should eq(200)
+      doc.parsed_response['error'].should eq(false)
+      doc.parsed_response['code'].should eq(200)
+
+      doc = ArangoDB.log_get("#{prefix}-grant-validate", api + "/users-1/database/test")
+      doc.code.should eq(200)
+      doc.parsed_response['error'].should eq(false)
+      doc.parsed_response['code'].should eq(200)
+      doc.parsed_response['result'].should eq('rw')
+    end
+
+    it "granting collection" do
+      body = "{ \"grant\" : \"ro\"}"
+      doc = ArangoDB.log_put("#{prefix}-grant", api + "/users-1/database/test/test", :body => body)
+      doc.code.should eq(200)
+      doc.parsed_response['error'].should eq(false)
+      doc.parsed_response['code'].should eq(200)
+
+      doc = ArangoDB.log_get("#{prefix}-grant-validate", api + "/users-1/database/test/test")
+      doc.code.should eq(200)
+      doc.parsed_response['error'].should eq(false)
+      doc.parsed_response['code'].should eq(200)
+      doc.parsed_response['result'].should eq('ro')
+    end
+
+    it "revoking granted collection" do
+      doc = ArangoDB.log_delete("#{prefix}-revoke", api + "/users-1/database/test/test")
+      doc.code.should eq(202)
+      doc.parsed_response['error'].should eq(false)
+      doc.parsed_response['code'].should eq(202)
+
+      doc = ArangoDB.log_get("#{prefix}-validate", api + "/users-1/database/test/test")
+      doc.code.should eq(200)
+      doc.parsed_response['error'].should eq(false)
+      doc.parsed_response['code'].should eq(200)
+      doc.parsed_response['result'].should eq('none')
+    end
+
+    it "revoking granted database" do
+      doc = ArangoDB.log_delete("#{prefix}-revoke", api + "/users-1/database/test")
+      doc.code.should eq(202)
+      doc.parsed_response['error'].should eq(false)
+      doc.parsed_response['code'].should eq(202)
+
+      doc = ArangoDB.log_get("#{prefix}-validate", api + "/users-1/database/test")
+      doc.code.should eq(200)
+      doc.parsed_response['error'].should eq(false)
+      doc.parsed_response['code'].should eq(200)
+      doc.parsed_response['result'].should eq('none')
+    end
+  end  
+
 end

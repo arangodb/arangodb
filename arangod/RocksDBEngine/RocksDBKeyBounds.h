@@ -36,6 +36,10 @@
 
 #include <iosfwd>
 
+namespace rocksdb {
+class ColumnFamilyHandle;
+}
+
 namespace arangodb {
 
 class RocksDBKeyBounds {
@@ -80,14 +84,14 @@ class RocksDBKeyBounds {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries belonging to a specified non-unique
-  /// index
+  /// index (hash, skiplist and permanent)
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds IndexEntries(uint64_t indexId);
+  static RocksDBKeyBounds VPackIndex(uint64_t indexId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all entries belonging to a specified unique index
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds UniqueIndex(uint64_t indexId);
+  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all entries of a fulltext index
@@ -102,18 +106,25 @@ class RocksDBKeyBounds {
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries within a value range belonging to a
-  /// specified non-unique index
+  /// specified non-unique index (skiplist and permanent)
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds IndexRange(uint64_t indexId, VPackSlice const& left,
+  static RocksDBKeyBounds VPackIndex(uint64_t indexId, VPackSlice const& left,
                                      VPackSlice const& right);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all documents within a value range belonging to a
   /// specified unique index
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds UniqueIndexRange(uint64_t indexId,
+  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId,
                                            VPackSlice const& left,
                                            VPackSlice const& right);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all documents within a value range belonging to a
+  /// specified unique index. this method is used for point lookups
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds UniqueVPackIndex(uint64_t indexId,
+                                           VPackSlice const& left);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all views belonging to a specified database
@@ -129,6 +140,11 @@ class RocksDBKeyBounds {
   /// @brief Bounds for all index estimate values
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds IndexEstimateValues();
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all key generators
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds KeyGenerators();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all entries of a fulltext index, matching prefixes
@@ -147,7 +163,7 @@ class RocksDBKeyBounds {
   RocksDBKeyBounds(RocksDBKeyBounds&& other);
   RocksDBKeyBounds& operator=(RocksDBKeyBounds const& other);
   RocksDBKeyBounds& operator=(RocksDBKeyBounds&& other);
-  
+
   RocksDBEntryType type() const { return _type; }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -156,9 +172,7 @@ class RocksDBKeyBounds {
   /// Forward iterators may use it->Seek(bound.start()) and reverse iterators
   /// may check that the current key is greater than this value.
   //////////////////////////////////////////////////////////////////////////////
-  rocksdb::Slice start() const {
-    return _internals.start();
-  }
+  rocksdb::Slice start() const { return _internals.start(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the right bound slice.
@@ -166,9 +180,16 @@ class RocksDBKeyBounds {
   /// Reverse iterators may use it->SeekForPrev(bound.end()) and forward
   /// iterators may check that the current key is less than this value.
   //////////////////////////////////////////////////////////////////////////////
-  rocksdb::Slice end() const {
-    return _internals.end();
-  }
+  rocksdb::Slice end() const { return _internals.end(); }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Returns the column family from this Bound
+  ///
+  /// All bounds iterators need to iterate over the correct column families
+  /// with this helper function it is made sure that correct column family
+  /// for bound is used.
+  //////////////////////////////////////////////////////////////////////////////
+  rocksdb::ColumnFamilyHandle* columnFamily() const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns the object ID for these bounds
@@ -185,22 +206,26 @@ class RocksDBKeyBounds {
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                    arangodb::StringRef const& second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
+                   VPackSlice const& second);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                    VPackSlice const& second, VPackSlice const& third);
 
  private:
-  // private class that will hold both bounds in a single buffer (with only one allocation)
+  // private class that will hold both bounds in a single buffer (with only one
+  // allocation)
   class BoundsBuffer {
-   friend class RocksDBKeyBounds;
+    friend class RocksDBKeyBounds;
 
-   public: 
+   public:
     BoundsBuffer() : _separatorPosition(0) {}
-    
-    BoundsBuffer(BoundsBuffer const& other) 
-        : _buffer(other._buffer), _separatorPosition(other._separatorPosition) {
-    }
 
-    BoundsBuffer(BoundsBuffer&& other) 
-        : _buffer(std::move(other._buffer)), _separatorPosition(other._separatorPosition) {
+    BoundsBuffer(BoundsBuffer const& other)
+        : _buffer(other._buffer),
+          _separatorPosition(other._separatorPosition) {}
+
+    BoundsBuffer(BoundsBuffer&& other)
+        : _buffer(std::move(other._buffer)),
+          _separatorPosition(other._separatorPosition) {
       other._separatorPosition = 0;
     }
 
@@ -222,12 +247,12 @@ class RocksDBKeyBounds {
     }
 
     // reserve space for bounds
-    void reserve(size_t length) { 
+    void reserve(size_t length) {
       TRI_ASSERT(_separatorPosition == 0);
       TRI_ASSERT(_buffer.empty());
-      _buffer.reserve(length); 
+      _buffer.reserve(length);
     }
-   
+
     // mark the end of the start buffer
     void separate() {
       TRI_ASSERT(_separatorPosition == 0);
@@ -236,10 +261,8 @@ class RocksDBKeyBounds {
     }
 
     // append a character
-    void push_back(char c) {
-      _buffer.push_back(c);
-    }
-    
+    void push_back(char c) { _buffer.push_back(c); }
+
     // return the internal buffer for modification or reading
     std::string& buffer() { return _buffer; }
     std::string const& buffer() const { return _buffer; }
@@ -253,7 +276,8 @@ class RocksDBKeyBounds {
     // return a slice to the end buffer
     rocksdb::Slice end() const {
       TRI_ASSERT(_separatorPosition != 0);
-      return rocksdb::Slice(_buffer.data() + _separatorPosition, _buffer.size() - _separatorPosition);
+      return rocksdb::Slice(_buffer.data() + _separatorPosition,
+                            _buffer.size() - _separatorPosition);
     }
 
    private:

@@ -721,3 +721,17 @@ bool terminalKnowsANSIColors()
   // Windows 8 onwards the CMD window understands ANSI-Colorcodes.
   return IsWindows8OrGreater();
 }
+
+#include <atlstr.h>
+std::string getFileNameFromHandle(HANDLE fileHandle) {
+  char  buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR)*MAX_PATH];
+  FILE_NAME_INFO *FileInformation = (FILE_NAME_INFO*) buff;
+
+  if (!GetFileInformationByHandleEx(fileHandle,
+                                    FileNameInfo,
+                                    FileInformation, sizeof(buff)
+                                    )) {
+    return std::string();
+  }
+  return std::string((LPCTSTR)CString(FileInformation->FileName));
+}

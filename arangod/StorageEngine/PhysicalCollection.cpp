@@ -25,6 +25,7 @@
 
 #include "Basics/StaticStrings.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/encoding.h"
@@ -66,6 +67,16 @@ void PhysicalCollection::drop() {
   }
 }
 
+bool PhysicalCollection::hasIndexOfType(arangodb::Index::IndexType type) const {
+  READ_LOCKER(guard, _indexesLock);
+  for (auto const& idx : _indexes) {
+    if (idx->type() == type) {
+      return true;
+    }
+  }
+  return false;
+}
+
 std::shared_ptr<Index> PhysicalCollection::lookupIndex(
     TRI_idx_iid_t idxId) const {
   READ_LOCKER(guard, _indexesLock);
@@ -95,11 +106,11 @@ void PhysicalCollection::mergeObjectsForUpdate(
   VPackSlice fromSlice;
   VPackSlice toSlice;
 
-  std::unordered_map<std::string, VPackSlice> newValues;
+  std::unordered_map<StringRef, VPackSlice> newValues;
   {
     VPackObjectIterator it(newValue, true);
     while (it.valid()) {
-      std::string key = it.key().copyString();
+      StringRef key(it.key());
       if (!key.empty() && key[0] == '_' &&
           (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
            key == StaticStrings::RevString ||
@@ -113,7 +124,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
         }  // else do nothing
       } else {
         // regular attribute
-        newValues.emplace(std::move(key), it.value());
+        newValues.emplace(key, it.value());
       }
 
       it.next();
@@ -153,7 +164,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
   {
     VPackObjectIterator it(oldValue, true);
     while (it.valid()) {
-      std::string key = it.key().copyString();
+      StringRef key(it.key());
       // exclude system attributes in old value now
       if (!key.empty() && key[0] == '_' &&
           (key == StaticStrings::KeyString || key == StaticStrings::IdString ||
@@ -168,7 +179,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
 
       if (found == newValues.end()) {
         // use old value
-        b.add(key, it.value());
+        b.add(key.data(), key.size(), it.value());
       } else if (mergeObjects && it.value().isObject() &&
                  (*found).second.isObject()) {
         // merge both values
@@ -176,7 +187,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
         if (keepNull || (!value.isNone() && !value.isNull())) {
           VPackBuilder sub =
               VPackCollection::merge(it.value(), value, true, !keepNull);
-          b.add(key, sub.slice());
+          b.add(key.data(), key.size(), sub.slice());
         }
         // clear the value in the map so its not added again
         (*found).second = VPackSlice();
@@ -184,7 +195,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
         // use new value
         auto& value = (*found).second;
         if (keepNull || (!value.isNone() && !value.isNull())) {
-          b.add(key, value);
+          b.add(key.data(), key.size(), value);
         }
         // clear the value in the map so its not added again
         (*found).second = VPackSlice();
@@ -202,7 +213,7 @@ void PhysicalCollection::mergeObjectsForUpdate(
     if (!keepNull && s.isNull()) {
       continue;
     }
-    b.add(it.first, s);
+    b.add(it.first.data(), it.first.size(), s);
   }
 
   b.close();
@@ -225,19 +236,19 @@ int PhysicalCollection::newObjectForInsert(
     TRI_ASSERT(!isRestore);  // need key in case of restore
     newRev = TRI_HybridLogicalClock();
     std::string keyString =
-        _logicalCollection->keyGenerator()->generate(TRI_NewTickServer());
+        _logicalCollection->keyGenerator()->generate();
     if (keyString.empty()) {
       return TRI_ERROR_ARANGO_OUT_OF_KEYS;
     }
-    uint8_t* where =
-        builder.add(StaticStrings::KeyString, VPackValue(keyString));
-    s = VPackSlice(where);  // point to newly built value, the string
+    builder.add(StaticStrings::KeyString, VPackValue(keyString));
   } else if (!s.isString()) {
     return TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD;
   } else {
-    std::string keyString = s.copyString();
+    VPackValueLength l;
+    char const* p = s.getString(l);
+    // validate and track the key just used
     int res =
-        _logicalCollection->keyGenerator()->validate(keyString, isRestore);
+        _logicalCollection->keyGenerator()->validate(p, l, isRestore);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }

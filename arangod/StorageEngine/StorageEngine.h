@@ -36,9 +36,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-namespace v8 {
-class Isolate;
-}
 namespace arangodb {
 
 class LogicalCollection;
@@ -81,14 +78,12 @@ class StorageEngine : public application_features::ApplicationFeature {
 
     startsAfter("CacheManager");
     startsAfter("DatabasePath");
-    startsAfter("EngineSelector");
     startsAfter("FileDescriptors");
     startsAfter("Temp");
     startsAfter("TransactionManager");
-  }
 
-  virtual void start() {}
-  virtual void stop() {}
+    startsBefore("StorageEngine"); // this is the StorageEngineFeature
+  }
 
   virtual bool supportsDfdb() const = 0;
 
@@ -372,6 +367,8 @@ class StorageEngine : public application_features::ApplicationFeature {
                            ,std::shared_ptr<transaction::Context>
                            ,uint64_t tickStart, uint64_t tickEnd
                            ,std::shared_ptr<VPackBuilder>& builderSPtr) = 0;
+
+  virtual bool useRawDocumentPointers() = 0;
 
   void getCapabilities(VPackBuilder& builder) const {
     builder.openObject();

@@ -14,7 +14,12 @@ Please note that user operations are not included in ArangoDB's replication.
 
 @startDocuBlock UserHandling_create
 @startDocuBlock UserHandling_grantDatabase
+@startDocuBlock UserHandling_grantCollection
+@startDocuBlock UserHandling_revokeDatabase
+@startDocuBlock UserHandling_revokeCollection
 @startDocuBlock UserHandling_fetchDatabaseList
+@startDocuBlock UserHandling_fetchDatabasePermission
+@startDocuBlock UserHandling_fetchCollectionPermission
 @startDocuBlock UserHandling_replace
 @startDocuBlock UserHandling_modify
 @startDocuBlock UserHandling_delete

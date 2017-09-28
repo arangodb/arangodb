@@ -5,13 +5,13 @@ content-type: application/json; charset=utf<span class="hljs-number">-8</span>
 x-content-type-options: nosniff
 
 { 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9223"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"9205"</span>, 
   <span class="hljs-string">"name"</span> : <span class="hljs-string">"products"</span>, 
   <span class="hljs-string">"isSystem"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"status"</span> : <span class="hljs-number">3</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-number">2</span>, 
-  <span class="hljs-string">"checksum"</span> : <span class="hljs-string">"17008603927355321383"</span>, 
-  <span class="hljs-string">"revision"</span> : <span class="hljs-string">"_V_qDrbi---"</span>, 
+  <span class="hljs-string">"checksum"</span> : <span class="hljs-string">"10130927246823788755"</span>, 
+  <span class="hljs-string">"revision"</span> : <span class="hljs-string">"_VReqbqK---"</span>, 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span> 
 }

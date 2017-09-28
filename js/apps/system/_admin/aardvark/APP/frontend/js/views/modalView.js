@@ -96,9 +96,7 @@
       // submit modal
       $(this.el).unbind('keydown');
       $(this.el).unbind('return');
-      $(this.el).bind('keydown', 'return', function () {
-        $('.createModalDialog .modal-footer .button-success').click();
-      });
+      // $(this.el).bind('keydown', 'return', function (e) {});
 
       $('.modal-body input').unbind('keydown');
       $('.modal-body input').unbind('return');
@@ -375,13 +373,19 @@
         self.modalBindValidation(row);
         if (row.type === self.tables.SELECT2) {
           // handle select2
-          $('#' + row.id).select2({
+
+          var options = {
             tags: row.tags || [],
             showSearchBox: false,
             minimumResultsForSearch: -1,
-            width: '336px',
-            maximumSelectionSize: row.maxEntrySize || 8
-          });
+            width: '336px'
+          };
+
+          if (row.maxEntrySize) {
+            options.maximumSelectionSize = row.maxEntrySize;
+          }
+
+          $('#' + row.id).select2(options);
         }
       });
 
@@ -539,5 +543,6 @@
       this.clearValidators();
       $('#modal-dialog').modal('hide');
     }
+
   });
 }());

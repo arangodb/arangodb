@@ -12,7 +12,7 @@ x-content-type-options: nosniff
     <span class="hljs-string">"lastAvailableContinuousTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"safeResumeTick"</span> : <span class="hljs-literal">null</span>, 
     <span class="hljs-string">"progress"</span> : { 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-05-18T10:06:43Z"</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-07-12T19:00:40Z"</span>, 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"applier shut down"</span>, 
       <span class="hljs-string">"failedConnects"</span> : <span class="hljs-number">0</span> 
     }, 
@@ -22,14 +22,14 @@ x-content-type-options: nosniff
     <span class="hljs-string">"totalOperationsExcluded"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"lastError"</span> : { 
       <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1402</span>, 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-05-18T10:06:43Z"</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-07-12T19:00:40Z"</span>, 
       <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"got invalid response from master at tcp://127.0.0.1:8529: HTTP 401: Unauthorized"</span> 
     }, 
-    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-05-18T10:06:43Z"</span> 
+    <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-07-12T19:00:40Z"</span> 
   }, 
   <span class="hljs-string">"server"</span> : { 
     <span class="hljs-string">"version"</span> : <span class="hljs-string">"3.2.devel"</span>, 
-    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"49888925541999"</span> 
+    <span class="hljs-string">"serverId"</span> : <span class="hljs-string">"97061087035220"</span> 
   }, 
   <span class="hljs-string">"endpoint"</span> : <span class="hljs-string">"tcp://127.0.0.1:8529"</span>, 
   <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span> 

@@ -21,12 +21,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ShellColorsFeature.h"
-#
+
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#endif
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
 namespace {
-  static char const* NoColor = "";
+static char const* NoColor = "";
 }
 
 char const* ShellColorsFeature::SHELL_COLOR_RED = NoColor;
@@ -82,7 +86,6 @@ void ShellColorsFeature::prepare() {
 
 bool ShellColorsFeature::useColors() {
 #ifdef _WIN32
-  #include "Basics/win-utils.h"
   return terminalKnowsANSIColors();
 #else
   return true;

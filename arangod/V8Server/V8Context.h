@@ -110,19 +110,29 @@ class GlobalContextMethods {
 
 class V8Context {
  public:
-  explicit V8Context(size_t id);
+  V8Context(size_t id, v8::Isolate* isolate);
 
+  size_t id() const { return _id; }
   bool isDefault() const { return _id == 0; }
+  bool isUsed() const { return _locker != nullptr; }
   double age() const;
+  void lockAndEnter();
+  void unlockAndExit();
+  uint64_t invocations() const { return _invocations; }
+  uint64_t invocationsSinceLastGc() const { return _invocationsSinceLastGc; }
+  bool shouldBeRemoved(double maxAge, uint64_t maxInvocations) const;
+  bool hasGlobalMethodsQueued();
+  void setCleaned(double stamp);
 
   size_t const _id;
 
   v8::Persistent<v8::Context> _context;
   v8::Isolate* _isolate;
   v8::Locker* _locker;
-  size_t _numExecutions;
   double const _creationStamp;
   double _lastGcStamp;
+  uint64_t _invocations;
+  uint64_t _invocationsSinceLastGc;
   bool _hasActiveExternals;
 
   Mutex _globalMethodsLock;
@@ -133,6 +143,16 @@ class V8Context {
   void handleGlobalContextMethods();
   void handleCancelationCleanup();
 };
+
+class V8ContextGuard {
+ public:
+  explicit V8ContextGuard(V8Context* context);
+  ~V8ContextGuard();
+
+ private:
+  V8Context* _context;
+};
+
 }
 
 #endif

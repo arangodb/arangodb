@@ -25,7 +25,7 @@
 #define ARANGODB_CACHE_METADATA_H
 
 #include "Basics/Common.h"
-#include "Cache/State.h"
+#include "Basics/ReadWriteSpinLock.h"
 
 #include <atomic>
 #include <cstdint>
@@ -48,7 +48,7 @@ struct Metadata {
   uint64_t deservedSize;
 
   // vital information about memory usage
-  uint64_t usage;
+  std::atomic<uint64_t> usage;
   uint64_t softUsageLimit;
   uint64_t hardUsageLimit;
 
@@ -73,72 +73,107 @@ struct Metadata {
   Metadata& operator=(Metadata const& other);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Locks the record.
+  /// @brief Locks the record for reading
   //////////////////////////////////////////////////////////////////////////////
-  void lock();
+  void readLock() const noexcept { _lock.readLock(); }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Unlocks the record. Requires record to be locked.
+  /// @brief Locks the record for writing
   //////////////////////////////////////////////////////////////////////////////
-  void unlock();
+  void writeLock() const noexcept { _lock.writeLock(); }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Unlocks the record. Requires record to be read-locked.
+  //////////////////////////////////////////////////////////////////////////////
+  void readUnlock() const {
+    TRI_ASSERT(isLocked());
+    _lock.readUnlock();
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Unlocks the record. Requires record to be write-locked.
+  //////////////////////////////////////////////////////////////////////////////
+  void writeUnlock() const noexcept {
+    TRI_ASSERT(isWriteLocked());
+    _lock.writeUnlock();
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns true if the record is locked, false otherwise.
   //////////////////////////////////////////////////////////////////////////////
-  bool isLocked() const;
+  bool isLocked() const noexcept { return _lock.isLocked(); }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Returns true if the record is write-locked, false otherwise.
+  //////////////////////////////////////////////////////////////////////////////
+  bool isWriteLocked() const noexcept { return _lock.isWriteLocked(); }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Adjusts usage by the specified amount if it will not violate
-  /// limits. Requires record to be locked.
+  /// limits. Requires record to be read-locked.
   ///
   /// Returns true if adjusted, false otherwise. Used by caches to check-and-set
   /// in a single operation to determine whether they can afford to store a new
   /// value.
   //////////////////////////////////////////////////////////////////////////////
-  bool adjustUsageIfAllowed(int64_t usageChange);
+  bool adjustUsageIfAllowed(int64_t usageChange) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Sets the soft and hard usage limits. Requires record to be locked.
+  /// @brief Sets the soft and hard usage limits. Requires record to be
+  /// write-locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool adjustLimits(uint64_t softLimit, uint64_t hardLimit);
+  bool adjustLimits(uint64_t softLimit, uint64_t hardLimit) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Sets the deserved size. Requires record to be locked.
+  /// @brief Sets the deserved size. Requires record to be write-locked.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t adjustDeserved(uint64_t deserved);
+  uint64_t adjustDeserved(uint64_t deserved) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Calculates the new usage limit based on deserved size and other
-  /// values. Requires record to be locked.
+  /// values. Requires record to be read-locked.
   //////////////////////////////////////////////////////////////////////////////
-  uint64_t newLimit();
+  uint64_t newLimit() const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Checks feasibility of new table size prior to migration. Requires
-  /// record to be locked.
+  /// record to be read-locked.
   ///
   /// If migrating to table of new size would exceed either deserved or maximum
   /// size, then returns false.
   //////////////////////////////////////////////////////////////////////////////
-  bool migrationAllowed(uint64_t newTableSize);
+  bool migrationAllowed(uint64_t newTableSize) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Sets the table size after migration. Requires record to be locked.
+  /// @brief Sets the table size after migration. Requires record to be
+  /// write-locked.
   //////////////////////////////////////////////////////////////////////////////
-  void changeTable(uint64_t newTableSize);
+  void changeTable(uint64_t newTableSize) noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Checks if flag is set in state. Requires record to be locked.
+  /// @brief Checks if cache is migrating. Requires record to be read-locked.
   //////////////////////////////////////////////////////////////////////////////
-  bool isSet(State::Flag flag) const;
+  bool isMigrating() const noexcept { return _migrating; }
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Toggles flag in state. Requires record to be locked.
+  /// @brief Checks if the cache is resizing. Requires record to be read-locked.
   //////////////////////////////////////////////////////////////////////////////
-  void toggleFlag(State::Flag flag);
+  bool isResizing() const noexcept { return _resizing; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Toggles the migrating flag. Requires record to be write-locked.
+  //////////////////////////////////////////////////////////////////////////////
+  void toggleMigrating() noexcept  { _migrating  = !_migrating; }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Toggles the resizing flag. Requires record to be write-locked.
+  //////////////////////////////////////////////////////////////////////////////
+  void toggleResizing() noexcept { _resizing = !_resizing; }
 
  private:
-  State _state;
+  mutable basics::ReadWriteSpinLock<64> _lock;
+  bool _migrating;
+  bool _resizing;
 };
 
 };  // end namespace cache

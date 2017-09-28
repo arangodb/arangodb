@@ -22,8 +22,10 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBEngine/RocksDBValue.h"
+#include "RocksDBValue.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 
 using namespace arangodb;
@@ -37,10 +39,6 @@ RocksDBValue RocksDBValue::Collection(VPackSlice const& data) {
   return RocksDBValue(RocksDBEntryType::Collection, data);
 }
 
-RocksDBValue RocksDBValue::Document(VPackSlice const& data) {
-  return RocksDBValue(RocksDBEntryType::Document, data);
-}
-
 RocksDBValue RocksDBValue::PrimaryIndexValue(TRI_voc_rid_t revisionId) {
   return RocksDBValue(RocksDBEntryType::PrimaryIndexValue, revisionId);
 }
@@ -49,12 +47,12 @@ RocksDBValue RocksDBValue::EdgeIndexValue(arangodb::StringRef const& vertexId) {
   return RocksDBValue(RocksDBEntryType::EdgeIndexValue, vertexId);
 }
 
-RocksDBValue RocksDBValue::IndexValue() {
-  return RocksDBValue(RocksDBEntryType::IndexValue);
+RocksDBValue RocksDBValue::VPackIndexValue() {
+  return RocksDBValue(RocksDBEntryType::VPackIndexValue);
 }
 
-RocksDBValue RocksDBValue::UniqueIndexValue(TRI_voc_rid_t revisionId) {
-  return RocksDBValue(RocksDBEntryType::UniqueIndexValue, revisionId);
+RocksDBValue RocksDBValue::UniqueVPackIndexValue(TRI_voc_rid_t revisionId) {
+  return RocksDBValue(RocksDBEntryType::UniqueVPackIndexValue, revisionId);
 }
 
 RocksDBValue RocksDBValue::View(VPackSlice const& data) {
@@ -63,6 +61,10 @@ RocksDBValue RocksDBValue::View(VPackSlice const& data) {
 
 RocksDBValue RocksDBValue::ReplicationApplierConfig(VPackSlice const& data) {
   return RocksDBValue(RocksDBEntryType::ReplicationApplierConfig, data);
+}
+
+RocksDBValue RocksDBValue::KeyGeneratorValue(VPackSlice const& data) {
+  return RocksDBValue(RocksDBEntryType::KeyGeneratorValue, data);
 }
 
 RocksDBValue RocksDBValue::Empty(RocksDBEntryType type) {
@@ -97,12 +99,24 @@ VPackSlice RocksDBValue::data(std::string const& s) {
   return data(s.data(), s.size());
 }
 
+uint64_t RocksDBValue::keyValue(RocksDBValue const& value) {
+  return keyValue(value._buffer.data(), value._buffer.size());
+}
+
+uint64_t RocksDBValue::keyValue(rocksdb::Slice const& slice) {
+  return keyValue(slice.data(), slice.size());
+}
+
+uint64_t RocksDBValue::keyValue(std::string const& s) {
+  return keyValue(s.data(), s.size());
+}
+
 RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type, uint64_t data)
     : _type(type), _buffer() {
   switch (_type) {
-    case RocksDBEntryType::UniqueIndexValue:
+    case RocksDBEntryType::UniqueVPackIndexValue:
     case RocksDBEntryType::PrimaryIndexValue: {
       _buffer.reserve(sizeof(uint64_t));
       uint64ToPersistent(_buffer, data);  // revision id
@@ -119,14 +133,18 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
   switch (_type) {
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
-    case RocksDBEntryType::Document:
     case RocksDBEntryType::View:
+    case RocksDBEntryType::KeyGeneratorValue:
     case RocksDBEntryType::ReplicationApplierConfig: {
       _buffer.reserve(static_cast<size_t>(data.byteSize()));
       _buffer.append(reinterpret_cast<char const*>(data.begin()),
                      static_cast<size_t>(data.byteSize()));
       break;
     }
+      
+    case RocksDBEntryType::Document:
+      TRI_ASSERT(false);// use for document => get free schellen
+      break;
 
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
@@ -134,14 +152,14 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, VPackSlice const& data)
 }
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type, StringRef const& data)
-: _type(type), _buffer() {
+    : _type(type), _buffer() {
   switch (_type) {
     case RocksDBEntryType::EdgeIndexValue: {
       _buffer.reserve(static_cast<size_t>(data.size()));
       _buffer.append(data.data(), data.size());
       break;
     }
-      
+
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
@@ -162,4 +180,19 @@ VPackSlice RocksDBValue::data(char const* data, size_t size) {
   TRI_ASSERT(data != nullptr);
   TRI_ASSERT(size >= sizeof(char));
   return VPackSlice(data);
+}
+
+uint64_t RocksDBValue::keyValue(char const* data, size_t size) {
+  TRI_ASSERT(data != nullptr);
+  TRI_ASSERT(size >= sizeof(char));
+  VPackSlice slice(data);
+  VPackSlice key = slice.get(StaticStrings::KeyString);
+  if (key.isString()) {
+    std::string s = key.copyString();
+    if (s.size() > 0 && s[0] >= '0' && s[0] <= '9') {
+      return basics::StringUtils::uint64(s);
+    }
+  }
+
+  return 0;
 }

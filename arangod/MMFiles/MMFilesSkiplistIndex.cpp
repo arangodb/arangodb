@@ -25,14 +25,17 @@
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/Exceptions.h"
 #include "Basics/FixedSizeAllocator.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
+#include "Indexes/IndexResult.h"
 #include "MMFiles/MMFilesToken.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -446,18 +449,22 @@ void MMFilesSkiplistInLookupBuilder::buildSearchValues() {
     _upperBuilder->clear();
     _upperBuilder->openArray();
 
-    for (size_t i = 0; i < data.length() - 1; ++i) {
+    size_t const n = data.length();
+
+    for (size_t i = 0; i < n - 1; ++i) {
       if (inPos != _inPositions.end() && i == inPos->field) {
-        _lowerBuilder->add(data.at(i).at(inPos->current));
-        _upperBuilder->add(data.at(i).at(inPos->current));
+        VPackSlice s = data.at(i).at(inPos->current);
+        _lowerBuilder->add(s);
+        _upperBuilder->add(s);
         inPos++;
       } else {
-        _lowerBuilder->add(data.at(i));
-        _upperBuilder->add(data.at(i));
+        VPackSlice s = data.at(i);
+        _lowerBuilder->add(s);
+        _upperBuilder->add(s);
       }
     }
 
-    VPackSlice bounds = data.at(data.length() - 1);
+    VPackSlice bounds = data.at(n - 1);
     TRI_ASSERT(bounds.isArray());
     TRI_ASSERT(bounds.length() == 2);
     VPackSlice b = bounds.at(0);
@@ -475,7 +482,9 @@ void MMFilesSkiplistInLookupBuilder::buildSearchValues() {
     _upperBuilder->close();
     _upperSlice = _upperBuilder->slice();
   } else {
-    for (size_t i = 0; i < data.length(); ++i) {
+    size_t const n = data.length();
+
+    for (size_t i = 0; i < n; ++i) {
       if (inPos != _inPositions.end() && i == inPos->field) {
         _lowerBuilder->add(data.at(i).at(inPos->current));
         inPos++;
@@ -692,36 +701,27 @@ size_t MMFilesSkiplistIndex::memory() const {
              MMFilesSkiplistIndexElement::baseMemoryUsage(_paths.size());
 }
 
-/// @brief return a VelocyPack representation of the index
-void MMFilesSkiplistIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
-                                        bool forPersistence) const {
-  builder.openObject();
-  {
-    Index::toVelocyPack(builder, withFigures, forPersistence);
-    builder.add("unique", VPackValue(_unique));
-    builder.add("sparse", VPackValue(_sparse));
-  }
-  builder.close();
-}
-
 /// @brief return a VelocyPack representation of the index figures
 void MMFilesSkiplistIndex::toVelocyPackFigures(VPackBuilder& builder) const {
-  TRI_ASSERT(builder.isOpenObject());
-  builder.add("memory", VPackValue(memory()));
+  MMFilesPathBasedIndex::toVelocyPackFigures(builder);
   _skiplistIndex->appendToVelocyPack(builder);
 }
 
 /// @brief inserts a document into a skiplist index
-int MMFilesSkiplistIndex::insert(transaction::Methods* trx,
-                                 TRI_voc_rid_t revisionId,
-                                 VPackSlice const& doc, bool isRollback) {
+Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
+                                    TRI_voc_rid_t revisionId,
+                                    VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
   try {
     res = fillElement<MMFilesSkiplistIndexElement>(elements, revisionId, doc);
-  } catch (...) {
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
+  } catch (std::bad_alloc const&) {
     res = TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -729,7 +729,7 @@ int MMFilesSkiplistIndex::insert(transaction::Methods* trx,
       // free all elements to prevent leak
       _allocator->deallocate(element);
     }
-    return res;
+    return IndexResult(res, this);
   }
 
   ManagedDocumentResult result;
@@ -760,20 +760,24 @@ int MMFilesSkiplistIndex::insert(transaction::Methods* trx,
     }
   }
 
-  return res;
+  return IndexResult(res, this);
 }
 
 /// @brief removes a document from a skiplist index
-int MMFilesSkiplistIndex::remove(transaction::Methods* trx,
-                                 TRI_voc_rid_t revisionId,
-                                 VPackSlice const& doc, bool isRollback) {
+Result MMFilesSkiplistIndex::remove(transaction::Methods* trx,
+                                    TRI_voc_rid_t revisionId,
+                                    VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
   try {
     res = fillElement<MMFilesSkiplistIndexElement>(elements, revisionId, doc);
-  } catch (...) {
+  } catch (basics::Exception const& ex) {
+    res = ex.code();
+  } catch (std::bad_alloc const&) {
     res = TRI_ERROR_OUT_OF_MEMORY;
+  } catch (...) {
+    res = TRI_ERROR_INTERNAL;
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -781,7 +785,7 @@ int MMFilesSkiplistIndex::remove(transaction::Methods* trx,
       // free all elements to prevent leak
       _allocator->deallocate(element);
     }
-    return res;
+    return IndexResult(res, this);
   }
 
   ManagedDocumentResult result;
@@ -803,12 +807,11 @@ int MMFilesSkiplistIndex::remove(transaction::Methods* trx,
     _allocator->deallocate(elements[i]);
   }
 
-  return res;
+  return IndexResult(res, this);
 }
 
-int MMFilesSkiplistIndex::unload() {
+void MMFilesSkiplistIndex::unload() {
   _skiplistIndex->truncate(true);
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief Checks if the interval is valid. It is declared invalid if
@@ -1263,6 +1266,7 @@ bool MMFilesSkiplistIndex::supportsFilterCondition(
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     size_t& estimatedItems, double& estimatedCost) const {
+
   std::unordered_map<size_t, std::vector<arangodb::aql::AstNode const*>> found;
   std::unordered_set<std::string> nonNullAttributes;
   size_t values = 0;
@@ -1331,12 +1335,19 @@ bool MMFilesSkiplistIndex::supportsFilterCondition(
   if (attributesCoveredByEquality == _fields.size() &&
       (unique() || implicitlyUnique())) {
     // index is unique and condition covers all attributes by equality
-    if (estimatedItems >= values) {
-      // reduce costs due to uniqueness
-      estimatedItems = values;
-      estimatedCost = static_cast<double>(estimatedItems);
+    if (itemsInIndex == 0) {
+      estimatedItems = 0;
+      estimatedCost = 0.0;
+      return true;
     }
-    // cost is already low... now slightly prioritize the unique index
+
+    if (estimatedItems >= values) {
+      TRI_ASSERT(itemsInIndex > 0);
+
+      estimatedItems = values;
+      estimatedCost = (std::max)(static_cast<double>(1), std::log2(static_cast<double>(itemsInIndex)) * values);
+    }
+    // cost is already low... now slightly prioritize unique indexes
     estimatedCost *= 0.995 - 0.05 * (_fields.size() - 1);
     return true;
   }
@@ -1349,11 +1360,15 @@ bool MMFilesSkiplistIndex::supportsFilterCondition(
     // sparse indexes are contained in Index::canUseConditionPart)
     estimatedItems = static_cast<size_t>((std::max)(
         static_cast<size_t>(estimatedCost * values), static_cast<size_t>(1)));
-    estimatedCost *= static_cast<double>(values);
+    if (itemsInIndex == 0) {
+      estimatedCost = 0.0;
+    } else {
+      estimatedCost = (std::max)(static_cast<double>(1), std::log2(static_cast<double>(itemsInIndex)) * values);
+    }
     return true;
   }
 
-  // no condition
+  // index does not help for this condition
   estimatedItems = itemsInIndex;
   estimatedCost = static_cast<double>(estimatedItems);
   return false;

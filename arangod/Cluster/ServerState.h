@@ -93,6 +93,12 @@ class ServerState {
 
   /// @brief flush the server state (used for testing)
   void flush();
+  
+  bool isSingleServer() { return isSingleServer(loadRole()); }
+  
+  static bool isSingleServer(ServerState::RoleEnum role) {
+    return (role == ServerState::ROLE_SINGLE);
+  }
 
   /// @brief check whether the server is a coordinator
   bool isCoordinator() { return isCoordinator(loadRole()); }
@@ -134,6 +140,11 @@ class ServerState {
   /// @brief check whether the server is running in a cluster
   static bool isRunningInCluster(ServerState::RoleEnum role) { 
     return isClusterRole(role); 
+  }
+  
+  bool isSingleServerOrCoordinator() {
+    RoleEnum role = loadRole();
+    return isCoordinator(role) || isSingleServer(role);
   }
 
   /// @brief get the server role
@@ -178,36 +189,6 @@ class ServerState {
 
   /// @brief set the current state
   void setState(StateEnum);
-
-  /// @brief gets the data path
-  std::string getDataPath();
-
-  /// @brief sets the data path
-  void setDataPath(std::string const&);
-
-  /// @brief gets the log path
-  std::string getLogPath();
-
-  /// @brief sets the log path
-  void setLogPath(std::string const&);
-
-  /// @brief gets the arangod path
-  std::string getArangodPath();
-
-  /// @brief sets the arangod path
-  void setArangodPath(std::string const&);
-
-  /// @brief gets the DBserver config
-  std::string getDBserverConfig();
-
-  /// @brief sets the DBserver config
-  void setDBserverConfig(std::string const&);
-
-  /// @brief gets the coordinator config
-  std::string getCoordinatorConfig();
-
-  /// @brief sets the coordinator config
-  void setCoordinatorConfig(std::string const&);
 
   /// @brief gets the JavaScript startup path
   std::string getJavaScriptPath();
@@ -296,23 +277,8 @@ class ServerState {
   /// @brief the server's description
   std::string _description;
 
-  /// @brief the data path, can be set just once
-  std::string _dataPath;
-
-  /// @brief the log path, can be set just once
-  std::string _logPath;
-
-  /// @brief the arangod path, can be set just once
-  std::string _arangodPath;
-
   /// @brief the JavaScript startup path, can be set just once
   std::string _javaScriptStartupPath;
-
-  /// @brief the DBserver config, can be set just once
-  std::string _dbserverConfig;
-
-  /// @brief the coordinator config, can be set just once
-  std::string _coordinatorConfig;
 
   /// @brief the server's own address, can be set just once
   std::string _address;

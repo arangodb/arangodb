@@ -29,6 +29,7 @@
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "RocksDBEngine/RocksDBToken.h"
 #include "Transaction/Methods.h"
+#include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -51,7 +52,7 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext();
   ~RocksDBReplicationContext();
 
-  TRI_voc_tick_t id() const;
+  TRI_voc_tick_t id() const; //batchId
   uint64_t lastTick() const;
   uint64_t count() const;
 
@@ -96,6 +97,7 @@ class RocksDBReplicationContext {
   void deleted();
   bool isUsed() const;
   void use(double ttl);
+  void adjustTtl(double ttl);
   bool more() const;
   /// remove use flag
   void release();
@@ -113,9 +115,9 @@ class RocksDBReplicationContext {
                               arangodb::LogicalCollection const* r);
 
  private:
-  TRI_voc_tick_t _id;
-  uint64_t _lastTick;
-  uint64_t _currentTick;
+  TRI_voc_tick_t _id; // batch id
+  uint64_t _lastTick; // the time at which the snapshot was taken
+  uint64_t _currentTick; // shows how often dump was called
   std::unique_ptr<transaction::Methods> _trx;
   LogicalCollection* _collection;
   std::unique_ptr<IndexIterator> _iter;
@@ -129,7 +131,7 @@ class RocksDBReplicationContext {
   double _expires;
   bool _isDeleted;
   bool _isUsed;
-  bool _hasMore;
+  bool _hasMore; //used during dump to check if there are more documents
 };
 
 }  // namespace arangodb

@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBIterators.h"
+#include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
@@ -29,6 +30,11 @@
 #include "RocksDBEngine/RocksDBTransactionState.h"
 
 using namespace arangodb;
+
+namespace {
+constexpr bool AllIteratorFillBlockCache = true;
+constexpr bool AnyIteratorFillBlockCache = false;
+}
 
 // ================ All Iterator ==================
 
@@ -42,14 +48,14 @@ RocksDBAllIndexIterator::RocksDBAllIndexIterator(
       _iterator(),
       _cmp(RocksDBColumnFamily::documents()->GetComparator()) {
   // acquire rocksdb transaction
-  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
+  auto* mthds = RocksDBTransactionState::toMethods(trx);
   rocksdb::ColumnFamilyHandle* cf = RocksDBColumnFamily::documents();
 
   // intentional copy of the read options
   rocksdb::ReadOptions options = mthds->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
   TRI_ASSERT(options.prefix_same_as_start);
-  options.fill_cache = true;
+  options.fill_cache = AllIteratorFillBlockCache;
   options.verify_checksums = false;  // TODO evaluate
   // options.readahead_size = 4 * 1024 * 1024;
   _iterator = mthds->NewIterator(options, cf);
@@ -90,7 +96,8 @@ bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
     TRI_ASSERT(_bounds.objectId() == RocksDBKey::objectId(_iterator->key()));
 #endif
 
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(_iterator->key());
+    TRI_voc_rid_t revisionId =
+        RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
     cb(RocksDBToken(revisionId));
 
     --limit;
@@ -120,9 +127,8 @@ bool RocksDBAllIndexIterator::nextDocument(
   }
 
   while (limit > 0) {
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(_iterator->key());
-    _mmdr->setManaged((uint8_t const*)_iterator->value().data(), revisionId);
-    cb(*_mmdr);
+    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
+    cb(RocksDBToken(revisionId), VPackSlice(_iterator->value().data()));
     --limit;
 
     if (_reverse) {
@@ -137,6 +143,21 @@ bool RocksDBAllIndexIterator::nextDocument(
   }
 
   return true;
+}
+  
+void RocksDBAllIndexIterator::skip(uint64_t count, uint64_t& skipped) {
+  TRI_ASSERT(_trx->state()->isRunning());
+
+  while (count > 0 && _iterator->Valid()) {
+    --count;
+    ++skipped;
+
+    if (_reverse) {
+      _iterator->Prev();
+    } else {
+      _iterator->Next();
+    }
+  }
 }
 
 void RocksDBAllIndexIterator::reset() {
@@ -161,12 +182,12 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
           static_cast<RocksDBCollection*>(col->getPhysical())->objectId())),
       _total(0),
       _returned(0) {
+  auto* mthds = RocksDBTransactionState::toMethods(trx);
   // intentional copy of the read options
-  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
   auto options = mthds->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
   TRI_ASSERT(options.prefix_same_as_start);
-  options.fill_cache = false;
+  options.fill_cache = AnyIteratorFillBlockCache;
   options.verify_checksums = false;  // TODO evaluate
   _iterator = mthds->NewIterator(options, RocksDBColumnFamily::documents());
 
@@ -202,9 +223,9 @@ bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
   }
 
   while (limit > 0) {
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(_iterator->key());
+    TRI_voc_rid_t revisionId =
+        RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
     cb(RocksDBToken(revisionId));
-
     --limit;
     _returned++;
     _iterator->Next();
@@ -231,10 +252,8 @@ bool RocksDBAnyIndexIterator::nextDocument(
   }
 
   while (limit > 0) {
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(_iterator->key());
-    _mmdr->setManaged((uint8_t const*)_iterator->value().data(), revisionId);
-    cb(*_mmdr);
-
+    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
+    cb(RocksDBToken(revisionId), VPackSlice(_iterator->value().data()));
     --limit;
     _returned++;
     _iterator->Next();
@@ -261,27 +280,24 @@ RocksDBSortedAllIterator::RocksDBSortedAllIterator(
     LogicalCollection* collection, transaction::Methods* trx,
     ManagedDocumentResult* mmdr, RocksDBPrimaryIndex const* index)
     : IndexIterator(collection, trx, mmdr, index),
+      _trx(trx),
       _bounds(RocksDBKeyBounds::PrimaryIndex(index->objectId())),
       _iterator(),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       _index(index),
 #endif
       _cmp(index->comparator()) {
-
-  // acquire rocksdb transaction
-  RocksDBTransactionState* state = rocksutils::toRocksTransactionState(trx);
-  TRI_ASSERT(state != nullptr);
-
-  RocksDBMethods* mthds = rocksutils::toRocksMethods(trx);
-
+ 
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
   // intentional copy of the read options
   auto options = mthds->readOptions();
   TRI_ASSERT(options.snapshot != nullptr);
   TRI_ASSERT(options.prefix_same_as_start);
+  options.fill_cache = false; // only used for incremental sync
   options.verify_checksums = false;
   _iterator = mthds->NewIterator(options, index->columnFamily());
-
   _iterator->Seek(_bounds.start());
+  TRI_ASSERT(index->columnFamily() == RocksDBColumnFamily::primary());
 }
 
 bool RocksDBSortedAllIterator::outOfRange() const {
@@ -347,8 +363,9 @@ void RocksDBSortedAllIterator::seek(StringRef const& key) {
   TRI_ASSERT(_trx->state()->isRunning());
   // don't want to get the index pointer just for this
   uint64_t objectId = _bounds.objectId();
-  RocksDBKey val = RocksDBKey::PrimaryIndexValue(objectId, key);
-  _iterator->Seek(val.string());
+  RocksDBKeyLeaser val(_trx);
+  val->constructPrimaryIndexValue(objectId, key);
+  _iterator->Seek(val->string());
   TRI_ASSERT(_iterator->Valid());
 }
 

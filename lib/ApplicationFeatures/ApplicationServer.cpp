@@ -24,6 +24,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "ApplicationFeatures/PrivilegeFeature.h"
+#include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/process-utils.h"
 #include "Logger/Logger.h"
@@ -35,11 +36,22 @@ using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
 
+namespace {
+// fail and abort with the specified message
+static void failCallback(std::string const& message) {
+  LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "error. cannot proceed. reason: " << message;
+  FATAL_ERROR_EXIT();
+}
+}
+
 ApplicationServer* ApplicationServer::server = nullptr;
 
 ApplicationServer::ApplicationServer(std::shared_ptr<ProgramOptions> options,
     const char *binaryPath)
     : _options(options), _stopping(false), _binaryPath(binaryPath) {
+  // register callback function for failures
+  fail = failCallback;
+  
   if (ApplicationServer::server != nullptr) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "ApplicationServer initialized twice";
   }
@@ -239,18 +251,31 @@ void ApplicationServer::run(int argc, char* argv[]) {
 void ApplicationServer::beginShutdown() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::beginShutdown";
 
+  bool old = _stopping.exchange(true);
+
   // fowards the begin shutdown signal to all features
-  for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
-       ++it) {
-    if ((*it)->isEnabled()) {
-      LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::beginShutdown";
-      (*it)->beginShutdown();
+  if (!old) {
+    for (auto it = _orderedFeatures.rbegin(); it != _orderedFeatures.rend();
+         ++it) {
+      if ((*it)->isEnabled()) {
+        LOG_TOPIC(TRACE, Logger::STARTUP) << (*it)->name() << "::beginShutdown";
+        try {
+          (*it)->beginShutdown();
+        } catch (std::exception const& ex) {
+          LOG_TOPIC(ERR, Logger::STARTUP)
+              << "caught exception during beginShutdown of feature '"
+              << (*it)->name() << "': " << ex.what();
+        } catch (...) {
+          LOG_TOPIC(ERR, Logger::STARTUP)
+              << "caught unknown exception during beginShutdown of feature '"
+              << (*it)->name() << "'";
+        }
+      }
     }
   }
 
-  _stopping = true;
-  // TODO: use condition variable for signaling shutdown
-  // to run method
+  CONDITION_LOCKER(guard, _shutdownCondition);
+  guard.signal();
 }
 
 void ApplicationServer::shutdownFatalError() {
@@ -260,12 +285,6 @@ void ApplicationServer::shutdownFatalError() {
 VPackBuilder ApplicationServer::options(
     std::unordered_set<std::string> const& excludes) const {
   return _options->toVPack(false, excludes);
-}
-
-// fail and abort with the specified message
-void ApplicationServer::fail(std::string const& message) {
-  LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "error. cannot proceed. reason: " << message;
-  FATAL_ERROR_EXIT();
 }
 
 // walks over all features and runs a callback function for them
@@ -352,12 +371,43 @@ void ApplicationServer::validateOptions() {
       reportFeatureProgress(_state, feature->name());
     }
   }
+
+  // inform about obsolete options  
+  _options->walk([](Section const& section, Option const& option) {
+    if (option.obsolete) {
+      LOG_TOPIC(WARN, Logger::STARTUP) << "obsolete option '" << option.displayName() << "' used in configuration. "
+                                       << "setting this option will not have any effect.";
+    }
+  }, true, true);
 }
 
 // setup and validate all feature dependencies, determine feature order
 void ApplicationServer::setupDependencies(bool failOnMissing) {
   LOG_TOPIC(TRACE, Logger::STARTUP)
       << "ApplicationServer::validateDependencies";
+
+  // apply all "startsBefore" values
+  for (auto& it : _features) {
+    for (auto const& other : it.second->startsBefore()) {
+      if (!this->exists(other)) {
+        if (failOnMissing) {
+          fail("feature '" + it.second->name() +
+               "' depends on unknown feature '" + other + "'");
+        }
+        continue;
+      }
+/*
+      if (failOnMissing &&
+          it.second->isEnabled() && 
+          !this->feature(other)->isEnabled()) {
+        fail("enabled feature '" + it.second->name() +
+             "' depends on other feature '" + other +
+             "', which is disabled");
+      }
+*/
+      this->feature(other)->startsAfter(it.second->name());
+    }
+  }
 
   // calculate ancestors for all features
   for (auto& it : _features) {
@@ -570,6 +620,7 @@ void ApplicationServer::start() {
         if (feature->state() == FeatureState::STARTED) {
           LOG_TOPIC(TRACE, Logger::STARTUP) << "forcefully stopping feature '" << feature->name() << "'";
           try {
+            feature->beginShutdown();
             feature->stop();
             feature->state(FeatureState::STOPPED);
           } catch (...) {
@@ -616,7 +667,13 @@ void ApplicationServer::stop() {
     }
 
     LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::stop";
-    feature->stop();
+    try {
+      feature->stop();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, Logger::STARTUP) << "caught exception during stop of feature '" << feature->name() << "': " << ex.what();
+    } catch (...) {
+      LOG_TOPIC(ERR, Logger::STARTUP) << "caught unknown exception during stop of feature '" << feature->name() << "'";
+    }
     feature->state(FeatureState::STOPPED);
     reportFeatureProgress(_state, feature->name());
   }
@@ -630,7 +687,13 @@ void ApplicationServer::unprepare() {
     auto feature = *it;
 
     LOG_TOPIC(TRACE, Logger::STARTUP) << feature->name() << "::unprepare";
-    feature->unprepare();
+    try {
+      feature->unprepare();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, Logger::STARTUP) << "caught exception during unprepare of feature '" << feature->name() << "': " << ex.what();
+    } catch (...) {
+      LOG_TOPIC(ERR, Logger::STARTUP) << "caught unknown exception during unprepare of feature '" << feature->name() << "'";
+    }
     feature->state(FeatureState::UNPREPARED);
     reportFeatureProgress(_state, feature->name());
   }
@@ -640,8 +703,8 @@ void ApplicationServer::wait() {
   LOG_TOPIC(TRACE, Logger::STARTUP) << "ApplicationServer::wait";
 
   while (!_stopping) {
-    // TODO: use condition variable for waiting for shutdown
-    ::usleep(100000);
+    CONDITION_LOCKER(guard, _shutdownCondition);
+    guard.wait(100000);
   }
 }
 

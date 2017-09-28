@@ -120,15 +120,18 @@ fi
 
 COMPILE_MATTERS="3rdParty"
 
-# setup make options
 if test -z "${CXX}"; then
-    CC="/usr/bin/gcc-4.9"
-    CXX="/usr/bin/g++-4.9"
+    CC=/usr/bin/gcc
+    CXX=/usr/bin/g++
 fi
 
 CFLAGS="-g -fno-omit-frame-pointer"
 CXXFLAGS="-g -fno-omit-frame-pointer"
-LDFLAGS="-g"
+if test "${isCygwin}" == 1; then
+    LDFLAGS=""
+else
+    LDFLAGS="-g"
+fi
 V8_CFLAGS="-fno-omit-frame-pointer"
 V8_CXXFLAGS="-fno-omit-frame-pointer"
 V8_LDFLAGS=""
@@ -147,6 +150,7 @@ CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL")
 INSTALL_PREFIX="/"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
+RETRY_N_TIMES=1
 TAR_SUFFIX=""
 TARGET_DIR=""
 CLANG36=0
@@ -211,11 +215,13 @@ CLEAN_IT=0
 while [ $# -gt 0 ];  do
     case "$1" in
         --clang)
+            GCC5=0
             CLANG=1
             shift
             ;;
 
         --clang36)
+            GCC5=0
             CLANG36=1
             shift
             ;;
@@ -226,6 +232,7 @@ while [ $# -gt 0 ];  do
             ;;
 
         --gcc6)
+            GCC5=0
             GCC6=1
             shift
             ;;
@@ -389,6 +396,16 @@ while [ $# -gt 0 ];  do
             shift
             CONFIGURE_OPTIONS+=(-DUSE_ENTERPRISE=On)
             ;;
+
+        --maintainer)
+            shift
+            ;;
+
+        --retryPackages)
+            shift
+            RETRY_N_TIMES=$1
+            shift
+            ;;
         *)
             echo "Unknown option: $1"
             exit 1
@@ -407,8 +424,6 @@ if test -n "$LASTREV"; then
         CLEAN_IT=0
     fi
 fi
-
-
 
 if [ "$GCC5" == 1 ]; then
     CC=/usr/bin/gcc-5
@@ -621,12 +636,16 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
 fi
 
 if test "${DOWNLOAD_STARTER}" == 1; then
-    # we utilize https://developer.github.com/v3/repos/ to get the newest release:
-    STARTER_REV=$(curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases | \
-                         grep tag_name | \
-                         head -n 1 | \
-                         ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'
-               )
+    if test -f "${SRC}/STARTER_REV"; then
+        STARTER_REV=$(cat "${SRC}/STARTER_REV")
+    else
+        # we utilize https://developer.github.com/v3/repos/ to get the newest release:
+        STARTER_REV=$(curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases | \
+                             grep tag_name | \
+                             head -n 1 | \
+                             ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'
+                   )
+    fi
     STARTER_URL=$(curl -s "https://api.github.com/repos/arangodb-helper/arangodb/releases/tags/${STARTER_REV}" | \
                          grep browser_download_url | \
                          grep "${OSNAME}" | \
@@ -642,10 +661,18 @@ if test "${DOWNLOAD_STARTER}" == 1; then
         if test -f "${TN}"; then
             rm -f "${TN}"
         fi
-        curl -LO "${STARTER_URL}"
         FN=$(echo "${STARTER_URL}" |${SED} "s;.*/;;")
-        mv "${FN}" "${BUILD_DIR}/${TN}"
-        chmod a+x "${BUILD_DIR}/${TN}"
+
+        echo "$FN"
+        if ! test -f "${BUILD_DIR}/${FN}-${STARTER_REV}"; then
+            curl -LO "${STARTER_URL}"
+            cp "${FN}" "${BUILD_DIR}/${TN}"
+            touch "${BUILD_DIR}/${FN}-${STARTER_REV}"
+            chmod a+x "${BUILD_DIR}/${TN}"
+            echo "downloaded ${BUILD_DIR}/${FN}-${STARTER_REV} MD5: $(${MD5} < "${BUILD_DIR}/${TN}")"
+        else
+            echo "using already downloaded ${BUILD_DIR}/${FN}-${STARTER_REV} MD5: $(${MD5} < "${BUILD_DIR}/${TN}")"
+        fi
     fi
     CONFIGURE_OPTIONS+=("-DTHIRDPARTY_BIN=${BUILD_DIR}/${TN}")
 fi
@@ -700,7 +727,22 @@ set -e
 
 if [ -n "${CPACK}" ] && [ -n "${TARGET_DIR}" ];  then
     ${PACKAGE_MAKE} clean_packages || exit 1
-    ${PACKAGE_MAKE} packages || exit 1
+    
+    set +e
+    WAIT_ON_FAIL=$((RETRY_N_TIMES - 1))
+    while test "${RETRY_N_TIMES}" -gt 0; do
+        ${PACKAGE_MAKE} packages && break
+        RETRY_N_TIMES=$((RETRY_N_TIMES - 1))
+        if test "${WAIT_ON_FAIL}" -gt 0; then
+            echo "failed to build packages - waiting 5 mins maybe the situation gets better?"
+            sleep 600
+        fi
+    done
+    if test "${RETRY_N_TIMES}" -eq 0; then
+        echo "building packages failed terminally"
+        exit 1
+    fi
+    set -e
 fi
 # and install
 

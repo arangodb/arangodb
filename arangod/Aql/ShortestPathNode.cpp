@@ -136,7 +136,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
       _toCondition(nullptr) {
   // Start Vertex
   if (base.hasKey("startInVariable")) {
-    _inStartVariable = varFromVPack(plan->getAst(), base, "startInVariable");
+    _inStartVariable = Variable::varFromVPack(plan->getAst(), base, "startInVariable");
   } else {
     VPackSlice v = base.get("startVertexId");
     if (!v.isString()) {
@@ -153,7 +153,7 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan* plan,
 
   // Target Vertex
   if (base.hasKey("targetInVariable")) {
-    _inTargetVariable = varFromVPack(plan->getAst(), base, "targetInVariable");
+    _inTargetVariable = Variable::varFromVPack(plan->getAst(), base, "targetInVariable");
   } else {
     VPackSlice v = base.get("targetVertexId");
     if (!v.isString()) {
@@ -322,17 +322,17 @@ void ShortestPathNode::prepareOptions() {
     auto dir = _directions[i];
     switch (dir) {
       case TRI_EDGE_IN:
-        opts->addLookupInfo(ast, _edgeColls[i]->getName(),
+        opts->addLookupInfo(_plan, _edgeColls[i]->getName(),
                             StaticStrings::ToString, _toCondition->clone(ast));
-        opts->addReverseLookupInfo(ast, _edgeColls[i]->getName(),
+        opts->addReverseLookupInfo(_plan, _edgeColls[i]->getName(),
                                    StaticStrings::FromString,
                                    _fromCondition->clone(ast));
         break;
       case TRI_EDGE_OUT:
-        opts->addLookupInfo(ast, _edgeColls[i]->getName(),
+        opts->addLookupInfo(_plan, _edgeColls[i]->getName(),
                             StaticStrings::FromString,
                             _fromCondition->clone(ast));
-        opts->addReverseLookupInfo(ast, _edgeColls[i]->getName(),
+        opts->addReverseLookupInfo(_plan, _edgeColls[i]->getName(),
                                    StaticStrings::ToString,
                                    _toCondition->clone(ast));
         break;

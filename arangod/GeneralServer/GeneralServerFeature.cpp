@@ -42,18 +42,23 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "RestHandler/RestAdminLogHandler.h"
+#include "RestHandler/RestAdminRoutingHandler.h"
 #include "RestHandler/RestAqlFunctionsHandler.h"
 #include "RestHandler/RestAuthHandler.h"
 #include "RestHandler/RestBatchHandler.h"
 #include "RestHandler/RestCursorHandler.h"
+#include "RestHandler/RestDatabaseHandler.h"
 #include "RestHandler/RestDebugHandler.h"
 #include "RestHandler/RestDemoHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEchoHandler.h"
 #include "RestHandler/RestEdgesHandler.h"
+#include "RestHandler/RestEndpointHandler.h"
 #include "RestHandler/RestEngineHandler.h"
+#include "RestHandler/RestExplainHandler.h"
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestHandler/RestImportHandler.h"
+#include "RestHandler/RestIndexHandler.h"
 #include "RestHandler/RestJobHandler.h"
 #include "RestHandler/RestPleaseUpgradeHandler.h"
 #include "RestHandler/RestPregelHandler.h"
@@ -62,7 +67,9 @@
 #include "RestHandler/RestShutdownHandler.h"
 #include "RestHandler/RestSimpleHandler.h"
 #include "RestHandler/RestSimpleQueryHandler.h"
+#include "RestHandler/RestTransactionHandler.h"
 #include "RestHandler/RestUploadHandler.h"
+#include "RestHandler/RestUsersHandler.h"
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestViewHandler.h"
 #include "RestHandler/WorkMonitorHandler.h"
@@ -100,7 +107,6 @@ GeneralServerFeature::GeneralServerFeature(
   startsAfter("Database");
   startsAfter("Endpoint");
   startsAfter("FoxxQueues");
-  startsAfter("MMFilesLogfileManager");
   startsAfter("Random");
   startsAfter("Scheduler");
   startsAfter("Server");
@@ -222,8 +228,8 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
   }
 
   // the vocbase context is now responsible for releasing the vocbase
-  VocbaseContext* ctx = new arangodb::VocbaseContext(request, vocbase);
-  request->setRequestContext(ctx, true);
+  request->setRequestContext(new VocbaseContext(request, vocbase),
+                             true);
 
   // the "true" means the request is the owner of the context
   return true;
@@ -255,8 +261,9 @@ void GeneralServerFeature::start() {
   auto authentication =
       FeatureCacheFeature::instance()->authenticationFeature();
   TRI_ASSERT(authentication != nullptr);
-  if (authentication->isEnabled()) {
+  if (authentication->isActive()) {
     authentication->authInfo()->outdate();
+    authentication->authInfo()->reloadAllUsers();
   }
 }
 
@@ -350,6 +357,10 @@ void GeneralServerFeature::defineHandlers() {
       queryRegistry);
 
   _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::DATABASE_PATH,
+      RestHandlerCreator<RestDatabaseHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::DOCUMENT_PATH,
       RestHandlerCreator<RestDocumentHandler>::createNoData);
 
@@ -358,8 +369,16 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<RestEdgesHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::ENDPOINT_PATH,
+      RestHandlerCreator<RestEndpointHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::IMPORT_PATH,
       RestHandlerCreator<RestImportHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      RestVocbaseBaseHandler::INDEX_PATH,
+      RestHandlerCreator<RestIndexHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH,
@@ -388,6 +407,10 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<RestUploadHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
+    RestVocbaseBaseHandler::USERS_PATH,
+    RestHandlerCreator<RestUsersHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::VIEW_PATH,
       RestHandlerCreator<RestViewHandler>::createNoData);
 
@@ -399,6 +422,9 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       "/_api/aql-builtin",
       RestHandlerCreator<RestAqlFunctionsHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
+      "/_api/explain", RestHandlerCreator<RestExplainHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
       "/_api/query", RestHandlerCreator<RestQueryHandler>::createNoData);
@@ -443,11 +469,14 @@ void GeneralServerFeature::defineHandlers() {
                        AsyncJobManager*>,
       _jobManager.get());
 
-  _handlerFactory->addHandler(
-      "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
+  _handlerFactory->addPrefixHandler(
+      "/_api/engine", RestHandlerCreator<RestEngineHandler>::createNoData);
 
   _handlerFactory->addHandler(
-      "/_api/engine", RestHandlerCreator<RestEngineHandler>::createNoData);
+      "/_api/version", RestHandlerCreator<RestVersionHandler>::createNoData);
+  
+  _handlerFactory->addHandler(
+      "/_api/transaction", RestHandlerCreator<RestTransactionHandler>::createNoData);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   _handlerFactory->addHandler(
@@ -472,6 +501,10 @@ void GeneralServerFeature::defineHandlers() {
       RestHandlerCreator<arangodb::RestAdminLogHandler>::createNoData);
 
   _handlerFactory->addPrefixHandler(
+      "/_admin/routing",
+      RestHandlerCreator<arangodb::RestAdminRoutingHandler>::createNoData);
+
+  _handlerFactory->addPrefixHandler(
       "/_admin/work-monitor",
       RestHandlerCreator<WorkMonitorHandler>::createNoData);
 
@@ -488,7 +521,7 @@ void GeneralServerFeature::defineHandlers() {
       "/_admin/shutdown",
       RestHandlerCreator<arangodb::RestShutdownHandler>::createNoData);
 
-  if (authentication->isEnabled()) {
+  if (authentication->isActive()) {
     _handlerFactory->addPrefixHandler(
         "/_open/auth",
         RestHandlerCreator<arangodb::RestAuthHandler>::createNoData);

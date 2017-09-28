@@ -26,6 +26,7 @@
 #include "Aql/QueryList.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
@@ -45,7 +46,6 @@ BootstrapFeature::BootstrapFeature(
   startsAfter("Endpoint");
   startsAfter("Scheduler");
   startsAfter("Server");
-  startsAfter("MMFilesLogfileManager");
   startsAfter("Database");
   startsAfter("Upgrade");
   startsAfter("CheckVersion");
@@ -132,6 +132,9 @@ static void raceForClusterBootstrap() {
       sleep(1);
       continue;
     }
+    
+    LOG_TOPIC(DEBUG, Logger::STARTUP) << "Creating the root user";
+    AuthenticationFeature::INSTANCE->authInfo()->createRootUser();
 
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: bootstrap done";
@@ -158,13 +161,47 @@ void BootstrapFeature::start() {
   if (!ss->isRunningInCluster()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
     V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase, "server/server.js", nullptr);
+    // Agency is not allowed to call this
+    if (ServerState::instance()->isSingleServer()) {
+      // only creates root user if it does not exist
+      AuthenticationFeature::INSTANCE->authInfo()->createRootUser();
+    }
   } else if (ss->isCoordinator()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Racing for cluster bootstrap...";
     raceForClusterBootstrap();
-    LOG_TOPIC(DEBUG, Logger::STARTUP)
-        << "Running server/bootstrap/coordinator.js";
-    V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase,
-        "server/bootstrap/coordinator.js", nullptr);
+    bool success = false;
+    while (!success) {
+      LOG_TOPIC(DEBUG, Logger::STARTUP)
+          << "Running server/bootstrap/coordinator.js";
+      
+      VPackBuilder builder;      
+      V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase,
+          "server/bootstrap/coordinator.js", &builder);
+      
+      auto slice = builder.slice();
+      if (slice.isArray()) {
+        if (slice.length() > 0) {
+          bool newResult = true;
+          for (auto const& val: VPackArrayIterator(slice)) {
+            newResult = newResult && val.isTrue();
+          }
+          if (!newResult) {
+            LOG_TOPIC(ERR, Logger::STARTUP)
+              << "result of bootstrap was: " << builder.toJson() << ". retrying bootstrap in 1s.";
+          }
+          success = newResult;
+        } else {
+          LOG_TOPIC(ERR, Logger::STARTUP)
+            << "bootstrap wasn't executed in a single context! retrying bootstrap in 1s.";
+        }
+      } else {
+        LOG_TOPIC(ERR, Logger::STARTUP)
+          << "result of bootstrap was not an array: " << slice.typeName() << ". retrying bootstrap in 1s.";
+      }
+      if (!success) {
+        sleep(1);
+      }
+    }
   } else if (ss->isDBServer()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "Running server/bootstrap/db-server.js";

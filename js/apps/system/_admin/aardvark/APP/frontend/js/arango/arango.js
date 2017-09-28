@@ -95,6 +95,22 @@
       localStorage.setItem('jwtUser', username);
     },
 
+    checkJwt: function () {
+      $.ajax({
+        type: 'GET',
+        cache: false,
+        url: arangoHelper.databaseUrl('/_api/version'),
+        contentType: 'application/json',
+        processData: false,
+        async: true,
+        error: function (jqXHR) {
+          if (jqXHR.status === 401) {
+            window.App.navigate('login', {trigger: true});
+          }
+        }
+      });
+    },
+
     getCoordinatorShortName: function (id) {
       var shortName;
       if (window.clusterHealth) {
@@ -953,6 +969,29 @@
       } catch (ignore) {}
     },
 
+    downloadLocalBlob: function (obj, type) {
+      var dlType;
+      if (type === 'csv') {
+        dlType = 'text/csv; charset=utf-8';
+      }
+
+      if (dlType) {
+        var blob = new Blob([obj], {type: dlType});
+        var blobUrl = window.URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        document.body.appendChild(a);
+        a.style = 'display: none';
+        a.href = blobUrl;
+        a.download = 'results-' + window.frontendConfig.db + '.' + type;
+        a.click();
+
+        window.setTimeout(function () {
+          window.URL.revokeObjectURL(blobUrl);
+          document.body.removeChild(a);
+        }, 500);
+      }
+    },
+
     download: function (url, callback) {
       $.ajax(url)
         .success(function (result, dummy, request) {
@@ -975,6 +1014,51 @@
             document.body.removeChild(a);
           }, 500);
         });
+    },
+
+    checkCollectionPermissions: function (collectionID, roCallback) {
+      var url = arangoHelper.databaseUrl('/_api/user/' +
+        encodeURIComponent(window.App.userCollection.activeUser) +
+        '/database/' + encodeURIComponent(frontendConfig.db) + '/' + encodeURIComponent(collectionID));
+
+      // FETCH COMPLETE DB LIST
+      $.ajax({
+        type: 'GET',
+        url: url,
+        contentType: 'application/json',
+        success: function (data) {
+          // fetching available dbs and permissions
+          if (data.result === 'ro') {
+            roCallback();
+          }
+        },
+        error: function (data) {
+          arangoHelper.arangoError('User', 'Could not fetch collection permissions.');
+        }
+      });
+    },
+
+    checkDatabasePermissions: function (roCallback) {
+      var url = arangoHelper.databaseUrl('/_api/user/' +
+        encodeURIComponent(window.App.userCollection.activeUser) +
+        '/database/' + encodeURIComponent(frontendConfig.db));
+
+      // FETCH COMPLETE DB LIST
+      $.ajax({
+        type: 'GET',
+        url: url,
+        contentType: 'application/json',
+        success: function (data) {
+          // fetching available dbs and permissions
+          if (data.result === 'ro') {
+            roCallback();
+          }
+        },
+        error: function (data) {
+          arangoHelper.arangoError('User', 'Could not fetch collection permissions.');
+        }
+      });
     }
+
   };
 }());

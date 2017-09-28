@@ -47,13 +47,13 @@ class RocksDBValue {
 
   static RocksDBValue Database(VPackSlice const& data);
   static RocksDBValue Collection(VPackSlice const& data);
-  static RocksDBValue Document(VPackSlice const& data);
   static RocksDBValue PrimaryIndexValue(TRI_voc_rid_t revisionId);
   static RocksDBValue EdgeIndexValue(arangodb::StringRef const& vertexId);
-  static RocksDBValue IndexValue();
-  static RocksDBValue UniqueIndexValue(TRI_voc_rid_t revisionId);
+  static RocksDBValue VPackIndexValue();
+  static RocksDBValue UniqueVPackIndexValue(TRI_voc_rid_t revisionId);
   static RocksDBValue View(VPackSlice const& data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice const& data);
+  static RocksDBValue KeyGeneratorValue(VPackSlice const& data);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Used to construct an empty value of the given type for retrieval
@@ -77,7 +77,7 @@ class RocksDBValue {
   /// May be called only on EdgeIndexValue values. Other types will throw.
   //////////////////////////////////////////////////////////////////////////////
   static StringRef vertexId(rocksdb::Slice const&);
-  
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the VelocyPack data from a value
   ///
@@ -87,6 +87,15 @@ class RocksDBValue {
   static VPackSlice data(RocksDBValue const&);
   static VPackSlice data(rocksdb::Slice const&);
   static VPackSlice data(std::string const&);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts the numeric value from the key field of a VPackSlice
+  ///
+  /// May be called only on values of the following types: KeyGeneratorValue.
+  //////////////////////////////////////////////////////////////////////////////
+  static uint64_t keyValue(RocksDBValue const&);
+  static uint64_t keyValue(rocksdb::Slice const&);
+  static uint64_t keyValue(std::string const&);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -100,10 +109,19 @@ class RocksDBValue {
 
   RocksDBValue(RocksDBEntryType type, rocksdb::Slice slice)
       : _type(type), _buffer(slice.data(), slice.size()) {}
- 
-  RocksDBValue(RocksDBValue&& other) 
+  
+  RocksDBValue(RocksDBValue const&) = delete;
+  RocksDBValue& operator=(RocksDBValue const&) = delete;
+
+  RocksDBValue(RocksDBValue&& other) noexcept
       : _type(other._type), _buffer(std::move(other._buffer)) {}
- 
+  
+  RocksDBValue& operator=(RocksDBValue&& other) noexcept {
+    TRI_ASSERT(_type == other._type);
+    _buffer = std::move(other._buffer);
+    return *this;
+  }
+
  private:
   RocksDBValue();
   explicit RocksDBValue(RocksDBEntryType type);
@@ -116,6 +134,7 @@ class RocksDBValue {
   static TRI_voc_rid_t revisionId(char const* data, uint64_t size);
   static StringRef vertexId(char const* data, size_t size);
   static VPackSlice data(char const* data, size_t size);
+  static uint64_t keyValue(char const* data, size_t size);
 
  private:
   RocksDBEntryType const _type;

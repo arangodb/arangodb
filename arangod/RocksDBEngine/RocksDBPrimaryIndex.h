@@ -79,8 +79,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
  public:
   RocksDBPrimaryIndex() = delete;
 
-  explicit RocksDBPrimaryIndex(arangodb::LogicalCollection*,
-                               VPackSlice const& info);
+  RocksDBPrimaryIndex(arangodb::LogicalCollection*,
+                      VPackSlice const& info);
 
   ~RocksDBPrimaryIndex();
 
@@ -97,34 +97,17 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return true; }
 
-  double selectivityEstimate(
+  double selectivityEstimateLocal(
       arangodb::StringRef const* = nullptr) const override {
     return 1.0;
   }
-
-  size_t size() const;
-
-  size_t memory() const override;
+  
+  void load() override;
 
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
   RocksDBToken lookupKey(transaction::Methods* trx,
                          arangodb::StringRef key) const;
-
-  int insert(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
-
-  int insertRaw(RocksDBMethods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&) override;
-
-  int remove(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
-
-  /// optimization for truncateNoTrx, never called in fillIndex
-  int removeRaw(RocksDBMethods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&) override;
-
-  int drop() override;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
@@ -143,7 +126,20 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
       transaction::Methods* trx,
       std::function<bool(DocumentIdentifierToken const&)> callback) const;
 
-  int cleanup() override;
+  /// insert index elements into the specified write batch.
+  Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
+                        TRI_voc_rid_t,
+                        arangodb::velocypack::Slice const&) override;
+  
+  Result updateInternal(transaction::Methods* trx, RocksDBMethods*,
+                        TRI_voc_rid_t oldRevision,
+                        arangodb::velocypack::Slice const& oldDoc,
+                        TRI_voc_rid_t newRevision,
+                        velocypack::Slice const& newDoc) override;
+
+  /// remove index elements and put it in the specified write batch.
+  Result removeInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
+                        arangodb::velocypack::Slice const&) override;
 
  protected:
   Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,

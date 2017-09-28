@@ -25,10 +25,11 @@
 
 #include "GeneralCommTask.h"
 
-#include "Basics/HybridLogicalClock.h"
+#include "Basics/Locking.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
@@ -36,16 +37,23 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Meta/conversion.h"
-#include "Rest/VstResponse.h"
 #include "Scheduler/Job.h"
 #include "Scheduler/JobQueue.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Socket.h"
+#include "Utils/Events.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
+
+namespace {
+// some static URL path prefixes 
+static std::string const AdminAardvark("/_admin/aardvark/");
+static std::string const ApiUser("/_api/user/");
+static std::string const Open("/_open/");
+} 
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -58,7 +66,12 @@ GeneralCommTask::GeneralCommTask(EventLoop loop, GeneralServer* server,
     : Task(loop, "GeneralCommTask"),
       SocketTask(loop, std::move(socket), std::move(info), keepAliveTimeout,
                  skipSocketInit),
-      _server(server) {}
+      _server(server),
+      _authentication(nullptr) {
+  _authentication = application_features::ApplicationServer::getFeature<
+  AuthenticationFeature>("Authentication");
+  TRI_ASSERT(_authentication != nullptr);
+}
 
 GeneralCommTask::~GeneralCommTask() {
   for (auto& statistics : _statisticsMap) {
@@ -125,7 +138,7 @@ void GeneralCommTask::executeRequest(
   // give up, if we cannot find a handler
   if (handler == nullptr) {
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no handler is known, giving up";
-    handleSimpleError(rest::ResponseCode::NOT_FOUND, messageId);
+    handleSimpleError(rest::ResponseCode::NOT_FOUND, *request, messageId);
     return;
   }
 
@@ -158,7 +171,7 @@ void GeneralCommTask::executeRequest(
       processResponse(response.get());
       return;
     } else {
-      handleSimpleError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_QUEUE_FULL,
+      handleSimpleError(rest::ResponseCode::SERVER_ERROR, *request, TRI_ERROR_QUEUE_FULL,
                         TRI_errno_string(TRI_ERROR_QUEUE_FULL), messageId);
     }
   }
@@ -170,15 +183,17 @@ void GeneralCommTask::executeRequest(
   }
 
   if (!ok) {
-    handleSimpleError(rest::ResponseCode::SERVER_ERROR, messageId);
+    handleSimpleError(rest::ResponseCode::SERVER_ERROR, *request, messageId);
   }
 }
 
 void GeneralCommTask::processResponse(GeneralResponse* response) {
+  _lock.assertLockedByCurrentThread();
+  
   if (response == nullptr) {
     LOG_TOPIC(WARN, Logger::COMMUNICATION)
         << "processResponse received a nullptr, closing connection";
-    closeStream();
+    closeStreamNoLock();
   } else {
     addResponse(response, nullptr);
   }
@@ -248,7 +263,7 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
   }
 
   if (isDirect) {
-    handleRequestDirectly(std::move(handler));
+    handleRequestDirectly(basics::ConditionalLocking::DoNotLock, std::move(handler));
     return true;
   }
 
@@ -256,7 +271,9 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
 
   if (isPrio) {
     SchedulerFeature::SCHEDULER->post(
-        [self, this, handler]() { handleRequestDirectly(std::move(handler)); });
+        [self, this, handler]() { 
+          handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(handler));
+        });
     return true;
   }
 
@@ -268,24 +285,32 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
   std::unique_ptr<Job> job(
       new Job(_server, std::move(handler),
               [self, this](std::shared_ptr<RestHandler> h) {
-                handleRequestDirectly(h);
+                handleRequestDirectly(basics::ConditionalLocking::DoLock, h);
               }));
 
   bool ok = SchedulerFeature::SCHEDULER->queue(std::move(job));
 
   if (!ok) {
-    handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, TRI_ERROR_QUEUE_FULL,
+    
+    handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, *(handler->request()), TRI_ERROR_QUEUE_FULL,
                       TRI_errno_string(TRI_ERROR_QUEUE_FULL), messageId);
   }
 
   return ok;
 }
 
-void GeneralCommTask::handleRequestDirectly(
-    std::shared_ptr<RestHandler> handler) {
+void GeneralCommTask::handleRequestDirectly(bool doLock, std::shared_ptr<RestHandler> handler) {
+  if (!doLock) {
+    _lock.assertLockedByCurrentThread();
+  }
+
   auto self = shared_from_this();
-  handler->initEngine(_loop, [self, this](RestHandler* h) {
+  handler->initEngine(_loop, [self, this, doLock](RestHandler* h) {
     RequestStatistics* stat = h->stealStatistics();
+
+    CONDITIONAL_MUTEX_LOCKER(locker, _lock, doLock); 
+    _lock.assertLockedByCurrentThread();
+
     addResponse(h->response(), stat);
   });
 
@@ -327,4 +352,114 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
       [self, this](std::shared_ptr<RestHandler> h) { h->asyncRunEngine(); });
 
   return SchedulerFeature::SCHEDULER->queue(std::move(job));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks the access rights for a specified path
+////////////////////////////////////////////////////////////////////////////////
+
+rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const {
+  if (!_authentication->isActive()) {
+    // no authentication required at all
+    return rest::ResponseCode::OK;
+  }
+  
+  std::string const& path = request->requestPath();
+  std::string const& dbname = request->databaseName();
+  std::string const& username = request->user();
+  rest::ResponseCode result = request->authorized() ? rest::ResponseCode::OK :
+    rest::ResponseCode::UNAUTHORIZED;
+  
+  AuthLevel dbLevel = AuthLevel::NONE;
+
+  // mop: inside authenticateRequest() request->user will be populated
+  bool forceOpen = false;  
+  if (request->authorized() && !username.empty()) {
+    AuthLevel sysLevel = _authentication->canUseDatabase(username, StaticStrings::SystemDatabase);
+    if (dbname == StaticStrings::SystemDatabase) {
+      // the request is made in the system database, and we have already queried our
+      // privileges for it. simply reuse the already queried privileges now
+      dbLevel = sysLevel;
+    } else {
+      // we have to query again but for a different database
+      dbLevel = _authentication->canUseDatabase(username, dbname);
+    }
+
+    request->setExecContext(new ExecContext(username, dbname,
+                                            sysLevel, dbLevel));
+  }
+  
+  if (!request->authorized()) {
+    
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
+    // check if we need to run authentication for this type of
+    // endpoint
+    ConnectionInfo const& ci = request->connectionInfo();
+    
+    if (ci.endpointType == Endpoint::DomainType::UNIX &&
+        !_authentication->authenticationUnixSockets()) {
+      // no authentication required for unix domain socket connections
+      forceOpen = true;
+      result = rest::ResponseCode::OK;
+    }
+#endif
+    
+    if (result != rest::ResponseCode::OK &&
+        _authentication->authenticationSystemOnly()) {
+      // authentication required, but only for /_api, /_admin etc.
+      
+      if (!path.empty()) {
+        // check if path starts with /_
+        // or path begins with /
+        if (path[0] != '/' || (path.size() > 1 && path[1] != '_')) {
+          forceOpen = true;
+          result = rest::ResponseCode::OK;
+        }
+      }
+    }
+ 
+    if (result != rest::ResponseCode::OK) {
+      if (path == "/" ||
+          StringUtils::isPrefix(path, Open) ||
+          StringUtils::isPrefix(path, AdminAardvark)) {
+        // mop: these paths are always callable...they will be able to check
+        // req.user when it could be validated
+        result = rest::ResponseCode::OK;
+        forceOpen = true;
+      }
+    }
+  }
+  
+  
+  if (result != rest::ResponseCode::OK) {
+    return result;
+  }
+  
+  // mop: internal request => no username present
+  if (username.empty()) {
+    // mop: set user to root so that the foxx stuff
+    // knows about us
+    return rest::ResponseCode::OK;
+  }
+  
+  // check that we are allowed to see the database
+  if (!forceOpen) {
+    if (!request->authorized()) {
+      if (request->requestType() == RequestType::GET &&
+          (StringUtils::isPrefix(path, ApiUser + username + '/') ||
+           StringUtils::isPrefix(path, AdminAardvark))) {
+        // check for GET /_db/_system/_api/user/USERNAME/database
+        request->setExecContext(nullptr);
+        return rest::ResponseCode::OK;
+      }
+    }
+    
+    if (dbLevel == AuthLevel::NONE &&
+        !StringUtils::isPrefix(path, ApiUser)) {
+      events::NotAuthorized(request);
+      result = rest::ResponseCode::UNAUTHORIZED;
+    }
+  }
+  
+  return result;
 }

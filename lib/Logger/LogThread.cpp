@@ -45,8 +45,11 @@ LogThread::~LogThread() {
 }
 
 void LogThread::log(std::unique_ptr<LogMessage>& message) {
-  MESSAGES->push(message.get());
-  message.release();
+  if (MESSAGES->push(message.get())) {
+    // only release message if adding to the queue succeeded
+    // otherwise we would leak here
+    message.release();
+  }
 }
 
 void LogThread::flush() {
@@ -56,16 +59,25 @@ void LogThread::flush() {
     if (MESSAGES->empty()) {
       break;
     }
-  
+
     CONDITION_LOCKER(guard, *CONDITION);
     guard.signal();
   }
 }
 
+void LogThread::wakeup() {
+  CONDITION_LOCKER(guard, *CONDITION);
+  guard.signal();
+}
+
+bool LogThread::hasMessages() {
+  return (!MESSAGES->empty());
+}
+
 void LogThread::run() {
   LogMessage* msg;
 
-  while (! isStopping() && Logger::_active.load()) {
+  while (!isStopping() && Logger::_active.load()) {
     while (_messages.pop(msg)) {
       try {
         LogAppender::log(msg);
@@ -76,7 +88,7 @@ void LogThread::run() {
     }
 
     CONDITION_LOCKER(guard, *CONDITION);
-    guard.wait(10 * 1000);
+    guard.wait(25 * 1000);
   }
 
   while (_messages.pop(msg)) {

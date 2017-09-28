@@ -29,6 +29,32 @@
 
 namespace arangodb {
 
+// String to number conversions:
+
+template<class T> struct sto;
+
+template<> struct sto<uint64_t> {
+  static uint64_t convert(std::string const& s) {
+    return std::stoull(s);
+  }
+};
+template<> struct sto<int64_t> {
+  static uint64_t convert(std::string const& s) {
+    return std::stoll(s);
+  }
+};
+template<> struct sto<int32_t> {
+   static long convert(std::string const& s) {
+     return std::stol(s);
+   }
+};
+template<> struct sto<uint32_t> {
+  static uint64_t convert(std::string const& s) {
+    return std::stoul(s);
+  }
+};
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief REST handler for private agency communication
 ///        (vote, appendentries, notify)
@@ -56,11 +82,16 @@ class RestAgencyPrivHandler : public arangodb::RestBaseHandler {
       return false;
     } else {
       try {
-        val = std::stoul(val_str);
+        val = sto<T>::convert(val_str);
       } catch (std::invalid_argument const&) {
         LOG_TOPIC(WARN, Logger::AGENCY)
             << "Value for query string " << name
             << " cannot be converted to integral type";
+        return false;
+      } catch (std::out_of_range const&) {
+        LOG_TOPIC(WARN, Logger::AGENCY)
+            << "Value for query string " << name
+            << " does not fit into range of integral type";
         return false;
       }
     }

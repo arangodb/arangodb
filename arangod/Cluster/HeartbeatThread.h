@@ -52,7 +52,7 @@ class HeartbeatThread : public Thread,
                         public std::enable_shared_from_this<HeartbeatThread> {
  public:
   HeartbeatThread(AgencyCallbackRegistry*, uint64_t interval,
-                  uint64_t maxFailsBeforeWarning, boost::asio::io_service*);
+                  uint64_t maxFailsBeforeWarning);
   ~HeartbeatThread();
 
  public:
@@ -222,19 +222,13 @@ class HeartbeatThread : public Thread,
   bool _wasNotified;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief the io_service to start background jobs
-  //////////////////////////////////////////////////////////////////////////////
-
-  boost::asio::io_service* _ioService;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief number of background jobs that have been posted to the ioService
+  /// @brief number of background jobs that have been posted to the scheduler
   //////////////////////////////////////////////////////////////////////////////
 
   std::atomic<uint64_t> _backgroundJobsPosted;
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief number of background jobs that have been launched by the ioService
+  /// @brief number of background jobs that have been launched by the scheduler
   //////////////////////////////////////////////////////////////////////////////
 
   std::atomic<uint64_t> _backgroundJobsLaunched;
@@ -255,6 +249,9 @@ class HeartbeatThread : public Thread,
   //////////////////////////////////////////////////////////////////////////////
   
   bool _launchAnotherBackgroundJob;
+
+  // when was the javascript sync routine last run?
+  double _lastSyncTime;
 };
 }
 

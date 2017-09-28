@@ -25,6 +25,7 @@
 #include "HttpCommTask.h"
 
 #include "Basics/HybridLogicalClock.h"
+#include "Basics/tri-strings.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
@@ -33,6 +34,7 @@
 #include "Meta/conversion.h"
 #include "Rest/HttpRequest.h"
 #include "Statistics/ConnectionStatistics.h"
+#include "Utils/Events.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
@@ -68,16 +70,17 @@ HttpCommTask::HttpCommTask(EventLoop loop, GeneralServer* server,
   ConnectionStatistics::SET_HTTP(_connectionStatistics);
 }
 
-void HttpCommTask::handleSimpleError(rest::ResponseCode code,
-                                     uint64_t /* messageId */) {
+void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest const& req, uint64_t /* messageId */) {
   std::unique_ptr<GeneralResponse> response(new HttpResponse(code));
+  response->setContentType(req.contentTypeResponse());
   addResponse(response.get(), stealStatistics(1UL));
 }
 
-void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
+void HttpCommTask::handleSimpleError(rest::ResponseCode code, GeneralRequest const& req, int errorNum,
                                      std::string const& errorMessage,
                                      uint64_t /* messageId */) {
   std::unique_ptr<GeneralResponse> response(new HttpResponse(code));
+  response->setContentType(req.contentTypeResponse());
 
   VPackBuilder builder;
   builder.openObject();
@@ -104,6 +107,8 @@ void HttpCommTask::handleSimpleError(rest::ResponseCode code, int errorNum,
 
 void HttpCommTask::addResponse(HttpResponse* response,
                                RequestStatistics* stat) {
+  _lock.assertLockedByCurrentThread();
+
   resetKeepAlive();
 
   // response has been queued, allow further requests
@@ -147,9 +152,7 @@ void HttpCommTask::addResponse(HttpResponse* response,
   }
 
   // reserve a buffer with some spare capacity
-  WriteBuffer buffer(
-      new StringBuffer(TRI_UNKNOWN_MEM_ZONE, responseBodyLength + 128, false),
-      stat);
+  WriteBuffer buffer(leaseStringBuffer(responseBodyLength + 128), stat);
 
   // write header
   response->writeHeader(buffer._buffer);
@@ -202,6 +205,7 @@ void HttpCommTask::addResponse(HttpResponse* response,
 }
 
 // reads data from the socket
+// caller must hold the _lock
 bool HttpCommTask::processRead(double startTime) {
   cancelKeepAlive();
 
@@ -258,11 +262,13 @@ bool HttpCommTask::processRead(double startTime) {
     size_t headerLength = ptr - (_readBuffer.c_str() + _startPosition);
 
     if (headerLength > MaximalHeaderSize) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "maximal header size is " << MaximalHeaderSize
-                << ", request header size is " << headerLength;
+      LOG_TOPIC(WARN, arangodb::Logger::FIXME)
+          << "maximal header size is " << MaximalHeaderSize
+          << ", request header size is " << headerLength;
 
+      HttpRequest tmpRequest(_connectionInfo, nullptr, 0, _allowMethodOverride);
       // header is too large
-      handleSimpleError(rest::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE,
+      handleSimpleError(rest::ResponseCode::REQUEST_HEADER_FIELDS_TOO_LARGE, tmpRequest,
                         1);  // ID does not matter for http (http default is 1)
 
       _closeRequested = true;
@@ -275,16 +281,21 @@ bool HttpCommTask::processRead(double startTime) {
       LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "switching from HTTP to VST";
       ProtocolVersion protocolVersion = _readBuffer.c_str()[6] == '0' 
           ? ProtocolVersion::VST_1_0 : ProtocolVersion::VST_1_1;
-      _abandoned = true;
-      cancelKeepAlive();
-      std::shared_ptr<GeneralCommTask> commTask;
-      commTask = std::make_shared<VstCommTask>(
+
+      if (!abandon()) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "task is already abandoned");
+      }
+      
+      std::shared_ptr<GeneralCommTask> commTask = std::make_shared<VstCommTask>(
           _loop, _server, std::move(_peer), std::move(_connectionInfo),
           GeneralServerFeature::keepAliveTimeout(), 
           protocolVersion, /*skipSocketInit*/ true);
       commTask->addToReadBuffer(_readBuffer.c_str() + 11,
                                 _readBuffer.length() - 11);
-      commTask->processRead(startTime);
+      {
+        MUTEX_LOCKER(locker, commTask->_lock);
+        commTask->processAll();
+      }
       commTask->start();
       return false;
     }
@@ -320,7 +331,7 @@ bool HttpCommTask::processRead(double startTime) {
 
       if (_protocolVersion != rest::ProtocolVersion::HTTP_1_0 &&
           _protocolVersion != rest::ProtocolVersion::HTTP_1_1) {
-        handleSimpleError(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED, 1);
+        handleSimpleError(rest::ResponseCode::HTTP_VERSION_NOT_SUPPORTED, *_incompleteRequest, 1);
 
         _closeRequested = true;
         return false;
@@ -330,7 +341,7 @@ bool HttpCommTask::processRead(double startTime) {
       _fullUrl = _incompleteRequest->fullUrl();
 
       if (_fullUrl.size() > 16384) {
-        handleSimpleError(rest::ResponseCode::REQUEST_URI_TOO_LONG, 1);
+        handleSimpleError(rest::ResponseCode::REQUEST_URI_TOO_LONG, *_incompleteRequest, 1);
 
         _closeRequested = true;
         return false;
@@ -432,7 +443,7 @@ bool HttpCommTask::processRead(double startTime) {
                     << "'";
 
           // bad request, method not allowed
-          handleSimpleError(rest::ResponseCode::METHOD_NOT_ALLOWED, 1);
+          handleSimpleError(rest::ResponseCode::METHOD_NOT_ALLOWED, *_incompleteRequest, 1);
 
           _closeRequested = true;
           return false;
@@ -448,7 +459,7 @@ bool HttpCommTask::processRead(double startTime) {
         if (found && StringUtils::trim(expect) == "100-continue") {
           LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "received a 100-continue request";
 
-          WriteBuffer buffer(new StringBuffer(TRI_UNKNOWN_MEM_ZONE), nullptr);
+          WriteBuffer buffer(new StringBuffer(false), nullptr);
 
           buffer._buffer->appendText(
               TRI_CHAR_LENGTH_PAIR("HTTP/1.1 100 (Continue)\r\n\r\n"));
@@ -481,7 +492,7 @@ bool HttpCommTask::processRead(double startTime) {
         std::string uncompressed;
         if (!StringUtils::gzipUncompress(_readBuffer.c_str() + _bodyPosition,
                                          _bodyLength, uncompressed)) {
-          handleSimpleError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+          handleSimpleError(rest::ResponseCode::BAD, *_incompleteRequest, TRI_ERROR_BAD_PARAMETER,
                             "gzip decoding error", 1);
           return false;
         }
@@ -491,7 +502,7 @@ bool HttpCommTask::processRead(double startTime) {
         std::string uncompressed;
         if (!StringUtils::gzipDeflate(_readBuffer.c_str() + _bodyPosition,
                                       _bodyLength, uncompressed)) {
-          handleSimpleError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
+          handleSimpleError(rest::ResponseCode::BAD, *_incompleteRequest, TRI_ERROR_BAD_PARAMETER,
                             "gzip deflate error", 1);
           return false;
         }
@@ -573,12 +584,12 @@ bool HttpCommTask::processRead(double startTime) {
   }
   // not found
   else if (authResult == rest::ResponseCode::NOT_FOUND) {
-    handleSimpleError(authResult, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
+    handleSimpleError(authResult, *_incompleteRequest, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
                       TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND), 1);
   }
   // forbidden
   else if (authResult == rest::ResponseCode::FORBIDDEN) {
-    handleSimpleError(authResult, TRI_ERROR_USER_CHANGE_PASSWORD,
+    handleSimpleError(authResult, *_incompleteRequest, TRI_ERROR_USER_CHANGE_PASSWORD,
                       "change password", 1);
   } else {  // not authenticated
     HttpResponse response(rest::ResponseCode::UNAUTHORIZED);
@@ -624,6 +635,16 @@ void HttpCommTask::processRequest(std::unique_ptr<HttpRequest> request) {
     }
   }
 
+  // check source
+  std::string const& source =
+      request->header(StaticStrings::ClusterCommSource, found);
+
+  if (found) {
+    LOG_TOPIC(TRACE, Logger::REQUESTS)
+        << "\"http-request-source\",\"" << (void*)this << "\",\""
+        << source << "\"";
+  }
+
   // create a handler and execute
   std::unique_ptr<GeneralResponse> response(
       new HttpResponse(rest::ResponseCode::SERVER_ERROR));
@@ -644,7 +665,7 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
 
   if (bodyLength < 0) {
     // bad request, body length is < 0. this is a client error
-    handleSimpleError(rest::ResponseCode::LENGTH_REQUIRED);
+    handleSimpleError(rest::ResponseCode::LENGTH_REQUIRED, *request);
     return false;
   }
 
@@ -661,7 +682,7 @@ bool HttpCommTask::checkContentLength(HttpRequest* request,
               << ", request body size is " << bodyLength;
 
     // request entity too large
-    handleSimpleError(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE,
+    handleSimpleError(rest::ResponseCode::REQUEST_ENTITY_TOO_LARGE, *request,
                       0);  // FIXME
     return false;
   }
@@ -772,22 +793,86 @@ void HttpCommTask::resetState() {
 }
 
 rest::ResponseCode HttpCommTask::authenticateRequest(HttpRequest* request) {
-  auto context = request->requestContext();
-
-  if (context == nullptr) {
-    bool res =
-        GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
-
-    if (!res) {
-      return rest::ResponseCode::NOT_FOUND;
+  // first scape the auth headers and try to authenticate the user
+  ResponseCode code = handleAuthHeader(request);
+  if (code != ResponseCode::SERVER_ERROR) {
+    // now populate the VocbaseContext
+    if (request->requestContext() == nullptr) {
+      bool res =
+      GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request);
+      if (!res) {
+        return rest::ResponseCode::NOT_FOUND;
+      }
+      if (request->requestContext() == nullptr) {
+        return rest::ResponseCode::SERVER_ERROR;
+      }
     }
-
-    context = request->requestContext();
+    
+    
+    // will determine if the user can access this path
+    // checks db permissions and contains exceptions for the
+    // users API to allow logins
+    return GeneralCommTask::canAccessPath(request);
   }
-
-  if (context == nullptr) {
-    return rest::ResponseCode::SERVER_ERROR;
+  return code;
+}
+  
+ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
+  bool found;
+  std::string const& authStr =
+  request->header(StaticStrings::Authorization, found);
+  
+  if (!found) {
+    events::CredentialsMissing(request);
+    return rest::ResponseCode::UNAUTHORIZED;
   }
-
-  return context->authenticate();
+  
+  size_t methodPos = authStr.find_first_of(' ');
+  
+  if (methodPos != std::string::npos) {
+    // skip over authentication method
+    char const* auth = authStr.c_str() + methodPos;
+    while (*auth == ' ') {
+      ++auth;
+    }
+    
+    LOG_TOPIC(DEBUG, arangodb::Logger::REQUESTS) << "Authorization header: " << authStr;
+    try {
+      // note that these methods may throw in case of an error
+      AuthenticationMethod authMethod = AuthenticationMethod::NONE;
+      if (TRI_CaseEqualString(authStr.c_str(), "basic ", 6)) {
+        authMethod = AuthenticationMethod::BASIC;
+      } else if (TRI_CaseEqualString(authStr.c_str(), "bearer ", 7)) {
+        authMethod = AuthenticationMethod::JWT;
+      }
+      
+      if (authMethod != AuthenticationMethod::NONE) {
+        AuthResult result = _authentication->authInfo()->
+        checkAuthentication(authMethod, auth);
+        
+        request->setAuthorized(result._authorized);
+        if (result._authorized) {
+          request->setUser(std::move(result._username));
+          
+          events::Authenticated(request, authMethod);
+          return rest::ResponseCode::OK;
+        }
+        events::CredentialsBad(request, authMethod);
+        return rest::ResponseCode::UNAUTHORIZED;
+      }
+      
+      // intentional fallthrough
+    } catch (arangodb::basics::Exception const& ex) {
+      // translate error
+      if (ex.code() == TRI_ERROR_USER_NOT_FOUND) {
+        return rest::ResponseCode::UNAUTHORIZED;
+      }
+      return GeneralResponse::responseCode(ex.what());
+    } catch (...) {
+      return rest::ResponseCode::SERVER_ERROR;
+    }
+  }
+  
+  events::UnknownAuthenticationMethod(request);
+  return rest::ResponseCode::UNAUTHORIZED;
 }

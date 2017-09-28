@@ -44,7 +44,8 @@ using namespace arangodb::cache;
 
 TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
   SECTION("test basic cache creation") {
-    Manager manager(nullptr, 1024 * 1024);
+    auto postFn = [](std::function<void()>) -> bool { return false; };
+    Manager manager(postFn, 1024 * 1024);
     auto cache1 = manager.createCache(CacheType::Plain, false, 256 * 1024);
     REQUIRE(true);
     auto cache2 = manager.createCache(CacheType::Plain, false, 512 * 1024);
@@ -60,14 +61,16 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
 
   SECTION("check that insertion works as expected") {
     uint64_t cacheLimit = 256 * 1024;
-    Manager manager(nullptr, 4 * cacheLimit);
+    auto postFn = [](std::function<void()>) -> bool { return false; };
+    Manager manager(postFn, 4 * cacheLimit);
     auto cache = manager.createCache(CacheType::Plain, false, cacheLimit);
 
     for (uint64_t i = 0; i < 1024; i++) {
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
-      bool success = cache->insert(value);
-      if (success) {
+      TRI_ASSERT(value != nullptr);
+      auto status = cache->insert(value);
+      if (status.ok()) {
         auto f = cache->find(&i, sizeof(uint64_t));
         REQUIRE(f.found());
       } else {
@@ -79,8 +82,9 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
       uint64_t j = 2 * i;
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &j, sizeof(uint64_t));
-      bool success = cache->insert(value);
-      if (success) {
+      TRI_ASSERT(value != nullptr);
+      auto status = cache->insert(value);
+      if (status.ok()) {
         auto f = cache->find(&i, sizeof(uint64_t));
         REQUIRE(f.found());
         REQUIRE(0 == memcmp(f.value()->value(), &j, sizeof(uint64_t)));
@@ -92,8 +96,9 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
     for (uint64_t i = 1024; i < 256 * 1024; i++) {
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
-      bool success = cache->insert(value);
-      if (success) {
+      TRI_ASSERT(value != nullptr);
+      auto status = cache->insert(value);
+      if (status.ok()) {
         auto f = cache->find(&i, sizeof(uint64_t));
         REQUIRE(f.found());
       } else {
@@ -107,14 +112,16 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
 
   SECTION("test that removal works as expected") {
     uint64_t cacheLimit = 256 * 1024;
-    Manager manager(nullptr, 4 * cacheLimit);
+    auto postFn = [](std::function<void()>) -> bool { return false; };
+    Manager manager(postFn, 4 * cacheLimit);
     auto cache = manager.createCache(CacheType::Plain, false, cacheLimit);
 
     for (uint64_t i = 0; i < 1024; i++) {
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
-      bool success = cache->insert(value);
-      if (success) {
+      TRI_ASSERT(value != nullptr);
+      auto status = cache->insert(value);
+      if (status.ok()) {
         auto f = cache->find(&i, sizeof(uint64_t));
         REQUIRE(f.found());
         REQUIRE(f.value() != nullptr);
@@ -135,8 +142,8 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
 
     // test removal of bogus keys
     for (uint64_t i = 1024; i < 2048; i++) {
-      bool removed = cache->remove(&i, sizeof(uint64_t));
-      BOOST_ASSERT(removed);
+      auto status = cache->remove(&i, sizeof(uint64_t));
+      REQUIRE(status.ok());
       // ensure existing keys not removed
       uint64_t found = 0;
       for (uint64_t j = 0; j < 1024; j++) {
@@ -152,8 +159,8 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
 
     // remove actual keys
     for (uint64_t i = 0; i < 1024; i++) {
-      bool removed = cache->remove(&i, sizeof(uint64_t));
-      REQUIRE(removed);
+      auto status = cache->remove(&i, sizeof(uint64_t));
+      REQUIRE(status.ok());
       auto f = cache->find(&i, sizeof(uint64_t));
       REQUIRE(!f.found());
     }
@@ -164,14 +171,19 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
   SECTION("verify that cache can indeed grow when it runs out of space") {
     uint64_t minimumUsage = 1024 * 1024;
     MockScheduler scheduler(4);
-    Manager manager(scheduler.ioService(), 1024 * 1024 * 1024);
+    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+      scheduler.post(fn);
+      return true;
+    };
+    Manager manager(postFn, 1024 * 1024 * 1024);
     auto cache = manager.createCache(CacheType::Plain);
 
     for (uint64_t i = 0; i < 4 * 1024 * 1024; i++) {
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
-      bool success = cache->insert(value);
-      if (!success) {
+      TRI_ASSERT(value != nullptr);
+      auto status = cache->insert(value);
+      if (status.fail()) {
         delete value;
       }
     }
@@ -184,7 +196,11 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
   SECTION("test behavior under mixed load") {
     RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
     MockScheduler scheduler(4);
-    Manager manager(scheduler.ioService(), 1024 * 1024 * 1024);
+    auto postFn = [&scheduler](std::function<void()> fn) -> bool {
+      scheduler.post(fn);
+      return true;
+    };
+    Manager manager(postFn, 1024 * 1024 * 1024);
     size_t threadCount = 4;
     std::shared_ptr<Cache> cache = manager.createCache(CacheType::Plain);
 
@@ -200,8 +216,9 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
         uint64_t item = lower + i;
         CachedValue* value = CachedValue::construct(&item, sizeof(uint64_t),
                                                     &item, sizeof(uint64_t));
-        bool ok = cache->insert(value);
-        if (!ok) {
+        TRI_ASSERT(value != nullptr);
+        auto status = cache->insert(value);
+        if (status.fail()) {
           delete value;
         }
       }
@@ -230,8 +247,9 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
           uint64_t item = ++validUpper;
           CachedValue* value = CachedValue::construct(&item, sizeof(uint64_t),
                                                       &item, sizeof(uint64_t));
-          bool ok = cache->insert(value);
-          if (!ok) {
+          TRI_ASSERT(value != nullptr);
+          auto status = cache->insert(value);
+          if (status.fail()) {
             delete value;
           }
         } else {  // lookup something
@@ -272,7 +290,8 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
 
   SECTION("test hit rate statistics reporting") {
     uint64_t cacheLimit = 256 * 1024;
-    Manager manager(nullptr, 4 * cacheLimit);
+    auto postFn = [](std::function<void()>) -> bool { return false; };
+    Manager manager(postFn, 4 * cacheLimit);
     auto cacheMiss = manager.createCache(CacheType::Plain, true, cacheLimit);
     auto cacheHit = manager.createCache(CacheType::Plain, true, cacheLimit);
     auto cacheMixed = manager.createCache(CacheType::Plain, true, cacheLimit);
@@ -280,19 +299,25 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
     for (uint64_t i = 0; i < 1024; i++) {
       CachedValue* value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
-      if (!cacheHit->insert(value)) {
+      TRI_ASSERT(value != nullptr);
+      auto status = cacheHit->insert(value);
+      if (status.fail()) {
         delete value;
       }
 
       value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
-      if (!cacheMiss->insert(value)) {
+      TRI_ASSERT(value != nullptr);
+      status = cacheMiss->insert(value);
+      if (status.fail()) {
         delete value;
       }
 
       value =
           CachedValue::construct(&i, sizeof(uint64_t), &i, sizeof(uint64_t));
-      if (!cacheMixed->insert(value)) {
+      TRI_ASSERT(value != nullptr);
+      status = cacheMixed->insert(value);
+      if (status.fail()) {
         delete value;
       }
     }
@@ -303,10 +328,10 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
     {
       auto cacheStats = cacheHit->hitRates();
       auto managerStats = manager.globalHitRates();
-      REQUIRE(cacheStats.first >= 50.0);
-      REQUIRE(cacheStats.second >= 50.0);
-      REQUIRE(managerStats.first >= 50.0);
-      REQUIRE(managerStats.second >= 50.0);
+      REQUIRE(cacheStats.first >= 40.0);
+      REQUIRE(cacheStats.second >= 40.0);
+      REQUIRE(managerStats.first >= 40.0);
+      REQUIRE(managerStats.second >= 40.0);
     }
 
     for (uint64_t i = 1024; i < 2048; i++) {
@@ -318,9 +343,9 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
       REQUIRE(cacheStats.first == 0.0);
       REQUIRE(cacheStats.second == 0.0);
       REQUIRE(managerStats.first > 10.0);
-      REQUIRE(managerStats.first < 50.0);
+      REQUIRE(managerStats.first < 60.0);
       REQUIRE(managerStats.second > 10.0);
-      REQUIRE(managerStats.second < 50.0);
+      REQUIRE(managerStats.second < 60.0);
     }
 
     for (uint64_t i = 0; i < 1024; i++) {
@@ -333,13 +358,13 @@ TEST_CASE("cache::PlainCache", "[cache][!hide][longRunning]") {
       auto cacheStats = cacheMixed->hitRates();
       auto managerStats = manager.globalHitRates();
       REQUIRE(cacheStats.first > 10.0);
-      REQUIRE(cacheStats.first < 50.0);
+      REQUIRE(cacheStats.first < 60.0);
       REQUIRE(cacheStats.second > 10.0);
-      REQUIRE(cacheStats.second < 50.0);
+      REQUIRE(cacheStats.second < 60.0);
       REQUIRE(managerStats.first > 10.0);
-      REQUIRE(managerStats.first < 50.0);
+      REQUIRE(managerStats.first < 60.0);
       REQUIRE(managerStats.second > 10.0);
-      REQUIRE(managerStats.second < 50.0);
+      REQUIRE(managerStats.second < 60.0);
     }
 
     manager.destroyCache(cacheHit);

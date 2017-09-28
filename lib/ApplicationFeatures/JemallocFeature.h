@@ -23,6 +23,8 @@
 #ifndef ARANGODB_APPLICATION_FEATURES_JEMALLOC_FEATURE_H
 #define ARANGODB_APPLICATION_FEATURES_JEMALLOC_FEATURE_H 1
 
+#undef ARANGODB_MMAP_JEMALLOC
+
 #include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {

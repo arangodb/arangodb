@@ -14,6 +14,7 @@ add_executable(
   Agency/MoveShardTest.cpp
   Agency/RemoveFollowerTest.cpp
   Basics/icu-helper.cpp
+  Basics/ApplicationServerTest.cpp
   Basics/AttributeNameParserTest.cpp
   Basics/associative-multi-pointer-test.cpp
   Basics/associative-multi-pointer-nohashcache-test.cpp
@@ -32,10 +33,10 @@ add_executable(
   Basics/vector-test.cpp
   Basics/structure-size-test.cpp
   Basics/EndpointTest.cpp
-  Basics/RocksDBKeyTest.cpp
   Basics/StringBufferTest.cpp
   Basics/StringUtilsTest.cpp
   Basics/VelocyPackHelper-test.cpp
+  Cache/BucketState.cpp
   Cache/CachedValue.cpp
   Cache/FrequencyBuffer.cpp
   Cache/Manager.cpp
@@ -44,7 +45,6 @@ add_executable(
   Cache/PlainBucket.cpp
   Cache/PlainCache.cpp
   Cache/Rebalancer.cpp
-  Cache/State.cpp
   Cache/Table.cpp
   Cache/TransactionalBucket.cpp
   Cache/TransactionalCache.cpp
@@ -54,8 +54,10 @@ add_executable(
   Cluster/ClusterHelpersTest.cpp
   Geo/georeg.cpp
   Pregel/typedbuffer.cpp
+  RocksDBEngine/KeyTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
   RocksDBEngine/TypeConversionTest.cpp
+  SimpleHttpClient/CommunicatorTest.cpp
   main.cpp
 )
 

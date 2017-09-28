@@ -42,6 +42,7 @@ ERROR_HTTP_UNAUTHORIZED,401,"unauthorized","Will be raised when authorization is
 ERROR_HTTP_FORBIDDEN,403,"forbidden","Will be raised when the operation is forbidden."
 ERROR_HTTP_NOT_FOUND,404,"not found","Will be raised when an URI is unknown."
 ERROR_HTTP_METHOD_NOT_ALLOWED,405,"method not supported","Will be raised when an unsupported HTTP method is used for an operation."
+ERROR_HTTP_NOT_ACCEPTABLE,406,"request not acceptable","Will be raised when an unsupported HTTP content type is used for an operation, or if a request is not acceptable for a leader or follower."
 ERROR_HTTP_PRECONDITION_FAILED,412,"precondition failed","Will be raised when a precondition for an HTTP request is not met."
 ERROR_HTTP_SERVER_ERROR,500,"internal server error","Will be raised when an internal server is encountered."
 ERROR_HTTP_SERVICE_UNAVAILABLE,503,"service unavailable","Will be raised when a service is temporarily unavailable."
@@ -159,6 +160,8 @@ ERROR_REPLICATION_RUNNING,1411,"cannot perform operation while applier is runnin
 ERROR_REPLICATION_APPLIER_STOPPED,1412,"replication stopped","Special error code used to indicate the replication applier was stopped by a user."
 ERROR_REPLICATION_NO_START_TICK,1413,"no start tick","Will be raised when the replication applier is started without a known start tick value."
 ERROR_REPLICATION_START_TICK_NOT_PRESENT,1414,"start tick not present","Will be raised when the replication applier fetches data using a start tick, but that start tick is not present on the logger server anymore."
+ERROR_REPLICATION_WRONG_CHECKSUM_FORMAT,1415,"the checksum format is wrong", "Will be raised when the format of the checksum is wrong")
+ERROR_REPLICATION_WRONG_CHECKSUM,1416,"wrong checksum","Will be raised when a new born follower submits a wrong checksum"
 
 ################################################################################
 ## ArangoDB cluster errors
@@ -202,7 +205,13 @@ ERROR_CLUSTER_CHAIN_OF_DISTRIBUTESHARDSLIKE,1484,"chain of distributeShardsLike 
 ERROR_CLUSTER_MUST_NOT_DROP_COLL_OTHER_DISTRIBUTESHARDSLIKE,1485,"must not drop collection while another has a distributeShardsLike attribute pointing to it","Will be raised if one tries to drop a collection to which another collection points with its distributeShardsLike attribute."
 ERROR_CLUSTER_UNKNOWN_DISTRIBUTESHARDSLIKE,1486,"must not have a distributeShardsLike attribute pointing to an unknown collection","Will be raised if one tries to create a collection which points to an unknown collection in its distributeShardsLike attribute."
 ERROR_CLUSTER_INSUFFICIENT_DBSERVERS,1487,"the number of current dbservers is lower than the requested replicationFactor","Will be raised if one tries to create a collection with a replicationFactor greater than the available number of DBServers."
-
+ERROR_CLUSTER_COULD_NOT_DROP_FOLLOWER,1488,"a follower could not be dropped in agency","Will be raised if a follower that ought to be dropped could not be dropped in the agency (under Current)."
+ERROR_CLUSTER_SHARD_LEADER_REFUSES_REPLICATION,1489,"a shard leader refuses to perform a replication operation","Will be raised if a replication operation is refused by a shard leader."
+ERROR_CLUSTER_SHARD_FOLLOWER_REFUSES_OPERATION,1490,"a shard follower refuses to perform an operation that is not a replication","Will be raised if a non-replication operation is refused by a shard follower."
+ERROR_CLUSTER_SHARD_LEADER_RESIGNED,1491,"a (former) shard leader refuses to perform an operation, because it has resigned in the meantime","Will be raised if a non-replication operation is refused by a former shard leader that has found out that it is no longer the leader."
+ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED,1492,"some agency operation failed","Will be raised if after various retries an agency operation could not be performed successfully."
+ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_REPLICATION_FACTOR,1493,"conflicting replication factor with distributeShardsLike parameter assignment","Will be raised if intended replication factor does not match that of the prototype shard given in ditributeShardsLike parameter."
+ERROR_CLUSTER_DISTRIBUTE_SHARDS_LIKE_NUMBER_OF_SHARDS,1494,"conflicting shard number with distributeShardsLike parameter assignment","Will be raised if intended number of shards does not match that of the prototype shard given in ditributeShardsLike parameter."
 
 ################################################################################
 ## ArangoDB query errors
@@ -377,6 +386,7 @@ SIMPLE_CLIENT_COULD_NOT_READ,2003,"could not read from server","Will be raised w
 ################################################################################
 
 COMMUNICATOR_REQUEST_ABORTED,2100,"Request aborted","Request was aborted."
+COMMUNICATOR_DISABLED,2101,"Communication was disabled","Communication was disabled."
 
 ################################################################################
 ## Foxx management errors
@@ -419,11 +429,15 @@ ERROR_ILLEGAL_SMART_GRAPH_ATTRIBUTE,4004,"attribute cannot be used as smart grap
 ## Agency errors
 ################################################################################
 
+ERROR_AGENCY_INQUIRY_SYNTAX,20001,"Illegal inquiry syntax","Inquiry handles a list of string clientIds: [<clientId>,...]."
 ERROR_AGENCY_INFORM_MUST_BE_OBJECT,20011,"Inform message must be an object.","The inform message in the agency must be an object."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_TERM,20012,"Inform message must contain uint parameter 'term'","The inform message in the agency must contain a uint parameter 'term'."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_ID,20013,"Inform message must contain string parameter 'id'","The inform message in the agency must contain a string parameter 'id'."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_ACTIVE,20014,"Inform message must contain array 'active'","The inform message in the agency must contain an array 'active'."
 ERROR_AGENCY_INFORM_MUST_CONTAIN_POOL,20015,"Inform message must contain object 'pool'","The inform message in the agency must contain an object 'pool'."
+ERROR_AGENCY_INFORM_MUST_CONTAIN_MIN_PING,20016,"Inform message must contain object 'min ping'","The inform message in the agency must contain an object 'min ping'."
+ERROR_AGENCY_INFORM_MUST_CONTAIN_MAX_PING,20017,"Inform message must contain object 'max ping'","The inform message in the agency must contain an object 'max ping'."
+ERROR_AGENCY_INFORM_MUST_CONTAIN_TIMEOUT_MULT,20018,"Inform message must contain object 'timeoutMult'","The inform message in the agency must contain an object 'timeoutMult'."
 ERROR_AGENCY_INQUIRE_CLIENT_ID_MUST_BE_STRING,20020,"Inquiry failed","Inquiry by clientId failed"
 ERROR_AGENCY_CANNOT_REBUILD_DBS,20021,"Cannot rebuild readDB and spearHead","Will be raised if the readDB or the spearHead cannot be rebuilt from the replicated log."
 

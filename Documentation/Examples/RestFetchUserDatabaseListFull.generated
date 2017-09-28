@@ -1,0 +1,36 @@
+shell> curl --dump - http://localhost:8529/_api/user/anotherAdmin@secapp/database?full=true
+
+HTTP/<span class="hljs-number">1.1</span> <span class="hljs-number">200</span> OK
+content-type: application/json; charset=utf<span class="hljs-number">-8</span>
+x-content-type-options: nosniff
+
+{ 
+  <span class="hljs-string">"error"</span> : <span class="hljs-literal">false</span>, 
+  <span class="hljs-string">"code"</span> : <span class="hljs-number">200</span>, 
+  <span class="hljs-string">"result"</span> : { 
+    <span class="hljs-string">"_system"</span> : { 
+      <span class="hljs-string">"permission"</span> : <span class="hljs-string">"rw"</span>, 
+      <span class="hljs-string">"collections"</span> : { 
+        <span class="hljs-string">"_statisticsRaw"</span> : <span class="hljs-string">"undefined"</span>, 
+        <span class="hljs-string">"_queues"</span> : <span class="hljs-string">"undefined"</span>, 
+        <span class="hljs-string">"_aqlfunctions"</span> : <span class="hljs-string">"undefined"</span>, 
+        <span class="hljs-string">"_routing"</span> : <span class="hljs-string">"undefined"</span>, 
+        <span class="hljs-string">"_users"</span> : <span class="hljs-string">"undefined"</span>, 
+        <span class="hljs-string">"animals"</span> : <span class="hljs-string">"undefined"</span>, 
+        <span class="hljs-string">"_statistics"</span> : <span class="hljs-string">"undefined"</span>, 
+        <span class="hljs-string">"_statistics15"</span> : <span class="hljs-string">"undefined"</span>, 
+        <span class="hljs-string">"_frontend"</span> : <span class="hljs-string">"undefined"</span>, 
+        <span class="hljs-string">"_modules"</span> : <span class="hljs-string">"undefined"</span>, 
+        <span class="hljs-string">"_jobs"</span> : <span class="hljs-string">"undefined"</span>, 
+        <span class="hljs-string">"_apps"</span> : <span class="hljs-string">"undefined"</span>, 
+        <span class="hljs-string">"_graphs"</span> : <span class="hljs-string">"undefined"</span>, 
+        <span class="hljs-string">"_appbundles"</span> : <span class="hljs-string">"undefined"</span>, 
+        <span class="hljs-string">"demo"</span> : <span class="hljs-string">"undefined"</span>, 
+        <span class="hljs-string">"*"</span> : <span class="hljs-string">"none"</span> 
+      } 
+    }, 
+    <span class="hljs-string">"*"</span> : { 
+      <span class="hljs-string">"permission"</span> : <span class="hljs-string">"none"</span> 
+    } 
+  } 
+}

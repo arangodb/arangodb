@@ -618,7 +618,7 @@ int Conductor::_initializeWorkers(std::string const& suffix,
   std::shared_ptr<ClusterComm> cc = ClusterComm::instance();
   size_t nrDone = 0;
   size_t nrGood = cc->performRequests(requests, 5.0 * 60.0, nrDone,
-                                      LogTopic("Pregel Conductor"));
+                                      LogTopic("Pregel Conductor"), false);
   Utils::printResponses(requests);
   return nrGood == requests.size() ? TRI_ERROR_NO_ERROR : TRI_ERROR_FAILED;
 }
@@ -690,6 +690,22 @@ VPackBuilder Conductor::collectAQLResults() {
   return messages;
 }
 
+VPackBuilder Conductor::toVelocyPack() const {
+  VPackBuilder result;
+  result.openObject();
+  result.add("state", VPackValue(pregel::ExecutionStateNames[_state]));
+  result.add("gss", VPackValue(_globalSuperstep));
+  result.add("totalRuntime", VPackValue(totalRuntimeSecs()));
+  _aggregators->serializeValues(result);
+  _statistics.serializeValues(result);
+  if (_state != ExecutionState::RUNNING) {
+    result.add("vertexCount", VPackValue(_totalVerticesCount));
+    result.add("edgeCount", VPackValue(_totalEdgesCount));
+  }
+  result.close();
+  return result;
+}
+
 int Conductor::_sendToAllDBServers(std::string const& path,
                                    VPackBuilder const& message) {
   return _sendToAllDBServers(path, message, std::function<void(VPackSlice)>());
@@ -736,7 +752,7 @@ int Conductor::_sendToAllDBServers(std::string const& path,
 
   size_t nrDone = 0;
   size_t nrGood = cc->performRequests(requests, 5.0 * 60.0, nrDone,
-                                      LogTopic("Pregel Conductor"));
+                                      LogTopic("Pregel Conductor"), false);
   LOG_TOPIC(TRACE, Logger::PREGEL) << "Send " << path << " to " << nrDone
                                    << " servers";
   Utils::printResponses(requests);

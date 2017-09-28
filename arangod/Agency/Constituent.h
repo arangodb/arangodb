@@ -31,6 +31,8 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 
+#include <list>
+
 struct TRI_vocbase_t;
 
 namespace arangodb {
@@ -39,6 +41,10 @@ class QueryRegistry;
 }
 
 namespace consensus {
+
+static inline double readSystemClock() {
+  return std::chrono::duration<double>(std::chrono::system_clock::now().time_since_epoch()).count();
+}
 
 class Agent;
 
@@ -73,6 +79,9 @@ class Constituent : public Thread {
 
   // Check leader
   bool checkLeader(term_t, std::string, index_t, term_t);
+
+  // Notify about heartbeat being sent out:
+  void notifyHeartbeatSent(std::string followerId);
 
   // My daily business
   void run() override final;
@@ -132,6 +141,9 @@ class Constituent : public Thread {
   // Check if log start matches entry in my log
   bool logMatches(index_t, term_t) const;
 
+  // Count election events which are more recent than `threshold` seconds.
+  int64_t countRecentElectionEvents(double threshold);
+
   TRI_vocbase_t* _vocbase;
   aql::QueryRegistry* _queryRegistry;
 
@@ -141,7 +153,9 @@ class Constituent : public Thread {
   std::string _leaderID; // Current leader
   std::string _id;       // My own id
 
-  double _lastHeartbeatSeen;
+  // Last time an AppendEntriesRPC message has arrived, this is used to
+  // organise out-of-patience in the follower:
+  std::atomic<double> _lastHeartbeatSeen;
 
   role_t _role;  // My role
   Agent* _agent; // My boss
@@ -149,6 +163,19 @@ class Constituent : public Thread {
 
   arangodb::basics::ConditionVariable _cv;  // agency callbacks
   mutable arangodb::Mutex _castLock;
+
+  // Keep track of times of last few elections:
+  mutable arangodb::Mutex _recentElectionsMutex;
+  std::list<double> _recentElections;
+
+  // For leader case: Last time we have sent out AppendEntriesRPC message
+  // to some follower, this is used to find out if additional empty
+  // heartbeats have to be sent out by the Constituent:
+  std::unordered_map<std::string, double> _lastHeartbeatSent;
+
+  /// @brief _heartBeatMutex, protection for _lastHeartbeatSent
+  mutable arangodb::Mutex _heartBeatMutex;
+
 };
 }
 }

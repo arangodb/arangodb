@@ -6,18 +6,18 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR v, e IN OUTBOUND SHORTEST_
   ], 
   [ 
     <span class="hljs-string">"B"</span>, 
-    <span class="hljs-string">"7473"</span> 
+    <span class="hljs-string">"7470"</span> 
   ], 
   [ 
     <span class="hljs-string">"C"</span>, 
-    <span class="hljs-string">"7477"</span> 
+    <span class="hljs-string">"7474"</span> 
   ], 
   [ 
     <span class="hljs-string">"D"</span>, 
-    <span class="hljs-string">"7480"</span> 
+    <span class="hljs-string">"7477"</span> 
   ] 
 ]
-[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">4</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]
+[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">4</span>, <span class="hljs-attr">cached</span>: <span class="hljs-literal">false</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]
 arangosh&gt; db._query(<span class="hljs-string">"FOR v, e IN OUTBOUND SHORTEST_PATH 'circles/A' TO 'circles/D' edges RETURN [v._key, e._key]"</span>);
 [ 
   [ 
@@ -26,15 +26,15 @@ arangosh&gt; db._query(<span class="hljs-string">"FOR v, e IN OUTBOUND SHORTEST_
   ], 
   [ 
     <span class="hljs-string">"B"</span>, 
-    <span class="hljs-string">"7473"</span> 
+    <span class="hljs-string">"7470"</span> 
   ], 
   [ 
     <span class="hljs-string">"C"</span>, 
-    <span class="hljs-string">"7477"</span> 
+    <span class="hljs-string">"7474"</span> 
   ], 
   [ 
     <span class="hljs-string">"D"</span>, 
-    <span class="hljs-string">"7480"</span> 
+    <span class="hljs-string">"7477"</span> 
   ] 
 ]
-[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">4</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]
+[object ArangoQueryCursor, <span class="hljs-attr">count</span>: <span class="hljs-number">4</span>, <span class="hljs-attr">cached</span>: <span class="hljs-literal">false</span>, <span class="hljs-attr">hasMore</span>: <span class="hljs-literal">false</span>]

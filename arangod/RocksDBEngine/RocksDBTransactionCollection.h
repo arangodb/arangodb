@@ -39,8 +39,8 @@ class TransactionState;
 /// @brief collection used in a transaction
 class RocksDBTransactionCollection final : public TransactionCollection {
  public:
-
-  RocksDBTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid, AccessMode::Type accessType, int nestingLevel);
+  RocksDBTransactionCollection(TransactionState* trx, TRI_voc_cid_t cid,
+                               AccessMode::Type accessType, int nestingLevel);
   ~RocksDBTransactionCollection();
 
   /// @brief request a main-level lock for a collection
@@ -52,7 +52,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// @brief request an unlock for a collection
   int unlock(AccessMode::Type, int nestingLevel) override;
 
-  /// @brief check whether a collection is locked in a specific mode in a transaction
+  /// @brief check whether a collection is locked in a specific mode in a
+  /// transaction
   bool isLocked(AccessMode::Type, int nestingLevel) const override;
 
   /// @brief check whether a collection is locked at all
@@ -61,7 +62,8 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   /// @brief whether or not any write operations for the collection happened
   bool hasOperations() const override;
 
-  void freeOperations(transaction::Methods* activeTrx, bool mustRollback) override;
+  void freeOperations(transaction::Methods* activeTrx,
+                      bool mustRollback) override;
 
   bool canAccess(AccessMode::Type accessType) const override;
   int updateUsage(AccessMode::Type accessType, int nestingLevel) override;
@@ -70,15 +72,18 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   void release() override;
 
   TRI_voc_rid_t revision() const { return _revision; }
-  uint64_t numberDocuments() const { return _initialNumberDocuments + _numInserts - _numRemoves; }
+  uint64_t numberDocuments() const {
+    return _initialNumberDocuments + _numInserts - _numRemoves;
+  }
   uint64_t numInserts() const { return _numInserts; }
   uint64_t numUpdates() const { return _numUpdates; }
   uint64_t numRemoves() const { return _numRemoves; }
 
   /// @brief add an operation for a transaction collection
-  void addOperation(TRI_voc_document_operation_e operationType, uint64_t operationSize, TRI_voc_rid_t revisionId);
+  void addOperation(TRI_voc_document_operation_e operationType,
+                    uint64_t operationSize, TRI_voc_rid_t revisionId);
   void commitCounts();
- 
+
  private:
   /// @brief request a lock for a collection
   int doLock(AccessMode::Type, int nestingLevel);
@@ -87,7 +92,6 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   int doUnlock(AccessMode::Type, int nestingLevel);
 
  private:
-  AccessMode::Type _accessType;  // access type (read|write)
   AccessMode::Type _lockType;  // collection lock type, used for exclusive locks
   int _nestingLevel;  // the transaction level that added this collection
   uint64_t _initialNumberDocuments;
@@ -98,7 +102,6 @@ class RocksDBTransactionCollection final : public TransactionCollection {
   uint64_t _numRemoves;
   bool _usageLocked;
 };
-
 }
 
 #endif

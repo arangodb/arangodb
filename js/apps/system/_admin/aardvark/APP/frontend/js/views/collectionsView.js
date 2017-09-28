@@ -1,12 +1,13 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global _, Backbone, templateEngine, window, setTimeout, clearTimeout, arangoHelper, Joi, $ */
+/* global frontendConfig, _, Backbone, templateEngine, window, setTimeout, clearTimeout, arangoHelper, Joi, $ */
 
 (function () {
   'use strict';
   window.CollectionsView = Backbone.View.extend({
     el: '#content',
     el2: '#collectionsThumbnailsIn',
+    readOnly: false,
 
     searchTimeout: null,
     refreshRate: 10000,
@@ -138,8 +139,14 @@
       $('#searchInput')[0].setSelectionRange(length, length);
 
       arangoHelper.fixTooltips('.icon_arangodb, .arangoicon', 'left');
+      arangoHelper.checkDatabasePermissions(this.setReadOnly.bind(this));
 
       return this;
+    },
+
+    setReadOnly: function () {
+      this.readOnly = true;
+      $('#createCollection').parent().parent().addClass('disabled');
     },
 
     events: {
@@ -312,24 +319,25 @@
     },
 
     createCollection: function (e) {
-      e.preventDefault();
-      var self = this;
+      if (!this.readOnly) {
+        e.preventDefault();
+        var self = this;
 
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_api/engine'),
-        contentType: 'application/json',
-        processData: false,
-        success: function (data) {
-          self.engine = data;
-          console.log(self.engine);
-          self.createNewCollectionModal(data);
-        },
-        error: function () {
-          arangoHelper.arangoError('Engine', 'Could not fetch ArangoDB Engine details.');
-        }
-      });
+        $.ajax({
+          type: 'GET',
+          cache: false,
+          url: arangoHelper.databaseUrl('/_api/engine'),
+          contentType: 'application/json',
+          processData: false,
+          success: function (data) {
+            self.engine = data;
+            self.createNewCollectionModal(data);
+          },
+          error: function () {
+            arangoHelper.arangoError('Engine', 'Could not fetch ArangoDB Engine details.');
+          }
+        });
+      }
     },
 
     submitCreateCollection: function () {
@@ -348,6 +356,9 @@
 
           if (replicationFactor === '') {
             replicationFactor = 1;
+          }
+          if ($('#is-satellite-collection').val() === 'true') {
+            replicationFactor = 'satellite';
           }
 
           if (isCoordinator) {
@@ -495,13 +506,24 @@
               this.submitCreateCollection.bind(this)
             )
           );
-          if (self.engine.name !== 'rocksdb') {
+          if (window.App.isCluster) {
+            if (frontendConfig.isEnterprise) {
+              advancedTableContent.push(
+                window.modalView.createSelectEntry(
+                  'is-satellite-collection',
+                  'Satellite collection',
+                  '',
+                  'Create satellite collection? This will disable replication factor.',
+                  [{value: false, label: 'No'}, {value: true, label: 'Yes'}]
+                )
+              );
+            }
             advancedTableContent.push(
               window.modalView.createTextEntry(
-                'new-collection-size',
-                'Journal size',
+                'new-replication-factor',
+                'Replication factor',
                 '',
-                'The maximal size of a journal or datafile (in MB). Must be at least 1.',
+                'Numeric value. Must be at least 1. Total number of copies of the data in the cluster',
                 '',
                 false,
                 [
@@ -513,13 +535,13 @@
               )
             );
           }
-          if (window.App.isCluster) {
+          if (self.engine.name !== 'rocksdb') {
             advancedTableContent.push(
               window.modalView.createTextEntry(
-                'new-replication-factor',
-                'Replication factor',
+                'new-collection-size',
+                'Journal size',
                 '',
-                'Numeric value. Must be at least 1. Total number of copies of the data in the cluster',
+                'The maximal size of a journal or datafile (in MB). Must be at least 1.',
                 '',
                 false,
                 [
@@ -560,6 +582,17 @@
               }
             }
           });
+
+          if (window.App.isCluster && frontendConfig.isEnterprise) {
+            $('#is-satellite-collection').on('change', function (element) {
+              if ($('#is-satellite-collection').val() === 'true') {
+                $('#new-replication-factor').prop('disabled', true);
+              } else {
+                $('#new-replication-factor').prop('disabled', false);
+              }
+              $('#new-replication-factor').val('').focus().focusout();
+            });
+          }
         }
       }.bind(this);
 

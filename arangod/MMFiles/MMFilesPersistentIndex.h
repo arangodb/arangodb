@@ -123,9 +123,6 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
 
   size_t memory() const override;
 
-  void toVelocyPack(VPackBuilder&, bool, bool) const override;
-  void toVelocyPackFigures(VPackBuilder&) const override;
-
   static constexpr size_t minimalPrefixSize() { return sizeof(TRI_voc_tick_t); }
 
   static constexpr size_t keyPrefixSize() {
@@ -164,13 +161,13 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
     return value;
   }
 
-  int insert(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
+  Result insert(transaction::Methods*, TRI_voc_rid_t,
+                arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int remove(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
+  Result remove(transaction::Methods*, TRI_voc_rid_t,
+                arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  int unload() override;
+  void unload() override {}
 
   int drop() override;
 

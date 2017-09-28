@@ -135,7 +135,7 @@ struct OptimizerRule {
 
     // remove redundant OR conditions
     removeRedundantOrRule_pass6,
-
+    
     applyGeoIndexRule,
 
     useIndexesRule_pass6,
@@ -147,26 +147,43 @@ struct OptimizerRule {
 
     // try to find sort blocks which are superseeded by indexes
     useIndexForSortRule_pass6,
-
+    
     // sort values used in IN comparisons of remaining filters
     sortInValuesRule_pass6,
-
-    // remove calculations that are never necessary
-    removeUnnecessaryCalculationsRule_pass6,
-
+    
     // merge filters into graph traversals
     optimizeTraversalsRule_pass6,
+    // remove redundant filters statements
+    removeFiltersCoveredByTraversal_pass6,
+    
+    // remove calculations that are redundant
+    // needs to run after filter removal
+    removeUnnecessaryCalculationsRule_pass6,
+    // remove now obsolete path variables
+    removeTraversalPathVariable_pass6,
     prepareTraversalsRule_pass6,
+
+    // simplify an EnumerationCollectionNode that fetches an
+    // entire document to a projection of this document
+    reduceExtractionToProjectionRule_pass6,
 
     /// Pass 9: push down calculations beyond FILTERs and LIMITs
     moveCalculationsDownRule_pass9,
 
     /// Pass 9: patch update statements
     patchUpdateStatementsRule_pass9,
-
+    
     /// "Pass 10": final transformations for the cluster
+    
+    // optimize queries in the cluster so that the entire query
+    // gets pushed to a single server
+    optimizeClusterSingleShardRule_pass10,
+
     // make operations on sharded collections use distribute
     distributeInClusterRule_pass10,
+    
+    // try to find candidates for shard-local joins in the cluster
+    optimizeClusterJoinsRule_pass10,
 
     // make operations on sharded collections use scatter / gather / remote
     scatterInClusterRule_pass10,

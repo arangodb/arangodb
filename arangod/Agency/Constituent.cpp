@@ -63,7 +63,7 @@ void Constituent::configure(Agent* agent) {
 
   if (size() == 1) {
     _role = LEADER;
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to LEADER in term " << _term;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to LEADER in term " << _term;
   }
   
 }
@@ -105,11 +105,13 @@ void Constituent::term(term_t t) {
 
 void Constituent::termNoLock(term_t t) {
   // Only call this when you have the _castLock
+  _castLock.assertLockedByCurrentThread();
+
   term_t tmp = _term;
   _term = t;
 
   if (tmp != t) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << _id << ": changing term, current role:"
+    LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": changing term, current role:"
       << roleStr[_role] << " new term " << t;
 
     _cast = false;
@@ -144,8 +146,7 @@ void Constituent::termNoLock(term_t t) {
         result = trx.insert("election", body.slice(), options);
       } catch (std::exception const& e) {
         LOG_TOPIC(FATAL, Logger::AGENCY)
-          << "Failed to persist RAFT election ballot. Bailing out."
-          << __FILE__ << ":" << __LINE__;
+          << "Failed to persist RAFT election ballot: " << e.what() << ". Bailing out.";
         FATAL_ERROR_EXIT();
       }
 
@@ -200,10 +201,12 @@ void Constituent::follow(term_t t) {
 }
 
 void Constituent::followNoLock(term_t t) {
+  _castLock.assertLockedByCurrentThread();
+
   _term = t;
   _role = FOLLOWER;
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to FOLLOWER in term " << _term;
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to FOLLOWER in term " << _term;
 
   if (_leaderID == _id) {
     _leaderID = NO_LEADER;
@@ -224,12 +227,10 @@ void Constituent::lead(term_t term) {
 
   _agent->beginPrepareLeadership();
   TRI_DEFER(_agent->endPrepareLeadership());
-  
+
   if (!_agent->prepareLead()) {
-    {
-      MUTEX_LOCKER(guard, _castLock);
-      followNoLock(term);
-    }
+    MUTEX_LOCKER(guard, _castLock);
+    followNoLock(term);
     return;
   }
 
@@ -253,6 +254,10 @@ void Constituent::lead(term_t term) {
 
     LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": leading in term " << _term;
     _leaderID = _id;
+
+    // Keep track of this election time:
+    MUTEX_LOCKER(locker, _recentElectionsMutex);
+    _recentElections.push_back(readSystemClock());
   }
 
   // we need to start work as leader
@@ -272,6 +277,10 @@ void Constituent::candidate() {
   if (_role != CANDIDATE) {
     _role = CANDIDATE;
     LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": candidating in term " << _term;
+
+    // Keep track of this election time:
+    MUTEX_LOCKER(locker, _recentElectionsMutex);
+    _recentElections.push_back(readSystemClock());
   }
 }
 
@@ -330,9 +339,16 @@ bool Constituent::checkLeader(
   
   if (term > _term) {
     termNoLock(term);
+    if (_role != FOLLOWER) {
+      followNoLock(term);
+    }
+
+    _cast = false;
+    _votedFor = "";
   }
 
-  if (!logMatches(prevLogIndex, prevLogTerm)) {
+  if ((prevLogIndex != 0 || prevLogTerm != 0) &&
+      !logMatches(prevLogIndex, prevLogTerm)) {
     return false;
   }
   
@@ -340,6 +356,13 @@ bool Constituent::checkLeader(
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Set _leaderID to " << id << " in term " << _term;
     _leaderID = id;
+
+    // Recall time of this leadership change:
+    {
+      MUTEX_LOCKER(locker, _recentElectionsMutex);
+      _recentElections.push_back(readSystemClock());
+    }
+
     TRI_ASSERT(_leaderID != _id);
     if (_role != FOLLOWER) {
       followNoLock(term);
@@ -358,13 +381,13 @@ bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
   }
   
   TRI_ASSERT(_vocbase != nullptr);
+ 
+  MUTEX_LOCKER(guard, _castLock);
   
   LOG_TOPIC(TRACE, Logger::AGENCY)
     << "vote(termOfPeer: " << termOfPeer << ", leaderId: " << id
     << ", prev-log-index: " << prevLogIndex << ", prev-log-term: " << prevLogTerm
     << ") in (my) term " << _term;
-
-  MUTEX_LOCKER(guard, _castLock);
 
   if (termOfPeer > _term) {
     termNoLock(termOfPeer);
@@ -420,7 +443,8 @@ void Constituent::callElection() {
 
   using namespace std::chrono;
   auto timeout = steady_clock::now() +
-    duration<double>(_agent->config().minPing());
+    duration<double>(_agent->config().minPing() *
+                     _agent->config().timeoutMult());
   
   std::vector<std::string> active = _agent->config().active();
   CoordTransactionID coordinatorTransactionID = TRI_NewTickServer();
@@ -440,9 +464,22 @@ void Constituent::callElection() {
   std::string body;
   std::stringstream path;
 
+  int64_t electionEventCount = countRecentElectionEvents(3600);
+  if (electionEventCount <= 0) {
+    electionEventCount = 1;
+  } else if (electionEventCount > 10) {
+    electionEventCount = 10;
+  }
+  if (_agent->getTimeoutMult() != electionEventCount) {
+    _agent->adjustTimeoutMult(electionEventCount);
+    LOG_TOPIC(WARN, Logger::AGENCY) << "Candidate: setting timeout multiplier "
+      "to " << electionEventCount << " for next term...";
+  }
+
   path << "/_api/agency_priv/requestVote?term=" << savedTerm
        << "&candidateId=" << _id << "&prevLogIndex=" << _agent->lastLog().index
-       << "&prevLogTerm=" << _agent->lastLog().term;
+       << "&prevLogTerm=" << _agent->lastLog().term
+       << "&timeoutMult=" << electionEventCount;
 
   auto cc = ClusterComm::instance();
 
@@ -456,7 +493,8 @@ void Constituent::callElection() {
           "", coordinatorTransactionID, _agent->config().poolAt(i),
           rest::RequestType::GET, path.str(),
           std::make_shared<std::string>(body), headerFields,
-          nullptr, 0.9 * _agent->config().minPing(), true);
+          nullptr, 0.9 * _agent->config().minPing() *
+                         _agent->config().timeoutMult(), true);
       }
     }
   }
@@ -475,7 +513,8 @@ void Constituent::callElection() {
   while (true) {
 
     if (steady_clock::now() >= timeout) {       // Timeout. 
-      follow(_term);        
+      MUTEX_LOCKER(locker, _castLock);
+      followNoLock(_term);        
       break;
     }
 
@@ -492,8 +531,12 @@ void Constituent::callElection() {
         if (slc.isObject() && slc.hasKey("term") && slc.hasKey("voteGranted")) {
           
           // Follow right away?
-          term_t t = slc.get("term").getUInt();
-          if (t > _term) {
+          term_t t = slc.get("term").getUInt(), term;
+          {
+            MUTEX_LOCKER(locker, _castLock);
+            term = _term;
+          }
+          if (t > term) {
             follow(t);
             break;
           }
@@ -512,7 +555,12 @@ void Constituent::callElection() {
     }
     // Count the vote as a nay
     if (++nay >= majority) {                  // Network: majority against?
-      follow(_term);
+      term_t term;
+      {
+        MUTEX_LOCKER(locker, _castLock);
+        term = _term;
+      }
+      follow(term);
       break;
     }
     
@@ -534,7 +582,7 @@ void Constituent::update(std::string const& leaderID, term_t t) {
   _term = t;
 
   if (_leaderID != leaderID) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC(INFO, Logger::AGENCY)
       << "Constituent::update: setting _leaderID to " << leaderID
       << " in term " << _term;
     _leaderID = leaderID;
@@ -611,20 +659,32 @@ void Constituent::run() {
   }
 
   if (size() == 1) {
+    MUTEX_LOCKER(guard, _castLock);
     _leaderID = _agent->config().id();
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to " << _leaderID
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to " << _leaderID
       << " in term " << _term;
   } else {
 
     {
       MUTEX_LOCKER(guard, _castLock);
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Setting role to follower"
+        " in term " << _term;
       _role = FOLLOWER;
     }
     while (!this->isStopping()) {
-      if (_role == FOLLOWER) {
+      
+      role_t role;
+      {
+        MUTEX_LOCKER(guard, _castLock);
+        role = _role;
+      }
+
+      if (role == FOLLOWER) {
         static double const M = 1.0e6;
-        int64_t a = static_cast<int64_t>(M * _agent->config().minPing());
-        int64_t b = static_cast<int64_t>(M * _agent->config().maxPing());
+        int64_t a = static_cast<int64_t>(M * _agent->config().minPing() *
+                                         _agent->config().timeoutMult());
+        int64_t b = static_cast<int64_t>(M * _agent->config().maxPing() *
+                                         _agent->config().timeoutMult());
         int64_t randTimeout = RandomGenerator::interval(a, b);
         int64_t randWait = randTimeout;
 
@@ -673,18 +733,68 @@ void Constituent::run() {
         if (isTimeout) {
           LOG_TOPIC(TRACE, Logger::AGENCY) << "timeout, calling an election";
           candidate();
+          _agent->unprepareLead();
         }
-      } else if (_role == CANDIDATE) {
+
+      } else if (role == CANDIDATE) {
         callElection();  // Run for office
       } else {
-        int32_t left =
-          static_cast<int32_t>(100000.0 * _agent->config().minPing());
-        long randTimeout = static_cast<long>(left);
+        // This is 1/4th of the minPing timeout (_cv.wait() below is in
+        // microseconds):
+        uint64_t timeout =
+          static_cast<uint64_t>(250000.0 * _agent->config().minPing() *
+                                _agent->config().timeoutMult());
         {
           CONDITION_LOCKER(guardv, _cv);
-          _cv.wait(randTimeout);
+          _cv.wait(timeout);
+        }
+
+        double now = TRI_microtime();
+        std::string const myid = _agent->id();
+        for (auto const& followerId : _agent->config().active()) {
+          if (followerId != myid) {
+            bool needed = false;
+            {
+              MUTEX_LOCKER(guard, _heartBeatMutex);
+              auto it = _lastHeartbeatSent.find(followerId);
+              if (it == _lastHeartbeatSent.end() ||
+                  now - it->second > _agent->config().minPing()
+                                     * _agent->config().timeoutMult() / 4.0) {
+                needed = true;
+              }
+            }
+            if (needed) {
+              _agent->sendEmptyAppendEntriesRPC(followerId);
+            }
+          }
         }
       }
     }
   }
 }
+
+int64_t Constituent::countRecentElectionEvents(double threshold) {
+  // This discards all election events that are older than `threshold`
+  // seconds and returns the number of more recent ones.
+
+  auto now = readSystemClock();
+  MUTEX_LOCKER(locker, _recentElectionsMutex);
+  int64_t count = 0;
+  for (auto iter = _recentElections.begin(); iter != _recentElections.end(); ) {
+    if (now - *iter > threshold) {
+      // If event is more then 15 minutes ago, discard
+      iter = _recentElections.erase(iter);  // moves to the next one in list
+    } else {
+      ++count;
+      ++iter;
+    }
+  }
+  return count;
+}
+
+// Notify about heartbeat being sent out:
+void Constituent::notifyHeartbeatSent(std::string followerId) {
+  MUTEX_LOCKER(guard, _heartBeatMutex);
+  _lastHeartbeatSent[followerId] = TRI_microtime();
+}
+

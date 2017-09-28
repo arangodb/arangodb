@@ -17,8 +17,10 @@ window.ArangoUsers = Backbone.Collection.extend({
   },
 
   fetch: function (options) {
-    if (window.App.currentUser && window.App.currentDB.get('name') !== '_system') {
+    if (window.App.currentUser && window.App.currentDB.get('name') !== '_system' && frontendConfig.authenticationEnabled) {
       this.url = frontendConfig.basePath + '/_api/user/' + encodeURIComponent(window.App.currentUser);
+    } else {
+      this.url = frontendConfig.basePath + '/_api/user';
     }
     return Backbone.Collection.prototype.fetch.call(this, options);
   },
@@ -100,11 +102,19 @@ window.ArangoUsers = Backbone.Collection.extend({
   loadUserSettings: function (callback) {
     var self = this;
 
+    console.log(frontendConfig.authenticationEnabled);
+    var url;
+    if (!frontendConfig.authenticationEnabled) {
+      url = arangoHelper.databaseUrl('/_api/user/root');
+    } else {
+      url = arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(self.activeUser));
+    }
+
     $.ajax({
       type: 'GET',
       cache: false,
       // url: frontendConfig.basePath + "/_api/user/" + encodeURIComponent(self.activeUser),
-      url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(self.activeUser)),
+      url: url,
       contentType: 'application/json',
       processData: false,
       success: function (data) {
@@ -153,6 +163,8 @@ window.ArangoUsers = Backbone.Collection.extend({
   },
 
   whoAmI: function (callback) {
+    var self = this;
+
     if (this.activeUser) {
       callback(false, this.activeUser);
       return;
@@ -160,6 +172,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     $.ajax('whoAmI?_=' + Date.now())
       .success(
         function (data) {
+          self.activeUser = data.user;
           callback(false, data.user);
         }
     ).error(

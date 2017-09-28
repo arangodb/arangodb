@@ -1,6 +1,6 @@
 /* jshint browser: true */
 /* jshint unused: false */
-/* global _, frontendConfig, arangoHelper, Backbone, window, templateEngine, $ */
+/* global arangoHelper, _, Backbone, window, templateEngine, $ */
 
 (function () {
   'use strict';
@@ -23,90 +23,223 @@
     },
 
     events: {
-      'click #userPermissionView [type="checkbox"]': 'setPermission'
+      'click #userPermissionView .dbCheckbox': 'setDBPermission',
+      'click #userPermissionView .collCheckbox': 'setCollPermission',
+      'click .db-row': 'toggleAccordion'
     },
 
-    render: function () {
+    render: function (open, error) {
       var self = this;
 
       this.collection.fetch({
         success: function () {
-          self.continueRender();
+          self.continueRender(open, error);
         }
       });
     },
 
-    setPermission: function (e) {
-      var checked = $(e.currentTarget).is(':checked');
-      var db = $(e.currentTarget).attr('name');
+    toggleAccordion: function (e) {
+      // if checkbox was hit
+      if ($(e.target).attr('type')) {
+        return;
+      }
+      if ($(e.target).parent().hasClass('noAction')) {
+        return;
+      }
+      if ($(e.target).hasClass('inner') || $(e.target).is('span')) {
+        return;
+      }
+      var visible = $(e.currentTarget).find('.collection-row').is(':visible');
 
-      if (checked) {
-        this.grantPermission(this.currentUser.get('user'), db);
-      } else {
-        if (db === '_system') {
-          // special case, ask if user really want to revoke persmission here
-          var buttons = []; var tableContent = [];
+      var db = $(e.currentTarget).attr('id').split('-')[0];
+      $('.collection-row').hide();
 
-          tableContent.push(
-            window.modalView.createReadOnlyEntry(
-              'db-system-revoke-button',
-              'Caution',
-              'You are removing your permissions to _system database. Really continue?',
-              undefined,
-              undefined,
-              false
-            )
-          );
-          buttons.push(
-            window.modalView.createSuccessButton('Revoke', this.revokePermission.bind(this, this.currentUser.get('user'), db))
-          );
-          buttons.push(
-            window.modalView.createCloseButton('Cancel', this.rollbackInputButton.bind(this, db))
-          );
-          window.modalView.show('modalTable.ejs', 'Revoke _system Database Permission', buttons, tableContent);
+      // unhighlight db labels
+      $('.db-label').css('font-weight', 200);
+      $('.db-label').css('color', '#8a969f');
+
+      // if collections are available
+      if ($(e.currentTarget).find('.collection-row').children().length > 4) {
+        // if menu was already visible -> then hide
+        $('.db-row .fa-caret-down').hide();
+        $('.db-row .fa-caret-right').show();
+        if (visible) {
+          $(e.currentTarget).find('.collection-row').hide();
         } else {
-          this.revokePermission(this.currentUser.get('user'), db);
+          // else show menu
+          $(e.currentTarget).find('.collection-row').fadeIn('fast');
+          // highlight db label
+          $(e.currentTarget).find('.db-label').css('font-weight', 600);
+          $(e.currentTarget).find('.db-label').css('color', 'rgba(64, 74, 83, 1)');
+          // caret animation
+          $(e.currentTarget).find('.fa-caret-down').show();
+          $(e.currentTarget).find('.fa-caret-right').hide();
         }
+      } else {
+        // caret animation
+        $('.db-row .fa-caret-down').hide();
+        $('.db-row .fa-caret-right').show();
+        arangoHelper.arangoNotification('Permissions', 'No collections in "' + db + '" available.');
       }
     },
 
-    rollbackInputButton: function (name) {
-      $('input[name="' + name + '"').prop('checked', 'true');
+    setCollPermission: function (e) {
+      var db = $(e.currentTarget).attr('db');
+      var collection = $(e.currentTarget).attr('collection');
+      var value;
+
+      if ($(e.currentTarget).hasClass('readOnly')) {
+        value = 'ro';
+      } else if ($(e.currentTarget).hasClass('readWrite')) {
+        value = 'rw';
+      } else if ($(e.currentTarget).hasClass('noAccess')) {
+        value = 'none';
+      } else {
+        value = 'undefined';
+      }
+      this.sendCollPermission(this.currentUser.get('user'), db, collection, value);
     },
 
-    grantPermission: function (user, db) {
-      $.ajax({
-        type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(user) + '/database/' + encodeURIComponent(db)),
-        contentType: 'application/json',
-        data: JSON.stringify({
-          grant: 'rw'
-        })
-      });
+    setDBPermission: function (e) {
+      var db = $(e.currentTarget).attr('name');
+
+      var value;
+      if ($(e.currentTarget).hasClass('readOnly')) {
+        value = 'ro';
+      } else if ($(e.currentTarget).hasClass('readWrite')) {
+        value = 'rw';
+      } else if ($(e.currentTarget).hasClass('noAccess')) {
+        value = 'none';
+      } else {
+        value = 'undefined';
+      }
+
+      if (db === '_system') {
+        // special case, ask if user really want to revoke persmission here
+        var buttons = []; var tableContent = [];
+
+        tableContent.push(
+          window.modalView.createReadOnlyEntry(
+            'db-system-revoke-button',
+            'Caution',
+            'You are changing the _system database permission. Really continue?',
+            undefined,
+            undefined,
+            false
+          )
+        );
+        buttons.push(
+          window.modalView.createSuccessButton('Ok', this.sendDBPermission.bind(this, this.currentUser.get('user'), db, value))
+        );
+        buttons.push(
+          window.modalView.createCloseButton('Cancel', this.rollbackInputButton.bind(this, db))
+        );
+        window.modalView.show('modalTable.ejs', 'Change _system Database Permission', buttons, tableContent);
+      } else {
+        this.sendDBPermission(this.currentUser.get('user'), db, value);
+      }
     },
 
-    revokePermission: function (user, db) {
-      $.ajax({
-        type: 'PUT',
-        url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(user) + '/database/' + encodeURIComponent(db)),
-        contentType: 'application/json'
+    rollbackInputButton: function (name, error) {
+      var open;
+      _.each($('.collection-row'), function (elem, key) {
+        if ($(elem).is(':visible')) {
+          open = $(elem).parent().attr('id');
+        }
       });
+
+      if (open) {
+        this.render(open, error);
+      } else {
+        this.render();
+      }
       window.modalView.hide();
     },
 
-    continueRender: function () {
+    sendCollPermission: function (user, db, collection, value) {
+      var self = this;
+
+      if (value === 'undefined') {
+        this.revokeCollPermission(user, db, collection);
+      } else {
+        $.ajax({
+          type: 'PUT',
+          url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(user) + '/database/' + encodeURIComponent(db) + '/' + encodeURIComponent(collection)),
+          contentType: 'application/json',
+          data: JSON.stringify({
+            grant: value
+          })
+        }).success(function (e) {
+          self.styleDefaultRadios(null, true);
+        }).error(function (e) {
+          self.rollbackInputButton(null, e);
+        });
+      }
+    },
+
+    revokeCollPermission: function (user, db, collection) {
+      var self = this;
+
+      $.ajax({
+        type: 'DELETE',
+        url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(user) + '/database/' + encodeURIComponent(db) + '/' + encodeURIComponent(collection)),
+        contentType: 'application/json'
+      }).success(function (e) {
+        self.styleDefaultRadios(null, true);
+      }).error(function (e) {
+        self.rollbackInputButton(null, e);
+      });
+    },
+
+    sendDBPermission: function (user, db, value) {
+      var self = this;
+
+      if (value === 'undefined') {
+        this.revokeDBPermission(user, db);
+      } else {
+        $.ajax({
+          type: 'PUT',
+          url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(user) + '/database/' + encodeURIComponent(db)),
+          contentType: 'application/json',
+          data: JSON.stringify({
+            grant: value
+          })
+        }).success(function (e) {
+          self.styleDefaultRadios(null, true);
+        }).error(function (e) {
+          self.rollbackInputButton(null, e);
+        });
+      }
+    },
+
+    revokeDBPermission: function (user, db) {
+      var self = this;
+
+      $.ajax({
+        type: 'DELETE',
+        url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(user) + '/database/' + encodeURIComponent(db)),
+        contentType: 'application/json'
+      }).success(function (e) {
+        self.styleDefaultRadios(null, true);
+      }).error(function (e) {
+        self.rollbackInputButton(null, e);
+      });
+    },
+
+    continueRender: function (open, error) {
       var self = this;
 
       this.currentUser = this.collection.findWhere({
         user: this.username
       });
-
       this.breadcrumb();
 
-      var url = arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(self.currentUser.get('user')) + '/database');
+      var url = arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(self.currentUser.get('user')) + '/database?full=true');
+      /*
       if (frontendConfig.db === '_system') {
         url = arangoHelper.databaseUrl('/_api/user/root/database');
       }
+      */
 
       // FETCH COMPLETE DB LIST
       $.ajax({
@@ -114,41 +247,87 @@
         url: url,
         contentType: 'application/json',
         success: function (data) {
-          var allDBs = data.result;
-
-          // NOW FETCH USER PERMISSIONS
-          $.ajax({
-            type: 'GET',
-            url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(self.currentUser.get('user')) + '/database'),
-            // url: arangoHelper.databaseUrl("/_api/database/user/" + encodeURIComponent(this.currentUser.get("user"))),
-            contentType: 'application/json',
-            success: function (data) {
-              var permissions = data.result;
-              if (allDBs._system) {
-                var arr = [];
-                _.each(allDBs, function (db, name) {
-                  arr.push(name);
-                });
-                allDBs = arr;
-              }
-              self.finishRender(allDBs, permissions);
-            }
-          });
+          // fetching available dbs and permissions
+          self.finishRender(data.result, open, error);
+        },
+        error: function (data) {
+          arangoHelper.arangoError('User', 'Could not fetch user permissions');
         }
       });
     },
 
-    finishRender: function (allDBs, permissions) {
-      _.each(permissions, function (value, key) {
-        if (value !== 'rw') {
-          delete permissions[key];
-        }
-      });
-
+    finishRender: function (permissions, open, error) {
       $(this.el).html(this.template.render({
-        allDBs: allDBs,
         permissions: permissions
       }));
+      $('.pure-table-body').height(window.innerHeight - 200);
+      if (open) {
+        $('#' + open).click();
+      }
+      if (error && error.responseJSON && error.responseJSON.errorMessage) {
+        arangoHelper.arangoError('User', error.responseJSON.errorMessage);
+      }
+      // style default radio boxes
+      this.styleDefaultRadios(permissions);
+      // tooltips
+      arangoHelper.createTooltips();
+      // check if current user is root
+      this.checkRoot();
+    },
+
+    checkRoot: function () {
+      // disable * in _system db for root user, because it is not allowed to lower permissions there
+      if (this.currentUser.get('user') === 'root') {
+        $('#_system-db #___-collection input').attr('disabled', 'true');
+      }
+    },
+
+    styleDefaultRadios: function (permissions, refresh) {
+      var self = this;
+
+      var someFunction = function (permissions) {
+        $('.db-row input').css('box-shadow', 'none');
+        // var cssShadow = '#2ecc71 0px 1px 4px 4px';
+        var cssShadow = 'rgba(0, 0, 0, 0.3) 0px 1px 4px 4px';
+        _.each(permissions, function (perms, database) {
+          if (perms.collections) {
+            var defValue = perms.collections['*'];
+            // console.log(defValue);
+            _.each(perms.collections, function (access, collection) {
+              if (collection.charAt(0) !== '_' && collection.charAt(0) !== '*') {
+                if (access === 'undefined') {
+                  if (defValue === 'rw') {
+                    $('#' + database + '-db #' + collection + '-collection .readWrite').css('box-shadow', cssShadow);
+                  } else if (defValue === 'ro') {
+                    $('#' + database + '-db #' + collection + '-collection .readOnly').css('box-shadow', cssShadow);
+                  } else if (defValue === 'none') {
+                    $('#' + database + '-db #' + collection + '-collection .noAccess').css('box-shadow', cssShadow);
+                  }
+                }
+              }
+            });
+          }
+        });
+      };
+
+      if (refresh) {
+        var url = arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(self.currentUser.get('user')) + '/database?full=true');
+        // FETCH COMPLETE DB LIST
+        $.ajax({
+          type: 'GET',
+          url: url,
+          contentType: 'application/json',
+          success: function (data) {
+            someFunction(data.result);
+          },
+          error: function (data) {
+            arangoHelper.arangoError('User', 'Could not fetch user permissions');
+          }
+        });
+      } else {
+        someFunction(permissions);
+      }
+      window.modalView.hide();
     },
 
     breadcrumb: function () {

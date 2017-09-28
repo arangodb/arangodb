@@ -23,15 +23,19 @@
 
 #include "Aql/Ast.h"
 #include "Aql/Arithmetic.h"
-#include "Aql/Executor.h"
+#include "Aql/AqlFunctionFeature.h"
+#include "Aql/Expression.h"
+#include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Graphs.h"
 #include "Aql/Query.h"
+#include "Aql/V8Executor.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringRef.h"
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterInfo.h"
+#include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -1257,7 +1261,7 @@ AstNode* Ast::createNodeFunctionCall(char const* functionName,
     // built-in function
     node = createNode(NODE_TYPE_FCALL);
     // register a pointer to the function
-    auto func = _query->executor()->getFunctionByName(normalized.first);
+    auto func = AqlFunctionFeature::getFunctionByName(normalized.first);
 
     TRI_ASSERT(func != nullptr);
     node->setData(static_cast<void const*>(func));
@@ -1566,6 +1570,59 @@ void Ast::injectBindParameters(BindParameters& parameters) {
   }
 }
 
+/// @brief replace an attribute access with just the variable
+AstNode* Ast::replaceAttributeAccess(
+    AstNode* node, Variable const* variable, std::vector<std::string> const& attribute) {
+  TRI_ASSERT(!attribute.empty());
+  if (attribute.empty()) {
+    return node;
+  }
+
+  std::vector<std::string> attributePath;
+
+  auto visitor = [&](AstNode* node, void*) -> AstNode* {
+    if (node == nullptr) {
+      return nullptr;
+    }
+  
+    if (node->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
+      return node;
+    }
+    
+    attributePath.clear(); 
+    AstNode* origNode = node;
+
+    while (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      attributePath.emplace_back(node->getString());
+      node = node->getMember(0);
+    }
+    
+    if (attributePath.size() != attribute.size()) {
+      // different attribute
+      return origNode;
+    }
+    for (size_t i = 0; i < attribute.size(); ++i) {
+      if (attribute[i] != attributePath[i]) {
+        // different attribute
+        return origNode;
+      }
+    }
+    // same attribute
+
+    if (node->type == NODE_TYPE_REFERENCE) {
+      auto v = static_cast<Variable*>(node->getData());
+      if (v != nullptr && v->id == variable->id) {
+        // our variable... now replace the attribute access with just the variable
+        return node;
+      }
+    }
+
+    return origNode;
+  };
+
+  return traverseAndModify(node, visitor, nullptr);
+}
+
 /// @brief replace variables
 AstNode* Ast::replaceVariables(
     AstNode* node,
@@ -1630,30 +1687,35 @@ void Ast::validateAndOptimize() {
     std::unordered_map<Variable const*, AstNode const*> variableDefinitions;
     int64_t stopOptimizationRequests = 0;
     int64_t nestingLevel = 0;
-    bool isInFilter = false;
+    int64_t filterDepth = -1; // -1 = not in filter
     bool hasSeenAnyWriteNode = false;
     bool hasSeenWriteNodeInCurrentScope = false;
   };
 
   auto preVisitor = [&](AstNode const* node, void* data) -> bool {
+    auto ctx = static_cast<TraversalContext*>(data);
+    if (ctx->filterDepth >= 0) {
+      ++ctx->filterDepth;
+    }
+
     if (node->type == NODE_TYPE_FILTER) {
-      static_cast<TraversalContext*>(data)->isInFilter = true;
+      TRI_ASSERT(ctx->filterDepth == -1);
+      ctx->filterDepth = 0;
     } else if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
       TRI_ASSERT(func != nullptr);
 
-      if (func->externalName == "NOOPT") {
+      if (func->name == "NOOPT") {
         // NOOPT will turn all function optimizations off
-        ++(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
+        ++(ctx->stopOptimizationRequests);
       }
     } else if (node->type == NODE_TYPE_COLLECTION) {
       // note the level on which we first saw a collection
-      auto c = static_cast<TraversalContext*>(data);
-      c->collectionsFirstSeen.emplace(node->getString(), c->nestingLevel);
+      ctx->collectionsFirstSeen.emplace(node->getString(), ctx->nestingLevel);
     } else if (node->type == NODE_TYPE_AGGREGATIONS) {
-      ++(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
+      ++ctx->stopOptimizationRequests;
     } else if (node->type == NODE_TYPE_SUBQUERY) {
-      ++static_cast<TraversalContext*>(data)->nestingLevel;
+      ++ctx->nestingLevel;
     } else if (node->hasFlag(FLAG_BIND_PARAMETER)) {
       return false;
     } else if (node->type == NODE_TYPE_REMOVE ||
@@ -1661,42 +1723,44 @@ void Ast::validateAndOptimize() {
                node->type == NODE_TYPE_UPDATE ||
                node->type == NODE_TYPE_REPLACE ||
                node->type == NODE_TYPE_UPSERT) {
-      auto c = static_cast<TraversalContext*>(data);
-
-      if (c->hasSeenWriteNodeInCurrentScope) {
+      if (ctx->hasSeenWriteNodeInCurrentScope) {
         // no two data-modification nodes are allowed in the same scope
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_MULTI_MODIFY);
       }
-      c->hasSeenWriteNodeInCurrentScope = true;
+      ctx->hasSeenWriteNodeInCurrentScope = true;
     }
 
     return true;
   };
 
   auto postVisitor = [&](AstNode const* node, void* data) -> void {
+    auto ctx = static_cast<TraversalContext*>(data);
+    if (ctx->filterDepth >= 0) {
+      --ctx->filterDepth;
+    }
+
     if (node->type == NODE_TYPE_FILTER) {
-      static_cast<TraversalContext*>(data)->isInFilter = false;
+      ctx->filterDepth = -1;
     } else if (node->type == NODE_TYPE_SUBQUERY) {
-      --static_cast<TraversalContext*>(data)->nestingLevel;
+      --ctx->nestingLevel;
     } else if (node->type == NODE_TYPE_REMOVE ||
                node->type == NODE_TYPE_INSERT ||
                node->type == NODE_TYPE_UPDATE ||
                node->type == NODE_TYPE_REPLACE ||
                node->type == NODE_TYPE_UPSERT) {
-      auto c = static_cast<TraversalContext*>(data);
-      c->hasSeenAnyWriteNode = true;
+      ctx->hasSeenAnyWriteNode = true;
 
-      TRI_ASSERT(c->hasSeenWriteNodeInCurrentScope);
-      c->hasSeenWriteNodeInCurrentScope = false;
+      TRI_ASSERT(ctx->hasSeenWriteNodeInCurrentScope);
+      ctx->hasSeenWriteNodeInCurrentScope = false;
 
       auto collection = node->getMember(1);
       std::string name = collection->getString();
-      c->writeCollectionsSeen.emplace(name);
+      ctx->writeCollectionsSeen.emplace(name);
       
-      auto it = c->collectionsFirstSeen.find(name);
+      auto it = ctx->collectionsFirstSeen.find(name);
 
-      if (it != c->collectionsFirstSeen.end()) {
-        if ((*it).second < c->nestingLevel) {
+      if (it != ctx->collectionsFirstSeen.end()) {
+        if ((*it).second < ctx->nestingLevel) {
           name = "collection '" + name;
           name.push_back('\'');
           THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION, name.c_str());
@@ -1706,12 +1770,12 @@ void Ast::validateAndOptimize() {
       auto func = static_cast<Function*>(node->getData());
       TRI_ASSERT(func != nullptr);
 
-      if (func->externalName == "NOOPT") {
+      if (func->name == "NOOPT") {
         // NOOPT will turn all function optimizations off
-        --(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
+        --ctx->stopOptimizationRequests;
       }
     } else if (node->type == NODE_TYPE_AGGREGATIONS) {
-      --(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
+      --ctx->stopOptimizationRequests;
     }
   };
 
@@ -1734,7 +1798,7 @@ void Ast::validateAndOptimize() {
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
         node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
       return this->optimizeBinaryOperatorLogical(
-          node, static_cast<TraversalContext*>(data)->isInFilter);
+          node, static_cast<TraversalContext*>(data)->filterDepth == 1);
     }
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ ||
@@ -1782,7 +1846,7 @@ void Ast::validateAndOptimize() {
         // if canRunOnDBServer is true, then this is an indicator for a
         // document-accessing function
         std::string name("function ");
-        name.append(func->externalName);
+        name.append(func->name);
         THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION, name.c_str());
       }
 
@@ -1987,6 +2051,129 @@ TopLevelAttributes Ast::getReferencedAttributes(AstNode const* node,
 
     attributeName = nullptr;
     nameLength = 0;
+  };
+
+  traverseReadOnly(node, visitor, doNothingVisitor, doNothingVisitor, nullptr);
+
+  return result;
+}
+
+bool Ast::populateSingleAttributeAccess(AstNode const* node,
+                                        Variable const* variable,
+                                        std::vector<std::string>& attributeName) {
+  bool result = true;
+
+  auto doNothingVisitor = [](AstNode const* node, void* data) -> void {};
+
+  attributeName.clear();
+  std::vector<std::string> attributePath;
+          
+  auto visitor = [&](AstNode const* node, void* data) -> void {
+    if (node == nullptr || !result) {
+      return;
+    }
+
+    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      attributePath.emplace_back(node->getString());
+      return;
+    }
+
+    if (node->type == NODE_TYPE_REFERENCE) {
+      // reference to a variable
+      auto v = static_cast<Variable const*>(node->getData());
+
+      if (v == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+
+      if (v->id == variable->id) {
+        // the variable we are looking for
+        if (attributeName.empty()) {
+          // haven't seen an attribute before. so store the attribute we got
+          attributeName = std::move(attributePath);
+        } else {
+          // have seen some attribute before. now check if it's the same attribute
+          size_t const n = attributeName.size(); 
+          if (n != attributePath.size()) {
+            // different attributes
+            result = false;
+          } else {
+            for (size_t i = 0; i < n; ++i) {
+              if (attributePath[i] != attributeName[i]) {
+                // different attributes
+                result = false;
+                break;
+              }
+            }
+          }
+        }
+      }
+      // fall-through
+    }
+
+    attributePath.clear();
+  };
+
+  traverseReadOnly(node, visitor, doNothingVisitor, doNothingVisitor, nullptr);
+  if (attributeName.empty()) {
+    return false;
+  }
+
+  return result;
+}
+
+/// @brief checks if the only references to the specified variable are
+/// attribute accesses to the specified attribute. all other variables
+/// used in the expression are ignored and will not influence the result!
+bool Ast::variableOnlyUsedForSingleAttributeAccess(AstNode const* node,
+                                                   Variable const* variable,
+                                                   std::vector<std::string> const& attributeName) {
+  bool result = true;
+
+  auto doNothingVisitor = [](AstNode const* node, void* data) -> void {};
+
+  // traversal state
+  std::vector<std::string> attributePath;
+          
+  auto visitor = [&](AstNode const* node, void* data) -> void {
+    if (node == nullptr || !result) {
+      return;
+    }
+
+    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      attributePath.emplace_back(node->getString());
+      return;
+    }
+
+    if (node->type == NODE_TYPE_REFERENCE) {
+      // reference to a variable
+      auto v = static_cast<Variable const*>(node->getData());
+
+      if (v == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+
+      if (v->id == variable->id) {
+        // the variable we are looking for
+        if (attributePath.size() != attributeName.size()) {
+          // different attribute
+          result = false;
+        } else {
+          size_t const n = attributeName.size(); 
+          TRI_ASSERT(n == attributePath.size());
+          for (size_t i = 0; i < n; ++i) {
+            if (attributePath[i] != attributeName[i]) {
+              // different attributes
+              result = false;
+              break;
+            }
+          }
+        }
+      }
+      // fall-through
+    }
+
+    attributePath.clear();
   };
 
   traverseReadOnly(node, visitor, doNothingVisitor, doNothingVisitor, nullptr);
@@ -2242,17 +2429,17 @@ AstNode* Ast::createArithmeticResultNode(double value) {
   return createNodeValueDouble(value);
 }
 
-/// @brief executes an expression with constant parameters
-AstNode* Ast::executeConstExpression(AstNode const* node) {
+/// @brief executes an expression with constant parameters in V8
+AstNode* Ast::executeConstExpressionV8(AstNode const* node) {
   // must enter v8 before we can execute any expression
   _query->enterContext();
   ISOLATE;
   v8::HandleScope scope(isolate);  // do not delete this!
 
-  // we should recycle an existing builder here
-  VPackBuilder builder;
+  TRI_ASSERT(_query->trx() != nullptr);
+  transaction::BuilderLeaser builder(_query->trx());
 
-  int res = _query->executor()->executeExpression(_query, node, builder);
+  int res = _query->v8Executor()->executeExpression(_query, node, *builder.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
@@ -2261,7 +2448,7 @@ AstNode* Ast::executeConstExpression(AstNode const* node) {
   // context is not left here, but later
   // this allows re-using the same context for multiple expressions
 
-  return nodeFromVPack(builder.slice(), true);
+  return nodeFromVPack(builder->slice(), true);
 }
 
 /// @brief optimizes the unary operators + and -
@@ -2326,6 +2513,10 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
 /// the unary NOT operation will be replaced with the result of the operation
 AstNode* Ast::optimizeNotExpression(AstNode* node) {
   TRI_ASSERT(node != nullptr);
+  if (node->type != NODE_TYPE_OPERATOR_UNARY_NOT) {
+    return node;
+  }
+
   TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_NOT);
   TRI_ASSERT(node->numMembers() == 1);
 
@@ -2409,7 +2600,7 @@ AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node,
           return createNodeValueBool(false);
         }
 
-        // right-operand was trueish, now return it
+        // right-operand was trueish, now return just left
         return lhs;
       } else if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
         if (rhs->isTrue()) {
@@ -2494,7 +2685,22 @@ AstNode* Ast::optimizeBinaryOperatorRelational(AstNode* node) {
     return node;
   }
 
-  return executeConstExpression(node);
+  TRI_ASSERT(lhs->isConstant() && rhs->isConstant());
+  
+  Expression exp(nullptr, this, node);
+  FixedVarExpressionContext context;
+  bool mustDestroy;
+  // execute the expression using the C++ variant
+  AqlValue a = exp.execute(_query->trx(), &context, mustDestroy);
+  AqlValueGuard guard(a, mustDestroy);
+
+  // we cannot create slices from types Range and Docvec easily
+  if (!a.isRange() && !a.isDocvec()) {
+    return nodeFromVPack(a.slice(), true);
+  }
+
+  // simply fall through to V8 now
+  return executeConstExpressionV8(node);
 }
 
 /// @brief optimizes the binary arithmetic operators +, -, *, / and %
@@ -2730,7 +2936,8 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
   auto func = static_cast<Function*>(node->getData());
   TRI_ASSERT(func != nullptr);
 
-  if (func->externalName == "LENGTH" || func->externalName == "COUNT") {
+  // simple replacements for some specific functions
+  if (func->name == "LENGTH" || func->name == "COUNT") {
     // shortcut LENGTH(collection) to COLLECTION_COUNT(collection)
     auto args = node->getMember(0);
     if (args->numMembers() == 1) {
@@ -2742,7 +2949,7 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
         return createNodeFunctionCall("COLLECTION_COUNT", countArgs);
       }
     }
-  } else if (func->externalName == "IS_NULL") {
+  } else if (func->name == "IS_NULL") {
     auto args = node->getMember(0);
     if (args->numMembers() == 1) {
       // replace IS_NULL(x) function call with `x == null`
@@ -2760,7 +2967,28 @@ AstNode* Ast::optimizeFunctionCall(AstNode* node) {
     return node;
   }
 
-  return executeConstExpression(node);
+  // when we are called, we should have a transaction object in 
+  // place. note that the transaction has not necessarily been
+  // started yet...
+  TRI_ASSERT(_query->trx() != nullptr); 
+
+  if (func->hasImplementation() && node->isSimple()) {
+    Expression exp(nullptr, this, node);
+    FixedVarExpressionContext context;
+    bool mustDestroy;
+    // execute the expression using the C++ variant
+    AqlValue a = exp.execute(_query->trx(), &context, mustDestroy);
+    AqlValueGuard guard(a, mustDestroy);
+
+    // we cannot create slices from types Range and Docvec easily
+    if (!a.isRange() && !a.isDocvec()) {
+      return nodeFromVPack(a.slice(), true);
+    }
+    // simply fall through to V8 now
+  }
+  
+  // execute the expression using V8  
+  return executeConstExpressionV8(node);
 }
 
 /// @brief optimizes a reference to a variable
@@ -3082,7 +3310,7 @@ AstNode* Ast::traverseAndModify(
       AstNode* result =
           traverseAndModify(member, preVisitor, visitor, postVisitor, data);
 
-      if (result != node) {
+      if (result != member) {
         TRI_ASSERT(node != nullptr);
         node->changeMember(i, result);
       }
@@ -3095,6 +3323,7 @@ AstNode* Ast::traverseAndModify(
 }
 
 /// @brief traverse the AST, using a depth-first visitor
+/// Note that the starting node is not replaced!
 AstNode* Ast::traverseAndModify(
     AstNode* node, std::function<AstNode*(AstNode*, void*)> visitor,
     void* data) {
@@ -3110,7 +3339,7 @@ AstNode* Ast::traverseAndModify(
     if (member != nullptr) {
       AstNode* result = traverseAndModify(member, visitor, data);
 
-      if (result != node) {
+      if (result != member) {
         node->changeMember(i, result);
       }
     }

@@ -27,17 +27,15 @@
 using namespace arangodb::aql;
 
 /// @brief create the function
-Function::Function(std::string const& externalName,
-                   std::string const& internalName,
-                   std::string const& arguments, bool isCacheable,
+Function::Function(std::string const& name,
+                   char const* arguments, 
                    bool isDeterministic, bool canThrow, bool canRunOnDBServer,
                    bool canPassArgumentsByReference,
                    FunctionImplementation implementation,
                    ExecutionCondition condition)
-    : internalName(internalName),
-      externalName(externalName),
+    : name(name),
+      nonAliasedName(name),
       arguments(arguments),
-      isCacheable(isCacheable),
       isDeterministic(isDeterministic),
       canThrow(canThrow),
       canRunOnDBServer(canRunOnDBServer),
@@ -47,8 +45,19 @@ Function::Function(std::string const& externalName,
       conversions() {
   initializeArguments();
 
+  LOG_TOPIC(TRACE, Logger::FIXME) << "setting up AQL function '" << name << 
+                                     "'. cacheable: " << isCacheable() << 
+                                     ", deterministic: " << isDeterministic << 
+                                     ", canThrow: " << canThrow << 
+                                     ", canRunOnDBServer: " << canRunOnDBServer << 
+                                     ", canPassArgumentsByReference: " << canPassArgumentsByReference << 
+                                     ", hasCxxImplementation: " << (implementation != nullptr) << 
+                                     ", hasConversions: " << !conversions.empty();
+                                     
   // condition must only be set if we also have an implementation
   TRI_ASSERT(implementation != nullptr || condition == nullptr);
+  
+  LOG_TOPIC(TRACE, Logger::FIXME) << "setting up AQL function '" << name << ", hasImpl:" << hasImplementation(); 
 }
 
 /// @brief destroy the function
@@ -66,7 +75,7 @@ void Function::initializeArguments() {
   bool inOptional = false;
   bool foundArg = false;
 
-  char const* p = arguments.c_str();
+  char const* p = arguments;
   while (true) {
     char const c = *p++;
 
@@ -125,7 +134,7 @@ void Function::initializeArguments() {
         foundArg = true;
         break;
 
-      default:
+      case '.':
         // we found any other parameter
 
         // set the conversion info for the position
@@ -138,6 +147,13 @@ void Function::initializeArguments() {
         }
         foundArg = true;
         break;
+      
+      default: {
+        // unknown parameter type
+        std::string message("unknown function signature parameter type for AQL function '");
+        message += name + "': " + c;
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
+      } 
     }
   }
 }

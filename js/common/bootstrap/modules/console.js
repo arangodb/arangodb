@@ -402,7 +402,6 @@ global.DEFINE_MODULE('console', (function () {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief warnLines
   // //////////////////////////////////////////////////////////////////////////////
-
   exports.warnLines = function () {
     var msg;
 
@@ -420,58 +419,62 @@ global.DEFINE_MODULE('console', (function () {
     }
   };
 
-  exports.errorStack = function (e, msg) {
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief warn per level
+  // //////////////////////////////////////////////////////////////////////////////
+  exports.logLvlLines = function (lvl, lines) {
+    var msg;
+
+    try {
+      msg = sprintf.apply(sprintf, prepareArgs(lines));
+    } catch (e) {
+      msg = `${e}: ${lines}`;
+    }
+
+    var a = msg.split('\n');
+
+    log(lvl, a);
+  };
+
+  exports.levelStack = function (lvl, e, msg) {
+    let logStrings = [];
     if (msg) {
-      exports.errorLines(msg);
+      logStrings.push(msg);
     }
     if (e.codeFrame) {
-      exports.errorLines(e.codeFrame);
+      logStrings.push(e.codeFrame);
     }
     let err = e;
     while (err) {
-      exports.errorLines(
-        !msg && err === e
-        ? err.stack
-        : `via ${err.stack}`
-      );
+      if (!msg && err === e) {
+        if (err.hasOwnProperty('errorNum')) {
+          let stacktrace = err.stack.replace(/^ArangoError/, '');
+          logStrings.push('ArangoError ' + err.errorNum + stacktrace);
+        } else {
+          logStrings.push(err.stack);
+        }
+      } else {
+        logStrings.push(`via ${err.stack}`);
+      }
       err = err.cause;
     }
+    exports.logLvlLines(lvl, logStrings);
+  };
+
+  exports.errorStack = function (e, msg) {
+    exports.levelStack('=error', e, msg);
   };
 
   exports.warnStack = function (e, msg) {
-    if (msg) {
-      exports.warnLines(msg);
-    }
-    if (e.codeFrame) {
-      exports.warnLines(e.codeFrame);
-    }
-    let err = e;
-    while (err) {
-      exports.warnLines(
-        !msg && err === e
-        ? err.stack
-        : `via ${err.stack}`
-      );
-      err = err.cause;
-    }
+    exports.levelStack('=warning', e, msg);
   };
 
   exports.infoStack = function (e, msg) {
-    if (msg) {
-      exports.infoLines(msg);
-    }
-    if (e.codeFrame) {
-      exports.infoLines(e.codeFrame);
-    }
-    let err = e;
-    while (err) {
-      exports.infoLines(
-        !msg && err === e
-        ? err.stack
-        : `via ${err.stack}`
-      );
-      err = err.cause;
-    }
+    exports.levelStack('=info', e, msg);
+  };
+
+  exports.debugStack = function (e, msg) {
+    exports.levelStack('=debug', e, msg);
   };
 
   return exports;

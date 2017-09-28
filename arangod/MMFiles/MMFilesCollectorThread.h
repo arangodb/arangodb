@@ -56,6 +56,9 @@ class MMFilesCollectorThread final : public Thread {
 
   /// @brief signal the thread that there is something to do
   void signal();
+  
+  /// @brief force the shutdown by setting _forcedStopIterations
+  void forceStop();
 
   /// @brief check whether there are queued operations left
   bool hasQueuedOperations();
@@ -113,6 +116,10 @@ class MMFilesCollectorThread final : public Thread {
   /// @brief condition variable for the collector thread
   basics::ConditionVariable _condition;
 
+  /// @brief used for counting the number of iterations during
+  /// forcedIterations. defaults to -1
+  int _forcedStopIterations;
+
   /// @brief operations lock
   arangodb::Mutex _operationsQueueLock;
 
@@ -124,7 +131,7 @@ class MMFilesCollectorThread final : public Thread {
   bool _operationsQueueInUse;
 
   /// @brief number of pending operations in collector queue
-  uint64_t _numPendingOperations;
+  std::atomic<uint64_t> _numPendingOperations;
 
   /// @brief condition variable for the collector thread result
   basics::ConditionVariable _collectorResultCondition;

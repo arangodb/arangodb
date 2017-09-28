@@ -5,14 +5,25 @@ RocksDB is a highly configurable key-value store used to power our RocksDB
 storage engine. Most of the options on this page are pass-through options to the
 underlying RocksDB instance, and we change very few of their default settings.
 
+Depending [on the storage engine you have chosen](GeneralArangod.md#storage-engine) the availability
+and the scope of these options changes. 
+
+In case you have chosen `mmfiles` some of the following options apply to persistent indexes.
+In case of `rocksdb` it will apply to all data stored as well as indexes.
+
 ## Pass-through options
+
+`--rocksdb.wal-directory`
+
+Absolute path for the RocksDB WAL files. If left empty, this will use a subdirectory
+`journals` inside the data directory.
 
 ### Write buffers
 
 `--rocksdb.write-buffer-size`
 
 The amount of data to build up in each in-memory buffer (backed by a log file)
-before closing the buffer and queueing it to be flushed into standard storage.
+before closing the buffer and queuing it to be flushed into standard storage.
 Default: 64MiB. Larger values may improve performance, especially for bulk
 loads.
 
@@ -26,6 +37,15 @@ Default: 2.
 
 Minimum number of write buffers that will be merged together when flushing to
 normal storage. Default: 1.
+
+`--rocksdb.max-total-wal-size`
+
+Maximum total size of WAL files that, when reached, will force a flush of all
+column families whose data is backed by the oldest WAL files. Setting this
+to a low value will trigger regular flushing of column family data from memtables, 
+so that WAL files can be moved to the archive.
+Setting this to a high value will avoid regular flushing but may prevent WAL
+files from being moved to the archive and being removed.
 
 `--rocksdb.delayed-write-rate` (Hidden)
 
@@ -44,20 +64,44 @@ The number of levels that do not use compression. The default value is 2.
 Levels above this number will use Snappy compression to reduce the disk
 space requirements for storing data in these levels.
 
-`--rocksdb.max-bytes-for-level-base` (Hidden)
+`--rocksdb.dynamic-level-bytes`
 
-The maximum total data size in bytes in level-1 of the LSM tree. Default:
-256MiB.
+If true, the amount of data in each level of the LSM tree is determined
+dynamically so as to minimize the space amplification; otherwise, the level
+sizes are fixed. The dynamic sizing allows RocksDB to maintain a well-structured
+LSM tree regardless of total data size. Default: true.
+
+`--rocksdb.max-bytes-for-level-base`
+
+The maximum total data size in bytes in level-1 of the LSM tree. Only effective
+if `--rocksdb.dynamic-level-bytes` is false. Default: 256MiB.
 
 `--rocksdb.max-bytes-for-level-multiplier`
 
 The maximum total data size in bytes for level L of the LSM tree can be
 calculated as `max-bytes-for-level-base * (max-bytes-for-level-multiplier ^
-(L-1))`. Default: 10.
+(L-1))`. Only effective if `--rocksdb.dynamic-level-bytes` is false. Default:
+10.
+
+`--rocksdb.level0-compaction-trigger`
+
+Compaction of level-0 to level-1 is triggered when this many files exist in
+level-0. Setting this to a higher number may help bulk writes at the expense of
+slowing down reads. Default: 2.
+
+`--rocksdb.level0-slowdown-trigger`
+
+When this many files accumulate in level-0, writes will be slowed down to
+`--rocksdb.delayed-write-rate` to allow compaction to catch up. Default: 20.
+
+`--rocksdb.level0-stop-trigger`
+
+When this many files accumulate in level-0, writes will be stopped to allow
+compaction to catch up. Default: 36.
 
 ### File I/O
 
-`--rocksdb.compaction-read-ahead-size` (Hidden)
+`--rocksdb.compaction-read-ahead-size`
 
 If non-zero, we perform bigger reads when doing compaction. If you're  running
 RocksDB on spinning disks, you should set this to at least 2MiB. That way
@@ -68,10 +112,9 @@ RocksDB's compaction is doing sequential instead of random reads. Default: 0.
 Only meaningful on Linux. If set, use `O_DIRECT` for reading files. Default:
 false.
 
-`--rocksdb.use-direct-writes` (Hidden)
+`--rocksdb.use-direct-io-for-flush-and-compaction` (Hidden)
 
-Only meaningful on Linux. If set,use `O_DIRECT` for writing files. Default:
-true.
+Only meaningful on Linux. If set, use `O_DIRECT` for writing files. Default: false.
 
 `--rocksdb.use-fsync` (Hidden)
 
@@ -80,30 +123,19 @@ If set, issue an `fsync` call when writing to disk (set to false to issue
 
 ### Background tasks
 
-`--rocksdb.base-background-compactions` (Hidden)
-
-Suggested number of concurrent background compaction jobs, submitted to the low
-priority thread pool. Default: 1.
-
-`--rocksdb.max-background-compactions`
+`--rocksdb.max-background-jobs`
 
 Maximum number of concurrent background compaction jobs, submitted to the low
-priority thread pool. Default: 1.
-
-`--rocksdb.max-background-flushes`
-
-Maximum number of concurrent flush operations, submitted to the high priority
-thread pool. Default: 1.
+priority thread pool. Default: number of processors.
 
 `--rocksdb.num-threads-priority-high`
 
 Number of threads for high priority operations (e.g. flush). We recommend
-setting this equal to `max-background-flushes`. Default: 1.
+setting this equal to `max-background-flushes`. Default: number of processors / 2.
 
 `--rocksdb.num-threads-priority-low`
 
-Number of threads for low priority operations (e.g. compaction). We recommend
-setting this equal to `max-background-compactions`. Default: 1.
+Number of threads for low priority operations (e.g. compaction). Default: number of processors / 2.
 
 ### Caching
 
@@ -119,7 +151,7 @@ The number of bits used to shard the block cache to allow concurrent operations.
 To keep individual shards at a reasonable size (i.e. at least 512KB), keep this
 value to at most `block-cache-shard-bits / 512KB`. Default: `block-cache-size /
 2^19`.
-  
+
 `--rocksdb.table-block-size`
 
 Approximate size of user data (in bytes) packed per block for uncompressed data.
@@ -129,11 +161,6 @@ Approximate size of user data (in bytes) packed per block for uncompressed data.
 Number of log files to keep around for recycling. Default: 0.
 
 ### Miscellaneous
-
-`--rocksdb.verify-checksums-in-compaction` (Hidden)
-
-If true, compaction will verify the data checksum on every read that happens as
-part of compaction. Default: true;
 
 `--rocksdb.optimize-filters-for-hits` (Hidden)
 
@@ -153,15 +180,15 @@ If true, skip corrupted records in WAL recovery. Default: false.
 
 Timeout after which unused WAL files are deleted (in seconds). Default: 10.0s.
 
-Data of ongoing transactions is stored in RAM. Transactions that get too big 
+Data of ongoing transactions is stored in RAM. Transactions that get too big
 (in terms of number of operations involved or the total size of data created or
-modified by the transaction) will be committed automatically. Effectively this 
-means that big user transactions are split into multiple smaller RocksDB 
-transactions that are committed individually. The entire user transaction will 
+modified by the transaction) will be committed automatically. Effectively this
+means that big user transactions are split into multiple smaller RocksDB
+transactions that are committed individually. The entire user transaction will
 not necessarily have ACID properties in this case.
- 
-The following options can be used to control the RAM usage and automatic 
-intermediate commits for the RocksDB engine: 
+
+The following options can be used to control the RAM usage and automatic
+intermediate commits for the RocksDB engine:
 
 `--rocksdb.max-transaction-size`
 
@@ -174,10 +201,11 @@ limit exceeded").
 
 `--rocksdb.intermediate-commit-size`
 
-If the size of all operations in a transaction reaches this threshold, the transaction 
-is committed automatically and a new transaction is started. The value is specified in bytes.
-  
+If the size of all operations in a transaction reaches this threshold, the
+transaction is committed automatically and a new transaction is started. The
+value is specified in bytes.
+
 `--rocksdb.intermediate-commit-count`
 
-If the number of operations in a transaction reaches this value, the transaction is 
-committed automatically and a new transaction is started.
+If the number of operations in a transaction reaches this value, the transaction
+is committed automatically and a new transaction is started.

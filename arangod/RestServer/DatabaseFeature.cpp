@@ -42,6 +42,7 @@
 #include "ProgramOptions/Section.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
+#include "RestServer/FeatureCacheFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -157,8 +158,14 @@ void DatabaseManagerThread::run() {
               TRI_RemoveDirectory(path.c_str());
             }
           }
-          
-          engine->dropDatabase(database);
+         
+          try { 
+            engine->dropDatabase(database);
+          } catch (std::exception const& ex) {
+            LOG_TOPIC(ERR, Logger::FIXME) << "dropping database '" << database->name() << "' failed: " << ex.what();
+          } catch (...) {
+            LOG_TOPIC(ERR, Logger::FIXME) << "dropping database '" << database->name() << "' failed";
+          }
         }
 
         delete database;
@@ -235,12 +242,9 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
   startsAfter("CacheManager");
   startsAfter("DatabasePath");
   startsAfter("EngineSelector");
-  startsAfter("MMFilesLogfileManager");
   startsAfter("InitDatabase");
-  startsAfter("MMFilesEngine");
-  startsAfter("MMFilesPersistentIndex");
-  startsAfter("RocksDBEngine");
   startsAfter("Scheduler");
+  startsAfter("StorageEngine");
 }
 
 DatabaseFeature::~DatabaseFeature() {
@@ -362,8 +366,6 @@ void DatabaseFeature::start() {
     FATAL_ERROR_EXIT();
   }
 
-  // TODO: handle _upgrade and _checkVersion here
-
   // activate deadlock detection in case we're not running in cluster mode
   if (!arangodb::ServerState::instance()->isRunningInCluster()) {
     enableDeadlockDetection();
@@ -391,21 +393,7 @@ void DatabaseFeature::beginShutdown() {
   }
 }
 
-void DatabaseFeature::stop() {
-  auto unuser(_databasesProtector.use());
-  auto theLists = _databasesLists.load();
-  
-  for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    // iterate over all databases
-    TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
-
-    vocbase->processCollections([](LogicalCollection* collection) { 
-      collection->close(); 
-    }, true);
-  }
-}
+void DatabaseFeature::stop() {}
 
 void DatabaseFeature::unprepare() {
   // close all databases
@@ -439,8 +427,10 @@ void DatabaseFeature::unprepare() {
 }
 
 /// @brief will be called when the recovery phase has run
-/// this will start the compactors and replication appliers for all databases
-int DatabaseFeature::recoveryDone() {
+/// this will call the engine-specific recoveryDone() procedures
+/// and will execute engine-unspecific operations (such as starting
+/// the replication appliers) for all databases
+void DatabaseFeature::recoveryDone() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
 
   auto unuser(_databasesProtector.use());
@@ -452,10 +442,10 @@ int DatabaseFeature::recoveryDone() {
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
 
-    // start the compactor for the database
+    // execute the engine-specific callbacks on successful recovery
     engine->recoveryDone(vocbase);
 
-    // start the replication applier
+    // start the replication applier, which is engine-unspecific
     TRI_ASSERT(vocbase->replicationApplier() != nullptr);
 
     if (vocbase->replicationApplier()->_configuration._autoStart) {
@@ -472,8 +462,6 @@ int DatabaseFeature::recoveryDone() {
       }
     }
   }
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief create a new database
@@ -754,7 +742,9 @@ int DatabaseFeature::dropDatabase(std::string const& name, bool waitForDeletion,
     vocbase->setIsOwnAppsDirectory(removeAppsDirectory);
 
     // invalidate all entries for the database
+#if USE_PLAN_CACHE
     arangodb::aql::PlanCache::instance()->invalidate(vocbase);
+#endif
     arangodb::aql::QueryCache::instance()->invalidate(vocbase);
 
     engine->prepareDropDatabase(vocbase, !engine->inRecovery(), res);
@@ -838,6 +828,31 @@ std::vector<TRI_voc_tick_t> DatabaseFeature::getDatabaseIds(
 }
 
 /// @brief return the list of all database names
+std::vector<std::string> DatabaseFeature::getDatabaseNamesCoordinator() {
+  std::vector<std::string> names;
+
+  {
+    auto unuser(_databasesProtector.use());
+    auto theLists = _databasesLists.load();
+
+    for (auto& p : theLists->_coordinatorDatabases) {
+      TRI_vocbase_t* vocbase = p.second;
+      TRI_ASSERT(vocbase != nullptr);
+      if (vocbase->isDropped()) {
+        continue;
+      }
+      names.emplace_back(vocbase->name());
+    }
+  }
+
+  std::sort(
+      names.begin(), names.end(),
+      [](std::string const& l, std::string const& r) -> bool { return l < r; });
+
+  return names;
+}
+
+/// @brief return the list of all database names
 std::vector<std::string> DatabaseFeature::getDatabaseNames() {
   std::vector<std::string> names;
 
@@ -878,8 +893,7 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
         continue;
       }
 
-      auto authentication = application_features::ApplicationServer::getFeature<
-          AuthenticationFeature>("Authentication");
+      auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
       auto level = authentication->canUseDatabase(username, vocbase->name());
 
       if (level == AuthLevel::NONE) {
@@ -1005,15 +1019,28 @@ TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {
 }
 
 void DatabaseFeature::enumerateDatabases(std::function<void(TRI_vocbase_t*)> func) {
-  auto unuser(_databasesProtector.use());
-  auto theLists = _databasesLists.load();
-  
-  for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    // iterate over all databases
-    TRI_ASSERT(vocbase != nullptr);
-    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
-    func(vocbase);
+  if (ServerState::instance()->isCoordinator()) {
+    auto unuser(_databasesProtector.use());
+    auto theLists = _databasesLists.load();
+    
+    for (auto& p : theLists->_coordinatorDatabases) {
+      TRI_vocbase_t* vocbase = p.second;
+      // iterate over all databases
+      TRI_ASSERT(vocbase != nullptr);
+      TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR);
+      func(vocbase);
+    }
+  } else {
+    auto unuser(_databasesProtector.use());
+    auto theLists = _databasesLists.load();
+    
+    for (auto& p : theLists->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
+      // iterate over all databases
+      TRI_ASSERT(vocbase != nullptr);
+      TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
+      func(vocbase);
+    }
   }
 }
 

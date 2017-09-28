@@ -87,36 +87,16 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   bool hasSelectivityEstimate() const override { return false; }
 
-  size_t memory() const override;
-
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
   // Uses default toVelocyPackFigures
 
   bool matchesDefinition(VPackSlice const&) const override;
-
-  int insert(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
-
-  int remove(transaction::Methods*, TRI_voc_rid_t,
-             arangodb::velocypack::Slice const&, bool isRollback) override;
-
-  int cleanup() override;
 
   bool isSame(std::string const& field, int minWordLength) const {
     std::string fieldString;
     TRI_AttributeNamesToString(fields()[0], fieldString);
     return (_minWordLength == minWordLength && fieldString == field);
   }
-
-  /// insert index elements into the specified write batch. Should be used
-  /// as an optimization for the non transactional fillIndex method
-  int insertRaw(RocksDBMethods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&) override;
-
-  /// remove index elements and put it in the specified write batch. Should be
-  /// used as an optimization for the non transactional fillIndex method
-  int removeRaw(RocksDBMethods*, TRI_voc_rid_t,
-                arangodb::velocypack::Slice const&) override;
 
   //  TRI_fts_index_t* internals() { return _fulltextIndex; }
 
@@ -129,6 +109,16 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
   arangodb::Result executeQuery(transaction::Methods* trx, FulltextQuery const&,
                                 size_t maxResults,
                                 velocypack::Builder& builder);
+
+ protected:
+  /// insert index elements into the specified write batch.
+  Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
+                        TRI_voc_rid_t,
+                        arangodb::velocypack::Slice const&) override;
+
+  /// remove index elements and put it in the specified write batch.
+  Result removeInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
+                        arangodb::velocypack::Slice const&) override;
 
  private:
   std::set<std::string> wordlist(arangodb::velocypack::Slice const&);

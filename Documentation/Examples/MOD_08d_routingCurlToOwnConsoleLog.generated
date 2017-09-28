@@ -6,27 +6,28 @@ x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"request"</span> : { 
-    <span class="hljs-string">"user"</span> : <span class="hljs-literal">null</span>, 
+    <span class="hljs-string">"authorized"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"user"</span> : <span class="hljs-string">"root"</span>, 
     <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
     <span class="hljs-string">"url"</span> : <span class="hljs-string">"/subdirectory/ourtest/1"</span>, 
     <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
     <span class="hljs-string">"server"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">8563</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">38152</span> 
     }, 
     <span class="hljs-string">"client"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">55060</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"149510192225740"</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">43600</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"149988597489526"</span> 
     }, 
     <span class="hljs-string">"internals"</span> : { 
     }, 
     <span class="hljs-string">"headers"</span> : { 
-      <span class="hljs-string">"authorization"</span> : <span class="hljs-string">"Basic cm9vdDo="</span>, 
-      <span class="hljs-string">"user-agent"</span> : <span class="hljs-string">"ArangoDB"</span>, 
-      <span class="hljs-string">"connection"</span> : <span class="hljs-string">"Keep-Alive"</span>, 
       <span class="hljs-string">"accept-encoding"</span> : <span class="hljs-string">"deflate"</span>, 
-      <span class="hljs-string">"host"</span> : <span class="hljs-string">"127.0.0.1"</span> 
+      <span class="hljs-string">"user-agent"</span> : <span class="hljs-string">"ArangoDB"</span>, 
+      <span class="hljs-string">"host"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
+      <span class="hljs-string">"authorization"</span> : <span class="hljs-string">"Basic cm9vdDo="</span>, 
+      <span class="hljs-string">"connection"</span> : <span class="hljs-string">"Keep-Alive"</span> 
     }, 
     <span class="hljs-string">"requestType"</span> : <span class="hljs-string">"GET"</span>, 
     <span class="hljs-string">"parameters"</span> : { 
@@ -47,27 +48,28 @@ x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"request"</span> : { 
-    <span class="hljs-string">"user"</span> : <span class="hljs-literal">null</span>, 
+    <span class="hljs-string">"authorized"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"user"</span> : <span class="hljs-string">"root"</span>, 
     <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
     <span class="hljs-string">"url"</span> : <span class="hljs-string">"/subdirectory/ourtest/2"</span>, 
     <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
     <span class="hljs-string">"server"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">8563</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">38152</span> 
     }, 
     <span class="hljs-string">"client"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">55060</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"149510192225740"</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">43600</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"149988597489526"</span> 
     }, 
     <span class="hljs-string">"internals"</span> : { 
     }, 
     <span class="hljs-string">"headers"</span> : { 
-      <span class="hljs-string">"authorization"</span> : <span class="hljs-string">"Basic cm9vdDo="</span>, 
-      <span class="hljs-string">"user-agent"</span> : <span class="hljs-string">"ArangoDB"</span>, 
-      <span class="hljs-string">"connection"</span> : <span class="hljs-string">"Keep-Alive"</span>, 
       <span class="hljs-string">"accept-encoding"</span> : <span class="hljs-string">"deflate"</span>, 
-      <span class="hljs-string">"host"</span> : <span class="hljs-string">"127.0.0.1"</span> 
+      <span class="hljs-string">"user-agent"</span> : <span class="hljs-string">"ArangoDB"</span>, 
+      <span class="hljs-string">"host"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
+      <span class="hljs-string">"authorization"</span> : <span class="hljs-string">"Basic cm9vdDo="</span>, 
+      <span class="hljs-string">"connection"</span> : <span class="hljs-string">"Keep-Alive"</span> 
     }, 
     <span class="hljs-string">"requestType"</span> : <span class="hljs-string">"GET"</span>, 
     <span class="hljs-string">"parameters"</span> : { 
@@ -88,27 +90,28 @@ x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"request"</span> : { 
-    <span class="hljs-string">"user"</span> : <span class="hljs-literal">null</span>, 
+    <span class="hljs-string">"authorized"</span> : <span class="hljs-literal">true</span>, 
+    <span class="hljs-string">"user"</span> : <span class="hljs-string">"root"</span>, 
     <span class="hljs-string">"database"</span> : <span class="hljs-string">"_system"</span>, 
     <span class="hljs-string">"url"</span> : <span class="hljs-string">"/subdirectory/ourtest/3"</span>, 
     <span class="hljs-string">"protocol"</span> : <span class="hljs-string">"http"</span>, 
     <span class="hljs-string">"server"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">8563</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">38152</span> 
     }, 
     <span class="hljs-string">"client"</span> : { 
       <span class="hljs-string">"address"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
-      <span class="hljs-string">"port"</span> : <span class="hljs-number">55060</span>, 
-      <span class="hljs-string">"id"</span> : <span class="hljs-string">"149510192225740"</span> 
+      <span class="hljs-string">"port"</span> : <span class="hljs-number">43600</span>, 
+      <span class="hljs-string">"id"</span> : <span class="hljs-string">"149988597489526"</span> 
     }, 
     <span class="hljs-string">"internals"</span> : { 
     }, 
     <span class="hljs-string">"headers"</span> : { 
-      <span class="hljs-string">"authorization"</span> : <span class="hljs-string">"Basic cm9vdDo="</span>, 
-      <span class="hljs-string">"user-agent"</span> : <span class="hljs-string">"ArangoDB"</span>, 
-      <span class="hljs-string">"connection"</span> : <span class="hljs-string">"Keep-Alive"</span>, 
       <span class="hljs-string">"accept-encoding"</span> : <span class="hljs-string">"deflate"</span>, 
-      <span class="hljs-string">"host"</span> : <span class="hljs-string">"127.0.0.1"</span> 
+      <span class="hljs-string">"user-agent"</span> : <span class="hljs-string">"ArangoDB"</span>, 
+      <span class="hljs-string">"host"</span> : <span class="hljs-string">"127.0.0.1"</span>, 
+      <span class="hljs-string">"authorization"</span> : <span class="hljs-string">"Basic cm9vdDo="</span>, 
+      <span class="hljs-string">"connection"</span> : <span class="hljs-string">"Keep-Alive"</span> 
     }, 
     <span class="hljs-string">"requestType"</span> : <span class="hljs-string">"GET"</span>, 
     <span class="hljs-string">"parameters"</span> : { 

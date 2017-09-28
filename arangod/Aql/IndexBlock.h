@@ -26,6 +26,7 @@
 #define ARANGOD_AQL_INDEX_BLOCK_H 1
 
 #include "Aql/BlockCollector.h"
+#include "Aql/DocumentProducingBlock.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/IndexNode.h"
@@ -60,7 +61,7 @@ struct NonConstExpression {
   ~NonConstExpression() { delete expression; }
 };
 
-class IndexBlock final : public ExecutionBlock {
+class IndexBlock final : public ExecutionBlock, public DocumentProducingBlock {
  public:
   IndexBlock(ExecutionEngine* engine, IndexNode const* ep);
 
@@ -162,10 +163,7 @@ class IndexBlock final : public ExecutionBlock {
 
   /// @brief Counter how many documents have been returned/skipped
   ///        during one call.
-  uint64_t _returned;
-
-  /// @brief Collect several AQLItemsBlocks
-  BlockCollector _collector;
+  size_t _returned;
 };
 
 }  // namespace arangodb::aql

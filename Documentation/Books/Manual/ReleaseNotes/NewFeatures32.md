@@ -106,18 +106,22 @@ supported there:
 
 * fulltext: user-defined sorted reverted index on words occurring in documents
 
+Satellite Collections
+---------------------
+
+With SatelliteCollections, you can define collections to shard to a cluster and
+collections to replicate to each machine. The ArangoDB query optimizer knows where
+each shard is located and sends the requests to the DBServers involved, which then
+executes the query, locally. With this approach, network hops during join
+operations on sharded collections can be avoided and response times can be close to
+that of a single instance.
+
+[Satellite collections](../Administration/Replication/Synchronous/Satellites.md)
+are available in the *Enterprise* edition.
+
 
 Memory management
 -----------------
-
-* added startup options `--vm.resident-limit` and `--vm.path` for file-backed 
-  memory mapping after reaching a configurable maximum RAM size
-
-  This prevents ArangoDB from using all available RAM when using large datasets.
-  This will also lower the chances of the arangod process being killed by the
-  operation system's OOM killer.
-
-  Note: these options are not available in all builds and environments.
 
 * make arangod start with less V8 JavaScript contexts
 
@@ -201,6 +205,10 @@ JavaScript
   `print`/`printShell` functions in ArangoShell and arangod. This will emit longer
   prefixes of string values before truncating them with `...`, which is helpful
   for debugging. This change is mostly useful when using the ArangoShell (arangosh).
+
+
+* the `@arangodb` module now provides a `time` function which returns the current time
+  in seconds as a floating point value with microsecond precision.
 
 
 Foxx
@@ -344,6 +352,15 @@ Authentication
 * added [LDAP](../Administration/Configuration/Ldap.md) authentication (Enterprise only)
 
 
+Authorization
+--------------
+
+* added read only mode for users
+* collection level authorization rights
+
+Read more in the [overview](../Administration/ManagingUsers/README.md).
+
+
 Foxx
 ----
 
@@ -363,3 +380,20 @@ Miscellaneous Changes
   
   Most of the checks are executed on Linux systems only.
 
+* added "deduplicate" attribute for array indexes, which controls whether inserting 
+  duplicate index values from the same document into a unique array index will lead to 
+  an error or not:
+
+      // with deduplicate = true, which is the default value:
+      db._create("test");
+      db.test.ensureIndex({ type: "hash", fields: ["tags[*]"], deduplicate: true });
+      db.test.insert({ tags: ["a", "b"] });
+      db.test.insert({ tags: ["c", "d", "c"] }); // will work, because deduplicate = true
+      db.test.insert({ tags: ["a"] }); // will fail
+      
+      // with deduplicate = false
+      db._create("test");
+      db.test.ensureIndex({ type: "hash", fields: ["tags[*]"], deduplicate: false });
+      db.test.insert({ tags: ["a", "b"] });
+      db.test.insert({ tags: ["c", "d", "c"] }); // will not work, because deduplicate = false
+      db.test.insert({ tags: ["a"] }); // will fail

@@ -1179,7 +1179,7 @@ function GET_DOCUMENTS (collection, func) {
     return COLLECTION(collection, func).all().toArray();
   }
 
-  return COLLECTION(collection, func).ALL(0, null).documents;
+  return COLLECTION(collection, func).ALL().documents;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1307,7 +1307,7 @@ function RELATIONAL_ARRAY_FUNC (lhs, rhs, quantifier, func) {
   } else if (quantifier === 2) {
     // ALL
     if (n === 0) {
-      return false;
+      return true;
     }
     min = max = n;
   } else if (quantifier === 3) {
@@ -2037,7 +2037,8 @@ function AQL_CONCAT_SEPARATOR () {
 function AQL_CHAR_LENGTH (value) {
   'use strict';
 
-  return AQL_TO_STRING(value).length;
+  // https://mathiasbynens.be/notes/javascript-unicode
+  return [...AQL_TO_STRING(value)].length;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -2145,7 +2146,7 @@ function AQL_REGEX_TEST (value, regex, caseInsensitive) {
     return RegexCache[modifiers][regex].test(AQL_TO_STRING(value));
   } catch (err) {
     WARN('REGEX_TEST', INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
-    return false;
+    return null;
   }
 }
 
@@ -2171,7 +2172,7 @@ function AQL_REGEX_REPLACE (value, regex, replacement, caseInsensitive) {
     return AQL_TO_STRING(value).replace(RegexCache[modifiers][regex], AQL_TO_STRING(replacement));
   } catch (err) {
     WARN('REGEX_REPLACE', INTERNAL.errors.ERROR_QUERY_INVALID_REGEX);
-    return false;
+    return null;
   }
 }
 
@@ -2965,7 +2966,8 @@ function AQL_LENGTH (value) {
     return value ? 1 : 0;
   }
 
-  return AQL_TO_STRING(value).length;
+  // https://mathiasbynens.be/notes/javascript-unicode
+  return [...AQL_TO_STRING(value)].length;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -5675,6 +5677,7 @@ exports.AQL_MERGE_RECURSIVE = AQL_MERGE_RECURSIVE;
 exports.AQL_TRANSLATE = AQL_TRANSLATE;
 exports.AQL_MATCHES = AQL_MATCHES;
 exports.AQL_PASSTHRU = AQL_PASSTHRU;
+exports.AQL_V8 = AQL_PASSTHRU;
 exports.AQL_TEST_INTERNAL = AQL_TEST_INTERNAL;
 exports.AQL_SLEEP = AQL_SLEEP;
 exports.AQL_CURRENT_DATABASE = AQL_CURRENT_DATABASE;
