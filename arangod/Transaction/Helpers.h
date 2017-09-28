@@ -63,6 +63,9 @@ namespace helpers {
   /// the document must have at least two attributes, and _id is supposed to
   /// be the second one
   /// note that this may return a Slice of type Custom!
+  /// do NOT call this method when 
+  /// - the input slice is not a database document
+  /// - you are not willing to deal with slices of type Custom
   VPackSlice extractIdFromDocument(VPackSlice);
   
   /// @brief quick access to the _from attribute in a database document
