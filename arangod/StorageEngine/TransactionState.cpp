@@ -342,6 +342,13 @@ void TransactionState::clearQueryCache() {
 
 /// @brief update the status of a transaction
 void TransactionState::updateStatus(transaction::Status status) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  if (_status != transaction::Status::CREATED && 
+      _status != transaction::Status::RUNNING) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "trying to update transaction status with an invalid state. current: " << _status << ", future: " << status;
+  }
+#endif
+
   TRI_ASSERT(_status == transaction::Status::CREATED ||
              _status == transaction::Status::RUNNING);
 

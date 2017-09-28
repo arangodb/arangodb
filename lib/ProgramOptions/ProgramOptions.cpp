@@ -152,14 +152,14 @@ std::string ProgramOptions::translateShorthand(std::string const& name) const {
 }
 
 void ProgramOptions::walk(std::function<void(Section const&, Option const&)> const& callback,
-          bool onlyTouched) const {
+          bool onlyTouched, bool includeObsolete) const {
   for (auto const& it : _sections) {
-    if (it.second.obsolete) {
+    if (!includeObsolete && it.second.obsolete) {
       // obsolete section. ignore it
       continue;
     }
     for (auto const& it2 : it.second.options) {
-      if (it2.second.obsolete) {
+      if (!includeObsolete && it2.second.obsolete) {
         // obsolete option. ignore it
         continue;
       }

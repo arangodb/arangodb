@@ -1710,7 +1710,12 @@ int fetchEdgesFromEngines(
         resSlice, "readIndex", 0);
     VPackSlice edges = resSlice.get("edges");
     for (auto const& e : VPackArrayIterator(edges)) {
-      VPackSlice id = transaction::helpers::extractIdFromDocument(e);
+      VPackSlice id = e.get(StaticStrings::IdString);
+      if (!id.isString()) {
+        // invalid id type
+        LOG_TOPIC(ERR, Logger::FIXME) << "got invalid edge id type: " << id.typeName();
+        continue;
+      }
       StringRef idRef(id);
       auto resE = cache.find(idRef);
       if (resE == cache.end()) {
@@ -1812,7 +1817,13 @@ void fetchVerticesFromEngines(
       }
       TRI_ASSERT(result.find(key) == result.end());
       auto val = VPackBuilder::clone(pair.value);
-      VPackSlice id = transaction::helpers::extractIdFromDocument(val.slice());
+
+      VPackSlice id = val.slice().get(StaticStrings::IdString);
+      if (!id.isString()) {
+        // invalid id type
+        LOG_TOPIC(ERR, Logger::FIXME) << "got invalid edge id type: " << id.typeName();
+        continue;
+      }
       TRI_ASSERT(id.isString());
       result.emplace(StringRef(id), val.steal());
     }
@@ -2693,7 +2704,12 @@ int fetchEdgesFromEngines(
         resSlice, "readIndex", 0);
     VPackSlice edges = resSlice.get("edges");
     for (auto const& e : VPackArrayIterator(edges)) {
-      VPackSlice id = transaction::helpers::extractIdFromDocument(e);
+      VPackSlice id = e.get(StaticStrings::IdString);
+      if (!id.isString()) {
+        // invalid id type
+        LOG_TOPIC(ERR, Logger::FIXME) << "got invalid edge id type: " << id.typeName();
+        continue;
+      }
       StringRef idRef(id);
       auto resE = cache.find(idRef);
       if (resE == cache.end()) {
