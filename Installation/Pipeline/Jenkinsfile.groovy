@@ -1453,7 +1453,7 @@ def runOperatingSystems(osList) {
 
 timestamps {
     try {
-        node("master") {
+        node("linux") {
             echo sh(returnStdout: true, script: 'env')
         }
 
