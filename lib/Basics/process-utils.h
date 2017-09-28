@@ -47,7 +47,7 @@ extern uint64_t TRI_PhysicalMemory;
 /// @brief returns information about the process
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_process_info_s {
+struct ProcessInfo {
   uint64_t _minorPageFaults;
   uint64_t _majorPageFaults;
   uint64_t _userTime;
@@ -56,7 +56,9 @@ typedef struct TRI_process_info_s {
   int64_t _residentSize;  // resident set size in number of bytes
   uint64_t _virtualSize;
   uint64_t _scClkTck;
-} TRI_process_info_t;
+
+  ProcessInfo();
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief status of an external process
@@ -78,24 +80,27 @@ typedef enum {
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef _WIN32
-typedef struct TRI_external_id_s {
+struct ExternalId {
   TRI_pid_t _pid;
   int _readPipe;
   int _writePipe;
-} TRI_external_id_t;
+  ExternalId();
+};
 #else
-typedef struct TRI_external_id_s {
+struct ExternalId {
   DWORD _pid;
   HANDLE _readPipe;
   HANDLE _writePipe;
-} TRI_external_id_t;
+
+  ExternalId();
+};
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief external process description
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_external_t {
+struct ExternalProcess {
   char* _executable;
   size_t _numberArguments;
   char** _arguments;
@@ -113,16 +118,21 @@ struct TRI_external_t {
 
   TRI_external_status_e _status;
   int64_t _exitStatus;
+
+  ~ExternalProcess();
+  ExternalProcess();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief external process status
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_external_status_t {
+struct ExternalProcessStatus {
   TRI_external_status_e _status;
   int64_t _exitStatus;
   std::string _errorMessage;
+
+  ExternalProcessStatus();
 };
 
 void TRI_LogProcessInfoSelf(char const* message = nullptr);
@@ -139,13 +149,13 @@ uint64_t TRI_MicrosecondsTv(struct timeval* tv);
 /// @brief returns information about the current process
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_process_info_t TRI_ProcessInfoSelf(void);
+ProcessInfo TRI_ProcessInfoSelf(void);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the process
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_process_info_t TRI_ProcessInfo(TRI_pid_t pid);
+ProcessInfo TRI_ProcessInfo(TRI_pid_t pid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the process name
@@ -158,32 +168,39 @@ void TRI_SetProcessTitle(char const* title);
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CreateExternalProcess(char const* executable, char const** arguments,
-                               size_t n, bool usePipes, TRI_external_id_t* pid);
+                               size_t n, bool usePipes, ExternalId* pid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
+ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid,
                                                bool wait);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether a signal is expected to be terminal
+////////////////////////////////////////////////////////////////////////////////
+bool TRI_IsDeadlySignal(int signal);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_KillExternalProcess(TRI_external_id_t pid, int signal);
+ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid,
+                                              int signal,
+                                              bool isTerminal);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief suspends an external process, only on Unix
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SuspendExternalProcess(TRI_external_id_t pid);
+bool TRI_SuspendExternalProcess(ExternalId pid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief continue an external process, only on Unix
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ContinueExternalProcess(TRI_external_id_t pid);
+bool TRI_ContinueExternalProcess(ExternalId pid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the process components
