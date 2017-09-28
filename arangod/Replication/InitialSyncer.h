@@ -96,13 +96,13 @@ class InitialSyncer : public Syncer {
   InitialSyncer(TRI_vocbase_t*,
                 TRI_replication_applier_configuration_t const*,
                 std::unordered_map<std::string, bool> const&,
-                std::string const&, bool verbose, bool skipCreateDrop);
+                Syncer::RestrictType, bool verbose, bool skipCreateDrop);
 
   ~InitialSyncer();
 
  public:
   /// @brief run method, performs a full synchronization
-  int run(std::string&, bool);
+  int run(std::string& errorMsg, bool incremental);
 
   /// @brief return the last log tick of the master at start
   TRI_voc_tick_t getLastLogTick() const { return _masterInfo._lastLogTick; }
@@ -207,7 +207,7 @@ class InitialSyncer : public Syncer {
   std::unordered_map<std::string, bool> _restrictCollections;
 
   /// @brief collection restriction type
-  std::string const _restrictType;
+  Syncer::RestrictType _restrictType;
 
   /// @brief collections synced
   std::map<TRI_voc_cid_t, std::string> _processedCollections;

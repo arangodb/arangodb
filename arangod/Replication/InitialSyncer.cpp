@@ -63,7 +63,7 @@ size_t const InitialSyncer::MaxChunkSize = 10 * 1024 * 1024;
 InitialSyncer::InitialSyncer(TRI_vocbase_t* vocbase,
     TRI_replication_applier_configuration_t const* configuration,
     std::unordered_map<std::string, bool> const& restrictCollections,
-    std::string const& restrictType, bool verbose, bool skipCreateDrop)
+    Syncer::RestrictType restrictType, bool verbose, bool skipCreateDrop)
     : Syncer(configuration),
       _progress("not started"),
       _restrictCollections(restrictCollections),
@@ -97,7 +97,6 @@ InitialSyncer::~InitialSyncer() {
 int InitialSyncer::run(std::string& errorMsg, bool incremental) {
   if (_client == nullptr || _connection == nullptr || _endpoint == nullptr) {
     errorMsg = "invalid endpoint";
-
     return TRI_ERROR_INTERNAL;
   }
 
@@ -1319,15 +1318,15 @@ int InitialSyncer::handleInventoryResponse(VPackSlice const& slice,
       continue;
     }
 
-    if (!_restrictType.empty()) {
+    if (_restrictType != Syncer::RestrictType::RESTRICT_NONE) {
       auto const it = _restrictCollections.find(masterName);
 
       bool found = (it != _restrictCollections.end());
 
-      if (_restrictType == "include" && !found) {
+      if (_restrictType == Syncer::RESTRICT_INCLUDE && !found) {
         // collection should not be included
         continue;
-      } else if (_restrictType == "exclude" && found) {
+      } else if (_restrictType == Syncer::RESTRICT_EXCLUDE && found) {
         // collection should be excluded
         continue;
       }

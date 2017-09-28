@@ -44,12 +44,6 @@ class Slice;
 
 class ReplicationTransaction;
 
-enum RestrictType : uint32_t {
-  RESTRICT_NONE,
-  RESTRICT_INCLUDE,
-  RESTRICT_EXCLUDE
-};
-
 class TailingSyncer : public Syncer {
  public:
   TailingSyncer(TRI_replication_applier_configuration_t const*,
@@ -123,7 +117,7 @@ class TailingSyncer : public Syncer {
   std::string _chunkSize;
 
   /// @brief collection restriction type
-  RestrictType _restrictType;
+  Syncer::RestrictType _restrictType;
 
   /// @brief initial tick for continuous synchronization
   TRI_voc_tick_t _initialTick;

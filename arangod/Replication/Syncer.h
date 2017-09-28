@@ -51,6 +51,13 @@ class Methods;
 
 class Syncer {
  public:
+  
+  enum RestrictType : uint32_t {
+    RESTRICT_NONE,
+    RESTRICT_INCLUDE,
+    RESTRICT_EXCLUDE
+  };
+  
   Syncer(Syncer const&) = delete;
   Syncer& operator=(Syncer const&) = delete;
 

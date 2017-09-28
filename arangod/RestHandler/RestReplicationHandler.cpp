@@ -488,8 +488,6 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   std::string const password =
       VelocyPackHelper::getStringValue(body, "password", "");
   std::string const jwt = VelocyPackHelper::getStringValue(body, "jwt", "");
-  std::string const restrictType =
-      VelocyPackHelper::getStringValue(body, "restrictType", "");
 
   // initialize some defaults to copy from
   TRI_replication_applier_configuration_t defaults;
@@ -572,14 +570,19 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   }
 
   // now the configuration is complete
-
-  if ((restrictType.empty() && !config._restrictCollections.empty()) ||
-      (!restrictType.empty() && config._restrictCollections.empty()) ||
-      (!restrictType.empty() && restrictType != "include" &&
-       restrictType != "exclude")) {
+  if ((config._restrictType.empty() && !config._restrictCollections.empty()) ||
+      (!config._restrictType.empty() && config._restrictCollections.empty()) ||
+      (!config._restrictType.empty() && config._restrictType != "include" &&
+       config._restrictType != "exclude")) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid value for <restrictCollections> or <restrictType>");
     return;
+  }
+  Syncer::RestrictType restrictType = Syncer::RESTRICT_NONE;
+  if (config._restrictType == "include") {
+    restrictType = Syncer::RESTRICT_INCLUDE;
+  } else if (config._restrictType == "exclude") {
+    restrictType = Syncer::RESTRICT_EXCLUDE;
   }
 
   // forget about any existing replication applier configuration
@@ -596,12 +599,10 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   {
     InitialSyncer syncer(_vocbase, &config, config._restrictCollections,
                          restrictType, false, false);
-
+    
     res = TRI_ERROR_NO_ERROR;
-
     try {
       res = syncer.run(errorMsg, false);
-
       // steal the barrier from the syncer
       barrierId = syncer.stealBarrier();
     } catch (...) {
@@ -1881,16 +1882,19 @@ void RestReplicationHandler::handleCommandSync() {
     }
   }
 
-  std::string restrictType =
-      VelocyPackHelper::getStringValue(body, "restrictType", "");
-
-  if ((restrictType.empty() && !restrictCollections.empty()) ||
-      (!restrictType.empty() && restrictCollections.empty()) ||
-      (!restrictType.empty() && restrictType != "include" &&
-       restrictType != "exclude")) {
+  std::string value = VelocyPackHelper::getStringValue(body, "restrictType", "");
+  if ((value.empty() && !restrictCollections.empty()) ||
+      (!value.empty() && restrictCollections.empty()) ||
+      (!value.empty() && value != "include" && value != "exclude")) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "invalid value for <restrictCollections> or <restrictType>");
     return;
+  }
+  Syncer::RestrictType restrictType = Syncer::RESTRICT_NONE;
+  if (value == "include") {
+    restrictType = Syncer::RESTRICT_INCLUDE;
+  } else if (value == "exclude") {
+    restrictType = Syncer::RESTRICT_EXCLUDE;
   }
 
   TRI_replication_applier_configuration_t config;
