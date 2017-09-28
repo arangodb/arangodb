@@ -36,7 +36,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 /// @brief replication applier for a single database
-class DatabaseReplicationApplier : public ReplicationApplier {
+class DatabaseReplicationApplier final : public ReplicationApplier {
   friend class ContinuousSyncer; // TODO
   friend class RestReplicationHandler; // TODO
 
@@ -48,6 +48,18 @@ class DatabaseReplicationApplier : public ReplicationApplier {
 
   ~DatabaseReplicationApplier();
   
+  /// @brief stop the applier and "forget" everything
+  void forget() override;
+
+  /// @brief shuts down the replication applier
+  void shutdown() override;
+  
+  /// @brief start the replication applier
+  int start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) override;
+  
+  /// @brief configure the replication applier
+  void reconfigure(ReplicationApplierConfiguration const& configuration) override;
+
   /// @brief remove the replication application state file
   void removeState() override;
   
@@ -92,17 +104,8 @@ class DatabaseReplicationApplier : public ReplicationApplier {
   /// @brief stop the initial synchronization
   void stopInitialSynchronization(bool value);
 
-  /// @brief start the replication applier
-  int start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
-
   /// @brief stop the replication applier
   int stop(bool resetError, bool joinThread);
-
-  /// @brief stop the applier and "forget" everything
-  int forget();
-
-  /// @brief shuts down the replication applier
-  int shutdown();
 
   /// @brief set the progress
   void setProgress(char const* msg);
@@ -123,9 +126,6 @@ class DatabaseReplicationApplier : public ReplicationApplier {
 
   /// @brief save the replication application configuration to a file
   void storeConfiguration(bool doSync);
-
-  /// @brief configure the replication applier
-  void reconfigure(ReplicationApplierConfiguration const& configuration);
 
  private:
   /// @brief register an applier error

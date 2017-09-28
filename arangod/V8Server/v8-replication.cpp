@@ -566,27 +566,47 @@ static void JS_ServerIdReplication(
   TRI_V8_TRY_CATCH_END
 }
 
+enum ApplierType {
+  APPLIER_DATABASE,
+  APPLIER_GLOBAL
+};
+
+static ReplicationApplier* getApplier(v8::Isolate* isolate, ApplierType applierType) {
+  ReplicationApplier* applier = nullptr;
+  
+  if (applierType == APPLIER_DATABASE) {
+    // database-specific applier
+    TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+    if (vocbase == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    }
+
+    applier = vocbase->replicationApplier();
+  } else {
+    // applier type global
+  }
+
+  if (applier == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find replicationApplier");
+  }
+
+  return applier;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief configure the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ConfigureApplierReplication(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ConfigureApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args, 
+                                        ApplierType applierType) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (vocbase->replicationApplier() == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find replicationApplier");
-  }
+  ReplicationApplier* applier = getApplier(isolate, applierType);
     
   // get current configuration 
-  ReplicationApplierConfiguration configuration = vocbase->replicationApplier()->configuration();
+  ReplicationApplierConfiguration configuration = applier->configuration();
 
   if (args.Length() == 0) {
     // no argument: return the current configuration
@@ -625,6 +645,12 @@ static void JS_ConfigureApplierReplication(
     } else {
       if (configuration._database.empty()) {
         // no database set, use current
+        TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+        if (vocbase == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+        }
+
         configuration._database = vocbase->name();
       }
     }
@@ -782,7 +808,7 @@ static void JS_ConfigureApplierReplication(
       }
     }
 
-    vocbase->replicationApplier()->reconfigure(configuration);
+    applier->reconfigure(configuration);
 
     VPackBuilder builder;
     builder.openObject();
@@ -796,29 +822,29 @@ static void JS_ConfigureApplierReplication(
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_ConfigureApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  ConfigureApplierReplication(args, APPLIER_DATABASE);
+}
+
+static void JS_ConfigureGlobalApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  ConfigureApplierReplication(args, APPLIER_GLOBAL);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_StartApplierReplication(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void StartApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args,
+                                    ApplierType applierType) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (vocbase->replicationApplier() == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find replicationApplier");
-  }
-
+  
   if (args.Length() > 2) {
     TRI_V8_THROW_EXCEPTION_USAGE("REPLICATION_APPLIER_START(<from>)");
   }
-
+  
   TRI_voc_tick_t initialTick = 0;
   bool useTick = false;
 
@@ -831,9 +857,10 @@ static void JS_StartApplierReplication(
   if (args.Length() >= 2) {
     barrierId = TRI_ObjectToUInt64(args[1], true);
   }
+  
+  ReplicationApplier* applier = getApplier(isolate, applierType);
 
-  int res =
-      vocbase->replicationApplier()->start(initialTick, useTick, barrierId);
+  int res = applier->start(initialTick, useTick, barrierId);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot start replication applier");
@@ -843,12 +870,22 @@ static void JS_StartApplierReplication(
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_StartApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  StartApplierReplication(args, APPLIER_DATABASE);
+}
+
+static void JS_StartGlobalApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  StartApplierReplication(args, APPLIER_GLOBAL);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shuts down the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ShutdownApplierReplication(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ShutdownApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args,
+                                       ApplierType applierType) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -856,32 +893,30 @@ static void JS_ShutdownApplierReplication(
     TRI_V8_THROW_EXCEPTION_USAGE("REPLICATION_APPLIER_SHUTDOWN()");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+  ReplicationApplier* applier = getApplier(isolate, applierType);
 
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (vocbase->replicationApplier() == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find replicationApplier");
-  }
-
-  int res = vocbase->replicationApplier()->shutdown();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot shut down replication applier");
-  }
+  applier->shutdown();
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
+}
+
+static void JS_ShutdownApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  ShutdownApplierReplication(args, APPLIER_DATABASE);
+}
+
+static void JS_ShutdownGlobalApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  ShutdownApplierReplication(args, APPLIER_GLOBAL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the state of the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_StateApplierReplication(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void StateApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args,
+                                    ApplierType applierType) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -889,19 +924,11 @@ static void JS_StateApplierReplication(
     TRI_V8_THROW_EXCEPTION_USAGE("REPLICATION_APPLIER_STATE()");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (vocbase->replicationApplier() == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find replicationApplier");
-  }
+  ReplicationApplier* applier = getApplier(isolate, applierType);
 
   VPackBuilder builder;
   builder.openObject();
-  vocbase->replicationApplier()->toVelocyPack(builder);
+  applier->toVelocyPack(builder);
   builder.close();
 
   v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
@@ -910,12 +937,22 @@ static void JS_StateApplierReplication(
   TRI_V8_TRY_CATCH_END
 }
 
+static void JS_StateApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  StateApplierReplication(args, APPLIER_DATABASE);
+}
+
+static void JS_StateGlobalApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  StateApplierReplication(args, APPLIER_GLOBAL);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop the replication applier and "forget" all state
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_ForgetApplierReplication(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
+static void ForgetApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args,
+                                     ApplierType applierType) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -923,24 +960,22 @@ static void JS_ForgetApplierReplication(
     TRI_V8_THROW_EXCEPTION_USAGE("REPLICATION_APPLIER_FORGET()");
   }
 
-  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+  ReplicationApplier* applier = getApplier(isolate, applierType);
 
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (vocbase->replicationApplier() == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to find replicationApplier");
-  }
-
-  int res = vocbase->replicationApplier()->forget();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
+  applier->forget();
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
+}
+
+static void JS_ForgetApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  ForgetApplierReplication(args, APPLIER_DATABASE);
+}
+
+static void JS_ForgetGlobalApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  ForgetApplierReplication(args, APPLIER_GLOBAL);
 }
 
 void TRI_InitV8Replication(v8::Isolate* isolate,
@@ -948,6 +983,8 @@ void TRI_InitV8Replication(v8::Isolate* isolate,
                            TRI_vocbase_t* vocbase,
                            size_t threadNumber, TRI_v8_global_t* v8g) {
   // replication functions. not intended to be used by end users
+
+  // logger functions
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "REPLICATION_LOGGER_STATE"),
                                JS_StateLoggerReplication, true);
@@ -960,6 +997,40 @@ void TRI_InitV8Replication(v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_LOGGER_FIRST_TICK"),
       JS_FirstTickLoggerReplication, true);
+  
+  // applier functions
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_CONFIGURE"),
+      JS_ConfigureApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "GLOBAL_REPLICATION_APPLIER_CONFIGURE"),
+      JS_ConfigureGlobalApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_START"),
+                               JS_StartApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "GLOBAL_REPLICATION_APPLIER_START"),
+                               JS_StartGlobalApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_SHUTDOWN"),
+      JS_ShutdownApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "GLOBAL_REPLICATION_APPLIER_SHUTDOWN"),
+      JS_ShutdownGlobalApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_STATE"),
+                               JS_StateApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "GLOBAL_REPLICATION_APPLIER_STATE"),
+                               JS_StateGlobalApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_FORGET"),
+      JS_ForgetApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "GLOBAL_REPLICATION_APPLIER_FORGET"),
+      JS_ForgetGlobalApplierReplication, true);
+  
+  // other functions
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "REPLICATION_SYNCHRONIZE"),
                                JS_SynchronizeReplication, true);
@@ -969,19 +1040,4 @@ void TRI_InitV8Replication(v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "REPLICATION_SERVER_ID"),
                                JS_ServerIdReplication, true);
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_CONFIGURE"),
-      JS_ConfigureApplierReplication, true);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_START"),
-                               JS_StartApplierReplication, true);
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_SHUTDOWN"),
-      JS_ShutdownApplierReplication, true);
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_STATE"),
-                               JS_StateApplierReplication, true);
-  TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_FORGET"),
-      JS_ForgetApplierReplication, true);
 }

@@ -44,6 +44,18 @@ class ReplicationApplier {
   ReplicationApplier(ReplicationApplier const&) = delete;
   ReplicationApplier& operator=(ReplicationApplier const&) = delete;
 
+  /// @brief stop the applier and "forget" everything
+  virtual void forget() = 0;
+  
+  /// @brief start the replication applier
+  virtual int start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) = 0;
+
+  /// @brief shuts down the replication applier
+  virtual void shutdown() = 0;
+
+  /// @brief configure the replication applier
+  virtual void reconfigure(ReplicationApplierConfiguration const& configuration) = 0;
+
   /// @brief remove the replication application state file
   virtual void removeState() = 0;
   

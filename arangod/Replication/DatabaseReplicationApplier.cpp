@@ -104,6 +104,35 @@ DatabaseReplicationApplier::~DatabaseReplicationApplier() {
   stop(true, false);
 }
 
+/// @brief configure the replication applier
+void DatabaseReplicationApplier::reconfigure(ReplicationApplierConfiguration const& configuration) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
+    // unsupported
+    return;
+  }
+
+  if (configuration._endpoint.empty()) {
+    // no endpoint
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
+  }
+
+  if (configuration._database.empty()) {
+    // no database
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no database configured");
+  }
+
+  WRITE_LOCKER(writeLocker, _statusLock);
+
+  if (_state._active) {
+    // cannot change the configuration while the replication is still running
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_RUNNING);
+  }
+
+  _configuration = configuration;
+  storeConfiguration(true);
+}
+
 /// @brief remove the replication application state file
 void DatabaseReplicationApplier::removeState() {
   if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
@@ -127,36 +156,6 @@ void DatabaseReplicationApplier::removeState() {
   } 
 }
 
-/// @brief configure the replication applier
-void DatabaseReplicationApplier::reconfigure(ReplicationApplierConfiguration const& configuration) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
-    // unsupported
-    return;
-  }
-
-  if (configuration._endpoint.empty()) {
-    // no endpoint
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
-  }
-
-  if (configuration._database.empty()) {
-    // no database
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no database configured");
-  }
-
-
-  WRITE_LOCKER(writeLocker, _statusLock);
-
-  if (_state._active) {
-    // cannot change the configuration while the replication is still running
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_RUNNING);
-  }
-
-  _configuration = configuration;
-  storeConfiguration(true);
-}
-  
 /// @brief load the applier state from persistent storage
 /// must currently be called while holding the write-lock
 /// returns whether a previous state was found
@@ -232,18 +231,18 @@ void DatabaseReplicationApplier::persistState(bool doSync) {
   }
 }
 
+/// @brief return the current configuration
+ReplicationApplierConfiguration DatabaseReplicationApplier::configuration() const {
+  READ_LOCKER(readLocker, _statusLock);
+  return _configuration;
+}
+
 /// @brief whether or not autostart option was set
 bool DatabaseReplicationApplier::autoStart() const {
   READ_LOCKER(readLocker, _statusLock);
   return _configuration._autoStart;
 }
 
-/// @brief return the current configuration
-ReplicationApplierConfiguration DatabaseReplicationApplier::configuration() const {
-  READ_LOCKER(readLocker, _statusLock);
-  return _configuration;
-}
- 
 /// @brief store the current applier state in the passed vpack builder 
 /// expects builder to be in an open Object state
 void DatabaseReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) const {
@@ -385,16 +384,18 @@ int DatabaseReplicationApplier::stop(bool resetError, bool joinThread) {
 }
 
 /// @brief shut down the replication applier
-int DatabaseReplicationApplier::shutdown() {
+void DatabaseReplicationApplier::shutdown() {
   if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
-    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+    // unsupported
+    return;
   }
 
   {
     WRITE_LOCKER(writeLocker, _statusLock);
 
     if (!_state._active) {
-      return TRI_ERROR_NO_ERROR;
+      // nothing to do
+      return;
     }
 
     _state._active = false;
@@ -406,14 +407,13 @@ int DatabaseReplicationApplier::shutdown() {
 
   // join the thread without the status lock (otherwise it would probably not
   // join)
-  int res = TRI_JoinThread(&_thread);
+  // TODO: fix thread handling
+  /*int res = */ TRI_JoinThread(&_thread);
 
   setTermination(false);
 
   LOG_TOPIC(INFO, Logger::REPLICATION)
       << "shut down replication applier for database '" << _vocbase->name() << "'";
-
-  return res;
 }
 
 /// @brief test if the replication applier is running
@@ -470,11 +470,11 @@ void DatabaseReplicationApplier::stopInitialSynchronization(bool value) {
 }
 
 /// @brief stop the applier and "forget" everything
-int DatabaseReplicationApplier::forget() {
+void DatabaseReplicationApplier::forget() {
   int res = stop(true, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+    THROW_ARANGO_EXCEPTION(res);
   }
 
   removeState();
@@ -484,8 +484,6 @@ int DatabaseReplicationApplier::forget() {
     engine->removeReplicationApplierConfiguration(_vocbase);
   }
   _configuration.reset();
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief pauses and checks whether the apply thread should terminate
