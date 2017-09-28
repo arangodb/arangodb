@@ -1086,12 +1086,12 @@ def testStepParallel(os, edition, maintainer, modeList) {
 
     if (branches) {
         try {
-            logStartStage(null, name, null)
+            node("linux") { logStartStage(null, name, null) }
             parallel branches
-            logStopStage(null, name)
+            node("linux") { logStopStage(null, name) }
         }
         catch (exc) {
-            logExceptionStage(null, name, null, exc)
+            node("linux") { logExceptionStage(null, name, null, exc) }
             throw exc
         }
     }
