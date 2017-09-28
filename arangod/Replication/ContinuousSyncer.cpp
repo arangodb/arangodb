@@ -60,10 +60,9 @@ ContinuousSyncer::ContinuousSyncer(
     TRI_vocbase_t* vocbase,
     ReplicationApplierConfiguration const* configuration,
     TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
-    : TailingSyncer(configuration, initialTick),
+    : TailingSyncer(configuration, initialTick, barrierId),
       _applier(vocbase->replicationApplier()),
       _useTick(useTick),
-      _verbose(configuration->_verbose),
       _hasWrittenState(false) {
   _vocbaseCache.emplace(vocbase->id(), vocbase);
 }
