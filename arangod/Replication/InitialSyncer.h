@@ -97,13 +97,13 @@ class InitialSyncer : public Syncer {
   InitialSyncer(TRI_vocbase_t*,
                 ReplicationApplierConfiguration const*,
                 std::unordered_map<std::string, bool> const&,
-                std::string const&, bool verbose, bool skipCreateDrop);
+                Syncer::RestrictType, bool verbose, bool skipCreateDrop);
 
   ~InitialSyncer();
 
  public:
   /// @brief run method, performs a full synchronization
-  int run(std::string&, bool);
+  int run(std::string& errorMsg, bool incremental);
 
   /// @brief return the last log tick of the master at start
   TRI_voc_tick_t getLastLogTick() const { return _masterInfo._lastLogTick; }
@@ -207,9 +207,6 @@ class InitialSyncer : public Syncer {
   /// @brief collection restriction
   std::unordered_map<std::string, bool> _restrictCollections;
 
-  /// @brief collection restriction type
-  std::string const _restrictType;
-
   /// @brief collections synced
   std::map<TRI_voc_cid_t, std::string> _processedCollections;
 
@@ -221,15 +218,6 @@ class InitialSyncer : public Syncer {
 
   /// @brief ttl for batches
   int _batchTtl;
-
-  /// @brief include system collections in the dump?
-  bool _includeSystem;
-
-  /// @brief chunk size to use
-  uint64_t _chunkSize;
-
-  /// @brief verbosity
-  bool _verbose;
 
   /// @brief whether or not the WAL on the remote server has been flushed by us
   bool _hasFlushed;

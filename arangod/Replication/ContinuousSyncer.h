@@ -91,9 +91,6 @@ class ContinuousSyncer : public TailingSyncer {
   /// @brief use the initial tick
   bool _useTick;
 
-  /// @brief whether or not the applier should be verbose
-  bool _verbose;
-
   /// @brief whether or not the replication state file has been written at least
   /// once with non-empty values. this is required in situations when the
   /// replication applier is manually started and the master has absolutely no

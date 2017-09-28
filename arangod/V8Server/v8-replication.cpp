@@ -293,6 +293,18 @@ static void JS_SynchronizeReplication(
     restrictType =
         TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "restrictType")));
   }
+  if ((restrictType.empty() && !restrictCollections.empty()) ||
+      (!restrictType.empty() && restrictCollections.empty()) ||
+      (!restrictType.empty() && restrictType != "include" &&
+       restrictType != "exclude")) {
+    TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <restrictCollections> or <restrictType>");
+  }
+  Syncer::RestrictType rType = Syncer::RESTRICT_NONE;
+  if (restrictType == "include") {
+    rType = Syncer::RESTRICT_INCLUDE;
+  } else if (restrictType == "exclude") {
+    rType = Syncer::RESTRICT_EXCLUDE;
+  }
 
   bool verbose = true;
   if (object->Has(TRI_V8_ASCII_STRING(isolate, "verbose"))) {
@@ -308,13 +320,7 @@ static void JS_SynchronizeReplication(
     TRI_V8_THROW_EXCEPTION_PARAMETER("<endpoint> must be a valid endpoint");
   }
 
-  if ((restrictType.empty() && !restrictCollections.empty()) ||
-      (!restrictType.empty() && restrictCollections.empty()) ||
-      (!restrictType.empty() && restrictType != "include" &&
-       restrictType != "exclude")) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER(
-        "invalid value for <restrictCollections> or <restrictType>");
-  }
+
 
   ReplicationApplierConfiguration config;
   config._endpoint = endpoint;
@@ -362,7 +368,7 @@ static void JS_SynchronizeReplication(
   }
 
   std::string errorMsg = "";
-  InitialSyncer syncer(vocbase, &config, restrictCollections, restrictType,
+  InitialSyncer syncer(vocbase, &config, restrictCollections, rType,
                        verbose, skipCreateDrop);
   if (!leaderId.empty()) {
     syncer.setLeaderId(leaderId);

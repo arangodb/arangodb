@@ -60,26 +60,23 @@ using namespace arangodb::rest;
 
 TailingSyncer::TailingSyncer(
     ReplicationApplierConfiguration const* configuration,
-    TRI_voc_tick_t initialTick)
+    TRI_voc_tick_t initialTick, TRI_voc_tick_t barrierId)
     : Syncer(configuration),
-      _chunkSize("262144"),
-      _restrictType(RESTRICT_NONE),
       _initialTick(initialTick),
-      _includeSystem(configuration->_includeSystem),
       _requireFromPresent(configuration->_requireFromPresent),
-      _verbose(configuration->_verbose),
       _supportsSingleOperations(false),
       _ignoreRenameCreateDrop(false),
       _ignoreDatabaseMarkers(true) {
-  uint64_t c = configuration->_chunkSize;
-  if (c > 0) {
-    _chunkSize = StringUtils::itoa(c);
-  }
 
   if (configuration->_restrictType == "include") {
     _restrictType = RESTRICT_INCLUDE;
   } else if (configuration->_restrictType == "exclude") {
     _restrictType = RESTRICT_EXCLUDE;
+  }
+        
+  if (barrierId > 0) {
+    _barrierId = barrierId;
+    _barrierUpdateTime = TRI_microtime();
   }
 
   // FIXME: move this into engine code

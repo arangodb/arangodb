@@ -22,42 +22,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "MMFilesRestReplicationHandler.h"
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/ConditionLocker.h"
-#include "Basics/ReadLocker.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/conversions.h"
-#include "Basics/files.h"
-#include "Cluster/ClusterComm.h"
-#include "Cluster/ClusterMethods.h"
-#include "GeneralServer/GeneralServer.h"
-#include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "MMFiles/MMFilesCollectionKeys.h"
 #include "MMFiles/MMFilesEngine.h"
 #include "MMFiles/MMFilesLogfileManager.h"
 #include "MMFiles/mmfiles-replication-dump.h"
-#include "Replication/InitialSyncer.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/ServerIdFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Transaction/Context.h"
-#include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionKeysRepository.h"
-#include "Utils/CollectionNameResolver.h"
-#include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>
-#include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
-#include <velocypack/Parser.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 

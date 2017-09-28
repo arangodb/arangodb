@@ -53,6 +53,13 @@ class Slice;
 
 class Syncer {
  public:
+  
+  enum RestrictType : uint32_t {
+    RESTRICT_NONE,
+    RESTRICT_INCLUDE,
+    RESTRICT_EXCLUDE
+  };
+  
   Syncer(Syncer const&) = delete;
   Syncer& operator=(Syncer const&) = delete;
 
@@ -150,6 +157,18 @@ class Syncer {
   
   /// @brief configuration
   ReplicationApplierConfiguration _configuration;
+  
+  /// @brief stringified chunk size
+  size_t _chunkSize;
+  
+  /// @brief collection restriction type
+  Syncer::RestrictType _restrictType;
+  
+  /// @brief include system collections in the dump?
+  bool _includeSystem;
+  
+  /// @brief verbosity
+  bool _verbose;
 
   /// @brief information about the master state
   struct {
@@ -183,11 +202,11 @@ class Syncer {
   /// @brief WAL barrier id
   uint64_t _barrierId;
 
-  /// @brief WAL barrier last update time
-  double _barrierUpdateTime;
-
   /// @brief ttl for WAL barrier
   int _barrierTtl;
+  
+  /// @brief WAL barrier last update time
+  double _barrierUpdateTime;
   
   /// @brief whether or not to use collection ids in replication
   bool _useCollectionId;

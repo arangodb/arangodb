@@ -61,10 +61,9 @@ ContinuousSyncer::ContinuousSyncer(
     TRI_vocbase_t* vocbase,
     ReplicationApplierConfiguration const* configuration,
     TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
-    : TailingSyncer(configuration, initialTick),
+    : TailingSyncer(configuration, initialTick, barrierId),
       _applier(vocbase->replicationApplier()),
       _useTick(useTick),
-      _verbose(configuration->_verbose),
       _hasWrittenState(false) {
   _vocbaseCache.emplace(vocbase->id(), vocbase);
 }
@@ -239,7 +238,7 @@ retry:
       try {
         InitialSyncer syncer(
             vocbase(), &_configuration, _configuration._restrictCollections,
-            _configuration._restrictType, _configuration._verbose, false);
+            _restrictType, _configuration._verbose, false);
 
         res = syncer.run(errorMsg, _configuration._incremental);
 
@@ -634,7 +633,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
                                       uint64_t& ignoreCount, bool& worked,
                                       bool& masterActive) {
   std::string const baseUrl = BaseUrl + "/logger-follow?chunkSize=" +
-                              _chunkSize + "&barrier=" +
+                              StringUtils::itoa(_chunkSize) + "&barrier=" +
                               StringUtils::itoa(_barrierId);
 
   worked = false;
@@ -897,7 +896,8 @@ int ContinuousSyncer::syncCollectionFinalize(std::string& errorMsg,
     }
     
     std::string const baseUrl =
-    BaseUrl + "/logger-follow?chunkSize=" + _chunkSize + "&from=" +
+    BaseUrl + "/logger-follow?chunkSize=" +
+    StringUtils::itoa(_chunkSize) + "&from=" +
     StringUtils::itoa(fromTick) + "&serverId=" + _localServerIdString +
     "&collection=" + StringUtils::urlEncode(collectionName);
     
