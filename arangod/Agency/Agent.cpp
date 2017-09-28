@@ -90,20 +90,21 @@ bool Agent::mergeConfiguration(VPackSlice const& persisted) {
 /// Dtor shuts down thread
 Agent::~Agent() {
 
-  // Give up if constituent breaks shutdown
+  // Give up if some subthread breaks shutdown
   int counter = 0;
-  while (_constituent.isRunning()) {
+  while (_constituent.isRunning() || _compactor.isRunning() ||
+         (_config.supervision() && _supervision.isRunning()) ||
+         (_inception != nullptr && _inception->isRunning())) {
     usleep(100000);
 
-    // emit warning after 5 seconds
-    if (++counter == 10 * 5) {
-      LOG_TOPIC(FATAL, Logger::AGENCY) << "constituent thread did not finish";
+    // emit warning after 15 seconds
+    if (++counter == 10 * 15) {
+      LOG_TOPIC(FATAL, Logger::AGENCY) << "some agency thread did not finish";
       FATAL_ERROR_EXIT();
     }
   }
     
   shutdown();
-  
 }
 
 /// State machine
@@ -1031,8 +1032,6 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
         chunk->add(slice.at(l));
       }}
 
-    MUTEX_LOCKER(ioLocker, _ioLock);
-
     // Only leader else redirect
     if (multihost && challengeLeadership()) {
       _constituent.candidate();
@@ -1040,7 +1039,11 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
       return write_ret_t(false, NO_LEADER);
     }
     
-    applied = _spearhead.applyTransactions(chunk, wmode);
+    _tiLock.assertNotLockedByCurrentThread();
+    MUTEX_LOCKER(ioLocker, _ioLock);
+
+    applied = _spearhead.applyTransactions(chunk);
+
     auto tmp = _state.logLeaderMulti(chunk, applied, term());
     indices.insert(indices.end(), tmp.begin(), tmp.end());
 
@@ -1141,6 +1144,16 @@ void Agent::run() {
         }
       }
       
+      {
+        CONDITION_LOCKER(guard, _appendCV);
+        if (!_agentNeedsWakeup) {
+          // wait up to minPing():
+          _appendCV.wait(static_cast<uint64_t>(1.0e6 * _config.minPing()));
+          // We leave minPing here without the multiplier to run this
+          // loop often enough in cases of high load.
+        }
+      }
+      
     } else {
       CONDITION_LOCKER(guard, _appendCV);
       if (!_agentNeedsWakeup) {
@@ -1199,7 +1212,6 @@ void Agent::persistConfiguration(term_t t) {
   // In case we've lost leadership, no harm will arise as the failed write
   // prevents bogus agency configuration to be replicated among agents. ***
   write(agency, true); 
-
 }
 
 
@@ -1269,9 +1281,7 @@ void Agent::lead() {
   wakeupMainLoop();
 
   // Agency configuration
-  term_t myterm = _constituent.term();
-
-  persistConfiguration(myterm);
+  persistConfiguration(_constituent.term());
 
   // Notify inactive pool
   notifyInactive();
@@ -1546,6 +1556,7 @@ void Agent::setPersistedState(VPackSlice const& compaction) {
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCY) << e.what() << " " << __FILE__ << __LINE__;
   }
+
 }
 
 bool Agent::haveJoinConfig() const {
@@ -1632,6 +1643,7 @@ void Agent::join() {
     _waitForCV.wait(1000000);
 
   }
+
 }
 
 

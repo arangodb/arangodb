@@ -76,17 +76,17 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
       << _slaveID << "), time("
       << TRI_microtime() - _startTime << ")";
   } else {
+    if (_agent == nullptr || !_agent->isStopping()) {
+      // Do not warn if we are already shutting down:
+      LOG_TOPIC(WARN, Logger::AGENCY) 
+        << "Got bad callback from AppendEntriesRPC: "
+        << "comm_status(" << res->status
+        << "), last(" << _last << "), follower("
+        << _slaveID << "), time("
+        << TRI_microtime() - _startTime << ")";
+    }
     if (_agent != nullptr) {
       _agent->reportFailed(_slaveID, _toLog);
-      // Do not warn if we are already shutting down:
-      if (!_agent->isStopping()) {
-        LOG_TOPIC(WARN, Logger::AGENCY) 
-          << "Got bad callback from AppendEntriesRPC: "
-          << "comm_status(" << res->status
-          << "), last(" << _last << "), follower("
-          << _slaveID << "), time("
-          << TRI_microtime() - _startTime << ")";
-      }
     }
   }
   return true;

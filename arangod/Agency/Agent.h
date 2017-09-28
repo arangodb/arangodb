@@ -143,19 +143,19 @@ class Agent : public arangodb::Thread,
                             index_t leaderCommitIndex, query_t const& queries);
 
 private:
-
+  
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
   void sendAppendEntriesRPC();
+
+  /// @brief check whether _confirmed indexes have been advance so that we
+  /// can advance _commitIndex and apply things to readDB.
+  void advanceCommitIndex();
 
 public:
 
   /// @brief Reconfigure agency
   write_ret_t  reconfigure(query_t const);
-
-  /// @brief check whether _confirmed indexes have been advance so that we
-  /// can advance _commitIndex and apply things to readDB.
-  void advanceCommitIndex();
 
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2). This is the version used by
@@ -460,6 +460,7 @@ public:
 
   // lock for _ongoingTrxs
   arangodb::Mutex _trxsLock;
+
 
   query_t _joinConfig;
  

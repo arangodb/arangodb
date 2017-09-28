@@ -179,8 +179,8 @@ class State {
   /// log is empty and something ought to be appended to it rather quickly.
   /// Therefore, this is only called from logFollower under the _logLock.
   bool storeLogFromSnapshot(arangodb::consensus::Store& snapshot,
-                              arangodb::consensus::index_t index,
-                              arangodb::consensus::term_t term);
+                            arangodb::consensus::index_t index,
+                            arangodb::consensus::term_t term);
 
   /// @brief Log single log entry. Must be guarded by caller.
   index_t logNonBlocking(

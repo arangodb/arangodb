@@ -24,7 +24,9 @@
 #ifndef ARANGOD_CONSENSUS_STORE_H
 #define ARANGOD_CONSENSUS_STORE_H 1
 
+
 #include "AgentInterface.h"
+#include "Basics/ConditionVariable.h"
 #include "Node.h"
 
 namespace arangodb {

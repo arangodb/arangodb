@@ -331,11 +331,12 @@ index_t State::logFollower(query_t const& transactions) {
   size_t nqs = slices.length();
   
   MUTEX_LOCKER(logLock, _logLock);
-  
+
   // Check whether we have got a snapshot in the first position:
-  bool gotSnapshot =
-    slices.length() > 0 && slices[0].isObject() && !slices[0].get("readDB").isNone();
-  
+  bool gotSnapshot = slices.length() > 0 &&
+                     slices[0].isObject() &&
+                     !slices[0].get("readDB").isNone();
+
   // In case of a snapshot, there are three possibilities:
   //   1. Our highest log index is smaller than the snapshot index, in this 
   //      case we must throw away our complete local log and start from the
@@ -354,11 +355,12 @@ index_t State::logFollower(query_t const& transactions) {
   //      and thus the snapshot can be ignored safely as well.
   if (gotSnapshot) {
     bool useSnapshot = false;   // if this remains, we ignore the snapshot
-    
+
     index_t snapshotIndex
-      = static_cast<index_t>(slices[0].get("index").getNumber<index_t>());
+        = static_cast<index_t>(slices[0].get("index").getNumber<index_t>());
     term_t snapshotTerm
-      = static_cast<term_t>(slices[0].get("term").getNumber<index_t>());
+        = static_cast<term_t>(slices[0].get("term").getNumber<index_t>());
+
     index_t ourLastIndex = _log.back().index;
     if (ourLastIndex < snapshotIndex) {
       useSnapshot = true;   // this implies that we completely eradicate our log
@@ -388,7 +390,7 @@ index_t State::logFollower(query_t const& transactions) {
         = snapshotIndex + _agent->config().compactionStepSize();
     }
   }
-  
+
   size_t ndups = removeConflicts(transactions, gotSnapshot);
   
   if (nqs > ndups) {
@@ -417,7 +419,8 @@ index_t State::logFollower(query_t const& transactions) {
         break;
       }
     }
-  }  
+  }
+
   return _log.back().index;   // never empty
 }
 

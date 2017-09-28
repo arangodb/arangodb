@@ -764,8 +764,6 @@ void Constituent::run() {
               }
             }
             if (needed) {
-              LOG_TOPIC(TRACE, Logger::AGENCY)
-                << "Sending empty appendEntriesRPC to follower " << followerId;
               _agent->sendEmptyAppendEntriesRPC(followerId);
             }
           }
