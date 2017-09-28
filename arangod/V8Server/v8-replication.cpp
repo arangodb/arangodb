@@ -26,8 +26,8 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Replication/ContinuousSyncer.h"
+#include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
-#include "Replication/InitialSyncer.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
@@ -368,8 +368,8 @@ static void JS_SynchronizeReplication(
   }
 
   std::string errorMsg = "";
-  InitialSyncer syncer(vocbase, &config, restrictCollections, rType,
-                       verbose, skipCreateDrop);
+  DatabaseInitialSyncer syncer(vocbase, &config, restrictCollections, rType,
+                               verbose, skipCreateDrop);
   if (!leaderId.empty()) {
     syncer.setLeaderId(leaderId);
   }

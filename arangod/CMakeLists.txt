@@ -270,9 +270,10 @@ SET(ARANGOD_SOURCES
   Pregel/Utils.cpp
   Pregel/Worker.cpp
   Pregel/WorkerConfig.cpp
-  Replication/ContinuousSyncer.cpp
   Replication/DatabaseReplicationApplier.cpp
   Replication/GlobalReplicationApplier.cpp
+  Replication/ContinuousSyncer.cpp
+  Replication/DatabaseInitialSyncer.cpp
   Replication/InitialSyncer.cpp
   Replication/ReplicationApplierConfiguration.cpp
   Replication/ReplicationApplierState.cpp

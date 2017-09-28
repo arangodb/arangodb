@@ -1660,7 +1660,7 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   builder.close();
 }
 
-int RocksDBEngine::handleSyncKeys(arangodb::InitialSyncer& syncer,
+int RocksDBEngine::handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                                   arangodb::LogicalCollection* col,
                                   std::string const& keysId,
                                   std::string const& cid,

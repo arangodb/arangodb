@@ -134,7 +134,7 @@ class RocksDBEngine final : public StorageEngine {
   int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
                                           arangodb::velocypack::Slice slice,
                                           bool doSync) override;
-  int handleSyncKeys(arangodb::InitialSyncer& syncer,
+  int handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                      arangodb::LogicalCollection* col,
                      std::string const& keysId, std::string const& cid,
                      std::string const& collectionName, TRI_voc_tick_t maxTick,

@@ -31,8 +31,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
+#include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
-#include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -236,7 +236,7 @@ retry:
       errorMsg = "";
 
       try {
-        InitialSyncer syncer(
+        DatabaseInitialSyncer syncer(
             vocbase(), &_configuration, _configuration._restrictCollections,
             _restrictType, _configuration._verbose, false);
 

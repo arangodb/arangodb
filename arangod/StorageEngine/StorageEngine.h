@@ -37,7 +37,7 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
-class InitialSyncer;
+class DatabaseInitialSyncer;
 class LogicalCollection;
 class LogicalView;
 class PhysicalCollection;
@@ -356,7 +356,7 @@ class StorageEngine : public application_features::ApplicationFeature {
                                                   velocypack::Slice slice,
                                                   bool doSync) = 0;
 
-  virtual int handleSyncKeys(arangodb::InitialSyncer& syncer,
+  virtual int handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                           arangodb::LogicalCollection* col,
                           std::string const& keysId,
                           std::string const& cid,

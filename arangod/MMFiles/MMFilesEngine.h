@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -95,7 +95,7 @@ class MMFilesEngine final : public StorageEngine {
   int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
                                           arangodb::velocypack::Slice slice,
                                           bool doSync) override;
-  int handleSyncKeys(arangodb::InitialSyncer& syncer,
+  int handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                      arangodb::LogicalCollection* col,
                      std::string const& keysId, std::string const& cid,
                      std::string const& collectionName, TRI_voc_tick_t maxTick,

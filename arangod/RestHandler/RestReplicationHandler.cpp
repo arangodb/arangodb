@@ -36,8 +36,8 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Indexes/Index.h"
+#include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
-#include "Replication/InitialSyncer.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerIdFeature.h"
@@ -599,8 +599,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   TRI_voc_tick_t barrierId = 0;
   std::string errorMsg = "";
   {
-    InitialSyncer syncer(_vocbase, &config, config._restrictCollections,
-                         restrictType, false, false);
+    DatabaseInitialSyncer syncer(_vocbase, &config, config._restrictCollections,
+                                 restrictType, false, false);
     
     res = TRI_ERROR_NO_ERROR;
     try {
@@ -1910,8 +1910,8 @@ void RestReplicationHandler::handleCommandSync() {
   TRI_ASSERT(engine != nullptr);
   engine->waitForSync(5.0);
 
-  InitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType,
-                       verbose, false);
+  DatabaseInitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType,
+                               verbose, false);
 
   std::string errorMsg = "";
 
