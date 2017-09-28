@@ -421,12 +421,10 @@ def generateResult() {
 
     html += "</table></body></html>\n"
 
-    node("master") {
-        fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
-        fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
+    fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
+    fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
 
-        archiveArtifacts(allowEmptyArchive: true, artifacts: "results.*")
-    }
+    archiveArtifacts(allowEmptyArchive: true, artifacts: "results.*")
 }
 
 // -----------------------------------------------------------------------------
@@ -1461,10 +1459,8 @@ timestamps {
 
         checkCommitMessages()
 
-        node("master") {
-            fileOperations([fileCreateOperation(fileContent: overview, fileName: "overview.txt")])
-            archiveArtifacts(allowEmptyArchive: true, artifacts: "overview.txt")
-        }
+        fileOperations([fileCreateOperation(fileContent: overview, fileName: "overview.txt")])
+        archiveArtifacts(allowEmptyArchive: true, artifacts: "overview.txt")
 
         runOperatingSystems(['linux', 'mac', 'windows'])
     }
