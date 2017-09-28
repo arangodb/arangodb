@@ -293,7 +293,9 @@ Result RocksDBTransactionState::commitTransaction(
         abortTransaction(activeTrx);
       }
     }
-    updateStatus(transaction::Status::COMMITTED);
+    if (res.ok()) {
+      updateStatus(transaction::Status::COMMITTED);
+    }
   }
 
   unuseCollections(_nestingLevel);

@@ -207,7 +207,7 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder) {
       // Maybe handle differently
     }
     
-    StringRef vertex = id.substr(pos+1);
+    StringRef vertex = id.substr(pos + 1);
     for (std::string const& shard : shards->second) {
       Result res = _trx->documentFastPathLocal(shard, vertex, mmdr, false);
       if (res.ok()) {
@@ -260,6 +260,9 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
         if (edge.isString()) {
           edge = _opts->cache()->lookupToken(eid);
         }
+        if (edge.isNull()) {
+          return;
+        }
         if (_opts->evaluateEdgeExpression(edge, StringRef(v), depth,
                                           cursorId)) {
           builder.add(edge);
@@ -274,6 +277,9 @@ void BaseTraverserEngine::getEdges(VPackSlice vertex, size_t depth,
                             VPackSlice edge, size_t cursorId) {
       if (edge.isString()) {
         edge = _opts->cache()->lookupToken(eid);
+      }
+      if (edge.isNull()) {
+        return;
       }
       if (_opts->evaluateEdgeExpression(edge, StringRef(vertex), depth,
                                         cursorId)) {
@@ -305,6 +311,9 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
   builder.add(VPackValue("vertices"));
 
   auto workOnOneDocument = [&](VPackSlice v) {
+    if (v.isNull()) {
+      return;
+    }
     StringRef id(v);
     size_t pos = id.find('/');
     if (pos == std::string::npos || pos + 1 == id.size()) {
@@ -323,7 +332,7 @@ void BaseTraverserEngine::getVertexData(VPackSlice vertex, size_t depth,
       // Maybe handle differently
     }
     
-    StringRef vertex = id.substr(pos+1);
+    StringRef vertex = id.substr(pos + 1);
     for (std::string const& shard : shards->second) {
       Result res = _trx->documentFastPathLocal(shard, vertex, mmdr, false);
       if (res.ok()) {
@@ -400,6 +409,9 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
   builder.openArray();
   if (vertex.isArray()) {
     for (VPackSlice v : VPackArrayIterator(vertex)) {
+      if (!vertex.isString()) {
+        continue;
+      }
       TRI_ASSERT(v.isString());
       // result.clear();
       StringRef vertexId(v);
@@ -413,6 +425,9 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
                               VPackSlice edge, size_t cursorId) {
         if (edge.isString()) {
           edge = _opts->cache()->lookupToken(eid);
+        } 
+        if (edge.isNull()) {
+          return;
         }
         builder.add(edge);
       });
@@ -429,6 +444,9 @@ void ShortestPathEngine::getEdges(VPackSlice vertex, bool backward,
                             VPackSlice edge, size_t cursorId) {
       if (edge.isString()) {
         edge = _opts->cache()->lookupToken(eid);
+      }
+      if (edge.isNull()) {
+        return;
       }
       builder.add(edge);
     });
