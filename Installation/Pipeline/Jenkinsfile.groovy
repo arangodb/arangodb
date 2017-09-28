@@ -383,7 +383,7 @@ def generateResult() {
     def html = "<html><body><table>\n"
     html += "<tr><th>Name</th><th>Start</th><th>Stop</th><th>Duration</th><th>Message</th></tr>\n"
 
-    for (key in resultsKeys) {
+    for (key in resultsKeys.sort()) {
         def start = resultsStart[key] ?: ""
         def stop = resultsStop[key] ?: ""
         def msg = resultsStatus[key] ?: ""
@@ -1082,7 +1082,7 @@ def testStepParallel(os, edition, maintainer, modeList) {
         }
     }
 
-    def name = "test-${os}-${edition}-${maintainer}"
+    def name = "${os}-${edition}-${maintainer}"
 
     if (branches) {
         try {
