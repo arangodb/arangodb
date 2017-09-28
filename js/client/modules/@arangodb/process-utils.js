@@ -765,13 +765,10 @@ function shutdownArangod (arangod, options, forceTerminate) {
   if ((arangod.exitStatus === undefined) ||
       (arangod.exitStatus.status === 'RUNNING')) {
     if (forceTerminate) {
-      killExternal(arangod.pid, abortSignal);
-      arangod.exitStatus = {
-        SIGNAL: String(abortSignal)
-      };
+      arangod.exitStatus = killExternal(arangod.pid, abortSignal);
       analyzeServerCrash(arangod, options, 'shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun');
     } else if (options.useKillExternal) {
-      killExternal(arangod.pid);
+      arangod.exitStatus = killExternal(arangod.pid);
     } else {
       const requestOptions = makeAuthorizationHeaders(options);
       requestOptions.method = 'DELETE';
@@ -864,7 +861,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
             ];
           }
           */
-          killExternal(arangod.pid, abortSignal);
+          arangod.exitStatus = killExternal(arangod.pid, abortSignal);
           analyzeServerCrash(arangod, options, 'shutdown timeout; instance forcefully KILLED after 60s - ' + arangod.exitStatus.signal);
           return false;
         } else {
@@ -987,7 +984,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
       if (!checkArangoAlive(arangod, options)) {
         instanceInfo.arangods.forEach(arangod => {
-          killExternal(arangod.pid, abortSignal);
+          arangod.exitStatus = killExternal(arangod.pid, abortSignal);
           analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
         });
 
@@ -1010,7 +1007,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
     // Didn't startup in 10 minutes? kill it, give up.
     if (count > 1200) {
       instanceInfo.arangods.forEach(arangod => {
-        killExternal(arangod.pid, abortSignal);
+        arangod.exitStatus = killExternal(arangod.pid, abortSignal);
         analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
       });
       throw new Error('cluster startup timed out after 10 minutes!');
