@@ -62,105 +62,94 @@ using namespace arangodb;
 uint64_t TRI_PhysicalMemory;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief contains all data documented by "proc"
-///
-/// @see man 5 proc for the state of a process
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef TRI_HAVE_LINUX_PROC
-
-typedef struct process_state_s {
-  pid_t pid;
-  /* size was choosen arbitrary */
-  char comm[128];
-  char state;
-  int ppid;
-  int pgrp;
-  int session;
-  int tty_nr;
-  int tpgid;
-  unsigned flags;
-  /* lu */
-  unsigned long minflt;
-  unsigned long cminflt;
-  unsigned long majflt;
-  unsigned long cmajflt;
-  unsigned long utime;
-  unsigned long stime;
-  /* ld */
-  long cutime;
-  long cstime;
-  long priority;
-  long nice;
-  long num_threads;
-  long itrealvalue;
-  /* llu */
-  long long unsigned int starttime;
-  /* lu */
-  unsigned long vsize;
-  /* ld */
-  long rss;
-  /* lu */
-  // cppcheck-suppress *
-  unsigned long rsslim;
-  // cppcheck-suppress *
-  unsigned long startcode;
-  // cppcheck-suppress *
-  unsigned long endcode;
-  // cppcheck-suppress *
-  unsigned long startstack;
-  // cppcheck-suppress *
-  unsigned long kstkesp;
-  // cppcheck-suppress *
-  unsigned long signal;
-  /* obsolete lu*/
-  // cppcheck-suppress *
-  unsigned long blocked;
-  // cppcheck-suppress *
-  unsigned long sigignore;
-  // cppcheck-suppress *
-  unsigned int sigcatch;
-  // cppcheck-suppress *
-  unsigned long wchan;
-  /* no maintained lu */
-  // cppcheck-suppress *
-  unsigned long nswap;
-  // cppcheck-suppress *
-  unsigned long cnswap;
-  /* d */
-  // cppcheck-suppress *
-  int exit_signal;
-  // cppcheck-suppress *
-  int processor;
-  /* u */
-  // cppcheck-suppress *
-  unsigned rt_priority;
-  // cppcheck-suppress *
-  unsigned policy;
-  /* llu */
-  // cppcheck-suppress *
-  long long unsigned int delayacct_blkio_ticks;
-  /* lu */
-  // cppcheck-suppress *
-  unsigned long guest_time;
-  /* ld */
-  // cppcheck-suppress *
-  long cguest_time;
-} process_state_t;
-
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief all external processes
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::vector<TRI_external_t*> ExternalProcesses;
+static std::vector<ExternalProcess*> ExternalProcesses;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lock for protected access to vector ExternalProcesses
 ////////////////////////////////////////////////////////////////////////////////
 
 static arangodb::Mutex ExternalProcessesLock;
+
+
+ProcessInfo::ProcessInfo():
+  _minorPageFaults(0),
+  _majorPageFaults(0),
+  _userTime(0),
+  _systemTime(0),
+  _numberThreads(0),
+  _residentSize(0),  // resident set size in number of bytes
+  _virtualSize(0),
+  _scClkTck(0){}
+
+ExternalId::ExternalId():
+#ifndef _WIN32
+  _pid(0),
+  _readPipe(-1),
+  _writePipe(-1) {}
+#else
+  _pid(0),
+  _readPipe(INVALID_HANDLE_VALUE),
+  _writePipe(INVALID_HANDLE_VALUE) {}
+#endif
+
+ExternalProcess::ExternalProcess():
+  _executable(nullptr),
+  _numberArguments(0),
+  _arguments(nullptr),
+#ifndef _WIN32
+  _pid(0),
+  _readPipe(-1),
+  _writePipe(-1),
+#else
+  _pid(0),
+  _process(nullptr),
+  _readPipe(INVALID_HANDLE_VALUE),
+  _writePipe(INVALID_HANDLE_VALUE),
+#endif
+  _status(TRI_EXT_NOT_STARTED),
+  _exitStatus(0) {}
+
+
+ExternalProcess::~ExternalProcess() {
+  if (_executable != nullptr) {
+    TRI_Free(_executable);
+  }
+
+  for (size_t i = 0; i < _numberArguments; i++) {
+    if (_arguments[i] != nullptr) {
+      TRI_Free(_arguments[i]);
+    }
+  }
+  if (_arguments) {
+    TRI_Free(_arguments);
+  }
+
+#ifndef _WIN32
+  if (_readPipe != -1) {
+    close(_readPipe);
+  }
+  if (_writePipe != -1) {
+    close(_writePipe);
+  }
+#else
+  CloseHandle(_process);
+  if (_readPipe != INVALID_HANDLE_VALUE) {
+    CloseHandle(_readPipe);
+  }
+  if (_writePipe != INVALID_HANDLE_VALUE) {
+    CloseHandle(_writePipe);
+  }
+#endif
+}
+
+ExternalProcessStatus::ExternalProcessStatus():
+  _status(TRI_EXT_NOT_STARTED),
+  _exitStatus(0),
+  _errorMessage() {}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates pipe pair
@@ -189,7 +178,7 @@ static bool CreatePipes(int* pipe_server_to_child, int* pipe_child_to_server) {
 /// @brief starts external process
 ////////////////////////////////////////////////////////////////////////////////
 
-static void StartExternalProcess(TRI_external_t* external, bool usePipes) {
+static void StartExternalProcess(ExternalProcess* external, bool usePipes) {
   int pipe_server_to_child[2];
   int pipe_child_to_server[2];
 
@@ -225,12 +214,6 @@ static void StartExternalProcess(TRI_external_t* external, bool usePipes) {
       fcntl(1, F_SETFD, 0);
       fcntl(2, F_SETFD, 0);
     }
-
-    // ignore signals in worker process
-    signal(SIGINT, SIG_IGN);
-    signal(SIGTERM, SIG_IGN);
-    signal(SIGHUP, SIG_IGN);
-    signal(SIGUSR1, SIG_IGN);
 
     // execute worker
     execvp(external->_executable, external->_arguments);
@@ -349,7 +332,7 @@ static int appendQuotedArg(TRI_string_buffer_t* buf, char const* p) {
   return TRI_ERROR_NO_ERROR;
 }
 
-static char* makeWindowsArgs(TRI_external_t* external) {
+static char* makeWindowsArgs(ExternalProcess* external) {
   TRI_string_buffer_t* buf;
   size_t i;
   int err = TRI_ERROR_NO_ERROR;
@@ -378,7 +361,7 @@ static char* makeWindowsArgs(TRI_external_t* external) {
   return res;
 }
 
-static bool startProcess(TRI_external_t* external, HANDLE rd, HANDLE wr) {
+static bool startProcess(ExternalProcess* external, HANDLE rd, HANDLE wr) {
   char* args;
   PROCESS_INFORMATION piProcInfo;
   STARTUPINFO siStartInfo;
@@ -431,7 +414,7 @@ static bool startProcess(TRI_external_t* external, HANDLE rd, HANDLE wr) {
   }
 }
 
-static void StartExternalProcess(TRI_external_t* external, bool usePipes) {
+static void StartExternalProcess(ExternalProcess* external, bool usePipes) {
   HANDLE hChildStdinRd = NULL, hChildStdinWr = NULL;
   HANDLE hChildStdoutRd = NULL, hChildStdoutWr = NULL;
   bool fSuccess;
@@ -476,7 +459,7 @@ static void StartExternalProcess(TRI_external_t* external, bool usePipes) {
 #endif
       
 void TRI_LogProcessInfoSelf(char const* message) {
-  TRI_process_info_t info = TRI_ProcessInfoSelf();
+  ProcessInfo info = TRI_ProcessInfoSelf();
 
   if (message == nullptr) {
     message = "";
@@ -511,16 +494,15 @@ uint64_t TRI_MicrosecondsTv(struct timeval* tv) {
 
 #ifdef TRI_HAVE_LINUX_PROC
 
-TRI_process_info_t TRI_ProcessInfoSelf() {
+ProcessInfo TRI_ProcessInfoSelf() {
   return TRI_ProcessInfo(Thread::currentProcessId());
 }
 
 #elif ARANGODB_HAVE_GETRUSAGE
 
-TRI_process_info_t TRI_ProcessInfoSelf() {
-  TRI_process_info_t result;
+ProcessInfo TRI_ProcessInfoSelf() {
+  ProcessInfo result;
 
-  memset(&result, 0, sizeof(result));
   result._scClkTck = 1000000;
 
   struct rusage used;
@@ -608,10 +590,9 @@ static time_t _FileTime_to_POSIX(FILETIME* ft) {
   return (ts - 116444736000000000) / 10000000;
 }
 
-TRI_process_info_t TRI_ProcessInfoSelf() {
-  TRI_process_info_t result;
+ProcessInfo TRI_ProcessInfoSelf() {
+  ProcessInfo result;
   PROCESS_MEMORY_COUNTERS_EX pmc;
-  memset(&result, 0, sizeof(result));
   pmc.cb = sizeof(PROCESS_MEMORY_COUNTERS_EX);
   // compiler warning wird in kauf genommen!c
   // http://msdn.microsoft.com/en-us/library/windows/desktop/ms684874(v=vs.85).aspx
@@ -680,9 +661,92 @@ TRI_process_info_t TRI_ProcessInfoSelf() {
 
 #ifdef TRI_HAVE_LINUX_PROC
 
-TRI_process_info_t TRI_ProcessInfo(TRI_pid_t pid) {
-  TRI_process_info_t result;
-  memset(&result, 0, sizeof(result));
+ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief contains all data documented by "proc"
+  ///
+  /// @see man 5 proc for the state of a process
+  ////////////////////////////////////////////////////////////////////////////////
+  typedef struct process_state_s {
+    pid_t pid;
+    /* size was choosen arbitrary */
+    char comm[128];
+    char state;
+    int ppid;
+    int pgrp;
+    int session;
+    int tty_nr;
+    int tpgid;
+    unsigned flags;
+    /* lu */
+    unsigned long minflt;
+    unsigned long cminflt;
+    unsigned long majflt;
+    unsigned long cmajflt;
+    unsigned long utime;
+    unsigned long stime;
+    /* ld */
+    long cutime;
+    long cstime;
+    long priority;
+    long nice;
+    long num_threads;
+    long itrealvalue;
+    /* llu */
+    long long unsigned int starttime;
+    /* lu */
+    unsigned long vsize;
+    /* ld */
+    long rss;
+    /* lu */
+    // cppcheck-suppress *
+    unsigned long rsslim;
+    // cppcheck-suppress *
+    unsigned long startcode;
+    // cppcheck-suppress *
+    unsigned long endcode;
+    // cppcheck-suppress *
+    unsigned long startstack;
+    // cppcheck-suppress *
+    unsigned long kstkesp;
+    // cppcheck-suppress *
+    unsigned long signal;
+    /* obsolete lu*/
+    // cppcheck-suppress *
+    unsigned long blocked;
+    // cppcheck-suppress *
+    unsigned long sigignore;
+    // cppcheck-suppress *
+    unsigned int sigcatch;
+    // cppcheck-suppress *
+    unsigned long wchan;
+    /* no maintained lu */
+    // cppcheck-suppress *
+    unsigned long nswap;
+    // cppcheck-suppress *
+    unsigned long cnswap;
+    /* d */
+    // cppcheck-suppress *
+    int exit_signal;
+    // cppcheck-suppress *
+    int processor;
+    /* u */
+    // cppcheck-suppress *
+    unsigned rt_priority;
+    // cppcheck-suppress *
+    unsigned policy;
+    /* llu */
+    // cppcheck-suppress *
+    long long unsigned int delayacct_blkio_ticks;
+    /* lu */
+    // cppcheck-suppress *
+    unsigned long guest_time;
+    /* ld */
+    // cppcheck-suppress *
+    long cguest_time;
+  } process_state_t;
+
+  ProcessInfo result;
 
   char fn[1024];
   snprintf(fn, sizeof(fn), "/proc/%d/stat", pid);
@@ -757,10 +821,9 @@ TRI_process_info_t TRI_ProcessInfo(TRI_pid_t pid) {
 
 #else
 
-TRI_process_info_t TRI_ProcessInfo(TRI_pid_t pid) {
-  TRI_process_info_t result;
+ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
+  ProcessInfo result;
 
-  memset(&result, 0, sizeof(result));
   result._scClkTck = 1;
 
   return result;
@@ -782,59 +845,20 @@ void TRI_SetProcessTitle(char const* title) {
 /// @brief frees an external process structure
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FreeExternal(TRI_external_t* ext) {
-  if (ext == nullptr) {
-    return;
-  }
-
-  if (ext->_executable != nullptr) {
-    TRI_Free(ext->_executable);
-  }
-
-  for (size_t i = 0; i < ext->_numberArguments; i++) {
-    if (ext->_arguments[i] != nullptr) {
-      TRI_Free(ext->_arguments[i]);
-    }
-  }
-  TRI_Free(ext->_arguments);
-
-#ifndef _WIN32
-  if (ext->_readPipe != -1) {
-    close(ext->_readPipe);
-  }
-  if (ext->_writePipe != -1) {
-    close(ext->_writePipe);
-  }
-#else
-  CloseHandle(ext->_process);
-  if (ext->_readPipe != NULL) {
-    CloseHandle(ext->_readPipe);
-  }
-  if (ext->_writePipe != NULL) {
-    CloseHandle(ext->_writePipe);
-  }
-#endif
-  TRI_Free(ext);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts an external process
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_CreateExternalProcess(char const* executable, char const** arguments,
                                size_t n, bool usePipes,
-                               TRI_external_id_t* pid) {
+                               ExternalId* pid) {
   // create the external structure
-  TRI_external_t* external = static_cast<TRI_external_t*>(
-      TRI_Allocate(sizeof(TRI_external_t)));
-
+  ExternalProcess* external = new ExternalProcess();
   if (external == nullptr) {
     // gracefully handle out of memory
     pid->_pid = TRI_INVALID_PROCESS_ID;
     return;
   }
-
-  memset(external, 0, sizeof(TRI_external_t));
 
   external->_executable = TRI_DuplicateString(executable);
   external->_numberArguments = n + 1;
@@ -845,7 +869,7 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
   if (external->_arguments == nullptr) {
     // gracefully handle out of memory
     pid->_pid = TRI_INVALID_PROCESS_ID;
-    FreeExternal(external);
+    delete external;
     return;
   }
 
@@ -868,7 +892,7 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
 
   if (external->_status != TRI_EXT_RUNNING) {
     pid->_pid = TRI_INVALID_PROCESS_ID;
-    FreeExternal(external);
+    delete external;
     return;
   }
 
@@ -887,7 +911,7 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
     ExternalProcesses.push_back(external);
   } catch (...) {
     pid->_pid = TRI_INVALID_PROCESS_ID;
-    FreeExternal(external);
+    delete external;
     return;
   }
 }
@@ -896,13 +920,13 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
 /// @brief returns the status of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
+ExternalProcessStatus TRI_CheckExternalProcess(ExternalId pid,
                                                bool wait) {
-  TRI_external_status_t status;
+  ExternalProcessStatus status;
   status._status = TRI_EXT_NOT_FOUND;
   status._exitStatus = 0;
 
-  TRI_external_t* external = nullptr;
+  ExternalProcess* external = nullptr;
   {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
 
@@ -961,6 +985,9 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
         external->_exitStatus = 0;
       }
     } else if (res == -1) {
+      if (errno == ECHILD) {
+        external->_status = TRI_EXT_NOT_FOUND;
+      }
       TRI_set_errno(TRI_ERROR_SYS_ERROR);
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "waitpid returned error for pid " << external->_pid << " ("
                 << wait << "): " << TRI_last_error();
@@ -1097,80 +1124,210 @@ TRI_external_status_t TRI_CheckExternalProcess(TRI_external_id_t pid,
       }
     }
 
-    FreeExternal(external);
+    delete external;
   }
 
   return status;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// @brief check for a process we didn't spawn, and check for access rights to
+//        send it signals.
 #ifndef _WIN32
-static bool OurKillProcess(TRI_external_t* pid, int signal) {
-  if (0 == kill(pid->_pid, signal)) {
-    int count;
+static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
+  if (kill(pid, 0) == 0) {
+    ExternalProcess* external = new ExternalProcess();
 
-    // Otherwise we just let it be.
-    for (count = 0; count < 10; count++) {
-      pid_t p;
-      int loc;
-
-      // And wait for it to avoid a zombie:
-      sleep(1);
-      p = waitpid(pid->_pid, &loc, WUNTRACED | WNOHANG);
-      if (p == pid->_pid) {
-        return true;
-      }
-      if (count == 8) {
-        kill(pid->_pid, SIGKILL);
-      }
+    if (external == nullptr) {
+      // gracefully handle out of memory
+      return nullptr;
     }
+
+    external->_pid = pid;
+    external->_status = TRI_EXT_RUNNING;
+
+    return external;
   }
-  return false;
+  
+  LOG_TOPIC(WARN, arangodb::Logger::FIXME) <<
+    "checking for external process: '" << pid <<
+    "' failed with error: " << strerror(errno);
+  return nullptr;
 }
 #else
-static bool OurKillProcess(TRI_external_t* pid, int signal) {
-  bool ok = true;
-  UINT uExitCode = 0;
-  DWORD exitCode;
-
-  // kill worker process
-  if (0 != TerminateProcess(pid->_process, uExitCode)) {
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "kill of worker process succeeded";
-  } else {
-    DWORD e1 = GetLastError();
-    BOOL ok = GetExitCodeProcess(pid->_process, &exitCode);
-
-    if (ok) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "worker process already dead: " << exitCode;
-    } else {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "kill of worker process failed: " << exitCode;
-      ok = false;
-    }
-  }
-  return ok;
-}
-
-static bool OurKillProcessPID(DWORD pid) {
+static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
   HANDLE hProcess;
-  UINT uExitCode = 0;
-
+  
   hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
   if (hProcess != nullptr) {
-    TerminateProcess(hProcess, uExitCode);
-    CloseHandle(hProcess);
-    return true;
+    ExternalProcess* external = new ExternalProcess();
+
+    if (external == nullptr) {
+      // gracefully handle out of memory
+      return nullptr;
+    }
+
+    external->_pid = pid;
+    external->_status = TRI_EXT_RUNNING;
+    external->_process = hProcess;
+
+    return external;
   }
-  return false;
+  return nullptr;
 }
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
+// @brief check for a process we didn't spawn, and check for access rights to
+//        send it signals.
+#ifndef _WIN32
+static bool killProcess(ExternalProcess* pid, int signal) {
+  if (kill(pid->_pid, signal) == 0) {
+    return true;
+  }
+  return false;
+}
+
+#else
+static bool killProcess(ExternalProcess* pid, int signal) {
+  UINT uExitCode = 0;
+
+  // kill worker process
+  if (0 != TerminateProcess(pid->_process, uExitCode)) {
+    return true;
+  } else {
+    return false;
+  }
+}
+#define SIGKILL 1
+#endif
+
+#ifndef _WIN32
+typedef enum e_sig_action {
+  term,
+  core,
+  cont,
+  ign,
+  logrotate,
+  stop,
+  user
+} e_sig_action;
+
+////////////////////////////////////////////////////////////////////////////////
+// @brief find out what impact a signal will have to the process we send it.
+static e_sig_action whatDoesSignal(int signal) {
+  // Some platforms don't have these. To keep our table clean
+  // we just define them here:
+#ifndef SIGPOLL
+#define SIGPOLL 23
+#endif
+#ifndef SIGSTKFLT
+#define SIGSTKFLT 255
+#endif
+#ifndef SIGPWR
+#define SIGPWR 29
+#endif
+  
+//     Signal       Value     Action   Comment
+//     ────────────────────────────────────────────────────────────────────
+  switch (signal) {
+  case SIGHUP:    //    1       Term    Hangup detected on controlling terminal
+    return logrotate; //             or death of controlling process
+                  //                 we say this is non-deadly since we should do a logrotate.
+  case SIGINT:    //    2       Term    Interrupt from keyboard
+    return term;
+  case SIGQUIT:   //    3       Core    Quit from keyboard
+  case SIGILL:    //    4       Core    Illegal Instruction
+  case SIGABRT:   //    6       Core    Abort signal from abort(3)
+  case SIGFPE:    //    8       Core    Floating-point exception
+  case SIGSEGV:   //   11       Core    Invalid memory reference
+    return core;
+  case SIGKILL:   //    9       Term    Kill signal
+  case SIGPIPE:   //   13       Term    Broken pipe: write to pipe with no
+                  //                   readers; see pipe(7)
+  case SIGALRM:   //   14       Term    Timer signal from alarm(2)
+  case SIGTERM:   //   15       Term    Termination signal
+  case SIGUSR1:   // 30,10,16   Term    User-defined signal 1
+  case SIGUSR2:   // 31,12,17   Term    User-defined signal 2
+    return term;
+  case SIGCHLD:   // 20,17,18   Ign     Child stopped or terminated
+    return ign;
+  case SIGCONT:   // 19,18,25   Cont    Continue if stopped
+    return cont;
+  case SIGSTOP:   // 17,19,23   Stop    Stop process
+  case SIGTSTP:   // 18,20,24   Stop    Stop typed at terminal
+  case SIGTTIN:   // 21,21,26   Stop    Terminal input for background process
+  case SIGTTOU:   // 22,22,27   Stop    Terminal output for background process
+    return stop;
+  case SIGBUS:    //  10,7,10   Core    Bus error (bad memory access)
+    return core;
+  case SIGPOLL:   //            Term    Pollable event (Sys V).
+    return term;  //                    Synonym for SIGIO
+  case SIGPROF:   //  27,27,29  Term    Profiling timer expired
+    return term;
+  case SIGSYS:    //  12,31,12  Core    Bad system call (SVr4);
+                  //                     see also seccomp(2)
+  case SIGTRAP:   //     5      Core    Trace/breakpoint trap
+    return core;
+  case SIGURG:    //  16,23,21  Ign     Urgent condition on socket (4.2BSD)
+    return ign;
+  case SIGVTALRM: //  26,26,28  Term    Virtual alarm clock (4.2BSD)
+    return term;
+  case SIGXCPU:   //  24,24,30  Core    CPU time limit exceeded (4.2BSD);
+                  //                    see setrlimit(2)
+  case SIGXFSZ:   //  25,25,31  Core    File size limit exceeded (4.2BSD);
+                  //                     see setrlimit(2)
+//case SIGIOT:    //     6      Core    IOT trap. A synonym for SIGABRT
+    return core;
+//case SIGEMT:    //   7,-,7    Term    Emulator trap
+  case SIGSTKFLT: //   -,16,-   Term    Stack fault on coprocessor (unused)
+//case SIGIO:     //  23,29,22  Term    I/O now possible (4.2BSD)
+  case SIGPWR:    //  29,30,19  Term    Power failure (System V)
+//case SIGINFO:   //   29,-,-           A synonym for SIGPWR
+//case SIGLOST:   //   -,-,-    Term    File lock lost (unused)
+    return term;
+//case SIGCLD:    //   -,-,18   Ign     A synonym for SIGCHLD
+  case SIGWINCH:  //  28,28,20  Ign     Window resize signal (4.3BSD, Sun)
+    return ign;
+//case SIGUNUSED: //   -,31,-   Core    Synonymous with SIGSYS
+//  return core;
+  default:
+    return user;
+  }
+  return term;
+}
+#endif
+bool TRI_IsDeadlySignal(int signal) {
+#ifndef _WIN32
+  switch (whatDoesSignal(signal)) {
+  case term:
+    return true;
+  case core:
+    return true;
+  case cont:
+    return false;
+  case ign:
+    return false;
+  case logrotate:
+    return false;
+  case stop:
+    return false;
+  case user: // user signals aren't supposed to be deadly.
+    return false;
+  }
+#else
+  // well windows... always deadly.
+#endif
+  return true;
+}
+////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_KillExternalProcess(TRI_external_id_t pid, int signal) {
-  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "killing process: " << pid._pid;
+ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool isTerminal) {
+  LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Sending process: " << pid._pid << " the signal: " << signal;
 
-  TRI_external_t* external = nullptr;  // just to please the compiler
+  ExternalProcess* external = nullptr;  // just to please the compiler
   {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
 
@@ -1178,55 +1335,86 @@ bool TRI_KillExternalProcess(TRI_external_id_t pid, int signal) {
          ++it) {
       if ((*it)->_pid == pid._pid) {
         external = (*it);
-        ExternalProcesses.erase(it);
         break;
       }
     }
   }
 
-  if (external == nullptr) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "kill: process not found: " << pid._pid;
-#ifndef _WIN32
-    // Kill just in case:
-    if (0 == kill(pid._pid, signal)) {
-      // Otherwise we just let it be.
-      for (int count = 0; count < 10; count++) {
-        int loc;
-        pid_t p;
-
-        // And wait for it to avoid a zombie:
-        sleep(1);
-        p = waitpid(pid._pid, &loc, WUNTRACED | WNOHANG);
-        if (p == pid._pid) {
-          return true;
-        }
-        if (count == 8) {
-          kill(pid._pid, SIGKILL);
-        }
-      }
+  bool isChild = (external != nullptr);
+  if (!isChild) {
+    external = getExternalProcess(pid._pid);
+    if (external == nullptr) {
+      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "kill: process not found: " << pid._pid << " in our starting table and it doesn't exist.";
+      ExternalProcessStatus status;
+      status._status = TRI_EXT_NOT_FOUND;
+      status._exitStatus = -1;
+      return status;
     }
-    return false;
-#else
-    return OurKillProcessPID(pid._pid);
-#endif
+    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "kill: process not found: " << pid._pid << " in our starting table - adding";
+
+    // ok, we didn't spawn it, but now we claim the
+    // ownership.
+    MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+
+    try {
+      ExternalProcesses.push_back(external);
+    } catch (...) {
+      ExternalProcessStatus status;
+      delete external;
+
+      status._status = TRI_EXT_NOT_FOUND;
+      status._exitStatus = -1;
+      return status;
+    }
   }
-
-  bool ok = true;
-  if (external->_status == TRI_EXT_RUNNING ||
-      external->_status == TRI_EXT_STOPPED) {
-    ok = OurKillProcess(external, signal);
+  
+  if (killProcess(external, signal)) {
+    external->_status = TRI_EXT_STOPPED;
+    // if the process wasn't spawned by us, no waiting required.
+    int count = 0;
+    while (true) {
+      ExternalProcessStatus status = TRI_CheckExternalProcess(pid, false);
+      if (! isTerminal) {
+        // we just sent a signal, don't care whether
+        // the process is gone by now.
+        return status;
+      }
+      if ((status._status == TRI_EXT_TERMINATED) ||
+          (status._status == TRI_EXT_ABORTED) ||
+          (status._status == TRI_EXT_NOT_FOUND)) {
+        // Its dead and gone - good.
+        MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
+        for (auto it = ExternalProcesses.begin(); it != ExternalProcesses.end();
+             ++it) {
+          if (*it == external) {
+            ExternalProcesses.erase(it);
+            break;
+          }
+        }
+        if (!isChild && (status._status == TRI_EXT_NOT_FOUND) ) {
+            status._status = TRI_EXT_TERMINATED;
+            status._errorMessage.clear();
+        }
+        return status;
+      }
+      sleep(1);
+      if (count >= 8) {
+        killProcess(external, SIGKILL);
+      }
+      if (count > 20) {
+        return status;
+      }
+      count ++;
+    }
   }
-
-  FreeExternal(external);
-
-  return ok;
+  return TRI_CheckExternalProcess(pid, false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stops an external process, only on Unix
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_SuspendExternalProcess(TRI_external_id_t pid) {
+bool TRI_SuspendExternalProcess(ExternalId pid) {
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "suspending process: " << pid._pid;
 
 #ifndef _WIN32
@@ -1240,7 +1428,7 @@ bool TRI_SuspendExternalProcess(TRI_external_id_t pid) {
 /// @brief continues an external process, only on Unix
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ContinueExternalProcess(TRI_external_id_t pid) {
+bool TRI_ContinueExternalProcess(ExternalId pid) {
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "continueing process: " << pid._pid;
 
 #ifndef _WIN32
@@ -1295,19 +1483,7 @@ static uint64_t GetPhysicalMemory() {
   return (uint64_t)status.ullTotalPhys;
 }
 
-#else
-
-static uint64_t GetPhysicalMemory() {
-  PROCESS_MEMORY_COUNTERS pmc;
-  memset(&result, 0, sizeof(result));
-  pmc.cb = sizeof(PROCESS_MEMORY_COUNTERS);
-  // http://msdn.microsoft.com/en-us/library/windows/desktop/ms684874(v=vs.85).aspx
-  if (GetProcessMemoryInfo(GetCurrentProcess(), &pmc, pmc.cb)) {
-    return pmc.PeakWorkingSetSize;
-  }
-  return 0;
-}
-#endif
+#endif // TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS
 #endif
 #endif
 
@@ -1325,8 +1501,8 @@ void TRI_InitializeProcess() {
 
 void TRI_ShutdownProcess() {
   MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
-  for (auto* e : ExternalProcesses) {
-    FreeExternal(e);
+  for (auto* external : ExternalProcesses) {
+    delete external;
   }
   ExternalProcesses.clear();
 }
