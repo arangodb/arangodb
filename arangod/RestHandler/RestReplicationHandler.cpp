@@ -37,6 +37,7 @@
 #include "Cluster/FollowerInfo.h"
 #include "Indexes/Index.h"
 #include "Replication/InitialSyncer.h"
+#include "Replication/ReplicationApplierConfiguration.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -492,10 +493,10 @@ void RestReplicationHandler::handleCommandMakeSlave() {
       VelocyPackHelper::getStringValue(body, "restrictType", "");
 
   // initialize some defaults to copy from
-  TRI_replication_applier_configuration_t defaults;
+  ReplicationApplierConfiguration defaults;
 
   // initialize target configuration
-  TRI_replication_applier_configuration_t config;
+  ReplicationApplierConfiguration config;
 
   config._endpoint = endpoint;
   config._database = database;
@@ -1893,7 +1894,7 @@ void RestReplicationHandler::handleCommandSync() {
     return;
   }
 
-  TRI_replication_applier_configuration_t config;
+  ReplicationApplierConfiguration config;
   config._endpoint = endpoint;
   config._database = database;
   config._username = username;
@@ -1950,7 +1951,7 @@ void RestReplicationHandler::handleCommandSync() {
 void RestReplicationHandler::handleCommandApplierGetConfig() {
   TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
-  TRI_replication_applier_configuration_t config;
+  ReplicationApplierConfiguration config;
 
   {
     READ_LOCKER(readLocker, _vocbase->replicationApplier()->_statusLock);
@@ -1967,7 +1968,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
 void RestReplicationHandler::handleCommandApplierSetConfig() {
   TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
-  TRI_replication_applier_configuration_t config;
+  ReplicationApplierConfiguration config;
 
   bool success;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);

@@ -61,7 +61,7 @@ using namespace arangodb::rest;
 size_t const InitialSyncer::MaxChunkSize = 10 * 1024 * 1024;
 
 InitialSyncer::InitialSyncer(TRI_vocbase_t* vocbase,
-    TRI_replication_applier_configuration_t const* configuration,
+    ReplicationApplierConfiguration const* configuration,
     std::unordered_map<std::string, bool> const& restrictCollections,
     std::string const& restrictType, bool verbose, bool skipCreateDrop)
     : Syncer(configuration),

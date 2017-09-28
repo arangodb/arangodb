@@ -25,19 +25,16 @@
 #define ARANGOD_REPLICATION_SYNCER_H 1
 
 #include "Basics/Common.h"
+#include "Replication/ReplicationApplierConfiguration.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 
-class TRI_replication_applier_configuration_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
 class Endpoint;
 class LogicalCollection;
-
-namespace velocypack {
-class Slice;
-}
+class ReplicationApplierConfiguration;
 
 namespace httpclient {
 class GeneralClientConnection;
@@ -49,12 +46,16 @@ namespace transaction {
 class Methods;
 }
 
+namespace velocypack {
+class Slice;
+}
+
 class Syncer {
  public:
   Syncer(Syncer const&) = delete;
   Syncer& operator=(Syncer const&) = delete;
 
-  explicit Syncer(TRI_replication_applier_configuration_t const*);
+  explicit Syncer(ReplicationApplierConfiguration const*);
 
   virtual ~Syncer();
   
@@ -147,7 +148,7 @@ class Syncer {
   std::map<TRI_voc_tick_t, VocbaseGuard> _vocbaseCache;
   
   /// @brief configuration
-  TRI_replication_applier_configuration_t _configuration;
+  ReplicationApplierConfiguration _configuration;
 
   /// @brief information about the master state
   struct {

@@ -27,6 +27,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Replication/ContinuousSyncer.h"
 #include "Replication/InitialSyncer.h"
+#include "Replication/ReplicationApplierConfiguration.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -164,7 +165,7 @@ static void JS_LastLoggerReplication( v8::FunctionCallbackInfo<v8::Value> const&
 
 static void addReplicationAuthentication(v8::Isolate* isolate,
     v8::Handle<v8::Object> object,
-    TRI_replication_applier_configuration_t &config) {
+    ReplicationApplierConfiguration &config) {
   bool hasUsernamePassword = false;
   if (object->Has(TRI_V8_ASCII_STRING(isolate, "username"))) {
     if (object->Get(TRI_V8_ASCII_STRING(isolate, "username"))->IsString()) {
@@ -195,7 +196,7 @@ static void addReplicationAuthentication(v8::Isolate* isolate,
 
 static void addConnectionSettings(v8::Isolate* isolate,
     v8::Handle<v8::Object> object,
-    TRI_replication_applier_configuration_t &config) {
+    ReplicationApplierConfiguration &config) {
 
   if (object->Has(TRI_V8_ASCII_STRING(isolate, "sslProtocol"))) {
     if (object->Get(TRI_V8_ASCII_STRING(isolate, "sslProtocol"))->IsNumber()) {
@@ -313,7 +314,7 @@ static void JS_SynchronizeReplication(
         "invalid value for <restrictCollections> or <restrictType>");
   }
 
-  TRI_replication_applier_configuration_t config;
+  ReplicationApplierConfiguration config;
   config._endpoint = endpoint;
   config._database = database;
 
@@ -476,7 +477,7 @@ static void JS_SynchronizeReplicationFinalize(
     TRI_V8_THROW_EXCEPTION_PARAMETER("<from> must be a valid start tick");
   }
 
-  TRI_replication_applier_configuration_t config;
+  ReplicationApplierConfiguration config;
   config._endpoint = endpoint;
   config._database = database;
 
@@ -579,7 +580,7 @@ static void JS_ConfigureApplierReplication(
   if (args.Length() == 0) {
     // no argument: return the current configuration
 
-    TRI_replication_applier_configuration_t config;
+    ReplicationApplierConfiguration config;
 
     {
       READ_LOCKER(readLocker, vocbase->replicationApplier()->_statusLock);
@@ -601,7 +602,7 @@ static void JS_ConfigureApplierReplication(
           "REPLICATION_APPLIER_CONFIGURE(<configuration>)");
     }
 
-    TRI_replication_applier_configuration_t config;
+    ReplicationApplierConfiguration config;
 
     // fill with previous configuration
     {

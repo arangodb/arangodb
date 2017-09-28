@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplierState.h"
+#include "ReplicationApplierState.h"
 #include "VocBase/replication-common.h"
 
 #include <velocypack/Builder.h>

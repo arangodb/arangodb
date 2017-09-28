@@ -58,7 +58,7 @@ using namespace arangodb::rest;
 
 ContinuousSyncer::ContinuousSyncer(
     TRI_vocbase_t* vocbase,
-    TRI_replication_applier_configuration_t const* configuration,
+    ReplicationApplierConfiguration const* configuration,
     TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
     : TailingSyncer(configuration, initialTick),
       _applier(vocbase->replicationApplier()),

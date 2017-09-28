@@ -55,7 +55,7 @@ using namespace arangodb::httpclient;
 /// @brief base url of the replication API
 std::string const Syncer::BaseUrl = "/_api/replication";
 
-Syncer::Syncer(TRI_replication_applier_configuration_t const* configuration)
+Syncer::Syncer(ReplicationApplierConfiguration const* configuration)
     : _configuration(),
       _masterInfo(),
       _endpoint(nullptr),

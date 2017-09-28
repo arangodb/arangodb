@@ -27,18 +27,18 @@
 #include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
 #include "Logger/Logger.h"
+#include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/Syncer.h"
 #include "Utils/SingleCollectionTransaction.h"
 
 #include <velocypack/Slice.h>
 
-class TRI_replication_applier_configuration_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
 class LogicalCollection;
 class InitialSyncer;
+class ReplicationApplierConfiguration;
 
 int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
                           arangodb::LogicalCollection* col,
@@ -94,7 +94,7 @@ class InitialSyncer : public Syncer {
 
  public:
   InitialSyncer(TRI_vocbase_t*,
-                TRI_replication_applier_configuration_t const*,
+                ReplicationApplierConfiguration const*,
                 std::unordered_map<std::string, bool> const&,
                 std::string const&, bool verbose, bool skipCreateDrop);
 

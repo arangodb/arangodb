@@ -79,7 +79,7 @@ static int ReadTick(VPackSlice const& slice, char const* attributeName,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int LoadConfiguration(TRI_vocbase_t* vocbase,
-                             TRI_replication_applier_configuration_t* config) {
+                             arangodb::ReplicationApplierConfiguration* config) {
   int res;
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   VPackBuilder builder = engine->getReplicationApplierConfiguration(vocbase, res);
@@ -427,136 +427,12 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier(TRI_vocbase_t* vocbase) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief construct the configuration with default values
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_replication_applier_configuration_t::
-    TRI_replication_applier_configuration_t() 
-    : _endpoint(),
-      _database(),
-      _username(),
-      _password(),
-      _jwt(),
-      _requestTimeout(600.0),
-      _connectTimeout(10.0),
-      _ignoreErrors(0),
-      _maxConnectRetries(100),
-      _lockTimeoutRetries(0),
-      _chunkSize(0),
-      _connectionRetryWaitTime(15 * 1000 * 1000),
-      _idleMinWaitTime(1000 * 1000),
-      _idleMaxWaitTime(5 * 500 * 1000),
-      _initialSyncMaxWaitTime(300 * 1000 * 1000),
-      _autoResyncRetries(2),
-      _sslProtocol(0),
-      _autoStart(false),
-      _adaptivePolling(true),
-      _autoResync(false),
-      _includeSystem(true),
-      _requireFromPresent(false),
-      _incremental(false),
-      _verbose(false),
-      _useCollectionId(true),
-      _restrictType(),
-      _restrictCollections() {}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reset the configuration to defaults
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_replication_applier_configuration_t::reset() {
-  TRI_replication_applier_configuration_t empty;
-  update(&empty);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a VelocyPack representation
-///        Expects builder to be in an open Object state
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_replication_applier_configuration_t::toVelocyPack(
-    bool includePassword, VPackBuilder& builder) const {
-  if (!_endpoint.empty()) {
-    builder.add("endpoint", VPackValue(_endpoint));
-  }
-  if (!_database.empty()) {
-    builder.add("database", VPackValue(_database));
-  }
-  
-  bool hasUsernamePassword = false;
-  if (!_username.empty()) {
-    hasUsernamePassword = true;
-    builder.add("username", VPackValue(_username));
-  }
-  if (includePassword) {
-    hasUsernamePassword = true;
-    builder.add("password", VPackValue(_password));
-  }
-  if (!hasUsernamePassword && !_jwt.empty()) {
-    builder.add("jwt", VPackValue(_jwt));
-  }
-
-  builder.add("requestTimeout", VPackValue(_requestTimeout));
-  builder.add("connectTimeout", VPackValue(_connectTimeout));
-  builder.add("ignoreErrors", VPackValue(_ignoreErrors));
-  builder.add("maxConnectRetries", VPackValue(_maxConnectRetries));
-  builder.add("lockTimeoutRetries", VPackValue(_lockTimeoutRetries));
-  builder.add("sslProtocol", VPackValue(_sslProtocol));
-  builder.add("chunkSize", VPackValue(_chunkSize));
-  builder.add("autoStart", VPackValue(_autoStart));
-  builder.add("adaptivePolling", VPackValue(_adaptivePolling));
-  builder.add("autoResync", VPackValue(_autoResync));
-  builder.add("autoResyncRetries", VPackValue(_autoResyncRetries));
-  builder.add("includeSystem", VPackValue(_includeSystem));
-  builder.add("requireFromPresent", VPackValue(_requireFromPresent));
-  builder.add("verbose", VPackValue(_verbose));
-  builder.add("incremental", VPackValue(_incremental));
-  builder.add("useCollectionId", VPackValue(_useCollectionId));
-  builder.add("restrictType", VPackValue(_restrictType));
-
-  builder.add("restrictCollections", VPackValue(VPackValueType::Array));
-  for (auto& it : _restrictCollections) {
-    builder.add(VPackValue(it.first));
-  }
-  builder.close();  // restrictCollections
-
-  builder.add("connectionRetryWaitTime",
-              VPackValue(static_cast<double>(_connectionRetryWaitTime) /
-                         (1000.0 * 1000.0)));
-  builder.add("initialSyncMaxWaitTime",
-              VPackValue(static_cast<double>(_initialSyncMaxWaitTime) /
-                         (1000.0 * 1000.0)));
-  builder.add(
-      "idleMinWaitTime",
-      VPackValue(static_cast<double>(_idleMinWaitTime) / (1000.0 * 1000.0)));
-  builder.add(
-      "idleMaxWaitTime",
-      VPackValue(static_cast<double>(_idleMaxWaitTime) / (1000.0 * 1000.0)));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get a VelocyPack representation
-////////////////////////////////////////////////////////////////////////////////
-
-std::shared_ptr<VPackBuilder>
-TRI_replication_applier_configuration_t::toVelocyPack(
-    bool includePassword) const {
-  auto builder = std::make_shared<VPackBuilder>();
-  {
-    VPackObjectBuilder b(builder.get());
-    toVelocyPack(includePassword, *builder);
-  }
-
-  return builder;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief configure the replication applier
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ConfigureReplicationApplier(
     TRI_replication_applier_t* applier,
-    TRI_replication_applier_configuration_t const* config) {
+    ReplicationApplierConfiguration const* config) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (applier->_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
@@ -781,47 +657,12 @@ int TRI_LoadStateReplicationApplier(TRI_vocbase_t* vocbase,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief copy an applier configuration
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_replication_applier_configuration_t::update(
-    TRI_replication_applier_configuration_t const* src) {
-  _endpoint = src->_endpoint;
-  _database = src->_database;
-  _username = src->_username;
-  _password = src->_password;
-  _jwt = src->_jwt;
-  _requestTimeout = src->_requestTimeout;
-  _connectTimeout = src->_connectTimeout;
-  _ignoreErrors = src->_ignoreErrors;
-  _maxConnectRetries = src->_maxConnectRetries;
-  _lockTimeoutRetries = src->_lockTimeoutRetries;
-  _sslProtocol = src->_sslProtocol;
-  _chunkSize = src->_chunkSize;
-  _autoStart = src->_autoStart;
-  _adaptivePolling = src->_adaptivePolling;
-  _autoResync = src->_autoResync;
-  _includeSystem = src->_includeSystem;
-  _requireFromPresent = src->_requireFromPresent;
-  _verbose = src->_verbose;
-  _incremental = src->_incremental;
-  _useCollectionId = src->_useCollectionId;
-  _restrictType = src->_restrictType;
-  _restrictCollections = src->_restrictCollections;
-  _connectionRetryWaitTime = src->_connectionRetryWaitTime;
-  _initialSyncMaxWaitTime = src->_initialSyncMaxWaitTime;
-  _idleMinWaitTime = src->_idleMinWaitTime;
-  _idleMaxWaitTime = src->_idleMaxWaitTime;
-  _autoResyncRetries = src->_autoResyncRetries;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief save the replication application configuration to a file
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_SaveConfigurationReplicationApplier(
     TRI_vocbase_t* vocbase,
-    TRI_replication_applier_configuration_t const* config, bool doSync) {
+    ReplicationApplierConfiguration const* config, bool doSync) {
   if (vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
@@ -1224,7 +1065,7 @@ int TRI_replication_applier_t::setError(int errorCode, char const* msg) {
 void TRI_replication_applier_t::toVelocyPack(VPackBuilder& builder) const {
   TRI_ASSERT(!builder.isClosed());
   TRI_replication_applier_state_t state;
-  TRI_replication_applier_configuration_t config;
+  ReplicationApplierConfiguration config;
 
   int res = TRI_StateReplicationApplier(this, &state);
 

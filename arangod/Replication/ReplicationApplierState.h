@@ -21,8 +21,8 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_APPLIER_STATE_H
-#define ARANGOD_REPLICATION_APPLIER_STATE_H 1
+#ifndef ARANGOD_REPLICATION_REPLICATION_APPLIER_STATE_H
+#define ARANGOD_REPLICATION_REPLICATION_APPLIER_STATE_H 1
 
 #include "Basics/Common.h"
 #include "VocBase/voc-types.h"

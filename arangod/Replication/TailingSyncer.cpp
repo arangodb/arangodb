@@ -58,7 +58,7 @@ using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
 TailingSyncer::TailingSyncer(
-    TRI_replication_applier_configuration_t const* configuration,
+    ReplicationApplierConfiguration const* configuration,
     TRI_voc_tick_t initialTick)
     : Syncer(configuration),
       _chunkSize("262144"),
