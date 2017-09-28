@@ -120,6 +120,11 @@ fi
 
 COMPILE_MATTERS="3rdParty"
 
+if test -z "${CXX}"; then
+    CC=/usr/bin/gcc
+    CXX=/usr/bin/g++
+fi
+
 CFLAGS="-g -fno-omit-frame-pointer"
 CXXFLAGS="-g -fno-omit-frame-pointer"
 if test "${isCygwin}" == 1; then
@@ -153,7 +158,7 @@ CLANG=0
 COVERAGE=0
 CPACK=
 FAILURE_TESTS=0
-GCC5=1
+GCC5=0
 GCC6=0
 GOLD=0
 SANITIZE=0
