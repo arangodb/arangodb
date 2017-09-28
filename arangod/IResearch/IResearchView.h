@@ -334,6 +334,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   std::condition_variable _asyncCondition; // trigger reload of timeout settings for async jobs
   std::atomic<size_t> _asyncMetaRevision; // arbitrary meta modification id, async jobs should reload if different
   std::mutex _asyncMutex; // mutex used with '_asyncCondition' and associated timeouts
+  std::mutex _trxStoreMutex; // mutex used to protect '_storeByTid' against multiple insertions
   std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
   int (*_beforeInsert)(IResearchView&, arangodb::transaction::Methods&, TRI_voc_cid_t, TRI_voc_rid_t); // call before insertion
   IResearchViewMeta _meta;

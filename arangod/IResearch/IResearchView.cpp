@@ -1512,26 +1512,33 @@ int IResearchView::drop(TRI_voc_cid_t cid) {
 }
 
 int IResearchView::finish(TRI_voc_tid_t tid, bool commit) {
-  WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
-  SCOPED_LOCK(mutex);
-  auto tidStoreItr = _storeByTid.find(tid);
+  std::vector<std::shared_ptr<irs::filter>> removals;
+  DataStore trxStore;
 
-  if (tidStoreItr == _storeByTid.end()) {
-    return TRI_ERROR_NO_ERROR; // nothing to finish
-  }
+  {
+    SCOPED_LOCK(_trxStoreMutex); // '_storeByTid' can be asynchronously updated
 
-  if (!commit) {
+    auto tidStoreItr = _storeByTid.find(tid);
+
+    if (tidStoreItr == _storeByTid.end()) {
+      return TRI_ERROR_NO_ERROR; // nothing to finish
+    }
+
+    if (!commit) {
+      _storeByTid.erase(tidStoreItr);
+
+      return TRI_ERROR_NO_ERROR; // nothing more to do
+    }
+
+    // no need to lock TidStore::_mutex since have write-lock on IResearchView::_mutex
+    removals = std::move(tidStoreItr->second._removals);
+    trxStore = std::move(tidStoreItr->second._store);
+
     _storeByTid.erase(tidStoreItr);
-
-    return TRI_ERROR_NO_ERROR; // nothing more to do
   }
 
-  // no need to lock TidStore::_mutex since have write-lock on IResearchView::_mutex
-  auto removals = std::move(tidStoreItr->second._removals);
-  auto trxStore = std::move(tidStoreItr->second._store);
-
-  _storeByTid.erase(tidStoreItr);
-  mutex.unlock(true); // downgrade to a read-lock
+  ReadMutex mutex(_mutex); // '_memoryStore'/'_storePersisted' can be asynchronously modified
+  SCOPED_LOCK(mutex);
 
   try {
     // transfer filters first since they only apply to pre-merge data
@@ -1730,16 +1737,20 @@ int IResearchView::insert(
     return res;
   }
 
-  WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
-  SCOPED_LOCK(mutex);
+  MemoryStore* store;
 
-  auto storeItr = irs::map_utils::try_emplace(
-    _storeByTid, trx.state()->id(), trx, _transactionCallback
-  );
+  {
+    // '_storeByTid' can be asynchronously updated
+    SCOPED_LOCK(_trxStoreMutex);
 
-  mutex.unlock(true); // downgrade to a read-lock
+    auto storeItr = irs::map_utils::try_emplace(
+      _storeByTid, trx.state()->id(), trx, _transactionCallback
+    );
 
-  auto& store = storeItr.first->second._store;
+    store = &(storeItr.first->second._store);
+  }
+
+  TRI_ASSERT(store);
 
   auto insert = [&body, cid, rid] (irs::index_writer::document& doc) {
     insertDocument(doc, body, cid, rid);
@@ -1748,7 +1759,7 @@ int IResearchView::insert(
   };
 
   try {
-    if (store._writer->insert(insert)) {
+    if (store->_writer->insert(insert)) {
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -1784,19 +1795,33 @@ int IResearchView::insert(
     }
   }
 
-  WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
-  SCOPED_LOCK(mutex); // '_meta' can be asynchronously updated
+  MemoryStore* store;
 
-  auto storeItr = irs::map_utils::try_emplace(
-    _storeByTid, trx.state()->id(), trx, _transactionCallback
-  );
+  {
+    // '_storeByTid' can be asynchronously updated
+    SCOPED_LOCK(_trxStoreMutex);
 
-  const size_t commitBatch = _meta._commitBulk._commitIntervalBatchSize;
-  SyncState state = SyncState(_meta._commitBulk);
+    auto storeItr = irs::map_utils::try_emplace(
+      _storeByTid, trx.state()->id(), trx, _transactionCallback
+    );
 
-  mutex.unlock(true); // downgrade to a read-lock
+    store = &(storeItr.first->second._store);
+  }
 
-  auto& store = storeItr.first->second._store;
+  size_t commitBatch;
+  SyncState state;
+
+  {
+    ReadMutex mutex(_mutex);
+    SCOPED_LOCK(mutex); // '_meta' can be asynchronously updated
+
+    auto& commitMeta = _meta._commitBulk;
+
+    commitBatch = commitMeta._commitIntervalBatchSize;
+    state = SyncState(commitMeta);
+  }
+
+  TRI_ASSERT(store);
 
   size_t batchCount = 0;
   auto begin = batch.begin();
@@ -1822,7 +1847,7 @@ int IResearchView::insert(
     }
 
     try {
-      if (!store._writer->insert(batchInsert)) {
+      if (!store->_writer->insert(batchInsert)) {
         LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed inserting batch into iResearch view '" << id() << "', collection '" << cid;
         return TRI_ERROR_INTERNAL;
       }
@@ -2092,26 +2117,29 @@ int IResearchView::remove(
   }
 
   std::shared_ptr<irs::filter> shared_filter(FilterFactory::filter(cid, rid));
-  WriteMutex mutex(_mutex); // '_storeByTid' can be asynchronously updated
-  SCOPED_LOCK(mutex);
+  TidStore* store;
 
-  auto storeItr = irs::map_utils::try_emplace(
-    _storeByTid, trx.state()->id(), trx, _transactionCallback
-  );
+  {
+    SCOPED_LOCK(_trxStoreMutex); // '_storeByTid' can be asynchronously updated
 
-  mutex.unlock(true); // downgrade to a read-lock
+    auto storeItr = irs::map_utils::try_emplace(
+      _storeByTid, trx.state()->id(), trx, _transactionCallback
+    );
 
-  auto& store = storeItr.first->second;
+    store = &(storeItr.first->second);
+  }
+
+  TRI_ASSERT(store);
 
   // ...........................................................................
   // if an exception occurs below than the transaction is droped including all
   // all of its fid stores, no impact to iResearch View data integrity
   // ...........................................................................
   try {
-    store._store._writer->remove(shared_filter);
+    store->_store._writer->remove(shared_filter);
 
-    SCOPED_LOCK(store._mutex); // '_removals' can be asynchronously updated
-    store._removals.emplace_back(shared_filter);
+    SCOPED_LOCK(store->_mutex); // '_removals' can be asynchronously updated
+    store->_removals.emplace_back(shared_filter);
 
     return TRI_ERROR_NO_ERROR;
   } catch (std::exception& e) {
