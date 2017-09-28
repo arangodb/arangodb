@@ -42,8 +42,7 @@ class GlobalInitialSyncer {
   } sync_phase_e;
 
  public:
-  GlobalInitialSyncer(TRI_vocbase_t*,
-                      ReplicationApplierConfiguration const*,
+  GlobalInitialSyncer(ReplicationApplierConfiguration const*,
                       std::unordered_map<std::string, bool> const&,
                       Syncer::RestrictType, bool verbose, bool skipCreateDrop);
 
@@ -55,11 +54,6 @@ class GlobalInitialSyncer {
 
   std::string progress() { return _progress; }
   
-  TRI_vocbase_t* vocbase() const {
-    TRI_ASSERT(_vocbaseCache.size() == 1);
-    return _vocbaseCache.begin()->second.vocbase();
-  }
-
  private:
   
   /// @brief set a progress message
