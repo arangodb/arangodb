@@ -102,6 +102,8 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
     }
   }
 
+  std::tuple<size_t, size_t, size_t, size_t, size_t> getCurrentContextNumbers();
+
   void setNumberContexts(size_t nr) { _forceNrContexts = nr; }
 
   void defineBoolean(std::string const& name, bool value) {
