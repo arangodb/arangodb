@@ -1459,7 +1459,7 @@ timestamps {
 
         checkCommitMessages()
 
-        node {
+        node("linux") {
             fileOperations([fileCreateOperation(fileContent: overview, fileName: "overview.txt")])
             archiveArtifacts(allowEmptyArchive: true, artifacts: "overview.txt")
         }
@@ -1467,7 +1467,7 @@ timestamps {
         runOperatingSystems(['linux', 'mac', 'windows'])
     }
     finally {
-        node {
+        node("linux") {
             generateResult()
         }
     }
