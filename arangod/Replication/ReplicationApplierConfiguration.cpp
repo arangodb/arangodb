@@ -90,9 +90,8 @@ void ReplicationApplierConfiguration::reset() {
 }
 
 /// @brief get a VelocyPack representation
-///        Expects builder to be in an open Object state
-void ReplicationApplierConfiguration::toVelocyPack(bool includePassword, 
-                                                   VPackBuilder& builder) const {
+/// expects builder to be in an open Object state
+void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool includePassword) const {
   if (!_endpoint.empty()) {
     builder.add("endpoint", VPackValue(_endpoint));
   }
@@ -149,17 +148,4 @@ void ReplicationApplierConfiguration::toVelocyPack(bool includePassword,
   builder.add(
       "idleMaxWaitTime",
       VPackValue(static_cast<double>(_idleMaxWaitTime) / (1000.0 * 1000.0)));
-}
-
-/// @brief get a VelocyPack representation
-std::shared_ptr<VPackBuilder>
-ReplicationApplierConfiguration::toVelocyPack(
-    bool includePassword) const {
-  auto builder = std::make_shared<VPackBuilder>();
-  {
-    VPackObjectBuilder b(builder.get());
-    toVelocyPack(includePassword, *builder);
-  }
-
-  return builder;
 }

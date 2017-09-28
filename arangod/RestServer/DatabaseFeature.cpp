@@ -41,6 +41,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Replication/DatabaseReplicationApplier.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
@@ -56,7 +57,6 @@
 #include "VocBase/AuthInfo.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/replication-applier.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/ticks.h"
 
@@ -449,7 +449,7 @@ void DatabaseFeature::recoveryDone() {
     // start the replication applier, which is engine-unspecific
     TRI_ASSERT(vocbase->replicationApplier() != nullptr);
 
-    if (vocbase->replicationApplier()->_configuration._autoStart) {
+    if (vocbase->replicationApplier()->autoStart()) {
       if (!_replicationApplier) {
         LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "replication applier explicitly deactivated for database '"
                   << vocbase->name() << "'";
@@ -495,7 +495,7 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id,
       std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, id, name);
 
   try {
-    vocbase->addReplicationApplier(TRI_CreateReplicationApplier(vocbase.get()));
+    vocbase->addReplicationApplier();
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -573,8 +573,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     TRI_ASSERT(vocbase != nullptr);
 
     try {
-      vocbase->addReplicationApplier(
-          TRI_CreateReplicationApplier(vocbase.get()));
+      vocbase->addReplicationApplier();
     } catch (std::exception const& ex) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "initializing replication applier for database '"
                  << vocbase->name() << "' failed: " << ex.what();
@@ -598,8 +597,7 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
       engine->recoveryDone(vocbase.get());
 
       // start the replication applier
-      if (_replicationApplier &&
-          vocbase->replicationApplier()->_configuration._autoStart) {
+      if (_replicationApplier && vocbase->replicationApplier()->autoStart()) {
         res = vocbase->replicationApplier()->start(0, false, 0);
 
         if (res != TRI_ERROR_NO_ERROR) {
@@ -1266,7 +1264,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       TRI_vocbase_t* database = engine->openDatabase(it, _upgrade);
 
       try {
-        database->addReplicationApplier(TRI_CreateReplicationApplier(database));
+        database->addReplicationApplier();
       } catch (std::exception const& ex) {
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "initializing replication applier for database '"
                    << database->name() << "' failed: " << ex.what();

@@ -27,12 +27,8 @@
 #include "Replication/TailingSyncer.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 
-class TRI_replication_applier_t;
 namespace arangodb {
 struct ReplicationApplierState;
-}
-
-namespace arangodb {
 
 class WalAccessSyncer : public TailingSyncer {
  public:

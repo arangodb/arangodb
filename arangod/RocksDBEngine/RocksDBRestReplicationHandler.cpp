@@ -54,7 +54,6 @@
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>

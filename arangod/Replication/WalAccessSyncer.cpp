@@ -141,7 +141,7 @@ retry:
     // stop ourselves
     _applier->stop(false, false);
 
-    return _applier->setError(res, errorMsg.c_str());
+    return _applier->setError(res, errorMsg);
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -149,7 +149,7 @@ retry:
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    _applier->setError(res, errorMsg.c_str());
+    _applier->setError(res, errorMsg);
 
     // stop ourselves
     _applier->stop(false, false);

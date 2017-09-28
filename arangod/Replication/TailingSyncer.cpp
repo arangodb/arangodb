@@ -33,6 +33,7 @@
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
+#include "Replication/ReplicationTransaction.h"
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"

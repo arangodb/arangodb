@@ -31,6 +31,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
+#include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/InitialSyncer.h"
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
@@ -130,17 +131,25 @@ retry:
 
   if (res == TRI_ERROR_NO_ERROR) {
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-    res = getLocalState(errorMsg);
-
-    _applier->_state._failedConnects = 0;
-    _applier->_state._totalRequests++;
+    try {
+      getLocalState();
+      _applier->_state._failedConnects = 0;
+      _applier->_state._totalRequests++;
+    } catch (basics::Exception const& ex) {
+      res = ex.code();
+      errorMsg = ex.what();
+    } catch (std::exception const& ex) {
+      res = TRI_ERROR_INTERNAL;
+      errorMsg = ex.what();
+    } catch (...) {
+      res = TRI_ERROR_INTERNAL;
+    }
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
     // stop ourselves
     _applier->stop(false, false);
-
-    return _applier->setError(res, errorMsg.c_str());
+    return _applier->setError(res, errorMsg);
   }
 
   if (res == TRI_ERROR_NO_ERROR) {
@@ -148,7 +157,7 @@ retry:
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    _applier->setError(res, errorMsg.c_str());
+    _applier->setError(res, errorMsg);
 
     // stop ourselves
     _applier->stop(false, false);
@@ -164,8 +173,9 @@ retry:
       // remove previous applier state
       abortOngoingTransactions();
 
-      TRI_RemoveStateReplicationApplier(vocbase());
+      _applier->removeState();
 
+      // TODO: merge with removeState
       {
         WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
@@ -265,12 +275,18 @@ void ContinuousSyncer::setProgress(char const* msg) {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
   }
 
-  _applier->setProgress(msg, true);
+  _applier->setProgress(msg);
 }
 
 /// @brief set the applier progress
 void ContinuousSyncer::setProgress(std::string const& msg) {
-  setProgress(msg.c_str());
+  if (_verbose) {
+    LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
+  } else {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
+  }
+
+  _applier->setProgress(msg);
 }
 
 /// @brief save the current applier state
@@ -280,56 +296,42 @@ int ContinuousSyncer::saveApplierState() {
       << _applier->_state._lastAppliedContinuousTick
       << ", safe resume tick: " << _applier->_state._safeResumeTick;
 
-  int res = TRI_SaveStateReplicationApplier(vocbase(), &_applier->_state, false);
-
-  if (res != TRI_ERROR_NO_ERROR) {
+  try {
+    _applier->persistState(false);
+    return TRI_ERROR_NO_ERROR;
+  } catch (basics::Exception const& ex) {
     LOG_TOPIC(WARN, Logger::REPLICATION)
-        << "unable to save replication applier state: "
-        << TRI_errno_string(res);
+        << "unable to save replication applier state: " << ex.what();
+    return ex.code();
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(WARN, Logger::REPLICATION)
+        << "unable to save replication applier state: " << ex.what();
   }
 
-  return res;
+  return TRI_ERROR_INTERNAL;
 }
 
 /// @brief get local replication apply state
-int ContinuousSyncer::getLocalState(std::string& errorMsg) {
+void ContinuousSyncer::getLocalState() {
   uint64_t oldTotalRequests = _applier->_state._totalRequests;
   uint64_t oldTotalFailedConnects = _applier->_state._totalFailedConnects;
 
-  int res = TRI_LoadStateReplicationApplier(vocbase(), &_applier->_state);
+  bool const foundState = _applier->loadState();
   _applier->_state._active = true;
   _applier->_state._totalRequests = oldTotalRequests;
   _applier->_state._totalFailedConnects = oldTotalFailedConnects;
 
-  if (res == TRI_ERROR_FILE_NOT_FOUND) {
+  if (!foundState) {
     // no state file found, so this is the initialization
     _applier->_state._serverId = _masterInfo._serverId;
-
-    res = TRI_SaveStateReplicationApplier(vocbase(), &_applier->_state, true);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      errorMsg = "could not save replication state information";
-    }
-  } else if (res == TRI_ERROR_NO_ERROR) {
-    if (_masterInfo._serverId != _applier->_state._serverId &&
-        _applier->_state._serverId != 0) {
-      res = TRI_ERROR_REPLICATION_MASTER_CHANGE;
-      errorMsg =
-          "encountered wrong master id in replication state file. "
-          "found: " +
-          StringUtils::itoa(_masterInfo._serverId) +
-          ", "
-          "expected: " +
-          StringUtils::itoa(_applier->_state._serverId);
-    }
-  } else {
-    // some error occurred
-    TRI_ASSERT(res != TRI_ERROR_NO_ERROR);
-
-    errorMsg = TRI_errno_string(res);
+    _applier->persistState(true);
+    return;
   }
 
-  return res;
+  if (_masterInfo._serverId != _applier->_state._serverId &&
+      _applier->_state._serverId != 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_MASTER_CHANGE, std::string("encountered wrong master id in replication state file. found: ") + StringUtils::itoa(_masterInfo._serverId) + ", expected: " + StringUtils::itoa(_applier->_state._serverId));
+  }
 }
 
 /// @brief perform a continuous sync with the master

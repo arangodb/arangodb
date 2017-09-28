@@ -27,9 +27,8 @@
 #include "TailingSyncer.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 
-class TRI_replication_applier_t;
-
 namespace arangodb {
+class DatabaseReplicationApplier;
 
 class ContinuousSyncer : public TailingSyncer {
  public:
@@ -45,7 +44,7 @@ class ContinuousSyncer : public TailingSyncer {
   int run();
 
   /// @brief return the syncer's replication applier
-  TRI_replication_applier_t* applier() const { return _applier; }
+  DatabaseReplicationApplier* applier() const { return _applier; }
   
   /// @brief finalize the synchronization of a collection by tailing the WAL
   /// and filtering on the collection name until no more data is available
@@ -67,7 +66,7 @@ class ContinuousSyncer : public TailingSyncer {
   int saveApplierState();
 
   /// @brief get local replication applier state
-  int getLocalState(std::string&);
+  void getLocalState();
 
   /// @brief perform a continuous sync with the master
   int runContinuousSync(std::string&);
@@ -86,8 +85,8 @@ class ContinuousSyncer : public TailingSyncer {
   }
 
  private:
-  /// @brief pointer to the applier state
-  TRI_replication_applier_t* _applier;
+  /// @brief pointer to the applier
+  DatabaseReplicationApplier* _applier;
 
   /// @brief use the initial tick
   bool _useTick;

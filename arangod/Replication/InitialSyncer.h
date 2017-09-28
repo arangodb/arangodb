@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/Syncer.h"

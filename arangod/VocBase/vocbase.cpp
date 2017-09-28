@@ -46,7 +46,9 @@
 #include "Basics/memory-map.h"
 #include "Basics/threads.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
+#include "Replication/DatabaseReplicationApplier.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ViewTypesFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -60,7 +62,6 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/PhysicalView.h"
 #include "VocBase/ViewImplementation.h"
-#include "VocBase/replication-applier.h"
 #include "VocBase/ticks.h"
 
 #include <thread>
@@ -1559,7 +1560,8 @@ bool TRI_vocbase_t::IsAllowedName(bool allowSystem, std::string const& name) {
   return true;
 }
 
-void TRI_vocbase_t::addReplicationApplier(TRI_replication_applier_t* applier) {
+void TRI_vocbase_t::addReplicationApplier() {
+  DatabaseReplicationApplier* applier = DatabaseReplicationApplier::create(this);
   _replicationApplier.reset(applier);
 }
 

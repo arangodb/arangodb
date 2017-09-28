@@ -26,8 +26,9 @@
 
 #include "Basics/Common.h"
 #include "Replication/ReplicationApplierConfiguration.h"
-#include "VocBase/replication-applier.h"
+#include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
+#include "VocBase/vocbase.h"
 
 struct TRI_vocbase_t;
 
@@ -106,7 +107,7 @@ class Syncer {
                                 std::string&);
 
   /// @brief creates a collection, based on the VelocyPack provided
-  int createCollection(TRI_vocbase_t *vocbase,
+  int createCollection(TRI_vocbase_t* vocbase,
                        arangodb::velocypack::Slice const&,
                        arangodb::LogicalCollection**);
 
@@ -127,7 +128,7 @@ class Syncer {
   
   TRI_vocbase_t* loadVocbase(TRI_voc_tick_t dbId);
   
-  LogicalCollection* resolveCollection(TRI_vocbase_t*, VPackSlice const& slice);
+  LogicalCollection* resolveCollection(TRI_vocbase_t*, arangodb::velocypack::Slice const& slice);
   
   /// @brief extract the collection by either id or name, may return nullptr!
   LogicalCollection* getCollectionByIdOrName(TRI_vocbase_t*, TRI_voc_cid_t,

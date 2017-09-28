@@ -36,6 +36,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Indexes/Index.h"
+#include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/InitialSyncer.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -43,11 +44,11 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/replication-applier.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
@@ -618,13 +619,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     return;
   }
 
-  res =
-      TRI_ConfigureReplicationApplier(_vocbase->replicationApplier(), &config);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-    return;
-  }
+  _vocbase->replicationApplier()->reconfigure(config);
 
   res = _vocbase->replicationApplier()->start(lastLogTick, true, barrierId);
 
@@ -633,9 +628,11 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     return;
   }
 
-  std::shared_ptr<VPackBuilder> result =
-      _vocbase->replicationApplier()->toVelocyPack();
-  generateResult(rest::ResponseCode::OK, result->slice());
+  VPackBuilder result;
+  result.openObject();
+  _vocbase->replicationApplier()->toVelocyPack(result);
+  result.close();
+  generateResult(rest::ResponseCode::OK, result.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1951,14 +1948,13 @@ void RestReplicationHandler::handleCommandSync() {
 void RestReplicationHandler::handleCommandApplierGetConfig() {
   TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
-  ReplicationApplierConfiguration config;
+  ReplicationApplierConfiguration configuration = _vocbase->replicationApplier()->configuration();
+  VPackBuilder builder;
+  builder.openObject();
+  configuration.toVelocyPack(builder, false);
+  builder.close();
 
-  {
-    READ_LOCKER(readLocker, _vocbase->replicationApplier()->_statusLock);
-    config = _vocbase->replicationApplier()->_configuration;
-  }
-  std::shared_ptr<VPackBuilder> configBuilder = config.toVelocyPack(false);
-  generateResult(rest::ResponseCode::OK, configBuilder->slice());
+  generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1967,8 +1963,6 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
 
 void RestReplicationHandler::handleCommandApplierSetConfig() {
   TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
-
-  ReplicationApplierConfiguration config;
 
   bool success;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
@@ -1979,10 +1973,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   }
   VPackSlice const body = parsedBody->slice();
 
-  {
-    READ_LOCKER(readLocker, _vocbase->replicationApplier()->_statusLock);
-    config = _vocbase->replicationApplier()->_configuration;
-  }
+  ReplicationApplierConfiguration config = _vocbase->replicationApplier()->configuration();
 
   std::string const endpoint =
       VelocyPackHelper::getStringValue(body, "endpoint", "");
@@ -2075,12 +2066,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
     }
   }
 
-  int res =
-      TRI_ConfigureReplicationApplier(_vocbase->replicationApplier(), &config);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  _vocbase->replicationApplier()->reconfigure(config);
 
   handleCommandApplierGetConfig();
 }
@@ -2100,7 +2086,7 @@ void RestReplicationHandler::handleCommandApplierStart() {
 
   if (found) {
     // query parameter "from" specified
-    initialTick = (TRI_voc_tick_t)StringUtils::uint64(value1);
+    initialTick = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value1));
     useTick = true;
   }
 
@@ -2109,7 +2095,7 @@ void RestReplicationHandler::handleCommandApplierStart() {
 
   if (found) {
     // query parameter "barrierId" specified
-    barrierId = (TRI_voc_tick_t)StringUtils::uint64(value2);
+    barrierId = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
   }
 
   int res =
@@ -2145,9 +2131,11 @@ void RestReplicationHandler::handleCommandApplierStop() {
 void RestReplicationHandler::handleCommandApplierGetState() {
   TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
-  std::shared_ptr<VPackBuilder> result =
-      _vocbase->replicationApplier()->toVelocyPack();
-  generateResult(rest::ResponseCode::OK, result->slice());
+  VPackBuilder builder;
+  builder.openObject();
+  _vocbase->replicationApplier()->toVelocyPack(builder);
+  builder.close();
+  generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
