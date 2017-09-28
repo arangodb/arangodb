@@ -39,6 +39,13 @@ class Thread;
 class V8Context;
 
 class V8DealerFeature final : public application_features::ApplicationFeature {
+  struct stats {
+    size_t available;
+    size_t busy;
+    size_t dirty;
+    size_t free;
+    size_t max;
+  };
  public:
   static V8DealerFeature* DEALER;
   static constexpr ssize_t ANY_CONTEXT = -1;
@@ -102,7 +109,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
     }
   }
 
-  std::tuple<size_t, size_t, size_t, size_t, size_t> getCurrentContextNumbers();
+  V8DealerFeature::stats getCurrentContextNumbers();
 
   void setNumberContexts(size_t nr) { _forceNrContexts = nr; }
 

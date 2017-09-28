@@ -1326,14 +1326,14 @@ bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
   return true;
 }
 
-std::tuple<size_t, size_t, size_t, size_t, size_t> V8DealerFeature::getCurrentContextNumbers() {
+V8DealerFeature::stats V8DealerFeature::getCurrentContextNumbers() {
   CONDITION_LOCKER(guard, _contextCondition);
   return {
-    _contexts.size(),
-    _busyContexts.size(),
-    _dirtyContexts.size(),
-    _freeContexts.size(),
-    _nrMaxContexts
+      available: _contexts.size(),
+      busy:      _busyContexts.size(),
+      dirty:     _dirtyContexts.size(),
+      free:      _freeContexts.size(),
+      max:       _nrMaxContexts
       };
 }
 
