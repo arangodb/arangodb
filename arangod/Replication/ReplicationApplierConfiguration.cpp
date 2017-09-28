@@ -28,12 +28,8 @@
 
 using namespace arangodb;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief construct the configuration with default values
-////////////////////////////////////////////////////////////////////////////////
-
-ReplicationApplierConfiguration::
-    ReplicationApplierConfiguration() 
+ReplicationApplierConfiguration::ReplicationApplierConfiguration() 
     : _endpoint(),
       _database(),
       _username(),
@@ -62,22 +58,41 @@ ReplicationApplierConfiguration::
       _restrictType(),
       _restrictCollections() {}
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief reset the configuration to defaults
-////////////////////////////////////////////////////////////////////////////////
-
 void ReplicationApplierConfiguration::reset() {
-  ReplicationApplierConfiguration empty;
-  update(&empty);
+  _endpoint.clear();
+  _database.clear();
+  _username.clear();
+  _password.clear();
+  _jwt.clear();
+  _requestTimeout = 600.0;
+  _connectTimeout = 10.0;
+  _ignoreErrors = 0;
+  _maxConnectRetries = 100;
+  _lockTimeoutRetries = 0;
+  _chunkSize = 0;
+  _connectionRetryWaitTime = 15 * 1000 * 1000;
+  _idleMinWaitTime = 1000 * 1000;
+  _idleMaxWaitTime = 5 * 500 * 1000;
+  _initialSyncMaxWaitTime = 300 * 1000 * 1000;
+  _autoResyncRetries = 2;
+  _sslProtocol = 0;
+  _autoStart = false; 
+  _adaptivePolling = true;
+  _autoResync = false;
+  _includeSystem = true;
+  _requireFromPresent = false;
+  _incremental = false;
+  _verbose = false;
+  _useCollectionId = true;
+  _restrictType.clear();
+  _restrictCollections.clear();
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get a VelocyPack representation
 ///        Expects builder to be in an open Object state
-////////////////////////////////////////////////////////////////////////////////
-
-void ReplicationApplierConfiguration::toVelocyPack(
-    bool includePassword, VPackBuilder& builder) const {
+void ReplicationApplierConfiguration::toVelocyPack(bool includePassword, 
+                                                   VPackBuilder& builder) const {
   if (!_endpoint.empty()) {
     builder.add("endpoint", VPackValue(_endpoint));
   }
@@ -136,10 +151,7 @@ void ReplicationApplierConfiguration::toVelocyPack(
       VPackValue(static_cast<double>(_idleMaxWaitTime) / (1000.0 * 1000.0)));
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get a VelocyPack representation
-////////////////////////////////////////////////////////////////////////////////
-
 std::shared_ptr<VPackBuilder>
 ReplicationApplierConfiguration::toVelocyPack(
     bool includePassword) const {
@@ -151,39 +163,3 @@ ReplicationApplierConfiguration::toVelocyPack(
 
   return builder;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copy an applier configuration
-////////////////////////////////////////////////////////////////////////////////
-
-void ReplicationApplierConfiguration::update(
-    ReplicationApplierConfiguration const* src) {
-  _endpoint = src->_endpoint;
-  _database = src->_database;
-  _username = src->_username;
-  _password = src->_password;
-  _jwt = src->_jwt;
-  _requestTimeout = src->_requestTimeout;
-  _connectTimeout = src->_connectTimeout;
-  _ignoreErrors = src->_ignoreErrors;
-  _maxConnectRetries = src->_maxConnectRetries;
-  _lockTimeoutRetries = src->_lockTimeoutRetries;
-  _sslProtocol = src->_sslProtocol;
-  _chunkSize = src->_chunkSize;
-  _autoStart = src->_autoStart;
-  _adaptivePolling = src->_adaptivePolling;
-  _autoResync = src->_autoResync;
-  _includeSystem = src->_includeSystem;
-  _requireFromPresent = src->_requireFromPresent;
-  _verbose = src->_verbose;
-  _incremental = src->_incremental;
-  _useCollectionId = src->_useCollectionId;
-  _restrictType = src->_restrictType;
-  _restrictCollections = src->_restrictCollections;
-  _connectionRetryWaitTime = src->_connectionRetryWaitTime;
-  _initialSyncMaxWaitTime = src->_initialSyncMaxWaitTime;
-  _idleMinWaitTime = src->_idleMinWaitTime;
-  _idleMaxWaitTime = src->_idleMaxWaitTime;
-  _autoResyncRetries = src->_autoResyncRetries;
-}
-

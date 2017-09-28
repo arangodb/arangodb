@@ -79,7 +79,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const* configuration)
   _localServerId = ServerIdFeature::getId();
   _localServerIdString = StringUtils::itoa(_localServerId);
 
-  _configuration.update(configuration);
+  _configuration = *configuration;
   _useCollectionId = _configuration._useCollectionId;
 
   _masterInfo._endpoint = configuration->_endpoint;

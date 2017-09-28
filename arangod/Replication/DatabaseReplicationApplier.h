@@ -34,7 +34,9 @@ namespace arangodb {
 /// @brief replication applier for a single database
 class DatabaseReplicationApplier : public ReplicationApplier {
  public:
-  explicit DatabaseReplicationApplier(TRI_vocbase_t* vocbase);
+  DatabaseReplicationApplier(ReplicationApplierConfiguration const& configuration, 
+                             TRI_vocbase_t* vocbase);
+
   ~DatabaseReplicationApplier();
   
   /// @brief load the applier state from persistent storage

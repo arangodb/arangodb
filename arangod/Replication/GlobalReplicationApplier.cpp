@@ -28,7 +28,8 @@
 using namespace arangodb;
 
 /// @brief server-global replication applier for all databases
-GlobalReplicationApplier::GlobalReplicationApplier() {}
+GlobalReplicationApplier::GlobalReplicationApplier(ReplicationApplierConfiguration const& configuration)
+      : ReplicationApplier(configuration) {}
 
 GlobalReplicationApplier::~GlobalReplicationApplier() {}
   

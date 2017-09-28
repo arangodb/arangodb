@@ -25,18 +25,20 @@
 #define ARANGOD_REPLICATION_REPLICATION_APPLIER_H 1
 
 #include "Basics/Common.h"
+#include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationApplierState.h"
 
 namespace arangodb {
 namespace velocypack {
 class Builder;
 }
 
-class ReplicationApplierState;
-
 /// @brief replication applier interface
 class ReplicationApplier {
  public:
-  ReplicationApplier();
+  explicit ReplicationApplier(ReplicationApplierConfiguration const& configuration) 
+      : _configuration(configuration) {}
+
   virtual ~ReplicationApplier();
   
   ReplicationApplier(ReplicationApplier const&) = delete;
@@ -58,6 +60,8 @@ class ReplicationApplier {
   virtual void stop() = 0;
 
  protected:
+  ReplicationApplierConfiguration _configuration;
+
   std::unique_ptr<ReplicationApplierState> _state;
 };
 

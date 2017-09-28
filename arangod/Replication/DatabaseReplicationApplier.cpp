@@ -29,8 +29,9 @@
 using namespace arangodb;
 
 /// @brief replication applier for a single database
-DatabaseReplicationApplier::DatabaseReplicationApplier(TRI_vocbase_t* vocbase)
-    : _vocbase(vocbase) {}
+DatabaseReplicationApplier::DatabaseReplicationApplier(ReplicationApplierConfiguration const& configuration,
+                                                       TRI_vocbase_t* vocbase)
+    : ReplicationApplier(configuration), _vocbase(vocbase) {}
 
 DatabaseReplicationApplier::~DatabaseReplicationApplier() {}
   

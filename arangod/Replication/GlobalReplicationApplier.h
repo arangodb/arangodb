@@ -32,7 +32,8 @@ namespace arangodb {
 /// @brief server-global replication applier for all databases
 class GlobalReplicationApplier : public ReplicationApplier {
  public:
-  GlobalReplicationApplier();
+  explicit GlobalReplicationApplier(ReplicationApplierConfiguration const& configuration);
+
   ~GlobalReplicationApplier();
   
   /// @brief load the applier state from persistent storage

@@ -1955,7 +1955,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
 
   {
     READ_LOCKER(readLocker, _vocbase->replicationApplier()->_statusLock);
-    config.update(&_vocbase->replicationApplier()->_configuration);
+    config = _vocbase->replicationApplier()->_configuration;
   }
   std::shared_ptr<VPackBuilder> configBuilder = config.toVelocyPack(false);
   generateResult(rest::ResponseCode::OK, configBuilder->slice());
@@ -1981,7 +1981,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
 
   {
     READ_LOCKER(readLocker, _vocbase->replicationApplier()->_statusLock);
-    config.update(&_vocbase->replicationApplier()->_configuration);
+    config = _vocbase->replicationApplier()->_configuration;
   }
 
   std::string const endpoint =

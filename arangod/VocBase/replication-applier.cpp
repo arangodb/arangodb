@@ -1075,7 +1075,7 @@ void TRI_replication_applier_t::toVelocyPack(VPackBuilder& builder) const {
 
   try {
     READ_LOCKER(readLocker, _statusLock);
-    config.update(&_configuration);
+    config = _configuration;
   } catch (...) {
     TRI_DestroyStateReplicationApplier(&state);
     throw;

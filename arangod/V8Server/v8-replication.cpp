@@ -584,7 +584,7 @@ static void JS_ConfigureApplierReplication(
 
     {
       READ_LOCKER(readLocker, vocbase->replicationApplier()->_statusLock);
-      config.update(&vocbase->replicationApplier()->_configuration);
+      config = vocbase->replicationApplier()->_configuration;
     }
 
     std::shared_ptr<VPackBuilder> builder = config.toVelocyPack(true);
@@ -607,7 +607,7 @@ static void JS_ConfigureApplierReplication(
     // fill with previous configuration
     {
       READ_LOCKER(readLocker, vocbase->replicationApplier()->_statusLock);
-      config.update(&vocbase->replicationApplier()->_configuration);
+      config = vocbase->replicationApplier()->_configuration;
     }
 
     // treat the argument as an object from now on
