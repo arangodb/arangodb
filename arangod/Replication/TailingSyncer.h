@@ -114,25 +114,14 @@ class TailingSyncer : public Syncer {
   virtual void postApplyMarker(uint64_t processedMarkers, bool skipped) {}
 
  protected:
-  /// @brief stringified chunk size
-  std::string _chunkSize;
-
-  /// @brief collection restriction type
-  Syncer::RestrictType _restrictType;
 
   /// @brief initial tick for continuous synchronization
   TRI_voc_tick_t _initialTick;
-
-  /// @brief whether or not to replicate system collections
-  bool _includeSystem;
 
   /// @brief whether or not the specified from tick must be present when
   /// fetching
   /// data from a master
   bool _requireFromPresent;
-
-  /// @brief whether or not the applier should be verbose
-  bool _verbose;
 
   /// @brief whether we can use single operation transactions
   bool _supportsSingleOperations;

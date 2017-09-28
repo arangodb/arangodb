@@ -57,13 +57,18 @@ std::string const Syncer::BaseUrl = "/_api/replication";
 
 Syncer::Syncer(ReplicationApplierConfiguration const* configuration)
     : _configuration(),
+      _chunkSize(1024 * 1024),
+      _restrictType(RESTRICT_NONE),
+      _includeSystem(configuration->_includeSystem),
+      _verbose(configuration->_verbose),
       _masterInfo(),
       _endpoint(nullptr),
       _connection(nullptr),
       _client(nullptr),
       _barrierId(0),
-      _barrierUpdateTime(0),
-      _barrierTtl(600) {
+      _barrierTtl(600),
+      _barrierUpdateTime(0)
+{
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
   if (configuration->_database.empty()) {
@@ -73,6 +78,11 @@ Syncer::Syncer(ReplicationApplierConfiguration const* configuration)
   } else {
     // use name from configuration
     _databaseName = configuration->_database;
+  }
+  
+  uint64_t c = configuration->_chunkSize;
+  if (c > 0) {
+    _chunkSize = c;
   }
 
   // get our own server-id
@@ -383,8 +393,8 @@ TRI_vocbase_t* Syncer::loadVocbase(TRI_voc_tick_t dbid) {
   if (it == _vocbaseCache.end()) {
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->useDatabase(dbid);
     if (vocbase != nullptr) {
+      TRI_DEFER(vocbase->release());
       _vocbaseCache.emplace(dbid, vocbase);
-      vocbase->release();
     } else {
       LOG_TOPIC(ERR, Logger::REPLICATION) << "Could not find database";
     }
@@ -410,7 +420,6 @@ int Syncer::applyCollectionDumpMarker(
       }
 
       // lock timeout
-
       if (++tries > _configuration._lockTimeoutRetries) {
         // timed out
         return res;

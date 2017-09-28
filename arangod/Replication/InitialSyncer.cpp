@@ -67,14 +67,10 @@ InitialSyncer::InitialSyncer(TRI_vocbase_t* vocbase,
     : Syncer(configuration),
       _progress("not started"),
       _restrictCollections(restrictCollections),
-      _restrictType(restrictType),
       _processedCollections(),
       _batchId(0),
       _batchUpdateTime(0),
       _batchTtl(180),
-      _includeSystem(false),
-      _chunkSize(configuration->_chunkSize),
-      _verbose(verbose),
       _hasFlushed(false),
       _skipCreateDrop(skipCreateDrop) {
   if (_chunkSize == 0) {
@@ -83,7 +79,7 @@ InitialSyncer::InitialSyncer(TRI_vocbase_t* vocbase,
     _chunkSize = 128 * 1024;
   }
 
-  _includeSystem = configuration->_includeSystem;
+  _restrictType = restrictType;
   _vocbaseCache.emplace(vocbase->id(), vocbase);
 }
 

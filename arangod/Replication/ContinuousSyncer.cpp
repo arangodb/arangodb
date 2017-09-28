@@ -631,7 +631,7 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
                                       uint64_t& ignoreCount, bool& worked,
                                       bool& masterActive) {
   std::string const baseUrl = BaseUrl + "/logger-follow?chunkSize=" +
-                              _chunkSize + "&barrier=" +
+                              StringUtils::itoa(_chunkSize) + "&barrier=" +
                               StringUtils::itoa(_barrierId);
 
   worked = false;
@@ -894,7 +894,8 @@ int ContinuousSyncer::syncCollectionFinalize(std::string& errorMsg,
     }
     
     std::string const baseUrl =
-    BaseUrl + "/logger-follow?chunkSize=" + _chunkSize + "&from=" +
+    BaseUrl + "/logger-follow?chunkSize=" +
+    StringUtils::itoa(_chunkSize) + "&from=" +
     StringUtils::itoa(fromTick) + "&serverId=" + _localServerIdString +
     "&collection=" + StringUtils::urlEncode(collectionName);
     

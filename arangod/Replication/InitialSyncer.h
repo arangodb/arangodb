@@ -206,9 +206,6 @@ class InitialSyncer : public Syncer {
   /// @brief collection restriction
   std::unordered_map<std::string, bool> _restrictCollections;
 
-  /// @brief collection restriction type
-  Syncer::RestrictType _restrictType;
-
   /// @brief collections synced
   std::map<TRI_voc_cid_t, std::string> _processedCollections;
 
@@ -220,15 +217,6 @@ class InitialSyncer : public Syncer {
 
   /// @brief ttl for batches
   int _batchTtl;
-
-  /// @brief include system collections in the dump?
-  bool _includeSystem;
-
-  /// @brief chunk size to use
-  uint64_t _chunkSize;
-
-  /// @brief verbosity
-  bool _verbose;
 
   /// @brief whether or not the WAL on the remote server has been flushed by us
   bool _hasFlushed;
