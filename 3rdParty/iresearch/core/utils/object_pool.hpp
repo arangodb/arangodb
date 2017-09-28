@@ -35,7 +35,7 @@ class atomic_base {
 
   void atomic_store(Ptr* p, Ptr& r) const  {
     SCOPED_LOCK(mutex_);
-    p->swap(r);
+    p->swap(r); // FIXME
   }
 
   const Ptr& atomic_load(const Ptr* p) const {
@@ -52,11 +52,11 @@ class atomic_base {
 template<typename T>
 class atomic_base<std::shared_ptr<T>> {
  public:
-  static std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T>& r) {
+  static std::shared_ptr<T> atomic_exchange(std::shared_ptr<T>* p, std::shared_ptr<T> r) {
     return std::atomic_exchange(p, r);
   }
 
-  static void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T>& r) {
+  static void atomic_store(std::shared_ptr<T>* p, std::shared_ptr<T> r) {
     std::atomic_store(p, r);
   }
 
