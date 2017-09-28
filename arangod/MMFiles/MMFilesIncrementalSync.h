@@ -31,7 +31,7 @@
 #include "MMFiles/MMFilesDitch.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
-#include "Replication/InitialSyncer.h"
+#include "Replication/DatabaseInitialSyncer.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Transaction/Helpers.h"
@@ -108,7 +108,7 @@ static bool FindRange(std::vector<uint8_t const*> const& markers,
   return found;
 }
 
-int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
+int handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
                           arangodb::LogicalCollection* col,
                           std::string const& keysId,
                           std::string const& cid,
@@ -197,8 +197,6 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
 
     syncer.sendExtendBatch();
     syncer.sendExtendBarrier();
-
-  
 
     std::string progress = "sorting " + std::to_string(markers.size()) +
                            " local key(s) for collection '" + collectionName +

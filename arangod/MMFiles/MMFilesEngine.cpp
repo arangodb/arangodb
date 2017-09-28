@@ -3378,7 +3378,7 @@ int MMFilesEngine::saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, a
   return TRI_ERROR_NO_ERROR;
 }
 
-int MMFilesEngine::handleSyncKeys(arangodb::InitialSyncer& syncer,
+int MMFilesEngine::handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                           arangodb::LogicalCollection* col,
                           std::string const& keysId,
                           std::string const& cid,

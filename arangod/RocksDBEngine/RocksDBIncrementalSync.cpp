@@ -24,7 +24,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Indexes/IndexIterator.h"
-#include "Replication/InitialSyncer.h"
+#include "Replication/DatabaseInitialSyncer.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
@@ -41,7 +41,7 @@
 
 namespace arangodb {
 int syncChunkRocksDB(
-    InitialSyncer& syncer, SingleCollectionTransaction* trx,
+    DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
     std::string const& keysId, uint64_t chunkId, std::string const& lowString,
     std::string const& highString,
     std::vector<std::pair<std::string, uint64_t>> const& markers,
@@ -332,7 +332,7 @@ int syncChunkRocksDB(
   return TRI_ERROR_NO_ERROR;
 }
 
-int handleSyncKeysRocksDB(InitialSyncer& syncer,
+int handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                           arangodb::LogicalCollection* col,
                           std::string const& keysId, std::string const& cid,
                           std::string const& collectionName,
