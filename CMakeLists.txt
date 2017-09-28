@@ -72,7 +72,7 @@ endif ()
 # ------------------------------------------------------------------------------
 
 set(ARANGODB_VERSION_MAJOR      "3")
-set(ARANGODB_VERSION_MINOR      "2")
+set(ARANGODB_VERSION_MINOR      "3")
 set(ARANGODB_VERSION_REVISION   "devel")
 set(ARANGODB_PACKAGE_REVISION   "1")
 
@@ -347,8 +347,8 @@ if (SOLARIS)
 endif ()
 
 if (CMAKE_COMPILER_IS_GNUCC)
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "4.8")
-    message(FATAL_ERROR "ArangoDB requires GCC 4.9 or newer.")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "5.4")
+    message(FATAL_ERROR "ArangoDB requires GCC 5.4 or newer.")
   elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "6.9.9")
     message(FATAL_ERROR "ArangoDB doesn't support GCC 7.0 yet.")
   endif()

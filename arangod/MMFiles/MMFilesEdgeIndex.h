@@ -26,6 +26,7 @@
 
 #include "Basics/AssocMulti.h"
 #include "Basics/Common.h"
+#include "Basics/fasthash.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "MMFiles/MMFilesIndexElement.h"
@@ -42,8 +43,69 @@ class LocalTaskQueue;
 
 class MMFilesEdgeIndex;
 
+struct MMFilesEdgeIndexHelper {
+  /// @brief hashes an edge key
+  static inline uint64_t HashKey(void*, VPackSlice const* key) {
+    TRI_ASSERT(key != nullptr);
+    // we can get away with the fast hash function here, as edge
+    // index values are restricted to strings
+    return MMFilesSimpleIndexElement::hash(*key);
+  }
+
+  /// @brief hashes an edge
+  static inline uint64_t HashElement(void*, MMFilesSimpleIndexElement const& element,
+                                     bool byKey) {
+    if (byKey) {
+      return element.hash();
+    }
+
+    TRI_voc_rid_t revisionId = element.revisionId();
+    return fasthash64_uint64(revisionId, 0x56781234);
+  }
+
+  /// @brief checks if key and element match
+  inline bool IsEqualKeyElement(void* userData, VPackSlice const* left,
+                                MMFilesSimpleIndexElement const& right) const {
+    TRI_ASSERT(left != nullptr);
+    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+    TRI_ASSERT(context != nullptr);
+
+    try {
+      VPackSlice tmp = right.slice(context);
+      TRI_ASSERT(tmp.isString());
+      return left->equals(tmp);
+    } catch (...) {
+      return false;
+    }
+  }
+
+  /// @brief checks for elements are equal
+  inline bool IsEqualElementElement(void*, MMFilesSimpleIndexElement const& left,
+                                    MMFilesSimpleIndexElement const& right) const {
+    return left.revisionId() == right.revisionId();
+  }
+
+  /// @brief checks for elements are equal
+  inline bool IsEqualElementElementByKey(void* userData,
+                                         MMFilesSimpleIndexElement const& left,
+                                         MMFilesSimpleIndexElement const& right) const {
+    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+    try {
+      VPackSlice lSlice = left.slice(context);
+      VPackSlice rSlice = right.slice(context);
+
+      TRI_ASSERT(lSlice.isString());
+      TRI_ASSERT(rSlice.isString());
+
+      return lSlice.equals(rSlice);
+    } catch (...) {
+      return false;
+    }
+  }
+};
+
 typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice,
-                                     MMFilesSimpleIndexElement, uint32_t, false>
+                                     MMFilesSimpleIndexElement, uint32_t, false, MMFilesEdgeIndexHelper>
     TRI_MMFilesEdgeIndexHash_t;
 
 class MMFilesEdgeIndexIterator final : public IndexIterator {
@@ -78,8 +140,6 @@ class MMFilesEdgeIndex final : public Index {
   MMFilesEdgeIndex() = delete;
 
   MMFilesEdgeIndex(TRI_idx_iid_t, arangodb::LogicalCollection*);
-
-  ~MMFilesEdgeIndex();
 
  public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_EDGE_INDEX; }
@@ -120,9 +180,9 @@ class MMFilesEdgeIndex final : public Index {
 
   bool hasBatchInsert() const override { return true; }
 
-  TRI_MMFilesEdgeIndexHash_t* from() { return _edgesFrom; }
+  TRI_MMFilesEdgeIndexHash_t* from() { return _edgesFrom.get(); }
 
-  TRI_MMFilesEdgeIndexHash_t* to() { return _edgesTo; }
+  TRI_MMFilesEdgeIndexHash_t* to() { return _edgesTo.get(); }
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
@@ -164,10 +224,10 @@ class MMFilesEdgeIndex final : public Index {
 
  private:
   /// @brief the hash table for _from
-  TRI_MMFilesEdgeIndexHash_t* _edgesFrom;
+  std::unique_ptr<TRI_MMFilesEdgeIndexHash_t> _edgesFrom;
 
   /// @brief the hash table for _to
-  TRI_MMFilesEdgeIndexHash_t* _edgesTo;
+  std::unique_ptr<TRI_MMFilesEdgeIndexHash_t> _edgesTo;
 
   /// @brief number of buckets effectively used by the index
   size_t _numBuckets;

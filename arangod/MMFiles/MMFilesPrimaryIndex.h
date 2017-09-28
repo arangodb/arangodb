@@ -28,6 +28,8 @@
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "Indexes/IndexLookupContext.h"
+#include "MMFiles/MMFilesIndexElement.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -43,7 +45,52 @@ namespace transaction {
 class Methods;
 }
 
-typedef arangodb::basics::AssocUnique<uint8_t, MMFilesSimpleIndexElement>
+struct MMFilesPrimaryIndexHelper {
+  static inline uint64_t HashKey(void*, uint8_t const* key) {
+    return MMFilesSimpleIndexElement::hash(VPackSlice(key));
+  }
+
+  static inline uint64_t HashElement(void*, MMFilesSimpleIndexElement const& element, bool) {
+    return element.hash();
+  }
+
+  /// @brief determines if a key corresponds to an element
+  inline bool IsEqualKeyElement(void* userData, uint8_t const* key,
+                                MMFilesSimpleIndexElement const& right) const {
+    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+    TRI_ASSERT(context != nullptr);
+
+    try {
+      VPackSlice tmp = right.slice(context);
+      TRI_ASSERT(tmp.isString());
+      return VPackSlice(key).equals(tmp);
+    } catch (...) {
+      return false;
+    }
+  }
+
+  /// @brief determines if two elements are equal
+  inline bool IsEqualElementElement(void* userData,
+                                    MMFilesSimpleIndexElement const& left,
+                                    MMFilesSimpleIndexElement const& right) const {
+    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+    TRI_ASSERT(context != nullptr);
+
+    VPackSlice l = left.slice(context);
+    VPackSlice r = right.slice(context);
+    TRI_ASSERT(l.isString());
+    TRI_ASSERT(r.isString());
+    return l.equals(r);
+  }
+
+  inline bool IsEqualElementElementByKey(void* userData,
+                                         MMFilesSimpleIndexElement const& left,
+                                         MMFilesSimpleIndexElement const& right) const {
+    return IsEqualElementElement(userData, left, right);
+  }
+};
+
+typedef arangodb::basics::AssocUnique<uint8_t, MMFilesSimpleIndexElement, MMFilesPrimaryIndexHelper>
     MMFilesPrimaryIndexImpl;
 
 class MMFilesPrimaryIndexIterator final : public IndexIterator {
@@ -82,6 +129,7 @@ class MMFilesAllIndexIterator final : public IndexIterator {
   char const* typeName() const override { return "all-index-iterator"; }
 
   bool next(TokenCallback const& cb, size_t limit) override;
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override;
 
   void skip(uint64_t count, uint64_t& skipped) override;
 
@@ -90,6 +138,7 @@ class MMFilesAllIndexIterator final : public IndexIterator {
  private:
   MMFilesPrimaryIndexImpl const* _index;
   arangodb::basics::BucketPosition _position;
+  std::vector<std::pair<TRI_voc_rid_t, uint8_t const*>> _revisions;
   bool const _reverse;
   uint64_t _total;
 };
@@ -125,8 +174,6 @@ class MMFilesPrimaryIndex final : public Index {
   MMFilesPrimaryIndex() = delete;
 
   explicit MMFilesPrimaryIndex(arangodb::LogicalCollection*);
-
-  ~MMFilesPrimaryIndex();
 
  public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_PRIMARY_INDEX; }
@@ -249,7 +296,7 @@ class MMFilesPrimaryIndex final : public Index {
 
  private:
   /// @brief the actual index
-  MMFilesPrimaryIndexImpl* _primaryIndex;
+  std::unique_ptr<MMFilesPrimaryIndexImpl> _primaryIndex;
 };
 }
 

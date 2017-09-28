@@ -104,9 +104,12 @@ bool RocksDBPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
   while (limit > 0) {
     // TODO: prevent copying of the value into result, as we don't need it here!
     RocksDBToken token = _index->lookupKey(_trx, StringRef(*_iterator));
-    cb(token);
+    if (token.revisionId()) {
+      cb(token);
 
-    --limit;
+      --limit;
+    }
+
     _iterator.next();
     if (!_iterator.valid()) {
       return false;

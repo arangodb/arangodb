@@ -342,6 +342,10 @@ class MMFilesCollection final : public PhysicalCollection {
   bool readDocumentWithCallback(transaction::Methods* trx,
                                 DocumentIdentifierToken const& token,
                                 IndexIterator::DocumentCallback const& cb) override;
+  
+  size_t readDocumentWithCallback(transaction::Methods* trx,
+                                  std::vector<std::pair<TRI_voc_rid_t, uint8_t const*>>& tokens,
+                                  IndexIterator::DocumentCallback const& cb);
 
   bool readDocumentConditional(transaction::Methods* trx,
                                DocumentIdentifierToken const& token,
@@ -482,6 +486,7 @@ class MMFilesCollection final : public PhysicalCollection {
   uint8_t const* lookupRevisionVPackConditional(TRI_voc_rid_t revisionId,
                                                 TRI_voc_tick_t maxTick,
                                                 bool excludeWal) const;
+  void batchLookupRevisionVPack(std::vector<std::pair<TRI_voc_rid_t, uint8_t const*>>& revisions) const;
 
   bool addIndex(std::shared_ptr<arangodb::Index> idx);
   void addIndexLocal(std::shared_ptr<arangodb::Index> idx);

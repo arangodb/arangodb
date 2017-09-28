@@ -120,7 +120,7 @@ ArangoCollection.prototype.toArray = function () {
     return this.all().toArray();
   }
 
-  return this.ALL(null, null).documents;
+  return this.ALL().documents;
 };
 
 // //////////////////////////////////////////////////////////////////////////////

@@ -30,6 +30,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
 #include "Indexes/IndexIterator.h"
+#include "Indexes/IndexLookupContext.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPathBasedIndex.h"
 #include "Transaction/Helpers.h"
@@ -49,6 +50,128 @@ class LocalTaskQueue;
 
 class MMFilesHashIndex;
 
+struct MMFilesHashIndexHelper {
+  MMFilesHashIndexHelper(size_t n, bool allowExpansion)
+    : _numFields(n), _allowExpansion(allowExpansion) {}
+
+  static inline uint64_t HashKey(void*, VPackSlice const* key) {
+    return MMFilesHashIndexElement::hash(*key);
+  }
+
+  static inline uint64_t HashElement(void*, MMFilesHashIndexElement const* element, bool byKey) {
+    uint64_t hash = element->hash();
+
+    if (byKey) {
+      return hash;
+    }
+
+    TRI_voc_rid_t revisionId = element->revisionId();
+    return fasthash64_uint64(revisionId, hash);
+  }
+
+  /// @brief determines if a key corresponds to an element
+  inline bool IsEqualKeyElement(void* userData, VPackSlice const* left,
+                                MMFilesHashIndexElement const* right) const {
+    TRI_ASSERT(left->isArray());
+    TRI_ASSERT(right->revisionId() != 0);
+    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+    TRI_ASSERT(context != nullptr);
+
+    // TODO: is it a performance improvement to compare the hash values first?
+    VPackArrayIterator it(*left);
+
+    while (it.valid()) {
+      int res = arangodb::basics::VelocyPackHelper::compare(it.value(), right->slice(context, it.index()), false);
+
+      if (res != 0) {
+        return false;
+      }
+
+      it.next();
+    }
+
+    return true;
+  }
+
+  inline bool IsEqualElementElementByKey(void* userData, 
+                                         MMFilesHashIndexElement const* left,
+                                         MMFilesHashIndexElement const* right) const {
+    TRI_ASSERT(left->revisionId() != 0);
+    TRI_ASSERT(right->revisionId() != 0);
+
+    if (!_allowExpansion && left->revisionId() == right->revisionId()) {
+      return true;
+    }
+
+    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+
+    for (size_t i = 0; i < _numFields; ++i) {
+      VPackSlice leftData = left->slice(context, i);
+      VPackSlice rightData = right->slice(context, i);
+
+      int res = arangodb::basics::VelocyPackHelper::compare(leftData,
+                                                            rightData, false);
+
+      if (res != 0) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+  
+  size_t const _numFields;
+  bool const _allowExpansion;
+};
+
+struct MMFilesUniqueHashIndexHelper : public MMFilesHashIndexHelper {
+  MMFilesUniqueHashIndexHelper(size_t n, bool allowExpansion) : MMFilesHashIndexHelper(n, allowExpansion) {}
+  
+  /// @brief determines if two elements are equal
+  inline bool IsEqualElementElement(void*,
+                                    MMFilesHashIndexElement const* left,
+                                    MMFilesHashIndexElement const* right) const {
+    // this is quite simple
+    return left->revisionId() == right->revisionId();
+  }
+};
+
+struct MMFilesMultiHashIndexHelper : public MMFilesHashIndexHelper {
+  MMFilesMultiHashIndexHelper(size_t n, bool allowExpansion) : MMFilesHashIndexHelper(n, allowExpansion) {}
+
+  /// @brief determines if two elements are equal
+  inline bool IsEqualElementElement(void* userData,
+                                    MMFilesHashIndexElement const* left,
+                                    MMFilesHashIndexElement const* right) const {
+    TRI_ASSERT(left != nullptr);
+    TRI_ASSERT(right != nullptr);
+
+    if (left->revisionId() != right->revisionId()) {
+      return false;
+    }
+    if (left->hash() != right->hash()) {
+      return false;
+    }
+
+    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+    TRI_ASSERT(context != nullptr);
+
+    for (size_t i = 0; i < context->numFields(); ++i) {
+      VPackSlice leftData = left->slice(context, i);
+      VPackSlice rightData = right->slice(context, i);
+
+      int res =
+          arangodb::basics::VelocyPackHelper::compare(leftData, rightData, false);
+
+      if (res != 0) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+};
+   
 /// @brief Class to build Slice lookups out of AST Conditions
 class MMFilesHashIndexLookupBuilder {
  private:
@@ -226,93 +349,28 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
 
   /// @brief given an element generates a hash integer
  private:
-  class HashElementFunc {
-   public:
-    HashElementFunc() {}
-
-    uint64_t operator()(void* userData, MMFilesHashIndexElement const* element,
-                        bool byKey = true) {
-      uint64_t hash = element->hash();
-
-      if (byKey) {
-        return hash;
-      }
-
-      TRI_voc_rid_t revisionId = element->revisionId();
-      return fasthash64_uint64(revisionId, hash);
-    }
-  };
-
-  /// @brief determines if a key corresponds to an element
-  class IsEqualElementElementByKey {
-    size_t _numFields;
-    bool _allowExpansion;
-
-   public:
-    IsEqualElementElementByKey(size_t n, bool allowExpansion)
-        : _numFields(n), _allowExpansion(allowExpansion) {}
-
-    bool operator()(void* userData, MMFilesHashIndexElement const* left,
-                    MMFilesHashIndexElement const* right) {
-      TRI_ASSERT(left->revisionId() != 0);
-      TRI_ASSERT(right->revisionId() != 0);
-
-      if (!_allowExpansion && left->revisionId() == right->revisionId()) {
-        return true;
-      }
-
-      IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
-
-      for (size_t i = 0; i < _numFields; ++i) {
-        VPackSlice leftData = left->slice(context, i);
-        VPackSlice rightData = right->slice(context, i);
-
-        int res = arangodb::basics::VelocyPackHelper::compare(leftData,
-                                                              rightData, false);
-
-        if (res != 0) {
-          return false;
-        }
-      }
-
-      return true;
-    }
-  };
-
- private:
   /// @brief the actual hash index (unique type)
   typedef arangodb::basics::AssocUnique<arangodb::velocypack::Slice,
-                                        MMFilesHashIndexElement*>
+                                        MMFilesHashIndexElement*, MMFilesUniqueHashIndexHelper>
       TRI_HashArray_t;
 
   struct UniqueArray {
     UniqueArray() = delete;
-    UniqueArray(size_t numPaths, TRI_HashArray_t*, HashElementFunc*,
-                IsEqualElementElementByKey*);
-
-    ~UniqueArray();
-
-    TRI_HashArray_t* _hashArray;    // the hash array itself, unique values
-    HashElementFunc* _hashElement;  // hash function for elements
-    IsEqualElementElementByKey* _isEqualElElByKey;  // comparison func
+    UniqueArray(size_t numPaths, std::unique_ptr<TRI_HashArray_t>);
+    std::unique_ptr<TRI_HashArray_t> _hashArray;    // the hash array itself, unique values
     size_t _numPaths;
   };
 
   /// @brief the actual hash index (multi type)
   typedef arangodb::basics::AssocMulti<
-      arangodb::velocypack::Slice, MMFilesHashIndexElement*, uint32_t, false>
+      arangodb::velocypack::Slice, MMFilesHashIndexElement*, uint32_t, false, MMFilesMultiHashIndexHelper>
       TRI_HashArrayMulti_t;
 
   struct MultiArray {
     MultiArray() = delete;
-    MultiArray(size_t numPaths, TRI_HashArrayMulti_t*, HashElementFunc*,
-               IsEqualElementElementByKey*);
-    ~MultiArray();
+    MultiArray(size_t numPaths, std::unique_ptr<TRI_HashArrayMulti_t>);
 
-    TRI_HashArrayMulti_t*
-        _hashArray;                 // the hash array itself, non-unique values
-    HashElementFunc* _hashElement;  // hash function for elements
-    IsEqualElementElementByKey* _isEqualElElByKey;  // comparison func
+    std::unique_ptr<TRI_HashArrayMulti_t> _hashArray; // the hash array itself, non-unique values
     size_t _numPaths;
   };
 
