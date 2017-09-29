@@ -657,6 +657,12 @@ if test -n "${DOWNLOAD_SYNCER_USER}"; then
                       grep '"id"'  |\
                       sed -e 's;.*": *;;' -e 's;,;;'
             )
+    if test -z "${OAUTH_ID}"; then
+        echo "failed to login to github! Giving up."
+        exit 1
+    fi
+    trap "curl -s -X DELETE \"https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations/${OAUTH_ID}\"" EXIT
+
     if test -f "${SRC}/SYNCER_REV"; then
         SYNCER_REV=$(cat ${SRC}/SYNCER_REV)
     else
@@ -688,18 +694,26 @@ if test -n "${DOWNLOAD_SYNCER_USER}"; then
 
         FN=$(echo "${DOWNLOAD_URLS}" | grep "${OSNAME}" | ${SED} -e 's;.*/;;g')
         echo "$FN"
+        if test -f "${BUILD_DIR}/${FN}-${SYNCER_REV}"; then
+            CURRENT_MD5=$(${MD5} < "${BUILD_DIR}/${TN}" | ${SED} "s; .*;;")
+            OLD_MD5=$(cat "${BUILD_DIR}/${FN}-${SYNCER_REV}")
+            if test "${CURRENT_MD5}" != "${OLD_MD5}"; then
+                rm -f "${BUILD_DIR}/${FN}-${SYNCER_REV}"
+            fi
+        fi
         if ! test -f "${BUILD_DIR}/${FN}-${SYNCER_REV}"; then
+            rm -f "${FN}"
             curl -LJO# -H 'Accept: application/octet-stream' "${SYNCER_URL}?access_token=${OAUTH_TOKEN}"
-            cp "${FN}" "${BUILD_DIR}/${TN}"
-            touch "${BUILD_DIR}/${FN}-${SYNCER_REV}"
+            mv "${FN}" "${BUILD_DIR}/${TN}"
+            ${MD5} < "${BUILD_DIR}/${TN}"  | ${SED} "s; .*;;" > "${BUILD_DIR}/${FN}-${SYNCER_REV}"
+            OLD_MD5=$(cat "${BUILD_DIR}/${FN}-${SYNCER_REV}")
             chmod a+x "${BUILD_DIR}/${TN}"
-            echo "downloaded ${BUILD_DIR}/${FN}-${SYNCER_REV} MD5: $(${MD5} < "${BUILD_DIR}/${TN}")"
+            echo "downloaded ${BUILD_DIR}/${FN}-${SYNCER_REV} MD5: ${OLD_MD5}"
         else
-            echo "using already downloaded ${BUILD_DIR}/${FN}-${SYNCER_REV} MD5: $(${MD5} < "${BUILD_DIR}/${TN}")"
+            echo "using already downloaded ${BUILD_DIR}/${FN}-${SYNCER_REV} MD5: ${OLD_MD5}"
         fi
     fi
     # Log out again:
-    curl -s -X DELETE "https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations/${OAUTH_ID}"
 
     THIRDPARTY_SBIN=("${THIRDPARTY_SBIN}${BUILD_DIR}/${TN}")
 fi
@@ -730,17 +744,27 @@ if test "${DOWNLOAD_STARTER}" == 1; then
         if test -f "${TN}"; then
             rm -f "${TN}"
         fi
-        FN=$(echo "${STARTER_URL}" |${SED} "s;.*/;;")
 
+        FN=$(echo "${STARTER_URL}" |${SED} "s;.*/;;")
         echo "$FN"
+        if test -f "${BUILD_DIR}/${FN}-${STARTER_REV}"; then
+            CURRENT_MD5=$(${MD5} < "${BUILD_DIR}/${TN}" | ${SED} "s; .*;;")
+            OLD_MD5=$(cat "${BUILD_DIR}/${FN}-${STARTER_REV}")
+            if test "${CURRENT_MD5}" != "${OLD_MD5}"; then
+                rm -f "${BUILD_DIR}/${FN}-${STARTER_REV}"
+            fi
+        fi
+
         if ! test -f "${BUILD_DIR}/${FN}-${STARTER_REV}"; then
+            rm -f "${FN}"
             curl -LO "${STARTER_URL}"
-            cp "${FN}" "${BUILD_DIR}/${TN}"
-            touch "${BUILD_DIR}/${FN}-${STARTER_REV}"
+            mv "${FN}" "${BUILD_DIR}/${TN}"
+            ${MD5} < "${BUILD_DIR}/${TN}" | ${SED} "s; .*;;" > "${BUILD_DIR}/${FN}-${STARTER_REV}"
             chmod a+x "${BUILD_DIR}/${TN}"
-            echo "downloaded ${BUILD_DIR}/${FN}-${STARTER_REV} MD5: $(${MD5} < "${BUILD_DIR}/${TN}")"
+            OLD_MD5=$(cat "${BUILD_DIR}/${FN}-${STARTER_REV}")
+            echo "downloaded ${BUILD_DIR}/${FN}-${STARTER_REV} MD5: ${OLD_MD5}"
         else
-            echo "using already downloaded ${BUILD_DIR}/${FN}-${STARTER_REV} MD5: $(${MD5} < "${BUILD_DIR}/${TN}")"
+            echo "using already downloaded ${BUILD_DIR}/${FN}-${STARTER_REV} MD5: ${OLD_MD5}"
         fi
     fi
     THIRDPARTY_BIN=("${THIRDPARTY_BIN}${BUILD_DIR}/${TN}")
