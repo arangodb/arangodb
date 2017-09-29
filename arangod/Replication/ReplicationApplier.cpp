@@ -22,9 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicationApplier.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Thread.h"
 #include "Basics/WriteLocker.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "VocBase/replication-common.h"
 
@@ -40,6 +42,64 @@ ReplicationApplier::ReplicationApplier(ReplicationApplierConfiguration const& co
 
 ReplicationApplier::~ReplicationApplier() {}
 
+/// @brief test if the replication applier is running
+bool ReplicationApplier::isRunning() const {
+  READ_LOCKER(readLocker, _statusLock);
+  return _state._active;
+}
+
+/// @brief block the replication applier from starting
+int ReplicationApplier::preventStart() {
+  WRITE_LOCKER(writeLocker, _statusLock);
+
+  if (_state._active) {
+    // already running
+    return TRI_ERROR_REPLICATION_RUNNING;
+  }
+
+  if (_state._preventStart) {
+    // someone else requested start prevention
+    return TRI_ERROR_LOCKED;
+  }
+
+  _state._stopInitialSynchronization = false;
+  _state._preventStart = true;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief unblock the replication applier from starting
+int ReplicationApplier::allowStart() {
+  WRITE_LOCKER(writeLocker, _statusLock);
+
+  if (!_state._preventStart) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  _state._stopInitialSynchronization = false;
+  _state._preventStart = false;
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+/// @brief whether or not autostart option was set
+bool ReplicationApplier::autoStart() const {
+  READ_LOCKER(readLocker, _statusLock);
+  return _configuration._autoStart;
+}
+
+/// @brief check whether the initial synchronization should be stopped
+bool ReplicationApplier::stopInitialSynchronization() const {
+  READ_LOCKER(readLocker, _statusLock);
+
+  return _state._stopInitialSynchronization;
+}
+
+/// @brief stop the initial synchronization
+void ReplicationApplier::stopInitialSynchronization(bool value) {
+  WRITE_LOCKER(writeLocker, _statusLock);
+  _state._stopInitialSynchronization = value;
+}
 
 /// @brief shuts down the replication applier
 void ReplicationApplier::shutdown() {
@@ -67,6 +127,25 @@ void ReplicationApplier::shutdown() {
 
   LOG_TOPIC(INFO, Logger::REPLICATION)
       << "shut down replication applier for " << _databaseName;
+}
+  
+void ReplicationApplier::reconfigure(ReplicationApplierConfiguration const& configuration) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  
+  if (configuration._endpoint.empty()) {
+    // no endpoint
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
+  }
+
+  WRITE_LOCKER(writeLocker, _statusLock);
+
+  if (_state._active) {
+    // cannot change the configuration while the replication is still running
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_RUNNING);
+  }
+
+  _configuration = configuration;
+  storeConfiguration(true);
 }
 
 /// @brief register an applier error

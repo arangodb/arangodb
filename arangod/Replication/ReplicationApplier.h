@@ -59,7 +59,10 @@ class ReplicationApplier {
   virtual void shutdown();
 
   /// @brief configure the replication applier
-  virtual void reconfigure(ReplicationApplierConfiguration const& configuration) = 0;
+  virtual void reconfigure(ReplicationApplierConfiguration const& configuration);
+
+  /// @brief store the configuration for the applier
+  virtual void storeConfiguration(bool doSync) = 0;
 
   /// @brief remove the replication application state file
   virtual void removeState() = 0;
@@ -80,7 +83,25 @@ class ReplicationApplier {
   bool isTerminated() { return _terminateThread.load(); }
 
   void setTermination(bool value) { _terminateThread.store(value); }
+
+  /// @brief test if the replication applier is running
+  bool isRunning() const;
   
+  /// @brief block the replication applier from starting
+  int preventStart();
+  
+  /// @brief whether or not autostart option was set
+  bool autoStart() const;
+  
+  /// @brief check whether the initial synchronization should be stopped
+  bool stopInitialSynchronization() const;
+
+  /// @brief stop the initial synchronization
+  void stopInitialSynchronization(bool value);
+
+  /// @brief unblock the replication applier from starting
+  int allowStart();
+
   // TODO: can these be made protected?
   /// @brief register an applier error
   int setError(int errorCode, char const* msg);
