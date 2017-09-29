@@ -105,6 +105,11 @@ if (USE_IRESEARCH)
     IMPORTED_LOCATION "boost_filesystem;boost_locale;boost_system;boost_thread"
   )
 
+  set(GTEST_ROOT "invalid") # supress GTest search in IResearch
+  set(GTEST_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/v5.6.X/third-party/gtest-1.7.0/fused-src/")
+  set(GTEST_LIBRARY gtest)
+  set(GTEST_MAIN_LIBRARY gtest)
+
   set(ICU_STATIC_LIBS ${ICU_LIBS})
 
   set(IRESEARCH_EXCLUDE_STATIC_THIRD_PARTY_LIBS TRUE) # disable linking in of 3rd party libraries automatically
