@@ -30,8 +30,13 @@
 var internal = require('internal');
 var arangosh = require('@arangodb/arangosh');
 
-var logger = {};
-var applier = {};
+let logger = {};
+let applier = {};
+let globalApplier = {};
+    
+function appendChar(append) {
+  return (append === '' ? '?' : '&');
+}
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief return the replication logger state
@@ -76,79 +81,100 @@ logger.firstTick = function () {
 // / @brief starts the replication applier
 // //////////////////////////////////////////////////////////////////////////////
 
-applier.start = function (initialTick, barrierId) {
-  var db = internal.db;
+function applierStart(global, initialTick, barrierId) {
   var append = '';
 
   if (initialTick !== undefined) {
-    append = '?from=' + encodeURIComponent(initialTick);
+    append = appendChar(append) + 'from=' + encodeURIComponent(initialTick);
   }
   if (barrierId !== undefined) {
-    if (append === '') {
-      append += '?';
-    } else {
-      append += '&';
-    }
-    append += 'barrierId=' + encodeURIComponent(barrierId);
+    append += appendChar(append) + 'barrierId=' + encodeURIComponent(barrierId);
+  }
+  if (global) {
+    append += appendChar(append) + 'global=true';
   }
 
-  var requestResult = db._connection.PUT('/_api/replication/applier-start' + append, '');
+  var requestResult = internal.db._connection.PUT('/_api/replication/applier-start' + append, '');
   arangosh.checkRequestResult(requestResult);
 
   return requestResult;
-};
+}
+
+applier.start = function (initialTick, barrierId) { return applierStart(false, initialTick, barrierId); };
+globalApplier.start = function (initialTick, barrierId) { return applierStart(true, initialTick, barrierId); };
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief stops the replication applier
 // //////////////////////////////////////////////////////////////////////////////
 
-applier.stop = applier.shutdown = function () {
-  var db = internal.db;
+function applierShutdown(global) {
+  var append = '';
+  if (global) {
+    append += appendChar(append) + 'global=true';
+  }
 
-  var requestResult = db._connection.PUT('/_api/replication/applier-stop', '');
+  var requestResult = internal.db._connection.PUT('/_api/replication/applier-stop' + append, '');
   arangosh.checkRequestResult(requestResult);
 
   return requestResult;
 };
+
+applier.stop = applier.shutdown = function () { return applierShutdown(false); };
+globalApplier.stop = applier.shutdown = function () { return applierShutdown(true); };
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief return the replication applier state
 // //////////////////////////////////////////////////////////////////////////////
 
-applier.state = function () {
-  var db = internal.db;
+function applierState(global) {
+  var append = '';
+  if (global) {
+    append += appendChar(append) + 'global=true';
+  }
 
-  var requestResult = db._connection.GET('/_api/replication/applier-state');
+  var requestResult = internal.db._connection.GET('/_api/replication/applier-state' + append);
   arangosh.checkRequestResult(requestResult);
 
   return requestResult;
 };
+
+applier.state = function () { return applierState(false); };
+globalApplier.state = function () { return applierState(true); };
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief stop the replication applier state and "forget" all state
 // //////////////////////////////////////////////////////////////////////////////
 
-applier.forget = function () {
-  var db = internal.db;
+function applierForget(global) {
+  var append = '';
+  if (global) {
+    append += appendChar(append) + 'global=true';
+  }
 
-  var requestResult = db._connection.DELETE('/_api/replication/applier-state');
+  var requestResult = internal.db._connection.DELETE('/_api/replication/applier-state' + append);
   arangosh.checkRequestResult(requestResult);
 
   return requestResult;
 };
 
+applier.forget = function () { return applierForget(false); };
+globalApplier.forget = function () { return applierForget(true); };
+
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief configures the replication applier
 // //////////////////////////////////////////////////////////////////////////////
 
-applier.properties = function (config) {
-  var db = internal.db;
+function applierProperties(global, config) {
+  var append = '';
+  if (global) {
+    append += appendChar(append) + 'global=true';
+  }
 
   var requestResult;
   if (config === undefined) {
-    requestResult = db._connection.GET('/_api/replication/applier-config');
+    requestResult = internal.db._connection.GET('/_api/replication/applier-config' + append);
   } else {
-    requestResult = db._connection.PUT('/_api/replication/applier-config',
+    requestResult = internal.db._connection.PUT('/_api/replication/applier-config' + append,
       JSON.stringify(config));
   }
 
@@ -156,6 +182,9 @@ applier.properties = function (config) {
 
   return requestResult;
 };
+
+applier.properties = function (config) { return applierProperties(false, config); };
+globalApplier.properties = function (config) { return applierProperties(true, config); };
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief helper function for fetching the result of an async job
@@ -205,14 +234,12 @@ var waitForResult = function (config, id) {
 // //////////////////////////////////////////////////////////////////////////////
 
 var sync = function (config) {
-  const db = internal.db;
-
   const body = JSON.stringify(config || {});
   const headers = {
     'X-Arango-Async': 'store'
   };
 
-  const requestResult = db._connection.PUT_RAW('/_api/replication/sync', body, headers);
+  const requestResult = internal.db._connection.PUT_RAW('/_api/replication/sync', body, headers);
   arangosh.checkRequestResult(requestResult);
 
   if (config.async) {
@@ -234,6 +261,26 @@ var syncCollection = function (collection, config) {
   config.includeSystem = true;
 
   return sync(config);
+};
+
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief performs a one-time synchronization with a remote endpoint
+// //////////////////////////////////////////////////////////////////////////////
+
+var syncGlobal = function (config) {
+  const body = JSON.stringify(config || {});
+  const headers = {
+    'X-Arango-Async': 'store'
+  };
+
+  const requestResult = internal.db._connection.PUT_RAW('/_api/replication/sync?global=true', body, headers);
+  arangosh.checkRequestResult(requestResult);
+
+  if (config.async) {
+    return requestResult.headers['x-arango-async-id'];
+  }
+
+  return waitForResult(config, requestResult.headers['x-arango-async-id']);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -303,8 +350,10 @@ var serverId = function () {
 
 exports.logger = logger;
 exports.applier = applier;
+exports.globalApplier = globalApplier;
 exports.sync = sync;
 exports.syncCollection = syncCollection;
+exports.syncGlobal = syncGlobal;
 exports.setupReplication = setupReplication;
 exports.getSyncResult = getSyncResult;
 exports.serverId = serverId;

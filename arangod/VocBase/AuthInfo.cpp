@@ -145,7 +145,6 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code,
                                    "Error executing user query");
-    //return std::shared_ptr<VPackBuilder>();
   }
 
   VPackSlice usersSlice = queryResult.result->slice();
@@ -474,7 +473,7 @@ static Result UpdateUser(VPackSlice const& user) {
 Result AuthInfo::enumerateUsers(
     std::function<void(AuthUserEntry&)> const& func) {
   loadFromDB();
-  // we require an consisten view on the user object
+  // we require a consistent view on the user object
   {
     WRITE_LOCKER(guard, _authInfoLock);
     for (auto& it : _authInfo) {
@@ -502,7 +501,7 @@ Result AuthInfo::updateUser(std::string const& user,
   }
   loadFromDB();
   Result r;
-  {  // we require an consisten view on the user object
+  {  // we require a consistent view on the user object
     WRITE_LOCKER(guard, _authInfoLock);
     auto it = _authInfo.find(user);
     if (it == _authInfo.end()) {
