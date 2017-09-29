@@ -1237,3 +1237,7 @@ int DatabaseInitialSyncer::iterateCollections(
   // all ok
   return TRI_ERROR_NO_ERROR;
 }
+
+std::unordered_map<std::string, std::string> DatabaseInitialSyncer::createHeaders() const {
+  return { {StaticStrings::ClusterCommSource, ServerState::instance()->getId()} };
+}

@@ -69,7 +69,6 @@ InitialSyncer::InitialSyncer(
       _progress("not started"),
       _restrictCollections(restrictCollections),
       _processedCollections(),
-      _allowAquireBatch(true),
       _batchId(0),
       _batchUpdateTime(0),
       _batchTtl(180),
@@ -92,7 +91,7 @@ InitialSyncer::~InitialSyncer() {
 
 /// @brief send a "start batch" command
 int InitialSyncer::sendStartBatch(std::string& errorMsg) {
-  if (!_allowAquireBatch) {
+  if (_isChildSyncer) {
     return TRI_ERROR_NO_ERROR;
   }
   
@@ -146,7 +145,7 @@ int InitialSyncer::sendStartBatch(std::string& errorMsg) {
 
 /// @brief send an "extend batch" command
 int InitialSyncer::sendExtendBatch() {
-  if (_batchId == 0) {
+  if (_isChildSyncer || _batchId == 0) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -187,7 +186,7 @@ int InitialSyncer::sendExtendBatch() {
 
 /// @brief send a "finish batch" command
 int InitialSyncer::sendFinishBatch() {
-  if (!_allowAquireBatch || _batchId == 0) {
+  if (_isChildSyncer || _batchId == 0) {
     return TRI_ERROR_NO_ERROR;
   }
 

@@ -210,6 +210,9 @@ class Syncer {
   
   /// @brief whether or not to use collection ids in replication
   bool _useCollectionId;
+  
+  /// Is this syncer allowed to handle its own batch
+  bool _isChildSyncer;
 
   /// @brief base url of the replication API
   static std::string const BaseUrl;

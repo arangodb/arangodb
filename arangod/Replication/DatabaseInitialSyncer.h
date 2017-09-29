@@ -25,6 +25,7 @@
 #define ARANGOD_REPLICATION_DATABASE_INITIAL_SYNCER_H 1
 
 #include "Replication/InitialSyncer.h"
+#include "Cluster/ServerState.h"
 
 struct TRI_vocbase_t;
 
@@ -127,6 +128,25 @@ private:
   /// @brief check whether the initial synchronization should be aborted
   bool checkAborted();
   
+  /// @brief insert the batch id and barrier ID
+  void useAsChildSyncer(uint64_t barrierId, double barrierUpdateTime,
+                      uint64_t batchId, double batchUpdateTime) {
+    _isChildSyncer = true;
+    _barrierId = barrierId;
+    _barrierUpdateTime = barrierUpdateTime;
+    _batchId = batchId;
+    _batchUpdateTime = batchUpdateTime;
+  }
+  
+  /// @brief last time the barrier was extended or created
+  /// The barrier prevents the deletion of WAL files for mmfiles
+  double barrierUpdateTime() const { return _barrierUpdateTime; }
+  
+  /// @brief last time the batch was extended or created
+  /// The batch prevents compaction in mmfiles and keeps a snapshot
+  /// in rocksdb for a constant view of the data
+  double batchUpdateTime() const { return _batchUpdateTime; }
+  
  private:
   
   /// @brief set a progress message
@@ -174,9 +194,7 @@ private:
                             arangodb::velocypack::Slice>> const&,
       bool, std::string&, sync_phase_e);
 
-  std::unordered_map<std::string, std::string> createHeaders() {
-    return { {StaticStrings::ClusterCommSource, ServerState::instance()->getId()} };
-  }
+  std::unordered_map<std::string, std::string> createHeaders() const;
 
  private:
 

@@ -68,7 +68,8 @@ Syncer::Syncer(ReplicationApplierConfiguration const* configuration)
       _client(nullptr),
       _barrierId(0),
       _barrierTtl(600),
-      _barrierUpdateTime(0)
+      _barrierUpdateTime(0),
+      _isChildSyncer(false)
 {
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
@@ -179,6 +180,9 @@ TRI_voc_tick_t Syncer::stealBarrier() {
 
 /// @brief send a "create barrier" command
 int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
+  if (_isChildSyncer) {
+    return TRI_ERROR_NO_ERROR;
+  }
   _barrierId = 0;
 
   std::string const url = BaseUrl + "/barrier";
@@ -230,7 +234,7 @@ int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
 
 /// @brief send an "extend barrier" command
 int Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
-  if (_barrierId == 0) {
+  if (_isChildSyncer || _barrierId == 0) {
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -268,7 +272,7 @@ int Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
 
 /// @brief send a "remove barrier" command
 int Syncer::sendRemoveBarrier() {
-  if (_barrierId == 0) {
+  if (_isChildSyncer || _barrierId == 0) {
     return TRI_ERROR_NO_ERROR;
   }
 

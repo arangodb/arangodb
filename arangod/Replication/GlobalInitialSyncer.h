@@ -29,18 +29,7 @@
 namespace arangodb {
 
 /// Meta Syncer driving multiple initial syncer
-class GlobalInitialSyncer {
-
- private:
-  /// @brief apply phases
-  typedef enum {
-    PHASE_NONE,
-    PHASE_INIT,
-    PHASE_VALIDATE,
-    PHASE_DROP_CREATE,
-    PHASE_DUMP
-  } sync_phase_e;
-
+class GlobalInitialSyncer : public InitialSyncer {
  public:
   GlobalInitialSyncer(ReplicationApplierConfiguration const*,
                       std::unordered_map<std::string, bool> const&,
@@ -50,9 +39,7 @@ class GlobalInitialSyncer {
 
  public:
   /// @brief run method, performs a full synchronization
-  int run(std::string& errorMsg, bool incremental);
-
-  std::string progress() { return _progress; }
+  arangodb::Result run(bool incremental);
   
  private:
   
@@ -70,7 +57,9 @@ class GlobalInitialSyncer {
 
   /// @brief fetch the server's inventory
   int fetchInventory(arangodb::velocypack::Builder& builder, std::string& errorMsg);
-
+  
+  /// @brief add or remove databases such that the local inventory mirrors the masters
+  Result updateServerInventory(velocypack::Slice const& masterDatabases);
 };
 }
 

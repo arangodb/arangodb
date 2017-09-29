@@ -25,9 +25,6 @@
 #define ARANGOD_REPLICATION_INITIAL_SYNCER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/StaticStrings.h"
-#include "Cluster/ServerState.h"
-#include "Logger/Logger.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/Syncer.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -58,17 +55,6 @@ class InitialSyncer : public Syncer {
 
   std::string progress() const { return _progress; }
   
-  uint64_t batchId() const { return _batchId; }
-  double batchUpdateTime() const { return _batchUpdateTime; }
-  
-  
-  /// @brief insert the batch id
-  void insertBatchId(uint64_t batchId, double batchUpdateTime) {
-    _batchId = batchId;
-    _batchUpdateTime = batchUpdateTime;
-    _allowAquireBatch = false;
-  }
-
  protected:
   
   /// @brief set a progress message
@@ -92,9 +78,6 @@ class InitialSyncer : public Syncer {
 
   /// @brief collections synced
   std::map<TRI_voc_cid_t, std::string> _processedCollections;
-  
-  /// Is this syncer allowed to handle its own batch
-  bool _allowAquireBatch;
 
   /// @brief dump batch id
   uint64_t _batchId;
