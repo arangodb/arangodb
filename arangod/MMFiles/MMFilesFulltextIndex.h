@@ -25,7 +25,7 @@
 #define ARANGOD_MMFILES_FULLTEXT_INDEX_H 1
 
 #include "Basics/Common.h"
-#include "Indexes/Index.h"
+#include "MMFiles/MMFilesIndex.h"
 #include "MMFiles/mmfiles-fulltext-common.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -34,9 +34,9 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
-struct DocumentIdentifierToken;
+struct LocalDocumentId;
 
-class MMFilesFulltextIndex final : public Index {
+class MMFilesFulltextIndex final : public MMFilesIndex {
  public:
   MMFilesFulltextIndex() = delete;
 
@@ -65,10 +65,10 @@ class MMFilesFulltextIndex final : public Index {
 
   bool matchesDefinition(VPackSlice const&) const override;
 
-  Result insert(transaction::Methods*, TRI_voc_rid_t,
+  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
                 arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  Result remove(transaction::Methods*, TRI_voc_rid_t,
+  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
                 arangodb::velocypack::Slice const&, bool isRollback) override;
 
   void load() override {}
@@ -81,11 +81,6 @@ class MMFilesFulltextIndex final : public Index {
   }
 
   TRI_fts_index_t* internals() { return _fulltextIndex; }
-
-  static TRI_voc_rid_t fromDocumentIdentifierToken(
-      DocumentIdentifierToken const& token);
-  static DocumentIdentifierToken toDocumentIdentifierToken(
-      TRI_voc_rid_t revisionId);
 
  private:
   std::set<std::string> wordlist(arangodb::velocypack::Slice const&);

@@ -25,6 +25,7 @@
 #define ARANGOD_MMFILES_DOCUMENT_OPERATION_H 1
 
 #include "Basics/Common.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -32,6 +33,27 @@ class LogicalCollection;
 namespace transaction {
 class Methods;
 }
+
+struct MMFilesDocumentDescriptor {
+  MMFilesDocumentDescriptor() : _localDocumentId(), _vpack(nullptr) {}
+  MMFilesDocumentDescriptor(LocalDocumentId const& documentId, uint8_t const* vpack) 
+      : _localDocumentId(documentId), _vpack(vpack) {}
+
+  bool empty() const { return _vpack == nullptr; }
+  
+  void reset(MMFilesDocumentDescriptor const& other) {
+    _localDocumentId = other._localDocumentId;
+    _vpack = other._vpack;
+  }
+
+  void clear() {
+    _localDocumentId.clear();
+    _vpack = nullptr;
+  }
+
+  LocalDocumentId _localDocumentId;
+  uint8_t const* _vpack;
+};
 
 struct MMFilesDocumentOperation {
   enum class StatusType : uint8_t {
@@ -43,15 +65,15 @@ struct MMFilesDocumentOperation {
   };
   
   MMFilesDocumentOperation(LogicalCollection* collection,
-                    TRI_voc_document_operation_e type);
+                           TRI_voc_document_operation_e type);
 
   ~MMFilesDocumentOperation();
 
   MMFilesDocumentOperation* clone();
   void swapped();
 
-  void setRevisions(DocumentDescriptor const& oldRevision,
-                    DocumentDescriptor const& newRevision);
+  void setDocumentIds(MMFilesDocumentDescriptor const& oldRevision,
+                    MMFilesDocumentDescriptor const& newRevision);
   
   void setVPack(uint8_t const* vpack);
 
@@ -78,8 +100,8 @@ struct MMFilesDocumentOperation {
 
  private:
   LogicalCollection* _collection;
-  DocumentDescriptor _oldRevision;
-  DocumentDescriptor _newRevision;
+  MMFilesDocumentDescriptor _oldRevision;
+  MMFilesDocumentDescriptor _newRevision;
   TRI_voc_tick_t _tick;
   TRI_voc_document_operation_e _type;
   StatusType _status;

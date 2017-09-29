@@ -18,30 +18,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_MMFILES_MMFILES_TOKEN_H
-#define ARANGOD_MMFILES_MMFILES_TOKEN_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_INDEX_H
+#define ARANGOD_MMFILES_MMFILES_INDEX_H 1
 
-#include "StorageEngine/DocumentIdentifierToken.h"
+#include "Basics/Common.h"
+#include "Basics/AttributeNameParser.h"
+#include "Indexes/Index.h"
+
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
+class LogicalCollection;
 
-struct MMFilesToken : public DocumentIdentifierToken {
+class MMFilesIndex : public Index {
  public:
-  MMFilesToken() : DocumentIdentifierToken() {}
-  explicit MMFilesToken(TRI_voc_rid_t revisionId)
-      : DocumentIdentifierToken(revisionId) {}
-  MMFilesToken(MMFilesToken const& other)
-      : DocumentIdentifierToken(other._data) {}
+  MMFilesIndex(TRI_idx_iid_t id, LogicalCollection* collection,
+               std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
+               bool unique, bool sparse) 
+    : Index(id, collection, attributes, unique, sparse) {}
 
-  inline TRI_voc_rid_t revisionId() const {
-    return static_cast<TRI_voc_rid_t>(_data);
-  }
+  MMFilesIndex(TRI_idx_iid_t id, LogicalCollection* collection,
+               VPackSlice const& info) 
+    : Index(id, collection, info) {}
 };
-static_assert(sizeof(MMFilesToken) == sizeof(uint64_t), "invalid MMFilesToken size");
-
 }
 
 #endif

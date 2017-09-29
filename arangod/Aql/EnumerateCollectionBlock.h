@@ -33,7 +33,7 @@
 
 namespace arangodb {
 
-struct DocumentIdentifierToken;
+struct LocalDocumentId;
 class ManagedDocumentResult;
 struct OperationCursor;
 
