@@ -48,6 +48,8 @@
 #include "Basics/files.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
@@ -182,7 +184,8 @@ void CompoundReader::add(irs::directory_reader const& reader) {
     const auto* pkColumn = entry.column_reader(arangodb::iresearch::DocumentPrimaryKey::PK());
 
     if (!pkColumn) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "encountered a sub-reader without a primary key column while creating a reader for iResearch view, ignoring";
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "encountered a sub-reader without a primary key column while creating a reader for iResearch view, ignoring";
 
       continue;
     }
@@ -330,7 +333,8 @@ bool ViewIteratorBase::readDocument(
   irs::bytes_ref tmpRef;
 
   if (!pkValues(docId, tmpRef) || !docPk.read(tmpRef)) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failed to read document primary key while reading document from iResearch view, doc_id '" << docId << "'";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "failed to read document primary key while reading document from iResearch view, doc_id '" << docId << "'";
 
     return false; // not a valid document reference
   }
@@ -342,7 +346,9 @@ bool ViewIteratorBase::readDocument(
   auto* collection = _trx->documentCollection(docPk.cid());
 
   if (!collection) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failed to find collection while reading document from iResearch view, cid '" << docPk.cid() << "', rid '" << docPk.rid() << "'";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "failed to find collection while reading document from iResearch view, cid '" << docPk.cid()
+      << "', rid '" << docPk.rid() << "'";
 
     return false; // not a valid collection reference
   }
@@ -466,7 +472,9 @@ bool OrderedViewIterator::next(TokenCallback const& callback, size_t limit) {
 
     while (itr->next()) {
       if (!loadToken(tmpToken, i, itr->value())) {
-        LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failed to generate document identifier token while iterating iResearch view, ignoring: reader_id '" << i << "', doc_id '" << itr->value() << "'";
+        LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "failed to generate document identifier token while iterating iResearch view, ignoring: reader_id '" << i
+          << "', doc_id '" << itr->value() << "'";
 
         continue; // if here then there is probably a bug in IResearchView while indexing
       }
@@ -474,7 +482,9 @@ bool OrderedViewIterator::next(TokenCallback const& callback, size_t limit) {
       score->evaluate(); // compute a score for the current document
 
       if (!score) {
-        LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failed to generate document score while iterating iResearch view, ignoring: reader_id '" << i << "', doc_id '" << itr->value() << "'";
+        LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "failed to generate document score while iterating iResearch view, ignoring: reader_id '" << i
+          << "', doc_id '" << itr->value() << "'";
 
         continue; // if here then there is probably a bug in IResearchView or in the iResearch library
       }
@@ -493,7 +503,8 @@ bool OrderedViewIterator::next(TokenCallback const& callback, size_t limit) {
   // skip documents previously returned
   for (size_t i = _state._skip; i; --i, ++tokenItr) {
     if (tokenItr == tokenEnd) {
-      LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH) << "document count less than the document count during the previous iteration on the same query while iterating iResearch view'";
+      LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "document count less than the document count during the previous iteration on the same query while iterating iResearch view'";
 
       break; // if here then there is probably a bug in the iResearch library
     }
@@ -532,7 +543,9 @@ void OrderedViewIterator::skip(uint64_t count, uint64_t& skipped) {
 
     while (count > skipped && itr->next()) {
       if (!loadToken(tmpToken, i, itr->value())) {
-        LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failed to generate document identifier token while iterating iResearch view, ignoring: reader_id '" << i << "', doc_id '" << itr->value() << "'";
+        LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "failed to generate document identifier token while iterating iResearch view, ignoring: reader_id '" << i
+          << "', doc_id '" << itr->value() << "'";
 
         continue; // if here then there is probably a bug in IResearchView while indexing
       }
@@ -607,7 +620,9 @@ bool UnorderedViewIterator::next(TokenCallback const& callback, size_t limit) {
 
     while (limit && _state._itr->next()) {
       if (!loadToken(tmpToken, _state._readerOffset, _state._itr->value())) {
-        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failed to generate document identifier token while iterating iResearch view, ignoring: reader_id '" << _state._readerOffset << "', doc_id '" << _state._itr->value() << "'";
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "failed to generate document identifier token while iterating iResearch view, ignoring: reader_id '" << _state._readerOffset
+          << "', doc_id '" << _state._itr->value() << "'";
 
         continue;
       }
@@ -749,14 +764,18 @@ arangodb::Result createPersistedDataDirectory(
 
     return arangodb::Result(/*TRI_ERROR_NO_ERROR*/);
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "caught exception while creating iResearch view '" << viewId << "' data path '" + dstDataPath + "': " << e.what();
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while creating iResearch view '" << viewId
+      << "' data path '" + dstDataPath + "': " << e.what();
     IR_EXCEPTION();
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("error creating iResearch view '") + std::to_string(viewId) + "' data path '" + dstDataPath + "'"
     );
   } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "caught exception while creating iResearch view '" << viewId << "' data path '" + dstDataPath + "'";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while creating iResearch view '" << viewId
+      << "' data path '" + dstDataPath + "'";
     IR_EXCEPTION();
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
@@ -778,10 +797,12 @@ size_t directoryMemory(irs::directory const& directory, TRI_voc_cid_t viewId) no
       return true;
     });
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "caught error while calculating size of iResearch view '" << viewId << "': " << e.what();
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "caught error while calculating size of iResearch view '" << viewId << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "caught error while calculating size of iResearch view '" << viewId << "'";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "caught error while calculating size of iResearch view '" << viewId << "'";
     IR_EXCEPTION();
   }
 
@@ -1025,14 +1046,16 @@ arangodb::Result updateLinks(
       std::string("failed to update links while updating iResearch view '") + std::to_string(view.id()) + "', retry same request or examine errors for collections: " + error
     );
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "caught exception while updating links for iResearch view '" << view.id() << "': " << e.what();
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while updating links for iResearch view '" << view.id() << "': " << e.what();
     IR_EXCEPTION();
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
       std::string("error updating links for iResearch view '") + std::to_string(view.id()) + "'"
     );
   } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "caught exception while updating links for iResearch view '" << view.id() << "'";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while updating links for iResearch view '" << view.id() << "'";
     IR_EXCEPTION();
     return arangodb::Result(
       TRI_ERROR_BAD_PARAMETER,
@@ -1094,8 +1117,10 @@ IResearchView::DataStore& IResearchView::DataStore::operator=(
   return *this;
 }
 
-IResearchView::DataStore::operator bool() const noexcept {
-  return _directory && _writer;
+void IResearchView::DataStore::sync() {
+  TRI_ASSERT(_writer && _reader);
+  _writer->commit();
+  _reader = _reader.reopen(); // update reader
 }
 
 IResearchView::MemoryStore::MemoryStore() {
@@ -1155,40 +1180,41 @@ IResearchView::IResearchView(
    _asyncTerminate(false),
    _memoryNode(&_memoryNodes[0]), // set current memory node (arbitrarily 0)
    _toFlush(&_memoryNodes[1]), // set flush-pending memory node (not same as _memoryNode)
-   _threadPool(0, 0) { // 0 == create pool with no threads, i.e. not running anything
+   _threadPool(0, 0), // 0 == create pool with no threads, i.e. not running anything
+   _inRecovery(false) {
 
   // set up in-recovery insertion hooks
-  {
-    struct BeforeInsert {
-      static int invoke(
-          IResearchView& view,
-          arangodb::transaction::Methods& trx,
-          TRI_voc_cid_t cid,
-          TRI_voc_rid_t rid
-      ) {
-        return view.remove(trx, cid, rid);
-      }
-      static int noop(
-          IResearchView& view,
-          arangodb::transaction::Methods& trx,
-          TRI_voc_cid_t cid,
-          TRI_voc_rid_t rid
-      ) {
-        return TRI_ERROR_NO_ERROR;
-      }
-    };
+  auto* feature = arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
 
-    auto* feature = arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
+  if (feature) {
+    feature->registerPostRecoveryCallback([this]()->arangodb::Result {
+      if (_storePersisted) {
+        LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+          << "starting persisted-sync sync for iResearch view '" << id() << "'";
 
-    if (!feature) {
-      _beforeInsert = &BeforeInsert::noop; // database cannot be in recovery if there is no Database feature
-    } else {
-      _beforeInsert = &BeforeInsert::invoke;
-      feature->registerPostRecoveryCallback([this]()->arangodb::Result {
-        _beforeInsert = &BeforeInsert::noop; // remove in-recovery hook once recovery is complete
-        return arangodb::Result();
-      });
-    }
+        try {
+          _storePersisted.sync();
+        } catch (std::exception const& e) {
+          LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
+            << "caught exception while committing persisted store for iResearch view '" << id()
+            << "': " << e.what();
+
+          return arangodb::Result(TRI_ERROR_INTERNAL, e.what());
+        } catch (...) {
+          LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
+            << "caught exception while committing persisted store for iResearch view '" << id() << "'";
+
+          return arangodb::Result(TRI_ERROR_INTERNAL);
+        }
+
+        LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+          << "finished persisted-sync sync for iResearch view '" << id() << "'";
+      }
+
+      _threadPool.max_threads(_meta._threadsMaxTotal); // start pool
+      _inRecovery = false;
+      return arangodb::Result();
+    });
   }
 
   // initialize round-robin memory store chain
@@ -1201,7 +1227,8 @@ IResearchView::IResearchView(
   // initialize transaction callback
   _transactionCallback = [this](transaction::Methods* trx)->void {
     if (!trx || !trx->state()) {
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to find transaction id while processing transaction callback for iResearch view '" << id() << "'";
+      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+        << "failed to find transaction id while processing transaction callback for iResearch view '" << id() << "'";
       return; // 'trx' and transaction state required
     }
 
@@ -1210,7 +1237,8 @@ IResearchView::IResearchView(
       auto res = finish(trx->state()->id(), false);
 
       if (TRI_ERROR_NO_ERROR != res) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to finish abort while processing transaction callback for iResearch view '" << id() << "'";
+        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+          << "failed to finish abort while processing transaction callback for iResearch view '" << id() << "'";
       }
 
       return;
@@ -1219,9 +1247,11 @@ IResearchView::IResearchView(
       auto res = finish(trx->state()->id(), true);
 
       if (TRI_ERROR_NO_ERROR != res) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to finish commit while processing transaction callback for iResearch view '" << id() << "'";
+        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+          << "failed to finish commit while processing transaction callback for iResearch view '" << id() << "'";
       } else if (trx->state()->options().waitForSync && !sync()) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to sync while processing transaction callback for iResearch view '" << id() << "'";
+        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+          << "failed to sync while processing transaction callback for iResearch view '" << id() << "'";
       }
 
       return;
@@ -1352,34 +1382,42 @@ bool IResearchView::cleanup(size_t maxMsec /*= 0*/) {
   try {
     SCOPED_LOCK(mutex);
 
-    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting active memory-store cleanup for iResearch view '" << id() << "'";
+    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+      << "starting active memory-store cleanup for iResearch view '" << id() << "'";
     irs::directory_utils::remove_all_unreferenced(*(_memoryNode->_store._directory));
-    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "finished active memory-store cleanup for iResearch view '" << id() << "'";
+    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+      << "finished active memory-store cleanup for iResearch view '" << id() << "'";
 
     if (maxMsec && TRI_microtime() >= thresholdSec) {
       return true; // skip if timout exceeded
     }
 
-    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting flushing memory-store cleanup for iResearch view '" << id() << "'";
+    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+      << "starting flushing memory-store cleanup for iResearch view '" << id() << "'";
     irs::directory_utils::remove_all_unreferenced(*(_toFlush->_store._directory));
-    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "finished flushing memory-store cleanup for iResearch view '" << id() << "'";
+    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+      << "finished flushing memory-store cleanup for iResearch view '" << id() << "'";
 
     if (maxMsec && TRI_microtime() >= thresholdSec) {
       return true; // skip if timout exceeded
     }
 
     if (_storePersisted) {
-      LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting persisted-store cleanup for iResearch view '" << id() << "'";
+      LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+        << "starting persisted-store cleanup for iResearch view '" << id() << "'";
       irs::directory_utils::remove_all_unreferenced(*(_storePersisted._directory));
-      LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "finished persisted-store cleanup for iResearch view '" << id() << "'";
+      LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+        << "finished persisted-store cleanup for iResearch view '" << id() << "'";
     }
 
     return true;
-  } catch (std::exception& e) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception during cleanup of iResearch view '" << id() << "': " << e.what();
+  } catch (std::exception const& e) {
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception during cleanup of iResearch view '" << id() << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception during cleanup of iResearch view '" << id() << "'";
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception during cleanup of iResearch view '" << id() << "'";
     IR_EXCEPTION();
   }
 
@@ -1449,11 +1487,13 @@ void IResearchView::drop() {
       return; // success
     }
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while removing iResearch view '" << id() << "': " << e.what();
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while removing iResearch view '" << id() << "': " << e.what();
     IR_EXCEPTION();
     throw;
   } catch (...) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while removing iResearch view '" << id() << "'";
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while removing iResearch view '" << id() << "'";
     IR_EXCEPTION();
     throw;
   }
@@ -1463,7 +1503,9 @@ void IResearchView::drop() {
 
 int IResearchView::drop(TRI_voc_cid_t cid) {
   if (!_logicalView || !_logicalView->getPhysical()) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to find meta-store while dropping collection from iResearch view '" << id() <<"' cid '" << cid << "'";
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "failed to find meta-store while dropping collection from iResearch view '" << id()
+      << "' cid '" << cid << "'";
 
     return TRI_ERROR_INTERNAL;
   }
@@ -1479,7 +1521,9 @@ int IResearchView::drop(TRI_voc_cid_t cid) {
   auto res = persistProperties(metaStore); // persist '_meta' definition
 
   if (!res.ok()) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to persist view definition while dropping collection from iResearch view '" << id() << "' cid '" << cid << "'";
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "failed to persist view definition while dropping collection from iResearch view '" << id()
+      << "' cid '" << cid << "'";
 
     return res.errorNumber();
   }
@@ -1501,10 +1545,14 @@ int IResearchView::drop(TRI_voc_cid_t cid) {
 
     return TRI_ERROR_NO_ERROR;
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while removing from iResearch view '" << id() << "', collection '" << cid << "': " << e.what();
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while removing from iResearch view '" << id()
+      << "', collection '" << cid << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while removing from iResearch view '" << id() << "', collection '" << cid << "'";
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while removing from iResearch view '" << id()
+      << "', collection '" << cid << "'";
     IR_EXCEPTION();
   }
 
@@ -1560,10 +1608,14 @@ int IResearchView::finish(TRI_voc_tid_t tid, bool commit) {
 
     return TRI_ERROR_NO_ERROR;
   } catch (std::exception& e) {
-    LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH) << "caught exception while committing transaction for iResearch view '" << id() << "', tid '" << tid << "': " << e.what();
+    LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while committing transaction for iResearch view '" << id()
+      << "', tid '" << tid << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH) << "caught exception while committing transaction for iResearch view '" << id() << "', tid '" << tid << "'";
+    LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while committing transaction for iResearch view '" << id()
+      << "', tid '" << tid << "'";
     IR_EXCEPTION();
   }
 
@@ -1603,10 +1655,12 @@ int IResearchView::finish() {
 
     return TRI_ERROR_NO_ERROR;
   } catch (std::exception& e) {
-    LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH) << "caught exception while committing memory store for iResearch view '" << id() << "': " << e.what();
+    LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while committing memory store for iResearch view '" << id() << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH) << "caught exception while committing memory store for iResearch view '" << id();
+    LOG_TOPIC(ERR, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while committing memory store for iResearch view '" << id();
     IR_EXCEPTION();
   }
 
@@ -1683,7 +1737,9 @@ void IResearchView::getPropertiesVPack(
           linkBuilder.openObject();
 
           if (!ptr->json(linkBuilder, false)) {
-            LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failed to generate json for IResearch link '" << ptr->id() << "' while generating json for IResearch view '" << id() << "'";
+            LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+              << "failed to generate json for IResearch link '" << ptr->id()
+              << "' while generating json for IResearch view '" << id() << "'";
             continue; // skip invalid link definitions
           }
 
@@ -1695,11 +1751,13 @@ void IResearchView::getPropertiesVPack(
 
     trx.commit();
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "caught exception while generating json for IResearch view '" << id() << "': " << e.what();
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while generating json for IResearch view '" << id() << "': " << e.what();
     IR_EXCEPTION();
     return; // do not add 'links' section
   } catch (...) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "caught exception while generating json for IResearch view '" << id() << "'";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while generating json for IResearch view '" << id() << "'";
     IR_EXCEPTION();
     return; // do not add 'links' section
   }
@@ -1729,17 +1787,13 @@ int IResearchView::insert(
     return TRI_ERROR_NO_ERROR;
   }
 
-  auto res = _beforeInsert(*this, trx, cid, rid);
+  DataStore* store;
 
-  if (TRI_ERROR_NO_ERROR != res) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed on pre-insert operation while inserting into iResearch view '" << id() << "', collection '" << cid << "', revision '" << rid << "'";
+  if (_inRecovery) {
+    _storePersisted._writer->remove(FilterFactory::filter(cid, rid));
 
-    return res;
-  }
-
-  MemoryStore* store;
-
-  {
+    store = &_storePersisted;
+  } else {
     // '_storeByTid' can be asynchronously updated
     SCOPED_LOCK(_trxStoreMutex);
 
@@ -1763,12 +1817,18 @@ int IResearchView::insert(
       return TRI_ERROR_NO_ERROR;
     }
 
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed inserting into iResearch view '" << id() << "', collection '" << cid << "', revision '" << rid << "'";
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "failed inserting into iResearch view '" << id()
+      << "', collection '" << cid << "', revision '" << rid << "'";
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while inserting into iResearch view '" << id() << "', collection '" << cid << "', revision '" << rid << "': " << e.what();
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while inserting into iResearch view '" << id()
+      << "', collection '" << cid << "', revision '" << rid << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while inserting into iResearch view '" << id() << "', collection '" << cid << "', revision '" << rid << "'";
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while inserting into iResearch view '" << id()
+      << "', collection '" << cid << "', revision '" << rid << "'";
     IR_EXCEPTION();
   }
 
@@ -1785,19 +1845,15 @@ int IResearchView::insert(
     return TRI_ERROR_BAD_PARAMETER; // 'trx' and transaction id required
   }
 
-  for (auto& entry: batch) {
-    auto res = _beforeInsert(*this, trx, cid, entry.first);
+  DataStore* store;
 
-    if (TRI_ERROR_NO_ERROR != res) {
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed on pre-insert operation while inserting batch into iResearch view '" << id() << "', collection '" << cid;
-
-      return res;
+  if (_inRecovery) {
+    for (auto& doc : batch) {
+      _storePersisted._writer->remove(FilterFactory::filter(cid, doc.first));
     }
-  }
 
-  MemoryStore* store;
-
-  {
+    store = &_storePersisted;
+  } else {
     // '_storeByTid' can be asynchronously updated
     SCOPED_LOCK(_trxStoreMutex);
 
@@ -1848,14 +1904,17 @@ int IResearchView::insert(
 
     try {
       if (!store->_writer->insert(batchInsert)) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed inserting batch into iResearch view '" << id() << "', collection '" << cid;
+        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+          << "failed inserting batch into iResearch view '" << id() << "', collection '" << cid;
         return TRI_ERROR_INTERNAL;
       }
     } catch (std::exception& e) {
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while inserting batch into iResearch view '" << id() << "', collection '" << cid << e.what();
+      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+        << "caught exception while inserting batch into iResearch view '" << id() << "', collection '" << cid << e.what();
       IR_EXCEPTION();
     } catch (...) {
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while inserting batch into iResearch view '" << id() << "', collection '" << cid;
+      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+        << "caught exception while inserting batch into iResearch view '" << id() << "', collection '" << cid;
       IR_EXCEPTION();
     }
   }
@@ -1876,7 +1935,8 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
     arangodb::aql::SortCondition const* sortCondition
 ) {
   if (!trx) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "no transaction supplied while querying iResearch view '" << id() << "'";
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "no transaction supplied while querying iResearch view '" << id() << "'";
 
     return nullptr;
   }
@@ -1892,7 +1952,9 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
   irs::Or filter;
 
   if (!FilterFactory::filter(&filter, *node)) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to build filter while querying iResearch view '" << id() << "', query" << node->toVelocyPack(true)->toJson();
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "failed to build filter while querying iResearch view '" << id()
+      << "', query" << node->toVelocyPack(true)->toJson();
 
     return nullptr;
   }
@@ -1903,7 +1965,9 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
   CompoundReader compoundReader(_mutex); // will aquire read-lock since members can be asynchronously updated
 
   if (sortCondition && !OrderFactory::order(&orderCtx, *sortCondition, _meta)) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to build order while querying iResearch view '" << id() << "', query" << node->toVelocyPack(true)->toJson();
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "failed to build order while querying iResearch view '" << id()
+      << "', query" << node->toVelocyPack(true)->toJson();
 
     return nullptr;
   }
@@ -1917,11 +1981,14 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
       compoundReader.add(_storePersisted._reader);
     }
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while collecting readers for querying iResearch view '" << id() << "': " << e.what();
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while collecting readers for querying iResearch view '" << id()
+      << "': " << e.what();
     IR_EXCEPTION();
     return nullptr;
   } catch (...) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while collecting readers for querying iResearch view '" << id() << "'";
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while collecting readers for querying iResearch view '" << id() << "'";
     IR_EXCEPTION();
     return nullptr;
   }
@@ -1970,7 +2037,9 @@ bool IResearchView::linkRegister(IResearchLink& link) {
 
   // do not allow duplicate registration
   if (!_registeredLinks.emplace(cid, &link).second) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "duplicate iResearch link registration detected for iResearch view '" << id() <<"' cid '" << link.collection()->cid() << "' iid '" << link.id() << "'";
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "duplicate iResearch link registration detected for iResearch view '" << id()
+      <<"' cid '" << link.collection()->cid() << "' iid '" << link.id() << "'";
 
     return false;
   }
@@ -2000,7 +2069,9 @@ bool IResearchView::linkRegister(IResearchLink& link) {
     return true;
   }
 
-  LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to persist iResearch view definition during new iResearch link registration for iResearch view '" << id() <<"' cid '" << link.collection()->cid() << "' iid '" << link.id() << "'";
+  LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+    << "failed to persist iResearch view definition during new iResearch link registration for iResearch view '" << id()
+    << "' cid '" << link.collection()->cid() << "' iid '" << link.id() << "'";
   _meta._collections.erase(cid); // revert state
   _registeredLinks.erase(cid); // revert state
 
@@ -2018,7 +2089,8 @@ bool IResearchView::linkRegister(IResearchLink& link) {
   std::string error;
 
   if (!view || !impl._meta.init(json, error, *view)) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to initialize iResearch view from definition, error: " << error;
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "failed to initialize iResearch view from definition, error: " << error;
 
     return nullptr;
   }
@@ -2055,6 +2127,16 @@ size_t IResearchView::memory() const {
 }
 
 void IResearchView::open() {
+  auto* engine = arangodb::EngineSelectorFeature::ENGINE;
+
+  if (engine) {
+    _inRecovery = engine->inRecovery();
+  } else {
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "failure to get storage engine while starting feature 'IResearchAnalyzer'";
+    // assume not inRecovery()
+  }
+
   WriteMutex mutex(_mutex); // '_meta' can be asynchronously updated
   SCOPED_LOCK(mutex);
 
@@ -2079,7 +2161,12 @@ void IResearchView::open() {
         if (_storePersisted._writer) {
           _storePersisted._writer->commit(); // initialize 'store'
           _threadPool.max_idle(_meta._threadsMaxIdle);
-          _threadPool.max_threads(_meta._threadsMaxTotal); // start pool
+
+          if (!_inRecovery) {
+            // start pool only if we're not in recovery now,
+            // otherwise 'PostRecoveryCallback' will take care of that
+            _threadPool.max_threads(_meta._threadsMaxTotal);
+          }
 
           _storePersisted._reader
             = irs::directory_reader::open(*(_storePersisted._directory));
@@ -2094,17 +2181,23 @@ void IResearchView::open() {
       }
     }
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while opening iResearch view '" << id() << "': " << e.what();
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while opening iResearch view '" << id() << "': " << e.what();
     IR_EXCEPTION();
     throw;
   } catch (...) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while opening iResearch view '" << id() << "'";
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while opening iResearch view '" << id() << "'";
     IR_EXCEPTION();
     throw;
   }
 
-  LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to open iResearch view '" << id() << "' at: " << absoluteDataPath;
-  throw std::runtime_error(std::string("failed to open iResearch view '") + std::to_string(id()) + "' at: " + absoluteDataPath);
+  LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+    << "failed to open iResearch view '" << id() << "' at: " << absoluteDataPath;
+
+  throw std::runtime_error(
+    std::string("failed to open iResearch view '") + std::to_string(id()) + "' at: " + absoluteDataPath
+  );
 }
 
 int IResearchView::remove(
@@ -2143,10 +2236,14 @@ int IResearchView::remove(
 
     return TRI_ERROR_NO_ERROR;
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while removing from iResearch view '" << id() << "', collection '" << cid << "', revision '" << rid << "': " << e.what();
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while removing from iResearch view '" << id()
+      << "', collection '" << cid << "', revision '" << rid << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while removing from iResearch view '" << id() << "', collection '" << cid << "', revision '" << rid << "'";
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception while removing from iResearch view '" << id()
+      << "', collection '" << cid << "', revision '" << rid << "'";
     IR_EXCEPTION();
   }
 
@@ -2196,16 +2293,18 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
   try {
     SCOPED_LOCK(mutex);
 
-    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting active memory-store sync for iResearch view '" << id() << "'";
-    _memoryNode->_store._writer->commit();
-    _memoryNode->_store._reader = _memoryNode->_store._reader.reopen(); // update reader
-    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "finished memory-store sync for iResearch view '" << id() << "'";
+    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+      << "starting active memory-store sync for iResearch view '" << id() << "'";
+    _memoryNode->_store.sync();
+    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+      << "finished memory-store sync for iResearch view '" << id() << "'";
 
     if (maxMsec && TRI_microtime() >= thresholdSec) {
       return true; // skip if timout exceeded
     }
 
-    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting pending memory-store sync for iResearch view '" << id() << "'";
+    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+      << "starting pending memory-store sync for iResearch view '" << id() << "'";
     _toFlush->_store._writer->commit();
 
     {
@@ -2213,7 +2312,8 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
       _toFlush->_store._reader = _toFlush->_store._reader.reopen(); // update reader
     }
 
-    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "finished pending memory-store sync for iResearch view '" << id() << "'";
+    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+      << "finished pending memory-store sync for iResearch view '" << id() << "'";
 
     if (maxMsec && TRI_microtime() >= thresholdSec) {
       return true; // skip if timout exceeded
@@ -2221,7 +2321,8 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
 
     // must sync persisted store as well to ensure removals are applied
     if (_storePersisted) {
-      LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting persisted-sync sync for iResearch view '" << id() << "'";
+      LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+        << "starting persisted-sync sync for iResearch view '" << id() << "'";
       _storePersisted._writer->commit();
 
       {
@@ -2229,15 +2330,18 @@ bool IResearchView::sync(size_t maxMsec /*= 0*/) {
         _storePersisted._reader = _storePersisted._reader.reopen(); // update reader
       }
 
-      LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "finished persisted-sync sync for iResearch view '" << id() << "'";
+      LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+        << "finished persisted-sync sync for iResearch view '" << id() << "'";
     }
 
     return true;
   } catch (std::exception& e) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception during sync of iResearch view '" << id() << "': " << e.what();
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception during sync of iResearch view '" << id() << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
-    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception during sync of iResearch view '" << id() << "'";
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "caught exception during sync of iResearch view '" << id() << "'";
     IR_EXCEPTION();
   }
 
@@ -2249,7 +2353,8 @@ bool IResearchView::sync(SyncState& state, size_t maxMsec /*= 0*/) {
   auto thresholdMsec = TRI_microtime() * 1000 + maxMsec;
   ReadMutex mutex(_mutex); // '_memoryStore'/'_storePersisted' can be asynchronously modified
 
-  LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting flush for iResearch view '" << id() << "' run id '" << size_t(&runId) << "'";
+  LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+    << "starting flush for iResearch view '" << id() << "' run id '" << size_t(&runId) << "'";
 
   // .............................................................................
   // apply consolidation policies
@@ -2260,7 +2365,8 @@ bool IResearchView::sync(SyncState& state, size_t maxMsec /*= 0*/) {
     }
 
     entry._intervalCount = 0;
-    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting consolidation for iResearch view '" << id() << "' run id '" << size_t(&runId) << "'";
+    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+      << "starting consolidation for iResearch view '" << id() << "' run id '" << size_t(&runId) << "'";
 
     try {
       SCOPED_LOCK(mutex);
@@ -2272,35 +2378,47 @@ bool IResearchView::sync(SyncState& state, size_t maxMsec /*= 0*/) {
         _storePersisted._writer->consolidate(entry._policy, false);
       }
     } catch (std::exception& e) {
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while consolidating iResearch view '" << id() << "': " << e.what();
+      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+        << "caught exception while consolidating iResearch view '" << id() << "': " << e.what();
       IR_EXCEPTION();
     } catch (...) {
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while consolidating iResearch view '" << id() << "'";
+      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+        << "caught exception while consolidating iResearch view '" << id() << "'";
       IR_EXCEPTION();
     }
 
-    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "finished consolidation for iResearch view '" << id() << "' run id '" << size_t(&runId) << "'";
+    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+      << "finished consolidation for iResearch view '" << id() << "' run id '" << size_t(&runId) << "'";
   }
 
   // .............................................................................
   // apply data store commit
   // .............................................................................
 
-  LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting commit for iResearch view '" << id() << "' run id '" << size_t(&runId) << "'";
+  LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+    << "starting commit for iResearch view '" << id() << "' run id '" << size_t(&runId) << "'";
+
   auto res = sync(std::max(size_t(1), size_t(thresholdMsec - TRI_microtime() * 1000))); // set min 1 msec to enable early termination
-  LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "finished commit for iResearch view '" << id() << "' run id '" << size_t(&runId) << "'";
+
+  LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+    << "finished commit for iResearch view '" << id() << "' run id '" << size_t(&runId) << "'";
 
   // .............................................................................
   // apply cleanup
   // .............................................................................
   if (state._cleanupIntervalStep && ++state._cleanupIntervalCount >= state._cleanupIntervalStep) {
     state._cleanupIntervalCount = 0;
-    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "starting cleanup for iResearch view '" << id() << "' run id '" << size_t(&runId) << "'";
+    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+      << "starting cleanup for iResearch view '" << id() << "' run id '" << size_t(&runId) << "'";
+
     cleanup(std::max(size_t(1), size_t(thresholdMsec - TRI_microtime() * 1000))); // set min 1 msec to enable early termination
-    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "finished cleanup for iResearch view '" << id() << "' run id '" << size_t(&runId) << "'";
+
+    LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+      << "finished cleanup for iResearch view '" << id() << "' run id '" << size_t(&runId) << "'";
   }
 
-  LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH) << "finished flush for iResearch view '" << id() << "' run id '" << size_t(&runId) << "'";
+  LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
+    << "finished flush for iResearch view '" << id() << "' run id '" << size_t(&runId) << "'";
 
   return res;
 }
@@ -2394,14 +2512,17 @@ arangodb::Result IResearchView::updateProperties(
         storePersisted._reader = irs::directory_reader::open(*(storePersisted._directory));
         dropDataPath = _storePersisted ? srcDataPath.c_str() : nullptr;
       } catch (std::exception& e) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while opening iResearch view '" << id() << "' data path '" + meta._dataPath + "': " << e.what();
+        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+          << "caught exception while opening iResearch view '" << id()
+          << "' data path '" + meta._dataPath + "': " << e.what();
         IR_EXCEPTION();
         return arangodb::Result(
           TRI_ERROR_BAD_PARAMETER,
           std::string("error opening iResearch view '") + std::to_string(id()) + "' data path '" + meta._dataPath + "'"
         );
       } catch (...) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "caught exception while opening iResearch view '" << id() << "' data path '" + meta._dataPath + "'";
+        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+          << "caught exception while opening iResearch view '" << id() << "' data path '" + meta._dataPath + "'";
         IR_EXCEPTION();
         return arangodb::Result(
           TRI_ERROR_BAD_PARAMETER,
@@ -2410,7 +2531,8 @@ arangodb::Result IResearchView::updateProperties(
       }
 
       if (!storePersisted._reader) {
-        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "error while opening reader for iResearch view '" << id() << "' data path '" + meta._dataPath + "'";
+        LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+          << "error while opening reader for iResearch view '" << id() << "' data path '" + meta._dataPath + "'";
         return arangodb::Result(
           TRI_ERROR_BAD_PARAMETER,
           std::string("error opening reader for iResearch view '") + std::to_string(id()) + "' data path '" + meta._dataPath + "'"
@@ -2427,7 +2549,8 @@ arangodb::Result IResearchView::updateProperties(
 
     if (!res.ok()) {
       _meta = std::move(metaBackup); // revert to original meta
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "failed to persist view definition while updating iResearch view '" << id() << "'";
+      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+        << "failed to persist view definition while updating iResearch view '" << id() << "'";
 
       return res;
     }

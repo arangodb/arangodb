@@ -279,7 +279,10 @@ class IResearchView final: public arangodb::ViewImplementation,
     DataStore() = default;
     DataStore(DataStore&& other) noexcept;
     DataStore& operator=(DataStore&& other) noexcept;
-    operator bool() const noexcept;
+    operator bool() const noexcept {
+      return _directory && _writer;
+    }
+    void sync();
   };
 
   struct MemoryStore: public DataStore {
@@ -331,24 +334,6 @@ class IResearchView final: public arangodb::ViewImplementation,
     arangodb::FlushTransaction, std::function<void(arangodb::FlushTransaction*)>
   > FlushTransactionPtr;
 
-  std::condition_variable _asyncCondition; // trigger reload of timeout settings for async jobs
-  std::atomic<size_t> _asyncMetaRevision; // arbitrary meta modification id, async jobs should reload if different
-  std::mutex _asyncMutex; // mutex used with '_asyncCondition' and associated timeouts
-  std::mutex _trxStoreMutex; // mutex used to protect '_storeByTid' against multiple insertions
-  std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
-  int (*_beforeInsert)(IResearchView&, arangodb::transaction::Methods&, TRI_voc_cid_t, TRI_voc_rid_t); // call before insertion
-  IResearchViewMeta _meta;
-  mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_meta'
-  MemoryStoreNode _memoryNodes[2]; // 2 because we just swap them
-  MemoryStoreNode* _memoryNode; // points to the current memory store
-  std::unordered_map<TRI_voc_cid_t, IResearchLink*> _registeredLinks; // links that have been registered with this view (used for duplicate registration detection)
-  MemoryStoreNode* _toFlush; // points to memory store to be flushed
-  MemoryStoreByTid _storeByTid;
-  DataStore _storePersisted;
-  FlushCallback _flushCallback; // responsible for flush callback unregistration
-  irs::async_utils::thread_pool _threadPool;
-  std::function<void(transaction::Methods* trx)> _transactionCallback;
-
   IResearchView(
     arangodb::LogicalView*,
     arangodb::velocypack::Slice const& info
@@ -382,6 +367,24 @@ class IResearchView final: public arangodb::ViewImplementation,
   void registerFlushCallback();
 
   MemoryStore& activeMemoryStore() const;
+
+  std::condition_variable _asyncCondition; // trigger reload of timeout settings for async jobs
+  std::atomic<size_t> _asyncMetaRevision; // arbitrary meta modification id, async jobs should reload if different
+  std::mutex _asyncMutex; // mutex used with '_asyncCondition' and associated timeouts
+  std::mutex _trxStoreMutex; // mutex used to protect '_storeByTid' against multiple insertions
+  std::atomic<bool> _asyncTerminate; // trigger termination of long-running async jobs
+  IResearchViewMeta _meta;
+  mutable irs::async_utils::read_write_mutex _mutex; // for use with member maps/sets and '_meta'
+  MemoryStoreNode _memoryNodes[2]; // 2 because we just swap them
+  MemoryStoreNode* _memoryNode; // points to the current memory store
+  std::unordered_map<TRI_voc_cid_t, IResearchLink*> _registeredLinks; // links that have been registered with this view (used for duplicate registration detection)
+  MemoryStoreNode* _toFlush; // points to memory store to be flushed
+  MemoryStoreByTid _storeByTid;
+  DataStore _storePersisted;
+  FlushCallback _flushCallback; // responsible for flush callback unregistration
+  irs::async_utils::thread_pool _threadPool;
+  std::function<void(transaction::Methods* trx)> _transactionCallback;
+  std::atomic<bool> _inRecovery;
 };
 
 NS_END // iresearch
