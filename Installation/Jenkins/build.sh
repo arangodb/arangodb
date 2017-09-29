@@ -644,9 +644,10 @@ fi
 THIRDPARTY_BIN=""
 THIRDPARTY_SBIN=""
 if test -n "${DOWNLOAD_SYNCER_USER}"; then
+    
     OAUTH_REPLY=$(
         curl -s "https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations" \
-             --data '{"scopes":["repo", "repo_deployment"],"note":"Release"}'
+             --data "{\"scopes\":[\"repo\", \"repo_deployment\"],\"note\":\"Release$$-${OSNAME}\"}"
         )
     OAUTH_TOKEN=$(echo "$OAUTH_REPLY" | \
                          grep '"token"'  |\
