@@ -29,6 +29,7 @@
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 
 #include "Logger/Logger.h"
@@ -81,12 +82,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
         _currentSequence(0),
         _responseSize(0) {}
 
-  ~MyWALParser() {
-    for (auto const& pair : _vocbaseCache) {
-      pair.second->release();
-    }
-  }
-
   void LogData(rocksdb::Slice const& blob) override {
     RocksDBLogType type = RocksDBLogValue::type(blob);
     TRI_DEFER(_lastLogType = type);
@@ -118,8 +113,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
           {
             VPackObjectBuilder marker(&_builder, true);
             marker->add("type", VPackValue(rocksutils::convertLogType(type)));
-            marker->add("database", VPackValue(std::to_string(_currentDbId)));
-            marker->add("uuid",
+            marker->add("db", VPackValue(loadVocbase(_currentDbId)->name()));
+            marker->add("cuid",
                         VPackValue(cidToUUID(_currentDbId, _currentCid)));
             marker->add("data", RocksDBLogValue::indexSlice(blob));
           }
@@ -137,8 +132,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
           {
             VPackObjectBuilder marker(&_builder, true);
             marker->add("type", VPackValue(rocksutils::convertLogType(type)));
-            marker->add("database", VPackValue(std::to_string(_currentDbId)));
-            marker->add("cid", VPackValue(std::to_string(_currentCid)));
+            marker->add("db", VPackValue(loadVocbase(_currentDbId)->name()));
+            marker->add("cuid", VPackValue(cidToUUID(_currentDbId, _currentCid)));
             VPackObjectBuilder data(&_builder, "data", true);
             data->add("id", VPackValue(std::to_string(iid)));
           }
@@ -162,7 +157,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
           VPackObjectBuilder marker(&_builder, true);
           marker->add("tick", VPackValue(std::to_string(_currentSequence)));
           marker->add("type", VPackValue(rocksutils::convertLogType(type)));
-          marker->add("database", VPackValue(std::to_string(_currentDbId)));
+          marker->add("db", VPackValue(loadVocbase(_currentDbId)->name()));
           marker->add("tid", VPackValue(std::to_string(_currentTrxId)));
         }
         _callback(loadVocbase(_currentDbId), _builder.slice());
@@ -213,7 +208,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
           marker->add("tick", VPackValue(std::to_string(_currentSequence)));
           marker->add("type",
                       VPackValue(rocksutils::convertLogType(_lastLogType)));
-          marker->add("database", VPackValue(std::to_string(_currentDbId)));
+          marker->add("db", VPackValue(loadVocbase(_currentDbId)->name()));
           marker->add("data", RocksDBValue::data(value));
         }
         _callback(loadVocbase(_currentDbId), _builder.slice());
@@ -234,8 +229,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
           marker->add("tick", VPackValue(std::to_string(_currentSequence)));
           marker->add("type",
                       VPackValue(rocksutils::convertLogType(_lastLogType)));
-          marker->add("database", VPackValue(std::to_string(_currentDbId)));
-          marker->add("uuid", VPackValue(cidToUUID(_currentDbId, _currentCid)));
+          marker->add("db", VPackValue(loadVocbase(_currentDbId)->name()));
+          marker->add("cuid", VPackValue(cidToUUID(_currentDbId, _currentCid)));
           if (_lastLogType == RocksDBLogType::CollectionRename) {
             VPackObjectBuilder data(&_builder, "data", true);
             data->add("id", VPackValue(std::to_string(_currentCid)));
@@ -266,8 +261,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
         marker->add("tick", VPackValue(std::to_string(_currentSequence)));
         marker->add("type", VPackValue(REPLICATION_MARKER_DOCUMENT));
         // auto containers = getContainerIds(key);
-        marker->add("database", VPackValue(std::to_string(_currentDbId)));
-        marker->add("cid", VPackValue(std::to_string(_currentCid)));
+        marker->add("db", VPackValue(loadVocbase(_currentDbId)->name()));
+        marker->add("cuid", VPackValue(cidToUUID(_currentDbId, _currentCid)));
         if (_singleOp) {  // single op is defined to have a transaction id of 0
           marker->add("tid", VPackValue("0"));
           _singleOp = false;
@@ -309,8 +304,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
           VPackObjectBuilder marker(&_builder, true);
           marker->add("tick", VPackValue(std::to_string(_currentSequence)));
           marker->add("type", VPackValue(REPLICATION_COLLECTION_DROP));
-          marker->add("database", VPackValue(std::to_string(_currentDbId)));
-          marker->add("uuid", VPackValue(cidToUUID(_currentDbId, _currentCid)));
+          marker->add("db", VPackValue(loadVocbase(_currentDbId)->name()));
+          marker->add("cuid", VPackValue(cidToUUID(_currentDbId, _currentCid)));
           marker->add("data", VPackValue(VPackValueType::Object));
           VPackObjectBuilder data(&_builder, "data", true);
           data->add("id", VPackValue(std::to_string(_currentCid)));
@@ -342,8 +337,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
         VPackObjectBuilder marker(&_builder, true);
         marker->add("tick", VPackValue(std::to_string(_currentSequence)));
         marker->add("type", VPackValue(REPLICATION_MARKER_REMOVE));
-        marker->add("database", VPackValue(std::to_string(_currentDbId)));
-        marker->add("uuid", VPackValue(std::to_string(_currentCid)));
+        marker->add("db", VPackValue(loadVocbase(_currentDbId)->name()));
+        marker->add("cuid", VPackValue(cidToUUID(_currentDbId, _currentCid)));
         if (_singleOp) {  // single op is defined to 0
           marker->add("tid", VPackValue("0"));
           _singleOp = false;
@@ -371,10 +366,9 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
     if (_seenBeginTransaction) {
       _builder.openObject();
       _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
-      _builder.add(
-          "type",
+      _builder.add("type",
           VPackValue(static_cast<uint64_t>(REPLICATION_TRANSACTION_COMMIT)));
-      _builder.add("database", VPackValue(std::to_string(_currentDbId)));
+      _builder.add("db", VPackValue(loadVocbase(_currentDbId)->name()));
       _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
       _builder.close();
     }
@@ -460,15 +454,15 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
   }
 
   TRI_vocbase_t* loadVocbase(TRI_voc_tick_t dbid) {
-    auto const& it = _vocbaseCache.find(dbid);
-    if (it == _vocbaseCache.end()) {
+    auto const& it = _vocbases.find(dbid);
+    if (it == _vocbases.end()) {
       TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->useDatabase(dbid);
       if (vocbase != nullptr) {
-        _vocbaseCache.emplace(dbid, vocbase);
+        _vocbases.emplace(dbid, vocbase);
       }
       return vocbase;
     } else {
-      return it->second;
+      return it->second.database();
     }
   }
 
@@ -480,7 +474,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
 
     TRI_vocbase_t* vocbase = loadVocbase(dbid);
     LogicalCollection* collection = vocbase->lookupCollection(cid);
-    /*if (collection->deleted()) {}*/
     _uuidCache.emplace(cid, collection->globallyUniqueId());
     return _uuidCache[cid];
   }
@@ -504,7 +497,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
   WalAccess::MarkerCallback _callback;
 
   /// cache the vocbases
-  std::map<TRI_voc_tick_t, TRI_vocbase_t*> _vocbaseCache;
+  std::map<TRI_voc_tick_t, DatabaseGuard> _vocbases;
   
   // collection replication UUID cache
   std::map<TRI_voc_cid_t, std::string> _uuidCache;

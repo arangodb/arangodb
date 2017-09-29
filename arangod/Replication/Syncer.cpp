@@ -378,14 +378,18 @@ LogicalCollection* Syncer::getCollectionByIdOrName(TRI_vocbase_t* vocbase,
 TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
   std::string name;
   if (slice.isObject()) {
-    VPackSlice const nameSlice = slice.get("database");
-    TRI_ASSERT(nameSlice.isString());
-    name = nameSlice.copyString();
+    VPackSlice tmp;
+    if ((tmp = slice.get("database")).isString()) {
+      name = tmp.copyString();
+    } if ((tmp = slice.get("db")).isString()) { // wal access protocol
+      name = tmp.copyString();
+    }
   } else if (slice.isString()) {
     name = slice.copyString();
-  } else {
+  }
+  if (name.empty()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                                   "could not resolve vocbase id");
+                                   "could not resolve vocbase id / name");
   }
   
   auto const& it = _vocbases.find(name);
@@ -405,7 +409,7 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
 arangodb::LogicalCollection* Syncer::resolveCollection(TRI_vocbase_t* vocbase,
                                                        VPackSlice const& slice) {
   VPackSlice uuid;
-  if ((uuid = slice.get("uuid")).isString()) {
+  if ((uuid = slice.get("cuid")).isString()) {
     return vocbase->lookupCollectionByUuid(uuid.copyString());
   } else if ((uuid = slice.get("globallyUniqueId")).isString()) {
     return vocbase->lookupCollectionByUuid(uuid.copyString());
