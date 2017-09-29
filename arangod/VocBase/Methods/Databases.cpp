@@ -206,9 +206,7 @@ arangodb::Result Databases::create(std::string const& dbName,
   }
   sanitizedUsers.close();
 
-  DatabaseFeature* databaseFeature =
-      application_features::ApplicationServer::getFeature<DatabaseFeature>(
-          "Database");
+  DatabaseFeature* databaseFeature = DatabaseFeature::DATABASE;
   if (databaseFeature == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }

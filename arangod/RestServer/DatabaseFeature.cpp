@@ -1053,6 +1053,7 @@ TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
   
+  // database names with a number in front are invalid names
   if (name[0] >= '0' && name[0] <= '9') {
     TRI_voc_tick_t id = StringUtils::uint64(name);
     for (auto& p : theLists->_databases) {
