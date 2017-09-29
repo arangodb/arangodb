@@ -1,5 +1,5 @@
-devel
------
+v3.3.milestone0 (2017-09-29)
+----------------------------
 
 * Add statistics about the V8 context counts and number of available/active/busy
  threads we expose through the server statistics interface.
