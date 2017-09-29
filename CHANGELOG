@@ -1,6 +1,8 @@
 devel
 -----
 
+* usernames must not start with `:role:`
+
 * increase the recommended value for `/proc/sys/vm/max_map_count` to a value
   eight times as high as the previous recommended value. Increasing the 
   values helps to prevent an ArangoDB server from running out of memory mappings.

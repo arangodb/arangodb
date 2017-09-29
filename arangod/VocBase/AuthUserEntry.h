@@ -32,11 +32,11 @@
 
 namespace arangodb {
 
-/// This class represents a 'user' entry. It contains structures
-/// to store the access levels for databases and collections.
-/// The user object must be serialized via `toVPackBuilder()` and
-/// written to the _users collection after modifying it.
-///
+// This class represents a 'user' entry. It contains structures to
+// store the access levels for databases and collections.  The user
+// object must be serialized via `toVPackBuilder()` and written to the
+// _users collection after modifying it.
+
 class AuthUserEntry {
   friend class AuthInfo;
 
@@ -44,6 +44,12 @@ class AuthUserEntry {
   static AuthUserEntry newUser(std::string const& user, std::string const& pass,
                                AuthSource source);
   static AuthUserEntry fromDocument(velocypack::Slice const&);
+
+ private:
+  static void fromDocumentRoles(AuthUserEntry&, velocypack::Slice const&);
+  static void fromDocumentDatabases(AuthUserEntry&,
+                                    velocypack::Slice const& databases,
+                                    velocypack::Slice const& user);
 
  public:
   std::string const& key() const { return _key; }
@@ -61,25 +67,31 @@ class AuthUserEntry {
 
   void setActive(bool active) { _active = active; }
 
-  /// grant specific access rights for db. The default "*"
-  /// is also a valid database name
+  std::unordered_set<std::string> roles () const { return _roles; }
+
+  // grant specific access rights for db. The default "*" is also a
+  // valid database name
   void grantDatabase(std::string const& dbname, AuthLevel level);
-  /// Removes the entry.
+
+  // Removes the entry.
   void removeDatabase(std::string const& dbname);
-  /// Grant collection rights, "*" is a valid parameter for dbname and
-  /// collection.
-  /// The combination of "*"/"*" is automatically used for the root user
+
+  // Grant collection rights, "*" is a valid parameter for dbname and
+  // collection.  The combination of "*"/"*" is automatically used for
+  // the root
   void grantCollection(std::string const& dbname, std::string const& collection,
                        AuthLevel level);
+
   void removeCollection(std::string const& dbname,
                         std::string const& collection);
 
-  /// Resolve the access level for this database. Might fall back to
-  /// the special '*' entry if the specific database is not found
+  // Resolve the access level for this database. Might fall back to
+  // the special '*' entry if the specific database is not found
   AuthLevel databaseAuthLevel(std::string const& dbname) const;
-  /// Resolve rights for the specified collection. Falls back to the
-  /// special '*' entry if either the database or collection is not
-  /// found.
+
+  // Resolve rights for the specified collection. Falls back to the
+  // special '*' entry if either the database or collection is not
+  // found.
   AuthLevel collectionAuthLevel(std::string const& dbname,
                                 std::string const& collectionName) const;
 
@@ -94,12 +106,13 @@ class AuthUserEntry {
     DBAuthContext(AuthLevel dbLvl,
                   std::unordered_map<std::string, AuthLevel> const& coll)
         : _databaseAuthLevel(dbLvl), _collectionAccess(coll) {}
-    
+
     DBAuthContext(AuthLevel dbLvl,
                   std::unordered_map<std::string, AuthLevel>&& coll)
         : _databaseAuthLevel(dbLvl), _collectionAccess(std::move(coll)) {}
 
-    AuthLevel collectionAuthLevel(std::string const& collectionName, bool& notFound) const;
+    AuthLevel collectionAuthLevel(std::string const& collectionName,
+                                  bool& notFound) const;
 
    public:
     AuthLevel _databaseAuthLevel;
@@ -116,6 +129,7 @@ class AuthUserEntry {
   std::string _passwordSalt;
   std::string _passwordHash;
   std::unordered_map<std::string, DBAuthContext> _dbAccess;
+  std::unordered_set<std::string> _roles;
 };
 }
 
