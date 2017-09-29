@@ -69,13 +69,13 @@ Syncer::Syncer(ReplicationApplierConfiguration const* configuration)
       _barrierId(0),
       _barrierTtl(600),
       _barrierUpdateTime(0),
-      _isChildSyncer(false)
-{
+      _isChildSyncer(false) {
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
   if (configuration->_database.empty()) {
-    // use name of current database
-    TRI_vocbase_t* vocbase = _vocbaseCache.begin()->second.database();
+    // use name of system database
+    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+    TRI_ASSERT(vocbase != nullptr);
     _databaseName = vocbase->name();
   } else {
     // use name from configuration

@@ -44,13 +44,7 @@ class GlobalInitialSyncer : public InitialSyncer {
  private:
   
   /// @brief set a progress message
-  void setProgress(std::string const& msg);
-
-  /// @brief send a "start batch" command
-  int sendStartBatch(std::string&);
-
-  /// @brief send a "finish batch" command
-  int sendFinishBatch();
+  //void setProgress(std::string const& msg);
 
   /// @brief check whether the initial synchronization should be aborted
   bool checkAborted();

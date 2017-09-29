@@ -42,6 +42,7 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #include "Replication/DatabaseReplicationApplier.h"
+#include "Replication/GlobalReplicationApplier.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
