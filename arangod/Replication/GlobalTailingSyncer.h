@@ -21,35 +21,27 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_CONTINUOUS_SYNCER_H
-#define ARANGOD_REPLICATION_CONTINUOUS_SYNCER_H 1
+#ifndef ARANGOD_REPLICATION_GLOBAL_CONTINUOUS_SYNCER_H
+#define ARANGOD_REPLICATION_DATABASE_CONTINUOUS_SYNCER_H 1
 
 #include "TailingSyncer.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 
 namespace arangodb {
-class DatabaseReplicationApplier;
+class GlobalReplicationApplier;
 
-class ContinuousSyncer : public TailingSyncer {
+class GlobalTailingSyncer : public TailingSyncer {
  public:
-  ContinuousSyncer(TRI_vocbase_t*,
-                   ReplicationApplierConfiguration const*,
-                   TRI_voc_tick_t initialTick, bool useTick,
-                   TRI_voc_tick_t barrierId);
-
-  ~ContinuousSyncer();
+  GlobalTailingSyncer(ReplicationApplierConfiguration const*,
+                      TRI_voc_tick_t initialTick, bool useTick,
+                      TRI_voc_tick_t barrierId);
 
  public:
   /// @brief run method, performs continuous synchronization
   int run();
 
   /// @brief return the syncer's replication applier
-  DatabaseReplicationApplier* applier() const { return _applier; }
-  
-  /// @brief finalize the synchronization of a collection by tailing the WAL
-  /// and filtering on the collection name until no more data is available
-  int syncCollectionFinalize(std::string& errorMsg,
-                             std::string const& collectionName);
+  GlobalReplicationApplier* applier() const { return _applier; }
 
  private:
   /// @brief called before marker is processed
@@ -78,15 +70,10 @@ class ContinuousSyncer : public TailingSyncer {
   /// @brief run the continuous synchronization
   int followMasterLog(std::string&, TRI_voc_tick_t&, TRI_voc_tick_t, uint64_t&,
                       bool&, bool&);
-  
-  TRI_vocbase_t* vocbase() const {
-    TRI_ASSERT(_vocbaseCache.size() == 1);
-    return _vocbaseCache.begin()->second.vocbase();
-  }
 
  private:
   /// @brief pointer to the applier
-  DatabaseReplicationApplier* _applier;
+  GlobalReplicationApplier* _applier;
 
   /// @brief use the initial tick
   bool _useTick;

@@ -273,8 +273,10 @@ SET(ARANGOD_SOURCES
   Replication/DatabaseReplicationApplier.cpp
   Replication/GlobalReplicationApplier.cpp
   Replication/GlobalInitialSyncer.cpp
-  Replication/ContinuousSyncer.cpp
   Replication/DatabaseInitialSyncer.cpp
+  Replication/DatabaseTailingSyncer.cpp
+  Replication/GlobalInitialSyncer.cpp
+  Replication/GlobalTailingSyncer.cpp
   Replication/InitialSyncer.cpp
   Replication/ReplicationApplierConfiguration.cpp
   Replication/ReplicationApplierState.cpp

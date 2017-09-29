@@ -36,8 +36,8 @@ class Thread;
 
 /// @brief replication applier for a single database
 class DatabaseReplicationApplier final : public ReplicationApplier {
-  friend class ContinuousSyncer; // TODO
-  friend class RestReplicationHandler; // TODO
+  friend class DatabaseTailingSyncer;
+  friend class RestReplicationHandler;
 
  public:
   explicit DatabaseReplicationApplier(TRI_vocbase_t* vocbase);

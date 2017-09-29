@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,28 +18,36 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Simon Grätzer
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REPLICATION_WAL_ACCESS_SYNCER_H
-#define ARANGOD_REPLICATION_WAL_ACCESS_SYNCER_H 1
+#ifndef ARANGOD_REPLICATION_DATABASE_CONTINUOUS_SYNCER_H
+#define ARANGOD_REPLICATION_DATABASE_CONTINUOUS_SYNCER_H 1
 
-#include "Replication/TailingSyncer.h"
+#include "TailingSyncer.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 
 namespace arangodb {
-struct ReplicationApplierState;
+class DatabaseReplicationApplier;
 
-class WalAccessSyncer : public TailingSyncer {
+class DatabaseTailingSyncer : public TailingSyncer {
  public:
-  WalAccessSyncer(ReplicationApplierConfiguration const*,
-                  TRI_voc_tick_t initialTick, bool useTick);
-
-  ~WalAccessSyncer();
+  DatabaseTailingSyncer(TRI_vocbase_t*,
+                   ReplicationApplierConfiguration const*,
+                   TRI_voc_tick_t initialTick, bool useTick,
+                   TRI_voc_tick_t barrierId);
 
  public:
   /// @brief run method, performs continuous synchronization
   int run();
+
+  /// @brief return the syncer's replication applier
+  DatabaseReplicationApplier* applier() const { return _applier; }
+  
+  /// @brief finalize the synchronization of a collection by tailing the WAL
+  /// and filtering on the collection name until no more data is available
+  int syncCollectionFinalize(std::string& errorMsg,
+                             std::string const& collectionName);
 
  private:
   /// @brief called before marker is processed
@@ -56,7 +64,7 @@ class WalAccessSyncer : public TailingSyncer {
   int saveApplierState();
 
   /// @brief get local replication applier state
-  int getLocalState(std::string&);
+  void getLocalState();
 
   /// @brief perform a continuous sync with the master
   int runContinuousSync(std::string&);
@@ -75,15 +83,11 @@ class WalAccessSyncer : public TailingSyncer {
   }
 
  private:
+  /// @brief pointer to the applier
+  DatabaseReplicationApplier* _applier;
 
-  // current state
-  std::unique_ptr<ReplicationApplierState> _applierState;
-  
   /// @brief use the initial tick
   bool _useTick;
-
-  /// @brief whether or not the applier should be verbose
-  bool _verbose;
 
   /// @brief whether or not the replication state file has been written at least
   /// once with non-empty values. this is required in situations when the

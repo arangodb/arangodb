@@ -31,7 +31,7 @@
 #include "Basics/WriteLocker.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
-#include "Replication/ContinuousSyncer.h"
+#include "Replication/DatabaseTailingSyncer.h"
 #include "RestServer/ServerIdFeature.h"
 #include "Rest/Version.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -48,7 +48,7 @@ using namespace arangodb;
 /// @brief applier thread class
 class ApplyThread : public Thread {
  public:
-  ApplyThread(std::unique_ptr<ContinuousSyncer> syncer) 
+  ApplyThread(std::unique_ptr<DatabaseTailingSyncer> syncer)
       : Thread("ReplicationApplier"), _syncer(std::move(syncer)) {}
 
   ~ApplyThread() { shutdown(); }
@@ -67,7 +67,7 @@ class ApplyThread : public Thread {
   }
 
  private:
-  std::unique_ptr<ContinuousSyncer> _syncer;
+  std::unique_ptr<DatabaseTailingSyncer> _syncer;
 };
 
 
@@ -317,7 +317,8 @@ void DatabaseReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
   }
 
-  auto syncer = std::make_unique<arangodb::ContinuousSyncer>(_vocbase, &_configuration, initialTick, useTick, barrierId);
+  auto syncer = std::make_unique<arangodb::DatabaseTailingSyncer>(_vocbase, &_configuration,
+                                                                  initialTick, useTick, barrierId);
 
   // reset error
   _state._lastError.reset();

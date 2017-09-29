@@ -21,7 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ContinuousSyncer.h"
+#include "GlobalTailingSyncer.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
@@ -31,8 +31,8 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
-#include "Replication/DatabaseInitialSyncer.h"
-#include "Replication/DatabaseReplicationApplier.h"
+#include "Replication/GlobalInitialSyncer.h"
+#include "Replication/GlobalReplicationApplier.h"
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -57,28 +57,23 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
-ContinuousSyncer::ContinuousSyncer(
-    TRI_vocbase_t* vocbase,
+GlobalTailingSyncer::GlobalTailingSyncer(
     ReplicationApplierConfiguration const* configuration,
     TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
     : TailingSyncer(configuration, initialTick, barrierId),
-      _applier(vocbase->replicationApplier()),
+      _applier(),
       _useTick(useTick),
       _hasWrittenState(false) {
-  _vocbaseCache.emplace(vocbase->id(), vocbase);
+      _ignoreDatabaseMarkers = false;
 }
 
-ContinuousSyncer::~ContinuousSyncer() { abortOngoingTransactions(); }
-
 /// @brief run method, performs continuous synchronization
-int ContinuousSyncer::run() {
-  if (_client == nullptr || _connection == nullptr || _endpoint == nullptr) {
+int GlobalTailingSyncer::run() {
+  /*if (_client == nullptr || _connection == nullptr || _endpoint == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
 
   uint64_t shortTermFailsInRow = 0;
-
-  _applier->started();
 
 retry:
   double const start = TRI_microtime();
@@ -262,35 +257,35 @@ retry:
 
     return res;
   }
-
+*/
   return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief set the applier progress
-void ContinuousSyncer::setProgress(char const* msg) {
-  if (_verbose) {
+void GlobalTailingSyncer::setProgress(char const* msg) {
+ /* if (_verbose) {
     LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
   } else {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
   }
 
-  _applier->setProgress(msg);
+  _applier->setProgress(msg);*/
 }
 
 /// @brief set the applier progress
-void ContinuousSyncer::setProgress(std::string const& msg) {
-  if (_verbose) {
+void GlobalTailingSyncer::setProgress(std::string const& msg) {
+  /*if (_verbose) {
     LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
   } else {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
   }
 
-  _applier->setProgress(msg);
+  _applier->setProgress(msg);*/
 }
 
 /// @brief save the current applier state
-int ContinuousSyncer::saveApplierState() {
-  LOG_TOPIC(TRACE, Logger::REPLICATION)
+int GlobalTailingSyncer::saveApplierState() {
+  /*LOG_TOPIC(TRACE, Logger::REPLICATION)
       << "saving replication applier state. last applied continuous tick: "
       << _applier->_state._lastAppliedContinuousTick
       << ", safe resume tick: " << _applier->_state._safeResumeTick;
@@ -305,14 +300,14 @@ int ContinuousSyncer::saveApplierState() {
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::REPLICATION)
         << "unable to save replication applier state: " << ex.what();
-  }
+  }*/
 
   return TRI_ERROR_INTERNAL;
 }
 
 /// @brief get local replication apply state
-void ContinuousSyncer::getLocalState() {
-  uint64_t oldTotalRequests = _applier->_state._totalRequests;
+void GlobalTailingSyncer::getLocalState() {
+  /*uint64_t oldTotalRequests = _applier->_state._totalRequests;
   uint64_t oldTotalFailedConnects = _applier->_state._totalFailedConnects;
 
   bool const foundState = _applier->loadState();
@@ -330,12 +325,12 @@ void ContinuousSyncer::getLocalState() {
   if (_masterInfo._serverId != _applier->_state._serverId &&
       _applier->_state._serverId != 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_MASTER_CHANGE, std::string("encountered wrong master id in replication state file. found: ") + StringUtils::itoa(_masterInfo._serverId) + ", expected: " + StringUtils::itoa(_applier->_state._serverId));
-  }
+  }*/
 }
 
 /// @brief perform a continuous sync with the master
-int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
-  static uint64_t const MinWaitTime = 300 * 1000;        // 0.30 seconds
+int GlobalTailingSyncer::runContinuousSync(std::string& errorMsg) {
+  /*static uint64_t const MinWaitTime = 300 * 1000;        // 0.30 seconds
   static uint64_t const MaxWaitTime = 60 * 1000 * 1000;  // 60 seconds
   uint64_t connectRetries = 0;
   uint64_t inactiveCycles = 0;
@@ -496,14 +491,14 @@ int ContinuousSyncer::runContinuousSync(std::string& errorMsg) {
     if (!_applier->wait(sleepTime)) {
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
     }
-  }
+  }*/
 
   // won't be reached
   return TRI_ERROR_INTERNAL;
 }
 
 /// @brief fetch the initial master state
-int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
+int GlobalTailingSyncer::fetchMasterState(std::string& errorMsg,
                                        TRI_voc_tick_t fromTick,
                                        TRI_voc_tick_t toTick,
                                        TRI_voc_tick_t& startTick) {
@@ -627,12 +622,12 @@ int ContinuousSyncer::fetchMasterState(std::string& errorMsg,
 }
 
 /// @brief run the continuous synchronization
-int ContinuousSyncer::followMasterLog(std::string& errorMsg,
+int GlobalTailingSyncer::followMasterLog(std::string& errorMsg,
                                       TRI_voc_tick_t& fetchTick,
                                       TRI_voc_tick_t firstRegularTick,
                                       uint64_t& ignoreCount, bool& worked,
                                       bool& masterActive) {
-  std::string const baseUrl = BaseUrl + "/logger-follow?chunkSize=" +
+  /*std::string const baseUrl = BaseUrl + "/logger-follow?chunkSize=" +
                               StringUtils::itoa(_chunkSize) + "&barrier=" +
                               StringUtils::itoa(_barrierId);
 
@@ -839,24 +834,24 @@ int ContinuousSyncer::followMasterLog(std::string& errorMsg,
     if (checkMore) {
       worked = true;
     }
-  }
+  }*/
 
   return TRI_ERROR_NO_ERROR;
 }
 
-void ContinuousSyncer::preApplyMarker(TRI_voc_tick_t firstRegularTick,
+void GlobalTailingSyncer::preApplyMarker(TRI_voc_tick_t firstRegularTick,
                                       TRI_voc_tick_t newTick) {
-  if (newTick >= firstRegularTick) {
+  /*if (newTick >= firstRegularTick) {
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
     if (newTick > _applier->_state._lastProcessedContinuousTick) {
       _applier->_state._lastProcessedContinuousTick = newTick;
     }
-  }
+  }*/
 }
 
-void ContinuousSyncer::postApplyMarker(uint64_t processedMarkers,
+void GlobalTailingSyncer::postApplyMarker(uint64_t processedMarkers,
                                        bool skipped) {
-  WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+  /*WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
   if (_applier->_state._lastProcessedContinuousTick >
       _applier->_state._lastAppliedContinuousTick) {
@@ -869,116 +864,6 @@ void ContinuousSyncer::postApplyMarker(uint64_t processedMarkers,
   } else if (_ongoingTransactions.empty()) {
     _applier->_state._safeResumeTick =
         _applier->_state._lastProcessedContinuousTick;
-  }
+  }*/
 }
 
-
-/// @brief finalize the synchronization of a collection by tailing the WAL
-/// and filtering on the collection name until no more data is available
-int ContinuousSyncer::syncCollectionFinalize(std::string& errorMsg,
-                                          std::string const& collectionName) {
-  // fetch master state just once
-  int res = getMasterState(errorMsg);
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
-  }
-  
-  // print extra info for debugging
-  _verbose = true;
-  // we do not want to apply rename, create and drop collection operations
-  _ignoreRenameCreateDrop = true;
-  
-  TRI_voc_tick_t fromTick = _initialTick;
-  
-  while (true) {
-    if (application_features::ApplicationServer::isStopping()) {
-      return TRI_ERROR_SHUTTING_DOWN;
-    }
-    
-    std::string const baseUrl =
-    BaseUrl + "/logger-follow?chunkSize=" +
-    StringUtils::itoa(_chunkSize) + "&from=" +
-    StringUtils::itoa(fromTick) + "&serverId=" + _localServerIdString +
-    "&collection=" + StringUtils::urlEncode(collectionName);
-    
-    // send request
-    std::unique_ptr<SimpleHttpResult> response(
-                                               _client->request(rest::RequestType::GET, baseUrl, nullptr, 0));
-    
-    if (response == nullptr || !response->isComplete()) {
-      errorMsg = "got invalid response from master at " +
-      std::string(_masterInfo._endpoint) + ": " +
-      _client->getErrorMessage();
-      
-      return TRI_ERROR_REPLICATION_NO_RESPONSE;
-    }
-    
-    TRI_ASSERT(response != nullptr);
-    
-    if (response->wasHttpError()) {
-      errorMsg = "got invalid response from master at " +
-      std::string(_masterInfo._endpoint) + ": HTTP " +
-      StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-      response->getHttpReturnMessage();
-      
-      return TRI_ERROR_REPLICATION_MASTER_ERROR;
-    }
-    
-    if (response->getHttpReturnCode() == 204) {
-      // No content: this means we are done
-      return TRI_ERROR_NO_ERROR;
-    }
-    
-    bool found;
-    std::string header =
-    response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
-    bool checkMore = false;
-    if (found) {
-      checkMore = StringUtils::boolean(header);
-    }
-    
-    TRI_voc_tick_t lastIncludedTick;
-    header =
-    response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
-    if (found) {
-      lastIncludedTick = StringUtils::uint64(header);
-    } else {
-      errorMsg = "got invalid response from master at " +
-      std::string(_masterInfo._endpoint) +
-      ": required header is missing";
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-    }
-    
-    // was the specified from value included the result?
-    bool fromIncluded = false;
-    header =
-    response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
-    if (found) {
-      fromIncluded = StringUtils::boolean(header);
-    }
-    if (!fromIncluded && fromTick > 0) { // && _requireFromPresent
-      errorMsg = "required follow tick value '" +
-      StringUtils::itoa(lastIncludedTick) +
-      "' is not present (anymore?) on master at " +
-      _masterInfo._endpoint + ". Last tick available on master is " +
-      StringUtils::itoa(lastIncludedTick) +
-      ". It may be required to do a full resync and increase the "
-      "number of historic logfiles on the master.";
-      return TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
-    }
-    
-    uint64_t processedMarkers = 0;
-    uint64_t ignoreCount = 0;
-    int res = applyLog(response.get(), fromTick, errorMsg, processedMarkers,
-                       ignoreCount);
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-    
-    if (!checkMore) {  // || processedMarkers == 0) { // TODO: check if we need
-      // this!
-      // done!
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-}
