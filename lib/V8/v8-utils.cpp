@@ -25,6 +25,7 @@
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
+#include <conio.h>
 #endif
 
 #include <signal.h>
@@ -46,6 +47,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/files.h"
 #include "Basics/process-utils.h"
+#include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tri-zip.h"
 #include "Logger/Logger.h"
@@ -2278,6 +2280,53 @@ static void JS_CopyFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief reads from stdin
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_PollStdin(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+ 
+  if (args.Length() > 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("pollStdin()");
+  }
+  
+  bool hasData = false;
+#ifdef _WIN32
+  hasData = _kbhit() != 0;
+#else
+  struct timeval tv;
+  fd_set fds;
+  tv.tv_sec = 0;
+  tv.tv_usec = 0;
+  FD_ZERO(&fds);
+  FD_SET(STDIN_FILENO, &fds);
+  select(STDIN_FILENO+1, &fds, NULL, NULL, &tv);
+  hasData = FD_ISSET(STDIN_FILENO, &fds);
+#endif
+  
+  char c[3] = {0};
+  if (hasData) {
+    ssize_t n = TRI_READ(STDIN_FILENO, c, 3);
+    if (n == 3) {// arrow keys are garbled
+      if (c[2] == 'D') {
+        TRI_V8_RETURN(v8::Integer::New(isolate, 37));
+      }
+      if (c[2] == 'A') {
+        TRI_V8_RETURN(v8::Integer::New(isolate, 38));
+      }
+      if (c[2] == 'C') {
+        TRI_V8_RETURN(v8::Integer::New(isolate, 39));
+      }
+    } else if (n == 1) {
+      TRI_V8_RETURN(v8::Integer::New(isolate, c[0]));
+    }
+  }
+  TRI_V8_RETURN(v8::Integer::New(isolate, 0));
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs the arguments
 ///
 /// @FUN{internal.output(@FA{string1}, @FA{string2}, @FA{string3}, ...)}
@@ -2367,7 +2416,7 @@ static void JS_ProcessStatistics(
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  TRI_process_info_t info = TRI_ProcessInfoSelf();
+  ProcessInfo info = TRI_ProcessInfoSelf();
   double rss = (double)info._residentSize;
   double rssp = 0;
 
@@ -3384,6 +3433,106 @@ static void JS_HMAC(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Convert programm stati to V8
+////////////////////////////////////////////////////////////////////////////////
+static char const* convertProcessStatusToString(ExternalProcessStatus external) {
+   char const* status = "UNKNOWN";
+
+  switch (external._status) {
+    case TRI_EXT_NOT_STARTED:
+      status = "NOT-STARTED";
+      break;
+    case TRI_EXT_PIPE_FAILED:
+      status = "FAILED";
+      break;
+    case TRI_EXT_FORK_FAILED:
+      status = "FAILED";
+      break;
+    case TRI_EXT_RUNNING:
+      status = "RUNNING";
+      break;
+    case TRI_EXT_NOT_FOUND:
+      status = "NOT-FOUND";
+      break;
+    case TRI_EXT_TERMINATED:
+      status = "TERMINATED";
+      break;
+    case TRI_EXT_ABORTED:
+      status = "ABORTED";
+      break;
+    case TRI_EXT_STOPPED:
+      status = "STOPPED";
+      break;
+  }
+  return status;
+}
+
+static void convertPipeStatus(v8::FunctionCallbackInfo<v8::Value> const& args,
+                              v8::Handle<v8::Object> &result,
+                              ExternalId &external) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+
+  result->Set(TRI_V8_ASCII_STRING(isolate, "pid"),
+              v8::Number::New(isolate, external._pid));
+
+  // Now report about possible stdin and stdout pipes:
+#ifndef _WIN32
+  if (external._readPipe >= 0) {
+    result->Set(TRI_V8_ASCII_STRING(isolate, "readPipe"),
+                v8::Number::New(isolate, external._readPipe));
+  }
+  if (external._writePipe >= 0) {
+    result->Set(TRI_V8_ASCII_STRING(isolate, "writePipe"),
+                v8::Number::New(isolate, external._writePipe));
+  }
+#else
+  if (external._readPipe != INVALID_HANDLE_VALUE) {
+    auto fn = getFileNameFromHandle(external._readPipe);
+    if (fn.length() > 0) {
+      result->Set(TRI_V8_ASCII_STRING(isolate, "readPipe"),
+                  TRI_V8_STD_STRING(isolate, fn));
+    }
+  }
+  if (external._writePipe != INVALID_HANDLE_VALUE) {
+    auto fn = getFileNameFromHandle(external._writePipe);
+    if (fn.length() > 0) {
+      result->Set(TRI_V8_ASCII_STRING(isolate, "writePipe"),
+                  TRI_V8_STD_STRING(isolate, fn));
+    }
+  }
+#endif
+  TRI_V8_TRY_CATCH_END;
+}
+
+static void convertStatusToV8(v8::FunctionCallbackInfo<v8::Value> const& args,
+                               v8::Handle<v8::Object> &result,
+                               ExternalProcessStatus &external_status,
+                               ExternalId &external) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+
+  convertPipeStatus(args, result, external);
+
+  result->Set(TRI_V8_ASCII_STRING(isolate, "status"),
+              TRI_V8_ASCII_STRING(isolate, convertProcessStatusToString(external_status)));
+
+  if (external_status._status == TRI_EXT_TERMINATED) {
+    result->Set(TRI_V8_ASCII_STRING(isolate, "exit"),
+                v8::Integer::New(isolate, static_cast<int32_t>(
+                                              external_status._exitStatus)));
+  } else if (external_status._status == TRI_EXT_ABORTED) {
+    result->Set(TRI_V8_ASCII_STRING(isolate, "signal"),
+                v8::Integer::New(isolate, static_cast<int32_t>(
+                                              external_status._exitStatus)));
+  }
+  if (external_status._errorMessage.length() > 0) {
+    result->Set(TRI_V8_ASCII_STRING(isolate, "errorMessage"),
+                TRI_V8_STD_STRING(isolate, external_status._errorMessage));
+  }
+  TRI_V8_TRY_CATCH_END;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a external program
 ////////////////////////////////////////////////////////////////////////////////
@@ -3454,7 +3603,7 @@ static void JS_ExecuteExternal(
     usePipes = TRI_ObjectToBoolean(args[2]);
   }
 
-  TRI_external_id_t external;
+  ExternalId external;
   TRI_CreateExternalProcess(*name, const_cast<char const**>(arguments),
                             (size_t)n, usePipes, &external);
   if (arguments != nullptr) {
@@ -3470,39 +3619,9 @@ static void JS_ExecuteExternal(
     TRI_V8_THROW_ERROR("Process could not be started");
   }
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING(isolate, "pid"),
-              v8::Number::New(isolate, external._pid));
-// Now report about possible stdin and stdout pipes:
-#ifndef _WIN32
-  if (external._readPipe >= 0) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "readPipe"),
-                v8::Number::New(isolate, external._readPipe));
-  }
-  if (external._writePipe >= 0) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "writePipe"),
-                v8::Number::New(isolate, external._writePipe));
-  }
-#else
-  size_t readPipe_len, writePipe_len;
-  if (0 != external._readPipe) {
-    char* readPipe = TRI_EncodeHexString((char const*)external._readPipe,
-                                         sizeof(HANDLE), &readPipe_len);
-    if (readPipe != nullptr) {
-      result->Set(TRI_V8_ASCII_STRING(isolate, "readPipe"),
-                  TRI_V8_PAIR_STRING(isolate, readPipe, (int)readPipe_len));
-      TRI_FreeString(readPipe);
-    }
-  }
-  if (0 != external._writePipe) {
-    char* writePipe = TRI_EncodeHexString((char const*)external._writePipe,
-                                          sizeof(HANDLE), &writePipe_len);
-    if (writePipe != nullptr) {
-      result->Set(TRI_V8_ASCII_STRING(isolate, "writePipe"),
-                  TRI_V8_PAIR_STRING(isolate, writePipe, (int)writePipe_len));
-      TRI_FreeString(writePipe);
-    }
-  }
-#endif
+
+  convertPipeStatus(args, result, external);
+
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -3521,8 +3640,7 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
         "statusExternal(<external-identifier>[, <wait>])");
   }
 
-  TRI_external_id_t pid;
-  memset(&pid, 0, sizeof(TRI_external_id_t));
+  ExternalId pid;
 
 #ifndef _WIN32
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(args[0], true));
@@ -3534,39 +3652,12 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
     wait = TRI_ObjectToBoolean(args[1]);
   }
 
-  TRI_external_status_t external = TRI_CheckExternalProcess(pid, wait);
+  ExternalProcessStatus external = TRI_CheckExternalProcess(pid, wait);
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  char const* status = "UNKNOWN";
 
-  switch (external._status) {
-    case TRI_EXT_NOT_STARTED:
-      status = "NOT-STARTED";
-      break;
-    case TRI_EXT_PIPE_FAILED:
-      status = "FAILED";
-      break;
-    case TRI_EXT_FORK_FAILED:
-      status = "FAILED";
-      break;
-    case TRI_EXT_RUNNING:
-      status = "RUNNING";
-      break;
-    case TRI_EXT_NOT_FOUND:
-      status = "NOT-FOUND";
-      break;
-    case TRI_EXT_TERMINATED:
-      status = "TERMINATED";
-      break;
-    case TRI_EXT_ABORTED:
-      status = "ABORTED";
-      break;
-    case TRI_EXT_STOPPED:
-      status = "STOPPED";
-      break;
-  }
-
-  result->Set(TRI_V8_ASCII_STRING(isolate, "status"), TRI_V8_STRING(isolate, status));
+  result->Set(TRI_V8_ASCII_STRING(isolate, "status"),
+              TRI_V8_STRING(isolate, convertProcessStatusToString(external)));
 
   if (external._status == TRI_EXT_TERMINATED) {
     result->Set(
@@ -3585,7 +3676,6 @@ static void JS_StatusExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a external program
 ////////////////////////////////////////////////////////////////////////////////
@@ -3652,7 +3742,7 @@ static void JS_ExecuteAndWaitExternal(
     usePipes = TRI_ObjectToBoolean(args[2]);
   }
 
-  TRI_external_id_t external;
+  ExternalId external;
   TRI_CreateExternalProcess(*name, const_cast<char const**>(arguments),
                             static_cast<size_t>(n), usePipes, &external);
   if (arguments != nullptr) {
@@ -3668,91 +3758,15 @@ static void JS_ExecuteAndWaitExternal(
     TRI_V8_THROW_ERROR("Process could not be started");
   }
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
-  result->Set(TRI_V8_ASCII_STRING(isolate, "pid"),
-              v8::Number::New(isolate, external._pid));
-// Now report about possible stdin and stdout pipes:
-#ifndef _WIN32
-  if (external._readPipe >= 0) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "readPipe"),
-                v8::Number::New(isolate, external._readPipe));
-  }
-  if (external._writePipe >= 0) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "writePipe"),
-                v8::Number::New(isolate, external._writePipe));
-  }
-#else
-  size_t readPipe_len, writePipe_len;
-  if (0 != external._readPipe) {
-    char* readPipe = TRI_EncodeHexString((char const*)external._readPipe,
-                                         sizeof(HANDLE), &readPipe_len);
-    if (readPipe != nullptr) {
-      result->Set(TRI_V8_ASCII_STRING(isolate, "readPipe"),
-                  TRI_V8_PAIR_STRING(isolate, readPipe, (int)readPipe_len));
-      TRI_FreeString(readPipe);
-    }
-  }
-  if (0 != external._writePipe) {
-    char* writePipe = TRI_EncodeHexString((char const*)external._writePipe,
-                                          sizeof(HANDLE), &writePipe_len);
-    if (writePipe != nullptr) {
-      result->Set(TRI_V8_ASCII_STRING(isolate, "writePipe"),
-                  TRI_V8_PAIR_STRING(isolate, writePipe, (int)writePipe_len));
-      TRI_FreeString(writePipe);
-    }
-  }
-#endif
 
-  TRI_external_id_t pid;
-  memset(&pid, 0, sizeof(TRI_external_id_t));
+  ExternalId pid;
 
   pid._pid = external._pid;
 
-  TRI_external_status_t external_status = TRI_CheckExternalProcess(pid, true);
+  auto external_status = TRI_CheckExternalProcess(pid, true);
 
-  char const* status = "UNKNOWN";
+  convertStatusToV8(args, result, external_status, external);
 
-  switch (external_status._status) {
-    case TRI_EXT_NOT_STARTED:
-      status = "NOT-STARTED";
-      break;
-    case TRI_EXT_PIPE_FAILED:
-      status = "FAILED";
-      break;
-    case TRI_EXT_FORK_FAILED:
-      status = "FAILED";
-      break;
-    case TRI_EXT_RUNNING:
-      status = "RUNNING";
-      break;
-    case TRI_EXT_NOT_FOUND:
-      status = "NOT-FOUND";
-      break;
-    case TRI_EXT_TERMINATED:
-      status = "TERMINATED";
-      break;
-    case TRI_EXT_ABORTED:
-      status = "ABORTED";
-      break;
-    case TRI_EXT_STOPPED:
-      status = "STOPPED";
-      break;
-  }
-
-  result->Set(TRI_V8_ASCII_STRING(isolate, "status"), TRI_V8_ASCII_STRING(isolate, status));
-
-  if (external_status._status == TRI_EXT_TERMINATED) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "exit"),
-                v8::Integer::New(isolate, static_cast<int32_t>(
-                                              external_status._exitStatus)));
-  } else if (external_status._status == TRI_EXT_ABORTED) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "signal"),
-                v8::Integer::New(isolate, static_cast<int32_t>(
-                                              external_status._exitStatus)));
-  }
-  if (external_status._errorMessage.length() > 0) {
-    result->Set(TRI_V8_ASCII_STRING(isolate, "errorMessage"),
-                TRI_V8_STD_STRING(isolate, external_status._errorMessage));
-  }
   // return the result
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -3769,14 +3783,22 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // extract the arguments
   if (args.Length() < 1 || args.Length() > 2) {
     TRI_V8_THROW_EXCEPTION_USAGE(
-        "killExternal(<external-identifier>, <signal>)");
+        "killExternal(<external-identifier>[[, <signal>], isTerminal])");
   }
   int signal = SIGTERM;
-  if (args.Length() == 2) {
+  if (args.Length() >= 2) {
     signal = static_cast<int>(TRI_ObjectToInt64(args[1]));
   }
-  TRI_external_id_t pid;
-  memset(&pid, 0, sizeof(TRI_external_id_t));
+
+  bool isTerminating;
+  if (args.Length() >= 3) {
+    isTerminating = TRI_ObjectToBoolean(args[2]);
+  }
+  else {
+    isTerminating = TRI_IsDeadlySignal(signal);
+  }
+
+  ExternalId pid;
 
 #ifndef _WIN32
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(args[0], true));
@@ -3785,10 +3807,16 @@ static void JS_KillExternal(v8::FunctionCallbackInfo<v8::Value> const& args) {
 #endif
 
   // return the result
-  if (TRI_KillExternalProcess(pid, signal)) {
-    TRI_V8_RETURN_TRUE();
-  }
-  TRI_V8_RETURN_FALSE();
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+  ExternalId external;
+  external._pid = pid._pid;
+
+  auto external_status = TRI_KillExternalProcess(pid, signal, isTerminating);
+
+  convertStatusToV8(args, result, external_status, external);
+
+  // return the result
+  TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -3806,8 +3834,7 @@ static void JS_SuspendExternal(
     TRI_V8_THROW_EXCEPTION_USAGE("suspendExternal(<external-identifier>)");
   }
 
-  TRI_external_id_t pid;
-  memset(&pid, 0, sizeof(TRI_external_id_t));
+  ExternalId pid;
 
 #ifndef _WIN32
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(args[0], true));
@@ -3837,8 +3864,7 @@ static void JS_ContinueExternal(
     TRI_V8_THROW_EXCEPTION_USAGE("continueExternal(<external-identifier>)");
   }
 
-  TRI_external_id_t pid;
-  memset(&pid, 0, sizeof(TRI_external_id_t));
+  ExternalId pid;
 
 #ifndef _WIN32
   pid._pid = static_cast<TRI_pid_t>(TRI_ObjectToUInt64(args[0], true));
@@ -3913,6 +3939,28 @@ static void JS_IsStopping(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns keycode of currently pressed key
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_termsize(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  // extract the arguments
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("termsize()");
+  }
+  
+  TRI_TerminalSize s = TRI_DefaultTerminalSize();
+  v8::Handle<v8::Array> list = v8::Array::New(isolate, 2);
+  list->Set(0, v8::Integer::New(isolate, s.rows));
+  list->Set(1, v8::Integer::New(isolate, s.columns));
+  
+  TRI_V8_RETURN(list);
+  TRI_V8_TRY_CATCH_END
+}
+  
 /// @brief convert a V8 value to VPack
 static void JS_V8ToVPack(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -4715,6 +4763,8 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING(isolate, "SYS_OPTIONS"), JS_Options);
   TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING(isolate, "SYS_OUTPUT"), JS_Output);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_POLLSTDIN"), JS_PollStdin);
   TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING(isolate, "SYS_PARSE"), JS_Parse);
   TRI_AddGlobalFunctionVocbase(
@@ -4762,9 +4812,10 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_DEBUG_CAN_USE_FAILAT"),
                                JS_DebugCanUseFailAt);
-
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_IS_STOPPING"), JS_IsStopping);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_TERMINAL_SIZE"), JS_termsize);
 
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "V8_TO_VPACK"), JS_V8ToVPack);
