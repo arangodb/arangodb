@@ -47,9 +47,26 @@ if (USE_PRECOMPILED_V8)
     FORCE
   )
 
+  add_library(libicui18n-static IMPORTED STATIC)
+  set_target_properties(libicui18n-static PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${ICU_BIN_DIR}/libicui18n.a"
+  )
+
+  add_library(libicuuc-static IMPORTED STATIC)
+  set_target_properties(libicuuc-static PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${ICU_BIN_DIR}/libicuuc.a"
+  )
+
+  add_library(libev-static IMPORTED STATIC)
+  set_target_properties(libev-static PROPERTIES
+    INTERFACE_INCLUDE_DIRECTORIES "${libev_INCLUDE_DIR}"
+    IMPORTED_LOCATION "${libev_BINARY_DIR}/libev.a"
+  )
+
   set(ICU_LIBS
-    "${ICU_BIN_DIR}/libicui18n.a;${ICU_BIN_DIR}/libicuuc.a"
-    ${libev_BINARY_DIR}/libev.a
+    libicui18n-static libicuuc-static libev-static
     CACHE INTERNAL
     "ICU: Libraries"
     FORCE
@@ -80,24 +97,7 @@ endif ()
 ################################################################################
 
 if (USE_IRESEARCH)
-  unset(ICU_STATIC_LIBS)
-
-  foreach(ELEMENT ${ICU_LIBS})
-    get_filename_component(ELEMENT_DIRECTORY "${ELEMENT}" DIRECTORY)
-    get_filename_component(ELEMENT_FILENAME "${ELEMENT}" NAME)
-    get_filename_component(ELEMENT_FILENAME_WE "${ELEMENT}" NAME_WE)
-    unset(TMP_LIBRARY CACHE)
-    find_library(TMP_LIBRARY
-      NAMES "${ELEMENT}" "${ELEMENT_FILENAME}" "${ELEMENT_FILENAME_WE}"
-      PATHS ${LINK_DIRECTORIES} "${ELEMENT_DIRECTORY}"
-      NO_DEFAULT_PATH
-    )
-
-    if(TMP_LIBRARY)
-      list(APPEND ICU_STATIC_LIBS "${TMP_LIBRARY}")
-    endif()
-  endforeach()
-
+  set(ICU_STATIC_LIBS ${ICU_LIBS})
   set(IRESEARCH_EXCLUDE_STATIC_THIRD_PARTY_LIBS TRUE) # disable linking in of 3rd party libraries automatically
 
   if (MSVC)

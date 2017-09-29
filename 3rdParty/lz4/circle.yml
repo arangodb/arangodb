@@ -1,0 +1,38 @@
+dependencies:
+  override:
+    - sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test; sudo apt-get -y -qq update
+    - sudo apt-get -y install qemu-system-ppc qemu-user-static gcc-powerpc-linux-gnu
+    - sudo apt-get -y install qemu-system-arm gcc-arm-linux-gnueabi libc6-dev-armel-cross gcc-aarch64-linux-gnu libc6-dev-arm64-cross
+    - sudo apt-get -y install libc6-dev-i386 clang gcc-5 gcc-5-multilib gcc-6 valgrind
+
+test:
+  override:
+  # Tests compilers and C standards
+    - clang -v; make clangtest && make clean
+    - g++ -v; make gpptest     && make clean
+    - gcc -v; make c_standards && make clean
+    - gcc-5 -v; make -C tests test-lz4 CC=gcc-5 MOREFLAGS=-Werror && make clean
+    - gcc-5 -v; make -C tests test-lz4c32 CC=gcc-5 MOREFLAGS="-I/usr/include/x86_64-linux-gnu -Werror" && make clean
+    - gcc-6 -v; make c_standards CC=gcc-6 && make clean
+    - gcc-6 -v; make -C tests test-lz4 CC=gcc-6 MOREFLAGS=-Werror && make clean
+# Shorter tests
+    - make cmake               && make clean
+    - make -C tests test-lz4
+    - make -C tests test-lz4c
+    - make -C tests test-frametest
+    - make -C tests test-fullbench
+    - make -C tests test-fuzzer && make clean
+    - make -C lib all && make clean
+    - pyenv global 3.4.4; CFLAGS=-I/usr/include/x86_64-linux-gnu make versionsTest && make clean
+    - make travis-install      && make clean
+  # Longer tests
+    - gcc -v; make -C tests test32 MOREFLAGS="-I/usr/include/x86_64-linux-gnu" && make clean
+    - make usan                && make clean
+    - clang -v; make staticAnalyze && make clean
+  # Valgrind tests
+    - make -C tests test-mem && make clean
+  # ARM, AArch64, PowerPC, PowerPC64 tests
+    - make platformTest CC=powerpc-linux-gnu-gcc QEMU_SYS=qemu-ppc-static                  && make clean
+    - make platformTest CC=powerpc-linux-gnu-gcc QEMU_SYS=qemu-ppc64-static MOREFLAGS=-m64 && make clean
+    - make platformTest CC=arm-linux-gnueabi-gcc QEMU_SYS=qemu-arm-static                  && make clean
+    - make platformTest CC=aarch64-linux-gnu-gcc QEMU_SYS=qemu-aarch64-static              && make clean
