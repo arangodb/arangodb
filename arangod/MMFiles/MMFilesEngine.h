@@ -459,7 +459,7 @@ class MMFilesEngine final : public StorageEngine {
   int stopCompactor(TRI_vocbase_t* vocbase);
 
   /// @brief writes a drop-database marker into the log
-  int writeDropMarker(TRI_voc_tick_t id);
+  int writeDropMarker(TRI_voc_tick_t id, std::string const& name);
 
  public:
   static std::string const EngineName;

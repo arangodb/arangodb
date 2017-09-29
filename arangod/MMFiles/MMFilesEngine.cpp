@@ -744,7 +744,7 @@ void MMFilesEngine::prepareDropDatabase(TRI_vocbase_t* vocbase,
   if (status == TRI_ERROR_NO_ERROR) {
     if (useWriteMarker) {
       // TODO: what shall happen in case writeDropMarker() fails?
-      writeDropMarker(vocbase->id());
+      writeDropMarker(vocbase->id(), vocbase->name());
     }
   }
 }
@@ -3260,13 +3260,14 @@ int MMFilesEngine::syncJournalCollection(LogicalCollection* collection) {
 }
 
 /// @brief writes a drop-database marker into the log
-int MMFilesEngine::writeDropMarker(TRI_voc_tick_t id) {
+int MMFilesEngine::writeDropMarker(TRI_voc_tick_t id, std::string const& name) {
   int res = TRI_ERROR_NO_ERROR;
 
   try {
     VPackBuilder builder;
     builder.openObject();
     builder.add("id", VPackValue(std::to_string(id)));
+    builder.add("name", VPackValue(name));
     builder.close();
 
     MMFilesDatabaseMarker marker(TRI_DF_MARKER_VPACK_DROP_DATABASE, id,
