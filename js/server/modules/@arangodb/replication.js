@@ -1,4 +1,4 @@
-/* global ArangoServerState, GLOBAL_REPLICATION_APPLIER_START, GLOBAL_REPLICATION_APPLIER_SHUTDOWN, GLOBAL_REPLICATION_APPLIER_STATE, GLOBAL_REPLICATION_APPLIER_FORGET, GLOBAL_REPLICATION_APPLIER_CONFIGURE */
+/* global ArangoServerState, GLOBAL_REPLICATION_APPLIER_START, GLOBAL_REPLICATION_APPLIER_SHUTDOWN, GLOBAL_REPLICATION_APPLIER_STATE, GLOBAL_REPLICATION_APPLIER_FORGET, GLOBAL_REPLICATION_APPLIER_CONFIGURE , REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN, REPLICATION_APPLIER_STATE, REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_CONFIGURE */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -60,34 +60,28 @@ logger.firstTick = function () {
 // / @brief starts the replication applier
 applier.start = function (initialTick, barrierId) {
   if (initialTick === undefined) {
-    return internal.startReplicationApplier();
+    return REPLICATION_APPLIER_START();
   }
 
-  return internal.startReplicationApplier(initialTick, barrierId);
+  return REPLICATION_APPLIER_START(initialTick, barrierId);
 };
 
 // / @brief shuts down the replication applier
-applier.shutdown = applier.stop = function () {
-  return internal.shutdownReplicationApplier();
-};
+applier.shutdown = applier.stop = function () { return REPLICATION_APPLIER_SHUTDOWN(); };
 
 // / @brief return the replication applier state
-applier.state = function () {
-  return internal.getStateReplicationApplier();
-};
+applier.state = function () { return REPLICATION_APPLIER_STATE(); };
 
 // / @brief stop the applier and "forget" all configuration
-applier.forget = function () {
-  return internal.forgetStateReplicationApplier();
-};
+applier.forget = function () { return REPLICATION_APPLIER_FORGET(); };
 
 // / @brief returns the configuration of the replication applier
 applier.properties = function (config) {
   if (config === undefined) {
-    return internal.configureReplicationApplier();
+    return REPLICATION_APPLIER_CONFIGURE();
   }
 
-  return internal.configureReplicationApplier(config);
+  return REPLICATION_APPLIER_CONFIGURE(config);
 };
 
 // / @brief starts the global replication applier
@@ -174,6 +168,7 @@ function serverId () {
 
 exports.logger = logger;
 exports.applier = applier;
+exports.globalApplier = globalApplier;
 exports.sync = sync;
 exports.syncCollection = syncCollection;
 exports.setupReplication = setupReplication;

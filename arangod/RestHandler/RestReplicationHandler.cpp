@@ -617,13 +617,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   }
 
   _vocbase->replicationApplier()->reconfigure(config);
-
-  res = _vocbase->replicationApplier()->start(lastLogTick, true, barrierId);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-    return;
-  }
+  _vocbase->replicationApplier()->start(lastLogTick, true, barrierId);
 
   VPackBuilder result;
   result.openObject();
@@ -2098,12 +2092,7 @@ void RestReplicationHandler::handleCommandApplierStart() {
     barrierId = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
   }
 
-  int res =
-      _vocbase->replicationApplier()->start(initialTick, useTick, barrierId);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  _vocbase->replicationApplier()->start(initialTick, useTick, barrierId);
 
   handleCommandApplierGetState();
 }
@@ -2115,11 +2104,7 @@ void RestReplicationHandler::handleCommandApplierStart() {
 void RestReplicationHandler::handleCommandApplierStop() {
   TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
-  int res = _vocbase->replicationApplier()->stop(true, true);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  _vocbase->replicationApplier()->stop(true, true);
 
   handleCommandApplierGetState();
 }

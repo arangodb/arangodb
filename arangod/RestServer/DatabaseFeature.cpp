@@ -454,11 +454,14 @@ void DatabaseFeature::recoveryDone() {
         LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "replication applier explicitly deactivated for database '"
                   << vocbase->name() << "'";
       } else {
-        int res = vocbase->replicationApplier()->start(0, false, 0);
-
-        if (res != TRI_ERROR_NO_ERROR) {
+        try {
+          vocbase->replicationApplier()->start(0, false, 0);
+        } catch (std::exception const& ex) {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to start replication applier for database '"
-                    << vocbase->name() << "': " << TRI_errno_string(res);
+                    << vocbase->name() << "': " << ex.what();
+        } catch (...) {
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to start replication applier for database '"
+                    << vocbase->name() << "'";
         }
       }
     }
@@ -574,10 +577,14 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
 
     try {
       vocbase->addReplicationApplier();
+    } catch (basics::Exception const& ex) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "initializing replication applier for database '"
+                                              << vocbase->name() << "' failed: " << ex.what();
+      return ex.code();
     } catch (std::exception const& ex) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "initializing replication applier for database '"
-                 << vocbase->name() << "' failed: " << ex.what();
-      FATAL_ERROR_EXIT();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "initializing replication applier for database '"
+                                              << vocbase->name() << "' failed: " << ex.what();
+      return TRI_ERROR_INTERNAL;
     }
 
     // enable deadlock detection
@@ -592,17 +599,24 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     // create app directory for database if it does not exist
     int res = createApplicationDirectory(name, appPath);
 
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
     if (! engine->inRecovery()) {
       // starts compactor etc.
       engine->recoveryDone(vocbase.get());
 
       // start the replication applier
       if (_replicationApplier && vocbase->replicationApplier()->autoStart()) {
-        res = vocbase->replicationApplier()->start(0, false, 0);
-
-        if (res != TRI_ERROR_NO_ERROR) {
+        try {
+          vocbase->replicationApplier()->start(0, false, 0);
+        } catch (std::exception const& ex) {
           LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to start replication applier for database '"
-                    << name << "': " << TRI_errno_string(res);
+                    << name << "': " << ex.what();
+        } catch (...) {
+          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to start replication applier for database '"
+                    << name << "'";
         }
       }
 
@@ -1193,13 +1207,14 @@ int DatabaseFeature::createBaseApplicationDirectory(std::string const& appPath,
 /// @brief create app subdirectory for a database
 int DatabaseFeature::createApplicationDirectory(std::string const& name,
                                                 std::string const& basePath) {
+  int res = TRI_ERROR_NO_ERROR;
+
   if (basePath.empty()) {
-    return TRI_ERROR_NO_ERROR;
+    return res;
   }
 
   std::string const path = basics::FileUtils::buildFilename(
       basics::FileUtils::buildFilename(basePath, "_db"), name);
-  int res = TRI_ERROR_NO_ERROR;
   if (!TRI_IsDirectory(path.c_str())) {
     long systemError;
     std::string errorMessage;

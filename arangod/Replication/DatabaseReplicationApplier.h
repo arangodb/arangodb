@@ -26,14 +26,13 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-// TODO
-#include "Basics/threads.h"
 #include "Replication/ReplicationApplier.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class Thread;
 
 /// @brief replication applier for a single database
 class DatabaseReplicationApplier final : public ReplicationApplier {
@@ -55,7 +54,7 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
   void shutdown() override;
   
   /// @brief start the replication applier
-  int start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) override;
+  void start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) override;
   
   /// @brief configure the replication applier
   void reconfigure(ReplicationApplierConfiguration const& configuration) override;
@@ -105,7 +104,7 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
   void stopInitialSynchronization(bool value);
 
   /// @brief stop the replication applier
-  int stop(bool resetError, bool joinThread);
+  void stop(bool resetError, bool joinThread);
 
   /// @brief set the progress
   void setProgress(char const* msg);
@@ -137,12 +136,12 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
    
  private:
   TRI_vocbase_t* _vocbase;
-  std::string _databaseName; // TODO: required?
   std::atomic<uint64_t> _starts; 
   
   mutable arangodb::basics::ReadWriteLock _statusLock;
   std::atomic<bool> _terminateThread;
-  TRI_thread_t _thread; // TODO
+
+  std::unique_ptr<Thread> _thread;
 };
 
 }

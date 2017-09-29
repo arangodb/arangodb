@@ -860,11 +860,7 @@ static void StartApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& a
   
   ReplicationApplier* applier = getApplier(isolate, applierType);
 
-  int res = applier->start(initialTick, useTick, barrierId);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot start replication applier");
-  }
+  applier->start(initialTick, useTick, barrierId);
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END

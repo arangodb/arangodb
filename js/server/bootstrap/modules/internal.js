@@ -264,8 +264,8 @@
   // //////////////////////////////////////////////////////////////////////////////
 
   if (global.REPLICATION_APPLIER_CONFIGURE) {
+    // TODO: remove this export from the internal module
     exports.configureReplicationApplier = global.REPLICATION_APPLIER_CONFIGURE;
-    delete global.REPLICATION_APPLIER_CONFIGURE;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -273,8 +273,8 @@
   // //////////////////////////////////////////////////////////////////////////////
 
   if (global.REPLICATION_APPLIER_START) {
+    // TODO: remove this export from the internal module
     exports.startReplicationApplier = global.REPLICATION_APPLIER_START;
-    delete global.REPLICATION_APPLIER_START;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -282,8 +282,8 @@
   // //////////////////////////////////////////////////////////////////////////////
 
   if (global.REPLICATION_APPLIER_SHUTDOWN) {
+    // TODO: remove this export from the internal module
     exports.shutdownReplicationApplier = global.REPLICATION_APPLIER_SHUTDOWN;
-    delete global.REPLICATION_APPLIER_SHUTDOWN;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -291,8 +291,8 @@
   // //////////////////////////////////////////////////////////////////////////////
 
   if (global.REPLICATION_APPLIER_STATE) {
+    // TODO: remove this export from the internal module
     exports.getStateReplicationApplier = global.REPLICATION_APPLIER_STATE;
-    delete global.REPLICATION_APPLIER_STATE;
   }
 
   // //////////////////////////////////////////////////////////////////////////////
@@ -300,8 +300,8 @@
   // //////////////////////////////////////////////////////////////////////////////
 
   if (global.REPLICATION_APPLIER_FORGET) {
+    // TODO: remove this export from the internal module
     exports.forgetStateReplicationApplier = global.REPLICATION_APPLIER_FORGET;
-    delete global.REPLICATION_APPLIER_FORGET;
   }
 
   // //////////////////////////////////////////////////////////////////////////////

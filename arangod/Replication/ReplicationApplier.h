@@ -48,7 +48,7 @@ class ReplicationApplier {
   virtual void forget() = 0;
   
   /// @brief start the replication applier
-  virtual int start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) = 0;
+  virtual void start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) = 0;
 
   /// @brief shuts down the replication applier
   virtual void shutdown() = 0;

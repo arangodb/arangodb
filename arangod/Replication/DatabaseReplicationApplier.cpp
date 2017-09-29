@@ -26,9 +26,9 @@
 #include "Basics/FileUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Thread.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Basics/threads.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Replication/ContinuousSyncer.h"
@@ -45,18 +45,30 @@
 
 using namespace arangodb;
 
+/// @brief applier thread class
+class ApplyThread : public Thread {
+ public:
+  ApplyThread(std::unique_ptr<ContinuousSyncer> syncer) 
+      : Thread("ReplicationApplier"), _syncer(std::move(syncer)) {}
 
-/// TODO
-/// @brief applier thread main function
-static void ApplyThread(void* data) {
-  auto syncer = static_cast<arangodb::ContinuousSyncer*>(data);
+  ~ApplyThread() { shutdown(); }
 
-  try {
-    syncer->run();
-  } catch (...) {
+ public:
+  void run() {
+    TRI_ASSERT(_syncer);
+
+    try {
+      _syncer->run();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "caught exception in ApplyThread: " << ex.what();
+    } catch (...) {
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "caught unknown exception in ApplyThread";
+    }
   }
-  delete syncer;
-}
+
+ private:
+  std::unique_ptr<ContinuousSyncer> _syncer;
+};
 
 
 namespace {
@@ -276,9 +288,10 @@ void DatabaseReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& res
   }
 }
 
-int DatabaseReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
+void DatabaseReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
   if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
-    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+    // unsupported
+    return;
   }
 
   LOG_TOPIC(DEBUG, Logger::REPLICATION)
@@ -291,15 +304,17 @@ int DatabaseReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, 
   WRITE_LOCKER(writeLocker, _statusLock);
   
   if (_state._preventStart) {
-    return TRI_ERROR_LOCKED;
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCKED);
   }
 
   if (_state._active) {
-    return TRI_ERROR_NO_ERROR;
+    // already started
+    return;
   }
   
   if (_configuration._endpoint.empty() || _configuration._database.empty()) {
-    return setErrorNoLock(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
+    setErrorNoLock(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
   }
 
   auto syncer = std::make_unique<arangodb::ContinuousSyncer>(_vocbase, &_configuration, initialTick, useTick, barrierId);
@@ -312,14 +327,12 @@ int DatabaseReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, 
 
   setTermination(false);
   _state._active = true;
-  
-  TRI_InitThread(&_thread);
-
-  if (!TRI_StartThread(&_thread, nullptr, "Applier", ApplyThread,
-                       static_cast<void*>(syncer.get()))) {
-    return TRI_ERROR_INTERNAL;
+ 
+  _thread.reset(new ApplyThread(std::move(syncer))); 
+  if (!_thread->start()) {
+    _thread.reset();
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not start ApplyThread");
   }
-  syncer.release();
 
   uint64_t iterations = 0;
   while (oldStarts == _starts.load() && ++iterations < 50 * 10) {
@@ -337,14 +350,13 @@ int DatabaseReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, 
         << _vocbase->name() << "', endpoint '" << _configuration._endpoint
         << "'";
   }
-
-  return TRI_ERROR_NO_ERROR;
 }
   
 /// @brief stop the replication applier
-int DatabaseReplicationApplier::stop(bool resetError, bool joinThread) {
+void DatabaseReplicationApplier::stop(bool resetError, bool joinThread) {
   if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
-    return TRI_ERROR_CLUSTER_UNSUPPORTED;
+    // unsupported
+    return; 
   }
 
   {
@@ -354,7 +366,8 @@ int DatabaseReplicationApplier::stop(bool resetError, bool joinThread) {
     _state._stopInitialSynchronization = true;
 
     if (!_state._active) {
-      return TRI_ERROR_NO_ERROR;
+      // not active
+      return;
     }
 
     _state._active = false;
@@ -367,20 +380,18 @@ int DatabaseReplicationApplier::stop(bool resetError, bool joinThread) {
     }
   }
 
-  // join the thread without the status lock (otherwise it would probably not
-  // join)
-  int res = TRI_ERROR_NO_ERROR;
-
+  // join the thread without holding the status lock 
+  // (otherwise it would probably not join)
   if (joinThread) {
-    res = TRI_JoinThread(&_thread);
+    TRI_ASSERT(_thread);
+//    _thread->join();
+    _thread.reset();
   }
 
   setTermination(false);
 
   LOG_TOPIC(INFO, Logger::REPLICATION)
       << "stopped replication applier for database '" << _vocbase->name() << "'";
-
-  return res;
 }
 
 /// @brief shut down the replication applier
@@ -405,10 +416,10 @@ void DatabaseReplicationApplier::shutdown() {
     setProgressNoLock("applier stopped");
   }
 
-  // join the thread without the status lock (otherwise it would probably not
-  // join)
-  // TODO: fix thread handling
-  /*int res = */ TRI_JoinThread(&_thread);
+  // join the thread without holding the status lock 
+  // (otherwise it would probably not join)
+  TRI_ASSERT(_thread);
+  _thread.reset();
 
   setTermination(false);
 
@@ -471,11 +482,7 @@ void DatabaseReplicationApplier::stopInitialSynchronization(bool value) {
 
 /// @brief stop the applier and "forget" everything
 void DatabaseReplicationApplier::forget() {
-  int res = stop(true, true);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  stop(true, true);
 
   removeState();
 

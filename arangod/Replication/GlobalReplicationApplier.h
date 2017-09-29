@@ -43,7 +43,7 @@ class GlobalReplicationApplier final : public ReplicationApplier {
   void shutdown() override;
   
   /// @brief start the replication applier
-  int start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) override;
+  void start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) override;
   
   /// @brief configure the replication applier
   void reconfigure(ReplicationApplierConfiguration const& configuration) override;
