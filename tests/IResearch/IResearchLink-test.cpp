@@ -339,7 +339,7 @@ SECTION("test_write") {
   }
 
   flush->executeCallbacks(); // prepare memory store to be flushed to persisted storage
-  CHECK((TRI_ERROR_NO_ERROR == view->finish()));
+  CHECK((view->commit().ok()));
   CHECK((true == view->sync()));
   CHECK((1 == reader.reopen().live_docs_count()));
 
@@ -351,7 +351,7 @@ SECTION("test_write") {
   }
 
   flush->executeCallbacks(); // prepare memory store to be flushed to persisted storage
-  CHECK((TRI_ERROR_NO_ERROR == view->finish()));
+  CHECK((view->commit().ok()));
   CHECK((true == view->sync()));
   CHECK((2 == reader.reopen().live_docs_count()));
 
@@ -363,7 +363,7 @@ SECTION("test_write") {
   }
 
   flush->executeCallbacks(); // prepare memory store to be flushed to persisted storage
-  CHECK((TRI_ERROR_NO_ERROR == view->finish()));
+  CHECK((view->commit().ok()));
   CHECK((true == view->sync()));
   CHECK((1 == reader.reopen().live_docs_count()));
   logicalCollection->dropIndex(link->id());
