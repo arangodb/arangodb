@@ -215,6 +215,7 @@ int TailingSyncer::processDBMarker(TRI_replication_operation_e type,
                                      "create database marker did not contain name");
     }
     VPackSlice users = VPackSlice::emptyArraySlice();
+#warning TODO remove database id + ensure proper name
     VPackBuilder optionsBuilder;
     optionsBuilder.openObject();
     optionsBuilder.add("id", VPackValue((uint64_t)id));
@@ -223,9 +224,11 @@ int TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     Result res = methods::Databases::create(name.copyString(), users, optionsBuilder.slice());
     return res.errorNumber();
   } else if (type == REPLICATION_DATABASE_DROP) {
-    
+    /*
     Result res = methods::Databases::dropLocal(id);
-    return res.errorNumber();
+    return res.errorNumber();*/
+#warning TODO move to string name
+    return TRI_ERROR_NO_ERROR;
   } else {
     TRI_ASSERT(false);
   }
@@ -236,7 +239,7 @@ int TailingSyncer::processDocument(TRI_replication_operation_e type,
                                    VPackSlice const& slice,
                                    std::string& errorMsg) {
   
-  TRI_vocbase_t *vocbase = loadVocbase(getDbId(slice));
+  TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
@@ -355,7 +358,7 @@ int TailingSyncer::processDocument(TRI_replication_operation_e type,
 int TailingSyncer::startTransaction(VPackSlice const& slice) {
   // {"type":2200,"tid":"230920705812199", "database": "123", "collections":[{"cid":"230920700700391","operations":10}]}
   
-  TRI_vocbase_t* vocbase = loadVocbase(getDbId(slice));
+  TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
@@ -499,7 +502,7 @@ int TailingSyncer::renameCollection(VPackSlice const& slice) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  TRI_vocbase_t *vocbase = loadVocbase(getDbId(slice));
+  TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
@@ -517,7 +520,7 @@ int TailingSyncer::changeCollection(VPackSlice const& slice) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
   
-  TRI_vocbase_t *vocbase = loadVocbase(getDbId(slice));
+  TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
@@ -592,7 +595,7 @@ int TailingSyncer::applyLogMarker(VPackSlice const& slice,
     if (_ignoreRenameCreateDrop) {
       return TRI_ERROR_NO_ERROR;
     }
-    TRI_vocbase_t* vocbase = loadVocbase(getDbId(slice));
+    TRI_vocbase_t* vocbase = resolveVocbase(slice);
     if (vocbase == nullptr) {
       return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
     }

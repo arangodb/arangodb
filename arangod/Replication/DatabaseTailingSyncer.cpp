@@ -65,7 +65,7 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(
       _applier(vocbase->replicationApplier()),
       _useTick(useTick),
       _hasWrittenState(false) {
-  _vocbaseCache.emplace(vocbase->id(), vocbase);
+  _vocbases.emplace(vocbase->name(), vocbase);
 }
 
 /// @brief run method, performs continuous synchronization

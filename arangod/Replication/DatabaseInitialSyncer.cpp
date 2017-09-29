@@ -68,7 +68,7 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t* vocbase,
     Syncer::RestrictType restrictType, bool verbose, bool skipCreateDrop)
     : InitialSyncer(configuration, restrictCollections, restrictType, verbose, skipCreateDrop),
       _hasFlushed(false) {
-  _vocbaseCache.emplace(vocbase->id(), vocbase);
+  _vocbases.emplace(vocbase->name(), vocbase);
 }
 
 /// @brief run method, performs a full synchronization

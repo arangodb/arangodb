@@ -73,13 +73,13 @@ Syncer::Syncer(ReplicationApplierConfiguration const* configuration)
 {
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
-  if (configuration->_database.empty()) {
-    // use name of current database
-    TRI_vocbase_t* vocbase = _vocbaseCache.begin()->second.database();
-    _databaseName = vocbase->name();
-  } else {
+  if (!(configuration->_database.empty())) {
     // use name from configuration
     _databaseName = configuration->_database;
+  } else if (!_vocbases.empty()) {
+    // use name of current database
+    TRI_vocbase_t* vocbase = _vocbases.begin()->second.database();
+    _databaseName = vocbase->name();
   }
   
   uint64_t c = configuration->_chunkSize;
@@ -303,7 +303,7 @@ int Syncer::sendRemoveBarrier() {
     return TRI_ERROR_INTERNAL;
   }
 }
-
+/*
 TRI_voc_tick_t Syncer::getDbId(velocypack::Slice const& slice) const {
   if (slice.isObject()) {
     VPackSlice id = slice.get("database");
@@ -320,7 +320,7 @@ TRI_voc_tick_t Syncer::getDbId(velocypack::Slice const& slice) const {
     TRI_ASSERT(id.isNone());
   }
   return 0;
-}
+}*/
 
 /// @brief extract the collection id from VelocyPack
 TRI_voc_cid_t Syncer::getCid(VPackSlice const& slice) const {
@@ -331,7 +331,6 @@ TRI_voc_cid_t Syncer::getCid(VPackSlice const& slice) const {
 std::string Syncer::getCName(VPackSlice const& slice) const {
   return arangodb::basics::VelocyPackHelper::getStringValue(slice, "cname", "");
 }
-
 
 /// @brief extract the collection by either id or name, may return nullptr!
 LogicalCollection* Syncer::getCollectionByIdOrName(TRI_vocbase_t* vocbase,
@@ -375,6 +374,33 @@ LogicalCollection* Syncer::getCollectionByIdOrName(TRI_vocbase_t* vocbase,
   return idCol;
 }
 
+TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
+  std::string name;
+  if (slice.isObject()) {
+    VPackSlice const nameSlice = slice.get("database");
+    TRI_ASSERT(nameSlice.isString());
+    name = nameSlice.copyString();
+  } else if (slice.isString()) {
+    name = slice.copyString();
+  } else {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                                   "could not resolve vocbase id");
+  }
+  
+  auto const& it = _vocbases.find(name);
+  if (it == _vocbases.end()) {
+    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
+    if (vocbase != nullptr) {
+      _vocbases.emplace(name, vocbase);
+    } else {
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "Could not find database";
+    }
+    return vocbase;
+  } else {
+    return it->second.database();
+  }
+}
+
 arangodb::LogicalCollection* Syncer::resolveCollection(TRI_vocbase_t* vocbase,
                                                        VPackSlice const& slice) {
   VPackSlice uuid;
@@ -390,22 +416,6 @@ arangodb::LogicalCollection* Syncer::resolveCollection(TRI_vocbase_t* vocbase,
     }
     // extract optional "cname"
     return getCollectionByIdOrName(vocbase, cid, getCName(slice));
-  }
-}
-
-TRI_vocbase_t* Syncer::loadVocbase(TRI_voc_tick_t dbid) {
-  auto const& it = _vocbaseCache.find(dbid);
-  if (it == _vocbaseCache.end()) {
-    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->useDatabase(dbid);
-    if (vocbase != nullptr) {
-      TRI_DEFER(vocbase->release());
-      _vocbaseCache.emplace(dbid, vocbase);
-    } else {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "Could not find database";
-    }
-    return vocbase;
-  } else {
-    return it->second.database();
   }
 }
 
@@ -581,7 +591,7 @@ int Syncer::createCollection(TRI_vocbase_t *vocbase, VPackSlice const& slice,
 /// @brief drops a collection, based on the VelocyPack provided
 int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
   
-  TRI_vocbase_t* vocbase = loadVocbase(getDbId(slice));
+  TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
@@ -612,7 +622,7 @@ int Syncer::createIndex(VPackSlice const& slice) {
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
 
-  TRI_vocbase_t* vocbase = loadVocbase(getDbId(slice));
+  TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
@@ -666,7 +676,7 @@ int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
 
   TRI_idx_iid_t const iid = StringUtils::uint64(id);
 
-  TRI_vocbase_t* vocbase = loadVocbase(getDbId(slice));
+  TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }

@@ -121,8 +121,8 @@ private:
   std::string progress() { return _progress; }
   
   TRI_vocbase_t* vocbase() const {
-    TRI_ASSERT(_vocbaseCache.size() == 1);
-    return _vocbaseCache.begin()->second.database();
+    TRI_ASSERT(vocbases().size() == 1);
+    return vocbases().begin()->second.database();
   }
   
   /// @brief check whether the initial synchronization should be aborted

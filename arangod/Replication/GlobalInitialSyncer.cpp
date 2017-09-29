@@ -136,13 +136,8 @@ Result GlobalInitialSyncer::run(bool incremental) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       "database declaration is invalid in response");
       }
-      TRI_voc_tick_t dbId = StringUtils::uint64(idSlice.copyString());
-      if (dbId == 0) {
-        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                      "database declaration contains invalid database Id");
-      }
       
-      TRI_vocbase_t* vocbase = loadVocbase(dbId);
+      TRI_vocbase_t* vocbase = resolveVocbase(idSlice);
       TRI_ASSERT(vocbase != nullptr);
       if (vocbase == nullptr) {
         return Result(TRI_ERROR_INTERNAL, "vocbase not found");
@@ -178,9 +173,9 @@ Result GlobalInitialSyncer::run(bool incremental) {
 /// @brief add or remove databases such that the local inventory mirrors the masters
 Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDatabases) {
   
-  std::set<TRI_voc_tick_t> existingDBs;
+  std::set<std::string> existingDBs;
   DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
-    existingDBs.insert(vocbase->id());
+    existingDBs.insert(vocbase->name());
   });
   
   for (VPackSlice it : VPackArrayIterator(masterDatabases)) {
@@ -199,27 +194,17 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
                     "database declaration is invalid in response");
     }
     std::string const dbName = nameSlice.copyString();
-    TRI_voc_tick_t dbId = StringUtils::uint64(idSlice.copyString());
-    if (dbId == 0) {
-      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                    "database declaration contains invalid database Id");
-    }
-    
-    TRI_vocbase_t* vocbase = loadVocbase(dbId);
+    TRI_vocbase_t* vocbase = resolveVocbase(idSlice);
     if (vocbase == nullptr) {
       // database is missing we need to create it now
       
-      VPackBuilder optionsBuilder;
-      optionsBuilder.openObject();
-      optionsBuilder.add("id", VPackValue((uint64_t)dbId));
-      optionsBuilder.close();
       Result r = methods::Databases::create(dbName, VPackSlice::emptyArraySlice(),
-                                            optionsBuilder.slice());
+                                            VPackSlice::emptyObjectSlice());
       if (r.fail()) {
         LOG_TOPIC(WARN, Logger::REPLICATION) << "Creating the db failed on replicant";
         return r;
       }
-      vocbase = loadVocbase(dbId);
+      vocbase = resolveVocbase(idSlice);
       TRI_ASSERT(vocbase != nullptr); // must be loaded now
       if (vocbase == nullptr) {
         char const* msg = "DB was created with wrong id on replicant";
@@ -227,17 +212,18 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
         return Result(TRI_ERROR_INTERNAL, msg);
       }
     }
-    existingDBs.erase(dbId); // remove dbs that exists on the master
+    existingDBs.erase(dbName); // remove dbs that exists on the master
     
     sendExtendBatch();
     sendExtendBarrier();
   }
   
   // all dbs left in this list no longer exist on the master
-  for (TRI_voc_tick_t dbId : existingDBs) {
-    _vocbaseCache.erase(dbId); // make sure to release the db first
+  for (std::string const& dbname : existingDBs) {
+    _vocbases.erase(dbname); // make sure to release the db first
     
-    Result r = methods::Databases::dropLocal(dbId);
+    TRI_vocbase_t* system = DatabaseFeature::DATABASE->systemDatabase();
+    Result r = methods::Databases::drop(system, dbname);
     if (r.fail()) {
       LOG_TOPIC(WARN, Logger::REPLICATION) << "Dropping db failed on replicant";
       return r;

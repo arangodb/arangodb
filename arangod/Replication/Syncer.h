@@ -96,14 +96,6 @@ class Syncer {
 
   /// @brief send a "remove barrier" command
   int sendRemoveBarrier();
-  
-  TRI_voc_tick_t getDbId(velocypack::Slice const&) const;
-
-  /// @brief extract the collection id from VelocyPack
-  TRI_voc_cid_t getCid(velocypack::Slice const&) const;
-
-  /// @brief extract the collection name from VelocyPack
-  std::string getCName(arangodb::velocypack::Slice const&) const;
 
   /// @brief apply a single marker from the collection dump
   int applyCollectionDumpMarker(transaction::Methods&,
@@ -133,15 +125,18 @@ class Syncer {
   /// @brief handle the state response of the master
   int handleStateResponse(arangodb::velocypack::Slice const&, std::string&);
   
-  TRI_vocbase_t* loadVocbase(TRI_voc_tick_t dbId);
-  
+  TRI_vocbase_t* resolveVocbase(velocypack::Slice const&);  
   LogicalCollection* resolveCollection(TRI_vocbase_t*, arangodb::velocypack::Slice const& slice);
+  std::unordered_map<std::string, DatabaseGuard> const& vocbases() const {
+    return _vocbases;
+  }
   
   /// @brief extract the collection by either id or name, may return nullptr!
   LogicalCollection* getCollectionByIdOrName(TRI_vocbase_t*, TRI_voc_cid_t,
                                              std::string const&);
-
+  
  private:
+  
   /// @brief apply a single marker from the collection dump
   int applyCollectionDumpMarkerInternal(transaction::Methods&,
                                         std::string const&,
@@ -150,10 +145,16 @@ class Syncer {
                                         arangodb::velocypack::Slice const&, 
                                         std::string&);
   
+  /// @brief extract the collection id from VelocyPack
+  TRI_voc_cid_t getCid(velocypack::Slice const&) const;
+  
+  /// @brief extract the collection name from VelocyPack
+  std::string getCName(arangodb::velocypack::Slice const&) const;
+
  protected:
   
   /// @brief lazy loaded list of vocbases
-  std::map<TRI_voc_tick_t, DatabaseGuard> _vocbaseCache;
+  std::unordered_map<std::string, DatabaseGuard> _vocbases;
   
   /// @brief configuration
   ReplicationApplierConfiguration _configuration;

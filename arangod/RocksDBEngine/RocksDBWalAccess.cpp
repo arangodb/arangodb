@@ -505,6 +505,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
 
   /// cache the vocbases
   std::map<TRI_voc_tick_t, TRI_vocbase_t*> _vocbaseCache;
+  
   // collection replication UUID cache
   std::map<TRI_voc_cid_t, std::string> _uuidCache;
 

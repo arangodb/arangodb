@@ -1045,14 +1045,27 @@ TRI_vocbase_t* DatabaseFeature::lookupDatabaseCoordinator(
 
 /// @brief lookup a database by its name, not increasing its reference count
 TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {
+  if (name.empty()) {
+    return nullptr;
+  }
+  
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
-
-  for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
-
-    if (name == vocbase->name()) {
-      return vocbase;
+  
+  if (name[0] >= '0' && name[0] <= '9') {
+    TRI_voc_tick_t id = StringUtils::uint64(name);
+    for (auto& p : theLists->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
+      if (vocbase->id() == id) {
+        return vocbase;
+      }
+    }
+  } else {
+    for (auto& p : theLists->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
+      if (name == vocbase->name()) {
+        return vocbase;
+      }
     }
   }
 

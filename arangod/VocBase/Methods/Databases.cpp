@@ -468,19 +468,3 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
 }
 
 
-Result Databases::dropLocal(TRI_voc_tick_t dbId) {
-  TRI_ASSERT(ServerState::instance()->isSingleServer() ||
-             ServerState::instance()->isDBServer());
-  
-  TRI_vocbase_t* systemVocbase = DatabaseFeature::DATABASE->systemDatabase();
-  
-  TRI_vocbase_t *localDB = DatabaseFeature::DATABASE->useDatabase(dbId);
-  if (localDB == nullptr) {
-    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
-  }
-  std::string dbName = localDB->name();
-  localDB->release();
-  
-  return Databases::drop(systemVocbase, dbName);
-}
-

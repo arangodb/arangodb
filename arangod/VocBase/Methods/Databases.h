@@ -45,8 +45,6 @@ struct Databases {
                                  arangodb::velocypack::Slice const& options);
   static arangodb::Result drop(TRI_vocbase_t* systemVocbase,
                                std::string const& dbName);
-  /// @brief drop db on single server or dbserver
-  static arangodb::Result dropLocal(TRI_voc_tick_t dbId);
 };
 }
 }
