@@ -99,6 +99,12 @@ while [ "$#" -gt 0 ];  do
             shift
             ;;
 
+        --sync-user)
+            shift
+            DOWNLOAD_SYNCER_USER=$1
+            shift
+            ;;
+            
         --no-book)
             BOOK=0
             shift
@@ -137,6 +143,10 @@ else
     exit 1
 fi
 
+if test -z "${DOWNLOAD_SYNCER_USER}"; then
+    echo "$0: have to specify --sync-user <githublogin> to fetch the arangosync revision"
+    exit 1
+fi
 
 GITSHA=`git log -n1 --pretty='%h'`
 if git describe --exact-match --tags ${GITSHA}; then
@@ -198,6 +208,26 @@ if [ "$LINT" == "1" ]; then
     ./utils/jslint.sh
 fi
 
+OAUTH_REPLY=$(
+    curl -s "https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations" \
+         --data '{"scopes":["repo", "repo_deployment"],"note":"Release"}'
+           )
+OAUTH_TOKEN=$(echo "$OAUTH_REPLY" | \
+                     grep '"token"'  |\
+                     sed -e 's;.*": *";;' -e 's;".*;;'
+           )
+OAUTH_ID=$(echo "$OAUTH_REPLY" | \
+                  grep '"id"'  |\
+                  sed -e 's;.*": *;;' -e 's;,;;'
+        )
+curl -s "https://api.github.com/repos/arangodb/arangosync/releases?access_token=${OAUTH_TOKEN}" | \
+    grep tag_name | \
+    head -n 1 | \
+    ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;' > SYNCER_REV
+
+curl -s -X DELETE "https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations/${OAUTH_ID}"
+
+
 # we utilize https://developer.github.com/v3/repos/ to get the newest release of the arangodb starter:
 curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases | \
                          grep tag_name | \
@@ -214,7 +244,8 @@ git add -f \
     lib/Basics/voc-errors.cpp \
     js/common/bootstrap/errors.js \
     CMakeLists.txt \
-    STARTER_REV
+    STARTER_REV \
+    SYNCER_REV
 
 if [ "$EXAMPLES" == "1" ];  then
     echo "EXAMPLES"
