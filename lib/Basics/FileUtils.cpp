@@ -128,12 +128,13 @@ static void throwFileReadError(std::string const& filename) {
 
   std::string message("read failed for file '" + filename + "': " +
                       strerror(res));
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "" << message;
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << message;
 
   THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
 }
 
-static void fillStringBuffer(int fd, std::string const& filename, StringBuffer& result, size_t chunkSize) {
+static void fillStringBuffer(int fd, std::string const& filename,
+                             StringBuffer& result, size_t chunkSize) {
   while (true) {
     if (result.reserve(chunkSize) != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -147,7 +148,7 @@ static void fillStringBuffer(int fd, std::string const& filename, StringBuffer& 
     if (n < 0) {
       throwFileReadError(filename);
     }
-    
+
     result.increaseLength(n);
   }
 }
@@ -158,7 +159,7 @@ std::string slurp(std::string const& filename) {
   if (fd == -1) {
     throwFileReadError(filename);
   }
-  
+
   TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
 
   constexpr size_t chunkSize = 8192;
@@ -175,7 +176,7 @@ void slurp(std::string const& filename, StringBuffer& result) {
   if (fd == -1) {
     throwFileReadError(filename);
   }
-  
+
   TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
 
   result.reset();
@@ -203,7 +204,7 @@ void spit(std::string const& filename, char const* ptr, size_t len, bool sync) {
   if (fd == -1) {
     throwFileWriteError(filename);
   }
-  
+
   TRI_DEFER(TRI_TRACKED_CLOSE_FILE(fd));
 
   while (0 < len) {
@@ -529,9 +530,7 @@ FileResultString currentDirectory() {
   return FileResultString(result);
 }
 
-std::string homeDirectory() {
-  return TRI_HomeDirectory();
-}
+std::string homeDirectory() { return TRI_HomeDirectory(); }
 
 std::string configDirectory(char const* binaryPath) {
   std::string dir = TRI_LocateConfigDirectory(binaryPath);
@@ -543,9 +542,7 @@ std::string configDirectory(char const* binaryPath) {
   return dir;
 }
 
-std::string dirname(std::string const& name) {
-  return TRI_Dirname(name);
-}
+std::string dirname(std::string const& name) { return TRI_Dirname(name); }
 
 void makePathAbsolute(std::string& path) {
   std::string cwd = FileUtils::currentDirectory().result();
@@ -560,6 +557,46 @@ void makePathAbsolute(std::string& path) {
       TRI_FreeString(p);
     }
   }
+}
+
+static void throwProgramError(std::string const& filename) {
+  TRI_set_errno(TRI_ERROR_SYS_ERROR);
+  int res = TRI_errno();
+
+  std::string message("open failed for file '" + filename + "': " +
+                      strerror(res));
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << message;
+
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
+}
+
+std::string slurpProgram(std::string const& program) {
+#ifdef _WIN32
+  FILE* fp = _popen(program.c_str(), "r");
+#else
+  FILE* fp = popen(program.c_str(), "r");
+#endif
+
+  constexpr size_t chunkSize = 8192;
+  StringBuffer buffer(chunkSize, false);
+
+  if (fp) {
+    char c;
+
+    while ((c = getc(fp)) != EOF) {
+      buffer.appendChar(c);
+    }
+
+    int res = pclose(fp);
+
+    if (res != 0) {
+      throwProgramError(program);
+    }
+  } else {
+    throwProgramError(program);
+  }
+
+  return std::string(buffer.data(), buffer.length());
 }
 }
 }
