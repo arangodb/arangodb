@@ -145,11 +145,16 @@ Result GlobalInitialSyncer::run(bool incremental) {
                       "database declaration is invalid in response");
       }
       
-      TRI_vocbase_t* vocbase = resolveVocbase(idSlice);
+      TRI_vocbase_t* vocbase = resolveVocbase(nameSlice);
       TRI_ASSERT(vocbase != nullptr);
       if (vocbase == nullptr) {
         return Result(TRI_ERROR_INTERNAL, "vocbase not found");
       }
+
+      // change database name in place
+      std::string const oldName = _configuration._database;
+      _configuration._database = nameSlice.copyString();
+      TRI_DEFER(_configuration._database = oldName);
       DatabaseInitialSyncer syncer(vocbase, &_configuration, _restrictCollections,
                                    _restrictType, _verbose, _skipCreateDrop);
       
@@ -203,7 +208,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
                     "database declaration is invalid in response");
     }
     std::string const dbName = nameSlice.copyString();
-    TRI_vocbase_t* vocbase = resolveVocbase(idSlice);
+    TRI_vocbase_t* vocbase = resolveVocbase(nameSlice);
     if (vocbase == nullptr) {
       // database is missing we need to create it now
       
@@ -213,7 +218,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
         LOG_TOPIC(WARN, Logger::REPLICATION) << "Creating the db failed on replicant";
         return r;
       }
-      vocbase = resolveVocbase(idSlice);
+      vocbase = resolveVocbase(nameSlice);
       TRI_ASSERT(vocbase != nullptr); // must be loaded now
       if (vocbase == nullptr) {
         char const* msg = "DB was created with wrong id on replicant";

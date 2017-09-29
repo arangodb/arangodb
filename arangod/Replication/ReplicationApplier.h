@@ -65,7 +65,7 @@ class ReplicationApplier {
   virtual void storeConfiguration(bool doSync) = 0;
 
   /// @brief remove the replication application state file
-  virtual void removeState() = 0;
+  virtual void removeState();
   
   /// @brief load the applier state from persistent storage
   /// returns whether a previous state was found
@@ -79,7 +79,7 @@ class ReplicationApplier {
   
   /// @brief return the current configuration
   virtual ReplicationApplierConfiguration configuration() const = 0;
-  
+
   bool isTerminated() { return _terminateThread.load(); }
 
   void setTermination(bool value) { _terminateThread.store(value); }
@@ -112,6 +112,7 @@ class ReplicationApplier {
   void setProgress(std::string const& msg);
 
  protected:
+  virtual std::string getStateFilename() const = 0;
 
   /// @brief register an applier error
   int setErrorNoLock(int errorCode, std::string const& msg);

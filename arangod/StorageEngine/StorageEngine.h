@@ -152,8 +152,6 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   // TODO add pre / post conditions for functions
 
-  using CollectionView = LogicalCollection;
-    
   virtual void waitForSync(double maxWait) = 0;
 
   //// operations on databasea
