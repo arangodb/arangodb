@@ -97,26 +97,26 @@ endif ()
 ################################################################################
 
 if (USE_IRESEARCH)
-  set(BOOST_ROOT "invalid") # supress Boost search in IResearch
-  set(Boost_INCLUDE_DIR "${boost_src}")
   add_library(boost-static IMPORTED STATIC)
   set_target_properties(boost-static PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${boost_src}"
     IMPORTED_LOCATION "boost_filesystem;boost_locale;boost_system;boost_thread"
   )
 
-  set(GTEST_ROOT "invalid") # supress GTest search in IResearch
-  set(GTEST_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/rocksdb/v5.6.X/third-party/gtest-1.7.0/fused-src/")
-  set(GTEST_LIBRARY gtest)
-  set(GTEST_MAIN_LIBRARY gtest)
-
   set(ICU_STATIC_LIBS ${ICU_LIBS})
+  set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
+  set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
 
   set(IRESEARCH_EXCLUDE_STATIC_THIRD_PARTY_LIBS TRUE) # disable linking in of 3rd party libraries automatically
-
   find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
-  list(APPEND CMAKE_MODULE_PATH "${IRESEARCH_ROOT}/cmake") # to find iResearch dependencies
+
+  set(CMAKE_MODULE_PATH_ORIGINAL ${CMAKE_MODULE_PATH}) # remember CMAKE_MODULE_PATH
+  list(APPEND CMAKE_MODULE_PATH
+    "${CMAKE_CURRENT_SOURCE_DIR}/cmake" # cmake overrides (must be first)
+    "${IRESEARCH_ROOT}/cmake" # to find iResearch dependencies
+  )
   add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}" EXCLUDE_FROM_ALL) # do not build unused targets
+  set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH_ORIGINAL}) # restore CMAKE_MODULE_PATH
 endif()
 
 ################################################################################
