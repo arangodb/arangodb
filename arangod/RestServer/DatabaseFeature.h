@@ -35,6 +35,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class GlobalReplicationApplier;
 class LogicalCollection;
 
 namespace aql {
@@ -85,7 +86,12 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
 
  public:
 
-   /// @brief get the ids of all local coordinator databases
+  /// @brief return a pointer to the global replication applier
+  GlobalReplicationApplier* globalReplicationApplier() const {
+    return _globalReplicationApplier.get();
+  }
+
+  /// @brief get the ids of all local coordinator databases
   std::vector<TRI_voc_tick_t> getDatabaseIdsCoordinator(bool includeSystem);
   std::vector<TRI_voc_tick_t> getDatabaseIds(bool includeSystem);
   std::vector<std::string> getDatabaseNames();
@@ -155,8 +161,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   /// @brief activates deadlock detection in all existing databases
   void enableDeadlockDetection();
 
-  
-
  private:
   uint64_t _maximalJournalSize;
   bool _defaultWaitForSync;
@@ -165,7 +169,9 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   std::string _check30Revisions;
   std::atomic<bool> _throwCollectionNotLoadedError;
 
-  TRI_vocbase_t* _vocbase;
+  std::unique_ptr<GlobalReplicationApplier> _globalReplicationApplier;
+
+  TRI_vocbase_t* _vocbase; // _system database
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
 
   std::atomic<DatabasesLists*> _databasesLists; 

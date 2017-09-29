@@ -107,31 +107,17 @@ DatabaseReplicationApplier::~DatabaseReplicationApplier() {
 
 /// @brief configure the replication applier
 void DatabaseReplicationApplier::reconfigure(ReplicationApplierConfiguration const& configuration) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     // unsupported
     return;
   }
-
-  if (configuration._endpoint.empty()) {
-    // no endpoint
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
-  }
-
+  
   if (configuration._database.empty()) {
     // no database
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no database configured");
   }
-
-  WRITE_LOCKER(writeLocker, _statusLock);
-
-  if (_state._active) {
-    // cannot change the configuration while the replication is still running
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_RUNNING);
-  }
-
-  _configuration = configuration;
-  storeConfiguration(true);
+ 
+  ReplicationApplier::reconfigure(configuration); 
 }
 
 /// @brief remove the replication application state file
@@ -236,12 +222,6 @@ void DatabaseReplicationApplier::persistState(bool doSync) {
 ReplicationApplierConfiguration DatabaseReplicationApplier::configuration() const {
   READ_LOCKER(readLocker, _statusLock);
   return _configuration;
-}
-
-/// @brief whether or not autostart option was set
-bool DatabaseReplicationApplier::autoStart() const {
-  READ_LOCKER(readLocker, _statusLock);
-  return _configuration._autoStart;
 }
 
 /// @brief store the current applier state in the passed vpack builder 
@@ -388,59 +368,6 @@ void DatabaseReplicationApplier::shutdown() {
   }
 
   ReplicationApplier::shutdown();
-}
-
-/// @brief test if the replication applier is running
-bool DatabaseReplicationApplier::isRunning() const {
-  READ_LOCKER(readLocker, _statusLock);
-  return _state._active;
-}
-
-/// @brief block the replication applier from starting
-int DatabaseReplicationApplier::preventStart() {
-  WRITE_LOCKER(writeLocker, _statusLock);
-
-  if (_state._active) {
-    // already running
-    return TRI_ERROR_REPLICATION_RUNNING;
-  }
-
-  if (_state._preventStart) {
-    // someone else requested start prevention
-    return TRI_ERROR_LOCKED;
-  }
-
-  _state._stopInitialSynchronization = false;
-  _state._preventStart = true;
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief unblock the replication applier from starting
-int DatabaseReplicationApplier::allowStart() {
-  WRITE_LOCKER(writeLocker, _statusLock);
-
-  if (!_state._preventStart) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  _state._stopInitialSynchronization = false;
-  _state._preventStart = false;
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-/// @brief check whether the initial synchronization should be stopped
-bool DatabaseReplicationApplier::stopInitialSynchronization() const {
-  READ_LOCKER(readLocker, _statusLock);
-
-  return _state._stopInitialSynchronization;
-}
-
-/// @brief stop the initial synchronization
-void DatabaseReplicationApplier::stopInitialSynchronization(bool value) {
-  WRITE_LOCKER(writeLocker, _statusLock);
-  _state._stopInitialSynchronization = value;
 }
 
 /// @brief stop the applier and "forget" everything

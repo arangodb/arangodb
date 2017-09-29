@@ -47,9 +47,7 @@ GlobalInitialSyncer::GlobalInitialSyncer(
   ReplicationApplierConfiguration const* configuration,
   std::unordered_map<std::string, bool> const& restrictCollections,
   Syncer::RestrictType restrictType, bool verbose, bool skipCreateDrop)
-: InitialSyncer(configuration, restrictCollections, restrictType, verbose, skipCreateDrop)  {
-
-}
+    : InitialSyncer(configuration, restrictCollections, restrictType, verbose, skipCreateDrop) {}
 
 GlobalInitialSyncer::~GlobalInitialSyncer() {
   try {
@@ -68,14 +66,13 @@ Result GlobalInitialSyncer::run(bool incremental) {
   std::string errorMsg;
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: getting master state";
   int res = getMasterState(errorMsg);
+    
+  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+      << "client: got master state: " << res << " " << errorMsg;
   
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
-      << "client: got master state: " << res << " " << errorMsg;
     return res;
   }
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
-    << "client: got master state: " << res << " " << errorMsg;
   
   if (_masterInfo._majorVersion > 3 ||
       (_masterInfo._majorVersion == 3 && _masterInfo._minorVersion < 3)) {
@@ -89,39 +86,50 @@ Result GlobalInitialSyncer::run(bool incremental) {
   if (res != TRI_ERROR_NO_ERROR) {
     return Result(res, errorMsg);
   }
+    
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "created logfile barrier";
   TRI_DEFER(sendRemoveBarrier());
 
   // start batch is required for the inventory request
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "sending start batch";
   res = sendStartBatch(errorMsg);
   if (res != TRI_ERROR_NO_ERROR) {
     return Result(res, errorMsg);
   }
   TRI_DEFER(sendFinishBatch());
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "sending start batch done";
   
   VPackBuilder builder;
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "fetching inventory";
   res = fetchInventory(builder, errorMsg);
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "inventory done: " << res;
   if (res != TRI_ERROR_NO_ERROR) {
     return Result(res, errorMsg);
   }
   
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "inventory: " << builder.slice().toJson();
   VPackSlice const databases = builder.slice().get("databases");
-  VPackSlice const state = builder.slice().get("databases");
-  if (!databases.isArray() || !state.isObject()) {
+  VPackSlice const state = builder.slice().get("state");
+  if (!databases.isObject() || !state.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                  "database section or state is missing from response");
+                  "database section or state section is missing from response or is invalid");
   }
-  
+ 
   if (!_skipCreateDrop) {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "updating server inventory"; 
     Result r = updateServerInventory(databases);
     if (r.fail()) {
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "updating server inventory failed"; 
       return r;
     }
   }
+      
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "databases: " << databases.toJson();
   
   try {
-  
     // actually sync the database
-    for (VPackSlice it : VPackArrayIterator(databases)) {
+    for (auto const& database : VPackObjectIterator(databases)) {
+      VPackSlice it = database.value;
       if (!it.isObject()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       "database declaration is invalid in response");
@@ -172,13 +180,14 @@ Result GlobalInitialSyncer::run(bool incremental) {
 
 /// @brief add or remove databases such that the local inventory mirrors the masters
 Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDatabases) {
-  
   std::set<std::string> existingDBs;
   DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
     existingDBs.insert(vocbase->name());
   });
   
-  for (VPackSlice it : VPackArrayIterator(masterDatabases)) {
+  for (auto const& database : VPackObjectIterator(masterDatabases)) {
+    VPackSlice it = database.value;
+
     if (!it.isObject()) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                     "database declaration is invalid in response");

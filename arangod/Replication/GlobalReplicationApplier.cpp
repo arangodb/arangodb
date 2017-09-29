@@ -48,19 +48,42 @@ void GlobalReplicationApplier::forget() {
 }
 
 /// @brief start the replication applier
-void GlobalReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {}
+void GlobalReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
+  // TODO
+}
   
 /// @brief stop the replication applier
-void GlobalReplicationApplier::stop(bool resetError, bool joinThread) {}
+void GlobalReplicationApplier::stop(bool resetError, bool joinThread) {
+  // TODO
+}
 
 /// @brief shuts down the replication applier
 void GlobalReplicationApplier::shutdown() {
   // simply fall back to base class implementation
   ReplicationApplier::shutdown();
 }
+
+/// @brief store the configuration for the applier
+void GlobalReplicationApplier::storeConfiguration(bool doSync) {
+  VPackBuilder builder;
+  builder.openObject();
+  _configuration.toVelocyPack(builder, true);
+  builder.close();
+/* TODO _vocbase
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  int res = engine->saveReplicationApplierConfiguration(_vocbase, builder.slice(), doSync);
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+  */
+}
   
 /// @brief configure the replication applier
-void GlobalReplicationApplier::reconfigure(ReplicationApplierConfiguration const& configuration) {}
+void GlobalReplicationApplier::reconfigure(ReplicationApplierConfiguration const& configuration) {
+  // simply fall back to base class implementation
+  ReplicationApplier::reconfigure(configuration);
+}
   
 /// @brief remove the replication application state file
 void GlobalReplicationApplier::removeState() {}

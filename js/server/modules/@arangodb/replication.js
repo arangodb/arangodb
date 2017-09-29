@@ -1,4 +1,4 @@
-/* global ArangoServerState, GLOBAL_REPLICATION_APPLIER_START, GLOBAL_REPLICATION_APPLIER_SHUTDOWN, GLOBAL_REPLICATION_APPLIER_STATE, GLOBAL_REPLICATION_APPLIER_FORGET, GLOBAL_REPLICATION_APPLIER_CONFIGURE , REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN, REPLICATION_APPLIER_STATE, REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_CONFIGURE */
+/* global ArangoServerState, GLOBAL_REPLICATION_APPLIER_START, GLOBAL_REPLICATION_APPLIER_SHUTDOWN, GLOBAL_REPLICATION_APPLIER_STATE, GLOBAL_REPLICATION_APPLIER_FORGET, GLOBAL_REPLICATION_APPLIER_CONFIGURE, GLOBAL_REPLICATION_SYNCHRONIZE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN, REPLICATION_APPLIER_STATE, REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_CONFIGURE, REPLICATION_SYNCHRONIZE */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -112,9 +112,10 @@ globalApplier.properties = function (config) {
 };
 
 // / @brief performs a one-time synchronization with a remote endpoint
-function sync (config) {
-  return internal.synchronizeReplication(config);
-}
+function sync (config) { return REPLICATION_SYNCHRONIZE(config); }
+
+// / @brief performs a one-time synchronization with a remote endpoint
+function syncGlobal (config) { return GLOBAL_REPLICATION_SYNCHRONIZE(config); }
 
 // / @brief performs a one-time synchronization with a remote endpoint
 function syncCollection (collection, config) {
@@ -126,7 +127,7 @@ function syncCollection (collection, config) {
     config.verbose = false;
   }
 
-  return internal.synchronizeReplication(config);
+  return REPLICATION_SYNCHRONIZE(config);
 }
 
 // / @brief sets up the replication (all-in-one function for initial
@@ -171,5 +172,6 @@ exports.applier = applier;
 exports.globalApplier = globalApplier;
 exports.sync = sync;
 exports.syncCollection = syncCollection;
+exports.syncGlobal = syncGlobal;
 exports.setupReplication = setupReplication;
 exports.serverId = serverId;

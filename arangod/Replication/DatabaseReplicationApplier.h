@@ -77,37 +77,19 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
 
   /// @brief return the current configuration
   ReplicationApplierConfiguration configuration() const override;
+  
+  /// @brief save the replication application configuration to a file
+  void storeConfiguration(bool doSync) override;
 
   /// @brief pauses and checks whether the apply thread should terminate
   bool wait(uint64_t);
-
-  /// @brief whether or not autostart option was set
-  bool autoStart() const;
-
-  /// @brief test if the replication applier is running
-  bool isRunning() const;
-
-  /// @brief block the replication applier from starting
-  int preventStart();
-
-  /// @brief unblock the replication applier from starting
-  int allowStart();
-
-  /// @brief check whether the initial synchronization should be stopped
-  bool stopInitialSynchronization() const;
-
-  /// @brief stop the initial synchronization
-  void stopInitialSynchronization(bool value);
 
   /// @brief factory function for creating a database-specific replication applier
   static DatabaseReplicationApplier* create(TRI_vocbase_t* vocbase);
 
   /// @brief load a persisted configuration for the applier
   static ReplicationApplierConfiguration loadConfiguration(TRI_vocbase_t* vocbase);
-
-  /// @brief save the replication application configuration to a file
-  void storeConfiguration(bool doSync);
-
+  
  private:
   std::string getStateFilename() const;
    

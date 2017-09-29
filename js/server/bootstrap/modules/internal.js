@@ -309,8 +309,8 @@
   // //////////////////////////////////////////////////////////////////////////////
 
   if (global.REPLICATION_SYNCHRONIZE) {
+    // TODO: remove this export from the internal module
     exports.synchronizeReplication = global.REPLICATION_SYNCHRONIZE;
-    delete global.REPLICATION_SYNCHRONIZE;
   }
 
   // //////////////////////////////////////////////////////////////////////////////

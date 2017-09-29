@@ -50,6 +50,9 @@ class GlobalReplicationApplier final : public ReplicationApplier {
   
   /// @brief configure the replication applier
   void reconfigure(ReplicationApplierConfiguration const& configuration) override;
+  
+  /// @brief save the replication application configuration to a file
+  void storeConfiguration(bool doSync) override;
 
   /// @brief remove the replication application state file
   void removeState() override;
