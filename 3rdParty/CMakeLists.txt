@@ -98,6 +98,7 @@ endif ()
 
 if (USE_IRESEARCH)
   set(BOOST_ROOT "invalid") # supress Boost search in IResearch
+  set(Boost_INCLUDE_DIR "${boost_src}")
   add_library(boost-static IMPORTED STATIC)
   set_target_properties(boost-static PROPERTIES
     INTERFACE_INCLUDE_DIRECTORIES "${boost_src}"
