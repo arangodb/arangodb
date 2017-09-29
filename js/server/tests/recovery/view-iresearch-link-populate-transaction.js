@@ -57,6 +57,8 @@ function runSetup () {
     waitForSync: true
   };
 
+  db._executeTransaction(tx);
+
   internal.debugSegfault('crashing server');
 }
 
@@ -77,9 +79,6 @@ function recoverySuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testLinks: function () {
-      require('internal').wait(2); // make sure iresearch has had time to sync
-                                   // after recovery
-
       var v = db._view('UnitTestsRecoveryView');
       assertEqual(v.name(), 'UnitTestsRecoveryView');
       assertEqual(v.type(), 'iresearch');
