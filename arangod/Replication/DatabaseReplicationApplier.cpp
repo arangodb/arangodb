@@ -48,7 +48,7 @@ using namespace arangodb;
 /// @brief applier thread class
 class ApplyThread : public Thread {
  public:
-  ApplyThread(std::unique_ptr<DatabaseTailingSyncer> syncer)
+  explicit ApplyThread(std::unique_ptr<DatabaseTailingSyncer> syncer)
       : Thread("ReplicationApplier"), _syncer(std::move(syncer)) {}
 
   ~ApplyThread() { shutdown(); }
@@ -91,26 +91,15 @@ static void readTick(VPackSlice const& slice, char const* attributeName,
 }
 }
 
-/// @brief replication applier for a single database
+/// @brief replication applier for a single database, without configuration
 DatabaseReplicationApplier::DatabaseReplicationApplier(TRI_vocbase_t* vocbase)
-    : ReplicationApplier(ReplicationApplierConfiguration()),
-      _vocbase(vocbase),
-      _starts(0),
-      _terminateThread(false) {
-  
-  setProgress("applier initially created");
-}
+    : DatabaseReplicationApplier(ReplicationApplierConfiguration(), vocbase) {}
 
-/// @brief replication applier for a single database
+/// @brief replication applier for a single database, with configuration
 DatabaseReplicationApplier::DatabaseReplicationApplier(ReplicationApplierConfiguration const& configuration,
                                                        TRI_vocbase_t* vocbase)
-    : ReplicationApplier(configuration), 
-      _vocbase(vocbase),
-      _starts(0),
-      _terminateThread(false) {
-  
-  setProgress("applier initially created");
-}
+    : ReplicationApplier(configuration, std::string("database '") + vocbase->name() + "'"), 
+      _vocbase(vocbase) {}
 
 DatabaseReplicationApplier::~DatabaseReplicationApplier() {
   stop(true, false);
@@ -323,9 +312,6 @@ void DatabaseReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick,
   // reset error
   _state._lastError.reset();
 
-  // save previous counter value
-  uint64_t oldStarts = _starts.load();
-
   setTermination(false);
   _state._active = true;
  
@@ -335,8 +321,7 @@ void DatabaseReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not start ApplyThread");
   }
 
-  uint64_t iterations = 0;
-  while (oldStarts == _starts.load() && ++iterations < 50 * 10) {
+  while (!_thread->hasStarted()) {
     usleep(20000);
   }
 
@@ -402,30 +387,7 @@ void DatabaseReplicationApplier::shutdown() {
     return;
   }
 
-  {
-    WRITE_LOCKER(writeLocker, _statusLock);
-
-    if (!_state._active) {
-      // nothing to do
-      return;
-    }
-
-    _state._active = false;
-    _state.clearError();
-
-    setTermination(true);
-    setProgressNoLock("applier stopped");
-  }
-
-  // join the thread without holding the status lock 
-  // (otherwise it would probably not join)
-  TRI_ASSERT(_thread);
-  _thread.reset();
-
-  setTermination(false);
-
-  LOG_TOPIC(INFO, Logger::REPLICATION)
-      << "shut down replication applier for database '" << _vocbase->name() << "'";
+  ReplicationApplier::shutdown();
 }
 
 /// @brief test if the replication applier is running
@@ -483,14 +445,17 @@ void DatabaseReplicationApplier::stopInitialSynchronization(bool value) {
 
 /// @brief stop the applier and "forget" everything
 void DatabaseReplicationApplier::forget() {
+  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
+    // unsupported
+    return;
+  }
+
   stop(true, true);
 
   removeState();
 
-  if (_vocbase->type() != TRI_VOCBASE_TYPE_COORDINATOR) {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    engine->removeReplicationApplierConfiguration(_vocbase);
-  }
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->removeReplicationApplierConfiguration(_vocbase);
   _configuration.reset();
 }
 
@@ -525,46 +490,6 @@ bool DatabaseReplicationApplier::wait(uint64_t sleepTime) {
   }
 
   return true;
-}
-
-/// @brief set the progress 
-void DatabaseReplicationApplier::setProgress(char const* msg) {
-  return setProgress(std::string(msg));
-}
-
-void DatabaseReplicationApplier::setProgress(std::string const& msg) {
-  WRITE_LOCKER(writeLocker, _statusLock);
-  setProgressNoLock(msg);
-}
-
-void DatabaseReplicationApplier::setProgressNoLock(std::string const& msg) {
-  _state._progressMsg = msg;
-
-  // write time into buffer
-  TRI_GetTimeStampReplication(_state._progressTime, sizeof(_state._progressTime) - 1);
-}
-
-/// @brief register an applier error
-int DatabaseReplicationApplier::setError(int errorCode, char const* msg) {
-  return setErrorNoLock(errorCode, std::string(msg));
-}
-
-int DatabaseReplicationApplier::setError(int errorCode, std::string const& msg) {
-  WRITE_LOCKER(writeLocker, _statusLock);
-  return setErrorNoLock(errorCode, msg);
-}
-
-/// @brief register an applier error
-int DatabaseReplicationApplier::setErrorNoLock(int errorCode, std::string const& msg) {
-  // log error message
-  if (errorCode != TRI_ERROR_REPLICATION_APPLIER_STOPPED) {
-    LOG_TOPIC(ERR, Logger::REPLICATION)
-        << "replication applier error for database '" << _vocbase->name()
-        << "': " << (msg.empty() ? TRI_errno_string(errorCode) : msg);
-  }
-
-  _state.setError(errorCode, msg.empty() ? TRI_errno_string(errorCode) : msg);
-  return errorCode;
 }
 
 /// @brief factory function for creating a database-specific replication applier

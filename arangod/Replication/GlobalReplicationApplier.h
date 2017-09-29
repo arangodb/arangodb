@@ -33,9 +33,9 @@ namespace arangodb {
 class GlobalReplicationApplier final : public ReplicationApplier {
  public:
   explicit GlobalReplicationApplier(ReplicationApplierConfiguration const& configuration);
-
-  ~GlobalReplicationApplier();
   
+  ~GlobalReplicationApplier();
+
   /// @brief stop the applier and "forget" everything
   void forget() override;
 

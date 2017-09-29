@@ -25,15 +25,12 @@
 #define ARANGOD_REPLICATION_DATABASE_REPLICATION_APPLIER_H 1
 
 #include "Basics/Common.h"
-#include "Basics/ReadWriteLock.h"
 #include "Replication/ReplicationApplier.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class Thread;
-
 /// @brief replication applier for a single database
 class DatabaseReplicationApplier final : public ReplicationApplier {
   friend class DatabaseTailingSyncer;
@@ -46,7 +43,7 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
                              TRI_vocbase_t* vocbase);
 
   ~DatabaseReplicationApplier();
-  
+
   /// @brief stop the applier and "forget" everything
   void forget() override;
 
@@ -87,10 +84,6 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
   /// @brief whether or not autostart option was set
   bool autoStart() const;
 
-  bool isTerminated() { return _terminateThread.load(); }
-
-  void setTermination(bool value) { _terminateThread.store(value); }
-  
   /// @brief test if the replication applier is running
   bool isRunning() const;
 
@@ -106,17 +99,6 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
   /// @brief stop the initial synchronization
   void stopInitialSynchronization(bool value);
 
-  /// @brief set the progress
-  void setProgress(char const* msg);
-  void setProgress(std::string const& msg);
-
-  /// @brief register an applier error
-  int setError(int errorCode, char const* msg);
-  int setError(int errorCode, std::string const& msg);
-  
-  /// @brief increase the starts counter
-  void started() { ++_starts; }
-
   /// @brief factory function for creating a database-specific replication applier
   static DatabaseReplicationApplier* create(TRI_vocbase_t* vocbase);
 
@@ -127,21 +109,10 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
   void storeConfiguration(bool doSync);
 
  private:
-  /// @brief register an applier error
-  int setErrorNoLock(int errorCode, std::string const& msg);
-  
-  void setProgressNoLock(std::string const& msg);
-
   std::string getStateFilename() const;
    
  private:
   TRI_vocbase_t* _vocbase;
-  std::atomic<uint64_t> _starts; 
-  
-  mutable arangodb::basics::ReadWriteLock _statusLock;
-  std::atomic<bool> _terminateThread;
-
-  std::unique_ptr<Thread> _thread;
 };
 
 }

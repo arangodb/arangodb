@@ -136,7 +136,6 @@ Result GlobalInitialSyncer::run(bool incremental) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                       "database declaration is invalid in response");
       }
-      std::string const dbName = nameSlice.copyString();
       TRI_voc_tick_t dbId = StringUtils::uint64(idSlice.copyString());
       if (dbId == 0) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,

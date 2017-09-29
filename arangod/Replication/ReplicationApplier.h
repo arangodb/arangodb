@@ -25,10 +25,13 @@
 #define ARANGOD_REPLICATION_REPLICATION_APPLIER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/ReadWriteLock.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationApplierState.h"
 
 namespace arangodb {
+class Thread;
+
 namespace velocypack {
 class Builder;
 }
@@ -36,10 +39,9 @@ class Builder;
 /// @brief replication applier interface
 class ReplicationApplier {
  public:
-  explicit ReplicationApplier(ReplicationApplierConfiguration const& configuration) 
-      : _configuration(configuration) {}
+  ReplicationApplier(ReplicationApplierConfiguration const& configuration, std::string&& databaseName);
 
-  virtual ~ReplicationApplier() {}
+  virtual ~ReplicationApplier();
   
   ReplicationApplier(ReplicationApplier const&) = delete;
   ReplicationApplier& operator=(ReplicationApplier const&) = delete;
@@ -54,7 +56,7 @@ class ReplicationApplier {
   virtual void stop(bool resetError, bool joinThread) = 0;
 
   /// @brief shuts down the replication applier
-  virtual void shutdown() = 0;
+  virtual void shutdown();
 
   /// @brief configure the replication applier
   virtual void reconfigure(ReplicationApplierConfiguration const& configuration) = 0;
@@ -74,11 +76,36 @@ class ReplicationApplier {
   
   /// @brief return the current configuration
   virtual ReplicationApplierConfiguration configuration() const = 0;
+  
+  bool isTerminated() { return _terminateThread.load(); }
+
+  void setTermination(bool value) { _terminateThread.store(value); }
+  
+  // TODO: can these be made protected?
+  /// @brief register an applier error
+  int setError(int errorCode, char const* msg);
+  int setError(int errorCode, std::string const& msg);
+  
+  /// @brief set the progress
+  void setProgress(char const* msg);
+  void setProgress(std::string const& msg);
+
+ protected:
+
+  /// @brief register an applier error
+  int setErrorNoLock(int errorCode, std::string const& msg);
+  void setProgressNoLock(std::string const& msg);
 
  protected:
   ReplicationApplierConfiguration _configuration;
-
   ReplicationApplierState _state;
+  
+  mutable arangodb::basics::ReadWriteLock _statusLock;
+  std::atomic<bool> _terminateThread;
+
+  std::string _databaseName;
+
+  std::unique_ptr<Thread> _thread;
 };
 
 }
