@@ -29,6 +29,7 @@
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "StorageEngine/DocumentIdentifierToken.h"
 #include "Transaction/Methods.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
@@ -57,15 +58,16 @@ class RocksDBReplicationContext {
   uint64_t count() const;
 
   TRI_vocbase_t* vocbase() const {
-    if (_trx == nullptr) {
+    if (!_guard) {
       return nullptr;
     }
-    return _trx->vocbase();
+    return _guard->database();
   }
 
   // creates new transaction/snapshot
   void bind(TRI_vocbase_t*);
-  int bindCollection(std::string const& collectionName);
+  int bindCollection(TRI_vocbase_t *,
+                     std::string const& collectionName);
 
   // returns inventory
   std::pair<RocksDBReplicationResult, std::shared_ptr<velocypack::Builder>>
@@ -108,15 +110,23 @@ class RocksDBReplicationContext {
   TRI_voc_tick_t _id; // batch id
   uint64_t _lastTick; // the time at which the snapshot was taken
   uint64_t _currentTick; // shows how often dump was called
+  std::unique_ptr<DatabaseGuard> _guard;
   std::unique_ptr<transaction::Methods> _trx;
+  
+  /// @brief Collection used in dump and incremental sync
   LogicalCollection* _collection;
+  
+  /// @brief Iterator on collection
   std::unique_ptr<IndexIterator> _iter;
+  /// @brief offset in the collection used with the incremental sync
+  uint64_t _lastIteratorOffset;
+
+  
+  /// @brief holds last document
   ManagedDocumentResult _mdr;
+  /// @brief type handler used to render documents
   std::shared_ptr<arangodb::velocypack::CustomTypeHandler> _customTypeHandler;
   arangodb::velocypack::Options _vpackOptions;
-
-  uint64_t _lastIteratorOffset;
-  std::unique_ptr<DatabaseGuard> _guard;
 
   double _expires;
   bool _isDeleted;

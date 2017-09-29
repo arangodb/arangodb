@@ -59,7 +59,7 @@ VelocyPackCursor::VelocyPackCursor(TRI_vocbase_t* vocbase, CursorId id,
                                    std::shared_ptr<VPackBuilder> extra,
                                    double ttl, bool hasCount)
     : Cursor(id, batchSize, extra, ttl, hasCount),
-      _vocbaseGuard(vocbase),
+      _guard(vocbase),
       _result(std::move(result)),
       _iterator(_result.result->slice()),
       _cached(_result.cached) {

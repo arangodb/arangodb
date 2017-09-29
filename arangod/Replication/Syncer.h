@@ -26,9 +26,9 @@
 
 #include "Basics/Common.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
-#include "VocBase/vocbase.h"
 
 struct TRI_vocbase_t;
 
@@ -153,7 +153,7 @@ class Syncer {
  protected:
   
   /// @brief lazy loaded list of vocbases
-  std::map<TRI_voc_tick_t, VocbaseGuard> _vocbaseCache;
+  std::map<TRI_voc_tick_t, DatabaseGuard> _vocbaseCache;
   
   /// @brief configuration
   ReplicationApplierConfiguration _configuration;

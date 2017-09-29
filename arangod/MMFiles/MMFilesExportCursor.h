@@ -26,8 +26,8 @@
 
 #include "Basics/Common.h"
 #include "Utils/Cursor.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
 
 namespace arangodb {
 class MMFilesCollectionExport;
@@ -51,7 +51,7 @@ class MMFilesExportCursor final : public Cursor {
   void dump(velocypack::Builder&) override final;
 
  private:
-  VocbaseGuard _vocbaseGuard;
+  DatabaseGuard _guard;
   arangodb::MMFilesCollectionExport* _ex;
   size_t const _size;
 };

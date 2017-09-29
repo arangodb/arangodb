@@ -397,27 +397,6 @@ struct TRI_vocbase_t {
   bool unregisterView(std::shared_ptr<arangodb::LogicalView> view);
 };
 
-// scope guard for a database
-// ensures that a database
-class VocbaseGuard {
- public:
-  VocbaseGuard() = delete;
-  VocbaseGuard(VocbaseGuard const&) = delete;
-  VocbaseGuard& operator=(VocbaseGuard const&) = delete;
-
-  explicit VocbaseGuard(TRI_vocbase_t* vocbase) : _vocbase(vocbase) {
-    if (!_vocbase->use()) {
-      // database already dropped
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-    }
-  }
-  ~VocbaseGuard() { _vocbase->release(); }
-  TRI_vocbase_t* vocbase() const { return _vocbase; }
-
- private:
-  TRI_vocbase_t* _vocbase;
-};
-
 /// @brief extract the _rev attribute from a slice
 TRI_voc_rid_t TRI_ExtractRevisionId(arangodb::velocypack::Slice const slice);
 

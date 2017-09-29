@@ -50,7 +50,7 @@ RocksDBExportCursor::RocksDBExportCursor(
     CollectionExport::Restrictions const& restrictions, CursorId id,
     size_t limit, size_t batchSize, double ttl, bool hasCount)
     : Cursor(id, batchSize, nullptr, ttl, hasCount),
-      _vocbaseGuard(vocbase),
+      _guard(vocbase),
       _resolver(vocbase),
       _restrictions(restrictions),
       _name(name),
@@ -114,7 +114,7 @@ VPackSlice RocksDBExportCursor::next() {
 size_t RocksDBExportCursor::count() const { return _size; }
 
 void RocksDBExportCursor::dump(VPackBuilder& builder) {
-  auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.vocbase());
+  auto ctx = transaction::StandaloneContext::Create(_guard.database());
   VPackOptions const* oldOptions = builder.options;
   builder.options = ctx->getVPackOptions();
 

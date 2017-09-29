@@ -79,7 +79,7 @@ class DatabaseTailingSyncer : public TailingSyncer {
   
   TRI_vocbase_t* vocbase() const {
     TRI_ASSERT(_vocbaseCache.size() == 1);
-    return _vocbaseCache.begin()->second.vocbase();
+    return _vocbaseCache.begin()->second.database();
   }
 
  private:

@@ -336,7 +336,7 @@ std::unique_ptr<transaction::Methods> GraphStore<V, E>::_createTransaction() {
   transaction::Options transactionOptions;
   transactionOptions.waitForSync = false;
   transactionOptions.allowImplicitCollections = true;
-  auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.vocbase());
+  auto ctx = transaction::StandaloneContext::Create(_vocbaseGuard.database());
   std::unique_ptr<transaction::Methods> trx(
       new transaction::UserTransaction(ctx, {}, {}, {}, transactionOptions));
   Result res = trx->begin();
@@ -515,7 +515,7 @@ void GraphStore<V, E>::_storeVertices(std::vector<ShardID> const& globalShards,
       transactionOptions.waitForSync = false;
       transactionOptions.allowImplicitCollections = false;
       trx.reset(new transaction::UserTransaction(
-          transaction::StandaloneContext::Create(_vocbaseGuard.vocbase()), {},
+          transaction::StandaloneContext::Create(_vocbaseGuard.database()), {},
           {shard}, {}, transactionOptions));
       res = trx->begin();
       if (!res.ok()) {
