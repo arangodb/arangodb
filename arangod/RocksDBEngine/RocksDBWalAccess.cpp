@@ -88,9 +88,13 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
 
     tick();
     switch (type) {
-      case RocksDBLogType::DatabaseCreate:
+      case RocksDBLogType::DatabaseCreate:{
+        _currentDbId = RocksDBLogValue::databaseId(blob);
+        break;
+      }
       case RocksDBLogType::DatabaseDrop: {
         _currentDbId = RocksDBLogValue::databaseId(blob);
+        _dropDatabaseName = RocksDBLogValue::databaseName(blob).toString();
         break;
       }
       case RocksDBLogType::CollectionRename:
@@ -201,8 +205,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
 
     if (column_family_id == _definitionsCF) {
       if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
-        TRI_ASSERT(_lastLogType == RocksDBLogType::DatabaseCreate ||
-                   _lastLogType == RocksDBLogType::DatabaseDrop);
+        TRI_ASSERT(_lastLogType == RocksDBLogType::DatabaseCreate);
         {
           VPackObjectBuilder marker(&_builder, true);
           marker->add("tick", VPackValue(std::to_string(_currentSequence)));
@@ -274,7 +277,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
       _callback(loadVocbase(_currentDbId), _builder.slice());
       _builder.clear();
     }
-
     return rocksdb::Status();
   }
 
@@ -295,10 +297,21 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
       return rocksdb::Status();
     }
 
-    if (column_family_id == _definitionsCF &&
-        RocksDBKey::type(key) == RocksDBEntryType::Collection) {
-      // a database DROP will not set this flag
-      if (_lastLogType == RocksDBLogType::CollectionDrop) {
+    if (column_family_id == _definitionsCF) {
+      
+      if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
+        TRI_ASSERT(_lastLogType == RocksDBLogType::DatabaseDrop);
+        {
+          VPackObjectBuilder marker(&_builder, true);
+          marker->add("tick", VPackValue(std::to_string(_currentSequence)));
+          marker->add("type",
+                      VPackValue(rocksutils::convertLogType(_lastLogType)));
+          marker->add("db", VPackValue(_dropDatabaseName));
+        }
+        _callback(loadVocbase(_currentDbId), _builder.slice());
+        _builder.clear();
+      } else if (RocksDBKey::type(key) == RocksDBEntryType::Collection) {
+        TRI_ASSERT(_lastLogType == RocksDBLogType::CollectionDrop);
         TRI_ASSERT(_currentDbId != 0 && _currentCid != 0);
         {
           VPackObjectBuilder marker(&_builder, true);
@@ -320,8 +333,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
       if (!(_seenBeginTransaction || _singleOp)) {
         return rocksdb::Status();
       }
-      // TODO somehow fix counters if we optimize the DELETE in
-      // documentRemove on updates
       if (_lastLogType != RocksDBLogType::DocumentRemove &&
           _lastLogType != RocksDBLogType::SingleRemove) {
         return rocksdb::Status();
@@ -380,6 +391,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
     _currentDbId = 0;
     _currentTrxId = 0;
     _currentCid = 0;
+    _dropDatabaseName.clear();
     _dropCollectionUUID.clear();
     _removeDocumentKey.clear();
     _indexSlice = VPackSlice::illegalSlice();
@@ -514,6 +526,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
   TRI_voc_tick_t _currentDbId = 0;
   TRI_voc_tick_t _currentTrxId = 0;
   TRI_voc_cid_t _currentCid = 0;
+  std::string _dropDatabaseName;
   std::string _dropCollectionUUID;
   std::string _removeDocumentKey;
   VPackSlice _indexSlice;

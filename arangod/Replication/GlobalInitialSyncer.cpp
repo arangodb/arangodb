@@ -158,11 +158,13 @@ Result GlobalInitialSyncer::run(bool incremental) {
       DatabaseInitialSyncer syncer(vocbase, &_configuration, _restrictCollections,
                                    _restrictType, _verbose, _skipCreateDrop);
       
-      syncer.useAsChildSyncer(_barrierId, _barrierUpdateTime,
+      syncer.useAsChildSyncer(_masterInfo, _barrierId, _barrierUpdateTime,
                               _batchId, _batchUpdateTime);
-      
-      
-      res = syncer.run(errorMsg, false);
+      // run the syncer with the supplied inventory collections
+      Result r = syncer.run(false, collections);
+      if (r.fail()) {
+        return r;
+      }
     
       // we need to pass on the update times to the next syncer
       _barrierUpdateTime = syncer.barrierUpdateTime();
@@ -170,10 +172,6 @@ Result GlobalInitialSyncer::run(bool incremental) {
     
       sendExtendBatch();
       sendExtendBarrier();
-      
-      if (res != TRI_ERROR_NO_ERROR) {
-        return res;
-      }
     }
   
   } catch (...) {

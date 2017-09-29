@@ -72,14 +72,13 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t* vocbase,
 }
 
 /// @brief run method, performs a full synchronization
-int DatabaseInitialSyncer::run(std::string& errorMsg, bool incremental) {
+Result DatabaseInitialSyncer::run(bool incremental,
+                                  VPackSlice inventoryColls) {
   if (_client == nullptr || _connection == nullptr || _endpoint == nullptr) {
-    errorMsg = "invalid endpoint";
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
 
   int res = vocbase()->replicationApplier()->preventStart();
-
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -90,16 +89,15 @@ int DatabaseInitialSyncer::run(std::string& errorMsg, bool incremental) {
     setProgress("fetching master state");
 
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: getting master state";
+    std::string errorMsg;
     res = getMasterState(errorMsg);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_TOPIC(DEBUG, Logger::REPLICATION)
           << "client: got master state: " << res << " " << errorMsg;
-      return res;
+      return Result(res, errorMsg);
     }
-    LOG_TOPIC(DEBUG, Logger::REPLICATION)
-        << "client: got master state: " << res << " " << errorMsg;
-
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: got master state";
     if (incremental) {
       if (_masterInfo._majorVersion == 1 ||
           (_masterInfo._majorVersion == 2 && _masterInfo._minorVersion <= 6)) {
@@ -112,7 +110,6 @@ int DatabaseInitialSyncer::run(std::string& errorMsg, bool incremental) {
 
     if (incremental) {
       res = sendFlush(errorMsg);
-
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
@@ -122,37 +119,41 @@ int DatabaseInitialSyncer::run(std::string& errorMsg, bool incremental) {
     sendCreateBarrier(errorMsg, _masterInfo._lastLogTick);
 
     res = sendStartBatch(errorMsg);
-
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
+    
 
     VPackBuilder inventoryResponse;
-    int res = fetchInventory(inventoryResponse, errorMsg);
-    if (res == TRI_ERROR_NO_ERROR) {
-      auto pair = rocksutils::stripObjectIds(inventoryResponse.slice());
-      res = handleInventoryResponse(pair.first, incremental, errorMsg);
+    if (!inventoryColls.isArray()) {
+      // caller did not supply an inventory, we need to fetch it
+      int res = fetchInventory(inventoryResponse, errorMsg);
+      if (res == TRI_ERROR_NO_ERROR) {
+        // we do not really care about the state response
+        inventoryColls = inventoryResponse.slice().get("collections");
+        if (!inventoryColls.isArray()) {
+          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                        "collections section is missing from response");
+        }
+      }
     }
+    
+    // strip eventual objectIDs and then dump the collections
+    auto pair = rocksutils::stripObjectIds(inventoryColls);
+    Result r = handleLeaderCollections(pair.first, incremental);
 
+    // all done here
     sendFinishBatch();
-
-    if (res != TRI_ERROR_NO_ERROR && errorMsg.empty()) {
-      errorMsg = TRI_errno_string(res);
-    }
-
-    return res;
+    return r;
   } catch (arangodb::basics::Exception const& ex) {
     sendFinishBatch();
-    errorMsg = ex.what();
-    return ex.code();
+    return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
     sendFinishBatch();
-    errorMsg = ex.what();
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
     sendFinishBatch();
-    errorMsg = "an unknown exception occurred";
-    return TRI_ERROR_NO_ERROR;
+    return Result(TRI_ERROR_NO_ERROR, "an unknown exception occurred");
   }
 }
 
@@ -1115,47 +1116,37 @@ int DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder,
 }
 
 /// @brief handle the inventory response of the master
-int DatabaseInitialSyncer::handleInventoryResponse(VPackSlice const& slice,
-                                           bool incremental,
-                                           std::string& errorMsg) {
-  VPackSlice const data = slice.get("collections");
-  if (!data.isArray()) {
-    errorMsg = "collections section is missing from response";
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-  }
+Result DatabaseInitialSyncer::handleLeaderCollections(VPackSlice const& collSlice,
+                                                      bool incremental) {
+  TRI_ASSERT(collSlice.isArray());
 
   std::vector<std::pair<VPackSlice, VPackSlice>> collections;
-  for (VPackSlice it : VPackArrayIterator(data)) {
+  for (VPackSlice it : VPackArrayIterator(collSlice)) {
     if (!it.isObject()) {
-      errorMsg = "collection declaration is invalid in response";
-
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                    "collection declaration is invalid in response");
     }
 
     VPackSlice const parameters = it.get("parameters");
 
     if (!parameters.isObject()) {
-      errorMsg = "collection parameters declaration is invalid in response";
-
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                    "collection parameters declaration is invalid in response");
     }
 
     VPackSlice const indexes = it.get("indexes");
 
     if (!indexes.isArray()) {
-      errorMsg = "collection indexes declaration is invalid in response";
-
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                    "collection indexes declaration is invalid in response");
     }
 
     std::string const masterName =
         VelocyPackHelper::getStringValue(parameters, "name", "");
 
     if (masterName.empty()) {
-      errorMsg = "collection name is missing in response";
-
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                    "collection name is missing in response");
     }
 
     if (TRI_ExcludeCollectionReplication(masterName, _includeSystem)) {
@@ -1169,7 +1160,6 @@ int DatabaseInitialSyncer::handleInventoryResponse(VPackSlice const& slice,
 
     if (_restrictType != Syncer::RestrictType::RESTRICT_NONE) {
       auto const it = _restrictCollections.find(masterName);
-
       bool found = (it != _restrictCollections.end());
 
       if (_restrictType == Syncer::RESTRICT_INCLUDE && !found) {
@@ -1185,13 +1175,13 @@ int DatabaseInitialSyncer::handleInventoryResponse(VPackSlice const& slice,
   }
 
   int res;
+  std::string errorMsg;
 
   // STEP 1: validate collection declarations from master
   // ----------------------------------------------------------------------------------
 
   // iterate over all collections from the master...
   res = iterateCollections(collections, incremental, errorMsg, PHASE_VALIDATE);
-
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -1200,9 +1190,7 @@ int DatabaseInitialSyncer::handleInventoryResponse(VPackSlice const& slice,
   // the master
   //  ------------------------------------------------------------------------------------
 
-  res =
-      iterateCollections(collections, incremental, errorMsg, PHASE_DROP_CREATE);
-
+  res = iterateCollections(collections, incremental, errorMsg, PHASE_DROP_CREATE);
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }

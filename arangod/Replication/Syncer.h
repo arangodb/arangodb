@@ -60,6 +60,15 @@ class Syncer {
     RESTRICT_EXCLUDE
   };
   
+  struct MasterInfo {
+    std::string _endpoint;
+    TRI_server_id_t _serverId;
+    int _majorVersion;
+    int _minorVersion;
+    TRI_voc_tick_t _lastLogTick;
+    bool _active;
+  };
+  
   Syncer(Syncer const&) = delete;
   Syncer& operator=(Syncer const&) = delete;
 
@@ -172,15 +181,7 @@ class Syncer {
   bool _verbose;
 
   /// @brief information about the master state
-  struct {
-    std::string _endpoint;
-    TRI_server_id_t _serverId;
-    int _majorVersion;
-    int _minorVersion;
-    TRI_voc_tick_t _lastLogTick;
-    bool _active;
-  }
-  _masterInfo;
+  MasterInfo _masterInfo;
 
   /// @brief the endpoint (master) we're connected to
   Endpoint* _endpoint;

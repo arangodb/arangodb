@@ -205,3 +205,36 @@ void ReplicationApplier::setProgressNoLock(std::string const& msg) {
   // write time into buffer
   TRI_GetTimeStampReplication(_state._progressTime, sizeof(_state._progressTime) - 1);
 }
+
+/// @brief pauses and checks whether the apply thread should terminate
+bool ReplicationApplier::wait(uint64_t sleepTime) {
+  if (isTerminated()) {
+    return false;
+  }
+  
+  if (sleepTime > 0) {
+    LOG_TOPIC(TRACE, Logger::REPLICATION)
+    << "replication applier going to sleep for " << sleepTime << " ns";
+    
+    static uint64_t const SleepChunk = 500 * 1000;
+    
+    while (sleepTime >= SleepChunk) {
+      usleep(static_cast<TRI_usleep_t>(SleepChunk));
+      sleepTime -= SleepChunk;
+      
+      if (isTerminated()) {
+        return false;
+      }
+    }
+    
+    if (sleepTime > 0) {
+      usleep(static_cast<TRI_usleep_t>(sleepTime));
+      
+      if (isTerminated()) {
+        return false;
+      }
+    }
+  }
+  
+  return true;
+}

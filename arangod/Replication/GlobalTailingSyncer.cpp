@@ -61,7 +61,7 @@ GlobalTailingSyncer::GlobalTailingSyncer(
     ReplicationApplierConfiguration const* configuration,
     TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
     : TailingSyncer(configuration, initialTick, barrierId),
-      _applier(),
+      _applier(DatabaseFeature::DATABASE->globalReplicationApplier()),
       _useTick(useTick),
       _hasWrittenState(false) {
       _ignoreDatabaseMarkers = false;
@@ -69,7 +69,7 @@ GlobalTailingSyncer::GlobalTailingSyncer(
 
 /// @brief run method, performs continuous synchronization
 int GlobalTailingSyncer::run() {
-  /*if (_client == nullptr || _connection == nullptr || _endpoint == nullptr) {
+  if (_client == nullptr || _connection == nullptr || _endpoint == nullptr) {
     return TRI_ERROR_INTERNAL;
   }
 
@@ -88,14 +88,13 @@ retry:
     _applier->_state._failedConnects = 0;
   }
 
-  while (vocbase()->state() == TRI_vocbase_t::State::NORMAL) {
+  while (_applier->isRunning()) {
     setProgress("fetching master state information");
     res = getMasterState(errorMsg);
 
     if (res == TRI_ERROR_REPLICATION_NO_RESPONSE) {
       // master error. try again after a sleep period
       connectRetries++;
-
       {
         WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
         _applier->_state._failedConnects = connectRetries;
@@ -231,13 +230,11 @@ retry:
       errorMsg = "";
 
       try {
-        DatabaseInitialSyncer syncer(
-            vocbase(), &_configuration, _configuration._restrictCollections,
+        GlobalInitialSyncer syncer(&_configuration, _configuration._restrictCollections,
             _restrictType, _configuration._verbose, false);
 
-        res = syncer.run(errorMsg, _configuration._incremental);
-
-        if (res == TRI_ERROR_NO_ERROR) {
+        Result r = syncer.run(_configuration._incremental);
+        if (r.ok()) {
           TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
           LOG_TOPIC(INFO, Logger::REPLICATION)
               << "automatic resynchronization for database '" << _databaseName
@@ -248,6 +245,7 @@ retry:
           _useTick = true;
           goto retry;
         }
+        
         // fall through otherwise
       } catch (...) {
         errorMsg = "caught an exception";
@@ -257,35 +255,35 @@ retry:
 
     return res;
   }
-*/
+
   return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief set the applier progress
 void GlobalTailingSyncer::setProgress(char const* msg) {
- /* if (_verbose) {
+ if (_verbose) {
     LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
   } else {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
   }
 
-  _applier->setProgress(msg);*/
+  _applier->setProgress(msg);
 }
 
 /// @brief set the applier progress
 void GlobalTailingSyncer::setProgress(std::string const& msg) {
-  /*if (_verbose) {
+  if (_verbose) {
     LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
   } else {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
   }
 
-  _applier->setProgress(msg);*/
+  _applier->setProgress(msg);
 }
 
 /// @brief save the current applier state
 int GlobalTailingSyncer::saveApplierState() {
-  /*LOG_TOPIC(TRACE, Logger::REPLICATION)
+  LOG_TOPIC(TRACE, Logger::REPLICATION)
       << "saving replication applier state. last applied continuous tick: "
       << _applier->_state._lastAppliedContinuousTick
       << ", safe resume tick: " << _applier->_state._safeResumeTick;
@@ -300,14 +298,14 @@ int GlobalTailingSyncer::saveApplierState() {
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::REPLICATION)
         << "unable to save replication applier state: " << ex.what();
-  }*/
+  }
 
   return TRI_ERROR_INTERNAL;
 }
 
 /// @brief get local replication apply state
 void GlobalTailingSyncer::getLocalState() {
-  /*uint64_t oldTotalRequests = _applier->_state._totalRequests;
+  uint64_t oldTotalRequests = _applier->_state._totalRequests;
   uint64_t oldTotalFailedConnects = _applier->_state._totalFailedConnects;
 
   bool const foundState = _applier->loadState();
@@ -324,13 +322,16 @@ void GlobalTailingSyncer::getLocalState() {
 
   if (_masterInfo._serverId != _applier->_state._serverId &&
       _applier->_state._serverId != 0) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_MASTER_CHANGE, std::string("encountered wrong master id in replication state file. found: ") + StringUtils::itoa(_masterInfo._serverId) + ", expected: " + StringUtils::itoa(_applier->_state._serverId));
-  }*/
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_MASTER_CHANGE,
+                                   std::string("encountered wrong master id in replication state file. found: ") +
+                                   StringUtils::itoa(_masterInfo._serverId) + ", expected: " +
+                                   StringUtils::itoa(_applier->_state._serverId));
+  }
 }
 
 /// @brief perform a continuous sync with the master
 int GlobalTailingSyncer::runContinuousSync(std::string& errorMsg) {
-  /*static uint64_t const MinWaitTime = 300 * 1000;        // 0.30 seconds
+  static uint64_t const MinWaitTime = 300 * 1000;        // 0.30 seconds
   static uint64_t const MaxWaitTime = 60 * 1000 * 1000;  // 60 seconds
   uint64_t connectRetries = 0;
   uint64_t inactiveCycles = 0;
@@ -370,7 +371,6 @@ int GlobalTailingSyncer::runContinuousSync(std::string& errorMsg) {
   // get the applier into a sensible start state by fetching the list of
   // open transactions from the master
   TRI_voc_tick_t fetchTick = safeResumeTick;
-
   if (safeResumeTick > 0 && safeResumeTick == fromTick) {
     // special case in which from and to are equal
     fetchTick = safeResumeTick;
@@ -491,7 +491,7 @@ int GlobalTailingSyncer::runContinuousSync(std::string& errorMsg) {
     if (!_applier->wait(sleepTime)) {
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
     }
-  }*/
+  }
 
   // won't be reached
   return TRI_ERROR_INTERNAL;
@@ -627,7 +627,7 @@ int GlobalTailingSyncer::followMasterLog(std::string& errorMsg,
                                       TRI_voc_tick_t firstRegularTick,
                                       uint64_t& ignoreCount, bool& worked,
                                       bool& masterActive) {
-  /*std::string const baseUrl = BaseUrl + "/logger-follow?chunkSize=" +
+  std::string const baseUrl = BaseUrl + "/logger-follow?chunkSize=" +
                               StringUtils::itoa(_chunkSize) + "&barrier=" +
                               StringUtils::itoa(_barrierId);
 
@@ -834,7 +834,7 @@ int GlobalTailingSyncer::followMasterLog(std::string& errorMsg,
     if (checkMore) {
       worked = true;
     }
-  }*/
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -851,7 +851,7 @@ void GlobalTailingSyncer::preApplyMarker(TRI_voc_tick_t firstRegularTick,
 
 void GlobalTailingSyncer::postApplyMarker(uint64_t processedMarkers,
                                        bool skipped) {
-  /*WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+  WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
   if (_applier->_state._lastProcessedContinuousTick >
       _applier->_state._lastAppliedContinuousTick) {
@@ -864,6 +864,6 @@ void GlobalTailingSyncer::postApplyMarker(uint64_t processedMarkers,
   } else if (_ongoingTransactions.empty()) {
     _applier->_state._safeResumeTick =
         _applier->_state._lastProcessedContinuousTick;
-  }*/
+  }
 }
 

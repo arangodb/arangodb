@@ -236,9 +236,9 @@ retry:
             vocbase(), &_configuration, _configuration._restrictCollections,
             _restrictType, _configuration._verbose, false);
 
-        res = syncer.run(errorMsg, _configuration._incremental);
-
-        if (res == TRI_ERROR_NO_ERROR) {
+        Result r = syncer.run(_configuration._incremental);
+        
+        if (r.ok()) {
           TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
           LOG_TOPIC(INFO, Logger::REPLICATION)
               << "automatic resynchronization for database '" << _databaseName
@@ -249,6 +249,8 @@ retry:
           _useTick = true;
           goto retry;
         }
+        res = r.errorNumber();
+        errorMsg = r.errorMessage();
         // fall through otherwise
       } catch (...) {
         errorMsg = "caught an exception";

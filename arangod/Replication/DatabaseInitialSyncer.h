@@ -90,8 +90,15 @@ private:
 
 
  public:
+  
   /// @brief run method, performs a full synchronization
-  int run(std::string& errorMsg, bool incremental);
+  Result run(bool incremental) {
+    return run (incremental, velocypack::Slice::noneSlice());
+  }
+  
+  /// @brief run method, performs a full synchronization with the
+  ///        given list of collections.
+  Result run(bool incremental, velocypack::Slice collections);
 
   /// @brief return the last log tick of the master at start
   TRI_voc_tick_t getLastLogTick() const { return _masterInfo._lastLogTick; }
@@ -129,9 +136,11 @@ private:
   bool checkAborted();
   
   /// @brief insert the batch id and barrier ID
-  void useAsChildSyncer(uint64_t barrierId, double barrierUpdateTime,
-                      uint64_t batchId, double batchUpdateTime) {
+  void useAsChildSyncer(Syncer::MasterInfo const& info,
+                        uint64_t barrierId, double barrierUpdateTime,
+                        uint64_t batchId, double batchUpdateTime) {
     _isChildSyncer = true;
+    _masterInfo = info;
     _barrierId = barrierId;
     _barrierUpdateTime = barrierUpdateTime;
     _batchId = batchId;
@@ -185,8 +194,7 @@ private:
   int fetchInventory(arangodb::velocypack::Builder& builder, std::string& errorMsg);
 
   /// @brief handle the inventory response of the master
-  int handleInventoryResponse(arangodb::velocypack::Slice const&, bool,
-                              std::string&);
+  Result handleLeaderCollections(arangodb::velocypack::Slice const&, bool);
 
   /// @brief iterate over all collections from an array and apply an action
   int iterateCollections(

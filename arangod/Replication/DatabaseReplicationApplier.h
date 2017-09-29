@@ -81,9 +81,6 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
   /// @brief save the replication application configuration to a file
   void storeConfiguration(bool doSync) override;
 
-  /// @brief pauses and checks whether the apply thread should terminate
-  bool wait(uint64_t);
-
   /// @brief factory function for creating a database-specific replication applier
   static DatabaseReplicationApplier* create(TRI_vocbase_t* vocbase);
 

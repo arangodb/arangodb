@@ -87,6 +87,9 @@ class ReplicationApplier {
   /// @brief test if the replication applier is running
   bool isRunning() const;
   
+  /// @brief pauses and checks whether the apply thread should terminate
+  bool wait(uint64_t);
+  
   /// @brief block the replication applier from starting
   int preventStart();
   

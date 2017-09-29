@@ -600,7 +600,10 @@ void RestReplicationHandler::handleCommandMakeSlave() {
                                  restrictType, false, false);
     
     try {
-      res = syncer.run(errorMsg, false);
+#warning Why not use `config._incremental` as argument  ??
+      Result r = syncer.run(false);
+      res = r.errorNumber();
+      errorMsg = r.errorMessage();
       // steal the barrier from the syncer
       barrierId = syncer.stealBarrier();
     } catch (...) {
@@ -1905,7 +1908,12 @@ void RestReplicationHandler::handleCommandSync() {
 
   std::string errorMsg = "";
 
-  /*int res = */ syncer.run(errorMsg, incremental);
+  Result r = syncer.run(incremental);
+  if (r.fail()) {
+    LOG_TOPIC(ERR, Logger::REPLICATION)
+      << "Failed to sync " << r.errorMessage();
+    generateError(r);
+  }
 
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
