@@ -29,21 +29,35 @@ using namespace arangodb;
 
 /// @brief server-global replication applier for all databases
 GlobalReplicationApplier::GlobalReplicationApplier(ReplicationApplierConfiguration const& configuration)
-      : ReplicationApplier(configuration) {}
+      : ReplicationApplier(configuration, "global database") {}
 
-GlobalReplicationApplier::~GlobalReplicationApplier() {}
-  
+GlobalReplicationApplier::~GlobalReplicationApplier() {
+  stop(true, false);
+}
+
 /// @brief stop the applier and "forget" everything
-void GlobalReplicationApplier::forget() {}
+void GlobalReplicationApplier::forget() {
+  stop(true, true);
 
-/// @brief shuts down the replication applier
-void GlobalReplicationApplier::shutdown() {}
-  
+  removeState();
+
+// TODO: _vocbase!
+//  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+//  engine->removeReplicationApplierConfiguration(_vocbase);
+  _configuration.reset();
+}
+
 /// @brief start the replication applier
 void GlobalReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {}
   
 /// @brief stop the replication applier
 void GlobalReplicationApplier::stop(bool resetError, bool joinThread) {}
+
+/// @brief shuts down the replication applier
+void GlobalReplicationApplier::shutdown() {
+  // simply fall back to base class implementation
+  ReplicationApplier::shutdown();
+}
   
 /// @brief configure the replication applier
 void GlobalReplicationApplier::reconfigure(ReplicationApplierConfiguration const& configuration) {}

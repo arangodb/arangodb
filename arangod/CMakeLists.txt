@@ -278,6 +278,7 @@ SET(ARANGOD_SOURCES
   Replication/GlobalInitialSyncer.cpp
   Replication/GlobalTailingSyncer.cpp
   Replication/InitialSyncer.cpp
+  Replication/ReplicationApplier.cpp
   Replication/ReplicationApplierConfiguration.cpp
   Replication/ReplicationApplierState.cpp
   Replication/Syncer.cpp

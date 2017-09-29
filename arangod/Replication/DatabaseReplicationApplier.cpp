@@ -98,12 +98,8 @@ DatabaseReplicationApplier::DatabaseReplicationApplier(TRI_vocbase_t* vocbase)
 /// @brief replication applier for a single database, with configuration
 DatabaseReplicationApplier::DatabaseReplicationApplier(ReplicationApplierConfiguration const& configuration,
                                                        TRI_vocbase_t* vocbase)
-    : ReplicationApplier(configuration), 
-      _vocbase(vocbase),
-      _terminateThread(false) {
-  
-  setProgress("applier initially created");
-}
+    : ReplicationApplier(configuration, std::string("database '") + vocbase->name() + "'"), 
+      _vocbase(vocbase) {}
 
 DatabaseReplicationApplier::~DatabaseReplicationApplier() {
   stop(true, false);
@@ -391,30 +387,7 @@ void DatabaseReplicationApplier::shutdown() {
     return;
   }
 
-  {
-    WRITE_LOCKER(writeLocker, _statusLock);
-
-    if (!_state._active) {
-      // nothing to do
-      return;
-    }
-
-    _state._active = false;
-    _state.clearError();
-
-    setTermination(true);
-    setProgressNoLock("applier stopped");
-  }
-
-  // join the thread without holding the status lock 
-  // (otherwise it would probably not join)
-  TRI_ASSERT(_thread);
-  _thread.reset();
-
-  setTermination(false);
-
-  LOG_TOPIC(INFO, Logger::REPLICATION)
-      << "shut down replication applier for database '" << _vocbase->name() << "'";
+  ReplicationApplier::shutdown();
 }
 
 /// @brief test if the replication applier is running
@@ -472,14 +445,17 @@ void DatabaseReplicationApplier::stopInitialSynchronization(bool value) {
 
 /// @brief stop the applier and "forget" everything
 void DatabaseReplicationApplier::forget() {
+  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
+    // unsupported
+    return;
+  }
+
   stop(true, true);
 
   removeState();
 
-  if (_vocbase->type() != TRI_VOCBASE_TYPE_COORDINATOR) {
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    engine->removeReplicationApplierConfiguration(_vocbase);
-  }
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->removeReplicationApplierConfiguration(_vocbase);
   _configuration.reset();
 }
 
@@ -514,46 +490,6 @@ bool DatabaseReplicationApplier::wait(uint64_t sleepTime) {
   }
 
   return true;
-}
-
-/// @brief set the progress 
-void DatabaseReplicationApplier::setProgress(char const* msg) {
-  return setProgress(std::string(msg));
-}
-
-void DatabaseReplicationApplier::setProgress(std::string const& msg) {
-  WRITE_LOCKER(writeLocker, _statusLock);
-  setProgressNoLock(msg);
-}
-
-void DatabaseReplicationApplier::setProgressNoLock(std::string const& msg) {
-  _state._progressMsg = msg;
-
-  // write time into buffer
-  TRI_GetTimeStampReplication(_state._progressTime, sizeof(_state._progressTime) - 1);
-}
-
-/// @brief register an applier error
-int DatabaseReplicationApplier::setError(int errorCode, char const* msg) {
-  return setErrorNoLock(errorCode, std::string(msg));
-}
-
-int DatabaseReplicationApplier::setError(int errorCode, std::string const& msg) {
-  WRITE_LOCKER(writeLocker, _statusLock);
-  return setErrorNoLock(errorCode, msg);
-}
-
-/// @brief register an applier error
-int DatabaseReplicationApplier::setErrorNoLock(int errorCode, std::string const& msg) {
-  // log error message
-  if (errorCode != TRI_ERROR_REPLICATION_APPLIER_STOPPED) {
-    LOG_TOPIC(ERR, Logger::REPLICATION)
-        << "replication applier error for database '" << _vocbase->name()
-        << "': " << (msg.empty() ? TRI_errno_string(errorCode) : msg);
-  }
-
-  _state.setError(errorCode, msg.empty() ? TRI_errno_string(errorCode) : msg);
-  return errorCode;
 }
 
 /// @brief factory function for creating a database-specific replication applier
