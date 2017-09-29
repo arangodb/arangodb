@@ -26,6 +26,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/Thread.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/files.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "VocBase/replication-common.h"
@@ -128,6 +129,23 @@ void ReplicationApplier::shutdown() {
   LOG_TOPIC(INFO, Logger::REPLICATION)
       << "shut down replication applier for " << _databaseName;
 }
+
+void ReplicationApplier::removeState() {
+  WRITE_LOCKER(writeLocker, _statusLock);
+  _state.reset();
+
+  std::string const filename = getStateFilename();
+
+  if (TRI_ExistsFile(filename.c_str())) {
+    LOG_TOPIC(TRACE, Logger::REPLICATION) << "removing replication state file '"
+                                          << filename << "'";
+    int res = TRI_UnlinkFile(filename.c_str());
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("unable to remove replication state file '") + filename + "'");
+    }
+  }
+} 
   
 void ReplicationApplier::reconfigure(ReplicationApplierConfiguration const& configuration) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());

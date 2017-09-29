@@ -69,6 +69,9 @@ class GlobalReplicationApplier final : public ReplicationApplier {
   
   /// @brief return the current configuration
   ReplicationApplierConfiguration configuration() const override;
+
+ protected:
+  std::string getStateFilename() const override;
 };
 
 }

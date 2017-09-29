@@ -22,6 +22,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GlobalReplicationApplier.h"
+#include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/FileUtils.h"
+#include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 
 #include <velocypack/Builder.h>
 
@@ -86,7 +91,9 @@ void GlobalReplicationApplier::reconfigure(ReplicationApplierConfiguration const
 }
   
 /// @brief remove the replication application state file
-void GlobalReplicationApplier::removeState() {}
+void GlobalReplicationApplier::removeState() {
+  ReplicationApplier::removeState();
+}
   
 /// @brief load the applier state from persistent storage
 /// returns whether a previous state was found
@@ -101,4 +108,12 @@ void GlobalReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& resul
 /// @brief return the current configuration
 ReplicationApplierConfiguration GlobalReplicationApplier::configuration() const {
   return _configuration;
+}
+  
+std::string GlobalReplicationApplier::getStateFilename() const {
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  // TODO: fix storage path
+  TRI_vocbase_t* vocbase = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();
+
+  return arangodb::basics::FileUtils::buildFilename(engine->databasePath(vocbase), "REPLICATION-APPLIER-STATE");
 }

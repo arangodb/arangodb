@@ -90,8 +90,8 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
   /// @brief load a persisted configuration for the applier
   static ReplicationApplierConfiguration loadConfiguration(TRI_vocbase_t* vocbase);
   
- private:
-  std::string getStateFilename() const;
+ protected:
+  std::string getStateFilename() const override;
    
  private:
   TRI_vocbase_t* _vocbase;

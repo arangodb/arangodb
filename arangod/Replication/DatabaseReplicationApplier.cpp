@@ -127,20 +127,7 @@ void DatabaseReplicationApplier::removeState() {
     return; 
   }
 
-  WRITE_LOCKER(writeLocker, _statusLock);
-  _state.reset();
-
-  std::string const filename = getStateFilename();
-
-  if (TRI_ExistsFile(filename.c_str())) {
-    LOG_TOPIC(TRACE, Logger::REPLICATION) << "removing replication state file '"
-                                          << filename << "'";
-    int res = TRI_UnlinkFile(filename.c_str());
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(res, std::string("unable to remove replication state file '") + filename + "'");
-    }
-  } 
+  ReplicationApplier::removeState();
 }
 
 /// @brief load the applier state from persistent storage
@@ -153,7 +140,6 @@ bool DatabaseReplicationApplier::loadState() {
   }
 
   std::string const filename = getStateFilename();
-
   LOG_TOPIC(TRACE, Logger::REPLICATION)
       << "looking for replication state file '" << filename << "'";
 
