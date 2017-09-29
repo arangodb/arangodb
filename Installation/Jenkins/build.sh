@@ -390,6 +390,12 @@ while [ $# -gt 0 ];  do
             DOWNLOAD_STARTER=1
             ;;
 
+        --downloadSyncer)
+            shift
+            DOWNLOAD_SYNCER_USER=$1
+            shift
+            ;;
+
         --enterprise)
             shift
             ENTERPRISE_GIT_URL=$1
@@ -635,6 +641,68 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
     )
 fi
 
+THIRDPARTY_BIN=""
+THIRDPARTY_SBIN=""
+if test -n "${DOWNLOAD_SYNCER_USER}"; then
+    OAUTH_REPLY=$(
+        curl -s "https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations" \
+             --data '{"scopes":["repo", "repo_deployment"],"note":"Release"}'
+        )
+    OAUTH_TOKEN=$(echo "$OAUTH_REPLY" | \
+                         grep '"token"'  |\
+                         sed -e 's;.*": *";;' -e 's;".*;;'
+                  )
+    OAUTH_ID=$(echo "$OAUTH_REPLY" | \
+                      grep '"id"'  |\
+                      sed -e 's;.*": *;;' -e 's;,;;'
+            )
+    if test -f "${SRC}/SYNCER_REV"; then
+        SYNCER_REV=$(cat ${SRC}/SYNCER_REV)
+    else
+        SYNCER_REV=$(curl -s "https://api.github.com/repos/arangodb/arangosync/releases?access_token=${OAUTH_TOKEN}" | \
+                             grep tag_name | \
+                             head -n 1 | \
+                             ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'
+                   )
+    fi
+    SYNCER_REPLY=$(curl -s "https://api.github.com/repos/arangodb/arangosync/releases/tags/${SYNCER_REV}?access_token=${OAUTH_TOKEN}")
+    DOWNLOAD_URLS=$(echo "${SYNCER_REPLY}" |grep 'browser_download_url
+"url".*asset.*' |
+                           ${SED} -e "s;.*: ;;" -e 's;";;g'
+                 )
+    LINE_NO=$(echo "${DOWNLOAD_URLS}" | grep -n "${OSNAME}" | ${SED} -e 's;:http.*;;g')
+    LINE_NO=$((LINE_NO - 1))
+    SYNCER_URL=$(echo "${DOWNLOAD_URLS}" | head -n "${LINE_NO}" |tail -n 1)
+    
+    if test -n "${SYNCER_URL}"; then
+        mkdir -p "${BUILD_DIR}"
+        if test "${isCygwin}" == 1; then
+            TN=arangosync.exe
+        else
+            TN=arangosync
+        fi
+        if test -f "${TN}"; then
+            rm -f "${TN}"
+        fi
+
+        FN=$(echo "${DOWNLOAD_URLS}" | grep "${OSNAME}" | ${SED} -e 's;.*/;;g')
+        echo "$FN"
+        if ! test -f "${BUILD_DIR}/${FN}-${SYNCER_REV}"; then
+            curl -LJO# -H 'Accept: application/octet-stream' "${SYNCER_URL}?access_token=${OAUTH_TOKEN}"
+            cp "${FN}" "${BUILD_DIR}/${TN}"
+            touch "${BUILD_DIR}/${FN}-${SYNCER_REV}"
+            chmod a+x "${BUILD_DIR}/${TN}"
+            echo "downloaded ${BUILD_DIR}/${FN}-${SYNCER_REV} MD5: $(${MD5} < "${BUILD_DIR}/${TN}")"
+        else
+            echo "using already downloaded ${BUILD_DIR}/${FN}-${SYNCER_REV} MD5: $(${MD5} < "${BUILD_DIR}/${TN}")"
+        fi
+    fi
+    # Log out again:
+    curl -s -X DELETE "https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations/${OAUTH_ID}"
+
+    THIRDPARTY_SBIN=("${THIRDPARTY_SBIN}${BUILD_DIR}/${TN}")
+fi
+
 if test "${DOWNLOAD_STARTER}" == 1; then
     if test -f "${SRC}/STARTER_REV"; then
         STARTER_REV=$(cat "${SRC}/STARTER_REV")
@@ -674,7 +742,15 @@ if test "${DOWNLOAD_STARTER}" == 1; then
             echo "using already downloaded ${BUILD_DIR}/${FN}-${STARTER_REV} MD5: $(${MD5} < "${BUILD_DIR}/${TN}")"
         fi
     fi
-    CONFIGURE_OPTIONS+=("-DTHIRDPARTY_BIN=${BUILD_DIR}/${TN}")
+    THIRDPARTY_BIN=("${THIRDPARTY_BIN}${BUILD_DIR}/${TN}")
+fi
+
+if test -n "${THIRDPARTY_BIN}"; then 
+    CONFIGURE_OPTIONS+=("-DTHIRDPARTY_BIN=${THIRDPARTY_BIN}")
+fi
+
+if test -n "${THIRDPARTY_SBIN}"; then 
+    CONFIGURE_OPTIONS+=("-DTHIRDPARTY_SBIN=${THIRDPARTY_SBIN}")
 fi
 
 test -d "${BUILD_DIR}" || mkdir "${BUILD_DIR}"
