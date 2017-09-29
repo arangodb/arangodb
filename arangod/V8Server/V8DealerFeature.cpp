@@ -1329,11 +1329,11 @@ bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
 V8DealerFeature::stats V8DealerFeature::getCurrentContextNumbers() {
   CONDITION_LOCKER(guard, _contextCondition);
   return {
-      available: _contexts.size(),
-      busy:      _busyContexts.size(),
-      dirty:     _dirtyContexts.size(),
-      free:      _freeContexts.size(),
-      max:       _nrMaxContexts
+      _contexts.size(),
+      _busyContexts.size(),
+      _dirtyContexts.size(),
+      _freeContexts.size(),
+      _nrMaxContexts
       };
 }
 
