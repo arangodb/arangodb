@@ -54,10 +54,10 @@ struct empty_doc_iterator : doc_iterator {
 //////////////////////////////////////////////////////////////////////////////
 struct empty_term_iterator : term_iterator {
   virtual const bytes_ref& value() const override { return bytes_ref::nil; }
-  virtual doc_iterator::ptr postings(const flags&) const {
+  virtual doc_iterator::ptr postings(const flags&) const override {
     return doc_iterator::empty();
   }
-  virtual void read() { }
+  virtual void read() override { }
   virtual bool next() override { return false; }
   virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     return irs::attribute_view::empty_instance();
@@ -92,7 +92,7 @@ struct empty_term_reader : singleton<empty_term_reader>, term_reader {
 }; // empty_term_reader
 
 struct empty_field_iterator : field_iterator {
-  virtual const term_reader& value() const {
+  virtual const term_reader& value() const override {
     return empty_term_reader::instance();
   }
 
@@ -106,7 +106,7 @@ struct empty_field_iterator : field_iterator {
 };
 
 struct empty_column_iterator : column_iterator {
-  virtual const column_meta& value() const {
+  virtual const column_meta& value() const override {
     static column_meta empty;
     return empty;
   }

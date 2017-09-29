@@ -100,7 +100,7 @@ class pos_iterator final : public irs::position::impl {
     return val_;
   }
 
-  virtual bool next() {
+  virtual bool next() override {
     if (pos_ == freq_.value) {
       val_ = position::INVALID;
       return false;
@@ -262,15 +262,15 @@ class term_iterator : public irs::term_iterator {
     term_ = irs::bytes_ref::nil;
   }
 
-  virtual const bytes_ref& value() const {
+  virtual const bytes_ref& value() const override {
     return term_;
   }
 
-  virtual const attribute_view& attributes() const NOEXCEPT {
+  virtual const attribute_view& attributes() const NOEXCEPT override {
     return attribute_view::empty_instance();
   }
 
-  virtual void read() {
+  virtual void read() override {
     // Does nothing now
   }
 
@@ -638,7 +638,7 @@ bool field_data::invert(
     }
 
     if (0 == ++len_) {
-      IR_FRMT_ERROR("too many token in field, document '%lu'", id);
+      IR_FRMT_ERROR("too many token in field, document '" IR_UINT64_T_SPECIFIER "'", id);
       return false;
     }
   }
@@ -725,4 +725,8 @@ void fields_data::reset() {
   int_writer_ = int_pool_.begin(); // reset position pointer to start of pool
 }
 
-NS_END
+NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

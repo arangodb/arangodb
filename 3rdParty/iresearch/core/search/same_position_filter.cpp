@@ -38,6 +38,7 @@ class same_position_iterator final : public conjunction {
 #if defined(_MSC_VER)
   #pragma warning(disable : 4706)
 #elif defined (__GNUC__)
+  #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 

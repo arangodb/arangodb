@@ -191,11 +191,11 @@ class sort final : iresearch::sort::prepared_base<bm25::score_t> {
     less_ = reverse ? &greater : &less;
   }
 
-  virtual const flags& features() const {
+  virtual const flags& features() const override {
     return bm25::FEATURES;
   }
 
-  virtual iresearch::sort::collector::ptr prepare_collector() const {
+  virtual iresearch::sort::collector::ptr prepare_collector() const override {
     return iresearch::sort::collector::make<bm25::collector>(k_, b_);
   }
 

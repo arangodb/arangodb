@@ -48,8 +48,8 @@ class compound_attributes: public irs::attribute_view {
         const irs::attribute::type_id& type_id,
         const irs::attribute_view::ref<irs::attribute>&
     ) ->bool {
-#if defined(__GNUC__) && (__GNUC__ < 6)
-      // GCCs before 6 are unable to call protected
+#if defined(__GNUC__) && (__GNUC__ < 5)
+      // GCCs before 5 are unable to call protected
       // member of base class from lambda
       this->insert(type_id);
 #else
@@ -70,13 +70,12 @@ class compound_attributes: public irs::attribute_view {
       value = nullptr;
       return true;
     };
-
     auto visitor_update = [this](
       const irs::attribute::type_id& type_id,
       const irs::attribute_view::ref<irs::attribute>& value
     )->bool {
-#if defined(__GNUC__) && (__GNUC__ < 6)
-      // GCCs before 6 are unable to call protected
+#if defined(__GNUC__) && (__GNUC__ < 5)
+      // GCCs before 5 are unable to call protected
       // member of base class from lambda
       this->insert(type_id, value);
 #else
@@ -90,7 +89,7 @@ class compound_attributes: public irs::attribute_view {
     attributes.visit(visitor_update); // set
   }
 
-#if defined(__GNUC__) && (__GNUC__ < 6)
+#if defined(__GNUC__) && (__GNUC__ < 5)
  private:
   void insert(const irs::attribute::type_id& type_id) {
     bool inserted;
@@ -350,7 +349,7 @@ void compound_term_iterator::add(
     const irs::term_reader& reader,
     const doc_id_map_t& doc_id_map) {
   term_iterator_mask_.emplace_back(term_iterators_.size()); // mark as used to trigger next()
-  term_iterators_.emplace_back(std::move(reader.iterator()), &doc_id_map);
+  term_iterators_.emplace_back(reader.iterator(), &doc_id_map);
 }
 
 bool compound_term_iterator::next() {
@@ -573,7 +572,7 @@ irs::doc_id_t compute_doc_ids(
     doc_id_map.resize(reader.docs_count() + irs::type_limits<irs::type_t::doc_id_t>::min(), MASKED_DOC_ID);
   } catch (...) {
     IR_FRMT_ERROR(
-      "Failed to resize merge_writer::doc_id_map to accommodate element: %lu",
+      "Failed to resize merge_writer::doc_id_map to accommodate element: " IR_UINT64_T_SPECIFIER,
       reader.docs_count() + irs::type_limits<irs::type_t::doc_id_t>::min()
     );
     return irs::type_limits<irs::type_t::doc_id_t>::invalid();
@@ -882,4 +881,8 @@ bool merge_writer::flush(std::string& filename, segment_meta& meta) {
   return true;
 }
 
-NS_END
+NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

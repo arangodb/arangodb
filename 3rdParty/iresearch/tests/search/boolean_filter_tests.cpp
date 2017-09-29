@@ -41,6 +41,7 @@ class basic_doc_iterator: public iresearch::doc_iterator {
 #if defined(_MSC_VER)
   #pragma warning( disable : 4706 )
 #elif defined (__GNUC__)
+  #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
@@ -92,7 +93,7 @@ class basic_doc_iterator: public iresearch::doc_iterator {
     return true;
   }
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT {
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     return attrs_;
   }
 
@@ -191,9 +192,7 @@ struct boosted: public iresearch::filter {
   }
 
   DECLARE_FILTER_TYPE();
-  boosted()
-    : filter(boosted::type()), docs(std::move(docs)) {
-  }
+  boosted(): filter(boosted::type()) { }
 
   basic_doc_iterator::docids_t docs;
 }; // boosted
@@ -4564,3 +4563,7 @@ TEST_F(fs_boolean_filter_test_case, mixed) {
 }
 
 } // tests
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

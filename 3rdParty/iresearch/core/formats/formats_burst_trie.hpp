@@ -26,6 +26,7 @@
 #if defined(_MSC_VER)
   // NOOP
 #elif defined (__GNUC__)
+  #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wsign-compare"
   #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
 #endif
@@ -35,7 +36,6 @@
 #if defined(_MSC_VER)
   // NOOP
 #elif defined (__GNUC__)
-  #pragma GCC diagnostic pop
   #pragma GCC diagnostic pop
 #endif
 

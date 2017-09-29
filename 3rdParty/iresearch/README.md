@@ -242,10 +242,6 @@ cmake --build .
 ```bash
 SNOWBALL_ROOT=<path-to-snowball>
 ```
-or
-```bash
-SNOWBALL_ROOT_SUFFIX is set (e.g. SNOWBALL_ROOT_SUFFIX=x86_64-linux-gnu for Ubuntu)
-```
 
 ### [BFD](https://sourceware.org/binutils/) <optional>
 
@@ -275,10 +271,6 @@ Note: BINUTILS_ROOT is a "reserved" variable internally used by some of the gcc 
 ```bash
 BFD_ROOT=<path-to-binutils>
 ```
-or
-```bash
-BFD_ROOT_SUFFIX is set (e.g. BFD_ROOT_SUFFIX=x86_64-linux-gnu for Ubuntu)
-```
 
 ### [Unwind](http://www.nongnu.org/libunwind/) <optional>
 
@@ -299,10 +291,6 @@ not yet available for win32
 ```bash
 UNWIND_ROOT=<path-to-unwind>
 ```
-or
-```bash
-UNWIND_ROOT_SUFFIX is set (e.g. UNWIND_ROOT_SUFFIX=x86_64-linux-gnu for Ubuntu)
-```
 
 ### [Gooogle test](https://code.google.com/p/googletest)
 
@@ -316,7 +304,7 @@ make
 #### install (win32)
 ```bash
 mkdir build && cd build
-cmake -g "Visual studio 12" -Ax64 -Dgtest_force_shared_crt=ON ..
+cmake -g "Visual studio 12" -Ax64 -Dgtest_force_shared_crt=ON -DCMAKE_DEBUG_POSTFIX="" ..
 cmake --build .
 mv Debug ../lib
 ```

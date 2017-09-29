@@ -13,6 +13,7 @@
 #define IRESEARCH_FORMAT_H
 
 #include "shared.hpp"
+#include "store/data_output.hpp"
 #include "store/directory.hpp"
 
 #include "index/index_meta.hpp"
@@ -21,6 +22,7 @@
 #include "utils/block_pool.hpp"
 #include "utils/io_utils.hpp"
 #include "utils/string.hpp"
+#include "utils/type_id.hpp"
 #include "utils/attributes_provider.hpp"
 
 NS_ROOT
@@ -31,7 +33,6 @@ struct field_meta;
 struct column_meta;
 struct flush_state;
 struct reader_state;
-struct data_output;
 struct index_output;
 struct data_input;
 struct index_input;

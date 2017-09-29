@@ -277,7 +277,7 @@ TEST(memory_pool_allocator_test, profile_std_map) {
     > pool;
 
     typedef irs::memory::memory_pool_multi_size_allocator<
-      test_data,
+      std::pair<size_t const, test_data>,
       decltype(pool),
       irs::memory::single_allocator_tag
     > alloc_t;
@@ -316,7 +316,7 @@ TEST(memory_pool_allocator_test, profile_std_map) {
     > pool(initial_size);
 
     typedef irs::memory::memory_pool_multi_size_allocator<
-      test_data,
+      std::pair<size_t const, test_data>,
       decltype(pool),
       irs::memory::single_allocator_tag
     > alloc_t;
@@ -400,7 +400,7 @@ TEST(memory_pool_allocator_test, profile_std_multimap) {
     > pool(0);
 
     typedef irs::memory::memory_pool_allocator<
-      test_data,
+      std::pair<size_t const, test_data>,
       decltype(pool),
       irs::memory::single_allocator_tag
     > alloc_t;
@@ -445,7 +445,7 @@ TEST(memory_pool_allocator_test, profile_std_multimap) {
     > pool(0, initial_size);
 
     typedef irs::memory::memory_pool_allocator<
-      test_data,
+      std::pair<size_t const, test_data>,
       decltype(pool),
       irs::memory::single_allocator_tag
     > alloc_t;
@@ -478,7 +478,7 @@ TEST(memory_pool_allocator_test, profile_std_multimap) {
     > pool;
 
     typedef irs::memory::memory_pool_multi_size_allocator<
-      test_data,
+      std::pair<size_t const, test_data>,
       decltype(pool),
       irs::memory::single_allocator_tag
     > alloc_t;
@@ -512,7 +512,7 @@ TEST(memory_pool_allocator_test, profile_std_multimap) {
     > pool(initial_size);
 
     typedef irs::memory::memory_pool_multi_size_allocator<
-      test_data,
+      std::pair<size_t const, test_data>,
       decltype(pool),
       irs::memory::single_allocator_tag
     > alloc_t;

@@ -4,28 +4,8 @@ set (IResearchTests_TARGET_NAME
   ""
 )
 
-# find Google Test Framework
-if("${GTEST_ROOT}" STREQUAL "")
-  if(NOT "$ENV{GTEST_ROOT}" STREQUAL "")
-    set(GTEST_ROOT "$ENV{GTEST_ROOT}")
-  else()
-    if(NOT MSVC AND EXISTS "/usr/include/gtest/gtest.h")
-      set(GTEST_ROOT "/usr")
-    endif()
-  endif()
-endif()
-find_package(GTest
+find_package(GTestLocal
   REQUIRED
-)
-
-# set rapidjson directories
-set(RAPIDJSON_INCLUDE_DIR
-  ${EXTERNAL_INCLUDE_DIRS}/rapidjson
-)
-
-# set cmdline directories
-set(CMDLINE_INCLUDE_DIR
-  ${EXTERNAL_INCLUDE_DIRS}/cmdline
 )
 
 # set test resource directory
@@ -180,6 +160,10 @@ target_include_directories(${IResearchTests_TARGET_NAME}-static
 )
 
 if(MSVC)
+  target_compile_options(${IResearchTests_TARGET_NAME}-shared
+    PRIVATE "/bigobj"
+  )
+
   target_compile_options(${IResearchTests_TARGET_NAME}-static
     PRIVATE "/bigobj"
   )
@@ -202,14 +186,14 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
-  ${GTEST_BOTH_LIBRARIES}
+  ${GTEST_SHARED_LIBS}
   ${PTHREAD_LIBRARY}
 )
 
 target_link_libraries(${IResearchTests_TARGET_NAME}-static
   ${GCOV_LIBRARY}
   ${IResearch_TARGET_NAME}-static
-  ${GTEST_BOTH_LIBRARIES}
+  ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
 )
 
@@ -252,8 +236,8 @@ include_directories(${IResearchTests_TARGET_NAME}-static
   ${ICU_INCLUDE_DIR}
   ${GTEST_INCLUDE_DIR}
   ${Boost_INCLUDE_DIRS}
-  ${RAPIDJSON_INCLUDE_DIR}
-  ${CMDLINE_INCLUDE_DIR}
+  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-cmdline,INTERFACE_INCLUDE_DIRECTORIES>
+  $<TARGET_PROPERTY:${IResearch_TARGET_NAME}-rapidjson,INTERFACE_INCLUDE_DIRECTORIES>
 )
 
 ################################################################################

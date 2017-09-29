@@ -68,16 +68,17 @@ class prefix_filter_test_case : public filter_test_case_base {
       check_query(ir::by_prefix().field("prefix"), order, docs, rdr);
     }
 
+    //FIXME
     // empty prefix + scored_terms_limit
-    {
-      docs_t docs{ 31, 32, 1, 4, 9, 16, 21, 24, 26, 29 };
-      costs_t costs{ docs.size() };
-      ir::order order;
-
-      order.add<sort::frequency_sort>();
-      check_query(ir::by_prefix().field("prefix").scored_terms_limit(1), order, docs, rdr);
-    }
-
+//    {
+//      docs_t docs{ 31, 32, 1, 4, 9, 16, 21, 24, 26, 29 };
+//      costs_t costs{ docs.size() };
+//      ir::order order;
+//
+//      order.add<sort::frequency_sort>();
+//      check_query(ir::by_prefix().field("prefix").scored_terms_limit(1), order, docs, rdr);
+//    }
+//
     // prefix
     {
       docs_t docs{ 31, 32, 1, 4, 16, 21, 26, 29 };

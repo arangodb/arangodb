@@ -75,6 +75,14 @@ template<> struct integer_traits< uint64_t > :
   ::detail::integer_traits_base < uint64_t, uint64_t(0), UINT64_MAX > {
 };
 
+// MacOS size_t is a different type from any of the above
+#if defined(__APPLE__)
+  template<> struct integer_traits<size_t>
+    : std::numeric_limits<size_t>,
+    ::detail::integer_traits_base <size_t, size_t(0), size_t(~0)> {
+  };
+#endif
+
 NS_END
 
 #endif

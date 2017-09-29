@@ -205,7 +205,7 @@ struct custom_sort: public irs::sort {
       );
     }
 
-    virtual void prepare_score(irs::doc_id_t& score) const {
+    virtual void prepare_score(irs::doc_id_t& score) const override {
       score = irs::type_limits<irs::type_t::doc_id_t>::invalid();
     }
 
@@ -264,7 +264,7 @@ struct frequency_sort: public iresearch::sort {
           const iresearch::sub_reader& segment,
           const iresearch::term_reader& field,
           const irs::attribute_view& term_attrs
-      ) {
+      ) override {
         meta_attr = term_attrs.get<iresearch::term_meta>();
         docs_count += meta_attr->docs_count;
       }
@@ -323,7 +323,7 @@ struct frequency_sort: public iresearch::sort {
       return sort::scorer::make<frequency_sort::prepared::scorer>(docs_count, doc_id_t);
     }
 
-    virtual void prepare_score(score_t& score) const {
+    virtual void prepare_score(score_t& score) const override {
       score.id = ir::type_limits<ir::type_t::doc_id_t>::invalid();
       score.value = std::numeric_limits<double>::infinity();
       score.prepared = true;
@@ -473,39 +473,39 @@ struct empty_sub_reader : iresearch::singleton<empty_sub_reader>, iresearch::sub
     }
   };
 
-  virtual iresearch::column_iterator::ptr columns() const {
+  virtual iresearch::column_iterator::ptr columns() const override {
     return iresearch::column_iterator::empty();
   }
 
-  virtual iresearch::column_meta* column(const iresearch::string_ref& name) const {
+  virtual iresearch::column_meta* column(const iresearch::string_ref& name) const override {
     return nullptr;
   }
 
-  virtual uint64_t live_docs_count() const { return 0; }
+  virtual uint64_t live_docs_count() const override { return 0; }
 
-  virtual uint64_t docs_count(const iresearch::string_ref&) const { return 0; }
+  virtual uint64_t docs_count(const iresearch::string_ref&) const override { return 0; }
 
   virtual docs_iterator_t::ptr docs_iterator() const override { 
     return docs_iterator_t::make<empty_docs_iterator>(); 
   }
 
-  virtual uint64_t docs_count() const { return 0; }
+  virtual uint64_t docs_count() const override { return 0; }
 
-  virtual reader_iterator begin() const { return reader_iterator(); }
+  virtual reader_iterator begin() const override { return reader_iterator(); }
 
-  virtual reader_iterator end() const { return reader_iterator(); }
+  virtual reader_iterator end() const override { return reader_iterator(); }
 
-  virtual const iresearch::term_reader* field(const iresearch::string_ref&) const {
+  virtual const iresearch::term_reader* field(const iresearch::string_ref&) const override {
     return nullptr;
   }
 
-  virtual const irs::columnstore_reader::column_reader* column_reader(irs::field_id field) const {
+  virtual const irs::columnstore_reader::column_reader* column_reader(irs::field_id field) const override {
     return nullptr;
   }
 
-  virtual size_t size() const { return 0; }
+  virtual size_t size() const override { return 0; }
 
-  virtual iresearch::field_iterator::ptr fields() const {
+  virtual iresearch::field_iterator::ptr fields() const override {
     return iresearch::field_iterator::empty();
   }
 }; // empty_sub_reader

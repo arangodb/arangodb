@@ -249,6 +249,18 @@ struct math_traits<uint64_t> {
   static size_t pop(type value) { return pop64(value); }
 }; // math_traits
 
+// MacOS size_t is a different type from any of the above
+#if defined(__APPLE__)
+  template<>
+  struct math_traits<size_t> {
+    typedef size_t type;
+
+    static size_t clz(type value) { return clz64(value); }
+    static size_t ctz(type value) { return ctz64(value); }
+    static size_t pop(type value) { return pop64(value); }
+  };
+#endif
+
 NS_END // math
 NS_END // root
 

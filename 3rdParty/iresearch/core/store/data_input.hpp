@@ -86,7 +86,7 @@ class IRESEARCH_API input_buf: public std::streambuf, util::noncopyable {
 
   virtual std::streamsize showmanyc() override;
 
-  virtual std::streamsize xsgetn( char_type* s, std::streamsize size );
+  virtual std::streamsize xsgetn(char_type* s, std::streamsize size) override;
 
   virtual int_type uflow() override;
 

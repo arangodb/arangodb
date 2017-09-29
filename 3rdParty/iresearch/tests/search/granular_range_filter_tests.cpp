@@ -474,6 +474,35 @@ class granular_range_filter_test_case: public filter_test_case_base {
       ASSERT_EQ(expected, actual);
     }
 
+    // long - value = [31 .. 32] with same-level granularity (last value in segment)
+    {
+      irs::numeric_token_stream min_stream;
+      min_stream.reset(INT64_C(31));
+
+      irs::numeric_token_stream max_stream;
+      max_stream.reset(INT64_C(32));
+
+      irs::by_granular_range query;
+      query.field("seq")
+        .include<irs::Bound::MIN>(true)
+        .insert<irs::Bound::MIN>(min_stream)
+        .include<irs::Bound::MAX>(true)
+        .insert<irs::Bound::MAX>(max_stream);
+
+      auto prepared = query.prepare(rdr);
+
+      std::vector<ir::doc_id_t> expected{ 32 };
+      std::vector<ir::doc_id_t> actual;
+
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub);
+        for (;docs->next();) {
+          actual.push_back(docs->value());
+        }
+      }
+      ASSERT_EQ(expected, actual);
+    }
+
     // long - seq > 28
     {
       ir::numeric_token_stream min_stream;
@@ -617,6 +646,35 @@ class granular_range_filter_test_case: public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        for (;docs->next();) {
+          actual.push_back(docs->value());
+        }
+      }
+      ASSERT_EQ(expected, actual);
+    }
+
+    // int - value = [31 .. 32] with same-level granularity (last value in segment)
+    {
+      irs::numeric_token_stream min_stream;
+      min_stream.reset(INT32_C(31));
+
+      irs::numeric_token_stream max_stream;
+      max_stream.reset(INT32_C(32));
+
+      irs::by_granular_range query;
+      query.field("seq")
+        .include<irs::Bound::MIN>(true)
+        .insert<irs::Bound::MIN>(min_stream)
+        .include<irs::Bound::MAX>(true)
+        .insert<irs::Bound::MAX>(max_stream);
+
+      auto prepared = query.prepare(rdr);
+
+      std::vector<ir::doc_id_t> expected{ 32 };
+      std::vector<ir::doc_id_t> actual;
+
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub);
         for (;docs->next();) {
           actual.push_back(docs->value());
         }
@@ -774,6 +832,35 @@ class granular_range_filter_test_case: public filter_test_case_base {
       ASSERT_EQ(expected, actual);
     }
 
+    // float - value = [31 .. 32] with same-level granularity (last value in segment)
+    {
+      irs::numeric_token_stream min_stream;
+      min_stream.reset(float_t(31));
+
+      irs::numeric_token_stream max_stream;
+      max_stream.reset(float_t(32));
+
+      irs::by_granular_range query;
+      query.field("seq")
+        .include<irs::Bound::MIN>(true)
+        .insert<irs::Bound::MIN>(min_stream)
+        .include<irs::Bound::MAX>(true)
+        .insert<irs::Bound::MAX>(max_stream);
+
+      auto prepared = query.prepare(rdr);
+
+      std::vector<ir::doc_id_t> expected{ 32 };
+      std::vector<ir::doc_id_t> actual;
+
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub);
+        for (;docs->next();) {
+          actual.push_back(docs->value());
+        }
+      }
+      ASSERT_EQ(expected, actual);
+    }
+
     // float - value < 91.565
     {
       ir::numeric_token_stream max_stream;
@@ -915,6 +1002,35 @@ class granular_range_filter_test_case: public filter_test_case_base {
 
       for (const auto& sub: rdr) {
         auto docs = prepared->execute(sub); 
+        for (;docs->next();) {
+          actual.push_back(docs->value());
+        }
+      }
+      ASSERT_EQ(expected, actual);
+    }
+
+    // double - value = [31 .. 32] with same-level granularity (last value in segment)
+    {
+      irs::numeric_token_stream min_stream;
+      min_stream.reset(double_t(31));
+
+      irs::numeric_token_stream max_stream;
+      max_stream.reset(double_t(32));
+
+      irs::by_granular_range query;
+      query.field("seq")
+        .include<irs::Bound::MIN>(true)
+        .insert<irs::Bound::MIN>(min_stream)
+        .include<irs::Bound::MAX>(true)
+        .insert<irs::Bound::MAX>(max_stream);
+
+      auto prepared = query.prepare(rdr);
+
+      std::vector<ir::doc_id_t> expected{ 32 };
+      std::vector<ir::doc_id_t> actual;
+
+      for (const auto& sub: rdr) {
+        auto docs = prepared->execute(sub);
         for (;docs->next();) {
           actual.push_back(docs->value());
         }

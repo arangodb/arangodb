@@ -1459,7 +1459,7 @@ class index_test_case_base : public tests::index_test_base {
       auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
 
       const tests::document* doc;
-      while (doc = gen.next()) {
+      while ((doc = gen.next())) {
         ASSERT_TRUE(insert(*writer,
           doc->indexed.end(), doc->indexed.end(), 
           doc->stored.begin(), doc->stored.end()
@@ -6612,7 +6612,7 @@ class index_test_case_base : public tests::index_test_base {
       auto writer = ir::index_writer::make(dir(), codec(), ir::OM_CREATE);
 
       const tests::document* doc;
-      while (doc = gen.next()) {
+      while ((doc = gen.next())) {
         ASSERT_TRUE(insert(*writer, doc->indexed.end(), doc->indexed.end(), doc->stored.begin(), doc->stored.end()));
         ++docs_count;
       }
@@ -6685,7 +6685,7 @@ class index_test_case_base : public tests::index_test_base {
 
           ir::doc_id_t id = 0;
           gen.reset();
-          while (doc = gen.next()) {
+          while ((doc = gen.next())) {
             ++id;
             ASSERT_TRUE(reader(id, actual_value));
 
@@ -6804,7 +6804,7 @@ class index_test_case_base : public tests::index_test_base {
           auto reader = column->values();
 
           ir::doc_id_t id = 0;
-          while (doc = gen.next()) {
+          while ((doc = gen.next())) {
             ASSERT_TRUE(reader(++id, actual_value));
 
             auto* field = doc->stored.get<tests::templates::string_field>(column_name);
@@ -6975,7 +6975,7 @@ class index_test_case_base : public tests::index_test_base {
 
           ir::doc_id_t id = 0;
           gen.reset();
-          while (doc = gen.next()) {
+          while ((doc = gen.next())) {
             ++id;
             ASSERT_TRUE(reader(id, actual_value));
 
@@ -7126,7 +7126,7 @@ class index_test_case_base : public tests::index_test_base {
           auto reader = column->values();
 
           ir::doc_id_t id = 0;
-          while (doc = gen.next()) {
+          while ((doc = gen.next())) {
             ASSERT_TRUE(reader(++id, actual_value));
 
             auto* field = doc->stored.get<tests::templates::string_field>(column_name);
@@ -7608,7 +7608,7 @@ protected:
 
 class fs_test_case_base : public index_test_case_base { 
 protected:
-  virtual void SetUp() {
+  virtual void SetUp() override {
     index_test_case_base::SetUp();
     MSVC_ONLY(_setmaxstdio(2048)); // workaround for error: EMFILE - Too many open files
   }
@@ -7625,7 +7625,7 @@ protected:
 
 class mmap_test_case_base : public index_test_case_base {
 protected:
-  virtual void SetUp() {
+  virtual void SetUp() override {
     index_test_case_base::SetUp();
     MSVC_ONLY(_setmaxstdio(2048)); // workaround for error: EMFILE - Too many open files
   }
@@ -7764,7 +7764,7 @@ TEST_F(memory_index_test, concurrent_add) {
   tests::json_doc_generator gen(resource("simple_sequential.json"), &tests::generic_json_field_factory);
   std::vector<const tests::document*> docs;
 
-  for (const tests::document* doc; (doc = gen.next()) != nullptr; docs.emplace_back(doc));
+  for (const tests::document* doc; (doc = gen.next()) != nullptr; docs.emplace_back(doc)) {}
 
   {
     auto writer = open_writer();
@@ -7812,7 +7812,7 @@ TEST_F(memory_index_test, concurrent_add_remove) {
   std::vector<const tests::document*> docs;
   std::atomic<bool> first_doc(false);
 
-  for (const tests::document* doc; (doc = gen.next()) != nullptr; docs.emplace_back(doc));
+  for (const tests::document* doc; (doc = gen.next()) != nullptr; docs.emplace_back(doc)) {}
 
   {
     auto query_doc1 = iresearch::iql::query_builder().build("name==A", std::locale::classic());

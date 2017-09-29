@@ -9,11 +9,11 @@
 // Agreement under which it is provided by or on behalf of EMC.
 // 
 
-#if defined(_MSC_VER)
-  #include <signal.h> // for signal(...)/raise(...)
-#else
+#if !defined(_MSC_VER)
   #include <dlfcn.h> // for RTLD_NEXT
 #endif
+
+#include <signal.h> // for signal(...)/raise(...)
 
 #include "tests_shared.hpp"
 #include "tests_config.hpp"
@@ -262,14 +262,25 @@ void install_stack_trace_handler() {
 #ifndef _MSC_VER
   // override GCC 'throw' handler to print stack trace before throw
   extern "C" {
-    void __cxa_throw(void* ex, void* info, void(*dest)(void*)) {
-      static void(*const rethrow)(void*,void*,void(*)(void*)) __attribute__ ((noreturn)) =
-        (void(*)(void*,void*,void(*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
+    #if defined(__APPLE__)
+      void __cxa_throw(void* ex, struct std::type_info* info, void(*dest)(void *)) {
+        static void(*rethrow)(void*,struct std::type_info*,void(*)(void*)) =
+          (void(*)(void*,struct std::type_info*,void(*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
 
-      IR_FRMT_DEBUG("exception type: %s", reinterpret_cast<const std::type_info*>(info)->name());
-      IR_STACK_TRACE();
-      rethrow(ex, info, dest);
-    }
+        IR_FRMT_DEBUG("exception type: %s", reinterpret_cast<const std::type_info*>(info)->name());
+        IR_STACK_TRACE();
+        rethrow(ex, info, dest);
+      }
+    #else
+      void __cxa_throw(void* ex, void* info, void(*dest)(void*)) {
+        static void(*rethrow)(void*,void*,void(*)(void*)) __attribute__ ((noreturn)) =
+          (void(*)(void*,void*,void(*)(void*)))dlsym(RTLD_NEXT, "__cxa_throw");
+
+        IR_FRMT_DEBUG("exception type: %s", reinterpret_cast<const std::type_info*>(info)->name());
+        IR_STACK_TRACE();
+        rethrow(ex, info, dest);
+      }
+    #endif
   }
 #endif
 

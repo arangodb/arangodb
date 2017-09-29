@@ -60,6 +60,20 @@ struct read_write_helper<uint64_t> {
   }
 };
 
+// MacOS size_t is a different type from any of the above
+#if defined(__APPLE__)
+  template<>
+  struct read_write_helper<size_t> {
+    inline static size_t read(data_input& in) {
+      return in.read_vlong();
+    }
+
+    inline static void write(data_output& out, size_t size) {
+      out.write_vlong(size);
+    }
+  };
+#endif
+
 NS_END // LOCAL
 
 NS_BEGIN(detail)
@@ -458,7 +472,7 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     reset(ref.c_str(), ref.size());
   }
 
-  virtual ptr dup() const NOEXCEPT {
+  virtual ptr dup() const NOEXCEPT override {
     try {
       return index_input::make<bytes_ref_input>(*this);
     } catch (...) {
@@ -466,7 +480,7 @@ class IRESEARCH_API bytes_ref_input : public index_input {
     }
   }
 
-  virtual ptr reopen() const NOEXCEPT {
+  virtual ptr reopen() const NOEXCEPT override {
     return dup();
   }
 

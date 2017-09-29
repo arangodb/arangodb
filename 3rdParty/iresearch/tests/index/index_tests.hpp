@@ -80,7 +80,7 @@ class index_test_base : public virtual test_base {
   void write_segment( ir::index_writer& writer, tests::index_segment& segment, tests::doc_generator_base& gen ) {
     // add segment
     const document* doc;
-    while (doc = gen.next()) {
+    while ((doc = gen.next())) {
       segment.add(doc->indexed.begin(), doc->indexed.end());
       insert(writer, doc->indexed.begin(), doc->indexed.end(), doc->stored.begin(), doc->stored.end());
     }
