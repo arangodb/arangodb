@@ -76,8 +76,6 @@ int DatabaseTailingSyncer::run() {
 
   uint64_t shortTermFailsInRow = 0;
 
-  _applier->started();
-
 retry:
   double const start = TRI_microtime();
   std::string errorMsg;
