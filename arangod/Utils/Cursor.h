@@ -26,8 +26,8 @@
 
 #include "Aql/QueryResult.h"
 #include "Basics/Common.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
 
 #include <velocypack/Iterator.h>
 
@@ -133,7 +133,7 @@ class VelocyPackCursor final : public Cursor {
   void dump(velocypack::Builder&) override final;
 
  private:
-  VocbaseGuard _vocbaseGuard;
+  DatabaseGuard _guard;
   aql::QueryResult _result;
   arangodb::velocypack::ArrayIterator _iterator;
   bool _cached;

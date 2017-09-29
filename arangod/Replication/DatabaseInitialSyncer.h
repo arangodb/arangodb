@@ -122,7 +122,7 @@ private:
   
   TRI_vocbase_t* vocbase() const {
     TRI_ASSERT(_vocbaseCache.size() == 1);
-    return _vocbaseCache.begin()->second.vocbase();
+    return _vocbaseCache.begin()->second.database();
   }
   
   /// @brief check whether the initial synchronization should be aborted

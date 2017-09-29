@@ -33,6 +33,7 @@
 #include "Pregel/GraphFormat.h"
 #include "Pregel/Iterators.h"
 #include "Pregel/TypedBuffer.h"
+#include "Utils/DatabaseGuard.h"
 
 struct TRI_vocbase_t;
 
@@ -95,7 +96,7 @@ private:
   std::unique_ptr<transaction::Methods> _createTransaction();
   
 private:
-  VocbaseGuard _vocbaseGuard;
+  DatabaseGuard _vocbaseGuard;
   const std::unique_ptr<GraphFormat<V, E>> _graphFormat;
   WorkerConfig* _config = nullptr;
   

@@ -473,7 +473,6 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
     return;
   }
   RocksDBReplicationContextGuard(_manager, ctx);
-
  
   // TRI_voc_tick_t tickEnd = UINT64_MAX;
   // determine end tick for keys
@@ -483,7 +482,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   //}
 
   // bind collection to context - will initialize iterator
-  int res = ctx->bindCollection(collection);
+  int res = ctx->bindCollection(_vocbase, collection);
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);

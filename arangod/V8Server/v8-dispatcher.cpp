@@ -36,6 +36,7 @@
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/V8Context.h"
+#include "Utils/DatabaseGuard.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -113,7 +114,7 @@ class V8Task : public std::enable_shared_from_this<V8Task> {
   std::unique_ptr<boost::asio::steady_timer> _timer;
 
   // guard to make sure the database is not dropped while used by us
-  std::unique_ptr<VocbaseGuard> _vocbaseGuard;
+  std::unique_ptr<DatabaseGuard> _dbGuard;
 
   std::string const _command;
   std::shared_ptr<arangodb::velocypack::Builder> _parameters;
@@ -232,7 +233,7 @@ void V8Task::removeTasksForDatabase(std::string const& name) {
 }
   
 bool V8Task::databaseMatches(std::string const& name) const {
-  return (_vocbaseGuard->vocbase()->name() == name);
+  return (_dbGuard->database()->name() == name);
 }
 
 V8Task::V8Task(std::string const& id, std::string const& name,
@@ -241,7 +242,7 @@ V8Task::V8Task(std::string const& id, std::string const& name,
     : _id(id),
       _name(name),
       _created(TRI_microtime()),
-      _vocbaseGuard(new VocbaseGuard(vocbase)),
+      _dbGuard(new DatabaseGuard(vocbase)),
       _command(command),
       _allowUseDatabase(allowUseDatabase),
       _offset(0),
@@ -302,7 +303,7 @@ V8Task::callbackFunction() {
     std::unique_ptr<ExecContext> execContext;
     TRI_DEFER(ExecContext::CURRENT = nullptr);
     if (!_user.empty()) { // not superuser
-      std::string const& dbname = _vocbaseGuard->vocbase()->name();
+      std::string const& dbname = _dbGuard->database()->name();
       execContext.reset(new ExecContext(_user, dbname));
       ExecContext::CURRENT = execContext.get();
       allowContinue = execContext->canUseDatabase(dbname, AuthLevel::RW);
@@ -409,11 +410,11 @@ void V8Task::toVelocyPack(VPackBuilder& builder) const {
   builder.add("offset", VPackValue(_offset.count() / 1000000.0));
 
   builder.add("command", VPackValue(_command));
-  builder.add("database", VPackValue(_vocbaseGuard->vocbase()->name()));
+  builder.add("database", VPackValue(_dbGuard->database()->name()));
 }
 
 void V8Task::work(ExecContext const* exec) {
-  auto context = V8DealerFeature::DEALER->enterContext(_vocbaseGuard->vocbase(),
+  auto context = V8DealerFeature::DEALER->enterContext(_dbGuard->database(),
                                                        _allowUseDatabase);
 
   // note: the context might be 0 in case of shut-down

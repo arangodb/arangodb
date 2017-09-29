@@ -75,7 +75,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const* configuration)
              ServerState::instance()->isDBServer());
   if (configuration->_database.empty()) {
     // use name of current database
-    TRI_vocbase_t* vocbase = _vocbaseCache.begin()->second.vocbase();
+    TRI_vocbase_t* vocbase = _vocbaseCache.begin()->second.database();
     _databaseName = vocbase->name();
   } else {
     // use name from configuration
@@ -405,7 +405,7 @@ TRI_vocbase_t* Syncer::loadVocbase(TRI_voc_tick_t dbid) {
     }
     return vocbase;
   } else {
-    return it->second.vocbase();
+    return it->second.database();
   }
 }
 

@@ -57,10 +57,10 @@ RocksDBReplicationContext::RocksDBReplicationContext()
       _trx(),
       _collection(nullptr),
       _iter(),
+      _lastIteratorOffset(0),
       _mdr(),
       _customTypeHandler(),
       _vpackOptions(Options::Defaults),
-      _lastIteratorOffset(0),
       _expires(TRI_microtime() + DefaultTTL),
       _isDeleted(false),
       _isUsed(true),
@@ -83,7 +83,13 @@ uint64_t RocksDBReplicationContext::count() const {
 
 // creates new transaction/snapshot
 void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
-  if ((_trx.get() == nullptr) || (_trx->vocbase() != vocbase)) {
+  if (!_trx || !_guard || (_guard->database() != vocbase)) {
+    rocksdb::Snapshot const* snap = nullptr;
+    if (_trx) {
+      auto state = RocksDBTransactionState::toState(_trx.get());
+      snap = state->stealSnapshot();
+    }
+    
     releaseDumpingResources();
     
     _guard.reset(new DatabaseGuard(vocbase));
@@ -94,6 +100,11 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
     auto ctx = transaction::StandaloneContext::Create(vocbase);
     _trx.reset(new transaction::UserTransaction(ctx, {}, {}, {},
                                                 transactionOptions));
+    auto state = RocksDBTransactionState::toState(_trx.get());
+    if (snap != nullptr) {
+      state->donateSnapshot(snap);
+      TRI_ASSERT(snap->GetSequenceNumber() == state->sequenceNumber());
+    }
     Result res = _trx->begin();
     if (!res.ok()) {
       _guard.reset();
@@ -101,14 +112,15 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
     }
     _customTypeHandler = ctx->orderCustomTypeHandler();
     _vpackOptions.customTypeHandler = _customTypeHandler.get();
-    
-    auto state = RocksDBTransactionState::toState(_trx.get());
     _lastTick = state->sequenceNumber();
   }
 }
 
 int RocksDBReplicationContext::bindCollection(
+    TRI_vocbase_t *vocbase,
     std::string const& collectionName) {
+  bind(vocbase);
+  
   if ((_collection == nullptr) ||
       ((_collection->name() != collectionName) &&
        std::to_string(_collection->cid()) != collectionName)) {
@@ -141,7 +153,7 @@ RocksDBReplicationContext::getInventory(TRI_vocbase_t* vocbase,
                                         bool includeSystem,
                                         bool global) {
   TRI_ASSERT(vocbase != nullptr);
-  if (_trx.get() == nullptr) {
+  if (!_trx) {
     return std::make_pair(
         RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick),
         std::shared_ptr<VPackBuilder>(nullptr));
@@ -187,10 +199,10 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     TRI_vocbase_t* vocbase, std::string const& collectionName,
     basics::StringBuffer& buff, uint64_t chunkSize) {
   TRI_ASSERT(vocbase != nullptr);
-  if (_trx.get() == nullptr) {
+  if (!_trx) {
     return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
   }
-  int res = bindCollection(collectionName);
+  int res = bindCollection(vocbase, collectionName);
   if (res != TRI_ERROR_NO_ERROR) {
     return RocksDBReplicationResult(res, _lastTick);
   }
@@ -316,7 +328,6 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
   TRI_ASSERT(_trx);
 
   Result rv;
-
   if(!_iter){
     return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context iterator has not been initialized");
   }
@@ -385,7 +396,6 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
   Result rv;
 
   TRI_ASSERT(_trx);
-
   if(!_iter){
     return rv.reset(TRI_ERROR_BAD_PARAMETER, "the replication context iterator has not been initialized");
   }

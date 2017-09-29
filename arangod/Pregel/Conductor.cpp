@@ -244,7 +244,7 @@ void Conductor::finishedWorkerStartup(VPackSlice const& data) {
     // listens for changing primary DBServers on each collection shard
     RecoveryManager* mngr = PregelFeature::instance()->recoveryManager();
     if (mngr) {
-      mngr->monitorCollections(_vocbaseGuard.vocbase()->name(),
+      mngr->monitorCollections(_vocbaseGuard.database()->name(),
                                _vertexCollections, this);
     }
   }
@@ -510,7 +510,7 @@ static void resolveInfo(
 int Conductor::_initializeWorkers(std::string const& suffix,
                                   VPackSlice additional) {
   std::string const path =
-      Utils::baseUrl(_vocbaseGuard.vocbase()->name(), Utils::workerPrefix) +
+      Utils::baseUrl(_vocbaseGuard.database()->name(), Utils::workerPrefix) +
       suffix;
 
   // int64_t vertexCount = 0, edgeCount = 0;
@@ -521,11 +521,11 @@ int Conductor::_initializeWorkers(std::string const& suffix,
 
   // resolve plan id's and shards on the servers
   for (CollectionID const& collectionID : _vertexCollections) {
-    resolveInfo(_vocbaseGuard.vocbase(), collectionID, collectionPlanIdMap,
+    resolveInfo(_vocbaseGuard.database(), collectionID, collectionPlanIdMap,
                 vertexMap, shardList);  // store or
   }
   for (CollectionID const& collectionID : _edgeCollections) {
-    resolveInfo(_vocbaseGuard.vocbase(), collectionID, collectionPlanIdMap,
+    resolveInfo(_vocbaseGuard.database(), collectionID, collectionPlanIdMap,
                 edgeMap, shardList);  // store or
   }
 
@@ -599,7 +599,7 @@ int Conductor::_initializeWorkers(std::string const& suffix,
           PregelFeature::instance()->worker(_executionNumber);
       if (!w) {
         PregelFeature::instance()->addWorker(
-            AlgoRegistry::createWorker(_vocbaseGuard.vocbase(), b.slice()),
+            AlgoRegistry::createWorker(_vocbaseGuard.database(), b.slice()),
             _executionNumber);
       } else {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -720,7 +720,7 @@ int Conductor::_sendToAllDBServers(std::string const& path,
   if (ServerState::instance()->isRunningInCluster() == false) {
     if (handle) {
       VPackBuilder response;
-      PregelFeature::handleWorkerRequest(_vocbaseGuard.vocbase(), path,
+      PregelFeature::handleWorkerRequest(_vocbaseGuard.database(), path,
                                          message.slice(), response);
       handle(response.slice());
     } else {
@@ -728,7 +728,7 @@ int Conductor::_sendToAllDBServers(std::string const& path,
       rest::Scheduler* scheduler = SchedulerFeature::SCHEDULER;
       scheduler->post([this, path, message] {
         VPackBuilder response;
-        PregelFeature::handleWorkerRequest(_vocbaseGuard.vocbase(), path,
+        PregelFeature::handleWorkerRequest(_vocbaseGuard.database(), path,
                                            message.slice(), response);
       });
     }
@@ -742,7 +742,7 @@ int Conductor::_sendToAllDBServers(std::string const& path,
     return TRI_ERROR_FAILED;
   }
   std::string base =
-      Utils::baseUrl(_vocbaseGuard.vocbase()->name(), Utils::workerPrefix);
+      Utils::baseUrl(_vocbaseGuard.database()->name(), Utils::workerPrefix);
   auto body = std::make_shared<std::string const>(message.toJson());
   std::vector<ClusterCommRequest> requests;
   for (auto const& server : _dbServers) {

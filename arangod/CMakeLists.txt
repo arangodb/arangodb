@@ -375,6 +375,7 @@ SET(ARANGOD_SOURCES
   Utils/CollectionNameResolver.cpp
   Utils/Cursor.cpp
   Utils/CursorRepository.cpp
+  Utils/DatabaseGuard.cpp
   Utils/ExecContext.cpp
   Utils/OperationCursor.cpp
   Utils/SingleCollectionTransaction.cpp
