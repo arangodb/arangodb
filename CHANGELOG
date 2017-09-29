@@ -1,3 +1,14 @@
+v3.2.5 (2017-XX-XX)
+-------------------
+
+* Add statistics about the V8 context counts and number of available/active/busy
+ threads we expose through the server statistics interface.
+
+* increase the recommended value for `/proc/sys/vm/max_map_count` to a value
+  eight times as high as the previous recommended value. Increasing the 
+  values helps to prevent an ArangoDB server from running out of memory mappings.
+
+
 v3.2.4 (2017-09-26)
 -------------------
 
