@@ -1355,8 +1355,8 @@ def createDockerImage(edition, maintainer, stageName) {
                             logStartStage(os, logFile, logFile)
 
                             shellAndPipe("./scripts/build-docker.sh", logFile)
-                            shellAndPipe("docker tag arangodb:${packageName}-${branchLabel} c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${branchLabel}", logFile)
-                            shellAndPipe("docker push c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${branchLabel}", logFile)
+                            shellAndPipe("docker tag arangodb:${packageName}-${branchLabel} registry.arangodb.biz:5000/arangodb/${packageName}:${branchLabel}", logFile)
+                            shellAndPipe("docker push registry.arangodb.biz:5000/arangodb/${packageName}:${branchLabel}", logFile)
 
                             logStopStage(os, logFile)
                         }
