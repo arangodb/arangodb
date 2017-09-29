@@ -31,14 +31,12 @@
 #include "Basics/threads.h"
 
 namespace arangodb {
-namespace velocypack {
-class Builder;
-}
-}
-
-namespace arangodb {
 namespace basics {
 class ConditionVariable;
+}
+
+namespace velocypack {
+class Builder;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

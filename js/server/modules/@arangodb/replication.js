@@ -1,4 +1,4 @@
-/* global ArangoServerState */
+/* global ArangoServerState, GLOBAL_REPLICATION_APPLIER_START, GLOBAL_REPLICATION_APPLIER_SHUTDOWN, GLOBAL_REPLICATION_APPLIER_STATE, GLOBAL_REPLICATION_APPLIER_FORGET, GLOBAL_REPLICATION_APPLIER_CONFIGURE , REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN, REPLICATION_APPLIER_STATE, REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_CONFIGURE */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -38,93 +38,85 @@ if (ArangoServerState.role() === 'PRIMARY') {
   request = require('@arangodb/request').request;
 }
 
-var logger = { };
-var applier = { };
+let logger = { };
+let applier = { };
+let globalApplier = { };
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief return the replication logger state
-// //////////////////////////////////////////////////////////////////////////////
-
 logger.state = function () {
   return internal.getStateReplicationLogger();
 };
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief return the tick ranges provided by the replication logger
-// //////////////////////////////////////////////////////////////////////////////
-
 logger.tickRanges = function () {
   return internal.tickRangesReplicationLogger();
 };
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief return the first tick that can be provided by the replication logger
-// //////////////////////////////////////////////////////////////////////////////
-
 logger.firstTick = function () {
   return internal.firstTickReplicationLogger();
 };
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief starts the replication applier
-// //////////////////////////////////////////////////////////////////////////////
-
 applier.start = function (initialTick, barrierId) {
   if (initialTick === undefined) {
-    return internal.startReplicationApplier();
+    return REPLICATION_APPLIER_START();
   }
 
-  return internal.startReplicationApplier(initialTick, barrierId);
+  return REPLICATION_APPLIER_START(initialTick, barrierId);
 };
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief shuts down the replication applier
-// //////////////////////////////////////////////////////////////////////////////
+applier.shutdown = applier.stop = function () { return REPLICATION_APPLIER_SHUTDOWN(); };
 
-applier.shutdown = applier.stop = function () {
-  return internal.shutdownReplicationApplier();
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief return the replication applier state
-// //////////////////////////////////////////////////////////////////////////////
+applier.state = function () { return REPLICATION_APPLIER_STATE(); };
 
-applier.state = function () {
-  return internal.getStateReplicationApplier();
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief stop the applier and "forget" all configuration
-// //////////////////////////////////////////////////////////////////////////////
+applier.forget = function () { return REPLICATION_APPLIER_FORGET(); };
 
-applier.forget = function () {
-  return internal.forgetStateReplicationApplier();
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief returns the configuration of the replication applier
-// //////////////////////////////////////////////////////////////////////////////
-
 applier.properties = function (config) {
   if (config === undefined) {
-    return internal.configureReplicationApplier();
+    return REPLICATION_APPLIER_CONFIGURE();
   }
 
-  return internal.configureReplicationApplier(config);
+  return REPLICATION_APPLIER_CONFIGURE(config);
 };
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief performs a one-time synchronization with a remote endpoint
-// //////////////////////////////////////////////////////////////////////////////
+// / @brief starts the global replication applier
+globalApplier.start = function (initialTick, barrierId) {
+  if (initialTick === undefined) {
+    return GLOBAL_REPLICATION_APPLIER_START();
+  }
 
+  return GLOBAL_REPLICATION_APPLIER_START(initialTick, barrierId);
+};
+
+// / @brief shuts down the global replication applier
+globalApplier.shutdown = globalApplier.stop = function () { return GLOBAL_REPLICATION_APPLIER_SHUTDOWN(); };
+
+// / @brief return the global replication applier state
+globalApplier.state = function () { return GLOBAL_REPLICATION_APPLIER_STATE(); };
+
+// / @brief stop the global applier and "forget" all configuration
+globalApplier.forget = function () { return GLOBAL_REPLICATION_APPLIER_FORGET(); };
+
+// / @brief returns the configuration of the global replication applier
+globalApplier.properties = function (config) {
+  if (config === undefined) {
+    return GLOBAL_REPLICATION_APPLIER_CONFIGURE();
+  }
+
+  return GLOBAL_REPLICATION_APPLIER_CONFIGURE(config);
+};
+
+// / @brief performs a one-time synchronization with a remote endpoint
 function sync (config) {
   return internal.synchronizeReplication(config);
 }
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief performs a one-time synchronization with a remote endpoint
-// //////////////////////////////////////////////////////////////////////////////
-
 function syncCollection (collection, config) {
   config = config || { };
   config.restrictType = 'include';
@@ -137,11 +129,8 @@ function syncCollection (collection, config) {
   return internal.synchronizeReplication(config);
 }
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief sets up the replication (all-in-one function for initial
 // / synchronization and continuous replication)
-// //////////////////////////////////////////////////////////////////////////////
-
 function setupReplication (config) {
   config = config || { };
   if (!config.hasOwnProperty('autoStart')) {
@@ -172,16 +161,14 @@ function setupReplication (config) {
   return applier.state();
 }
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief returns the server's id
-// //////////////////////////////////////////////////////////////////////////////
-
 function serverId () {
   return internal.serverId();
 }
 
 exports.logger = logger;
 exports.applier = applier;
+exports.globalApplier = globalApplier;
 exports.sync = sync;
 exports.syncCollection = syncCollection;
 exports.setupReplication = setupReplication;

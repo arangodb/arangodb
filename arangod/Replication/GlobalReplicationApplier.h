@@ -30,11 +30,26 @@
 namespace arangodb {
 
 /// @brief server-global replication applier for all databases
-class GlobalReplicationApplier : public ReplicationApplier {
+class GlobalReplicationApplier final : public ReplicationApplier {
  public:
   explicit GlobalReplicationApplier(ReplicationApplierConfiguration const& configuration);
 
   ~GlobalReplicationApplier();
+  
+  /// @brief stop the applier and "forget" everything
+  void forget() override;
+
+  /// @brief shuts down the replication applier
+  void shutdown() override;
+  
+  /// @brief start the replication applier
+  void start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) override;
+  
+  /// @brief stop the replication applier
+  void stop(bool resetError, bool joinThread) override;
+  
+  /// @brief configure the replication applier
+  void reconfigure(ReplicationApplierConfiguration const& configuration) override;
 
   /// @brief remove the replication application state file
   void removeState() override;

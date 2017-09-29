@@ -26,17 +26,16 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
-// TODO
-#include "Basics/threads.h"
 #include "Replication/ReplicationApplier.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class Thread;
 
 /// @brief replication applier for a single database
-class DatabaseReplicationApplier : public ReplicationApplier {
+class DatabaseReplicationApplier final : public ReplicationApplier {
   friend class ContinuousSyncer; // TODO
   friend class RestReplicationHandler; // TODO
 
@@ -48,6 +47,21 @@ class DatabaseReplicationApplier : public ReplicationApplier {
 
   ~DatabaseReplicationApplier();
   
+  /// @brief stop the applier and "forget" everything
+  void forget() override;
+
+  /// @brief shuts down the replication applier
+  void shutdown() override;
+  
+  /// @brief start the replication applier
+  void start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) override;
+  
+  /// @brief stop the replication applier
+  void stop(bool resetError, bool joinThread) override;
+  
+  /// @brief configure the replication applier
+  void reconfigure(ReplicationApplierConfiguration const& configuration) override;
+
   /// @brief remove the replication application state file
   void removeState() override;
   
@@ -92,18 +106,6 @@ class DatabaseReplicationApplier : public ReplicationApplier {
   /// @brief stop the initial synchronization
   void stopInitialSynchronization(bool value);
 
-  /// @brief start the replication applier
-  int start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
-
-  /// @brief stop the replication applier
-  int stop(bool resetError, bool joinThread);
-
-  /// @brief stop the applier and "forget" everything
-  int forget();
-
-  /// @brief shuts down the replication applier
-  int shutdown();
-
   /// @brief set the progress
   void setProgress(char const* msg);
   void setProgress(std::string const& msg);
@@ -124,9 +126,6 @@ class DatabaseReplicationApplier : public ReplicationApplier {
   /// @brief save the replication application configuration to a file
   void storeConfiguration(bool doSync);
 
-  /// @brief configure the replication applier
-  void reconfigure(ReplicationApplierConfiguration const& configuration);
-
  private:
   /// @brief register an applier error
   int setErrorNoLock(int errorCode, std::string const& msg);
@@ -137,12 +136,12 @@ class DatabaseReplicationApplier : public ReplicationApplier {
    
  private:
   TRI_vocbase_t* _vocbase;
-  std::string _databaseName; // TODO: required?
   std::atomic<uint64_t> _starts; 
   
   mutable arangodb::basics::ReadWriteLock _statusLock;
   std::atomic<bool> _terminateThread;
-  TRI_thread_t _thread; // TODO
+
+  std::unique_ptr<Thread> _thread;
 };
 
 }

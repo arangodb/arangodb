@@ -588,21 +588,17 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   }
 
   // forget about any existing replication applier configuration
-  int res = _vocbase->replicationApplier()->forget();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  _vocbase->replicationApplier()->forget();
 
   // start initial synchronization
   TRI_voc_tick_t lastLogTick = 0;
   TRI_voc_tick_t barrierId = 0;
   std::string errorMsg = "";
+  int res = TRI_ERROR_NO_ERROR;
   {
     DatabaseInitialSyncer syncer(_vocbase, &config, config._restrictCollections,
                                  restrictType, false, false);
     
-    res = TRI_ERROR_NO_ERROR;
     try {
       res = syncer.run(errorMsg, false);
       // steal the barrier from the syncer
@@ -621,13 +617,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   }
 
   _vocbase->replicationApplier()->reconfigure(config);
-
-  res = _vocbase->replicationApplier()->start(lastLogTick, true, barrierId);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-    return;
-  }
+  _vocbase->replicationApplier()->start(lastLogTick, true, barrierId);
 
   VPackBuilder result;
   result.openObject();
@@ -2102,12 +2092,7 @@ void RestReplicationHandler::handleCommandApplierStart() {
     barrierId = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
   }
 
-  int res =
-      _vocbase->replicationApplier()->start(initialTick, useTick, barrierId);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  _vocbase->replicationApplier()->start(initialTick, useTick, barrierId);
 
   handleCommandApplierGetState();
 }
@@ -2119,11 +2104,7 @@ void RestReplicationHandler::handleCommandApplierStart() {
 void RestReplicationHandler::handleCommandApplierStop() {
   TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
-  int res = _vocbase->replicationApplier()->stop(true, true);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  _vocbase->replicationApplier()->stop(true, true);
 
   handleCommandApplierGetState();
 }
@@ -2149,12 +2130,7 @@ void RestReplicationHandler::handleCommandApplierGetState() {
 void RestReplicationHandler::handleCommandApplierDeleteState() {
   TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
-  int res = _vocbase->replicationApplier()->forget();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "unable to delete applier state";
-    THROW_ARANGO_EXCEPTION_MESSAGE(res, "unable to delete applier state");
-  }
+  _vocbase->replicationApplier()->forget();
 
   handleCommandApplierGetState();
 }

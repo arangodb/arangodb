@@ -33,6 +33,22 @@ GlobalReplicationApplier::GlobalReplicationApplier(ReplicationApplierConfigurati
 
 GlobalReplicationApplier::~GlobalReplicationApplier() {}
   
+/// @brief stop the applier and "forget" everything
+void GlobalReplicationApplier::forget() {}
+
+/// @brief shuts down the replication applier
+void GlobalReplicationApplier::shutdown() {}
+  
+/// @brief start the replication applier
+void GlobalReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {}
+  
+/// @brief stop the replication applier
+void GlobalReplicationApplier::stop(bool resetError, bool joinThread) {}
+  
+/// @brief configure the replication applier
+void GlobalReplicationApplier::reconfigure(ReplicationApplierConfiguration const& configuration) {}
+  
+/// @brief remove the replication application state file
 void GlobalReplicationApplier::removeState() {}
   
 /// @brief load the applier state from persistent storage
