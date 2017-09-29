@@ -1,0 +1,10 @@
+# Visual C++
+.vs/
+*Copy
+*.db
+*.opensdf
+*.sdf
+*.suo
+*.user
+
+VS2010/bin/
