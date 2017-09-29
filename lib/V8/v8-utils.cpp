@@ -25,6 +25,7 @@
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
+#include <conio.h>
 #endif
 
 #include <signal.h>
@@ -46,6 +47,7 @@
 #include "Basics/Utf8Helper.h"
 #include "Basics/files.h"
 #include "Basics/process-utils.h"
+#include "Basics/terminal-utils.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tri-zip.h"
 #include "Logger/Logger.h"
@@ -2278,6 +2280,53 @@ static void JS_CopyFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief reads from stdin
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_PollStdin(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+ 
+  if (args.Length() > 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("pollStdin()");
+  }
+  
+  bool hasData = false;
+#ifdef _WIN32
+  hasData = _kbhit() != 0;
+#else
+  struct timeval tv;
+  fd_set fds;
+  tv.tv_sec = 0;
+  tv.tv_usec = 0;
+  FD_ZERO(&fds);
+  FD_SET(STDIN_FILENO, &fds);
+  select(STDIN_FILENO+1, &fds, NULL, NULL, &tv);
+  hasData = FD_ISSET(STDIN_FILENO, &fds);
+#endif
+  
+  char c[3] = {0};
+  if (hasData) {
+    ssize_t n = TRI_READ(STDIN_FILENO, c, 3);
+    if (n == 3) {// arrow keys are garbled
+      if (c[2] == 'D') {
+        TRI_V8_RETURN(v8::Integer::New(isolate, 37));
+      }
+      if (c[2] == 'A') {
+        TRI_V8_RETURN(v8::Integer::New(isolate, 38));
+      }
+      if (c[2] == 'C') {
+        TRI_V8_RETURN(v8::Integer::New(isolate, 39));
+      }
+    } else if (n == 1) {
+      TRI_V8_RETURN(v8::Integer::New(isolate, c[0]));
+    }
+  }
+  TRI_V8_RETURN(v8::Integer::New(isolate, 0));
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs the arguments
 ///
 /// @FUN{internal.output(@FA{string1}, @FA{string2}, @FA{string3}, ...)}
@@ -3890,6 +3939,28 @@ static void JS_IsStopping(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns keycode of currently pressed key
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_termsize(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  // extract the arguments
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("termsize()");
+  }
+  
+  TRI_TerminalSize s = TRI_DefaultTerminalSize();
+  v8::Handle<v8::Array> list = v8::Array::New(isolate, 2);
+  list->Set(0, v8::Integer::New(isolate, s.rows));
+  list->Set(1, v8::Integer::New(isolate, s.columns));
+  
+  TRI_V8_RETURN(list);
+  TRI_V8_TRY_CATCH_END
+}
+  
 /// @brief convert a V8 value to VPack
 static void JS_V8ToVPack(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
@@ -4692,6 +4763,8 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
                                TRI_V8_ASCII_STRING(isolate, "SYS_OPTIONS"), JS_Options);
   TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING(isolate, "SYS_OUTPUT"), JS_Output);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_POLLSTDIN"), JS_PollStdin);
   TRI_AddGlobalFunctionVocbase(isolate, 
                                TRI_V8_ASCII_STRING(isolate, "SYS_PARSE"), JS_Parse);
   TRI_AddGlobalFunctionVocbase(
@@ -4739,9 +4812,10 @@ void TRI_InitV8Utils(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "SYS_DEBUG_CAN_USE_FAILAT"),
                                JS_DebugCanUseFailAt);
-
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_IS_STOPPING"), JS_IsStopping);
+  TRI_AddGlobalFunctionVocbase(isolate,
+                               TRI_V8_ASCII_STRING(isolate, "SYS_TERMINAL_SIZE"), JS_termsize);
 
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "V8_TO_VPACK"), JS_V8ToVPack);
