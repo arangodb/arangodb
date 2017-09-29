@@ -114,9 +114,6 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
   int setError(int errorCode, char const* msg);
   int setError(int errorCode, std::string const& msg);
   
-  /// @brief increase the starts counter
-  void started() { ++_starts; }
-
   /// @brief factory function for creating a database-specific replication applier
   static DatabaseReplicationApplier* create(TRI_vocbase_t* vocbase);
 
@@ -136,7 +133,6 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
    
  private:
   TRI_vocbase_t* _vocbase;
-  std::atomic<uint64_t> _starts; 
   
   mutable arangodb::basics::ReadWriteLock _statusLock;
   std::atomic<bool> _terminateThread;

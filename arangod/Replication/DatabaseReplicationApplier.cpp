@@ -48,7 +48,7 @@ using namespace arangodb;
 /// @brief applier thread class
 class ApplyThread : public Thread {
  public:
-  ApplyThread(std::unique_ptr<DatabaseTailingSyncer> syncer)
+  explicit ApplyThread(std::unique_ptr<DatabaseTailingSyncer> syncer)
       : Thread("ReplicationApplier"), _syncer(std::move(syncer)) {}
 
   ~ApplyThread() { shutdown(); }
@@ -91,22 +91,15 @@ static void readTick(VPackSlice const& slice, char const* attributeName,
 }
 }
 
-/// @brief replication applier for a single database
+/// @brief replication applier for a single database, without configuration
 DatabaseReplicationApplier::DatabaseReplicationApplier(TRI_vocbase_t* vocbase)
-    : ReplicationApplier(ReplicationApplierConfiguration()),
-      _vocbase(vocbase),
-      _starts(0),
-      _terminateThread(false) {
-  
-  setProgress("applier initially created");
-}
+    : DatabaseReplicationApplier(ReplicationApplierConfiguration(), vocbase) {}
 
-/// @brief replication applier for a single database
+/// @brief replication applier for a single database, with configuration
 DatabaseReplicationApplier::DatabaseReplicationApplier(ReplicationApplierConfiguration const& configuration,
                                                        TRI_vocbase_t* vocbase)
     : ReplicationApplier(configuration), 
       _vocbase(vocbase),
-      _starts(0),
       _terminateThread(false) {
   
   setProgress("applier initially created");
@@ -323,9 +316,6 @@ void DatabaseReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick,
   // reset error
   _state._lastError.reset();
 
-  // save previous counter value
-  uint64_t oldStarts = _starts.load();
-
   setTermination(false);
   _state._active = true;
  
@@ -335,8 +325,7 @@ void DatabaseReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not start ApplyThread");
   }
 
-  uint64_t iterations = 0;
-  while (oldStarts == _starts.load() && ++iterations < 50 * 10) {
+  while (!_thread->hasStarted()) {
     usleep(20000);
   }
 
