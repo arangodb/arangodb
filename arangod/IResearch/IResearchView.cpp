@@ -1879,6 +1879,11 @@ int IResearchView::insert(
 
   TRI_ASSERT(store);
 
+  if (!commitBatch) {
+    // commit all documents in a single transaction
+    commitBatch = irs::integer_traits<size_t>::const_max;
+  }
+
   size_t batchCount = 0;
   auto begin = batch.begin();
   auto const end = batch.end();
@@ -1894,7 +1899,7 @@ int IResearchView::insert(
   };
 
   while (begin != end) {
-    if (commitBatch && batchCount >= commitBatch) {
+    if (batchCount >= commitBatch) {
       if (!sync(state)) {
         return TRI_ERROR_INTERNAL;
       }
@@ -1919,10 +1924,8 @@ int IResearchView::insert(
     }
   }
 
-  if (commitBatch) {
-    if (!sync(state)) {
-      return TRI_ERROR_INTERNAL;
-    }
+  if (!sync(state)) {
+    return TRI_ERROR_INTERNAL;
   }
 
   return TRI_ERROR_NO_ERROR;
