@@ -587,7 +587,11 @@ std::string slurpProgram(std::string const& program) {
       buffer.appendChar(c);
     }
 
+#ifdef _WIN32
+    int res = _pclose(fp);
+#else
     int res = pclose(fp);
+#endif
 
     if (res != 0) {
       throwProgramError(program);
