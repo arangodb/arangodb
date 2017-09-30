@@ -569,6 +569,8 @@ def checkCommitMessages() {
         if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
             echo "build of main branch"
 
+            useDocker = true
+
             restrictions = [
                 // OS EDITION MAINTAINER
                 "build-linux-community-maintainer" : true,
