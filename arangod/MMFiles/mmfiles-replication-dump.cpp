@@ -404,6 +404,7 @@ static bool MustReplicateWalMarker(
     return false;
   }
 
+  // after first regular tick, dump all transactions normally
   if (marker->getTick() >= firstRegularTick) {
     return true;
   }

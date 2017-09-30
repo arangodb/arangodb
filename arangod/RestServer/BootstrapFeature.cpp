@@ -37,7 +37,6 @@
 #include "V8Server/V8DealerFeature.h"
 
 using namespace arangodb;
-using namespace arangodb::application_features;
 using namespace arangodb::options;
 
 static std::string const boostrapKey = "Bootstrap";
@@ -62,72 +61,52 @@ void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 /// must only return if we are boostrap lead or bootstrap is done
-static bool raceForBoostrapLead() {
-  TRI_ASSERT(AgencyCommManager::isEnabled());
-
+static void raceForClusterBootstrap() {
   AgencyComm agency;
+  auto ci = ClusterInfo::instance();
   while (true) {
     AgencyCommResult result = agency.getValues(boostrapKey);
     if (!result.successful()) {
       // Error in communication, note that value not found is not an error
       LOG_TOPIC(TRACE, Logger::STARTUP)
-        << "raceForClusterBootstrap: no agency communication";
+      << "raceForClusterBootstrap: no agency communication";
       sleep(1);
       continue;
     }
     
     VPackSlice value = result.slice()[0].get(
-      std::vector<std::string>({AgencyCommManager::path(), boostrapKey}));
+                std::vector<std::string>({AgencyCommManager::path(), boostrapKey}));
     if (value.isString()) {
       // key was found and is a string
-      std::string val = value.copyString();
-      if (val.find("done") != std::string::npos) {
+      std::string boostrapVal = value.copyString();
+      if (boostrapVal.find("done") != std::string::npos) {
         // all done, let's get out of here:
         LOG_TOPIC(TRACE, Logger::STARTUP)
           << "raceForClusterBootstrap: bootstrap already done";
-        return false;
-      }
-      if (val == arangodb::ServerState::instance()->getId()) {
-        // OK, we handle things now
-        LOG_TOPIC(DEBUG, Logger::STARTUP)
-          << "raceForClusterBootstrap: race won, we do the bootstrap";
-        return true;
+        return;
+      } else if (boostrapVal == ServerState::instance()->getId()) {
+        agency.removeValues(boostrapKey, false);
       }
       LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: somebody else does the bootstrap";
       sleep(1);
       continue;
     }
-    
+      
     // No value set, we try to do the bootstrap ourselves:
     VPackBuilder b;
     b.add(VPackValue(arangodb::ServerState::instance()->getId()));
     result = agency.casValue(boostrapKey, b.slice(), false, 300, 15);
     if (!result.successful()) {
       LOG_TOPIC(DEBUG, Logger::STARTUP)
-        << "raceForClusterBootstrap: lost race, somebody else will bootstrap";
+      << "raceForClusterBootstrap: lost race, somebody else will bootstrap";
       // Cannot get foot into the door, try again later:
       sleep(1);
       continue;
     }
     // OK, we handle things now
     LOG_TOPIC(DEBUG, Logger::STARTUP)
-      << "raceForClusterBootstrap: race won, we do the bootstrap";
-    return true;
-  }
-  TRI_ASSERT(false);
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
-}
-
-static void raceForClusterBootstrap() {
-  AgencyComm agency;
-  auto ci = ClusterInfo::instance();
-  while (true) {
-    /// returns if we are boostrap lead or bootstrap is done
-    bool inCharge = raceForBoostrapLead();
-    if (!inCharge) {
-      return;
-    }
+        << "raceForClusterBootstrap: race won, we do the bootstrap";
     
     // let's see whether a DBserver is there:
     auto dbservers = ci->getCurrentDBServers();
@@ -165,9 +144,9 @@ static void raceForClusterBootstrap() {
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: bootstrap done";
 
-    VPackBuilder b;
+    b.clear();
     b.add(VPackValue(arangodb::ServerState::instance()->getId() + ": done"));
-    AgencyCommResult result = agency.setValue(boostrapKey, b.slice(), 0);
+    result = agency.setValue(boostrapKey, b.slice(), 0);
     if (result.successful()) {
       return;
     }
@@ -240,7 +219,7 @@ void BootstrapFeature::start() {
     }
     
     // single server with an agency attached to it
-    if (AgencyCommManager::isEnabled()) {
+    /*if (AgencyCommManager::isEnabled()) {
       
       AgencyComm agency;
       std::string const path = "/Plan/AsyncReplication/Master";
@@ -266,7 +245,7 @@ void BootstrapFeature::start() {
         // lets try again
         sleep(1);
       }
-    }
+    }*/
   }
   
   // Start service properly:
