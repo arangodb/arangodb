@@ -88,20 +88,21 @@ bool Agent::mergeConfiguration(VPackSlice const& persisted) {
 /// Dtor shuts down thread
 Agent::~Agent() {
 
-  // Give up if constituent breaks shutdown
+  // Give up if some subthread breaks shutdown
   int counter = 0;
-  while (_constituent.isRunning()) {
+  while (_constituent.isRunning() || _compactor.isRunning() ||
+         (_config.supervision() && _supervision.isRunning()) ||
+         (_inception != nullptr && _inception->isRunning())) {
     usleep(100000);
 
-    // emit warning after 5 seconds
-    if (++counter == 10 * 5) {
-      LOG_TOPIC(FATAL, Logger::AGENCY) << "constituent thread did not finish";
+    // emit warning after 15 seconds
+    if (++counter == 10 * 15) {
+      LOG_TOPIC(FATAL, Logger::AGENCY) << "some agency thread did not finish";
       FATAL_ERROR_EXIT();
     }
   }
     
   shutdown();
-  
 }
 
 /// State machine

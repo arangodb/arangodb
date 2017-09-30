@@ -11,6 +11,7 @@ def defaultLinux = true
 def defaultMac = false
 def defaultWindows = false
 def defaultBuild = true
+def defaultDocker = false
 def defaultCleanBuild = false
 def defaultCommunity = true
 def defaultEnterprise = true
@@ -35,6 +36,11 @@ properties([
             defaultValue: defaultWindows,
             description: 'build and run tests in Windows',
             name: 'Windows'
+        ),
+        booleanParam(
+            defaultValue: defaultDocker,
+            description: 'build docker images',
+            name: 'Docker'
         ),
         booleanParam(
             defaultValue: defaultCleanBuild,
@@ -86,6 +92,9 @@ useMac = params.Mac
 // build windows
 useWindows = params.Windows
 
+// build docker image
+useDocker = params.Docker
+
 // build and test community
 useCommunity = params.Community
 
@@ -97,9 +106,6 @@ useMaintainer = params.Maintainer
 
 // build user mode
 useUser = params.User
-
-// build docker
-useDocker = true
 
 // run resilience tests
 //runResilience = params.runResilience
@@ -318,7 +324,10 @@ def deleteDirDocker(os) {
 }
 
 def shellAndPipe(command, logfile) {
-  sh "(echo 1 > \"${logfile}.result\" ; ${command} ; echo \$? > \"${logfile}.result\") 2>&1 | tee -a \"${logfile}\" ; exit `cat \"${logfile}.result\"`"
+    def cmd = command.replaceAll(/"/, "\\\"")
+
+    echo "executing ${cmd}"
+    sh "(echo 1 > \"${logfile}.result\" ; ${cmd} ; echo \$? > \"${logfile}.result\") 2>&1 | ts '[%Y-%m-%d %H:%M:%S]' | tee -a \"${logfile}\" ; exit `cat \"${logfile}.result\"`"
 }
 
 def logStartStage(os, logFile, link) {
@@ -331,7 +340,7 @@ def logStartStage(os, logFile, link) {
     echo "started ${logFile}: ${resultsStart[logFile]}"
 
     if (os == "linux") {
-        sh "echo 'started ${logFile}: ${resultsStart[logFile]}' | tee -a ${logFile}"
+        shellAndPipe("echo 'started ${logFile}: ${resultsStart[logFile]}'", logFile)
     }
 
     generateResult()
@@ -344,7 +353,7 @@ def logStopStage(os, logFile) {
     echo "finished ${logFile}: ${resultsStop[logFile]}"
 
     if (os == "linux") {
-        sh "echo 'finished ${logFile}: ${resultsStop[logFile]}' | tee -a ${logFile}"
+        shellAndPipe("echo 'finished ${logFile}: ${resultsStop[logFile]}'", logFile)
     }
 
     generateResult()
@@ -363,7 +372,7 @@ def logExceptionStage(os, logFile, link, exc) {
     echo "failed ${logFile}: ${resultsStop[logFile]} ${msg}"
 
     if (os == "linux") {
-        sh "echo 'failed ${logFile}: ${resultsStart[logFile]} ${msg}' | tee -a ${logFile}"
+        shellAndPipe("echo 'failed ${logFile}: ${resultsStart[logFile]} ${msg}'", logFile)
     }
 
     generateResult()
@@ -374,7 +383,7 @@ def generateResult() {
     def html = "<html><body><table>\n"
     html += "<tr><th>Name</th><th>Start</th><th>Stop</th><th>Duration</th><th>Message</th></tr>\n"
 
-    for (key in resultsKeys) {
+    for (key in resultsKeys.sort()) {
         def start = resultsStart[key] ?: ""
         def stop = resultsStop[key] ?: ""
         def msg = resultsStatus[key] ?: ""
@@ -387,21 +396,21 @@ def generateResult() {
         def diff = (start != "" && stop != "") ? groovy.time.TimeCategory.minus(stop, start) : "-"
         def startf = start == "" ? "-" : start.format('yyyy/MM/dd HH:mm:ss')
         def stopf = stop == "" ? "-" : stop.format('yyyy/MM/dd HH:mm:ss')
-        def color = 'bgcolor="#FF8080"'
+        def color = 'bgcolor="#FFA0A0"'
 
         def la = ""
         def lb = ""
 
-        if (link != null) {
+        if (link != "") {
             la = "<a href=\"$link\">"
             lb = "</a>"
         }
 
         if (msg == "finished") {
-            color = 'bgcolor="#80FF80"'
+            color = 'bgcolor="#A0FFA0"'
         }
         else if (msg == "started") {
-            color = 'bgcolor="#8080FF"'
+            color = 'bgcolor="#A0A0FF"'
             la = ""
             lb = ""
         }
@@ -412,12 +421,10 @@ def generateResult() {
 
     html += "</table></body></html>\n"
 
-    node("master") {
-        fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
-        fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
+    fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
+    fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
 
-        archiveArtifacts(allowEmptyArchive: true, artifacts: "results.*")
-    }
+    archiveArtifacts(allowEmptyArchive: true, artifacts: "results.*")
 }
 
 // -----------------------------------------------------------------------------
@@ -444,6 +451,7 @@ def checkoutCommunity(os) {
         }
         catch (exc) {
             echo "GITHUB checkout failed, retrying in 1min"
+            deleteDir()
             sleep 60
             throw exc
         }
@@ -608,7 +616,8 @@ def checkCommitMessages() {
                 "build-linux-enterprise-maintainer" : true,
 
                 // OS EDITION MAINTAINER MODE ENGINE
-                "test-linux-enterprise-maintainer-cluster-rocksdb" : true
+                "test-linux-enterprise-maintainer-singleserver-rocksdb" : true,
+                "test-linux-enterprise-maintainer-cluster-mmfiles" : true
             ]
         }
     }
@@ -762,7 +771,7 @@ def jslint(os, edition, maintainer) {
     try {
         logStartStage(os, logFile, logFile)
 
-        shellAndPipe("./Installation/Pipeline/test_jslint.sh",logFile)
+        shellAndPipe("./Installation/Pipeline/test_jslint.sh", logFile)
         sh "if grep ERROR ${logFile}; then exit 1; fi"
 
         logStopStage(os, logFile)
@@ -918,9 +927,9 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
                               powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
                           }
                           else {
-                              sh "echo \"Host: `hostname`\" | tee -a ${logFile}"
-                              sh "echo \"PWD:  `pwd`\" | tee -a ${logFile}"
-                              sh "echo \"Date: `date`\" | tee -a ${logFile}"
+                              shellAndPipe("echo \"Host: `hostname`\"", logFile)
+                              shellAndPipe("echo \"PWD:  `pwd`\"", logFile)
+                              shellAndPipe("echo \"Date: `date`\"", logFile)
 
                               shellAndPipe("cd ${runDir} ; ./build/bin/arangosh --version", logFile)
 
@@ -1014,7 +1023,9 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
 
                 testIndex++
 
-                testMap["${stageName}-${name}"] = singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex, stageName, name, port)
+                testMap["${stageName}-${name}"] = singleTest(os, edition, maintainer, mode, engine,
+                                                             test, testArgs, testIndex,
+                                                             stageName, name, port)
 
                 return testMap
             }
@@ -1071,16 +1082,18 @@ def testStepParallel(os, edition, maintainer, modeList) {
         }
     }
 
-    def name = "test-${os}-${edition}-${maintainer}"
+    def name = "${os}-${edition}-${maintainer}"
 
-    try {
-        logStartStage(null, name, null)
-        parallel branches
-        logStopStage(null, name)
-    }
-    catch (exc) {
-        logExceptionStage(null, name, null, exc)
-        throw exc
+    if (branches) {
+        try {
+            node("linux") { logStartStage(null, name, null) }
+            parallel branches
+            node("linux") { logStopStage(null, name) }
+        }
+        catch (exc) {
+            node("linux") { logExceptionStage(null, name, null, exc) }
+            throw exc
+        }
     }
 }
 
@@ -1234,33 +1247,18 @@ def buildEdition(os, edition, maintainer) {
                 unstashBuild(os, edition, maintainer)
             }
 
-            sh "echo \"Host: `hostname`\" | tee -a ${logFile}"
-            sh "echo \"PWD:  `pwd`\" | tee -a ${logFile}"
-            sh "echo \"Date: `date`\" | tee -a ${logFile}"
+            shellAndPipe("echo \"Host: `hostname`\"", logFile)
+            shellAndPipe("echo \"PWD:  `pwd`\"", logFile)
+            shellAndPipe("echo \"Date: `date`\"", logFile)
 
             if (os == 'linux') {
-                sh "./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 64 ${os} ${edition} ${maintainer} ${arch}"
+                shellAndPipe("./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 64 ${os} ${edition} ${maintainer}", logFile)
             }
             else if (os == 'mac') {
-                sh "./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 16 ${os} ${edition} ${maintainer} ${arch}"
+                shellAndPipe("./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 16 ${os} ${edition} ${maintainer}", logFile)
             }
         }
         else if (os == 'windows') {
-            // def tmpDir = "${arch}/tmp"
-
-            // fileOperations([
-            //     folderCreateOperation(tmpDir)
-            // ])
-
-            // withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}",
-            //          "_MSPDBSRV_ENDPOINT_=${edition}-${env.BUILD_TAG}", "GYP_USE_SEPARATE_MSPDBSRV=1"]) {
-            //    powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
-            // }
-
-            // fileOperations([
-            //     folderDeleteOperation(tmpDir)
-            // ])
-
             powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}_${maintainer}.ps1"
         }
 
@@ -1357,8 +1355,8 @@ def createDockerImage(edition, maintainer, stageName) {
                             logStartStage(os, logFile, logFile)
 
                             shellAndPipe("./scripts/build-docker.sh", logFile)
-                            shellAndPipe("docker tag arangodb:${packageName}-${branchLabel} c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${branchLabel}", logFile)
-                            shellAndPipe("docker push c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${branchLabel}", logFile)
+                            shellAndPipe("docker tag arangodb:${packageName}-${branchLabel} registry.arangodb.biz:5000/arangodb/${packageName}:${branchLabel}", logFile)
+                            shellAndPipe("docker push registry.arangodb.biz:5000/arangodb/${packageName}:${branchLabel}", logFile)
 
                             logStopStage(os, logFile)
                         }
@@ -1455,13 +1453,13 @@ def runOperatingSystems(osList) {
 
 timestamps {
     try {
-        node("master") {
+        node("linux") {
             echo sh(returnStdout: true, script: 'env')
         }
 
         checkCommitMessages()
 
-        node("master") {
+        node("linux") {
             fileOperations([fileCreateOperation(fileContent: overview, fileName: "overview.txt")])
             archiveArtifacts(allowEmptyArchive: true, artifacts: "overview.txt")
         }
@@ -1469,6 +1467,8 @@ timestamps {
         runOperatingSystems(['linux', 'mac', 'windows'])
     }
     finally {
-        generateResult()
+        node("linux") {
+            generateResult()
+        }
     }
 }
