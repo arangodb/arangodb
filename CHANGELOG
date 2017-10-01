@@ -5,6 +5,7 @@ devel
     --server.authentication-timeout
     --ldap.roles-attribute-name
     --ldap.roles-transformation
+    --ldap.roles-search
     --ldap.superuser-role
 
 * increase the recommended value for `/proc/sys/vm/max_map_count` to a value
