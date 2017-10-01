@@ -1,7 +1,11 @@
 devel
 -----
 
-* usernames must not start with `:role:`
+* usernames must not start with `:role:`, added new options:
+    --server.authentication-timeout
+    --ldap.roles-attribute-name
+    --ldap.roles-transformation
+    --ldap.superuser-role
 
 * increase the recommended value for `/proc/sys/vm/max_map_count` to a value
   eight times as high as the previous recommended value. Increasing the 

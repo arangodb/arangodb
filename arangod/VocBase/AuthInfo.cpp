@@ -402,16 +402,20 @@ void AuthInfo::reloadAllUsers() {
   // tell other coordinators to reload as well
   AgencyComm agency;
   int maxTries = 10;
+
   while (maxTries-- > 0) {
     AgencyCommResult commRes = agency.getValues("Sync/UserVersion");
+
     if (!commRes.successful()) {
       // Error in communication, note that value not found is not an error
       LOG_TOPIC(TRACE, Logger::AUTHENTICATION)
           << "AuthInfo: no agency communication";
       break;
     }
+
     VPackSlice oldVal = commRes.slice()[0].get(
         {AgencyCommManager::path(), "Sync", "UserVersion"});
+
     if (!oldVal.isInteger()) {
       LOG_TOPIC(ERR, Logger::AUTHENTICATION)
           << "Sync/UserVersion is not a number";
@@ -423,10 +427,12 @@ void AuthInfo::reloadAllUsers() {
     commRes =
         agency.casValue("Sync/UserVersion", oldVal, newVal.slice(), 0.0,
                         AgencyCommManager::CONNECTION_OPTIONS._requestTimeout);
+
     if (commRes.successful()) {
       return;
     }
   }
+
   LOG_TOPIC(WARN, Logger::AUTHENTICATION)
       << "Sync/UserVersion could not be updated";
 }
@@ -800,7 +806,7 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
     if (level == AuthLevel::RW) {
       return level;
     }
-    
+
     AuthLevel roleLevel = canUseDatabase(role, dbname);
 
     if (level == AuthLevel::NONE) {
@@ -819,7 +825,7 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
   auto it = _authInfo.find(username);
 
   if (it == _authInfo.end()) {
-      return AuthLevel::NONE;
+    return AuthLevel::NONE;
   }
 
   auto const& entry = it->second;
@@ -829,7 +835,7 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
     if (level == AuthLevel::RW) {
       return level;
     }
-    
+
     AuthLevel roleLevel = canUseCollection(role, dbname, coll);
 
     if (level == AuthLevel::NONE) {
@@ -860,6 +866,7 @@ AuthResult AuthInfo::checkAuthentication(AuthenticationMethod authType,
 // private
 AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
   auto role = ServerState::instance()->getRole();
+
   if (role != ServerState::ROLE_SINGLE &&
       role != ServerState::ROLE_COORDINATOR) {
     return AuthResult();
@@ -868,13 +875,15 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
   {
     READ_LOCKER(guard, _authInfoLock);
     auto const& it = _authBasicCache.find(secret);
-    if (it != _authBasicCache.end()) {
+
+    if (it != _authBasicCache.end() && !it->second.expired()) {
       return it->second;
     }
   }
 
   std::string const up = StringUtils::decodeBase64(secret);
   std::string::size_type n = up.find(':', 0);
+
   if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
     LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
         << "invalid authentication data found, cannot extract "
@@ -886,6 +895,13 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
   std::string password = up.substr(n + 1);
 
   AuthResult result = checkPassword(username, password);
+
+  double timeout = AuthenticationFeature::INSTANCE->authenticationTimeout();
+
+  if (0 < timeout) {
+    result.setExpiry(TRI_microtime() + timeout);
+  }
+
   {
     WRITE_LOCKER(guard, _authInfoLock);
 
