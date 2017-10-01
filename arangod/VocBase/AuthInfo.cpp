@@ -743,27 +743,33 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
     if (authResult.source() == AuthSource::LDAP) {
       AuthUserEntry entry =
           AuthUserEntry::newUser(username, password, AuthSource::LDAP);
+      entry.setRoles(authResult.roles());
 
       // upgrade read-lock to a write-lock
       readLocker.unlock();
       WRITE_LOCKER(writeLocker, _authInfoLock);
 
       it = _authInfo.find(username);
+
       if (it != _authInfo.end()) {
         it->second = entry;
       } else {
         auto r = _authInfo.emplace(username, entry);
+
         if (!r.second) {
           return result;
         }
+
         it = r.first;
       }
       AuthUserEntry const& auth = it->second;
+
       if (auth.isActive()) {
         result._authorized = auth.checkPassword(password);
       }
+
       return result;
-    }  // AuthSource::LDAP
+    }
   }
 
   if (it != _authInfo.end()) {
