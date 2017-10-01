@@ -47,9 +47,10 @@ class LoggerFeature final : public application_features::ApplicationFeature {
  private:
   std::vector<std::string> _output;
   std::vector<std::string> _levels;
-  bool _useLocalTime = false;
   std::string _prefix;
   std::string _file;
+  bool _useLocalTime = false;
+  bool _useColor = true;
   bool _lineNumber = false;
   bool _shortenFilenames = true;
   bool _thread = false;

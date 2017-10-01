@@ -39,9 +39,9 @@ std::vector<std::pair<int, std::string>> LogAppenderFile::_fds = {};
 
 LogAppenderStream::LogAppenderStream(std::string const& filename,
                                      std::string const& filter, int fd)
-    : LogAppender(filter), _bufferSize(0), _fd(fd), _isTty(false) {}
+    : LogAppender(filter), _bufferSize(0), _fd(fd), _useColors(false) {}
   
-bool LogAppenderStream::logMessage(LogLevel level, std::string const& message,
+void LogAppenderStream::logMessage(LogLevel level, std::string const& message,
                                    size_t offset) {
   // check max. required output length
   size_t const neededBufferSize = TRI_MaxLengthEscapeControlsCString(message.size());
@@ -60,7 +60,7 @@ bool LogAppenderStream::logMessage(LogLevel level, std::string const& message,
       _bufferSize = neededBufferSize * 2;
     } catch (...) {
       // if allocation fails, simply give up
-      return false;
+      return;
     }
   }
   
@@ -78,8 +78,6 @@ bool LogAppenderStream::logMessage(LogLevel level, std::string const& message,
     _buffer.reset();
     _bufferSize = 0;
   }
-
-  return _isTty;
 }
 
 LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const& filter)
@@ -116,7 +114,7 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const&
     }
   }
   
-  _isTty = (isatty(_fd) == 1);
+  _useColors = ((isatty(_fd) == 1) && Logger::getUseColor());
 }
 
 void LogAppenderFile::writeLogMessage(LogLevel level, char const* buffer, size_t len) {
@@ -211,7 +209,7 @@ void LogAppenderFile::closeAll() {
   
 LogAppenderStdStream::LogAppenderStdStream(std::string const& filename, std::string const& filter, int fd)
     : LogAppenderStream(filename, filter, fd) {
-  _isTty = (isatty(_fd) == 1);
+  _useColors = ((isatty(_fd) == 1) && Logger::getUseColor());
 }
 
 LogAppenderStdStream::~LogAppenderStdStream() {
@@ -221,15 +219,15 @@ LogAppenderStdStream::~LogAppenderStdStream() {
 }
   
 void LogAppenderStdStream::writeLogMessage(LogLevel level, char const* buffer, size_t len) {
-  writeLogMessage(_fd, _isTty, level, buffer, len, false);
+  writeLogMessage(_fd, _useColors, level, buffer, len, false);
 }
 
-void LogAppenderStdStream::writeLogMessage(int fd, bool isTty, LogLevel level, char const* buffer, size_t len, bool appendNewline) {
+void LogAppenderStdStream::writeLogMessage(int fd, bool useColors, LogLevel level, char const* buffer, size_t len, bool appendNewline) {
   // out stream
   FILE* fp = (fd == STDOUT_FILENO ? stdout : stderr);
   char const* nl = (appendNewline ? "\n" : "");
 
-  if (isTty) {
+  if (useColors) {
     // joyful color output
     if (level == LogLevel::FATAL || level == LogLevel::ERR) {
       fprintf(fp, "%s%s%s%s", ShellColorsFeature::SHELL_COLOR_RED, buffer, ShellColorsFeature::SHELL_COLOR_RESET, nl);

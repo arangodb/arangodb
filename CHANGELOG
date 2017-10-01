@@ -1,6 +1,8 @@
 devel
 -----
 
+* added config option `--log.color` to toggle colorful logging to terminal
+
 * performance improvements for full collection scans and a few other operations
   in MMFiles engine
 

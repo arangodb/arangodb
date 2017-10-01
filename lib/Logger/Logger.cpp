@@ -57,6 +57,7 @@ bool Logger::_showLineNumber(false);
 bool Logger::_shortenFilenames(true);
 bool Logger::_showThreadIdentifier(false);
 bool Logger::_threaded(false);
+bool Logger::_useColor(true);
 bool Logger::_useLocalTime(false);
 bool Logger::_keepLogRotate(false);
 bool Logger::_useMicrotime(false);
@@ -180,6 +181,17 @@ void Logger::setShowThreadIdentifier(bool show) {
 
   _showThreadIdentifier = show;
 }
+
+// NOTE: this function should not be called if the logging is active.
+void Logger::setUseColor(bool value) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "cannot change color if logging is active");
+  }
+
+  _useColor = value;
+}
+
 
 // NOTE: this function should not be called if the logging is active.
 void Logger::setUseLocalTime(bool show) {
