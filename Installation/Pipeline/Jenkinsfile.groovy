@@ -1386,55 +1386,66 @@ def createDockerImage(edition, maintainer, stageName) {
 def runEdition(os, edition, maintainer, stageName) {
     return {
         if (buildStepCheck(os, edition, maintainer)) {
-            node(buildJenkins[os]) {
-                stage(stageName) {
-                    checkoutSource(os, edition)
+            def name = "${os}-${edition}-${maintainer}"
 
-                    // I concede...we need a lock for windows...I
-                    // could not get it to run concurrently...  v8
-                    // would not build multiple times at the same time
-                    // on the same machine: PDB API call failed, error
-                    // code '24': ' etc etc in theory it should be
-                    // possible to parallelize it by setting an
-                    // environment variable (see the build script) but
-                    // for v8 it won't work :( feel free to recheck if
-                    // there is time somewhen...this thing here really
-                    // should not be possible but ensure that there
-                    // are 2 concurrent builds on the SAME node
-                    // building v8 at the same time to properly test
-                    // it. I just don't want any more "yeah that might
-                    // randomly fail. just restart" sentences any
-                    // more.
+            try {
+                node("linux") { logStartStage(null, name, null) }
 
-                    if (os == "windows") {
-                        def hostname = powershell(returnStdout: true, script: "hostname").trim()
+                node(buildJenkins[os]) {
+                    stage(stageName) {
+                        checkoutSource(os, edition)
 
-                        lock("build-windows-${hostname}") {
+                        // I concede...we need a lock for windows...I
+                        // could not get it to run concurrently...  v8
+                        // would not build multiple times at the same time
+                        // on the same machine: PDB API call failed, error
+                        // code '24': ' etc etc in theory it should be
+                        // possible to parallelize it by setting an
+                        // environment variable (see the build script) but
+                        // for v8 it won't work :( feel free to recheck if
+                        // there is time somewhen...this thing here really
+                        // should not be possible but ensure that there
+                        // are 2 concurrent builds on the SAME node
+                        // building v8 at the same time to properly test
+                        // it. I just don't want any more "yeah that might
+                        // randomly fail. just restart" sentences any
+                        // more.
+
+                        if (os == "windows") {
+                            def hostname = powershell(returnStdout: true, script: "hostname").trim()
+
+                            lock("build-windows-${hostname}") {
+                                timeout(90) {
+                                    buildEdition(os, edition, maintainer)
+                                    stashBinaries(os, edition, maintainer)
+                                }
+                            }
+                        }
+                        else {
                             timeout(90) {
                                 buildEdition(os, edition, maintainer)
                                 stashBinaries(os, edition, maintainer)
                             }
                         }
                     }
-                    else {
-                        timeout(90) {
-                            buildEdition(os, edition, maintainer)
-                            stashBinaries(os, edition, maintainer)
+
+                    // we only need one jslint test per edition
+                    if (os == "linux") {
+                        stage("jslint-${edition}") {
+                            echo "Running jslint for ${edition}"
+                            jslint(os, edition, maintainer)
                         }
                     }
                 }
 
-                // we only need one jslint test per edition
-                if (os == "linux") {
-                    stage("jslint-${edition}") {
-                        echo "Running jslint for ${edition}"
-                        jslint(os, edition, maintainer)
-                    }
-                }
+                testStepParallel(os, edition, maintainer, ['cluster', 'singleserver'])
+                node("linux") { logStopStage(null, name) }
+            }
+            catch (exc) {
+                node("linux") { logExceptionStage(null, name, null, exc) }
+                throw exc
             }
         }
-
-        testStepParallel(os, edition, maintainer, ['cluster', 'singleserver'])
     }
 }
 
@@ -1459,19 +1470,7 @@ def runOperatingSystems(osList) {
         }
     }
 
-    def name = "${os}-${edition}-${maintainer}"
-
-    if (branches) {
-        try {
-            node("linux") { logStartStage(null, name, null) }
-            parallel branches
-            node("linux") { logStopStage(null, name) }
-        }
-        catch (exc) {
-            node("linux") { logExceptionStage(null, name, null, exc) }
-            throw exc
-        }
-    }
+    parallel branches
 }
 
 timestamps {
