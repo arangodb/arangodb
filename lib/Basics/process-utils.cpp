@@ -1182,6 +1182,7 @@ static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
 //        send it signals.
 #ifndef _WIN32
 static bool killProcess(ExternalProcess* pid, int signal) {
+  TRI_ASSERT(pid != nullptr); 
   if (kill(pid->_pid, signal) == 0) {
     return true;
   }
@@ -1190,6 +1191,7 @@ static bool killProcess(ExternalProcess* pid, int signal) {
 
 #else
 static bool killProcess(ExternalProcess* pid, int signal) {
+  TRI_ASSERT(pid != nullptr); 
   UINT uExitCode = 0;
 
   // kill worker process
@@ -1359,15 +1361,16 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool i
     try {
       ExternalProcesses.push_back(external);
     } catch (...) {
-      ExternalProcessStatus status;
       delete external;
 
+      ExternalProcessStatus status;
       status._status = TRI_EXT_NOT_FOUND;
       status._exitStatus = -1;
       return status;
     }
   }
-  
+ 
+  TRI_ASSERT(external != nullptr); 
   if (killProcess(external, signal)) {
     external->_status = TRI_EXT_STOPPED;
     // if the process wasn't spawned by us, no waiting required.
@@ -1399,6 +1402,7 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool i
       }
       sleep(1);
       if (count >= 8) {
+        TRI_ASSERT(external != nullptr); 
         killProcess(external, SIGKILL);
       }
       if (count > 20) {

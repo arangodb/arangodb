@@ -32,18 +32,16 @@
 TRI_TerminalSize TRI_DefaultTerminalSize() {
   char* e = getenv("COLUMNS");
 
-  int colums;
   if (e != 0) {
-    colums = (int)TRI_Int32String(e);
+    int columns = (int)TRI_Int32String(e);
 
-    if (colums == 0 || TRI_errno() != TRI_ERROR_NO_ERROR) {
+    if (columns == 0 || TRI_errno() != TRI_ERROR_NO_ERROR) {
       return TRI_DEFAULT_TERMINAL_SIZE;
     }
     
     e = getenv("LINES");
-    int rows;
     if (e != 0) {
-      rows = (int)TRI_Int32String(e);
+      int rows = (int)TRI_Int32String(e);
       
       if (rows == 0 || TRI_errno() != TRI_ERROR_NO_ERROR) {
         return TRI_DEFAULT_TERM_SIZE;
