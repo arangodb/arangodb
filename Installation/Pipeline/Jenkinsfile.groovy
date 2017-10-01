@@ -630,6 +630,9 @@ CHANGE_ID: ${env.CHANGE_ID}
 CHANGE_TARGET: ${env.CHANGE_TARGET}
 JOB_NAME: ${env.JOB_NAME}
 CAUSE: ${causeDescription}
+
+Building Docker: ${useDocker}
+
 """
 
     if (restrictions) {
@@ -661,7 +664,6 @@ Building Community: ${useCommunity}
 Building Enterprise: ${useEnterprise}
 Building Maintainer: ${useMaintainer}
 Building Non-Maintainer: ${useUser}
-Building Docker: ${useDocker}
 Running Tests: ${runTests}
 """
     }
