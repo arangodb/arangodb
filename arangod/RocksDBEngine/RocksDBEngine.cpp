@@ -903,7 +903,8 @@ void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase,
   builder.add("deleted", VPackValue(true));
   builder.close();
 
-  auto log = RocksDBLogValue::DatabaseDrop(vocbase->id());
+  auto log = RocksDBLogValue::DatabaseDrop(vocbase->id(),
+                                           StringRef(vocbase->name()));
   Result res = writeDatabaseMarker(vocbase->id(), builder.slice(),
                                            std::move(log));
   status = res.errorNumber();

@@ -31,6 +31,7 @@ namespace arangodb {
 
 /// @brief server-global replication applier for all databases
 class GlobalReplicationApplier final : public ReplicationApplier {
+  friend class GlobalTailingSyncer;
  public:
   explicit GlobalReplicationApplier(ReplicationApplierConfiguration const& configuration);
   

@@ -390,13 +390,15 @@ static void SynchronizeReplication(
     int res = TRI_ERROR_NO_ERROR;
 
     try {
-      res = syncer.run(errorMsg, incremental);
+      Result r = syncer.run(incremental);
+      res = r.errorNumber();
+      errorMsg = r.errorMessage();
 
       if (keepBarrier) {
         result->Set(TRI_V8_ASCII_STRING(isolate, "barrierId"),
                     TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer.stealBarrier()));
       }
-
+      
       result->Set(TRI_V8_ASCII_STRING(isolate, "lastLogTick"),
                   TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer.getLastLogTick()));
 

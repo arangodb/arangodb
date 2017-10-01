@@ -195,13 +195,18 @@ int TailingSyncer::processDBMarker(TRI_replication_operation_e type,
                                    velocypack::Slice const& slice) {
   TRI_ASSERT(!_ignoreDatabaseMarkers);
   
-  VPackSlice idSlice = slice.get("database");
-  if (!idSlice.isString()) {
+  // the new wal access protocol contains database names
+  VPackSlice const nameSlice = slice.get("database");
+  if (!nameSlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                                   "create database marker did not contain dbID");
+                                   "create database marker did not contain database");
   }
-  TRI_voc_tick_t id = StringUtils::uint64(idSlice.copyString());
-  TRI_ASSERT(id != 0);
+  std::string name = nameSlice.copyString();
+  if (name.empty() || (name[0] >= '0' && name[0] <= '9')) {
+    LOG_TOPIC(ERR, Logger::REPLICATION) << "Invalid database name in log";
+    TRI_ASSERT(false);
+    return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
+  }
   
   if (type == REPLICATION_DATABASE_CREATE) {
     VPackSlice const data = slice.get("data");
@@ -209,29 +214,36 @@ int TailingSyncer::processDBMarker(TRI_replication_operation_e type,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                                      "create database marker did not contain data");
     }
-    VPackSlice name = data.get("name");
-    if (!data.isString()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                                     "create database marker did not contain name");
+    TRI_ASSERT(data.get("name") == nameSlice);
+
+    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
+    if (vocbase != nullptr) {
+      TRI_vocbase_t* system = DatabaseFeature::DATABASE->systemDatabase();
+      TRI_ASSERT(system);
+      Result res = methods::Databases::drop(system, name);
+      if (res.fail()) {
+        LOG_TOPIC(ERR, Logger::REPLICATION) << res.errorMessage();
+        return res.errorNumber();
+      }
     }
-    VPackSlice users = VPackSlice::emptyArraySlice();
-#warning TODO remove database id + ensure proper name
-    VPackBuilder optionsBuilder;
-    optionsBuilder.openObject();
-    optionsBuilder.add("id", VPackValue((uint64_t)id));
-    optionsBuilder.close();
     
-    Result res = methods::Databases::create(name.copyString(), users, optionsBuilder.slice());
+    VPackSlice users = VPackSlice::emptyArraySlice();
+    Result res = methods::Databases::create(name, users,
+                                            VPackSlice::emptyObjectSlice());
     return res.errorNumber();
   } else if (type == REPLICATION_DATABASE_DROP) {
-    /*
-    Result res = methods::Databases::dropLocal(id);
-    return res.errorNumber();*/
-#warning TODO move to string name
-    return TRI_ERROR_NO_ERROR;
-  } else {
-    TRI_ASSERT(false);
+
+    TRI_vocbase_t* system = DatabaseFeature::DATABASE->systemDatabase();
+    TRI_ASSERT(system != nullptr);
+    Result res = methods::Databases::drop(system, name);
+    if (res.fail()) {
+      LOG_TOPIC(ERR, Logger::REPLICATION) << res.errorMessage();
+    }
+    return res.errorNumber();
+    
   }
+  TRI_ASSERT(false);
+  return TRI_ERROR_INTERNAL; // unreachable
 }
 
 /// @brief inserts a document, based on the VelocyPack provided
