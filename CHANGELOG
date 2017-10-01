@@ -8,8 +8,16 @@ devel
     --ldap.roles-search
     --ldap.superuser-role
 
+* performance improvements for full collection scans and a few other operations
+  in MMFiles engine
+
+* added `--rocksdb.encryption-key-generator` for enterprise
+
+* Add statistics about the V8 context counts and number of available/active/busy
+ threads we expose through the server statistics interface.
+
 * increase the recommended value for `/proc/sys/vm/max_map_count` to a value
-  eight times as high as the previous recommended value. Increasing the 
+  eight times as high as the previous recommended value. Increasing the
   values helps to prevent an ArangoDB server from running out of memory mappings.
 
 
@@ -26,23 +34,23 @@ v3.2.4 (2017-XX-XX)
 * make the MMFiles compactor configurable
 
   The following options have been added:
-  
-  * `--compaction.db-sleep-time`: sleep interval between two compaction runs 
+
+* `--compaction.db-sleep-time`: sleep interval between two compaction runs
     (in s)
-  * `--compaction.min-interval"`: minimum sleep time between two compaction 
+  * `--compaction.min-interval"`: minimum sleep time between two compaction
      runs (in s)
-  * `--compaction.min-small-data-file-size`: minimal filesize threshold 
+  * `--compaction.min-small-data-file-size`: minimal filesize threshold
     original datafiles have to be below for a compaction
-  * `--compaction.dead-documents-threshold`: minimum unused count of documents 
+  * `--compaction.dead-documents-threshold`: minimum unused count of documents
     in a datafile
-  * `--compaction.dead-size-threshold`: how many bytes of the source data file 
+  * `--compaction.dead-size-threshold`: how many bytes of the source data file
     are allowed to be unused at most
-  * `--compaction.dead-size-percent-threshold`: how many percent of the source 
+  * `--compaction.dead-size-percent-threshold`: how many percent of the source
     datafile should be unused at least
   * `--compaction.max-files`: Maximum number of files to merge to one file
-  * `--compaction.max-result-file-size`: how large may the compaction result 
+  * `--compaction.max-result-file-size`: how large may the compaction result
     file become (in bytes)
-  * `--compaction.max-file-size-factor`: how large the resulting file may 
+  * `--compaction.max-file-size-factor`: how large the resulting file may
     be in comparison to the collection's `--database.maximal-journal-size' setting`
 
 * fix downwards-incompatibility in /_api/explain REST handler
@@ -58,13 +66,13 @@ v3.2.4 (2017-XX-XX)
   from the early ArangoDB days and did not provide any value in the current
   implementation.
 
-* (Enterprise only) added `skipInaccessibleCollections` option for AQL queries: 
-  if set, AQL queries (especially graph traversals) will treat collections to 
+* (Enterprise only) added `skipInaccessibleCollections` option for AQL queries:
+  if set, AQL queries (especially graph traversals) will treat collections to
   which a user has no access rights to as if these collections were empty.
 
 * adjusted scheduler thread handling to start and stop less threads in
   normal operations
-  
+
 * leader-follower replication catchup code has been rewritten in C++
 
 * early stage AQL optimization now also uses the C++ implementations of
@@ -132,7 +140,7 @@ v3.2.3 (2017-09-07)
 
 * fixed issue #3120: Foxx queue: job isn't running when server.authentication = true
 
-* fixed supervision failure detection and handling, which happened with simultaneous 
+* fixed supervision failure detection and handling, which happened with simultaneous
   agency leadership change
 
 
