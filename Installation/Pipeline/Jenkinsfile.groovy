@@ -1430,9 +1430,9 @@ def runEdition(os, edition, maintainer, stageName) {
                     }
                 }
             }
-
-            testStepParallel(os, edition, maintainer, ['cluster', 'singleserver'])
         }
+
+        testStepParallel(os, edition, maintainer, ['cluster', 'singleserver'])
     }
 }
 
