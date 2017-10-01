@@ -1457,7 +1457,19 @@ def runOperatingSystems(osList) {
         }
     }
 
-    parallel branches
+    def name = "${os}-${edition}-${maintainer}"
+
+    if (branches) {
+        try {
+            node("linux") { logStartStage(null, name, null) }
+            parallel branches
+            node("linux") { logStopStage(null, name) }
+        }
+        catch (exc) {
+            node("linux") { logExceptionStage(null, name, null, exc) }
+            throw exc
+        }
+    }
 }
 
 timestamps {
