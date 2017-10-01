@@ -811,10 +811,10 @@ def getTests(os, edition, maintainer, mode, engine) {
         ["server_http", "server_http", ""],
         ["shell_client", "shell_client", ""],
         ["shell_server", "shell_server", ""],
-        ["shell_server_aql_1", "shell_server_aql", "--testBuckets 4/0", ,""],
-        ["shell_server_aql_2", "shell_server_aql", "--testBuckets 4/1", ,""],
-        ["shell_server_aql_3", "shell_server_aql", "--testBuckets 4/2", ,""],
-        ["shell_server_aql_4", "shell_server_aql", "--testBuckets 4/3", ,""],
+        ["shell_server_aql_1", "shell_server_aql", "--testBuckets 4/0"],
+        ["shell_server_aql_2", "shell_server_aql", "--testBuckets 4/1"],
+        ["shell_server_aql_3", "shell_server_aql", "--testBuckets 4/2"],
+        ["shell_server_aql_4", "shell_server_aql", "--testBuckets 4/3"],
         ["upgrade", "upgrade" , ""],
         rspecify(os, "http_server"),
         rspecify(os, "ssl_server")
@@ -841,7 +841,10 @@ def getTests(os, edition, maintainer, mode, engine) {
 
         if (maintainer == "maintainer" && os == "linux") {
             tests += [
-                ["recovery", "recovery", ""]
+                ["recovery_1", "recovery", "--testBuckets 4/0"],
+                ["recovery_2", "recovery", "--testBuckets 4/1"],
+                ["recovery_3", "recovery", "--testBuckets 4/2"],
+                ["recovery_4", "recovery", "--testBuckets 4/3"]
             ]
         }
     }
