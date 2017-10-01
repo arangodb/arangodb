@@ -372,7 +372,6 @@ static void SynchronizeReplication(
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
 
-    std::string database;
     if (object->Has(TRI_V8_ASCII_STRING(isolate, "database"))) {
       config._database = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "database")));
     } else {
