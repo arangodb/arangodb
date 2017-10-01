@@ -162,7 +162,7 @@ class Logger {
  public:
   struct FIXED {
     explicit FIXED(double value, int precision = 6)
-        : _value(value), _precision(precision){};
+        : _value(value), _precision(precision) {}
     double _value;
     int _precision;
   };

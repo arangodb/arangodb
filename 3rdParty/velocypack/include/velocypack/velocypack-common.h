@@ -32,6 +32,13 @@
 #include <cstring>
 
 // debug mode
+#ifndef NDEBUG
+#ifndef VELOCYPACK_DEBUG
+// turn on assertions when not compiled with -DNDEBUG
+#define VELOCYPACK_DEBUG
+#endif
+#endif
+
 #ifdef VELOCYPACK_DEBUG
 #include <cassert>
 #define VELOCYPACK_ASSERT(x) assert(x)
