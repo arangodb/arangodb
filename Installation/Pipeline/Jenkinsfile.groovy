@@ -841,10 +841,12 @@ def getTests(os, edition, maintainer, mode, engine) {
 
         if (maintainer == "maintainer" && os == "linux") {
             tests += [
-                ["recovery_1", "recovery", "--testBuckets 4/0"],
-                ["recovery_2", "recovery", "--testBuckets 4/1"],
-                ["recovery_3", "recovery", "--testBuckets 4/2"],
-                ["recovery_4", "recovery", "--testBuckets 4/3"]
+                ["recovery_1", "recovery", "--testBuckets 6/0"],
+                ["recovery_2", "recovery", "--testBuckets 6/1"],
+                ["recovery_3", "recovery", "--testBuckets 6/2"],
+                ["recovery_4", "recovery", "--testBuckets 6/3"],
+                ["recovery_5", "recovery", "--testBuckets 6/4"],
+                ["recovery_6", "recovery", "--testBuckets 6/5"]
             ]
         }
     }
