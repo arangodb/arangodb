@@ -25,7 +25,11 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
+class GlobalReplicationApplier;
+
 class ReplicationFeature final
     : public application_features::ApplicationFeature {
  public:
@@ -38,6 +42,27 @@ class ReplicationFeature final
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void unprepare() override final;
+  
+  /// @brief return a pointer to the global replication applier
+  GlobalReplicationApplier* globalReplicationApplier() const {
+    return _globalReplicationApplier.get();
+  }
+  
+  /// @brief disable replication appliers
+  void disableReplicationApplier() { _replicationApplier = false; }
+
+  /// @brief start the replication applier for a single database
+  void startApplier(TRI_vocbase_t* vocbase);
+  
+  /// @brief stop the replication applier for a single database
+  void stopApplier(TRI_vocbase_t* vocbase);
+ 
+ public:
+  static ReplicationFeature* INSTANCE;
+   
+ private:
+  bool _replicationApplier;
+  std::unique_ptr<GlobalReplicationApplier> _globalReplicationApplier;
 };
 }
 

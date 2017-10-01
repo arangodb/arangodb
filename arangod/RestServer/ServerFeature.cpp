@@ -29,6 +29,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -125,13 +126,13 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
     ApplicationServer::disableFeatures({"Daemon", "Endpoint", "GeneralServer",
                                         "SslServer", "Supervisor"});
 
-    DatabaseFeature* database =
-        ApplicationServer::getFeature<DatabaseFeature>("Database");
-    database->disableReplicationApplier();
+    ReplicationFeature* replicationFeature =
+        ApplicationServer::getFeature<ReplicationFeature>("Replication");
+    replicationFeature->disableReplicationApplier();
 
-    StatisticsFeature* statistics =
+    StatisticsFeature* statisticsFeature =
         ApplicationServer::getFeature<StatisticsFeature>("Statistics");
-    statistics->disableStatistics();
+    statisticsFeature->disableStatistics();
   }
 
   V8DealerFeature* v8dealer =

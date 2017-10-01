@@ -35,7 +35,6 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class GlobalReplicationApplier;
 class LogicalCollection;
 
 namespace aql {
@@ -86,11 +85,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
 
  public:
 
-  /// @brief return a pointer to the global replication applier
-  GlobalReplicationApplier* globalReplicationApplier() const {
-    return _globalReplicationApplier.get();
-  }
-
   /// @brief get the ids of all local coordinator databases
   std::vector<TRI_voc_tick_t> getDatabaseIdsCoordinator(bool includeSystem);
   std::vector<TRI_voc_tick_t> getDatabaseIds(bool includeSystem);
@@ -128,7 +122,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool waitForSync() const { return _defaultWaitForSync; }
   uint64_t maximalJournalSize() const { return _maximalJournalSize; }
 
-  void disableReplicationApplier() { _replicationApplier = false; }
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
   bool throwCollectionNotLoadedError() const { return _throwCollectionNotLoadedError.load(std::memory_order_relaxed); }
@@ -169,7 +162,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   std::string _check30Revisions;
   std::atomic<bool> _throwCollectionNotLoadedError;
 
-  std::unique_ptr<GlobalReplicationApplier> _globalReplicationApplier;
 
   TRI_vocbase_t* _vocbase; // _system database
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
@@ -181,7 +173,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   arangodb::Mutex _databasesMutex;
 
   bool _isInitiallyEmpty;
-  bool _replicationApplier;
   bool _checkVersion;
   bool _upgrade;
 

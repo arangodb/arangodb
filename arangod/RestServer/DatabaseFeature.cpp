@@ -41,8 +41,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Replication/DatabaseReplicationApplier.h"
-#include "Replication/GlobalReplicationApplier.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
@@ -235,7 +234,6 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _vocbase(nullptr),
       _databasesLists(new DatabasesLists()),
       _isInitiallyEmpty(false),
-      _replicationApplier(true),
       _checkVersion(false),
       _upgrade(false) {
   setOptional(false);
@@ -257,9 +255,6 @@ DatabaseFeature::~DatabaseFeature() {
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
-
-  options->addOldOption("server.disable-replication-applier",
-                        "database.replication-applier");
 
   options->addOption("--database.maximal-journal-size",
                      "default maximal journal size, can be overwritten when "
@@ -286,11 +281,6 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--database.throw-collection-not-loaded-error",
       "throw an error when accessing a collection that is still loading",
       new AtomicBooleanParameter(&_throwCollectionNotLoadedError));
-
-  options->addHiddenOption(
-      "--database.replication-applier",
-      "switch to enable or disable the replication applier",
-      new BooleanParameter(&_replicationApplier));
 
   options->addHiddenOption(
       "--database.check-30-revisions",
@@ -447,25 +437,10 @@ void DatabaseFeature::recoveryDone() {
     // execute the engine-specific callbacks on successful recovery
     engine->recoveryDone(vocbase);
 
-    // start the replication applier, which is engine-unspecific
-    TRI_ASSERT(vocbase->replicationApplier() != nullptr);
+    ReplicationFeature* replicationFeature =
+        ApplicationServer::getFeature<ReplicationFeature>("Replication");
 
-    if (vocbase->replicationApplier()->autoStart()) {
-      if (!_replicationApplier) {
-        LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "replication applier explicitly deactivated for database '"
-                  << vocbase->name() << "'";
-      } else {
-        try {
-          vocbase->replicationApplier()->start(0, false, 0);
-        } catch (std::exception const& ex) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to start replication applier for database '"
-                    << vocbase->name() << "': " << ex.what();
-        } catch (...) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to start replication applier for database '"
-                    << vocbase->name() << "'";
-        }
-      }
-    }
+    replicationFeature->startApplier(vocbase);
   }
 }
 
@@ -607,19 +582,11 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     if (! engine->inRecovery()) {
       // starts compactor etc.
       engine->recoveryDone(vocbase.get());
+    
+      ReplicationFeature* replicationFeature =
+          ApplicationServer::getFeature<ReplicationFeature>("Replication");
 
-      // start the replication applier
-      if (_replicationApplier && vocbase->replicationApplier()->autoStart()) {
-        try {
-          vocbase->replicationApplier()->start(0, false, 0);
-        } catch (std::exception const& ex) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to start replication applier for database '"
-                    << name << "': " << ex.what();
-        } catch (...) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to start replication applier for database '"
-                    << name << "'";
-        }
-      }
+      replicationFeature->startApplier(vocbase.get());
 
       // increase reference counter
       bool result = vocbase->use();
@@ -1130,19 +1097,19 @@ void DatabaseFeature::updateContexts() {
 
 void DatabaseFeature::closeDatabases() {
   // stop the replication appliers so all replication transactions can end
-  if (_replicationApplier) {
-    MUTEX_LOCKER(mutexLocker,
-                 _databasesMutex);  // Only one should do this at a time
-    // No need for the thread protector here, because we have the mutex
+  ReplicationFeature* replicationFeature =
+      ApplicationServer::getFeature<ReplicationFeature>("Replication");
 
-    for (auto& p : _databasesLists.load()->_databases) {
-      TRI_vocbase_t* vocbase = p.second;
-      TRI_ASSERT(vocbase != nullptr);
-      TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
-      if (vocbase->replicationApplier() != nullptr) {
-        vocbase->replicationApplier()->stop(false, true);
-      }
-    }
+  MUTEX_LOCKER(mutexLocker,
+               _databasesMutex);  // Only one should do this at a time
+  // No need for the thread protector here, because we have the mutex
+
+  for (auto& p : _databasesLists.load()->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    TRI_ASSERT(vocbase != nullptr);
+    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
+    
+    replicationFeature->stopApplier(vocbase);
   }
 }
 

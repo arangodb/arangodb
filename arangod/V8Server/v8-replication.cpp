@@ -32,6 +32,7 @@
 #include "Replication/GlobalInitialSyncer.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
@@ -673,8 +674,8 @@ static ReplicationApplier* getContinuousApplier(v8::Isolate* isolate,
     applier = vocbase->replicationApplier();
   } else {
     // applier type global
-    auto databaseFeature = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database");
-    applier = databaseFeature->globalReplicationApplier();
+    auto replicationFeature = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
+    applier = replicationFeature->globalReplicationApplier();
   }
 
   if (applier == nullptr) {
