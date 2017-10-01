@@ -1084,7 +1084,7 @@ def testStepParallel(os, edition, maintainer, modeList) {
         }
     }
 
-    def name = "${os}-${edition}-${maintainer}"
+    def name = "${os}-${edition}-${maintainer}/03-test"
 
     if (branches) {
         try {
@@ -1388,14 +1388,21 @@ def runEdition(os, edition, maintainer, stageName) {
                 stage(stageName) {
                     checkoutSource(os, edition)
 
-                    // I concede...we need a lock for windows...I could not get it to run concurrently...
-                    // v8 would not build multiple times at the same time on the same machine:
-                    // PDB API call failed, error code '24': ' etc etc
-                    // in theory it should be possible to parallelize it by setting an environment variable
-                    // (see the build script) but for v8 it won't work :(
-                    // feel free to recheck if there is time somewhen...this thing here really should not be possible but
-                    // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly
-                    // test it. I just don't want any more "yeah that might randomly fail. just restart" sentences any more.
+                    // I concede...we need a lock for windows...I
+                    // could not get it to run concurrently...  v8
+                    // would not build multiple times at the same time
+                    // on the same machine: PDB API call failed, error
+                    // code '24': ' etc etc in theory it should be
+                    // possible to parallelize it by setting an
+                    // environment variable (see the build script) but
+                    // for v8 it won't work :( feel free to recheck if
+                    // there is time somewhen...this thing here really
+                    // should not be possible but ensure that there
+                    // are 2 concurrent builds on the SAME node
+                    // building v8 at the same time to properly test
+                    // it. I just don't want any more "yeah that might
+                    // randomly fail. just restart" sentences any
+                    // more.
 
                     if (os == "windows") {
                         def hostname = powershell(returnStdout: true, script: "hostname").trim()
