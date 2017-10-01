@@ -119,15 +119,15 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const&
 
 void LogAppenderFile::writeLogMessage(LogLevel level, char const* buffer, size_t len) {
   bool giveUp = false;
-  int fd = _fd;
 
   while (len > 0) {
-    ssize_t n = TRI_WRITE(fd, buffer, static_cast<TRI_write_t>(len));
+    ssize_t n = TRI_WRITE(_fd, buffer, static_cast<TRI_write_t>(len));
 
     if (n < 0) {
       fprintf(stderr, "cannot log data: %s\n", TRI_LAST_ERROR_STR);
-      return;  // give up, but do not try to log failure
-    } else if (n == 0) {
+      return;  // give up, but do not try to log the failure via the Logger
+    } 
+    if (n == 0) {
       if (!giveUp) {
         giveUp = true;
         continue;
@@ -139,8 +139,10 @@ void LogAppenderFile::writeLogMessage(LogLevel level, char const* buffer, size_t
   }
 
   if (level == LogLevel::FATAL) {
-    FILE* f = TRI_FDOPEN(fd, "w+");
+    FILE* f = TRI_FDOPEN(_fd, "a");
     if (f != nullptr) {
+      // valid file pointer...
+      // now flush the file one last time before we shut down
       fflush(f);
     }
   }
@@ -202,6 +204,7 @@ void LogAppenderFile::closeAll() {
     it.first = -1;
 
     if (fd > STDERR_FILENO) {
+      fsync(fd);
       TRI_TRACKED_CLOSE_FILE(fd);
     }
   }
@@ -241,8 +244,12 @@ void LogAppenderStdStream::writeLogMessage(int fd, bool useColors, LogLevel leve
     fprintf(fp, "%s%s", buffer, nl);
   }
 
-  if (level == LogLevel::FATAL || level == LogLevel::ERR || level == LogLevel::WARN) {
+  if (level == LogLevel::FATAL || level == LogLevel::ERR || 
+      level == LogLevel::WARN || level == LogLevel::INFO) {
     // flush the output so it becomes visible immediately
+    // at least for log levels that are used seldomly
+    // it would probably be overkill to flush everytime we
+    // encounter a log message for level DEBUG or TRACE
     fflush(fp);
   }
 }
