@@ -41,10 +41,13 @@ class ReplicationFeature final
       std::shared_ptr<options::ProgramOptions> options) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
+  void start() override final;
+  void stop() override final;
   void unprepare() override final;
   
   /// @brief return a pointer to the global replication applier
   GlobalReplicationApplier* globalReplicationApplier() const {
+    TRI_ASSERT(_globalReplicationApplier != nullptr);
     return _globalReplicationApplier.get();
   }
   

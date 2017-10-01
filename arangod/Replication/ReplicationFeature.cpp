@@ -27,11 +27,11 @@
 #include "ProgramOptions/Section.h"
 #include "Replication/DatabaseReplicationApplier.h"
 #include "Replication/GlobalReplicationApplier.h"
+#include "Replication/ReplicationApplierConfiguration.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;
-//using namespace arangodb::basics;
 using namespace arangodb::options;
 
 ReplicationFeature* ReplicationFeature::INSTANCE = nullptr;
@@ -64,7 +64,16 @@ void ReplicationFeature::prepare() {
   INSTANCE = this;
 }
 
-void ReplicationFeature::unprepare() {}
+void ReplicationFeature::start() { 
+  // TODO: pass proper configuration into applier
+  _globalReplicationApplier.reset(new GlobalReplicationApplier(ReplicationApplierConfiguration()));
+}
+
+void ReplicationFeature::stop() {}
+
+void ReplicationFeature::unprepare() {
+  _globalReplicationApplier.reset();
+}
     
 // start the replication applier for a single database
 void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
