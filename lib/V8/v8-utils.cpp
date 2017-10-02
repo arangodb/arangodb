@@ -1262,7 +1262,7 @@ static void JS_GetTempPath(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("getTempPath()");
   }
 
-  std::string path = TRI_GetUserTempPath();
+  std::string path = TRI_GetTempPath();
   v8::Handle<v8::Value> result = TRI_V8_STD_STRING(isolate, path);
 
   TRI_V8_RETURN(result);
@@ -2820,7 +2820,7 @@ static void JS_RemoveRecursiveDirectory(
 
   if (!force) {
     // check if we're inside the temp directory. force will override this check
-    std::string tempPath = TRI_GetUserTempPath();
+    std::string tempPath = TRI_GetTempPath();
 
     if (tempPath.size() < 6) {
       TRI_V8_THROW_EXCEPTION_PARAMETER(

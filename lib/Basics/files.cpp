@@ -66,12 +66,6 @@ static char NullBuffer[4096];
 static bool Initialized = false;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief user-defined temporary path
-////////////////////////////////////////////////////////////////////////////////
-
-static std::string TempPath;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief names of blocking files
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -90,7 +84,6 @@ static basics::ReadWriteLock OpenedFilesLock;
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the character is a directory separator
 ////////////////////////////////////////////////////////////////////////////////
-///
 
 static constexpr bool IsDirSeparatorChar(char c) {
   // the check for c != TRI_DIR_SEPARATOR_CHAR is required
@@ -1920,8 +1913,7 @@ int TRI_Crc32File(char const* path, uint32_t* crc) {
 
 static std::string TRI_ApplicationName = "arangodb";
 
-void TRI_SetApplicationName(char const* name) {
-  TRI_ASSERT(name != nullptr);
+void TRI_SetApplicationName(std::string const& name) {
   TRI_ApplicationName = name;
 }
 
@@ -1985,7 +1977,7 @@ static std::string getTempPath() {
   return result;
 }
 
-static int mkDTemp(char *s, size_t bufferSize) {
+static int mkDTemp(char* s, size_t bufferSize) {
   auto rc = _mktemp_s(s, bufferSize);
   if (rc == 0) {
     rc = TRI_MKDIR(s, 0700);
@@ -1996,7 +1988,6 @@ static int mkDTemp(char *s, size_t bufferSize) {
 #else
 
 static std::string getTempPath() {
-  
   std::string system = "";
   char const* v = getenv("TMPDIR");
 
@@ -2010,7 +2001,7 @@ static std::string getTempPath() {
   return system;
 }
 
-static int mkDTemp(char *s, size_t bufferSize) {
+static int mkDTemp(char* s, size_t bufferSize) {
   if (mkdtemp(s) != nullptr) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -2021,7 +2012,11 @@ static int mkDTemp(char *s, size_t bufferSize) {
 
 #endif
 
+/// @brief the actual temp path used
 static std::unique_ptr<char[]> SystemTempPath;
+
+/// @brief user-defined temp path
+static std::string UserTempPath;
 
 static void SystemTempPathCleaner(void) {
   char* path = SystemTempPath.get();
@@ -2031,12 +2026,23 @@ static void SystemTempPathCleaner(void) {
   }
 }
 
+void TRI_SetTempPath(std::string const& temp) {
+  UserTempPath = temp;
+  // need to call TRI_GetTempPath to establish the path...
+  TRI_GetTempPath();
+}
+
 std::string TRI_GetTempPath() {
   char* path = SystemTempPath.get();
 
   if (path == nullptr) {
-    std::string system = getTempPath();
-
+    std::string system;
+    if (UserTempPath.empty()) {
+      system = getTempPath();
+    } else {
+      system = UserTempPath;
+    }
+  
     // Strip any double back/slashes from the string.
     while (system.find(TRI_DIR_SEPARATOR_STR TRI_DIR_SEPARATOR_STR) !=  std::string::npos) {
       system = StringUtils::replace(system,
@@ -2044,27 +2050,59 @@ std::string TRI_GetTempPath() {
                                     std::string(TRI_DIR_SEPARATOR_STR)
                                     );
     }
+  
+    // remove trailing DIR_SEPARATOR
+    while (!system.empty() && IsDirSeparatorChar(system[system.size() - 1])) {
+      system.pop_back();
+    }
 
-    system += TRI_ApplicationName + "_XXXXXX";
+    // and re-append it 
+    system.push_back(TRI_DIR_SEPARATOR_CHAR);
 
-    // copy to a character array
-    SystemTempPath.reset(new char[system.size() + 1]);
-    path = SystemTempPath.get();
-    TRI_CopyString(path, system.c_str(), system.size());
-
-    // fill template
-    int res = mkDTemp(SystemTempPath.get(), system.size() + 1);
-
-    if (res != 0) {
-      system = TRI_DIR_SEPARATOR_STR "tmp" TRI_DIR_SEPARATOR_STR "arangodb";
+    if (UserTempPath.empty()) {
+      system += TRI_ApplicationName + "_XXXXXX";
+    }
+  
+    int tries = 0;
+    while (true) {
+      // copy to a character array
       SystemTempPath.reset(new char[system.size() + 1]);
       path = SystemTempPath.get();
       TRI_CopyString(path, system.c_str(), system.size());
-      if (TRI_MKDIR(path, 0700) != 0) {
+
+      int res;
+      if (!UserTempPath.empty()) {
+        // --temp.path was specified
+        if (TRI_IsDirectory(system.c_str())) {
+          // temp directory already exists. now simply use it
+          break;
+        }
+    
+        res = TRI_MKDIR(UserTempPath.c_str(), 0700);
+      } else {
+        // no --temp.path was specified
+        // fill template and create directory
+        tries = 9;
+        res = mkDTemp(SystemTempPath.get(), system.size() + 1);
+      }
+
+      if (res == TRI_ERROR_NO_ERROR) {
+        break;
+      }
+
+      // directory could not be created
+      // this may be a race, a permissions problem or something else
+      if (++tries >= 10) {
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "failed to create a temporary directory - giving up";
         FATAL_ERROR_ABORT();
       }
+      // sleep for a random amout of time and try again soon
+      // with this, we try to avoid races between multiple processes
+      // that try to create temp directories at the same time
+      uint64_t waitTime = uint64_t(5000) + RandomGenerator::interval(uint64_t(20000));
+      usleep(waitTime);
     }
+
     atexit(SystemTempPathCleaner);
   }
 
@@ -2077,7 +2115,7 @@ std::string TRI_GetTempPath() {
 
 int TRI_GetTempName(char const* directory, std::string& result, bool createFile,
                     long& systemError, std::string& errorMessage) {
-  std::string temp = TRI_GetUserTempPath();
+  std::string temp = TRI_GetTempPath();
 
   std::string dir;
   if (directory != nullptr) {
@@ -2086,11 +2124,11 @@ int TRI_GetTempName(char const* directory, std::string& result, bool createFile,
     dir = temp;
   }
 
-  // remove trailing PATH_SEPARATOR
+  // remove trailing DIR_SEPARATOR
   while (!dir.empty() && IsDirSeparatorChar(dir[dir.size() - 1])) {
     dir.pop_back();
   }
-
+ 
   int res = TRI_CreateRecursiveDirectory(dir.c_str(), systemError, errorMessage);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -2132,25 +2170,6 @@ int TRI_GetTempName(char const* directory, std::string& result, bool createFile,
 
   return TRI_ERROR_CANNOT_CREATE_TEMP_FILE;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the user-defined temp path, with a fallback to the system's
-/// temp path if none is specified
-////////////////////////////////////////////////////////////////////////////////
-
-std::string TRI_GetUserTempPath() {
-  if (TempPath.empty()) {
-    return TRI_GetTempPath();
-  }
-
-  return TempPath;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set a new user-defined temp path
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_SetUserTempPath(std::string const& path) { TempPath = path; }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locate the installation directory

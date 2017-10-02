@@ -52,18 +52,22 @@ std::string buildFilename(char const* path, char const* name);
 std::string buildFilename(std::string const& path, std::string const& name);
 
 template <typename... Args>
-inline std::string buildFilename(std::string const& path, std::string const& name, Args... args) {
+inline std::string buildFilename(std::string const& path,
+                                 std::string const& name, Args... args) {
   return buildFilename(buildFilename(path, name), args...);
 }
 
-// reads file into string
+// reads file into string or buffer
 std::string slurp(std::string const& filename);
 void slurp(std::string const& filename, StringBuffer& result);
 
 // creates file and writes string to it
-void spit(std::string const& filename, char const* ptr, size_t len, bool sync = false);
-void spit(std::string const& filename, std::string const& content, bool sync = false);
-void spit(std::string const& filename, StringBuffer const& content, bool sync = false);
+void spit(std::string const& filename, char const* ptr, size_t len,
+          bool sync = false);
+void spit(std::string const& filename, std::string const& content,
+          bool sync = false);
+void spit(std::string const& filename, StringBuffer const& content,
+          bool sync = false);
 
 // returns true if a file could be removed
 bool remove(std::string const& fileName, int* errorNumber = 0);
@@ -119,6 +123,9 @@ std::string configDirectory(char const* binaryPath);
 
 // returns the dir name of a path
 std::string dirname(std::string const&);
+
+// returns the output of a program
+std::string slurpProgram(std::string const& program);
 }
 }
 }
