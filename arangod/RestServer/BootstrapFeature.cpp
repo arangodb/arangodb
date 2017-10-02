@@ -222,7 +222,7 @@ void BootstrapFeature::start() {
     /*if (AgencyCommManager::isEnabled()) {
       
       AgencyComm agency;
-      std::string const path = "/Plan/AsyncReplication/Master";
+      std::string const path = "/Plan/AsyncReplication/Leader";
       std::vector<std::string> slicePath = AgencyCommManager::slicePath(path);
       
       while (true) {

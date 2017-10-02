@@ -125,10 +125,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext const* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope;
   std::string const queryStr("FOR user IN _users RETURN user");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
   arangodb::aql::Query query(false, vocbase,
@@ -170,10 +167,7 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext const* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope;
   std::string const queryStr("FOR u IN _users FILTER u.user == @name RETURN u");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
 
@@ -325,10 +319,7 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext const* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope;
   auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
@@ -478,10 +469,7 @@ static Result UpdateUser(VPackSlice const& user) {
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext const* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope;
   auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
@@ -587,10 +575,7 @@ static Result RemoveUserInternal(AuthUserEntry const& entry) {
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext const* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope;
   auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);

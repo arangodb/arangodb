@@ -49,7 +49,11 @@ class ApplyThread : public Thread {
     TRI_ASSERT(_syncer);
 
     try {
-      _syncer->run();
+      int res = _syncer->run();
+      if (res != TRI_ERROR_NO_ERROR) {
+        LOG_TOPIC(ERR, Logger::REPLICATION) << "Error while running applyer: "
+          << TRI_errno_string(res);
+      }
     } catch (std::exception const& ex) {
       LOG_TOPIC(WARN, Logger::REPLICATION) << "caught exception in ApplyThread: " << ex.what();
     } catch (...) {

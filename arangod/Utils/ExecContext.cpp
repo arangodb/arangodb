@@ -31,19 +31,26 @@ using namespace arangodb;
 
 thread_local ExecContext const* ExecContext::CURRENT = nullptr;
 
-ExecContext* ExecContext::copy() const {
-  return new ExecContext(_user, _database, _systemAuthLevel,
-                         _databaseAuthLevel);
+/// @brief a reference to a user with NONE for everything
+ExecContext* ExecContext::createUnauthorized(std::string const& user,
+                                             std::string const& db) {
+  return new ExecContext(false, user, db, AuthLevel::NONE, AuthLevel::NONE);
 }
 
-typedef AuthenticationFeature _AF;
+/// @brief an internal system user
+ExecContext* ExecContext::createSystem(std::string const& db) {
+  return new ExecContext(true, "", db, AuthLevel::RW, AuthLevel::RW);
+}
 
-ExecContext::ExecContext(std::string const& u, std::string const& db)
-    : _user(u),
-      _database(db),
-      _systemAuthLevel(
-          _AF::INSTANCE->canUseDatabase(u, TRI_VOC_SYSTEM_DATABASE)),
-      _databaseAuthLevel(_AF::INSTANCE->canUseDatabase(u, db)) {}
+ExecContext* ExecContext::create(std::string const& user, std::string const& db) {
+  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+  AuthLevel dbLvl = auth->authInfo()->canUseDatabase(user, db);
+  AuthLevel sysLvl = dbLvl;
+  if (db != TRI_VOC_SYSTEM_DATABASE) {
+    sysLvl = auth->authInfo()->canUseDatabase(user, TRI_VOC_SYSTEM_DATABASE);
+  }
+  return new ExecContext(false, user, db, dbLvl, sysLvl);
+}
 
 bool ExecContext::canUseDatabase(std::string const& db,
                                  AuthLevel requested) const {
@@ -60,6 +67,16 @@ bool ExecContext::canUseCollection(std::string const& db,
                                    AuthLevel requested) const {
   AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
   if (auth != nullptr && auth->isActive()) {
+    if (db == TRI_VOC_SYSTEM_DATABASE) {  // shortcuts
+      if (coll == TRI_COL_NAME_USERS) {
+        return false;
+      } else if (coll == "_queues") {
+        return requested <= AuthLevel::RO;
+      } else if (coll == "_frontend") {
+        return requested <= AuthLevel::RW;
+      }
+    }
+
     AuthLevel allowed = auth->authInfo()->canUseCollection(_user, db, coll);
     return requested <= allowed;
   }

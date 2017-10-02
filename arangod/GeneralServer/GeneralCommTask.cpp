@@ -375,20 +375,11 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
   // mop: inside authenticateRequest() request->user will be populated
   bool forceOpen = false;  
   if (request->authorized() && !username.empty()) {
-    AuthLevel sysLevel = _authentication->canUseDatabase(username, StaticStrings::SystemDatabase);
-    if (dbname == StaticStrings::SystemDatabase) {
-      // the request is made in the system database, and we have already queried our
-      // privileges for it. simply reuse the already queried privileges now
-      dbLevel = sysLevel;
-    } else {
-      // we have to query again but for a different database
-      dbLevel = _authentication->canUseDatabase(username, dbname);
-    }
-
-    request->setExecContext(new ExecContext(username, dbname,
-                                            sysLevel, dbLevel));
+    request->setExecContext(ExecContext::create(username, dbname));
+    dbLevel = request->execContext()->databaseAuthLevel();
   }
   
+  // we need to check for some special cases
   if (!request->authorized()) {
     
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS

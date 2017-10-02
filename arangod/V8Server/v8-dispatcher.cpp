@@ -304,7 +304,7 @@ V8Task::callbackFunction() {
     TRI_DEFER(ExecContext::CURRENT = nullptr);
     if (!_user.empty()) { // not superuser
       std::string const& dbname = _dbGuard->database()->name();
-      execContext.reset(new ExecContext(_user, dbname));
+      execContext.reset(ExecContext::create(_user, dbname));
       ExecContext::CURRENT = execContext.get();
       allowContinue = execContext->canUseDatabase(dbname, AuthLevel::RW);
     }

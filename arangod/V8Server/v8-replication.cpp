@@ -440,6 +440,7 @@ static void SynchronizeReplication(
       if (errorMsg.empty()) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot sync from remote endpoint. last progress message was '" + syncer.progress() + "'");
       } else {
+        LOG_TOPIC(ERR, Logger::REPLICATION) << "Global sync: " << errorMsg;
         TRI_V8_THROW_EXCEPTION_MESSAGE(
             res, "cannot sync from remote endpoint: " + errorMsg + ". last progress message was '" + syncer.progress() + "'");
       }
@@ -454,8 +455,8 @@ static void SynchronizeReplication(
 
     try {
       Result r = syncer.run(incremental);
-      
       if (r.fail()) {
+        LOG_TOPIC(ERR, Logger::REPLICATION) << "Global sync: " << r.errorMessage();
         TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
       }
       
@@ -637,6 +638,7 @@ static void JS_SynchronizeReplicationFinalize(
     if (errorMsg.empty()) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(res, std::string("cannot sync data for shard '") + collection + "' from remote endpoint");
     } else {
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "syncCollectionFinalize(..): " << errorMsg;
       TRI_V8_THROW_EXCEPTION_MESSAGE(res, std::string("cannot sync data for shard '") + collection + "' from remote endpoint: " + errorMsg);
     }
   }
