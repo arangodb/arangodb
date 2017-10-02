@@ -28,6 +28,7 @@
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Audit/AuditFeature.h"
+#include "Enterprise/Ldap/LdapFeature.h"
 #endif
 
 using namespace arangodb;
@@ -74,6 +75,8 @@ LogTopic Logger::V8("v8", LogLevel::WARN);
 LogTopic Logger::VIEWS("views", LogLevel::FATAL);
 
 #ifdef USE_ENTERPRISE
+LogTopic LdapFeature::LDAP("ldap", LogLevel::INFO);
+
 LogTopic AuditFeature::AUDIT_AUTHENTICATION("audit-authentication", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_DATABASE("audit-database", LogLevel::INFO);
 LogTopic AuditFeature::AUDIT_COLLECTION("audit-collection", LogLevel::INFO);

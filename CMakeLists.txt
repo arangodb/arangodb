@@ -72,7 +72,7 @@ endif ()
 # ------------------------------------------------------------------------------
 
 set(ARANGODB_VERSION_MAJOR      "3")
-set(ARANGODB_VERSION_MINOR      "2")
+set(ARANGODB_VERSION_MINOR      "3")
 set(ARANGODB_VERSION_REVISION   "devel")
 set(ARANGODB_PACKAGE_REVISION   "1")
 
