@@ -48,10 +48,9 @@ using namespace arangodb::aql;
 // -----------------------------------------------------------------------------
 
 EngineInfoContainerCoordinator::EngineInfo::EngineInfo(
-    size_t id, std::vector<ExecutionNode*>& nodes, size_t idOfRemoteNode)
-    : _id(id), _nodes(nodes), _idOfRemoteNode(idOfRemoteNode) {
-  TRI_ASSERT(!_nodes.empty());
-  TRI_ASSERT(!nodes.empty());
+    size_t id, size_t idOfRemoteNode)
+    : _id(id), _idOfRemoteNode(idOfRemoteNode) {
+  TRI_ASSERT(_nodes.empty());
 }
 
 EngineInfoContainerCoordinator::EngineInfo::~EngineInfo() {
@@ -59,29 +58,42 @@ EngineInfoContainerCoordinator::EngineInfo::~EngineInfo() {
   // somewhere else
 }
 
-EngineInfoContainerCoordinator::EngineInfoContainerCoordinator() {}
-
-EngineInfoContainerCoordinator::~EngineInfoContainerCoordinator() {}
-
 EngineInfoContainerCoordinator::EngineInfo::EngineInfo(EngineInfo const&& other)
     : _id(other._id),
       _nodes(std::move(other._nodes)),
       _idOfRemoteNode(other._idOfRemoteNode) {
-  TRI_ASSERT(!_nodes.empty());
 }
 
-ExecutionEngine* EngineInfoContainerCoordinator::EngineInfo::buildEngine(
+void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
+  _nodes.emplace_back(en);
+}
+
+void EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     Query* query, QueryRegistry* queryRegistry,
-    std::unordered_map<std::string, std::string>& queryIds) const {
-  auto engine = std::make_unique<ExecutionEngine>(query);
-  query->engine(engine.get());
+    std::unordered_map<std::string, std::string>& queryIds,
+    std::unordered_set<ShardID> const* lockedShards) const {
+  TRI_ASSERT(!_nodes.empty());
+  TRI_ASSERT(lockedShards != nullptr);
+  {
+    auto uniqEngine = std::make_unique<ExecutionEngine>(query);
+    query->engine(uniqEngine.release());
+  }
+
+  auto engine = query->engine();
+
+  {
+    auto cpyLockedShards = std::make_unique<std::unordered_set<std::string>>(*lockedShards);
+    engine->setLockedShards(cpyLockedShards.release());
+  }
 
   auto clusterInfo = arangodb::ClusterInfo::instance();
 
   std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
   RemoteNode* remoteNode = nullptr;
 
-  for (auto const& en : _nodes) {
+  // We need to traverse the nodes from back to front, the walker collects them in the wrong ordering
+  for (auto it = _nodes.rbegin(); it != _nodes.rend(); ++it) {
+    auto en = *it;
     auto const nodeType = en->getType();
 
     if (nodeType == ExecutionNode::REMOTE) {
@@ -93,14 +105,14 @@ ExecutionEngine* EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     ExecutionBlock* eb =
         // ExecutionEngine::CreateBlock(engine.get(), en, cache,
         // _includedShards);
-        ExecutionEngine::CreateBlock(engine.get(), en, cache, {});
+        ExecutionEngine::CreateBlock(engine, en, cache, {});
 
     if (eb == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
     }
 
     try {
-      engine.get()->addBlock(eb);
+      engine->addBlock(eb);
     } catch (...) {
       delete eb;
       throw;
@@ -140,10 +152,6 @@ ExecutionEngine* EngineInfoContainerCoordinator::EngineInfo::buildEngine(
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                          "could not find query id in list");
         }
-        std::string idThere = it->second;
-        if (idThere.back() == '*') {
-          idThere.pop_back();
-        }
 
         auto serverList = clusterInfo->getResponsibleServer(shardId);
         if (serverList->empty()) {
@@ -165,13 +173,13 @@ ExecutionEngine* EngineInfoContainerCoordinator::EngineInfo::buildEngine(
         // server B while the query was only instanciated on server A.
         TRI_ASSERT(!serverList->empty());
         auto& leader = (*serverList)[0];
-        ExecutionBlock* r = new RemoteBlock(engine.get(), remoteNode,
+        ExecutionBlock* r = new RemoteBlock(engine, remoteNode,
                                             "server:" + leader,  // server
                                             "",                  // ownName
-                                            idThere);            // queryId
+                                            it->second);         // queryId
 
         try {
-          engine.get()->addBlock(r);
+          engine->addBlock(r);
         } catch (...) {
           delete r;
           throw;
@@ -191,48 +199,86 @@ ExecutionEngine* EngineInfoContainerCoordinator::EngineInfo::buildEngine(
 
   TRI_ASSERT(engine->root() != nullptr);
 
-  LOG_TOPIC(ERR, arangodb::Logger::AQL) << "Storing Coordinator engine: "
+  LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Storing Coordinator engine: "
                                         << _id;
-  try {
-    queryRegistry->insert(_id, engine->getQuery(), 600.0);
-  } catch (...) {
-    // TODO Is this correct or does it cause failures?
-    // TODO Add failure tests
-    delete engine->getQuery();
-    // This deletes the new query as well as the engine
-    throw;
-  }
-  try {
-    std::string queryId = arangodb::basics::StringUtils::itoa(_id);
-    std::string theID = arangodb::basics::StringUtils::itoa(_idOfRemoteNode) +
-                        "/" + engine->getQuery()->vocbase()->name();
-    queryIds.emplace(theID, queryId);
-  } catch (...) {
-    queryRegistry->destroy(engine->getQuery()->vocbase(), _id,
-                           TRI_ERROR_INTERNAL);
-    // This deletes query, engine and entry in QueryRegistry
-    throw;
-  }
 
-  return engine.release();
+  // For _id == 0 this thread will always maintain the handle to
+  // the engine and will clean up. We do not keep track of it seperately
+  if (_id != 0) {
+    try {
+      queryRegistry->insert(_id, query, 600.0);
+    } catch (...) {
+      // TODO Is this correct or does it cause failures?
+      // TODO Add failure tests
+      delete engine->getQuery();
+      // This deletes the new query as well as the engine
+      throw;
+    }
+
+    try {
+      std::string queryId = arangodb::basics::StringUtils::itoa(_id);
+      std::string theID = arangodb::basics::StringUtils::itoa(_idOfRemoteNode) +
+                          "/" + engine->getQuery()->vocbase()->name();
+      queryIds.emplace(theID, queryId);
+    } catch (...) {
+      queryRegistry->destroy(engine->getQuery()->vocbase(), _id,
+                             TRI_ERROR_INTERNAL);
+      // This deletes query, engine and entry in QueryRegistry
+      throw;
+    }
+  }
 }
 
-QueryId EngineInfoContainerCoordinator::addQuerySnippet(
-    std::vector<ExecutionNode*>& nodes, size_t idOfRemoteNode) {
-  // TODO: Check if the following is true:
-  // idOfRemote === 0 => id === 0
+EngineInfoContainerCoordinator::EngineInfoContainerCoordinator() {
+  // We always start with an empty coordinator snippet
+  _engines.emplace_back(0, 0);
+  _engineStack.emplace(0);
+}
+
+EngineInfoContainerCoordinator::~EngineInfoContainerCoordinator() {}
+
+void EngineInfoContainerCoordinator::addNode(ExecutionNode* node) {
+#ifdef USE_MAINTAINER_MODE
+  switch (node->getType()) {
+    case ExecutionNode::INDEX:
+    case ExecutionNode::ENUMERATE_COLLECTION:
+      // These node types cannot be executed on coordinator side
+      TRI_ASSERT(false);
+    default:
+      break;
+  }
+#endif
+  TRI_ASSERT(!_engines.empty());
+  TRI_ASSERT(!_engineStack.empty());
+  size_t idx = _engineStack.top();
+  _engines[idx].addNode(node);
+}
+
+void EngineInfoContainerCoordinator::openSnippet(size_t idOfRemoteNode) {
+  _engineStack.emplace(_engines.size()); // Insert next id
   QueryId id = TRI_NewTickServer();
-  _engines.emplace_back(id, nodes, idOfRemoteNode);
+  _engines.emplace_back(id, idOfRemoteNode);
+}
+
+QueryId EngineInfoContainerCoordinator::closeSnippet() {
+  TRI_ASSERT(!_engines.empty());
+  TRI_ASSERT(!_engineStack.empty());
+
+  size_t idx = _engineStack.top();
+  QueryId id = _engines[idx].queryId();
+  _engineStack.pop();
   return id;
 }
 
 ExecutionEngine* EngineInfoContainerCoordinator::buildEngines(
     Query* query, QueryRegistry* registry,
-    std::unordered_map<std::string, std::string>& queryIds) const {
-  bool first = true;
-  std::unique_ptr<ExecutionEngine> result;
-  Query* localQuery = query;
+    std::unordered_map<std::string, std::string>& queryIds,
+    std::unordered_set<ShardID> const* lockedShards) const {
+  TRI_ASSERT(_engineStack.size() == 1);
+  TRI_ASSERT(_engineStack.top() == 0);
 
+  bool first = true;
+  Query* localQuery = query;
   for (auto const& info : _engines) {
     if (!first) {
       // need a new query instance on the coordinator
@@ -243,7 +289,7 @@ ExecutionEngine* EngineInfoContainerCoordinator::buildEngines(
       }
     }
     try {
-      info.buildEngine(localQuery, registry, queryIds);
+      info.buildEngine(localQuery, registry, queryIds, lockedShards);
     } catch (...) {
       localQuery->engine(nullptr);  // engine is already destroyed internally
       if (!first) {
@@ -251,10 +297,12 @@ ExecutionEngine* EngineInfoContainerCoordinator::buildEngines(
       }
       throw;
     }
+
     first = false;
   }
 
-  return result.release();
+  // Why return?
+  return query->engine();
 }
 
 // -----------------------------------------------------------------------------
@@ -262,22 +310,16 @@ ExecutionEngine* EngineInfoContainerCoordinator::buildEngines(
 // -----------------------------------------------------------------------------
 
 EngineInfoContainerDBServer::EngineInfo::EngineInfo(
-    std::vector<ExecutionNode*>& nodes, size_t idOfRemoteNode,
-    Collection* collection)
-    : _nodes(nodes),
-      _idOfRemoteNode(idOfRemoteNode),
+    size_t idOfRemoteNode)
+    : _idOfRemoteNode(idOfRemoteNode),
       _otherId(0),
-      _collection(collection) {
-  TRI_ASSERT(!_nodes.empty());
-  LOG_TOPIC(DEBUG, Logger::AQL) << "Create DBServer Engine";
-}
+      _collection(nullptr) { }
 
 EngineInfoContainerDBServer::EngineInfo::~EngineInfo() {
-  TRI_ASSERT(!_nodes.empty());
-  LOG_TOPIC(DEBUG, Logger::AQL) << "Destroying DBServer Engine";
   // This container is not responsible for nodes
   // they are managed by the AST somewhere else
   // We are also not responsible for the collection.
+  TRI_ASSERT(!_nodes.empty());
 }
 
 EngineInfoContainerDBServer::EngineInfo::EngineInfo(EngineInfo const&& other)
@@ -293,8 +335,20 @@ void EngineInfoContainerDBServer::EngineInfo::connectQueryId(QueryId id) {
   _otherId = id;
 }
 
+void EngineInfoContainerDBServer::EngineInfo::addNode(ExecutionNode* node) {
+  _nodes.emplace_back(node);
+}
+
+Collection const* EngineInfoContainerDBServer::EngineInfo::collection() const {
+  return _collection;
+}
+
+void EngineInfoContainerDBServer::EngineInfo::collection(Collection* col) {
+  _collection = col;
+}
+
 void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
-    Query* query, ShardID id, VPackBuilder& infoBuilder) const {
+    Query* query, ShardID id, VPackBuilder& infoBuilder, bool isResponsibleForInit) const {
   // The Key is required to build up the queryId mapping later
   infoBuilder.add(VPackValue(
       arangodb::basics::StringUtils::itoa(_idOfRemoteNode) + ":" + id));
@@ -312,7 +366,9 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   ExecutionPlan plan(query->ast());
   ExecutionNode* previous = nullptr;
 
-  for (ExecutionNode const* current : _nodes) {
+  // for (ExecutionNode const* current : _nodes) {
+  for (auto enIt = _nodes.rbegin(); enIt != _nodes.rend(); ++enIt) {
+    ExecutionNode const* current = *enIt;
     auto clone = current->clone(&plan, false, false);
     // UNNECESSARY, because clone does it: plan.registerNode(clone);
 
@@ -329,11 +385,11 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
       // than one
 
       // Do we still need this???
-      rem->isResponsibleForInitializeCursor(false);
+      rem->isResponsibleForInitializeCursor(isResponsibleForInit);
     }
 
     if (previous != nullptr) {
-      previous->addDependency(clone);
+      clone->addDependency(previous);
     }
 
     previous = clone;
@@ -344,74 +400,85 @@ void EngineInfoContainerDBServer::EngineInfo::serializeSnippet(
   plan.setVarUsageComputed();
   // Always Verbose
   plan.root()->toVelocyPack(infoBuilder, true);
+  {
+    VPackBuilder hund;
+    plan.root()->toVelocyPack(hund, true);
+  }
   _collection->resetCurrentShard();
 }
 
-EngineInfoContainerDBServer::EngineInfoContainerDBServer()
-    : _lastEngine(nullptr) {}
+EngineInfoContainerDBServer::EngineInfoContainerDBServer() {}
 
 EngineInfoContainerDBServer::~EngineInfoContainerDBServer() {}
 
-void EngineInfoContainerDBServer::connectLastSnippet(QueryId id) {
-  if (_lastEngine == nullptr) {
-    // If we do not have engines we cannot append the snippet.
-    // This is the case for the initial coordinator snippet.
-    return;
-  }
-  _lastEngine->connectQueryId(id);
+void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
+  TRI_ASSERT(!_engineStack.empty());
+  _engineStack.top()->addNode(node);
+  switch (node->getType()) {
+    case ExecutionNode::ENUMERATE_COLLECTION:
+      handleCollection(
+          static_cast<EnumerateCollectionNode*>(node)->collection(), false);
+      break;
+    case ExecutionNode::INDEX:
+      handleCollection(
+          static_cast<EnumerateCollectionNode*>(node)->collection(), false);
+      break;
+    case ExecutionNode::INSERT:
+    case ExecutionNode::UPDATE:
+    case ExecutionNode::REMOVE:
+    case ExecutionNode::REPLACE:
+    case ExecutionNode::UPSERT:
+      handleCollection(static_cast<ModificationNode*>(node)->collection(),
+                       true);
+      break;
+    default:
+      // Do nothing
+      break;
+  };
 }
 
-void EngineInfoContainerDBServer::addQuerySnippet(
-    std::vector<ExecutionNode*>& nodes, size_t idOfRemoteNode) {
-  if (nodes.empty()) {
-    // How can this happen?
-    return;
-  }
-  Collection* collection = nullptr;
-  auto handleCollection = [&](Collection const* col, bool isWrite) -> void {
-    auto it = _collections.find(col);
-    if (it == _collections.end()) {
-      _collections.emplace(
-          col, (isWrite ? AccessMode::Type::WRITE : AccessMode::Type::READ));
-    } else {
-      if (isWrite && it->second == AccessMode::Type::READ) {
-        // We need to upgrade the lock
-        it->second = AccessMode::Type::WRITE;
-      }
-    }
-    if (collection != nullptr && collection->isSatellite()) {
-      _satellites.emplace(collection);
-    }
-    // ... const_cast
-    collection = const_cast<Collection*>(col);
-  };
+void EngineInfoContainerDBServer::openSnippet(size_t idOfRemoteNode) {
+  _engineStack.emplace(std::make_shared<EngineInfo>(idOfRemoteNode));
+}
 
-  // Analyse the collections used in this Query.
-  for (auto en : nodes) {
-    switch (en->getType()) {
-      case ExecutionNode::ENUMERATE_COLLECTION:
-        handleCollection(
-            static_cast<EnumerateCollectionNode*>(en)->collection(), false);
-        break;
-      case ExecutionNode::INDEX:
-        handleCollection(static_cast<IndexNode*>(en)->collection(), false);
-        break;
-      case ExecutionNode::INSERT:
-      case ExecutionNode::UPDATE:
-      case ExecutionNode::REMOVE:
-      case ExecutionNode::REPLACE:
-      case ExecutionNode::UPSERT:
-        handleCollection(static_cast<ModificationNode*>(en)->collection(),
-                         true);
-        break;
-      default:
-        // Do nothing
-        break;
-    };
-  }
+// Closing a snippet means:
+// 1. pop it off the stack.
+// 2. Wire it up with the given coordinator ID
+// 3. Move it in the Collection => Engine map
 
-  _engines[collection].emplace_back(nodes, idOfRemoteNode, collection);
-  _lastEngine = &_engines[collection].back();  // The new engine
+void EngineInfoContainerDBServer::closeSnippet(QueryId coordinatorEngineId) {
+  TRI_ASSERT(!_engineStack.empty());
+  auto e = _engineStack.top();
+  _engineStack.pop();
+
+  e->connectQueryId(coordinatorEngineId);
+  TRI_ASSERT(e->collection() != nullptr);
+  _engines[e->collection()].emplace_back(std::move(e));
+}
+
+// This first defines the lock required for this collection
+// Then we update the collection pointer of the last engine.
+
+void EngineInfoContainerDBServer::handleCollection(Collection const* col,
+    bool isWrite) {
+  auto it = _collections.find(col);
+  if (it == _collections.end()) {
+    _collections.emplace(
+        col, (isWrite ? AccessMode::Type::WRITE : AccessMode::Type::READ));
+  } else {
+    if (isWrite && it->second == AccessMode::Type::READ) {
+      // We need to upgrade the lock
+      it->second = AccessMode::Type::WRITE;
+    }
+  }
+  TRI_ASSERT(!_engineStack.empty());
+  auto e = _engineStack.top();
+  auto formerCol = e->collection();
+  if (formerCol != nullptr && formerCol->isSatellite()) {
+    _satellites.emplace(formerCol);
+  }
+  // ... const_cast
+  e->collection(const_cast<Collection*>(col));
 }
 
 EngineInfoContainerDBServer::DBServerInfo::DBServerInfo() {}
@@ -423,7 +490,7 @@ void EngineInfoContainerDBServer::DBServerInfo::addShardLock(
 }
 
 void EngineInfoContainerDBServer::DBServerInfo::addEngine(
-    EngineInfoContainerDBServer::EngineInfo const* info, ShardID const& id) {
+    std::shared_ptr<EngineInfoContainerDBServer::EngineInfo> info, ShardID const& id) {
   _engineInfos[info].emplace_back(id);
 }
 
@@ -463,8 +530,10 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
   infoBuilder.openObject();
 
   for (auto const& it : _engineInfos) {
+    bool isResponsibleForInit = true;
     for (auto const& s : it.second) {
-      it.first->serializeSnippet(query, s, infoBuilder);
+      it.first->serializeSnippet(query, s, infoBuilder, isResponsibleForInit);
+      isResponsibleForInit = false;
     }
   }
   infoBuilder.close();  // snippets
@@ -479,7 +548,9 @@ void EngineInfoContainerDBServer::DBServerInfo::injectQueryOptions(
 
 void EngineInfoContainerDBServer::buildEngines(
     Query* query,
-    std::unordered_map<std::string, std::string>& queryIds) const {
+    std::unordered_map<std::string, std::string>& queryIds,
+    std::unordered_set<ShardID>* lockedShards) const {
+  TRI_ASSERT(_engineStack.empty());
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "We have " << _engines.size()
                                           << " DBServer engines";
   std::map<ServerID, DBServerInfo> dbServerMapping;
@@ -489,12 +560,13 @@ void EngineInfoContainerDBServer::buildEngines(
   for (auto const& it : _collections) {
     // it.first => Collection const*
     // it.second => Lock Type
-    std::vector<EngineInfo> const* engines = nullptr;
+    std::vector<std::shared_ptr<EngineInfo>> const* engines = nullptr;
     if (_engines.find(it.first) != _engines.end()) {
       engines = &_engines.find(it.first)->second;
     }
     auto shardIds = it.first->shardIds();
     for (auto const& s : *(shardIds.get())) {
+      lockedShards->emplace(s);
       auto const servers = ci->getResponsibleServer(s);
       if (servers == nullptr || servers->empty()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -506,7 +578,7 @@ void EngineInfoContainerDBServer::buildEngines(
       mapping.addShardLock(it.second, s);
       if (engines != nullptr) {
         for (auto& e : *engines) {
-          mapping.addEngine(&e, s);
+          mapping.addEngine(e, s);
         }
       }
     }
@@ -540,6 +612,7 @@ void EngineInfoContainerDBServer::buildEngines(
                                headers, 90.0);
 
     if (res->getErrorCode() != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(ERR, Logger::AQL) << infoBuilder.toJson();
       // TODO could not register all engines. Need to cleanup.
       THROW_ARANGO_EXCEPTION_MESSAGE(res->getErrorCode(),
                                      res->stringifyErrorMessage());

@@ -1004,6 +1004,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           try {
             items->toVelocyPack(query->trx(), answerBuilder);
           } catch (...) {
+            LOG_TOPIC(ERR, Logger::AQL) << "Fail fail";
             generateError(rest::ResponseCode::SERVER_ERROR,
                           TRI_ERROR_HTTP_SERVER_ERROR,
                           "cannot transform AqlItemBlock to VelocyPack");
@@ -1144,6 +1145,7 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         return;
       }
     }
+
     sendResponse(rest::ResponseCode::OK, answerBuilder.slice(),
                  transactionContext.get());
   } catch (arangodb::basics::Exception const& e) {
