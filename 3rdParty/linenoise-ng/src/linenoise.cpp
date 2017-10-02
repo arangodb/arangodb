@@ -2403,9 +2403,10 @@ int InputBuffer::incrementalHistorySearch(PromptBase& pi, int startChar) {
         while (true) {
           while ((dp.direction > 0) ? (lineSearchPos < lineLength)
                                     : (lineSearchPos >= 0)) {
+            int maxSize = std::min((int)bufferSize, dp.searchTextLen);
             if (strncmp32(dp.searchText.get(),
-                          &activeHistoryLine[lineSearchPos],
-                          dp.searchTextLen) == 0) {
+                          activeHistoryLine + lineSearchPos,
+                          maxSize) == 0) {
               found = true;
               break;
             }
