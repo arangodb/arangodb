@@ -45,6 +45,17 @@
         </ul>
       </div>
     </div>
+
+    <section class="info" id="informationfunctions" style="display: none">
+      <div class="header">
+        <div id="hidden_buttons" style="display: none">
+          <button class="delete button-danger" <%=app.isSystem()?"disabled":""%> >Delete</button>
+          <button id="app-replace" class="app-replace upgrade button-warning" <%=app.isSystem()?"disabled":"" %>>Replace</button>
+          <button id="app-switch-mode" class="app-switch-mode switch-mode button-warning"><%=app.get('development')?'Set Production':'Set Development'%></button>
+        </div>
+      </div>
+    </section>
+
     <section class="info" id="information" style="width: 100%;">
       <div class="pure-g">
 
@@ -108,17 +119,6 @@
       </div>
     </section>
 
-    <!--
-    <section class="info" id="information">
-      <div class="header">
-        <div id="hidden_buttons" style="display: none">
-          <button class="delete button-danger" <%=app.isSystem()?"disabled":""%> >Delete</button>
-          <button id="app-replace" class="app-replace upgrade button-warning" <%=app.isSystem()?"disabled":"" %>>Replace</button>
-          <button id="app-switch-mode" class="app-switch-mode switch-mode button-warning"><%=app.get('development')?'Set Production':'Set Development'%></button>
-        </div>
-      </div>
-    </section>-->
-
     <main>
       <div id="app-info" class="app-info" style="display: none;">
         <h4>Info</h4>
@@ -131,11 +131,11 @@
         </div>
         <iframe src="<%= baseUrl %>/_admin/aardvark/foxxes/docs/index.html?mount=<%= encodeURIComponent(app.get('mount')) %>" name="Documentation"></iframe>
       </div>
-      <div id="settings" class="readme" style="display: none;">
+      <div id="settings" class="readme" style="display: none; padding: 15px;">
         <% if (_.isEmpty(app.get('config'))) { %>
           <p>No configurable settings available.</p>
         <% } %>
-        <div class="buttons"></div>
+        <div class="buttons" style="margin-left: -10px; margin-top: 20px;"></div>
       </div>
     </main>
     <!--<aside class="meta" id="sideinformation">
