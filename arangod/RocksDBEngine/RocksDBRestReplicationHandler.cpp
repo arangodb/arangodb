@@ -180,6 +180,25 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                 TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
 }
+  
+void RocksDBRestReplicationHandler::handleCommandBarrier() {
+  auto const type = _request->requestType();
+  if (type == rest::RequestType::POST) {
+    VPackBuilder b;
+    b.add(VPackValue(VPackValueType::Object));
+    // always return a non-0 barrier id
+    // it will be ignored by the client anyway for the RocksDB engine
+    std::string const idString = std::to_string(TRI_NewTickServer());
+    b.add("id", VPackValue(idString));
+    b.close();
+    generateResult(rest::ResponseCode::OK, b.slice());
+  } else if (type == rest::RequestType::PUT ||
+             type == rest::RequestType::DELETE_REQ) {
+    resetResponse(rest::ResponseCode::NO_CONTENT);
+  } else if (type == rest::RequestType::GET) {
+    generateResult(rest::ResponseCode::OK, VPackSlice::emptyArraySlice());
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock JSF_get_api_replication_logger_returns

@@ -182,7 +182,6 @@ TRI_voc_tick_t Syncer::stealBarrier() {
 /// @brief send a "create barrier" command
 int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
   if (_isChildSyncer) {
-    TRI_ASSERT(_barrierId != 0);
     return TRI_ERROR_NO_ERROR;
   }
   _barrierId = 0;
@@ -237,7 +236,6 @@ int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
 /// @brief send an "extend barrier" command
 int Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
   if (_isChildSyncer || _barrierId == 0) {
-    TRI_ASSERT(!_isChildSyncer || _barrierId != 0);
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -276,7 +274,6 @@ int Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
 /// @brief send a "remove barrier" command
 int Syncer::sendRemoveBarrier() {
   if (_isChildSyncer || _barrierId == 0) {
-    TRI_ASSERT(!_isChildSyncer || _barrierId != 0);
     return TRI_ERROR_NO_ERROR;
   }
 

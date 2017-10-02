@@ -331,11 +331,12 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(WalAccess cons
   if (res.fail()) {
     generateError(res);
   } else {
+    auto cc = r.lastTick() != 0 ? ResponseCode::OK : ResponseCode::NO_CONTENT;
+    generateResult(cc, std::move(buffer));
+    
     _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
                            r.fromTickIncluded() ? "true" : "false");
     _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
                            StringUtils::itoa(r.lastTick()));
-    auto cc = r.lastTick() != 0 ? ResponseCode::OK : ResponseCode::NO_CONTENT;
-    generateResult(cc, std::move(buffer));
   }
 }

@@ -39,10 +39,12 @@ using namespace arangodb;
 /// @brief applier thread class
 class ApplyThread : public Thread {
  public:
-  explicit ApplyThread(std::unique_ptr<TailingSyncer> syncer)
+  explicit ApplyThread(std::unique_ptr<TailingSyncer>&& syncer)
       : Thread("ReplicationApplier"), _syncer(std::move(syncer)) {}
 
-  ~ApplyThread() { shutdown(); }
+  ~ApplyThread() {
+    shutdown(); 
+  }
 
  public:
   void run() {
