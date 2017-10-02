@@ -439,29 +439,28 @@ SECTION("test_insert") {
     CHECK((nullptr != view));
     view->open();
 
-// FIXME
-//    {
-//      auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
-//      arangodb::iresearch::IResearchLinkMeta linkMeta;
-//      arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-//
-//      linkMeta._includeAllFields = true;
-//      CHECK((trx.begin().ok()));
-//      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 1, docJson->slice(), linkMeta)));
-//      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 2, docJson->slice(), linkMeta)));
-//      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 1, docJson->slice(), linkMeta))); // 2nd time
-//      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 2, docJson->slice(), linkMeta))); // 2nd time
-//      CHECK((trx.commit().ok()));
-//      CHECK((view->sync()));
-//    }
-//
-//    arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-//    CHECK((trx.begin().ok()));
-//    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
-//    CHECK((false == !itr));
-//    size_t count = 0;
-//    CHECK((!itr->next([&count](arangodb::DocumentIdentifierToken const&)->void{ ++count; }, 10)));
-//    CHECK((2 == count));
+    {
+      auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
+      arangodb::iresearch::IResearchLinkMeta linkMeta;
+      arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+
+      linkMeta._includeAllFields = true;
+      CHECK((trx.begin().ok()));
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 1, docJson->slice(), linkMeta)));
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 2, docJson->slice(), linkMeta)));
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 1, docJson->slice(), linkMeta))); // 2nd time
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 2, docJson->slice(), linkMeta))); // 2nd time
+      CHECK((trx.commit().ok()));
+      CHECK((view->sync()));
+    }
+
+    arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+    CHECK((trx.begin().ok()));
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
+    CHECK((false == !itr));
+    size_t count = 0;
+    CHECK((!itr->next([&count](arangodb::DocumentIdentifierToken const&)->void{ ++count; }, 10)));
+    CHECK((2 == count));
   }
 
   // in recovery batch (removes cid+rid before insert)

@@ -460,7 +460,7 @@ bool OrderedViewIterator::next(TokenCallback const& callback, size_t limit) {
 
   for (size_t i = 0, count = _reader.size(); i < count; ++i) {
     auto& segmentReader = _reader[i];
-    auto itr = _filter->execute(segmentReader, _order);
+    auto itr = segmentReader.mask(_filter->execute(segmentReader, _order));
     const irs::score* score = itr->attributes().get<irs::score>();
 
 #if defined(__GNUC__) && !defined(_GLIBCXX_USE_CXX11_ABI)
@@ -539,7 +539,7 @@ void OrderedViewIterator::skip(uint64_t count, uint64_t& skipped) {
 
   for (size_t i = 0, readerCount = _reader.size(); i < readerCount; ++i) {
     auto& segmentReader = _reader[i];
-    auto itr = _filter->execute(segmentReader);
+    auto itr = segmentReader.mask(_filter->execute(segmentReader));
 
     while (count > skipped && itr->next()) {
       if (!loadToken(tmpToken, i, itr->value())) {
@@ -615,7 +615,7 @@ bool UnorderedViewIterator::next(TokenCallback const& callback, size_t limit) {
     auto done = false;
 
     if (!_state._itr) {
-      _state._itr = _filter->execute(segmentReader);
+      _state._itr = segmentReader.mask(_filter->execute(segmentReader));
     }
 
     while (limit && _state._itr->next()) {
