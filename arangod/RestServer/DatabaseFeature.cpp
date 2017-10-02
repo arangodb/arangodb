@@ -863,6 +863,7 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
     std::string const& username) {
   std::vector<std::string> names;
 
+  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
   {
     auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
@@ -874,11 +875,11 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
         continue;
       }
 
-      auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
-      auto level = authentication->canUseDatabase(username, vocbase->name());
-
-      if (level == AuthLevel::NONE) {
-        continue;
+      if (authentication->isActive()) {
+        auto level = authentication->authInfo()->canUseDatabase(username, vocbase->name());
+        if (level == AuthLevel::NONE) {
+          continue;
+        }
       }
 
       names.emplace_back(vocbase->name());

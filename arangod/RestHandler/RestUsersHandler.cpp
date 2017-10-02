@@ -67,9 +67,9 @@ RestStatus RestUsersHandler::execute() {
   }
 }
 
-bool RestUsersHandler::isSystemUser() const {
+bool RestUsersHandler::isAdminUser() const {
   if (_request->execContext() != nullptr) {
-    return _request->execContext()->isSystemUser();
+    return _request->execContext()->isAdminUser();
   }
   // if authentication is deactivated authorize anyway
   return !FeatureCacheFeature::instance()->authenticationFeature()->isActive();
@@ -79,7 +79,7 @@ bool RestUsersHandler::canAccessUser(std::string const& user) const {
   if (_request->authorized() && user == _request->user()) {
     return true;
   }
-  return isSystemUser();
+  return isAdminUser();
 }
 
 /// helper to generate a compliant response for individual user requests
@@ -95,7 +95,7 @@ void RestUsersHandler::generateUserResult(rest::ResponseCode code,
 RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
-    if (isSystemUser()) {
+    if (isAdminUser()) {
       VPackBuilder users = authInfo->allUsers();
       generateSuccess(ResponseCode::OK, users.slice());
     } else {
@@ -257,7 +257,7 @@ RestStatus RestUsersHandler::postRequest(AuthInfo* authInfo) {
 
   if (suffixes.empty()) {
     // create a new user
-    if (isSystemUser()) {
+    if (isAdminUser()) {
       VPackSlice s = parsedBody->slice().get("user");
       std::string user = s.isString() ? s.copyString() : "";
       // create user
@@ -322,7 +322,7 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
       // update a user's permissions
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
-      if (!isSystemUser()) {
+      if (!isAdminUser()) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
         return RestStatus::DONE;
       }
@@ -437,7 +437,7 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() == 1) {
-    if (!isSystemUser()) {
+    if (!isAdminUser()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
       return RestStatus::DONE;
     }
@@ -471,7 +471,7 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
       // revoke a user's permissions
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
-      if (!isSystemUser()) {
+      if (!isAdminUser()) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
         return RestStatus::DONE;
       }

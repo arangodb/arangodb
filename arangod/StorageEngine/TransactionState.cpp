@@ -24,7 +24,6 @@
 #include "TransactionState.h"
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "RestServer/FeatureCacheFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -105,16 +104,12 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     std::string const colName = _resolver->getCollectionNameCluster(cid);
-    AuthenticationFeature* auth =
-    FeatureCacheFeature::instance()->authenticationFeature();
-
+    
     // only valid on coordinator or single server
     TRI_ASSERT(ServerState::instance()->isCoordinator() ||
                !ServerState::instance()->isRunningInCluster());
-    // avoid extra lookups of auth context, if we use the same db as stored
-    // in the execution context initialized by RestServer/VocbaseContext
-    AuthLevel level = auth->canUseCollection(exec->user(), _vocbase->name(), colName);
     
+    AuthLevel level = exec->collectionAuthLevel(_vocbase->name(), colName);
     if (level == AuthLevel::NONE) {
       LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
                                              << " has collection AuthLevel::NONE";
@@ -123,7 +118,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
     bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
     if (level == AuthLevel::RO && collectionWillWrite) {
       LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
-                                              << "has no write right for collection " << colName;
+                                              << " has no write right for collection " << colName;
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
   }

@@ -232,6 +232,7 @@ int RestHandler::executeEngine() {
 }
 
 int RestHandler::runEngine(bool synchron) {
+  TRI_ASSERT(ExecContext::CURRENT == nullptr);
   ExecContextScope scope(_request->execContext());
   try {
     while (_engine.hasSteps()) {

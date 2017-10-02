@@ -216,12 +216,9 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
   
   AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
-  if (auth->isActive() && ExecContext::CURRENT != nullptr) {
-    AuthLevel level = auth->canUseDatabase(ExecContext::CURRENT->user(),
-                                           vocbase->name());
-    if (level != AuthLevel::RW) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
+  if (ExecContext::CURRENT != nullptr &&
+      !ExecContext::CURRENT->canUseDatabase(vocbase->name(), AuthLevel::RW)) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
   // optional, third parameter can override collection type
