@@ -1,13 +1,25 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
 
@@ -4254,14 +4266,13 @@ bool postings_reader::prepare(
     postings_writer::FORMAT_MIN, 
     postings_writer::FORMAT_MAX
   );
-    
+
   /* Since terms doc postings too large
    * it is too costly to verify checksum of
    * the entire file. Here we perform cheap
    * error detection which could recognize
    * some forms of corruption. */
   format_utils::read_checksum(*doc_in_);
-  docs_mask_ = state.docs_mask;
 
   if (features.check<position>()) {
     /* prepare positions input */
@@ -4272,7 +4283,7 @@ bool postings_reader::prepare(
       postings_writer::FORMAT_MIN,
       postings_writer::FORMAT_MAX
     );
-    
+
     /* Since terms pos postings too large
      * it is too costly to verify checksum of
      * the entire file. Here we perform cheap
@@ -4358,28 +4369,16 @@ doc_iterator::ptr postings_reader::iterator(
     const flags& req) {
   typedef detail::doc_iterator doc_iterator_t;
   typedef detail::pos_doc_iterator pos_doc_iterator_t;
-  typedef std::function<doc_iterator_t::ptr(const document_mask*)> factory_t;
+  typedef std::function<doc_iterator_t::ptr()> factory_t;
 
   static const factory_t FACTORIES[] {
-    [](const document_mask* /*mask*/) {
+    []() {
       return doc_iterator_t::make<detail::doc_iterator>();
     },
 
-    [](const document_mask* /*mask*/) {
+    []() {
       return doc_iterator_t::make<pos_doc_iterator_t>();
     },
-
-    [](const document_mask* mask) {
-      assert(mask);
-      typedef detail::mask_doc_iterator<doc_iterator_t> iterator_t;
-      return doc_iterator_t::make<iterator_t>(*mask);
-    },
-
-    [](const document_mask* mask) {
-      assert(mask);
-      typedef detail::mask_doc_iterator<pos_doc_iterator_t> iterator_t;
-      return doc_iterator_t::make<iterator_t>(*mask);
-    }
   };
 
   // compile field features
@@ -4388,10 +4387,9 @@ doc_iterator::ptr postings_reader::iterator(
   // find intersection between requested and available features
   const auto enabled = features & req;
 
-  const bool has_mask = docs_mask_ && !docs_mask_->empty();
-  const auto& factory = FACTORIES[enabled.position() + 2*has_mask];
+  const auto& factory = FACTORIES[enabled.position()];
 
-  auto it = factory(docs_mask_);
+  auto it = factory();
 
   it->prepare(
     features, enabled, attrs,

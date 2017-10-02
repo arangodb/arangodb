@@ -1,13 +1,25 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #include "shared.hpp"
 #include "segment_reader.hpp"
@@ -43,6 +55,49 @@ class iterator_impl: public iresearch::index_reader::reader_iterator_impl {
  private:
   const iresearch::sub_reader* rdr_;
 };
+
+class mask_doc_iterator final : public irs::doc_iterator {
+ public:
+  explicit mask_doc_iterator(
+      irs::doc_iterator::ptr&& it,
+      const irs::document_mask& mask) NOEXCEPT
+    : mask_(mask), it_(std::move(it))  {
+  }
+
+  virtual bool next() override {
+    while (it_->next()) {
+      if (mask_.find(value()) == mask_.end()) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  virtual irs::doc_id_t seek(irs::doc_id_t target) override {
+    const auto doc = it_->seek(target);
+
+    if (mask_.find(doc) == mask_.end()) {
+      return doc;
+    }
+
+    next();
+
+    return value();
+  }
+
+  virtual irs::doc_id_t value() const override {
+    return it_->value();
+  }
+
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
+    return it_->attributes();
+  }
+
+ private:
+  const irs::document_mask& mask_; // excluded document ids
+  irs::doc_iterator::ptr it_;
+}; // mask_doc_iterator
 
 class masked_docs_iterator 
     : public iresearch::segment_reader::docs_iterator_t,
@@ -168,6 +223,16 @@ class segment_reader_impl : public sub_reader {
   }
 
   virtual docs_iterator_t::ptr docs_iterator() const override;
+
+  virtual doc_iterator::ptr mask(doc_iterator::ptr&& it) const override {
+    if (docs_mask_.empty()) {
+      return std::move(it);
+    }
+
+    return doc_iterator::make<mask_doc_iterator>(
+      std::move(it), docs_mask_
+    );
+  }
 
   virtual const term_reader* field(const string_ref& name) const override {
     return field_reader_->field(name);
