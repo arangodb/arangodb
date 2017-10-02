@@ -804,20 +804,7 @@ bool Agent::challengeLeadership() {
   
   for (auto const& i : _lastAcked) {
     duration<double> m = system_clock::now() - i.second;
-    // This is rather arbitrary here: We used to have 0.9 here to absolutely
-    // ensure that a leader resigns before another one even starts an election.
-    // However, the Raft paper does not mention this at all. Rather, in the
-    // paper it is written that the leader should resign immediately if it
-    // sees a higher term from another server. Currently we have not
-    // implemented to return the follower's term with a response to
-    // AppendEntriesRPC, so the leader cannot find out a higher term this
-    // way. The leader can, however, see a higher term in the incoming
-    // AppendEntriesRPC a new leader sends out, and it will immediately
-    // resign if it sees that. For the moment, this value here can stay.
-    // We should soon implement sending the follower's term back with
-    // each response and probably get rid of this method altogether,
-    // but this requires a bit more thought.
-    if (_config.maxPing() * _config.timeoutMult() > m.count()) {
+    if (0.9 * _config.minPing() * _config.timeoutMult() > m.count()) {
       ++good;
     }
   }
