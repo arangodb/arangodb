@@ -47,11 +47,15 @@ class AuthResult {
   AuthResult() : _authorized(false) {}
 
   explicit AuthResult(std::string const& username)
-      : _username(username), _authorized(false) {}
+      : _username(username), _authorized(false), _expiry(0) {}
 
+  void setExpiry(double expiry) { _expiry = expiry; }
+  bool expired() { return _expiry != 0 && _expiry < TRI_microtime(); }
+
+ public:
   std::string _username;
-  /// User exists and password was checked
-  bool _authorized;
+  bool _authorized;  // User exists and password was checked
+  double _expiry;
 };
 
 class AuthJwtResult : public AuthResult {
@@ -79,7 +83,7 @@ class AuthInfo {
 
   /// Trigger eventual reload, user facing API call
   void reloadAllUsers();
-  
+
   /// Create the root user with a default password, will fail if the user
   /// already exists. Only ever call if you can guarantee to be in charge
   void createRootUser();
@@ -92,7 +96,7 @@ class AuthInfo {
   Result updateUser(std::string const& username,
                     std::function<void(AuthUserEntry&)> const&);
   Result accessUser(std::string const& username,
-                  std::function<void(AuthUserEntry const&)> const&);
+                    std::function<void(AuthUserEntry const&)> const&);
   velocypack::Builder serializeUser(std::string const& user);
   Result removeUser(std::string const& user);
   Result removeAllUsers();
