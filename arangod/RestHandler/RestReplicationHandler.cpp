@@ -2550,8 +2550,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
   VPackBuilder builder;
   auto res = engine->createLoggerState(_vocbase, builder);
   if (res.fail()) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "failed to create logger-state"
-    << res.errorMessage();
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "failed to create logger-state" << res.errorMessage();
     generateError(rest::ResponseCode::BAD, res.errorNumber(),
                   res.errorMessage());
     return;
