@@ -509,7 +509,7 @@ int GlobalTailingSyncer::fetchOpenTransactions(std::string& errorMsg,
                                                TRI_voc_tick_t fromTick,
                                                TRI_voc_tick_t toTick,
                                                TRI_voc_tick_t& startTick) {
-  std::string const baseUrl = BaseUrl + "/determine-open-transactions";
+  std::string const baseUrl = WalAccessUrl + "/open-transactions";
   std::string const url = baseUrl + "?serverId=" + _localServerIdString +
                           "&from=" + StringUtils::itoa(fromTick) + "&to=" +
                           StringUtils::itoa(toTick);
@@ -633,7 +633,7 @@ int GlobalTailingSyncer::followMasterLog(std::string& errorMsg,
                                       TRI_voc_tick_t firstRegularTick,
                                       uint64_t& ignoreCount, bool& worked,
                                       bool& masterActive) {
-  std::string const baseUrl = BaseUrl + "/logger-follow?chunkSize=" +
+  std::string const baseUrl = WalAccessUrl + "/tail?chunkSize=" +
                               StringUtils::itoa(_chunkSize) + "&barrier=" +
                               StringUtils::itoa(_barrierId);
 
@@ -847,12 +847,12 @@ int GlobalTailingSyncer::followMasterLog(std::string& errorMsg,
 
 void GlobalTailingSyncer::preApplyMarker(TRI_voc_tick_t firstRegularTick,
                                       TRI_voc_tick_t newTick) {
-  /*if (newTick >= firstRegularTick) {
+  if (newTick >= firstRegularTick) {
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
     if (newTick > _applier->_state._lastProcessedContinuousTick) {
       _applier->_state._lastProcessedContinuousTick = newTick;
     }
-  }*/
+  }
 }
 
 void GlobalTailingSyncer::postApplyMarker(uint64_t processedMarkers,

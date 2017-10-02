@@ -86,13 +86,18 @@ RestStatus RestWalAccessHandler::execute() {
   WalAccess const* wal = engine->walAccess();
   TRI_ASSERT(wal != nullptr);
 
-  if (suffixes[0] == "range") {
+  if (suffixes[0] == "range" &&
+      _request->requestType() == RequestType::GET) {
     handleCommandTickRange(wal);
-  } else if (suffixes[0] == "lastTick") {
+  } else if (suffixes[0] == "lastTick" &&
+             _request->requestType() == RequestType::GET) {
     handleCommandLastTick(wal);
-  } else if (suffixes[0] == "tail") {
+  } else if (suffixes[0] == "tail" &&
+             (_request->requestType() == RequestType::GET ||
+              _request->requestType() == RequestType::PUT)) {
     handleCommandTail(wal);
-  } else if (suffixes[0] == "open-transactions") {
+  } else if (suffixes[0] == "open-transactions" &&
+             _request->requestType() == RequestType::GET) {
     handleCommandDetermineOpenTransactions(wal);
   } else {
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,

@@ -162,9 +162,6 @@ class ServerState {
   /// @brief get the server id
   std::string getId();
 
-  /// @brief for a secondary get the server id of its primary
-  std::string getPrimaryId();
-
   /// @brief get the server description
   std::string getDescription();
 
