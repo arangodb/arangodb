@@ -311,39 +311,7 @@ void DatabaseReplicationApplier::stop(bool resetError, bool joinThread) {
     return; 
   }
 
-  {
-    WRITE_LOCKER(writeLocker, _statusLock);
-
-    // always stop initial synchronization
-    _state._stopInitialSynchronization = true;
-
-    if (!_state._active) {
-      // not active
-      return;
-    }
-
-    _state._active = false;
-
-    setTermination(true);
-    setProgressNoLock("applier shut down");
-
-    if (resetError) {
-      _state.clearError();
-    }
-  }
-
-  // join the thread without holding the status lock 
-  // (otherwise it would probably not join)
-  if (joinThread) {
-    TRI_ASSERT(_thread);
-//    _thread->join();
-    _thread.reset();
-  }
-
-  setTermination(false);
-
-  LOG_TOPIC(INFO, Logger::REPLICATION)
-      << "stopped replication applier for database '" << _vocbase->name() << "'";
+  ReplicationApplier::stop(resetError, joinThread);
 }
 
 /// @brief shut down the replication applier

@@ -59,7 +59,8 @@ void GlobalReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, T
   
 /// @brief stop the replication applier
 void GlobalReplicationApplier::stop(bool resetError, bool joinThread) {
-  // TODO
+  // simply fall back to base class implementation
+  ReplicationApplier::stop(resetError, joinThread);
 }
 
 /// @brief shuts down the replication applier
