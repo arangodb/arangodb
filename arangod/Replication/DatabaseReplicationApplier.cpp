@@ -32,8 +32,6 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseTailingSyncer.h"
-#include "RestServer/ServerIdFeature.h"
-#include "Rest/Version.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/vocbase.h"
@@ -44,32 +42,6 @@
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
-
-/// @brief applier thread class
-class ApplyThread : public Thread {
- public:
-  explicit ApplyThread(std::unique_ptr<DatabaseTailingSyncer> syncer)
-      : Thread("ReplicationApplier"), _syncer(std::move(syncer)) {}
-
-  ~ApplyThread() { shutdown(); }
-
- public:
-  void run() {
-    TRI_ASSERT(_syncer);
-
-    try {
-      _syncer->run();
-    } catch (std::exception const& ex) {
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "caught exception in ApplyThread: " << ex.what();
-    } catch (...) {
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "caught unknown exception in ApplyThread";
-    }
-  }
-
- private:
-  std::unique_ptr<DatabaseTailingSyncer> _syncer;
-};
-
 
 namespace {
 /// @brief read a tick value from a VelocyPack struct
@@ -204,104 +176,14 @@ void DatabaseReplicationApplier::persistState(bool doSync) {
   }
 }
 
-/// @brief return the current configuration
-ReplicationApplierConfiguration DatabaseReplicationApplier::configuration() const {
-  READ_LOCKER(readLocker, _statusLock);
-  return _configuration;
-}
-
-/// @brief store the current applier state in the passed vpack builder 
-/// expects builder to be in an open Object state
-void DatabaseReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) const {
-  TRI_ASSERT(!result.isClosed());
-
-  ReplicationApplierConfiguration configuration;
-  ReplicationApplierState state;
-
-  {
-    // copy current config and state under the lock
-    READ_LOCKER(readLocker, _statusLock);
-    configuration = _configuration;
-    state = _state;
-  }
-
-  // add state
-  result.add(VPackValue("state"));
-  state.toVelocyPack(result, true);
-
-  // add server info
-  result.add("server", VPackValue(VPackValueType::Object));
-  result.add("version", VPackValue(ARANGODB_VERSION));
-  result.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
-  result.close();  // server
-  
-  if (!configuration._endpoint.empty()) {
-    result.add("endpoint", VPackValue(configuration._endpoint));
-  }
-  if (!configuration._database.empty()) {
-    result.add("database", VPackValue(configuration._database));
-  }
-}
-
+/// @brief start the replication applier
 void DatabaseReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
   if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     // unsupported
     return;
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
-      << "requesting replication applier start. initialTick: " << initialTick
-      << ", useTick: " << useTick;
-
-  // wait until previous applier thread is shut down
-  while (!wait(10 * 1000));
-
-  WRITE_LOCKER(writeLocker, _statusLock);
-  
-  if (_state._preventStart) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCKED);
-  }
-
-  if (_state._active) {
-    // already started
-    return;
-  }
-  
-  if (_configuration._endpoint.empty() || _configuration._database.empty()) {
-    setErrorNoLock(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
-  }
-
-  auto syncer = std::make_unique<arangodb::DatabaseTailingSyncer>(_vocbase, &_configuration,
-                                                                  initialTick, useTick, barrierId);
-
-  // reset error
-  _state._lastError.reset();
-
-  setTermination(false);
-  _state._active = true;
- 
-  _thread.reset(new ApplyThread(std::move(syncer))); 
-  if (!_thread->start()) {
-    _thread.reset();
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not start ApplyThread");
-  }
-
-  while (!_thread->hasStarted()) {
-    usleep(20000);
-  }
-
-  if (useTick) {
-    LOG_TOPIC(INFO, Logger::REPLICATION)
-        << "started replication applier for database '" << _vocbase->name()
-        << "', endpoint '" << _configuration._endpoint << "' from tick "
-        << initialTick;
-  } else {
-    LOG_TOPIC(INFO, Logger::REPLICATION)
-        << "re-started replication applier for database '"
-        << _vocbase->name() << "', endpoint '" << _configuration._endpoint
-        << "'";
-  }
+  ReplicationApplier::start(initialTick, useTick, barrierId);
 }
   
 /// @brief stop the replication applier
@@ -311,39 +193,7 @@ void DatabaseReplicationApplier::stop(bool resetError, bool joinThread) {
     return; 
   }
 
-  {
-    WRITE_LOCKER(writeLocker, _statusLock);
-
-    // always stop initial synchronization
-    _state._stopInitialSynchronization = true;
-
-    if (!_state._active) {
-      // not active
-      return;
-    }
-
-    _state._active = false;
-
-    setTermination(true);
-    setProgressNoLock("applier shut down");
-
-    if (resetError) {
-      _state.clearError();
-    }
-  }
-
-  // join the thread without holding the status lock 
-  // (otherwise it would probably not join)
-  if (joinThread) {
-    TRI_ASSERT(_thread);
-//    _thread->join();
-    _thread.reset();
-  }
-
-  setTermination(false);
-
-  LOG_TOPIC(INFO, Logger::REPLICATION)
-      << "stopped replication applier for database '" << _vocbase->name() << "'";
+  ReplicationApplier::stop(resetError, joinThread);
 }
 
 /// @brief shut down the replication applier
@@ -585,6 +435,11 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
+}
+
+std::unique_ptr<TailingSyncer> DatabaseReplicationApplier::buildSyncer(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
+  return std::make_unique<arangodb::DatabaseTailingSyncer>(_vocbase, &_configuration,
+                                                           initialTick, useTick, barrierId);
 }
   
 std::string DatabaseReplicationApplier::getStateFilename() const {

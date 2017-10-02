@@ -52,6 +52,10 @@ class TailingSyncer : public Syncer {
 
   virtual ~TailingSyncer();
 
+ public:
+  /// @brief run method, performs continuous synchronization
+  virtual int run() = 0;
+
  protected:
   /// @brief abort all ongoing transactions
   void abortOngoingTransactions();

@@ -33,6 +33,7 @@
 #include "Logger/Logger.h"
 #include "Replication/GlobalInitialSyncer.h"
 #include "Replication/GlobalReplicationApplier.h"
+#include "Replication/ReplicationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -65,7 +66,7 @@ GlobalTailingSyncer::GlobalTailingSyncer(
     ReplicationApplierConfiguration const* configuration,
     TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
     : TailingSyncer(configuration, initialTick, barrierId),
-      _applier(DatabaseFeature::DATABASE->globalReplicationApplier()),
+      _applier(ReplicationFeature::INSTANCE->globalReplicationApplier()),
       _useTick(useTick),
       _hasWrittenState(false) {
       _ignoreDatabaseMarkers = false;

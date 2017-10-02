@@ -24,6 +24,7 @@
 #include "GlobalReplicationApplier.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Replication/GlobalTailingSyncer.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -54,12 +55,14 @@ void GlobalReplicationApplier::forget() {
 
 /// @brief start the replication applier
 void GlobalReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
-  // TODO
+  // simply fall back to base class implementation
+  ReplicationApplier::start(initialTick, useTick, barrierId);
 }
   
 /// @brief stop the replication applier
 void GlobalReplicationApplier::stop(bool resetError, bool joinThread) {
-  // TODO
+  // simply fall back to base class implementation
+  ReplicationApplier::stop(resetError, joinThread);
 }
 
 /// @brief shuts down the replication applier
@@ -97,19 +100,25 @@ void GlobalReplicationApplier::removeState() {
   
 /// @brief load the applier state from persistent storage
 /// returns whether a previous state was found
-bool GlobalReplicationApplier::loadState() { return false; }
-  
-/// @brief store the applier state in persistent storage
-void GlobalReplicationApplier::persistState(bool doSync) {}
- 
-/// @brief store the current applier state in the passed vpack builder 
-void GlobalReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) const {}
-
-/// @brief return the current configuration
-ReplicationApplierConfiguration GlobalReplicationApplier::configuration() const {
-  return _configuration;
+bool GlobalReplicationApplier::loadState() { 
+  // TODO
+  return false; 
 }
   
+/// @brief store the applier state in persistent storage
+void GlobalReplicationApplier::persistState(bool doSync) {
+  // TODO
+}
+ 
+/// @brief store the current applier state in the passed vpack builder 
+void GlobalReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) const {
+  ReplicationApplier::toVelocyPack(result);
+}
+
+std::unique_ptr<TailingSyncer> GlobalReplicationApplier::buildSyncer(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
+  return std::make_unique<arangodb::GlobalTailingSyncer>(&_configuration, initialTick, useTick, barrierId);
+}
+
 std::string GlobalReplicationApplier::getStateFilename() const {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   // TODO: fix storage path

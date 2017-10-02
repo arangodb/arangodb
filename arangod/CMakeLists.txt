@@ -281,6 +281,7 @@ SET(ARANGOD_SOURCES
   Replication/ReplicationApplier.cpp
   Replication/ReplicationApplierConfiguration.cpp
   Replication/ReplicationApplierState.cpp
+  Replication/ReplicationFeature.cpp
   Replication/Syncer.cpp
   Replication/TailingSyncer.cpp
   RestHandler/RestAdminLogHandler.cpp

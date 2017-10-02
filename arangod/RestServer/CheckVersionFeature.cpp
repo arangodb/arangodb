@@ -26,6 +26,7 @@
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
@@ -74,10 +75,13 @@ void CheckVersionFeature::validateOptions(
   LoggerFeature* logger =
       ApplicationServer::getFeature<LoggerFeature>("Logger");
   logger->disableThreaded();
+  
+  ReplicationFeature* replicationFeature =
+      ApplicationServer::getFeature<ReplicationFeature>("Replication");
+  replicationFeature->disableReplicationApplier();
 
   DatabaseFeature* databaseFeature =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
-  databaseFeature->disableReplicationApplier();
   databaseFeature->enableCheckVersion();
 
   V8DealerFeature* v8dealer =

@@ -160,20 +160,18 @@ function ReplicationSuite() {
       }
 
       if (!slaveState.state.running) {
-        // TODO: we log with level warning here for debugging. testing.js will otherwise hide the log messages
         console.warn("slave is not running");
         break;
       }
          
       if (compareTicks(slaveState.state.lastAppliedContinuousTick, syncResult.lastLogTick) >= 0 ||
           compareTicks(slaveState.state.lastProcessedContinuousTick, syncResult.lastLogTick) >= 0) {
-        // TODO: we log with level warning here for debugging. testing.js will otherwise hide the log messages
-        console.warn("slave has caught up. syncResult.lastLogTick:", syncResult.lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick, "slaveState:", slaveState);
+        console.debug("slave has caught up. syncResult.lastLogTick:", syncResult.lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick, "slaveState:", slaveState);
         break;
       }
 
       if (!printed) {
-        console.warn("waiting for slave to catch up");
+        console.debug("waiting for slave to catch up");
         printed = true;
       }
       internal.wait(0.5, false);

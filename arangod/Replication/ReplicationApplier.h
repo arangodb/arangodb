@@ -30,6 +30,7 @@
 #include "Replication/ReplicationApplierState.h"
 
 namespace arangodb {
+class TailingSyncer;
 class Thread;
 
 namespace velocypack {
@@ -50,10 +51,10 @@ class ReplicationApplier {
   virtual void forget() = 0;
   
   /// @brief start the replication applier
-  virtual void start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) = 0;
+  virtual void start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
   
   /// @brief stop the replication applier
-  virtual void stop(bool resetError, bool joinThread) = 0;
+  virtual void stop(bool resetError, bool joinThread);
 
   /// @brief shuts down the replication applier
   virtual void shutdown();
@@ -75,10 +76,10 @@ class ReplicationApplier {
   virtual void persistState(bool doSync) = 0;
  
   /// @brief store the current applier state in the passed vpack builder 
-  virtual void toVelocyPack(arangodb::velocypack::Builder& result) const = 0;
+  virtual void toVelocyPack(arangodb::velocypack::Builder& result) const;
   
   /// @brief return the current configuration
-  virtual ReplicationApplierConfiguration configuration() const = 0;
+  virtual ReplicationApplierConfiguration configuration() const;
 
   bool isTerminated() { return _terminateThread.load(); }
 
@@ -115,6 +116,8 @@ class ReplicationApplier {
   void setProgress(std::string const& msg);
 
  protected:
+  virtual std::unique_ptr<TailingSyncer> buildSyncer(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) = 0;
+  
   virtual std::string getStateFilename() const = 0;
 
   /// @brief register an applier error
