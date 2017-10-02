@@ -44,7 +44,7 @@ class ApplyThread : public Thread {
       : Thread("ReplicationApplier"), _syncer(std::move(syncer)) {}
 
   ~ApplyThread() {
-    shutdown(); 
+    Thread::shutdown(); 
   }
 
  public:
@@ -178,13 +178,13 @@ void ReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc
 
   if (useTick) {
     LOG_TOPIC(INFO, Logger::REPLICATION)
-        << "started replication applier for database '" << _databaseName
-        << "', endpoint '" << _configuration._endpoint << "' from tick "
+        << "started replication applier for " << _databaseName
+        << ", endpoint '" << _configuration._endpoint << "' from tick "
         << initialTick;
   } else {
     LOG_TOPIC(INFO, Logger::REPLICATION)
-        << "re-started replication applier for database '"
-        << _databaseName << "', endpoint '" << _configuration._endpoint
+        << "re-started replication applier for "
+        << _databaseName << ", endpoint '" << _configuration._endpoint
         << "'";
   }
 }
@@ -217,9 +217,8 @@ void ReplicationApplier::stop(bool resetError, bool joinThread) {
   if (joinThread) {
     TRI_ASSERT(_thread);
     _thread.reset();
+    setTermination(false);
   }
-
-  setTermination(false);
 
   LOG_TOPIC(INFO, Logger::REPLICATION)
       << "stopped replication applier for database '" << _databaseName << "'";

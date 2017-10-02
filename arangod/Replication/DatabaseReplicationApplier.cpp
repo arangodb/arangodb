@@ -74,7 +74,9 @@ DatabaseReplicationApplier::DatabaseReplicationApplier(ReplicationApplierConfigu
       _vocbase(vocbase) {}
 
 DatabaseReplicationApplier::~DatabaseReplicationApplier() {
-  stop(true, false);
+  try {
+    stop(true, false);
+  } catch (...) {}
 }
 
 /// @brief configure the replication applier

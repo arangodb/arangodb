@@ -38,7 +38,9 @@ GlobalReplicationApplier::GlobalReplicationApplier(ReplicationApplierConfigurati
       : ReplicationApplier(configuration, "global database") {}
 
 GlobalReplicationApplier::~GlobalReplicationApplier() {
-  stop(true, false);
+  try {
+    stop(true, false);
+  } catch (...) {}
 }
 
 /// @brief stop the applier and "forget" everything
