@@ -2,7 +2,7 @@ Locking and Isolation
 =====================
 
 Transactions need to specify from which collections they will read data and which
-collections they intend do modify. This can be done by setting the *read*, *write*,
+collections they intend to modify. This can be done by setting the *read*, *write*,
 or *exclusive* attributes in the *collections* attribute of the transaction:
 
 ```js
