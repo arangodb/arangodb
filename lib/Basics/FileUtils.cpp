@@ -581,10 +581,10 @@ std::string slurpProgram(std::string const& program) {
   StringBuffer buffer(chunkSize, false);
 
   if (fp) {
-    char c;
+    int c;
 
     while ((c = getc(fp)) != EOF) {
-      buffer.appendChar(c);
+      buffer.appendChar((char) c);
     }
 
 #ifdef _WIN32

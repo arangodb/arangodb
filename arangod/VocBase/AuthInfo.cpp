@@ -573,6 +573,7 @@ Result AuthInfo::updateUser(std::string const& user,
 
     // must also clear the basic cache here because the secret may be
     // invalid now if the password was changed
+
     _authBasicCache.clear();
   }
 
