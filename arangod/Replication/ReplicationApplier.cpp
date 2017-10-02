@@ -29,11 +29,38 @@
 #include "Basics/files.h"
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
+#include "Replication/TailingSyncer.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerIdFeature.h"
 #include "VocBase/replication-common.h"
 
 using namespace arangodb;
+
+/// @brief applier thread class
+class ApplyThread : public Thread {
+ public:
+  explicit ApplyThread(std::unique_ptr<TailingSyncer> syncer)
+      : Thread("ReplicationApplier"), _syncer(std::move(syncer)) {}
+
+  ~ApplyThread() { shutdown(); }
+
+ public:
+  void run() {
+    TRI_ASSERT(_syncer);
+
+    try {
+      _syncer->run();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "caught exception in ApplyThread: " << ex.what();
+    } catch (...) {
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "caught unknown exception in ApplyThread";
+    }
+  }
+
+ private:
+  std::unique_ptr<TailingSyncer> _syncer;
+};
+
 
 ReplicationApplier::ReplicationApplier(ReplicationApplierConfiguration const& configuration,
                                        std::string&& databaseName) 
@@ -135,7 +162,7 @@ void ReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc
   setTermination(false);
   _state._active = true;
  
-  _thread.reset(buildApplyThread(initialTick, useTick, barrierId));
+  _thread.reset(new ApplyThread(buildSyncer(initialTick, useTick, barrierId)));
   
   if (!_thread->start()) {
     _thread.reset();

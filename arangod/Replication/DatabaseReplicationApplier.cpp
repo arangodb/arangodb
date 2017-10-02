@@ -43,32 +43,6 @@
 
 using namespace arangodb;
 
-/// @brief applier thread class
-class ApplyThread : public Thread {
- public:
-  explicit ApplyThread(std::unique_ptr<DatabaseTailingSyncer> syncer)
-      : Thread("ReplicationApplier"), _syncer(std::move(syncer)) {}
-
-  ~ApplyThread() { shutdown(); }
-
- public:
-  void run() {
-    TRI_ASSERT(_syncer);
-
-    try {
-      _syncer->run();
-    } catch (std::exception const& ex) {
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "caught exception in ApplyThread: " << ex.what();
-    } catch (...) {
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "caught unknown exception in ApplyThread";
-    }
-  }
-
- private:
-  std::unique_ptr<DatabaseTailingSyncer> _syncer;
-};
-
-
 namespace {
 /// @brief read a tick value from a VelocyPack struct
 static void readTick(VPackSlice const& slice, char const* attributeName,
@@ -462,12 +436,10 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
     THROW_ARANGO_EXCEPTION(res);
   }
 }
-  
-Thread* DatabaseReplicationApplier::buildApplyThread(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
-  auto syncer = std::make_unique<arangodb::DatabaseTailingSyncer>(_vocbase, &_configuration,
-                                                                  initialTick, useTick, barrierId);
 
-  return new ApplyThread(std::move(syncer));
+std::unique_ptr<TailingSyncer> DatabaseReplicationApplier::buildSyncer(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
+  return std::make_unique<arangodb::DatabaseTailingSyncer>(_vocbase, &_configuration,
+                                                           initialTick, useTick, barrierId);
 }
   
 std::string DatabaseReplicationApplier::getStateFilename() const {

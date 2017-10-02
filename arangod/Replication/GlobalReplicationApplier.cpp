@@ -115,13 +115,8 @@ void GlobalReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& resul
   ReplicationApplier::toVelocyPack(result);
 }
 
-Thread* GlobalReplicationApplier::buildApplyThread(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
-  // TODO
-  auto syncer = std::make_unique<arangodb::GlobalTailingSyncer>(&_configuration,
-                                                                initialTick, useTick, barrierId);
-
-  // TODO return new ApplyThread(std::move(syncer));
-  return nullptr;
+std::unique_ptr<TailingSyncer> GlobalReplicationApplier::buildSyncer(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
+  return std::make_unique<arangodb::GlobalTailingSyncer>(&_configuration, initialTick, useTick, barrierId);
 }
 
 std::string GlobalReplicationApplier::getStateFilename() const {

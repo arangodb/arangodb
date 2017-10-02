@@ -39,7 +39,7 @@ class DatabaseTailingSyncer : public TailingSyncer {
 
  public:
   /// @brief run method, performs continuous synchronization
-  int run();
+  int run() override;
 
   /// @brief return the syncer's replication applier
   DatabaseReplicationApplier* applier() const { return _applier; }
