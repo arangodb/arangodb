@@ -256,6 +256,10 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
       LOG_TOPIC(WARN, Logger::AGENCY) << "Last confirmation from peer "
         << peerId << " was received more than minPing ago: " << d.count();
     }
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Setting _lastAcked["
+      << peerId << "] to time "
+      << std::chrono::duration_cast<std::chrono::microseconds>(
+          t.time_since_epoch()).count();
     _lastAcked[peerId] = t;
 
     if (index > _confirmed[peerId]) {  // progress this follower?
@@ -804,6 +808,13 @@ bool Agent::challengeLeadership() {
   
   for (auto const& i : _lastAcked) {
     duration<double> m = system_clock::now() - i.second;
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "challengeLeadership: found "
+      "_lastAcked[" << i.first << "] to be "
+      << std::chrono::duration_cast<std::chrono::microseconds>(
+          i.second.time_since_epoch()).count()
+      << " which is " << static_cast<uint64_t>(m.count() * 1000000.0)
+      << " microseconds in the past.";
+
     // This is rather arbitrary here: We used to have 0.9 here to absolutely
     // ensure that a leader resigns before another one even starts an election.
     // However, the Raft paper does not mention this at all. Rather, in the
@@ -821,6 +832,7 @@ bool Agent::challengeLeadership() {
       ++good;
     }
   }
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "challengeLeadership: good=" << good;
   
   return (good < size() / 2);  // not counting myself
 }
