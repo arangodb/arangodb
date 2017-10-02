@@ -537,10 +537,7 @@ void Agent::sendAppendEntriesRPC() {
       // message if a timeout occurs.
 
       _lastSent[followerId]    = system_clock::now();
-      // _constituent.notifyHeartbeatSent(followerId);
-      // Do not notify constituent, because the AppendEntriesRPC here could
-      // take a very long time, so this must not disturb the empty ones
-      // being sent out.
+      _constituent.notifyHeartbeatSent(followerId);
 
       LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Appending (" << (uint64_t) (TRI_microtime() * 1000000000.0) << ") "
@@ -594,13 +591,8 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
     3 * _config.minPing() * _config.timeoutMult(), true);
   _constituent.notifyHeartbeatSent(followerId);
 
-  double now = TRI_microtime();
   LOG_TOPIC(DEBUG, Logger::AGENCY)
     << "Sending empty appendEntriesRPC to follower " << followerId;
-  double diff = TRI_microtime() - now;
-  if (diff > 0.01) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Logging of a line took more than 1/100 of a second, this is bad:" << diff;
-  }
 }
 
 void Agent::advanceCommitIndex() {
