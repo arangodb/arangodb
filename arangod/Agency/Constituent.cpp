@@ -271,7 +271,7 @@ void Constituent::candidate() {
 
   if (_leaderID != NO_LEADER) {
     _leaderID = NO_LEADER;
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to NO_LEADER";
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to NO_LEADER in Constituent::candidate";
   }
 
   if (_role != CANDIDATE) {
@@ -739,17 +739,12 @@ void Constituent::run() {
       } else if (role == CANDIDATE) {
         callElection();  // Run for office
       } else {
-        // This is 1/4th of the minPing timeout (_cv.wait() below is in
-        // microseconds):
-        uint64_t timeout =
-          static_cast<uint64_t>(250000.0 * _agent->config().minPing() *
-                                _agent->config().timeoutMult());
-        {
-          CONDITION_LOCKER(guardv, _cv);
-          _cv.wait(timeout);
-        }
+        double interval = 0.25 * _agent->config().minPing()
+                               * _agent->config().timeoutMult();
 
         double now = TRI_microtime();
+        double nextWakeup = interval;  // might be lowered below
+
         std::string const myid = _agent->id();
         for (auto const& followerId : _agent->config().active()) {
           if (followerId != myid) {
@@ -757,16 +752,35 @@ void Constituent::run() {
             {
               MUTEX_LOCKER(guard, _heartBeatMutex);
               auto it = _lastHeartbeatSent.find(followerId);
-              if (it == _lastHeartbeatSent.end() ||
-                  now - it->second > _agent->config().minPing()
-                                     * _agent->config().timeoutMult() / 4.0) {
+              if (it == _lastHeartbeatSent.end()) {
                 needed = true;
+              } else {
+                double diff = now - it->second;
+                if (diff >= interval) {
+                  needed = true;
+                } else {
+                  // diff < interval, so only needed again in interval-diff s
+                  double waitOnly = interval - diff;
+                  if (nextWakeup > waitOnly) {
+                    nextWakeup = waitOnly;
+                  }
+                  LOG_TOPIC(DEBUG, Logger::AGENCY)
+                    << "No need for empty AppendEntriesRPC: " << diff;
+                }
               }
             }
             if (needed) {
               _agent->sendEmptyAppendEntriesRPC(followerId);
             }
           }
+        }
+
+        // This is the smallest time until any of the followers need a
+        // new empty heartbeat:
+        uint64_t timeout = static_cast<uint64_t>(1000000.0 * nextWakeup);
+        {
+          CONDITION_LOCKER(guardv, _cv);
+          _cv.wait(timeout);
         }
       }
     }
