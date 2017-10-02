@@ -71,13 +71,6 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
   /// must currently be called while holding the write-lock
   void persistState(bool doSync) override;
  
-  /// @brief store the current applier state in the passed vpack builder 
-  /// expects builder to be in an open Object state
-  void toVelocyPack(arangodb::velocypack::Builder& result) const override;
-
-  /// @brief return the current configuration
-  ReplicationApplierConfiguration configuration() const override;
-  
   /// @brief save the replication application configuration to a file
   void storeConfiguration(bool doSync) override;
 

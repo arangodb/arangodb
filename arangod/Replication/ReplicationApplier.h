@@ -75,10 +75,10 @@ class ReplicationApplier {
   virtual void persistState(bool doSync) = 0;
  
   /// @brief store the current applier state in the passed vpack builder 
-  virtual void toVelocyPack(arangodb::velocypack::Builder& result) const = 0;
+  virtual void toVelocyPack(arangodb::velocypack::Builder& result) const;
   
   /// @brief return the current configuration
-  virtual ReplicationApplierConfiguration configuration() const = 0;
+  virtual ReplicationApplierConfiguration configuration() const;
 
   bool isTerminated() { return _terminateThread.load(); }
 

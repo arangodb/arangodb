@@ -68,9 +68,6 @@ class GlobalReplicationApplier final : public ReplicationApplier {
   /// @brief store the current applier state in the passed vpack builder 
   void toVelocyPack(arangodb::velocypack::Builder& result) const override;
   
-  /// @brief return the current configuration
-  ReplicationApplierConfiguration configuration() const override;
-
  protected:
   std::string getStateFilename() const override;
 };

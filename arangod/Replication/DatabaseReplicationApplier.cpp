@@ -32,8 +32,6 @@
 #include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseTailingSyncer.h"
-#include "RestServer/ServerIdFeature.h"
-#include "Rest/Version.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/vocbase.h"
@@ -204,45 +202,7 @@ void DatabaseReplicationApplier::persistState(bool doSync) {
   }
 }
 
-/// @brief return the current configuration
-ReplicationApplierConfiguration DatabaseReplicationApplier::configuration() const {
-  READ_LOCKER(readLocker, _statusLock);
-  return _configuration;
-}
-
-/// @brief store the current applier state in the passed vpack builder 
-/// expects builder to be in an open Object state
-void DatabaseReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) const {
-  TRI_ASSERT(!result.isClosed());
-
-  ReplicationApplierConfiguration configuration;
-  ReplicationApplierState state;
-
-  {
-    // copy current config and state under the lock
-    READ_LOCKER(readLocker, _statusLock);
-    configuration = _configuration;
-    state = _state;
-  }
-
-  // add state
-  result.add(VPackValue("state"));
-  state.toVelocyPack(result, true);
-
-  // add server info
-  result.add("server", VPackValue(VPackValueType::Object));
-  result.add("version", VPackValue(ARANGODB_VERSION));
-  result.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
-  result.close();  // server
-  
-  if (!configuration._endpoint.empty()) {
-    result.add("endpoint", VPackValue(configuration._endpoint));
-  }
-  if (!configuration._database.empty()) {
-    result.add("database", VPackValue(configuration._database));
-  }
-}
-
+/// @brief start the replication applier
 void DatabaseReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
   if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     // unsupported
