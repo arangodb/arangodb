@@ -1389,7 +1389,7 @@ int RemoteBlock::shutdown(int errorCode) {
       // artificially ignore error in case query was not found during shutdown
       return TRI_ERROR_NO_ERROR;
     }
-  } catch (arangodb::basics::Exception &ex) {
+  } catch (arangodb::basics::Exception const& ex) {
     if (ex.code() == TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE) {
       return TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
     }
