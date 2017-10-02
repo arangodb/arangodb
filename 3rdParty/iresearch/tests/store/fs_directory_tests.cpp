@@ -20,6 +20,7 @@
 #include "utils/network_utils.hpp"
 
 #if defined (__GNUC__)
+  #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
 #endif
 
@@ -89,11 +90,11 @@ class fs_directory_test : public directory_test_case,
     iresearch::fs_directory::create_directory(str);
   }
 
-  virtual void TearDown() {
+  virtual void TearDown() override {
     iresearch::fs_directory::remove_directory(path_.string(*codecvt_));
   }
 
-  virtual void TestBody() {}
+  virtual void TestBody() override {}
 
   const boost::filesystem::path& path() const {
     return path_;

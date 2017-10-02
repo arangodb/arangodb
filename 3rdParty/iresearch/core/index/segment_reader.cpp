@@ -162,6 +162,7 @@ class segment_reader_impl : public sub_reader {
 
   virtual column_iterator::ptr columns() const override;
 
+  using sub_reader::docs_count;
   virtual uint64_t docs_count() const override {
     return docs_count_;
   }

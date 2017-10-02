@@ -26,6 +26,7 @@
   #pragma warning(disable : 4396)
   #pragma warning(disable : 4512)
 #elif defined (__GNUC__)
+  #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wsign-compare"
   #pragma GCC diagnostic ignored "-Wignored-qualifiers"
 #endif
@@ -140,7 +141,7 @@ class fst_builder : util::noncopyable {
       state& s = states_[in.size()];
       assert( s.arcs.size() );
       assert( s.arcs.back().label == in[pref - 1] );
-      s.arcs.back().out == fst::Times( s.arcs.back().out, output );
+      s.arcs.back().out = fst::Times(s.arcs.back().out, output);
     }
 
     last_ = in;

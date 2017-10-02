@@ -206,7 +206,7 @@ index_writer::ptr index_writer::make(directory& dir, format::ptr codec, OPEN_MOD
   }
 
   auto comitted_state = std::make_pair(
-    std::move(memory::make_unique<index_meta>(meta)),
+    memory::make_unique<index_meta>(meta),
     std::move(file_refs)
   );
 
@@ -948,7 +948,7 @@ bool index_writer::start() {
 
   // !!! remember that to_sync_ stores string_ref's to index_writer::meta !!!
   // it's valid since there is no small buffer optimization at the moment
-  auto to_commit = std::move(flush_all()); // index metadata to commit
+  auto to_commit = flush_all(); // index metadata to commit
 
   if (!to_commit) {
     return true; // nothing to commit
@@ -1050,3 +1050,7 @@ void index_writer::rollback() {
 }
 
 NS_END
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

@@ -36,6 +36,7 @@
 #if defined(_MSC_VER)
   // NOOP
 #elif defined (__GNUC__)
+  #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wunused-local-typedefs"
   #if (__GNUC__ >= 6)
     #pragma GCC diagnostic ignored "-Wmisleading-indentation"
@@ -943,6 +944,7 @@ bool term_iterator::next() {
 #if defined(_MSC_VER)
   #pragma warning( disable : 4706 )
 #elif defined (__GNUC__)
+  #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wparentheses"
 #endif
 
@@ -1309,7 +1311,7 @@ void field_writer::write_block(
   //   CommonPrefix = fst::Plus(StringWeight0, StringWeight1) -> { fst::kStringInfinity }
   //   Suffix = fst::Divide(StringWeight1, CommonPrefix) -> { fst::kStringBad }
   // But actually Suffix should be equal to { 0x22 ... }
-  assert(static_cast<byte_type>(root_block.meta) != fst::kStringInfinity);
+  assert(char(root_block.meta) != fst::kStringInfinity);
 
   // will store just several bytes here
   auto& out = *root_index.begin();

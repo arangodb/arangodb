@@ -718,7 +718,7 @@ NS_END
 TEST(by_column_existence, ctor) {
   irs::by_column_existence filter;
   ASSERT_EQ(irs::by_column_existence::type(), filter.type());
-  ASSERT_EQ(false, filter.prefix_match());
+  ASSERT_FALSE(filter.prefix_match());
   ASSERT_TRUE(filter.field().empty());
   ASSERT_EQ(irs::boost::no_boost(), filter.boost());
 }

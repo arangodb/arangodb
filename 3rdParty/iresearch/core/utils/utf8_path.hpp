@@ -12,7 +12,16 @@
 #ifndef IRESEARCH_UTF8_PATH_H
 #define IRESEARCH_UTF8_PATH_H
 
-#include "boost/filesystem/path.hpp"
+#if !defined(_MSC_VER)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+  #include <boost/filesystem/path.hpp>
+
+#if !defined(_MSC_VER)
+  #pragma GCC diagnostic pop
+#endif
 
 #include "string.hpp"
 

@@ -82,11 +82,11 @@ class mmap_directory_test : public directory_test_case,
     iresearch::mmap_directory::create_directory(str);
   }
 
-  virtual void TearDown() {
+  virtual void TearDown() override {
     iresearch::mmap_directory::remove_directory(path_.string(*codecvt_));
   }
 
-  virtual void TestBody() {}
+  virtual void TestBody() override {}
 
   const boost::filesystem::path& path() const {
     return path_;

@@ -11,7 +11,10 @@
 
 #ifndef _MSC_VER
   #include <execinfo.h> // for backtrace(...)
-  #include <malloc.h>
+
+  #ifndef __APPLE__
+    #include <malloc.h>
+  #endif
 #endif
 
 #include "memory.hpp"
@@ -21,6 +24,9 @@ NS_BEGIN(memory)
 
 void dump_mem_stats_trace() NOEXCEPT {
   #ifndef _MSC_VER
+
+  // MacOS does not have malloc.h and hence no mallinfo() or malloc_stats()
+  #ifndef __APPLE__
     // ...........................................................................
     // output mallinfo()
     // ...........................................................................
@@ -57,6 +63,7 @@ Topmost releasable block (keepcost):   %lu\n\
     // output malloc_stats()
     // ...........................................................................
     malloc_stats(); // outputs to stderr
+  #endif
 
     // ...........................................................................
     // output stacktrace

@@ -238,7 +238,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
   class LinkNode: public irs::iql::proxy_filter_t<std::shared_ptr<iresearch::filter>> {
    public:
     LinkNode(iresearch::filter* link): proxy_filter_t(LinkNode::type()) {
-      filter_ = std::move(ptr(link));
+      filter_ = ptr(link);
     }
 
     LinkNode(const LinkNode& other): proxy_filter_t(LinkNode::type()) {
@@ -484,7 +484,7 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
     root.type = query_node::NodeType::UNION;
     root.children.push_back(*state.pnFilter);
-    result.filter = std::move(RootNode::make());
+    result.filter = RootNode::make();
 
     auto errorNodeId =
       init(*static_cast<iresearch::Or*>(result.filter.get()), root);
@@ -495,9 +495,9 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
       error << "filter conversion error, node: @" << errorNodeId << std::endl;
       print(error, *state.pnFilter, false, true);
-      result.filter = std::move(ErrorNode::make<ErrorNode>());
+      result.filter = ErrorNode::make<ErrorNode>();
       result.error = &(static_cast<ErrorNode*>(result.filter.get())->sError);
-      *(result.error) = std::move(error.str());
+      *(result.error) = error.str();
 
       return result;
     }
@@ -520,9 +520,9 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
           sDelim = ", ";
         }
 
-        result.filter = std::move(ErrorNode::make<ErrorNode>());
+        result.filter = ErrorNode::make<ErrorNode>();
         result.error = &(static_cast<ErrorNode*>(result.filter.get())->sError);
-        *(result.error) = std::move(error.str());
+        *(result.error) = error.str();
 
         return result;
       }
@@ -558,9 +558,9 @@ const irs::iql::query_builder::branch_builder_function_t SIMILAR_BRANCH_BUILDER 
 
     irs::iql::query result;
 
-    result.filter = std::move(ErrorNode::make<ErrorNode>());
+    result.filter = ErrorNode::make<ErrorNode>();
     result.error = &(static_cast<ErrorNode*>(result.filter.get())->sError);
-    *(result.error) = std::move(error.str());
+    *(result.error) = error.str();
 
     return result;
   }

@@ -21,7 +21,16 @@
 #include <atomic>
 #include <functional>
 
-#include <boost/filesystem.hpp>
+#if !defined(_MSC_VER)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+  #include <boost/filesystem.hpp>
+
+#if !defined(_MSC_VER)
+  #pragma GCC diagnostic pop
+#endif
 
 namespace iresearch {
 
@@ -95,7 +104,7 @@ class long_field: public field_base {
   void value(value_t value) { value_ = value; }
   value_t value() const { return value_; }
   bool write(ir::data_output& out) const override;
-  ir::token_stream& get_tokens() const;
+  ir::token_stream& get_tokens() const override;
 
  private:
   mutable ir::numeric_token_stream stream_;
@@ -121,7 +130,7 @@ class int_field: public field_base {
   value_t value() const { return value_; }
 
   bool write(ir::data_output& out) const override;
-  ir::token_stream& get_tokens() const;
+  ir::token_stream& get_tokens() const override;
 
  private:
   mutable ir::numeric_token_stream stream_;
@@ -142,7 +151,7 @@ class double_field: public field_base {
   value_t value() const { return value_; }
 
   bool write(ir::data_output& out) const override;
-  ir::token_stream& get_tokens() const;
+  ir::token_stream& get_tokens() const override;
 
  private:
   mutable ir::numeric_token_stream stream_;
@@ -163,7 +172,7 @@ class float_field: public field_base {
   value_t value() const { return value_; }
 
   bool write(ir::data_output& out) const override;
-  ir::token_stream& get_tokens() const;
+  ir::token_stream& get_tokens() const override;
 
  private:
   mutable ir::numeric_token_stream stream_;
@@ -188,7 +197,7 @@ class binary_field: public field_base {
   }
   
   bool write(ir::data_output& out) const override;
-  ir::token_stream& get_tokens() const;
+  ir::token_stream& get_tokens() const override;
 
  private:
   mutable ir::string_token_stream stream_;
@@ -339,6 +348,22 @@ class json_doc_generator: public doc_generator_base {
     RAWNUM
   }; // ValueType
 
+  // an irs::string_ref for union inclusion without a user-defined constructor
+  // and non-trivial default constructor for compatibility with MSVC 2013
+  struct json_string {
+    const char* data;
+    size_t size;
+
+    json_string& operator=(const irs::string_ref& ref) {
+      data = ref.c_str();
+      size = ref.size();
+      return *this;
+    }
+
+    operator irs::string_ref() const { return irs::string_ref(data, size); };
+    operator std::string() const { return std::string(data, size); };
+  };
+
   struct json_value {
     union {
       bool b;
@@ -347,8 +372,9 @@ class json_doc_generator: public doc_generator_base {
       int64_t i64;
       uint64_t ui64;
       double_t dbl;
-      irs::string_ref str{};
+      json_string str;
     };
+
     ValueType vt{ ValueType::NIL };
 
     json_value() NOEXCEPT { }

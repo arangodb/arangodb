@@ -293,7 +293,7 @@ index_output::ptr memory_directory::create(const std::string& name) NOEXCEPT {
     if (!res.second) { // file exists
       file->reset();
     } else {
-      file = std::move(memory::make_unique<memory_file>());
+      file = memory::make_unique<memory_file>();
     }
 
     PTR_NAMED(memory_index_output, out, *file);

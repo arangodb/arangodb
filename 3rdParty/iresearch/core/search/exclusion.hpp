@@ -27,7 +27,7 @@ class exclusion final : public doc_iterator {
     assert(excl_);
   }
 
-  virtual doc_id_t value() const {
+  virtual doc_id_t value() const override {
     return incl_->value();
   }
 

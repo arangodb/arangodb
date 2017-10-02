@@ -149,7 +149,7 @@ install:
   - appveyor-retry git clone --depth 1 --recursive --quiet %GTEST_URL% %GTEST_DIR% || exit 1
   - cd %GTEST_DIR%
   - mkdir build && cd build
-  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -Dgtest_force_shared_crt=ON -DBUILD_GTEST=ON -DBUILD_GMOCK=OFF  ..
+  - cmake -g %APPVEYOR_BUILD_WORKER_IMAGE% -Ax64 -Dgtest_force_shared_crt=ON -DBUILD_GTEST=ON -DBUILD_GMOCK=OFF -DCMAKE_DEBUG_POSTFIX="" ..
   - cmake --build . %CMAKE_BUILD_OPTIONS%
   - cmake --install .
   - mkdir ..\googletest\lib  
@@ -161,7 +161,7 @@ install:
   ############################################################################
   - set ICU_DIR=%DEPS_DIR%\icu
   - mkdir %ICU_DIR% && cd %ICU_DIR%
-  - set ICU_URL="http://download.icu-project.org/files/icu4c/57.1/icu4c-57_1-Win64-msvc10.zip"
+  - set ICU_URL="https://kent.dl.sourceforge.net/project/icu/ICU4C/57.1/icu4c-57_1-Win64-msvc10.zip"
   - appveyor DownloadFile %ICU_URL% -FileName icu4c-57_1-win64-msvc10.zip
   - 7z x icu4c-57_1-win64-msvc10.zip -o. > nul
   - set ICU_ROOT=%ICU_DIR%\icu

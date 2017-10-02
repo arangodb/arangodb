@@ -45,7 +45,7 @@ class empty_term_reader: public irs::term_reader {
     return irs::field_meta::EMPTY;
   }
 
-  virtual const irs::attribute_view& attributes() const NOEXCEPT {
+  virtual const irs::attribute_view& attributes() const NOEXCEPT override {
     return irs::attribute_view::empty_instance();
   }
 
