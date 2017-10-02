@@ -228,16 +228,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
         TRI_ASSERT(_lastLogType == RocksDBLogType::DatabaseCreate ||
                    _lastLogType == RocksDBLogType::DatabaseDrop);
-        
-        /*VPackSlice data = RocksDBValue::data(value);
-        _builder.openObject();
-        _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
-        _builder.add("type", VPackValue(convertLogType(_lastLogType)));
-        _builder.add("database", VPackValue(std::to_string(_currentDbId)));
-        _builder.add("data", data);
-        _builder.close();*/
-
-        
+        // this version of the protocol will always ignore database markers
       } else if (RocksDBKey::type(key) == RocksDBEntryType::Collection) {
         if (_lastLogType == RocksDBLogType::IndexCreate ||
             _lastLogType == RocksDBLogType::IndexDrop) {
@@ -546,8 +537,9 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
                                              bool includeSystem,
                                              TRI_voc_cid_t collectionId,
                                              VPackBuilder& builder) {
-  uint64_t lastTick = tickStart;
-  uint64_t lastWrittenTick = tickStart;
+  TRI_ASSERT(tickStart <= tickEnd);
+  uint64_t lastTick = tickStart;// generally contains begin of last wb
+  uint64_t lastWrittenTick = tickStart;// contains end tick of last wb
 
   std::unique_ptr<WALParser> handler(
       new WALParser(vocbase, includeSystem, collectionId, builder));
@@ -603,7 +595,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
     lastWrittenTick = handler->endBatch();
     LOG_TOPIC(_LOG, Logger::ROCKSDB) << "End WriteBatch written-tick: "
                                      << lastWrittenTick;
-    TRI_ASSERT(lastWrittenTick >= lastTick);
+    TRI_ASSERT(lastTick <= lastWrittenTick);
     if (!minTickIncluded && lastWrittenTick <= tickStart && lastWrittenTick <= tickEnd) {
       minTickIncluded = true;
     }

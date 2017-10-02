@@ -21,30 +21,25 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_REST_HANDLER_REST_WAL_ACCESS_HANDLER_H
-#define ARANGOD_REST_HANDLER_REST_WAL_ACCESS_HANDLER_H 1
+#ifndef ARANGOD_MMFILES_MMFILES_REPLICATION_COMMON_H
+#define ARANGOD_MMFILES_MMFILES_REPLICATION_COMMON_H 1
 
-#include "RestHandler/RestBaseHandler.h"
+#include "MMFiles/MMFilesDatafile.h"
+#include "VocBase/replication-common.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
-class WalAccess;
-  
-/// Storage engine agnostic handler for using the WalAccess interface
-class RestWalAccessHandler : public arangodb::RestBaseHandler {
- public:
-  RestWalAccessHandler(GeneralRequest*, GeneralResponse*);
+namespace mmfilesutils {
+  /// @brief whether or not a marker should be replicated
+  bool MustReplicateWalMarkerType(MMFilesMarker const* marker,
+                                         bool allowDBMarkers);
 
- public:
-  char const* name() const override final { return "RestWalAccessHandler"; }
-  bool isDirect() const override { return false; }
-  RestStatus execute() override;
-  
-private:
-  void handleCommandTickRange(WalAccess const* wal);
-  void handleCommandLastTick(WalAccess const* wal);
-  void handleCommandTail(WalAccess const* wal);
-  void handleCommandDetermineOpenTransactions(WalAccess const* wal);
-};
+  /// @brief whether or not a marker belongs to a transaction
+  bool IsTransactionWalMarkerType(MMFilesMarker const* marker);
+
+  /// @brief translate a marker type to a replication type
+  TRI_replication_operation_e TranslateType(MMFilesMarker const* marker);
 }
-
+}
+  
 #endif

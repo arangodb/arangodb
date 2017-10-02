@@ -47,11 +47,18 @@ class RocksDBWalAccess : public WalAccess {
   ///  }}
   ///
   TRI_voc_tick_t lastTick() const override;
+  
+  /// should return the list of transactions started, but not committed in that
+  /// range (range can be adjusted)
+  WalAccessResult openTransactions(uint64_t tickStart, uint64_t tickEnd,
+                                   WalAccess::WalFilter const& filter,
+                                   TransactionCallback const&) const override;
 
   /// Tails the wall, this will already sanitize the
-  WalTailingResult tail(uint64_t tickStart, uint64_t tickEnd, size_t chunkSize,
-                        bool includeSystem, WalFilter const& filter,
-                        MarkerCallback const&) const override;
+  WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd, size_t chunkSize,
+                       bool includeSystem, WalFilter const& filter,
+                       MarkerCallback const&) const override;
+  
 };
 }
 

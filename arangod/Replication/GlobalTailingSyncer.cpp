@@ -57,6 +57,10 @@ using namespace arangodb::basics;
 using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
+
+/// @brief base url of the replication API
+std::string const GlobalTailingSyncer::WalAccessUrl = "/_api/wal";
+
 GlobalTailingSyncer::GlobalTailingSyncer(
     ReplicationApplierConfiguration const* configuration,
     TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
@@ -375,8 +379,10 @@ int GlobalTailingSyncer::runContinuousSync(std::string& errorMsg) {
     // special case in which from and to are equal
     fetchTick = safeResumeTick;
   } else {
-    int res = fetchMasterState(errorMsg, safeResumeTick, fromTick, fetchTick);
-
+    // adjust fetchTick so we can tail starting from the tick containing
+    // the open transactions we did not commit locally
+    int res = fetchOpenTransactions(errorMsg, safeResumeTick,
+                                    fromTick, fetchTick);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -497,11 +503,11 @@ int GlobalTailingSyncer::runContinuousSync(std::string& errorMsg) {
   return TRI_ERROR_INTERNAL;
 }
 
-/// @brief fetch the initial master state
-int GlobalTailingSyncer::fetchMasterState(std::string& errorMsg,
-                                       TRI_voc_tick_t fromTick,
-                                       TRI_voc_tick_t toTick,
-                                       TRI_voc_tick_t& startTick) {
+/// @brief fetch the open transactions we still need to complete
+int GlobalTailingSyncer::fetchOpenTransactions(std::string& errorMsg,
+                                               TRI_voc_tick_t fromTick,
+                                               TRI_voc_tick_t toTick,
+                                               TRI_voc_tick_t& startTick) {
   std::string const baseUrl = BaseUrl + "/determine-open-transactions";
   std::string const url = baseUrl + "?serverId=" + _localServerIdString +
                           "&from=" + StringUtils::itoa(fromTick) + "&to=" +
@@ -556,7 +562,6 @@ int GlobalTailingSyncer::fetchMasterState(std::string& errorMsg,
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
-
   TRI_voc_tick_t readTick = StringUtils::uint64(header);
 
   if (!fromIncluded && _requireFromPresent && fromTick > 0) {

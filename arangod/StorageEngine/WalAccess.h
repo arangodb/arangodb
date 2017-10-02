@@ -31,18 +31,25 @@
 
 namespace arangodb {
   
-struct WalTailingResult : public Result {
-  WalTailingResult()
-    : Result(TRI_ERROR_NO_ERROR), _minTick(0), _maxTick(0) {}
-  WalTailingResult(int code, TRI_voc_tick_t min, TRI_voc_tick_t max)
-    : Result(code), _minTick(min), _maxTick(max) {}
+struct WalAccessResult : public Result {
+  WalAccessResult()
+    : Result(TRI_ERROR_NO_ERROR), _fromTickIncluded(false), _lastTick(0) {}
+  WalAccessResult(int code, bool ft, TRI_voc_tick_t last)
+    : Result(code), _fromTickIncluded(ft), _lastTick(last) {}
 
-  TRI_voc_tick_t minTick() const { return _minTick; }
-  TRI_voc_tick_t maxTick() const { return _maxTick; }
+  bool fromTickIncluded() const { return _fromTickIncluded; }
+  TRI_voc_tick_t lastTick() const { return _lastTick; }
+
+  Result& reset(int errorNumber, bool ft, TRI_voc_tick_t last) {
+    _errorNumber = errorNumber;
+    _fromTickIncluded = ft;
+    _lastTick = last;
+    return *this;
+  }
   
  private:
-  TRI_voc_tick_t _minTick;
-  TRI_voc_tick_t _maxTick;
+  bool _fromTickIncluded;
+  TRI_voc_tick_t _lastTick;
 };
 
 /// @brief StorageEngine agnostic wal access interface.
@@ -59,6 +66,7 @@ class WalAccess {
   typedef std::unordered_map<TRI_voc_tick_t, std::set<TRI_voc_cid_t>> WalFilter;
   typedef std::function<void(TRI_vocbase_t*,
                         velocypack::Slice const&)> MarkerCallback;
+  typedef std::function<void(TRI_voc_tid_t, TRI_voc_tid_t)> TransactionCallback;
 
   /// {"tickMin":"123", "tickMax":"456",
   ///  "server":{"version":"3.2", "serverId":"abc"}}
@@ -73,11 +81,18 @@ class WalAccess {
   ///  }}
   ///
   virtual TRI_voc_tick_t lastTick() const = 0;
+  
+  /// should return the list of transactions started, but not committed in that
+  /// range (range can be adjusted)
+  virtual WalAccessResult openTransactions(uint64_t tickStart, uint64_t tickEnd,
+                                           WalFilter const& filter,
+                                           TransactionCallback const&) const = 0;
 
-  virtual WalTailingResult tail(uint64_t tickStart, uint64_t tickEnd,
-                                size_t chunkSize,
-                                bool includeSystem, WalFilter const& filter,
-                                MarkerCallback const&) const = 0;
+  virtual WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd,
+                               size_t chunkSize,
+                               bool includeSystem, WalFilter const& filter,
+                               MarkerCallback const&) const = 0;
+  
 };
 }
 

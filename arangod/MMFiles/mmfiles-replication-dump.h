@@ -115,4 +115,5 @@ int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext*,
                                              TRI_voc_tick_t, TRI_voc_tick_t,
                                              bool useVst = false);
 
+
 #endif

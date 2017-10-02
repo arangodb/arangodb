@@ -68,6 +68,14 @@ TRI_voc_tick_t RocksDBWalAccess::lastTick() const {
   return rocksutils::globalRocksDB()->GetLatestSequenceNumber();
 }
 
+/// should return the list of transactions started, but not committed in that
+/// range (range can be adjusted)
+WalAccessResult RocksDBWalAccess::openTransactions(uint64_t tickStart, uint64_t tickEnd,
+                                                   WalAccess::WalFilter const& filter,
+                                                   TransactionCallback const&) const {
+  return WalAccessResult(TRI_ERROR_NO_ERROR, true, 0);
+}
+
 /// WAL parser
 class MyWALParser : public rocksdb::WriteBatch::Handler {
  public:
@@ -534,10 +542,10 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
 
 // iterates over WAL starting at 'from' and returns up to 'chunkSize' documents
 // from the corresponding database
-WalTailingResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
-                                        size_t chunkSize, bool includeSystem,
-                                        WalFilter const& filter,
-                                        MarkerCallback const& func) const {
+WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
+                                       size_t chunkSize, bool includeSystem,
+                                       WalFilter const& filter,
+                                       MarkerCallback const& func) const {
   // first tick actually read
   uint64_t firstTick = std::max(tickStart - 1, (uint64_t)0);
   uint64_t lastTick = tickStart; // lastTick at start of a write batch)
@@ -552,7 +560,7 @@ WalTailingResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
   s = rocksutils::globalRocksDB()->GetUpdatesSince(tickStart, &iterator, ro);
   if (!s.ok()) {
     Result r = convertStatus(s, rocksutils::StatusHint::wal);
-    return WalTailingResult{r.errorNumber(), 0, 0};
+    return WalAccessResult(r.errorNumber(), false, 0);
   }
 
   // we need to check if the builder is bigger than the chunksize,
@@ -595,9 +603,9 @@ WalTailingResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
     iterator->Next();
   }
 
-  WalTailingResult result(TRI_ERROR_NO_ERROR, firstTick, lastWrittenTick);
+  WalAccessResult result(TRI_ERROR_NO_ERROR, firstTick <= tickStart, lastWrittenTick);
   if (!s.ok()) {  // TODO do something?
-    result.reset(convertStatus(s, rocksutils::StatusHint::wal));
+    result.Result::reset(convertStatus(s, rocksutils::StatusHint::wal));
   }
   return result;
 }

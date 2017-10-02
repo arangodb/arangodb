@@ -328,30 +328,12 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
-  bool useVst = false;
-  if (_request->transportType() == Endpoint::TransportType::VST) {
-    useVst = true;
-  }
-  //_response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
-  // StringUtils::itoa(dump._lastFoundTick));
+  // rocksdb only includes finished transactions in the WAL.
   _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK, "0");
   _response->setContentType(rest::ContentType::DUMP);
   // always true to satisfy continuous syncer
   _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT, "true");
-  VPackSlice slice = VelocyPackHelper::EmptyArrayValue();
-  if (useVst) {
-    _response->addPayload(slice, &VPackOptions::Defaults, false);
-  } else {
-    HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
-
-    if (httpResponse == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid response type");
-    }
-
-    httpResponse->body().appendText(slice.toJson());
-  }
-  _response->setResponseCode(rest::ResponseCode::OK);
+  generateResult(rest::ResponseCode::OK, VPackSlice::emptyArraySlice());
 }
 
 ////////////////////////////////////////////////////////////////////////////////

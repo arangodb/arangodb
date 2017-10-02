@@ -87,33 +87,32 @@ RestStatus RestWalAccessHandler::execute() {
   TRI_ASSERT(wal != nullptr);
 
   if (suffixes[0] == "range") {
-    std::pair<TRI_voc_tick_t, TRI_voc_tick_t> minMax;
-    Result r = wal->tickRange(minMax);
-    if (r.ok()) {
-      /// {"tickMin":"123", "tickMax":"456", "version":"3.2", "serverId":"abc"}
-      VPackBuilder result;
-      result.openObject();
-      result.add("time", VPackValue(utilities::timeString()));
-      // "state" part
-      result.add("tickMin", VPackValue(std::to_string(minMax.first)));
-      result.add("tickMax", VPackValue(std::to_string(minMax.second)));
-      {  // "server" part
-        VPackObjectBuilder server(&result, "server", true);
-        server->add("version", VPackValue(ARANGODB_VERSION));
-        server->add("serverId",
-                    VPackValue(std::to_string(ServerIdFeature::getId())));
-      }
-      result.close();
-      generateResult(rest::ResponseCode::OK, result.slice());
-    } else {
-      generateError(r);
-    }
+    handleCommandTickRange(wal);
   } else if (suffixes[0] == "lastTick") {
+    handleCommandLastTick(wal);
+  } else if (suffixes[0] == "tail") {
+    handleCommandTail(wal);
+  } else if (suffixes[0] == "open-transactions") {
+    handleCommandDetermineOpenTransactions(wal);
+  } else {
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expected GET _api/wal/[tail|range|lastTick]>");
+  }
+
+  return RestStatus::DONE;
+}
+
+void RestWalAccessHandler::handleCommandTickRange(WalAccess const* wal) {
+  std::pair<TRI_voc_tick_t, TRI_voc_tick_t> minMax;
+  Result r = wal->tickRange(minMax);
+  if (r.ok()) {
+    /// {"tickMin":"123", "tickMax":"456", "version":"3.2", "serverId":"abc"}
     VPackBuilder result;
     result.openObject();
     result.add("time", VPackValue(utilities::timeString()));
     // "state" part
-    result.add("tick", VPackValue(std::to_string(wal->lastTick())));
+    result.add("tickMin", VPackValue(std::to_string(minMax.first)));
+    result.add("tickMax", VPackValue(std::to_string(minMax.second)));
     {  // "server" part
       VPackObjectBuilder server(&result, "server", true);
       server->add("version", VPackValue(ARANGODB_VERSION));
@@ -122,15 +121,25 @@ RestStatus RestWalAccessHandler::execute() {
     }
     result.close();
     generateResult(rest::ResponseCode::OK, result.slice());
-
-  } else if (suffixes[0] == "tail") {
-    handleCommandTail(wal);
   } else {
-    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected GET _api/wal/[tail|range|lastTick]>");
+    generateError(r);
   }
+}
 
-  return RestStatus::DONE;
+void RestWalAccessHandler::handleCommandLastTick(WalAccess const* wal) {
+  VPackBuilder result;
+  result.openObject();
+  result.add("time", VPackValue(utilities::timeString()));
+  // "state" part
+  result.add("tick", VPackValue(std::to_string(wal->lastTick())));
+  {  // "server" part
+    VPackObjectBuilder server(&result, "server", true);
+    server->add("version", VPackValue(ARANGODB_VERSION));
+    server->add("serverId",
+                VPackValue(std::to_string(ServerIdFeature::getId())));
+  }
+  result.close();
+  generateResult(rest::ResponseCode::OK, result.slice());
 }
 
 void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
@@ -193,7 +202,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   // FIXME
   WalAccess::WalFilter filter;
   
-  WalTailingResult result;
+  WalAccessResult result;
   std::map<TRI_voc_tick_t, MyTypeHandler> handlers;
   VPackOptions opts = VPackOptions::Defaults;
   auto prepOpts = [&handlers, &opts](TRI_vocbase_t* vocbase) {
@@ -241,7 +250,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   }
   
   TRI_voc_tick_t const latest = wal->lastTick();
-  bool const checkMore = (result.maxTick() > 0 && result.maxTick() < latest);
+  bool const checkMore = (result.lastTick() > 0 && result.lastTick() < latest);
   // transfer ownership of the buffer contents
   _response->setContentType(rest::ContentType::DUMP);
   
@@ -250,12 +259,12 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
                          checkMore ? "true" : "false");
   _response->setHeaderNC(
                          TRI_REPLICATION_HEADER_LASTINCLUDED,
-                         StringUtils::itoa((length == 0) ? 0 : result.maxTick()));
+                         StringUtils::itoa((length == 0) ? 0 : result.lastTick()));
   _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
                          StringUtils::itoa(latest));
   _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
   _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
-                         result.minTick() <= tickStart ? "true" : "false");
+                         result.fromTickIncluded() ? "true" : "false");
   
   if (length > 0) {
     _response->setResponseCode(rest::ResponseCode::OK);
@@ -267,12 +276,61 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     if (found) {
       serverId = (TRI_server_id_t)StringUtils::uint64(value);
     }
-    DatabaseFeature::DATABASE->enumerateDatabases(
-                                                  [&](TRI_vocbase_t* vocbase) {
-                                                    vocbase->updateReplicationClient(serverId, result.maxTick());
-                                                  });
+    DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
+      vocbase->updateReplicationClient(serverId, result.lastTick());
+    });
   } else {
     // clears contents
     _response->setResponseCode(rest::ResponseCode::NO_CONTENT);
+  }
+}
+
+void RestWalAccessHandler::handleCommandDetermineOpenTransactions(WalAccess const* wal) {
+  // determine start and end tick
+  
+  std::pair<TRI_voc_tick_t, TRI_voc_tick_t> minMax;
+  Result res = wal->tickRange(minMax);
+  if (res.fail()) {
+    generateError(res);
+    return;
+  }
+  
+  bool found = false;
+  std::string const& value1 = _request->value("from", found);
+  if (found) {
+    minMax.first = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value1));
+  }
+  // determine end tick for dump
+  std::string const& value2 = _request->value("to", found);
+  if (found) {
+    minMax.second = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
+  }
+  if (minMax.first > minMax.second || minMax.second == 0) {
+    generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid from/to values");
+    return;
+  }
+  
+  WalAccess::WalFilter filter;
+  
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder response(buffer);
+  response.openArray();
+  WalAccessResult r = wal->openTransactions(minMax.first, minMax.second, filter,
+                                            [&](TRI_voc_tick_t tick, TRI_voc_tid_t tid) {
+    response.add(VPackValue(tid));
+  });
+  response.close();
+  
+  _response->setContentType(rest::ContentType::DUMP);
+  if (res.fail()) {
+    generateError(res);
+  } else {
+    _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
+                           r.fromTickIncluded() ? "true" : "false");
+    _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
+                           StringUtils::itoa(r.lastTick()));
+    auto cc = r.lastTick() != 0 ? ResponseCode::OK : ResponseCode::NO_CONTENT;
+    generateResult(cc, std::move(buffer));
   }
 }

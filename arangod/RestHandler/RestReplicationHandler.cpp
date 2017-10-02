@@ -600,8 +600,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
                                  restrictType, false, false);
     
     try {
-#warning Why not use `config._incremental` as argument  ??
-      Result r = syncer.run(false);
+      Result r = syncer.run(config._incremental);
       res = r.errorNumber();
       errorMsg = r.errorMessage();
       // steal the barrier from the syncer
