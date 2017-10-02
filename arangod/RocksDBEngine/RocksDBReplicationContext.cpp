@@ -21,7 +21,7 @@
 /// @author Daniel H. Larkin
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBEngine/RocksDBReplicationContext.h"
+#include "RocksDBReplicationContext.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringRef.h"
@@ -86,8 +86,10 @@ void RocksDBReplicationContext::bind(TRI_vocbase_t* vocbase) {
   if (!_trx || !_guard || (_guard->database() != vocbase)) {
     rocksdb::Snapshot const* snap = nullptr;
     if (_trx) {
+      _trx->abort();
       auto state = RocksDBTransactionState::toState(_trx.get());
       snap = state->stealSnapshot();
+      _trx.reset();
     }
     
     releaseDumpingResources();
@@ -505,11 +507,11 @@ void RocksDBReplicationContext::release() {
 }
 
 void RocksDBReplicationContext::releaseDumpingResources() {
-  if (_trx.get() != nullptr) {
+  if (_trx != nullptr) {
     _trx->abort();
     _trx.reset();
   }
-  if (_iter.get() != nullptr) {
+  if (_iter != nullptr) {
     _iter.reset();
   }
   _collection = nullptr;

@@ -486,6 +486,9 @@ void RocksDBTransactionState::donateSnapshot(rocksdb::Snapshot const* snap) {
 rocksdb::Snapshot const* RocksDBTransactionState::stealSnapshot() {
   TRI_ASSERT(_snapshot != nullptr);
   TRI_ASSERT(isReadOnlyTransaction());
+  if (_status != transaction::Status::COMMITTED && _status != transaction::Status::ABORTED) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "OOOH: " << (int) _status;
+  }
   TRI_ASSERT(_status == transaction::Status::COMMITTED || _status == transaction::Status::ABORTED);
   rocksdb::Snapshot const* snap = _snapshot;
   _snapshot = nullptr;
