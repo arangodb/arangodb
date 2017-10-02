@@ -196,7 +196,7 @@ int TailingSyncer::processDBMarker(TRI_replication_operation_e type,
   TRI_ASSERT(!_ignoreDatabaseMarkers);
   
   // the new wal access protocol contains database names
-  VPackSlice const nameSlice = slice.get("database");
+  VPackSlice const nameSlice = slice.get("db");
   if (!nameSlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
                                    "create database marker did not contain database");

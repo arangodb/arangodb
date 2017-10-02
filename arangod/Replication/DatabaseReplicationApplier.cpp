@@ -163,17 +163,8 @@ void DatabaseReplicationApplier::persistState(bool doSync) {
     // unsupported
     return;
   }
-
-  VPackBuilder builder;
-  _state.toVelocyPack(builder, false);
-
-  std::string const filename = getStateFilename();
-  LOG_TOPIC(TRACE, Logger::REPLICATION)
-      << "saving replication applier state to file '" << filename << "'";
-
-  if (!basics::VelocyPackHelper::velocyPackToFile(filename, builder.slice(), doSync)) {
-    THROW_ARANGO_EXCEPTION(TRI_errno());
-  }
+  
+  ReplicationApplier::persistState(doSync);
 }
 
 /// @brief start the replication applier

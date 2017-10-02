@@ -107,11 +107,13 @@ bool GlobalReplicationApplier::loadState() {
   
 /// @brief store the applier state in persistent storage
 void GlobalReplicationApplier::persistState(bool doSync) {
-  // TODO
+  // simply fall back to base class implementation
+  ReplicationApplier::persistState(doSync);
 }
  
 /// @brief store the current applier state in the passed vpack builder 
 void GlobalReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) const {
+  // simply fall back to base class implementation
   ReplicationApplier::toVelocyPack(result);
 }
 
