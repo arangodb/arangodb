@@ -71,7 +71,10 @@ Result GlobalInitialSyncer::run(bool incremental) {
       << "client: got master state: " << res << " " << errorMsg;
   
   if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+    if (errorMsg.empty()) {
+      return Result(res);
+    }
+    return Result(res, errorMsg);
   }
   
   if (_masterInfo._majorVersion > 3 ||

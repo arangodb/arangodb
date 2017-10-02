@@ -73,7 +73,7 @@ class ReplicationApplier {
   virtual bool loadState() = 0;
   
   /// @brief store the applier state in persistent storage
-  virtual void persistState(bool doSync) = 0;
+  virtual void persistState(bool doSync);
  
   /// @brief store the current applier state in the passed vpack builder 
   virtual void toVelocyPack(arangodb::velocypack::Builder& result) const;

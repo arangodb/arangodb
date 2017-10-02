@@ -25,6 +25,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Thread.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/files.h"
 #include "Cluster/ServerState.h"
@@ -39,10 +40,12 @@ using namespace arangodb;
 /// @brief applier thread class
 class ApplyThread : public Thread {
  public:
-  explicit ApplyThread(std::unique_ptr<TailingSyncer> syncer)
+  explicit ApplyThread(std::unique_ptr<TailingSyncer>&& syncer)
       : Thread("ReplicationApplier"), _syncer(std::move(syncer)) {}
 
-  ~ApplyThread() { shutdown(); }
+  ~ApplyThread() {
+    Thread::shutdown(); 
+  }
 
  public:
   void run() {
@@ -179,13 +182,13 @@ void ReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc
 
   if (useTick) {
     LOG_TOPIC(INFO, Logger::REPLICATION)
-        << "started replication applier for database '" << _databaseName
-        << "', endpoint '" << _configuration._endpoint << "' from tick "
+        << "started replication applier for " << _databaseName
+        << ", endpoint '" << _configuration._endpoint << "' from tick "
         << initialTick;
   } else {
     LOG_TOPIC(INFO, Logger::REPLICATION)
-        << "re-started replication applier for database '"
-        << _databaseName << "', endpoint '" << _configuration._endpoint
+        << "re-started replication applier for "
+        << _databaseName << ", endpoint '" << _configuration._endpoint
         << "'";
   }
 }
@@ -218,9 +221,8 @@ void ReplicationApplier::stop(bool resetError, bool joinThread) {
   if (joinThread) {
     TRI_ASSERT(_thread);
     _thread.reset();
+    setTermination(false);
   }
-
-  setTermination(false);
 
   LOG_TOPIC(INFO, Logger::REPLICATION)
       << "stopped replication applier for database '" << _databaseName << "'";
@@ -288,6 +290,21 @@ void ReplicationApplier::reconfigure(ReplicationApplierConfiguration const& conf
 
   _configuration = configuration;
   storeConfiguration(true);
+}
+
+/// @brief store the applier state in persistent storage
+/// must currently be called while holding the write-lock
+void ReplicationApplier::persistState(bool doSync) {
+  VPackBuilder builder;
+  _state.toVelocyPack(builder, false);
+
+  std::string const filename = getStateFilename();
+  LOG_TOPIC(TRACE, Logger::REPLICATION)
+      << "saving replication applier state to file '" << filename << "'";
+
+  if (!basics::VelocyPackHelper::velocyPackToFile(filename, builder.slice(), doSync)) {
+    THROW_ARANGO_EXCEPTION(TRI_errno());
+  }
 }
   
 /// @brief store the current applier state in the passed vpack builder 

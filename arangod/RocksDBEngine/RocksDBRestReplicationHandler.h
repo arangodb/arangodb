@@ -71,7 +71,7 @@ class RocksDBRestReplicationHandler : public RestReplicationHandler {
   /// @brief add or remove a WAL logfile barrier
   //////////////////////////////////////////////////////////////////////////////
   
-  void handleCommandBarrier() override {}
+  void handleCommandBarrier() override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the inventory (current replication and collection state)

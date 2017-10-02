@@ -69,6 +69,16 @@ void ReplicationFeature::start() {
   _globalReplicationApplier.reset(new GlobalReplicationApplier(ReplicationApplierConfiguration()));
 }
 
+void ReplicationFeature::beginShutdown() {
+  try {
+    if (_globalReplicationApplier != nullptr) {
+      _globalReplicationApplier->stop(true, false);
+    }
+  } catch (...) {
+    // ignore any error
+  }
+}
+
 void ReplicationFeature::stop() {}
 
 void ReplicationFeature::unprepare() {
