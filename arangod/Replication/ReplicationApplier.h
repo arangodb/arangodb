@@ -50,10 +50,10 @@ class ReplicationApplier {
   virtual void forget() = 0;
   
   /// @brief start the replication applier
-  virtual void start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) = 0;
+  virtual void start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
   
   /// @brief stop the replication applier
-  virtual void stop(bool resetError, bool joinThread) = 0;
+  virtual void stop(bool resetError, bool joinThread);
 
   /// @brief shuts down the replication applier
   virtual void shutdown();
@@ -115,6 +115,8 @@ class ReplicationApplier {
   void setProgress(std::string const& msg);
 
  protected:
+  virtual Thread* buildApplyThread(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) = 0;
+  
   virtual std::string getStateFilename() const = 0;
 
   /// @brief register an applier error

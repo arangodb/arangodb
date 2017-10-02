@@ -209,59 +209,7 @@ void DatabaseReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick,
     return;
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
-      << "requesting replication applier start. initialTick: " << initialTick
-      << ", useTick: " << useTick;
-
-  // wait until previous applier thread is shut down
-  while (!wait(10 * 1000));
-
-  WRITE_LOCKER(writeLocker, _statusLock);
-  
-  if (_state._preventStart) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCKED);
-  }
-
-  if (_state._active) {
-    // already started
-    return;
-  }
-  
-  if (_configuration._endpoint.empty() || _configuration._database.empty()) {
-    setErrorNoLock(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
-  }
-
-  auto syncer = std::make_unique<arangodb::DatabaseTailingSyncer>(_vocbase, &_configuration,
-                                                                  initialTick, useTick, barrierId);
-
-  // reset error
-  _state._lastError.reset();
-
-  setTermination(false);
-  _state._active = true;
- 
-  _thread.reset(new ApplyThread(std::move(syncer))); 
-  if (!_thread->start()) {
-    _thread.reset();
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not start ApplyThread");
-  }
-
-  while (!_thread->hasStarted()) {
-    usleep(20000);
-  }
-
-  if (useTick) {
-    LOG_TOPIC(INFO, Logger::REPLICATION)
-        << "started replication applier for database '" << _vocbase->name()
-        << "', endpoint '" << _configuration._endpoint << "' from tick "
-        << initialTick;
-  } else {
-    LOG_TOPIC(INFO, Logger::REPLICATION)
-        << "re-started replication applier for database '"
-        << _vocbase->name() << "', endpoint '" << _configuration._endpoint
-        << "'";
-  }
+  ReplicationApplier::start(initialTick, useTick, barrierId);
 }
   
 /// @brief stop the replication applier
@@ -513,6 +461,13 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
+}
+  
+Thread* DatabaseReplicationApplier::buildApplyThread(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
+  auto syncer = std::make_unique<arangodb::DatabaseTailingSyncer>(_vocbase, &_configuration,
+                                                                  initialTick, useTick, barrierId);
+
+  return new ApplyThread(std::move(syncer));
 }
   
 std::string DatabaseReplicationApplier::getStateFilename() const {

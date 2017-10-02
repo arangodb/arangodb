@@ -103,6 +103,61 @@ void ReplicationApplier::stopInitialSynchronization(bool value) {
   WRITE_LOCKER(writeLocker, _statusLock);
   _state._stopInitialSynchronization = value;
 }
+  
+/// @brief start the replication applier
+void ReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
+  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+      << "requesting replication applier start. initialTick: " << initialTick
+      << ", useTick: " << useTick;
+
+  // wait until previous applier thread is shut down
+  while (!wait(10 * 1000));
+
+  WRITE_LOCKER(writeLocker, _statusLock);
+  
+  if (_state._preventStart) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCKED);
+  }
+
+  if (_state._active) {
+    // already started
+    return;
+  }
+  
+  if (_configuration._endpoint.empty() || _configuration._database.empty()) {
+    setErrorNoLock(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
+  }
+
+  // reset error
+  _state._lastError.reset();
+
+  setTermination(false);
+  _state._active = true;
+ 
+  _thread.reset(buildApplyThread(initialTick, useTick, barrierId));
+  
+  if (!_thread->start()) {
+    _thread.reset();
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not start ApplyThread");
+  }
+
+  while (!_thread->hasStarted()) {
+    usleep(20000);
+  }
+
+  if (useTick) {
+    LOG_TOPIC(INFO, Logger::REPLICATION)
+        << "started replication applier for database '" << _databaseName
+        << "', endpoint '" << _configuration._endpoint << "' from tick "
+        << initialTick;
+  } else {
+    LOG_TOPIC(INFO, Logger::REPLICATION)
+        << "re-started replication applier for database '"
+        << _databaseName << "', endpoint '" << _configuration._endpoint
+        << "'";
+  }
+}
 
 /// @brief stop the replication applier
 void ReplicationApplier::stop(bool resetError, bool joinThread) {

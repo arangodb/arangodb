@@ -24,6 +24,7 @@
 #include "GlobalReplicationApplier.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/FileUtils.h"
+#include "Replication/GlobalTailingSyncer.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -54,7 +55,8 @@ void GlobalReplicationApplier::forget() {
 
 /// @brief start the replication applier
 void GlobalReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
-  // TODO
+  // simply fall back to base class implementation
+  ReplicationApplier::start(initialTick, useTick, barrierId);
 }
   
 /// @brief stop the replication applier
@@ -111,6 +113,15 @@ void GlobalReplicationApplier::persistState(bool doSync) {
 /// @brief store the current applier state in the passed vpack builder 
 void GlobalReplicationApplier::toVelocyPack(arangodb::velocypack::Builder& result) const {
   ReplicationApplier::toVelocyPack(result);
+}
+
+Thread* GlobalReplicationApplier::buildApplyThread(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
+  // TODO
+  auto syncer = std::make_unique<arangodb::GlobalTailingSyncer>(&_configuration,
+                                                                initialTick, useTick, barrierId);
+
+  // TODO return new ApplyThread(std::move(syncer));
+  return nullptr;
 }
 
 std::string GlobalReplicationApplier::getStateFilename() const {
