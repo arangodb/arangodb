@@ -133,9 +133,9 @@ Log prefix: `--log.prefix prefix`
 
 This option is used specify an prefix to logged text.
 
-### Thread
+### Threads
 
-Log thread identifier: `--log.thread`
+Log thread identifier: `--log.thread true`
 
 Whenever log output is generated, the process ID is written as part of the
 log information. Setting this option appends the thread id of the calling
@@ -153,9 +153,12 @@ when no thread is logged and
 
 when this command line option is set.
 
+To also log thread names, it is possible to set the `--log.thread-name`
+option. By default `--log.thread-name` is set to `false`.
+
 ### Role
 
-Log role: `--log.role`
+Log role: `--log.role true`
 
 When set to `true`, this option will make the ArangoDB logger print a single 
 character with the server's role into each logged message. The roles are: 

@@ -211,6 +211,7 @@ class Logger {
   static bool getShowRole() {return _showRole;};
   static void setShortenFilenames(bool);
   static void setShowThreadIdentifier(bool);
+  static void setShowThreadName(bool);
   static void setUseColor(bool);
   static bool getUseColor() {return _useColor;};
   static void setUseLocalTime(bool);
@@ -250,6 +251,7 @@ class Logger {
   static bool _showLineNumber;
   static bool _shortenFilenames;
   static bool _showThreadIdentifier;
+  static bool _showThreadName;
   static bool _showRole;
   static bool _threaded;
   static bool _useColor;

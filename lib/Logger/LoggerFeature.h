@@ -53,7 +53,8 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _useColor = true;
   bool _lineNumber = false;
   bool _shortenFilenames = true;
-  bool _thread = false;
+  bool _threadId = false;
+  bool _threadName = false;
   bool _performance = false;
   bool _keepLogRotate = false;
   bool _foregroundTty = false;
