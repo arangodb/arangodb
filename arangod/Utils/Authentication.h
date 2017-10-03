@@ -43,19 +43,28 @@ class AuthenticationResult : public arangodb::Result {
 
   AuthenticationResult(int errorNumber, AuthSource const& source)
       : Result(errorNumber), _authSource(source) {}
-  AuthenticationResult(
-      std::unordered_map<std::string, std::string> const& permissions,
-      AuthSource const& source)
-      : Result(0), _authSource(source), _permissions(permissions) {}
 
+  AuthenticationResult(
+      std::unordered_map<std::string, AuthLevel> const& permissions,
+      std::unordered_set<std::string> roles, AuthSource const& source)
+      : Result(0),
+        _authSource(source),
+        _permissions(permissions),
+        _roles(roles) {}
+
+ public:
   AuthSource source() const { return _authSource; }
-  std::unordered_map<std::string, std::string> permissions() const {
+
+  std::unordered_map<std::string, AuthLevel> permissions() const {
     return _permissions;
   }
 
+  std::unordered_set<std::string> roles() const { return _roles; }
+
  protected:
   AuthSource _authSource;
-  std::unordered_map<std::string, std::string> _permissions;
+  std::unordered_map<std::string, AuthLevel> _permissions;
+  std::unordered_set<std::string> _roles;
 };
 
 class AuthenticationHandler {

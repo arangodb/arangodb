@@ -24,12 +24,13 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_ROCKSDB_INDEX_H
 #define ARANGOD_ROCKSDB_ENGINE_ROCKSDB_INDEX_H 1
 
-#include <rocksdb/status.h>
 #include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
+
+#include <rocksdb/status.h>
 
 namespace rocksdb {
 class Comparator;
@@ -91,16 +92,16 @@ class RocksDBIndex : public Index {
     return TRI_ERROR_NO_ERROR;
   }
 
-  Result insert(transaction::Methods* trx, TRI_voc_rid_t rid,
+  Result insert(transaction::Methods* trx, LocalDocumentId const& documentId,
                 velocypack::Slice const& doc, bool) override {
     auto mthds = RocksDBTransactionState::toMethods(trx);
-    return insertInternal(trx, mthds, rid, doc);
+    return insertInternal(trx, mthds, documentId, doc);
   }
 
-  Result remove(transaction::Methods* trx, TRI_voc_rid_t rid,
+  Result remove(transaction::Methods* trx, LocalDocumentId const& documentId,
                 arangodb::velocypack::Slice const& doc, bool) override {
     auto mthds = RocksDBTransactionState::toMethods(trx);
-    return removeInternal(trx, mthds, rid, doc);
+    return removeInternal(trx, mthds, documentId, doc);
   }
 
   void setCacheEnabled(bool enable) {
@@ -118,18 +119,18 @@ class RocksDBIndex : public Index {
 
   /// insert index elements into the specified write batch.
   virtual Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
-                                TRI_voc_rid_t,
+                                LocalDocumentId const& documentId,
                                 arangodb::velocypack::Slice const&) = 0;
   
   virtual Result updateInternal(transaction::Methods* trx, RocksDBMethods*,
-                                TRI_voc_rid_t oldRevision,
+                                LocalDocumentId const& oldDocumentId,
                                 arangodb::velocypack::Slice const& oldDoc,
-                                TRI_voc_rid_t newRevision,
+                                LocalDocumentId const& newDocumentId,
                                 velocypack::Slice const& newDoc);
 
   /// remove index elements and put it in the specified write batch.
   virtual Result removeInternal(transaction::Methods* trx, RocksDBMethods*,
-                                TRI_voc_rid_t,
+                                LocalDocumentId const& documentId,
                                 arangodb::velocypack::Slice const&) = 0;
 
   rocksdb::ColumnFamilyHandle* columnFamily() const { return _cf; }

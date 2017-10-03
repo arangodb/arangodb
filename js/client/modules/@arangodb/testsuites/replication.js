@@ -69,7 +69,7 @@ function replicationOngoing (options) {
                          customInstanceInfos,
                          startStopHandlers) {
       let message;
-      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let slave = pu.startInstance('tcp', options, {}, 'slave_ongoing');
       let state = (typeof slave === 'object');
 
       if (state) {
@@ -91,9 +91,7 @@ function replicationOngoing (options) {
                        instanceInfo,
                        customInstanceInfos,
                        startStopHandlers) {
-      arango.reconnect(customInstanceInfos.postStart.instanceInfo.endpoint, '_system', 'root', '');
       pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
-      arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
 
       return {};
     },
@@ -111,7 +109,7 @@ function replicationOngoing (options) {
 
   };
 
-  return tu.performTests(options, testCases, 'replication_sync', tu.runInArangosh, {}, startStopHandlers);
+  return tu.performTests(options, testCases, 'replication_ongoing', tu.runInArangosh, {}, startStopHandlers);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -131,7 +129,7 @@ function replicationStatic (options) {
                          startStopHandlers) {
       let message;
       let res = true;
-      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let slave = pu.startInstance('tcp', options, {}, 'slave_static');
       let state = (typeof slave === 'object');
 
       if (state) {
@@ -170,9 +168,7 @@ function replicationStatic (options) {
                        instanceInfo,
                        customInstanceInfos,
                        startStopHandlers) {
-      arango.reconnect(customInstanceInfos.postStart.instanceInfo.endpoint, '_system', 'root', '');
       pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
-      arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
       return {};
     },
 
@@ -253,9 +249,7 @@ function replicationSync (options) {
                        instanceInfo,
                        customInstanceInfos,
                        startStopHandlers) {
-      arango.reconnect(customInstanceInfos.postStart.instanceInfo.endpoint, '_system', 'root', '');
       pu.shutdownInstance(customInstanceInfos.postStart.instanceInfo, options);
-      arango.reconnect(instanceInfo.endpoint, '_system', 'root', '');
 
       return {};
     },

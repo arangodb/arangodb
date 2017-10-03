@@ -18,30 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Michael Hackstein
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_MMFILES_MMFILES_TOKEN_H
-#define ARANGOD_MMFILES_MMFILES_TOKEN_H 1
+#include "Transaction/Status.h"
 
-#include "StorageEngine/DocumentIdentifierToken.h"
+#include <iostream>
 
-namespace arangodb {
+using namespace arangodb::transaction;
 
-struct MMFilesToken : public DocumentIdentifierToken {
- public:
-  MMFilesToken() : DocumentIdentifierToken() {}
-  explicit MMFilesToken(TRI_voc_rid_t revisionId)
-      : DocumentIdentifierToken(revisionId) {}
-  MMFilesToken(MMFilesToken const& other)
-      : DocumentIdentifierToken(other._data) {}
-
-  inline TRI_voc_rid_t revisionId() const {
-    return static_cast<TRI_voc_rid_t>(_data);
-  }
-};
-static_assert(sizeof(MMFilesToken) == sizeof(uint64_t), "invalid MMFilesToken size");
-
+std::ostream& operator<<(std::ostream& stream, arangodb::transaction::Status const& s) {
+  stream << arangodb::transaction::statusString(s);
+  return stream;
 }
 
-#endif

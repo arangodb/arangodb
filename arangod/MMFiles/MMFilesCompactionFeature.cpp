@@ -98,7 +98,7 @@ void MMFilesCompactionFeature::validateOptions(std::shared_ptr<options::ProgramO
   if (_deadSizeThreshold < 10240) {
     LOG_TOPIC(WARN, Logger::COMPACTOR)
       << "compaction.dead-size-threshold should be at least 10k.";
-    _deadNumberThreshold = 10240;
+    _deadSizeThreshold = 10240;
   }
 
   if (_deadShare < 0.001) {

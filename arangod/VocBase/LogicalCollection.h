@@ -45,7 +45,7 @@ typedef std::string CollectionID;  // ID of a collection
 typedef std::string ShardID;       // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
 
-struct DocumentIdentifierToken;
+struct LocalDocumentId;
 class FollowerInfo;
 class Index;
 class IndexIterator;
@@ -195,7 +195,7 @@ class LogicalCollection {
 
   void invokeOnAllElements(
       transaction::Methods* trx,
-      std::function<bool(DocumentIdentifierToken const&)> callback);
+      std::function<bool(LocalDocumentId const&)> callback);
 
   //// SECTION: Indexes
 
@@ -314,11 +314,11 @@ class LogicalCollection {
                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous);
 
   bool readDocument(transaction::Methods* trx,
-                    DocumentIdentifierToken const& token,
+                    LocalDocumentId const& token,
                     ManagedDocumentResult& result);
   
   bool readDocumentWithCallback(transaction::Methods* trx,
-                                DocumentIdentifierToken const& token,
+                                LocalDocumentId const& token,
                                 IndexIterator::DocumentCallback const& cb);
 
   /// @brief Persist the connected physical collection.
