@@ -29,6 +29,7 @@
 #include "Basics/fasthash.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "MMFiles/MMFilesIndex.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -59,8 +60,8 @@ struct MMFilesEdgeIndexHelper {
       return element.hash();
     }
 
-    TRI_voc_rid_t revisionId = element.revisionId();
-    return fasthash64_uint64(revisionId, 0x56781234);
+    uint64_t documentId = element.localDocumentIdValue();
+    return fasthash64_uint64(documentId, 0x56781234);
   }
 
   /// @brief checks if key and element match
@@ -82,7 +83,7 @@ struct MMFilesEdgeIndexHelper {
   /// @brief checks for elements are equal
   inline bool IsEqualElementElement(void*, MMFilesSimpleIndexElement const& left,
                                     MMFilesSimpleIndexElement const& right) const {
-    return left.revisionId() == right.revisionId();
+    return left.localDocumentId() == right.localDocumentId();
   }
 
   /// @brief checks for elements are equal
@@ -121,7 +122,7 @@ class MMFilesEdgeIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "edge-index-iterator"; }
 
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
   void reset() override;
 
@@ -135,7 +136,7 @@ class MMFilesEdgeIndexIterator final : public IndexIterator {
   MMFilesSimpleIndexElement _lastElement;
 };
 
-class MMFilesEdgeIndex final : public Index {
+class MMFilesEdgeIndex final : public MMFilesIndex {
  public:
   MMFilesEdgeIndex() = delete;
 
@@ -163,14 +164,14 @@ class MMFilesEdgeIndex final : public Index {
 
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  Result insert(transaction::Methods*, TRI_voc_rid_t,
+  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  Result remove(transaction::Methods*, TRI_voc_rid_t,
+  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
   void batchInsert(transaction::Methods*,
-                   std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&,
+                   std::vector<std::pair<LocalDocumentId, VPackSlice>> const&,
                    std::shared_ptr<arangodb::basics::LocalTaskQueue>) override;
 
   void load() override {}
@@ -218,9 +219,9 @@ class MMFilesEdgeIndex final : public Index {
                      arangodb::aql::AstNode const* valNode) const;
 
   MMFilesSimpleIndexElement buildFromElement(
-      TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;
+      LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) const;
   MMFilesSimpleIndexElement buildToElement(
-      TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;
+      LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) const;
 
  private:
   /// @brief the hash table for _from

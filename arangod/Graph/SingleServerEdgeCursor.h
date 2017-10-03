@@ -30,7 +30,7 @@
 
 namespace arangodb {
 
-struct DocumentIdentifierToken;
+struct LocalDocumentId;
 class ManagedDocumentResult;
 struct OperationCursor;
 class StringRef;
@@ -56,7 +56,7 @@ class SingleServerEdgeCursor : public EdgeCursor {
   std::vector<std::vector<OperationCursor*>> _cursors;
   size_t _currentCursor;
   size_t _currentSubCursor;
-  std::vector<DocumentIdentifierToken> _cache;
+  std::vector<LocalDocumentId> _cache;
   size_t _cachePos;
   std::vector<size_t> const* _internalCursorMapping;
   using Callback = std::function<void(EdgeDocumentToken&&, arangodb::velocypack::Slice, size_t)>;

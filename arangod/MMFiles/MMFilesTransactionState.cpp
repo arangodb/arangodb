@@ -214,10 +214,10 @@ Result MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx
 }
 
 /// @brief add a WAL operation for a transaction collection
-int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
-                                   MMFilesDocumentOperation& operation,
-                                   MMFilesWalMarker const* marker,
-                                   bool& waitForSync) {
+int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
+                                          MMFilesDocumentOperation& operation,
+                                          MMFilesWalMarker const* marker,
+                                          bool& waitForSync) {
   LogicalCollection* collection = operation.collection();
   bool const isSingleOperationTransaction = isSingleOperation();
 
@@ -307,7 +307,7 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
     uint8_t const* vpack = reinterpret_cast<uint8_t const*>(position) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
     TRI_ASSERT(fid > 0);
     operation.setVPack(vpack);
-    physical->updateRevision(revisionId, vpack, fid, true); // always in WAL
+    physical->updateLocalDocumentId(documentId, vpack, fid, true); // always in WAL
   }
 
   TRI_IF_FAILURE("TransactionOperationAfterAdjust") { return TRI_ERROR_DEBUG; }
@@ -353,7 +353,7 @@ int MMFilesTransactionState::addOperation(TRI_voc_rid_t revisionId,
         _vocbase, collection->name());
   }
 
-  physical->setRevision(revisionId, false);
+  physical->setRevision(documentId.id(), false);
 
   TRI_IF_FAILURE("TransactionOperationAtEnd") { return TRI_ERROR_DEBUG; }
 

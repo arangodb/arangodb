@@ -58,7 +58,6 @@ SECTION("tst_basic_elements") {
   CHECK(4 == (int) sizeof(TRI_voc_crc_t));
   CHECK(8 == (int) sizeof(TRI_voc_tid_t));
   CHECK(8 == (int) sizeof(TRI_voc_rid_t));
-  CHECK(4 == (int) sizeof(TRI_voc_size_t));
   CHECK(8 == (int) sizeof(TRI_voc_tick_t));
 }
 

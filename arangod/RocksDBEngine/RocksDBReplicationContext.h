@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
-#include "RocksDBEngine/RocksDBToken.h"
 #include "Transaction/Methods.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
@@ -45,8 +44,8 @@ class RocksDBReplicationContext {
   static double const DefaultTTL;
 
  private:
-  typedef std::function<void(DocumentIdentifierToken const& token)>
-      TokenCallback;
+  typedef std::function<void(LocalDocumentId const& token)>
+      LocalDocumentIdCallback;
 
  public:
   RocksDBReplicationContext();

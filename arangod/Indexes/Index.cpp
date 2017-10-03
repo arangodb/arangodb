@@ -73,6 +73,7 @@ Index::Index(TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
             Index::allowExpansion(Index::type(slice.get("type").copyString())));
 }
 
+/// TODO: can we remove this?
 /// @brief create an index stub with a hard-coded selectivity estimate
 /// this is used in the cluster coordinator case
 Index::Index(VPackSlice const& slice)
@@ -543,8 +544,7 @@ bool Index::implicitlyUnique() const {
 
 void Index::batchInsert(
     transaction::Methods* trx,
-    std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&
-        documents,
+    std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   for (auto const& it : documents) {
     Result status = insert(trx, it.first, it.second, false);

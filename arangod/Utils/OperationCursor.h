@@ -72,7 +72,12 @@ struct OperationCursor {
   
   LogicalCollection* collection() const;
 
-  bool hasMore();
+  inline bool hasMore() {
+    if (_hasMore && _limit == 0) {
+      _hasMore = false;
+    }
+    return _hasMore;
+  }
 
   bool successful() const {
     return code == TRI_ERROR_NO_ERROR;
@@ -88,7 +93,7 @@ struct OperationCursor {
   void reset();
 
 /// @brief Calls cb for the next batchSize many elements 
-  bool next(IndexIterator::TokenCallback const& callback,
+  bool next(IndexIterator::LocalDocumentIdCallback const& callback,
       uint64_t batchSize);
   
 /// @brief Calls cb for the next batchSize many elements 
@@ -99,7 +104,7 @@ struct OperationCursor {
                     uint64_t batchSize);
   
 /// @brief convenience function to retrieve all results
-  void all(IndexIterator::TokenCallback const& callback) {
+  void all(IndexIterator::LocalDocumentIdCallback const& callback) {
     while (next(callback, 1000)) {}
   }
 

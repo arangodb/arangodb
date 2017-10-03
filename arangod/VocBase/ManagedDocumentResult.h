@@ -25,6 +25,7 @@
 #define ARANGOD_VOC_BASE_MANAGED_DOCUMENT_RESULT_H 1
 
 #include "Basics/Common.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -40,7 +41,7 @@ class ManagedDocumentResult {
  public:
   ManagedDocumentResult() :
     _length(0),
-    _lastRevisionId(0),
+    _localDocumentId(),
     _vpack(nullptr),
     _managed(false),
     _useString(false) {}
@@ -50,19 +51,19 @@ class ManagedDocumentResult {
 
   ManagedDocumentResult& operator=(ManagedDocumentResult&& other) {
     if (other._useString) {
-      setManaged(std::move(other._string), other._lastRevisionId);
+      setManaged(std::move(other._string), other._localDocumentId);
       other._managed = false;
       other.reset();
     } else if (other._managed){
       reset();
       _vpack = other._vpack;
       _length = other._length;
-      _lastRevisionId = other._lastRevisionId;
+      _localDocumentId = other._localDocumentId;
       _managed = true;
       other._managed = false;
       other.reset();
     } else {
-      setUnmanaged(other._vpack, other._lastRevisionId);
+      setUnmanaged(other._vpack, other._localDocumentId);
     }
     return *this;
   }
@@ -72,13 +73,12 @@ class ManagedDocumentResult {
   void clone(ManagedDocumentResult& cloned) const;
 
   //add unmanaged vpack 
-  void setUnmanaged(uint8_t const* vpack, TRI_voc_rid_t revisionId);
+  void setUnmanaged(uint8_t const* vpack, LocalDocumentId const& documentId);
 
-  void setManaged(uint8_t const* vpack, TRI_voc_rid_t revisionId);
+  void setManaged(uint8_t const* vpack, LocalDocumentId const& documentId);
+  void setManaged(std::string&& str, LocalDocumentId const& documentId);
 
-  void setManaged(std::string&& str, TRI_voc_rid_t revisionId);
-
-  inline TRI_voc_rid_t lastRevisionId() const { return _lastRevisionId; }
+  inline LocalDocumentId localDocumentId() const { return _localDocumentId; }
   
   void reset() noexcept;
 
@@ -88,7 +88,7 @@ class ManagedDocumentResult {
     return &_string; 
   }
   
-  void setManagedAfterStringUsage(TRI_voc_rid_t revisionId);
+  void setManagedAfterStringUsage(LocalDocumentId const& documentId);
   
   inline uint8_t const* vpack() const {
     TRI_ASSERT(_vpack != nullptr);
@@ -105,7 +105,7 @@ class ManagedDocumentResult {
 
  private:
   uint64_t _length;
-  TRI_voc_rid_t _lastRevisionId;
+  LocalDocumentId _localDocumentId;
   uint8_t* _vpack;
   std::string _string;
   bool _managed;

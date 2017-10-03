@@ -41,7 +41,7 @@ MMFilesWalLogfile::~MMFilesWalLogfile() {
 /// @brief create a new logfile
 MMFilesWalLogfile* MMFilesWalLogfile::createNew(std::string const& filename, MMFilesWalLogfile::IdType id,
                             uint32_t size) {
-  std::unique_ptr<MMFilesDatafile> df(MMFilesDatafile::create(filename, id, static_cast<TRI_voc_size_t>(size), false));
+  std::unique_ptr<MMFilesDatafile> df(MMFilesDatafile::create(filename, id, static_cast<uint32_t>(size), false));
 
   if (df == nullptr) {
     int res = TRI_errno();

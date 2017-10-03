@@ -306,7 +306,7 @@ static void JS_TruncateDatafileVocbaseCol(
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_UNLOADED);
   }
 
-  int res = MMFilesDatafile::truncate(path, static_cast<TRI_voc_size_t>(size));
+  int res = MMFilesDatafile::truncate(path, static_cast<uint32_t>(size));
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot truncate datafile");
