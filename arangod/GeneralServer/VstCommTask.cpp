@@ -242,36 +242,38 @@ bool VstCommTask::isChunkComplete(char* start) {
 }
 
 void VstCommTask::handleAuthHeader(VPackSlice const& header,
-                                       uint64_t messageId) {
+                                   uint64_t messageId) {
   _authorized = false;
-  if (_authentication->isActive()) {
-    std::string auth, user;
-    AuthenticationMethod authType = AuthenticationMethod::NONE;
+  
+  std::string authString;
+  std::string user = "";
+  AuthenticationMethod authType = AuthenticationMethod::NONE;
 
-    std::string encryption = header.at(2).copyString();
-    if (encryption == "jwt") {// doing JWT
-      auth = header.at(3).copyString();
-      authType = AuthenticationMethod::JWT;
-    } else if (encryption == "plain") {
-      user = header.at(3).copyString();
-      std::string pass = header.at(4).copyString();
-      auth = basics::StringUtils::encodeBase64(user + ":" + pass);
-      authType = AuthenticationMethod::BASIC;
-    } else {
-      LOG_TOPIC(ERR, Logger::REQUESTS) << "Unknown VST encryption type";
-    }
-    AuthResult result = _authentication->authInfo()->checkAuthentication(
-        authType, auth);
-
+  std::string encryption = header.at(2).copyString();
+  if (encryption == "jwt") {// doing JWT
+    authString = header.at(3).copyString();
+    authType = AuthenticationMethod::JWT;
+  } else if (encryption == "plain") {
+    user = header.at(3).copyString();
+    std::string pass = header.at(4).copyString();
+    authString = basics::StringUtils::encodeBase64(user + ":" + pass);
+    authType = AuthenticationMethod::BASIC;
+  } else {
+    LOG_TOPIC(ERR, Logger::REQUESTS) << "Unknown VST encryption type";
+  }
+  
+  if (_authentication->isActive()) { // will just fail if method is NONE
+    AuthResult result = _authentication->authInfo()->checkAuthentication(authType, authString);
     _authorized = result._authorized;
     if (_authorized) {
       _authenticatedUser = std::move(result._username);
     }
   } else {
     _authorized = true;
+    _authenticatedUser = std::move(user); // may be empty
   }
   
- VstRequest fakeRequest( _connectionInfo, VstInputMessage{}, 0, true /*fakeRequest*/);
+ VstRequest fakeRequest(_connectionInfo, VstInputMessage{}, 0, true /*fakeRequest*/);
   if (_authorized) {
     // mop: hmmm...user should be completely ignored if there is no auth IMHO
     // obi: user who sends authentication expects a reply

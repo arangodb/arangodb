@@ -379,7 +379,8 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
     dbLevel = request->execContext()->databaseAuthLevel();
   }
   
-  // we need to check for some special cases
+  // we need to check for some special cases, where users may be allowed
+  // to proceed even unauthorized
   if (!request->authorized()) {
     
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
@@ -420,7 +421,6 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
       }
     }
   }
-  
   
   if (result != rest::ResponseCode::OK) {
     return result;

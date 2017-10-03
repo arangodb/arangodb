@@ -50,7 +50,7 @@ private:
   static ExecContext const* superuser();
   
   /// @brief a reference to a user with NONE for everything. Caller
-  ///        is responsible for deleting
+  ///        is responsible for deleting the object
   static ExecContext* createUnauthorized(std::string const& user,
                                          std::string const& db);
   
@@ -118,10 +118,7 @@ private:
 
 /// @brief scope guard for the exec context
 struct ExecContextScope {
-  ExecContextScope() : _old(ExecContext::CURRENT) {
-    ExecContext::CURRENT = nullptr;
-  }
-
+  
   explicit ExecContextScope(ExecContext const* exe)
       : _old(ExecContext::CURRENT) {
     ExecContext::CURRENT = exe;

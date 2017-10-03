@@ -300,14 +300,15 @@ V8Task::callbackFunction() {
 
     // get the permissions to be used by this task
     bool allowContinue = true;
+    
     std::unique_ptr<ExecContext> execContext;
-    TRI_DEFER(ExecContext::CURRENT = nullptr);
     if (!_user.empty()) { // not superuser
       std::string const& dbname = _dbGuard->database()->name();
       execContext.reset(ExecContext::create(_user, dbname));
-      ExecContext::CURRENT = execContext.get();
       allowContinue = execContext->canUseDatabase(dbname, AuthLevel::RW);
     }
+    ExecContextScope scope(_user.empty() ?
+                           ExecContext::superuser() : execContext.get());
 
     // permissions might have changed since starting this task
     if (SchedulerFeature::SCHEDULER->isStopping() || !allowContinue) {
@@ -331,6 +332,7 @@ V8Task::callbackFunction() {
 
 void V8Task::start() {
   TRI_ASSERT(ExecContext::CURRENT == nullptr ||
+             ExecContext::CURRENT == ExecContext::superuser() ||
              (!_user.empty() && ExecContext::CURRENT->user() == _user));
   
   auto ioService = SchedulerFeature::SCHEDULER->ioService();

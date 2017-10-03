@@ -213,7 +213,7 @@ RestStatus RestBatchHandler::executeHttp() {
     {
       // ignore any errors here, will be handled later by inspecting the response
       try {
-        ExecContextScope scope;// we need to reset this here
+        ExecContextScope scope(nullptr);// workaround because of assertions
         handler->syncRunEngine();
       } catch (...) {
       }
