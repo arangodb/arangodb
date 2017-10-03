@@ -33,7 +33,6 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
-#include "StorageEngine/DocumentIdentifierToken.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
@@ -511,17 +510,17 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   IndexIterator::DocumentCallback callback;
   if (_indexes.size() > 1) {
     // Activate uniqueness checks
-    callback = [&](DocumentIdentifierToken const& token, VPackSlice slice) {
+    callback = [&](LocalDocumentId const& token, VPackSlice slice) {
       TRI_ASSERT(res != nullptr);
       if (!_isLastIndex) {
         // insert & check for duplicates in one go
-        if (!_alreadyReturned.emplace(token._data).second) {
-          // Document already in list. Skip it
+        if (!_alreadyReturned.emplace(token.id()).second) {
+          // Document already in list. Skip this
           return;
         }
       } else {
         // only check for duplicates
-        if (_alreadyReturned.find(token._data) != _alreadyReturned.end()) {
+        if (_alreadyReturned.find(token.id()) != _alreadyReturned.end()) {
           // Document found, skip
           return;
         }
@@ -531,7 +530,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     };
   } else {
     // No uniqueness checks
-    callback = [&](DocumentIdentifierToken const& token, VPackSlice slice) {
+    callback = [&](LocalDocumentId const& token, VPackSlice slice) {
       TRI_ASSERT(res.get() != nullptr);
       _documentProducer(res.get(), slice, curRegs, _returned, copyFromRow);
     };

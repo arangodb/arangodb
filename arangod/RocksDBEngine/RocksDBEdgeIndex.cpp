@@ -34,22 +34,20 @@
 #include "Cache/TransactionalCache.h"
 #include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SchedulerFeature.h"
-#include "Transaction/Context.h"
-#include "Transaction/Helpers.h"
-#include "Transaction/Methods.h"
-#include "VocBase/LogicalCollection.h"
-
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBMethods.h"
-#include "RocksDBEngine/RocksDBToken.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
+#include "Transaction/Context.h"
+#include "Transaction/Helpers.h"
+#include "Transaction/Methods.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <rocksdb/db.h>
 #include <rocksdb/utilities/transaction_db.h>
@@ -126,7 +124,7 @@ void RocksDBEdgeIndexIterator::reset() {
       VPackArrayIterator(arangodb::basics::VelocyPackHelper::EmptyArrayValue());
 }
 
-bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool RocksDBEdgeIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 #ifdef USE_MAINTAINER_MODE
   TRI_ASSERT(limit > 0);  // Someone called with limit == 0. Api broken
@@ -143,7 +141,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
       // We still have unreturned edges in out memory.
       // Just plainly return those.
       TRI_ASSERT(_builderIterator.value().isNumber());
-      cb(RocksDBToken{_builderIterator.value().getNumericValue<uint64_t>()});
+      cb(LocalDocumentId{_builderIterator.value().getNumericValue<uint64_t>()});
       limit--;
 
       // Twice advance the iterator
@@ -187,7 +185,7 @@ bool RocksDBEdgeIndexIterator::next(TokenCallback const& cb, size_t limit) {
             _builderIterator = VPackArrayIterator(cachedData);
             while (_builderIterator.valid()) {
               TRI_ASSERT(_builderIterator.value().isNumber());
-              cb(RocksDBToken{
+              cb(LocalDocumentId{
                   _builderIterator.value().getNumericValue<uint64_t>()});
               limit--;
 
@@ -246,7 +244,7 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
       // We still have unreturned edges in out memory.
       // Just plainly return those.
       TRI_ASSERT(_builderIterator.value().isNumber());
-      RocksDBToken tkn{_builderIterator.value().getNumericValue<uint64_t>()};
+      LocalDocumentId tkn{_builderIterator.value().getNumericValue<uint64_t>()};
       _builderIterator.next();
       TRI_ASSERT(_builderIterator.valid());
       // For now we store the complete opposite _from/_to value
@@ -292,7 +290,7 @@ bool RocksDBEdgeIndexIterator::nextExtra(ExtraCallback const& cb,
             _builderIterator = VPackArrayIterator(cachedData);
             while (_builderIterator.valid()) {
               TRI_ASSERT(_builderIterator.value().isNumber());
-              RocksDBToken tkn{
+              LocalDocumentId tkn{
                   _builderIterator.value().getNumericValue<uint64_t>()};
 
               _builderIterator.next();
@@ -346,12 +344,11 @@ void RocksDBEdgeIndexIterator::lookupInRocksDB(StringRef fromTo) {
   _builder.openArray(true);
   auto end = _bounds.end();
   while (_iterator->Valid() && (cmp->Compare(_iterator->key(), end) < 0)) {
-    TRI_voc_rid_t revisionId = RocksDBKey::revisionId(
-        RocksDBEntryType::EdgeIndexValue, _iterator->key());
-    RocksDBToken token(revisionId);
+    LocalDocumentId const documentId = LocalDocumentId(RocksDBKey::revisionId(
+        RocksDBEntryType::EdgeIndexValue, _iterator->key()));
 
     // adding revision ID and _from or _to value
-    _builder.add(VPackValue(token.revisionId()));
+    _builder.add(VPackValue(documentId.id()));
     StringRef vertexId = RocksDBValue::vertexId(_iterator->value());
     _builder.add(VPackValuePair(vertexId.data(), vertexId.size(),
                                 VPackValueType::String));
@@ -449,13 +446,13 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 
 Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
                                         RocksDBMethods* mthd,
-                                        TRI_voc_rid_t revisionId,
+                                        LocalDocumentId const& documentId,
                                         VPackSlice const& doc) {
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
   auto fromToRef = StringRef(fromTo);
   RocksDBKeyLeaser key(trx);
-  key->constructEdgeIndexValue(_objectId, fromToRef, revisionId);
+  key->constructEdgeIndexValue(_objectId, fromToRef, documentId.id());
   VPackSlice toFrom = _isFromIndex
                           ? transaction::helpers::extractToFromDocument(doc)
                           : transaction::helpers::extractFromFromDocument(doc);
@@ -480,14 +477,14 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
 
 Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
                                         RocksDBMethods* mthd,
-                                        TRI_voc_rid_t revisionId,
+                                        LocalDocumentId const& documentId,
                                         VPackSlice const& doc) {
   // VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
   auto fromToRef = StringRef(fromTo);
   TRI_ASSERT(fromTo.isString());
   RocksDBKeyLeaser key(trx);
-  key->constructEdgeIndexValue(_objectId, fromToRef, revisionId);
+  key->constructEdgeIndexValue(_objectId, fromToRef, documentId.id());
   VPackSlice toFrom = _isFromIndex
                           ? transaction::helpers::extractToFromDocument(doc)
                           : transaction::helpers::extractFromFromDocument(doc);
@@ -510,16 +507,15 @@ Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
 
 void RocksDBEdgeIndex::batchInsert(
     transaction::Methods* trx,
-    std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const& documents,
+    std::vector<std::pair<LocalDocumentId, VPackSlice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   auto* mthds = RocksDBTransactionState::toMethods(trx);
-  for (std::pair<TRI_voc_rid_t, VPackSlice> const& doc : documents) {
-    // VPackSlice primaryKey = doc.second.get(StaticStrings::KeyString);
+  for (auto const& doc : documents) {
     VPackSlice fromTo = doc.second.get(_directionAttr);
     TRI_ASSERT(fromTo.isString());
     auto fromToRef = StringRef(fromTo);
     RocksDBKeyLeaser key(trx);
-    key->constructEdgeIndexValue(_objectId, fromToRef, doc.first);
+    key->constructEdgeIndexValue(_objectId, fromToRef, doc.first.id());
 
     blackListKey(fromToRef);
     Result r = mthds->Put(_cf, key.ref(),
@@ -835,11 +831,9 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       }
     }
     if (needsInsert) {
-      TRI_voc_rid_t revId =
-          RocksDBKey::revisionId(RocksDBEntryType::EdgeIndexValue, key);
-      RocksDBToken token(revId);
-      if (rocksColl->readDocument(trx, token, mmdr)) {
-        builder.add(VPackValue(token.revisionId()));
+      LocalDocumentId const documentId(RocksDBKey::revisionId(RocksDBEntryType::EdgeIndexValue, key));
+      if (rocksColl->readDocument(trx, documentId, mmdr)) {
+        builder.add(VPackValue(documentId.id()));
 
         VPackSlice doc(mmdr.vpack());
         VPackSlice toFrom =

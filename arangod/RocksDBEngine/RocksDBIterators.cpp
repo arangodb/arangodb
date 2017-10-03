@@ -81,7 +81,7 @@ bool RocksDBAllIndexIterator::outOfRange() const {
   }
 }
 
-bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool RocksDBAllIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -98,7 +98,7 @@ bool RocksDBAllIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
     TRI_voc_rid_t revisionId =
         RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
-    cb(RocksDBToken(revisionId));
+    cb(LocalDocumentId(revisionId));
 
     --limit;
     if (_reverse) {
@@ -128,7 +128,7 @@ bool RocksDBAllIndexIterator::nextDocument(
 
   while (limit > 0) {
     TRI_voc_rid_t revisionId = RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
-    cb(RocksDBToken(revisionId), VPackSlice(_iterator->value().data()));
+    cb(LocalDocumentId(revisionId), VPackSlice(_iterator->value().data()));
     --limit;
 
     if (_reverse) {
@@ -212,7 +212,7 @@ RocksDBAnyIndexIterator::RocksDBAnyIndexIterator(
   }
 }
 
-bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool RocksDBAnyIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -225,7 +225,7 @@ bool RocksDBAnyIndexIterator::next(TokenCallback const& cb, size_t limit) {
   while (limit > 0) {
     TRI_voc_rid_t revisionId =
         RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
-    cb(RocksDBToken(revisionId));
+    cb(LocalDocumentId(revisionId));
     --limit;
     _returned++;
     _iterator->Next();
@@ -253,7 +253,7 @@ bool RocksDBAnyIndexIterator::nextDocument(
 
   while (limit > 0) {
     TRI_voc_rid_t revisionId = RocksDBKey::revisionId(RocksDBEntryType::Document, _iterator->key());
-    cb(RocksDBToken(revisionId), VPackSlice(_iterator->value().data()));
+    cb(LocalDocumentId(revisionId), VPackSlice(_iterator->value().data()));
     --limit;
     _returned++;
     _iterator->Next();
@@ -305,7 +305,7 @@ bool RocksDBSortedAllIterator::outOfRange() const {
   return _cmp->Compare(_iterator->key(), _bounds.end()) > 0;
 }
 
-bool RocksDBSortedAllIterator::next(TokenCallback const& cb, size_t limit) {
+bool RocksDBSortedAllIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   TRI_ASSERT(_trx->state()->isRunning());
 
   if (limit == 0 || !_iterator->Valid() || outOfRange()) {
@@ -316,7 +316,7 @@ bool RocksDBSortedAllIterator::next(TokenCallback const& cb, size_t limit) {
   }
 
   while (limit > 0) {
-    RocksDBToken token(RocksDBValue::revisionId(_iterator->value()));
+    LocalDocumentId token(RocksDBValue::revisionId(_iterator->value()));
     cb(token);
 
     --limit;
@@ -346,7 +346,7 @@ bool RocksDBSortedAllIterator::nextWithKey(TokenKeyCallback const& cb,
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(_iterator->key()));
 #endif
-    RocksDBToken token(RocksDBValue::revisionId(_iterator->value()));
+    LocalDocumentId token(RocksDBValue::revisionId(_iterator->value()));
     StringRef key = RocksDBKey::primaryKey(_iterator->key());
     cb(token, key);
     --limit;

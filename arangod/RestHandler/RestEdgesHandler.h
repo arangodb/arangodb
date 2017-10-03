@@ -30,7 +30,7 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb {
-struct DocumentIdentifierToken;
+struct LocalDocumentId;
 class SingleCollectionTransaction;
 
 namespace aql {
@@ -66,7 +66,7 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   void readCursor(aql::AstNode* condition, aql::Variable const* var,
                   std::string const& collectionName,
                   SingleCollectionTransaction& trx,
-                  std::function<void(DocumentIdentifierToken const&)> cb);
+                  std::function<void(LocalDocumentId const&)> cb);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get all edges for a given vertex. Independent from the request
@@ -75,7 +75,7 @@ class RestEdgesHandler : public RestVocbaseBaseHandler {
   bool getEdgesForVertex(
       std::string const& id, std::string const& collectionName,
       TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
-      std::function<void(DocumentIdentifierToken const&)> cb);
+      std::function<void(LocalDocumentId const&)> cb);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Parse the direction parameter

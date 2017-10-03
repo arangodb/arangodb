@@ -32,7 +32,6 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
-#include "RocksDBEngine/RocksDBToken.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -58,7 +57,7 @@ class RocksDBEdgeIndexIterator final : public IndexIterator {
   ~RocksDBEdgeIndexIterator();
   char const* typeName() const override { return "edge-index-iterator"; }
   bool hasExtra() const override { return true; }
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
   bool nextExtra(ExtraCallback const& cb, size_t limit) override;
   void reset() override;
 
@@ -130,7 +129,7 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   void batchInsert(
       transaction::Methods*,
-      std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
+      std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const&,
       std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) override;
 
   bool hasBatchInsert() const override { return false; }
@@ -164,10 +163,12 @@ class RocksDBEdgeIndex final : public RocksDBIndex {
 
   void recalculateEstimates() override;
 
-  Result insertInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
+  Result insertInternal(transaction::Methods*, RocksDBMethods*, 
+                        LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&) override;
 
-  Result removeInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
+  Result removeInternal(transaction::Methods*, RocksDBMethods*, 
+                        LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&) override;
 
  protected:
