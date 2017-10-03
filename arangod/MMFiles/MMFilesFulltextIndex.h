@@ -34,7 +34,7 @@
 #include <velocypack/velocypack-aliases.h>
 
 namespace arangodb {
-struct LocalDocumentId;
+class LocalDocumentId;
 
 class MMFilesFulltextIndex final : public MMFilesIndex {
  public:
