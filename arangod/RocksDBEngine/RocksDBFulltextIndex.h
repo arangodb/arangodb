@@ -43,7 +43,7 @@
 #define TRI_FULLTEXT_SEARCH_MAX_WORDS 32
 
 namespace arangodb {
-struct LocalDocumentId;
+class LocalDocumentId;
 
 struct FulltextQueryToken {
   /// @brief fulltext query match options
