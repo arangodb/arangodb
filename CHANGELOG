@@ -3,6 +3,13 @@ devel
 
 * added config option `--log.color` to toggle colorful logging to terminal
 
+* usernames must not start with `:role:`, added new options:
+    --server.authentication-timeout
+    --ldap.roles-attribute-name
+    --ldap.roles-transformation
+    --ldap.roles-search
+    --ldap.superuser-role
+
 * performance improvements for full collection scans and a few other operations
   in MMFiles engine
 

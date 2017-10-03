@@ -79,6 +79,10 @@ void AuthenticationFeature::collectOptions(
                      "enable or disable authentication for ALL client requests",
                      new BooleanParameter(&_active));
 
+  options->addOption("--server.authentication-timeout",
+                     "timeout for the authentication cache (0 = undefinitely)",
+                     new DoubleParameter(&_authenticationTimeout));
+
   options->addOption(
       "--server.authentication-system-only",
       "use HTTP authentication only for requests to /_api and /_admin",
