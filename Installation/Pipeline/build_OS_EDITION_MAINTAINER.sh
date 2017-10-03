@@ -3,7 +3,6 @@ concurrency=$1
 os=$2
 edition=$3
 maintainer=$4
-logdir=$5
 
 ENTERPRISE=""
 type="build"
@@ -62,36 +61,37 @@ rm -f $GENPATH
 ln -s `pwd` $GENPATH
 cd $GENPATH
 
-if [ -z "$logdir" ]; then
-  logdir=log-output
-  rm -rf $logdir
-  mkdir -p $logdir
+if test -z "$CMAKE_BUILD_TYPE"; then
+    CMAKE_BUILD_TYPE=RelWithDebInfo
 fi
 
-touch $logdir/build.log
+echo "CONCURRENY: $concurrency"
+echo "HOST: `hostname`"
+echo "PWD: `pwd`"
+echo "BUILD_TYPE: $CMAKE_BUILD_TYPE"
 
-echo "CONCURRENY: $concurrency" | tee -a $logdir/build.log
-echo "HOST: `hostname`" | tee -a $logdir/build.log
-echo "PWD: `pwd`" | tee -a $logdir/build.log
-
-(
-    set -eo pipefail
-    cd build
-
+function configureBuild {
     echo "`date +%T` configuring..."
     CXXFLAGS=-fno-omit-frame-pointer \
         cmake \
-            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
             -DCMAKE_INSTALL_PREFIX=/ \
             -DUSE_CATCH_TESTS=On \
             -DDEBUG_SYNC_REPLICATION=On \
             $ENTERPRISE \
             $MAINTAINER \
             $PACKAGING \
-            ..  2>&1 | tee -a ../$logdir/build.log
+            ..
+}
+
+(
+    set -eo pipefail
+    cd build
+
+    configureBuild
 
     echo "`date +%T` building..."
-    make -j $concurrency -l $load 2>&1 | tee -a ../$logdir/build.log
+    make -j $concurrency -l $load 2>&1
 ) || exit 1
 
 echo "`date +%T` done..."

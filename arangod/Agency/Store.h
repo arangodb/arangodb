@@ -25,7 +25,6 @@
 #define ARANGOD_CONSENSUS_STORE_H 1
 
 #include "Basics/ConditionVariable.h"
-#include "Basics/Thread.h"
 #include "Node.h"
 
 namespace arangodb {
@@ -67,7 +66,7 @@ enum CheckMode {FIRST_FAIL, FULL};
 class Agent;
 
 /// @brief Key value tree
-class Store : public arangodb::Thread {
+class Store {
  public:
   /// @brief Construct with name
   explicit Store(Agent* agent, std::string const& name = "root");
@@ -109,12 +108,6 @@ class Store : public arangodb::Thread {
   bool read(arangodb::velocypack::Slice const&,
             arangodb::velocypack::Builder&) const;
   
-  /// @brief Begin shutdown of thread
-  void beginShutdown() override final;
-
-  /// @brief Start thread
-  bool start();
-
   /// @brief Dump everything to builder
   void dumpToBuilder(Builder&) const;
 
@@ -163,8 +156,6 @@ class Store : public arangodb::Thread {
   query_t clearExpired() const;
 
   /// @brief Run thread
-  void run() override final;
-
  private:
   /// @brief Condition variable guarding removal of expired entries
   mutable arangodb::basics::ConditionVariable _cv;

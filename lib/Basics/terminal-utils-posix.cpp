@@ -31,14 +31,15 @@
 /// @brief returns the columns width
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ColumnsWidth() {
+TRI_TerminalSize TRI_DefaultTerminalSize() {
   unsigned short values[4];
-
+  
   int ret;
-
   ret = ioctl(0, TIOCGWINSZ, &values);
-
-  return ret == -1 ? TRI_DEFAULT_COLUMNS : values[1];
+  if (ret == -1) {
+    return TRI_DEFAULT_TERMINAL_SIZE;
+  }
+  return TRI_TerminalSize{values[0], values[1]};
 }
 
 #endif

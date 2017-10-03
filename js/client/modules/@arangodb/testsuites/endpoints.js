@@ -95,8 +95,8 @@ function endpoints (options) {
         let result = tu.runInArangosh(options, instanceInfo, 'js/client/tests/endpoint-spec.js');
 
         print(CYAN + 'Shutting down...' + RESET);
-
-        pu.shutdownInstance(instanceInfo, Object.assign(options));
+        // mop: mehhh...when launched with a socket we can't use download :S
+        pu.shutdownInstance(instanceInfo, Object.assign(options, {useKillExternal: true}));
         print(CYAN + 'done.' + RESET);
 
         if (!result.status) {

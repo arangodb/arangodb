@@ -31,7 +31,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/IndexResult.h"
-#include "MMFiles/MMFilesToken.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -557,7 +556,7 @@ void MMFilesSkiplistIterator::reset() {
   }
 }
 
-bool MMFilesSkiplistIterator::next(TokenCallback const& cb, size_t limit) {
+bool MMFilesSkiplistIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   while (limit > 0) {
     if (_cursor == nullptr) {
       // We are exhausted already, sorry
@@ -581,7 +580,7 @@ bool MMFilesSkiplistIterator::next(TokenCallback const& cb, size_t limit) {
     }
     TRI_ASSERT(tmp != nullptr);
     TRI_ASSERT(tmp->document() != nullptr);
-    cb(MMFilesToken{tmp->document()->revisionId()});
+    cb(tmp->document()->localDocumentId());
     limit--;
   }
   return true;
@@ -680,7 +679,7 @@ void MMFilesSkiplistIterator::initNextInterval() {
 MMFilesSkiplistIndex::MMFilesSkiplistIndex(
     TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     VPackSlice const& info)
-    : MMFilesPathBasedIndex(iid, collection, info, sizeof(TRI_voc_rid_t), true),
+    : MMFilesPathBasedIndex(iid, collection, info, sizeof(LocalDocumentId), true),
       CmpElmElm(this),
       CmpKeyElm(this),
       _skiplistIndex(nullptr) {
@@ -709,13 +708,13 @@ void MMFilesSkiplistIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 
 /// @brief inserts a document into a skiplist index
 Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
-                                    TRI_voc_rid_t revisionId,
+                                    LocalDocumentId const& documentId,
                                     VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
   try {
-    res = fillElement<MMFilesSkiplistIndexElement>(elements, revisionId, doc);
+    res = fillElement<MMFilesSkiplistIndexElement>(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {
@@ -765,13 +764,13 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
 
 /// @brief removes a document from a skiplist index
 Result MMFilesSkiplistIndex::remove(transaction::Methods* trx,
-                                    TRI_voc_rid_t revisionId,
+                                    LocalDocumentId const& documentId,
                                     VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
   try {
-    res = fillElement<MMFilesSkiplistIndexElement>(elements, revisionId, doc);
+    res = fillElement<MMFilesSkiplistIndexElement>(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {
@@ -872,7 +871,7 @@ int MMFilesSkiplistIndex::ElementElementComparator::operator()(
 
   if (leftElement == rightElement ||
       (!_idx->_skiplistIndex->isArray() &&
-       leftElement->revisionId() == rightElement->revisionId())) {
+       leftElement->localDocumentId() == rightElement->localDocumentId())) {
     return 0;
   }
 
@@ -898,10 +897,10 @@ int MMFilesSkiplistIndex::ElementElementComparator::operator()(
   }
 
   // We break this tie in the key comparison by looking at the key:
-  if (leftElement->revisionId() < rightElement->revisionId()) {
+  if (leftElement->localDocumentId() < rightElement->localDocumentId()) {
     return -1;
   }
-  if (leftElement->revisionId() > rightElement->revisionId()) {
+  if (leftElement->localDocumentId() > rightElement->localDocumentId()) {
     return 1;
   }
   return 0;
