@@ -45,6 +45,7 @@ AuthenticationFeature::AuthenticationFeature(
       _authInfo(nullptr),
       _authenticationUnixSockets(true),
       _authenticationSystemOnly(true),
+      _authenticationTimeout(0.0),
       _jwtSecretProgramOption(""),
       _active(true) {
   setOptional(true);
@@ -80,7 +81,7 @@ void AuthenticationFeature::collectOptions(
                      new BooleanParameter(&_active));
 
   options->addOption("--server.authentication-timeout",
-                     "timeout for the authentication cache (0 = undefinitely)",
+                     "timeout for the authentication cache (0 = indefinitely)",
                      new DoubleParameter(&_authenticationTimeout));
 
   options->addOption(
