@@ -25,6 +25,7 @@
 #define ARANGOD_MMFILES_INDEX_ELEMENT_H 1
 
 #include "Basics/Common.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -102,7 +103,7 @@ static_assert(sizeof(MMFilesIndexElementValue) == 12, "invalid size of MMFilesIn
 struct MMFilesHashIndexElement {
   // Do not use new for this struct, use create()!
  private:
-  MMFilesHashIndexElement(TRI_voc_rid_t revisionId, std::vector<std::pair<VPackSlice, uint32_t>> const& values);
+  MMFilesHashIndexElement(LocalDocumentId const& documentId, std::vector<std::pair<VPackSlice, uint32_t>> const& values);
 
   MMFilesHashIndexElement() = delete;
   MMFilesHashIndexElement(MMFilesHashIndexElement const&) = delete;
@@ -110,22 +111,25 @@ struct MMFilesHashIndexElement {
   ~MMFilesHashIndexElement() = delete;
 
  public:
-  /// @brief get the revision id of the document
-  inline TRI_voc_rid_t revisionId() const { return _revisionId; }
+  inline bool isSet() const { return _localDocumentId.isSet(); }
+
+  /// @brief get the local document id
+  inline LocalDocumentId localDocumentId() const { return _localDocumentId; }
+  inline LocalDocumentId::BaseType localDocumentIdValue() const { return _localDocumentId.id(); }
   inline uint64_t hash() const { return _hash & 0xFFFFFFFFULL; }
   
-  inline operator bool() const { return _revisionId != 0; }
+  inline operator bool() const { return _localDocumentId.isSet(); }
   inline bool operator==(MMFilesHashIndexElement const& other) const {
-    return _revisionId == other._revisionId && _hash == other._hash;
+    return _localDocumentId == other._localDocumentId && _hash == other._hash;
   }
   
   inline bool operator<(MMFilesHashIndexElement const& other) const {
-    return _revisionId < other._revisionId;
+    return _localDocumentId < other._localDocumentId;
   }
 
   /// @brief base memory usage of an index element
   static constexpr size_t baseMemoryUsage(size_t numSubs) {
-    return sizeof(TRI_voc_rid_t) + sizeof(uint32_t) + (sizeof(MMFilesIndexElementValue) * numSubs);
+    return sizeof(LocalDocumentId) + sizeof(uint32_t) + (sizeof(MMFilesIndexElementValue) * numSubs);
   }
   
   inline MMFilesIndexElementValue const* subObject(size_t position) const {
@@ -141,17 +145,17 @@ struct MMFilesHashIndexElement {
   
   /// @brief allocate a new index element from a vector of slices
   static MMFilesHashIndexElement* initialize(MMFilesHashIndexElement* memory, 
-                                      TRI_voc_rid_t revisionId, 
-                                      std::vector<std::pair<arangodb::velocypack::Slice, uint32_t>> const& values);
+                                             LocalDocumentId const& localDocumentId,
+                                             std::vector<std::pair<arangodb::velocypack::Slice, uint32_t>> const& values);
   
  private:
   inline MMFilesIndexElementValue* subObject(size_t position) {
-    char* p = reinterpret_cast<char*>(this) + sizeof(TRI_voc_rid_t) + sizeof(uint32_t) + (sizeof(MMFilesIndexElementValue) * position);
+    char* p = reinterpret_cast<char*>(this) + sizeof(LocalDocumentId) + sizeof(uint32_t) + (sizeof(MMFilesIndexElementValue) * position);
     return reinterpret_cast<MMFilesIndexElementValue*>(p);
   }
   
  private:
-  TRI_voc_rid_t _revisionId;
+  LocalDocumentId _localDocumentId;
   uint32_t _hash;
 };
 
@@ -159,7 +163,7 @@ struct MMFilesHashIndexElement {
 struct MMFilesSkiplistIndexElement {
   // Do not use new for this struct, use create()!
  private:
-  MMFilesSkiplistIndexElement(TRI_voc_rid_t revisionId, std::vector<std::pair<VPackSlice, uint32_t>> const& values);
+  MMFilesSkiplistIndexElement(LocalDocumentId const& documentId, std::vector<std::pair<VPackSlice, uint32_t>> const& values);
 
   MMFilesSkiplistIndexElement() = delete;
   MMFilesSkiplistIndexElement(MMFilesSkiplistIndexElement const&) = delete;
@@ -167,17 +171,20 @@ struct MMFilesSkiplistIndexElement {
   ~MMFilesSkiplistIndexElement() = delete;
 
  public:
-  /// @brief get the revision id of the document
-  inline TRI_voc_rid_t revisionId() const { return _revisionId; }
+  inline bool isSet() const { return _localDocumentId.isSet(); }
+
+  /// @brief get the local document id
+  inline LocalDocumentId localDocumentId() const { return _localDocumentId; }
+  inline LocalDocumentId::BaseType localDocumentIdValue() const { return _localDocumentId.id(); }
   
-  inline operator bool() const { return _revisionId != 0; }
+  inline operator bool() const { return _localDocumentId.isSet(); }
   inline bool operator==(MMFilesSkiplistIndexElement const& other) const {
-    return _revisionId == other._revisionId;
+    return _localDocumentId == other._localDocumentId;
   }
 
   /// @brief base memory usage of an index element
   static constexpr size_t baseMemoryUsage(size_t numSubs) {
-    return sizeof(TRI_voc_rid_t) + (sizeof(MMFilesIndexElementValue) * numSubs);
+    return sizeof(LocalDocumentId) + (sizeof(MMFilesIndexElementValue) * numSubs);
   }
   
   inline MMFilesIndexElementValue const* subObject(size_t position) const {
@@ -189,53 +196,66 @@ struct MMFilesSkiplistIndexElement {
   
   /// @brief allocate a new index element from a vector of slices
   static MMFilesSkiplistIndexElement* initialize(MMFilesSkiplistIndexElement* element,
-                                          TRI_voc_rid_t revisionId, 
-                                          std::vector<std::pair<arangodb::velocypack::Slice, uint32_t>> const& values);
+                                                 LocalDocumentId const& documentId,
+                                                 std::vector<std::pair<arangodb::velocypack::Slice, uint32_t>> const& values);
   
  private:
   inline MMFilesIndexElementValue* subObject(size_t position) {
-    char* p = reinterpret_cast<char*>(this) + sizeof(TRI_voc_rid_t) + (sizeof(MMFilesIndexElementValue) * position);
+    char* p = reinterpret_cast<char*>(this) + sizeof(LocalDocumentId) + (sizeof(MMFilesIndexElementValue) * position);
     return reinterpret_cast<MMFilesIndexElementValue*>(p);
   }
   
  private:
-  TRI_voc_rid_t _revisionId;
+  LocalDocumentId _localDocumentId;
 };
 
 struct MMFilesSimpleIndexElement {
  public:
-  constexpr MMFilesSimpleIndexElement() : _revisionId(0), _hashAndOffset(0) {}
-  MMFilesSimpleIndexElement(TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const& value, uint32_t offset); 
-  MMFilesSimpleIndexElement(MMFilesSimpleIndexElement const& other) noexcept : _revisionId(other._revisionId), _hashAndOffset(other._hashAndOffset) {}
+  constexpr MMFilesSimpleIndexElement() : _localDocumentId(LocalDocumentId::none()), _hashAndOffset(0) {}
+
+  MMFilesSimpleIndexElement(LocalDocumentId const& documentId, arangodb::velocypack::Slice const& value, uint32_t offset); 
+
+  MMFilesSimpleIndexElement(MMFilesSimpleIndexElement const& other) noexcept : _localDocumentId(other._localDocumentId), _hashAndOffset(other._hashAndOffset) {}
+
   MMFilesSimpleIndexElement& operator=(MMFilesSimpleIndexElement const& other) noexcept {
-    _revisionId = other._revisionId;
+    _localDocumentId = other._localDocumentId;
     _hashAndOffset = other._hashAndOffset;
     return *this;
   }
 
-  /// @brief get the revision id of the document
-  inline TRI_voc_rid_t revisionId() const noexcept { return _revisionId; }
+  inline bool isSet() const { return _localDocumentId.isSet(); }
+
+  /// @brief get the local document id
+  inline LocalDocumentId localDocumentId() const { return _localDocumentId; }
+  
+  inline LocalDocumentId::BaseType localDocumentIdValue() const { return _localDocumentId.id(); }
+  
   inline uint64_t hash() const noexcept { return _hashAndOffset & 0xFFFFFFFFULL; }
+  
   inline uint32_t offset() const noexcept { return static_cast<uint32_t>((_hashAndOffset & 0xFFFFFFFF00000000ULL) >> 32); }
+  
   arangodb::velocypack::Slice slice(IndexLookupContext*) const;
   
-  inline operator bool() const noexcept { return _revisionId != 0; }
+  inline operator bool() const noexcept { return _localDocumentId.isSet(); }
+  
   inline bool operator==(MMFilesSimpleIndexElement const& other) const noexcept {
-    return _revisionId == other._revisionId && _hashAndOffset == other._hashAndOffset;
+    return _localDocumentId == other._localDocumentId && _hashAndOffset == other._hashAndOffset;
   }
+  
   inline bool operator<(MMFilesSimpleIndexElement const& other) const noexcept {
-    return _revisionId < other._revisionId;
+    return _localDocumentId < other._localDocumentId;
   }
   
   static uint64_t hash(arangodb::velocypack::Slice const& value);
-  inline void updateRevisionId(TRI_voc_rid_t revisionId, uint32_t offset) { 
-    _revisionId = revisionId; 
+  
+  inline void updateLocalDocumentId(LocalDocumentId const& documentId, uint32_t offset) { 
+    _localDocumentId = documentId; 
     _hashAndOffset &= 0xFFFFFFFFULL; 
     _hashAndOffset |= (static_cast<uint64_t>(offset) << 32);
   }
   
  private:
-  TRI_voc_rid_t _revisionId;
+  LocalDocumentId _localDocumentId;
   uint64_t _hashAndOffset;
 };
 

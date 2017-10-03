@@ -39,7 +39,7 @@ namespace arangodb {
 
 // GeoCoordinate.data must be capable of storing revision ids
 static_assert(sizeof(arangodb::rocksdbengine::GeoCoordinate::data) >=
-                  sizeof(TRI_voc_rid_t),
+                  sizeof(LocalDocumentId),
               "invalid size of GeoCoordinate.data");
 
 class RocksDBGeoIndex;
@@ -57,7 +57,7 @@ class RocksDBGeoIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "geo-index-iterator"; }
 
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
   void reset() override;
 
@@ -162,18 +162,19 @@ class RocksDBGeoIndex final : public RocksDBIndex {
 
   /// insert index elements into the specified write batch.
   Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
-                        TRI_voc_rid_t,
+                        LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&) override;
 
   /// remove index elements and put it in the specified write batch.
-  Result removeInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
+  Result removeInternal(transaction::Methods*, RocksDBMethods*, 
+                        LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&) override;
 
  private:
   /// internal insert function, set batch or trx before calling
-  int internalInsert(TRI_voc_rid_t, velocypack::Slice const&);
+  int internalInsert(LocalDocumentId const& documentId, velocypack::Slice const&);
   /// internal remove function, set batch or trx before calling
-  int internalRemove(TRI_voc_rid_t, velocypack::Slice const&);
+  int internalRemove(LocalDocumentId const& documentId, velocypack::Slice const&);
 
   /// @brief attribute paths
   std::vector<std::string> _location;
