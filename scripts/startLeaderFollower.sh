@@ -16,8 +16,7 @@ DEFAULT_REPLICATION=""
 
 printf "Starting agency ... \n"
 printf "  # agents: %s," "$NRAGENTS"
-printf " # db servers: %s," "$NRDBSERVERS"
-printf " # coordinators: %s," "$NRCOORDINATORS"
+printf " # single servers: %s," "$NRDBSERVERS"
 printf " transport: %s\n" "$TRANSPORT"
 
 if [[ $(( $NRAGENTS % 2 )) == 0 ]]; then
@@ -28,18 +27,15 @@ fi
 SFRE=1.0
 COMP=2000
 KEEP=1000
+NRSINGLESERVERS=$NRDBSERVERS
 if [ -z "$ONGOING_PORTS" ] ; then
-  CO_BASE=$(( $PORT_OFFSET + 8530 ))
-  DB_BASE=$(( $PORT_OFFSET + 8629 ))
+  SS_BASE=$(( $PORT_OFFSET + 8530 ))
   AG_BASE=$(( $PORT_OFFSET + 4001 ))
-  SE_BASE=$(( $PORT_OFFSET + 8729 ))
 else
-  CO_BASE=$(( $PORT_OFFSET + 8530 ))
-  DB_BASE=$(( $PORT_OFFSET + 8530 + $NRCOORDINATORS ))
-  AG_BASE=$(( $PORT_OFFSET + 8530 + $NRCOORDINATORS + $NRDBSERVERS ))
-  SE_BASE=$(( $PORT_OFFSET + 8530 + $NRCOORDINATORS + $NRDBSERVERS + $NRAGENTS ))
+  SS_BASE=$(( $PORT_OFFSET + 8530 ))
+  AG_BASE=$(( $PORT_OFFSET + 8530 + $NRSINGLESERVERS ))
 fi
-NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
+NATH=$(( $NRSINGLESERVERS + $NRAGENTS ))
 ENDPOINT=[::]
 ADDRESS=[::1]
 
@@ -68,16 +64,13 @@ fi
 if [ ! -z "$INTERACTIVE_MODE" ] ; then
     if [ "$INTERACTIVE_MODE" == "C" ] ; then
         ARANGOD="${BUILD}/bin/arangod "
-        CO_ARANGOD="$XTERM $XTERMOPTIONS -e ${BUILD}/bin/arangod --console "
-        echo "Starting one coordinator in terminal with --console"
+        echo "Starting one server in terminal with --console"
     elif [ "$INTERACTIVE_MODE" == "R" ] ; then
         ARANGOD="$XTERM $XTERMOPTIONS -e rr ${BUILD}/bin/arangod --console "
-        CO_ARANGOD=$ARANGOD
-        echo Running cluster in rr with --console.
+        echo "Running cluster in rr with --console."
     fi
 else
     ARANGOD="${BUILD}/bin/arangod "
-    CO_ARANGOD=$ARANGOD
 fi
 
 echo Starting agency ... 
@@ -115,18 +108,8 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
 done
 
 start() {
-    
-    if [ "$1" == "dbserver" ]; then
-        ROLE="PRIMARY"
-    elif [ "$1" == "coordinator" ]; then
-        ROLE="COORDINATOR"
-    fi
-
-    if [ "$1" == "coordinator" ]; then
-        CMD=$CO_ARANGOD
-    else
-        CMD=$ARANGOD
-    fi
+    ROLE="SINGLE"
+    CMD=$ARANGOD
 
     TYPE=$1
     PORT=$2
@@ -154,14 +137,9 @@ start() {
         | tee cluster/$PORT.stdout 2>&1 &
 }
 
-PORTTOPDB=`expr $DB_BASE + $NRDBSERVERS - 1`
-for p in `seq $DB_BASE $PORTTOPDB` ; do
-    start dbserver $p
-done
-
-PORTTOPCO=`expr $CO_BASE + $NRCOORDINATORS - 1`
-for p in `seq $CO_BASE $PORTTOPCO` ; do
-    start coordinator $p
+PORTTOPDB=`expr $SS_BASE + $NRSINGLESERVERS - 1`
+for p in `seq $SS_BASE $PORTTOPDB` ; do
+    start "single server" $p
 done
 
 testServer() {
@@ -182,15 +160,12 @@ testServer() {
     done
 }
 
-for p in `seq $DB_BASE $PORTTOPDB` ; do
-    testServer $p
-done
-for p in `seq $CO_BASE $PORTTOPCO` ; do
+for p in `seq $SS_BASE $PORTTOPDB` ; do
     testServer $p
 done
 
 echo Done, your cluster is ready at
-for p in `seq $CO_BASE $PORTTOPCO` ; do
+for p in `seq $SS_BASE $PORTTOPCO` ; do
     echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://[::1]:$p"
 done
 
