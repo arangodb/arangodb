@@ -11,6 +11,7 @@ def defaultLinux = true
 def defaultMac = false
 def defaultWindows = false
 def defaultBuild = true
+def defaultDocker = false
 def defaultCleanBuild = false
 def defaultCommunity = true
 def defaultEnterprise = true
@@ -35,6 +36,11 @@ properties([
             defaultValue: defaultWindows,
             description: 'build and run tests in Windows',
             name: 'Windows'
+        ),
+        booleanParam(
+            defaultValue: defaultDocker,
+            description: 'build docker images',
+            name: 'Docker'
         ),
         booleanParam(
             defaultValue: defaultCleanBuild,
@@ -86,6 +92,9 @@ useMac = params.Mac
 // build windows
 useWindows = params.Windows
 
+// build docker image
+useDocker = params.Docker
+
 // build and test community
 useCommunity = params.Community
 
@@ -97,9 +106,6 @@ useMaintainer = params.Maintainer
 
 // build user mode
 useUser = params.User
-
-// build docker
-useDocker = true
 
 // run resilience tests
 //runResilience = params.runResilience
@@ -150,6 +156,8 @@ if (env.BRANCH_NAME =~ /^PR-/) {
   def reg = ~/^arangodb:/
   sourceBranchLabel = sourceBranchLabel - reg
 }
+
+branchLabel = sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
 
 buildJenkins = [
     "linux": "linux && build",
@@ -316,7 +324,10 @@ def deleteDirDocker(os) {
 }
 
 def shellAndPipe(command, logfile) {
-  sh "(echo 1 > \"${logfile}.result\" ; ${command} ; echo \$? > \"${logfile}.result\") 2>&1 | tee -a \"${logfile}\" ; exit `cat \"${logfile}.result\"`"
+    def cmd = command.replaceAll(/"/, "\\\"")
+
+    echo "executing ${cmd}"
+    sh "(echo 1 > \"${logfile}.result\" ; ${cmd} ; echo \$? > \"${logfile}.result\") 2>&1 | ts '[%Y-%m-%d %H:%M:%S]' | tee -a \"${logfile}\" ; exit `cat \"${logfile}.result\"`"
 }
 
 def logStartStage(os, logFile, link) {
@@ -329,7 +340,7 @@ def logStartStage(os, logFile, link) {
     echo "started ${logFile}: ${resultsStart[logFile]}"
 
     if (os == "linux") {
-        sh "echo 'started ${logFile}: ${resultsStart[logFile]}' | tee -a ${logFile}"
+        shellAndPipe("echo 'started ${logFile}: ${resultsStart[logFile]}'", logFile)
     }
 
     generateResult()
@@ -342,7 +353,7 @@ def logStopStage(os, logFile) {
     echo "finished ${logFile}: ${resultsStop[logFile]}"
 
     if (os == "linux") {
-        sh "echo 'finished ${logFile}: ${resultsStop[logFile]}' | tee -a ${logFile}"
+        shellAndPipe("echo 'finished ${logFile}: ${resultsStop[logFile]}'", logFile)
     }
 
     generateResult()
@@ -361,7 +372,7 @@ def logExceptionStage(os, logFile, link, exc) {
     echo "failed ${logFile}: ${resultsStop[logFile]} ${msg}"
 
     if (os == "linux") {
-        sh "echo 'failed ${logFile}: ${resultsStart[logFile]} ${msg}' | tee -a ${logFile}"
+        shellAndPipe("echo 'failed ${logFile}: ${resultsStart[logFile]} ${msg}'", logFile)
     }
 
     generateResult()
@@ -372,7 +383,7 @@ def generateResult() {
     def html = "<html><body><table>\n"
     html += "<tr><th>Name</th><th>Start</th><th>Stop</th><th>Duration</th><th>Message</th></tr>\n"
 
-    for (key in resultsKeys) {
+    for (key in resultsKeys.sort()) {
         def start = resultsStart[key] ?: ""
         def stop = resultsStop[key] ?: ""
         def msg = resultsStatus[key] ?: ""
@@ -385,21 +396,21 @@ def generateResult() {
         def diff = (start != "" && stop != "") ? groovy.time.TimeCategory.minus(stop, start) : "-"
         def startf = start == "" ? "-" : start.format('yyyy/MM/dd HH:mm:ss')
         def stopf = stop == "" ? "-" : stop.format('yyyy/MM/dd HH:mm:ss')
-        def color = 'bgcolor="#FF8080"'
+        def color = 'bgcolor="#FFA0A0"'
 
         def la = ""
         def lb = ""
 
-        if (link != null) {
+        if (link != "") {
             la = "<a href=\"$link\">"
             lb = "</a>"
         }
 
         if (msg == "finished") {
-            color = 'bgcolor="#80FF80"'
+            color = 'bgcolor="#A0FFA0"'
         }
         else if (msg == "started") {
-            color = 'bgcolor="#8080FF"'
+            color = 'bgcolor="#A0A0FF"'
             la = ""
             lb = ""
         }
@@ -410,12 +421,10 @@ def generateResult() {
 
     html += "</table></body></html>\n"
 
-    node("master") {
-        fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
-        fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
+    fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
+    fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
 
-        archiveArtifacts(allowEmptyArchive: true, artifacts: "results.*")
-    }
+    archiveArtifacts(allowEmptyArchive: true, artifacts: "results.*")
 }
 
 // -----------------------------------------------------------------------------
@@ -442,6 +451,7 @@ def checkoutCommunity(os) {
         }
         catch (exc) {
             echo "GITHUB checkout failed, retrying in 1min"
+            deleteDir()
             sleep 60
             throw exc
         }
@@ -559,6 +569,8 @@ def checkCommitMessages() {
         if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
             echo "build of main branch"
 
+            useDocker = true
+
             restrictions = [
                 // OS EDITION MAINTAINER
                 "build-linux-community-maintainer" : true,
@@ -606,7 +618,8 @@ def checkCommitMessages() {
                 "build-linux-enterprise-maintainer" : true,
 
                 // OS EDITION MAINTAINER MODE ENGINE
-                "test-linux-enterprise-maintainer-cluster-rocksdb" : true
+                "test-linux-enterprise-maintainer-singleserver-rocksdb" : true,
+                "test-linux-enterprise-maintainer-cluster-mmfiles" : true
             ]
         }
     }
@@ -659,33 +672,33 @@ Running Tests: ${runTests}
 // -----------------------------------------------------------------------------
 
 def stashBuild(os, edition, maintainer) {
-    lock("stashing-${os}-${edition}-${maintainer}") {
+    lock("stashing-${branchLabel}-${os}-${edition}-${maintainer}") {
         if (os == 'linux' || os == 'mac') {
             def name = "build.tar.gz"
 
             sh "rm -f ${name}"
             sh "GZIP=-1 tar cpzf ${name} build"
-            sh "scp ${name} c1:/vol/cache/build-${os}-${edition}-${maintainer}.tar.gz"
+            sh "scp ${name} c1:/vol/cache/build-${branchLabel}-${os}-${edition}-${maintainer}.tar.gz"
         }
         else if (os == 'windows') {
             def name = "build.zip"
 
             bat "del /F /Q ${name}"
             powershell "7z a ${name} -r -bd -mx=1 build"
-            powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk ${name} jenkins@c1:/vol/cache/build-${os}-${edition}-${maintainer}.zip"
+            powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk ${name} jenkins@c1:/vol/cache/build-${branchLabel}-${os}-${edition}-${maintainer}.zip"
         }
     }
 }
 
 def unstashBuild(os, edition, maintainer) {
-    lock("stashing-${os}-${edition}-${maintainer}") {
+    lock("stashing-${branchLabel}-${os}-${edition}-${maintainer}") {
         try {
             if (os == "windows") {
-                powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/build-${os}-${edition}-${maintainer}.zip build.zip"
+                powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/build-${branchLabel}-${os}-${edition}-${maintainer}.zip build.zip"
                 powershell "Expand-Archive -Path build.zip -Force -DestinationPath ."
             }
             else {
-                sh "scp c1:/vol/cache/build-${os}-${edition}-${maintainer}.tar.gz build.tar.gz"
+                sh "scp c1:/vol/cache/build-${branchLabel}-${os}-${edition}-${maintainer}.tar.gz build.tar.gz"
                 sh "tar xpzf build.tar.gz"
             }
         }
@@ -760,7 +773,7 @@ def jslint(os, edition, maintainer) {
     try {
         logStartStage(os, logFile, logFile)
 
-        shellAndPipe("./Installation/Pipeline/test_jslint.sh",logFile)
+        shellAndPipe("./Installation/Pipeline/test_jslint.sh", logFile)
         sh "if grep ERROR ${logFile}; then exit 1; fi"
 
         logStopStage(os, logFile)
@@ -916,9 +929,9 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
                               powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
                           }
                           else {
-                              sh "echo \"Host: `hostname`\" | tee -a ${logFile}"
-                              sh "echo \"PWD:  `pwd`\" | tee -a ${logFile}"
-                              sh "echo \"Date: `date`\" | tee -a ${logFile}"
+                              shellAndPipe("echo \"Host: `hostname`\"", logFile)
+                              shellAndPipe("echo \"PWD:  `pwd`\"", logFile)
+                              shellAndPipe("echo \"Date: `date`\"", logFile)
 
                               shellAndPipe("cd ${runDir} ; ./build/bin/arangosh --version", logFile)
 
@@ -1012,7 +1025,9 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
 
                 testIndex++
 
-                testMap["${stageName}-${name}"] = singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex, stageName, name, port)
+                testMap["${stageName}-${name}"] = singleTest(os, edition, maintainer, mode, engine,
+                                                             test, testArgs, testIndex,
+                                                             stageName, name, port)
 
                 return testMap
             }
@@ -1069,16 +1084,18 @@ def testStepParallel(os, edition, maintainer, modeList) {
         }
     }
 
-    def name = "test-${os}-${edition}-${maintainer}"
+    def name = "${os}-${edition}-${maintainer}/03-test"
 
-    try {
-        logStartStage(null, name, null)
-        parallel branches
-        logStopStage(null, name)
-    }
-    catch (exc) {
-        logExceptionStage(null, name, null, exc)
-        throw exc
+    if (branches) {
+        try {
+            node("linux") { logStartStage(null, name, null) }
+            parallel branches
+            node("linux") { logStopStage(null, name) }
+        }
+        catch (exc) {
+            node("linux") { logExceptionStage(null, name, null, exc) }
+            throw exc
+        }
     }
 }
 
@@ -1232,33 +1249,18 @@ def buildEdition(os, edition, maintainer) {
                 unstashBuild(os, edition, maintainer)
             }
 
-            sh "echo \"Host: `hostname`\" | tee -a ${logFile}"
-            sh "echo \"PWD:  `pwd`\" | tee -a ${logFile}"
-            sh "echo \"Date: `date`\" | tee -a ${logFile}"
+            shellAndPipe("echo \"Host: `hostname`\"", logFile)
+            shellAndPipe("echo \"PWD:  `pwd`\"", logFile)
+            shellAndPipe("echo \"Date: `date`\"", logFile)
 
             if (os == 'linux') {
-                sh "./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 64 ${os} ${edition} ${maintainer} ${arch}"
+                shellAndPipe("./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 64 ${os} ${edition} ${maintainer}", logFile)
             }
             else if (os == 'mac') {
-                sh "./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 16 ${os} ${edition} ${maintainer} ${arch}"
+                shellAndPipe("./Installation/Pipeline/build_OS_EDITION_MAINTAINER.sh 16 ${os} ${edition} ${maintainer}", logFile)
             }
         }
         else if (os == 'windows') {
-            // def tmpDir = "${arch}/tmp"
-
-            // fileOperations([
-            //     folderCreateOperation(tmpDir)
-            // ])
-
-            // withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}",
-            //          "_MSPDBSRV_ENDPOINT_=${edition}-${env.BUILD_TAG}", "GYP_USE_SEPARATE_MSPDBSRV=1"]) {
-            //    powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}.ps1"
-            // }
-
-            // fileOperations([
-            //     folderDeleteOperation(tmpDir)
-            // ])
-
             powershell ". .\\Installation\\Pipeline\\windows\\build_${os}_${edition}_${maintainer}.ps1"
         }
 
@@ -1348,16 +1350,15 @@ def createDockerImage(edition, maintainer, stageName) {
 
                     def logFile = "${arch}/build.log"
 
-                    def packageName="${os}-${edition}-${maintainer}"
-                    def dockerTag=sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
+                    def packageName = "${os}-${edition}-${maintainer}"
 
-                    withEnv(["DOCKERTAG=${packageName}-${dockerTag}"]) {
+                    withEnv(["DOCKERTAG=${packageName}-${branchLabel}"]) {
                         try {
                             logStartStage(os, logFile, logFile)
 
                             shellAndPipe("./scripts/build-docker.sh", logFile)
-                            shellAndPipe("docker tag arangodb:${packageName}-${dockerTag} c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag}", logFile)
-                            shellAndPipe("docker push c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${dockerTag}", logFile)
+                            shellAndPipe("docker tag arangodb:${packageName}-${branchLabel} registry.arangodb.biz:5000/arangodb/${packageName}:${branchLabel}", logFile)
+                            shellAndPipe("docker push registry.arangodb.biz:5000/arangodb/${packageName}:${branchLabel}", logFile)
 
                             logStopStage(os, logFile)
                         }
@@ -1387,14 +1388,21 @@ def runEdition(os, edition, maintainer, stageName) {
                 stage(stageName) {
                     checkoutSource(os, edition)
 
-                    // I concede...we need a lock for windows...I could not get it to run concurrently...
-                    // v8 would not build multiple times at the same time on the same machine:
-                    // PDB API call failed, error code '24': ' etc etc
-                    // in theory it should be possible to parallelize it by setting an environment variable
-                    // (see the build script) but for v8 it won't work :(
-                    // feel free to recheck if there is time somewhen...this thing here really should not be possible but
-                    // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly
-                    // test it. I just don't want any more "yeah that might randomly fail. just restart" sentences any more.
+                    // I concede...we need a lock for windows...I
+                    // could not get it to run concurrently...  v8
+                    // would not build multiple times at the same time
+                    // on the same machine: PDB API call failed, error
+                    // code '24': ' etc etc in theory it should be
+                    // possible to parallelize it by setting an
+                    // environment variable (see the build script) but
+                    // for v8 it won't work :( feel free to recheck if
+                    // there is time somewhen...this thing here really
+                    // should not be possible but ensure that there
+                    // are 2 concurrent builds on the SAME node
+                    // building v8 at the same time to properly test
+                    // it. I just don't want any more "yeah that might
+                    // randomly fail. just restart" sentences any
+                    // more.
 
                     if (os == "windows") {
                         def hostname = powershell(returnStdout: true, script: "hostname").trim()
@@ -1454,13 +1462,13 @@ def runOperatingSystems(osList) {
 
 timestamps {
     try {
-        node("master") {
+        node("linux") {
             echo sh(returnStdout: true, script: 'env')
         }
 
         checkCommitMessages()
 
-        node("master") {
+        node("linux") {
             fileOperations([fileCreateOperation(fileContent: overview, fileName: "overview.txt")])
             archiveArtifacts(allowEmptyArchive: true, artifacts: "overview.txt")
         }
@@ -1468,6 +1476,8 @@ timestamps {
         runOperatingSystems(['linux', 'mac', 'windows'])
     }
     finally {
-        generateResult()
+        node("linux") {
+            generateResult()
+        }
     }
 }

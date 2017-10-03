@@ -221,11 +221,17 @@ The default value is *false*.
 **Note**: this option is only available on platforms that support UNIX
 domain sockets.
 
-
 ### Enable/disable authentication for system API requests only
 
 @startDocuBlock serverAuthenticateSystemOnly
 
+
+### Enable authentication cache timeout
+
+`--server.authentication-timeout value`
+
+Sets the cache timeout to *value* (in seconds). This is only necessary
+if you use an external authentication system like LDAP.
 
 ### Enable/disable replication applier
 

@@ -559,6 +559,8 @@
 ///   Will be raised when a user name is updated that does not exist.
 /// - 1704: @LIT{user must change his password}
 ///   Will be raised when the user must change his password.
+/// - 1705: @LIT{user is external}
+///   Will be raised when the user is authenicated by an external server.
 /// - 1750: @LIT{invalid service name}
 ///   Will be raised when an invalid service name is specified.
 /// - 1751: @LIT{invalid mount}
@@ -3067,6 +3069,16 @@ void TRI_InitializeErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_USER_CHANGE_PASSWORD                                    (1704)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1705: ERROR_USER_EXTERNAL
+///
+/// user is external
+///
+/// Will be raised when the user is authenicated by an external server.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_USER_EXTERNAL                                           (1705)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1750: ERROR_SERVICE_INVALID_NAME
