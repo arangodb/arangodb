@@ -5672,7 +5672,7 @@ SECTION("BooleanTerm") {
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": {"
-        "\"testCollection0\": { \"includeAllFields\": true, \"nestListValues\": true },"
+        "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true },"
         "\"testCollection1\": { \"includeAllFields\": true }"
       "}}"
     );
@@ -7870,7 +7870,7 @@ SECTION("NullTerm") {
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": {"
-        "\"testCollection0\": { \"includeAllFields\": true, \"nestListValues\": true },"
+        "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true },"
         "\"testCollection1\": { \"includeAllFields\": true }"
       "}}"
     );
@@ -9387,7 +9387,7 @@ SECTION("Phrase") {
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": {"
-        "\"testCollection0\": { \"includeAllFields\": true, \"nestListValues\": true, \"tokenizers\": [ \"test_analyzer\", \"identity\" ] },"
+        "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true, \"tokenizers\": [ \"test_analyzer\", \"identity\" ] },"
         "\"testCollection1\": { \"includeAllFields\": true, \"tokenizers\": [ \"test_analyzer\", \"identity\" ] }"
       "}}"
     );
@@ -9943,7 +9943,7 @@ SECTION("Tokens") {
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": {"
-        "\"testCollection0\": { \"includeAllFields\": true, \"nestListValues\": true },"
+        "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true },"
         "\"testCollection1\": { \"includeAllFields\": true }"
       "}}"
     );
@@ -10196,7 +10196,7 @@ SECTION("Exists") {
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": {"
-        "\"testCollection0\": { \"includeAllFields\": true, \"nestListValues\": true },"
+        "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true },"
         "\"testCollection1\": { \"includeAllFields\": true }"
       "}}"
     );
@@ -11178,7 +11178,7 @@ SECTION("In") {
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": {"
-        "\"testCollection0\": { \"includeAllFields\": true, \"nestListValues\": true },"
+        "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true },"
         "\"testCollection1\": { \"includeAllFields\": true }"
       "}}"
     );
@@ -11500,7 +11500,7 @@ SECTION("Value") {
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": {"
-        "\"testCollection0\": { \"includeAllFields\": true, \"nestListValues\": true },"
+        "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true },"
         "\"testCollection1\": { \"includeAllFields\": true }"
       "}}"
     );
@@ -12160,7 +12160,7 @@ SECTION("And") {
 
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": {"
-        "\"testCollection0\": { \"includeAllFields\": true, \"nestListValues\": true, \"tokenizers\": [ \"test_analyzer\", \"identity\" ] },"
+        "\"testCollection0\": { \"includeAllFields\": true, \"trackListPositions\": true, \"tokenizers\": [ \"test_analyzer\", \"identity\" ] },"
         "\"testCollection1\": { \"includeAllFields\": true, \"tokenizers\": [ \"test_analyzer\", \"identity\" ] }"
       "}}"
     );
@@ -12581,7 +12581,7 @@ SECTION("Or") {
   {
     auto updateJson = arangodb::velocypack::Parser::fromJson(
       "{ \"links\": {"
-      "\"collection_1\": { \"includeAllFields\": true, \"nestListValues\": true, \"tokenizers\": [ \"test_analyzer\", \"identity\" ] },"
+      "\"collection_1\": { \"includeAllFields\": true, \"trackListPositions\": true, \"tokenizers\": [ \"test_analyzer\", \"identity\" ] },"
       "\"collection_2\": { \"includeAllFields\": true, \"tokenizers\": [ \"test_analyzer\", \"identity\" ] }"
       "}}"
     );

@@ -415,7 +415,7 @@ During view modification the following directives apply:
   then process the fields with default [Link properties] directives, i.e. {}),
   otherwise only consider attributes mentioned in *fields*
 
-* nestListValues: \<optional\> (default: false)
+* trackListPositions: \<optional\> (default: false)
   if true then for array values track the value position in the array, e.g. when
   querying for the input: { attr: [ 'valueX', 'valueY', 'valueZ' ] }
   the user must specify: doc.attr[1] == 'valueY'

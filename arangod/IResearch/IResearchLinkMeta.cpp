@@ -222,7 +222,7 @@ bool IResearchLinkMeta::init(
 
   {
     // optional bool
-    static const std::string fieldName("nestListValues");
+    static const std::string fieldName("trackListPositions");
 
     mask->_nestListValues = slice.hasKey(fieldName);
 
@@ -387,7 +387,7 @@ bool IResearchLinkMeta::json(
   }
 
   if ((!ignoreEqual || _nestListValues != ignoreEqual->_nestListValues) && (!mask || mask->_nestListValues)) {
-    builder.add("nestListValues", arangodb::velocypack::Value(_nestListValues));
+    builder.add("trackListPositions", arangodb::velocypack::Value(_nestListValues));
   }
 
   if ((!ignoreEqual || !equalTokenizers(_tokenizers, ignoreEqual->_tokenizers)) && (!mask || mask->_tokenizers)) {

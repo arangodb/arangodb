@@ -570,7 +570,7 @@ SECTION("FieldIterator_traverse_complex_object_ordered_filtered") {
   auto linkMetaJson = arangodb::velocypack::Parser::fromJson("{ \
     \"boost\" : 1, \
     \"includeAllFields\" : false, \
-    \"nestListValues\" : true, \
+    \"trackListPositions\" : true, \
     \"fields\" : { \"boost\" : { \"boost\" : 10 } }, \
     \"tokenizers\": [ \"identity\" ] \
   }");
@@ -1030,15 +1030,15 @@ SECTION("FieldIterator_traverse_complex_object_check_meta_inheritance") {
   auto linkMetaJson = arangodb::velocypack::Parser::fromJson("{ \
     \"boost\" : 1, \
     \"includeAllFields\" : true, \
-    \"nestListValues\" : true, \
+    \"trackListPositions\" : true, \
     \"fields\" : { \
        \"boost\" : { \"boost\" : 10, \"tokenizers\": [ \"identity\" ] }, \
-       \"keys\" : { \"nestListValues\" : false, \"tokenizers\": [ \"identity\" ] }, \
-       \"depth\" : { \"boost\" : 5, \"nestListValues\" : true }, \
+       \"keys\" : { \"trackListPositions\" : false, \"tokenizers\": [ \"identity\" ] }, \
+       \"depth\" : { \"boost\" : 5, \"trackListPositions\" : true }, \
        \"fields\" : { \"includeAllFields\" : false, \"boost\" : 3, \"fields\" : { \"fieldA\" : { \"includeAllFields\" : true } } }, \
        \"listValuation\" : { \"includeAllFields\" : false }, \
        \"array\" : { \
-         \"fields\" : { \"subarr\" : { \"nestListValues\" : false }, \"subobj\": { \"includeAllFields\" : false }, \"id\" : { \"boost\" : 2 } } \
+         \"fields\" : { \"subarr\" : { \"trackListPositions\" : false }, \"subobj\": { \"includeAllFields\" : false }, \"id\" : { \"boost\" : 2 } } \
        } \
      }, \
     \"tokenizers\": [ \"identity\", \"iresearch-document-empty\" ] \

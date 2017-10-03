@@ -259,15 +259,15 @@ SECTION("test_readCustomizedValues") {
         \"b\": {}, \
         \"c\": { \
           \"fields\": { \
-            \"default\": { \"boost\": 1, \"fields\": {}, \"includeAllFields\": false, \"nestListValues\": false, \"tokenizers\": [ \"identity\" ] }, \
-            \"all\": { \"boost\": 11, \"fields\": {\"d\": {}, \"e\": {}}, \"includeAllFields\": true, \"nestListValues\": true, \"tokenizers\": [ \"empty\" ] }, \
-            \"some\": { \"boost\": 12, \"nestListValues\": true }, \
+            \"default\": { \"boost\": 1, \"fields\": {}, \"includeAllFields\": false, \"trackListPositions\": false, \"tokenizers\": [ \"identity\" ] }, \
+            \"all\": { \"boost\": 11, \"fields\": {\"d\": {}, \"e\": {}}, \"includeAllFields\": true, \"trackListPositions\": true, \"tokenizers\": [ \"empty\" ] }, \
+            \"some\": { \"boost\": 12, \"trackListPositions\": true }, \
             \"none\": {} \
           } \
         } \
       }, \
       \"includeAllFields\": true, \
-      \"nestListValues\": true, \
+      \"trackListPositions\": true, \
       \"tokenizers\": [ \"empty\", \"identity\" ] \
     }");
     CHECK(true == meta.init(json->slice(), tmpString));
@@ -372,7 +372,7 @@ SECTION("test_writeDefaults") {
   CHECK((true == tmpSlice.isObject() && 0 == tmpSlice.length()));
   tmpSlice = slice.get("includeAllFields");
   CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
-  tmpSlice = slice.get("nestListValues");
+  tmpSlice = slice.get("trackListPositions");
   CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
   tmpSlice = slice.get("tokenizers");
   CHECK((
@@ -466,7 +466,7 @@ SECTION("test_writeCustomizedValues") {
         CHECK((true == tmpSlice.isNumber() && 1. == tmpSlice.getDouble()));
         tmpSlice = sliceOverride.get("includeAllFields");
         CHECK(true == (false == tmpSlice.getBool()));
-        tmpSlice = sliceOverride.get("nestListValues");
+        tmpSlice = sliceOverride.get("trackListPositions");
         CHECK(true == (false == tmpSlice.getBool()));
         tmpSlice = sliceOverride.get("tokenizers");
         CHECK((
@@ -489,7 +489,7 @@ SECTION("test_writeCustomizedValues") {
         CHECK(true == expectedFields.empty());
         tmpSlice = sliceOverride.get("includeAllFields");
         CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
-        tmpSlice = sliceOverride.get("nestListValues");
+        tmpSlice = sliceOverride.get("trackListPositions");
         CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
         tmpSlice = sliceOverride.get("tokenizers");
         CHECK((
@@ -503,7 +503,7 @@ SECTION("test_writeCustomizedValues") {
         CHECK(2U == sliceOverride.length());
         tmpSlice = sliceOverride.get("boost");
         CHECK((true == tmpSlice.isNumber() && 12. == tmpSlice.getDouble()));
-        tmpSlice = sliceOverride.get("nestListValues");
+        tmpSlice = sliceOverride.get("trackListPositions");
         CHECK((true == tmpSlice.isBool() && false == tmpSlice.getBool()));
       } else if ("none" == fieldOverride.copyString()) {
         CHECK(0U == sliceOverride.length());
@@ -515,7 +515,7 @@ SECTION("test_writeCustomizedValues") {
   CHECK(true == expectedFields.empty());
   tmpSlice = slice.get("includeAllFields");
   CHECK((true == tmpSlice.isBool() && true == tmpSlice.getBool()));
-  tmpSlice = slice.get("nestListValues");
+  tmpSlice = slice.get("trackListPositions");
   CHECK((true == tmpSlice.isBool() && true == tmpSlice.getBool()));
   tmpSlice = slice.get("tokenizers");
   CHECK((true == tmpSlice.isArray() && 2 == tmpSlice.length()));
@@ -537,7 +537,7 @@ SECTION("test_readMaskAll") {
     \"boost\": 10, \
     \"fields\": { \"a\": {} }, \
     \"includeAllFields\": true, \
-    \"nestListValues\": true, \
+    \"trackListPositions\": true, \
     \"tokenizers\": [] \
   }");
   CHECK(true == meta.init(json->slice(), tmpString, arangodb::iresearch::IResearchLinkMeta::DEFAULT(), &mask));
@@ -575,7 +575,7 @@ SECTION("test_writeMaskAll") {
   CHECK(true == slice.hasKey("boost"));
   CHECK(true == slice.hasKey("fields"));
   CHECK(true == slice.hasKey("includeAllFields"));
-  CHECK(true == slice.hasKey("nestListValues"));
+  CHECK(true == slice.hasKey("trackListPositions"));
   CHECK(true == slice.hasKey("tokenizers"));
 }
 
