@@ -49,9 +49,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-static bool IsSystemUser() {
+static bool IsAdminUser() {
   if (ExecContext::CURRENT != nullptr) {
-    return ExecContext::CURRENT->isSystemUser();
+    return ExecContext::CURRENT->isAdminUser();
   }
   return true;
 }
@@ -59,7 +59,7 @@ static bool IsSystemUser() {
 /// check ExecContext if system use
 static bool CanAccessUser(std::string const& user) {
   if (ExecContext::CURRENT != nullptr) {
-    return IsSystemUser()|| user == ExecContext::CURRENT->user();
+    return IsAdminUser()|| user == ExecContext::CURRENT->user();
   }
   return true;
 }
@@ -166,7 +166,7 @@ static void JS_RemoveUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 1 || !args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("remove(username)");
   }
-  if (!IsSystemUser()) {
+  if (!IsAdminUser()) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -188,7 +188,7 @@ static void JS_GetUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 1 || !args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("document(username)");
   }
-  if (!IsSystemUser()) {
+  if (!IsAdminUser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -210,7 +210,7 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() > 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("reload()");
   }
-  if (!IsSystemUser()) {
+  if (!IsAdminUser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -231,7 +231,7 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("grantDatabase(username, database, type)");
   }
-  if (!IsSystemUser()) {
+  if (!IsAdminUser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -261,7 +261,7 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("revokeDatabase(username,  database)");
   }
-  if (!IsSystemUser()) {
+  if (!IsAdminUser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -288,7 +288,7 @@ static void JS_GrantCollection(
       !args[2]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("grantCollection(username, db, coll[, type])");
   }
-  if (!IsSystemUser()) {
+  if (!IsAdminUser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -322,7 +322,7 @@ static void JS_RevokeCollection(
       !args[2]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("revokeCollection(username, db, coll)");
   }
-  if (!IsSystemUser()) {
+  if (!IsAdminUser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 

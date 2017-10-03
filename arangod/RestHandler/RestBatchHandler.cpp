@@ -213,10 +213,7 @@ RestStatus RestBatchHandler::executeHttp() {
     {
       // ignore any errors here, will be handled later by inspecting the response
       try {
-        ExecContext const* old = ExecContext::CURRENT;
-        ExecContext::CURRENT = nullptr;
-        TRI_DEFER(ExecContext::CURRENT = old);
-        
+        ExecContextScope scope(nullptr);// workaround because of assertions
         handler->syncRunEngine();
       } catch (...) {
       }

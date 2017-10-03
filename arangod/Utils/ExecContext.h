@@ -32,43 +32,103 @@ class Methods;
 }
 
 class ExecContext {
- public:
-  ExecContext(std::string const& user, std::string const& database);
-  ExecContext(std::string const& user, std::string const& database,
+private:
+  ExecContext(bool isSuper, std::string const& user, std::string const& database,
               AuthLevel systemLevel, AuthLevel dbLevel)
-      : _user(user),
+      : _isSuperuser(isSuper),
+        _user(user),
         _database(database),
-        _systemAuthLevel(systemLevel),
-        _databaseAuthLevel(dbLevel) {}
+        _systemDbAuthLevel(systemLevel),
+        _databaseAuthLevel(dbLevel) {
+          TRI_ASSERT(!_isSuperuser || _user.empty());
+        }
   ExecContext(ExecContext const&) = delete;
 
-  static thread_local ExecContext const* CURRENT;
-
-  /// @brief should always be owned externally, so copy it here
-  ExecContext* copy() const;
+ public:
   
+  /// @brief an internal superuser context
+  static ExecContext const* superuser();
+  
+  /// @brief a reference to a user with NONE for everything. Caller
+  ///        is responsible for deleting the object
+  static ExecContext* createUnauthorized(std::string const& user,
+                                         std::string const& db);
+  
+  /// @brief create user context, caller is responsible for deleting
+  static ExecContext* create(std::string const& user, std::string const& db);
+
+  /// @brief current user, may be empty for internal superuser
   std::string const& user() const { return _user; }
-  std::string const& database() const { return _database; }
-  AuthLevel systemAuthLevel() const { return _systemAuthLevel; };
+  
+  //std::string const& database() const { return _database; }
+  /// @brief authentication level on _system. Always RW for superuser
+  AuthLevel systemAuthLevel() const { return _systemDbAuthLevel; };
+  
+  /// @brief Authentication level on database selected in the current
+  ///        request scope. Should almost always contain something,
+  ///        if this thread originated in v8 or from HTTP / VST
   AuthLevel databaseAuthLevel() const { return _databaseAuthLevel; };
 
-  bool isSystemUser() const { return _systemAuthLevel == AuthLevel::RW; }
+  /// @brief any internal operation is a superuser.
+  bool isSuperuser() const { return _isSuperuser; }
+  
+  /// @brief is allowed to manage users, create databases, ...
+  bool isAdminUser() const {
+    TRI_ASSERT(!_isSuperuser || _systemDbAuthLevel == AuthLevel::RW);
+    return _systemDbAuthLevel == AuthLevel::RW;
+  }
 
+  /// @brief returns true if auth level is above or equal `requested`
   bool canUseDatabase(AuthLevel requested) const {
     return canUseDatabase(_database, requested);
   }
+  /// @brief returns true if auth level is above or equal `requested`
   bool canUseDatabase(std::string const& db, AuthLevel requested) const;
-  bool canUseCollection(std::string const& c, AuthLevel requested) const {
-    return canUseCollection(_database, c, requested);
+  
+  /// @brief returns auth level for user
+  AuthLevel collectionAuthLevel(std::string const& dbname,
+                                std::string const& collection) const;
+  
+  /// @brief returns true if auth levels is above or equal `requested`
+  bool canUseCollection(std::string const& collection,
+                        AuthLevel requested) const {
+    return canUseCollection(_database, collection, requested);
   }
-  bool canUseCollection(std::string const& db, std::string const& c,
-                        AuthLevel requested) const;
+  /// @brief returns true if auth level is above or equal `requested`
+  bool canUseCollection(std::string const& db, std::string const& coll,
+                        AuthLevel requested) const {
+    return requested <= collectionAuthLevel(db, coll);
+  }
+  
+ public:
+  
+  /// Should always contain a reference to current user context
+  static thread_local ExecContext const* CURRENT;
 
  private:
+  
+  bool _isSuperuser;
   std::string const _user;
   std::string const _database;
-  AuthLevel const _systemAuthLevel;
+  AuthLevel const _systemDbAuthLevel;
   AuthLevel const _databaseAuthLevel;
+  
+  static ExecContext SUPERUSER;
+};
+
+/// @brief scope guard for the exec context
+struct ExecContextScope {
+  
+  explicit ExecContextScope(ExecContext const* exe)
+      : _old(ExecContext::CURRENT) {
+    ExecContext::CURRENT = exe;
+  }
+
+  ~ExecContextScope() { ExecContext::CURRENT = _old; }
+
+ private:
+  
+  ExecContext const* _old;
 };
 }
 

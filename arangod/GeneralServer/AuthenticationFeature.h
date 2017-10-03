@@ -66,12 +66,12 @@ class AuthenticationFeature final
   }
   double authenticationTimeout() const { return _authenticationTimeout; }
 
-  AuthInfo* authInfo();
-  AuthLevel canUseDatabase(std::string const& username,
+  AuthInfo* authInfo() const;
+  /*AuthLevel canUseDatabase(std::string const& username,
                            std::string const& dbname);
   AuthLevel canUseCollection(std::string const& username,
                              std::string const& dbname,
-                             std::string const& collection);
+                             std::string const& collection);*/
 };
 };
 

@@ -403,9 +403,11 @@ void HeartbeatThread::runDBServer() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::runSingleServer() {
+  // convert timeout to seconds
+  double const interval = (double)_interval / 1000.0 / 1000.0;
+  
   while (!isStopping()) {
-    usleep(1000000);
-
+    double const start = TRI_microtime();
     try {
       // send our state to the agency.
       // we don't care if this fails
@@ -418,7 +420,7 @@ void HeartbeatThread::runSingleServer() {
       AgencyReadTransaction trx(
         std::vector<std::string>({
             AgencyCommManager::path("Shutdown"),
-            AgencyCommManager::path("Current/Version"),
+            AgencyCommManager::path("Plan/AsyncReplication"),
             AgencyCommManager::path("Sync/Commands", _myId),
             "/.agency"}));
 
@@ -427,6 +429,7 @@ void HeartbeatThread::runSingleServer() {
       if (!result.successful()) {
         LOG_TOPIC(WARN, Logger::HEARTBEAT)
             << "Heartbeat: Could not read from agency!";
+        sleep(ceil(interval));
         continue;
       }
       
@@ -440,16 +443,70 @@ void HeartbeatThread::runSingleServer() {
         ApplicationServer::server->beginShutdown();
         break;
       }
-        
       
-
-      // TODO: implement the actual heartbeat
+      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Looking at Sync/Commands/" << _myId;
+      handleStateChange(result);
+      
+      // performing failover checks
+      VPackSlice asyncReplication =
+      response.get({AgencyCommManager::path(), "Plan", "AsyncReplication"});
+      if (asyncReplication.isObject()) {
+        std::string const leaderPath = "/Plan/AsyncReplication/Leader";
+        VPackSlice leader = asyncReplication.get("Leader");
+        VPackBuilder myIdBuilder;
+        myIdBuilder.add(VPackValue(_myId));
+        
+        if (leader.isString()) {
+          if (leader.compareString(_myId) == 0) {
+            LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "All your bases belong to us " << _myId;
+            // updating the value to keep our leadership
+            result = _agency.casValue(leaderPath, /* old */ myIdBuilder.slice(),
+                                      /* new */ myIdBuilder.slice(),
+                                      /* ttl */ interval * 4, /* timeout */ 30.0);
+            if (!result.successful()) {
+              LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Cannot update leadership value";
+            }
+            // TODO set master flag
+          } else {
+            LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "I live to serve my master " << _myId;
+            // TODO make slave somehow
+          }
+        } else {
+          LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vaccuum detected, taking over";
+          
+          result = _agency.casValue(leaderPath, myIdBuilder.slice(), false,
+                                    /* ttl */ interval * 4, /* timeout */ 30.0);
+          if (result.successful()) {
+            LOG_TOPIC(INFO, Logger::HEARTBEAT) << "We are leader, all your bases belong to us";
+          } else {
+            LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Takeover attempt failed";
+          }
+        }
+        
+      } else {
+        LOG_TOPIC(WARN, Logger::HEARTBEAT)
+          << "Heartbeat: Could not read asyn replication metadata from agency!";
+      }
+      
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "Got an exception in single server heartbeat: " << e.what();
     } catch (...) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "Got an unknown exception in single server heartbeat";
+    }
+    
+    double remain = interval - (TRI_microtime() - start);
+    // sleep for a while if appropriate, on some systems usleep does not
+    // like arguments greater than 1000000
+    while (remain > 0.0) {
+      if (remain >= 0.5) {
+        usleep(500000);
+        remain -= 0.5;
+      } else {
+        usleep((TRI_usleep_t)(remain * 1000.0 * 1000.0));
+        remain = 0.0;
+      }
     }
   }
 }

@@ -164,9 +164,7 @@ int RestHandler::finalizeEngine() {
 
 int RestHandler::executeEngine() {
   TRI_ASSERT(ExecContext::CURRENT == nullptr);
-  ExecContext::CURRENT = _request->execContext();
-  TRI_DEFER(ExecContext::CURRENT = nullptr);
-  
+  ExecContextScope scope(_request->execContext());
   try {
     RestStatus result = execute();
 
@@ -235,9 +233,7 @@ int RestHandler::executeEngine() {
 
 int RestHandler::runEngine(bool synchron) {
   TRI_ASSERT(ExecContext::CURRENT == nullptr);
-  ExecContext::CURRENT = _request->execContext();
-  TRI_DEFER(ExecContext::CURRENT = nullptr);
-  
+  ExecContextScope scope(_request->execContext());
   try {
     while (_engine.hasSteps()) {
       std::shared_ptr<RestStatusElement> result = _engine.popStep();

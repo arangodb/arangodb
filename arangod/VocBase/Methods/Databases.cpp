@@ -83,7 +83,8 @@ std::vector<std::string> Databases::list(std::string const& user) {
       std::vector<std::string> names;
       std::vector<std::string> dbs = databaseFeature->getDatabaseNamesCoordinator();
       for (std::string const& db : dbs) {
-        if (auth->canUseDatabase(user, db) != AuthLevel::NONE) {
+        if (!auth->isActive() ||
+            auth->authInfo()->canUseDatabase(user, db) != AuthLevel::NONE) {
           names.push_back(db);
         }
       }
@@ -144,7 +145,7 @@ arangodb::Result Databases::create(std::string const& dbName,
   }
   auto auth = FeatureCacheFeature::instance()->authenticationFeature();
   if (ExecContext::CURRENT != nullptr) {
-    if (!ExecContext::CURRENT->isSystemUser()) {
+    if (!ExecContext::CURRENT->isAdminUser()) {
       return TRI_ERROR_FORBIDDEN;
     }
   }

@@ -30,38 +30,66 @@
 using namespace arangodb;
 
 thread_local ExecContext const* ExecContext::CURRENT = nullptr;
+ExecContext ExecContext::SUPERUSER(true, "", "", AuthLevel::RW, AuthLevel::RW);
 
-ExecContext* ExecContext::copy() const {
-  return new ExecContext(_user, _database, _systemAuthLevel,
-                         _databaseAuthLevel);
+/// @brief an internal superuser context
+ExecContext const* ExecContext::superuser() {
+  return &ExecContext::SUPERUSER;
 }
 
-typedef AuthenticationFeature _AF;
+/// @brief a reference to a user with NONE for everything
+ExecContext* ExecContext::createUnauthorized(std::string const& user,
+                                             std::string const& db) {
+  return new ExecContext(false, user, db, AuthLevel::NONE, AuthLevel::NONE);
+}
 
-ExecContext::ExecContext(std::string const& u, std::string const& db)
-    : _user(u),
-      _database(db),
-      _systemAuthLevel(
-          _AF::INSTANCE->canUseDatabase(u, TRI_VOC_SYSTEM_DATABASE)),
-      _databaseAuthLevel(_AF::INSTANCE->canUseDatabase(u, db)) {}
+ExecContext* ExecContext::create(std::string const& user,
+                                 std::string const& dbname) {
+  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+  TRI_ASSERT(auth != nullptr);
+  AuthLevel dbLvl = auth->authInfo()->canUseDatabase(user, dbname);
+  AuthLevel sysLvl = dbLvl;
+  if (dbname != TRI_VOC_SYSTEM_DATABASE) {
+    sysLvl = auth->authInfo()->canUseDatabase(user, TRI_VOC_SYSTEM_DATABASE);
+  }
+  return new ExecContext(false, user, dbname, sysLvl, dbLvl);
+}
 
 bool ExecContext::canUseDatabase(std::string const& db,
                                  AuthLevel requested) const {
+  if (_isSuperuser) {
+    return true;
+  }
   AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-  if (auth != nullptr && auth->isActive()) {
+  TRI_ASSERT(auth != nullptr);
+  if (auth->isActive()) {
     AuthLevel allowed = auth->authInfo()->canUseDatabase(_user, db);
     return requested <= allowed;
   }
   return true;
 }
 
-bool ExecContext::canUseCollection(std::string const& db,
-                                   std::string const& coll,
-                                   AuthLevel requested) const {
-  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-  if (auth != nullptr && auth->isActive()) {
-    AuthLevel allowed = auth->authInfo()->canUseCollection(_user, db, coll);
-    return requested <= allowed;
+/// @brief returns auth level for user
+AuthLevel ExecContext::collectionAuthLevel(std::string const& dbname,
+                                           std::string const& coll) const {
+  if (_isSuperuser) {
+    return AuthLevel::RW;
   }
-  return true;
+  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+  TRI_ASSERT(auth != nullptr);
+  if (auth->isActive()) {
+    // handle fixed permissions here outside auth module.
+    // TODO: move this block above, such that it takes effect
+    //       when authentication is disabled
+    if (dbname == TRI_VOC_SYSTEM_DATABASE &&
+        coll == TRI_COL_NAME_USERS) {
+      return AuthLevel::NONE;
+    } else if (coll == "_queues") {
+      return AuthLevel::RO;
+    } else if (coll == "_frontend") {
+      return AuthLevel::RW;
+    } // fall through
+    return auth->authInfo()->canUseCollection(_user, dbname, coll);
+  }
+  return AuthLevel::RW;
 }

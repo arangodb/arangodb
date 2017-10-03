@@ -46,7 +46,7 @@ bool RestShutdownHandler::isDirect() const { return true; }
 
 RestStatus RestShutdownHandler::execute() {
   if (_request->execContext() != nullptr &&
-      !_request->execContext()->isSystemUser()) {
+      !_request->execContext()->isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     return RestStatus::DONE;
   }

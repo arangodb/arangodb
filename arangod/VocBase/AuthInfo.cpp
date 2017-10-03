@@ -125,10 +125,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext const* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope(ExecContext::superuser());
   std::string const queryStr("FOR user IN _users RETURN user");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
   arangodb::aql::Query query(false, vocbase,
@@ -171,10 +168,7 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext const* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope(ExecContext::superuser());
   std::string const queryStr("FOR u IN _users FILTER u.user == @name RETURN u");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
 
@@ -330,10 +324,7 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext const* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope(ExecContext::superuser());
   auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
@@ -493,10 +484,7 @@ static Result UpdateUser(VPackSlice const& user) {
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext const* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope(ExecContext::superuser());
   auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
@@ -618,10 +606,7 @@ static Result RemoveUserInternal(AuthUserEntry const& entry) {
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext const* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope(ExecContext::superuser());
   auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
@@ -786,8 +771,7 @@ Result AuthInfo::setUserData(std::string const& user,
 AuthResult AuthInfo::checkPassword(std::string const& username,
                                    std::string const& password) {
   AuthResult result(username);
-
-  if (StringUtils::isPrefix(username, ":role:")) {
+  if (username.empty() || StringUtils::isPrefix(username, ":role:")) {
     return result;
   }
 
@@ -932,7 +916,6 @@ AuthResult AuthInfo::checkAuthentication(AuthenticationMethod authType,
 // private
 AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
   auto role = ServerState::instance()->getRole();
-
   if (role != ServerState::ROLE_SINGLE &&
       role != ServerState::ROLE_COORDINATOR) {
     return AuthResult();
@@ -961,7 +944,6 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
   std::string password = up.substr(n + 1);
 
   AuthResult result = checkPassword(username, password);
-
   double timeout = AuthenticationFeature::INSTANCE->authenticationTimeout();
 
   if (0 < timeout) {

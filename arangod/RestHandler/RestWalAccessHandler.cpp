@@ -69,7 +69,7 @@ RestWalAccessHandler::RestWalAccessHandler(GeneralRequest* request,
 
 RestStatus RestWalAccessHandler::execute() {
   if (_request->execContext() != nullptr &&
-      !_request->execContext()->isSystemUser()) {
+      !_request->execContext()->isAdminUser()) {
     generateError(ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;
   }

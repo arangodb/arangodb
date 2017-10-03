@@ -47,7 +47,7 @@ AuthenticationFeature::AuthenticationFeature(
       _authenticationSystemOnly(true),
       _jwtSecretProgramOption(""),
       _active(true) {
-  setOptional(true);
+  setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Random");
 #ifdef USE_ENTERPRISE
@@ -167,7 +167,7 @@ void AuthenticationFeature::start() {
 
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << out.str();
 }
-
+/*
 AuthLevel AuthenticationFeature::canUseDatabase(std::string const& username,
                                                 std::string const& dbname) {
   if (!isActive()) {
@@ -185,9 +185,9 @@ AuthLevel AuthenticationFeature::canUseCollection(std::string const& username,
   }
 
   return authInfo()->canUseCollection(username, dbname, coll);
-}
+}*/
 
-AuthInfo* AuthenticationFeature::authInfo() {
+AuthInfo* AuthenticationFeature::authInfo() const {
   TRI_ASSERT(_authInfo != nullptr);  
   return _authInfo;
 }

@@ -250,7 +250,10 @@ retry:
           _useTick = true;
           goto retry;
         }
-        
+        res = r.errorNumber();
+        errorMsg = r.errorMessage();
+        LOG_TOPIC(WARN, Logger::REPLICATION)
+          << "(Global tailing) Initial replication failed: " << r.errorMessage();
         // fall through otherwise
       } catch (...) {
         errorMsg = "caught an exception";

@@ -2990,15 +2990,10 @@ static void JS_CollectionVocbase(
     TRI_V8_RETURN_NULL();
   }
 
-  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-  if (ExecContext::CURRENT != nullptr && auth != nullptr) {
-    AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
-                                             ExecContext::CURRENT->database(),
-                                             name);
-    if (level == AuthLevel::NONE) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                     "No access to collection");
-    }
+  if (ExecContext::CURRENT != nullptr &&
+      !ExecContext::CURRENT->canUseCollection(name, AuthLevel::RO)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   "No access to collection");
   }
 
   v8::Handle<v8::Value> result = WrapCollection(isolate, collection);
@@ -3054,7 +3049,6 @@ static void JS_CollectionsVocbase(
     return StringUtils::tolower(lhs->name()) < StringUtils::tolower(rhs->name());
   });
 
-  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
   bool error = false;
 
   // already create an array of the correct size
@@ -3064,12 +3058,10 @@ static void JS_CollectionsVocbase(
   for (size_t i = 0; i < n; ++i) {
     auto& collection = colls[i];
 
-    if (auth->isActive() && ExecContext::CURRENT != nullptr) {
-      AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
-                             vocbase->name(), collection->name());
-      if (level == AuthLevel::NONE) {
-        continue;
-      }
+    if (ExecContext::CURRENT != nullptr &&
+        !ExecContext::CURRENT->canUseCollection(vocbase->name(),
+                                               collection->name(), AuthLevel::RO)) {
+      continue;
     }
 
     v8::Handle<v8::Value> c = WrapCollection(isolate, collection);
