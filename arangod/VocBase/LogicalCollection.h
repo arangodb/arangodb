@@ -45,7 +45,7 @@ typedef std::string CollectionID;  // ID of a collection
 typedef std::string ShardID;       // ID of a shard
 typedef std::unordered_map<ShardID, std::vector<ServerID>> ShardMap;
 
-struct LocalDocumentId;
+class LocalDocumentId;
 class FollowerInfo;
 class Index;
 class IndexIterator;
