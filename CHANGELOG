@@ -9,6 +9,8 @@ devel
     --ldap.roles-transformation
     --ldap.roles-search
     --ldap.superuser-role
+    --ldap.roles-include
+    --ldap.roles-exclude
 
 * performance improvements for full collection scans and a few other operations
   in MMFiles engine

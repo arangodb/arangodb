@@ -26,7 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
-#include "StorageEngine/DocumentIdentifierToken.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -38,9 +38,9 @@ struct EdgeDocumentToken {
   
   EdgeDocumentToken() noexcept
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    : _data(0, DocumentIdentifierToken()), _type(TokenType::NONE) {}
+    : _data(0, LocalDocumentId()), _type(TokenType::NONE) {}
 #else
-    : _data(0, DocumentIdentifierToken()) {}
+    : _data(0, LocalDocumentId()) {}
 #endif
   
   EdgeDocumentToken(EdgeDocumentToken&& edtkn) noexcept {
@@ -58,7 +58,7 @@ struct EdgeDocumentToken {
   }
   
   EdgeDocumentToken(TRI_voc_cid_t const cid,
-                    DocumentIdentifierToken const token) noexcept : _data(cid, token) {
+                    LocalDocumentId const localDocumentId) noexcept : _data(cid, localDocumentId) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     _type = EdgeDocumentToken::TokenType::LOCAL;
 #endif
@@ -86,12 +86,12 @@ struct EdgeDocumentToken {
     return _data.document.cid;
   }
   
-  DocumentIdentifierToken token() const {
+  LocalDocumentId localDocumentId() const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(_type == TokenType::LOCAL);
 #endif
-    TRI_ASSERT(_data.document.token != 0);
-    return _data.document.token;
+    TRI_ASSERT(_data.document.localDocumentId.isSet());
+    return _data.document.localDocumentId;
   }
   
   uint8_t const* vpack() const {
@@ -116,7 +116,7 @@ struct EdgeDocumentToken {
     TRI_ASSERT(_type == TokenType::LOCAL);
 #endif
     return _data.document.cid == other.cid() &&
-           _data.document.token == other.token();
+           _data.document.localDocumentId == other.localDocumentId();
   }
   
 private:
@@ -125,7 +125,7 @@ private:
   /// only used on a dbserver or single server
   struct LocalDocument {
     TRI_voc_cid_t cid;
-    DocumentIdentifierToken token;
+    LocalDocumentId localDocumentId;
     ~LocalDocument() {}
   };
   
@@ -141,9 +141,9 @@ private:
     TokenData(velocypack::Slice const& edge) : vpack(edge.begin()) {
       TRI_ASSERT(!velocypack::Slice(vpack).isExternal());
     }
-    TokenData(TRI_voc_cid_t cid, DocumentIdentifierToken tk) {
+    TokenData(TRI_voc_cid_t cid, LocalDocumentId tk) {
       document.cid = cid;
-      document.token = tk;
+      document.localDocumentId = tk;
     }
     ~TokenData() {}
   };

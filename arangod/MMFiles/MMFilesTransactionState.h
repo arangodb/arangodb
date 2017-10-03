@@ -31,6 +31,7 @@
 #include "Transaction/Methods.h"
 #include "Transaction/Hints.h"
 #include "VocBase/AccessMode.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
                                 
 struct TRI_vocbase_t;
@@ -69,7 +70,8 @@ class MMFilesTransactionState final : public TransactionState {
   }
   
   /// @brief add a WAL operation for a transaction collection
-  int addOperation(TRI_voc_rid_t, MMFilesDocumentOperation&, MMFilesWalMarker const* marker, bool&);
+  int addOperation(LocalDocumentId const& documentId,
+                   MMFilesDocumentOperation&, MMFilesWalMarker const* marker, bool&);
   
   /// @brief get the transaction id for usage in a marker
   TRI_voc_tid_t idForMarker() {

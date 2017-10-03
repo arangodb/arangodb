@@ -25,7 +25,7 @@
 #define ARANGOD_MMFILES_MMFILES_FULLTEXT_INDEX_H 1
 
 #include "mmfiles-fulltext-common.h"
-
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_fulltext_query_s;
@@ -62,12 +62,12 @@ void TRI_TruncateMMFilesFulltextIndex(TRI_fts_index_t*);
 
 /// @brief insert a list of words to the index
 int TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t*,
-                                        TRI_voc_rid_t,
+                                        arangodb::LocalDocumentId const& documentId,
                                         std::set<std::string> const&);
 
 /// @brief insert a list of words to the index
 int TRI_RemoveWordsMMFilesFulltextIndex(TRI_fts_index_t*,
-                                        TRI_voc_rid_t,
+                                        arangodb::LocalDocumentId const& documentId,
                                         std::set<std::string> const&);
 
 /// @brief execute a query on the fulltext index

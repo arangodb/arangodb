@@ -129,7 +129,7 @@ void RocksDBExportCursor::dump(VPackBuilder& builder) {
     builder.add("result", VPackValue(VPackValueType::Array));
     size_t const n = batchSize();
 
-    auto cb = [&, this](DocumentIdentifierToken const& token, VPackSlice slice) {
+    auto cb = [&, this](LocalDocumentId const& token, VPackSlice slice) {
       if (_position == _size) {
         return false;
       }
