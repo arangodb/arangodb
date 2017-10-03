@@ -1638,7 +1638,7 @@ function ReplicationApplierSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      replication.applier.shutdown();
+      replication.applier.stop();
       replication.applier.forget();
     },
 
@@ -1647,7 +1647,7 @@ function ReplicationApplierSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      replication.applier.shutdown();
+      replication.applier.stop();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1790,13 +1790,13 @@ function ReplicationApplierSuite () {
       assertTrue(state.state.running);
 
       // stop
-      replication.applier.shutdown();
+      replication.applier.stop();
 
       state = replication.applier.state();
       assertFalse(state.state.running);
 
       // stop again
-      replication.applier.shutdown();
+      replication.applier.stop();
 
       state = replication.applier.state();
       assertFalse(state.state.running);
@@ -1991,7 +1991,7 @@ function ReplicationSyncSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      replication.applier.shutdown();
+      replication.applier.stop();
       replication.applier.forget();
     },
 

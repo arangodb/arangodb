@@ -2111,7 +2111,7 @@ void RestReplicationHandler::handleCommandApplierStart() {
 void RestReplicationHandler::handleCommandApplierStop() {
   TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
 
-  _vocbase->replicationApplier()->stop(true, true);
+  _vocbase->replicationApplier()->stopAndJoin(true);
 
   handleCommandApplierGetState();
 }

@@ -47,17 +47,31 @@ class ReplicationApplier {
   ReplicationApplier(ReplicationApplier const&) = delete;
   ReplicationApplier& operator=(ReplicationApplier const&) = delete;
 
+  /// @brief execute the check condition
+  virtual bool applies() const = 0;
+ 
   /// @brief stop the applier and "forget" everything
   virtual void forget() = 0;
+  
+  /// @brief test if the replication applier is running
+  bool isRunning() const;
+
+  /// @brief set the applier state to stopped
+  void threadStopped();
   
   /// @brief start the replication applier
   virtual void start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
   
   /// @brief stop the replication applier
-  virtual void stop(bool resetError, bool joinThread);
-
-  /// @brief shuts down the replication applier
-  virtual void shutdown();
+  virtual void stop(bool resetError);
+  
+  /// @brief stop the replication applier and join the apply thread
+  virtual void stopAndJoin(bool resetError);
+  
+  /// @brief sleeps for the specific number of microseconds if the
+  /// applier is still active, and returns true. if the applier is not
+  /// active anymore, returns false
+  bool sleepIfStillActive(uint64_t sleepTime);
 
   /// @brief configure the replication applier
   virtual void reconfigure(ReplicationApplierConfiguration const& configuration);
@@ -81,16 +95,6 @@ class ReplicationApplier {
   /// @brief return the current configuration
   virtual ReplicationApplierConfiguration configuration() const;
 
-  bool isTerminated() { return _terminateThread.load(); }
-
-  void setTermination(bool value) { _terminateThread.store(value); }
-
-  /// @brief test if the replication applier is running
-  bool isRunning() const;
-  
-  /// @brief pauses and checks whether the apply thread should terminate
-  bool wait(uint64_t);
-  
   /// @brief block the replication applier from starting
   int preventStart();
   
@@ -115,6 +119,10 @@ class ReplicationApplier {
   void setProgress(char const* msg);
   void setProgress(std::string const& msg);
 
+ private:
+  /// @brief stop the replication applier and join the apply thread
+  void doStop(bool resetError, bool joinThread);
+
  protected:
   virtual std::unique_ptr<TailingSyncer> buildSyncer(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) = 0;
   
@@ -129,8 +137,8 @@ class ReplicationApplier {
   ReplicationApplierState _state;
   
   mutable arangodb::basics::ReadWriteLock _statusLock;
-  std::atomic<bool> _terminateThread;
 
+  // used only for logging
   std::string _databaseName;
 
   std::unique_ptr<Thread> _thread;

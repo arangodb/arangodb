@@ -39,13 +39,13 @@ GlobalReplicationApplier::GlobalReplicationApplier(ReplicationApplierConfigurati
 
 GlobalReplicationApplier::~GlobalReplicationApplier() {
   try {
-    stop(true, false);
+    stop(true);
   } catch (...) {}
 }
 
 /// @brief stop the applier and "forget" everything
 void GlobalReplicationApplier::forget() {
-  stop(true, true);
+  stopAndJoin(true);
 
   removeState();
 
@@ -53,24 +53,6 @@ void GlobalReplicationApplier::forget() {
 //  StorageEngine* engine = EngineSelectorFeature::ENGINE;
 //  engine->removeReplicationApplierConfiguration(_vocbase);
   _configuration.reset();
-}
-
-/// @brief start the replication applier
-void GlobalReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
-  // simply fall back to base class implementation
-  ReplicationApplier::start(initialTick, useTick, barrierId);
-}
-  
-/// @brief stop the replication applier
-void GlobalReplicationApplier::stop(bool resetError, bool joinThread) {
-  // simply fall back to base class implementation
-  ReplicationApplier::stop(resetError, joinThread);
-}
-
-/// @brief shuts down the replication applier
-void GlobalReplicationApplier::shutdown() {
-  // simply fall back to base class implementation
-  ReplicationApplier::shutdown();
 }
 
 /// @brief store the configuration for the applier

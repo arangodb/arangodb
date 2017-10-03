@@ -72,7 +72,7 @@ void ReplicationFeature::start() {
 void ReplicationFeature::beginShutdown() {
   try {
     if (_globalReplicationApplier != nullptr) {
-      _globalReplicationApplier->stop(true, false);
+      _globalReplicationApplier->stop(true);
     }
   } catch (...) {
     // ignore any error
@@ -113,6 +113,6 @@ void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
 
   if (vocbase->replicationApplier() != nullptr) {
-    vocbase->replicationApplier()->stop(false, true);
+    vocbase->replicationApplier()->stopAndJoin(false);
   }
 }
