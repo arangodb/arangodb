@@ -35,7 +35,6 @@
 #include "MMFiles/MMFilesPersistentIndexFeature.h"
 #include "MMFiles/MMFilesPersistentIndexKeyComparator.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
-#include "MMFiles/MMFilesToken.h"
 #include "MMFiles/MMFilesTransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -125,7 +124,7 @@ void MMFilesPersistentIndexIterator::reset() {
   }
 }
 
-bool MMFilesPersistentIndexIterator::next(TokenCallback const& cb,
+bool MMFilesPersistentIndexIterator::next(LocalDocumentIdCallback const& cb,
                                           size_t limit) {
   auto comparator = MMFilesPersistentIndexFeature::instance()->comparator();
   while (limit > 0) {
@@ -179,8 +178,8 @@ bool MMFilesPersistentIndexIterator::next(TokenCallback const& cb,
       MMFilesSimpleIndexElement element =
           _primaryIndex->lookupKey(_trx, keySlice[n - 1]);
       if (element) {
-        MMFilesToken doc = MMFilesToken{element.revisionId()};
-        if (doc != 0) {
+        LocalDocumentId doc = element.localDocumentId();
+        if (doc.isSet()) {
           cb(doc);
           --limit;
         }
@@ -207,7 +206,7 @@ bool MMFilesPersistentIndexIterator::next(TokenCallback const& cb,
 MMFilesPersistentIndex::MMFilesPersistentIndex(
     TRI_idx_iid_t iid, arangodb::LogicalCollection* collection,
     arangodb::velocypack::Slice const& info)
-    : MMFilesPathBasedIndex(iid, collection, info, sizeof(TRI_voc_rid_t),
+    : MMFilesPathBasedIndex(iid, collection, info, sizeof(LocalDocumentId),
                             true) {}
 
 /// @brief destroy the index
@@ -219,13 +218,13 @@ size_t MMFilesPersistentIndex::memory() const {
 
 /// @brief inserts a document into the index
 Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
-                                      TRI_voc_rid_t revisionId,
+                                      LocalDocumentId const& documentId,
                                       VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
   try {
-    res = fillElement(elements, revisionId, doc);
+    res = fillElement(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {
@@ -384,13 +383,13 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
 
 /// @brief removes a document from the index
 Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
-                                      TRI_voc_rid_t revisionId,
+                                      LocalDocumentId const& documentId,
                                       VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
   try {
-    res = fillElement(elements, revisionId, doc);
+    res = fillElement(elements, documentId, doc);
   } catch (basics::Exception const& ex) {
     res = ex.code();
   } catch (std::bad_alloc const&) {

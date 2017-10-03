@@ -84,7 +84,7 @@ static TRI_voc_crc_t Crc28(TRI_voc_crc_t crc, void const* data, size_t length) {
 /// @brief check if a marker appears to be created by ArangoDB 2.8
 static bool IsMarker28(void const* marker) {
   struct Marker28 {
-    TRI_voc_size_t       _size; 
+    uint32_t       _size; 
     TRI_voc_crc_t        _crc;     
     uint32_t             _type;   
 #ifdef TRI_PADDING_32
@@ -93,7 +93,7 @@ static bool IsMarker28(void const* marker) {
     TRI_voc_tick_t _tick;     
   };
 
-  TRI_voc_size_t zero = 0;
+  uint32_t zero = 0;
   off_t o = offsetof(Marker28, _crc);
   size_t n = sizeof(TRI_voc_crc_t);
 
@@ -113,7 +113,7 @@ static bool IsMarker28(void const* marker) {
 
 /// @brief calculates the actual CRC of a marker, without bounds checks
 static TRI_voc_crc_t CalculateCrcValue(MMFilesMarker const* marker) {
-  TRI_voc_size_t zero = 0;
+  uint32_t zero = 0;
   off_t o = marker->offsetOfCrc();
   size_t n = sizeof(TRI_voc_crc_t);
 
@@ -132,7 +132,7 @@ static TRI_voc_crc_t CalculateCrcValue(MMFilesMarker const* marker) {
 
 /// @brief checks a CRC of a marker, with bounds checks
 static bool CheckCrcMarker(MMFilesMarker const* marker, char const* end) {
-  TRI_voc_size_t const size = marker->getSize();
+  uint32_t const size = marker->getSize();
 
   if (size < sizeof(MMFilesMarker)) {
     return false;
@@ -179,7 +179,7 @@ static uint64_t GetNumericFilenamePart(char const* filename) {
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
 
 static MMFilesDatafile* CreateAnonymousDatafile(TRI_voc_fid_t fid,
-                                               TRI_voc_size_t maximalSize) {
+                                               uint32_t maximalSize) {
 #ifdef TRI_MMAP_ANONYMOUS
   // fd -1 is required for "real" anonymous regions
   int fd = -1;
@@ -230,7 +230,7 @@ static MMFilesDatafile* CreateAnonymousDatafile(TRI_voc_fid_t fid,
 
 static MMFilesDatafile* CreatePhysicalDatafile(std::string const& filename,
                                               TRI_voc_fid_t fid,
-                                              TRI_voc_size_t maximalSize) {
+                                              uint32_t maximalSize) {
   TRI_ASSERT(!filename.empty());
 
   int fd = TRI_CreateDatafile(filename, maximalSize);
@@ -317,7 +317,7 @@ int MMFilesDatafile::judge(std::string const& filename) {
 
 /// @brief creates either an anonymous or a physical datafile
 MMFilesDatafile* MMFilesDatafile::create(std::string const& filename, TRI_voc_fid_t fid,
-                                   TRI_voc_size_t maximalSize,
+                                   uint32_t maximalSize,
                                    bool withInitialMarkers) {
   size_t pageSize = PageSizeFeature::getPageSize();
 
@@ -325,7 +325,7 @@ MMFilesDatafile* MMFilesDatafile::create(std::string const& filename, TRI_voc_fi
 
   // use multiples of page-size
   maximalSize =
-      (TRI_voc_size_t)(((maximalSize + pageSize - 1) / pageSize) * pageSize);
+      (uint32_t)(((maximalSize + pageSize - 1) / pageSize) * pageSize);
 
   // sanity check maximal size
   if (sizeof(MMFilesDatafileHeaderMarker) + sizeof(MMFilesDatafileFooterMarker) >
@@ -461,10 +461,10 @@ bool TRI_IsValidMarkerDatafile(MMFilesMarker const* marker) {
 /// note: maximalJournalSize is the collection's maximalJournalSize property,
 /// which may be different from the size of the current datafile
 /// some callers do not set the value of maximalJournalSize
-int MMFilesDatafile::reserveElement(TRI_voc_size_t size, MMFilesMarker** position,
-                                   TRI_voc_size_t maximalJournalSize) {
+int MMFilesDatafile::reserveElement(uint32_t size, MMFilesMarker** position,
+                                   uint32_t maximalJournalSize) {
   *position = nullptr;
-  size = encoding::alignedSize<TRI_voc_size_t>(size);
+  size = encoding::alignedSize<uint32_t>(size);
 
   if (_state != TRI_DF_STATE_WRITE) {
     if (_state == TRI_DF_STATE_READ) {
@@ -875,7 +875,7 @@ int MMFilesDatafile::seal() {
 
 /// @brief truncates a datafile and seals it
 /// this is called from the recovery procedure only
-int MMFilesDatafile::truncate(std::string const& path, TRI_voc_size_t position) {
+int MMFilesDatafile::truncate(std::string const& path, uint32_t position) {
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(!path.empty());
 
@@ -937,7 +937,7 @@ static std::string DiagnoseMarker(MMFilesMarker const* marker,
     return result.str();
   }
 
-  TRI_voc_size_t size = marker->getSize();
+  uint32_t size = marker->getSize();
 
   if (size >= MMFilesDatafileHelper::MaximalMarkerSize()) {
     // a single marker bigger than this size seems unreasonable
@@ -970,8 +970,8 @@ static std::string DiagnoseMarker(MMFilesMarker const* marker,
   return result.str();
 }
 
-MMFilesDatafile::MMFilesDatafile(std::string const& filename, int fd, void* mmHandle, TRI_voc_size_t maximalSize,
-                               TRI_voc_size_t currentSize, TRI_voc_fid_t fid, char* data)
+MMFilesDatafile::MMFilesDatafile(std::string const& filename, int fd, void* mmHandle, uint32_t maximalSize,
+                               uint32_t currentSize, TRI_voc_fid_t fid, char* data)
         : _filename(filename),
           _fid(fid),
           _state(TRI_DF_STATE_READ),
@@ -1087,7 +1087,7 @@ bool MMFilesDatafile::sync(char const* begin, char const* end) {
  
 /// @brief truncates a datafile
 /// Create a truncated datafile, seal it and rename the old.
-int MMFilesDatafile::truncateAndSeal(TRI_voc_size_t position) {
+int MMFilesDatafile::truncateAndSeal(uint32_t position) {
   TRI_ERRORBUF;
   void* data;
   void* mmHandle;
@@ -1200,7 +1200,7 @@ int MMFilesDatafile::truncateAndSeal(TRI_voc_size_t position) {
   // do not change _initSize!
   TRI_ASSERT(_initSize == _maximalSize);
   TRI_ASSERT(maximalSize <= _initSize);
-  _maximalSize = static_cast<TRI_voc_size_t>(maximalSize);
+  _maximalSize = static_cast<uint32_t>(maximalSize);
   _fd = fd;
   _mmHandle = mmHandle;
   _state = TRI_DF_STATE_CLOSED;
@@ -1240,7 +1240,7 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
   char const* ptr = _data;
   char const* end = ptr + _currentSize;
   char const* lastGood = nullptr;
-  TRI_voc_size_t currentSize = 0;
+  uint32_t currentSize = 0;
 
   if (_currentSize == 0) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "current size is 0 in read-only datafile '" << getName() << "', trying to fix";
@@ -1253,7 +1253,7 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
 
   while (ptr < end) {
     MMFilesMarker const* marker = reinterpret_cast<MMFilesMarker const*>(ptr);
-    TRI_voc_size_t const size = marker->getSize();
+    uint32_t const size = marker->getSize();
     TRI_voc_tick_t const tick = marker->getTick();
     MMFilesMarkerType const type = marker->getType();
 
@@ -1300,7 +1300,7 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
       if (lastGood != nullptr) {
         LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "last good marker found at: " << hexValue(static_cast<uint64_t>(static_cast<uintptr_t>(lastGood - _data)));
       }
-      printMarker(marker, static_cast<TRI_voc_size_t>(end - ptr), _data, end);
+      printMarker(marker, static_cast<uint32_t>(end - ptr), _data, end);
 
       return false;
     }
@@ -1422,7 +1422,7 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
     }
 
     size_t alignedSize = MMFilesDatafileHelper::AlignedMarkerSize<size_t>(marker);
-    currentSize += static_cast<TRI_voc_size_t>(alignedSize);
+    currentSize += static_cast<uint32_t>(alignedSize);
 
     if (marker->getType() == TRI_DF_MARKER_FOOTER) {
       LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "found footer, reached end of datafile '" << getName() << "', current size " << currentSize;
@@ -1441,7 +1441,7 @@ bool MMFilesDatafile::check(bool ignoreFailures) {
   return true;
 }
 
-void MMFilesDatafile::printMarker(MMFilesMarker const* marker, TRI_voc_size_t size, char const* begin, char const* end) const {
+void MMFilesDatafile::printMarker(MMFilesMarker const* marker, uint32_t size, char const* begin, char const* end) const {
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "raw marker data following:";
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "type: " << TRI_NameMarkerDatafile(marker) << ", size: " << marker->getSize() << ", crc: " << marker->getCrc();
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "(expected layout: size (4 bytes), crc (4 bytes), type and tick (8 bytes), payload following)";
@@ -1498,7 +1498,7 @@ void MMFilesDatafile::printMarker(MMFilesMarker const* marker, TRI_voc_size_t si
 }
 
 /// @brief fixes a corrupted datafile
-bool MMFilesDatafile::fix(TRI_voc_size_t currentSize) {
+bool MMFilesDatafile::fix(uint32_t currentSize) {
   LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "datafile '" << getName() << "' is corrupted at position " << currentSize;
 
   LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "setting datafile '" << getName() << "' to read-only and ignoring all data from this file beyond this position";
@@ -1506,7 +1506,7 @@ bool MMFilesDatafile::fix(TRI_voc_size_t currentSize) {
   _currentSize = currentSize;
   TRI_ASSERT(_initSize == _maximalSize);
   TRI_ASSERT(currentSize <= _initSize);
-  _maximalSize = static_cast<TRI_voc_size_t>(currentSize);
+  _maximalSize = static_cast<uint32_t>(currentSize);
   _next = _data + _currentSize;
   _full = true;
   _state = TRI_DF_STATE_READ;
@@ -1522,7 +1522,7 @@ DatafileScan MMFilesDatafile::scanHelper() {
 
   char* ptr = _data;
   char* end = _data + _currentSize;
-  TRI_voc_size_t currentSize = 0;
+  uint32_t currentSize = 0;
 
   DatafileScan scan;
 
@@ -1537,9 +1537,9 @@ DatafileScan MMFilesDatafile::scanHelper() {
     MMFilesMarker* marker = reinterpret_cast<MMFilesMarker*>(ptr);
 
     DatafileScanEntry entry;
-    entry.position = static_cast<TRI_voc_size_t>(ptr - _data);
+    entry.position = static_cast<uint32_t>(ptr - _data);
     entry.size = marker->getSize();
-    entry.realSize = static_cast<TRI_voc_size_t>(MMFilesDatafileHelper::AlignedMarkerSize<size_t>(marker));
+    entry.realSize = static_cast<uint32_t>(MMFilesDatafileHelper::AlignedMarkerSize<size_t>(marker));
     entry.tick = marker->getTick();
     entry.type = marker->getType();
     entry.status = 1;
@@ -1608,7 +1608,7 @@ DatafileScan MMFilesDatafile::scanHelper() {
     scan.entries.emplace_back(entry);
 
     size_t size = MMFilesDatafileHelper::AlignedMarkerSize<size_t>(marker);
-    currentSize += static_cast<TRI_voc_size_t>(size);
+    currentSize += static_cast<uint32_t>(size);
 
     if (marker->getType() == TRI_DF_MARKER_FOOTER) {
       scan.endPosition = currentSize;
@@ -1623,7 +1623,7 @@ DatafileScan MMFilesDatafile::scanHelper() {
 }
 
 /// @brief create the initial datafile header marker
-int MMFilesDatafile::writeInitialHeaderMarker(TRI_voc_fid_t fid, TRI_voc_size_t maximalSize) {
+int MMFilesDatafile::writeInitialHeaderMarker(TRI_voc_fid_t fid, uint32_t maximalSize) {
   // create the header
   MMFilesDatafileHeaderMarker header = MMFilesDatafileHelper::CreateHeaderMarker(
     maximalSize, static_cast<TRI_voc_tick_t>(fid));
@@ -1652,11 +1652,11 @@ bool MMFilesDatafile::tryRepair() {
     end = _data + _maximalSize;
   }
 
-  TRI_voc_size_t currentSize = 0;
+  uint32_t currentSize = 0;
 
   while (ptr < end) {
     MMFilesMarker* marker = reinterpret_cast<MMFilesMarker*>(ptr);
-    TRI_voc_size_t const size = marker->getSize();
+    uint32_t const size = marker->getSize();
 
     if (size == 0) {
       // reached end
@@ -1745,8 +1745,8 @@ bool MMFilesDatafile::tryRepair() {
       }
     }
 
-    size_t alignedSize = MMFilesDatafileHelper::AlignedMarkerSize<TRI_voc_size_t>(marker);
-    currentSize += static_cast<TRI_voc_size_t>(alignedSize);
+    size_t alignedSize = MMFilesDatafileHelper::AlignedMarkerSize<uint32_t>(marker);
+    currentSize += static_cast<uint32_t>(alignedSize);
 
     if (marker->getType() == TRI_DF_MARKER_FOOTER) {
       return true;
@@ -1834,7 +1834,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
   }
 
   // check that file is not too small
-  TRI_voc_size_t size = static_cast<TRI_voc_size_t>(status.st_size);
+  uint32_t size = static_cast<uint32_t>(status.st_size);
 
   if (size < sizeof(MMFilesDatafileHeaderMarker) + sizeof(MMFilesDatafileFooterMarker)) {
     TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);

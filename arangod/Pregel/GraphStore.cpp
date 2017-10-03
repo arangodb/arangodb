@@ -372,7 +372,7 @@ void GraphStore<V, E>::_loadVertices(size_t i,
   uint64_t number = collection->numberDocuments(trx.get());
   _graphFormat->willLoadVertices(number);
 
-  auto cb = [&](DocumentIdentifierToken const& token, VPackSlice slice) {
+  auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
     if (slice.isExternal()) {
       slice = slice.resolveExternal();
     }
@@ -430,7 +430,7 @@ void GraphStore<V, E>::_loadEdges(transaction::Methods* trx,
                                   documentID.c_str(), edgeShard.c_str());
   }
 
-  auto cb = [&](DocumentIdentifierToken const& token, VPackSlice slice) {
+  auto cb = [&](LocalDocumentId const& token, VPackSlice slice) {
     if (slice.isExternal()) {
       slice = slice.resolveExternal();
     }

@@ -28,7 +28,6 @@
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
-#include "RocksDBEngine/RocksDBToken.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
@@ -47,7 +46,7 @@ class RocksDBPrimaryIndex;
 /// basically sorted after revision ID
 class RocksDBAllIndexIterator final : public IndexIterator {
  public:
-  typedef std::function<void(DocumentIdentifierToken const& token,
+  typedef std::function<void(LocalDocumentId const& token,
                              StringRef const& key)>
       TokenKeyCallback;
   RocksDBAllIndexIterator(LogicalCollection* collection,
@@ -59,7 +58,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "all-index-iterator"; }
 
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
   bool nextDocument(DocumentCallback const& cb, size_t limit) override;
   void skip(uint64_t count, uint64_t& skipped) override;
 
@@ -85,7 +84,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "any-index-iterator"; }
 
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
   bool nextDocument(DocumentCallback const& cb, size_t limit) override;
 
   void reset() override;
@@ -106,7 +105,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 /// into the document store. E.g. used for incremental sync
 class RocksDBSortedAllIterator final : public IndexIterator {
  public:
-  typedef std::function<void(DocumentIdentifierToken const& token,
+  typedef std::function<void(LocalDocumentId const& token,
                              StringRef const& key)>
       TokenKeyCallback;
   RocksDBSortedAllIterator(LogicalCollection* collection,
@@ -118,7 +117,7 @@ class RocksDBSortedAllIterator final : public IndexIterator {
 
   char const* typeName() const override { return "sorted-all-index-iterator"; }
 
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
   void reset() override;
 
   // engine specific optimizations

@@ -209,7 +209,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
   char const* typeName() const override { return "skiplist-index-iterator"; }
 
   /// @brief Get the next elements in the skiplist
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
   /// @brief Reset the cursor
   void reset() override;
@@ -284,10 +284,10 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
 
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  Result insert(transaction::Methods*, TRI_voc_rid_t,
+  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
                 arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  Result remove(transaction::Methods*, TRI_voc_rid_t,
+  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
                 arangodb::velocypack::Slice const&, bool isRollback) override;
 
   void unload() override;

@@ -37,6 +37,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
+#include "VocBase/LocalDocumentId.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -179,7 +180,7 @@ int handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
     ManagedDocumentResult mmdr;
     trx.invokeOnAllElements(
         trx.name(), [&syncer, &trx, &mmdr, &markers,
-                     &iterations](DocumentIdentifierToken const& token) {
+                     &iterations](LocalDocumentId const& token) {
           if (trx.documentCollection()->readDocument(&trx, token, mmdr)) {
             markers.emplace_back(mmdr.vpack());
 
@@ -396,7 +397,8 @@ int handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
     // The LogicalCollection is protected by trx.
     // Neither it nor it's indexes can be invalidated
 
-    // TODO Move to MMFiles
+    ManagedDocumentResult mmdr;
+
     auto physical = static_cast<MMFilesCollection*>(
         trx.documentCollection()->getPhysical());
     auto idx = physical->primaryIndex();
@@ -600,14 +602,20 @@ int handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
           if (!element) {
             // key not found locally
             toFetch.emplace_back(i);
-          } else if (TRI_RidToString(element.revisionId()) !=
-                    pair.at(1).copyString()) {
-            // key found, but revision id differs
-            toFetch.emplace_back(i);
-            ++nextStart;
           } else {
-            // a match - nothing to do!
-            ++nextStart;
+            TRI_voc_rid_t currentRevisionId = 0;
+            if (physical->readDocument(&trx, element.localDocumentId(), mmdr)) {
+              currentRevisionId = transaction::helpers::extractRevFromDocument(VPackSlice(mmdr.vpack()));
+            }
+
+            if (TRI_RidToString(currentRevisionId) != pair.at(1).copyString()) {
+              // key found, but revision id differs
+              toFetch.emplace_back(i);
+              ++nextStart;
+            } else {
+              // a match - nothing to do!
+              ++nextStart;
+            }
           }
         }
       }
@@ -724,7 +732,7 @@ int handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
             res = opRes.code;
           } else {
             // UPDATE
-            OperationResult opRes = trx.update(collectionName, it, options);
+            OperationResult opRes = trx.replace(collectionName, it, options);
             res = opRes.code;
           }
 

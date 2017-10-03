@@ -34,6 +34,9 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionKeysRepository.h"
+#include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
+#include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 

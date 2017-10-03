@@ -220,4 +220,3 @@ int InitialSyncer::sendFinishBatch() {
     return TRI_ERROR_INTERNAL;
   }
 }
-

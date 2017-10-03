@@ -37,7 +37,7 @@ namespace transaction {
 class Methods;
 }
 
-struct DocumentIdentifierToken;
+struct LocalDocumentId;
 class Index;
 class IndexIterator;
 class LogicalCollection;
@@ -126,7 +126,7 @@ class PhysicalCollection {
       transaction::Methods* trx, ManagedDocumentResult* mdr) const = 0;
   virtual void invokeOnAllElements(
       transaction::Methods* trx,
-      std::function<bool(DocumentIdentifierToken const&)> callback) = 0;
+      std::function<bool(LocalDocumentId const&)> callback) = 0;
 
   ////////////////////////////////////
   // -- SECTION DML Operations --
@@ -135,7 +135,7 @@ class PhysicalCollection {
   virtual void truncate(transaction::Methods* trx,
                         OperationOptions& options) = 0;
 
-  virtual DocumentIdentifierToken lookupKey(
+  virtual LocalDocumentId lookupKey(
       transaction::Methods*, arangodb::velocypack::Slice const&) = 0;
 
   virtual Result read(transaction::Methods*,
@@ -147,11 +147,11 @@ class PhysicalCollection {
                       ManagedDocumentResult& result, bool) = 0;
 
   virtual bool readDocument(transaction::Methods* trx,
-                            DocumentIdentifierToken const& token,
+                            LocalDocumentId const& token,
                             ManagedDocumentResult& result) = 0;
   
   virtual bool readDocumentWithCallback(transaction::Methods* trx,
-                                        DocumentIdentifierToken const& token,
+                                        LocalDocumentId const& token,
                                         IndexIterator::DocumentCallback const& cb) = 0;
 
   virtual Result insert(arangodb::transaction::Methods* trx,
@@ -185,7 +185,6 @@ class PhysicalCollection {
                         arangodb::ManagedDocumentResult& previous,
                         OperationOptions& options,
                         TRI_voc_tick_t& resultMarkerTick, bool lock,
-                        TRI_voc_rid_t const& revisionId,
                         TRI_voc_rid_t& prevRev) = 0;
 
   /// @brief Defer a callback to be executed when the collection
@@ -207,22 +206,25 @@ class PhysicalCollection {
                          velocypack::Slice const& value,
                          velocypack::Slice const& fromSlice,
                          velocypack::Slice const& toSlice,
+                         LocalDocumentId const& documentId,
                          bool isEdgeCollection, velocypack::Builder& builder,
                          bool isRestore) const;
 
   /// @brief new object for remove, must have _key set
   void newObjectForRemove(transaction::Methods* trx,
                           velocypack::Slice const& oldValue,
-                          std::string const& rev,
-                          velocypack::Builder& builder) const;
+                          LocalDocumentId const& documentId,
+                          velocypack::Builder& builder,
+                          bool isRestore) const;
 
   /// @brief merge two objects for update
   void mergeObjectsForUpdate(transaction::Methods* trx,
                              velocypack::Slice const& oldValue,
                              velocypack::Slice const& newValue,
-                             bool isEdgeCollection, std::string const& rev,
+                             bool isEdgeCollection, LocalDocumentId const& documentId,
                              bool mergeObjects, bool keepNull,
-                             velocypack::Builder& builder) const;
+                             velocypack::Builder& builder,
+                             bool isRestore) const;
 
   /// @brief new object for replace
   void newObjectForReplace(transaction::Methods* trx,
@@ -230,8 +232,9 @@ class PhysicalCollection {
                            velocypack::Slice const& newValue,
                            velocypack::Slice const& fromSlice,
                            velocypack::Slice const& toSlice,
-                           bool isEdgeCollection, std::string const& rev,
-                           velocypack::Builder& builder) const;
+                           bool isEdgeCollection, LocalDocumentId const& documentId,
+                           velocypack::Builder& builder,
+                           bool isRestore) const;
 
   int checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,
                     TRI_voc_rid_t found) const;

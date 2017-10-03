@@ -78,7 +78,7 @@ class RocksDBVPackUniqueIndexIterator final : public IndexIterator {
   }
 
   /// @brief Get the next limit many element in the index
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
   /// @brief Reset the cursor
   void reset() override;
@@ -111,7 +111,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
   }
 
   /// @brief Get the next limit many element in the index
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
   /// @brief Reset the cursor
   void reset() override;
@@ -195,16 +195,18 @@ class RocksDBVPackIndex : public RocksDBIndex {
   void recalculateEstimates() override;
 
  protected:
-  Result insertInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
+  Result insertInternal(transaction::Methods*, RocksDBMethods*,
+                        LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&) override;
   
   Result updateInternal(transaction::Methods* trx, RocksDBMethods*,
-                        TRI_voc_rid_t oldRevision,
+                        LocalDocumentId const& oldDocumentId,
                         arangodb::velocypack::Slice const& oldDoc,
-                        TRI_voc_rid_t newRevision,
+                        LocalDocumentId const& newDocumentId,
                         velocypack::Slice const& newDoc) override;
 
-  Result removeInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
+  Result removeInternal(transaction::Methods*, RocksDBMethods*, 
+                        LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&) override;
 
   Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
@@ -235,14 +237,14 @@ class RocksDBVPackIndex : public RocksDBIndex {
                  std::vector<int>& expanding);
 
   /// @brief helper function to insert a document into any index type
-  int fillElement(velocypack::Builder& leased, TRI_voc_rid_t revisionId,
+  int fillElement(velocypack::Builder& leased, LocalDocumentId const& documentId,
                   VPackSlice const& doc, std::vector<RocksDBKey>& elements,
                   std::vector<uint64_t>& hashes);
 
   /// @brief helper function to build the key and value for rocksdb from the
   /// vector of slices
   /// @param hashes list of VPackSlice hashes for the estimator.
-  void addIndexValue(velocypack::Builder& leased, TRI_voc_rid_t revisionId,
+  void addIndexValue(velocypack::Builder& leased, LocalDocumentId const& documentId,
                      VPackSlice const& document,
                      std::vector<RocksDBKey>& elements,
                      std::vector<VPackSlice>& sliceStack,
@@ -253,7 +255,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
   /// @param elements vector of resulting index entries
   /// @param sliceStack working list of values to insert into the index
   /// @param hashes list of VPackSlice hashes for the estimator.
-  void buildIndexValues(velocypack::Builder& leased, TRI_voc_rid_t revisionId,
+  void buildIndexValues(velocypack::Builder& leased,
+                        LocalDocumentId const& documentId,
                         VPackSlice const document, size_t level,
                         std::vector<RocksDBKey>& elements,
                         std::vector<VPackSlice>& sliceStack,
