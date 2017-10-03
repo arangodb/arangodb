@@ -35,13 +35,6 @@ LogicalCollection* OperationCursor::collection() const {
   return _indexIterator->collection();
 }
 
-bool OperationCursor::hasMore() {
-  if (_hasMore && _limit == 0) {
-    _hasMore = false;
-  }
-  return _hasMore;
-}
-
 bool OperationCursor::hasExtra() const { return indexIterator()->hasExtra(); }
 
 void OperationCursor::reset() {
@@ -55,7 +48,7 @@ void OperationCursor::reset() {
 
 /// @brief Calls cb for the next batchSize many elements 
 ///        NOTE: This will throw on OUT_OF_MEMORY
-bool OperationCursor::next(IndexIterator::TokenCallback const& callback, uint64_t batchSize) {
+bool OperationCursor::next(IndexIterator::LocalDocumentIdCallback const& callback, uint64_t batchSize) {
   if (!hasMore()) {
     return false;
   }

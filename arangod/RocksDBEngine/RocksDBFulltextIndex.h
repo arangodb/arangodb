@@ -43,7 +43,7 @@
 #define TRI_FULLTEXT_SEARCH_MAX_WORDS 32
 
 namespace arangodb {
-struct DocumentIdentifierToken;
+struct LocalDocumentId;
 
 struct FulltextQueryToken {
   /// @brief fulltext query match options
@@ -98,13 +98,6 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
     return (_minWordLength == minWordLength && fieldString == field);
   }
 
-  //  TRI_fts_index_t* internals() { return _fulltextIndex; }
-
-  static TRI_voc_rid_t fromDocumentIdentifierToken(
-      DocumentIdentifierToken const& token);
-  static DocumentIdentifierToken toDocumentIdentifierToken(
-      TRI_voc_rid_t revisionId);
-
   arangodb::Result parseQueryString(std::string const&, FulltextQuery&);
   arangodb::Result executeQuery(transaction::Methods* trx, FulltextQuery const&,
                                 size_t maxResults,
@@ -113,11 +106,11 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
  protected:
   /// insert index elements into the specified write batch.
   Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
-                        TRI_voc_rid_t,
+                        LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&) override;
 
   /// remove index elements and put it in the specified write batch.
-  Result removeInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
+  Result removeInternal(transaction::Methods*, RocksDBMethods*, LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&) override;
 
  private:
@@ -131,7 +124,7 @@ class RocksDBFulltextIndex final : public RocksDBIndex {
 
   arangodb::Result applyQueryToken(transaction::Methods* trx,
                                    FulltextQueryToken const&,
-                                   std::set<TRI_voc_rid_t>& resultSet);
+                                   std::set<LocalDocumentId>& resultSet);
 };
 }  // namespace arangodb
 
