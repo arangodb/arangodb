@@ -47,7 +47,7 @@ class ReplicationTransaction;
 
 class TailingSyncer : public Syncer {
  public:
-  TailingSyncer(ReplicationApplierConfiguration const*,
+  TailingSyncer(ReplicationApplierConfiguration const&,
                 TRI_voc_tick_t initialTick, TRI_voc_tick_t barrierId);
 
   virtual ~TailingSyncer();

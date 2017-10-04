@@ -56,12 +56,12 @@ using namespace arangodb::httpclient;
 /// @brief base url of the replication API
 std::string const Syncer::BaseUrl = "/_api/replication";
 
-Syncer::Syncer(ReplicationApplierConfiguration const* configuration)
+Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     : _configuration(),
       _chunkSize(1024 * 1024),
       _restrictType(RESTRICT_NONE),
-      _includeSystem(configuration->_includeSystem),
-      _verbose(configuration->_verbose),
+      _includeSystem(configuration._includeSystem),
+      _verbose(configuration._verbose),
       _masterInfo(),
       _endpoint(nullptr),
       _connection(nullptr),
@@ -72,9 +72,9 @@ Syncer::Syncer(ReplicationApplierConfiguration const* configuration)
       _isChildSyncer(false) {
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
-  if (!(configuration->_database.empty())) {
+  if (!(configuration._database.empty())) {
     // use name from configuration
-    _databaseName = configuration->_database;
+    _databaseName = configuration._database;
   } else if (!_vocbases.empty()) {
     // use name of current database
     TRI_vocbase_t* vocbase = _vocbases.begin()->second.database();
@@ -83,7 +83,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const* configuration)
     _databaseName = TRI_VOC_SYSTEM_DATABASE;
   }
   
-  uint64_t c = configuration->_chunkSize;
+  uint64_t c = configuration._chunkSize;
   if (c > 0) {
     _chunkSize = c;
   }
@@ -92,10 +92,10 @@ Syncer::Syncer(ReplicationApplierConfiguration const* configuration)
   _localServerId = ServerIdFeature::getId();
   _localServerIdString = StringUtils::itoa(_localServerId);
 
-  _configuration = *configuration;
+  _configuration = configuration;
   _useCollectionId = _configuration._useCollectionId;
 
-  _masterInfo._endpoint = configuration->_endpoint;
+  _masterInfo._endpoint = configuration._endpoint;
 
   _endpoint = Endpoint::clientFactory(_configuration._endpoint);
 

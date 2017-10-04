@@ -42,26 +42,13 @@ class GlobalReplicationApplier final : public ReplicationApplier {
 
   /// @brief stop the applier and "forget" everything
   void forget() override;
-
-  /// @brief configure the replication applier
-  void reconfigure(ReplicationApplierConfiguration const& configuration) override;
   
-  /// @brief save the replication application configuration to a file
+  /// @brief store the configuration for the applier
   void storeConfiguration(bool doSync) override;
+  
+  /// @brief load a persisted configuration for the applier
+  static ReplicationApplierConfiguration loadConfiguration();
 
-  /// @brief remove the replication application state file
-  void removeState() override;
-  
-  /// @brief load the applier state from persistent storage
-  /// returns whether a previous state was found
-  bool loadState() override;
-  
-  /// @brief store the applier state in persistent storage
-  void persistState(bool doSync) override;
- 
-  /// @brief store the current applier state in the passed vpack builder 
-  void toVelocyPack(arangodb::velocypack::Builder& result) const override;
-  
  protected:
   std::unique_ptr<TailingSyncer> buildSyncer(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) override;
 

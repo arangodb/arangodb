@@ -110,6 +110,8 @@ rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_geo(nullptr);
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamily::_fulltext(nullptr);
 std::vector<rocksdb::ColumnFamilyHandle*> RocksDBColumnFamily::_allHandles;
 
+static constexpr uint64_t databaseIdForGlobalApplier = 0;
+
 // create the storage engine
 RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, new RocksDBIndexFactory()),
@@ -783,6 +785,16 @@ VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vo
                                                                int& status) {
   RocksDBKey key;
   key.constructReplicationApplierConfig(vocbase->id());
+  return getReplicationApplierConfiguration(key, status);
+}
+
+VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(int& status) {
+  RocksDBKey key;
+  key.constructReplicationApplierConfig(databaseIdForGlobalApplier);
+  return getReplicationApplierConfiguration(key, status);
+}
+
+VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(RocksDBKey const& key, int& status) {
   rocksdb::PinnableSlice value;
 
   auto db = rocksutils::globalRocksDB();
@@ -799,11 +811,19 @@ VPackBuilder RocksDBEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vo
   return builder;
 }
 
-int RocksDBEngine::removeReplicationApplierConfiguration(
-    TRI_vocbase_t* vocbase) {
+int RocksDBEngine::removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) {
   RocksDBKey key;
   key.constructReplicationApplierConfig(vocbase->id());
+  return removeReplicationApplierConfiguration(key);
+}
 
+int RocksDBEngine::removeReplicationApplierConfiguration() {
+  RocksDBKey key;
+  key.constructReplicationApplierConfig(databaseIdForGlobalApplier);
+  return removeReplicationApplierConfiguration(key);
+}
+
+int RocksDBEngine::removeReplicationApplierConfiguration(RocksDBKey const& key) {
   auto status = rocksutils::globalRocksDBRemove(RocksDBColumnFamily::definitions(),
                                                 key.string());
   if (!status.ok()) {
@@ -817,6 +837,16 @@ int RocksDBEngine::saveReplicationApplierConfiguration(
     TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) {
   RocksDBKey key;
   key.constructReplicationApplierConfig(vocbase->id());
+  return saveReplicationApplierConfiguration(key, slice, doSync);
+}
+
+int RocksDBEngine::saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice, bool doSync) {
+  RocksDBKey key;
+  key.constructReplicationApplierConfig(databaseIdForGlobalApplier);
+  return saveReplicationApplierConfiguration(key, slice, doSync);
+}
+
+int RocksDBEngine::saveReplicationApplierConfiguration(RocksDBKey const& key, arangodb::velocypack::Slice slice, bool doSync) {
   auto value = RocksDBValue::ReplicationApplierConfig(slice);
 
   auto status = rocksutils::globalRocksDBPut(RocksDBColumnFamily::definitions(),

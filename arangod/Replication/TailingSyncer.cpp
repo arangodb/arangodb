@@ -59,18 +59,18 @@ using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
 TailingSyncer::TailingSyncer(
-    ReplicationApplierConfiguration const* configuration,
+    ReplicationApplierConfiguration const& configuration,
     TRI_voc_tick_t initialTick, TRI_voc_tick_t barrierId)
     : Syncer(configuration),
       _initialTick(initialTick),
-      _requireFromPresent(configuration->_requireFromPresent),
+      _requireFromPresent(configuration._requireFromPresent),
       _supportsSingleOperations(false),
       _ignoreRenameCreateDrop(false),
       _ignoreDatabaseMarkers(true) {
 
-  if (configuration->_restrictType == "include") {
+  if (configuration._restrictType == "include") {
     _restrictType = RESTRICT_INCLUDE;
-  } else if (configuration->_restrictType == "exclude") {
+  } else if (configuration._restrictType == "exclude") {
     _restrictType = RESTRICT_EXCLUDE;
   }
         

@@ -37,7 +37,7 @@ namespace arangodb {
 class InitialSyncer : public Syncer {
 
  public:
-  InitialSyncer(ReplicationApplierConfiguration const*,
+  InitialSyncer(ReplicationApplierConfiguration const&,
                 std::unordered_map<std::string, bool> const&,
                 Syncer::RestrictType, bool verbose, bool skipCreateDrop);
 

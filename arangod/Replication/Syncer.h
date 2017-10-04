@@ -35,7 +35,6 @@ struct TRI_vocbase_t;
 namespace arangodb {
 class Endpoint;
 class LogicalCollection;
-class ReplicationApplierConfiguration;
 
 namespace httpclient {
 class GeneralClientConnection;
@@ -72,7 +71,7 @@ class Syncer {
   Syncer(Syncer const&) = delete;
   Syncer& operator=(Syncer const&) = delete;
 
-  explicit Syncer(ReplicationApplierConfiguration const*);
+  explicit Syncer(ReplicationApplierConfiguration const&);
 
   virtual ~Syncer();
   

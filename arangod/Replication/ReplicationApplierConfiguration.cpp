@@ -24,6 +24,8 @@
 #include "ReplicationApplierConfiguration.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
@@ -148,4 +150,171 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool i
   builder.add(
       "idleMaxWaitTime",
       VPackValue(static_cast<double>(_idleMaxWaitTime) / (1000.0 * 1000.0)));
+}
+
+ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(VPackSlice slice, 
+                                                                                std::string const& databaseName) {
+  ReplicationApplierConfiguration configuration;
+
+  // read the database name
+  VPackSlice value = slice.get("database");
+  if (!value.isString()) {
+    configuration._database = databaseName;
+  } else {
+    configuration._database = value.copyString();
+  }
+
+  // read username / password
+  value = slice.get("username");
+  bool hasUsernamePassword = false;
+  if (value.isString()) {
+    hasUsernamePassword = true;
+    configuration._username = value.copyString();
+  }
+
+  value = slice.get("password");
+  if (value.isString()) {
+    hasUsernamePassword = true;
+    configuration._password = value.copyString();
+  }
+
+  if (!hasUsernamePassword) {
+    value = slice.get("jwt");
+    if (value.isString()) {
+      configuration._jwt = value.copyString();
+    }
+  }
+
+  value = slice.get("requestTimeout");
+  if (value.isNumber()) {
+    configuration._requestTimeout = value.getNumber<double>();
+  }
+
+  value = slice.get("connectTimeout");
+  if (value.isNumber()) {
+    configuration._connectTimeout = value.getNumber<double>();
+  }
+
+  value = slice.get("maxConnectRetries");
+  if (value.isNumber()) {
+    configuration._maxConnectRetries = value.getNumber<int64_t>();
+  }
+  
+  value = slice.get("lockTimeoutRetries");
+  if (value.isNumber()) {
+    configuration._lockTimeoutRetries = value.getNumber<int64_t>();
+  }
+
+  value = slice.get("sslProtocol");
+  if (value.isNumber()) {
+    configuration._sslProtocol = value.getNumber<uint32_t>();
+  }
+
+  value = slice.get("chunkSize");
+  if (value.isNumber()) {
+    configuration._chunkSize = value.getNumber<uint64_t>();
+  }
+
+  value = slice.get("autoStart");
+  if (value.isBoolean()) {
+    configuration._autoStart = value.getBoolean();
+  }
+
+  value = slice.get("adaptivePolling");
+  if (value.isBoolean()) {
+    configuration._adaptivePolling = value.getBoolean();
+  }
+
+  value = slice.get("autoResync");
+  if (value.isBoolean()) {
+    configuration._autoResync = value.getBoolean();
+  }
+
+  value = slice.get("includeSystem");
+  if (value.isBoolean()) {
+    configuration._includeSystem = value.getBoolean();
+  }
+
+  value = slice.get("requireFromPresent");
+  if (value.isBoolean()) {
+    configuration._requireFromPresent = value.getBoolean();
+  }
+
+  value = slice.get("verbose");
+  if (value.isBoolean()) {
+    configuration._verbose = value.getBoolean();
+  }
+
+  value = slice.get("incremental");
+  if (value.isBoolean()) {
+    configuration._incremental = value.getBoolean();
+  }
+
+  value = slice.get("useCollectionId");
+  if (value.isBoolean()) {
+    configuration._useCollectionId = value.getBoolean();
+  }
+
+  value = slice.get("ignoreErrors");
+  if (value.isNumber()) {
+    configuration._ignoreErrors = value.getNumber<uint64_t>();
+  } else if (value.isBoolean()) {
+    if (value.getBoolean()) {
+      configuration._ignoreErrors = UINT64_MAX;
+    } else {
+      configuration._ignoreErrors = 0;
+    }
+  }
+
+  value = slice.get("restrictType");
+  if (value.isString()) {
+    configuration._restrictType = value.copyString();
+  }
+
+  value = slice.get("restrictCollections");
+  if (value.isArray()) {
+    configuration._restrictCollections.clear();
+
+    for (auto const& it : VPackArrayIterator(value)) {
+      if (it.isString()) {
+        configuration._restrictCollections.emplace(it.copyString(), true);
+      }
+    }
+  }
+
+  value = slice.get("connectionRetryWaitTime");
+  if (value.isNumber()) {
+    configuration._connectionRetryWaitTime = static_cast<uint64_t>(value.getNumber<double>() * 1000.0 * 1000.0);
+  }
+
+  value = slice.get("initialSyncMaxWaitTime");
+  if (value.isNumber()) {
+    configuration._initialSyncMaxWaitTime = static_cast<uint64_t>(value.getNumber<double>() * 1000.0 * 1000.0);
+  }
+
+  value = slice.get("idleMinWaitTime");
+  if (value.isNumber()) {
+    configuration._idleMinWaitTime = static_cast<uint64_t>(value.getNumber<double>() * 1000.0 * 1000.0);
+  }
+
+  value = slice.get("idleMaxWaitTime");
+  if (value.isNumber()) {
+    configuration._idleMaxWaitTime = static_cast<uint64_t>(value.getNumber<double>() * 1000.0 * 1000.0);
+  }
+
+  value = slice.get("autoResyncRetries");
+  if (value.isNumber()) {
+    configuration._autoResyncRetries = value.getNumber<uint64_t>();
+  }
+
+  // read the endpoint
+  value = slice.get("endpoint");
+  if (!value.isString()) {
+    // we haven't found an endpoint. now don't let the start fail but continue
+    configuration._autoStart = false;
+  } else {
+    configuration._endpoint = value.copyString();
+  }
+  
+  return configuration;
 }
