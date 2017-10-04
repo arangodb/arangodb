@@ -1137,10 +1137,6 @@ read_ret_t Agent::read(query_t const& query) {
 
 /// Send out append entries to followers regularly or on event
 void Agent::run() {
-
-  using namespace std::chrono;
-  auto tp = system_clock::now();
-
   // Only run in case we are in multi-host mode
   while (!this->isStopping() && size() > 1) {
 
