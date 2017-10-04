@@ -221,8 +221,8 @@ endif()
 include_directories(
   ${IResearch_INCLUDE_DIR}
   ${EXTERNAL_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS} # ensure Boost paths take precedence over other system libraries as Boost may be defined elsewhere
   ${BFD_INCLUDE_DIR}
-  ${Boost_INCLUDE_DIRS}
   ${Lz4_INCLUDE_DIR}
   ${Unwind_INCLUDE_DIR}
 )
