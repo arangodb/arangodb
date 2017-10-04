@@ -46,8 +46,8 @@ using namespace arangodb::rest;
 GlobalInitialSyncer::GlobalInitialSyncer(
   ReplicationApplierConfiguration const& configuration,
   std::unordered_map<std::string, bool> const& restrictCollections,
-  Syncer::RestrictType restrictType, bool verbose, bool skipCreateDrop)
-    : InitialSyncer(configuration, restrictCollections, restrictType, verbose, skipCreateDrop) {}
+  Syncer::RestrictType restrictType, bool skipCreateDrop)
+    : InitialSyncer(configuration, restrictCollections, restrictType, skipCreateDrop) {}
 
 GlobalInitialSyncer::~GlobalInitialSyncer() {
   try {
@@ -159,7 +159,7 @@ Result GlobalInitialSyncer::run(bool incremental) {
       _configuration._database = nameSlice.copyString();
       TRI_DEFER(_configuration._database = oldName);
       DatabaseInitialSyncer syncer(vocbase, _configuration, _restrictCollections,
-                                   _restrictType, _verbose, _skipCreateDrop);
+                                   _restrictType, _skipCreateDrop);
       
       syncer.useAsChildSyncer(_masterInfo, _barrierId, _barrierUpdateTime,
                               _batchId, _batchUpdateTime);
@@ -251,28 +251,12 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
   return TRI_ERROR_NO_ERROR;
 }
 
-/*
-void GlobalInitialSyncer::setProgress(std::string const& msg) {
-  _progress = msg;
-  
-  if (_verbose) {
-    LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
-  } else {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
-  }
-  
-  TRI_replication_applier_t* applier = vocbase()->replicationApplier();
-  if (applier != nullptr) {
-    applier->setProgress(msg.c_str(), true);
-  }
-}*/
-
 int GlobalInitialSyncer::fetchInventory(VPackBuilder& builder,
                                         std::string& errorMsg) {
   
   std::string url = BaseUrl + "/inventory?serverId=" + _localServerIdString +
   "&batchId=" + std::to_string(_batchId) + "&global=true";
-  if (_includeSystem) {
+  if (_configuration._includeSystem) {
     url += "&includeSystem=true";
   }
   

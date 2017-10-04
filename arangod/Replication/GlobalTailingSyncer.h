@@ -44,15 +44,14 @@ class GlobalTailingSyncer : public TailingSyncer {
   GlobalReplicationApplier* applier() const { return _applier; }
 
  private:
+  /// @brief set the applier progress
+  void setProgress(std::string const&) override;
+
   /// @brief called before marker is processed
   void preApplyMarker(TRI_voc_tick_t firstRegularTick,
                      TRI_voc_tick_t newTick) override;
   /// @brief called after a marker was processed
   void postApplyMarker(uint64_t processedMarkers, bool skipped) override;
-
-  /// @brief set the applier progress
-  void setProgress(char const*);
-  void setProgress(std::string const&);
 
   /// @brief save the current applier state
   int saveApplierState();

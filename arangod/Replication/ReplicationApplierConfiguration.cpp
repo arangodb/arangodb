@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicationApplierConfiguration.h"
+#include "Basics/Exceptions.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -49,6 +50,7 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration()
       _initialSyncMaxWaitTime(300 * 1000 * 1000),
       _autoResyncRetries(2),
       _sslProtocol(0),
+      _skipCreateDrop(false),
       _autoStart(false),
       _adaptivePolling(true),
       _autoResync(false),
@@ -56,7 +58,6 @@ ReplicationApplierConfiguration::ReplicationApplierConfiguration()
       _requireFromPresent(false),
       _incremental(false),
       _verbose(false),
-      _useCollectionId(true),
       _restrictType(),
       _restrictCollections() {}
 
@@ -79,6 +80,7 @@ void ReplicationApplierConfiguration::reset() {
   _initialSyncMaxWaitTime = 300 * 1000 * 1000;
   _autoResyncRetries = 2;
   _sslProtocol = 0;
+  _skipCreateDrop = false;
   _autoStart = false; 
   _adaptivePolling = true;
   _autoResync = false;
@@ -86,7 +88,6 @@ void ReplicationApplierConfiguration::reset() {
   _requireFromPresent = false;
   _incremental = false;
   _verbose = false;
-  _useCollectionId = true;
   _restrictType.clear();
   _restrictCollections.clear();
 }
@@ -121,6 +122,7 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool i
   builder.add("lockTimeoutRetries", VPackValue(_lockTimeoutRetries));
   builder.add("sslProtocol", VPackValue(_sslProtocol));
   builder.add("chunkSize", VPackValue(_chunkSize));
+  builder.add("skipCreateDrop", VPackValue(_skipCreateDrop));
   builder.add("autoStart", VPackValue(_autoStart));
   builder.add("adaptivePolling", VPackValue(_adaptivePolling));
   builder.add("autoResync", VPackValue(_autoResync));
@@ -129,7 +131,6 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool i
   builder.add("requireFromPresent", VPackValue(_requireFromPresent));
   builder.add("verbose", VPackValue(_verbose));
   builder.add("incremental", VPackValue(_incremental));
-  builder.add("useCollectionId", VPackValue(_useCollectionId));
   builder.add("restrictType", VPackValue(_restrictType));
 
   builder.add("restrictCollections", VPackValue(VPackValueType::Array));
@@ -214,6 +215,11 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   if (value.isNumber()) {
     configuration._chunkSize = value.getNumber<uint64_t>();
   }
+  
+  value = slice.get("skipCreateDrop");
+  if (value.isBoolean()) {
+    configuration._skipCreateDrop = value.getBoolean();
+  }
 
   value = slice.get("autoStart");
   if (value.isBoolean()) {
@@ -248,11 +254,6 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   value = slice.get("incremental");
   if (value.isBoolean()) {
     configuration._incremental = value.getBoolean();
-  }
-
-  value = slice.get("useCollectionId");
-  if (value.isBoolean()) {
-    configuration._useCollectionId = value.getBoolean();
   }
 
   value = slice.get("ignoreErrors");
@@ -317,4 +318,20 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
   }
   
   return configuration;
+}
+
+/// @brief validate the configuration. will throw if the config is invalid
+void ReplicationApplierConfiguration::validate() const {
+  if (_endpoint.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid value for <endpoint>");
+  }
+
+  if (!_restrictType.empty() && _restrictType != "include" && _restrictType != "exclude") {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid value for <restrictType>");
+  }
+
+  if ((_restrictType.empty() && !_restrictCollections.empty()) ||
+      (!_restrictType.empty() && _restrictCollections.empty())) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid value for <restrictCollections> or <restrictType>");
+  }
 }

@@ -64,7 +64,7 @@ using namespace arangodb::rest;
 InitialSyncer::InitialSyncer(
     ReplicationApplierConfiguration const& configuration,
     std::unordered_map<std::string, bool> const& restrictCollections,
-    Syncer::RestrictType restrictType, bool verbose, bool skipCreateDrop)
+    Syncer::RestrictType restrictType, bool skipCreateDrop)
     : Syncer(configuration),
       _progress("not started"),
       _restrictCollections(restrictCollections),
@@ -80,7 +80,6 @@ InitialSyncer::InitialSyncer(
   }
 
   _restrictType = restrictType;
-  _verbose = verbose;
 }
 
 InitialSyncer::~InitialSyncer() {

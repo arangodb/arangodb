@@ -39,7 +39,7 @@ class InitialSyncer : public Syncer {
  public:
   InitialSyncer(ReplicationApplierConfiguration const&,
                 std::unordered_map<std::string, bool> const&,
-                Syncer::RestrictType, bool verbose, bool skipCreateDrop);
+                Syncer::RestrictType, bool skipCreateDrop);
 
   ~InitialSyncer();
 

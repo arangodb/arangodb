@@ -33,7 +33,7 @@ class GlobalInitialSyncer : public InitialSyncer {
  public:
   GlobalInitialSyncer(ReplicationApplierConfiguration const&,
                       std::unordered_map<std::string, bool> const&,
-                      Syncer::RestrictType, bool verbose, bool skipCreateDrop);
+                      Syncer::RestrictType, bool skipCreateDrop);
 
   ~GlobalInitialSyncer();
 
@@ -43,9 +43,6 @@ class GlobalInitialSyncer : public InitialSyncer {
   
  private:
   
-  /// @brief set a progress message
-  //void setProgress(std::string const& msg);
-
   /// @brief check whether the initial synchronization should be aborted
   bool checkAborted();
 

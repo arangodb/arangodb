@@ -54,13 +54,13 @@ class ApplyThread : public Thread {
     try {
       int res = _syncer->run();
       if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_REPLICATION_APPLIER_STOPPED) {
-        LOG_TOPIC(ERR, Logger::REPLICATION) << "error while running applier: "
+        LOG_TOPIC(ERR, Logger::REPLICATION) << "error while running applier for " << _applier->databaseName() << ": "
           << TRI_errno_string(res);
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "caught exception in ApplyThread: " << ex.what();
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "caught exception in ApplyThread for " << _applier->databaseName() << " : " << ex.what();
     } catch (...) {
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "caught unknown exception in ApplyThread";
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "caught unknown exception in ApplyThread for " << _applier->databaseName();
     }
 
     _applier->threadStopped();
@@ -92,8 +92,7 @@ void ReplicationApplier::threadStopped() {
   _state._state = ReplicationApplierState::ActivityState::INACTIVE;
   setProgressNoLock("applier shut down");
   
-  LOG_TOPIC(INFO, Logger::REPLICATION)
-      << "stopped replication applier for database '" << _databaseName << "'";
+  LOG_TOPIC(INFO, Logger::REPLICATION) << "stopped replication applier for " << _databaseName;
 }
 
 /// @brief block the replication applier from starting
@@ -155,10 +154,6 @@ void ReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc
     return;
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
-      << "requesting replication applier start. initialTick: " << initialTick
-      << ", useTick: " << useTick;
-
   WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
   
   if (_state._preventStart) {
@@ -169,6 +164,10 @@ void ReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc
     // already started
     return;
   }
+  
+  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+      << "requesting replication applier start for " << _databaseName << ". initialTick: " << initialTick
+      << ", useTick: " << useTick;
 
   while (_state.isShuttingDown()) {
     // wait until the other instance has shut down
@@ -255,7 +254,7 @@ void ReplicationApplier::removeState() {
 
   if (TRI_ExistsFile(filename.c_str())) {
     LOG_TOPIC(TRACE, Logger::REPLICATION) << "removing replication state file '"
-                                          << filename << "'";
+                                          << filename << "' for " << _databaseName;
     int res = TRI_UnlinkFile(filename.c_str());
 
     if (res != TRI_ERROR_NO_ERROR) {
@@ -298,14 +297,14 @@ bool ReplicationApplier::loadState() {
 
   std::string const filename = getStateFilename();
   LOG_TOPIC(TRACE, Logger::REPLICATION)
-      << "looking for replication state file '" << filename << "'";
+      << "looking for replication state file '" << filename << "' for " << _databaseName;
 
   if (!TRI_ExistsFile(filename.c_str())) {
     // no existing state found
     return false;
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "replication state file '" << filename << "' found";
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "replication state file '" << filename << "' found for " << _databaseName;
 
   VPackBuilder builder;
   try {
@@ -353,7 +352,7 @@ void ReplicationApplier::persistState(bool doSync) {
 
   std::string const filename = getStateFilename();
   LOG_TOPIC(TRACE, Logger::REPLICATION)
-      << "saving replication applier state to file '" << filename << "'";
+      << "saving replication applier state to file '" << filename << "' for " << _databaseName;
 
   if (!basics::VelocyPackHelper::velocyPackToFile(filename, builder.slice(), doSync)) {
     THROW_ARANGO_EXCEPTION(TRI_errno());
@@ -444,9 +443,6 @@ void ReplicationApplier::doStop(bool resetError, bool joinThread) {
     return;
   }
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
-      << "requesting replication applier stop";
-  
   WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
 
   // always stop initial synchronization
@@ -456,6 +452,9 @@ void ReplicationApplier::doStop(bool resetError, bool joinThread) {
     // not active or somebody else is shutting us down
     return;
   }
+  
+  LOG_TOPIC(DEBUG, Logger::REPLICATION)
+      << "requesting replication applier stop for " << _databaseName;
   
   _state._state = ReplicationApplierState::ActivityState::SHUTTING_DOWN;
 

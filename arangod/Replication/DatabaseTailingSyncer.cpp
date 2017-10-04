@@ -234,7 +234,7 @@ retry:
       try {
         DatabaseInitialSyncer syncer(
             vocbase(), _configuration, _configuration._restrictCollections,
-            _restrictType, _configuration._verbose, false);
+            _restrictType, false);
 
         Result r = syncer.run(_configuration._incremental);
         
@@ -265,24 +265,8 @@ retry:
 }
 
 /// @brief set the applier progress
-void DatabaseTailingSyncer::setProgress(char const* msg) {
-  if (_verbose) {
-    LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
-  } else {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
-  }
-
-  _applier->setProgress(msg);
-}
-
-/// @brief set the applier progress
 void DatabaseTailingSyncer::setProgress(std::string const& msg) {
-  if (_verbose) {
-    LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
-  } else {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
-  }
-
+  TailingSyncer::setProgress(msg);
   _applier->setProgress(msg);
 }
 
@@ -629,10 +613,10 @@ int DatabaseTailingSyncer::fetchOpenTransactions(std::string& errorMsg,
 
 /// @brief run the continuous synchronization
 int DatabaseTailingSyncer::followMasterLog(std::string& errorMsg,
-                                      TRI_voc_tick_t& fetchTick,
-                                      TRI_voc_tick_t firstRegularTick,
-                                      uint64_t& ignoreCount, bool& worked,
-                                      bool& masterActive) {
+                                           TRI_voc_tick_t& fetchTick,
+                                           TRI_voc_tick_t firstRegularTick,
+                                           uint64_t& ignoreCount, bool& worked,
+                                           bool& masterActive) {
   std::string const baseUrl = BaseUrl + "/logger-follow?chunkSize=" +
                               StringUtils::itoa(_chunkSize) + "&barrier=" +
                               StringUtils::itoa(_barrierId);
@@ -643,7 +627,7 @@ int DatabaseTailingSyncer::followMasterLog(std::string& errorMsg,
                           "&firstRegular=" +
                           StringUtils::itoa(firstRegularTick) + "&serverId=" +
                           _localServerIdString + "&includeSystem=" +
-                          (_includeSystem ? "true" : "false");
+                          (_configuration._includeSystem ? "true" : "false");
 
   // send request
   std::string const progress =
@@ -885,7 +869,7 @@ int DatabaseTailingSyncer::syncCollectionFinalize(std::string& errorMsg,
   }
   
   // print extra info for debugging
-  _verbose = true;
+  _configuration._verbose = true;
   // we do not want to apply rename, create and drop collection operations
   _ignoreRenameCreateDrop = true;
   

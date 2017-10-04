@@ -532,8 +532,6 @@ void RestReplicationHandler::handleCommandMakeSlave() {
       VelocyPackHelper::getBooleanValue(body, "verbose", defaults._verbose);
   config._incremental = VelocyPackHelper::getBooleanValue(
       body, "incremental", defaults._incremental);
-  config._useCollectionId = VelocyPackHelper::getBooleanValue(
-      body, "useCollectionId", defaults._useCollectionId);
   config._requireFromPresent = VelocyPackHelper::getBooleanValue(
       body, "requireFromPresent", defaults._requireFromPresent);
   config._restrictType = VelocyPackHelper::getStringValue(
@@ -601,10 +599,10 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   std::unique_ptr<InitialSyncer> syncer;
   if (isGlobal) {
     syncer.reset(new GlobalInitialSyncer(config, config._restrictCollections,
-                                         restrictType, false, false));
+                                         restrictType, false));
   } else {
     syncer.reset(new DatabaseInitialSyncer(_vocbase, config, config._restrictCollections,
-                                           restrictType, false, false));
+                                           restrictType, false));
   }
 
   // forget about any existing replication applier configuration
@@ -1895,15 +1893,13 @@ void RestReplicationHandler::handleCommandSync() {
   config._jwt = VelocyPackHelper::getStringValue(body, "jwt", "");
   config._includeSystem = VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
   config._verbose = verbose;
-  config._useCollectionId = VelocyPackHelper::getBooleanValue(body, "useCollectionId", true);
 
   // wait until all data in current logfile got synced
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   engine->waitForSync(5.0);
 
-  DatabaseInitialSyncer syncer(_vocbase, config, restrictCollections, restrictType,
-                               verbose, false);
+  DatabaseInitialSyncer syncer(_vocbase, config, restrictCollections, restrictType, false);
 
   std::string errorMsg = "";
 

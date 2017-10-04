@@ -63,7 +63,7 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
   _configuration.toVelocyPack(builder, true);
   builder.close();
 
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "storing applier configuration " << builder.slice().toJson();
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "storing applier configuration " << builder.slice().toJson() << " for " << _databaseName;
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   int res = engine->saveReplicationApplierConfiguration(builder.slice(), doSync);

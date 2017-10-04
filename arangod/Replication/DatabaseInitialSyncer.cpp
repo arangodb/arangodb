@@ -65,8 +65,8 @@ size_t const DatabaseInitialSyncer::MaxChunkSize = 10 * 1024 * 1024;
 DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t* vocbase,
     ReplicationApplierConfiguration const& configuration,
     std::unordered_map<std::string, bool> const& restrictCollections,
-    Syncer::RestrictType restrictType, bool verbose, bool skipCreateDrop)
-    : InitialSyncer(configuration, restrictCollections, restrictType, verbose, skipCreateDrop),
+    Syncer::RestrictType restrictType, bool skipCreateDrop)
+    : InitialSyncer(configuration, restrictCollections, restrictType, skipCreateDrop),
       _hasFlushed(false) {
   _vocbases.emplace(vocbase->name(), DatabaseGuard(vocbase));
 }
@@ -170,7 +170,7 @@ bool DatabaseInitialSyncer::checkAborted() {
 void DatabaseInitialSyncer::setProgress(std::string const& msg) {
   _progress = msg;
   
-  if (_verbose) {
+  if (_configuration._verbose) {
     LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
   } else {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
@@ -377,7 +377,7 @@ int DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* col
 
     url += "&serverId=" + _localServerIdString;
     url += "&chunkSize=" + StringUtils::itoa(chunkSize);
-    url += "&includeSystem=" + std::string(_includeSystem ? "true" : "false");
+    url += "&includeSystem=" + std::string(_configuration._includeSystem ? "true" : "false");
 
     std::string const typeString =
         (col->type() == TRI_COL_TYPE_EDGE ? "edge" : "document");
@@ -1058,11 +1058,11 @@ int DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 }
 
 int DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder,
-                                  std::string& errorMsg) {
+                                          std::string& errorMsg) {
   
   std::string url = BaseUrl + "/inventory?serverId=" + _localServerIdString +
   "&batchId=" + std::to_string(_batchId);
-  if (_includeSystem) {
+  if (_configuration._includeSystem) {
     url += "&includeSystem=true";
   }
   
@@ -1147,7 +1147,7 @@ Result DatabaseInitialSyncer::handleLeaderCollections(VPackSlice const& collSlic
                     "collection name is missing in response");
     }
 
-    if (TRI_ExcludeCollectionReplication(masterName, _includeSystem)) {
+    if (TRI_ExcludeCollectionReplication(masterName, _configuration._includeSystem)) {
       continue;
     }
 

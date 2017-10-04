@@ -2704,6 +2704,28 @@ static void JS_BinaryInsertVocbaseCol(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the globally unique id of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_GloballyUniqueIdVocbaseCol(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  arangodb::LogicalCollection* collection =
+      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+
+  std::string uniqueId = collection->globallyUniqueId();
+
+  TRI_V8_RETURN(TRI_V8_ASCII_STD_STRING(isolate, uniqueId));
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -3389,6 +3411,8 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context,
                        JS_RemoveFollower, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getFollowers"),
                        JS_GetFollowers, true);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "globallyUniqueId"),
+                       JS_GloballyUniqueIdVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "load"),
                        JS_LoadVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "name"),

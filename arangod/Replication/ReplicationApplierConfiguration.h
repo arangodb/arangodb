@@ -53,6 +53,7 @@ class ReplicationApplierConfiguration {
   uint64_t _initialSyncMaxWaitTime;
   uint64_t _autoResyncRetries;
   uint32_t _sslProtocol;
+  bool _skipCreateDrop;
   bool _autoStart;
   bool _adaptivePolling;
   bool _autoResync;
@@ -60,7 +61,6 @@ class ReplicationApplierConfiguration {
   bool _requireFromPresent;
   bool _incremental;
   bool _verbose;
-  bool _useCollectionId;
   std::string _restrictType;
   std::unordered_map<std::string, bool> _restrictCollections;
 
@@ -73,6 +73,9 @@ class ReplicationApplierConfiguration {
 
   /// @brief reset the configuration to defaults
   void reset();
+
+  /// @brief validate the configuration. will throw if the config is invalid
+  void validate() const;
 
   /// @brief get a VelocyPack representation
   /// expects builder to be in an open Object state

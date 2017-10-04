@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, unused: false */
-/*global fail, assertEqual, assertTrue, assertFalse, assertNull, arango, ARGUMENTS */
+/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull, arango, ARGUMENTS */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the replication
@@ -51,7 +51,6 @@ const replicatorPassword = "replicator-password";
 const connectToMaster = function() {
   arango.reconnect(masterEndpoint, db._name(), replicatorUser, replicatorPassword);
 };
-
 
 const connectToSlave = function() {
   arango.reconnect(slaveEndpoint, db._name(), "root", "");
@@ -239,7 +238,7 @@ function BaseTestConfig() {
         assertEqual(errors.ERROR_HTTP_UNAUTHORIZED.code, err.errorNum);
       }
     },
-
+    
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test few documents
     ////////////////////////////////////////////////////////////////////////////////
@@ -271,7 +270,7 @@ function BaseTestConfig() {
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test many documents
     ////////////////////////////////////////////////////////////////////////////////
-
+    
     testMany: function() {
       connectToMaster();
 
@@ -1164,7 +1163,6 @@ function BaseTestConfig() {
           }
 
           var properties = db._collection(cn2).properties();
-          assertEqual(state.cid, db._collection(cn2)._id);
           assertEqual(cn2, db._collection(cn2).name());
           if (mmfilesEngine) {
             assertTrue(properties.isVolatile);
@@ -1201,7 +1199,6 @@ function BaseTestConfig() {
             // collection was renamed
           }
 
-          assertEqual(state.cid, db._collection(cn)._id);
           assertEqual(cn, db._collection(cn).name());
         }
       );
@@ -1244,7 +1241,6 @@ function BaseTestConfig() {
         },
         function(state) {
           var properties = db._collection(cn).properties();
-          assertEqual(state.cid, db._collection(cn)._id);
           assertEqual(cn, db._collection(cn).name());
           assertTrue(properties.waitForSync);
           if (mmfilesEngine) {
@@ -1294,7 +1290,6 @@ function BaseTestConfig() {
         },
         function(state) {
           var properties = db._collection(cn).properties();
-          assertEqual(state.cid, db._collection(cn)._id);
           assertEqual(cn, db._collection(cn).name());
           assertFalse(properties.waitForSync);
           if (mmfilesEngine) {
@@ -1357,7 +1352,6 @@ function BaseTestConfig() {
         },
         function(state) {
           var properties = db._collection(cn).properties();
-          assertEqual(state.cid, db._collection(cn)._id);
           assertEqual(cn, db._collection(cn).name());
           assertFalse(properties.waitForSync);
           assertFalse(properties.deleted);
@@ -1396,7 +1390,6 @@ function BaseTestConfig() {
         },
         function(state) {
           var properties = db._collection(cn).properties();
-          assertEqual(state.cid, db._collection(cn)._id);
           assertEqual(cn, db._collection(cn).name());
           assertFalse(properties.isVolatile);
           assertTrue(properties.waitForSync);
@@ -1429,7 +1422,6 @@ function BaseTestConfig() {
           },
           function(state) {
             var properties = db._collection(cn).properties();
-            assertEqual(state.cid, db._collection(cn)._id);
             assertEqual(cn, db._collection(cn).name());
             assertEqual(16, properties.indexBuckets);
           }
@@ -1454,7 +1446,6 @@ function BaseTestConfig() {
           },
           function(state) {
             var properties = db._collection(cn).properties();
-            assertEqual(state.cid, db._collection(cn)._id);
             assertEqual(cn, db._collection(cn).name());
             assertEqual(8, properties.indexBuckets);
           }
@@ -1963,7 +1954,6 @@ function BaseTestConfig() {
         }
       );
     }
-
   };
 }
 
@@ -2045,6 +2035,7 @@ function ReplicationOtherDBSuite() {
     } catch (e) {
     }
     db._createDatabase(testDB);
+    assertNotEqual(-1, db._databases().indexOf(testDB));
 
     // Master side code
     connectToMaster();
@@ -2054,6 +2045,8 @@ function ReplicationOtherDBSuite() {
     } catch (e) {
     }
     db._createDatabase(testDB);
+
+    assertNotEqual(-1, db._databases().indexOf(testDB));
     // We now have an empty testDB
     db._useDatabase(testDB);
     // Use it and setup replication
@@ -2067,7 +2060,11 @@ function ReplicationOtherDBSuite() {
     // Just drop the databases
     connectToMaster();
     db._useDatabase("_system");
-    db._dropDatabase(testDB);
+    try {
+      db._dropDatabase(testDB);
+    } catch (e) {}
+
+    assertEqual(-1, db._databases().indexOf(testDB));
 
     connectToSlave();
     // We need to stop applier in testDB
@@ -2075,7 +2072,11 @@ function ReplicationOtherDBSuite() {
     replication.applier.stop();
     replication.applier.forget();
     db._useDatabase("_system");
-    db._dropDatabase(testDB);
+    try {
+      db._dropDatabase(testDB);
+    } catch (e) {}
+    
+    assertEqual(-1, db._databases().indexOf(testDB));
   };
 
   return suite;

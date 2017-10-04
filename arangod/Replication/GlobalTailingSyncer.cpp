@@ -236,7 +236,7 @@ retry:
 
       try {
         GlobalInitialSyncer syncer(_configuration, _configuration._restrictCollections,
-            _restrictType, _configuration._verbose, false);
+            _restrictType, false);
 
         Result r = syncer.run(_configuration._incremental);
         if (r.ok()) {
@@ -266,26 +266,10 @@ retry:
 
   return TRI_ERROR_NO_ERROR;
 }
-
-/// @brief set the applier progress
-void GlobalTailingSyncer::setProgress(char const* msg) {
- if (_verbose) {
-    LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
-  } else {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
-  }
-
-  _applier->setProgress(msg);
-}
-
+  
 /// @brief set the applier progress
 void GlobalTailingSyncer::setProgress(std::string const& msg) {
-  if (_verbose) {
-    LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
-  } else {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
-  }
-
+  TailingSyncer::setProgress(msg);
   _applier->setProgress(msg);
 }
 
@@ -646,7 +630,7 @@ int GlobalTailingSyncer::followMasterLog(std::string& errorMsg,
                           "&firstRegular=" +
                           StringUtils::itoa(firstRegularTick) + "&serverId=" +
                           _localServerIdString + "&includeSystem=" +
-                          (_includeSystem ? "true" : "false");
+                          (_configuration._includeSystem ? "true" : "false");
 
   // send request
   std::string const progress =

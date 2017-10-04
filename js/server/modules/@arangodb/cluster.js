@@ -545,7 +545,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
     let startTime = new Date();
     sy = rep.syncCollection(shard,
       { endpoint: ep, incremental: true, keepBarrier: true,
-        useCollectionId: false, leaderId: leader, skipCreateDrop: true });
+        leaderId: leader, skipCreateDrop: true });
     let endTime = new Date();
     let longSync = false;
     if (endTime - startTime > 5000) {

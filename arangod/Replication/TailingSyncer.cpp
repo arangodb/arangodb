@@ -86,6 +86,15 @@ TailingSyncer::TailingSyncer(
 
 TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
 
+/// @brief set the applier progress
+void TailingSyncer::setProgress(std::string const& msg) {
+  if (_configuration._verbose) {
+    LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
+  } else {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
+  }
+}
+
 /// @brief abort all ongoing transactions
 void TailingSyncer::abortOngoingTransactions() {
   try {
@@ -151,7 +160,7 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
 
   // the transient applier state is just used for one shard / collection
   if (!_configuration._restrictCollections.empty()) {
-    if (_restrictType == RESTRICT_NONE && _includeSystem) {
+    if (_restrictType == RESTRICT_NONE && _configuration._includeSystem) {
       return false;
     }
 
@@ -166,7 +175,7 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
 
 /// @brief whether or not a collection should be excluded
 bool TailingSyncer::isExcludedCollection(std::string const& masterName) const {
-  if (masterName[0] == '_' && !_includeSystem) {
+  if (masterName[0] == '_' && !_configuration._includeSystem) {
     // system collection
     return true;
   }
@@ -525,7 +534,12 @@ int TailingSyncer::renameCollection(VPackSlice const& slice) {
   if (vocbase == nullptr) {
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
-  arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
+  arangodb::LogicalCollection* col = nullptr;
+  if (slice.hasKey("cuid")) {
+    col = resolveCollection(vocbase, slice);
+  } else if (collection.hasKey("oldName")) {
+    col = vocbase->lookupCollection(collection.get("oldName").copyString());
+  }
   if (col == nullptr) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }

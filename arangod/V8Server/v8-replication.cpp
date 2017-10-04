@@ -203,7 +203,7 @@ static void addReplicationAuthentication(v8::Isolate* isolate,
 
 static void addConnectionSettings(v8::Isolate* isolate,
     v8::Handle<v8::Object> object,
-    ReplicationApplierConfiguration &config) {
+    ReplicationApplierConfiguration& config) {
 
   if (object->Has(TRI_V8_ASCII_STRING(isolate, "sslProtocol"))) {
     if (object->Get(TRI_V8_ASCII_STRING(isolate, "sslProtocol"))->IsNumber()) {
@@ -304,11 +304,6 @@ static void SynchronizeReplication(
     rType = Syncer::RESTRICT_EXCLUDE;
   }
 
-  bool verbose = true;
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "verbose"))) {
-    verbose = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING(isolate, "verbose")));
-  }
-
   bool skipCreateDrop = false;
   if (object->Has(TRI_V8_ASCII_STRING(isolate, "skipCreateDrop"))) {
     skipCreateDrop = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING(isolate, "skipCreateDrop")));
@@ -321,6 +316,12 @@ static void SynchronizeReplication(
 
   ReplicationApplierConfiguration config;
   config._endpoint = endpoint;
+  
+  config._verbose = true;
+  if (object->Has(TRI_V8_ASCII_STRING(isolate, "verbose"))) {
+    config._verbose = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING(isolate, "verbose")));
+  }
+
 
   addReplicationAuthentication(isolate, object, config);
   addConnectionSettings(isolate, object, config);
@@ -353,11 +354,6 @@ static void SynchronizeReplication(
         TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING(isolate, "keepBarrier")));
   }
 
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "useCollectionId"))) {
-    config._useCollectionId =
-        TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING(isolate, "useCollectionId")));
-  }
-
   std::string leaderId;
   if (object->Has(TRI_V8_ASCII_STRING(isolate, "leaderId"))) {
     leaderId = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "leaderId")));
@@ -381,8 +377,7 @@ static void SynchronizeReplication(
 
 
     std::string errorMsg = "";
-    DatabaseInitialSyncer syncer(vocbase, config, restrictCollections, rType,
-                                verbose, skipCreateDrop);
+    DatabaseInitialSyncer syncer(vocbase, config, restrictCollections, rType, skipCreateDrop);
     if (!leaderId.empty()) {
       syncer.setLeaderId(leaderId);
     }
@@ -449,7 +444,7 @@ static void SynchronizeReplication(
   } else {
     // global synchronization
     std::string errorMsg = "";
-    GlobalInitialSyncer syncer(config, restrictCollections, rType, verbose, false);
+    GlobalInitialSyncer syncer(config, restrictCollections, rType, false);
 
     int res = TRI_ERROR_NO_ERROR;
 

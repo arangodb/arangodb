@@ -57,6 +57,9 @@ class TailingSyncer : public Syncer {
   virtual int run() = 0;
 
  protected:
+  /// @brief set the applier progress
+  virtual void setProgress(std::string const&);
+
   /// @brief abort all ongoing transactions
   void abortOngoingTransactions();
 

@@ -57,11 +57,9 @@ using namespace arangodb::httpclient;
 std::string const Syncer::BaseUrl = "/_api/replication";
 
 Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
-    : _configuration(),
+    : _configuration(configuration),
       _chunkSize(1024 * 1024),
       _restrictType(RESTRICT_NONE),
-      _includeSystem(configuration._includeSystem),
-      _verbose(configuration._verbose),
       _masterInfo(),
       _endpoint(nullptr),
       _connection(nullptr),
@@ -72,9 +70,9 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
       _isChildSyncer(false) {
   TRI_ASSERT(ServerState::instance()->isSingleServer() ||
              ServerState::instance()->isDBServer());
-  if (!(configuration._database.empty())) {
+  if (!_configuration._database.empty()) {
     // use name from configuration
-    _databaseName = configuration._database;
+    _databaseName = _configuration._database;
   } else if (!_vocbases.empty()) {
     // use name of current database
     TRI_vocbase_t* vocbase = _vocbases.begin()->second.database();
@@ -83,7 +81,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     _databaseName = TRI_VOC_SYSTEM_DATABASE;
   }
   
-  uint64_t c = configuration._chunkSize;
+  uint64_t c = _configuration._chunkSize;
   if (c > 0) {
     _chunkSize = c;
   }
@@ -92,10 +90,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
   _localServerId = ServerIdFeature::getId();
   _localServerIdString = StringUtils::itoa(_localServerId);
 
-  _configuration = configuration;
-  _useCollectionId = _configuration._useCollectionId;
-
-  _masterInfo._endpoint = configuration._endpoint;
+  _masterInfo._endpoint = _configuration._endpoint;
 
   _endpoint = Endpoint::clientFactory(_configuration._endpoint);
 
@@ -338,13 +333,9 @@ LogicalCollection* Syncer::getCollectionByIdOrName(TRI_vocbase_t* vocbase,
                                                    TRI_voc_cid_t cid,
                                                    std::string const& name) {
   
-  arangodb::LogicalCollection* idCol = nullptr;
+  arangodb::LogicalCollection* idCol = vocbase->lookupCollection(cid);
   arangodb::LogicalCollection* nameCol = nullptr;
-  
-  if (_useCollectionId) {
-    idCol = vocbase->lookupCollection(cid);
-  }
-  
+
   if (!name.empty()) {
     // try looking up the collection by name then
     nameCol = vocbase->lookupCollection(name);
@@ -567,9 +558,15 @@ int Syncer::createCollection(TRI_vocbase_t *vocbase, VPackSlice const& slice,
   VPackBuilder s;
   s.openObject();
   s.add("isSystem", VPackValue(true));
+  if (slice.hasKey("globallyUniqueId")) {
+    // if we received a globallyUniqueId from the remote, then we will always use this id
+    // so we can discard the "cid" and "id" values for the collection
+    s.add("id", VPackValue("0"));
+    s.add("cid", VPackValue("0"));
+  }
   s.close();
 
-  VPackBuilder merged = VPackCollection::merge(s.slice(), slice, true);
+  VPackBuilder merged = VPackCollection::merge(slice, s.slice(), true);
 
   int res = TRI_ERROR_NO_ERROR;
   try {

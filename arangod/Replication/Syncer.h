@@ -173,12 +173,6 @@ class Syncer {
   /// @brief collection restriction type
   Syncer::RestrictType _restrictType;
   
-  /// @brief include system collections in the dump?
-  bool _includeSystem;
-  
-  /// @brief verbosity
-  bool _verbose;
-
   /// @brief information about the master state
   MasterInfo _masterInfo;
 
@@ -208,9 +202,6 @@ class Syncer {
   
   /// @brief WAL barrier last update time
   double _barrierUpdateTime;
-  
-  /// @brief whether or not to use collection ids in replication
-  bool _useCollectionId;
   
   /// Is this syncer allowed to handle its own batch
   bool _isChildSyncer;

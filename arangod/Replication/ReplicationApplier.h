@@ -47,6 +47,8 @@ class ReplicationApplier {
   ReplicationApplier(ReplicationApplier const&) = delete;
   ReplicationApplier& operator=(ReplicationApplier const&) = delete;
 
+  std::string const& databaseName() const { return _databaseName; }
+
   /// @brief execute the check condition
   virtual bool applies() const = 0;
  
