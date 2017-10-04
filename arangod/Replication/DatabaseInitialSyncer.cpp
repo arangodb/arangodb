@@ -72,8 +72,8 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t* vocbase,
 }
 
 /// @brief run method, performs a full synchronization
-Result DatabaseInitialSyncer::run(bool incremental,
-                                  VPackSlice inventoryColls) {
+Result DatabaseInitialSyncer::runWithInventory(bool incremental,
+                                               VPackSlice inventoryColls) {
   if (_client == nullptr || _connection == nullptr || _endpoint == nullptr) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }

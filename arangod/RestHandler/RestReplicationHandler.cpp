@@ -1933,6 +1933,8 @@ void RestReplicationHandler::handleCommandSync() {
   auto tickString = std::to_string(syncer.getLastLogTick());
   result.add("lastLogTick", VPackValue(tickString));
 
+  bool const keepBarrier =
+    VelocyPackHelper::getBooleanValue(body, "keepBarrier", false);
   if (keepBarrier) {
     auto barrierId = std::to_string(syncer.stealBarrier());
     result.add("barrierId", VPackValue(barrierId));
