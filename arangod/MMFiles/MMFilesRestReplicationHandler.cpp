@@ -490,38 +490,42 @@ void MMFilesRestReplicationHandler::handleCommandDetermineOpenTransactions() {
   // and dump
   int res =
       MMFilesDetermineOpenTransactionsReplication(&dump, tickStart, tickEnd);
+  if (res != TRI_ERROR_NO_ERROR) {
+    std::string const err = "failed to determine open transactions";
+    LOG_TOPIC(ERR, Logger::REPLICATION) << err;
+    generateError(rest::ResponseCode::BAD, res, err);
+    return;
+  }
+    
+  // generate the result
+  size_t const length = TRI_LengthStringBuffer(dump._buffer);
 
-  if (res == TRI_ERROR_NO_ERROR) {
-    // generate the result
-    size_t const length = TRI_LengthStringBuffer(dump._buffer);
+  if (length == 0) {
+    resetResponse(rest::ResponseCode::NO_CONTENT);
+  } else {
+    resetResponse(rest::ResponseCode::OK);
+  }
 
-    if (length == 0) {
-      resetResponse(rest::ResponseCode::NO_CONTENT);
-    } else {
-      resetResponse(rest::ResponseCode::OK);
-    }
+  HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
+  if (_response == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "invalid response type");
+  }
 
-    HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
-    if (_response == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid response type");
-    }
+  _response->setContentType(rest::ContentType::DUMP);
 
-    _response->setContentType(rest::ContentType::DUMP);
+  _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
+                         dump._fromTickIncluded ? "true" : "false");
 
-    _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
-                           dump._fromTickIncluded ? "true" : "false");
+  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
+                         StringUtils::itoa(dump._lastFoundTick));
 
-    _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
-                           StringUtils::itoa(dump._lastFoundTick));
+  if (length > 0) {
+    // transfer ownership of the buffer contents
+    httpResponse->body().set(dump._buffer);
 
-    if (length > 0) {
-      // transfer ownership of the buffer contents
-      httpResponse->body().set(dump._buffer);
-
-      // to avoid double freeing
-      TRI_StealStringBuffer(dump._buffer);
-    }
+    // to avoid double freeing
+    TRI_StealStringBuffer(dump._buffer);
   }
 }
 
