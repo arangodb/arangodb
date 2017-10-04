@@ -85,10 +85,15 @@
  */
 
 #ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 
 #include <conio.h>
 #include <windows.h>
 #include <io.h>
+
+#include <algorithm>
 
 #if defined(_MSC_VER) && _MSC_VER < 1900
 #define snprintf _snprintf  // Microsoft headers use underscores in some names
@@ -2403,9 +2408,10 @@ int InputBuffer::incrementalHistorySearch(PromptBase& pi, int startChar) {
         while (true) {
           while ((dp.direction > 0) ? (lineSearchPos < lineLength)
                                     : (lineSearchPos >= 0)) {
+            int maxSize = std::min((int)bufferSize, dp.searchTextLen);
             if (strncmp32(dp.searchText.get(),
-                          &activeHistoryLine[lineSearchPos],
-                          dp.searchTextLen) == 0) {
+                          activeHistoryLine + lineSearchPos,
+                          maxSize) == 0) {
               found = true;
               break;
             }

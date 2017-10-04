@@ -447,18 +447,28 @@ Result AuthInfo::storeUser(bool replace, std::string const& user,
 
   WRITE_LOCKER(writeGuard, _authInfoLock);
   auto const& it = _authInfo.find(user);
+
   if (replace && it == _authInfo.end()) {
     return TRI_ERROR_USER_NOT_FOUND;
   } else if (!replace && it != _authInfo.end()) {
     return TRI_ERROR_USER_DUPLICATE;
   }
 
+  auto const& oldEntry = it->second;
+
+  if (replace) {
+    if (oldEntry.source() == AuthSource::LDAP) {
+      return TRI_ERROR_USER_EXTERNAL;
+    }
+  }
+
   AuthUserEntry entry =
       AuthUserEntry::newUser(user, pass, AuthSource::COLLECTION);
   entry.setActive(active);
+
   if (replace) {
-    TRI_ASSERT(!(it->second.key().empty()));
-    entry._key = it->second.key();
+    TRI_ASSERT(!(oldEntry.key().empty()));
+    entry._key = oldEntry.key();
   }
 
   Result r = storeUserInternal(entry, replace);
@@ -505,10 +515,18 @@ Result AuthInfo::enumerateUsers(
   {
     WRITE_LOCKER(guard, _authInfoLock);
     for (auto& it : _authInfo) {
-      TRI_ASSERT(!it.second.key().empty());
+      auto const& entry = it.second;
+
+      if (entry.source() == AuthSource::LDAP) {
+        continue;
+      }
+
+      TRI_ASSERT(!entry.key().empty());
+
       func(it.second);
       VPackBuilder data = it.second.toVPackBuilder();
       Result r = UpdateUser(data.slice());
+
       if (!r.ok()) {
         return r;
       }
@@ -541,10 +559,18 @@ Result AuthInfo::updateUser(std::string const& user,
       return Result(TRI_ERROR_USER_NOT_FOUND);
     }
 
-    TRI_ASSERT(!it->second.key().empty());
-    func(it->second);
-    VPackBuilder data = it->second.toVPackBuilder();
+    auto& oldEntry = it->second;
+
+    if (oldEntry.source() == AuthSource::LDAP) {
+      return TRI_ERROR_USER_EXTERNAL;
+    }
+
+    TRI_ASSERT(!oldEntry.key().empty());
+
+    func(oldEntry);
+    VPackBuilder data = oldEntry.toVPackBuilder();
     r = UpdateUser(data.slice());
+
     // must also clear the basic cache here because the secret may be
     // invalid now if the password was changed
 
@@ -627,11 +653,19 @@ Result AuthInfo::removeUser(std::string const& user) {
   {
     WRITE_LOCKER(guard, _authInfoLock);
     auto const& it = _authInfo.find(user);
+
     if (it == _authInfo.end()) {
       return TRI_ERROR_USER_NOT_FOUND;
     }
 
-    res = RemoveUserInternal(it->second);
+    auto const& oldEntry = it->second;
+
+    if (oldEntry.source() == AuthSource::LDAP) {
+      return TRI_ERROR_USER_EXTERNAL;
+    }
+
+    res = RemoveUserInternal(oldEntry);
+
     if (res.ok()) {
       _authInfo.erase(it);
       // must also clear the basic cache here because the secret is invalid now
@@ -649,7 +683,13 @@ Result AuthInfo::removeAllUsers() {
     WRITE_LOCKER(guard, _authInfoLock);
 
     for (auto const& pair : _authInfo) {
-      res = RemoveUserInternal(pair.second);
+      auto const& oldEntry = pair.second;
+
+      if (oldEntry.source() == AuthSource::LDAP) {
+        continue;
+      }
+
+      res = RemoveUserInternal(oldEntry);
 
       if (!res.ok()) {
         break;
@@ -681,15 +721,24 @@ Result AuthInfo::setConfigData(std::string const& user,
   loadFromDB();
 
   READ_LOCKER(guard, _authInfoLock);
+
   auto it = _authInfo.find(user);
+
   if (it == _authInfo.end()) {
     return Result(TRI_ERROR_USER_NOT_FOUND);
   }
-  TRI_ASSERT(!it->second.key().empty());
+
+  auto const& oldEntry = it->second;
+
+  if (oldEntry.source() == AuthSource::LDAP) {
+    return TRI_ERROR_USER_EXTERNAL;
+  }
+
+  TRI_ASSERT(!oldEntry.key().empty());
 
   VPackBuilder partial;
   partial.openObject();
-  partial.add(StaticStrings::KeyString, VPackValue(it->second.key()));
+  partial.add(StaticStrings::KeyString, VPackValue(oldEntry.key()));
   partial.add("configData", data);
   partial.close();
 
@@ -707,15 +756,24 @@ Result AuthInfo::setUserData(std::string const& user,
   loadFromDB();
 
   READ_LOCKER(guard, _authInfoLock);
+
   auto it = _authInfo.find(user);
+
   if (it == _authInfo.end()) {
     return Result(TRI_ERROR_USER_NOT_FOUND);
   }
-  TRI_ASSERT(!it->second.key().empty());
+
+  auto const& oldEntry = it->second;
+
+  if (oldEntry.source() == AuthSource::LDAP) {
+    return TRI_ERROR_USER_EXTERNAL;
+  }
+
+  TRI_ASSERT(!oldEntry.key().empty());
 
   VPackBuilder partial;
   partial.openObject();
-  partial.add(StaticStrings::KeyString, VPackValue(it->second.key()));
+  partial.add(StaticStrings::KeyString, VPackValue(oldEntry.key()));
   partial.add("userData", data);
   partial.close();
 
@@ -751,6 +809,10 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
           AuthUserEntry::newUser(username, password, AuthSource::LDAP);
       entry.setRoles(authResult.roles());
 
+      for (auto const& al : authResult.permissions()) {
+        entry.grantDatabase(al.first, al.second);
+      }
+
       // upgrade read-lock to a write-lock
       readLocker.unlock();
       WRITE_LOCKER(writeLocker, _authInfoLock);
@@ -768,6 +830,7 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
 
         it = r.first;
       }
+
       AuthUserEntry const& auth = it->second;
 
       if (auth.isActive()) {

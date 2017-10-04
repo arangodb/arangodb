@@ -61,7 +61,7 @@ VPackSlice TraverserCache::lookupToken(EdgeDocumentToken const& idToken) {
     return basics::VelocyPackHelper::NullValue();
   }
 
-  if (!col->readDocument(_trx, idToken.token(), *_mmdr.get())) {
+  if (!col->readDocument(_trx, idToken.localDocumentId(), *_mmdr.get())) {
     // We already had this token, inconsistent state. Return NULL in Production
     LOG_TOPIC(ERR, arangodb::Logger::GRAPHS) << "Could not extract indexed edge document, return 'null' instead. "
       << "This is most likely a caching issue. Try: 'db."
