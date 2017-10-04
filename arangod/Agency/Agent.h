@@ -25,7 +25,6 @@
 #define ARANGOD_CONSENSUS_AGENT_H 1
 
 #include "Agency/AgencyCommon.h"
-#include "Agency/AgentActivator.h"
 #include "Agency/AgentCallback.h"
 #include "Agency/AgentConfiguration.h"
 #include "Agency/AgentInterface.h"
@@ -167,12 +166,6 @@ class Agent : public arangodb::Thread,
   /// @brief Persisted agents
   bool persistedAgents();
 
-  /// @brief Activate new agent in pool to replace failed
-  void reportActivated(std::string const&, std::string const&, query_t);
-
-  /// @brief Activate new agent in pool to replace failed
-  void failedActivation(std::string const&, std::string const&);
-
   /// @brief Gossip in
   bool activeAgency();
 
@@ -226,9 +219,6 @@ class Agent : public arangodb::Thread,
 
   /// @brief Get notification as inactive pool member
   void notify(query_t const&);
-
-  /// @brief Detect active agent failures
-  void detectActiveAgentFailures();
 
   /// @brief All there is in the state machine
   query_t allLogs() const;
@@ -412,9 +402,6 @@ class Agent : public arangodb::Thread,
 
   /// @brief Inception thread getting an agent up to join RAFT from cmd or persistence
   std::unique_ptr<Inception> _inception;
-
-  /// @brief Activator thread for the leader to wake up a sleeping agent from pool
-  std::unique_ptr<AgentActivator> _activator;
 
   /// @brief Compactor
   Compactor _compactor;

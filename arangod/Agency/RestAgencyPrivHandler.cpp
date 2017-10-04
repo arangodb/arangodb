@@ -140,26 +140,6 @@ RestStatus RestAgencyPrivHandler::execute() {
         } else {
           return reportBadQuery();  // bad query
         }
-      } else if (suffixes[0] == "activate") {  // notify
-        if (_request->requestType() != rest::RequestType::POST) {
-          return reportMethodNotAllowed();
-        }
-        query_t everything;
-        try {
-          everything = _request->toVelocyPackBuilderPtr();
-        } catch (std::exception const& e) {
-          LOG_TOPIC(ERR, Logger::AGENCY)
-            << "Failure getting activation body:" <<  e.what();
-        }
-        try {
-          query_t res = _agent->activate(everything);
-          for (auto const& i : VPackObjectIterator(res->slice())) {
-            result.add(i.key.copyString(),i.value);
-          }
-        } catch (std::exception const& e) {
-          LOG_TOPIC(ERR, Logger::AGENCY) << "Activation failed: " << e.what();
-        }
-        
       } else if (suffixes[0] == "gossip") {
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();

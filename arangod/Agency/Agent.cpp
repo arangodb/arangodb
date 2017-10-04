@@ -51,7 +51,6 @@ Agent::Agent(config_t const& config)
     _readDB(this),
     _transient(this),
     _agentNeedsWakeup(false),
-    _activator(nullptr),
     _compactor(this),
     _ready(false),
     _preparing(false) {
@@ -1171,14 +1170,6 @@ void Agent::run() {
           // loop often enough in cases of high load.
         }
       }
-      
-      // Detect faulty agent and replace
-      // if possible and only if not already activating
-      if (duration<double>(system_clock::now() - tp).count() > 10.0) {
-        detectActiveAgentFailures();
-        tp = system_clock::now();
-      }
-
     } else {
       CONDITION_LOCKER(guard, _appendCV);
       if (!_agentNeedsWakeup) {
@@ -1189,41 +1180,6 @@ void Agent::run() {
   }
   
 }
-
-
-void Agent::reportActivated(
-  std::string const& failed, std::string const& replacement, query_t state) {
-
-  term_t myterm = _constituent.term();
-      
-  if (state->slice().get("success").getBoolean()) {
-    
-    {
-      MUTEX_LOCKER(tiLocker, _tiLock);
-      _confirmed.erase(failed);
-      auto commitIndex = state->slice().get("commitId").getNumericValue<index_t>();
-      _confirmed[replacement] = commitIndex;
-      _lastAcked[replacement] = system_clock::now();
-      _config.swapActiveMember(failed, replacement);
-    }
-    
-    {
-      MUTEX_LOCKER(actLock, _activatorLock);
-      if (_activator->isRunning()) {
-        _activator->beginShutdown();
-      }
-      _activator.reset(nullptr);
-    }
-    
-  } 
-
-  persistConfiguration(myterm);
-
-  // Notify inactive pool
-  notifyInactive();
-
-}
-
 
 void Agent::persistConfiguration(term_t t) {
 
@@ -1245,48 +1201,6 @@ void Agent::persistConfiguration(term_t t) {
   // In case we've lost leadership, no harm will arise as the failed write
   // prevents bogus agency configuration to be replicated among agents. ***
   write(agency, true); 
-}
-
-
-void Agent::failedActivation(
-  std::string const& failed, std::string const& replacement) {
-  MUTEX_LOCKER(actLock, _activatorLock);
-  _activator.reset(nullptr);
-}
-
-
-void Agent::detectActiveAgentFailures() {
-  // Detect faulty agent if pool larger than agency
-
-  std::unordered_map<std::string, TimePoint> lastAcked;
-  {
-    MUTEX_LOCKER(tiLocker, _tiLock);
-    lastAcked = _lastAcked;
-  }
-
-  MUTEX_LOCKER(actLock, _activatorLock);
-  if (_activator != nullptr) {
-    return;
-  }
-  
-  if (_config.poolSize() > _config.size()) {
-    std::vector<std::string> active = _config.active();
-    for (auto const& id : active) {
-      if (id != this->id()) {
-        auto ds = duration<double>(
-          system_clock::now() - lastAcked.at(id)).count();
-        if (ds > 180.0) {
-          std::string repl = _config.nextAgentInLine();
-          LOG_TOPIC(DEBUG, Logger::AGENCY)
-            << "Active agent " << id << " has failed. << " << repl
-            << " will be promoted to active agency membership";
-          _activator = std::make_unique<AgentActivator>(this, id, repl);
-          _activator->start();
-          return;
-        }
-      }
-    }
-  }
 }
 
 
@@ -1354,9 +1268,6 @@ void Agent::lead() {
 
   persistConfiguration(myterm);
 
-  // Notify inactive pool
-  notifyInactive();
-  
   {
     CONDITION_LOCKER(guard, _waitForCV);
     // Note that when we are stopping
