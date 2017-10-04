@@ -217,7 +217,9 @@ int TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     TRI_ASSERT(data.get("name") == nameSlice);
 
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
-    if (vocbase != nullptr) {
+    if (vocbase != nullptr && name != TRI_VOC_SYSTEM_DATABASE) {
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "Seeing database creation marker "
+        << "for an alread existing db. Dropping db...";
       TRI_vocbase_t* system = DatabaseFeature::DATABASE->systemDatabase();
       TRI_ASSERT(system);
       Result res = methods::Databases::drop(system, name);
@@ -233,13 +235,18 @@ int TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     return res.errorNumber();
   } else if (type == REPLICATION_DATABASE_DROP) {
 
-    TRI_vocbase_t* system = DatabaseFeature::DATABASE->systemDatabase();
-    TRI_ASSERT(system != nullptr);
-    Result res = methods::Databases::drop(system, name);
-    if (res.fail()) {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << res.errorMessage();
+    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
+    if (vocbase != nullptr && name != TRI_VOC_SYSTEM_DATABASE) {
+      TRI_vocbase_t* system = DatabaseFeature::DATABASE->systemDatabase();
+      TRI_ASSERT(system != nullptr);
+      Result res = methods::Databases::drop(system, name);
+      if (res.fail()) {
+        LOG_TOPIC(ERR, Logger::REPLICATION) << res.errorMessage();
+      }
+      return res.errorNumber();
+    } else {
+      TRI_ASSERT(false);// this should never  occur anyway
     }
-    return res.errorNumber();
     
   }
   TRI_ASSERT(false);
