@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicationFeature.h"
+#include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
@@ -38,27 +39,43 @@ ReplicationFeature* ReplicationFeature::INSTANCE = nullptr;
 
 ReplicationFeature::ReplicationFeature(ApplicationServer* server)
     : ApplicationFeature(server, "Replication"),
-      _replicationApplier(true) {
+      _replicationApplierAutoStart(true),
+      _enableFailover(false) {
 
   setOptional(false);
   requiresElevatedPrivileges(false);
   startsAfter("Database");
   startsAfter("StorageEngine");
+  //startsAfter("Cluster");
 }
 
 void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  options->addSection("database", "Configure the database");
-
-  options->addOldOption("server.disable-replication-applier",
-                        "database.replication-applier");
   
-  options->addHiddenOption(
-      "--database.replication-applier",
-      "switch to enable or disable the replication applier",
-      new BooleanParameter(&_replicationApplier));
+  options->addSection("replication", "Configure the replication");
+  options->addHiddenOption("--replication.auto-start",
+                           "switch to enable or disable the automatic start "
+                           "of replication appliers",
+                           new BooleanParameter(&_replicationApplierAutoStart));
+  
+  options->addSection("database", "Configure the database");
+  options->addOldOption("server.disable-replication-applier",
+                        "replication.auto-start");
+  options->addOldOption("database.replication-applier",
+                        "replication.auto-start");
+  
+  options->addHiddenOption("--replication.automatic-failover",
+                           "Allow failover",
+                           new BooleanParameter(&_enableFailover));
 }
 
-void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {}
+void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
+  
+  if (_enableFailover && !AgencyCommManager::isEnabled()) {
+    LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
+    << "automatic failover needs to be started with agency endpoint configured";
+    FATAL_ERROR_EXIT();
+  }
+}
 
 void ReplicationFeature::prepare() { 
   INSTANCE = this;
@@ -91,7 +108,7 @@ void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(vocbase->replicationApplier() != nullptr);
 
   if (vocbase->replicationApplier()->autoStart()) {
-    if (!_replicationApplier) {
+    if (!_replicationApplierAutoStart) {
       LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "replication applier explicitly deactivated for database '"
                 << vocbase->name() << "'";
     } else {
@@ -105,6 +122,10 @@ void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
                   << vocbase->name() << "'";
       }
     }
+  }
+  if (_globalReplicationApplier->autoStart() &&
+      _replicationApplierAutoStart) {
+    _globalReplicationApplier->autoStart();
   }
 }
 

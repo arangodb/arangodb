@@ -54,7 +54,7 @@ class ApplyThread : public Thread {
     try {
       int res = _syncer->run();
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC(ERR, Logger::REPLICATION) << "Error while running applyer: "
+        LOG_TOPIC(ERR, Logger::REPLICATION) << "Error while running applier: "
           << TRI_errno_string(res);
       }
     } catch (std::exception const& ex) {
