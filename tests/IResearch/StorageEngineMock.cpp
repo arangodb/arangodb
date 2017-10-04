@@ -719,7 +719,7 @@ bool StorageEngineMock::supportsDfdb() const {
 }
 
 void StorageEngineMock::unloadCollection(TRI_vocbase_t* vocbase, arangodb::LogicalCollection* collection) {
-  TRI_ASSERT(false);
+  // NOOP assume collection unloaded OK
 }
 
 std::string StorageEngineMock::versionFilename(TRI_voc_tick_t) const {

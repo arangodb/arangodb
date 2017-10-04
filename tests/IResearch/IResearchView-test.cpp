@@ -101,6 +101,16 @@ struct DocIdScorer: public irs::sort {
 
 REGISTER_SCORER(DocIdScorer);
 
+// vocbase shutodown() must be exlicitly called or dropped collections are not deallocated
+struct VocbaseWrapper {
+  TRI_vocbase_t instance;
+  template<typename... Args>
+  VocbaseWrapper(Args&&... args): instance(std::forward<Args>(args)...) {}
+  ~VocbaseWrapper() { instance.shutdown(); }
+  TRI_vocbase_t* operator->() { return &instance; }
+  TRI_vocbase_t& operator*() { return instance; }
+};
+
 NS_END
 
 // -----------------------------------------------------------------------------
@@ -1253,9 +1263,9 @@ SECTION("test_unregister_link") {
 
   // link removed before view (in recovery)
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
-    auto logicalView = vocbase.createView(viewJson->slice(), 0);
+    VocbaseWrapper vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase->createCollection(collectionJson->slice());
+    auto logicalView = vocbase->createView(viewJson->slice(), 0);
     REQUIRE((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
     REQUIRE((false == !view));
@@ -1269,25 +1279,25 @@ SECTION("test_unregister_link") {
     CHECK((false == logicalCollection->getIndexes().empty()));
 
     CHECK((1 == view->linkCount()));
-    CHECK((nullptr != vocbase.lookupCollection("testCollection")));
+    CHECK((nullptr != vocbase->lookupCollection("testCollection")));
 
     StorageEngineMock::inRecoveryResult = true;
     auto restore = irs::make_finally([]()->void { StorageEngineMock::inRecoveryResult = false; });
     persisted = false;
-    CHECK((TRI_ERROR_NO_ERROR == vocbase.dropCollection(logicalCollection, true, -1)));
+    CHECK((TRI_ERROR_NO_ERROR == vocbase->dropCollection(logicalCollection, true, -1)));
     CHECK((false == persisted));
-    CHECK((nullptr == vocbase.lookupCollection("testCollection")));
+    CHECK((nullptr == vocbase->lookupCollection("testCollection")));
     CHECK((0 == view->linkCount()));
-    CHECK((false == !vocbase.lookupView("testView")));
-    CHECK((TRI_ERROR_NO_ERROR == vocbase.dropView("testView")));
-    CHECK((true == !vocbase.lookupView("testView")));
+    CHECK((false == !vocbase->lookupView("testView")));
+    CHECK((TRI_ERROR_NO_ERROR == vocbase->dropView("testView")));
+    CHECK((true == !vocbase->lookupView("testView")));
   }
 
   // link removed before view
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
-    auto logicalView = vocbase.createView(viewJson->slice(), 0);
+    VocbaseWrapper vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase->createCollection(collectionJson->slice());
+    auto logicalView = vocbase->createView(viewJson->slice(), 0);
     REQUIRE((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
     REQUIRE((false == !view));
@@ -1301,22 +1311,22 @@ SECTION("test_unregister_link") {
     CHECK((false == logicalCollection->getIndexes().empty()));
 
     CHECK((1 == view->linkCount()));
-    CHECK((nullptr != vocbase.lookupCollection("testCollection")));
+    CHECK((nullptr != vocbase->lookupCollection("testCollection")));
     persisted = false;
-    CHECK((TRI_ERROR_NO_ERROR == vocbase.dropCollection(logicalCollection, true, -1)));
+    CHECK((TRI_ERROR_NO_ERROR == vocbase->dropCollection(logicalCollection, true, -1)));
     CHECK((true == persisted));
-    CHECK((nullptr == vocbase.lookupCollection("testCollection")));
+    CHECK((nullptr == vocbase->lookupCollection("testCollection")));
     CHECK((0 == view->linkCount()));
-    CHECK((false == !vocbase.lookupView("testView")));
-    CHECK((TRI_ERROR_NO_ERROR == vocbase.dropView("testView")));
-    CHECK((true == !vocbase.lookupView("testView")));
+    CHECK((false == !vocbase->lookupView("testView")));
+    CHECK((TRI_ERROR_NO_ERROR == vocbase->dropView("testView")));
+    CHECK((true == !vocbase->lookupView("testView")));
   }
 
   // view removed before link
   {
-    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
-    auto* logicalCollection = vocbase.createCollection(collectionJson->slice());
-    auto logicalView = vocbase.createView(viewJson->slice(), 0);
+    VocbaseWrapper vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto* logicalCollection = vocbase->createCollection(collectionJson->slice());
+    auto logicalView = vocbase->createView(viewJson->slice(), 0);
     REQUIRE((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
     REQUIRE((false == !view));
@@ -1330,12 +1340,12 @@ SECTION("test_unregister_link") {
     CHECK((false == logicalCollection->getIndexes().empty()));
 
     CHECK((1 == view->linkCount()));
-    CHECK((false == !vocbase.lookupView("testView")));
-    CHECK((TRI_ERROR_NO_ERROR == vocbase.dropView("testView")));
-    CHECK((true == !vocbase.lookupView("testView")));
-    CHECK((nullptr != vocbase.lookupCollection("testCollection")));
-    CHECK((TRI_ERROR_NO_ERROR == vocbase.dropCollection(logicalCollection, true, -1)));
-    CHECK((nullptr == vocbase.lookupCollection("testCollection")));
+    CHECK((false == !vocbase->lookupView("testView")));
+    CHECK((TRI_ERROR_NO_ERROR == vocbase->dropView("testView")));
+    CHECK((true == !vocbase->lookupView("testView")));
+    CHECK((nullptr != vocbase->lookupCollection("testCollection")));
+    CHECK((TRI_ERROR_NO_ERROR == vocbase->dropCollection(logicalCollection, true, -1)));
+    CHECK((nullptr == vocbase->lookupCollection("testCollection")));
   }
 
   // view deallocated before link removed

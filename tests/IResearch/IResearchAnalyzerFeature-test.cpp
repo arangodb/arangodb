@@ -136,6 +136,61 @@ std::map<irs::string_ref, Analyzer>const& staticAnalyzers() {
   return analyzers;
 }
 
+// AqlValue entries must be explicitly deallocated
+struct VPackFunctionParametersWrapper {
+  arangodb::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
+  arangodb::aql::VPackFunctionParameters instance;
+  VPackFunctionParametersWrapper(): instance(arena) {}
+  ~VPackFunctionParametersWrapper() {
+    for(auto& entry: instance) {
+      entry.destroy();
+    }
+  }
+  arangodb::aql::VPackFunctionParameters* operator->() { return &instance; }
+  arangodb::aql::VPackFunctionParameters& operator*() { return instance; }
+};
+
+// AqlValue entrys must be explicitly deallocated
+struct AqlValueWrapper {
+  arangodb::aql::AqlValue instance;
+  AqlValueWrapper(arangodb::aql::AqlValue&& other): instance(std::move(other)) {}
+  ~AqlValueWrapper() { instance.destroy(); }
+  arangodb::aql::AqlValue* operator->() { return &instance; }
+  arangodb::aql::AqlValue& operator*() { return instance; }
+};
+
+// a way to set EngineSelectorFeature::ENGINE and nullify it via destructor,
+// i.e. only after all TRI_vocbase_t and ApplicationServer have been destroyed
+struct StorageEngineWrapper {
+  StorageEngineMock instance;
+  StorageEngineWrapper() { arangodb::EngineSelectorFeature::ENGINE = &instance; }
+  ~StorageEngineWrapper() { arangodb::EngineSelectorFeature::ENGINE = nullptr; }
+  StorageEngineMock* operator->() { return &instance; }
+  StorageEngineMock& operator*() { return instance; }
+};
+
+// vocbase shutodown() must be exlicitly called or dropped collections are not deallocated
+struct VocbaseWrapper {
+  std::unique_ptr<TRI_vocbase_t> instance;
+  ~VocbaseWrapper() {
+    if (instance) {
+      instance->shutdown();
+    }
+  }
+  VocbaseWrapper& operator=(std::unique_ptr<TRI_vocbase_t>&& other) {
+    if (instance) {
+      instance->shutdown();
+    }
+
+    instance = std::move(other);
+
+    return *this;
+  }
+  TRI_vocbase_t* operator->() { return instance.get(); }
+  TRI_vocbase_t& operator*() { return *instance; }
+  TRI_vocbase_t* get() { return instance.get(); }
+};
+
 NS_END
 
 // -----------------------------------------------------------------------------
@@ -143,14 +198,12 @@ NS_END
 // -----------------------------------------------------------------------------
 
 struct IResearchAnalyzerFeatureSetup {
-  StorageEngineMock engine;
+  StorageEngineWrapper engine; // can only nullify 'ENGINE' after all TRI_vocbase_t and ApplicationServer have been destroyed
+  VocbaseWrapper system; // ensure destruction after 'server'
   arangodb::application_features::ApplicationServer server;
-  std::unique_ptr<TRI_vocbase_t> system;
   std::vector<std::pair<arangodb::application_features::ApplicationFeature*, bool>> features;
 
   IResearchAnalyzerFeatureSetup(): server(nullptr, nullptr) {
-    arangodb::EngineSelectorFeature::ENGINE = &engine;
-
     arangodb::tests::init();
 
     // setup required application features
@@ -159,7 +212,7 @@ struct IResearchAnalyzerFeatureSetup {
     features.emplace_back(new arangodb::FeatureCacheFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::QueryRegistryFeature(&server), false); // required for constructing TRI_vocbase_t
     arangodb::application_features::ApplicationServer::server->addFeature(features.back().first);
-    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
+    system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE); // QueryRegistryFeature required for instantiation
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
 
@@ -185,10 +238,8 @@ struct IResearchAnalyzerFeatureSetup {
   }
 
   ~IResearchAnalyzerFeatureSetup() {
-    system.reset(); // destroy before reseting the 'ENGINE'
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::DEFAULT);
     arangodb::application_features::ApplicationServer::server = nullptr;
-    arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
     // destroy application features
     for (auto& f : features) {
@@ -1512,17 +1563,16 @@ SECTION("test_tokens") {
 
     irs::string_ref analyzer("test_analyzer");
     irs::string_ref data("abcdefghijklmnopqrstuvwxyz");
-    arangodb::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
-    arangodb::aql::VPackFunctionParameters args{arena};
-    args.emplace_back(data.c_str(), data.size());
-    args.emplace_back(analyzer.c_str(), analyzer.size());
-    auto result = impl(nullptr, nullptr, args);
-    CHECK((result.isArray()));
-    CHECK((26 == result.length()));
+    VPackFunctionParametersWrapper args;
+    args->emplace_back(data.c_str(), data.size());
+    args->emplace_back(analyzer.c_str(), analyzer.size());
+    AqlValueWrapper result(impl(nullptr, nullptr, *args));
+    CHECK((result->isArray()));
+    CHECK((26 == result->length()));
 
     for (int64_t i = 0; i < 26; ++i) {
       bool mustDestroy;
-      auto entry = result.at(nullptr, i, mustDestroy, false);
+      auto entry = result->at(nullptr, i, mustDestroy, false);
       CHECK((entry.isString()));
       auto value = arangodb::iresearch::getStringRef(entry.slice());
       CHECK((1 == value.size()));
@@ -1539,8 +1589,8 @@ SECTION("test_tokens") {
 
     arangodb::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
     arangodb::aql::VPackFunctionParameters args{arena};
-    auto result = impl(nullptr, nullptr, args);
-    CHECK((result.isNone()));
+    AqlValueWrapper result(impl(nullptr, nullptr, args));
+    CHECK((result->isNone()));
   }
 
   // test invalid data type
@@ -1551,12 +1601,11 @@ SECTION("test_tokens") {
     CHECK((false == !impl));
 
     irs::string_ref data("abcdefghijklmnopqrstuvwxyz");
-    arangodb::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
-    arangodb::aql::VPackFunctionParameters args{arena};
-    args.emplace_back(data.c_str(), data.size());
-    args.emplace_back(123.4);
-    auto result = impl(nullptr, nullptr, args);
-    CHECK((result.isNone()));
+    VPackFunctionParametersWrapper args;
+    args->emplace_back(data.c_str(), data.size());
+    args->emplace_back(123.4);
+    AqlValueWrapper result(impl(nullptr, nullptr, *args));
+    CHECK((result->isNone()));
   }
 
   // test invalid analyzer type
@@ -1567,12 +1616,11 @@ SECTION("test_tokens") {
     CHECK((false == !impl));
 
     irs::string_ref analyzer("test_analyzer");
-    arangodb::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
-    arangodb::aql::VPackFunctionParameters args{arena};
-    args.emplace_back(123.4);
-    args.emplace_back(analyzer.c_str(), analyzer.size());
-    auto result = impl(nullptr, nullptr, args);
-    CHECK((result.isNone()));
+    VPackFunctionParametersWrapper args;
+    args->emplace_back(123.4);
+    args->emplace_back(analyzer.c_str(), analyzer.size());
+    AqlValueWrapper result(impl(nullptr, nullptr, *args));
+    CHECK((result->isNone()));
   }
 
   // test invalid analyzer
@@ -1584,12 +1632,11 @@ SECTION("test_tokens") {
 
     irs::string_ref analyzer("invalid");
     irs::string_ref data("abcdefghijklmnopqrstuvwxyz");
-    arangodb::SmallVector<arangodb::aql::AqlValue>::allocator_type::arena_type arena;
-    arangodb::aql::VPackFunctionParameters args{arena};
-    args.emplace_back(data.c_str(), data.size());
-    args.emplace_back(analyzer.c_str(), analyzer.size());
-    auto result = impl(nullptr, nullptr, args);
-    CHECK((result.isNone()));
+    VPackFunctionParametersWrapper args;
+    args->emplace_back(data.c_str(), data.size());
+    args->emplace_back(analyzer.c_str(), analyzer.size());
+    AqlValueWrapper result(impl(nullptr, nullptr, *args));
+    CHECK((result->isNone()));
   }
 }
 
