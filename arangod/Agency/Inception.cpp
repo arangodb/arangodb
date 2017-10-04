@@ -372,11 +372,6 @@ bool Inception::restartingActiveAgent() {
   
 }
 
-void Inception::reportIn(query_t const& query) {
-  // does nothing at the moment
-}
-
-
 void Inception::reportVersionForEp(std::string const& endpoint, size_t version) {
   MUTEX_LOCKER(versionLocker, _vLock);
   if (_acked[endpoint] < version) {

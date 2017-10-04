@@ -173,16 +173,6 @@ RestStatus RestAgencyPrivHandler::execute() {
         } catch (std::exception const& e) {
           return reportBadQuery(e.what());
         }
-      } else if (suffixes[0] == "measure") {
-        if (_request->requestType() != rest::RequestType::POST) {
-          return reportMethodNotAllowed();
-        }
-        auto query = _request->toVelocyPackBuilderPtr();
-        try {
-          _agent->reportMeasurement(query);
-        } catch (std::exception const& e) {
-          return reportBadQuery(e.what());
-        }
       } else if (suffixes[0] == "activeAgents") {
         if (_request->requestType() != rest::RequestType::GET) {
           return reportMethodNotAllowed();

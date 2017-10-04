@@ -242,9 +242,6 @@ class Agent : public arangodb::Thread,
   /// @brief Become active agent
   query_t activate(query_t const&);
 
-  /// @brief Report measured round trips to inception
-  void reportMeasurement(query_t const&);
-
   /// @brief Are we ready for RAFT?
   bool ready() const;
 

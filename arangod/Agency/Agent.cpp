@@ -806,30 +806,34 @@ bool Agent::challengeLeadership() {
   MUTEX_LOCKER(tiLocker, _tiLock);
   size_t good = 0;
   
+  std::string const myid = id();
+  
   for (auto const& i : _lastAcked) {
-    duration<double> m = system_clock::now() - i.second;
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "challengeLeadership: found "
-      "_lastAcked[" << i.first << "] to be "
-      << std::chrono::duration_cast<std::chrono::microseconds>(
-          i.second.time_since_epoch()).count()
-      << " which is " << static_cast<uint64_t>(m.count() * 1000000.0)
-      << " microseconds in the past.";
+    if (i.first != myid) {  // do not count ourselves
+      duration<double> m = system_clock::now() - i.second;
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "challengeLeadership: found "
+        "_lastAcked[" << i.first << "] to be "
+        << std::chrono::duration_cast<std::chrono::microseconds>(
+            i.second.time_since_epoch()).count()
+        << " which is " << static_cast<uint64_t>(m.count() * 1000000.0)
+        << " microseconds in the past.";
 
-    // This is rather arbitrary here: We used to have 0.9 here to absolutely
-    // ensure that a leader resigns before another one even starts an election.
-    // However, the Raft paper does not mention this at all. Rather, in the
-    // paper it is written that the leader should resign immediately if it
-    // sees a higher term from another server. Currently we have not
-    // implemented to return the follower's term with a response to
-    // AppendEntriesRPC, so the leader cannot find out a higher term this
-    // way. The leader can, however, see a higher term in the incoming
-    // AppendEntriesRPC a new leader sends out, and it will immediately
-    // resign if it sees that. For the moment, this value here can stay.
-    // We should soon implement sending the follower's term back with
-    // each response and probably get rid of this method altogether,
-    // but this requires a bit more thought.
-    if (_config.maxPing() * _config.timeoutMult() > m.count()) {
-      ++good;
+      // This is rather arbitrary here: We used to have 0.9 here to absolutely
+      // ensure that a leader resigns before another one even starts an election.
+      // However, the Raft paper does not mention this at all. Rather, in the
+      // paper it is written that the leader should resign immediately if it
+      // sees a higher term from another server. Currently we have not
+      // implemented to return the follower's term with a response to
+      // AppendEntriesRPC, so the leader cannot find out a higher term this
+      // way. The leader can, however, see a higher term in the incoming
+      // AppendEntriesRPC a new leader sends out, and it will immediately
+      // resign if it sees that. For the moment, this value here can stay.
+      // We should soon implement sending the follower's term back with
+      // each response and probably get rid of this method altogether,
+      // but this requires a bit more thought.
+      if (_config.maxPing() * _config.timeoutMult() > m.count()) {
+        ++good;
+      }
     }
   }
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "challengeLeadership: good=" << good;
@@ -1742,12 +1746,6 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   return out;
 }
 
-
-void Agent::reportMeasurement(query_t const& query) {
-  if (_inception != nullptr) {
-    _inception->reportIn(query);
-  }
-}
 
 void Agent::resetRAFTTimes(double min_timeout, double max_timeout) {
   _config.pingTimes(min_timeout,max_timeout);
