@@ -65,7 +65,6 @@ class Syncer {
     } else if (tt == "exclude") {
       return Syncer::RestrictType::EXCLUDE;
     }
-    TRI_ASSERT(false);
     return Syncer::RestrictType::NONE;
   }
   
