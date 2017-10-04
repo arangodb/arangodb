@@ -14,10 +14,13 @@
 #include "Cluster/ServerState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "Scheduler/Scheduler.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/Methods/Indexes.h"
+#include "V8Server/V8DealerFeature.h"
 
 #include <velocypack/Exception.h>
 #include <velocypack/Iterator.h>
@@ -44,14 +47,14 @@ StatisticsWorker::StatisticsWorker() : Thread("StatisticsWorker") {
 
   _requestTimeDistribution.openArray();
   for (auto const& val : TRI_RequestTimeDistributionVectorStatistics._value) {
-    _bytesSentDistribution.add(VPackValue(val));
+    _requestTimeDistribution.add(VPackValue(val));
   }
   _requestTimeDistribution.close();
 }
 
 void StatisticsWorker::collectGarbage() {
 
-  uint64_t time = static_cast<uint64_t>(TRI_microtime());
+  auto time = TRI_microtime();
 
   _collectGarbage("_statistics", time - 3600); // 1 hour
   _collectGarbage("_statisticsRaw", time - 3600); // 1 hour
@@ -59,7 +62,7 @@ void StatisticsWorker::collectGarbage() {
 }
 
 void StatisticsWorker::_collectGarbage(std::string const& collectionName,
-                                       uint64_t start) {
+                                       double start) {
 
   auto queryRegistryFeature =
        application_features::ApplicationServer::getFeature<
@@ -143,7 +146,6 @@ void StatisticsWorker::historian() {
     // create the per-seconds statistics
     if (prevRaw.isArray() && prevRaw.length()) {
       VPackSlice slice = prevRaw.at(0).resolveExternals();
-
       VPackBuilder perSecsBuilder = _computePerSeconds(rawBuilder.slice(), slice, clusterId);
       VPackSlice perSecs = perSecsBuilder.slice();
 
@@ -169,18 +171,12 @@ void StatisticsWorker::historianAverage() {
     clusterId = ServerState::instance()->getId();
   }
 
-  std::cout << "clusterId is '" << clusterId << "'" << std::endl;
-
   try {
     uint64_t now = static_cast<uint64_t>(TRI_microtime());
     uint64_t start;
 
     std::shared_ptr<arangodb::velocypack::Builder> prev15Builder = _lastEntry("_statistics15", now - 2 * HISTORY_INTERVAL, clusterId);
     VPackSlice prev15 = prev15Builder->slice();
-
-    std::cout << "lastEntry hexType " << prev15.hexType() << std::endl;
-    std::cout << "lastEntry isArray " << prev15.isArray() << std::endl;
-    std::cout << "lastEntry length "  << prev15.length() << std::endl;
 
     if (prev15.isArray() && prev15.length()) {
       VPackSlice slice = prev15.at(0).resolveExternals();
@@ -206,13 +202,14 @@ void StatisticsWorker::historianAverage() {
     std::cout << ex.code() << std::endl;
 
   } catch (...) {
+    std::cout << "compute 15 min exception\n";
     // ?
     // we don't want this error to appear every x seconds
     // require("console").warn("catch error in historianAverage: %s", err)
   }
 }
 
-std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::_lastEntry(std::string const& collectionName, uint64_t start, std::string const& clusterId) {
+std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::_lastEntry(std::string const& collectionName, double start, std::string const& clusterId) {
   std::string filter = "";
 
   auto queryRegistryFeature =
@@ -246,7 +243,7 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::_lastEntry(std:
   return queryResult.result;
 }
 
-VPackBuilder StatisticsWorker::_compute15Minute(uint64_t start, std::string const& clusterId) {
+VPackBuilder StatisticsWorker::_compute15Minute(double start, std::string const& clusterId) {
   std::string filter = "";
 
   auto queryRegistryFeature =
@@ -273,7 +270,7 @@ VPackBuilder StatisticsWorker::_compute15Minute(uint64_t start, std::string cons
 
   auto queryResult = query.execute(_queryRegistry);
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
-  THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
   }
 
   VPackSlice result = queryResult.result->slice();
@@ -286,7 +283,19 @@ VPackBuilder StatisticsWorker::_compute15Minute(uint64_t start, std::string cons
     return builder;
   }
 
-  float systemMinorPageFaultsPerSecond = 0,
+  VPackSlice last = result.at(count-1).resolveExternals();
+
+  float serverV8available = 0,
+  serverV8busy = 0,
+  serverV8dirty = 0,
+  serverV8free = 0,
+  serverV8max = 0,
+  serverThreadsRunning = 0,
+  serverThreadsWorking = 0,
+  serverThreadsBlocked = 0,
+  serverThreadsQueued = 0,
+
+  systemMinorPageFaultsPerSecond = 0,
   systemMajorPageFaultsPerSecond = 0,
   systemUserTimePerSecond = 0,
   systemSystemTimePerSecond = 0,
@@ -311,14 +320,21 @@ VPackBuilder StatisticsWorker::_compute15Minute(uint64_t start, std::string cons
   clientAvgTotalTime = 0,
   clientAvgRequestTime = 0,
   clientAvgQueueTime = 0,
-  clientAvgIoTime = 0,
-
-  fTime;
+  clientAvgIoTime = 0;
 
   for (auto const& vs : VPackArrayIterator(result)) {
     VPackSlice const& values = vs.resolveExternals();
 
-    fTime = values.get("time").getNumber<float>();
+    serverV8available += values.get("server").get("v8Context").get("availablePerSecond").getNumber<float>();
+    serverV8busy += values.get("server").get("v8Context").get("busyPerSecond").getNumber<float>();
+    serverV8dirty += values.get("server").get("v8Context").get("dirtyPerSecond").getNumber<float>();
+    serverV8free += values.get("server").get("v8Context").get("freePerSecond").getNumber<float>();
+    serverV8max += values.get("server").get("v8Context").get("maxPerSecond").getNumber<float>();
+
+    serverThreadsRunning += values.get("server").get("threads").get("runningPerSecond").getNumber<float>();
+    serverThreadsWorking += values.get("server").get("threads").get("workingPerSecond").getNumber<float>();
+    serverThreadsBlocked += values.get("server").get("threads").get("blockedPerSecond").getNumber<float>();
+    serverThreadsQueued += values.get("server").get("threads").get("queuedPerSecond").getNumber<float>();
 
     systemMinorPageFaultsPerSecond += values.get("system").get("minorPageFaultsPerSecond").getNumber<float>();
     systemMajorPageFaultsPerSecond += values.get("system").get("majorPageFaultsPerSecond").getNumber<float>();
@@ -348,37 +364,55 @@ VPackBuilder StatisticsWorker::_compute15Minute(uint64_t start, std::string cons
     clientAvgIoTime += values.get("client").get("avgIoTime").getNumber<float>();
   }
 
-  if (count != 0) {
-    systemMinorPageFaultsPerSecond /= count;
-    systemMajorPageFaultsPerSecond /= count;
-    systemUserTimePerSecond /= count;
-    systemSystemTimePerSecond /= count;
-    systemResidentSize /= count;
-    systemVirtualSize /= count;
-    systemNumberOfThreads /= count;
+  systemMinorPageFaultsPerSecond /= count;
+  systemMajorPageFaultsPerSecond /= count;
+  systemUserTimePerSecond /= count;
+  systemSystemTimePerSecond /= count;
+  systemResidentSize /= count;
+  systemVirtualSize /= count;
+  systemNumberOfThreads /= count;
 
-    httpRequestsTotalPerSecond /= count;
-    httpRequestsAsyncPerSecond /= count;
-    httpRequestsGetPerSecond /= count;
-    httpRequestsHeadPerSecond /= count;
-    httpRequestsPostPerSecond /= count;
-    httpRequestsPutPerSecond /= count;
-    httpRequestsPatchPerSecond /= count;
-    httpRequestsDeletePerSecond /= count;
-    httpRequestsOptionsPerSecond /= count;
-    httpRequestsOtherPerSecond /= count;
+  httpRequestsTotalPerSecond /= count;
+  httpRequestsAsyncPerSecond /= count;
+  httpRequestsGetPerSecond /= count;
+  httpRequestsHeadPerSecond /= count;
+  httpRequestsPostPerSecond /= count;
+  httpRequestsPutPerSecond /= count;
+  httpRequestsPatchPerSecond /= count;
+  httpRequestsDeletePerSecond /= count;
+  httpRequestsOptionsPerSecond /= count;
+  httpRequestsOtherPerSecond /= count;
 
-    clientHttpConnections /= count;
-  }
+  clientHttpConnections /= count;
 
   VPackBuilder builder;
   builder.openObject();
 
-  builder.add("time", VPackValue(fTime));
+  builder.add("time", last.get("time"));
 
   if (clusterId.length()) {
     builder.add("clusterId", VPackValue(clusterId));
   }
+
+  builder.add("server", VPackValue(VPackValueType::Object));
+  builder.add("physicalMemory", last.get("server").get("physicalMemory"));
+  builder.add("uptime", last.get("server").get("uptime"));
+
+  builder.add("v8Context", VPackValue(VPackValueType::Object));
+  builder.add("availablePerSecond", VPackValue(serverV8available));
+  builder.add("busyPerSecond", VPackValue(serverV8busy));
+  builder.add("dirtyPerSecond", VPackValue(serverV8dirty));
+  builder.add("freePerSecond", VPackValue(serverV8free));
+  builder.add("maxPerSecond", VPackValue(serverV8max));
+  builder.close();
+
+  builder.add("threads", VPackValue(VPackValueType::Object));
+  builder.add("runningPerSecond", VPackValue(serverThreadsRunning));
+  builder.add("workingPerSecond", VPackValue(serverThreadsWorking));
+  builder.add("blockedPerSecond", VPackValue(serverThreadsBlocked));
+  builder.add("queuedPerSecond", VPackValue(serverThreadsQueued));
+  builder.close();
+  builder.close();
 
   builder.add("system", VPackValue(VPackValueType::Object));
   builder.add("minorPageFaultsPerSecond", VPackValue(systemMinorPageFaultsPerSecond));
@@ -422,18 +456,18 @@ VPackBuilder StatisticsWorker::_computePerSeconds(VPackSlice const& current, VPa
   VPackBuilder result;
   result.openObject();
 
-  if (prev.get("time").getNumber<float>() + INTERVAL * 1.5 < current.get("time").getNumber<float>()) {
+  if (prev.get("time").getNumber<double>() + INTERVAL * 1.5 < current.get("time").getNumber<double>()) {
     result.close();
     return result;
   }
 
-  if (prev.get("server").get("uptime").getNumber<float>() > current.get("server").get("uptime").getNumber<float>()) {
+  if (prev.get("server").get("uptime").getNumber<double>() > current.get("server").get("uptime").getNumber<double>()) {
       result.close();
       return result;
   }
 
   // compute differences and average per second
-  auto dt = current.get("time").getNumber<float>() - prev.get("time").getNumber<float>();
+  auto dt = current.get("time").getNumber<double>() - prev.get("time").getNumber<double>();
 
   if (dt <= 0) {
     result.close();
@@ -451,10 +485,30 @@ VPackBuilder StatisticsWorker::_computePerSeconds(VPackSlice const& current, VPa
                                                  prev.get("system").get("userTime").getNumber<float>()) / dt));
   result.add("systemTimePerSecond", VPackValue((current.get("system").get("systemTime").getNumber<float>() -
                                                    prev.get("system").get("systemTime").getNumber<float>()) / dt));
-  result.add("residentSize", VPackValue(current.get("system").get("residentSize").getNumber<float>()));
-  result.add("residentSizePercent", VPackValue(current.get("system").get("residentSizePercent").getNumber<float>()));
-  result.add("virtualSize", VPackValue(current.get("system").get("virtualSize").getNumber<float>()));
-  result.add("numberOfThreads", VPackValue(current.get("system").get("numberOfThreads").getNumber<float>()));
+  result.add("residentSize", current.get("system").get("residentSize"));
+  result.add("residentSizePercent", current.get("system").get("residentSizePercent"));
+  result.add("virtualSize", current.get("system").get("virtualSize"));
+  result.add("numberOfThreads", current.get("system").get("numberOfThreads"));
+  result.close();
+
+  // _serverStatistics()
+  result.add("server", VPackValue(VPackValueType::Object));
+  result.add("physicalMemory", current.get("server").get("physicalMemory"));
+  result.add("uptime", current.get("server").get("uptime"));
+  result.add("v8Context", VPackValue(VPackValueType::Object));
+  result.add("availablePerSecond", current.get("server").get("v8Context").get("available"));
+  result.add("busyPerSecond", current.get("server").get("v8Context").get("busy"));
+  result.add("dirtyPerSecond", current.get("server").get("v8Context").get("dirty"));
+  result.add("freePerSecond", current.get("server").get("v8Context").get("free"));
+  result.add("maxPerSecond", current.get("server").get("v8Context").get("max"));
+  result.close();
+
+  result.add("threads", VPackValue(VPackValueType::Object));
+  result.add("runningPerSecond", current.get("server").get("threads").get("running"));
+  result.add("workingPerSecond", current.get("server").get("threads").get("working"));
+  result.add("blockedPerSecond", current.get("server").get("threads").get("blocked"));
+  result.add("queuedPerSecond", current.get("server").get("threads").get("queued"));
+  result.close();
   result.close();
 
   result.add("http", VPackValue(VPackValueType::Object));
@@ -488,7 +542,7 @@ VPackBuilder StatisticsWorker::_computePerSeconds(VPackSlice const& current, VPa
                                                   prev.get("client").get("bytesSent").get("sum").getNumber<float>()) / dt));
 
     VPackBuilder tmp = _avgPercentDistributon(current.get("client").get("bytesSent"), prev.get("client").get("bytesSent"), _bytesSentDistribution);
-    result.add("bytesReceivedPercent", tmp.slice());
+    result.add("bytesSentPercent", tmp.slice());
 
     // bytes received
     result.add("bytesReceivedPerSecond", VPackValue((current.get("client").get("bytesReceived").get("sum").getNumber<float>() -
@@ -593,7 +647,7 @@ VPackBuilder StatisticsWorker::_avgPercentDistributon(VPackSlice const& now, VPa
 }
 
 VPackBuilder StatisticsWorker::_generateRawStatistics(std::string const& clusterId, double const& now) {
-  TRI_process_info_t info = TRI_ProcessInfoSelf();
+  ProcessInfo info = TRI_ProcessInfoSelf();
   double rss = static_cast<double>(info._residentSize);
   double rssp = 0;
 
@@ -621,6 +675,12 @@ VPackBuilder StatisticsWorker::_generateRawStatistics(std::string const& cluster
                           bytesReceived);
 
   ServerStatistics serverInfo = ServerStatistics::statistics();
+
+  V8DealerFeature* dealer =
+  application_features::ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+  auto v8Counters = dealer->getCurrentContextNumbers();
+
+  auto threadCounters = SchedulerFeature::SCHEDULER->getCounters();
 
   VPackBuilder builder;
   builder.openObject();
@@ -687,6 +747,22 @@ VPackBuilder StatisticsWorker::_generateRawStatistics(std::string const& cluster
   builder.add("server", VPackValue(VPackValueType::Object));
   builder.add("uptime", VPackValue(serverInfo._uptime));
   builder.add("physicalMemory", VPackValue(TRI_PhysicalMemory));
+
+  builder.add("v8Context", VPackValue(VPackValueType::Object));
+  builder.add("available", VPackValue(v8Counters.available));
+  builder.add("busy", VPackValue(v8Counters.busy));
+  builder.add("dirty", VPackValue(v8Counters.dirty));
+  builder.add("free", VPackValue(v8Counters.free));
+  builder.add("max", VPackValue(v8Counters.max));
+  builder.close();
+
+  builder.add("threads", VPackValue(VPackValueType::Object));
+  builder.add("running", VPackValue(rest::Scheduler::numRunning(threadCounters)));
+  builder.add("working", VPackValue(rest::Scheduler::numWorking(threadCounters)));
+  builder.add("blocked", VPackValue(rest::Scheduler::numBlocked(threadCounters)));
+  builder.add("queued",  VPackValue(SchedulerFeature::SCHEDULER->numQueued()));
+  builder.close();
+
   builder.close();
 
   builder.close();
@@ -714,6 +790,10 @@ VPackBuilder StatisticsWorker::_fillDistribution(StatisticsDistribution const& d
 
 void StatisticsWorker::_saveSlice(VPackSlice const& slice,
                                   std::string const& collection) {
+  if (isStopping()) {
+    return;
+  }
+
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
   arangodb::OperationOptions opOptions;
   opOptions.isRestore = false, opOptions.waitForSync = false;
@@ -807,7 +887,7 @@ void StatisticsWorker::_createCollection(std::string const& collection) {
   }
 
   if (res != TRI_ERROR_ARANGO_DUPLICATE_NAME && res != TRI_ERROR_NO_ERROR) {
-    std::cout << "cant create statistics collection " << res << std::endl;
+    std::cout << "cant create statistics collection " << res << std::endl; // ?
   }
 
   LogicalCollection* coll = nullptr; // = vocbase->lookupCollection(collection);
@@ -843,7 +923,7 @@ void StatisticsWorker::_createCollection(std::string const& collection) {
   Result idxRes = methods::Indexes::ensureIndex(coll, t.slice(), true, output);
   if (!idxRes.ok()) {
     std::cout << "index create errorNumber " << idxRes.errorNumber() << std::endl;
-    std::cout << idxRes.errorMessage() << std::endl;
+    // ?
   }
 }
 
@@ -857,17 +937,15 @@ void StatisticsWorker::run() {
   //
 
   while (!isStopping() && StatisticsFeature::enabled()) {
-    // historian();
+    historian();
 
     if (seconds % 8 == 0) {
       collectGarbage();
     }
 
-
     // process every 15 seconds
     if (seconds % HISTORY_INTERVAL == 0) {
       historianAverage();
-      std::cout << "15 done\n";
     }
 
     seconds++;

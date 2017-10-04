@@ -43,9 +43,9 @@ class StatisticsWorker final : public Thread {
     void historianAverage();
     void createCollections();
     void _createCollection(std::string const&);
-    void _collectGarbage(std::string const& collection, uint64_t time);
-    std::shared_ptr<arangodb::velocypack::Builder> _lastEntry(std::string const& collection, uint64_t start, std::string const& clusterId);
-    VPackBuilder _compute15Minute(uint64_t start, std::string const& clusterId);
+    void _collectGarbage(std::string const& collection, double time);
+    std::shared_ptr<arangodb::velocypack::Builder> _lastEntry(std::string const& collection, double start, std::string const& clusterId);
+    VPackBuilder _compute15Minute(double start, std::string const& clusterId);
     VPackBuilder _computePerSeconds(VPackSlice const&, VPackSlice const&, std::string const&);
     VPackBuilder _avgPercentDistributon(VPackSlice const&, VPackSlice const&, VPackBuilder const&);
 
