@@ -46,7 +46,6 @@ ReplicationFeature::ReplicationFeature(ApplicationServer* server)
   requiresElevatedPrivileges(false);
   startsAfter("Database");
   startsAfter("StorageEngine");
-  //startsAfter("Cluster");
 }
 
 void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -123,9 +122,14 @@ void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
       }
     }
   }
-  if (_globalReplicationApplier->autoStart() &&
-      _replicationApplierAutoStart) {
-    _globalReplicationApplier->autoStart();
+#warning TODO fix start order
+  // database feature starts earlier _globalReplicationApplier
+  // is not create yet
+  if (_globalReplicationApplier != nullptr) {
+    if (_globalReplicationApplier->autoStart() &&
+        _replicationApplierAutoStart) {
+      _globalReplicationApplier->autoStart();
+    }
   }
 }
 
