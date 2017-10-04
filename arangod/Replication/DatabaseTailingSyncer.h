@@ -33,7 +33,7 @@ class DatabaseReplicationApplier;
 class DatabaseTailingSyncer : public TailingSyncer {
  public:
   DatabaseTailingSyncer(TRI_vocbase_t*,
-                   ReplicationApplierConfiguration const*,
+                   ReplicationApplierConfiguration const&,
                    TRI_voc_tick_t initialTick, bool useTick,
                    TRI_voc_tick_t barrierId);
 

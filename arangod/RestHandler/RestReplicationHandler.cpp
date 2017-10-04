@@ -600,10 +600,10 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   
   std::unique_ptr<InitialSyncer> syncer;
   if (isGlobal) {
-    syncer.reset(new GlobalInitialSyncer(&config, config._restrictCollections,
+    syncer.reset(new GlobalInitialSyncer(config, config._restrictCollections,
                                          restrictType, false, false));
   } else {
-    syncer.reset(new DatabaseInitialSyncer(_vocbase, &config, config._restrictCollections,
+    syncer.reset(new DatabaseInitialSyncer(_vocbase, config, config._restrictCollections,
                                            restrictType, false, false));
   }
 
@@ -1902,7 +1902,7 @@ void RestReplicationHandler::handleCommandSync() {
   TRI_ASSERT(engine != nullptr);
   engine->waitForSync(5.0);
 
-  DatabaseInitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType,
+  DatabaseInitialSyncer syncer(_vocbase, config, restrictCollections, restrictType,
                                verbose, false);
 
   std::string errorMsg = "";

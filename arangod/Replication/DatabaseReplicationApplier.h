@@ -52,13 +52,8 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
 
   /// @brief configure the replication applier
   void reconfigure(ReplicationApplierConfiguration const& configuration) override;
-
-  /// @brief load the applier state from persistent storage
-  /// must currently be called while holding the write-lock
-  /// returns whether a previous state was found
-  bool loadState() override;
   
-  /// @brief save the replication application configuration to a file
+  /// @brief store the configuration for the applier
   void storeConfiguration(bool doSync) override;
 
   /// @brief factory function for creating a database-specific replication applier

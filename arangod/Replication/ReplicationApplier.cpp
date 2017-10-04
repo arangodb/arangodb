@@ -53,8 +53,8 @@ class ApplyThread : public Thread {
 
     try {
       int res = _syncer->run();
-      if (res != TRI_ERROR_NO_ERROR) {
-        LOG_TOPIC(ERR, Logger::REPLICATION) << "Error while running applier: "
+      if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_REPLICATION_APPLIER_STOPPED) {
+        LOG_TOPIC(ERR, Logger::REPLICATION) << "error while running applier: "
           << TRI_errno_string(res);
       }
     } catch (std::exception const& ex) {
@@ -287,6 +287,60 @@ void ReplicationApplier::reconfigure(ReplicationApplierConfiguration const& conf
   storeConfiguration(true);
 }
 
+/// @brief load the applier state from persistent storage
+/// must currently be called while holding the write-lock
+/// returns whether a previous state was found
+bool ReplicationApplier::loadState() {
+  if (!applies()) {
+    // unsupported
+    return false;
+  }
+
+  std::string const filename = getStateFilename();
+  LOG_TOPIC(TRACE, Logger::REPLICATION)
+      << "looking for replication state file '" << filename << "'";
+
+  if (!TRI_ExistsFile(filename.c_str())) {
+    // no existing state found
+    return false;
+  }
+
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "replication state file '" << filename << "' found";
+
+  VPackBuilder builder;
+  try {
+    builder = basics::VelocyPackHelper::velocyPackFromFile(filename);
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE, std::string("cannot read replication applier state from file '") + filename + "'");
+  }
+
+  VPackSlice const slice = builder.slice();
+  if (!slice.isObject()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE, std::string("invalid replication applier state found in file '") + filename + "'");
+  }
+
+  _state.reset();
+
+  // read the server id
+  VPackSlice const serverId = slice.get("serverId");
+  if (!serverId.isString()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE);
+  }
+  _state._serverId = arangodb::basics::StringUtils::uint64(serverId.copyString());
+
+  // read the ticks
+  readTick(slice, "lastAppliedContinuousTick", _state._lastAppliedContinuousTick, false);
+
+  // set processed = applied
+  _state._lastProcessedContinuousTick = _state._lastAppliedContinuousTick;
+
+  // read the safeResumeTick. note: this is an optional attribute
+  _state._safeResumeTick = 0;
+  readTick(slice, "safeResumeTick", _state._safeResumeTick, true);
+
+  return true;
+}
+  
 /// @brief store the applier state in persistent storage
 /// must currently be called while holding the write-lock
 void ReplicationApplier::persistState(bool doSync) {
@@ -419,3 +473,20 @@ void ReplicationApplier::doStop(bool resetError, bool joinThread) {
   }
 }
   
+/// @brief read a tick value from a VelocyPack struct
+void ReplicationApplier::readTick(VPackSlice const& slice, char const* attributeName,
+                                  TRI_voc_tick_t& dst, bool allowNull) {
+  TRI_ASSERT(slice.isObject());
+
+  VPackSlice const tick = slice.get(attributeName);
+
+  if ((tick.isNull() || tick.isNone()) && allowNull) {
+    dst = 0;
+  } else { 
+    if (!tick.isString()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE);
+    }
+
+    dst = static_cast<TRI_voc_tick_t>(arangodb::basics::StringUtils::uint64(tick.copyString()));
+  }
+}

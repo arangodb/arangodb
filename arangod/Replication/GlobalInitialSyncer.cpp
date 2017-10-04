@@ -44,7 +44,7 @@ using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
 GlobalInitialSyncer::GlobalInitialSyncer(
-  ReplicationApplierConfiguration const* configuration,
+  ReplicationApplierConfiguration const& configuration,
   std::unordered_map<std::string, bool> const& restrictCollections,
   Syncer::RestrictType restrictType, bool verbose, bool skipCreateDrop)
     : InitialSyncer(configuration, restrictCollections, restrictType, verbose, skipCreateDrop) {}
@@ -158,7 +158,7 @@ Result GlobalInitialSyncer::run(bool incremental) {
       std::string const oldName = _configuration._database;
       _configuration._database = nameSlice.copyString();
       TRI_DEFER(_configuration._database = oldName);
-      DatabaseInitialSyncer syncer(vocbase, &_configuration, _restrictCollections,
+      DatabaseInitialSyncer syncer(vocbase, _configuration, _restrictCollections,
                                    _restrictType, _verbose, _skipCreateDrop);
       
       syncer.useAsChildSyncer(_masterInfo, _barrierId, _barrierUpdateTime,
