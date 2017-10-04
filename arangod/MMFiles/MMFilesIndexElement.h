@@ -210,7 +210,9 @@ struct MMFilesSkiplistIndexElement {
 
 struct MMFilesSimpleIndexElement {
  public:
-  constexpr MMFilesSimpleIndexElement() : _localDocumentId(LocalDocumentId::none()), _hashAndOffset(0) {}
+  // clang does not like:
+  // constexpr MMFilesSimpleIndexElement() : _localDocumentId(LocalDocumentId::none()), _hashAndOffset(0) {}
+  MMFilesSimpleIndexElement() : _localDocumentId(LocalDocumentId::none()), _hashAndOffset(0) {}
 
   MMFilesSimpleIndexElement(LocalDocumentId const& documentId, arangodb::velocypack::Slice const& value, uint32_t offset); 
 

@@ -37,7 +37,7 @@ namespace transaction {
 class Methods;
 }
 
-struct LocalDocumentId;
+class LocalDocumentId;
 class Index;
 class IndexIterator;
 class LogicalCollection;
