@@ -39,6 +39,8 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
+#include "Replication/GlobalInitialSyncer.h"
+#include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/JobGuard.h"
@@ -414,14 +416,30 @@ void HeartbeatThread::runSingleServer() {
       << "Please add --replication.automatic-failover true";
     return;
   }
+  GlobalReplicationApplier* applier = replication->globalReplicationApplier();
+  ClusterInfo* ci = ClusterInfo::instance();
+  TRI_ASSERT(applier != nullptr && ci != nullptr);
   
+  double start = 0; // no wait time initially
   while (!isStopping()) {
-    double const start = TRI_microtime();
+    double remain = interval - (TRI_microtime() - start);
+    // sleep for a while if appropriate, on some systems usleep does not
+    // like arguments greater than 1000000
+    while (remain > 0.0) {
+      if (remain >= 0.5) {
+        usleep(500000);
+        remain -= 0.5;
+      } else {
+        usleep((TRI_usleep_t)(remain * 1000.0 * 1000.0));
+        remain = 0.0;
+      }
+    }
+    start = TRI_microtime();
+    
     try {
       // send our state to the agency.
       // we don't care if this fails
       sendState();
-
       if (isStopping()) {
         break;
       }
@@ -432,13 +450,14 @@ void HeartbeatThread::runSingleServer() {
             AgencyCommManager::path("Plan/AsyncReplication"),
             AgencyCommManager::path("Sync/Commands", _myId),
             "/.agency"}));
-
       AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
-    
       if (!result.successful()) {
         LOG_TOPIC(WARN, Logger::HEARTBEAT)
             << "Heartbeat: Could not read from agency!";
-        sleep(ceil(interval));
+        
+        if (!applier->isRunning()) {
+          //FIXME: allow to act as master, assume we are master
+        }
         continue;
       }
       
@@ -459,63 +478,105 @@ void HeartbeatThread::runSingleServer() {
       // performing failover checks
       VPackSlice asyncReplication =
       response.get({AgencyCommManager::path(), "Plan", "AsyncReplication"});
-      if (asyncReplication.isObject()) {
-        std::string const leaderPath = "/Plan/AsyncReplication/Leader";
-        VPackSlice leader = asyncReplication.get("Leader");
-        VPackBuilder myIdBuilder;
-        myIdBuilder.add(VPackValue(_myId));
-        
-        if (leader.isString()) {
-          if (leader.compareString(_myId) == 0) {
-            LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "All your bases belong to us " << _myId;
-            // updating the value to keep our leadership
-            result = _agency.casValue(leaderPath, /* old */ myIdBuilder.slice(),
-                                      /* new */ myIdBuilder.slice(),
-                                      /* ttl */ interval * 4, /* timeout */ 30.0);
-            if (!result.successful()) {
-              LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Cannot update leadership value";
-            }
-            // TODO set master flag
-          } else {
-            LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "I live to serve my master " << _myId;
-            // TODO make slave somehow
-          }
-        } else {
-          LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vaccuum detected, taking over";
-          
-          result = _agency.casValue(leaderPath, myIdBuilder.slice(), false,
-                                    /* ttl */ interval * 4, /* timeout */ 30.0);
-          if (result.successful()) {
-            LOG_TOPIC(INFO, Logger::HEARTBEAT) << "We are leader, all your bases belong to us";
-          } else {
-            LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Takeover attempt failed";
-          }
+      if (!asyncReplication.isObject()) {
+        LOG_TOPIC(WARN, Logger::HEARTBEAT)
+          << "Heartbeat: Could not read async-repl metadata from agency!";
+        continue;
+      }
+      std::string const leaderPath = "/Plan/AsyncReplication/Leader";
+      VPackSlice leader = asyncReplication.get("Leader");
+      VPackBuilder myIdBuilder;
+      myIdBuilder.add(VPackValue(_myId));
+      
+      // Case 1: No leader in agency. Race for leadershiü
+      if (!leader.isString()) {
+        LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vaccuum detected, "
+        << "attempting a takeover";
+        if (applier->isRunning()) {
+          applier->stopAndJoin(true);
         }
         
-      } else {
-        LOG_TOPIC(WARN, Logger::HEARTBEAT)
-          << "Heartbeat: Could not read asyn replication metadata from agency!";
+        result = _agency.casValue(leaderPath, myIdBuilder.slice(), false,
+                                  /* ttl */ std::min(30.0, interval * 4),
+                                  /* timeout */ 30.0);
+        if (result.successful()) {
+          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "all your bases belong to us";
+          applier->stop(/* reset error */true);
+        } else {
+          LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Takeover attempt failed";
+        }
+        continue; // readjust applier endpoint later
       }
       
+      // Case 1: Current server is leader
+      if (leader.compareString(_myId) == 0) {
+        LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Currently leader" << _myId;
+        // updating the value to keep our leadership
+        result = _agency.casValue(leaderPath, /* old */ myIdBuilder.slice(),
+                                  /* new */ myIdBuilder.slice(),
+                                  /* ttl */ std::min(30.0, interval * 4),
+                                  /* timeout */ 30.0);
+        if (!result.successful()) {
+          LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Cannot update leadership value";
+        }
+        if (applier->isRunning()) {
+          applier->stopAndJoin(true);
+        }
+        
+        // TODO allow server access
+        
+        continue; // nothing more to do
+      }
+      
+      // Case 2: Current server is follower
+      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Still slave of " << _myId;
+      std::string endpoint = ci->getServerEndpoint(leader.copyString());
+      if (endpoint.empty()) {
+        LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to resolve leader endpoint";
+        continue;
+      }
+      
+      if (applier->endpoint() != endpoint) {
+        if (applier->isRunning()) {
+          applier->stopAndJoin(true);
+        }
+        
+        ReplicationApplierConfiguration config = applier->configuration();
+        config._endpoint = endpoint;
+        std::string jwt = AuthenticationFeature::INSTANCE->jwtSecret();
+        if (config._jwt.empty()) {
+          config._jwt = jwt;
+        }
+        // TODO: how do we initially configure the applier
+        
+        // forget about any existing replication applier configuration
+        applier->forget();
+        
+        // start initial synchronization
+        Syncer::RestrictType restrictType = Syncer::convert(config._restrictType);
+        GlobalInitialSyncer syncer(config, config._restrictCollections,
+                                   restrictType, false, false);
+        // sync incrementally on failover to other follower,
+        // but not initially
+        Result r = syncer.run(true);
+        if (r.fail()) {
+          LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Initial sync from leader failed!";
+          continue;
+        }
+        // steal the barrier from the syncer
+        TRI_voc_tick_t barrierId = syncer.stealBarrier();
+        TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
+
+        applier->reconfigure(config);
+        applier->start(lastLogTick, true, barrierId);
+      }
+            
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "Got an exception in single server heartbeat: " << e.what();
     } catch (...) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
           << "Got an unknown exception in single server heartbeat";
-    }
-    
-    double remain = interval - (TRI_microtime() - start);
-    // sleep for a while if appropriate, on some systems usleep does not
-    // like arguments greater than 1000000
-    while (remain > 0.0) {
-      if (remain >= 0.5) {
-        usleep(500000);
-        remain -= 0.5;
-      } else {
-        usleep((TRI_usleep_t)(remain * 1000.0 * 1000.0));
-        remain = 0.0;
-      }
     }
   }
 }

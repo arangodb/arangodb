@@ -59,7 +59,7 @@ std::string const Syncer::BaseUrl = "/_api/replication";
 Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     : _configuration(),
       _chunkSize(1024 * 1024),
-      _restrictType(RESTRICT_NONE),
+      _restrictType(RestrictType::NONE),
       _includeSystem(configuration._includeSystem),
       _verbose(configuration._verbose),
       _masterInfo(),

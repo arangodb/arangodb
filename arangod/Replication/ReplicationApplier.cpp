@@ -398,6 +398,12 @@ ReplicationApplierConfiguration ReplicationApplier::configuration() const {
   return _configuration;
 }
 
+/// @brief return the current configuration
+std::string ReplicationApplier::endpoint() const {
+  READ_LOCKER(readLocker, _statusLock);
+  return _configuration._endpoint;
+}
+
 /// @brief register an applier error
 int ReplicationApplier::setError(int errorCode, char const* msg) {
   return setErrorNoLock(errorCode, std::string(msg));

@@ -69,9 +69,9 @@ TailingSyncer::TailingSyncer(
       _ignoreDatabaseMarkers(true) {
 
   if (configuration._restrictType == "include") {
-    _restrictType = RESTRICT_INCLUDE;
+    _restrictType = RestrictType::INCLUDE;
   } else if (configuration._restrictType == "exclude") {
-    _restrictType = RESTRICT_EXCLUDE;
+    _restrictType = RestrictType::EXCLUDE;
   }
         
   if (barrierId > 0) {
@@ -151,7 +151,7 @@ bool TailingSyncer::skipMarker(TRI_voc_tick_t firstRegularTick,
 
   // the transient applier state is just used for one shard / collection
   if (!_configuration._restrictCollections.empty()) {
-    if (_restrictType == RESTRICT_NONE && _includeSystem) {
+    if (_restrictType == RestrictType::NONE && _includeSystem) {
       return false;
     }
 
@@ -175,10 +175,10 @@ bool TailingSyncer::isExcludedCollection(std::string const& masterName) const {
 
   bool found = (it != _configuration._restrictCollections.end());
 
-  if (_restrictType == RESTRICT_INCLUDE && !found) {
+  if (_restrictType == RestrictType::INCLUDE && !found) {
     // collection should not be included
     return true;
-  } else if (_restrictType == RESTRICT_EXCLUDE && found) {
+  } else if (_restrictType == RestrictType::EXCLUDE && found) {
     return true;
   }
 
