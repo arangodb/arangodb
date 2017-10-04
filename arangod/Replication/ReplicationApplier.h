@@ -96,7 +96,10 @@ class ReplicationApplier {
   virtual void toVelocyPack(arangodb::velocypack::Builder& result) const;
   
   /// @brief return the current configuration
-  virtual ReplicationApplierConfiguration configuration() const;
+  ReplicationApplierConfiguration configuration() const;
+  
+  /// @brief return the current endpoint
+  std::string endpoint() const;
 
   /// @brief block the replication applier from starting
   int preventStart();

@@ -297,12 +297,8 @@ static void SynchronizeReplication(
        restrictType != "exclude")) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <restrictCollections> or <restrictType>");
   }
-  Syncer::RestrictType rType = Syncer::RESTRICT_NONE;
-  if (restrictType == "include") {
-    rType = Syncer::RESTRICT_INCLUDE;
-  } else if (restrictType == "exclude") {
-    rType = Syncer::RESTRICT_EXCLUDE;
-  }
+
+  Syncer::RestrictType rType = Syncer::convert(restrictType);
 
   bool skipCreateDrop = false;
   if (object->Has(TRI_V8_ASCII_STRING(isolate, "skipCreateDrop"))) {

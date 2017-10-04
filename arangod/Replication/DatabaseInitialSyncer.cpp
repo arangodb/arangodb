@@ -1156,14 +1156,14 @@ Result DatabaseInitialSyncer::handleLeaderCollections(VPackSlice const& collSlic
       continue;
     }
 
-    if (_restrictType != Syncer::RestrictType::RESTRICT_NONE) {
+    if (_restrictType != Syncer::RestrictType::NONE) {
       auto const it = _restrictCollections.find(masterName);
       bool found = (it != _restrictCollections.end());
 
-      if (_restrictType == Syncer::RESTRICT_INCLUDE && !found) {
+      if (_restrictType == Syncer::RestrictType::INCLUDE && !found) {
         // collection should not be included
         continue;
-      } else if (_restrictType == Syncer::RESTRICT_EXCLUDE && found) {
+      } else if (_restrictType == Syncer::RestrictType::EXCLUDE && found) {
         // collection should be excluded
         continue;
       }

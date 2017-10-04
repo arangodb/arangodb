@@ -583,12 +583,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
                   "invalid value for <restrictCollections> or <restrictType>");
     return;
   }
-  Syncer::RestrictType restrictType = Syncer::RESTRICT_NONE;
-  if (config._restrictType == "include") {
-    restrictType = Syncer::RESTRICT_INCLUDE;
-  } else if (config._restrictType == "exclude") {
-    restrictType = Syncer::RESTRICT_EXCLUDE;
-  }
+  Syncer::RestrictType restrictType = Syncer::convert(config._restrictType);
   
   bool isGlobal = false;
   ReplicationApplier* applier = getApplier(isGlobal);
@@ -1874,13 +1869,7 @@ void RestReplicationHandler::handleCommandSync() {
                   "invalid value for <restrictCollections> or <restrictType>");
     return;
   }
-  Syncer::RestrictType restrictType = Syncer::RESTRICT_NONE;
-  if (value == "include") {
-    restrictType = Syncer::RESTRICT_INCLUDE;
-  } else if (value == "exclude") {
-    restrictType = Syncer::RESTRICT_EXCLUDE;
-  }
-  
+  Syncer::RestrictType const restrictType = Syncer::convert(value);
   bool const verbose = VelocyPackHelper::getBooleanValue(body, "verbose", false);
   bool const incremental =
     VelocyPackHelper::getBooleanValue(body, "incremental", false);
@@ -1945,9 +1934,11 @@ void RestReplicationHandler::handleCommandSync() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierGetConfig() {
-  TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
+  bool isGlobal;
+  ReplicationApplier* applier = getApplier(isGlobal);
+  TRI_ASSERT(applier != nullptr);
 
-  ReplicationApplierConfiguration configuration = _vocbase->replicationApplier()->configuration();
+  ReplicationApplierConfiguration configuration = applier->configuration();
   VPackBuilder builder;
   builder.openObject();
   configuration.toVelocyPack(builder, false);
@@ -1961,7 +1952,9 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierSetConfig() {
-  TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
+  bool isGlobal;
+  ReplicationApplier* applier = getApplier(isGlobal);
+  TRI_ASSERT(applier != nullptr);
 
   bool success;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
@@ -1971,8 +1964,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
     return;
   }
   VPackSlice const body = parsedBody->slice();
-
-  ReplicationApplierConfiguration config = _vocbase->replicationApplier()->configuration();
+  ReplicationApplierConfiguration config = applier->configuration();
 
   std::string const endpoint =
       VelocyPackHelper::getStringValue(body, "endpoint", "");
@@ -2064,8 +2056,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
     }
   }
 
-  _vocbase->replicationApplier()->reconfigure(config);
-
+  applier->reconfigure(config);
   handleCommandApplierGetConfig();
 }
 
@@ -2074,7 +2065,9 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierStart() {
-  TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
+  bool isGlobal;
+  ReplicationApplier* applier = getApplier(isGlobal);
+  TRI_ASSERT(applier != nullptr);
 
   bool found;
   std::string const& value1 = _request->value("from", found);
@@ -2096,8 +2089,7 @@ void RestReplicationHandler::handleCommandApplierStart() {
     barrierId = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
   }
 
-  _vocbase->replicationApplier()->start(initialTick, useTick, barrierId);
-
+  applier->start(initialTick, useTick, barrierId);
   handleCommandApplierGetState();
 }
 
@@ -2106,10 +2098,11 @@ void RestReplicationHandler::handleCommandApplierStart() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierStop() {
-  TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
+  bool isGlobal;
+  ReplicationApplier* applier = getApplier(isGlobal);
+  TRI_ASSERT(applier != nullptr);
 
-  _vocbase->replicationApplier()->stopAndJoin(true);
-
+  applier->stopAndJoin(true);
   handleCommandApplierGetState();
 }
 
@@ -2118,11 +2111,13 @@ void RestReplicationHandler::handleCommandApplierStop() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierGetState() {
-  TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
+  bool isGlobal;
+  ReplicationApplier* applier = getApplier(isGlobal);
+  TRI_ASSERT(applier != nullptr);
 
   VPackBuilder builder;
   builder.openObject();
-  _vocbase->replicationApplier()->toVelocyPack(builder);
+  applier->toVelocyPack(builder);
   builder.close();
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
@@ -2132,9 +2127,10 @@ void RestReplicationHandler::handleCommandApplierGetState() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandApplierDeleteState() {
-  TRI_ASSERT(_vocbase->replicationApplier() != nullptr);
-
-  _vocbase->replicationApplier()->forget();
+  bool isGlobal;
+  ReplicationApplier* applier = getApplier(isGlobal);
+  TRI_ASSERT(applier != nullptr);
+  applier->forget();
 
   handleCommandApplierGetState();
 }

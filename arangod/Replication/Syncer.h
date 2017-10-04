@@ -53,11 +53,20 @@ class Slice;
 class Syncer {
  public:
   
-  enum RestrictType : uint32_t {
-    RESTRICT_NONE,
-    RESTRICT_INCLUDE,
-    RESTRICT_EXCLUDE
+  enum class RestrictType : uint32_t {
+    NONE,
+    INCLUDE,
+    EXCLUDE
   };
+  
+  static RestrictType convert(std::string const& tt) {
+    if (tt == "include") {
+      return Syncer::RestrictType::INCLUDE;
+    } else if (tt == "exclude") {
+      return Syncer::RestrictType::EXCLUDE;
+    }
+    return Syncer::RestrictType::NONE;
+  }
   
   struct MasterInfo {
     std::string _endpoint;
