@@ -264,7 +264,7 @@ void AuthInfo::loadFromDB() {
 
     _outdated = (_authInfo.empty() == true);
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::AUTHENTICATION)
+    LOG_TOPIC(TRACE, Logger::AUTHENTICATION)
         << "Exception when loading users from db";
     _outdated = true;
   }

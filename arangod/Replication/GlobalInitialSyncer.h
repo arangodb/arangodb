@@ -39,7 +39,7 @@ class GlobalInitialSyncer : public InitialSyncer {
 
  public:
   /// @brief run method, performs a full synchronization
-  arangodb::Result run(bool incremental);
+  arangodb::Result run(bool incremental) override;
   
  private:
   
