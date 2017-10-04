@@ -177,53 +177,14 @@ const compare = function(masterFunc, slaveFunc, applierConfiguration) {
   slaveFunc(state);
 };
 
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
+/// @brief Base Test Config. Identitical part for _system and other DB
 ////////////////////////////////////////////////////////////////////////////////
 
-function ReplicationSuite() {
+function BaseTestConfig() {
   'use strict';
 
   return {
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
-
-    setUp: function() {
-      connectToSlave();
-      try {
-        replication.applier.stop();
-        replication.applier.forget();
-      }
-      catch (err) {
-      }
-      connectToMaster();
-
-      db._drop(cn);
-      db._drop(cn2);
-      db._drop(systemCn, { isSystem: true });
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
-
-    tearDown: function() {
-      connectToMaster();
-
-      db._drop(cn);
-      db._drop(cn2);
-      db._drop(systemCn, { isSystem: true });
-
-      connectToSlave();
-      replication.applier.stop();
-      replication.applier.forget();
-      db._drop(cn);
-      db._drop(cn2);
-      db._drop(systemCn, { isSystem: true });
-    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test invalid credentials
@@ -1910,11 +1871,11 @@ function ReplicationSuite() {
           });
         },
         function(state) {
-          assertNull(db._collection(SystemCn));
+          assertNull(db._collection(systemCn));
         }, {
           includeSystem: true,
           restrictType: "exclude",
-          restrictCollections: [SystemCn]
+          restrictCollections: [systemCn]
         }
       );
     },
@@ -2006,11 +1967,125 @@ function ReplicationSuite() {
   };
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite on _system
+////////////////////////////////////////////////////////////////////////////////
+
+function ReplicationSuite() {
+  'use strict';
+
+  let suite = BaseTestConfig();
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief set up
+  ////////////////////////////////////////////////////////////////////////////////
+
+  suite.setUp = function() {
+    connectToSlave();
+    try {
+      replication.applier.stop();
+      replication.applier.forget();
+    }
+    catch (err) {
+    }
+    connectToMaster();
+
+    db._drop(cn);
+    db._drop(cn2);
+    db._drop(systemCn, { isSystem: true });
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief tear down
+  ////////////////////////////////////////////////////////////////////////////////
+
+  suite.tearDown = function() {
+    connectToMaster();
+
+    db._drop(cn);
+    db._drop(cn2);
+    db._drop(systemCn, { isSystem: true });
+
+    connectToSlave();
+    replication.applier.stop();
+    replication.applier.forget();
+    db._drop(cn);
+    db._drop(cn2);
+    db._drop(systemCn, { isSystem: true });
+  };
+ 
+  return suite;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite on other DB
+////////////////////////////////////////////////////////////////////////////////
+
+function ReplicationOtherDBSuite() {
+  let suite = BaseTestConfig();
+
+  const testDB = "UnitTestDB";
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief set up
+  ////////////////////////////////////////////////////////////////////////////////
+ 
+  suite.setUp = function() {
+    db._useDatabase("_system");
+    // Slave side code
+    connectToSlave();
+    try {
+      replication.applier.stop();
+      replication.applier.forget();
+    }
+    catch (err) {
+    }
+    try {
+      db._dropDatabase(testDB);
+    } catch (e) {
+    }
+    db._createDatabase(testDB);
+
+    // Master side code
+    connectToMaster();
+
+    try {
+      db._dropDatabase(testDB);
+    } catch (e) {
+    }
+    db._createDatabase(testDB);
+    // We now have an empty testDB
+    db._useDatabase(testDB);
+    // Use it and setup replication
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief tear down
+  ////////////////////////////////////////////////////////////////////////////////
+
+  suite.tearDown = function() {
+    // Just drop the databases
+    connectToMaster();
+    db._useDatabase("_system");
+    db._dropDatabase(testDB);
+
+    connectToSlave();
+    // We need to stop applier in testDB
+    db._useDatabase(testDB);
+    replication.applier.stop();
+    replication.applier.forget();
+    db._useDatabase("_system");
+    db._dropDatabase(testDB);
+  };
+
+  return suite;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-jsunity.run(ReplicationSuite);
+// jsunity.run(ReplicationSuite);
+jsunity.run(ReplicationOtherDBSuite);
 
 return jsunity.done();
