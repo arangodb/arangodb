@@ -674,6 +674,8 @@ bool fromGroup(
     return true;
   }
 
+  // Note: cannot optimize for single member in AND/OR since 'a OR NOT b' translates to 'a OR (OR NOT b)'
+
   if (std::is_same<Filter, irs::And>::value && 2 == n && rangeFromBinaryAnd(filter, node)) {
     // range case
     return true;
