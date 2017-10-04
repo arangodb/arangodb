@@ -113,7 +113,7 @@ class TestAnalyzer: public irs::analysis::analyzer {
   TestAttribute _attr;
 };
 
-DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestAnalyzer");
+DEFINE_ANALYZER_TYPE_NAMED(TestAnalyzer, "TestCharAnalyzer");
 REGISTER_ANALYZER(TestAnalyzer);
 
 std::string mangleBool(std::string name) {
@@ -263,7 +263,7 @@ struct IResearchFilterSetup {
 
     auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
-    analyzers->emplace("test_analyzer", "TestAnalyzer", "abc"); // cache analyzer
+    analyzers->emplace("test_analyzer", "TestCharAnalyzer", "abc"); // cache analyzer
 
     // suppress log messages since tests check error conditions
     arangodb::LogTopic::setLogLevel(arangodb::iresearch::IResearchFeature::IRESEARCH.name(), arangodb::LogLevel::FATAL);
@@ -2068,6 +2068,34 @@ SECTION("BinaryOr") {
     assertFilterSuccess("FOR d IN collection FILTER '1' > d.a.b.c or '2' == d.c.b.a RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' > d['a']['b']['c'] or '2' == d.c.b.a RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' > d['a'].b.c or '2' == d.c.b.a RETURN d", expected);
+  }
+
+  // string or string or not string
+  {
+    irs::Or expected;
+    auto& root = expected.add<irs::Or>();
+    auto& subRoot = root.add<irs::Or>();
+    subRoot.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
+    subRoot.add<irs::by_term>().field(mangleStringIdentity("a")).term("2");
+    root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("b")).term("3");
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a == '1' or '2' == d.a or d.b != '3' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a'] == '1' or '2' == d['a'] or d.b != '3' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a == '1' or '2' == d.a or '3' != d.b RETURN d", expected);
+  }
+
+  // string in or not string
+  {
+    irs::Or expected;
+    auto& root = expected.add<irs::Or>();
+    auto& subRoot = root.add<irs::Or>();
+    subRoot.add<irs::by_term>().field(mangleStringIdentity("a")).term("1");
+    subRoot.add<irs::by_term>().field(mangleStringIdentity("a")).term("2");
+    root.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("b")).term("3");
+
+    assertFilterSuccess("FOR d IN collection FILTER d.a in ['1', '2'] or d.b != '3' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d['a'] in ['1', '2'] or d.b != '3' RETURN d", expected);
+    assertFilterSuccess("FOR d IN collection FILTER d.a in ['1', '2'] or '3' != d.b RETURN d", expected);
   }
 
   // bool and null
