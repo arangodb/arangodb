@@ -38,7 +38,10 @@
 #include "Indexes/Index.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
+#include "Replication/GlobalInitialSyncer.h"
+#include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -490,6 +493,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   std::string const password =
       VelocyPackHelper::getStringValue(body, "password", "");
   std::string const jwt = VelocyPackHelper::getStringValue(body, "jwt", "");
+  
+  
 
   // initialize some defaults to copy from
   ReplicationApplierConfiguration defaults;
@@ -586,9 +591,24 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   } else if (config._restrictType == "exclude") {
     restrictType = Syncer::RESTRICT_EXCLUDE;
   }
+  
+  bool isGlobal = false;
+  ReplicationApplier* applier = getApplier(isGlobal);
+  if (applier == nullptr) {
+    return;
+  }
+  
+  std::unique_ptr<InitialSyncer> syncer;
+  if (isGlobal) {
+    syncer.reset(new GlobalInitialSyncer(&config, config._restrictCollections,
+                                         restrictType, false, false));
+  } else {
+    syncer.reset(new DatabaseInitialSyncer(_vocbase, &config, config._restrictCollections,
+                                           restrictType, false, false));
+  }
 
   // forget about any existing replication applier configuration
-  _vocbase->replicationApplier()->forget();
+  applier->forget();
 
   // start initial synchronization
   TRI_voc_tick_t lastLogTick = 0;
@@ -596,21 +616,18 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   std::string errorMsg = "";
   int res = TRI_ERROR_NO_ERROR;
   {
-    DatabaseInitialSyncer syncer(_vocbase, &config, config._restrictCollections,
-                                 restrictType, false, false);
-    
     try {
-      Result r = syncer.run(config._incremental);
+      Result r = syncer->run(config._incremental);
       res = r.errorNumber();
       errorMsg = r.errorMessage();
       // steal the barrier from the syncer
-      barrierId = syncer.stealBarrier();
+      barrierId = syncer->stealBarrier();
     } catch (...) {
       errorMsg = "caught an exception";
       res = TRI_ERROR_INTERNAL;
     }
 
-    lastLogTick = syncer.getLastLogTick();
+    lastLogTick = syncer->getLastLogTick();
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -618,12 +635,12 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     return;
   }
 
-  _vocbase->replicationApplier()->reconfigure(config);
-  _vocbase->replicationApplier()->start(lastLogTick, true, barrierId);
+  applier->reconfigure(config);
+  applier->start(lastLogTick, true, barrierId);
 
   VPackBuilder result;
   result.openObject();
-  _vocbase->replicationApplier()->toVelocyPack(result);
+  applier->toVelocyPack(result);
   result.close();
   generateResult(rest::ResponseCode::OK, result.slice());
 }
@@ -1832,37 +1849,16 @@ void RestReplicationHandler::handleCommandSync() {
   }
 
   VPackSlice const body = parsedBody->slice();
-
   std::string const endpoint =
       VelocyPackHelper::getStringValue(body, "endpoint", "");
-
   if (endpoint.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "<endpoint> must be a valid endpoint");
     return;
   }
 
-  std::string const database =
-      VelocyPackHelper::getStringValue(body, "database", _vocbase->name());
-  std::string const username =
-      VelocyPackHelper::getStringValue(body, "username", "");
-  std::string const password =
-      VelocyPackHelper::getStringValue(body, "password", "");
-  std::string const jwt = VelocyPackHelper::getStringValue(body, "jwt", "");
-  bool const verbose =
-      VelocyPackHelper::getBooleanValue(body, "verbose", false);
-  bool const includeSystem =
-      VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
-  bool const incremental =
-      VelocyPackHelper::getBooleanValue(body, "incremental", false);
-  bool const keepBarrier =
-      VelocyPackHelper::getBooleanValue(body, "keepBarrier", false);
-  bool const useCollectionId =
-      VelocyPackHelper::getBooleanValue(body, "useCollectionId", true);
-
   std::unordered_map<std::string, bool> restrictCollections;
   VPackSlice const restriction = body.get("restrictCollections");
-
   if (restriction.isArray()) {
     for (VPackSlice const& cname : VPackArrayIterator(restriction)) {
       if (cname.isString()) {
@@ -1886,16 +1882,20 @@ void RestReplicationHandler::handleCommandSync() {
   } else if (value == "exclude") {
     restrictType = Syncer::RESTRICT_EXCLUDE;
   }
+  
+  bool const verbose = VelocyPackHelper::getBooleanValue(body, "verbose", false);
+  bool const incremental =
+    VelocyPackHelper::getBooleanValue(body, "incremental", false);
 
   ReplicationApplierConfiguration config;
   config._endpoint = endpoint;
-  config._database = database;
-  config._username = username;
-  config._password = password;
-  config._jwt = jwt;
-  config._includeSystem = includeSystem;
+  config._database = VelocyPackHelper::getStringValue(body, "database", _vocbase->name());
+  config._username = VelocyPackHelper::getStringValue(body, "username", "");
+  config._password = VelocyPackHelper::getStringValue(body, "password", "");
+  config._jwt = VelocyPackHelper::getStringValue(body, "jwt", "");
+  config._includeSystem = VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
   config._verbose = verbose;
-  config._useCollectionId = useCollectionId;
+  config._useCollectionId = VelocyPackHelper::getBooleanValue(body, "useCollectionId", true);
 
   // wait until all data in current logfile got synced
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -1933,6 +1933,8 @@ void RestReplicationHandler::handleCommandSync() {
   auto tickString = std::to_string(syncer.getLastLogTick());
   result.add("lastLogTick", VPackValue(tickString));
 
+  bool const keepBarrier =
+    VelocyPackHelper::getBooleanValue(body, "keepBarrier", false);
   if (keepBarrier) {
     auto barrierId = std::to_string(syncer.stealBarrier());
     result.add("barrierId", VPackValue(barrierId));
@@ -2000,7 +2002,6 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
   if (jwt.isString()) {
     config._jwt = jwt.copyString();
   }
-
   config._requestTimeout = VelocyPackHelper::getNumericValue<double>(
       body, "requestTimeout", config._requestTimeout);
   config._connectTimeout = VelocyPackHelper::getNumericValue<double>(
@@ -2602,7 +2603,7 @@ void RestReplicationHandler::handleCommandLoggerTickRanges() {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a collection, based on the VelocyPack provided TODO: MOVE
+/// @brief creates a collection, based on the VelocyPack provided
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestReplicationHandler::createCollection(VPackSlice slice,
@@ -2733,6 +2734,30 @@ void RestReplicationHandler::grantTemporaryRights() {
       // we grant you everything for restore.
       ExecContext::CURRENT = nullptr;
     }
+  }
+}
+
+ReplicationApplier* RestReplicationHandler::getApplier(bool& global) {
+  global = false;
+  bool found = false;
+  std::string const& value = _request->value("global", found);
+  if (found) {
+    global = StringUtils::boolean(value);
+  }
+  
+  if (global &&
+      _request->databaseName() != StaticStrings::SystemDatabase) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                  "global inventory can only be created from within _system database");
+    return nullptr;
+  }
+  
+  if (global) {
+    auto replicationFeature = application_features::ApplicationServer::
+      getFeature<ReplicationFeature>("Replication");
+    return replicationFeature->globalReplicationApplier();
+  } else {
+    return _vocbase->replicationApplier();
   }
 }
 

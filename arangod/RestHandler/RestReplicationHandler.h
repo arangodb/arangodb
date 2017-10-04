@@ -34,6 +34,7 @@ namespace arangodb {
 class ClusterInfo;
 class CollectionNameResolver;
 class LogicalCollection;
+class ReplicationApplier;
 class SingleCollectionTransaction;
 
 namespace transaction {
@@ -225,7 +226,12 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief Grant temporary restore rights
   //////////////////////////////////////////////////////////////////////////////
   void grantTemporaryRights();
-
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Get correct replication applier, based on global paramerter
+  //////////////////////////////////////////////////////////////////////////////
+  ReplicationApplier* getApplier(bool& global);
+  
  private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the structure of a collection
@@ -326,6 +332,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   static uint64_t const _maxChunkSize;
 
  protected:
+
   //////////////////////////////////////////////////////////////////////////////
   /// SECTION:
   /// Functions to be implemented by specialisation

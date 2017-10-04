@@ -92,13 +92,14 @@ private:
  public:
   
   /// @brief run method, performs a full synchronization
-  Result run(bool incremental) {
-    return run (incremental, velocypack::Slice::noneSlice());
+  Result run(bool incremental) override {
+    return runWithInventory(incremental, velocypack::Slice::noneSlice());
   }
   
   /// @brief run method, performs a full synchronization with the
   ///        given list of collections.
-  Result run(bool incremental, velocypack::Slice collections);
+  Result runWithInventory(bool incremental,
+                          velocypack::Slice collections);
 
   /// @brief return the last log tick of the master at start
   TRI_voc_tick_t getLastLogTick() const { return _masterInfo._lastLogTick; }

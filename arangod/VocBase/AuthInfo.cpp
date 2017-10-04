@@ -269,7 +269,7 @@ void AuthInfo::loadFromDB() {
         << "Exception when loading users from db: " << ex.what();
     _outdated = true;
   } catch (...) {
-    LOG_TOPIC(WARN, Logger::AUTHENTICATION)
+    LOG_TOPIC(TRACE, Logger::AUTHENTICATION)
         << "Exception when loading users from db";
     _outdated = true;
   }

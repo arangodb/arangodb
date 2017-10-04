@@ -375,23 +375,11 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   }
 
   // produce inventory for all databases?
-  bool global = false;
-  {
-    std::string const& value = _request->value("global", found);
-    if (found) {
-      global = StringUtils::boolean(value);
-    }
-  }
-    
-  if (global &&
-      _request->databaseName() != StaticStrings::SystemDatabase) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
-                  "global inventory can only be created from within _system database");
-    return;
-  }
-
+  bool isGlobal = false;
+  getApplier(isGlobal);
+  
   std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>> result =
-      ctx->getInventory(this->_vocbase, includeSystem, global);
+      ctx->getInventory(this->_vocbase, includeSystem, isGlobal);
   if (!result.first.ok()) {
     generateError(rest::ResponseCode::BAD, result.first.errorNumber(),
                   "inventory could not be created");
@@ -402,7 +390,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   builder.openObject();
 
   VPackSlice const inventory = result.second->slice();
-  if (global) {
+  if (isGlobal) {
     TRI_ASSERT(inventory.isObject());
     builder.add("databases", inventory);
   } else {
