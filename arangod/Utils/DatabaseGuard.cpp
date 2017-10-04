@@ -52,3 +52,7 @@ DatabaseGuard::DatabaseGuard(std::string const& name) : _vocbase(nullptr) {
 
   TRI_ASSERT(!_vocbase->isDangling());
 }
+
+DatabaseGuard::DatabaseGuard(DatabaseGuard&& other) : _vocbase(other._vocbase) {
+  other._vocbase = nullptr;
+}
