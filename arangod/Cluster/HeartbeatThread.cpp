@@ -39,6 +39,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
@@ -405,6 +406,14 @@ void HeartbeatThread::runDBServer() {
 void HeartbeatThread::runSingleServer() {
   // convert timeout to seconds
   double const interval = (double)_interval / 1000.0 / 1000.0;
+  ReplicationFeature* replication = ReplicationFeature::INSTANCE;
+  TRI_ASSERT(replication != nullptr);
+  if (!replication->enableAutomaticFailover()) {
+    LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Automatic failover is disabled, yet "
+      << "the heartbeat thread is running on a single server. "
+      << "Please add --replication.automatic-failover true";
+    return;
+  }
   
   while (!isStopping()) {
     double const start = TRI_microtime();

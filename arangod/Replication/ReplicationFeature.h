@@ -53,19 +53,27 @@ class ReplicationFeature final
   }
   
   /// @brief disable replication appliers
-  void disableReplicationApplier() { _replicationApplier = false; }
+  void disableReplicationApplier() {
+    _replicationApplierAutoStart = false;
+  }
 
   /// @brief start the replication applier for a single database
   void startApplier(TRI_vocbase_t* vocbase);
   
   /// @brief stop the replication applier for a single database
   void stopApplier(TRI_vocbase_t* vocbase);
+      
+  /// @brief automatic failover of replication using the agency
+  bool enableAutomaticFailover() const {
+    return _enableFailover;
+  }
  
  public:
   static ReplicationFeature* INSTANCE;
    
  private:
-  bool _replicationApplier;
+  bool _replicationApplierAutoStart;
+  bool _enableFailover;
   std::unique_ptr<GlobalReplicationApplier> _globalReplicationApplier;
 };
 }

@@ -290,8 +290,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   _response->setHeaderNC(
       TRI_REPLICATION_HEADER_LASTINCLUDED,
       StringUtils::itoa((length == 0) ? 0 : result.maxTick()));
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
-                         StringUtils::itoa(latest));
+  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK, StringUtils::itoa(latest));
   _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
   _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
                          result.minTickIncluded() ? "true" : "false");
@@ -336,12 +335,13 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 /// this is an internal method use by ArangoDB's replication that should not
 /// be called by client drivers directly
 void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
+  _response->setResponseCode(rest::ResponseCode::OK);
   // rocksdb only includes finished transactions in the WAL.
-  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK, "0");
   _response->setContentType(rest::ContentType::DUMP);
+  _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK, "0");
   // always true to satisfy continuous syncer
   _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT, "true");
-  generateResult(rest::ResponseCode::OK, VPackSlice::emptyArraySlice());
+  _response->addPayload(VPackSlice::emptyArraySlice());
 }
 
 void RocksDBRestReplicationHandler::handleCommandInventory() {
@@ -377,6 +377,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   // produce inventory for all databases?
   bool isGlobal = false;
   getApplier(isGlobal);
+  TRI_ASSERT(!isGlobal);
   
   std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>> result =
       ctx->getInventory(this->_vocbase, includeSystem, isGlobal);
