@@ -31,7 +31,7 @@ namespace arangodb {
 /// Meta Syncer driving multiple initial syncer
 class GlobalInitialSyncer : public InitialSyncer {
  public:
-  GlobalInitialSyncer(ReplicationApplierConfiguration const*,
+  GlobalInitialSyncer(ReplicationApplierConfiguration const&,
                       std::unordered_map<std::string, bool> const&,
                       Syncer::RestrictType, bool verbose, bool skipCreateDrop);
 

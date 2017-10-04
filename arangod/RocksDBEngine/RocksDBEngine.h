@@ -40,17 +40,18 @@
 #include <velocypack/Slice.h>
 
 namespace rocksdb {
-  class TransactionDB;
+class TransactionDB;
 }
 
 namespace arangodb {
 class PhysicalCollection;
 class PhysicalView;
 class RocksDBBackgroundThread;
-class RocksDBVPackComparator;
 class RocksDBCounterManager;
+class RocksDBKey;
 class RocksDBLogValue;
 class RocksDBReplicationManager;
+class RocksDBVPackComparator;
 class RocksDBWalAccess;
 class TransactionCollection;
 class TransactionState;
@@ -130,9 +131,13 @@ class RocksDBEngine final : public StorageEngine {
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
                                                          int& status) override;
+  velocypack::Builder getReplicationApplierConfiguration(int& status) override;
   int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) override;
+  int removeReplicationApplierConfiguration() override;
   int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
                                           arangodb::velocypack::Slice slice,
+                                          bool doSync) override;
+  int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
                                           bool doSync) override;
   int handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                      arangodb::LogicalCollection* col,
@@ -243,6 +248,9 @@ class RocksDBEngine final : public StorageEngine {
   void pruneWalFiles();
 
  private:
+  velocypack::Builder getReplicationApplierConfiguration(RocksDBKey const& key, int& status);
+  int removeReplicationApplierConfiguration(RocksDBKey const& key);
+  int saveReplicationApplierConfiguration(RocksDBKey const& key, arangodb::velocypack::Slice slice, bool doSync);
   Result dropDatabase(TRI_voc_tick_t);
   bool systemDatabaseExists();
   void addSystemDatabase();

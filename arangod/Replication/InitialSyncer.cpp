@@ -62,7 +62,7 @@ using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
 InitialSyncer::InitialSyncer(
-    ReplicationApplierConfiguration const* configuration,
+    ReplicationApplierConfiguration const& configuration,
     std::unordered_map<std::string, bool> const& restrictCollections,
     Syncer::RestrictType restrictType, bool verbose, bool skipCreateDrop)
     : Syncer(configuration),

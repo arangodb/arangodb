@@ -29,6 +29,7 @@
 namespace arangodb {
 namespace velocypack {
 class Builder;
+class Slice;
 }
 
 /// @brief struct containing a replication apply configuration
@@ -76,6 +77,10 @@ class ReplicationApplierConfiguration {
   /// @brief get a VelocyPack representation
   /// expects builder to be in an open Object state
   void toVelocyPack(arangodb::velocypack::Builder&, bool includePassword) const;
+  
+  /// @brief create a configuration object from velocypack
+  static ReplicationApplierConfiguration fromVelocyPack(arangodb::velocypack::Slice slice, 
+                                                        std::string const& databaseName);
 };
 
 }

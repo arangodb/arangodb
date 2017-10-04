@@ -84,10 +84,9 @@ private:
   
  public:
   DatabaseInitialSyncer(TRI_vocbase_t*,
-                ReplicationApplierConfiguration const*,
+                ReplicationApplierConfiguration const&,
                 std::unordered_map<std::string, bool> const&,
                 Syncer::RestrictType, bool verbose, bool skipCreateDrop);
-
 
  public:
   

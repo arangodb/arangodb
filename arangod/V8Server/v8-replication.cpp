@@ -381,7 +381,7 @@ static void SynchronizeReplication(
 
 
     std::string errorMsg = "";
-    DatabaseInitialSyncer syncer(vocbase, &config, restrictCollections, rType,
+    DatabaseInitialSyncer syncer(vocbase, config, restrictCollections, rType,
                                 verbose, skipCreateDrop);
     if (!leaderId.empty()) {
       syncer.setLeaderId(leaderId);
@@ -449,7 +449,7 @@ static void SynchronizeReplication(
   } else {
     // global synchronization
     std::string errorMsg = "";
-    GlobalInitialSyncer syncer(&config, restrictCollections, rType, verbose, false);
+    GlobalInitialSyncer syncer(config, restrictCollections, rType, verbose, false);
 
     int res = TRI_ERROR_NO_ERROR;
 
@@ -606,7 +606,7 @@ static void JS_SynchronizeReplicationFinalize(
   DatabaseGuard guard(database);
 
   std::string errorMsg = "";
-  DatabaseTailingSyncer syncer(guard.database(), &config, fromTick, true, 0);
+  DatabaseTailingSyncer syncer(guard.database(), config, fromTick, true, 0);
   
   if (!leaderId.empty()) {
     syncer.setLeaderId(leaderId);

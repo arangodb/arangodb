@@ -3331,7 +3331,17 @@ int MMFilesEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
   
 VPackBuilder MMFilesEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vocbase, int& status) {
   std::string const filename = arangodb::basics::FileUtils::buildFilename(databasePath(vocbase), "REPLICATION-APPLIER-CONFIG");
+ 
+  return getReplicationApplierConfiguration(filename, status);
+}
 
+VPackBuilder MMFilesEngine::getReplicationApplierConfiguration(int& status) {
+  std::string const filename = arangodb::basics::FileUtils::buildFilename(_databasePath, "GLOBAL-REPLICATION-APPLIER-CONFIG");
+
+  return getReplicationApplierConfiguration(filename, status);
+}
+
+VPackBuilder MMFilesEngine::getReplicationApplierConfiguration(std::string const& filename, int& status) {
   VPackBuilder builder;
 
   if (!TRI_ExistsFile(filename.c_str())) {
@@ -3361,7 +3371,15 @@ VPackBuilder MMFilesEngine::getReplicationApplierConfiguration(TRI_vocbase_t* vo
 
 int MMFilesEngine::removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) {
   std::string const filename = arangodb::basics::FileUtils::buildFilename(databasePath(vocbase), "REPLICATION-APPLIER-CONFIG");
+  return removeReplicationApplierConfiguration(filename);
+}
 
+int MMFilesEngine::removeReplicationApplierConfiguration() {
+  std::string const filename = arangodb::basics::FileUtils::buildFilename(_databasePath, "GLOBAL-REPLICATION-APPLIER-CONFIG");
+  return removeReplicationApplierConfiguration(filename);
+}
+
+int MMFilesEngine::removeReplicationApplierConfiguration(std::string const& filename) {
   if (TRI_ExistsFile(filename.c_str())) {
     return TRI_UnlinkFile(filename.c_str());
   }
@@ -3371,7 +3389,15 @@ int MMFilesEngine::removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase)
  
 int MMFilesEngine::saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) { 
   std::string const filename = arangodb::basics::FileUtils::buildFilename(databasePath(vocbase), "REPLICATION-APPLIER-CONFIG");
+  return saveReplicationApplierConfiguration(filename, slice, doSync);
+}
 
+int MMFilesEngine::saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice, bool doSync) { 
+  std::string const filename = arangodb::basics::FileUtils::buildFilename(_databasePath, "GLOBAL-REPLICATION-APPLIER-CONFIG");
+  return saveReplicationApplierConfiguration(filename, slice, doSync);
+}
+
+int MMFilesEngine::saveReplicationApplierConfiguration(std::string const& filename, arangodb::velocypack::Slice slice, bool doSync) { 
   if (!VelocyPackHelper::velocyPackToFile(filename, slice, doSync)) {
     return TRI_errno();
   } 

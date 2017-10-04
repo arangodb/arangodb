@@ -91,9 +91,13 @@ class MMFilesEngine final : public StorageEngine {
 
   velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
                                                          int& status) override;
+  velocypack::Builder getReplicationApplierConfiguration(int& status) override;
   int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) override;
+  int removeReplicationApplierConfiguration() override;
   int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
                                           arangodb::velocypack::Slice slice,
+                                          bool doSync) override;
+  int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
                                           bool doSync) override;
   int handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
                      arangodb::LogicalCollection* col,
@@ -356,6 +360,10 @@ class MMFilesEngine final : public StorageEngine {
                             TRI_voc_cid_t viewId) const;
 
  private:
+  velocypack::Builder getReplicationApplierConfiguration(std::string const& filename, int& status);
+  int removeReplicationApplierConfiguration(std::string const& filename);
+  int saveReplicationApplierConfiguration(std::string const& filename, arangodb::velocypack::Slice, bool doSync);
+
   /// @brief: check the initial markers in a datafile
   bool checkDatafileHeader(MMFilesDatafile* datafile,
                            std::string const& filename) const;

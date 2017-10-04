@@ -349,9 +349,15 @@ class StorageEngine : public application_features::ApplicationFeature {
 
   // replication
   virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t*, int&) = 0;
+  virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(int&) = 0;
+
   virtual int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) = 0;
+  virtual int removeReplicationApplierConfiguration() = 0;
+
   virtual int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
                                                   velocypack::Slice slice,
+                                                  bool doSync) = 0;
+  virtual int saveReplicationApplierConfiguration(velocypack::Slice slice,
                                                   bool doSync) = 0;
 
   virtual int handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,

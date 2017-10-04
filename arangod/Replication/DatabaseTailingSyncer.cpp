@@ -59,7 +59,7 @@ using namespace arangodb::rest;
 
 DatabaseTailingSyncer::DatabaseTailingSyncer(
     TRI_vocbase_t* vocbase,
-    ReplicationApplierConfiguration const* configuration,
+    ReplicationApplierConfiguration const& configuration,
     TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
     : TailingSyncer(configuration, initialTick, barrierId),
       _applier(vocbase->replicationApplier()),
@@ -233,7 +233,7 @@ retry:
 
       try {
         DatabaseInitialSyncer syncer(
-            vocbase(), &_configuration, _configuration._restrictCollections,
+            vocbase(), _configuration, _configuration._restrictCollections,
             _restrictType, _configuration._verbose, false);
 
         Result r = syncer.run(_configuration._incremental);

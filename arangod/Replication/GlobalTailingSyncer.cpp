@@ -63,7 +63,7 @@ using namespace arangodb::rest;
 std::string const GlobalTailingSyncer::WalAccessUrl = "/_api/wal";
 
 GlobalTailingSyncer::GlobalTailingSyncer(
-    ReplicationApplierConfiguration const* configuration,
+    ReplicationApplierConfiguration const& configuration,
     TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
     : TailingSyncer(configuration, initialTick, barrierId),
       _applier(ReplicationFeature::INSTANCE->globalReplicationApplier()),
@@ -235,7 +235,7 @@ retry:
       errorMsg = "";
 
       try {
-        GlobalInitialSyncer syncer(&_configuration, _configuration._restrictCollections,
+        GlobalInitialSyncer syncer(_configuration, _configuration._restrictCollections,
             _restrictType, _configuration._verbose, false);
 
         Result r = syncer.run(_configuration._incremental);

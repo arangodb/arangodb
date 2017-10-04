@@ -75,16 +75,17 @@ class ReplicationApplier {
 
   /// @brief configure the replication applier
   virtual void reconfigure(ReplicationApplierConfiguration const& configuration);
+  
+  /// @brief load the applier state from persistent storage
+  /// must currently be called while holding the write-lock
+  /// returns whether a previous state was found
+  virtual bool loadState();
 
   /// @brief store the configuration for the applier
   virtual void storeConfiguration(bool doSync) = 0;
 
   /// @brief remove the replication application state file
   virtual void removeState();
-  
-  /// @brief load the applier state from persistent storage
-  /// returns whether a previous state was found
-  virtual bool loadState() = 0;
   
   /// @brief store the applier state in persistent storage
   virtual void persistState(bool doSync);
@@ -110,7 +111,6 @@ class ReplicationApplier {
   /// @brief unblock the replication applier from starting
   int allowStart();
 
-  // TODO: can these be made protected?
   /// @brief register an applier error
   int setError(int errorCode, char const* msg);
   int setError(int errorCode, std::string const& msg);
@@ -122,6 +122,10 @@ class ReplicationApplier {
  private:
   /// @brief stop the replication applier and join the apply thread
   void doStop(bool resetError, bool joinThread);
+
+  static void readTick(arangodb::velocypack::Slice const& slice, 
+                       char const* attributeName,
+                       TRI_voc_tick_t& dst, bool allowNull);
 
  protected:
   virtual std::unique_ptr<TailingSyncer> buildSyncer(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) = 0;

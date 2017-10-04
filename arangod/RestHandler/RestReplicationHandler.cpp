@@ -596,7 +596,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   std::string errorMsg = "";
   int res = TRI_ERROR_NO_ERROR;
   {
-    DatabaseInitialSyncer syncer(_vocbase, &config, config._restrictCollections,
+    DatabaseInitialSyncer syncer(_vocbase, config, config._restrictCollections,
                                  restrictType, false, false);
     
     try {
@@ -1902,7 +1902,7 @@ void RestReplicationHandler::handleCommandSync() {
   TRI_ASSERT(engine != nullptr);
   engine->waitForSync(5.0);
 
-  DatabaseInitialSyncer syncer(_vocbase, &config, restrictCollections, restrictType,
+  DatabaseInitialSyncer syncer(_vocbase, config, restrictCollections, restrictType,
                                verbose, false);
 
   std::string errorMsg = "";
