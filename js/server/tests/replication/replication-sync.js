@@ -45,79 +45,59 @@ if (db._engine().name === "mmfiles") {
   mmfilesEngine = true;
 }
 
+const cn = "UnitTestsReplication";
+
+const connectToMaster = function() {
+  arango.reconnect(masterEndpoint, db._name(), "root", "");
+  db._flushCache();
+};
+
+const connectToSlave = function() {
+  arango.reconnect(slaveEndpoint, db._name(), "root", "");
+  db._flushCache();
+};
+
+const collectionChecksum = function(name) {
+  var c = db._collection(name).checksum(true, true);
+  return c.checksum;
+};
+
+const collectionCount = function(name) {
+  var res = db._collection(name).count();
+  return res;
+};
+
+const compare = function(masterFunc, slaveInitFunc, slaveCompareFunc, incremental) {
+  var state = {};
+
+  db._flushCache();
+  masterFunc(state);
+  require("internal").wal.flush(true, true);
+
+  db._flushCache();
+  connectToSlave();
+
+  slaveInitFunc(state);
+  internal.wait(1, false);
+
+  var syncResult = replication.syncCollection(cn, {
+    endpoint: masterEndpoint,
+    verbose: true,
+    incremental: incremental
+  });
+
+  db._flushCache();
+  slaveCompareFunc(state);
+};
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
+/// @brief Base Test Config. Identitical part for _system and other DB
 ////////////////////////////////////////////////////////////////////////////////
 
-function ReplicationSuite() {
+function BaseTestConfig() {
   'use strict';
-  var cn = "UnitTestsReplication";
-
-  var connectToMaster = function() {
-    arango.reconnect(masterEndpoint, db._name(), "root", "");
-    db._flushCache();
-  };
-
-  var connectToSlave = function() {
-    arango.reconnect(slaveEndpoint, db._name(), "root", "");
-    db._flushCache();
-  };
-
-  var collectionChecksum = function(name) {
-    var c = db._collection(name).checksum(true, true);
-    return c.checksum;
-  };
-
-  var collectionCount = function(name) {
-    var res = db._collection(name).count();
-    return res;
-  };
-
-  var compare = function(masterFunc, slaveInitFunc, slaveCompareFunc, incremental) {
-    var state = {};
-
-    db._flushCache();
-    masterFunc(state);
-    require("internal").wal.flush(true, true);
-
-    db._flushCache();
-    connectToSlave();
-
-    slaveInitFunc(state);
-    internal.wait(1, false);
-
-    var syncResult = replication.syncCollection(cn, {
-      endpoint: masterEndpoint,
-      verbose: true,
-      incremental: incremental
-    });
-
-    db._flushCache();
-    slaveCompareFunc(state);
-  };
 
   return {
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
-
-    setUp: function() {
-      connectToMaster();
-      db._drop(cn);
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
-
-    tearDown: function() {
-      connectToMaster();
-      db._drop(cn);
-
-      connectToSlave();
-      db._drop(cn);
-    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test existing collection
@@ -1092,11 +1072,100 @@ function ReplicationSuite() {
   };
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite on _system
+////////////////////////////////////////////////////////////////////////////////
+
+function ReplicationSuite() {
+  'use strict';
+
+  let suite = BaseTestConfig();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief set up
+  ////////////////////////////////////////////////////////////////////////////////
+
+  suite.setUp = function() {
+    connectToMaster();
+    db._drop(cn);
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief tear down
+  ////////////////////////////////////////////////////////////////////////////////
+
+  suite.tearDown = function() {
+    connectToMaster();
+    db._drop(cn);
+
+    connectToSlave();
+    db._drop(cn);
+  };
+
+  return suite;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite on other database
+////////////////////////////////////////////////////////////////////////////////
+
+function ReplicationOtherDBSuite() {
+  'use strict';
+
+  const dbName = "UnitTestDB";
+
+  let suite = BaseTestConfig();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief set up
+  ////////////////////////////////////////////////////////////////////////////////
+
+  suite.setUp = function() {
+    connectToMaster();
+    try {
+      db._dropDatabase(dbName);
+    } catch (e) {
+    }
+    db._createDatabase(dbName);
+    connectToSlave();
+    try {
+      db._dropDatabase(dbName);
+    } catch (e) {
+    }
+    db._createDatabase(dbName);
+    db._useDatabase(dbName);
+    connectToMaster();
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief tear down
+  ////////////////////////////////////////////////////////////////////////////////
+
+  suite.tearDown = function() {
+    db._useDatabase("_system");
+    connectToMaster();
+    try {
+      db._dropDatabase(dbName);
+    } catch (e) {
+    }
+
+    connectToSlave();
+    try {
+      db._dropDatabase(dbName);
+    } catch (e) {
+    }
+  };
+
+  return suite;
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ReplicationSuite);
+jsunity.run(ReplicationOtherDBSuite);
 
 return jsunity.done();
