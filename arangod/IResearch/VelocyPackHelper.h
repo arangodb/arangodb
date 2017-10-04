@@ -80,8 +80,13 @@ inline irs::string_ref getStringRef(VPackSlice const& slice) {
 
   TRI_ASSERT(slice.isString());
 
-  size_t size;
+  arangodb::velocypack::ValueLength size;
   auto const* str = slice.getString(size);
+
+  static_assert(
+    sizeof(arangodb::velocypack::ValueLength) == sizeof(size_t),
+    "sizeof(arangodb::velocypack::ValueLength) != sizeof(size_t)"
+  );
 
   return irs::string_ref(str, size);
 }
