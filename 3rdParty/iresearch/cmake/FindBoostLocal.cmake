@@ -54,12 +54,13 @@ find_package(Boost
 )
 
 if (Boost_FOUND)
-  add_library(boost-shared IMPORTED SHARED)
-  set_target_properties(boost-shared PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${Boost_INCLUDE_DIRS}"
-#    INTERFACE_LINK_LIBRARIES
-    IMPORTED_LOCATION "${Boost_LIBRARIES}"
-  )
+  if (NOT TARGET boost-shared)
+    add_library(boost-shared IMPORTED SHARED)
+    set_target_properties(boost-shared PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "${Boost_INCLUDE_DIRS}"
+      IMPORTED_LOCATION "${Boost_LIBRARIES}"
+    )
+  endif()
 
   set(Boost_SHARED_sharedRT_LIBRARIES ${Boost_LIBRARIES})
   set(Boost_SHARED_sharedRT_FILESYSTEM_LIBRARY_DEBUG ${Boost_FILESYSTEM_LIBRARY_DEBUG})
@@ -140,11 +141,13 @@ find_package(Boost
 )
 
 if (Boost_FOUND)
-  add_library(boost-shared-scrt IMPORTED SHARED)
-  set_target_properties(boost-shared-scrt PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${Boost_INCLUDE_DIRS}"
-    IMPORTED_LOCATION "${Boost_LIBRARIES}"
-  )
+  if (NOT TARGET boost-shared-scrt)
+    add_library(boost-shared-scrt IMPORTED SHARED)
+    set_target_properties(boost-shared-scrt PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "${Boost_INCLUDE_DIRS}"
+      IMPORTED_LOCATION "${Boost_LIBRARIES}"
+    )
+  endif()
 
   set(Boost_SHARED_staticRT_LIBRARIES ${Boost_LIBRARIES})
   set(Boost_SHARED_staticRT_FILESYSTEM_LIBRARY_DEBUG ${Boost_FILESYSTEM_LIBRARY_DEBUG})
@@ -225,11 +228,13 @@ find_package(Boost
 )
 
 if (Boost_FOUND)
-  add_library(boost-static IMPORTED SHARED)
-  set_target_properties(boost-static PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${Boost_INCLUDE_DIRS}"
-    IMPORTED_LOCATION "${Boost_LIBRARIES}"
-  )
+  if (NOT TARGET boost-static)
+    add_library(boost-static IMPORTED SHARED)
+    set_target_properties(boost-static PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "${Boost_INCLUDE_DIRS}"
+      IMPORTED_LOCATION "${Boost_LIBRARIES}"
+    )
+  endif()
 
   set(Boost_STATIC_sharedRT_LIBRARIES ${Boost_LIBRARIES})
   set(Boost_STATIC_sharedRT_FILESYSTEM_LIBRARY_DEBUG ${Boost_FILESYSTEM_LIBRARY_DEBUG})
@@ -283,11 +288,13 @@ find_package(Boost
 )
 
 if (Boost_FOUND)
-  add_library(boost-static-scrt IMPORTED SHARED)
-  set_target_properties(boost-static-scrt PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${Boost_INCLUDE_DIRS}"
-    IMPORTED_LOCATION "${Boost_LIBRARIES}"
-  )
+  if (NOT TARGET boost-static-scrt)
+    add_library(boost-static-scrt IMPORTED SHARED)
+    set_target_properties(boost-static-scrt PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "${Boost_INCLUDE_DIRS}"
+      IMPORTED_LOCATION "${Boost_LIBRARIES}"
+    )
+  endif()
 
   set(Boost_STATIC_staticRT_LIBRARIES ${Boost_LIBRARIES})
   set(Boost_STATIC_staticRT_FILESYSTEM_LIBRARY_DEBUG ${Boost_FILESYSTEM_LIBRARY_DEBUG})
