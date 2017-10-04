@@ -164,7 +164,7 @@ Result GlobalInitialSyncer::run(bool incremental) {
       syncer.useAsChildSyncer(_masterInfo, _barrierId, _barrierUpdateTime,
                               _batchId, _batchUpdateTime);
       // run the syncer with the supplied inventory collections
-      Result r = syncer.run(false, collections);
+      Result r = syncer.runWithInventory(false, collections);
       if (r.fail()) {
         return r;
       }

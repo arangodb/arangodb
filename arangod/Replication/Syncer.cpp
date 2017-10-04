@@ -396,7 +396,7 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
   if (it == _vocbases.end()) {
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
     if (vocbase != nullptr) {
-      _vocbases.emplace(name, vocbase);
+      _vocbases.emplace(name, DatabaseGuard(vocbase));
     } else {
       LOG_TOPIC(DEBUG, Logger::REPLICATION) << "could not find database '" << name << "'";
     }

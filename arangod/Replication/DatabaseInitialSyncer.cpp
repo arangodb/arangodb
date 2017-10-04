@@ -68,12 +68,12 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t* vocbase,
     Syncer::RestrictType restrictType, bool verbose, bool skipCreateDrop)
     : InitialSyncer(configuration, restrictCollections, restrictType, verbose, skipCreateDrop),
       _hasFlushed(false) {
-  _vocbases.emplace(vocbase->name(), vocbase);
+  _vocbases.emplace(vocbase->name(), DatabaseGuard(vocbase));
 }
 
 /// @brief run method, performs a full synchronization
-Result DatabaseInitialSyncer::run(bool incremental,
-                                  VPackSlice inventoryColls) {
+Result DatabaseInitialSyncer::runWithInventory(bool incremental,
+                                               VPackSlice inventoryColls) {
   if (_client == nullptr || _connection == nullptr || _endpoint == nullptr) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }

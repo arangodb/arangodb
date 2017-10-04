@@ -45,6 +45,8 @@ class InitialSyncer : public Syncer {
 
  public:
   
+  virtual Result run(bool incremental) = 0;
+  
   /// @brief return the last log tick of the master at start
   TRI_voc_tick_t getLastLogTick() const { return _masterInfo._lastLogTick; }
 

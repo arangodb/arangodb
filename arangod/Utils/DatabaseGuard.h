@@ -51,10 +51,13 @@ class DatabaseGuard {
 
   /// @brief destroy the guard
   ~DatabaseGuard() {
-    TRI_ASSERT(_vocbase != nullptr);
-    TRI_ASSERT(!_vocbase->isDangling());
-    _vocbase->release();
+    if (_vocbase != nullptr) {
+      TRI_ASSERT(!_vocbase->isDangling());
+      _vocbase->release();
+    }
   }
+
+  DatabaseGuard(DatabaseGuard&&);
 
  public:
   /// @brief return the database pointer
