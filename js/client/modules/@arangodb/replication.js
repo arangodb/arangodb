@@ -107,7 +107,7 @@ globalApplier.start = function (initialTick, barrierId) { return applierStart(tr
 // / @brief stops the replication applier
 // //////////////////////////////////////////////////////////////////////////////
 
-function applierShutdown(global) {
+function applierStop(global) {
   var append = '';
   if (global) {
     append += appendChar(append) + 'global=true';
@@ -119,8 +119,8 @@ function applierShutdown(global) {
   return requestResult;
 };
 
-applier.stop = applier.shutdown = function () { return applierShutdown(false); };
-globalApplier.stop = applier.shutdown = function () { return applierShutdown(true); };
+applier.stop = function () { return applierStop(false); };
+globalApplier.stop = function () { return applierStop(true); };
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief return the replication applier state
@@ -233,13 +233,17 @@ var waitForResult = function (config, id) {
 // / @brief performs a one-time synchronization with a remote endpoint
 // //////////////////////////////////////////////////////////////////////////////
 
-var sync = function (config) {
+var sync = function (global, config) {
+  var append = '';
+  if (global) {
+    append += appendChar(append) + 'global=true';
+  }
   const body = JSON.stringify(config || {});
   const headers = {
     'X-Arango-Async': 'store'
   };
 
-  const requestResult = internal.db._connection.PUT_RAW('/_api/replication/sync', body, headers);
+  const requestResult = internal.db._connection.PUT_RAW('/_api/replication/sync' + append, body, headers);
   arangosh.checkRequestResult(requestResult);
 
   if (config.async) {
@@ -248,6 +252,9 @@ var sync = function (config) {
 
   return waitForResult(config, requestResult.headers['x-arango-async-id']);
 };
+
+var syncDatabase = function (config) { return sync(false, config); };
+var syncGlobal = function (config) { return sync(true, config); };
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief performs a one-time synchronization with a remote endpoint, for
@@ -260,27 +267,7 @@ var syncCollection = function (collection, config) {
   config.restrictCollections = [collection];
   config.includeSystem = true;
 
-  return sync(config);
-};
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief performs a one-time synchronization with a remote endpoint
-// //////////////////////////////////////////////////////////////////////////////
-
-var syncGlobal = function (config) {
-  const body = JSON.stringify(config || {});
-  const headers = {
-    'X-Arango-Async': 'store'
-  };
-
-  const requestResult = internal.db._connection.PUT_RAW('/_api/replication/sync?global=true', body, headers);
-  arangosh.checkRequestResult(requestResult);
-
-  if (config.async) {
-    return requestResult.headers['x-arango-async-id'];
-  }
-
-  return waitForResult(config, requestResult.headers['x-arango-async-id']);
+  return sync(false, config);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -288,7 +275,12 @@ var syncGlobal = function (config) {
 // / synchronization and continuous replication)
 // //////////////////////////////////////////////////////////////////////////////
 
-var setupReplication = function (config) {
+var setup = function (global, config) {
+  var append = '';
+  if (global) {
+    append += appendChar(append) + 'global=true';
+  }
+
   config = config || { };
   if (!config.hasOwnProperty('autoStart')) {
     config.autoStart = true;
@@ -307,7 +299,7 @@ var setupReplication = function (config) {
     'X-Arango-Async': 'store'
   };
 
-  const requestResult = db._connection.PUT_RAW('/_api/replication/make-slave', body, headers);
+  const requestResult = db._connection.PUT_RAW('/_api/replication/make-slave' + append, body, headers);
   arangosh.checkRequestResult(requestResult);
 
   if (config.async) {
@@ -316,6 +308,9 @@ var setupReplication = function (config) {
 
   return waitForResult(config, requestResult.headers['x-arango-async-id']);
 };
+
+var setupReplication = function (config) { return setup(false, config); };
+var setupReplicationGlobal = function (config) { return setup(true, config); };
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief queries the sync result status
@@ -351,9 +346,10 @@ var serverId = function () {
 exports.logger = logger;
 exports.applier = applier;
 exports.globalApplier = globalApplier;
-exports.sync = sync;
-exports.syncCollection = syncCollection;
+exports.sync = syncDatabase;
 exports.syncGlobal = syncGlobal;
+exports.syncCollection = syncCollection;
 exports.setupReplication = setupReplication;
+exports.setupReplicationGlobal = setupReplicationGlobal;
 exports.getSyncResult = getSyncResult;
 exports.serverId = serverId;

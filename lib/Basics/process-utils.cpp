@@ -73,7 +73,6 @@ static std::vector<ExternalProcess*> ExternalProcesses;
 
 static arangodb::Mutex ExternalProcessesLock;
 
-
 ProcessInfo::ProcessInfo():
   _minorPageFaults(0),
   _majorPageFaults(0),
@@ -96,7 +95,6 @@ ExternalId::ExternalId():
 #endif
 
 ExternalProcess::ExternalProcess():
-  _executable(nullptr),
   _numberArguments(0),
   _arguments(nullptr),
 #ifndef _WIN32
@@ -114,10 +112,6 @@ ExternalProcess::ExternalProcess():
 
 
 ExternalProcess::~ExternalProcess() {
-  if (_executable != nullptr) {
-    TRI_Free(_executable);
-  }
-
   for (size_t i = 0; i < _numberArguments; i++) {
     if (_arguments[i] != nullptr) {
       TRI_Free(_arguments[i]);
@@ -216,7 +210,7 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes) {
     }
 
     // execute worker
-    execvp(external->_executable, external->_arguments);
+    execvp(external->_executable.c_str(), external->_arguments);
 
     _exit(1);
   }
@@ -339,20 +333,20 @@ static char* makeWindowsArgs(ExternalProcess* external) {
   char* res;
 
   buf = TRI_CreateStringBuffer();
-  if (buf == NULL) {
-    return NULL;
+  if (buf == nullptr) {
+    return nullptr;
   }
   TRI_ReserveStringBuffer(buf, 1024);
-  err = appendQuotedArg(buf, external->_executable);
+  err = appendQuotedArg(buf, external->_executable.c_str());
   if (err != TRI_ERROR_NO_ERROR) {
     TRI_FreeStringBuffer(buf);
-    return NULL;
+    return nullptr;
   }
   for (i = 1; i < external->_numberArguments; i++) {
     err = TRI_AppendCharStringBuffer(buf, ' ');
     if (err != TRI_ERROR_NO_ERROR) {
       TRI_FreeStringBuffer(buf);
-      return NULL;
+      return nullptr;
     }
     err = appendQuotedArg(buf, external->_arguments[i]);
   }
@@ -369,7 +363,7 @@ static bool startProcess(ExternalProcess* external, HANDLE rd, HANDLE wr) {
   TRI_ERRORBUF;
   
   args = makeWindowsArgs(external);
-  if (args == NULL) {
+  if (args == nullptr) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "execute of '" << external->_executable
              << "' failed making args";
     return false;
@@ -842,10 +836,6 @@ void TRI_SetProcessTitle(char const* title) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief frees an external process structure
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief starts an external process
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -853,14 +843,8 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
                                size_t n, bool usePipes,
                                ExternalId* pid) {
   // create the external structure
-  ExternalProcess* external = new ExternalProcess();
-  if (external == nullptr) {
-    // gracefully handle out of memory
-    pid->_pid = TRI_INVALID_PROCESS_ID;
-    return;
-  }
-
-  external->_executable = TRI_DuplicateString(executable);
+  auto external = std::make_unique<ExternalProcess>();
+  external->_executable = executable;
   external->_numberArguments = n + 1;
 
   external->_arguments = static_cast<char**>(
@@ -869,7 +853,6 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
   if (external->_arguments == nullptr) {
     // gracefully handle out of memory
     pid->_pid = TRI_INVALID_PROCESS_ID;
-    delete external;
     return;
   }
 
@@ -888,11 +871,10 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
   external->_arguments[n + 1] = nullptr;
   external->_status = TRI_EXT_NOT_STARTED;
 
-  StartExternalProcess(external, usePipes);
+  StartExternalProcess(external.get(), usePipes);
 
   if (external->_status != TRI_EXT_RUNNING) {
     pid->_pid = TRI_INVALID_PROCESS_ID;
-    delete external;
     return;
   }
 
@@ -908,10 +890,10 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
   MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
 
   try {
-    ExternalProcesses.push_back(external);
+    ExternalProcesses.push_back(external.get());
+    external.release();
   } catch (...) {
     pid->_pid = TRI_INVALID_PROCESS_ID;
-    delete external;
     return;
   }
 }
@@ -1329,7 +1311,7 @@ bool TRI_IsDeadlySignal(int signal) {
 ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal, bool isTerminal) {
   LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Sending process: " << pid._pid << " the signal: " << signal;
 
-  ExternalProcess* external = nullptr;  // just to please the compiler
+  ExternalProcess* external = nullptr;  
   {
     MUTEX_LOCKER(mutexLocker, ExternalProcessesLock);
 

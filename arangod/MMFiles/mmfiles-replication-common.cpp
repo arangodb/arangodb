@@ -27,7 +27,6 @@ using namespace arangodb::mmfilesutils;
 namespace arangodb {
 namespace mmfilesutils {
   
-  
 /// @brief whether or not a marker should be replicated
 bool MustReplicateWalMarkerType(MMFilesMarker const* marker, bool allowDBMarkers) {
   MMFilesMarkerType type = marker->getType();
@@ -58,8 +57,7 @@ bool IsTransactionWalMarkerType(MMFilesMarker const* marker) {
 }
 
 /// @brief translate a marker type to a replication type
-TRI_replication_operation_e TranslateType(
-                                          MMFilesMarker const* marker) {
+TRI_replication_operation_e TranslateType(MMFilesMarker const* marker) {
   switch (marker->getType()) {
     case TRI_DF_MARKER_VPACK_DOCUMENT:
       return REPLICATION_MARKER_DOCUMENT;

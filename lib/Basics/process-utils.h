@@ -101,7 +101,7 @@ struct ExternalId {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ExternalProcess {
-  char* _executable;
+  std::string _executable;
   size_t _numberArguments;
   char** _arguments;
 

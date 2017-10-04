@@ -478,7 +478,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
     if (it == _vocbases.end()) {
       TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->useDatabase(dbid);
       if (vocbase != nullptr) {
-        _vocbases.emplace(dbid, vocbase);
+        _vocbases.emplace(dbid, DatabaseGuard(vocbase));
       }
       return vocbase;
     } else {

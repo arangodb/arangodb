@@ -109,7 +109,7 @@ retry:
 
       if (connectRetries <= _configuration._maxConnectRetries) {
         // check if we are aborted externally
-        if (_applier->wait(_configuration._connectionRetryWaitTime)) {
+        if (_applier->sleepIfStillActive(_configuration._connectionRetryWaitTime)) {
           setProgress(
               "fetching master state information failed. will retry now. "
               "retries left: " +
@@ -146,7 +146,7 @@ retry:
 
   if (res != TRI_ERROR_NO_ERROR) {
     // stop ourselves
-    _applier->stop(false, false);
+    _applier->stop(false);
     return _applier->setError(res, errorMsg);
   }
 
@@ -158,7 +158,7 @@ retry:
     _applier->setError(res, errorMsg);
 
     // stop ourselves
-    _applier->stop(false, false);
+    _applier->stop(false);
 
     if (res == TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT ||
         res == TRI_ERROR_REPLICATION_NO_START_TICK) {
@@ -317,7 +317,7 @@ void GlobalTailingSyncer::getLocalState() {
   uint64_t oldTotalFailedConnects = _applier->_state._totalFailedConnects;
 
   bool const foundState = _applier->loadState();
-  _applier->_state._active = true;
+  _applier->_state._state = ReplicationApplierState::ActivityState::RUNNING;
   _applier->_state._totalRequests = oldTotalRequests;
   _applier->_state._totalFailedConnects = oldTotalFailedConnects;
 
@@ -498,7 +498,7 @@ int GlobalTailingSyncer::runContinuousSync(std::string& errorMsg) {
 
     // this will make the applier thread sleep if there is nothing to do,
     // but will also check for cancelation
-    if (!_applier->wait(sleepTime)) {
+    if (!_applier->sleepIfStillActive(sleepTime)) {
       return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
     }
   }

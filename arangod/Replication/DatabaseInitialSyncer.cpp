@@ -68,7 +68,7 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t* vocbase,
     Syncer::RestrictType restrictType, bool verbose, bool skipCreateDrop)
     : InitialSyncer(configuration, restrictCollections, restrictType, verbose, skipCreateDrop),
       _hasFlushed(false) {
-  _vocbases.emplace(vocbase->name(), vocbase);
+  _vocbases.emplace(vocbase->name(), DatabaseGuard(vocbase));
 }
 
 /// @brief run method, performs a full synchronization
@@ -272,7 +272,6 @@ int DatabaseInitialSyncer::applyCollectionDump(transaction::Methods& trx,
 
     TRI_replication_operation_e type = REPLICATION_INVALID;
     std::string key;
-    std::string rev;
     VPackSlice doc;
 
     for (auto const& it : VPackObjectIterator(slice)) {
@@ -298,11 +297,13 @@ int DatabaseInitialSyncer::applyCollectionDump(transaction::Methods& trx,
         key = value.copyString();
       }
 
+      /* TODO: rev is currently not used
       value = doc.get(StaticStrings::RevString);
 
       if (value.isString()) {
         rev = value.copyString();
       }
+      */
     }
 
     // key must not be empty, but doc can be empty
@@ -314,15 +315,12 @@ int DatabaseInitialSyncer::applyCollectionDump(transaction::Methods& trx,
 
     ++markersProcessed;
 
-    VPackBuilder oldBuilder;
-    oldBuilder.openObject();
-    oldBuilder.add(StaticStrings::KeyString, VPackValue(key));
-    if (!rev.empty()) {
-      oldBuilder.add(StaticStrings::RevString, VPackValue(rev));
-    }
-    oldBuilder.close();
+    transaction::BuilderLeaser oldBuilder(&trx);
+    oldBuilder->openObject();
+    oldBuilder->add(StaticStrings::KeyString, VPackValue(key));
+    oldBuilder->close();
 
-    VPackSlice const old = oldBuilder.slice();
+    VPackSlice const old = oldBuilder->slice();
 
     int res = applyCollectionDumpMarker(trx, collectionName, type, old, doc,
                                         errorMsg);
@@ -529,7 +527,7 @@ int DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* col
       res = trx.begin();
 
       if (!res.ok()) {
-        errorMsg = std::string("unable to start transaction (") + std::string(__FILE__) + std::string(":") + std::to_string(__LINE__) + std::string("): ") + res.errorMessage();
+        errorMsg = std::string("unable to start transaction: ") + res.errorMessage();
         res.reset(res.errorNumber(), errorMsg);
         return res.errorNumber();
       }

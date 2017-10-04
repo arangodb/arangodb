@@ -440,7 +440,7 @@ static void SynchronizeReplication(
       if (errorMsg.empty()) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot sync from remote endpoint. last progress message was '" + syncer.progress() + "'");
       } else {
-        LOG_TOPIC(ERR, Logger::REPLICATION) << "Global sync: " << errorMsg;
+        LOG_TOPIC(ERR, Logger::REPLICATION) << errorMsg;
         TRI_V8_THROW_EXCEPTION_MESSAGE(
             res, "cannot sync from remote endpoint: " + errorMsg + ". last progress message was '" + syncer.progress() + "'");
       }
@@ -973,8 +973,8 @@ static void JS_StartGlobalApplierReplication(
 /// @brief shuts down the replication applier manually
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ShutdownApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args,
-                                       ApplierType applierType) {
+static void StopApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& args,
+                                  ApplierType applierType) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
@@ -984,20 +984,20 @@ static void ShutdownApplierReplication(v8::FunctionCallbackInfo<v8::Value> const
 
   ReplicationApplier* applier = getContinuousApplier(isolate, applierType);
 
-  applier->shutdown();
+  applier->stopAndJoin(true);
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_ShutdownApplierReplication(
+static void JS_StopApplierReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  ShutdownApplierReplication(args, APPLIER_DATABASE);
+  StopApplierReplication(args, APPLIER_DATABASE);
 }
 
-static void JS_ShutdownGlobalApplierReplication(
+static void JS_StopGlobalApplierReplication(
     v8::FunctionCallbackInfo<v8::Value> const& args) {
-  ShutdownApplierReplication(args, APPLIER_GLOBAL);
+  StopApplierReplication(args, APPLIER_GLOBAL);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1101,11 +1101,11 @@ void TRI_InitV8Replication(v8::Isolate* isolate,
                                TRI_V8_ASCII_STRING(isolate, "GLOBAL_REPLICATION_APPLIER_START"),
                                JS_StartGlobalApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_SHUTDOWN"),
-      JS_ShutdownApplierReplication, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_STOP"),
+      JS_StopApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(
-      isolate, TRI_V8_ASCII_STRING(isolate, "GLOBAL_REPLICATION_APPLIER_SHUTDOWN"),
-      JS_ShutdownGlobalApplierReplication, true);
+      isolate, TRI_V8_ASCII_STRING(isolate, "GLOBAL_REPLICATION_APPLIER_STOP"),
+      JS_StopGlobalApplierReplication, true);
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "REPLICATION_APPLIER_STATE"),
                                JS_StateApplierReplication, true);

@@ -75,8 +75,13 @@ DatabaseReplicationApplier::DatabaseReplicationApplier(ReplicationApplierConfigu
 
 DatabaseReplicationApplier::~DatabaseReplicationApplier() {
   try {
-    stop(true, false);
+    stop(true);
   } catch (...) {}
+}
+  
+/// @brief execute the check condition
+bool DatabaseReplicationApplier::applies() const {
+  return (_vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
 }
 
 /// @brief configure the replication applier
@@ -90,18 +95,8 @@ void DatabaseReplicationApplier::reconfigure(ReplicationApplierConfiguration con
     // no database
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no database configured");
   }
- 
+  
   ReplicationApplier::reconfigure(configuration); 
-}
-
-/// @brief remove the replication application state file
-void DatabaseReplicationApplier::removeState() {
-  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
-    // unsupported
-    return; 
-  }
-
-  ReplicationApplier::removeState();
 }
 
 /// @brief load the applier state from persistent storage
@@ -112,6 +107,8 @@ bool DatabaseReplicationApplier::loadState() {
     // unsupported
     return false;
   }
+
+  // TODO: move to ReplicationApplier
 
   std::string const filename = getStateFilename();
   LOG_TOPIC(TRACE, Logger::REPLICATION)
@@ -158,55 +155,15 @@ bool DatabaseReplicationApplier::loadState() {
   return true;
 }
   
-/// @brief store the applier state in persistent storage
-/// must currently be called while holding the write-lock
-void DatabaseReplicationApplier::persistState(bool doSync) {
-  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
-    // unsupported
-    return;
-  }
-  
-  ReplicationApplier::persistState(doSync);
-}
-
-/// @brief start the replication applier
-void DatabaseReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) {
-  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
-    // unsupported
-    return;
-  }
-
-  ReplicationApplier::start(initialTick, useTick, barrierId);
-}
-  
-/// @brief stop the replication applier
-void DatabaseReplicationApplier::stop(bool resetError, bool joinThread) {
-  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
-    // unsupported
-    return; 
-  }
-
-  ReplicationApplier::stop(resetError, joinThread);
-}
-
-/// @brief shut down the replication applier
-void DatabaseReplicationApplier::shutdown() {
-  if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
-    // unsupported
-    return;
-  }
-
-  ReplicationApplier::shutdown();
-}
-
 /// @brief stop the applier and "forget" everything
 void DatabaseReplicationApplier::forget() {
   if (_vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR) {
     // unsupported
     return;
   }
+  // TODO: move to ReplicationApplier
 
-  stop(true, true);
+  stopAndJoin(true);
 
   removeState();
 
@@ -232,7 +189,8 @@ DatabaseReplicationApplier* DatabaseReplicationApplier::create(TRI_vocbase_t* vo
 /// @brief load a persisted configuration for the applier
 ReplicationApplierConfiguration DatabaseReplicationApplier::loadConfiguration(TRI_vocbase_t* vocbase) {
   ReplicationApplierConfiguration configuration;
-  
+ 
+  // TODO: move to ReplicationApplier 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   int res = TRI_ERROR_INTERNAL;
   VPackBuilder builder = engine->getReplicationApplierConfiguration(vocbase, res);
@@ -406,7 +364,7 @@ ReplicationApplierConfiguration DatabaseReplicationApplier::loadConfiguration(TR
   } else {
     configuration._endpoint = value.copyString();
   }
-
+  
   return configuration;
 }
 
@@ -417,10 +375,14 @@ void DatabaseReplicationApplier::storeConfiguration(bool doSync) {
     return;
   }
 
+  // TODO: move to ReplicationApplier
+
   VPackBuilder builder;
   builder.openObject();
   _configuration.toVelocyPack(builder, true);
   builder.close();
+
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "storing applier configuration " << builder.slice().toJson();
 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   int res = engine->saveReplicationApplierConfiguration(_vocbase, builder.slice(), doSync);

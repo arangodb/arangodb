@@ -1,4 +1,4 @@
-/* global ArangoServerState, GLOBAL_REPLICATION_APPLIER_START, GLOBAL_REPLICATION_APPLIER_SHUTDOWN, GLOBAL_REPLICATION_APPLIER_STATE, GLOBAL_REPLICATION_APPLIER_FORGET, GLOBAL_REPLICATION_APPLIER_CONFIGURE, GLOBAL_REPLICATION_SYNCHRONIZE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN, REPLICATION_APPLIER_STATE, REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_CONFIGURE, REPLICATION_SYNCHRONIZE */
+/* global ArangoServerState, GLOBAL_REPLICATION_APPLIER_START, GLOBAL_REPLICATION_APPLIER_STOP, GLOBAL_REPLICATION_APPLIER_STATE, GLOBAL_REPLICATION_APPLIER_FORGET, GLOBAL_REPLICATION_APPLIER_CONFIGURE, GLOBAL_REPLICATION_SYNCHRONIZE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_STOP, REPLICATION_APPLIER_STATE, REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_CONFIGURE, REPLICATION_SYNCHRONIZE */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -67,7 +67,7 @@ applier.start = function (initialTick, barrierId) {
 };
 
 // / @brief shuts down the replication applier
-applier.shutdown = applier.stop = function () { return REPLICATION_APPLIER_SHUTDOWN(); };
+applier.stop = function () { return REPLICATION_APPLIER_STOP(); };
 
 // / @brief return the replication applier state
 applier.state = function () { return REPLICATION_APPLIER_STATE(); };
@@ -94,7 +94,7 @@ globalApplier.start = function (initialTick, barrierId) {
 };
 
 // / @brief shuts down the global replication applier
-globalApplier.shutdown = globalApplier.stop = function () { return GLOBAL_REPLICATION_APPLIER_SHUTDOWN(); };
+globalApplier.stop = function () { return GLOBAL_REPLICATION_APPLIER_STOP(); };
 
 // / @brief return the global replication applier state
 globalApplier.state = function () { return GLOBAL_REPLICATION_APPLIER_STATE(); };
@@ -132,7 +132,7 @@ function syncCollection (collection, config) {
 
 // / @brief sets up the replication (all-in-one function for initial
 // / synchronization and continuous replication)
-function setupReplication (config) {
+function setup (global, config) {
   config = config || { };
   if (!config.hasOwnProperty('autoStart')) {
     config.autoStart = true;
@@ -145,21 +145,30 @@ function setupReplication (config) {
   }
   config.keepBarrier = true;
 
+  var worker = global ? globalApplier : applier;
   try {
     // stop previous instance
-    applier.stop();
+    worker.stop();
   } catch (err) {}
   // remove existing configuration
-  applier.forget();
+  worker.forget();
 
   // run initial sync
-  var result = internal.synchronizeReplication(config);
+  var result = (global ? syncGlobal : sync)(config);
 
   // store applier configuration
-  applier.properties(config);
+  worker.properties(config);
 
-  applier.start(result.lastLogTick, result.barrierId);
-  return applier.state();
+  worker.start(result.lastLogTick, result.barrierId);
+  return worker.state();
+}
+
+function setupReplication (config) {
+  return setup(false, config);
+}
+
+function setupReplicationGlobal (config) {
+  return setup(true, config);
 }
 
 // / @brief returns the server's id
@@ -171,7 +180,8 @@ exports.logger = logger;
 exports.applier = applier;
 exports.globalApplier = globalApplier;
 exports.sync = sync;
-exports.syncCollection = syncCollection;
 exports.syncGlobal = syncGlobal;
+exports.syncCollection = syncCollection;
 exports.setupReplication = setupReplication;
+exports.setupReplicationGlobal = setupReplicationGlobal;
 exports.serverId = serverId;

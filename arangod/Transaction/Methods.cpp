@@ -834,7 +834,7 @@ OperationResult transaction::Methods::anyLocal(
   std::unique_ptr<OperationCursor> cursor =
       indexScan(collectionName, transaction::Methods::CursorType::ANY, &mmdr, false);
 
-  cursor->allDocuments([&resultBuilder](DocumentIdentifierToken const& token, VPackSlice slice) {
+  cursor->allDocuments([&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
   });
 
@@ -925,7 +925,7 @@ std::string transaction::Methods::collectionName(TRI_voc_cid_t cid) {
 /// @brief Iterate over all elements of the collection.
 void transaction::Methods::invokeOnAllElements(
     std::string const& collectionName,
-    std::function<bool(DocumentIdentifierToken const&)> callback) {
+    std::function<bool(LocalDocumentId const&)> callback) {
   TRI_ASSERT(_state != nullptr && _state->status() == transaction::Status::RUNNING);
   if (_state == nullptr || _state->status() != transaction::Status::RUNNING) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_TRANSACTION_INTERNAL);
@@ -2237,7 +2237,7 @@ OperationResult transaction::Methods::allLocal(
     return OperationResult(cursor->code);
   }
 
-  auto cb = [&resultBuilder](DocumentIdentifierToken const& token, VPackSlice slice) {
+  auto cb = [&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
   };
   cursor->allDocuments(cb);

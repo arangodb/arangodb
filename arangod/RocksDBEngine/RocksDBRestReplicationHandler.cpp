@@ -53,10 +53,6 @@ RocksDBRestReplicationHandler::RocksDBRestReplicationHandler(
     : RestReplicationHandler(request, response),
       _manager(globalRocksEngine()->replicationManager()) {}
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_delete_batch_replication
-////////////////////////////////////////////////////////////////////////////////
-
 void RocksDBRestReplicationHandler::handleCommandBatch() {
   // extract the request type
   auto const type = _request->requestType();
@@ -200,10 +196,6 @@ void RocksDBRestReplicationHandler::handleCommandBarrier() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_replication_logger_returns
-////////////////////////////////////////////////////////////////////////////////
-
 void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   bool useVst = false;
   if (_request->transportType() == Endpoint::TransportType::VST) {
@@ -339,13 +331,10 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief run the command that determines which transactions were open at
 /// a given tick value
 /// this is an internal method use by ArangoDB's replication that should not
 /// be called by client drivers directly
-////////////////////////////////////////////////////////////////////////////////
-
 void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
   // rocksdb only includes finished transactions in the WAL.
   _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK, "0");
@@ -354,10 +343,6 @@ void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
   _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT, "true");
   generateResult(rest::ResponseCode::OK, VPackSlice::emptyArraySlice());
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_put_api_replication_inventory
-////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandInventory() {
   RocksDBReplicationContext* ctx = nullptr;
@@ -434,10 +419,7 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief produce list of keys for a specific collection
-////////////////////////////////////////////////////////////////////////////////
-
 void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   std::string const& collection = _request->value("collection");
   if (collection.empty()) {
@@ -486,10 +468,7 @@ void RocksDBRestReplicationHandler::handleCommandCreateKeys() {
   generateResult(rest::ResponseCode::OK, result.slice());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all key ranges
-////////////////////////////////////////////////////////////////////////////////
-
 void RocksDBRestReplicationHandler::handleCommandGetKeys() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
@@ -541,10 +520,7 @@ void RocksDBRestReplicationHandler::handleCommandGetKeys() {
   generateResult(rest::ResponseCode::OK, b.slice());
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns date for a key range
-////////////////////////////////////////////////////////////////////////////////
-
 void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   std::vector<std::string> const& suffixes = _request->suffixes();
 
@@ -655,10 +631,6 @@ void RocksDBRestReplicationHandler::handleCommandRemoveKeys() {
 
   generateResult(rest::ResponseCode::ACCEPTED, resultBuilder.slice());
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_get_api_replication_dump
-////////////////////////////////////////////////////////////////////////////////
 
 void RocksDBRestReplicationHandler::handleCommandDump() {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "enter handleCommandDump";

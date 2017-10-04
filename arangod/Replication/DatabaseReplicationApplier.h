@@ -44,33 +44,20 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
 
   ~DatabaseReplicationApplier();
 
+  /// @brief execute the check condition
+  bool applies() const override;
+
   /// @brief stop the applier and "forget" everything
   void forget() override;
 
-  /// @brief shuts down the replication applier
-  void shutdown() override;
-  
-  /// @brief start the replication applier
-  void start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId) override;
-  
-  /// @brief stop the replication applier
-  void stop(bool resetError, bool joinThread) override;
-  
   /// @brief configure the replication applier
   void reconfigure(ReplicationApplierConfiguration const& configuration) override;
 
-  /// @brief remove the replication application state file
-  void removeState() override;
-  
   /// @brief load the applier state from persistent storage
   /// must currently be called while holding the write-lock
   /// returns whether a previous state was found
   bool loadState() override;
   
-  /// @brief store the applier state in persistent storage
-  /// must currently be called while holding the write-lock
-  void persistState(bool doSync) override;
- 
   /// @brief save the replication application configuration to a file
   void storeConfiguration(bool doSync) override;
 

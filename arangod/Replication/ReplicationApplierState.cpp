@@ -34,7 +34,7 @@ ReplicationApplierState::ReplicationApplierState()
       _lastAppliedContinuousTick(0),
       _lastAvailableContinuousTick(0),
       _safeResumeTick(0),
-      _active(false),
+      _state(ActivityState::INACTIVE),
       _preventStart(false),
       _stopInitialSynchronization(false),
       _progressMsg(),
@@ -52,7 +52,7 @@ ReplicationApplierState::~ReplicationApplierState() {}
 ReplicationApplierState& ReplicationApplierState::operator=(ReplicationApplierState const& other) {
   reset();
 
-  _active = other._active;
+  _state = other._state;
   _lastAppliedContinuousTick = other._lastAppliedContinuousTick;
   _lastProcessedContinuousTick = other._lastProcessedContinuousTick;
   _lastAvailableContinuousTick = other._lastAvailableContinuousTick;
@@ -79,7 +79,7 @@ void ReplicationApplierState::reset() {
   _lastAppliedContinuousTick = 0;
   _lastAvailableContinuousTick = 0;
   _safeResumeTick = 0;
-  _active = false;
+  _state = ActivityState::INACTIVE;
   _preventStart = false;
   _stopInitialSynchronization = false;
   _progressMsg.clear();
@@ -98,7 +98,7 @@ void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) cons
   result.openObject();
 
   if (full) {
-    result.add("running", VPackValue(_active));
+    result.add("running", VPackValue(isRunning()));
 
     // lastAppliedContinuousTick
     if (_lastAppliedContinuousTick > 0) {

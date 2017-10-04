@@ -42,10 +42,6 @@ class MMFilesRestReplicationHandler : public RestReplicationHandler {
     return "MMFilesRestReplicationHandler";
   }
 
- public:
-  /// @brief filter a collection based on collection attributes
-  static bool filterCollection(arangodb::LogicalCollection*, void*);
-
  private:
   /// @brief insert the applier action into an action list
   ///        (helper in loggerFollow)

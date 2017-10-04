@@ -40,6 +40,7 @@ using namespace arangodb::options;
 ScriptFeature::ScriptFeature(application_features::ApplicationServer* server, int* result)
     : ApplicationFeature(server, "Script"),
       _result(result) {
+  startsAfter("Database");
   startsAfter("Nonce");
   startsAfter("Server");
   startsAfter("GeneralServer");
@@ -69,7 +70,7 @@ int ScriptFeature::runScript(std::vector<std::string> const& scripts) {
 
   auto database = ApplicationServer::getFeature<DatabaseFeature>("Database");
   V8Context* context =
-      V8DealerFeature::DEALER->enterContext(nullptr, database->systemDatabase(), true);
+      V8DealerFeature::DEALER->enterContext(database->systemDatabase(), true);
 
   if (context == nullptr) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot acquire V8 context";

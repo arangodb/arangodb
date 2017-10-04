@@ -704,7 +704,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
 void TRI_vocbase_t::shutdown() {
   // stop replication
   if (_replicationApplier != nullptr) {
-    _replicationApplier->stop(false, true);
+    _replicationApplier->stopAndJoin(false);
   }
 
   // mark all cursors as deleted so underlying collections can be freed soon

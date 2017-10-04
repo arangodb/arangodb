@@ -36,6 +36,12 @@ namespace arangodb {
 
 /// @brief state information about replication application
 struct ReplicationApplierState {
+  enum class ActivityState {
+    INACTIVE,
+    RUNNING,
+    SHUTTING_DOWN
+  };
+
   ReplicationApplierState();
   ~ReplicationApplierState();
   
@@ -48,13 +54,21 @@ struct ReplicationApplierState {
   TRI_voc_tick_t _lastAppliedContinuousTick;
   TRI_voc_tick_t _lastAvailableContinuousTick;
   TRI_voc_tick_t _safeResumeTick;
-  bool _active;
+  ActivityState _state;
   bool _preventStart;
   bool _stopInitialSynchronization;
   
   std::string _progressMsg;
   char _progressTime[24];
   TRI_server_id_t _serverId;
+    
+  bool isRunning() const {
+    return (_state == ActivityState::RUNNING);
+  }
+
+  bool isShuttingDown() const {
+    return (_state == ActivityState::SHUTTING_DOWN);
+  }
 
   void setError(int code, std::string const& msg) {
     _lastError.set(code, msg);
