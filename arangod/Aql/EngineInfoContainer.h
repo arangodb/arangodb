@@ -191,7 +191,12 @@ class EngineInfoContainerDBServer {
                     std::unordered_map<std::string, std::string>& queryIds,
                     std::unordered_set<ShardID>* lockedShards) const;
 
+  // Insert a GraphNode that eeds to generate TraverserEngines on
+  // the DBServers. The GraphNode itself will retain on the coordinator.
+  void addGraphNode(GraphNode* node);
+
  private:
+
   void handleCollection(Collection const* col, bool isWrite);
 
  private:
@@ -207,6 +212,9 @@ class EngineInfoContainerDBServer {
 
   // @brief List of all satellite collections
   std::unordered_set<Collection const*> _satellites;
+
+  // @brief List of all graphNodes that need to create TraverserEngines on DBServers
+  std::vector<GraphNode*> _graphNodes;
 };
 
 }  // aql

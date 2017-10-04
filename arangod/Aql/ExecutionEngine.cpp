@@ -393,11 +393,22 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     if (_isCoordinator) {
       _coordinatorParts.addNode(en);
 
-      // TODO TraverserEngines
+      switch (nodeType) {
+        case ExecutionNode::REMOTE:
+          // Flip over to DBServer
+          _isCoordinator = false;
+          _dbserverParts.openSnippet(en->id());
+          break;
+        case ExecutionNode::TRAVERSAL:
+        case ExecutionNode::SHORTEST_PATH:
+          _dbServerParts.addGraphNode(static_cast<GraphNode*>(en));
+          break;
+        default:
+          // Do nothing
+          break;
+      }
 
       if (nodeType == ExecutionNode::REMOTE) {
-        _isCoordinator = false;
-        _dbserverParts.openSnippet(en->id());
       }
     } else {
       _dbserverParts.addNode(en);

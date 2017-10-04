@@ -621,7 +621,6 @@ void EngineInfoContainerDBServer::buildEngines(
     std::shared_ptr<VPackBuilder> builder = res->result->getBodyVelocyPack();
     VPackSlice response = builder->slice();
 
-    LOG_TOPIC(DEBUG, Logger::AQL) << "Received: " << response.toJson();
     if (!response.isObject() || !response.get("result").isObject()) {
       // TODO could not register all engines. Need to cleanup.
       LOG_TOPIC(ERR, Logger::AQL) << "Recieved error information from " << it.first << " : " << response.toJson();
@@ -644,4 +643,9 @@ void EngineInfoContainerDBServer::buildEngines(
       queryIds.emplace(resEntry.key.copyString(), resEntry.value.copyString());
     }
   }
+}
+
+void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
+  // TODO Parse Collections
+  _graphNodes.emplace(node);
 }
