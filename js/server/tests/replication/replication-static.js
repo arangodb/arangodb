@@ -2085,7 +2085,7 @@ function ReplicationOtherDBSuite() {
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
-// jsunity.run(ReplicationSuite);
+jsunity.run(ReplicationSuite);
 jsunity.run(ReplicationOtherDBSuite);
 
 return jsunity.done();
