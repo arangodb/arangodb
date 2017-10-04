@@ -1,5 +1,5 @@
-devel
------
+v3.3.milestone0 (2017-10-04)
+----------------------------
 
 * usernames must not start with `:role:`, added new options:
     --server.authentication-timeout
