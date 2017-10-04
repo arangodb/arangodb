@@ -29,6 +29,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/fasthash.h"
 #include "MMFiles/MMFilesDocumentPosition.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 struct MMFilesMarker;
@@ -36,22 +37,22 @@ struct MMFilesMarker;
 namespace arangodb {
 
 struct MMFilesRevisionsCacheHelper {
-  static inline uint64_t HashKey(void*, TRI_voc_rid_t const* key) {
+  static inline uint64_t HashKey(void*, LocalDocumentId::BaseType const* key) {
     return fasthash64_uint64(*key, 0xdeadbeef);
   }
 
   static inline uint64_t HashElement(void*, MMFilesDocumentPosition const& element, bool) {
-    return fasthash64_uint64(element.revisionId(), 0xdeadbeef);
+    return fasthash64_uint64(element.localDocumentIdValue(), 0xdeadbeef);
   }
 
-  inline bool IsEqualKeyElement(void*, TRI_voc_rid_t const* key,
+  inline bool IsEqualKeyElement(void*, LocalDocumentId::BaseType const* key,
                                 MMFilesDocumentPosition const& element) const {
-    return *key == element.revisionId();
+    return *key == element.localDocumentIdValue();
   }
 
   inline bool IsEqualElementElement(void*, MMFilesDocumentPosition const& left,
                                     MMFilesDocumentPosition const& right) const {
-    return left.revisionId() == right.revisionId();
+    return left.localDocumentIdValue() == right.localDocumentIdValue();
   }
 
   inline bool IsEqualElementElementByKey(void* userData, MMFilesDocumentPosition const& left,
@@ -71,19 +72,19 @@ class MMFilesRevisionsCache {
   size_t capacity();
   size_t memoryUsage();
   void clear();
-  MMFilesDocumentPosition lookup(TRI_voc_rid_t revisionId) const;
-  void batchLookup(std::vector<std::pair<TRI_voc_rid_t, uint8_t const*>>& revisions) const;
-  MMFilesDocumentPosition insert(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock);
+  MMFilesDocumentPosition lookup(LocalDocumentId const& documentId) const;
+  MMFilesDocumentPosition insert(LocalDocumentId const& documentId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal, bool shouldLock);
+  void batchLookup(std::vector<std::pair<LocalDocumentId, uint8_t const*>>& documentIds) const;
   void insert(MMFilesDocumentPosition const& position, bool shouldLock);
-  void update(TRI_voc_rid_t revisionId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal);
-  bool updateConditional(TRI_voc_rid_t revisionId, MMFilesMarker const* oldPosition, MMFilesMarker const* newPosition, TRI_voc_fid_t newFid, bool isInWal);
-  void remove(TRI_voc_rid_t revisionId);
-  MMFilesDocumentPosition fetchAndRemove(TRI_voc_rid_t revisionId);
+  void update(LocalDocumentId const& documentId, uint8_t const* dataptr, TRI_voc_fid_t fid, bool isInWal);
+  bool updateConditional(LocalDocumentId const& documentId, MMFilesMarker const* oldPosition, MMFilesMarker const* newPosition, TRI_voc_fid_t newFid, bool isInWal);
+  void remove(LocalDocumentId const& documentId);
+  MMFilesDocumentPosition fetchAndRemove(LocalDocumentId const& documentId);
 
  private:
-  mutable basics::ReadWriteLock _lock; 
- 
-  basics::AssocUnique<TRI_voc_rid_t, MMFilesDocumentPosition, MMFilesRevisionsCacheHelper> _positions;
+  mutable arangodb::basics::ReadWriteLock _lock; 
+  
+  arangodb::basics::AssocUnique<LocalDocumentId::BaseType, MMFilesDocumentPosition, MMFilesRevisionsCacheHelper> _positions;
 };
 
 } // namespace arangodb

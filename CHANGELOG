@@ -7,6 +7,8 @@ devel
     --ldap.roles-transformation
     --ldap.roles-search
     --ldap.superuser-role
+    --ldap.roles-include
+    --ldap.roles-exclude
 
 * performance improvements for full collection scans and a few other operations
   in MMFiles engine
@@ -23,6 +25,8 @@ devel
 
 v3.2.4 (2017-XX-XX)
 -------------------
+
+* UI: no default index selected during index creation
 
 * UI: added replicationFactor option during SmartGraph creation
 

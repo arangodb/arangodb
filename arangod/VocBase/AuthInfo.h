@@ -44,7 +44,7 @@ namespace arangodb {
 
 class AuthResult {
  public:
-  AuthResult() : _authorized(false) {}
+  AuthResult() : _authorized(false), _expiry(0) {}
 
   explicit AuthResult(std::string const& username)
       : _username(username), _authorized(false), _expiry(0) {}

@@ -31,7 +31,6 @@
 #include "Aql/ExecutionNode.h"
 #include "Aql/IndexNode.h"
 #include "Indexes/IndexIterator.h"
-#include "StorageEngine/DocumentIdentifierToken.h"
 
 namespace arangodb {
 class ManagedDocumentResult;

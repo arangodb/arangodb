@@ -37,7 +37,7 @@ class MMFilesWalLogfile;
 
 struct MMFilesCollectorOperation {
   MMFilesCollectorOperation(char const* datafilePosition,
-                     TRI_voc_size_t datafileMarkerSize, char const* walPosition,
+                     uint32_t datafileMarkerSize, char const* walPosition,
                      TRI_voc_fid_t datafileId)
       : datafilePosition(datafilePosition),
         datafileMarkerSize(datafileMarkerSize),
@@ -50,7 +50,7 @@ struct MMFilesCollectorOperation {
   }
 
   char const* datafilePosition;
-  TRI_voc_size_t datafileMarkerSize;
+  uint32_t datafileMarkerSize;
   char const* walPosition;
   TRI_voc_fid_t datafileId;
 };
