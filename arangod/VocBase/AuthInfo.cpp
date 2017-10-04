@@ -449,9 +449,11 @@ Result AuthInfo::storeUser(bool replace, std::string const& user,
     return TRI_ERROR_USER_DUPLICATE;
   }
 
-  auto const& oldEntry = it->second;
+  std::string oldKey; // will only be populated during replace
 
   if (replace) {
+    auto const& oldEntry = it->second;
+    oldKey = oldEntry.key();
     if (oldEntry.source() == AuthSource::LDAP) {
       return TRI_ERROR_USER_EXTERNAL;
     }
@@ -462,8 +464,8 @@ Result AuthInfo::storeUser(bool replace, std::string const& user,
   entry.setActive(active);
 
   if (replace) {
-    TRI_ASSERT(!(oldEntry.key().empty()));
-    entry._key = oldEntry.key();
+    TRI_ASSERT(!oldKey.empty());
+    entry._key = std::move(oldKey);
   }
 
   Result r = storeUserInternal(entry, replace);

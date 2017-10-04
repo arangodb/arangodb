@@ -440,7 +440,7 @@ static void SynchronizeReplication(
       if (errorMsg.empty()) {
         TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot sync from remote endpoint. last progress message was '" + syncer.progress() + "'");
       } else {
-        LOG_TOPIC(ERR, Logger::REPLICATION) << "Global sync: " << errorMsg;
+        LOG_TOPIC(ERR, Logger::REPLICATION) << errorMsg;
         TRI_V8_THROW_EXCEPTION_MESSAGE(
             res, "cannot sync from remote endpoint: " + errorMsg + ". last progress message was '" + syncer.progress() + "'");
       }
