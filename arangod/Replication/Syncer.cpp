@@ -562,8 +562,8 @@ int Syncer::createCollection(TRI_vocbase_t *vocbase, VPackSlice const& slice,
   if (slice.hasKey("globallyUniqueId")) {
     // if we received a globallyUniqueId from the remote, then we will always use this id
     // so we can discard the "cid" and "id" values for the collection
-    s.add("id", VPackValue("0"));
-    s.add("cid", VPackValue("0"));
+    // s.add("id", VPackValue("0"));
+    // s.add("cid", VPackValue("0"));
   }
   s.close();
 
