@@ -49,7 +49,6 @@ ReplicationFeature::ReplicationFeature(ApplicationServer* server)
 }
 
 void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
-  
   options->addSection("replication", "Configure the replication");
   options->addHiddenOption("--replication.auto-start",
                            "switch to enable or disable the automatic start "
@@ -83,6 +82,12 @@ void ReplicationFeature::prepare() {
 void ReplicationFeature::start() { 
   // TODO: pass proper configuration into applier
   _globalReplicationApplier.reset(new GlobalReplicationApplier(ReplicationApplierConfiguration()));
+  
+  if (_globalReplicationApplier->autoStart() &&
+      _globalReplicationApplier->hasState() &&
+      _replicationApplierAutoStart) {
+    _globalReplicationApplier->start(0, false, 0);
+  }
 }
 
 void ReplicationFeature::beginShutdown() {
@@ -95,7 +100,15 @@ void ReplicationFeature::beginShutdown() {
   }
 }
 
-void ReplicationFeature::stop() {}
+void ReplicationFeature::stop() {
+  try {
+    if (_globalReplicationApplier != nullptr) {
+      _globalReplicationApplier->stop(true);
+    }
+  } catch (...) {
+    // ignore any error
+  }
+}
 
 void ReplicationFeature::unprepare() {
   _globalReplicationApplier.reset();
@@ -120,15 +133,6 @@ void ReplicationFeature::startApplier(TRI_vocbase_t* vocbase) {
         LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to start replication applier for database '"
                   << vocbase->name() << "'";
       }
-    }
-  }
-#warning TODO fix start order
-  // database feature starts earlier _globalReplicationApplier
-  // is not create yet
-  if (_globalReplicationApplier != nullptr) {
-    if (_globalReplicationApplier->autoStart() &&
-        _replicationApplierAutoStart) {
-      _globalReplicationApplier->autoStart();
     }
   }
 }

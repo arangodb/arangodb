@@ -140,6 +140,12 @@ bool ReplicationApplier::autoStart() const {
   return _configuration._autoStart;
 }
 
+/// @brief whether or not the applier has a state already
+bool ReplicationApplier::hasState() const {
+  READ_LOCKER(readLocker, _statusLock);
+  return _state.hasProcessedSomething();
+}
+
 /// @brief check whether the initial synchronization should be stopped
 bool ReplicationApplier::stopInitialSynchronization() const {
   READ_LOCKER(readLocker, _statusLock);
