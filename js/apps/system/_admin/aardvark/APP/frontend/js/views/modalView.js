@@ -75,6 +75,7 @@
       NOTIFICATION: 'notification',
       DELETE: 'danger',
       NEUTRAL: 'neutral',
+      DISABLED: 'disabled',
       CLOSE: 'close'
     },
     tables: {
@@ -168,7 +169,7 @@
     },
 
     createDisabledButton: function (title) {
-      var disabledButton = createButtonStub(this.buttons.NEUTRAL, title);
+      var disabledButton = createButtonStub(this.buttons.DISABLED, title);
       disabledButton.disabled = true;
       return disabledButton;
     },
@@ -294,7 +295,12 @@
         }
       }
       _.each(buttons, function (b, i) {
-        if (b.disabled || !b.callback) {
+        if (b.disabled || b.type === 'disabled' || !b.callback) {
+          if (divID) {
+            $('#modalButton' + i).attr('disabled', true);
+          } else {
+            $('#' + divID + ' ' + '#modalButton' + i).attr('disabled', true);
+          }
           return;
         }
         if (b.type === self.buttons.DELETE && !noConfirm) {

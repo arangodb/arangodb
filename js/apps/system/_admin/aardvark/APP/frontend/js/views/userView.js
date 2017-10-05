@@ -104,12 +104,21 @@
         )
       );
 
-      buttons.push(
-        window.modalView.createNotificationButton(
-          'Change Password',
-          this.editUserPassword.bind(this)
-        )
-      );
+      if (this.username.substring(0, 6) === ':role:') {
+        buttons.push(
+          window.modalView.createDisabledButton(
+            'Change Password',
+            this.editUserPassword.bind(this)
+          )
+        );
+      } else {
+        buttons.push(
+          window.modalView.createNotificationButton(
+            'Change Password',
+            this.editUserPassword.bind(this)
+          )
+        );
+      }
       buttons.push(
         window.modalView.createSuccessButton(
           'Save',
@@ -161,23 +170,38 @@
           id: 'editStatus'
         }
       ];
-      buttons = [
+      buttons = [];
+      buttons.push(
         {
           title: 'Delete',
           type: window.modalView.buttons.DELETE,
           callback: this.submitDeleteUser.bind(this, username)
-        },
-        {
-          title: 'Change Password',
-          type: window.modalView.buttons.NOTIFICATION,
-          callback: this.createEditUserPasswordModal.bind(this, username)
-        },
+        }
+      );
+      if (this.username.substring(0, 6) === ':role:') {
+        buttons.push(
+          {
+            title: 'Change Password',
+            type: window.modalView.buttons.DISABLED,
+            callback: this.createEditUserPasswordModal.bind(this, username)
+          }
+        );
+      } else {
+        buttons.push(
+          {
+            title: 'Change Password',
+            type: window.modalView.buttons.NOTIFICATION,
+            callback: this.createEditUserPasswordModal.bind(this, username)
+          }
+        );
+      }
+      buttons.push(
         {
           title: 'Save',
           type: window.modalView.buttons.SUCCESS,
           callback: this.submitEditUser.bind(this, username)
         }
-      ];
+      );
 
       window.modalView.show(
         'modalTable.ejs',

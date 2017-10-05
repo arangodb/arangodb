@@ -1,6 +1,8 @@
 devel
 -----
 
+* UI: added user roles
+
 * usernames must not start with `:role:`, added new options:
     --server.authentication-timeout
     --ldap.roles-attribute-name
