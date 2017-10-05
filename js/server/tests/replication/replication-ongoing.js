@@ -676,6 +676,7 @@ function ReplicationOtherDBSuite() {
       db._dropDatabase(dbName);
     } catch (e) {
     }
+    db._createDatabase(dbName);
 
     connectToMaster();
 
@@ -713,6 +714,131 @@ function ReplicationOtherDBSuite() {
     }
   };
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief test dropping a database on slave while replication is ongoing
+  ////////////////////////////////////////////////////////////////////////////////
+
+  suite.testDropDatabaseOnSlaveDuringReplication = function() {
+    // Setup, documents to be stored on the master.
+    // Will be stored twice.
+    let docs = [];
+    for (let i = 0; i < 50; ++i) {
+      docs.push({value: i});
+    }
+
+
+    // Section - Master
+    connectToMaster();
+
+    // Create the collection
+    db._flushCache();
+    db._create(cn);
+
+    // Section - Follower
+    connectToSlave();
+
+    // Setup Replication
+    replication.applier.stop();
+    replication.applier.forget();
+
+    while (replication.applier.state().state.running) {
+      internal.wait(0.1, false);
+    }
+
+    let config = {
+      endpoint: masterEndpoint,
+      username: "root",
+      password: "",
+      verbose: true,
+      includeSystem: false,
+      restrictType: "",
+      restrictCollections: [],
+      keepBarrier: false
+    };
+
+    replication.setupReplication(config);
+
+    // Section - Master
+    connectToMaster();
+    // Insert some documents
+    db._collection(cn).save(docs);
+    // Flush wal to trigger replication
+    internal.wal.flush(true, true);
+    internal.wait(6, false);
+    // Use counter as indicator
+    let count = collectionCount(cn);
+    assertEqual(50, count);
+
+    // Section - Slave
+    connectToSlave();
+
+    // Give it some time to sync
+    internal.wait(6, false);
+    // Now we should have the same amount of documents
+    assertEqual(count, collectionCount(cn));
+
+    // Now do the evil stuff: drop the database that is replicating right now.
+    db._useDatabase("_system");
+
+    // This shall now fail.
+    db._dropDatabase(dbName);
+
+    // Section - Master
+    connectToMaster();
+
+    // Just write some more
+    db._useDatabase(dbName);
+    db._collection(cn).save(docs);
+    internal.wal.flush(true, true);
+    internal.wait(6, false);
+
+    db._useDatabase("_system");
+
+    // Section - Slave
+    connectToSlave();
+
+    // The DB should be gone and the server should be running.
+    let dbs = db._databases();
+    assertEqual(-1, dbs.indexOf(dbName));
+
+    // We can setup everything here without problems.
+    try {
+      db._createDatabase(dbName);
+    } catch (e) {
+      assertFalse(true, "Could not recreate database on slave: " + e);
+    }
+
+    db._useDatabase(dbName);
+
+    try {
+      db._createCollection(cn);
+    } catch (e) {
+      assertFalse(true, "Could not recreate collection on slave: " + e);
+    }
+
+    // Collection should be empty
+    assertEqual(0, collectionCount(cn));
+
+    // now test if the replication is actually 
+    // switched off
+ 
+    // Section - Master
+    connectToMaster();
+    // Insert some documents
+    db._collection(cn).save(docs);
+    // Flush wal to trigger replication
+    internal.wal.flush(true, true);
+
+    // Section - Slave
+    connectToSlave();
+
+    // Give it some time to sync (eventually, should not do anything...)
+    internal.wait(6, false);
+
+    // Now should still have empty collection
+    assertEqual(0, collectionCount(cn));
+  };
+
   return suite;
 }
 
@@ -722,6 +848,5 @@ function ReplicationOtherDBSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ReplicationSuite);
-jsunity.run(ReplicationOtherDBSuite);
 
 return jsunity.done();

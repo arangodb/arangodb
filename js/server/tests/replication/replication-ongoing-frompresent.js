@@ -442,6 +442,7 @@ function ReplicationOtherDBSuite() {
     } catch (e) {
     }
     db._createDatabase(dbName);
+    db._useDatabase(dbName);
 
   };
 
