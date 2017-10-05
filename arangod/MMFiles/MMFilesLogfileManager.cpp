@@ -1096,6 +1096,22 @@ void MMFilesLogfileManager::collectLogfileBarriers() {
   }
 }
 
+// drop barriers for a specific database
+void MMFilesLogfileManager::dropLogfileBarriers(TRI_voc_tick_t databaseId) {
+  WRITE_LOCKER(barrierLock, _barriersLock);
+
+  for (auto it = _barriers.begin(); it != _barriers.end(); /* no hoisting */) {
+    auto logfileBarrier = (*it).second;
+
+    if (logfileBarrier->databaseId == databaseId) {
+      it = _barriers.erase(it);
+      delete logfileBarrier;
+    } else {
+      ++it;
+    }
+  }
+}
+
 // returns a list of all logfile barrier ids
 std::vector<TRI_voc_tick_t> MMFilesLogfileManager::getLogfileBarriers() {
   std::vector<TRI_voc_tick_t> result;
@@ -1115,6 +1131,7 @@ std::vector<TRI_voc_tick_t> MMFilesLogfileManager::getLogfileBarriers() {
 // remove a specific logfile barrier
 bool MMFilesLogfileManager::removeLogfileBarrier(TRI_voc_tick_t id) {
   LogfileBarrier* logfileBarrier = nullptr;
+  
   {
     WRITE_LOCKER(barrierLock, _barriersLock);
 
@@ -1138,12 +1155,13 @@ bool MMFilesLogfileManager::removeLogfileBarrier(TRI_voc_tick_t id) {
 }
 
 // adds a barrier that prevents removal of logfiles
-TRI_voc_tick_t MMFilesLogfileManager::addLogfileBarrier(TRI_voc_tick_t minTick,
-                                                 double ttl) {
+TRI_voc_tick_t MMFilesLogfileManager::addLogfileBarrier(TRI_voc_tick_t databaseId,
+                                                        TRI_voc_tick_t minTick,
+                                                        double ttl) {
   TRI_voc_tick_t id = TRI_NewTickServer();
   double expires = TRI_microtime() + ttl;
-
-  auto logfileBarrier = std::make_unique<LogfileBarrier>(id, expires, minTick);
+  
+  auto logfileBarrier = std::make_unique<LogfileBarrier>(id, databaseId, expires, minTick);
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "adding WAL logfile barrier "
                                         << logfileBarrier->id
                                         << ", minTick: " << minTick;
@@ -1160,7 +1178,7 @@ TRI_voc_tick_t MMFilesLogfileManager::addLogfileBarrier(TRI_voc_tick_t minTick,
 
 // extend the lifetime of a logfile barrier
 bool MMFilesLogfileManager::extendLogfileBarrier(TRI_voc_tick_t id, double ttl,
-                                          TRI_voc_tick_t tick) {
+                                                 TRI_voc_tick_t tick) {
   WRITE_LOCKER(barrierLock, _barriersLock);
 
   auto it = _barriers.find(id);
@@ -1175,11 +1193,11 @@ bool MMFilesLogfileManager::extendLogfileBarrier(TRI_voc_tick_t id, double ttl,
   if (tick > 0 && tick > logfileBarrier->minTick) {
     // patch tick
     logfileBarrier->minTick = tick;
+  
+    LOG_TOPIC(TRACE, Logger::REPLICATION)
+        << "extending WAL logfile barrier " << logfileBarrier->id
+        << ", minTick: " << logfileBarrier->minTick;
   }
-
-  LOG_TOPIC(TRACE, Logger::REPLICATION)
-      << "extending WAL logfile barrier " << logfileBarrier->id
-      << ", minTick: " << logfileBarrier->minTick;
 
   return true;
 }
@@ -1196,10 +1214,14 @@ TRI_voc_tick_t MMFilesLogfileManager::getMinBarrierTick() {
         << "server has WAL logfile barrier " << logfileBarrier->id
         << ", minTick: " << logfileBarrier->minTick;
 
-    if (value == 0 || value < logfileBarrier->minTick) {
+    if (value == 0) {
       value = logfileBarrier->minTick;
+    } else {
+      value = (std::min)(value, logfileBarrier->minTick);
     }
   }
+  
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "min barrier tick is " << value;
 
   return value;
 }

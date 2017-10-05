@@ -67,6 +67,7 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t* vocbase,
     std::unordered_map<std::string, bool> const& restrictCollections,
     Syncer::RestrictType restrictType, bool skipCreateDrop)
     : InitialSyncer(configuration, restrictCollections, restrictType, skipCreateDrop),
+      _vocbase(vocbase),
       _hasFlushed(false) {
   _vocbases.emplace(vocbase->name(), DatabaseGuard(vocbase));
 }
@@ -156,7 +157,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     return Result(TRI_ERROR_NO_ERROR, "an unknown exception occurred");
   }
 }
-
+  
 /// @brief check whether the initial synchronization should be aborted
 bool DatabaseInitialSyncer::checkAborted() {
   if (application_features::ApplicationServer::isStopping() ||

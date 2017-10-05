@@ -63,6 +63,11 @@ class ApplyThread : public Thread {
       LOG_TOPIC(WARN, Logger::REPLICATION) << "caught unknown exception in ApplyThread for " << _applier->databaseName();
     }
 
+    try {
+      _syncer->sendRemoveBarrier();
+    } catch (...) {
+    }
+
     _applier->threadStopped();
   }
 

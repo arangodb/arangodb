@@ -62,7 +62,6 @@ Result GlobalInitialSyncer::run(bool incremental) {
   }
   
   setProgress("fetching master state");
-  
   std::string errorMsg;
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: getting master state";
   int res = getMasterState(errorMsg);

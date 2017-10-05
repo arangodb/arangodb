@@ -198,7 +198,7 @@ void MMFilesRestReplicationHandler::handleCommandBarrier() {
     }
 
     TRI_voc_tick_t id =
-        MMFilesLogfileManager::instance()->addLogfileBarrier(minTick, ttl);
+        MMFilesLogfileManager::instance()->addLogfileBarrier(_vocbase->id(), minTick, ttl);
 
     VPackBuilder b;
     b.add(VPackValue(VPackValueType::Object));
