@@ -715,7 +715,7 @@ if test -n "${DOWNLOAD_SYNCER_USER}"; then
         fi
         if ! test -f "${BUILD_DIR}/${FN}-${SYNCER_REV}"; then
             rm -f "${FN}"
-            curl -LJO# -H 'Accept: application/octet-stream' "${SYNCER_URL}?access_token=${OAUTH_TOKEN}"
+            curl -O -H 'Accept: application/octet-stream' "${SYNCER_URL}?access_token=${OAUTH_TOKEN}"
             mv "${FN}" "${BUILD_DIR}/${TN}"
             ${MD5} < "${BUILD_DIR}/${TN}"  | ${SED} "s; .*;;" > "${BUILD_DIR}/${FN}-${SYNCER_REV}"
             OLD_MD5=$(cat "${BUILD_DIR}/${FN}-${SYNCER_REV}")
