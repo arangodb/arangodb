@@ -179,9 +179,9 @@ private:
                            std::string const&, TRI_voc_tick_t, std::string&);
 
   /// @brief incrementally fetch data from a collection
-  int handleCollectionSync(arangodb::LogicalCollection*, std::string const&,
-                           std::string const&, TRI_voc_tick_t, std::string&);
-
+  Result handleCollectionSync(arangodb::LogicalCollection*, std::string const&,
+                              std::string const&, TRI_voc_tick_t);
+   
   /// @brief changes the properties of a collection, based on the VelocyPack
   /// provided
   int changeCollection(arangodb::LogicalCollection*,

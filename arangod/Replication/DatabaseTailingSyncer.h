@@ -71,8 +71,8 @@ class DatabaseTailingSyncer : public TailingSyncer {
   int runContinuousSync(std::string&);
 
   /// @brief fetch the initial master state
-  int fetchOpenTransactions(std::string&, TRI_voc_tick_t, TRI_voc_tick_t,
-                            TRI_voc_tick_t&);
+  Result fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tick_t toTick,
+                               TRI_voc_tick_t& startTick);
 
   /// @brief run the continuous synchronization
   int followMasterLog(std::string&, TRI_voc_tick_t&, TRI_voc_tick_t, uint64_t&,
