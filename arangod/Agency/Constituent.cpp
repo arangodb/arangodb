@@ -197,14 +197,17 @@ role_t Constituent::role() const {
 /// Become follower in term
 void Constituent::follow(term_t t) {
   MUTEX_LOCKER(guard, _castLock);
-  term_t t = (newTerm > 0) ? newTerm : _term;
   followNoLock(t);
 }
 
 void Constituent::followNoLock(term_t t) {
   _castLock.assertLockedByCurrentThread();
 
-  _term = t;
+  if (t > 0 && t != _term) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Changing term from " << _term << " to " <<  t;
+    _term = t;
+  }
   _role = FOLLOWER;
 
   LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to FOLLOWER in term " << _term;

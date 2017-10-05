@@ -899,7 +899,6 @@ trans_ret_t Agent::transact(query_t const& queries) {
     // Only leader else redirect
     if (challengeLeadership()) {
       resign();
-      _preparing = false;
       return trans_ret_t(false, NO_LEADER);
     }
     
@@ -962,7 +961,6 @@ trans_ret_t Agent::transient(query_t const& queries) {
     // Only leader else redirect
     if (challengeLeadership()) {
       resign();
-      _preparing = false;
       return trans_ret_t(false, NO_LEADER);
     }
 
