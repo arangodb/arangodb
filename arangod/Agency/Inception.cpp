@@ -319,9 +319,6 @@ bool Inception::restartingActiveAgent() {
             auto const myActive = myActiveB->slice();
             auto i = std::find(active.begin(),active.end(),p.first);
 
-            LOG_TOPIC(WARN, Logger::AGENCY) << theirActive.toJson();
-            LOG_TOPIC(WARN, Logger::AGENCY) << myActive.toJson();
-            
             if (i != active.end()) { // Member in my active list
               TRI_ASSERT(theirActive.isArray());
               if (theirActive.length() == myActive.length()) {
