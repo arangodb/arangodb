@@ -657,6 +657,13 @@ function ReplicationOtherDBSuite() {
   let suite = BaseTestConfig();
   const dbName = "UnitTestDB";
 
+  // Setup documents to be stored on the master.
+
+  let docs = [];
+  for (let i = 0; i < 50; ++i) {
+    docs.push({value: i});
+  }
+
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief set up
   ////////////////////////////////////////////////////////////////////////////////
@@ -693,14 +700,7 @@ function ReplicationOtherDBSuite() {
   ////////////////////////////////////////////////////////////////////////////////
 
   suite.tearDown = function() {
-    connectToMaster();
-
     db._useDatabase("_system");
-    try {
-      db._dropDatabase(dbName);
-    } catch (e) {
-    }
-
     connectToSlave();
 
     try {
@@ -712,21 +712,20 @@ function ReplicationOtherDBSuite() {
       db._dropDatabase(dbName);
     } catch (e) {
     }
-  };
 
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief test dropping a database on slave while replication is ongoing
-  ////////////////////////////////////////////////////////////////////////////////
+    connectToMaster();
 
-  suite.testDropDatabaseOnSlaveDuringReplication = function() {
-    // Setup, documents to be stored on the master.
-    // Will be stored twice.
-    let docs = [];
-    for (let i = 0; i < 50; ++i) {
-      docs.push({value: i});
+    db._useDatabase("_system");
+    try {
+      db._dropDatabase(dbName);
+    } catch (e) {
     }
 
+  };
 
+  // Shared function that sets up replication
+  // of the collection and inserts 50 documents.
+  const setupReplication = function() {
     // Section - Master
     connectToMaster();
 
@@ -776,11 +775,22 @@ function ReplicationOtherDBSuite() {
     internal.wait(6, false);
     // Now we should have the same amount of documents
     assertEqual(count, collectionCount(cn));
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief test dropping a database on slave while replication is ongoing
+  ////////////////////////////////////////////////////////////////////////////////
+
+  suite.testDropDatabaseOnSlaveDuringReplication = function() {
+    setupReplication();
+
+    // Section - Slave
+    connectToSlave();
 
     // Now do the evil stuff: drop the database that is replicating right now.
     db._useDatabase("_system");
 
-    // This shall now fail.
+    // This shall not fail.
     db._dropDatabase(dbName);
 
     // Section - Master
@@ -839,6 +849,35 @@ function ReplicationOtherDBSuite() {
     assertEqual(0, collectionCount(cn));
   };
 
+  suite.testDropDatabaseOnMasterDuringReplication = function() {
+    setupReplication();
+
+    // Section - Master
+    // Now do the evil stuff: drop the database that is replicating from right now.
+    connectToMaster();
+    db._useDatabase("_system");
+
+    // This shall not fail.
+    db._dropDatabase(dbName);
+
+    // The DB should be gone and the server should be running.
+    let dbs = db._databases();
+    assertEqual(-1, dbs.indexOf(dbName));
+
+    // Now recreate a new database with this name
+    db._createDatabase(dbName);
+    db._useDatabase(dbName);
+
+    db._createCollection(cn);
+    db._collection(cn).save(docs);
+
+    // Section - Slave
+    connectToSlave();
+
+    // Now test if the Slave did replicate the new database directly...
+    assertEqual(50, collectionCount(cn), "The slave inserted the new collection data into the old one, it skipped the drop.");
+  };
+
   return suite;
 }
 
@@ -848,5 +887,6 @@ function ReplicationOtherDBSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ReplicationSuite);
+jsunity.run(ReplicationOtherDBSuite);
 
 return jsunity.done();
