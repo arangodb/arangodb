@@ -49,7 +49,8 @@ class RocksDBLogValue {
   static RocksDBLogValue CollectionCreate(TRI_voc_tick_t vocbaseId,
                                           TRI_voc_cid_t cid);
   static RocksDBLogValue CollectionDrop(TRI_voc_tick_t vocbaseId,
-                                        TRI_voc_cid_t cid);
+                                        TRI_voc_cid_t cid,
+                                        StringRef const& uuid);
   static RocksDBLogValue CollectionRename(TRI_voc_tick_t vocbaseId,
                                           TRI_voc_cid_t cid,
                                           StringRef const& newName);
@@ -89,6 +90,7 @@ class RocksDBLogValue {
   static TRI_voc_cid_t collectionId(rocksdb::Slice const&);
   static TRI_idx_iid_t indexId(rocksdb::Slice const&);
   static velocypack::Slice indexSlice(rocksdb::Slice const&);
+  static arangodb::StringRef collectionUUID(rocksdb::Slice const&);
   static arangodb::StringRef newCollectionName(rocksdb::Slice const&);
   static arangodb::StringRef documentKey(rocksdb::Slice const&);
 

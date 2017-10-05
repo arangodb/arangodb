@@ -164,7 +164,7 @@ private:
   void setProgress(std::string const& msg) override;
 
   /// @brief send a WAL flush command
-  int sendFlush(std::string&);
+  Result sendFlush();
   
   /// @brief apply the data from a collection dump
   int applyCollectionDump(transaction::Methods&, std::string const&,
@@ -193,7 +193,7 @@ private:
                        sync_phase_e);
   
   /// @brief fetch the server's inventory
-  int fetchInventory(arangodb::velocypack::Builder& builder, std::string& errorMsg);
+  Result fetchInventory(arangodb::velocypack::Builder& builder);
 
   /// @brief handle the inventory response of the master
   Result handleLeaderCollections(arangodb::velocypack::Slice const&, bool);

@@ -124,6 +124,9 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         }
         _currentDbId = RocksDBLogValue::databaseId(blob);
         _currentCollectionId = RocksDBLogValue::collectionId(blob);
+        if (type == RocksDBLogType::CollectionDrop) {
+          _dropCollectionUUID = RocksDBLogValue::collectionUUID(blob).toString();
+        }
         break;
       }
       case RocksDBLogType::IndexCreate: {
@@ -334,6 +337,9 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
         _builder.add("type", VPackValue(REPLICATION_COLLECTION_DROP));
         _builder.add("database", VPackValue(std::to_string(_currentDbId)));
+        if (!_dropCollectionUUID.empty()) {
+          _builder.add("cuid", VPackValue(_dropCollectionUUID));
+        }
         _builder.add("cid", VPackValue(std::to_string(_currentCollectionId)));
         _builder.add("data", VPackValue(VPackValueType::Object));
         _builder.add("id", VPackValue(std::to_string(_currentCollectionId)));
@@ -413,6 +419,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     _currentDbId = 0;
     _currentTrxId = 0;
     _currentCollectionId = 0;
+    _dropCollectionUUID.clear();
     _oldCollectionName.clear();
     _indexSlice = VPackSlice::illegalSlice();
   }
@@ -524,6 +531,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   TRI_voc_tick_t _currentDbId = 0;
   TRI_voc_tick_t _currentTrxId = 0;
   TRI_voc_cid_t _currentCollectionId = 0;
+  std::string _dropCollectionUUID;
   std::string _oldCollectionName;
   std::string _removeDocumentKey;
   VPackSlice _indexSlice;

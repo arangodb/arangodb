@@ -110,9 +110,9 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     }
 
     if (incremental) {
-      res = sendFlush(errorMsg);
-      if (res != TRI_ERROR_NO_ERROR) {
-        return res;
+      Result r = sendFlush();
+      if (r.fail()) {
+        return r;
       }
     }
 
@@ -128,14 +128,15 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     VPackBuilder inventoryResponse;
     if (!inventoryColls.isArray()) {
       // caller did not supply an inventory, we need to fetch it
-      int res = fetchInventory(inventoryResponse, errorMsg);
-      if (res == TRI_ERROR_NO_ERROR) {
-        // we do not really care about the state response
-        inventoryColls = inventoryResponse.slice().get("collections");
-        if (!inventoryColls.isArray()) {
-          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
-                        "collections section is missing from response");
-        }
+      Result res = fetchInventory(inventoryResponse);
+      if (!res.ok()) {
+        return res;
+      }
+      // we do not really care about the state response
+      inventoryColls = inventoryResponse.slice().get("collections");
+      if (!inventoryColls.isArray()) {
+        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                      "collections section is missing from response");
       }
     }
     
@@ -184,7 +185,7 @@ void DatabaseInitialSyncer::setProgress(std::string const& msg) {
 }
 
 /// @brief send a WAL flush command
-int DatabaseInitialSyncer::sendFlush(std::string& errorMsg) {
+Result DatabaseInitialSyncer::sendFlush() {
   std::string const url = "/_admin/wal/flush";
   std::string const body =
       "{\"waitForSync\":true,\"waitForCollector\":true,"
@@ -198,26 +199,17 @@ int DatabaseInitialSyncer::sendFlush(std::string& errorMsg) {
       rest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg = "could not connect to master at " + _masterInfo._endpoint +
-               ": " + _client->getErrorMessage();
-
-    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
   }
 
   TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
-    int res = TRI_ERROR_REPLICATION_MASTER_ERROR;
-
-    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
-               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
-               ": " + response->getHttpReturnMessage();
-
-    return res;
+    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
   }
 
   _hasFlushed = true;
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 /// @brief apply the data from a collection dump
@@ -1058,9 +1050,7 @@ int DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   return TRI_ERROR_INTERNAL;
 }
 
-int DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder,
-                                          std::string& errorMsg) {
-  
+Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
   std::string url = BaseUrl + "/inventory?serverId=" + _localServerIdString +
   "&batchId=" + std::to_string(_batchId);
   if (_configuration._includeSystem) {
@@ -1075,43 +1065,31 @@ int DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder,
                                              _client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
   
   if (response == nullptr || !response->isComplete()) {
-    errorMsg = "could not connect to master at " + _masterInfo._endpoint +
-    ": " + _client->getErrorMessage();
-    
     sendFinishBatch();
     
-    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
   }
   
   TRI_ASSERT(response != nullptr);
   
   if (response->wasHttpError()) {
-    errorMsg = "got invalid response from master at " +
-    _masterInfo._endpoint + ": HTTP " +
-    StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-    response->getHttpReturnMessage();
-    return TRI_ERROR_REPLICATION_MASTER_ERROR;
+    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " +  response->getHttpReturnMessage());
   }
+
   int res = parseResponse(builder, response.get());
+  
   if (res != TRI_ERROR_NO_ERROR) {
-    errorMsg = "got invalid response from master at " +
-    std::string(_masterInfo._endpoint) +
-    ": invalid response type for initial data. expecting array";
-    
-    return res;
+    return Result(res, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": invalid response type for initial data. expecting array");
   }
   
   VPackSlice const slice = builder.slice();
   if (!slice.isObject()) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: DatabaseInitialSyncer::run - "
-    "inventoryResponse is not an "
-    "object";
-    
-    errorMsg = "got invalid response from master at " +
-    _masterInfo._endpoint + ": invalid JSON";
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: DatabaseInitialSyncer::run - inventoryResponse is not an object";
+   
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": invalid JSON");
   }
-  return res;
+
+  return Result();
 }
 
 /// @brief handle the inventory response of the master
