@@ -608,7 +608,7 @@ int TailingSyncer::applyLogMarker(VPackSlice const& slice,
   }
   
   else if (type == REPLICATION_MARKER_DOCUMENT ||
-             type == REPLICATION_MARKER_REMOVE) {
+           type == REPLICATION_MARKER_REMOVE) {
     return processDocument(type, slice, errorMsg);
   }
 
@@ -744,7 +744,6 @@ int TailingSyncer::applyLog(SimpleHttpResult* response,
     int res;
     bool skipped;
 
-    // LOG_TOPIC(ERR, Logger::FIXME) << slice.toJson();
     if (skipMarker(firstRegularTick, slice)) {
       // entry is skipped
       res = TRI_ERROR_NO_ERROR;

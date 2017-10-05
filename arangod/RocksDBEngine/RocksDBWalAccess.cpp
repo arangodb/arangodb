@@ -115,6 +115,9 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
         }
         _currentDbId = RocksDBLogValue::databaseId(blob);
         _currentCid = RocksDBLogValue::collectionId(blob);
+        if (type == RocksDBLogType::CollectionDrop) {
+          _dropCollectionUUID = RocksDBLogValue::collectionUUID(blob).toString();
+        }
         break;
       }
       case RocksDBLogType::IndexCreate: {
@@ -326,7 +329,11 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
           marker->add("tick", VPackValue(std::to_string(_currentSequence)));
           marker->add("type", VPackValue(REPLICATION_COLLECTION_DROP));
           marker->add("db", VPackValue(loadVocbase(_currentDbId)->name()));
-          marker->add("cuid", VPackValue(cidToUUID(_currentDbId, _currentCid)));
+          if (_dropCollectionUUID.empty()) {
+            marker->add("cuid", VPackValue(cidToUUID(_currentDbId, _currentCid)));
+          } else {
+            marker->add("cuid", VPackValue(_dropCollectionUUID));
+          }
           marker->add("data", VPackValue(VPackValueType::Object));
           VPackObjectBuilder data(&_builder, "data", true);
           data->add("id", VPackValue(std::to_string(_currentCid)));

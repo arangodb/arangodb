@@ -366,11 +366,11 @@ int DatabaseTailingSyncer::runContinuousSync(std::string& errorMsg) {
   } else {
     // adjust fetchTick so we can tail starting from the tick containing
     // the open transactions we did not commit locally
-    int res = fetchOpenTransactions(errorMsg, safeResumeTick,
-                                    fromTick, fetchTick);
+    Result r = fetchOpenTransactions(safeResumeTick, fromTick, fetchTick);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+    if (r.fail()) {
+      errorMsg = r.errorMessage();
+      return r.errorNumber();
     }
   }
 
@@ -490,10 +490,9 @@ int DatabaseTailingSyncer::runContinuousSync(std::string& errorMsg) {
 }
 
 /// @brief fetch the open transactions we still need to complete
-int DatabaseTailingSyncer::fetchOpenTransactions(std::string& errorMsg,
-                                                 TRI_voc_tick_t fromTick,
-                                                 TRI_voc_tick_t toTick,
-                                                 TRI_voc_tick_t& startTick) {
+Result DatabaseTailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
+                                                   TRI_voc_tick_t toTick,
+                                                   TRI_voc_tick_t& startTick) {
   std::string const baseUrl = BaseUrl + "/determine-open-transactions";
   std::string const url = baseUrl + "?serverId=" + _localServerIdString +
                           "&from=" + StringUtils::itoa(fromTick) + "&to=" +
@@ -510,22 +509,13 @@ int DatabaseTailingSyncer::fetchOpenTransactions(std::string& errorMsg,
       _client->request(rest::RequestType::GET, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) + ": " +
-               _client->getErrorMessage();
-
-    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("got invalid response from master at ") + std::string(_masterInfo._endpoint) + ": " + _client->getErrorMessage());
   }
 
   TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
-    errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) + ": HTTP " +
-               StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-               response->getHttpReturnMessage();
-
-    return TRI_ERROR_REPLICATION_MASTER_ERROR;
+    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + std::string(_masterInfo._endpoint) + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
   }
 
   bool fromIncluded = false;
@@ -542,24 +532,13 @@ int DatabaseTailingSyncer::fetchOpenTransactions(std::string& errorMsg,
   header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
 
   if (!found) {
-    errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) + ": required header " +
-               TRI_REPLICATION_HEADER_LASTTICK + " is missing";
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + std::string(_masterInfo._endpoint) + ": required header " + TRI_REPLICATION_HEADER_LASTTICK + " is missing");
   }
 
   TRI_voc_tick_t readTick = StringUtils::uint64(header);
 
   if (!fromIncluded && _requireFromPresent && fromTick > 0) {
-    errorMsg = "required init tick value '" + StringUtils::itoa(fromTick) +
-               "' is not present (anymore?) on master at " +
-               _masterInfo._endpoint + ". Last tick available on master is '" +
-               StringUtils::itoa(readTick) +
-               "'. It may be required to do a full resync and increase the "
-               "number of historic logfiles on the master.";
-
-    return TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
+    return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, std::string("required init tick value '") + StringUtils::itoa(fromTick) + "' is not present (anymore?) on master at " + _masterInfo._endpoint + ". Last tick available on master is '" + StringUtils::itoa(readTick) + "'. It may be required to do a full resync and increase the number of historic logfiles on the master.");
   }
 
   startTick = readTick;
@@ -571,30 +550,17 @@ int DatabaseTailingSyncer::fetchOpenTransactions(std::string& errorMsg,
   int res = parseResponse(builder, response.get());
 
   if (res != TRI_ERROR_NO_ERROR) {
-    errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) +
-               ": invalid response type for initial data. expecting array";
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": invalid response type for initial data. expecting array");
   }
 
   VPackSlice const slice = builder.slice();
   if (!slice.isArray()) {
-    errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) +
-               ": invalid response type for initial data. expecting array";
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": invalid response type for initial data. expecting array");
   }
 
   for (auto const& it : VPackArrayIterator(slice)) {
     if (!it.isString()) {
-      errorMsg =
-          "got invalid response from master at " +
-          std::string(_masterInfo._endpoint) +
-          ": invalid response type for initial data. expecting array of ids";
-
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": invalid response type for initial data. expecting array of ids");
     }
 
     _ongoingTransactions.emplace(StringUtils::uint64(it.copyString()), nullptr);
@@ -610,7 +576,7 @@ int DatabaseTailingSyncer::fetchOpenTransactions(std::string& errorMsg,
     setProgress(progress);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 /// @brief run the continuous synchronization

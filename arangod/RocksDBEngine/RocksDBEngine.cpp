@@ -1046,7 +1046,7 @@ arangodb::Result RocksDBEngine::dropCollection(
 
   // Prepare collection remove batch
   RocksDBLogValue logValue =
-      RocksDBLogValue::CollectionDrop(vocbase->id(), collection->cid());
+      RocksDBLogValue::CollectionDrop(vocbase->id(), collection->cid(), StringRef(collection->globallyUniqueId()));
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
   RocksDBKey key;

@@ -50,9 +50,8 @@ void GlobalReplicationApplier::forget() {
 
   removeState();
 
-// TODO: _vocbase!
-//  StorageEngine* engine = EngineSelectorFeature::ENGINE;
-//  engine->removeReplicationApplierConfiguration(_vocbase);
+  StorageEngine* engine = EngineSelectorFeature::ENGINE;
+  engine->removeReplicationApplierConfiguration();
   _configuration.reset();
 }
   
@@ -75,7 +74,6 @@ void GlobalReplicationApplier::storeConfiguration(bool doSync) {
 
 /// @brief load a persisted configuration for the applier
 ReplicationApplierConfiguration GlobalReplicationApplier::loadConfiguration() {
-  // TODO: move to ReplicationApplier 
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   int res = TRI_ERROR_INTERNAL;
   VPackBuilder builder = engine->getReplicationApplierConfiguration(res);
@@ -100,5 +98,5 @@ std::string GlobalReplicationApplier::getStateFilename() const {
   // TODO: fix storage path
   TRI_vocbase_t* vocbase = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();
 
-  return arangodb::basics::FileUtils::buildFilename(engine->databasePath(vocbase), "REPLICATION-APPLIER-STATE");
+  return arangodb::basics::FileUtils::buildFilename(engine->databasePath(vocbase), "GLOBAL-REPLICATION-APPLIER-STATE");
 }

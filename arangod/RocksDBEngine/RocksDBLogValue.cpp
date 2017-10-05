@@ -45,8 +45,9 @@ RocksDBLogValue RocksDBLogValue::CollectionCreate(TRI_voc_tick_t dbid,
 }
 
 RocksDBLogValue RocksDBLogValue::CollectionDrop(TRI_voc_tick_t dbid,
-                                                TRI_voc_cid_t cid) {
-  return RocksDBLogValue(RocksDBLogType::CollectionDrop, dbid, cid);
+                                                TRI_voc_cid_t cid,
+                                                StringRef const& uuid) {
+  return RocksDBLogValue(RocksDBLogType::CollectionDrop, dbid, cid, uuid);
 }
 
 RocksDBLogValue RocksDBLogValue::CollectionRename(TRI_voc_tick_t dbid,
@@ -218,13 +219,17 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
     : _buffer() {
   switch (type) {
     case RocksDBLogType::SingleRemove:
+    case RocksDBLogType::CollectionDrop: 
     case RocksDBLogType::CollectionRename: {
       _buffer.reserve(sizeof(RocksDBLogType) + sizeof(uint64_t) * 2 +
                       data.length());
       _buffer.push_back(static_cast<char>(type));
       uint64ToPersistent(_buffer, dbId);
       uint64ToPersistent(_buffer, cid);
-      _buffer.append(data.data(), data.length());  // primary key
+      // append primary key for SingleRemove, or
+      // collection name for CollectionRename, or
+      // collection uuid for CollectionDrop
+      _buffer.append(data.data(), data.length());  
       break;
     }
     default:
@@ -326,6 +331,20 @@ VPackSlice RocksDBLogValue::indexSlice(rocksdb::Slice const& slice) {
              type == RocksDBLogType::ViewChange);
   return VPackSlice(slice.data() + sizeof(RocksDBLogType) +
                     sizeof(uint64_t) * 2);
+}
+
+StringRef RocksDBLogValue::collectionUUID(
+    rocksdb::Slice const& slice) {
+  size_t off = sizeof(RocksDBLogType) + sizeof(uint64_t) * 2;
+  TRI_ASSERT(slice.size() >= off);
+  RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
+  TRI_ASSERT(type == RocksDBLogType::CollectionDrop);
+  if (slice.size() > off) {
+    // have a UUID
+    return StringRef(slice.data() + off, slice.size() - off);
+  }
+  // do not have a UUID
+  return StringRef();
 }
 
 StringRef RocksDBLogValue::newCollectionName(

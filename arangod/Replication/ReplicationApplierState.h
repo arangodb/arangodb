@@ -49,7 +49,11 @@ struct ReplicationApplierState {
 
   void reset();
   void toVelocyPack(arangodb::velocypack::Builder& result, bool full) const;
-  
+
+  bool hasProcessedSomething() const {
+    return (_lastProcessedContinuousTick > 0 || _lastAppliedContinuousTick > 0 || _safeResumeTick > 0);
+  }
+   
   TRI_voc_tick_t _lastProcessedContinuousTick;
   TRI_voc_tick_t _lastAppliedContinuousTick;
   TRI_voc_tick_t _lastAvailableContinuousTick;

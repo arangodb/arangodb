@@ -106,6 +106,9 @@ class ReplicationApplier {
   
   /// @brief whether or not autostart option was set
   bool autoStart() const;
+
+  /// @brief whether or not the applier has a state already
+  bool hasState() const;
   
   /// @brief check whether the initial synchronization should be stopped
   bool stopInitialSynchronization() const;
