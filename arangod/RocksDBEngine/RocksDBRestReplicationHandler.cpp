@@ -335,13 +335,12 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 /// this is an internal method use by ArangoDB's replication that should not
 /// be called by client drivers directly
 void RocksDBRestReplicationHandler::handleCommandDetermineOpenTransactions() {
-  _response->setResponseCode(rest::ResponseCode::OK);
+  generateResult(rest::ResponseCode::OK, VPackSlice::emptyArraySlice());
   // rocksdb only includes finished transactions in the WAL.
   _response->setContentType(rest::ContentType::DUMP);
   _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK, "0");
   // always true to satisfy continuous syncer
   _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT, "true");
-  _response->addPayload(VPackSlice::emptyArraySlice());
 }
 
 void RocksDBRestReplicationHandler::handleCommandInventory() {

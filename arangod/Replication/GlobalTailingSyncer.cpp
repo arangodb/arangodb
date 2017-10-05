@@ -621,7 +621,7 @@ int GlobalTailingSyncer::followMasterLog(std::string& errorMsg,
                                       uint64_t& ignoreCount, bool& worked,
                                       bool& masterActive) {
   std::string const baseUrl = WalAccessUrl + "/tail?chunkSize=" +
-                              StringUtils::itoa(_chunkSize) + "&barrier=" +
+                              StringUtils::itoa(_configuration._chunkSize) + "&barrier=" +
                               StringUtils::itoa(_barrierId);
 
   worked = false;

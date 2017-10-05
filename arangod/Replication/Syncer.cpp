@@ -58,7 +58,6 @@ std::string const Syncer::BaseUrl = "/_api/replication";
 
 Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     : _configuration(configuration),
-      _chunkSize(1024 * 1024),
       _restrictType(RestrictType::NONE),
       _masterInfo(),
       _endpoint(nullptr),
@@ -80,10 +79,12 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
   } else {
     _databaseName = TRI_VOC_SYSTEM_DATABASE;
   }
-  
-  uint64_t c = _configuration._chunkSize;
-  if (c > 0) {
-    _chunkSize = c;
+ 
+  if (_configuration._chunkSize == 0) {
+    _configuration._chunkSize = 2 * 1024 * 1024; // default: 2 MB
+  }
+  if (_configuration._chunkSize < 16 * 1024) {
+    _configuration._chunkSize = 16 * 1024;
   }
 
   // get our own server-id

@@ -336,10 +336,10 @@ int DatabaseInitialSyncer::applyCollectionDump(transaction::Methods& trx,
 
 /// @brief incrementally fetch data from a collection
 int DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* col,
-                                        std::string const& cid,
-                                        std::string const& collectionName,
-                                        TRI_voc_tick_t maxTick,
-                                        std::string& errorMsg) {
+                                                std::string const& cid,
+                                                std::string const& collectionName,
+                                                TRI_voc_tick_t maxTick,
+                                                std::string& errorMsg) {
   std::string appendix;
 
   if (_hasFlushed) {
@@ -350,7 +350,7 @@ int DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* col
     _hasFlushed = true;
   }
 
-  uint64_t chunkSize = _chunkSize;
+  uint64_t chunkSize = _configuration._chunkSize;
 
   TRI_ASSERT(_batchId);  // should not be equal to 0
   std::string const baseUrl = BaseUrl + "/dump?collection=" + cid +

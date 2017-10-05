@@ -176,9 +176,6 @@ class Syncer {
   /// @brief configuration
   ReplicationApplierConfiguration _configuration;
   
-  /// @brief stringified chunk size
-  size_t _chunkSize;
-  
   /// @brief collection restriction type
   Syncer::RestrictType _restrictType;
   
