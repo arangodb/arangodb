@@ -71,6 +71,9 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            new VectorParameter<StringParameter>(&_levels));
 
   options->addSection("log", "Configure the logging");
+  
+  options->addOption("--log.color", "use colors for TTY logging",
+                     new BooleanParameter(&_useColor));
 
   options->addOption("--log.output,-o", "log destination(s)",
                      new VectorParameter<StringParameter>(&_output));
@@ -108,7 +111,11 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addHiddenOption("--log.thread",
                            "show thread identifier in log message",
-                           new BooleanParameter(&_thread));
+                           new BooleanParameter(&_threadId));
+  
+  options->addHiddenOption("--log.thread-name",
+                           "show thread name in log message",
+                           new BooleanParameter(&_threadName));
 
   options->addHiddenOption("--log.performance",
                            "shortcut for '--log.level performance=trace'",
@@ -163,11 +170,13 @@ void LoggerFeature::prepare() {
 
   Logger::setLogLevel(_levels);
   Logger::setShowRole(_showRole);
+  Logger::setUseColor(_useColor);
   Logger::setUseLocalTime(_useLocalTime);
   Logger::setUseMicrotime(_useMicrotime);
   Logger::setShowLineNumber(_lineNumber);
   Logger::setShortenFilenames(_shortenFilenames);
-  Logger::setShowThreadIdentifier(_thread);
+  Logger::setShowThreadIdentifier(_threadId);
+  Logger::setShowThreadName(_threadName);
   Logger::setOutputPrefix(_prefix);
   Logger::setKeepLogrotate(_keepLogRotate);
 
