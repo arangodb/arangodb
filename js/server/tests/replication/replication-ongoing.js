@@ -669,20 +669,19 @@ function ReplicationOtherDBSuite() {
   ////////////////////////////////////////////////////////////////////////////////
 
   suite.setUp = function() {
+    db._useDatabase("_system");
     connectToSlave();
     try {
       replication.applier.stop();
       replication.applier.forget();
+    } catch (err) {
     }
-    catch (err) {
-    }
-
-    db._useDatabase("_system");
 
     try {
       db._dropDatabase(dbName);
     } catch (e) {
     }
+    
     db._createDatabase(dbName);
 
     connectToMaster();
@@ -701,14 +700,15 @@ function ReplicationOtherDBSuite() {
 
   suite.tearDown = function() {
     db._useDatabase("_system");
-    connectToSlave();
 
+    connectToSlave();
+    db._useDatabase(dbName);
+
+    replication.applier.stop();
+    replication.applier.forget();
+    
+    db._useDatabase("_system");
     try {
-      // It might be that the db has been dropped already.
-      db._useDatabase(dbName);
-      replication.applier.stop();
-      replication.applier.forget();
-      db._useDatabase("_system");
       db._dropDatabase(dbName);
     } catch (e) {
     }
@@ -880,7 +880,6 @@ function ReplicationOtherDBSuite() {
 
   return suite;
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite

@@ -41,7 +41,7 @@ var slaveEndpoint = ARGUMENTS[0];
 
 var cn = "UnitTestsReplication";
 var cn2 = "UnitTestsReplication2";
-
+    
 var connectToMaster = function() {
   arango.reconnect(masterEndpoint, db._name(), "root", "");
   db._flushCache();
@@ -200,7 +200,16 @@ var compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal
   slaveFuncFinal(state);
 };
 
+var stopApplier = function(dbName) {
+  connectToSlave();
+  try {
+    db._useDatabase(dbName);
 
+    replication.applier.stop();
+    replication.applier.forget();
+  } catch (err) {
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Basic test definition
@@ -370,13 +379,7 @@ function ReplicationSuite() {
   ////////////////////////////////////////////////////////////////////////////////
 
   suite.setUp = function() {
-    connectToSlave();
-    try {
-      replication.applier.stop();
-      replication.applier.forget();
-    }
-    catch (err) {
-    }
+    stopApplier("_system");
 
     connectToMaster();
 
@@ -389,15 +392,13 @@ function ReplicationSuite() {
   ////////////////////////////////////////////////////////////////////////////////
 
   suite.tearDown = function() {
+    stopApplier("_system");
+    
     connectToMaster();
-
     db._drop(cn);
     db._drop(cn2);
 
     connectToSlave();
-    replication.applier.stop();
-    replication.applier.forget();
-
     db._drop(cn);
     db._drop(cn2);
   };
@@ -419,15 +420,10 @@ function ReplicationOtherDBSuite() {
   ////////////////////////////////////////////////////////////////////////////////
 
   suite.setUp = function() {
+    stopApplier(dbName);
+
     db._useDatabase("_system");
     connectToSlave();
-    try {
-      replication.applier.stop();
-      replication.applier.forget();
-    }
-    catch (err) {
-    }
-
     try {
       db._dropDatabase(dbName);
     } catch (e) {
@@ -443,7 +439,6 @@ function ReplicationOtherDBSuite() {
     }
     db._createDatabase(dbName);
     db._useDatabase(dbName);
-
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -451,20 +446,14 @@ function ReplicationOtherDBSuite() {
   ////////////////////////////////////////////////////////////////////////////////
 
   suite.tearDown = function() {
-    connectToMaster();
+    stopApplier(dbName);
 
     db._useDatabase("_system");
+    connectToMaster();
     try {
       db._dropDatabase(dbName);
     } catch (e) {
     }
-
-    connectToSlave();
-
-    db._useDatabase(dbName);
-
-    replication.applier.stop();
-    replication.applier.forget();
 
     db._useDatabase("_system");
     try {

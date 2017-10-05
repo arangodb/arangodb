@@ -102,6 +102,8 @@ private:
 
   /// @brief return the last log tick of the master at start
   TRI_voc_tick_t getLastLogTick() const { return _masterInfo._lastLogTick; }
+  
+  TRI_vocbase_t* resolveVocbase(velocypack::Slice const&) override { return _vocbase; }
 
   /// @brief translate a phase to a phase name
   std::string translatePhase(sync_phase_e phase) const {
@@ -205,6 +207,7 @@ private:
   std::unordered_map<std::string, std::string> createHeaders() const;
 
  private:
+  TRI_vocbase_t* _vocbase;
 
   /// @brief whether or not the WAL on the remote server has been flushed by us
   bool _hasFlushed;

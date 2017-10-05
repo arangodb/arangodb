@@ -1895,7 +1895,7 @@ void RestReplicationHandler::handleCommandSync() {
   Result r = syncer.run(incremental);
   if (r.fail()) {
     LOG_TOPIC(ERR, Logger::REPLICATION)
-      << "Failed to sync " << r.errorMessage();
+      << "failed to sync: " << r.errorMessage();
     generateError(r);
   }
 

@@ -98,6 +98,9 @@ class Syncer {
   void setLeaderId(std::string const& leaderId) {
     _leaderId = leaderId;
   }
+  
+  /// @brief send a "remove barrier" command
+  int sendRemoveBarrier();
 
  protected:
   
@@ -110,9 +113,6 @@ class Syncer {
 
   /// @brief send an "extend barrier" command
   int sendExtendBarrier(TRI_voc_tick_t = 0);
-
-  /// @brief send a "remove barrier" command
-  int sendRemoveBarrier();
 
   /// @brief apply a single marker from the collection dump
   int applyCollectionDumpMarker(transaction::Methods&,
@@ -142,7 +142,8 @@ class Syncer {
   /// @brief handle the state response of the master
   int handleStateResponse(arangodb::velocypack::Slice const&, std::string&);
   
-  TRI_vocbase_t* resolveVocbase(velocypack::Slice const&);  
+  virtual TRI_vocbase_t* resolveVocbase(velocypack::Slice const&);
+   
   LogicalCollection* resolveCollection(TRI_vocbase_t*, arangodb::velocypack::Slice const& slice);
   std::unordered_map<std::string, DatabaseGuard> const& vocbases() const {
     return _vocbases;
@@ -175,9 +176,6 @@ class Syncer {
   
   /// @brief configuration
   ReplicationApplierConfiguration _configuration;
-  
-  /// @brief stringified chunk size
-  size_t _chunkSize;
   
   /// @brief collection restriction type
   Syncer::RestrictType _restrictType;

@@ -73,12 +73,6 @@ InitialSyncer::InitialSyncer(
       _batchUpdateTime(0),
       _batchTtl(180),
       _skipCreateDrop(skipCreateDrop) {
-  if (_chunkSize == 0) {
-    _chunkSize = (uint64_t)2 * 1024 * 1024;  // 2 mb
-  } else if (_chunkSize < 128 * 1024) {
-    _chunkSize = 128 * 1024;
-  }
-
   _restrictType = restrictType;
 }
 

@@ -161,6 +161,9 @@ MMFilesEngine::~MMFilesEngine() {}
 
 // perform a physical deletion of the database
 Result MMFilesEngine::dropDatabase(TRI_vocbase_t* database) {
+  // drop logfile barriers for database
+  MMFilesLogfileManager::instance()->dropLogfileBarriers(database->id());
+  
   // delete persistent indexes for this database
   MMFilesPersistentIndexFeature::dropDatabase(database->id());
 

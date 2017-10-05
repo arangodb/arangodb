@@ -63,6 +63,7 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(
     TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
     : TailingSyncer(configuration, initialTick, barrierId),
       _applier(vocbase->replicationApplier()),
+      _vocbase(vocbase),
       _useTick(useTick),
       _hasWrittenState(false) {
   _vocbases.emplace(vocbase->name(), DatabaseGuard(vocbase));
@@ -74,6 +75,7 @@ int DatabaseTailingSyncer::run() {
     return TRI_ERROR_INTERNAL;
   }
 
+  TRI_DEFER(sendRemoveBarrier());
   uint64_t shortTermFailsInRow = 0;
 
 retry:
@@ -552,9 +554,9 @@ int DatabaseTailingSyncer::fetchOpenTransactions(std::string& errorMsg,
   if (!fromIncluded && _requireFromPresent && fromTick > 0) {
     errorMsg = "required init tick value '" + StringUtils::itoa(fromTick) +
                "' is not present (anymore?) on master at " +
-               _masterInfo._endpoint + ". Last tick available on master is " +
+               _masterInfo._endpoint + ". Last tick available on master is '" +
                StringUtils::itoa(readTick) +
-               ". It may be required to do a full resync and increase the "
+               "'. It may be required to do a full resync and increase the "
                "number of historic logfiles on the master.";
 
     return TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
@@ -618,7 +620,7 @@ int DatabaseTailingSyncer::followMasterLog(std::string& errorMsg,
                                            uint64_t& ignoreCount, bool& worked,
                                            bool& masterActive) {
   std::string const baseUrl = BaseUrl + "/logger-follow?chunkSize=" +
-                              StringUtils::itoa(_chunkSize) + "&barrier=" +
+                              StringUtils::itoa(_configuration._chunkSize) + "&barrier=" +
                               StringUtils::itoa(_barrierId);
 
   worked = false;
@@ -749,9 +751,9 @@ int DatabaseTailingSyncer::followMasterLog(std::string& errorMsg,
     res = TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
     errorMsg = "required follow tick value '" + StringUtils::itoa(fetchTick) +
                "' is not present (anymore?) on master at " +
-               _masterInfo._endpoint + ". Last tick available on master is " +
+               _masterInfo._endpoint + ". Last tick available on master is '" +
                StringUtils::itoa(tick) +
-               ". It may be required to do a full resync and increase the "
+               "'. It may be required to do a full resync and increase the "
                "number of historic logfiles on the master.";
   }
 
@@ -882,7 +884,7 @@ int DatabaseTailingSyncer::syncCollectionFinalize(std::string& errorMsg,
     
     std::string const baseUrl =
     BaseUrl + "/logger-follow?chunkSize=" +
-    StringUtils::itoa(_chunkSize) + "&from=" +
+    StringUtils::itoa(_configuration._chunkSize) + "&from=" +
     StringUtils::itoa(fromTick) + "&serverId=" + _localServerIdString +
     "&collection=" + StringUtils::urlEncode(collectionName);
     
@@ -945,9 +947,9 @@ int DatabaseTailingSyncer::syncCollectionFinalize(std::string& errorMsg,
       errorMsg = "required follow tick value '" +
       StringUtils::itoa(lastIncludedTick) +
       "' is not present (anymore?) on master at " +
-      _masterInfo._endpoint + ". Last tick available on master is " +
+      _masterInfo._endpoint + ". Last tick available on master is '" +
       StringUtils::itoa(lastIncludedTick) +
-      ". It may be required to do a full resync and increase the "
+      "'. It may be required to do a full resync and increase the "
       "number of historic logfiles on the master.";
       return TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
     }

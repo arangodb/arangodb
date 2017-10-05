@@ -33,13 +33,15 @@ class DatabaseReplicationApplier;
 class DatabaseTailingSyncer : public TailingSyncer {
  public:
   DatabaseTailingSyncer(TRI_vocbase_t*,
-                   ReplicationApplierConfiguration const&,
-                   TRI_voc_tick_t initialTick, bool useTick,
-                   TRI_voc_tick_t barrierId);
+                        ReplicationApplierConfiguration const&,
+                        TRI_voc_tick_t initialTick, bool useTick,
+                        TRI_voc_tick_t barrierId);
 
  public:
   /// @brief run method, performs continuous synchronization
   int run() override;
+  
+  TRI_vocbase_t* resolveVocbase(velocypack::Slice const&) override { return _vocbase; }
 
   /// @brief return the syncer's replication applier
   DatabaseReplicationApplier* applier() const { return _applier; }
@@ -48,7 +50,7 @@ class DatabaseTailingSyncer : public TailingSyncer {
   /// and filtering on the collection name until no more data is available
   int syncCollectionFinalize(std::string& errorMsg,
                              std::string const& collectionName);
-
+  
  private:
   /// @brief set the applier progress
   void setProgress(std::string const&) override;
@@ -84,6 +86,8 @@ class DatabaseTailingSyncer : public TailingSyncer {
  private:
   /// @brief pointer to the applier
   DatabaseReplicationApplier* _applier;
+  
+  TRI_vocbase_t* _vocbase;
 
   /// @brief use the initial tick
   bool _useTick;
