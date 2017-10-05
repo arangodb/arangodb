@@ -108,10 +108,11 @@ RestStatus RestAgencyPrivHandler::execute() {
             readValue("prevLogIndex", prevLogIndex) &&
             readValue("prevLogTerm", prevLogTerm) &&
             readValue("leaderCommit", leaderCommit)) {  // found all values
-          bool ret = _agent->recvAppendEntriesRPC(
-              term, id, prevLogIndex, prevLogTerm, leaderCommit,
-              _request->toVelocyPackBuilderPtr());
-          result.add("success", VPackValue(ret));
+          auto ret = _agent->recvAppendEntriesRPC(
+            term, id, prevLogIndex, prevLogTerm, leaderCommit,
+            _request->toVelocyPackBuilderPtr());
+          result.add("success", VPackValue(ret.success));
+          result.add("term", VPackValue(ret.term));
           result.add("senderTimeStamp", VPackValue(senderTimeStamp));
         } else {
           return reportBadQuery();  // bad query
