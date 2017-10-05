@@ -99,12 +99,12 @@ endif ()
 if (USE_IRESEARCH)
   add_library(boost-static IMPORTED STATIC)
   set_target_properties(boost-static PROPERTIES
-    INTERFACE_INCLUDE_DIRECTORIES "${boost_src}"
+    INTERFACE_INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/boost/1.62.0"
     IMPORTED_LOCATION "boost_filesystem;boost_locale;boost_system;boost_thread"
   )
 
+  set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/1.62.0") # explicitly set since suppressing Boost search
   set(ICU_STATIC_LIBS ${ICU_LIBS})
-  set(BOOST_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/boost/1.62.0")
   set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
   set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
 
