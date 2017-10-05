@@ -821,7 +821,7 @@ function ReplicationOtherDBSuite() {
     db._useDatabase(dbName);
 
     try {
-      db._createCollection(cn);
+      db._create(cn);
     } catch (e) {
       assertFalse(true, "Could not recreate collection on slave: " + e);
     }
@@ -868,7 +868,7 @@ function ReplicationOtherDBSuite() {
     db._createDatabase(dbName);
     db._useDatabase(dbName);
 
-    db._createCollection(cn);
+    db._create(cn);
     db._collection(cn).save(docs);
 
     // Section - Slave
