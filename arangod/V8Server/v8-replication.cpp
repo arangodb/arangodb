@@ -262,128 +262,50 @@ static void SynchronizeReplication(
 
   // treat the argument as an object from now on
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
+  
+  VPackBuilder builder;
+  int res = TRI_V8ToVPack(isolate, builder, args[0], false);
 
-  std::string endpoint;
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "endpoint"))) {
-    endpoint = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "endpoint")));
-  }
-
-  std::unordered_map<std::string, bool> restrictCollections;
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "restrictCollections")) &&
-      object->Get(TRI_V8_ASCII_STRING(isolate, "restrictCollections"))->IsArray()) {
-    v8::Handle<v8::Array> a = v8::Handle<v8::Array>::Cast(
-        object->Get(TRI_V8_ASCII_STRING(isolate, "restrictCollections")));
-
-    uint32_t const n = a->Length();
-
-    for (uint32_t i = 0; i < n; ++i) {
-      v8::Handle<v8::Value> cname = a->Get(i);
-
-      if (cname->IsString()) {
-        restrictCollections.emplace(
-            std::make_pair(TRI_ObjectToString(cname), true));
-      }
-    }
-  }
-
-  std::string restrictType;
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "restrictType"))) {
-    restrictType =
-        TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "restrictType")));
-  }
-  if ((restrictType.empty() && !restrictCollections.empty()) ||
-      (!restrictType.empty() && restrictCollections.empty()) ||
-      (!restrictType.empty() && restrictType != "include" &&
-       restrictType != "exclude")) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("invalid value for <restrictCollections> or <restrictType>");
-  }
-
-  Syncer::RestrictType rType = Syncer::convert(restrictType);
-
-  bool skipCreateDrop = false;
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "skipCreateDrop"))) {
-    skipCreateDrop = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING(isolate, "skipCreateDrop")));
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
     
-  if (endpoint.empty()) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("<endpoint> must be a valid endpoint");
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-
-
-  ReplicationApplierConfiguration config;
-  config._endpoint = endpoint;
+    
+  std::string databaseName;
+  if (applierType == APPLIER_DATABASE) { 
+    databaseName = vocbase->name();
+  } 
   
-  config._verbose = true;
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "verbose"))) {
-    config._verbose = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING(isolate, "verbose")));
-  }
-
-
-  addReplicationAuthentication(isolate, object, config);
-  addConnectionSettings(isolate, object, config);
-
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "includeSystem"))) {
-    if (object->Get(TRI_V8_ASCII_STRING(isolate, "includeSystem"))->IsBoolean()) {
-      config._includeSystem = TRI_ObjectToBoolean(
-          object->Get(TRI_V8_ASCII_STRING(isolate, "includeSystem")));
-    }
-  }
-
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "requireFromPresent"))) {
-    if (object->Get(TRI_V8_ASCII_STRING(isolate, "requireFromPresent"))->IsBoolean()) {
-      config._requireFromPresent = TRI_ObjectToBoolean(
-          object->Get(TRI_V8_ASCII_STRING(isolate, "requireFromPresent")));
-    }
-  }
-
-  bool incremental = false;
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "incremental"))) {
-    if (object->Get(TRI_V8_ASCII_STRING(isolate, "incremental"))->IsBoolean()) {
-      incremental =
-          TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING(isolate, "incremental")));
-    }
-  }
-
   bool keepBarrier = false;
   if (object->Has(TRI_V8_ASCII_STRING(isolate, "keepBarrier"))) {
     keepBarrier =
         TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING(isolate, "keepBarrier")));
   }
 
-  std::string leaderId;
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "leaderId"))) {
-    leaderId = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "leaderId")));
-  }
+  ReplicationApplierConfiguration configuration = ReplicationApplierConfiguration::fromVelocyPack(builder.slice(), databaseName);
+  configuration.validate();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
  
   if (applierType == APPLIER_DATABASE) { 
     // database-specific synchronization
-    TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-    if (vocbase == nullptr) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+    DatabaseInitialSyncer syncer(vocbase, configuration);
+  
+    if (object->Has(TRI_V8_ASCII_STRING(isolate, "leaderId"))) {
+      syncer.setLeaderId(TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "leaderId"))));
     }
-
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "database"))) {
-      config._database = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "database")));
-    } else {
-      config._database = vocbase->name();
-    }
-
-
-    std::string errorMsg = "";
-    DatabaseInitialSyncer syncer(vocbase, config, restrictCollections, rType, skipCreateDrop);
-    if (!leaderId.empty()) {
-      syncer.setLeaderId(leaderId);
-    }
-
-    int res = TRI_ERROR_NO_ERROR;
 
     try {
-      Result r = syncer.run(incremental);
-      res = r.errorNumber();
-      errorMsg = r.errorMessage();
+      Result r = syncer.run(configuration._incremental);
+      
+      if (r.fail()) {
+        TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), "cannot sync from remote endpoint: " + r.errorMessage() + ". last progress message was '" + syncer.progress() + "'");
+      }
 
       if (keepBarrier) {
         result->Set(TRI_V8_ASCII_STRING(isolate, "barrierId"),
@@ -411,47 +333,24 @@ static void SynchronizeReplication(
 
       result->Set(TRI_V8_ASCII_STRING(isolate, "collections"), collections);
     } catch (arangodb::basics::Exception const& ex) {
-      res = ex.code();
-      if (errorMsg.empty()) {
-        errorMsg = std::string("caught exception: ") + ex.what();
-      }
+      TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), std::string("cannot sync from remote endpoint: ") + ex.what() + ". last progress message was '" + syncer.progress() + "'");
     } catch (std::exception const& ex) {
-      res = TRI_ERROR_INTERNAL;
-      if (errorMsg.empty()) {
-        errorMsg = std::string("caught exception: ") + ex.what();
-      }
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot sync from remote endpoint: ") + ex.what() + ". last progress message was '" + syncer.progress() + "'");
     } catch (...) {
-      res = TRI_ERROR_INTERNAL;
-      if (errorMsg.empty()) {
-        errorMsg = "caught unknown exception";
-      }
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot sync from remote endpoint: unknown exception. last progress message was '") + syncer.progress() + "'");
     }
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      if (errorMsg.empty()) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot sync from remote endpoint. last progress message was '" + syncer.progress() + "'");
-      } else {
-        LOG_TOPIC(ERR, Logger::REPLICATION) << errorMsg;
-        TRI_V8_THROW_EXCEPTION_MESSAGE(
-            res, "cannot sync from remote endpoint: " + errorMsg + ". last progress message was '" + syncer.progress() + "'");
-      }
-    }
-
   } else {
     // global synchronization
-    std::string errorMsg = "";
-    GlobalInitialSyncer syncer(config, restrictCollections, rType, false);
-
-    int res = TRI_ERROR_NO_ERROR;
+    configuration._skipCreateDrop = false;
+    GlobalInitialSyncer syncer(configuration);
 
     try {
-      Result r = syncer.run(incremental);
-      if (r.fail()) {
-        LOG_TOPIC(ERR, Logger::REPLICATION) << "Global sync: " << r.errorMessage();
-        TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
-      }
+      Result r = syncer.run(configuration._incremental);
       
-      res = r.errorNumber();
+      if (r.fail()) {
+        LOG_TOPIC(ERR, Logger::REPLICATION) << "global synchronization error: " << r.errorMessage();
+        TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), "cannot sync from remote endpoint: " + r.errorMessage() + ". last progress message was '" + syncer.progress() + "'");
+      }
 
       if (keepBarrier) {
         result->Set(TRI_V8_ASCII_STRING(isolate, "barrierId"),
@@ -479,31 +378,12 @@ static void SynchronizeReplication(
 
       result->Set(TRI_V8_ASCII_STRING(isolate, "collections"), collections);
     } catch (arangodb::basics::Exception const& ex) {
-      res = ex.code();
-      if (errorMsg.empty()) {
-        errorMsg = std::string("caught exception: ") + ex.what();
-      }
+      TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), std::string("cannot sync from remote endpoint: ") + ex.what() + ". last progress message was '" + syncer.progress() + "'");
     } catch (std::exception const& ex) {
-      res = TRI_ERROR_INTERNAL;
-      if (errorMsg.empty()) {
-        errorMsg = std::string("caught exception: ") + ex.what();
-      }
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot sync from remote endpoint: ") + ex.what() + ". last progress message was '" + syncer.progress() + "'");
     } catch (...) {
-      res = TRI_ERROR_INTERNAL;
-      if (errorMsg.empty()) {
-        errorMsg = "caught unknown exception";
-      }
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot sync from remote endpoint: unknown exception. last progress message was '") + syncer.progress() + "'");
     }
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      if (errorMsg.empty()) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot sync from remote endpoint. last progress message was '" + syncer.progress() + "'");
-      } else {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(
-            res, "cannot sync from remote endpoint: " + errorMsg + ". last progress message was '" + syncer.progress() + "'");
-      }
-    }
-
   }
 
   // Now check forSynchronousReplication flag and tell ClusterInfo
@@ -697,190 +577,34 @@ static void ConfigureApplierReplication(v8::FunctionCallbackInfo<v8::Value> cons
           "properties(<properties>)");
     }
 
-    // treat the argument as an object from now on
-    v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
-
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "endpoint"))) {
-      if (object->Get(TRI_V8_ASCII_STRING(isolate, "endpoint"))->IsString()) {
-        configuration._endpoint =
-            TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "endpoint")));
-      }
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "database"))) {
-      if (object->Get(TRI_V8_ASCII_STRING(isolate, "database"))->IsString()) {
-        configuration._database =
-            TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "database")));
-      }
-    } else {
-      if (configuration._database.empty()) {
-        // no database set, use current
-        TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
-
-        if (vocbase == nullptr) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-        }
-
-        configuration._database = vocbase->name();
-      }
-    }
-
-    addReplicationAuthentication(isolate, object, configuration);
-    addConnectionSettings(isolate, object, configuration);
-
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "ignoreErrors"))) {
-      if (object->Get(TRI_V8_ASCII_STRING(isolate, "ignoreErrors"))->IsNumber()) {
-        configuration._ignoreErrors = TRI_ObjectToUInt64(
-            object->Get(TRI_V8_ASCII_STRING(isolate, "ignoreErrors")), false);
-      }
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "lockTimeoutRetries"))) {
-      if (object->Get(TRI_V8_ASCII_STRING(isolate, "lockTimeoutRetries"))->IsNumber()) {
-        configuration._lockTimeoutRetries = TRI_ObjectToUInt64(
-            object->Get(TRI_V8_ASCII_STRING(isolate, "lockTimeoutRetries")), false);
-      }
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "autoStart"))) {
-      if (object->Get(TRI_V8_ASCII_STRING(isolate, "autoStart"))->IsBoolean()) {
-        configuration._autoStart =
-            TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING(isolate, "autoStart")));
-      }
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "adaptivePolling"))) {
-      if (object->Get(TRI_V8_ASCII_STRING(isolate, "adaptivePolling"))->IsBoolean()) {
-        configuration._adaptivePolling = TRI_ObjectToBoolean(
-            object->Get(TRI_V8_ASCII_STRING(isolate, "adaptivePolling")));
-      }
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "autoResync"))) {
-      if (object->Get(TRI_V8_ASCII_STRING(isolate, "autoResync"))->IsBoolean()) {
-        configuration._autoResync =
-            TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING(isolate, "autoResync")));
-      }
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "includeSystem"))) {
-      if (object->Get(TRI_V8_ASCII_STRING(isolate, "includeSystem"))->IsBoolean()) {
-        configuration._includeSystem = TRI_ObjectToBoolean(
-            object->Get(TRI_V8_ASCII_STRING(isolate, "includeSystem")));
-      }
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "requireFromPresent"))) {
-      if (object->Get(TRI_V8_ASCII_STRING(isolate, "requireFromPresent"))->IsBoolean()) {
-        configuration._requireFromPresent = TRI_ObjectToBoolean(
-            object->Get(TRI_V8_ASCII_STRING(isolate, "requireFromPresent")));
-      }
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "incremental"))) {
-      if (object->Get(TRI_V8_ASCII_STRING(isolate, "incremental"))->IsBoolean()) {
-        configuration._incremental = TRI_ObjectToBoolean(
-            object->Get(TRI_V8_ASCII_STRING(isolate, "incremental")));
-      }
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "verbose"))) {
-      if (object->Get(TRI_V8_ASCII_STRING(isolate, "verbose"))->IsBoolean()) {
-        configuration._verbose =
-            TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING(isolate, "verbose")));
-      }
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "restrictCollections")) &&
-        object->Get(TRI_V8_ASCII_STRING(isolate, "restrictCollections"))->IsArray()) {
-      configuration._restrictCollections.clear();
-      v8::Handle<v8::Array> a = v8::Handle<v8::Array>::Cast(
-          object->Get(TRI_V8_ASCII_STRING(isolate, "restrictCollections")));
-
-      uint32_t const n = a->Length();
-
-      for (uint32_t i = 0; i < n; ++i) {
-        v8::Handle<v8::Value> cname = a->Get(i);
-
-        if (cname->IsString()) {
-          configuration._restrictCollections.insert(
-              std::pair<std::string, bool>(TRI_ObjectToString(cname), true));
-        }
-      }
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "restrictType"))) {
-      configuration._restrictType =
-          TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "restrictType")));
-    }
-
-    if ((configuration._restrictType.empty() &&
-         !configuration._restrictCollections.empty()) ||
-        (!configuration._restrictType.empty() &&
-         configuration._restrictCollections.empty()) ||
-        (!configuration._restrictType.empty() && configuration._restrictType != "include" &&
-         configuration._restrictType != "exclude")) {
-      TRI_V8_THROW_EXCEPTION_PARAMETER(
-          "invalid value for <restrictCollections> or <restrictType>");
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "connectionRetryWaitTime"))) {
-      if (object->Get(TRI_V8_ASCII_STRING(isolate, "connectionRetryWaitTime"))
-              ->IsNumber()) {
-        double value = TRI_ObjectToDouble(
-            object->Get(TRI_V8_ASCII_STRING(isolate, "connectionRetryWaitTime")));
-        if (value > 0.0) {
-          configuration._connectionRetryWaitTime =
-              static_cast<uint64_t>(value * 1000.0 * 1000.0);
-        }
-      }
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "initialSyncMaxWaitTime"))) {
-      if (object->Get(TRI_V8_ASCII_STRING(isolate, "initialSyncMaxWaitTime"))
-              ->IsNumber()) {
-        double value = TRI_ObjectToDouble(
-            object->Get(TRI_V8_ASCII_STRING(isolate, "initialSyncMaxWaitTime")));
-        if (value > 0.0) {
-          configuration._initialSyncMaxWaitTime =
-              static_cast<uint64_t>(value * 1000.0 * 1000.0);
-        }
-      }
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "idleMinWaitTime"))) {
-      if (object->Get(TRI_V8_ASCII_STRING(isolate, "idleMinWaitTime"))->IsNumber()) {
-        double value = TRI_ObjectToDouble(
-            object->Get(TRI_V8_ASCII_STRING(isolate, "idleMinWaitTime")));
-        if (value > 0.0) {
-          configuration._idleMinWaitTime =
-              static_cast<uint64_t>(value * 1000.0 * 1000.0);
-        }
-      }
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "idleMaxWaitTime"))) {
-      if (object->Get(TRI_V8_ASCII_STRING(isolate, "idleMaxWaitTime"))->IsNumber()) {
-        double value = TRI_ObjectToDouble(
-            object->Get(TRI_V8_ASCII_STRING(isolate, "idleMaxWaitTime")));
-        if (value > 0.0) {
-          configuration._idleMaxWaitTime =
-              static_cast<uint64_t>(value * 1000.0 * 1000.0);
-        }
-      }
-    }
-
-    if (object->Has(TRI_V8_ASCII_STRING(isolate, "autoResyncRetries"))) {
-      if (object->Get(TRI_V8_ASCII_STRING(isolate, "autoResyncRetries"))->IsNumber()) {
-        double value = TRI_ObjectToDouble(
-            object->Get(TRI_V8_ASCII_STRING(isolate, "autoResyncRetries")));
-        configuration._autoResyncRetries = static_cast<uint64_t>(value);
-      }
-    }
-
-    applier->reconfigure(configuration);
-
     VPackBuilder builder;
+    int res = TRI_V8ToVPack(isolate, builder, args[0], false);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
+
+    std::string databaseName;
+    if (applierType == APPLIER_DATABASE) {
+      TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+      if (vocbase == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+      }
+      databaseName = vocbase->name();
+    } 
+
+    // merge the passed configuration into the existing one
+    configuration = ReplicationApplierConfiguration::fromVelocyPack(configuration, builder.slice(), databaseName);
+
+    // will throw if invalid
+    configuration.validate();
+
+    // finally store the new configuration
+    applier->reconfigure(configuration);
+  
+    // and return it
+    builder.clear();
     builder.openObject();
     configuration.toVelocyPack(builder, true);
     builder.close();

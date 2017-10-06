@@ -553,9 +553,8 @@ void HeartbeatThread::runSingleServer() {
         applier->forget();
         
         // start initial synchronization
-        Syncer::RestrictType restrictType = Syncer::convert(config._restrictType);
-        GlobalInitialSyncer syncer(config, config._restrictCollections,
-                                   restrictType, false);
+        TRI_ASSERT(!config._skipCreateDrop);
+        GlobalInitialSyncer syncer(config);
         // sync incrementally on failover to other follower,
         // but not initially
         Result r = syncer.run(true);
@@ -573,10 +572,10 @@ void HeartbeatThread::runSingleServer() {
             
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
-          << "Got an exception in single server heartbeat: " << e.what();
+          << "got an exception in single server heartbeat: " << e.what();
     } catch (...) {
       LOG_TOPIC(ERR, Logger::HEARTBEAT)
-          << "Got an unknown exception in single server heartbeat";
+          << "got an unknown exception in single server heartbeat";
     }
   }
 }

@@ -37,9 +37,7 @@ namespace arangodb {
 class InitialSyncer : public Syncer {
 
  public:
-  InitialSyncer(ReplicationApplierConfiguration const&,
-                std::unordered_map<std::string, bool> const&,
-                Syncer::RestrictType, bool skipCreateDrop);
+  explicit InitialSyncer(ReplicationApplierConfiguration const&);
 
   ~InitialSyncer();
 
@@ -75,9 +73,6 @@ class InitialSyncer : public Syncer {
   /// @brief progress message
   std::string _progress;
 
-  /// @brief collection restriction
-  std::unordered_map<std::string, bool> _restrictCollections;
-
   /// @brief collections synced
   std::map<TRI_voc_cid_t, std::string> _processedCollections;
 
@@ -89,11 +84,6 @@ class InitialSyncer : public Syncer {
 
   /// @brief ttl for batches
   int _batchTtl;
-
-  // in the cluster case it is a total NOGO to create or drop collections
-  // because this HAS to be handled in the schmutz. otherwise it forgets who
-  // the leader was etc.
-  bool _skipCreateDrop;
 
 };
 }

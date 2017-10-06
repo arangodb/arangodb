@@ -84,6 +84,11 @@ class ReplicationApplierConfiguration {
   /// @brief create a configuration object from velocypack
   static ReplicationApplierConfiguration fromVelocyPack(arangodb::velocypack::Slice slice, 
                                                         std::string const& databaseName);
+  
+  /// @brief create a configuration object from velocypack, merging it with an existing one
+  static ReplicationApplierConfiguration fromVelocyPack(ReplicationApplierConfiguration const& existing,
+                                                        arangodb::velocypack::Slice slice, 
+                                                        std::string const& databaseName);
 };
 
 }

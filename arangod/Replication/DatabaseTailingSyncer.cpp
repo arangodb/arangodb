@@ -237,10 +237,8 @@ retry:
       errorMsg = "";
 
       try {
-        DatabaseInitialSyncer syncer(
-            vocbase(), _configuration, _configuration._restrictCollections,
-            _restrictType, false);
-
+        TRI_ASSERT(!_configuration._skipCreateDrop);
+        DatabaseInitialSyncer syncer(vocbase(), _configuration);
         Result r = syncer.run(_configuration._incremental);
         
         if (r.ok()) {
@@ -535,7 +533,7 @@ Result DatabaseTailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
   header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
 
   if (!found) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTTICK + " is missing");
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTTICK + " is missing in determine-open-transactions response");
   }
 
   TRI_voc_tick_t readTick = StringUtils::uint64(header);
@@ -644,7 +642,7 @@ Result DatabaseTailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
   std::string header = response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
 
   if (!found) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_CHECKMORE + " is missing");
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_CHECKMORE + " is missing in logger-follow response");
   }
 
   bool checkMore = StringUtils::boolean(header);
@@ -664,7 +662,7 @@ Result DatabaseTailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
 
   header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
   if (!found) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTINCLUDED + " is missing");
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTINCLUDED + " is missing in logger-follow response");
   }
 
   TRI_voc_tick_t lastIncludedTick = StringUtils::uint64(header);
@@ -679,7 +677,7 @@ Result DatabaseTailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
 
   header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
   if (!found) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header "+ TRI_REPLICATION_HEADER_LASTTICK + " is missing");
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header "+ TRI_REPLICATION_HEADER_LASTTICK + " is missing in logger-follow response");
   }
 
   bool bumpTick = false;
@@ -858,7 +856,7 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
     header =
     response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
     if (!found) {
-      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTINCLUDED + " is missing");
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTINCLUDED + " is missing in logger-follow response");
     }
     lastIncludedTick = StringUtils::uint64(header);
     
