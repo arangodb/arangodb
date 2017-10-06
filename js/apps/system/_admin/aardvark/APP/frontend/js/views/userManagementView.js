@@ -166,6 +166,12 @@
         active: status,
         extra: {name: name}
       };
+
+      if (frontendConfig.isEnterprise && $('#newRole').is(':checked')) {
+        options.user = ':role:' + userName;
+        delete options.passwd;
+      }
+
       this.collection.create(options, {
         wait: true,
         error: function (data, err) {
@@ -203,7 +209,7 @@
       }
 
       if ($(e.currentTarget).hasClass('tile')) {
-        e.currentTarget = $(e.currentTarget).find('img');
+        e.currentTarget = $(e.currentTarget).find('.fa');
       }
 
       this.collection.fetch({
@@ -255,6 +261,11 @@
       tableContent.push(
         window.modalView.createPasswordEntry('newPassword', 'Password', '', false, '', false)
       );
+      if (frontendConfig.isEnterprise) {
+        tableContent.push(
+          window.modalView.createCheckboxEntry('newRole', 'Role', false, false, false)
+        );
+      }
       tableContent.push(
         window.modalView.createCheckboxEntry('newStatus', 'Active', 'active', false, true)
       );
@@ -263,6 +274,16 @@
       );
 
       window.modalView.show('modalTable.ejs', 'Create New User', buttons, tableContent);
+
+      if (frontendConfig.isEnterprise) {
+        $('#newRole').on('change', function () {
+          if ($('#newRole').is(':checked')) {
+            $('#newPassword').attr('disabled', true);
+          } else {
+            $('#newPassword').attr('disabled', false);
+          }
+        });
+      }
     },
 
     evaluateUserName: function (str, substr) {
