@@ -498,7 +498,7 @@ void RocksDBRestReplicationHandler::handleCommandGetKeys() {
   }
   if (busy) {
     generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND,
-                  "RequestContext is busy");
+                  "replication context is busy");
     return;
   }
 

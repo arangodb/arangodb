@@ -839,8 +839,7 @@ retry:
       if (connectRetries <= _configuration._maxConnectRetries) {
         // check if we are aborted externally
         if (_applier->sleepIfStillActive(_configuration._connectionRetryWaitTime)) {
-          setProgress(
-                      "fetching master state information failed. will retry now. "
+          setProgress("fetching master state information failed. will retry now. "
                       "retries left: " +
                       std::to_string(_configuration._maxConnectRetries -
                                      connectRetries));

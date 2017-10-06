@@ -335,7 +335,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
           } else {
             marker->add("cuid", VPackValue(_dropCollectionUUID));
           }
-          marker->add("data", VPackValue(VPackValueType::Object));
           VPackObjectBuilder data(&_builder, "data", true);
           data->add("name", VPackValue(""));  // not used at all
         }

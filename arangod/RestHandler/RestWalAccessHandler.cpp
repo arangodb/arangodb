@@ -65,7 +65,22 @@ struct MyTypeHandler final : public VPackCustomTypeHandler {
 
 RestWalAccessHandler::RestWalAccessHandler(GeneralRequest* request,
                                            GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+    : RestVocbaseBaseHandler(request, response) {}
+
+bool RestWalAccessHandler::parseFilter(WalAccess::WalFilter& filter) {
+  bool found = false;
+  std::string const& value6 = _request->value("global", found);
+  if (found && StringUtils::boolean(value6)) {
+    if (!_vocbase->isSystem()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                    "global tailing is only possible from within _system database");
+      return false;
+    }
+  } else {
+    filter.insert(_vocbase->id());
+  }
+  return true;
+}
 
 RestStatus RestWalAccessHandler::execute() {
   if (_request->execContext() != nullptr &&
@@ -190,12 +205,9 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     chunkSize = static_cast<size_t>(StringUtils::uint64(value5));
   }
   
-  
   WalAccess::WalFilter filter;
-  std::string const& database = _request->value("database", found);
-  if (found) {
-    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(database);
-    filter.insert(vocbase->id());
+  if (!parseFilter(filter)) {
+    return;
   }
   
   WalAccessResult result;
@@ -306,7 +318,11 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(WalAccess cons
     return;
   }
   
+  // check whether a database was specified
   WalAccess::WalFilter filter;
+  if (!parseFilter(filter)) {
+    return;
+  }
   
   VPackBuffer<uint8_t> buffer;
   VPackBuilder response(buffer);

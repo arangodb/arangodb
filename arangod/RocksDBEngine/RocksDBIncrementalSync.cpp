@@ -48,7 +48,7 @@ int syncChunkRocksDB(
     std::string const& highString,
     std::vector<std::pair<std::string, uint64_t>> const& markers,
     std::string& errorMsg) {
-  std::string const baseUrl = syncer.BaseUrl + "/keys";
+  std::string const baseUrl = syncer.ReplicationUrl + "/keys";
   TRI_voc_tick_t const chunkSize = 5000;
   std::string const& collectionName = trx->documentCollection()->name();
   PhysicalCollection* physical = trx->documentCollection()->getPhysical();
@@ -358,7 +358,7 @@ int handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
   syncer.sendExtendBarrier();
 
   TRI_voc_tick_t const chunkSize = 5000;
-  std::string const baseUrl = syncer.BaseUrl + "/keys";
+  std::string const baseUrl = syncer.ReplicationUrl + "/keys";
 
   std::string url =
       baseUrl + "/" + keysId + "?chunkSize=" + std::to_string(chunkSize);

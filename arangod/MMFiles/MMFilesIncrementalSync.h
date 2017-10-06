@@ -243,7 +243,7 @@ int handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
   std::vector<size_t> toFetch;
 
   TRI_voc_tick_t const chunkSize = 5000;
-  std::string const baseUrl = syncer.BaseUrl + "/keys";
+  std::string const baseUrl = syncer.ReplicationUrl + "/keys";
 
   std::string url =
       baseUrl + "/" + keysId + "?chunkSize=" + std::to_string(chunkSize);
