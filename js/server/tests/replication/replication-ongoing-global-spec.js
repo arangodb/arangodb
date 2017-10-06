@@ -1,4 +1,4 @@
-/* global describe, it */
+/* global describe, it, arango, ARGUMENTS, after, before */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the replication
@@ -61,7 +61,6 @@ const compareTicks = function(l, r) {
   if (r === null) {
     r = "0";
   }
-  print("Ticks", l, r);
   if (l.length !== r.length) {
     return l.length - r.length < 0 ? -1 : 1;
   }
@@ -189,7 +188,7 @@ const cleanUp = function() {
   }
 
   while (replication.globalApplier.state().state.running) {
-    internal.wait(0.1, false);
+    require("internal").wait(0.1, false);
   }
 
   cleanUpAllData();
@@ -228,7 +227,7 @@ describe('Global Repliaction on a fresh boot', function () {
 
     before(function() {
       db._useDatabase("_system");
-    })
+    });
 
     it("should create and drop an empty document collection", function () {
       connectToMaster();
@@ -333,7 +332,7 @@ describe('Global Repliaction on a fresh boot', function () {
         connectToSlave();
         // Validate it is created properly
         waitForReplication();
-        testCollectionNotExists(docColName);
+        testCollectionDoesNotExists(docColName);
       });
 
       it("should replicate documents", function () {
@@ -544,7 +543,7 @@ describe('Global Repliaction on a fresh boot', function () {
         db._useDatabase(dbName);
         // Validate it is created properly
         waitForReplication();
-        testCollectionNotExists(docColName);
+        testCollectionDoesNotExists(docColName);
       });
 
       it("should replicate documents", function () {
@@ -726,7 +725,7 @@ describe('Setup global replication on empty slave and master has some data', fun
 
     before(function() {
       db._useDatabase("_system");
-    })
+    });
 
     it("should have synced the document collection", function () {
       connectToMaster();
