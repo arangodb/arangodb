@@ -68,12 +68,10 @@ SET(ARANGOD_SOURCES
   Actions/ActionFeature.cpp
   Actions/RestActionHandler.cpp
   Actions/actions.cpp
-  Agency/ActivationCallback.cpp
   Agency/AddFollower.cpp
   Agency/AgencyComm.cpp
   Agency/AgencyFeature.cpp
   Agency/Agent.cpp
-  Agency/AgentActivator.cpp
   Agency/AgentCallback.cpp
   Agency/AgentConfiguration.cpp
   Agency/CleanOutServer.cpp

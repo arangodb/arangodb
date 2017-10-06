@@ -108,10 +108,11 @@ RestStatus RestAgencyPrivHandler::execute() {
             readValue("prevLogIndex", prevLogIndex) &&
             readValue("prevLogTerm", prevLogTerm) &&
             readValue("leaderCommit", leaderCommit)) {  // found all values
-          bool ret = _agent->recvAppendEntriesRPC(
-              term, id, prevLogIndex, prevLogTerm, leaderCommit,
-              _request->toVelocyPackBuilderPtr());
-          result.add("success", VPackValue(ret));
+          auto ret = _agent->recvAppendEntriesRPC(
+            term, id, prevLogIndex, prevLogTerm, leaderCommit,
+            _request->toVelocyPackBuilderPtr());
+          result.add("success", VPackValue(ret.success));
+          result.add("term", VPackValue(ret.term));
           result.add("senderTimeStamp", VPackValue(senderTimeStamp));
         } else {
           return reportBadQuery();  // bad query
@@ -140,26 +141,6 @@ RestStatus RestAgencyPrivHandler::execute() {
         } else {
           return reportBadQuery();  // bad query
         }
-      } else if (suffixes[0] == "activate") {  // notify
-        if (_request->requestType() != rest::RequestType::POST) {
-          return reportMethodNotAllowed();
-        }
-        query_t everything;
-        try {
-          everything = _request->toVelocyPackBuilderPtr();
-        } catch (std::exception const& e) {
-          LOG_TOPIC(ERR, Logger::AGENCY)
-            << "Failure getting activation body:" <<  e.what();
-        }
-        try {
-          query_t res = _agent->activate(everything);
-          for (auto const& i : VPackObjectIterator(res->slice())) {
-            result.add(i.key.copyString(),i.value);
-          }
-        } catch (std::exception const& e) {
-          LOG_TOPIC(ERR, Logger::AGENCY) << "Activation failed: " << e.what();
-        }
-        
       } else if (suffixes[0] == "gossip") {
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();
@@ -170,16 +151,6 @@ RestStatus RestAgencyPrivHandler::execute() {
           for (auto const& obj : VPackObjectIterator(ret->slice())) {
             result.add(obj.key.copyString(), obj.value);
           }
-        } catch (std::exception const& e) {
-          return reportBadQuery(e.what());
-        }
-      } else if (suffixes[0] == "measure") {
-        if (_request->requestType() != rest::RequestType::POST) {
-          return reportMethodNotAllowed();
-        }
-        auto query = _request->toVelocyPackBuilderPtr();
-        try {
-          _agent->reportMeasurement(query);
         } catch (std::exception const& e) {
           return reportBadQuery(e.what());
         }
