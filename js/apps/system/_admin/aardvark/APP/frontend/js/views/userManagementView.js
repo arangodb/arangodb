@@ -216,8 +216,6 @@
         cache: false
       });
       var username = this.evaluateUserName($(e.currentTarget).attr('id'), '_edit-user');
-      console.log($(e.currentTarget));
-      console.log(username);
       if (username === '') {
         username = $(e.currentTarget).attr('id');
       }

@@ -107,8 +107,7 @@
       if (this.username.substring(0, 6) === ':role:') {
         buttons.push(
           window.modalView.createDisabledButton(
-            'Change Password',
-            this.editUserPassword.bind(this)
+            'Change Password'
           )
         );
       } else {

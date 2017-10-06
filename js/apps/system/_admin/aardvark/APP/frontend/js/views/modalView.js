@@ -297,9 +297,9 @@
       _.each(buttons, function (b, i) {
         if (b.disabled || b.type === 'disabled' || !b.callback) {
           if (divID) {
-            $('#modalButton' + i).attr('disabled', true);
-          } else {
             $('#' + divID + ' ' + '#modalButton' + i).attr('disabled', true);
+          } else {
+            $('#modalButton' + i).attr('disabled', true);
           }
           return;
         }
