@@ -53,21 +53,6 @@ class Slice;
 class Syncer {
  public:
   
-  enum class RestrictType : uint32_t {
-    NONE,
-    INCLUDE,
-    EXCLUDE
-  };
-  
-  static RestrictType convert(std::string const& tt) {
-    if (tt == "include") {
-      return Syncer::RestrictType::INCLUDE;
-    } else if (tt == "exclude") {
-      return Syncer::RestrictType::EXCLUDE;
-    }
-    return Syncer::RestrictType::NONE;
-  }
-  
   struct MasterInfo {
     std::string _endpoint;
     TRI_server_id_t _serverId;
@@ -174,9 +159,6 @@ class Syncer {
   
   /// @brief configuration
   ReplicationApplierConfiguration _configuration;
-  
-  /// @brief collection restriction type
-  Syncer::RestrictType _restrictType;
   
   /// @brief information about the master state
   MasterInfo _masterInfo;
