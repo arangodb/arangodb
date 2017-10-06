@@ -48,6 +48,9 @@ class ReplicationApplier {
   ReplicationApplier& operator=(ReplicationApplier const&) = delete;
 
   std::string const& databaseName() const { return _databaseName; }
+  
+  /// @brief whether or not the applier is the global one
+  virtual bool isGlobal() const = 0;
 
   /// @brief execute the check condition
   virtual bool applies() const = 0;

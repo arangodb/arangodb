@@ -37,6 +37,9 @@ class GlobalReplicationApplier final : public ReplicationApplier {
   
   ~GlobalReplicationApplier();
   
+  /// @brief whether or not the applier is the global one
+  bool isGlobal() const override { return true; }
+  
   /// @brief execute the check condition
   bool applies() const override { return true; }
 
