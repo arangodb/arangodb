@@ -61,7 +61,6 @@ Result GlobalInitialSyncer::run(bool incremental) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
   
-  setProgress("fetching master state");
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: getting master state";
   Result r = getMasterState();
     
@@ -252,9 +251,6 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
   }
   
   // send request
-  std::string const progress = "fetching master inventory from " + url;
-  setProgress(progress);
-  
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
   
   if (response == nullptr || !response->isComplete()) {

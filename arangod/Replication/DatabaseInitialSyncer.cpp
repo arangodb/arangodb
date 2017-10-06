@@ -244,9 +244,11 @@ Result DatabaseInitialSyncer::applyCollectionDump(transaction::Methods& trx,
       builder->clear();
       VPackParser parser(builder);
       parser.parse(p, static_cast<size_t>(q - p));
-    } catch (...) {
+    } catch (velocypack::Exception const& e) {
       // TODO: improve error reporting
-      return Result(TRI_ERROR_OUT_OF_MEMORY);
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "while parsing collection"
+        << " dump: " << e.what();
+      return Result(e.errorCode(), e.what());
     }
 
     p = q + 1;
@@ -481,7 +483,8 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
     }
 
     if (!found) {
-      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header is missing");
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
+                    _masterInfo._endpoint + ": required header is missing");
     }
     
     SingleCollectionTransaction trx(

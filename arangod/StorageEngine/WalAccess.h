@@ -63,7 +63,7 @@ class WalAccess {
   virtual ~WalAccess() {};
 
  public:
-  typedef std::unordered_map<TRI_voc_tick_t, std::set<TRI_voc_cid_t>> WalFilter;
+  typedef std::unordered_set<TRI_voc_tick_t> WalFilter;
   typedef std::function<void(TRI_vocbase_t*,
                         velocypack::Slice const&)> MarkerCallback;
   typedef std::function<void(TRI_voc_tid_t, TRI_voc_tid_t)> TransactionCallback;

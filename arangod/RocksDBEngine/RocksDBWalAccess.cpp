@@ -247,7 +247,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
           marker->add("cuid", VPackValue(cidToUUID(_currentDbId, _currentCid)));
           if (_lastLogType == RocksDBLogType::CollectionRename) {
             VPackObjectBuilder data(&_builder, "data", true);
-            data->add("id", VPackValue(std::to_string(_currentCid)));
             data->add("name", VPackValue(cidToName(_currentDbId, _currentCid)));
           } else {  // change and create need full data
             VPackSlice data = RocksDBValue::data(value);
@@ -336,7 +335,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
           }
           marker->add("data", VPackValue(VPackValueType::Object));
           VPackObjectBuilder data(&_builder, "data", true);
-          data->add("id", VPackValue(std::to_string(_currentCid)));
           data->add("name", VPackValue(""));  // not used at all
         }
         _callback(loadVocbase(_currentDbId), _builder.slice());
@@ -450,7 +448,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
       return false;
     }
 
-    if (!_include.empty() && !shouldHandleCollection(_currentDbId, cid)) {
+    if (!shouldHandleCollection(_currentDbId, cid)) {
       return false;
     }
 
@@ -472,10 +470,12 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
   }
 
   bool shouldHandleCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid) {
+    if (_include.empty()) { // tail everything
+      return true;
+    }
     auto const& it = _include.find(dbid);
     if (it != _include.end()) {
-      auto const& it2 = it->second.find(cid);
-      return it2 != it->second.end();
+      return true;
     }
     return false;
   }
@@ -611,7 +611,7 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
   }
 
   WalAccessResult result(TRI_ERROR_NO_ERROR, firstTick <= tickStart, lastWrittenTick);
-  if (!s.ok()) {  // TODO do something?
+  if (!s.ok()) {
     result.Result::reset(convertStatus(s, rocksutils::StatusHint::wal));
   }
   return result;

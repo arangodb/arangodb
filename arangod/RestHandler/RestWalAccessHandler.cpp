@@ -190,22 +190,13 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     chunkSize = static_cast<size_t>(StringUtils::uint64(value5));
   }
   
-  // extract collection filer
-  /*TRI_voc_cid_t cid = 0;
-   std::string const& value6 = _request->value("collection", found);
-   if (found) {
-   arangodb::LogicalCollection* c = _vocbase->lookupCollection(value6);
-   
-   if (c == nullptr) {
-   generateError(rest::ResponseCode::NOT_FOUND,
-   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-   return;
-   }
-   
-   cid = c->cid();
-   }*/
-  // FIXME
+  
   WalAccess::WalFilter filter;
+  std::string const& database = _request->value("database", found);
+  if (found) {
+    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(database);
+    filter.insert(vocbase->id());
+  }
   
   WalAccessResult result;
   std::map<TRI_voc_tick_t, MyTypeHandler> handlers;
@@ -285,7 +276,6 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
       vocbase->updateReplicationClient(serverId, result.lastTick());
     });
   } else {
-    // clears contents
     _response->setResponseCode(rest::ResponseCode::NO_CONTENT);
   }
 }

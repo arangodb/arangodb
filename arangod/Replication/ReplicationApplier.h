@@ -39,6 +39,7 @@ class Builder;
 
 /// @brief replication applier interface
 class ReplicationApplier {
+  friend class TailingSyncer;
  public:
   ReplicationApplier(ReplicationApplierConfiguration const& configuration, std::string&& databaseName);
 
