@@ -141,7 +141,6 @@ RestStatus RestAgencyPrivHandler::execute() {
         } else {
           return reportBadQuery();  // bad query
         }
-
       } else if (suffixes[0] == "add-server" || suffixes[0] == "remove-server" ) {
         auto tmp = std::make_shared<Builder>();
         { VPackObjectBuilder b(tmp.get());
@@ -189,7 +188,6 @@ RestStatus RestAgencyPrivHandler::execute() {
         } catch (std::exception const& e) {
           LOG_TOPIC(ERR, Logger::AGENCY) << "Activation failed: " << e.what();
         }
-        
       } else if (suffixes[0] == "gossip") {
         if (_request->requestType() != rest::RequestType::POST) {
           return reportMethodNotAllowed();

@@ -144,8 +144,8 @@ class Agent : public arangodb::Thread,
   /// @brief Resign leadership
   void resign(term_t otherTerm = 0);
 
-private:
-  
+ private:
+
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
   void sendAppendEntriesRPC();

@@ -547,9 +547,11 @@ actions.defineHttp({
       return Health;
     }, Health);
 
-    Object.entries(agency[0]['.agency'].pool).forEach(([key, value]) => {
-      Health[key] = {Endpoint: value, Role: 'Agent', CanBeDeleted: false};
-    });
+    if (agency[0].hasOwnProperty('.agency')) {
+      Object.entries(agency[0]['.agency'].pool).forEach(([key, value]) => {
+        Health[key] = {Endpoint: value, Role: 'Agent', CanBeDeleted: false};
+      });
+    }
 
     actions.resultOk(req, res, actions.HTTP_OK, {Health, ClusterId: clusterId});
   }
