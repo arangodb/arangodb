@@ -90,7 +90,7 @@ function applierStart(global, initialTick, barrierId) {
 
   var url;
   if (global) {
-    url = '/_db/_system/_api/replication/applier-start' + appendChar(append) + 'global=true';
+    url = '/_db/_system/_api/replication/applier-start' + append + appendChar(append) + 'global=true';
   } else {
     url = '/_api/replication/applier-start' + append;
   }

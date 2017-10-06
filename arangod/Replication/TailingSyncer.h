@@ -55,8 +55,9 @@ class TailingSyncer : public Syncer {
   virtual ~TailingSyncer();
 
  public:
+  
   /// @brief run method, performs continuous synchronization
-  int run();
+  Result run();
 
  protected:
   
@@ -110,7 +111,7 @@ class TailingSyncer : public Syncer {
   void getLocalState();
   
   /// @brief perform a continuous sync with the master
-  int runContinuousSync(std::string&);
+  Result runContinuousSync();
   
   /// @brief fetch the open transactions we still need to complete
   Result fetchOpenTransactions(TRI_voc_tick_t fromTick,

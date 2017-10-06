@@ -52,10 +52,10 @@ class ApplyThread : public Thread {
     TRI_ASSERT(_syncer);
 
     try {
-      int res = _syncer->run();
-      if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_REPLICATION_APPLIER_STOPPED) {
+      Result res = _syncer->run();
+      if (res.fail() && res.isNot(TRI_ERROR_REPLICATION_APPLIER_STOPPED)) {
         LOG_TOPIC(ERR, Logger::REPLICATION) << "error while running applier for " << _applier->databaseName() << ": "
-          << TRI_errno_string(res);
+          << res.errorMessage();
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC(WARN, Logger::REPLICATION) << "caught exception in ApplyThread for " << _applier->databaseName() << " : " << ex.what();
@@ -188,8 +188,9 @@ void ReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc
   }
   
   if (_configuration._endpoint.empty() || _configuration._database.empty()) {
-    setErrorNoLock(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
+    Result r(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
+    setErrorNoLock(r);
+    THROW_ARANGO_EXCEPTION(r);
   }
 
   // reset error
@@ -415,13 +416,9 @@ std::string ReplicationApplier::endpoint() const {
 }
 
 /// @brief register an applier error
-int ReplicationApplier::setError(int errorCode, char const* msg) {
-  return setErrorNoLock(errorCode, std::string(msg));
-}
-
-int ReplicationApplier::setError(int errorCode, std::string const& msg) {
+void ReplicationApplier::setError(arangodb::Result const& r) {
   WRITE_LOCKER(writeLocker, _statusLock);
-  return setErrorNoLock(errorCode, msg);
+  setErrorNoLock(r);
 }
 
 /// @brief set the progress 
@@ -435,16 +432,15 @@ void ReplicationApplier::setProgress(std::string const& msg) {
 }
 
 /// @brief register an applier error
-int ReplicationApplier::setErrorNoLock(int errorCode, std::string const& msg) {
+void ReplicationApplier::setErrorNoLock(arangodb::Result const& rr) {
   // log error message
-  if (errorCode != TRI_ERROR_REPLICATION_APPLIER_STOPPED) {
+  if (rr.isNot(TRI_ERROR_REPLICATION_APPLIER_STOPPED)) {
     LOG_TOPIC(ERR, Logger::REPLICATION)
         << "replication applier error for " << _databaseName << ": "
-        << (msg.empty() ? TRI_errno_string(errorCode) : msg);
+        << rr.errorMessage();
   }
 
-  _state.setError(errorCode, msg.empty() ? TRI_errno_string(errorCode) : msg);
-  return errorCode;
+  _state.setError(rr.errorNumber(), rr.errorMessage());
 }
 
 void ReplicationApplier::setProgressNoLock(std::string const& msg) {

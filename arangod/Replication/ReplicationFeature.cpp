@@ -80,8 +80,7 @@ void ReplicationFeature::prepare() {
 }
 
 void ReplicationFeature::start() { 
-  // TODO: pass proper configuration into applier
-  _globalReplicationApplier.reset(new GlobalReplicationApplier(ReplicationApplierConfiguration()));
+  _globalReplicationApplier.reset(new GlobalReplicationApplier(GlobalReplicationApplier::loadConfiguration()));
   
   if (_globalReplicationApplier->autoStart() &&
       _globalReplicationApplier->hasState() &&

@@ -44,10 +44,8 @@ using namespace arangodb::httpclient;
 using namespace arangodb::rest;
 
 GlobalInitialSyncer::GlobalInitialSyncer(
-  ReplicationApplierConfiguration const& configuration,
-  std::unordered_map<std::string, bool> const& restrictCollections,
-  Syncer::RestrictType restrictType, bool skipCreateDrop)
-    : InitialSyncer(configuration, restrictCollections, restrictType, skipCreateDrop) {}
+  ReplicationApplierConfiguration const& configuration)
+    : InitialSyncer(configuration) {}
 
 GlobalInitialSyncer::~GlobalInitialSyncer() {
   try {
@@ -110,7 +108,7 @@ Result GlobalInitialSyncer::run(bool incremental) {
                   "database section or state section is missing from response or is invalid");
   }
  
-  if (!_skipCreateDrop) {
+  if (!_configuration._skipCreateDrop) {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "updating server inventory"; 
     Result r = updateServerInventory(databases);
     if (r.fail()) {
@@ -150,8 +148,7 @@ Result GlobalInitialSyncer::run(bool incremental) {
       std::string const oldName = _configuration._database;
       _configuration._database = nameSlice.copyString();
       TRI_DEFER(_configuration._database = oldName);
-      DatabaseInitialSyncer syncer(vocbase, _configuration, _restrictCollections,
-                                   _restrictType, _skipCreateDrop);
+      DatabaseInitialSyncer syncer(vocbase, _configuration);
       
       syncer.useAsChildSyncer(_masterInfo, _barrierId, _barrierUpdateTime,
                               _batchId, _batchUpdateTime);

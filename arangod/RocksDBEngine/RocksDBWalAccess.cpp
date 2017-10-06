@@ -149,8 +149,10 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
             marker->add("type", VPackValue(rocksutils::convertLogType(type)));
             marker->add("db", VPackValue(loadVocbase(_currentDbId)->name()));
             marker->add("cuid", VPackValue(cidToUUID(_currentDbId, _currentCid)));
-            VPackObjectBuilder data(&_builder, "data", true);
-            data->add("id", VPackValue(std::to_string(iid)));
+            {
+              VPackObjectBuilder data(&_builder, "data", true);
+              data->add("id", VPackValue(std::to_string(iid)));
+            }
           }
           _callback(loadVocbase(_currentDbId), _builder.slice());
           _builder.clear();
@@ -369,9 +371,11 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
         } else {
           marker->add("tid", VPackValue(std::to_string(_currentTrxId)));
         }
-        VPackObjectBuilder data(&_builder, "data", true);
-        data->add(StaticStrings::KeyString, VPackValue(_removeDocumentKey));
-        data->add(StaticStrings::RevString, VPackValue(std::to_string(revId)));
+        {
+          VPackObjectBuilder data(&_builder, "data", true);
+          data->add(StaticStrings::KeyString, VPackValue(_removeDocumentKey));
+          data->add(StaticStrings::RevString, VPackValue(std::to_string(revId)));
+        }
       }
       _callback(loadVocbase(_currentDbId), _builder.slice());
       _builder.clear();
@@ -577,8 +581,7 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
          handler->responseSize() < chunkSize) {
     s = iterator->status();
     if (!s.ok()) {
-      LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan";
-      LOG_TOPIC(ERR, Logger::ROCKSDB) << s.ToString();
+      LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan: " << s.ToString();
       break; // s is considered in the end
     }
 
@@ -600,8 +603,7 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
     handler->startNewBatch(batch.sequence);
     s = batch.writeBatchPtr->Iterate(handler.get());
     if (!s.ok()) {
-      LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan";
-      LOG_TOPIC(ERR, Logger::ROCKSDB) << s.ToString();
+      LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan: " << s.ToString();
       break; // s is considered in the end
     }
     lastWrittenTick = handler->endBatch(); // end of the batch

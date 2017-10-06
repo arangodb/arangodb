@@ -2081,8 +2081,7 @@ function ReplicationSyncSuite () {
         fail();
       }
       catch (err) {
-        assertTrue(errors.ERROR_BAD_PARAMETER.code === err.errorNum ||
-                   errors.ERROR_HTTP_BAD_PARAMETER.code === err.errorNum);
+        assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
       }
     },
 
@@ -2099,8 +2098,7 @@ function ReplicationSyncSuite () {
         fail();
       }
       catch (err) {
-        assertTrue(errors.ERROR_BAD_PARAMETER.code === err.errorNum ||
-                   errors.ERROR_HTTP_BAD_PARAMETER.code === err.errorNum);
+        assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
       }
     },
 
@@ -2117,8 +2115,7 @@ function ReplicationSyncSuite () {
         fail();
       }
       catch (err) {
-        assertTrue(errors.ERROR_BAD_PARAMETER.code === err.errorNum ||
-                   errors.ERROR_HTTP_BAD_PARAMETER.code === err.errorNum);
+        assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
       }
     },
 
@@ -2135,8 +2132,7 @@ function ReplicationSyncSuite () {
         fail();
       }
       catch (err) {
-        assertTrue(errors.ERROR_BAD_PARAMETER.code === err.errorNum ||
-                   errors.ERROR_HTTP_BAD_PARAMETER.code === err.errorNum);
+        assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
       }
     },
 
@@ -2154,14 +2150,12 @@ function ReplicationSyncSuite () {
         fail();
       }
       catch (err) {
-        assertTrue(errors.ERROR_BAD_PARAMETER.code === err.errorNum ||
-                   errors.ERROR_HTTP_BAD_PARAMETER.code === err.errorNum);
+        assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
       }
     }
 
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites

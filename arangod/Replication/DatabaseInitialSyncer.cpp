@@ -63,10 +63,8 @@ using namespace arangodb::rest;
 size_t const DatabaseInitialSyncer::MaxChunkSize = 10 * 1024 * 1024;
 
 DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t* vocbase,
-    ReplicationApplierConfiguration const& configuration,
-    std::unordered_map<std::string, bool> const& restrictCollections,
-    Syncer::RestrictType restrictType, bool skipCreateDrop)
-    : InitialSyncer(configuration, restrictCollections, restrictType, skipCreateDrop),
+                                             ReplicationApplierConfiguration const& configuration)
+    : InitialSyncer(configuration),
       _vocbase(vocbase),
       _hasFlushed(false) {
   _vocbases.emplace(vocbase->name(), DatabaseGuard(vocbase));
@@ -452,39 +450,42 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
       }
       // fallthrough here in case everything went well
     }
+    
+    if (response->wasHttpError()) {
+      return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
+    }
 
     if (response->hasContentLength()) {
       bytesReceived += response->getContentLength();
     }
 
-    bool checkMore = false;
     bool found;
-    TRI_voc_tick_t tick;
-
-    std::string header =
-        response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
-    if (found) {
-      checkMore = StringUtils::boolean(header);
-
-      if (checkMore) {
-        header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED,
-                                          found);
-        if (found) {
-          tick = StringUtils::uint64(header);
-
-          if (tick > fromTick) {
-            fromTick = tick;
-          } else {
-            // we got the same tick again, this indicates we're at the end
-            checkMore = false;
-          }
-        }
-      }
-    }
-
+    std::string header = response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
     if (!found) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
-                    _masterInfo._endpoint + ": required header is missing");
+                    _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_CHECKMORE +
+                    " is missing in dump response");
+    }
+
+    TRI_voc_tick_t tick;
+    bool checkMore = StringUtils::boolean(header);
+
+    if (checkMore) {
+      header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED,
+                                        found);
+      if (!found) {
+        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
+                      _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTINCLUDED
+                      + " is missing in dump response");
+      }
+
+      tick = StringUtils::uint64(header);
+      if (tick > fromTick) {
+        fromTick = tick;
+      } else {
+        // we got the same tick again, this indicates we're at the end
+        checkMore = false;
+      }
     }
     
     SingleCollectionTransaction trx(
@@ -823,7 +824,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
           }
         } else {
           // regular collection
-          if (_skipCreateDrop) {
+          if (_configuration._skipCreateDrop) {
             setProgress("dropping " + collectionMsg + " skipped because of configuration");
             return Result();
           }
@@ -853,7 +854,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     }
 
     std::string progress = "creating " + collectionMsg;
-    if (_skipCreateDrop) {
+    if (_configuration._skipCreateDrop) {
       progress += " skipped because of configuration";
       setProgress(progress.c_str());
       return Result();
@@ -1053,14 +1054,14 @@ Result DatabaseInitialSyncer::handleLeaderCollections(VPackSlice const& collSlic
       continue;
     }
 
-    if (_restrictType != Syncer::RestrictType::NONE) {
-      auto const it = _restrictCollections.find(masterName);
-      bool found = (it != _restrictCollections.end());
+    if (!_configuration._restrictType.empty()) {
+      auto const it = _configuration._restrictCollections.find(masterName);
+      bool found = (it != _configuration._restrictCollections.end());
 
-      if (_restrictType == Syncer::RestrictType::INCLUDE && !found) {
+      if (_configuration._restrictType == "include" && !found) {
         // collection should not be included
         continue;
-      } else if (_restrictType == Syncer::RestrictType::EXCLUDE && found) {
+      } else if (_configuration._restrictType == "exclude" && found) {
         // collection should be excluded
         continue;
       }

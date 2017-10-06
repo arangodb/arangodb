@@ -22,7 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicationApplierConfiguration.h"
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/ClusterComm.h"
+#include "Cluster/ClusterFeature.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -153,9 +156,18 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool i
       VPackValue(static_cast<double>(_idleMaxWaitTime) / (1000.0 * 1000.0)));
 }
 
+/// @brief create a configuration object from velocypack
 ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(VPackSlice slice, 
                                                                                 std::string const& databaseName) {
-  ReplicationApplierConfiguration configuration;
+  return fromVelocyPack(ReplicationApplierConfiguration(), slice, databaseName);
+}
+
+/// @brief create a configuration object from velocypack, merging it with an existing one
+ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(ReplicationApplierConfiguration const& existing,
+                                                                                VPackSlice slice, 
+                                                                                std::string const& databaseName) {
+  // copy existing configuration
+  ReplicationApplierConfiguration configuration = existing;
 
   // read the database name
   VPackSlice value = slice.get("database");
@@ -183,6 +195,15 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
     value = slice.get("jwt");
     if (value.isString()) {
       configuration._jwt = value.copyString();
+    } else {
+      auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
+      if (cluster->isEnabled()) {
+        auto cc = ClusterComm::instance();
+        if (cc != nullptr) {
+          // nullptr happens only during controlled shutdown
+          configuration._jwt = ClusterComm::instance()->jwt();
+        }
+      }
     }
   }
 
@@ -198,12 +219,12 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
 
   value = slice.get("maxConnectRetries");
   if (value.isNumber()) {
-    configuration._maxConnectRetries = value.getNumber<int64_t>();
+    configuration._maxConnectRetries = value.getNumber<uint64_t>();
   }
   
   value = slice.get("lockTimeoutRetries");
   if (value.isNumber()) {
-    configuration._lockTimeoutRetries = value.getNumber<int64_t>();
+    configuration._lockTimeoutRetries = value.getNumber<uint64_t>();
   }
 
   value = slice.get("sslProtocol");
@@ -285,22 +306,34 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
 
   value = slice.get("connectionRetryWaitTime");
   if (value.isNumber()) {
-    configuration._connectionRetryWaitTime = static_cast<uint64_t>(value.getNumber<double>() * 1000.0 * 1000.0);
+    double v = value.getNumber<double>();
+    if (v > 0.0) {
+      configuration._connectionRetryWaitTime = static_cast<uint64_t>(v * 1000.0 * 1000.0);
+    }
   }
 
   value = slice.get("initialSyncMaxWaitTime");
   if (value.isNumber()) {
-    configuration._initialSyncMaxWaitTime = static_cast<uint64_t>(value.getNumber<double>() * 1000.0 * 1000.0);
+    double v = value.getNumber<double>();
+    if (v > 0.0) {
+      configuration._initialSyncMaxWaitTime = static_cast<uint64_t>(v * 1000.0 * 1000.0);
+    }
   }
 
   value = slice.get("idleMinWaitTime");
   if (value.isNumber()) {
-    configuration._idleMinWaitTime = static_cast<uint64_t>(value.getNumber<double>() * 1000.0 * 1000.0);
+    double v = value.getNumber<double>();
+    if (v > 0.0) {
+      configuration._idleMinWaitTime = static_cast<uint64_t>(v * 1000.0 * 1000.0);
+    }
   }
 
   value = slice.get("idleMaxWaitTime");
   if (value.isNumber()) {
-    configuration._idleMaxWaitTime = static_cast<uint64_t>(value.getNumber<double>() * 1000.0 * 1000.0);
+    double v = value.getNumber<double>();
+    if (v > 0.0) {
+      configuration._idleMaxWaitTime = static_cast<uint64_t>(v * 1000.0 * 1000.0);
+    }
   }
 
   value = slice.get("autoResyncRetries");
@@ -310,11 +343,13 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
 
   // read the endpoint
   value = slice.get("endpoint");
-  if (!value.isString()) {
-    // we haven't found an endpoint. now don't let the start fail but continue
-    configuration._autoStart = false;
-  } else {
-    configuration._endpoint = value.copyString();
+  if (!value.isNone()) {
+    if (!value.isString()) {
+      // we haven't found an endpoint. now don't let the start fail but continue
+      configuration._autoStart = false;
+    } else {
+      configuration._endpoint = value.copyString();
+    }
   }
   
   return configuration;
@@ -323,15 +358,15 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
 /// @brief validate the configuration. will throw if the config is invalid
 void ReplicationApplierConfiguration::validate() const {
   if (_endpoint.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid value for <endpoint>");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "invalid value for <endpoint>");
   }
 
   if (!_restrictType.empty() && _restrictType != "include" && _restrictType != "exclude") {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid value for <restrictType>");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "invalid value for <restrictType>");
   }
 
   if ((_restrictType.empty() && !_restrictCollections.empty()) ||
       (!_restrictType.empty() && _restrictCollections.empty())) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid value for <restrictCollections> or <restrictType>");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "invalid value for <restrictCollections> or <restrictType>");
   }
 }

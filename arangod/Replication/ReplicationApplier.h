@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +24,8 @@
 #ifndef ARANGOD_REPLICATION_REPLICATION_APPLIER_H
 #define ARANGOD_REPLICATION_REPLICATION_APPLIER_H 1
 
-#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/Result.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationApplierState.h"
 
@@ -121,8 +121,7 @@ class ReplicationApplier {
   int allowStart();
 
   /// @brief register an applier error
-  int setError(int errorCode, char const* msg);
-  int setError(int errorCode, std::string const& msg);
+  void setError(arangodb::Result const&);
   
   /// @brief set the progress
   void setProgress(char const* msg);
@@ -142,7 +141,7 @@ class ReplicationApplier {
   virtual std::string getStateFilename() const = 0;
 
   /// @brief register an applier error
-  int setErrorNoLock(int errorCode, std::string const& msg);
+  void setErrorNoLock(arangodb::Result const&);
   void setProgressNoLock(std::string const& msg);
 
  protected:

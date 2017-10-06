@@ -574,16 +574,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
     }
   }
 
+  // TODO: add validation
   // now the configuration is complete
-  if ((config._restrictType.empty() && !config._restrictCollections.empty()) ||
-      (!config._restrictType.empty() && config._restrictCollections.empty()) ||
-      (!config._restrictType.empty() && config._restrictType != "include" &&
-       config._restrictType != "exclude")) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid value for <restrictCollections> or <restrictType>");
-    return;
-  }
-  Syncer::RestrictType restrictType = Syncer::convert(config._restrictType);
   
   bool isGlobal = false;
   ReplicationApplier* applier = getApplier(isGlobal);
@@ -592,12 +584,11 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   }
   
   std::unique_ptr<InitialSyncer> syncer;
+  TRI_ASSERT(!config._skipCreateDrop);
   if (isGlobal) {
-    syncer.reset(new GlobalInitialSyncer(config, config._restrictCollections,
-                                         restrictType, false));
+    syncer.reset(new GlobalInitialSyncer(config));
   } else {
-    syncer.reset(new DatabaseInitialSyncer(_vocbase, config, config._restrictCollections,
-                                           restrictType, false));
+    syncer.reset(new DatabaseInitialSyncer(_vocbase, config));
   }
 
   // forget about any existing replication applier configuration
@@ -1850,26 +1841,6 @@ void RestReplicationHandler::handleCommandSync() {
     return;
   }
 
-  std::unordered_map<std::string, bool> restrictCollections;
-  VPackSlice const restriction = body.get("restrictCollections");
-  if (restriction.isArray()) {
-    for (VPackSlice const& cname : VPackArrayIterator(restriction)) {
-      if (cname.isString()) {
-        restrictCollections.insert(
-            std::pair<std::string, bool>(cname.copyString(), true));
-      }
-    }
-  }
-
-  std::string value = VelocyPackHelper::getStringValue(body, "restrictType", "");
-  if ((value.empty() && !restrictCollections.empty()) ||
-      (!value.empty() && restrictCollections.empty()) ||
-      (!value.empty() && value != "include" && value != "exclude")) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid value for <restrictCollections> or <restrictType>");
-    return;
-  }
-  Syncer::RestrictType const restrictType = Syncer::convert(value);
   bool const verbose = VelocyPackHelper::getBooleanValue(body, "verbose", false);
   bool const incremental =
     VelocyPackHelper::getBooleanValue(body, "incremental", false);
@@ -1882,15 +1853,27 @@ void RestReplicationHandler::handleCommandSync() {
   config._jwt = VelocyPackHelper::getStringValue(body, "jwt", "");
   config._includeSystem = VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
   config._verbose = verbose;
+  
+  VPackSlice const restriction = body.get("restrictCollections");
+  if (restriction.isArray()) {
+    for (VPackSlice const& cname : VPackArrayIterator(restriction)) {
+      if (cname.isString()) {
+        config._restrictCollections.insert(
+            std::pair<std::string, bool>(cname.copyString(), true));
+      }
+    }
+  }
+
+  config._restrictType = VelocyPackHelper::getStringValue(body, "restrictType", "");
+  // TODO: validate 
 
   // wait until all data in current logfile got synced
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
   engine->waitForSync(5.0);
 
-  DatabaseInitialSyncer syncer(_vocbase, config, restrictCollections, restrictType, false);
-
-  std::string errorMsg = "";
+  TRI_ASSERT(!config._skipCreateDrop);
+  DatabaseInitialSyncer syncer(_vocbase, config);
 
   Result r = syncer.run(incremental);
   if (r.fail()) {
@@ -2022,8 +2005,7 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
                                                           config._incremental);
   config._requireFromPresent = VelocyPackHelper::getBooleanValue(
       body, "requireFromPresent", config._requireFromPresent);
-  config._restrictType = VelocyPackHelper::getStringValue(body, "restrictType",
-                                                          config._restrictType);
+  config._restrictType = VelocyPackHelper::getStringValue(body, "restrictType", "");
   config._connectionRetryWaitTime = static_cast<uint64_t>(
       1000.0 * 1000.0 *
       VelocyPackHelper::getNumericValue<double>(

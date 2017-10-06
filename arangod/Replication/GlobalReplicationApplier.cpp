@@ -95,7 +95,6 @@ std::unique_ptr<TailingSyncer> GlobalReplicationApplier::buildSyncer(TRI_voc_tic
 
 std::string GlobalReplicationApplier::getStateFilename() const {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
-  // TODO: fix storage path
   TRI_vocbase_t* vocbase = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->systemDatabase();
 
   return arangodb::basics::FileUtils::buildFilename(engine->databasePath(vocbase), "GLOBAL-REPLICATION-APPLIER-STATE");
