@@ -37,6 +37,7 @@ fi
 
 if test -f /scripts/prepare_buildenv.sh; then
     echo "Sourcing docker container environment settings"
+    # shellcheck disable=SC1091
     . /scripts/prepare_buildenv.sh
 fi
 if test -z "${PARALLEL_BUILDS}"; then
@@ -644,11 +645,24 @@ fi
 THIRDPARTY_BIN=""
 THIRDPARTY_SBIN=""
 if test -n "${DOWNLOAD_SYNCER_USER}"; then
-    
-    OAUTH_REPLY=$(
-        curl -s "https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations" \
-             --data "{\"scopes\":[\"repo\", \"repo_deployment\"],\"note\":\"Release$$-${OSNAME}\"}"
-        )
+    count=0
+    SEQNO="$$"
+    while test -z "${OAUTH_REPLY}"; do
+        OAUTH_REPLY=$(
+            curl -s "https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations" \
+                 --data "{\"scopes\":[\"repo\", \"repo_deployment\"],\"note\":\"Release${SEQNO}-${OSNAME}\"}"
+                   )
+        if test -n "$(echo "${OAUTH_REPLY}" |grep already_exists)"; then
+            # retry with another number... 
+            OAUTH_REPLY=""
+            SEQNO=$((SEQNO + 1))
+            count=$((count + 1))
+            if test "${count}" -gt 20; then
+                echo "failed to login to github! Giving up."
+                exit 1
+            fi
+        fi
+    done
     OAUTH_TOKEN=$(echo "$OAUTH_REPLY" | \
                          grep '"token"'  |\
                          sed -e 's;.*": *";;' -e 's;".*;;'
@@ -657,14 +671,12 @@ if test -n "${DOWNLOAD_SYNCER_USER}"; then
                       grep '"id"'  |\
                       sed -e 's;.*": *;;' -e 's;,;;'
             )
-    if test -z "${OAUTH_ID}"; then
-        echo "failed to login to github! Giving up."
-        exit 1
-    fi
+
+    # shellcheck disable=SC2064
     trap "curl -s -X DELETE \"https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations/${OAUTH_ID}\"" EXIT
 
     if test -f "${SRC}/SYNCER_REV"; then
-        SYNCER_REV=$(cat ${SRC}/SYNCER_REV)
+        SYNCER_REV=$(cat "${SRC}/SYNCER_REV")
     else
         SYNCER_REV=$(curl -s "https://api.github.com/repos/arangodb/arangosync/releases?access_token=${OAUTH_TOKEN}" | \
                              grep tag_name | \
@@ -703,7 +715,8 @@ if test -n "${DOWNLOAD_SYNCER_USER}"; then
         fi
         if ! test -f "${BUILD_DIR}/${FN}-${SYNCER_REV}"; then
             rm -f "${FN}"
-            curl -LJO# -H 'Accept: application/octet-stream' "${SYNCER_URL}?access_token=${OAUTH_TOKEN}"
+            curl -LJO# -H 'Accept: application/octet-stream' "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" || \
+                ${SRC}/Installation/Jenkins/curl_time_machine.sh "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" "${FN}"
             mv "${FN}" "${BUILD_DIR}/${TN}"
             ${MD5} < "${BUILD_DIR}/${TN}"  | ${SED} "s; .*;;" > "${BUILD_DIR}/${FN}-${SYNCER_REV}"
             OLD_MD5=$(cat "${BUILD_DIR}/${FN}-${SYNCER_REV}")
@@ -795,6 +808,7 @@ set -e
 
 if test "${PARTIAL_STATE}" == 0; then
     rm -rf CMakeFiles CMakeCache.txt CMakeCPackOptions.cmake cmake_install.cmake CPackConfig.cmake CPackSourceConfig.cmake
+    # shellcheck disable=SC2068
     CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" LIBS="${LIBS}" \
           cmake "${SOURCE_DIR}" ${CONFIGURE_OPTIONS[@]} -G "${GENERATOR}" || exit 1
 fi
@@ -809,6 +823,7 @@ fi
 TRIES=0;
 set +e
 while /bin/true; do
+    # shellcheck disable=SC2068
     ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS[@]}
     RC=$?
     if test "${isCygwin}" == 1 -a "${RC}" != 0 -a "${TRIES}" == 0; then
@@ -917,6 +932,7 @@ if test -n "${TARGET_DIR}";  then
                             ${SED} -e "s/.*optimized;//"  -e "s/;.*//" -e "s;/lib.*lib;;"  -e "s;\([a-zA-Z]*\):;/cygdrive/\1;"
                   )
             DLLS=$(find "${SSLDIR}" -name \*.dll |grep -i release)
+            # shellcheck disable=SC2086
             cp ${DLLS} "bin/${BUILD_CONFIG}"
             cp "bin/${BUILD_CONFIG}/"* bin/
             cp "tests/${BUILD_CONFIG}/"*exe bin/

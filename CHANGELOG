@@ -1,6 +1,12 @@
 devel
 -----
 
+* UI: added user roles
+
+* added config option `--log.color` to toggle colorful logging to terminal
+
+* added config option `--log.thread-name` to additionally log thread names 
+
 * usernames must not start with `:role:`, added new options:
     --server.authentication-timeout
     --ldap.roles-attribute-name
@@ -25,6 +31,8 @@ devel
 
 v3.2.4 (2017-XX-XX)
 -------------------
+
+* UI: no default index selected during index creation
 
 * UI: added replicationFactor option during SmartGraph creation
 

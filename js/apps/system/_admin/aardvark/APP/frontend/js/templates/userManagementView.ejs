@@ -71,17 +71,20 @@
                 avatar = '<img src="';
 
               if (! img) {
-                avatar += 'img/default_user.png';
+                avatar = '<i id="' + _.escape(username) + '" class="collection-type-icon fa fa-user"></i>';
               } else {
                 avatar += 'https://s.gravatar.com/avatar/';
                 avatar += img;
                 avatar += '?s=50';
+                avatar += '" height="50" width="50" alt="" class="icon" id="';
+                avatar += _.escape(username);
+                avatar += '" />';
               }
-              avatar += '" height="50" width="50" alt="" class="icon" id="';
-              avatar += _.escape(username);
-              avatar += '" />';
               if (! name) {
                 name = " ";
+              }
+              if (username.substring(0, 6) === ':role:') {
+                avatar = '<i id="' + _.escape(username) + '" class="collection-type-icon fa fa-group"></i>';
               }
       %>
 
