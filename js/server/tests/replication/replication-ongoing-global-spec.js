@@ -198,7 +198,7 @@ const cleanUp = function() {
   cleanUpAllData();
 };
 
-describe('Global Repliaction on a fresh boot', function () {
+describe('Global Replication on a fresh boot', function () {
 
   before(function() {
     cleanUp();
