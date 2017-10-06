@@ -277,7 +277,7 @@ void GlobalTailingSyncer::setProgress(std::string const& msg) {
 }
 
 /// @brief save the current applier state
-int GlobalTailingSyncer::saveApplierState() {
+Result GlobalTailingSyncer::saveApplierState() {
   LOG_TOPIC(TRACE, Logger::REPLICATION)
       << "saving replication applier state. last applied continuous tick: "
       << _applier->_state._lastAppliedContinuousTick
@@ -285,17 +285,18 @@ int GlobalTailingSyncer::saveApplierState() {
 
   try {
     _applier->persistState(false);
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   } catch (basics::Exception const& ex) {
     LOG_TOPIC(WARN, Logger::REPLICATION)
         << "unable to save replication applier state: " << ex.what();
-    return ex.code();
+    return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::REPLICATION)
         << "unable to save replication applier state: " << ex.what();
+    return Result(TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
+    return Result(TRI_ERROR_INTERNAL, "unknown exception");
   }
-
-  return TRI_ERROR_INTERNAL;
 }
 
 /// @brief get local replication apply state
@@ -372,10 +373,10 @@ int GlobalTailingSyncer::runContinuousSync(std::string& errorMsg) {
   } else {
     // adjust fetchTick so we can tail starting from the tick containing
     // the open transactions we did not commit locally
-    int res = fetchOpenTransactions(errorMsg, safeResumeTick,
-                                    fromTick, fetchTick);
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+    Result r = fetchOpenTransactions(safeResumeTick, fromTick, fetchTick);
+    if (r.fail()) {
+      errorMsg = r.errorMessage();
+      return r.errorNumber();
     }
   }
 
@@ -398,9 +399,9 @@ int GlobalTailingSyncer::runContinuousSync(std::string& errorMsg) {
     errorMsg = "";
 
     // fetchTick is passed by reference!
-    int res =
-        followMasterLog(errorMsg, fetchTick, fromTick,
-                        _configuration._ignoreErrors, worked, masterActive);
+    Result r = followMasterLog(fetchTick, fromTick, _configuration._ignoreErrors, worked, masterActive);
+    int res = r.errorNumber();
+    errorMsg = r.errorMessage();
 
     uint64_t sleepTime;
 
@@ -495,10 +496,9 @@ int GlobalTailingSyncer::runContinuousSync(std::string& errorMsg) {
 }
 
 /// @brief fetch the open transactions we still need to complete
-int GlobalTailingSyncer::fetchOpenTransactions(std::string& errorMsg,
-                                               TRI_voc_tick_t fromTick,
-                                               TRI_voc_tick_t toTick,
-                                               TRI_voc_tick_t& startTick) {
+Result GlobalTailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
+                                                  TRI_voc_tick_t toTick,
+                                                  TRI_voc_tick_t& startTick) {
   std::string const baseUrl = WalAccessUrl + "/open-transactions";
   std::string const url = baseUrl + "?serverId=" + _localServerIdString +
                           "&from=" + StringUtils::itoa(fromTick) + "&to=" +
@@ -515,22 +515,13 @@ int GlobalTailingSyncer::fetchOpenTransactions(std::string& errorMsg,
       _client->request(rest::RequestType::GET, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) + ": " +
-               _client->getErrorMessage();
-
-    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
   }
 
   TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
-    errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) + ": HTTP " +
-               StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-               response->getHttpReturnMessage();
-
-    return TRI_ERROR_REPLICATION_MASTER_ERROR;
+    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
   }
 
   bool fromIncluded = false;
@@ -547,23 +538,12 @@ int GlobalTailingSyncer::fetchOpenTransactions(std::string& errorMsg,
   header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
 
   if (!found) {
-    errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) + ": required header " +
-               TRI_REPLICATION_HEADER_LASTTICK + " is missing";
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTTICK + " is missing");
   }
   TRI_voc_tick_t readTick = StringUtils::uint64(header);
 
   if (!fromIncluded && _requireFromPresent && fromTick > 0) {
-    errorMsg = "required init tick value '" + StringUtils::itoa(fromTick) +
-               "' is not present (anymore?) on master at " +
-               _masterInfo._endpoint + ". Last tick available on master is '" +
-               StringUtils::itoa(readTick) +
-               "'. It may be required to do a full resync and increase the "
-               "number of historic logfiles on the master.";
-
-    return TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
+    return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, std::string("required init tick value '") + StringUtils::itoa(fromTick) + "' is not present (anymore?) on master at " + _masterInfo._endpoint + ". Last tick available on master is '" + StringUtils::itoa(readTick) + "'. It may be required to do a full resync and increase the number of historic logfiles on the master.");
   }
 
   startTick = readTick;
@@ -575,30 +555,17 @@ int GlobalTailingSyncer::fetchOpenTransactions(std::string& errorMsg,
   Result r = parseResponse(builder, response.get());
 
   if (r.fail()) {
-    errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) +
-               ": invalid response type for initial data. expecting array";
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": invalid response type for initial data. expecting array");
   }
 
   VPackSlice const slice = builder.slice();
   if (!slice.isArray()) {
-    errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) +
-               ": invalid response type for initial data. expecting array";
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": invalid response type for initial data. expecting array");
   }
 
   for (auto const& it : VPackArrayIterator(slice)) {
     if (!it.isString()) {
-      errorMsg =
-          "got invalid response from master at " +
-          std::string(_masterInfo._endpoint) +
-          ": invalid response type for initial data. expecting array of ids";
-
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": invalid response type for initial data. expecting array of ids");
     }
 
     _ongoingTransactions.emplace(StringUtils::uint64(it.copyString()), nullptr);
@@ -614,15 +581,14 @@ int GlobalTailingSyncer::fetchOpenTransactions(std::string& errorMsg,
     setProgress(progress);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 /// @brief run the continuous synchronization
-int GlobalTailingSyncer::followMasterLog(std::string& errorMsg,
-                                      TRI_voc_tick_t& fetchTick,
-                                      TRI_voc_tick_t firstRegularTick,
-                                      uint64_t& ignoreCount, bool& worked,
-                                      bool& masterActive) {
+Result GlobalTailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
+                                            TRI_voc_tick_t firstRegularTick,
+                                            uint64_t& ignoreCount, bool& worked,
+                                            bool& masterActive) {
   std::string const baseUrl = WalAccessUrl + "/tail?chunkSize=" +
                               StringUtils::itoa(_configuration._chunkSize) + "&barrier=" +
                               StringUtils::itoa(_barrierId);
@@ -667,162 +633,139 @@ int GlobalTailingSyncer::followMasterLog(std::string& errorMsg,
       _client->request(rest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) + ": " +
-               _client->getErrorMessage();
-
-    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
   }
 
   TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
-    errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) + ": HTTP " +
-               StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-               response->getHttpReturnMessage();
-
-    return TRI_ERROR_REPLICATION_MASTER_ERROR;
+    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
   }
 
-  int res = TRI_ERROR_NO_ERROR;
-  bool checkMore = false;
-  bool active = false;
-  bool fromIncluded = false;
-  bool bumpTick = false;
-  TRI_voc_tick_t tick = 0;
-
   bool found;
-  std::string header =
-      response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
+  std::string header = response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
+  
+  if (!found) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_CHECKMORE + " is missing");
+  }
 
+  bool checkMore = StringUtils::boolean(header);
+
+  // was the specified from value included the result?
+  bool fromIncluded = false;
+  header = response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
   if (found) {
-    checkMore = StringUtils::boolean(header);
-    res = TRI_ERROR_NO_ERROR;
+    fromIncluded = StringUtils::boolean(header);
+  }
 
-    // was the specified from value included the result?
-    header =
-        response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
-    if (found) {
-      fromIncluded = StringUtils::boolean(header);
-    }
+  bool active = false;
+  header = response->getHeaderField(TRI_REPLICATION_HEADER_ACTIVE, found);
+  if (found) {
+    active = StringUtils::boolean(header);
+  }
 
-    header = response->getHeaderField(TRI_REPLICATION_HEADER_ACTIVE, found);
-    if (found) {
-      active = StringUtils::boolean(header);
-    }
+  header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
+  if (!found) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTINCLUDED + " is missing");
+  }
+  
+  TRI_voc_tick_t lastIncludedTick = StringUtils::uint64(header);
 
-    header =
-        response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
-    if (found) {
-      TRI_voc_tick_t lastIncludedTick = StringUtils::uint64(header);
+  if (lastIncludedTick > fetchTick) {
+    fetchTick = lastIncludedTick;
+    worked = true;
+  } else {
+    // we got the same tick again, this indicates we're at the end
+    checkMore = false;
+  }
 
-      if (lastIncludedTick > fetchTick) {
-        fetchTick = lastIncludedTick;
-        worked = true;
-      } else {
-        // we got the same tick again, this indicates we're at the end
-        checkMore = false;
-      }
+  header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
+  if (!found) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTTICK + " is missing");
+  }
 
-      header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
-      if (found) {
-        tick = StringUtils::uint64(header);
-        if (!checkMore && tick > lastIncludedTick) {
-          // the master has a tick value which is not contained in this result
-          // but it claims it does not have any more data
-          // so it's probably a tick from an invisible operation (such as
-          // closing
-          // a WAL file)
-          bumpTick = true;
-        }
+  bool bumpTick = false;
+  TRI_voc_tick_t tick = StringUtils::uint64(header);
+  if (!checkMore && tick > lastIncludedTick) {
+    // the master has a tick value which is not contained in this result
+    // but it claims it does not have any more data
+    // so it's probably a tick from an invisible operation (such as
+    // closing
+    // a WAL file)
+    bumpTick = true;
+  }
 
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-        _applier->_state._lastAvailableContinuousTick = tick;
-      }
-    }
+  {
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+    _applier->_state._lastAvailableContinuousTick = tick;
   }
 
   if (!found) {
-    res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-    errorMsg = "got invalid response from master at " +
-               std::string(_masterInfo._endpoint) +
-               ": required header is missing";
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header is missing");
+  }
+  
+  if (!fromIncluded && _requireFromPresent && fetchTick > 0) {
+    return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, std::string("required follow tick value '") + StringUtils::itoa(fetchTick) + "' is not present (anymore?) on master at " + _masterInfo._endpoint + ". Last tick available on master is '" + StringUtils::itoa(tick) + "'. It may be required to do a full resync and increase the number of historic logfiles on the master.");
   }
 
-  if (res == TRI_ERROR_NO_ERROR && !fromIncluded && _requireFromPresent &&
-      fetchTick > 0) {
-    res = TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
-    errorMsg = "required follow tick value '" + StringUtils::itoa(fetchTick) +
-               "' is not present (anymore?) on master at " +
-               _masterInfo._endpoint + ". Last tick available on master is '" +
-               StringUtils::itoa(tick) +
-               "'. It may be required to do a full resync and increase the "
-               "number of historic logfiles on the master.";
+  TRI_voc_tick_t lastAppliedTick;
+
+  {
+    READ_LOCKER(locker, _applier->_statusLock);
+    lastAppliedTick = _applier->_state._lastAppliedContinuousTick;
   }
 
-  if (res == TRI_ERROR_NO_ERROR) {
-    TRI_voc_tick_t lastAppliedTick;
+  uint64_t processedMarkers = 0;
+  Result r = applyLog(response.get(), firstRegularTick, processedMarkers, ignoreCount);
 
-    {
-      READ_LOCKER(locker, _applier->_statusLock);
-      lastAppliedTick = _applier->_state._lastAppliedContinuousTick;
-    }
+  // cppcheck-suppress *
+  if (processedMarkers > 0) {
+    worked = true;
 
-    uint64_t processedMarkers = 0;
-    Result r = applyLog(response.get(), firstRegularTick, processedMarkers, ignoreCount);
-    res = r.errorNumber();
-    errorMsg = r.errorMessage();
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+    _applier->_state._totalEvents += processedMarkers;
 
-    // cppcheck-suppress *
-    if (processedMarkers > 0) {
-      worked = true;
-
-      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-      _applier->_state._totalEvents += processedMarkers;
-
-      if (_applier->_state._lastAppliedContinuousTick != lastAppliedTick) {
-        _hasWrittenState = true;
-        saveApplierState();
-      }
-    } else if (bumpTick) {
-      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-
-      if (_applier->_state._lastProcessedContinuousTick < tick) {
-        _applier->_state._lastProcessedContinuousTick = tick;
-      }
-
-      if (_ongoingTransactions.empty() &&
-          _applier->_state._safeResumeTick == 0) {
-        _applier->_state._safeResumeTick = tick;
-      }
-
-      if (!_hasWrittenState) {
-        _hasWrittenState = true;
-        saveApplierState();
-      }
-    }
-
-    if (!_hasWrittenState && _useTick) {
-      // write state at least once so the start tick gets saved
+    if (_applier->_state._lastAppliedContinuousTick != lastAppliedTick) {
       _hasWrittenState = true;
+      saveApplierState();
+    }
+  } else if (bumpTick) {
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
 
-      WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+    if (_applier->_state._lastProcessedContinuousTick < tick) {
+      _applier->_state._lastProcessedContinuousTick = tick;
+    }
 
-      _applier->_state._lastAppliedContinuousTick = firstRegularTick;
-      _applier->_state._lastProcessedContinuousTick = firstRegularTick;
+    if (_ongoingTransactions.empty() &&
+        _applier->_state._safeResumeTick == 0) {
+      _applier->_state._safeResumeTick = tick;
+    }
 
-      if (_ongoingTransactions.empty() &&
-          _applier->_state._safeResumeTick == 0) {
-        _applier->_state._safeResumeTick = firstRegularTick;
-      }
-
+    if (!_hasWrittenState) {
+      _hasWrittenState = true;
       saveApplierState();
     }
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+  if (!_hasWrittenState && _useTick) {
+    // write state at least once so the start tick gets saved
+    _hasWrittenState = true;
+
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+
+    _applier->_state._lastAppliedContinuousTick = firstRegularTick;
+    _applier->_state._lastProcessedContinuousTick = firstRegularTick;
+
+    if (_ongoingTransactions.empty() &&
+        _applier->_state._safeResumeTick == 0) {
+      _applier->_state._safeResumeTick = firstRegularTick;
+    }
+
+    saveApplierState();
+  }
+
+  if (r.fail()) {
+    return r;
   }
 
   masterActive = active;
@@ -833,11 +776,11 @@ int GlobalTailingSyncer::followMasterLog(std::string& errorMsg,
     }
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 void GlobalTailingSyncer::preApplyMarker(TRI_voc_tick_t firstRegularTick,
-                                      TRI_voc_tick_t newTick) {
+                                         TRI_voc_tick_t newTick) {
   if (newTick >= firstRegularTick) {
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
     if (newTick > _applier->_state._lastProcessedContinuousTick) {
@@ -863,4 +806,3 @@ void GlobalTailingSyncer::postApplyMarker(uint64_t processedMarkers,
         _applier->_state._lastProcessedContinuousTick;
   }
 }
-

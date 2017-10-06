@@ -596,42 +596,28 @@ static void JS_SynchronizeReplicationFinalize(
 
   DatabaseGuard guard(database);
 
-  std::string errorMsg = "";
   DatabaseTailingSyncer syncer(guard.database(), config, fromTick, true, 0);
   
   if (!leaderId.empty()) {
     syncer.setLeaderId(leaderId);
   }
 
-  int res = TRI_ERROR_NO_ERROR;
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
+  Result res;
   try {
-    res = syncer.syncCollectionFinalize(errorMsg, collection);
+    res = syncer.syncCollectionFinalize(collection);
   } catch (arangodb::basics::Exception const& ex) {
-    res = ex.code();
-    if (errorMsg.empty()) {
-      errorMsg = std::string("caught exception: ") + ex.what();
-    }
+    res = Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    res = TRI_ERROR_INTERNAL;
-    if (errorMsg.empty()) {
-      errorMsg = std::string("caught exception: ") + ex.what();
-    }
+    res = Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    res = TRI_ERROR_INTERNAL;
-    if (errorMsg.empty()) {
-      errorMsg = "caught unknown exception";
-    }
+    res = Result(TRI_ERROR_INTERNAL, "unknown exception");
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (errorMsg.empty()) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(res, std::string("cannot sync data for shard '") + collection + "' from remote endpoint");
-    } else {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "syncCollectionFinalize(..): " << errorMsg;
-      TRI_V8_THROW_EXCEPTION_MESSAGE(res, std::string("cannot sync data for shard '") + collection + "' from remote endpoint: " + errorMsg);
-    }
+  if (res.fail()) {
+    std::string errorMsg = std::string("cannot sync data for shard '") + collection + "' from remote endpoint: " + res.errorMessage();
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), errorMsg);
   }
 
   TRI_V8_RETURN(result);

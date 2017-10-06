@@ -65,13 +65,6 @@ class MMFilesRestReplicationHandler : public RestReplicationHandler {
   /// @brief return the inventory (current replication and collection state)
   void handleCommandInventory() override;
 
-  /// @brief apply a single marker from the collection dump
-  /*int applyCollectionDumpMarker(transaction::Methods&,
-                                CollectionNameResolver const&,
-                                std::string const&, TRI_replication_operation_e,
-                                VPackSlice const&, VPackSlice const&,
-                                std::string&);*/
-
   /// @brief produce list of keys for a specific collection
   void handleCommandCreateKeys() override;
 

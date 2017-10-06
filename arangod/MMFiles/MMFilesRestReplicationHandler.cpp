@@ -617,68 +617,6 @@ void MMFilesRestReplicationHandler::handleCommandInventory() {
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
-/// @brief apply the data from a collection dump or the continuous log
-/*
-int MMFilesRestReplicationHandler::applyCollectionDumpMarker(
-    transaction::Methods& trx, CollectionNameResolver const& resolver,
-    std::string const& collectionName, TRI_replication_operation_e type,
-    VPackSlice const& old, VPackSlice const& slice, std::string& errorMsg) {
-  if (type == REPLICATION_MARKER_DOCUMENT) {
-    // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
-
-    TRI_ASSERT(slice.isObject());
-
-    OperationOptions options;
-    options.silent = true;
-    options.ignoreRevs = true;
-    options.isRestore = true;
-    options.waitForSync = false;
-
-    try {
-      OperationResult opRes = trx.insert(collectionName, slice, options);
-
-      if (opRes.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-        // must update
-        opRes = trx.update(collectionName, slice, options);
-      }
-
-      return opRes.code;
-    } catch (arangodb::basics::Exception const& ex) {
-      return ex.code();
-    } catch (...) {
-      return TRI_ERROR_INTERNAL;
-    }
-  }
-
-  else if (type == REPLICATION_MARKER_REMOVE) {
-    // {"type":2402,"key":"592063"}
-
-    try {
-      OperationOptions options;
-      options.silent = true;
-      options.ignoreRevs = true;
-      options.waitForSync = false;
-      OperationResult opRes = trx.remove(collectionName, old, options);
-
-      if (!opRes.successful() &&
-          opRes.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
-        // ignore this error
-        return TRI_ERROR_NO_ERROR;
-      }
-
-      return opRes.code;
-    } catch (arangodb::basics::Exception const& ex) {
-      return ex.code();
-    } catch (...) {
-      return TRI_ERROR_INTERNAL;
-    }
-  }
-
-  errorMsg = "unexpected marker type " + StringUtils::itoa(type);
-
-  return TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
-}*/
-
 /// @brief produce list of keys for a specific collection
 void MMFilesRestReplicationHandler::handleCommandCreateKeys() {
   std::string const& collection = _request->value("collection");

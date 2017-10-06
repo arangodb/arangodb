@@ -446,7 +446,7 @@ RestStatus RestReplicationHandler::execute() {
       }
     } else {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid command");
+                    std::string("invalid command '") + command + "'");
     }
 
     return RestStatus::DONE;

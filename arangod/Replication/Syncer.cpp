@@ -258,9 +258,9 @@ Result Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
 }
 
 /// @brief send a "remove barrier" command
-int Syncer::sendRemoveBarrier() {
+Result Syncer::sendRemoveBarrier() {
   if (_isChildSyncer || _barrierId == 0) {
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   }
 
   try {
@@ -272,22 +272,19 @@ int Syncer::sendRemoveBarrier() {
         rest::RequestType::DELETE_REQ, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
-      return TRI_ERROR_REPLICATION_NO_RESPONSE;
+      return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
     }
 
     TRI_ASSERT(response != nullptr);
 
-    int res = TRI_ERROR_NO_ERROR;
-
     if (response->wasHttpError()) {
-      res = TRI_ERROR_REPLICATION_MASTER_ERROR;
-    } else {
-      _barrierId = 0;
-      _barrierUpdateTime = 0;
+      return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
     }
-    return res;
+    _barrierId = 0;
+    _barrierUpdateTime = 0;
+    return Result();
   } catch (...) {
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL);
   }
 }
 /*
@@ -406,18 +403,18 @@ arangodb::LogicalCollection* Syncer::resolveCollection(TRI_vocbase_t* vocbase,
   }
 }
 
-int Syncer::applyCollectionDumpMarker(
+Result Syncer::applyCollectionDumpMarker(
     transaction::Methods& trx, std::string const& collectionName,
     TRI_replication_operation_e type, VPackSlice const& old, 
-    VPackSlice const& slice, std::string& errorMsg) {
+    VPackSlice const& slice) {
 
   if (_configuration._lockTimeoutRetries > 0) {
     decltype(_configuration._lockTimeoutRetries) tries = 0;
 
     while (true) {
-      int res = applyCollectionDumpMarkerInternal(trx, collectionName, type, old, slice, errorMsg);
+      Result res = applyCollectionDumpMarkerInternal(trx, collectionName, type, old, slice);
 
-      if (res != TRI_ERROR_LOCK_TIMEOUT) {
+      if (res.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
         return res;
       }
 
@@ -431,17 +428,15 @@ int Syncer::applyCollectionDumpMarker(
       // retry
     }
   } else {
-    return applyCollectionDumpMarkerInternal(trx, collectionName, type, old, slice, errorMsg);
+    return applyCollectionDumpMarkerInternal(trx, collectionName, type, old, slice);
   }
 }
 
 /// @brief apply the data from a collection dump or the continuous log
-int Syncer::applyCollectionDumpMarkerInternal(
-    transaction::Methods& trx, std::string const& collectionName,
-    TRI_replication_operation_e type, VPackSlice const& old, 
-    VPackSlice const& slice, std::string& errorMsg) {
-
-  int res = TRI_ERROR_INTERNAL;
+Result Syncer::applyCollectionDumpMarkerInternal(
+      transaction::Methods& trx, std::string const& collectionName,
+      TRI_replication_operation_e type, VPackSlice const& old, 
+      VPackSlice const& slice) {
 
   if (type == REPLICATION_MARKER_DOCUMENT) {
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
@@ -463,21 +458,14 @@ int Syncer::applyCollectionDumpMarkerInternal(
         opRes = trx.replace(collectionName, slice, options); 
       }
     
-      res = opRes.code;
+      return Result(opRes.code, opRes.errorMessage);
     } catch (arangodb::basics::Exception const& ex) {
-      res = ex.code();
-      errorMsg = "document insert/replace operation failed: " +
-                 std::string(TRI_errno_string(res));
+      return Result(ex.code(), std::string("document insert/replace operation failed: ") + ex.what());
     } catch (std::exception const& ex) {
-      res = TRI_ERROR_INTERNAL;
-      errorMsg = "document insert/replace operation failed: " +
-                 std::string(ex.what());
+      return Result(TRI_ERROR_INTERNAL, std::string("document insert/replace operation failed: ") + ex.what());
     } catch (...) {
-      res = TRI_ERROR_INTERNAL;
-      errorMsg = "document insert/replace operation failed: unknown exception";
+      return Result(TRI_ERROR_INTERNAL, std::string("document insert/replace operation failed: unknown exception"));
     }
-
-    return res;
   }
 
   else if (type == REPLICATION_MARKER_REMOVE) {
@@ -495,29 +483,20 @@ int Syncer::applyCollectionDumpMarkerInternal(
       if (opRes.successful() ||
           opRes.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // ignore document not found errors
-        return TRI_ERROR_NO_ERROR;
+        return Result();
       }
 
-      res = opRes.code;
+      return Result(opRes.code, opRes.errorMessage);
     } catch (arangodb::basics::Exception const& ex) {
-      res = ex.code();
-      errorMsg = "document remove operation failed: " +
-                 std::string(TRI_errno_string(res));
+      return Result(ex.code(), std::string("document remove operation failed: ") + ex.what());
     } catch (std::exception const& ex) {
-      errorMsg = "document remove operation failed: " +
-                 std::string(ex.what());
+      return Result(TRI_ERROR_INTERNAL, std::string("document remove operation failed: ") + ex.what());
     } catch (...) {
-      res = TRI_ERROR_INTERNAL;
-      errorMsg = "document remove operation failed: unknown exception";
+      return Result(TRI_ERROR_INTERNAL, std::string("document remove operation failed: unknown exception"));
     }
-    
-    return res;
   }
     
-  res = TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
-  errorMsg = "unexpected marker type " + StringUtils::itoa(type);
-
-  return res;
+  return Result(TRI_ERROR_REPLICATION_UNEXPECTED_MARKER, std::string("unexpected marker type ") + StringUtils::itoa(type));
 }
 
 /// @brief creates a collection, based on the VelocyPack provided
@@ -579,26 +558,25 @@ Result Syncer::createCollection(TRI_vocbase_t *vocbase, VPackSlice const& slice,
 }
 
 /// @brief drops a collection, based on the VelocyPack provided
-int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
-  
+Result Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
-    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
   if (col == nullptr) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
   if (col == nullptr) {
     if (reportError) {
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     }
 
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   }
 
-  return vocbase->dropCollection(col, true, -1.0);
+  return Result(vocbase->dropCollection(col, true, -1.0));
 }
 
 /// @brief creates an index, based on the VelocyPack provided

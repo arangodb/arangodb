@@ -48,8 +48,7 @@ class DatabaseTailingSyncer : public TailingSyncer {
   
   /// @brief finalize the synchronization of a collection by tailing the WAL
   /// and filtering on the collection name until no more data is available
-  int syncCollectionFinalize(std::string& errorMsg,
-                             std::string const& collectionName);
+  Result syncCollectionFinalize(std::string const& collectionName);
   
  private:
   /// @brief set the applier progress

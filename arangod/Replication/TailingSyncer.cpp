@@ -329,16 +329,14 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     }
 
     trx->addCollectionAtRuntime(cid, "", AccessMode::Type::EXCLUSIVE);
-    std::string errorMsg;
-    int res = applyCollectionDumpMarker(*trx, trx->name(cid), type, old, doc,
-                                        errorMsg);
+    Result r = applyCollectionDumpMarker(*trx, trx->name(cid), type, old, doc);
 
-    if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
+    if (r.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
       // ignore unique constraint violations for system collections
-      res = TRI_ERROR_NO_ERROR;
+      r.reset();
     }
 
-    return Result(res, errorMsg);
+    return r;
   }
 
   // standalone operation
@@ -358,13 +356,10 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     return Result(res.errorNumber(), std::string("unable to create replication transaction: ") + res.errorMessage());
   }
     
-  std::string errorMsg;     
-  res = applyCollectionDumpMarker(trx, trx.name(), type, old, doc, errorMsg);
+  res = applyCollectionDumpMarker(trx, trx.name(), type, old, doc);
   if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
     // ignore unique constraint violations for system collections
     res.reset();
-  } else if (res.fail()) {
-    res.reset(res.errorNumber(), errorMsg);
   }
   
   // fix error handling here when function returns result

@@ -307,12 +307,10 @@ Result DatabaseInitialSyncer::applyCollectionDump(transaction::Methods& trx,
 
     VPackSlice const old = oldBuilder->slice();
 
-    std::string errorMsg;
-    int res = applyCollectionDumpMarker(trx, collectionName, type, old, doc,
-                                        errorMsg);
+    Result r = applyCollectionDumpMarker(trx, collectionName, type, old, doc);
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      return Result(res, errorMsg);
+    if (r.fail()) {
+      return r;
     }
   }
 

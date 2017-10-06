@@ -78,7 +78,6 @@ struct OperationResult {
     TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
   }
   
-
   //TODO FIXME -- more and better ctors for creation from Result
   explicit OperationResult(Result const& other) 
       : buffer(std::make_shared<VPackBuffer<uint8_t>>()), 

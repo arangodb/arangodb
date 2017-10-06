@@ -54,7 +54,7 @@ class GlobalTailingSyncer : public TailingSyncer {
   void postApplyMarker(uint64_t processedMarkers, bool skipped) override;
 
   /// @brief save the current applier state
-  int saveApplierState();
+  Result saveApplierState();
 
   /// @brief get local replication applier state
   void getLocalState();
@@ -63,12 +63,12 @@ class GlobalTailingSyncer : public TailingSyncer {
   int runContinuousSync(std::string&);
 
   /// @brief fetch the open transactions we still need to complete
-  int fetchOpenTransactions(std::string&, TRI_voc_tick_t, TRI_voc_tick_t,
-                            TRI_voc_tick_t&);
+  Result fetchOpenTransactions(TRI_voc_tick_t fromTick, 
+                               TRI_voc_tick_t toTick, TRI_voc_tick_t& startTick);
 
   /// @brief run the continuous synchronization
-  int followMasterLog(std::string&, TRI_voc_tick_t&, TRI_voc_tick_t, uint64_t&,
-                      bool&, bool&);
+  Result followMasterLog(TRI_voc_tick_t& fetchTick, TRI_voc_tick_t firstRegularTick, 
+                         uint64_t& ignoreCount, bool& worked, bool& masterActive);
 
  private:
   /// @brief pointer to the applier

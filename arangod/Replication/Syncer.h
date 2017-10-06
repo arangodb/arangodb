@@ -100,7 +100,7 @@ class Syncer {
   }
   
   /// @brief send a "remove barrier" command
-  int sendRemoveBarrier();
+  Result sendRemoveBarrier();
 
  protected:
   
@@ -115,12 +115,11 @@ class Syncer {
   Result sendExtendBarrier(TRI_voc_tick_t = 0);
 
   /// @brief apply a single marker from the collection dump
-  int applyCollectionDumpMarker(transaction::Methods&,
-                                std::string const&,
-                                TRI_replication_operation_e,
-                                arangodb::velocypack::Slice const&, 
-                                arangodb::velocypack::Slice const&, 
-                                std::string&);
+  Result applyCollectionDumpMarker(transaction::Methods&,
+                                   std::string const&,
+                                   TRI_replication_operation_e,
+                                   arangodb::velocypack::Slice const&, 
+                                   arangodb::velocypack::Slice const&);
 
   /// @brief creates a collection, based on the VelocyPack provided
   Result createCollection(TRI_vocbase_t* vocbase,
@@ -128,7 +127,7 @@ class Syncer {
                           arangodb::LogicalCollection**);
 
   /// @brief drops a collection, based on the VelocyPack provided
-  int dropCollection(arangodb::velocypack::Slice const&, bool);
+  Result dropCollection(arangodb::velocypack::Slice const&, bool reportError);
 
   /// @brief creates an index, based on the VelocyPack provided
   Result createIndex(arangodb::velocypack::Slice const&);
@@ -156,12 +155,11 @@ class Syncer {
  private:
   
   /// @brief apply a single marker from the collection dump
-  int applyCollectionDumpMarkerInternal(transaction::Methods&,
-                                        std::string const&,
-                                        TRI_replication_operation_e,
-                                        arangodb::velocypack::Slice const&, 
-                                        arangodb::velocypack::Slice const&, 
-                                        std::string&);
+  Result applyCollectionDumpMarkerInternal(transaction::Methods&,
+                                           std::string const&,
+                                           TRI_replication_operation_e,
+                                           arangodb::velocypack::Slice const&, 
+                                           arangodb::velocypack::Slice const&); 
   
   /// @brief extract the collection id from VelocyPack
   TRI_voc_cid_t getCid(velocypack::Slice const&) const;

@@ -512,13 +512,13 @@ Result DatabaseTailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
       _client->request(rest::RequestType::GET, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
-    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("got invalid response from master at ") + std::string(_masterInfo._endpoint) + ": " + _client->getErrorMessage());
+    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
   }
 
   TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + std::string(_masterInfo._endpoint) + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
+    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
   }
 
   bool fromIncluded = false;
@@ -535,7 +535,7 @@ Result DatabaseTailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
   header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
 
   if (!found) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + std::string(_masterInfo._endpoint) + ": required header " + TRI_REPLICATION_HEADER_LASTTICK + " is missing");
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTTICK + " is missing");
   }
 
   TRI_voc_tick_t readTick = StringUtils::uint64(header);
@@ -640,68 +640,65 @@ Result DatabaseTailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
     return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
   }
 
-  bool checkMore = false;
-  bool active = false;
-  bool fromIncluded = false;
-  bool bumpTick = false;
-  TRI_voc_tick_t tick = 0;
-
   bool found;
-  std::string header =
-      response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
+  std::string header = response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
 
+  if (!found) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_CHECKMORE + " is missing");
+  }
+
+  bool checkMore = StringUtils::boolean(header);
+
+  // was the specified from value included the result?
+  bool fromIncluded = false;
+  header = response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
   if (found) {
-    checkMore = StringUtils::boolean(header);
+    fromIncluded = StringUtils::boolean(header);
+  }
 
-    // was the specified from value included the result?
-    header =
-        response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
-    if (found) {
-      fromIncluded = StringUtils::boolean(header);
-    }
+  bool active = false;
+  header = response->getHeaderField(TRI_REPLICATION_HEADER_ACTIVE, found);
+  if (found) {
+    active = StringUtils::boolean(header);
+  }
 
-    header = response->getHeaderField(TRI_REPLICATION_HEADER_ACTIVE, found);
-    if (found) {
-      active = StringUtils::boolean(header);
-    }
+  header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
+  if (!found) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTINCLUDED + " is missing");
+  }
 
-    header =
-        response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
-    if (found) {
-      TRI_voc_tick_t lastIncludedTick = StringUtils::uint64(header);
+  TRI_voc_tick_t lastIncludedTick = StringUtils::uint64(header);
 
-      if (lastIncludedTick > fetchTick) {
-        fetchTick = lastIncludedTick;
-        worked = true;
-      } else {
-        // we got the same tick again, this indicates we're at the end
-        checkMore = false;
-      }
+  if (lastIncludedTick > fetchTick) {
+    fetchTick = lastIncludedTick;
+    worked = true;
+  } else {
+    // we got the same tick again, this indicates we're at the end
+    checkMore = false;
+  }
 
-      header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
-      if (found) {
-        tick = StringUtils::uint64(header);
-        if (!checkMore && tick > lastIncludedTick) {
-          // the master has a tick value which is not contained in this result
-          // but it claims it does not have any more data
-          // so it's probably a tick from an invisible operation (such as
-          // closing
-          // a WAL file)
-          bumpTick = true;
-        }
+  header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
+  if (!found) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header "+ TRI_REPLICATION_HEADER_LASTTICK + " is missing");
+  }
 
-        WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-        _applier->_state._lastAvailableContinuousTick = tick;
-      }
-    }
+  bool bumpTick = false;
+  TRI_voc_tick_t tick = StringUtils::uint64(header);
+  if (!checkMore && tick > lastIncludedTick) {
+    // the master has a tick value which is not contained in this result
+    // but it claims it does not have any more data
+    // so it's probably a tick from an invisible operation (such as
+    // closing
+    // a WAL file)
+    bumpTick = true;
+  }
+
+  {
+    WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
+    _applier->_state._lastAvailableContinuousTick = tick;
   }
   
-  if (!found) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header is missing");
-  }
-
-  if (!fromIncluded && _requireFromPresent &&
-      fetchTick > 0) {
+  if (!fromIncluded && _requireFromPresent && fetchTick > 0) {
     return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, std::string("required follow tick value '") + StringUtils::itoa(fetchTick) + "' is not present (anymore?) on master at " + _masterInfo._endpoint + ". Last tick available on master is '" + StringUtils::itoa(tick) + "'. It may be required to do a full resync and increase the number of historic logfiles on the master.");
   }
 
@@ -807,15 +804,11 @@ void DatabaseTailingSyncer::postApplyMarker(uint64_t processedMarkers,
 
 /// @brief finalize the synchronization of a collection by tailing the WAL
 /// and filtering on the collection name until no more data is available
-int DatabaseTailingSyncer::syncCollectionFinalize(std::string& errorMsg,
-                                                  std::string const& collectionName) {
+Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collectionName) {
   // fetch master state just once
   Result r = getMasterState();
-  int res = r.errorNumber();
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    errorMsg = r.errorMessage();
-    return res;
+  if (r.fail()) {
+    return r;
   }
   
   // print extra info for debugging
@@ -827,46 +820,35 @@ int DatabaseTailingSyncer::syncCollectionFinalize(std::string& errorMsg,
   
   while (true) {
     if (application_features::ApplicationServer::isStopping()) {
-      return TRI_ERROR_SHUTTING_DOWN;
+      return Result(TRI_ERROR_SHUTTING_DOWN);
     }
     
     std::string const baseUrl =
-    BaseUrl + "/logger-follow?chunkSize=" +
-    StringUtils::itoa(_configuration._chunkSize) + "&from=" +
-    StringUtils::itoa(fromTick) + "&serverId=" + _localServerIdString +
-    "&collection=" + StringUtils::urlEncode(collectionName);
+      BaseUrl + "/logger-follow?chunkSize=" +
+      StringUtils::itoa(_configuration._chunkSize) + "&from=" +
+      StringUtils::itoa(fromTick) + "&serverId=" + _localServerIdString +
+      "&collection=" + StringUtils::urlEncode(collectionName);
     
     // send request
-    std::unique_ptr<SimpleHttpResult> response(
-                                               _client->request(rest::RequestType::GET, baseUrl, nullptr, 0));
+    std::unique_ptr<SimpleHttpResult> response(_client->request(rest::RequestType::GET, baseUrl, nullptr, 0));
     
     if (response == nullptr || !response->isComplete()) {
-      errorMsg = "got invalid response from master at " +
-      std::string(_masterInfo._endpoint) + ": " +
-      _client->getErrorMessage();
-      
-      return TRI_ERROR_REPLICATION_NO_RESPONSE;
+      return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
     }
     
     TRI_ASSERT(response != nullptr);
     
     if (response->wasHttpError()) {
-      errorMsg = "got invalid response from master at " +
-      std::string(_masterInfo._endpoint) + ": HTTP " +
-      StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-      response->getHttpReturnMessage();
-      
-      return TRI_ERROR_REPLICATION_MASTER_ERROR;
+      return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
     }
     
     if (response->getHttpReturnCode() == 204) {
-      // No content: this means we are done
-      return TRI_ERROR_NO_ERROR;
+      // HTTP 204 No content: this means we are done
+      return Result();
     }
     
     bool found;
-    std::string header =
-    response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
+    std::string header = response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
     bool checkMore = false;
     if (found) {
       checkMore = StringUtils::boolean(header);
@@ -875,45 +857,31 @@ int DatabaseTailingSyncer::syncCollectionFinalize(std::string& errorMsg,
     TRI_voc_tick_t lastIncludedTick;
     header =
     response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
-    if (found) {
-      lastIncludedTick = StringUtils::uint64(header);
-    } else {
-      errorMsg = "got invalid response from master at " +
-      std::string(_masterInfo._endpoint) +
-      ": required header is missing";
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    if (!found) {
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTINCLUDED + " is missing");
     }
+    lastIncludedTick = StringUtils::uint64(header);
     
     // was the specified from value included the result?
     bool fromIncluded = false;
-    header =
-    response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
+    header = response->getHeaderField(TRI_REPLICATION_HEADER_FROMPRESENT, found);
     if (found) {
       fromIncluded = StringUtils::boolean(header);
     }
     if (!fromIncluded && fromTick > 0) { // && _requireFromPresent
-      errorMsg = "required follow tick value '" +
-      StringUtils::itoa(lastIncludedTick) +
-      "' is not present (anymore?) on master at " +
-      _masterInfo._endpoint + ". Last tick available on master is '" +
-      StringUtils::itoa(lastIncludedTick) +
-      "'. It may be required to do a full resync and increase the "
-      "number of historic logfiles on the master.";
-      return TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT;
+      return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, std::string("required follow tick value '") + StringUtils::itoa(lastIncludedTick) + "' is not present (anymore?) on master at " +  _masterInfo._endpoint + ". Last tick available on master is '" + StringUtils::itoa(lastIncludedTick) + "'. It may be required to do a full resync and increase the number of historic logfiles on the master.");
     }
     
     uint64_t processedMarkers = 0;
     uint64_t ignoreCount = 0;
     Result r = applyLog(response.get(), fromTick, processedMarkers, ignoreCount);
     if (r.fail()) {
-      errorMsg = r.errorMessage();
-      return r.errorNumber();
+      return r;
     }
     
-    if (!checkMore) {  // || processedMarkers == 0) { // TODO: check if we need
-      // this!
+    if (!checkMore) {  // || processedMarkers == 0) { // TODO: check if we need this
       // done!
-      return TRI_ERROR_NO_ERROR;
+      return Result();
     }
   }
 }
