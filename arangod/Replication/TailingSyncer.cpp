@@ -33,7 +33,7 @@
 #include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
-#include "Replication/GlobalInitialSyncer.h"
+#include "Replication/InitialSyncer.h"
 #include "Replication/ReplicationApplier.h"
 #include "Replication/ReplicationTransaction.h"
 #include "RestServer/DatabaseFeature.h"
@@ -88,6 +88,26 @@ TailingSyncer::TailingSyncer(ReplicationApplier* applier,
 
 TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
 
+/// @brief decide based on _masterInfo which api to use
+std::string const& TailingSyncer::tailingBaseUrl() {
+  TRI_ASSERT(!_masterInfo._endpoint.empty() &&
+             _masterInfo._serverId != 0 &&
+             _masterInfo._majorVersion != 0);
+  return _masterInfo._majorVersion >= 3 &&
+  _masterInfo._minorVersion >= 3 ? TailingSyncer::WalAccessUrl : Syncer::BaseUrl;
+}
+
+
+/// @brief set the applier progress
+void TailingSyncer::setProgress(std::string const& msg) {
+  if (_configuration._verbose) {
+    LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
+  } else {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
+  }
+  _applier->setProgress(msg);
+}
+
 /// @brief abort all ongoing transactions
 void TailingSyncer::abortOngoingTransactions() {
   try {
@@ -105,16 +125,6 @@ void TailingSyncer::abortOngoingTransactions() {
   } catch (...) {
     // ignore errors here
   }
-}
-
-/// @brief set the applier progress
-void TailingSyncer::setProgress(std::string const& msg) {
-  if (_configuration._verbose) {
-    LOG_TOPIC(INFO, Logger::REPLICATION) << msg;
-  } else {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << msg;
-  }
-  _applier->setProgress(msg);
 }
 
 /// @brief whether or not a marker should be skipped
@@ -951,17 +961,11 @@ retry:
       << shortTermFailsInRow;
       
       // start initial synchronization
-      errorMsg = "";
-      
       try {
-        GlobalInitialSyncer syncer(_configuration);
-        
-        TRI_ASSERT(!_configuration._skipCreateDrop);
-        DatabaseInitialSyncer syncer(vocbase(), _configuration);
-        
-        Result r = syncer.run(_configuration._incremental);
+        std::unique_ptr<InitialSyncer> syncer = initialSyncer();
+        Result r = syncer->run(_configuration._incremental);
         if (r.ok()) {
-          TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
+          TRI_voc_tick_t lastLogTick = syncer->getLastLogTick();
           LOG_TOPIC(INFO, Logger::REPLICATION)
           << "automatic resynchronization for database '" << _databaseName
           << "' finished. restarting continuous replication applier from "
@@ -1015,7 +1019,7 @@ void TailingSyncer::getLocalState() {
 }
 
 /// @brief perform a continuous sync with the master
-Result TailingSyncer::runContinuousSync(std::string& errorMsg) {
+Result TailingSyncer::runContinuousSync() {
   static uint64_t const MinWaitTime = 300 * 1000;        // 0.30 seconds
   static uint64_t const MaxWaitTime = 60 * 1000 * 1000;  // 60 seconds
   uint64_t connectRetries = 0;
@@ -1062,10 +1066,9 @@ Result TailingSyncer::runContinuousSync(std::string& errorMsg) {
   } else {
     // adjust fetchTick so we can tail starting from the tick containing
     // the open transactions we did not commit locally
-    Result r = fetchOpenTransactions(safeResumeTick, fromTick, fetchTick);
-    if (r.fail()) {
-      errorMsg = r.errorMessage();
-      return r.errorNumber();
+    Result res = fetchOpenTransactions(safeResumeTick, fromTick, fetchTick);
+    if (res.fail()) {
+      return res;
     }
   }
   
@@ -1085,17 +1088,14 @@ Result TailingSyncer::runContinuousSync(std::string& errorMsg) {
   while (true) {
     bool worked;
     bool masterActive = false;
-    errorMsg = "";
     
     // fetchTick is passed by reference!
-    Result r = followMasterLog(fetchTick, fromTick, _configuration._ignoreErrors, worked, masterActive);
-    int res = r.errorNumber();
-    errorMsg = r.errorMessage();
+    Result res = followMasterLog(fetchTick, fromTick, _configuration._ignoreErrors, worked, masterActive);
     
     uint64_t sleepTime;
     
-    if (res == TRI_ERROR_REPLICATION_NO_RESPONSE ||
-        res == TRI_ERROR_REPLICATION_MASTER_ERROR) {
+    if (res.is(TRI_ERROR_REPLICATION_NO_RESPONSE) ||
+        res.is(TRI_ERROR_REPLICATION_MASTER_ERROR)) {
       // master error. try again after a sleep period
       if (_configuration._connectionRetryWaitTime > 0) {
         sleepTime = _configuration._connectionRetryWaitTime;
@@ -1131,7 +1131,7 @@ Result TailingSyncer::runContinuousSync(std::string& errorMsg) {
         _applier->_state._totalRequests++;
       }
       
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (res.fail()) {
         // some other error we will not ignore
         return res;
       }
@@ -1188,7 +1188,7 @@ Result TailingSyncer::runContinuousSync(std::string& errorMsg) {
 Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
                                                   TRI_voc_tick_t toTick,
                                                   TRI_voc_tick_t& startTick) {
-  std::string const baseUrl = WalAccessUrl + "/open-transactions";
+  std::string const baseUrl = tailingBaseUrl() + "/open-transactions";
   std::string const url = baseUrl + "?serverId=" + _localServerIdString +
   "&from=" + StringUtils::itoa(fromTick) + "&to=" +
   StringUtils::itoa(toTick);
@@ -1200,9 +1200,7 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
   setProgress(progress);
   
   // send request
-  std::unique_ptr<SimpleHttpResult> response(
-                                             _client->request(rest::RequestType::GET, url, nullptr, 0));
-  
+  std::unique_ptr<SimpleHttpResult> response(_client->request(rest::RequestType::GET, url, nullptr, 0));
   if (response == nullptr || !response->isComplete()) {
     return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("got invalid response from master at ") +
                   _masterInfo._endpoint + ": " + _client->getErrorMessage());

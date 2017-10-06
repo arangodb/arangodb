@@ -34,6 +34,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class InitialSyncer;
 class ReplicationApplier;
 class ReplicationTransaction;
   
@@ -61,10 +62,12 @@ class TailingSyncer : public Syncer {
 
  protected:
   
-  std::string const& baseUrl();
+  /// @brief decide based on _masterInfo which api to use
+  std::string const& tailingBaseUrl();
   
   /// @brief set the applier progress
   void setProgress(std::string const&);
+  
   /// @brief abort all ongoing transactions
   void abortOngoingTransactions();
 
@@ -104,9 +107,6 @@ class TailingSyncer : public Syncer {
   Result applyLog(httpclient::SimpleHttpResult*, TRI_voc_tick_t firstRegularTick, 
                   uint64_t& processedMarkers, uint64_t& ignoreCount);
   
-  /// @brief save the current applier state
-  virtual Result saveApplierState() = 0;
-  
   /// @brief get local replication applier state
   void getLocalState();
   
@@ -120,6 +120,14 @@ class TailingSyncer : public Syncer {
   /// @brief run the continuous synchronization
   Result followMasterLog(TRI_voc_tick_t& fetchTick, TRI_voc_tick_t firstRegularTick,
                          uint64_t& ignoreCount, bool& worked, bool& masterActive);
+  
+protected:
+  
+  /// @brief save the current applier state
+  virtual Result saveApplierState() = 0;
+  
+  /// @brief create correct initial syncer
+  virtual std::unique_ptr<InitialSyncer> initialSyncer() = 0;
 
  protected:
   

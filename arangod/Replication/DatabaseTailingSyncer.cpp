@@ -27,9 +27,7 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/WriteLocker.h"
 #include "Logger/Logger.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
@@ -90,6 +88,10 @@ Result DatabaseTailingSyncer::saveApplierState() {
   return TRI_ERROR_INTERNAL;
 }
 
+std::unique_ptr<InitialSyncer> DatabaseTailingSyncer::initialSyncer() {
+  TRI_ASSERT(!_configuration._skipCreateDrop);
+  return std::make_unique<DatabaseInitialSyncer>(vocbase(), _configuration);
+}
 
 /// @brief finalize the synchronization of a collection by tailing the WAL
 /// and filtering on the collection name until no more data is available

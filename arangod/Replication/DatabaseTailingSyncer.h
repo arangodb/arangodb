@@ -51,10 +51,11 @@ class DatabaseTailingSyncer : public TailingSyncer {
   /// and filtering on the collection name until no more data is available
   Result syncCollectionFinalize(std::string const& collectionName);
   
- private:
+ protected:
 
   /// @brief save the current applier state
   Result saveApplierState() override;
+  std::unique_ptr<InitialSyncer> initialSyncer() override;
   
   TRI_vocbase_t* vocbase() const {
     TRI_ASSERT(vocbases().size() == 1);

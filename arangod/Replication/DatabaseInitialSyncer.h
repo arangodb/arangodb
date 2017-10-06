@@ -159,7 +159,7 @@ private:
  private:
   
   /// @brief set a progress message
-  void setProgress(std::string const& msg);
+  void setProgress(std::string const& msg) override;
 
   /// @brief send a WAL flush command
   Result sendFlush();
