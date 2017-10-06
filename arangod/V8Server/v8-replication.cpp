@@ -170,77 +170,6 @@ static void JS_LastLoggerReplication( v8::FunctionCallbackInfo<v8::Value> const&
   TRI_V8_TRY_CATCH_END
 }
 
-static void addReplicationAuthentication(v8::Isolate* isolate,
-    v8::Handle<v8::Object> object,
-    ReplicationApplierConfiguration &config) {
-  bool hasUsernamePassword = false;
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "username"))) {
-    if (object->Get(TRI_V8_ASCII_STRING(isolate, "username"))->IsString()) {
-      hasUsernamePassword = true;
-      config._username =
-        TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "username")));
-    }
-  }
-
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "password"))) {
-    if (object->Get(TRI_V8_ASCII_STRING(isolate, "password"))->IsString()) {
-      hasUsernamePassword = true;
-      config._password =
-        TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "password")));
-    }
-  }
-  if (!hasUsernamePassword) {
-    auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
-    if (cluster->isEnabled()) {
-      auto cc = ClusterComm::instance();
-      if (cc != nullptr) {
-        // nullptr happens only during controlled shutdown
-        config._jwt = ClusterComm::instance()->jwt();
-      }
-    }
-  }
-}
-
-static void addConnectionSettings(v8::Isolate* isolate,
-    v8::Handle<v8::Object> object,
-    ReplicationApplierConfiguration& config) {
-
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "sslProtocol"))) {
-    if (object->Get(TRI_V8_ASCII_STRING(isolate, "sslProtocol"))->IsNumber()) {
-      config._sslProtocol = static_cast<uint32_t>(TRI_ObjectToUInt64(
-          object->Get(TRI_V8_ASCII_STRING(isolate, "sslProtocol")), false));
-    }
-  }
-    
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "requestTimeout"))) {
-    if (object->Get(TRI_V8_ASCII_STRING(isolate, "requestTimeout"))->IsNumber()) {
-      config._requestTimeout = TRI_ObjectToDouble(
-          object->Get(TRI_V8_ASCII_STRING(isolate, "requestTimeout")));
-    }
-  }
-
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "connectTimeout"))) {
-    if (object->Get(TRI_V8_ASCII_STRING(isolate, "connectTimeout"))->IsNumber()) {
-      config._connectTimeout = TRI_ObjectToDouble(
-          object->Get(TRI_V8_ASCII_STRING(isolate, "connectTimeout")));
-    }
-  }
-
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "chunkSize"))) {
-    if (object->Get(TRI_V8_ASCII_STRING(isolate, "chunkSize"))->IsNumber()) {
-      config._chunkSize = TRI_ObjectToUInt64(
-          object->Get(TRI_V8_ASCII_STRING(isolate, "chunkSize")), true);
-    }
-  }
-
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "maxConnectRetries"))) {
-    if (object->Get(TRI_V8_ASCII_STRING(isolate, "maxConnectRetries"))->IsNumber()) {
-      config._maxConnectRetries = TRI_ObjectToUInt64(
-          object->Get(TRI_V8_ASCII_STRING(isolate, "maxConnectRetries")), false);
-    }
-  }
-}
-
 enum ApplierType {
   APPLIER_DATABASE,
   APPLIER_GLOBAL
@@ -416,14 +345,12 @@ static void JS_SynchronizeReplicationFinalize(
 
   // treat the argument as an object from now on
   v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(args[0]);
+    
+  VPackBuilder builder;
+  int res = TRI_V8ToVPack(isolate, builder, args[0], false);
 
-  std::string endpoint;
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "endpoint"))) {
-    endpoint = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "endpoint")));
-  }
-  
-  if (endpoint.empty()) {
-    TRI_V8_THROW_EXCEPTION_PARAMETER("<endpoint> must be a valid endpoint");
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION(res);
   }
 
   std::string database;
@@ -449,55 +376,35 @@ static void JS_SynchronizeReplicationFinalize(
   if (fromTick == 0) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("<from> must be a valid start tick");
   }
-
-  ReplicationApplierConfiguration config;
-  config._endpoint = endpoint;
-  config._database = database;
-
-  addReplicationAuthentication(isolate, object, config);
-  addConnectionSettings(isolate, object, config);
-
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "requireFromPresent"))) {
-    if (object->Get(TRI_V8_ASCII_STRING(isolate, "requireFromPresent"))->IsBoolean()) {
-      config._requireFromPresent = TRI_ObjectToBoolean(
-          object->Get(TRI_V8_ASCII_STRING(isolate, "requireFromPresent")));
-    }
-  }
-  
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "verbose"))) {
-    config._verbose = TRI_ObjectToBoolean(object->Get(TRI_V8_ASCII_STRING(isolate, "verbose")));
-  }
-
- 
-  std::string leaderId;
-  if (object->Has(TRI_V8_ASCII_STRING(isolate, "leaderId"))) {
-    leaderId = TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "leaderId")));
-  }
+    
+  ReplicationApplierConfiguration configuration = ReplicationApplierConfiguration::fromVelocyPack(builder.slice(), database);
+  // will throw if invalid
+  configuration.validate();
 
   DatabaseGuard guard(database);
 
-  DatabaseTailingSyncer syncer(guard.database(), config, fromTick, true, 0);
+  DatabaseTailingSyncer syncer(guard.database(), configuration, fromTick, true, 0);
   
-  if (!leaderId.empty()) {
-    syncer.setLeaderId(leaderId);
+  if (object->Has(TRI_V8_ASCII_STRING(isolate, "leaderId"))) {
+    syncer.setLeaderId(TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "leaderId"))));
   }
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-  Result res;
+  Result r;
   try {
-    res = syncer.syncCollectionFinalize(collection);
+    r = syncer.syncCollectionFinalize(collection);
   } catch (arangodb::basics::Exception const& ex) {
-    res = Result(ex.code(), ex.what());
+    r = Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {
-    res = Result(TRI_ERROR_INTERNAL, ex.what());
+    r = Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    res = Result(TRI_ERROR_INTERNAL, "unknown exception");
+    r = Result(TRI_ERROR_INTERNAL, "unknown exception");
   }
 
-  if (res.fail()) {
-    std::string errorMsg = std::string("cannot sync data for shard '") + collection + "' from remote endpoint: " + res.errorMessage();
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), errorMsg);
+  if (r.fail()) {
+    std::string errorMsg = std::string("cannot sync data for shard '") + collection + "' from remote endpoint: " + r.errorMessage();
+    TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), errorMsg);
   }
 
   TRI_V8_RETURN(result);

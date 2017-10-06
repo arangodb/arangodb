@@ -311,7 +311,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
     }
 
     if (column_family_id == _definitionsCF) {
-      
       if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
         TRI_ASSERT(_lastLogType == RocksDBLogType::DatabaseDrop);
         {
@@ -336,7 +335,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
           } else {
             marker->add("cuid", VPackValue(_dropCollectionUUID));
           }
-          marker->add("data", VPackValue(VPackValueType::Object));
           VPackObjectBuilder data(&_builder, "data", true);
           data->add("id", VPackValue(std::to_string(_currentCid)));
           data->add("name", VPackValue(""));  // not used at all
@@ -602,6 +600,7 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
     
     handler->startNewBatch(batch.sequence);
     s = batch.writeBatchPtr->Iterate(handler.get());
+    
     if (!s.ok()) {
       LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan: " << s.ToString();
       break; // s is considered in the end
