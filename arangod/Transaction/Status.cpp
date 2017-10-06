@@ -18,36 +18,17 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ActivationCallback.h"
+#include "Transaction/Status.h"
 
-#include "Agency/Agent.h"
+#include <iostream>
 
-using namespace arangodb::consensus;
-using namespace arangodb::velocypack;
+using namespace arangodb::transaction;
 
-ActivationCallback::ActivationCallback() : _agent(nullptr){}
-
-ActivationCallback::ActivationCallback(
-  Agent* agent, std::string const& failed, std::string const& replacement)
-  : _agent(agent),
-    _failed(failed),
-    _replacement(replacement) {}
-
-void ActivationCallback::shutdown() { _agent = nullptr; }
-
-bool ActivationCallback::operator()(arangodb::ClusterCommResult* res) {
-  if (res->status == CL_COMM_SENT) {
-    if (_agent) {
-      auto v = res->result->getBodyVelocyPack();
-      _agent->reportActivated(_failed, _replacement, v);
-    }
-  } else {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << "activation_comm_status(" << res->status << "), replacement("
-      << _replacement << ")";
-  }
-  return true;
+std::ostream& operator<<(std::ostream& stream, arangodb::transaction::Status const& s) {
+  stream << arangodb::transaction::statusString(s);
+  return stream;
 }
+

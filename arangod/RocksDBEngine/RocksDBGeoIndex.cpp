@@ -32,7 +32,6 @@
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMethods.h"
-#include "RocksDBEngine/RocksDBToken.h"
 
 #include <rocksdb/db.h>
 
@@ -147,7 +146,7 @@ size_t RocksDBGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
   return numDocs;
 }
 
-bool RocksDBGeoIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool RocksDBGeoIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   if (!_cursor) {
     createCursor(_lat, _lon);
 
@@ -197,7 +196,7 @@ bool RocksDBGeoIndexIterator::next(TokenCallback const& cb, size_t limit) {
     }
 
     for (size_t i = 0; i < numDocs; ++i) {
-      cb(RocksDBToken(coords->coordinates[i].data));
+      cb(LocalDocumentId(coords->coordinates[i].data));
     }
     // If we return less then limit many docs we are done.
     _done = numDocs < limit;
@@ -408,7 +407,7 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 /// internal insert function, set batch or trx before calling
 Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
                                        RocksDBMethods* mthd,
-                                       TRI_voc_rid_t revisionId,
+                                       LocalDocumentId const& documentId,
                                        velocypack::Slice const& doc) {
   // GeoIndex is always exclusively write-locked with rocksdb
   GeoIndex_setRocksMethods(_geoIndex, mthd);
@@ -460,7 +459,7 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
   GeoCoordinate gc;
   gc.latitude = latitude;
   gc.longitude = longitude;
-  gc.data = static_cast<uint64_t>(revisionId);
+  gc.data = static_cast<uint64_t>(documentId.id());
 
   int res = GeoIndex_insert(_geoIndex, &gc);
   if (res == -1) {
@@ -481,8 +480,8 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
 /// internal remove function, set batch or trx before calling
 Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
                                        RocksDBMethods* mthd,
-                                       TRI_voc_rid_t revisionId,
-                                       velocypack::Slice const& doc) {
+                                       LocalDocumentId const& documentId,
+                                       arangodb::velocypack::Slice const& doc) {
   // GeoIndex is always exclusively write-locked with rocksdb
   GeoIndex_setRocksMethods(_geoIndex, RocksDBTransactionState::toMethods(trx));
   TRI_DEFER(GeoIndex_clearRocks(_geoIndex));
@@ -533,7 +532,7 @@ Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
     GeoCoordinate gc;
     gc.latitude = latitude;
     gc.longitude = longitude;
-    gc.data = static_cast<uint64_t>(revisionId);
+    gc.data = static_cast<uint64_t>(documentId.id());
     // ignore non-existing elements in geo-index
     GeoIndex_remove(_geoIndex, &gc);
   }

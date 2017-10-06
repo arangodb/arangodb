@@ -50,6 +50,7 @@ class AuthenticationFeature final
   AuthInfo* _authInfo;
   bool _authenticationUnixSockets;
   bool _authenticationSystemOnly;
+  double _authenticationTimeout;
 
   std::string _jwtSecretProgramOption;
   bool _active;
@@ -59,10 +60,12 @@ class AuthenticationFeature final
   bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
   std::string jwtSecret() { return authInfo()->jwtSecret(); }
   std::string generateNewJwtSecret();
-  bool hasUserdefinedJwt() { return !_jwtSecretProgramOption.empty(); }
+  bool hasUserdefinedJwt() const { return !_jwtSecretProgramOption.empty(); }
   void setJwtSecret(std::string const& jwtSecret) {
     authInfo()->setJwtSecret(jwtSecret);
   }
+  double authenticationTimeout() const { return _authenticationTimeout; }
+
   AuthInfo* authInfo();
   AuthLevel canUseDatabase(std::string const& username,
                            std::string const& dbname);

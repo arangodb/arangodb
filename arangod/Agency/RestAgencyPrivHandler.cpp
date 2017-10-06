@@ -108,10 +108,11 @@ RestStatus RestAgencyPrivHandler::execute() {
             readValue("prevLogIndex", prevLogIndex) &&
             readValue("prevLogTerm", prevLogTerm) &&
             readValue("leaderCommit", leaderCommit)) {  // found all values
-          bool ret = _agent->recvAppendEntriesRPC(
-              term, id, prevLogIndex, prevLogTerm, leaderCommit,
-              _request->toVelocyPackBuilderPtr());
-          result.add("success", VPackValue(ret));
+          auto ret = _agent->recvAppendEntriesRPC(
+            term, id, prevLogIndex, prevLogTerm, leaderCommit,
+            _request->toVelocyPackBuilderPtr());
+          result.add("success", VPackValue(ret.success));
+          result.add("term", VPackValue(ret.term));
           result.add("senderTimeStamp", VPackValue(senderTimeStamp));
         } else {
           return reportBadQuery();  // bad query
@@ -140,6 +141,7 @@ RestStatus RestAgencyPrivHandler::execute() {
         } else {
           return reportBadQuery();  // bad query
         }
+
       } else if (suffixes[0] == "add-server" || suffixes[0] == "remove-server" ) {
         auto tmp = std::make_shared<Builder>();
         { VPackObjectBuilder b(tmp.get());
@@ -198,16 +200,6 @@ RestStatus RestAgencyPrivHandler::execute() {
           for (auto const& obj : VPackObjectIterator(ret->slice())) {
             result.add(obj.key.copyString(), obj.value);
           }
-        } catch (std::exception const& e) {
-          return reportBadQuery(e.what());
-        }
-      } else if (suffixes[0] == "measure") {
-        if (_request->requestType() != rest::RequestType::POST) {
-          return reportMethodNotAllowed();
-        }
-        auto query = _request->toVelocyPackBuilderPtr();
-        try {
-          _agent->reportMeasurement(query);
         } catch (std::exception const& e) {
           return reportBadQuery(e.what());
         }

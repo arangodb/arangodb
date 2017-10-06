@@ -543,7 +543,7 @@ query_t config_t::toBuilder() const {
       for (auto const& i : _active) {
         ret->add(VPackValue(i));
       }}
-    
+
     ret->add(idStr, VPackValue(_id));
     ret->add(agencySizeStr, VPackValue(_pool.size()));
     ret->add(poolSizeStr, VPackValue(_poolSize));

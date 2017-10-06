@@ -67,7 +67,7 @@ RestStatus RestEdgesHandler::execute() {
 void RestEdgesHandler::readCursor(
     aql::AstNode* condition, aql::Variable const* var,
     std::string const& collectionName, SingleCollectionTransaction& trx,
-    std::function<void(DocumentIdentifierToken const&)> cb) {
+    std::function<void(LocalDocumentId const&)> cb) {
   transaction::Methods::IndexHandle indexId;
   bool foundIdx = trx.getBestIndexHandleForFilterCondition(
       collectionName, condition, var, 1000, indexId);
@@ -95,7 +95,7 @@ void RestEdgesHandler::readCursor(
 bool RestEdgesHandler::getEdgesForVertex(
     std::string const& id, std::string const& collectionName,
     TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
-    std::function<void(DocumentIdentifierToken const&)> cb) {
+    std::function<void(LocalDocumentId const&)> cb) {
   trx.pinData(trx.cid());  // will throw when it fails
 
   // Create a conditionBuilder that manages the AstNodes for querying
@@ -248,8 +248,8 @@ bool RestEdgesHandler::readEdges() {
 
   auto collection = trx.documentCollection();
   ManagedDocumentResult mmdr;
-  std::unordered_set<DocumentIdentifierToken> foundTokens;
-  auto cb = [&] (DocumentIdentifierToken const& token) {
+  std::unordered_set<LocalDocumentId> foundTokens;
+  auto cb = [&] (LocalDocumentId const& token) {
     if (foundTokens.find(token) == foundTokens.end()) {
       if (collection->readDocument(&trx, token, mmdr)) {
         resultBuilder.add(VPackSlice(mmdr.vpack()));
@@ -393,8 +393,8 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
 
   auto collection = trx.documentCollection();
   ManagedDocumentResult mmdr;
-  std::unordered_set<DocumentIdentifierToken> foundTokens;
-  auto cb = [&] (DocumentIdentifierToken const& token) {
+  std::unordered_set<LocalDocumentId> foundTokens;
+  auto cb = [&] (LocalDocumentId const& token) {
     if (foundTokens.find(token) == foundTokens.end()) {
       if (collection->readDocument(&trx, token, mmdr)) {
         resultBuilder.add(VPackSlice(mmdr.vpack()));

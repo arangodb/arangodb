@@ -54,8 +54,6 @@ void DBServerAgencySync::work() {
 DBServerAgencySyncResult DBServerAgencySync::execute() {
   // default to system database
 
-  double startTime = TRI_microtime();
-
   LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "DBServerAgencySync::execute starting";
   DatabaseFeature* database = 
     ApplicationServer::getFeature<DatabaseFeature>("Database");
@@ -75,19 +73,20 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   
   VocbaseGuard guard(vocbase);
 
+  double startTime = TRI_microtime();
   V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true, V8DealerFeature::ANY_CONTEXT_OR_PRIORITY);
 
   if (context == nullptr) {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "DBServerAgencySync::execute no V8 context";
+    LOG_TOPIC(WARN, arangodb::Logger::HEARTBEAT) << "DBServerAgencySync::execute: no V8 context";
     return result;
   }
+  
+  TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
 
   double now = TRI_microtime();
   if (now - startTime > 5.0) {
-    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "DBServerAgencySync::execute took more than 5s to get free V8 context, starting handle-plan-change now";
+    LOG_TOPIC(WARN, arangodb::Logger::HEARTBEAT) << "DBServerAgencySync::execute took " << Logger::FIXED(now - startTime) << " to get free V8 context, starting handlePlanChange now";
   }
-
-  TRI_DEFER(V8DealerFeature::DEALER->exitContext(context));
 
   auto isolate = context->_isolate;
   
@@ -95,7 +94,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     v8::HandleScope scope(isolate);
 
     // execute script inside the context
-    auto file = TRI_V8_ASCII_STRING(isolate, "handle-plan-change");
+    auto file = TRI_V8_ASCII_STRING(isolate, "handlePlanChange");
     auto content =
         TRI_V8_ASCII_STRING(isolate, "require('@arangodb/cluster').handlePlanChange");
     
@@ -109,7 +108,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     }
 
     if (!handlePlanChange->IsFunction()) {
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "handlePlanChange is not a function";
+      LOG_TOPIC(ERR, Logger::HEARTBEAT) << "handlePlanChange is not a function";
       return result;
     }
 
@@ -148,17 +147,17 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
         if (value->IsNumber()) {
           if (strcmp(*str, "plan") == 0) {
             result.planVersion =
-              static_cast<uint64_t>(value->ToUint32()->Value());
+              static_cast<uint64_t>(value->ToInteger()->Value());
           } else if (strcmp(*str, "current") == 0) {
             result.currentVersion =
-              static_cast<uint64_t>(value->ToUint32()->Value());
+              static_cast<uint64_t>(value->ToInteger()->Value());
           }
         } else if (value->IsBoolean() && strcmp(*str, "success")) {
           result.success = TRI_ObjectToBoolean(value);
         }
       }
     } else {
-      LOG_TOPIC(ERR, Logger::CLUSTER)
+      LOG_TOPIC(ERR, Logger::HEARTBEAT)
         << "handlePlanChange returned a non-object";
       return result;
     }
@@ -170,9 +169,9 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   }
 
   now = TRI_microtime();
-  if (now - startTime > 30) {
+  if (now - startTime > 30.0) {
     LOG_TOPIC(WARN, Logger::HEARTBEAT) << "DBServerAgencySync::execute "
-      "took longer than 30s to execute handlePlanChange()";
+      "took " << Logger::FIXED(now - startTime) << " s to execute handlePlanChange";
   }
   return result;
 }

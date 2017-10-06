@@ -327,28 +327,48 @@ bool Inception::restartingActiveAgent() {
               _agent->notify(agency);
               return true;
             }
-            
-            auto const theirActive = tcc.get("active").toJson();
-            auto const myActive = myConfig.activeToBuilder()->toJson();
+
+            auto const theirActive = tcc.get("active");
+            auto const myActiveB = myConfig.activeToBuilder();
+            auto const myActive = myActiveB->slice();
             auto i = std::find(active.begin(),active.end(),p.first);
-            
-            if (i != active.end()) {
-              if (theirActive != myActive) {
-                if (!this->isStopping()) {
-                  LOG_TOPIC(FATAL, Logger::AGENCY)
-                    << "Assumed active RAFT peer and I disagree on active membership:";
-                  LOG_TOPIC(FATAL, Logger::AGENCY)
-                    << "Their active list is " << theirActive;  
-                  LOG_TOPIC(FATAL, Logger::AGENCY)
-                    << "My active list is " << myActive;  
-                  FATAL_ERROR_EXIT();
+
+            if (i != active.end()) { // Member in my active list
+              TRI_ASSERT(theirActive.isArray());
+              if (theirActive.length() == myActive.length()) {
+                std::vector<std::string> theirActVec, myActVec;
+                for (auto const i : VPackArrayIterator(theirActive)) {
+                  theirActVec.push_back(i.copyString());
                 }
-                return false;
+                for (auto const i : VPackArrayIterator(myActive)) {
+                  myActVec.push_back(i.copyString());
+                }
+                std::sort(myActVec.begin(),myActVec.end());
+                std::sort(theirActVec.begin(),theirActVec.end());
+                if (theirActVec != myActVec) {
+                  if (!this->isStopping()) {
+                    LOG_TOPIC(FATAL, Logger::AGENCY)
+                      << "Assumed active RAFT peer and I disagree on active membership:";
+                    LOG_TOPIC(FATAL, Logger::AGENCY)
+                      << "Their active list is " << theirActive.toJson();  
+                    LOG_TOPIC(FATAL, Logger::AGENCY)
+                      << "My active list is " << myActive.toJson();  
+                    FATAL_ERROR_EXIT();
+                  }
+                  return false;
+                } else {
+                  *i = "";
+                }
               } else {
-                *i = "";
+                LOG_TOPIC(FATAL, Logger::AGENCY)
+                  << "Assumed active RAFT peer and I disagree on active agency size:";
+                LOG_TOPIC(FATAL, Logger::AGENCY)
+                  << "Their active list is " << theirActive.toJson();  
+                LOG_TOPIC(FATAL, Logger::AGENCY)
+                  << "My active list is " << myActive.toJson();  
+                FATAL_ERROR_EXIT();
               }
-            }
-            
+            }    
           } catch (std::exception const& e) {
             if (!this->isStopping()) {
               LOG_TOPIC(FATAL, Logger::AGENCY)
@@ -359,10 +379,9 @@ bool Inception::restartingActiveAgent() {
             return false;
           }
         } 
-        
       }
-      
     }
+
     
     // Timed out? :(
     if ((system_clock::now() - startTime) > timeout) {
@@ -385,11 +404,6 @@ bool Inception::restartingActiveAgent() {
   return false;
   
 }
-
-void Inception::reportIn(query_t const& query) {
-  // does nothing at the moment
-}
-
 
 void Inception::reportVersionForEp(std::string const& endpoint, size_t version) {
   MUTEX_LOCKER(versionLocker, _vLock);

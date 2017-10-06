@@ -241,7 +241,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
   
-  opCursor->allDocuments([&resultBuilder](DocumentIdentifierToken const& token, VPackSlice slice) {
+  opCursor->allDocuments([&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
   });
 
