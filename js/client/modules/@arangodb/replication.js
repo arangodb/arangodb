@@ -69,9 +69,7 @@ logger.tickRanges = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 logger.firstTick = function () {
-  var db = internal.db;
-
-  var requestResult = db._connection.GET('/_api/replication/logger-first-tick');
+  var requestResult = internal.db._connection.GET('/_api/replication/logger-first-tick');
   arangosh.checkRequestResult(requestResult);
 
   return requestResult.firstTick;
@@ -83,20 +81,21 @@ logger.firstTick = function () {
 
 function applierStart(global, initialTick, barrierId) {
   var append = '';
-
   if (initialTick !== undefined) {
     append = appendChar(append) + 'from=' + encodeURIComponent(initialTick);
   }
   if (barrierId !== undefined) {
     append += appendChar(append) + 'barrierId=' + encodeURIComponent(barrierId);
   }
+
+  var url;
   if (global) {
-    append += appendChar(append) + 'global=true';
+    url = '/_db/_system/_api/replication/applier-start' + appendChar(append) + 'global=true';
+  } else {
+    url = '/_api/replication/applier-start' + append;
   }
-
-  var requestResult = internal.db._connection.PUT('/_api/replication/applier-start' + append, '');
+  var requestResult = internal.db._connection.PUT(url, '');
   arangosh.checkRequestResult(requestResult);
-
   return requestResult;
 }
 
@@ -108,14 +107,15 @@ globalApplier.start = function (initialTick, barrierId) { return applierStart(tr
 // //////////////////////////////////////////////////////////////////////////////
 
 function applierStop(global) {
-  var append = '';
+  var url;
   if (global) {
-    append += appendChar(append) + 'global=true';
+    url = '/_db/_system/_api/replication/applier-stop?global=true';
+  } else {
+    url = '/_api/replication/applier-stop';
   }
 
-  var requestResult = internal.db._connection.PUT('/_api/replication/applier-stop' + append, '');
+  var requestResult = internal.db._connection.PUT(url, '');
   arangosh.checkRequestResult(requestResult);
-
   return requestResult;
 };
 
@@ -127,14 +127,15 @@ globalApplier.stop = function () { return applierStop(true); };
 // //////////////////////////////////////////////////////////////////////////////
 
 function applierState(global) {
-  var append = '';
+  var url;
   if (global) {
-    append += appendChar(append) + 'global=true';
+    url = '/_db/_system/_api/replication/applier-state?global=true';
+  } else {
+    url = '/_api/replication/applier-state';
   }
 
-  var requestResult = internal.db._connection.GET('/_api/replication/applier-state' + append);
+  var requestResult = internal.db._connection.GET(url);
   arangosh.checkRequestResult(requestResult);
-
   return requestResult;
 };
 
@@ -146,14 +147,15 @@ globalApplier.state = function () { return applierState(true); };
 // //////////////////////////////////////////////////////////////////////////////
 
 function applierForget(global) {
-  var append = '';
+  var url;
   if (global) {
-    append += appendChar(append) + 'global=true';
+    url = '/_db/_system/_api/replication/applier-state?global=true';
+  } else {
+    url = '/_api/replication/applier-state';
   }
 
-  var requestResult = internal.db._connection.DELETE('/_api/replication/applier-state' + append);
+  var requestResult = internal.db._connection.DELETE(url);
   arangosh.checkRequestResult(requestResult);
-
   return requestResult;
 };
 
@@ -165,21 +167,20 @@ globalApplier.forget = function () { return applierForget(true); };
 // //////////////////////////////////////////////////////////////////////////////
 
 function applierProperties(global, config) {
-  var append = '';
+  var url;
   if (global) {
-    append += appendChar(append) + 'global=true';
+    url = '/_db/_system/_api/replication/applier-config?global=true';
+  } else {
+    url = '/_api/replication/applier-config';
   }
 
   var requestResult;
   if (config === undefined) {
-    requestResult = internal.db._connection.GET('/_api/replication/applier-config' + append);
+    requestResult = internal.db._connection.GET(url);
   } else {
-    requestResult = internal.db._connection.PUT('/_api/replication/applier-config' + append,
-      JSON.stringify(config));
+    requestResult = internal.db._connection.PUT(url, JSON.stringify(config));
   }
-
   arangosh.checkRequestResult(requestResult);
-
   return requestResult;
 };
 
@@ -234,16 +235,18 @@ var waitForResult = function (config, id) {
 // //////////////////////////////////////////////////////////////////////////////
 
 var sync = function (global, config) {
-  var append = '';
+  var url;
   if (global) {
-    append += appendChar(append) + 'global=true';
+    url = '/_db/_system/_api/replication/sync?global=true';
+  } else {
+    url = '/_api/replication/sync';
   }
   const body = JSON.stringify(config || {});
   const headers = {
     'X-Arango-Async': 'store'
   };
 
-  const requestResult = internal.db._connection.PUT_RAW('/_api/replication/sync' + append, body, headers);
+  const requestResult = internal.db._connection.PUT_RAW(url, body, headers);
   arangosh.checkRequestResult(requestResult);
 
   if (config.async) {
@@ -276,9 +279,11 @@ var syncCollection = function (collection, config) {
 // //////////////////////////////////////////////////////////////////////////////
 
 var setup = function (global, config) {
-  var append = '';
+  var url;
   if (global) {
-    append += appendChar(append) + 'global=true';
+    url = '/_db/_system/_api/replication/make-slave?global=true';
+  } else {
+    url = '/_api/replication/make-slave';
   }
 
   config = config || { };
@@ -292,14 +297,11 @@ var setup = function (global, config) {
     config.verbose = false;
   }
 
-  const db = internal.db;
-
-  const body = JSON.stringify(config);
   const headers = {
     'X-Arango-Async': 'store'
   };
 
-  const requestResult = db._connection.PUT_RAW('/_api/replication/make-slave' + append, body, headers);
+  const requestResult = internal.db._connection.PUT_RAW(url, JSON.stringify(config), headers);
   arangosh.checkRequestResult(requestResult);
 
   if (config.async) {
