@@ -187,8 +187,14 @@ void ReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc
     writeLocker.lock();
   }
   
-  if (_configuration._endpoint.empty() || _configuration._database.empty()) {
+  if (_configuration._endpoint.empty()) {
     Result r(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
+    setErrorNoLock(r);
+    THROW_ARANGO_EXCEPTION(r);
+  }
+    
+  if (!isGlobal() && _configuration._database.empty()) {
+    Result r(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no database configured");
     setErrorNoLock(r);
     THROW_ARANGO_EXCEPTION(r);
   }

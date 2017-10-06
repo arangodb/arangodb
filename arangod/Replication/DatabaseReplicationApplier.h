@@ -44,6 +44,9 @@ class DatabaseReplicationApplier final : public ReplicationApplier {
 
   ~DatabaseReplicationApplier();
 
+  /// @brief whether or not the applier is the global one
+  bool isGlobal() const override { return false; }
+
   /// @brief execute the check condition
   bool applies() const override;
 

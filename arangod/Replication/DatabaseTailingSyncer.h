@@ -52,7 +52,7 @@ class DatabaseTailingSyncer : public TailingSyncer {
   Result syncCollectionFinalize(std::string const& collectionName);
   
  protected:
-
+    
   /// @brief save the current applier state
   Result saveApplierState() override;
   std::unique_ptr<InitialSyncer> initialSyncer() override;

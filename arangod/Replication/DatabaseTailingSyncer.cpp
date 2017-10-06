@@ -62,6 +62,9 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(
     : TailingSyncer(vocbase->replicationApplier(),
                     configuration, initialTick, useTick, barrierId) {
   _vocbases.emplace(vocbase->name(), DatabaseGuard(vocbase));
+  if (configuration._database.empty()) {
+    _databaseName = vocbase->name();
+  }
 }
 
 /// @brief save the current applier state
@@ -115,7 +118,7 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
     }
     
     std::string const baseUrl =
-    BaseUrl + "/logger-follow?chunkSize=" +
+    tailingBaseUrl() + "/logger-follow?chunkSize=" +
     StringUtils::itoa(_configuration._chunkSize) + "&from=" +
     StringUtils::itoa(fromTick) + "&serverId=" + _localServerIdString +
     "&collection=" + StringUtils::urlEncode(collectionName);

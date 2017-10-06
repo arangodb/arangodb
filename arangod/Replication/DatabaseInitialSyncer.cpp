@@ -68,6 +68,9 @@ DatabaseInitialSyncer::DatabaseInitialSyncer(TRI_vocbase_t* vocbase,
       _vocbase(vocbase),
       _hasFlushed(false) {
   _vocbases.emplace(vocbase->name(), DatabaseGuard(vocbase));
+  if (configuration._database.empty()) {
+    _databaseName = vocbase->name();
+  }
 }
 
 /// @brief run method, performs a full synchronization
@@ -336,7 +339,7 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
   uint64_t chunkSize = _configuration._chunkSize;
 
   TRI_ASSERT(_batchId);  // should not be equal to 0
-  std::string const baseUrl = BaseUrl + "/dump?collection=" + cid +
+  std::string const baseUrl = ReplicationUrl + "/dump?collection=" + cid +
                               "&batchId=" + std::to_string(_batchId) + appendix;
 
   TRI_voc_tick_t fromTick = 0;
@@ -352,7 +355,7 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
     sendExtendBatch();
     sendExtendBarrier();
 
-    std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick);
+    std::string url = ReplicationUrl + "&from=" + StringUtils::itoa(fromTick);
 
     if (maxTick > 0) {
       url += "&to=" + StringUtils::itoa(maxTick + 1);
@@ -539,8 +542,8 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
   sendExtendBatch();
   sendExtendBarrier();
 
-  std::string const baseUrl = BaseUrl + "/keys";
-  std::string url = baseUrl + "?collection=" + cid +
+  std::string const baseUrl = ReplicationUrl + "/keys";
+  std::string url = baseUrl + "/keys" + "?collection=" + cid +
                     "&to=" + std::to_string(maxTick) +
                     "&batchId=" + std::to_string(_batchId);
 
@@ -970,7 +973,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 }
 
 Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
-  std::string url = BaseUrl + "/inventory?serverId=" + _localServerIdString +
+  std::string url = ReplicationUrl + "/inventory?serverId=" + _localServerIdString +
   "&batchId=" + std::to_string(_batchId);
   if (_configuration._includeSystem) {
     url += "&includeSystem=true";

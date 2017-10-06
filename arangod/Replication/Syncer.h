@@ -201,7 +201,7 @@ class Syncer {
   std::string _leaderId;
   
   /// @brief base url of the replication API
-  static std::string const BaseUrl;
+  static std::string const ReplicationUrl;
 };
 }
 

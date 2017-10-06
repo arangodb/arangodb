@@ -241,7 +241,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
 }
 
 Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
-  std::string url = BaseUrl + "/inventory?serverId=" + _localServerIdString +
+  std::string url = ReplicationUrl + "/inventory?serverId=" + _localServerIdString +
   "&batchId=" + std::to_string(_batchId) + "&global=true";
   if (_configuration._includeSystem) {
     url += "&includeSystem=true";

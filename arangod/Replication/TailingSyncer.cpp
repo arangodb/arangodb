@@ -93,10 +93,11 @@ std::string const& TailingSyncer::tailingBaseUrl() {
   TRI_ASSERT(!_masterInfo._endpoint.empty() &&
              _masterInfo._serverId != 0 &&
              _masterInfo._majorVersion != 0);
-  return _masterInfo._majorVersion >= 3 &&
-  _masterInfo._minorVersion >= 3 ? TailingSyncer::WalAccessUrl : Syncer::BaseUrl;
+  
+  bool is33 = _masterInfo._majorVersion >= 3 &&
+  _masterInfo._minorVersion >= 3;
+  return is33 ? TailingSyncer::WalAccessUrl : Syncer::ReplicationUrl;
 }
-
 
 /// @brief set the applier progress
 void TailingSyncer::setProgress(std::string const& msg) {

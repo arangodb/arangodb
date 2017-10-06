@@ -84,7 +84,7 @@ Result InitialSyncer::sendStartBatch() {
   
   _batchId = 0;
   std::string const url =
-      BaseUrl + "/batch" + "?serverId=" + _localServerIdString;
+      ReplicationUrl + "/batch" + "?serverId=" + _localServerIdString;
   std::string const body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
 
   // send request

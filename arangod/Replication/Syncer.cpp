@@ -54,7 +54,7 @@ using namespace arangodb::rest;
 using namespace arangodb::httpclient;
 
 /// @brief base url of the replication API
-std::string const Syncer::BaseUrl = "/_api/replication";
+std::string const Syncer::ReplicationUrl = "/_api/replication";
 
 Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
     : _configuration(configuration),
@@ -71,12 +71,6 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
   if (!_configuration._database.empty()) {
     // use name from configuration
     _databaseName = _configuration._database;
-  } else if (!_vocbases.empty()) {
-    // use name of current database
-    TRI_vocbase_t* vocbase = _vocbases.begin()->second.database();
-    _databaseName = vocbase->name();
-  } else {
-    _databaseName = TRI_VOC_SYSTEM_DATABASE;
   }
  
   if (_configuration._chunkSize == 0) {
@@ -117,9 +111,7 @@ Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
       } else {
         params.setJwt(_configuration._jwt);
       }
-      if (!_databaseName.empty()) {
-        params.setLocationRewriter(this, &rewriteLocation);
-      }
+      params.setLocationRewriter(this, &rewriteLocation);
       _client = new SimpleHttpClient(_connection, params);
     }
   }
@@ -154,12 +146,11 @@ Result Syncer::parseResponse(VPackBuilder& builder,
 std::string Syncer::rewriteLocation(void* data, std::string const& location) {
   Syncer* s = static_cast<Syncer*>(data);
   TRI_ASSERT(s != nullptr);
-  
-  if (location.substr(0, 5) == "/_db/") {
-    // location already contains /_db/
-    return location;
-  }
-
+    if (location.substr(0, 5) == "/_db/") {
+      // location already contains /_db/
+      return location;
+    }
+  TRI_ASSERT(!s->_databaseName.empty());
   if (location[0] == '/') {
     return "/_db/" + s->_databaseName + location;
   }
@@ -181,7 +172,7 @@ Result Syncer::sendCreateBarrier(TRI_voc_tick_t minTick) {
   }
   _barrierId = 0;
 
-  std::string const url = BaseUrl + "/barrier";
+  std::string const url = ReplicationUrl + "/barrier";
   std::string const body = "{\"ttl\":" + StringUtils::itoa(_barrierTtl) +
                            ",\"tick\":\"" + StringUtils::itoa(minTick) + "\"}";
 
@@ -233,7 +224,7 @@ Result Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
     return Result();
   }
 
-  std::string const url = BaseUrl + "/barrier/" + StringUtils::itoa(_barrierId);
+  std::string const url = ReplicationUrl + "/barrier/" + StringUtils::itoa(_barrierId);
   std::string const body = "{\"ttl\":" + StringUtils::itoa(_barrierTtl) +
                            ",\"tick\"" + StringUtils::itoa(tick) + "\"}";
 
@@ -264,20 +255,23 @@ Result Syncer::sendRemoveBarrier() {
 
   try {
     std::string const url =
-        BaseUrl + "/barrier/" + StringUtils::itoa(_barrierId);
+        ReplicationUrl + "/barrier/" + StringUtils::itoa(_barrierId);
 
     // send request
     std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
         rest::RequestType::DELETE_REQ, url, nullptr, 0));
 
     if (response == nullptr || !response->isComplete()) {
-      return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
+      return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") +
+                    _masterInfo._endpoint + ": " + _client->getErrorMessage());
     }
 
     TRI_ASSERT(response != nullptr);
 
     if (response->wasHttpError()) {
-      return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
+      return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
+                    _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
+                    ": " + response->getHttpReturnMessage());
     }
     _barrierId = 0;
     _barrierUpdateTime = 0;
@@ -681,7 +675,7 @@ Result Syncer::getMasterState() {
   }
   
   std::string const url =
-      BaseUrl + "/logger-state?serverId=" + _localServerIdString;
+      ReplicationUrl + "/logger-state?serverId=" + _localServerIdString;
 
   // store old settings
   size_t maxRetries = _client->params().getMaxRetries();
