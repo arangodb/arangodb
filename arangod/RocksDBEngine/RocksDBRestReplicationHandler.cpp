@@ -376,7 +376,6 @@ void RocksDBRestReplicationHandler::handleCommandInventory() {
   // produce inventory for all databases?
   bool isGlobal = false;
   getApplier(isGlobal);
-  TRI_ASSERT(!isGlobal);
   
   std::pair<RocksDBReplicationResult, std::shared_ptr<VPackBuilder>> result =
       ctx->getInventory(this->_vocbase, includeSystem, isGlobal);
