@@ -42,9 +42,7 @@ constexpr inline uint64_t WalFileBitmask() { return 0x8000000000000000ULL; }
 /// @brief maximal size of a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-constexpr inline TRI_voc_size_t MaximalMarkerSize() {
-  static_assert(sizeof(TRI_voc_size_t) >= 4, "TRI_voc_size_t is too small");
-
+constexpr inline uint32_t MaximalMarkerSize() {
   return 2UL * 1024UL * 1024UL * 1024UL; // 2 GB
 }
 
@@ -52,7 +50,7 @@ constexpr inline TRI_voc_size_t MaximalMarkerSize() {
 /// @brief journal overhead
 ////////////////////////////////////////////////////////////////////////////////
 
-constexpr inline TRI_voc_size_t JournalOverhead() {
+constexpr inline uint32_t JournalOverhead() {
   return sizeof(MMFilesDatafileHeaderMarker) + sizeof(MMFilesDatafileFooterMarker);
 }
 
@@ -282,7 +280,7 @@ static inline void InitMarker(MMFilesMarker* marker,
 /// @brief create a header marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline MMFilesDatafileHeaderMarker CreateHeaderMarker(TRI_voc_size_t maximalSize, TRI_voc_tick_t fid) {
+static inline MMFilesDatafileHeaderMarker CreateHeaderMarker(uint32_t maximalSize, TRI_voc_tick_t fid) {
   static_assert(sizeof(TRI_voc_tick_t) == sizeof(TRI_voc_fid_t), "invalid tick/fid sizes");
 
   MMFilesDatafileHeaderMarker header;

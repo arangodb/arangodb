@@ -61,15 +61,20 @@ rm -f $GENPATH
 ln -s `pwd` $GENPATH
 cd $GENPATH
 
+if test -z "$CMAKE_BUILD_TYPE"; then
+    CMAKE_BUILD_TYPE=RelWithDebInfo
+fi
+
 echo "CONCURRENY: $concurrency"
 echo "HOST: `hostname`"
 echo "PWD: `pwd`"
+echo "BUILD_TYPE: $CMAKE_BUILD_TYPE"
 
 function configureBuild {
     echo "`date +%T` configuring..."
     CXXFLAGS=-fno-omit-frame-pointer \
         cmake \
-            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
             -DCMAKE_INSTALL_PREFIX=/ \
             -DUSE_CATCH_TESTS=On \
             -DDEBUG_SYNC_REPLICATION=On \

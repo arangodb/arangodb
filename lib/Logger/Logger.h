@@ -162,7 +162,7 @@ class Logger {
  public:
   struct FIXED {
     explicit FIXED(double value, int precision = 6)
-        : _value(value), _precision(precision){};
+        : _value(value), _precision(precision) {}
     double _value;
     int _precision;
   };
@@ -211,6 +211,9 @@ class Logger {
   static bool getShowRole() {return _showRole;};
   static void setShortenFilenames(bool);
   static void setShowThreadIdentifier(bool);
+  static void setShowThreadName(bool);
+  static void setUseColor(bool);
+  static bool getUseColor() {return _useColor;};
   static void setUseLocalTime(bool);
   static bool getUseLocalTime() {return _useLocalTime;};
   static void setUseMicrotime(bool);
@@ -248,8 +251,10 @@ class Logger {
   static bool _showLineNumber;
   static bool _shortenFilenames;
   static bool _showThreadIdentifier;
+  static bool _showThreadName;
   static bool _showRole;
   static bool _threaded;
+  static bool _useColor;
   static bool _useLocalTime;
   static bool _keepLogRotate;
   static bool _useMicrotime;

@@ -18,36 +18,33 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ActivationCallback.h"
+#ifndef ARANGOD_MMFILES_MMFILES_INDEX_H
+#define ARANGOD_MMFILES_MMFILES_INDEX_H 1
 
-#include "Agency/Agent.h"
+#include "Basics/Common.h"
+#include "Basics/AttributeNameParser.h"
+#include "Indexes/Index.h"
 
-using namespace arangodb::consensus;
-using namespace arangodb::velocypack;
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
-ActivationCallback::ActivationCallback() : _agent(nullptr){}
+namespace arangodb {
+class LogicalCollection;
 
-ActivationCallback::ActivationCallback(
-  Agent* agent, std::string const& failed, std::string const& replacement)
-  : _agent(agent),
-    _failed(failed),
-    _replacement(replacement) {}
+class MMFilesIndex : public Index {
+ public:
+  MMFilesIndex(TRI_idx_iid_t id, LogicalCollection* collection,
+               std::vector<std::vector<arangodb::basics::AttributeName>> const& attributes,
+               bool unique, bool sparse) 
+    : Index(id, collection, attributes, unique, sparse) {}
 
-void ActivationCallback::shutdown() { _agent = nullptr; }
-
-bool ActivationCallback::operator()(arangodb::ClusterCommResult* res) {
-  if (res->status == CL_COMM_SENT) {
-    if (_agent) {
-      auto v = res->result->getBodyVelocyPack();
-      _agent->reportActivated(_failed, _replacement, v);
-    }
-  } else {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << "activation_comm_status(" << res->status << "), replacement("
-      << _replacement << ")";
-  }
-  return true;
+  MMFilesIndex(TRI_idx_iid_t id, LogicalCollection* collection,
+               VPackSlice const& info) 
+    : Index(id, collection, info) {}
+};
 }
+
+#endif

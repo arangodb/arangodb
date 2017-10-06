@@ -106,7 +106,7 @@ void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
     ManagedDocumentResult mmdr;
     MMFilesCollection *mmColl = MMFilesCollection::toMMFilesCollection(_collection);
     trx.invokeOnAllElements(
-        _collection->name(), [this, &trx, &maxTick, &mmdr, &mmColl](DocumentIdentifierToken const& token) {
+        _collection->name(), [this, &trx, &maxTick, &mmdr, &mmColl](LocalDocumentId const& token) {
           if (mmColl->readDocumentConditional(&trx, token, maxTick, mmdr)) {
             _vpack.emplace_back(mmdr.vpack());
           }

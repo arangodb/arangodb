@@ -29,19 +29,19 @@
 /// @brief returns the columns width
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_ColumnsWidth() {
+TRI_TerminalSize TRI_DefaultTerminalSize() {
   HANDLE hOut;
   CONSOLE_SCREEN_BUFFER_INFO SBInfo;
 
   hOut = GetStdHandle(STD_OUTPUT_HANDLE);
 
   if (hOut == INVALID_HANDLE_VALUE) {
-    return TRI_DEFAULT_COLUMNS;
+    return TRI_DEFAULT_TERMINAL_SIZE;
   }
 
   if (GetConsoleScreenBufferInfo(hOut, &SBInfo) == 0) {
-    return TRI_DEFAULT_COLUMNS;
+    return TRI_DEFAULT_TERMINAL_SIZE;
   }
 
-  return SBInfo.dwSize.X;
+  return TRI_TerminalSize{SBInfo.dwSize.Y, SBInfo.dwSize.X};
 }

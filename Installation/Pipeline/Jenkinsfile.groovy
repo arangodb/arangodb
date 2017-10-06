@@ -383,7 +383,7 @@ def generateResult() {
     def html = "<html><body><table>\n"
     html += "<tr><th>Name</th><th>Start</th><th>Stop</th><th>Duration</th><th>Message</th></tr>\n"
 
-    for (key in resultsKeys) {
+    for (key in resultsKeys.sort()) {
         def start = resultsStart[key] ?: ""
         def stop = resultsStop[key] ?: ""
         def msg = resultsStatus[key] ?: ""
@@ -421,12 +421,10 @@ def generateResult() {
 
     html += "</table></body></html>\n"
 
-    node("master") {
-        fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
-        fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
+    fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
+    fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
 
-        archiveArtifacts(allowEmptyArchive: true, artifacts: "results.*")
-    }
+    archiveArtifacts(allowEmptyArchive: true, artifacts: "results.*")
 }
 
 // -----------------------------------------------------------------------------
@@ -571,6 +569,8 @@ def checkCommitMessages() {
         if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
             echo "build of main branch"
 
+            useDocker = true
+
             restrictions = [
                 // OS EDITION MAINTAINER
                 "build-linux-community-maintainer" : true,
@@ -630,6 +630,9 @@ CHANGE_ID: ${env.CHANGE_ID}
 CHANGE_TARGET: ${env.CHANGE_TARGET}
 JOB_NAME: ${env.JOB_NAME}
 CAUSE: ${causeDescription}
+
+Building Docker: ${useDocker}
+
 """
 
     if (restrictions) {
@@ -661,7 +664,6 @@ Building Community: ${useCommunity}
 Building Enterprise: ${useEnterprise}
 Building Maintainer: ${useMaintainer}
 Building Non-Maintainer: ${useUser}
-Building Docker: ${useDocker}
 Running Tests: ${runTests}
 """
     }
@@ -809,10 +811,10 @@ def getTests(os, edition, maintainer, mode, engine) {
         ["server_http", "server_http", ""],
         ["shell_client", "shell_client", ""],
         ["shell_server", "shell_server", ""],
-        ["shell_server_aql_1", "shell_server_aql", "--testBuckets 4/0", ,""],
-        ["shell_server_aql_2", "shell_server_aql", "--testBuckets 4/1", ,""],
-        ["shell_server_aql_3", "shell_server_aql", "--testBuckets 4/2", ,""],
-        ["shell_server_aql_4", "shell_server_aql", "--testBuckets 4/3", ,""],
+        ["shell_server_aql_1", "shell_server_aql", "--testBuckets 4/0"],
+        ["shell_server_aql_2", "shell_server_aql", "--testBuckets 4/1"],
+        ["shell_server_aql_3", "shell_server_aql", "--testBuckets 4/2"],
+        ["shell_server_aql_4", "shell_server_aql", "--testBuckets 4/3"],
         ["upgrade", "upgrade" , ""],
         rspecify(os, "http_server"),
         rspecify(os, "ssl_server")
@@ -839,7 +841,12 @@ def getTests(os, edition, maintainer, mode, engine) {
 
         if (maintainer == "maintainer" && os == "linux") {
             tests += [
-                ["recovery", "recovery", ""]
+                ["recovery_1", "recovery", "--testBuckets 6/0"],
+                ["recovery_2", "recovery", "--testBuckets 6/1"],
+                ["recovery_3", "recovery", "--testBuckets 6/2"],
+                ["recovery_4", "recovery", "--testBuckets 6/3"],
+                ["recovery_5", "recovery", "--testBuckets 6/4"],
+                ["recovery_6", "recovery", "--testBuckets 6/5"]
             ]
         }
     }
@@ -1084,16 +1091,16 @@ def testStepParallel(os, edition, maintainer, modeList) {
         }
     }
 
-    def name = "test-${os}-${edition}-${maintainer}"
+    def name = "${os}-${edition}-${maintainer}/03-test"
 
     if (branches) {
         try {
-            logStartStage(null, name, null)
+            node("linux") { logStartStage(null, name, null) }
             parallel branches
-            logStopStage(null, name)
+            node("linux") { logStopStage(null, name) }
         }
         catch (exc) {
-            logExceptionStage(null, name, null, exc)
+            node("linux") { logExceptionStage(null, name, null, exc) }
             throw exc
         }
     }
@@ -1357,8 +1364,8 @@ def createDockerImage(edition, maintainer, stageName) {
                             logStartStage(os, logFile, logFile)
 
                             shellAndPipe("./scripts/build-docker.sh", logFile)
-                            shellAndPipe("docker tag arangodb:${packageName}-${branchLabel} c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${branchLabel}", logFile)
-                            shellAndPipe("docker push c1.triagens-gmbh.zz:5000/arangodb/${packageName}:${branchLabel}", logFile)
+                            shellAndPipe("docker tag arangodb:${packageName}-${branchLabel} registry.arangodb.biz:5000/arangodb/${packageName}:${branchLabel}", logFile)
+                            shellAndPipe("docker push registry.arangodb.biz:5000/arangodb/${packageName}:${branchLabel}", logFile)
 
                             logStopStage(os, logFile)
                         }
@@ -1384,47 +1391,65 @@ def createDockerImage(edition, maintainer, stageName) {
 def runEdition(os, edition, maintainer, stageName) {
     return {
         if (buildStepCheck(os, edition, maintainer)) {
-            node(buildJenkins[os]) {
-                stage(stageName) {
-                    checkoutSource(os, edition)
+            def name = "${os}-${edition}-${maintainer}"
 
-                    // I concede...we need a lock for windows...I could not get it to run concurrently...
-                    // v8 would not build multiple times at the same time on the same machine:
-                    // PDB API call failed, error code '24': ' etc etc
-                    // in theory it should be possible to parallelize it by setting an environment variable
-                    // (see the build script) but for v8 it won't work :(
-                    // feel free to recheck if there is time somewhen...this thing here really should not be possible but
-                    // ensure that there are 2 concurrent builds on the SAME node building v8 at the same time to properly
-                    // test it. I just don't want any more "yeah that might randomly fail. just restart" sentences any more.
+            try {
+                node("linux") { logStartStage(null, name, null) }
 
-                    if (os == "windows") {
-                        def hostname = powershell(returnStdout: true, script: "hostname").trim()
+                node(buildJenkins[os]) {
+                    stage(stageName) {
+                        checkoutSource(os, edition)
 
-                        lock("build-windows-${hostname}") {
+                        // I concede...we need a lock for windows...I
+                        // could not get it to run concurrently...  v8
+                        // would not build multiple times at the same time
+                        // on the same machine: PDB API call failed, error
+                        // code '24': ' etc etc in theory it should be
+                        // possible to parallelize it by setting an
+                        // environment variable (see the build script) but
+                        // for v8 it won't work :( feel free to recheck if
+                        // there is time somewhen...this thing here really
+                        // should not be possible but ensure that there
+                        // are 2 concurrent builds on the SAME node
+                        // building v8 at the same time to properly test
+                        // it. I just don't want any more "yeah that might
+                        // randomly fail. just restart" sentences any
+                        // more.
+
+                        if (os == "windows") {
+                            def hostname = powershell(returnStdout: true, script: "hostname").trim()
+
+                            lock("build-windows-${hostname}") {
+                                timeout(90) {
+                                    buildEdition(os, edition, maintainer)
+                                    stashBinaries(os, edition, maintainer)
+                                }
+                            }
+                        }
+                        else {
                             timeout(90) {
                                 buildEdition(os, edition, maintainer)
                                 stashBinaries(os, edition, maintainer)
                             }
                         }
                     }
-                    else {
-                        timeout(90) {
-                            buildEdition(os, edition, maintainer)
-                            stashBinaries(os, edition, maintainer)
+
+                    // we only need one jslint test per edition
+                    if (os == "linux") {
+                        stage("jslint-${edition}") {
+                            echo "Running jslint for ${edition}"
+                            jslint(os, edition, maintainer)
                         }
                     }
                 }
 
-                // we only need one jslint test per edition
-                if (os == "linux") {
-                    stage("jslint-${edition}") {
-                        echo "Running jslint for ${edition}"
-                        jslint(os, edition, maintainer)
-                    }
-                }
+                testStepParallel(os, edition, maintainer, ['cluster', 'singleserver'])
+                node("linux") { logStopStage(null, name) }
             }
-
-            testStepParallel(os, edition, maintainer, ['cluster', 'singleserver'])
+            catch (exc) {
+                node("linux") { logExceptionStage(null, name, null, exc) }
+                throw exc
+            }
         }
     }
 }
@@ -1455,13 +1480,13 @@ def runOperatingSystems(osList) {
 
 timestamps {
     try {
-        node("master") {
+        node("linux") {
             echo sh(returnStdout: true, script: 'env')
         }
 
         checkCommitMessages()
 
-        node("master") {
+        node("linux") {
             fileOperations([fileCreateOperation(fileContent: overview, fileName: "overview.txt")])
             archiveArtifacts(allowEmptyArchive: true, artifacts: "overview.txt")
         }
@@ -1469,6 +1494,8 @@ timestamps {
         runOperatingSystems(['linux', 'mac', 'windows'])
     }
     finally {
-        generateResult()
+        node("linux") {
+            generateResult()
+        }
     }
 }
