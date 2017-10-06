@@ -272,15 +272,17 @@ int handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
   }
 
   VPackBuilder builder;
-  int res = syncer.parseResponse(builder, response.get());
+  Result r = syncer.parseResponse(builder, response.get());
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (r.fail()) {
     errorMsg = "got invalid response from master at " +
                std::string(syncer._masterInfo._endpoint) +
                ": invalid response is no array";
 
     return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
   }
+
+  int res = TRI_ERROR_NO_ERROR;
 
   VPackSlice const slice = builder.slice();
 
@@ -492,9 +494,9 @@ int handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
       }
 
       VPackBuilder builder;
-      int res = syncer.parseResponse(builder, response.get());
+      Result r  = syncer.parseResponse(builder, response.get());
 
-      if (res != TRI_ERROR_NO_ERROR) {
+      if (r.fail()) {
         errorMsg = "got invalid response from master at " +
                    syncer._masterInfo._endpoint + ": response is no array";
 
@@ -680,15 +682,17 @@ int handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
         }
 
         VPackBuilder builder;
-        int res = syncer.parseResponse(builder, response.get());
+        Result r = syncer.parseResponse(builder, response.get());
 
-        if (res != TRI_ERROR_NO_ERROR) {
+        if (r.fail()) {
           errorMsg = "got invalid response from master at " +
                      std::string(syncer._masterInfo._endpoint) +
                      ": response is no array";
 
           return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
         }
+
+        int res = TRI_ERROR_NO_ERROR;
 
         VPackSlice const slice = builder.slice();
         if (!slice.isArray()) {

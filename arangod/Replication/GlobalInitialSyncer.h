@@ -47,7 +47,7 @@ class GlobalInitialSyncer : public InitialSyncer {
   bool checkAborted();
 
   /// @brief fetch the server's inventory
-  int fetchInventory(arangodb::velocypack::Builder& builder, std::string& errorMsg);
+  Result fetchInventory(arangodb::velocypack::Builder& builder);
   
   /// @brief add or remove databases such that the local inventory mirrors the masters
   Result updateServerInventory(velocypack::Slice const& masterDatabases);

@@ -167,16 +167,15 @@ private:
   Result sendFlush();
   
   /// @brief apply the data from a collection dump
-  int applyCollectionDump(transaction::Methods&, std::string const&,
-                          httpclient::SimpleHttpResult*, uint64_t&,
-                          std::string&);
+  Result applyCollectionDump(transaction::Methods&, std::string const&,
+                             httpclient::SimpleHttpResult*, uint64_t&);
 
   /// @brief determine the number of documents in a collection
   int64_t getSize(arangodb::LogicalCollection*);
 
   /// @brief incrementally fetch data from a collection
-  int handleCollectionDump(arangodb::LogicalCollection*, std::string const&,
-                           std::string const&, TRI_voc_tick_t, std::string&);
+  Result handleCollectionDump(arangodb::LogicalCollection*, std::string const&,
+                              std::string const&, TRI_voc_tick_t);
 
   /// @brief incrementally fetch data from a collection
   Result handleCollectionSync(arangodb::LogicalCollection*, std::string const&,
@@ -184,13 +183,13 @@ private:
    
   /// @brief changes the properties of a collection, based on the VelocyPack
   /// provided
-  int changeCollection(arangodb::LogicalCollection*,
-                       arangodb::velocypack::Slice const&);
+  Result changeCollection(arangodb::LogicalCollection*,
+                          arangodb::velocypack::Slice const&);
 
   /// @brief handle the information about a collection
-  int handleCollection(arangodb::velocypack::Slice const&,
-                       arangodb::velocypack::Slice const&, bool, std::string&,
-                       sync_phase_e);
+  Result handleCollection(arangodb::velocypack::Slice const&,
+                          arangodb::velocypack::Slice const&, bool incremental,
+                          sync_phase_e);
   
   /// @brief fetch the server's inventory
   Result fetchInventory(arangodb::velocypack::Builder& builder);
@@ -199,10 +198,10 @@ private:
   Result handleLeaderCollections(arangodb::velocypack::Slice const&, bool);
 
   /// @brief iterate over all collections from an array and apply an action
-  int iterateCollections(
+  Result iterateCollections(
       std::vector<std::pair<arangodb::velocypack::Slice,
                             arangodb::velocypack::Slice>> const&,
-      bool, std::string&, sync_phase_e);
+      bool incremental, sync_phase_e);
 
   std::unordered_map<std::string, std::string> createHeaders() const;
 

@@ -39,6 +39,7 @@ namespace basics {
 class LocalTaskQueue;
 }
 
+class IndexIterator;
 class LogicalCollection;
 class ManagedDocumentResult;
 class StringRef;
@@ -56,11 +57,7 @@ struct Variable;
 
 namespace transaction {
 class Methods;
-};
 }
-
-namespace arangodb {
-class IndexIterator;
 
 class Index {
  public:

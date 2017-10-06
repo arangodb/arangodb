@@ -62,7 +62,7 @@ class DatabaseTailingSyncer : public TailingSyncer {
   void postApplyMarker(uint64_t processedMarkers, bool skipped) override;
 
   /// @brief save the current applier state
-  int saveApplierState();
+  void saveApplierState();
 
   /// @brief get local replication applier state
   void getLocalState();
@@ -75,8 +75,8 @@ class DatabaseTailingSyncer : public TailingSyncer {
                                TRI_voc_tick_t& startTick);
 
   /// @brief run the continuous synchronization
-  int followMasterLog(std::string&, TRI_voc_tick_t&, TRI_voc_tick_t, uint64_t&,
-                      bool&, bool&);
+  Result followMasterLog(TRI_voc_tick_t& fetchTick, TRI_voc_tick_t firstRegularTick, 
+                         uint64_t& ignoreCount, bool& worked, bool& masterActive);
   
   TRI_vocbase_t* vocbase() const {
     TRI_ASSERT(vocbases().size() == 1);

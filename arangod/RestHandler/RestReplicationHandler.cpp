@@ -1936,7 +1936,9 @@ void RestReplicationHandler::handleCommandSync() {
 void RestReplicationHandler::handleCommandApplierGetConfig() {
   bool isGlobal;
   ReplicationApplier* applier = getApplier(isGlobal);
-  TRI_ASSERT(applier != nullptr);
+  if (applier == nullptr) {
+    return;
+  }
 
   ReplicationApplierConfiguration configuration = applier->configuration();
   VPackBuilder builder;
@@ -1954,7 +1956,9 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
 void RestReplicationHandler::handleCommandApplierSetConfig() {
   bool isGlobal;
   ReplicationApplier* applier = getApplier(isGlobal);
-  TRI_ASSERT(applier != nullptr);
+  if (applier == nullptr) {
+    return;
+  }
 
   bool success;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
@@ -2067,7 +2071,9 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
 void RestReplicationHandler::handleCommandApplierStart() {
   bool isGlobal;
   ReplicationApplier* applier = getApplier(isGlobal);
-  TRI_ASSERT(applier != nullptr);
+  if (applier == nullptr) {
+    return;
+  }
 
   bool found;
   std::string const& value1 = _request->value("from", found);
@@ -2100,7 +2106,9 @@ void RestReplicationHandler::handleCommandApplierStart() {
 void RestReplicationHandler::handleCommandApplierStop() {
   bool isGlobal;
   ReplicationApplier* applier = getApplier(isGlobal);
-  TRI_ASSERT(applier != nullptr);
+  if (applier == nullptr) {
+    return;
+  }
 
   applier->stopAndJoin(true);
   handleCommandApplierGetState();
@@ -2113,7 +2121,9 @@ void RestReplicationHandler::handleCommandApplierStop() {
 void RestReplicationHandler::handleCommandApplierGetState() {
   bool isGlobal;
   ReplicationApplier* applier = getApplier(isGlobal);
-  TRI_ASSERT(applier != nullptr);
+  if (applier == nullptr) {
+    return;
+  }
 
   VPackBuilder builder;
   builder.openObject();
@@ -2129,7 +2139,10 @@ void RestReplicationHandler::handleCommandApplierGetState() {
 void RestReplicationHandler::handleCommandApplierDeleteState() {
   bool isGlobal;
   ReplicationApplier* applier = getApplier(isGlobal);
-  TRI_ASSERT(applier != nullptr);
+  if (applier == nullptr) {
+    return;
+  }
+
   applier->forget();
 
   handleCommandApplierGetState();

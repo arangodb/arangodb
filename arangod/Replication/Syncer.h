@@ -105,14 +105,14 @@ class Syncer {
  protected:
   
   /// @brief parse a velocypack response
-  int parseResponse(arangodb::velocypack::Builder&,
-                    arangodb::httpclient::SimpleHttpResult const*) const;
+  Result parseResponse(arangodb::velocypack::Builder&,
+                       arangodb::httpclient::SimpleHttpResult const*) const;
 
   /// @brief send a "create barrier" command
-  int sendCreateBarrier(std::string&, TRI_voc_tick_t);
+  Result sendCreateBarrier(TRI_voc_tick_t);
 
   /// @brief send an "extend barrier" command
-  int sendExtendBarrier(TRI_voc_tick_t = 0);
+  Result sendExtendBarrier(TRI_voc_tick_t = 0);
 
   /// @brief apply a single marker from the collection dump
   int applyCollectionDumpMarker(transaction::Methods&,
@@ -123,24 +123,24 @@ class Syncer {
                                 std::string&);
 
   /// @brief creates a collection, based on the VelocyPack provided
-  int createCollection(TRI_vocbase_t* vocbase,
-                       arangodb::velocypack::Slice const&,
-                       arangodb::LogicalCollection**);
+  Result createCollection(TRI_vocbase_t* vocbase,
+                          arangodb::velocypack::Slice const&,
+                          arangodb::LogicalCollection**);
 
   /// @brief drops a collection, based on the VelocyPack provided
   int dropCollection(arangodb::velocypack::Slice const&, bool);
 
   /// @brief creates an index, based on the VelocyPack provided
-  int createIndex(arangodb::velocypack::Slice const&);
+  Result createIndex(arangodb::velocypack::Slice const&);
 
   /// @brief drops an index, based on the VelocyPack provided
-  int dropIndex(arangodb::velocypack::Slice const&);
+  Result dropIndex(arangodb::velocypack::Slice const&);
 
   /// @brief get master state
-  int getMasterState(std::string&);
+  Result getMasterState();
 
   /// @brief handle the state response of the master
-  int handleStateResponse(arangodb::velocypack::Slice const&, std::string&);
+  Result handleStateResponse(arangodb::velocypack::Slice const&);
   
   virtual TRI_vocbase_t* resolveVocbase(velocypack::Slice const&);
    

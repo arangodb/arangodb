@@ -63,13 +63,13 @@ class InitialSyncer : public Syncer {
   virtual void setProgress(std::string const& msg) {}
 
   /// @brief send a "start batch" command
-  int sendStartBatch(std::string&);
+  Result sendStartBatch();
 
   /// @brief send an "extend batch" command
-  int sendExtendBatch();
+  Result sendExtendBatch();
 
   /// @brief send a "finish batch" command
-  int sendFinishBatch();
+  Result sendFinishBatch();
 
  protected:
   /// @brief progress message

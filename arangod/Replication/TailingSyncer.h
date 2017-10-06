@@ -69,50 +69,35 @@ class TailingSyncer : public Syncer {
   /// @brief whether or not a collection should be excluded
   bool isExcludedCollection(std::string const&) const;
 
-  /// @brief get local replication applier state
-  int getLocalState(std::string&);
-
   /// @brief starts a transaction, based on the VelocyPack provided
-  int startTransaction(arangodb::velocypack::Slice const&);
+  Result startTransaction(arangodb::velocypack::Slice const&);
 
   /// @brief aborts a transaction, based on the VelocyPack provided
-  int abortTransaction(arangodb::velocypack::Slice const&);
+  Result abortTransaction(arangodb::velocypack::Slice const&);
 
   /// @brief commits a transaction, based on the VelocyPack provided
-  int commitTransaction(arangodb::velocypack::Slice const&);
+  Result commitTransaction(arangodb::velocypack::Slice const&);
   
   /// @brief process db create or drop markers
-  int processDBMarker(TRI_replication_operation_e, velocypack::Slice const&);
+  Result processDBMarker(TRI_replication_operation_e, velocypack::Slice const&);
 
   /// @brief process a document operation, based on the VelocyPack provided
-  int processDocument(TRI_replication_operation_e,
-                      arangodb::velocypack::Slice const&, std::string&);
+  Result processDocument(TRI_replication_operation_e,
+                         arangodb::velocypack::Slice const&);
 
   /// @brief renames a collection, based on the VelocyPack provided
-  int renameCollection(arangodb::velocypack::Slice const&);
+  Result renameCollection(arangodb::velocypack::Slice const&);
 
   /// @brief changes the properties of a collection, based on the VelocyPack
   /// provided
-  int changeCollection(arangodb::velocypack::Slice const&);
+  Result changeCollection(arangodb::velocypack::Slice const&);
 
   /// @brief apply a single marker from the continuous log
-  int applyLogMarker(arangodb::velocypack::Slice const&, TRI_voc_tick_t,
-                     std::string&);
+  Result applyLogMarker(arangodb::velocypack::Slice const&, TRI_voc_tick_t);
 
   /// @brief apply the data from the continuous log
-  int applyLog(httpclient::SimpleHttpResult*, TRI_voc_tick_t, std::string&,
-               uint64_t&, uint64_t&);
-
-  /// @brief perform a continuous sync with the master
-  int runContinuousSync(std::string&);
-
-  /// @brief fetch the initial master state
-  int fetchMasterState(std::string&, TRI_voc_tick_t, TRI_voc_tick_t,
-                       TRI_voc_tick_t&);
-
-  /// @brief run the continuous synchronization
-  int followMasterLog(std::string&, TRI_voc_tick_t&, TRI_voc_tick_t, uint64_t&,
-                      bool&, bool&);
+  Result applyLog(httpclient::SimpleHttpResult*, TRI_voc_tick_t firstRegularTick, 
+                  uint64_t& processedMarkers, uint64_t& ignoreCount);
 
   /// @brief called before marker is processed
   virtual void preApplyMarker(TRI_voc_tick_t firstRegularTick,

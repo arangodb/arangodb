@@ -200,7 +200,7 @@ bool TailingSyncer::isExcludedCollection(std::string const& masterName) const {
 
 
 /// @brief process db create or drop markers
-int TailingSyncer::processDBMarker(TRI_replication_operation_e type,
+Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
                                    velocypack::Slice const& slice) {
   TRI_ASSERT(!_ignoreDatabaseMarkers);
   
@@ -212,9 +212,8 @@ int TailingSyncer::processDBMarker(TRI_replication_operation_e type,
   }
   std::string name = nameSlice.copyString();
   if (name.empty() || (name[0] >= '0' && name[0] <= '9')) {
-    LOG_TOPIC(ERR, Logger::REPLICATION) << "Invalid database name in log";
-    TRI_ASSERT(false);
-    return TRI_ERROR_ARANGO_DATABASE_NAME_INVALID;
+    LOG_TOPIC(ERR, Logger::REPLICATION) << "invalid database name in log";
+    return Result(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID);
   }
   
   if (type == REPLICATION_DATABASE_CREATE) {
@@ -227,23 +226,22 @@ int TailingSyncer::processDBMarker(TRI_replication_operation_e type,
 
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
     if (vocbase != nullptr && name != TRI_VOC_SYSTEM_DATABASE) {
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "Seeing database creation marker "
-        << "for an alread existing db. Dropping db...";
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "seeing database creation marker "
+        << "for an already existing db. Dropping db...";
       TRI_vocbase_t* system = DatabaseFeature::DATABASE->systemDatabase();
       TRI_ASSERT(system);
       Result res = methods::Databases::drop(system, name);
       if (res.fail()) {
         LOG_TOPIC(ERR, Logger::REPLICATION) << res.errorMessage();
-        return res.errorNumber();
+        return res;
       }
     }
     
     VPackSlice users = VPackSlice::emptyArraySlice();
     Result res = methods::Databases::create(name, users,
                                             VPackSlice::emptyObjectSlice());
-    return res.errorNumber();
+    return res;
   } else if (type == REPLICATION_DATABASE_DROP) {
-
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
     if (vocbase != nullptr && name != TRI_VOC_SYSTEM_DATABASE) {
       TRI_vocbase_t* system = DatabaseFeature::DATABASE->systemDatabase();
@@ -252,28 +250,26 @@ int TailingSyncer::processDBMarker(TRI_replication_operation_e type,
       if (res.fail()) {
         LOG_TOPIC(ERR, Logger::REPLICATION) << res.errorMessage();
       }
-      return res.errorNumber();
+      return res;
     } else {
       TRI_ASSERT(false);// this should never  occur anyway
     }
     
   }
   TRI_ASSERT(false);
-  return TRI_ERROR_INTERNAL; // unreachable
+  return Result(TRI_ERROR_INTERNAL); // unreachable
 }
 
 /// @brief inserts a document, based on the VelocyPack provided
-int TailingSyncer::processDocument(TRI_replication_operation_e type,
-                                   VPackSlice const& slice,
-                                   std::string& errorMsg) {
-  
+Result TailingSyncer::processDocument(TRI_replication_operation_e type,
+                                      VPackSlice const& slice) {
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
-    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
   if (col == nullptr) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
   
   TRI_voc_cid_t cid = col->cid();
@@ -283,24 +279,21 @@ int TailingSyncer::processDocument(TRI_replication_operation_e type,
   VPackSlice const doc = slice.get("data");
 
   if (!doc.isObject()) {
-    errorMsg = "invalid document format";
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "invalid document format");
   }
 
   // extract "key"
   VPackSlice const key = doc.get(StaticStrings::KeyString);
 
   if (!key.isString()) {
-    errorMsg = "invalid document key format";
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "invalid document key format");
   }
 
   // extract "rev"
   VPackSlice const rev = doc.get(StaticStrings::RevString);
 
   if (!rev.isString()) {
-    errorMsg = "invalid document revision format";
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "invalid document revision format");
   }
 
   _documentBuilder.clear();
@@ -326,18 +319,17 @@ int TailingSyncer::processDocument(TRI_replication_operation_e type,
     auto it = _ongoingTransactions.find(tid);
 
     if (it == _ongoingTransactions.end()) {
-      errorMsg = "unexpected transaction " + StringUtils::itoa(tid);
-      return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
+      return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION, std::string("unexpected transaction ") + StringUtils::itoa(tid));
     }
 
     auto trx = (*it).second;
 
     if (trx == nullptr) {
-      errorMsg = "unexpected transaction " + StringUtils::itoa(tid);
-      return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
+      return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION, std::string("unexpected transaction ") + StringUtils::itoa(tid));
     }
 
     trx->addCollectionAtRuntime(cid, "", AccessMode::Type::EXCLUSIVE);
+    std::string errorMsg;
     int res = applyCollectionDumpMarker(*trx, trx->name(cid), type, old, doc,
                                         errorMsg);
 
@@ -346,54 +338,55 @@ int TailingSyncer::processDocument(TRI_replication_operation_e type,
       res = TRI_ERROR_NO_ERROR;
     }
 
-    return res;
+    return Result(res, errorMsg);
   }
 
-  else {
-    // standalone operation
-    // update the apply tick for all standalone operations
-    SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(vocbase), cid,
-        AccessMode::Type::EXCLUSIVE);
+  // standalone operation
+  // update the apply tick for all standalone operations
+  SingleCollectionTransaction trx(
+      transaction::StandaloneContext::Create(vocbase), cid,
+      AccessMode::Type::EXCLUSIVE);
 
-    if (_supportsSingleOperations) {
-      trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
-    }
-
-    Result res = trx.begin();
-
-    // fix error handling here when function returns result
-    if (!res.ok()) {
-      errorMsg =
-          "unable to create replication transaction: " + res.errorMessage();
-      res.reset(res.errorNumber(), errorMsg);
-    } else {
-      res =
-          applyCollectionDumpMarker(trx, trx.name(), type, old, doc, errorMsg);
-      if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED &&
-          isSystem) {
-        // ignore unique constraint violations for system collections
-        res.reset();
-      }
-    }
-    // fix error handling here when function returns result
-    res = trx.finish(res);
-    return res.errorNumber();
+  if (_supportsSingleOperations) {
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
+
+  Result res = trx.begin();
+
+  // fix error handling here when function returns result
+  if (!res.ok()) {
+    return Result(res.errorNumber(), std::string("unable to create replication transaction: ") + res.errorMessage());
+  }
+    
+  std::string errorMsg;     
+  res = applyCollectionDumpMarker(trx, trx.name(), type, old, doc, errorMsg);
+  if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
+    // ignore unique constraint violations for system collections
+    res.reset();
+  } else if (res.fail()) {
+    res.reset(res.errorNumber(), errorMsg);
+  }
+  
+  // fix error handling here when function returns result
+  if (res.ok()) {
+    res = trx.commit();
+  }
+
+  return res;
 }
 
 /// @brief starts a transaction, based on the VelocyPack provided
-int TailingSyncer::startTransaction(VPackSlice const& slice) {
+Result TailingSyncer::startTransaction(VPackSlice const& slice) {
   // {"type":2200,"tid":"230920705812199", "database": "123", "collections":[{"cid":"230920700700391","operations":10}]}
   
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
-    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   
   std::string const id = VelocyPackHelper::getStringValue(slice, "tid", "");
   if (id.empty()) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "transaction id value is missing in slice");
   }
 
   // transaction id
@@ -428,16 +421,16 @@ int TailingSyncer::startTransaction(VPackSlice const& slice) {
     trx.release();
   }
 
-  return res.errorNumber();
+  return res;
 }
 
 /// @brief aborts a transaction, based on the VelocyPack provided
-int TailingSyncer::abortTransaction(VPackSlice const& slice) {
+Result TailingSyncer::abortTransaction(VPackSlice const& slice) {
   // {"type":2201,"tid":"230920705812199","collections":[{"cid":"230920700700391","operations":10}]}
   std::string const id = VelocyPackHelper::getStringValue(slice, "tid", "");
 
   if (id.empty()) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "transaction id is missing in slice");
   }
 
   // transaction id
@@ -449,7 +442,7 @@ int TailingSyncer::abortTransaction(VPackSlice const& slice) {
 
   if (it == _ongoingTransactions.end()) {
     // invalid state, no transaction was started.
-    return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
+    return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION);
   }
 
   TRI_ASSERT(tid > 0);
@@ -464,19 +457,19 @@ int TailingSyncer::abortTransaction(VPackSlice const& slice) {
     Result res = trx->abort();
     delete trx;
 
-    return res.errorNumber();
+    return res;
   }
 
-  return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
+  return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION);
 }
 
 /// @brief commits a transaction, based on the VelocyPack provided
-int TailingSyncer::commitTransaction(VPackSlice const& slice) {
+Result TailingSyncer::commitTransaction(VPackSlice const& slice) {
   // {"type":2201,"tid":"230920705812199","collections":[{"cid":"230920700700391","operations":10}]}
   std::string const id = VelocyPackHelper::getStringValue(slice, "tid", "");
 
   if (id.empty()) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "transaction id is missing in slice");
   }
 
   // transaction id
@@ -488,7 +481,7 @@ int TailingSyncer::commitTransaction(VPackSlice const& slice) {
 
   if (it == _ongoingTransactions.end()) {
     // invalid state, no transaction was started.
-    return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
+    return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION);
   }
 
   TRI_ASSERT(tid > 0);
@@ -503,16 +496,16 @@ int TailingSyncer::commitTransaction(VPackSlice const& slice) {
     Result res = trx->commit();
     delete trx;
 
-    return res.errorNumber();
+    return res;
   }
 
-  return TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION;
+  return Result(TRI_ERROR_REPLICATION_UNEXPECTED_TRANSACTION);
 }
 
 /// @brief renames a collection, based on the VelocyPack provided
-int TailingSyncer::renameCollection(VPackSlice const& slice) {
+Result TailingSyncer::renameCollection(VPackSlice const& slice) {
   if (!slice.isObject()) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "rename slice is not an object");
   }
 
   VPackSlice collection = slice.get("collection");
@@ -521,18 +514,18 @@ int TailingSyncer::renameCollection(VPackSlice const& slice) {
   }
 
   if (!collection.isObject()) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "collection slice is not an object");
   }
 
   std::string const name =
       VelocyPackHelper::getStringValue(collection, "name", "");
   if (name.empty()) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "name attribute is missing in rename slice");
   }
 
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
-    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   arangodb::LogicalCollection* col = nullptr;
   if (slice.hasKey("cuid")) {
@@ -541,25 +534,25 @@ int TailingSyncer::renameCollection(VPackSlice const& slice) {
     col = vocbase->lookupCollection(collection.get("oldName").copyString());
   }
   if (col == nullptr) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
-  return vocbase->renameCollection(col, name, true);
+  return Result(vocbase->renameCollection(col, name, true));
 }
 
 /// @brief changes the properties of a collection, based on the VelocyPack
 /// provided
-int TailingSyncer::changeCollection(VPackSlice const& slice) {
+Result TailingSyncer::changeCollection(VPackSlice const& slice) {
   if (!slice.isObject()) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "collection slice is no object");
   }
   
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
-    return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
   if (col == nullptr) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
 
   VPackSlice data = slice.get("collection");
@@ -568,20 +561,19 @@ int TailingSyncer::changeCollection(VPackSlice const& slice) {
   }
 
   if (!data.isObject()) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "data slice is no object");
   }
 
   arangodb::CollectionGuard guard(vocbase, col);
   bool doSync = DatabaseFeature::DATABASE->forceSyncProperties();
-  return guard.collection()->updateProperties(data, doSync).errorNumber();
+  return guard.collection()->updateProperties(data, doSync);
 }
 
 /// @brief apply a single marker from the continuous log
-int TailingSyncer::applyLogMarker(VPackSlice const& slice,
-                                  TRI_voc_tick_t firstRegularTick,
-                                  std::string& errorMsg) {
+Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
+                                     TRI_voc_tick_t firstRegularTick) {
   if (!slice.isObject()) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "marker slice is no object");
   }
 
   // fetch marker "type"
@@ -599,17 +591,17 @@ int TailingSyncer::applyLogMarker(VPackSlice const& slice,
   // handle marker type
   TRI_replication_operation_e type = (TRI_replication_operation_e)typeValue;
 
-  if      (type == REPLICATION_DATABASE_CREATE ||
-           type == REPLICATION_DATABASE_DROP) {
+  if (type == REPLICATION_DATABASE_CREATE ||
+      type == REPLICATION_DATABASE_DROP) {
     if (_ignoreDatabaseMarkers) {
-      return TRI_ERROR_NO_ERROR;
+      return Result();
     }
     return processDBMarker(type, slice);
   }
   
   else if (type == REPLICATION_MARKER_DOCUMENT ||
            type == REPLICATION_MARKER_REMOVE) {
-    return processDocument(type, slice, errorMsg);
+    return processDocument(type, slice);
   }
 
   else if (type == REPLICATION_TRANSACTION_START) {
@@ -626,11 +618,11 @@ int TailingSyncer::applyLogMarker(VPackSlice const& slice,
 
   else if (type == REPLICATION_COLLECTION_CREATE) {
     if (_ignoreRenameCreateDrop) {
-      return TRI_ERROR_NO_ERROR;
+      return Result();
     }
     TRI_vocbase_t* vocbase = resolveVocbase(slice);
     if (vocbase == nullptr) {
-      return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
+      return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
     if (slice.get("collection").isObject()) {
       return createCollection(vocbase, slice.get("collection"), nullptr);
@@ -648,7 +640,7 @@ int TailingSyncer::applyLogMarker(VPackSlice const& slice,
   else if (type == REPLICATION_COLLECTION_RENAME) {
     if (_ignoreRenameCreateDrop) {
       // do not execute rename operations
-      return TRI_ERROR_NO_ERROR;
+      return Result();
     }
     return renameCollection(slice);
   }
@@ -681,19 +673,17 @@ int TailingSyncer::applyLogMarker(VPackSlice const& slice,
   }
 
   else if (_ignoreRenameCreateDrop) {
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   }
 
-  errorMsg = "unexpected marker type " + StringUtils::itoa(type);
-
-  return TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
+  return Result(TRI_ERROR_REPLICATION_UNEXPECTED_MARKER, std::string("unexpected marker type ") + StringUtils::itoa(type));
 }
 
 /// @brief apply the data from the continuous log
-int TailingSyncer::applyLog(SimpleHttpResult* response,
-                            TRI_voc_tick_t firstRegularTick,
-                            std::string& errorMsg, uint64_t& processedMarkers,
-                            uint64_t& ignoreCount) {
+Result TailingSyncer::applyLog(SimpleHttpResult* response,
+                               TRI_voc_tick_t firstRegularTick,
+                               uint64_t& processedMarkers,
+                               uint64_t& ignoreCount) {
   StringBuffer& data = response->getBody();
   char const* p = data.begin();
   char const* end = p + data.length();
@@ -715,7 +705,7 @@ int TailingSyncer::applyLog(SimpleHttpResult* response,
 
     if (lineLength < 2) {
       // we are done
-      return TRI_ERROR_NO_ERROR;
+      return Result();
     }
 
     TRI_ASSERT(q <= end);
@@ -728,7 +718,7 @@ int TailingSyncer::applyLog(SimpleHttpResult* response,
       parser.parse(p, static_cast<size_t>(q - p));
     } catch (...) {
       // TODO: improve error reporting
-      return TRI_ERROR_OUT_OF_MEMORY;
+      return Result(TRI_ERROR_OUT_OF_MEMORY);
     }
 
     p = q + 1;
@@ -736,30 +726,24 @@ int TailingSyncer::applyLog(SimpleHttpResult* response,
     VPackSlice const slice = builder->slice();
 
     if (!slice.isObject()) {
-      errorMsg = "received invalid JSON data";
-
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "received invalid JSON data");
     }
 
-    int res;
+    Result res;
     bool skipped;
 
     if (skipMarker(firstRegularTick, slice)) {
       // entry is skipped
-      res = TRI_ERROR_NO_ERROR;
+      res.reset();
       skipped = true;
     } else {
-      res = applyLogMarker(slice, firstRegularTick, errorMsg);
+      res = applyLogMarker(slice, firstRegularTick);
       skipped = false;
     }
 
-    if (res != TRI_ERROR_NO_ERROR) {
+    if (res.fail()) {
       // apply error
-
-      if (errorMsg.empty()) {
-        // don't overwrite previous error message
-        errorMsg = TRI_errno_string(res);
-      }
+      std::string errorMsg = res.errorMessage();
 
       if (ignoreCount == 0) {
         if (lineLength > 1024) {
@@ -770,9 +754,7 @@ int TailingSyncer::applyLog(SimpleHttpResult* response,
               ", offending marker: " + std::string(lineStart, lineLength);
         }
 
-        // LOG_TOPIC(ERR, Logger::REPLICATION) << "replication applier error: "
-        // << errorMsg;
-
+        res.reset(res.errorNumber(), errorMsg);
         return res;
       }
 
@@ -780,7 +762,6 @@ int TailingSyncer::applyLog(SimpleHttpResult* response,
       LOG_TOPIC(WARN, Logger::REPLICATION)
           << "ignoring replication error for database '" << _databaseName
           << "': " << errorMsg;
-      errorMsg = "";
     }
 
     // update tick value
@@ -788,5 +769,5 @@ int TailingSyncer::applyLog(SimpleHttpResult* response,
   }
 
   // reached the end
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }

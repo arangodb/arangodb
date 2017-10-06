@@ -96,7 +96,9 @@ retry:
 
   while (_applier->isRunning()) {
     setProgress("fetching master state information");
-    res = getMasterState(errorMsg);
+    Result r = getMasterState();
+    res = r.errorNumber();
+    errorMsg = r.errorMessage();
 
     if (res == TRI_ERROR_REPLICATION_NO_RESPONSE) {
       // master error. try again after a sleep period
@@ -570,9 +572,9 @@ int GlobalTailingSyncer::fetchOpenTransactions(std::string& errorMsg,
   }
 
   VPackBuilder builder;
-  int res = parseResponse(builder, response.get());
+  Result r = parseResponse(builder, response.get());
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (r.fail()) {
     errorMsg = "got invalid response from master at " +
                std::string(_masterInfo._endpoint) +
                ": invalid response type for initial data. expecting array";
@@ -768,8 +770,9 @@ int GlobalTailingSyncer::followMasterLog(std::string& errorMsg,
     }
 
     uint64_t processedMarkers = 0;
-    res = applyLog(response.get(), firstRegularTick, errorMsg, processedMarkers,
-                   ignoreCount);
+    Result r = applyLog(response.get(), firstRegularTick, processedMarkers, ignoreCount);
+    res = r.errorNumber();
+    errorMsg = r.errorMessage();
 
     // cppcheck-suppress *
     if (processedMarkers > 0) {

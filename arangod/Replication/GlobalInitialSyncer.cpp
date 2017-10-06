@@ -62,18 +62,11 @@ Result GlobalInitialSyncer::run(bool incremental) {
   }
   
   setProgress("fetching master state");
-  std::string errorMsg;
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: getting master state";
-  int res = getMasterState(errorMsg);
+  Result r = getMasterState();
     
-  LOG_TOPIC(DEBUG, Logger::REPLICATION)
-      << "client: got master state: " << res << " " << errorMsg;
-  
-  if (res != TRI_ERROR_NO_ERROR) {
-    if (errorMsg.empty()) {
-      return Result(res);
-    }
-    return Result(res, errorMsg);
+  if (r.fail()) {
+    return r;
   }
   
   if (_masterInfo._majorVersion > 3 ||
@@ -84,9 +77,10 @@ Result GlobalInitialSyncer::run(bool incremental) {
   }
   
   // create a WAL logfile barrier that prevents WAL logfile collection
-  res = sendCreateBarrier(errorMsg, _masterInfo._lastLogTick);
-  if (res != TRI_ERROR_NO_ERROR) {
-    return Result(res, errorMsg);
+  r = sendCreateBarrier(_masterInfo._lastLogTick);
+
+  if (r.fail()) {
+    return r;
   }
     
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "created logfile barrier";
@@ -94,19 +88,19 @@ Result GlobalInitialSyncer::run(bool incremental) {
 
   // start batch is required for the inventory request
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "sending start batch";
-  res = sendStartBatch(errorMsg);
-  if (res != TRI_ERROR_NO_ERROR) {
-    return Result(res, errorMsg);
+  r = sendStartBatch();
+  if (r.fail()) {
+    return r;
   }
   TRI_DEFER(sendFinishBatch());
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "sending start batch done";
   
   VPackBuilder builder;
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "fetching inventory";
-  res = fetchInventory(builder, errorMsg);
-  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "inventory done: " << res;
-  if (res != TRI_ERROR_NO_ERROR) {
-    return Result(res, errorMsg);
+  r  = fetchInventory(builder);
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "inventory done: " << r.errorNumber();
+  if (r.fail()) {
+    return r;
   }
   
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "inventory: " << builder.slice().toJson();
@@ -250,9 +244,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
   return TRI_ERROR_NO_ERROR;
 }
 
-int GlobalInitialSyncer::fetchInventory(VPackBuilder& builder,
-                                        std::string& errorMsg) {
-  
+Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
   std::string url = BaseUrl + "/inventory?serverId=" + _localServerIdString +
   "&batchId=" + std::to_string(_batchId) + "&global=true";
   if (_configuration._includeSystem) {
@@ -263,46 +255,31 @@ int GlobalInitialSyncer::fetchInventory(VPackBuilder& builder,
   std::string const progress = "fetching master inventory from " + url;
   setProgress(progress);
   
-  std::unique_ptr<SimpleHttpResult> response(
-                                             _client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
+  std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
   
   if (response == nullptr || !response->isComplete()) {
-    errorMsg = "could not connect to master at " + _masterInfo._endpoint +
-    ": " + _client->getErrorMessage();
-    
     sendFinishBatch();
-    
-    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
   }
   
   TRI_ASSERT(response != nullptr);
   
   if (response->wasHttpError()) {
-    errorMsg = "got invalid response from master at " +
-    _masterInfo._endpoint + ": HTTP " +
-    StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-    response->getHttpReturnMessage();
-    return TRI_ERROR_REPLICATION_MASTER_ERROR;
+    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
   }
-  int res = parseResponse(builder, response.get());
-  if (res != TRI_ERROR_NO_ERROR) {
-    errorMsg = "got invalid response from master at " +
-    std::string(_masterInfo._endpoint) +
-    ": invalid response type for initial data. expecting array";
-    
-    return res;
+
+  Result r = parseResponse(builder, response.get());
+
+  if (r.fail()) {
+    return Result(r.errorNumber(), std::string("got invalid response from master at ") + _masterInfo._endpoint + ": invalid response type for initial data. expecting array");
   }
   
   VPackSlice const slice = builder.slice();
   if (!slice.isObject()) {
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: InitialSyncer::run - "
-    "inventoryResponse is not an "
-    "object";
-    
-    errorMsg = "got invalid response from master at " +
-    _masterInfo._endpoint + ": invalid JSON";
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: InitialSyncer::run - inventoryResponse is not an object";
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": invalid JSON");
   }
-  return res;
+
+  return Result();
 }
 
