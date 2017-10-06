@@ -35,6 +35,8 @@ const arangodb = require("@arangodb");
 const replication = require("@arangodb/replication");
 const errors = arangodb.errors;
 const db = arangodb.db;
+const time = require("internal").time;
+const wait = require("internal").wait;
 
 const masterEndpoint = arango.getEndpoint();
 const slaveEndpoint = ARGUMENTS[0];
@@ -46,12 +48,66 @@ const dbName = "UnitTestDB";
 const docColName = "UnitTestDocs";
 const edgeColName = "UnitTestEdges";
 
+// We allow the replication a delay of this many seconds at most
+const delay = 10;
+
 // Flag if we need to reconnect.
 let onMaster = true;
 
+const compareTicks = function(l, r) {
+  if (l === null) {
+    l = "0";
+  }
+  if (r === null) {
+    r = "0";
+  }
+  print("Ticks", l, r);
+  if (l.length !== r.length) {
+    return l.length - r.length < 0 ? -1 : 1;
+  }
+
+  // length is equal
+  for (let i = 0; i < l.length; ++i) {
+    if (l[i] !== r[i]) {
+      return l[i] < r[i] ? -1 : 1;
+    }
+  }
+
+  return 0;
+};
+
+
+
 const waitForReplication = function() {
-  // TODO Implement properly, based on ticks
-  require("internal").wait(3);
+  const wasOnMaster = onMaster;
+  connectToMaster();
+  // use lastLogTick as of now
+  const lastLogTick = replication.logger.state().state.lastLogTick;
+  // We only wait a defined time.
+  const timeOut = time() + delay * 1000;
+  connectToSlave();
+
+  while (true) {
+    // Guard to abort if failed to replicate
+    expect(time()).to.be.below(timeOut, `Replication did not succeed for ${delay} seconds`);
+
+    const state = replication.globalApplier.state().state;
+    expect(state.lastError.errorNum).to.equal(0, `Error occured on slave: ${JSON.stringify(state.lastError)}`);
+    expect(state.running).to.be(true, "Slave is not running");
+    
+    if (compareTicks(state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
+      compareTicks(state.lastProcessedContinuousTick, lastLogTick) >= 0) {
+      // Replication caught up.
+      break;
+    }
+    wait(0.5, false);
+  }
+
+  if (wasOnMaster) {
+    connectToMaster();
+  } else {
+    connectToSlave();
+  }
 };
 
 // We always connect to _system DB because it is always present.
@@ -132,7 +188,7 @@ const cleanUp = function() {
     // We ignore every error here, correctness needs to be validated during tests.
   }
 
-  while (replication.applier.state().state.running) {
+  while (replication.globalState.state().state.running) {
     internal.wait(0.1, false);
   }
 
@@ -181,9 +237,10 @@ describe('Global Repliction on a fresh boot', function () {
       let mProps = mcol.properties();
       let mIdxs = mcol.getIndexes();
 
-      connectToSlave();
       // Validate it is created properly
       waitForReplication();
+
+      connectToSlave();
       testCollectionExists(docColName);
       let scol = db._collection(docColName);
       expect(scol.type()).to.equal(2);
