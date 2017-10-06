@@ -49,7 +49,12 @@ class RocksDBReplicationContext {
       LocalDocumentIdCallback;
 
  public:
+  RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
+  RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
+
   RocksDBReplicationContext();
+  explicit RocksDBReplicationContext(double ttl);
+
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const; //batchId
@@ -97,7 +102,6 @@ class RocksDBReplicationContext {
   void deleted();
   bool isUsed() const;
   void use(double ttl);
-  void adjustTtl(double ttl);
   bool more() const;
   /// remove use flag
   void release();

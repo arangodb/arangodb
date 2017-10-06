@@ -48,9 +48,12 @@ using namespace arangodb;
 using namespace arangodb::rocksutils;
 using namespace arangodb::velocypack;
 
-double const RocksDBReplicationContext::DefaultTTL = 30 * 60.0;
+double const RocksDBReplicationContext::DefaultTTL = 300.0; // seconds
 
 RocksDBReplicationContext::RocksDBReplicationContext()
+    : RocksDBReplicationContext(DefaultTTL) {}
+
+RocksDBReplicationContext::RocksDBReplicationContext(double ttl)
     : _id(TRI_NewTickServer()),
       _lastTick(0),
       _currentTick(0),
@@ -61,7 +64,7 @@ RocksDBReplicationContext::RocksDBReplicationContext()
       _mdr(),
       _customTypeHandler(),
       _vpackOptions(Options::Defaults),
-      _expires(TRI_microtime() + DefaultTTL),
+      _expires(TRI_microtime() + ttl),
       _isDeleted(false),
       _isUsed(true),
       _hasMore(true) {}
@@ -509,12 +512,9 @@ void RocksDBReplicationContext::use(double ttl) {
   TRI_ASSERT(!_isUsed);
 
   _isUsed = true;
-  _expires = TRI_microtime() + ttl;
-}
-
-void RocksDBReplicationContext::adjustTtl(double ttl) {
-  TRI_ASSERT(_isUsed);
-
+  if (ttl <= 0.0) {
+    ttl = DefaultTTL;
+  }
   _expires = TRI_microtime() + ttl;
 }
 

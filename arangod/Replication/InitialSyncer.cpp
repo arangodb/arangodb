@@ -68,7 +68,7 @@ InitialSyncer::InitialSyncer(
       _processedCollections(),
       _batchId(0),
       _batchUpdateTime(0),
-      _batchTtl(180) {}
+      _batchTtl(300.0) {}
 
 InitialSyncer::~InitialSyncer() {
   try {
