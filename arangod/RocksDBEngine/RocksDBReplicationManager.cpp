@@ -33,7 +33,8 @@
 using namespace arangodb;
 using namespace arangodb::rocksutils;
 
-size_t const RocksDBReplicationManager::MaxCollectCount = 32;
+/// @brief maximum number of contexts to garbage-collect in one go
+static constexpr size_t maxCollectCount = 32;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a context repository
@@ -90,8 +91,8 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 /// there are active contexts
 //////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationContext* RocksDBReplicationManager::createContext() {
-  auto context = std::make_unique<RocksDBReplicationContext>();
+RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl) {
+  auto context = std::make_unique<RocksDBReplicationContext>(ttl);
   TRI_ASSERT(context.get() != nullptr);
   TRI_ASSERT(context->isUsed());
 
@@ -197,7 +198,7 @@ void RocksDBReplicationManager::release(RocksDBReplicationContext* context) {
     if (!context->isDeleted()) {
       return;
     }
-
+      
     // remove from the list
     _contexts.erase(context->id());
   }
@@ -246,7 +247,7 @@ void RocksDBReplicationManager::drop(TRI_vocbase_t* vocbase) {
     }
   }
 
-  garbageCollect(true);
+  garbageCollect(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,7 +275,7 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
   std::vector<RocksDBReplicationContext*> found;
 
   try {
-    found.reserve(MaxCollectCount);
+    found.reserve(maxCollectCount);
 
     MUTEX_LOCKER(mutexLocker, _lock);
 
@@ -301,7 +302,7 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
           break;
         }
 
-        if (!force && found.size() >= MaxCollectCount) {
+        if (!force && found.size() >= maxCollectCount) {
           break;
         }
       } else {

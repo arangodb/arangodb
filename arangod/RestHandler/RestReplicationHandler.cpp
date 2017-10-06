@@ -469,157 +469,62 @@ BAD_CALL:
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandMakeSlave() {
-  bool success;
-  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
-  if (!success) {
-    // error already created
-    return;
-  }
-  VPackSlice const body = parsedBody->slice();
-
-  std::string const endpoint =
-      VelocyPackHelper::getStringValue(body, "endpoint", "");
-
-  if (endpoint.empty()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "<endpoint> must be a valid endpoint");
-    return;
-  }
-
-  std::string const database =
-      VelocyPackHelper::getStringValue(body, "database", _vocbase->name());
-  std::string const username =
-      VelocyPackHelper::getStringValue(body, "username", "");
-  std::string const password =
-      VelocyPackHelper::getStringValue(body, "password", "");
-  std::string const jwt = VelocyPackHelper::getStringValue(body, "jwt", "");
-  
-  
-
-  // initialize some defaults to copy from
-  ReplicationApplierConfiguration defaults;
-
-  // initialize target configuration
-  ReplicationApplierConfiguration config;
-
-  config._endpoint = endpoint;
-  config._database = database;
-  config._username = username;
-  config._password = password;
-  config._jwt = jwt;
-  config._includeSystem =
-      VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
-  config._requestTimeout = VelocyPackHelper::getNumericValue<double>(
-      body, "requestTimeout", defaults._requestTimeout);
-  config._connectTimeout = VelocyPackHelper::getNumericValue<double>(
-      body, "connectTimeout", defaults._connectTimeout);
-  config._ignoreErrors = VelocyPackHelper::getNumericValue<uint64_t>(
-      body, "ignoreErrors", defaults._ignoreErrors);
-  config._maxConnectRetries = VelocyPackHelper::getNumericValue<uint64_t>(
-      body, "maxConnectRetries", defaults._maxConnectRetries);
-  config._lockTimeoutRetries = VelocyPackHelper::getNumericValue<uint64_t>(
-      body, "lockTimeoutRetries", defaults._lockTimeoutRetries);
-  config._sslProtocol = VelocyPackHelper::getNumericValue<uint32_t>(
-      body, "sslProtocol", defaults._sslProtocol);
-  config._chunkSize = VelocyPackHelper::getNumericValue<uint64_t>(
-      body, "chunkSize", defaults._chunkSize);
-  config._autoStart = true;
-  config._adaptivePolling = VelocyPackHelper::getBooleanValue(
-      body, "adaptivePolling", defaults._adaptivePolling);
-  config._autoResync = VelocyPackHelper::getBooleanValue(body, "autoResync",
-                                                         defaults._autoResync);
-  config._verbose =
-      VelocyPackHelper::getBooleanValue(body, "verbose", defaults._verbose);
-  config._incremental = VelocyPackHelper::getBooleanValue(
-      body, "incremental", defaults._incremental);
-  config._requireFromPresent = VelocyPackHelper::getBooleanValue(
-      body, "requireFromPresent", defaults._requireFromPresent);
-  config._restrictType = VelocyPackHelper::getStringValue(
-      body, "restrictType", defaults._restrictType);
-  config._connectionRetryWaitTime = static_cast<uint64_t>(
-      1000.0 * 1000.0 *
-      VelocyPackHelper::getNumericValue<double>(
-          body, "connectionRetryWaitTime",
-          static_cast<double>(defaults._connectionRetryWaitTime) /
-              (1000.0 * 1000.0)));
-  config._initialSyncMaxWaitTime = static_cast<uint64_t>(
-      1000.0 * 1000.0 *
-      VelocyPackHelper::getNumericValue<double>(
-          body, "initialSyncMaxWaitTime",
-          static_cast<double>(defaults._initialSyncMaxWaitTime) /
-              (1000.0 * 1000.0)));
-  config._idleMinWaitTime = static_cast<uint64_t>(
-      1000.0 * 1000.0 *
-      VelocyPackHelper::getNumericValue<double>(
-          body, "idleMinWaitTime",
-          static_cast<double>(defaults._idleMinWaitTime) / (1000.0 * 1000.0)));
-  config._idleMaxWaitTime = static_cast<uint64_t>(
-      1000.0 * 1000.0 *
-      VelocyPackHelper::getNumericValue<double>(
-          body, "idleMaxWaitTime",
-          static_cast<double>(defaults._idleMaxWaitTime) / (1000.0 * 1000.0)));
-  config._autoResyncRetries = VelocyPackHelper::getNumericValue<uint64_t>(
-      body, "autoResyncRetries", defaults._autoResyncRetries);
-
-  VPackSlice const restriction = body.get("restrictCollections");
-
-  if (restriction.isArray()) {
-    VPackValueLength const n = restriction.length();
-
-    for (VPackValueLength i = 0; i < n; ++i) {
-      VPackSlice const cname = restriction.at(i);
-      if (cname.isString()) {
-        config._restrictCollections.emplace(cname.copyString(), true);
-      }
-    }
-  }
-
-  // TODO: add validation
-  // now the configuration is complete
-  
   bool isGlobal = false;
   ReplicationApplier* applier = getApplier(isGlobal);
   if (applier == nullptr) {
     return;
   }
   
+  bool success;
+  std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
+  if (!success) {
+    // error already created
+    return;
+  }
+ 
+  std::string databaseName;
+  if (!isGlobal) {
+    databaseName = _vocbase->name();
+  } 
+  
+  ReplicationApplierConfiguration configuration = ReplicationApplierConfiguration::fromVelocyPack(parsedBody->slice(), databaseName);
+  configuration._skipCreateDrop = false;
+
+  // will throw if invalid
+  configuration.validate();
+
   std::unique_ptr<InitialSyncer> syncer;
-  TRI_ASSERT(!config._skipCreateDrop);
   if (isGlobal) {
-    syncer.reset(new GlobalInitialSyncer(config));
+    syncer.reset(new GlobalInitialSyncer(configuration));
   } else {
-    syncer.reset(new DatabaseInitialSyncer(_vocbase, config));
+    syncer.reset(new DatabaseInitialSyncer(_vocbase, configuration));
   }
 
   // forget about any existing replication applier configuration
   applier->forget();
 
   // start initial synchronization
-  TRI_voc_tick_t lastLogTick = 0;
   TRI_voc_tick_t barrierId = 0;
-  std::string errorMsg = "";
-  int res = TRI_ERROR_NO_ERROR;
-  {
-    try {
-      Result r = syncer->run(config._incremental);
-      res = r.errorNumber();
-      errorMsg = r.errorMessage();
-      // steal the barrier from the syncer
-      barrierId = syncer->stealBarrier();
-    } catch (...) {
-      errorMsg = "caught an exception";
-      res = TRI_ERROR_INTERNAL;
+  TRI_voc_tick_t lastLogTick = 0;
+  
+  try {
+    Result r = syncer->run(configuration._incremental);
+    if (r.fail()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
     }
 
     lastLogTick = syncer->getLastLogTick();
+    // steal the barrier from the syncer
+    barrierId = syncer->stealBarrier();
+  } catch (basics::Exception const& ex) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(ex.code(), std::string("caught exception during slave creation: ") + ex.what());
+  } catch (std::exception const& ex) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("caught exception during slave creation: ") + ex.what());
+  } catch (...) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "caught unknown exception during slave creation");
   }
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(res, errorMsg);
-    return;
-  }
-
-  applier->reconfigure(config);
+  applier->reconfigure(configuration);
   applier->start(lastLogTick, true, barrierId);
 
   VPackBuilder result;
@@ -1950,99 +1855,17 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
     // error already created
     return;
   }
-  VPackSlice const body = parsedBody->slice();
-  ReplicationApplierConfiguration config = applier->configuration();
-
-  std::string const endpoint =
-      VelocyPackHelper::getStringValue(body, "endpoint", "");
-
-  if (!endpoint.empty()) {
-    config._endpoint = endpoint;
-  }
-
-  config._database =
-      VelocyPackHelper::getStringValue(body, "database", _vocbase->name());
-
-  VPackSlice const username = body.get("username");
-  if (username.isString()) {
-    config._username = username.copyString();
-  }
-
-  VPackSlice const password = body.get("password");
-  if (password.isString()) {
-    config._password = password.copyString();
-  }
-
-  VPackSlice const jwt = body.get("jwt");
-  if (jwt.isString()) {
-    config._jwt = jwt.copyString();
-  }
-  config._requestTimeout = VelocyPackHelper::getNumericValue<double>(
-      body, "requestTimeout", config._requestTimeout);
-  config._connectTimeout = VelocyPackHelper::getNumericValue<double>(
-      body, "connectTimeout", config._connectTimeout);
-  config._ignoreErrors = VelocyPackHelper::getNumericValue<uint64_t>(
-      body, "ignoreErrors", config._ignoreErrors);
-  config._maxConnectRetries = VelocyPackHelper::getNumericValue<uint64_t>(
-      body, "maxConnectRetries", config._maxConnectRetries);
-  config._lockTimeoutRetries = VelocyPackHelper::getNumericValue<uint64_t>(
-      body, "lockTimeoutRetries", config._lockTimeoutRetries);
-  config._sslProtocol = VelocyPackHelper::getNumericValue<uint32_t>(
-      body, "sslProtocol", config._sslProtocol);
-  config._chunkSize = VelocyPackHelper::getNumericValue<uint64_t>(
-      body, "chunkSize", config._chunkSize);
-  config._autoStart =
-      VelocyPackHelper::getBooleanValue(body, "autoStart", config._autoStart);
-  config._adaptivePolling = VelocyPackHelper::getBooleanValue(
-      body, "adaptivePolling", config._adaptivePolling);
-  config._autoResync =
-      VelocyPackHelper::getBooleanValue(body, "autoResync", config._autoResync);
-  config._includeSystem = VelocyPackHelper::getBooleanValue(
-      body, "includeSystem", config._includeSystem);
-  config._verbose =
-      VelocyPackHelper::getBooleanValue(body, "verbose", config._verbose);
-  config._incremental = VelocyPackHelper::getBooleanValue(body, "incremental",
-                                                          config._incremental);
-  config._requireFromPresent = VelocyPackHelper::getBooleanValue(
-      body, "requireFromPresent", config._requireFromPresent);
-  config._restrictType = VelocyPackHelper::getStringValue(body, "restrictType", "");
-  config._connectionRetryWaitTime = static_cast<uint64_t>(
-      1000.0 * 1000.0 *
-      VelocyPackHelper::getNumericValue<double>(
-          body, "connectionRetryWaitTime",
-          static_cast<double>(config._connectionRetryWaitTime) /
-              (1000.0 * 1000.0)));
-  config._initialSyncMaxWaitTime = static_cast<uint64_t>(
-      1000.0 * 1000.0 *
-      VelocyPackHelper::getNumericValue<double>(
-          body, "initialSyncMaxWaitTime",
-          static_cast<double>(config._initialSyncMaxWaitTime) /
-              (1000.0 * 1000.0)));
-  config._idleMinWaitTime = static_cast<uint64_t>(
-      1000.0 * 1000.0 *
-      VelocyPackHelper::getNumericValue<double>(
-          body, "idleMinWaitTime",
-          static_cast<double>(config._idleMinWaitTime) / (1000.0 * 1000.0)));
-  config._idleMaxWaitTime = static_cast<uint64_t>(
-      1000.0 * 1000.0 *
-      VelocyPackHelper::getNumericValue<double>(
-          body, "idleMaxWaitTime",
-          static_cast<double>(config._idleMaxWaitTime) / (1000.0 * 1000.0)));
-  config._autoResyncRetries = VelocyPackHelper::getNumericValue<uint64_t>(
-      body, "autoResyncRetries", config._autoResyncRetries);
-
-  VPackSlice const restriction = body.get("restrictCollections");
-  if (restriction.isArray()) {
-    config._restrictCollections.clear();
-    for (VPackSlice const& collection : VPackArrayIterator(restriction)) {
-      if (collection.isString()) {
-        config._restrictCollections.emplace(
-            std::make_pair(collection.copyString(), true));
-      }
-    }
-  }
-
-  applier->reconfigure(config);
+    
+  std::string databaseName;
+  if (!isGlobal) {
+    databaseName = _vocbase->name();
+  } 
+  
+  ReplicationApplierConfiguration configuration = ReplicationApplierConfiguration::fromVelocyPack(applier->configuration(), parsedBody->slice(), databaseName);
+  // will throw if invalid
+  configuration.validate();
+  
+  applier->reconfigure(configuration);
   handleCommandApplierGetConfig();
 }
 
