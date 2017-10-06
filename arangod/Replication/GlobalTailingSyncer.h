@@ -45,6 +45,10 @@ class GlobalTailingSyncer : public TailingSyncer {
   }
 
  protected:
+  
+  /// @brief resolve to proper base url
+  std::string tailingBaseUrl(std::string const& command) override;
+
   /// @brief save the current applier state
   Result saveApplierState() override;
   std::unique_ptr<InitialSyncer> initialSyncer() override;

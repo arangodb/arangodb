@@ -39,6 +39,20 @@ GlobalTailingSyncer::GlobalTailingSyncer(
       _ignoreDatabaseMarkers = false;
 }
 
+std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
+  TRI_ASSERT(!_masterInfo._endpoint.empty() &&
+             _masterInfo._serverId != 0 &&
+             _masterInfo._majorVersion != 0);
+  if (_masterInfo._majorVersion < 3 ||
+      (_masterInfo._majorVersion == 3 && _masterInfo._minorVersion <= 2)) {
+    std::string err = "You need >= 3.3 to perform replication of entire server";
+    LOG_TOPIC(ERR, Logger::REPLICATION) << err;
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, err);
+  }
+  return TailingSyncer::WalAccessUrl + "/" + command + "?global=true&";
+}
+
+
 /// @brief save the current applier state
 Result GlobalTailingSyncer::saveApplierState() {
   LOG_TOPIC(TRACE, Logger::REPLICATION)

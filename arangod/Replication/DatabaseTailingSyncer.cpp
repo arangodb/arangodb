@@ -117,8 +117,7 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
     
-    std::string const baseUrl =
-    tailingBaseUrl() + "/logger-follow?chunkSize=" +
+    std::string const baseUrl = tailingBaseUrl("tail") + "chunkSize=" +
     StringUtils::itoa(_configuration._chunkSize) + "&from=" +
     StringUtils::itoa(fromTick) + "&serverId=" + _localServerIdString +
     "&collection=" + StringUtils::urlEncode(collectionName);

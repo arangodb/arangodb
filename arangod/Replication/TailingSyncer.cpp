@@ -89,14 +89,25 @@ TailingSyncer::TailingSyncer(ReplicationApplier* applier,
 TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
 
 /// @brief decide based on _masterInfo which api to use
-std::string const& TailingSyncer::tailingBaseUrl() {
+std::string TailingSyncer::tailingBaseUrl(std::string const& cc) {
   TRI_ASSERT(!_masterInfo._endpoint.empty() &&
              _masterInfo._serverId != 0 &&
              _masterInfo._majorVersion != 0);
   
   bool is33 = _masterInfo._majorVersion >= 3 &&
   _masterInfo._minorVersion >= 3;
-  return is33 ? TailingSyncer::WalAccessUrl : Syncer::ReplicationUrl;
+  std::string const& base = is33 ? TailingSyncer::WalAccessUrl :
+                                   Syncer::ReplicationUrl;
+  if (!is33) { // fallback pre 3.3
+    if (cc == "tail") {
+      return base + "/logger-follow?";
+    } else if (cc == "open-transactions") {
+      return base + "/determine-open-transactions?";
+    }
+    // should not be used for anything else
+    TRI_ASSERT(false);
+  }
+  return base + "/" + cc + "?";
 }
 
 /// @brief set the applier progress
@@ -1188,8 +1199,8 @@ Result TailingSyncer::runContinuousSync() {
 Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
                                                   TRI_voc_tick_t toTick,
                                                   TRI_voc_tick_t& startTick) {
-  std::string const baseUrl = tailingBaseUrl() + "/open-transactions";
-  std::string const url = baseUrl + "?serverId=" + _localServerIdString +
+  std::string const baseUrl = tailingBaseUrl("open-transactions");
+  std::string const url = baseUrl + "serverId=" + _localServerIdString +
   "&from=" + StringUtils::itoa(fromTick) + "&to=" +
   StringUtils::itoa(toTick);
   
@@ -1284,7 +1295,7 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
                                       TRI_voc_tick_t firstRegularTick,
                                       uint64_t& ignoreCount, bool& worked,
                                       bool& masterActive) {
-  std::string const baseUrl = WalAccessUrl + "/tail?chunkSize=" +
+  std::string const baseUrl = tailingBaseUrl("tail") + "chunkSize=" +
   StringUtils::itoa(_configuration._chunkSize) + "&barrier=" +
   StringUtils::itoa(_barrierId);
   

@@ -63,7 +63,7 @@ class TailingSyncer : public Syncer {
  protected:
   
   /// @brief decide based on _masterInfo which api to use
-  std::string const& tailingBaseUrl();
+  virtual std::string tailingBaseUrl(std::string const& command);
   
   /// @brief set the applier progress
   void setProgress(std::string const&);
