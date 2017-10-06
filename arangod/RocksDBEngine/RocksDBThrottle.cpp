@@ -35,8 +35,6 @@
 
 #include "RocksDBThrottle.h"
 
-#include <iostream>
-
 namespace arangodb {
 
 // rocksdb flushes and compactions start and stop within same thread, no overlapping
@@ -45,22 +43,22 @@ thread_local std::chrono::steady_clock::time_point gFlushStart;
 
 RocksDBEventListener::RocksDBEventListener()
   : internalRocksDB_(nullptr), thread_running_(false), throttle_bps_(0), first_throttle_(true)
-{}
+{
+  memset(&throttle_data_, 0, sizeof(throttle_data_));
+}
 
 
 RocksDBEventListener::~RocksDBEventListener() {
   thread_running_.store(false);
 
+  thread_condvar_.notify_one();
   thread_future_.wait();
 }
 
 
 void RocksDBEventListener::OnFlushBegin(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) {
 
-  static std::once_flag init_flag;
-
-  std::call_once(init_flag, &RocksDBEventListener::Startup, this, db);
-
+  // save start time in thread local storage
   gFlushStart = std::chrono::steady_clock::now();
 
   return;
@@ -78,6 +76,14 @@ void RocksDBEventListener::OnFlushCompleted(rocksdb::DB* db, const rocksdb::Flus
 
   SetThrottleWriteRate(flush_time, flush_job_info.table_properties.num_entries, flush_size, true);
 
+  // start throttle after first data is posted
+  //  (have seen some odd zero and small size flushes early)
+  if (1024<flush_size) {
+    static std::once_flag init_flag;
+
+    std::call_once(init_flag, &RocksDBEventListener::Startup, this, db);
+  } // if
+
 } // RocksDBEventListener::OnFlushCompleted
 
 
@@ -92,10 +98,6 @@ void RocksDBEventListener::OnCompactionCompleted(rocksdb::DB* db,
 
 void RocksDBEventListener::Startup(rocksdb::DB* db) {
   internalRocksDB_ = (rocksdb::DBImpl *)db;
-
-  memset(&throttle_data_, 0, sizeof(throttle_data_));
-//  gThrottleRate=0;
-//  gUnadjustedThrottleRate=0;
 
   // addresses race condition during fast start/stop
   {
@@ -119,12 +121,14 @@ void RocksDBEventListener::SetThrottleWriteRate(std::chrono::microseconds Micros
   // index 0 for level 0 compactions, index 1 for all others
   target_idx = (IsLevel0 ? 0 : 1);
 
-  std::cout << "SetThrottleWriteRate" << target_idx << Micros.count() << Keys << Bytes << IsLevel0 << std::endl;
-
   throttle_data_[target_idx].m_Micros+=Micros;
   throttle_data_[target_idx].m_Keys+=Keys;
   throttle_data_[target_idx].m_Bytes+=Bytes;
   throttle_data_[target_idx].m_Compactions+=1;
+
+  // attempt to override throttle changes by rocksdb ... hammer this often
+  //  (note that thread_mutex_ IS HELD)
+  SetThrottle();
 
   return;
 };
@@ -132,9 +136,12 @@ void RocksDBEventListener::SetThrottleWriteRate(std::chrono::microseconds Micros
 
 void RocksDBEventListener::ThreadLoop() {
   std::chrono::microseconds tot_micros;
-  uint64_t tot_bytes, tot_keys, tot_compact;
-  int64_t new_throttle;
+  uint64_t tot_bytes, tot_keys, tot_compact, adjustment_bytes;
+  int64_t new_throttle, compaction_backlog, imm_backlog;
   unsigned replace_idx, loop;
+  bool ret_flag, no_data;
+  int temp;
+  std::string ret_string, property_name;
 
   replace_idx=2;
 
@@ -149,42 +156,81 @@ void RocksDBEventListener::ThreadLoop() {
     //
     // start actual throttle work
     //
-    {
-      // lock thread_mutex_ while we update throttle_data_ and
-      // wait on thread_condvar_
-      std::unique_lock<std::mutex> ul(thread_mutex_);
-
-      // sleep 1 minute
-      std::chrono::seconds wait_seconds(THROTTLE_SECONDS);
-
-      if (thread_running_.load()) { // test in case of race at shutdown
-        thread_condvar_.wait_for(ul, wait_seconds);
-      } //if
-
-      throttle_data_[replace_idx]=throttle_data_[1];
-      //throttle_data_[replace_idx].m_Backlog=0;
-      memset(&throttle_data_[1], 0, sizeof(throttle_data_[1]));
-    } // unlock thread_mutex_
-
     tot_micros*=0;
     tot_keys=0;
     tot_bytes=0;
     tot_compact=0;
 
-    // this could be faster by keeping running totals and
-    //  subtracting [replace_idx] before copying [0] into it,
-    //  then adding new [replace_idx].  But that needs more
-    //  time for testing.
-    for (loop=2; loop<THROTTLE_INTERVALS; ++loop)
+    // want count of level 0 files to estimate if compactions "behind"
+    //  and therefore likely to start stalling / stopping
+    compaction_backlog = 0;
+    imm_backlog = 0;
+
+    for (auto & cf : families_) {
+
+      property_name = rocksdb::DB::Properties::kNumFilesAtLevelPrefix;
+      property_name.append("0");
+      ret_flag=internalRocksDB_->GetProperty(cf, property_name, &ret_string);
+      if (ret_flag) {
+        temp=std::stoi(ret_string);
+      } else {
+        temp =0;
+      } // else
+
+      if (7<temp) {
+        temp -= 7;
+      } else {
+        temp = 0;
+      } // else
+
+      compaction_backlog += temp;
+
+      property_name=rocksdb::DB::Properties::kNumImmutableMemTable;
+      ret_flag=internalRocksDB_->GetProperty(cf, property_name, &ret_string);
+
+      if (ret_flag) {
+        temp=std::stoi(ret_string);
+        imm_backlog += temp;
+      } // if
+    } // for
+
+    if (3<imm_backlog) {
+      compaction_backlog += (imm_backlog - 3);
+    } // if
+
     {
-      tot_micros+=throttle_data_[loop].m_Micros;
-      tot_keys+=throttle_data_[loop].m_Keys;
-      tot_bytes+=throttle_data_[loop].m_Bytes;
-      tot_compact+=throttle_data_[loop].m_Compactions;
-    }   // for
+      std::unique_lock<std::mutex> ul(thread_mutex_);
+
+      throttle_data_[replace_idx]=throttle_data_[1];
+      //throttle_data_[replace_idx].m_Backlog=0;
+      memset(&throttle_data_[1], 0, sizeof(throttle_data_[1]));
+
+      // this could be faster by keeping running totals and
+      //  subtracting [replace_idx] before copying [0] into it,
+      //  then adding new [replace_idx].  But that needs more
+      //  time for testing.
+      for (loop=2; loop<THROTTLE_INTERVALS; ++loop)
+      {
+        tot_micros+=throttle_data_[loop].m_Micros;
+        tot_keys+=throttle_data_[loop].m_Keys;
+        tot_bytes+=throttle_data_[loop].m_Bytes;
+        tot_compact+=throttle_data_[loop].m_Compactions;
+      }   // for
+    } // unique_lock
+
+    // flag to skip throttle changes if zero data available
+    no_data = (0 == tot_bytes && 0 == throttle_data_[0].m_Bytes);
+
+    // reduce bytes by 10% for each excess level_0 files and/or excess write buffers
+    adjustment_bytes = (tot_bytes*compaction_backlog)/10;
+    if (adjustment_bytes<tot_bytes) {
+      tot_bytes -= adjustment_bytes;
+    } else {
+      tot_bytes = 1;   // not zero, let smoothing drift number down instead of taking level-0
+    }
 
     // lock thread_mutex_ while we update throttle_data_
-    {
+    if (!no_data) {
       std::unique_lock<std::mutex> ul(thread_mutex_);
 
       // non-level0 data available?
@@ -195,8 +241,6 @@ void RocksDBEventListener::ThreadLoop() {
         //   yields integer bytes per second)
         new_throttle=((tot_bytes*1000000) / tot_micros.count());
 
-        std::cout << "ThrottleLoop (normal)" << throttle_bps_ << new_throttle << std::endl;
-
       }   // if
 
       // attempt to most recent level0
@@ -205,13 +249,10 @@ void RocksDBEventListener::ThreadLoop() {
       else if (0!=throttle_data_[0].m_Bytes && 0!=throttle_data_[0].m_Micros.count())
       {
         new_throttle=(throttle_data_[0].m_Bytes * 1000000) / throttle_data_[0].m_Micros.count();
-        std::cout << "ThrottleLoop (level 0)" << throttle_bps_ << new_throttle << std::endl;
-
       }   // else if
       else
       {
         new_throttle=1;
-        std::cout << "ThrottleLoop (default)" << throttle_bps_ << new_throttle << std::endl;
       }   // else
 
       if (0==new_throttle)
@@ -234,8 +275,6 @@ void RocksDBEventListener::ThreadLoop() {
         if (temp_rate<1)
           temp_rate=1;   // throttle must always have an effect
 
-        std::cout << "ThrottleLoop (smoothing)" << throttle_bps_ << temp_rate << std::endl;
-
         throttle_bps_=temp_rate;
 
         // Log(NULL, "ThrottleRate %" PRIu64 ", UnadjustedThrottleRate %" PRIu64, gThrottleRate, gUnadjustedThrottleRate);
@@ -246,12 +285,40 @@ void RocksDBEventListener::ThreadLoop() {
         // never had a valid throttle, and have first hint now
         throttle_bps_=new_throttle;
 
-        std::cout << "ThrottleLoop (first throttle)" << throttle_bps_ << new_throttle << std::endl;
-
         first_throttle_=false;
       }  // else if
+
+      SetThrottle();
+
+    } // !no_data && unlock thread_mutex_
+
+    ++replace_idx;
+    if (THROTTLE_INTERVALS==replace_idx)
+      replace_idx=2;
+
+    {
+      // lock thread_mutex_ while we update throttle_data_ and
+      // wait on thread_condvar_
+      std::unique_lock<std::mutex> ul(thread_mutex_);
+
+      // sleep 1 minute
+      std::chrono::seconds wait_seconds(THROTTLE_SECONDS);
+
+      if (thread_running_.load()) { // test in case of race at shutdown
+        thread_condvar_.wait_for(ul, wait_seconds);
+      } //if
     } // unlock thread_mutex_
 
+  } // while
+
+} // RocksDBEventListener::ThreadLoop
+
+
+void RocksDBEventListener::SetThrottle() {
+  // called by routine with thread_mutex_ held
+
+  // this routine can get called before internalRocksDB_ is set
+  if (nullptr != internalRocksDB_) {
     // inform write_controller_ of our new rate
     if (1<throttle_bps_) {
       // hard casting away of "const" ...
@@ -259,119 +326,9 @@ void RocksDBEventListener::ThreadLoop() {
     } else {
       delay_token_.reset();
     } // else
-
-    ++replace_idx;
-        if (THROTTLE_INTERVALS==replace_idx)
-            replace_idx=2;
-
-  } // while
-
-} // RocksDBEventListener::ThreadLoop
-
-#if 0
-
-// current time, on roughly a 60 second scale
-//  (used to reduce number of OS calls for expiry)
-uint64_t gCurrentTime=0;
-
-uint64_t gThrottleRate, gUnadjustedThrottleRate;
-
-static volatile bool gThrottleRunning=false;
-
-void RocksDBThrottle::ThrottleThread() {
-    time_t now_seconds, cache_expire;
-    struct timespec wait_time;
-
-    now_seconds=0;
-    cache_expire=0;
-    new_unadjusted=1;
-
-    while(gThrottleRunning)
-    {
-        //
-        // This is code polls for existance of /etc/riak/perf_counters and sets
-        //  the global gPerfCountersDisabled accordingly.
-        //  Sure, there should be a better place for this code.  But fits here nicely today.
-        //
-        ret_val=access("/etc/riak/perf_counters", F_OK);
-        gPerfCountersDisabled=(-1==ret_val);
+  } // if
+} // RocksDBEventListener::SetThrottle
 
 
-        //
-        // This is code to manage / flush the flexcache's old file cache entries.
-        //  Sure, there should be a better place for this code.  But fits here nicely today.
-        //
-        if (cache_expire < now_seconds)
-        {
-            cache_expire = now_seconds + 60*60;  // hard coded to one hour for now
-            DBList()->ScanDBs(true,  &DBImpl::PurgeExpiredFileCache);
-            DBList()->ScanDBs(false, &DBImpl::PurgeExpiredFileCache);
-        }   // if
-
-        //
-        // This is a second non-throttle task added to this one minute loop.  Pattern forming.
-        //  See if hot backup wants to initiate.
-        //
-	CheckHotBackupTrigger();
-
-        // nudge compaction logic of potential grooming
-        if (0==gCompactionThreads->m_WorkQueueAtomic)  // user databases
-            DBList()->ScanDBs(false, &DBImpl::CheckAvailableCompactions);
-        if (0==gCompactionThreads->m_WorkQueueAtomic)  // internal databases
-            DBList()->ScanDBs(true,  &DBImpl::CheckAvailableCompactions);
-
-    }   // while
-
-    return;
-
-} // RocksDBThrottle::ThrottleThread
-
-
-
-uint64_t GetThrottleWriteRate() {return(gThrottleRate);};
-uint64_t GetUnadjustedThrottleWriteRate() {return(gUnadjustedThrottleRate);};
-
-// clock_gettime but only updated once every 60 seconds (roughly)
-uint64_t GetCachedTimeMicros() {return(gCurrentTime);};
-void SetCachedTimeMicros(uint64_t Time) {gCurrentTime=Time;};
-/**
- * ThrottleStopThreads() is the first step in a two step shutdown.
- * This stops the 1 minute throttle calculation loop that also
- * can initiate leveldb compaction actions.  Background compaction
- * threads should stop between these two steps.
- */
-void ThrottleStopThreads()
-{
-    if (gThrottleRunning)
-    {
-        gThrottleRunning=false;
-
-        // lock thread_mutex_ so that we can signal thread_condvar_
-        {
-            MutexLock lock(thread_mutex_);
-            thread_condvar_->Signal();
-        } // unlock thread_mutex_
-
-        pthread_join(gThrottleThreadId, NULL);
-    }   // if
-
-    return;
-
-}   // ThrottleShutdown
-
-/**
- * ThrottleClose is the second step in a two step shutdown of
- *  throttle.  The intent is for background compaction threads
- *  to stop between these two steps.
- */
-void ThrottleClose()
-{
-    // safety check
-    if (gThrottleRunning)
-        ThrottleStopThreads();
-
-    return;
-}   // ThrottleShutdown
-#endif
 
 } // namespace arangodb

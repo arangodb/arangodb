@@ -59,6 +59,11 @@ public:
   void OnCompactionCompleted(rocksdb::DB* db,
                              const rocksdb::CompactionJobInfo& ci) override;
 
+  void SetFamilies(std::vector<rocksdb::ColumnFamilyHandle *> & Families) {
+    families_=Families;
+  }
+
+
 protected:
   void Startup(rocksdb::DB * db);
 
@@ -68,7 +73,10 @@ protected:
 
   void ThreadLoop();
 
-  // I am unable to figure out static initialization of std::chrono::seconds
+  void SetThrottle();
+
+  // I am unable to figure out static initialization of std::chrono::seconds,
+  //  using old school unsigned.
   static const unsigned THROTTLE_SECONDS = 60;
   static const unsigned THROTTLE_INTERVALS = 63;
 
@@ -105,6 +113,7 @@ protected:
   bool first_throttle_;
 
   std::unique_ptr<WriteControllerToken> delay_token_;
+  std::vector<rocksdb::ColumnFamilyHandle *> families_;
 
 };// class RocksDBEventListener
 
