@@ -455,33 +455,32 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
       bytesReceived += response->getContentLength();
     }
 
-    bool checkMore = false;
     bool found;
-    TRI_voc_tick_t tick;
-
     std::string header =
         response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
-    if (found) {
-      checkMore = StringUtils::boolean(header);
-
-      if (checkMore) {
-        header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED,
-                                          found);
-        if (found) {
-          tick = StringUtils::uint64(header);
-
-          if (tick > fromTick) {
-            fromTick = tick;
-          } else {
-            // we got the same tick again, this indicates we're at the end
-            checkMore = false;
-          }
-        }
-      }
+    if (!found) {
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_CHECKMORE + " is missing");
     }
 
-    if (!found) {
-      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header is missing");
+    TRI_voc_tick_t tick;
+    bool checkMore = StringUtils::boolean(header);
+
+    if (checkMore) {
+      header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED,
+                                        found);
+    
+      if (!found) {
+        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTINCLUDED + " is missing");
+      }
+
+      tick = StringUtils::uint64(header);
+
+      if (tick > fromTick) {
+        fromTick = tick;
+      } else {
+        // we got the same tick again, this indicates we're at the end
+        checkMore = false;
+      }
     }
     
     SingleCollectionTransaction trx(
