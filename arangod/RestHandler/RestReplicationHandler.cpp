@@ -510,9 +510,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   try {
     Result r = syncer->run(configuration._incremental);
     if (r.fail()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(r.errorNumber(), r.errorMessage());
+      THROW_ARANGO_EXCEPTION(r);
     }
-
     lastLogTick = syncer->getLastLogTick();
     // steal the barrier from the syncer
     barrierId = syncer->stealBarrier();
