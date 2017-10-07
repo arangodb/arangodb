@@ -89,6 +89,7 @@ TailingSyncer::TailingSyncer(ReplicationApplier* applier,
 TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
 
 /// @brief decide based on _masterInfo which api to use
+///        GlobalTailingSyncer should overwrite this probably
 std::string TailingSyncer::tailingBaseUrl(std::string const& cc) {
   TRI_ASSERT(!_masterInfo._endpoint.empty() &&
              _masterInfo._serverId != 0 &&
@@ -619,6 +620,7 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
   if (type == REPLICATION_DATABASE_CREATE ||
       type == REPLICATION_DATABASE_DROP) {
     if (_ignoreDatabaseMarkers) {
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "Ignoring database marker";
       return Result();
     }
     return processDBMarker(type, slice);
@@ -643,7 +645,7 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
 
   else if (type == REPLICATION_COLLECTION_CREATE) {
     if (_ignoreRenameCreateDrop) {
-      return Result();
+      return TRI_ERROR_NO_ERROR;
     }
     TRI_vocbase_t* vocbase = resolveVocbase(slice);
     if (vocbase == nullptr) {
@@ -1335,24 +1337,28 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
     body.append("[]");
   }
   
-  std::unique_ptr<SimpleHttpResult> response(
-                                             _client->request(rest::RequestType::PUT, url, body.c_str(), body.size()));
+  std::unique_ptr<SimpleHttpResult> response(_client->request(rest::RequestType::PUT,
+                                                              url, body.c_str(), body.size()));
   
   if (response == nullptr || !response->isComplete()) {
-    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
+    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("got invalid response from master at ") +
+                  _masterInfo._endpoint + ": " + _client->getErrorMessage());
   }
   
   TRI_ASSERT(response != nullptr);
   
   if (response->wasHttpError()) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
+    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
+                  _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " +
+                  response->getHttpReturnMessage());
   }
   
   bool found;
   std::string header = response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
   
   if (!found) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_CHECKMORE + " is missing");
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
+                  _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_CHECKMORE + " is missing");
   }
   
   bool checkMore = StringUtils::boolean(header);

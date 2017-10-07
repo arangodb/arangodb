@@ -60,7 +60,8 @@ DatabaseTailingSyncer::DatabaseTailingSyncer(
     ReplicationApplierConfiguration const& configuration,
     TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId)
     : TailingSyncer(vocbase->replicationApplier(),
-                    configuration, initialTick, useTick, barrierId) {
+                    configuration, initialTick, useTick, barrierId),
+                    _vocbase(vocbase) {
   _vocbases.emplace(vocbase->name(), DatabaseGuard(vocbase));
   if (configuration._database.empty()) {
     _databaseName = vocbase->name();
@@ -117,22 +118,25 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
       return Result(TRI_ERROR_SHUTTING_DOWN);
     }
     
-    std::string const baseUrl = tailingBaseUrl("tail") + "chunkSize=" +
+    std::string const url = tailingBaseUrl("tail") + "chunkSize=" +
     StringUtils::itoa(_configuration._chunkSize) + "&from=" +
     StringUtils::itoa(fromTick) + "&serverId=" + _localServerIdString +
     "&collection=" + StringUtils::urlEncode(collectionName);
     
     // send request
-    std::unique_ptr<SimpleHttpResult> response(_client->request(rest::RequestType::GET, baseUrl, nullptr, 0));
+    std::unique_ptr<SimpleHttpResult> response(_client->request(rest::RequestType::GET, url, nullptr, 0));
     
     if (response == nullptr || !response->isComplete()) {
-      return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
+      return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("got invalid response from master at ") +
+                    _masterInfo._endpoint + url + ": " + _client->getErrorMessage());
     }
     
     TRI_ASSERT(response != nullptr);
     
     if (response->wasHttpError()) {
-      return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
+      return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
+                    _masterInfo._endpoint + url + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
+                    ": " + response->getHttpReturnMessage());
     }
     
     if (response->getHttpReturnCode() == 204) {
@@ -151,7 +155,8 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
     header =
     response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
     if (!found) {
-      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTINCLUDED + " is missing");
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
+                    _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTINCLUDED + " is missing");
     }
     lastIncludedTick = StringUtils::uint64(header);
     
@@ -162,7 +167,10 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
       fromIncluded = StringUtils::boolean(header);
     }
     if (!fromIncluded && fromTick > 0) { // && _requireFromPresent
-      return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, std::string("required follow tick value '") + StringUtils::itoa(lastIncludedTick) + "' is not present (anymore?) on master at " +  _masterInfo._endpoint + ". Last tick available on master is '" + StringUtils::itoa(lastIncludedTick) + "'. It may be required to do a full resync and increase the number of historic logfiles on the master.");
+      return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, std::string("required follow tick value '") +
+                    StringUtils::itoa(lastIncludedTick) + "' is not present (anymore?) on master at " +
+                    _masterInfo._endpoint + ". Last tick available on master is '" + StringUtils::itoa(lastIncludedTick) +
+                    "'. It may be required to do a full resync and increase the number of historic logfiles on the master.");
     }
     
     uint64_t processedMarkers = 0;

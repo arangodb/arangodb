@@ -55,7 +55,9 @@ class RocksDBWalAccess : public WalAccess {
                                    TransactionCallback const&) const override;
 
   /// Tails the wall, this will already sanitize the
-  WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd, size_t chunkSize,
+  WalAccessResult tail(std::unordered_set<TRI_voc_tid_t> const& transactionIds,
+                       TRI_voc_tick_t firstRegularTick,
+                       uint64_t tickStart, uint64_t tickEnd, size_t chunkSize,
                        bool includeSystem, WalFilter const& filter,
                        MarkerCallback const&) const override;
   

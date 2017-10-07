@@ -37,6 +37,7 @@ GlobalTailingSyncer::GlobalTailingSyncer(
     : TailingSyncer(ReplicationFeature::INSTANCE->globalReplicationApplier(),
                     configuration, initialTick, useTick, barrierId) {
       _ignoreDatabaseMarkers = false;
+      _databaseName = TRI_VOC_SYSTEM_DATABASE;
 }
 
 std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {

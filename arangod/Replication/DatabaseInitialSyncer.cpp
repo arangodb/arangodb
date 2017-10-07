@@ -203,7 +203,9 @@ Result DatabaseInitialSyncer::sendFlush() {
   TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
+    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
+                  _masterInfo._endpoint + url + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " +
+                  response->getHttpReturnMessage());
   }
 
   _hasFlushed = true;
@@ -355,7 +357,7 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
     sendExtendBatch();
     sendExtendBarrier();
 
-    std::string url = ReplicationUrl + "&from=" + StringUtils::itoa(fromTick);
+    std::string url = baseUrl + "&from=" + StringUtils::itoa(fromTick);
 
     if (maxTick > 0) {
       url += "&to=" + StringUtils::itoa(maxTick + 1);
@@ -393,7 +395,9 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
     TRI_ASSERT(response != nullptr);
 
     if (response->wasHttpError()) {
-      return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
+      return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
+                    _masterInfo._endpoint + url + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " +
+                    response->getHttpReturnMessage());
     }
 
     // use async mode for first batch
@@ -403,7 +407,8 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
           response->getHeaderField(StaticStrings::AsyncId, found);
 
       if (!found) {
-        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": could not find 'X-Arango-Async' header");
+        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
+                      _masterInfo._endpoint + url + ": could not find 'X-Arango-Async' header");
       }
 
       double const startTime = TRI_microtime();
@@ -455,7 +460,9 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
     }
     
     if (response->wasHttpError()) {
-      return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
+      return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
+                    _masterInfo._endpoint + url + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
+                    ": " + response->getHttpReturnMessage());
     }
 
     if (response->hasContentLength()) {
@@ -466,7 +473,7 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
     std::string header = response->getHeaderField(TRI_REPLICATION_HEADER_CHECKMORE, found);
     if (!found) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
-                    _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_CHECKMORE +
+                    _masterInfo._endpoint + url + ": required header " + TRI_REPLICATION_HEADER_CHECKMORE +
                     " is missing in dump response");
     }
 
@@ -478,7 +485,7 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
                                         found);
       if (!found) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
-                      _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTINCLUDED
+                      _masterInfo._endpoint + url + ": required header " + TRI_REPLICATION_HEADER_LASTINCLUDED
                       + " is missing in dump response");
       }
 
@@ -568,14 +575,17 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
   TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
+    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
+                  _masterInfo._endpoint + url + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
+                  ": " + response->getHttpReturnMessage());
   }
 
   bool found = false;
   std::string jobId = response->getHeaderField(StaticStrings::AsyncId, found);
 
   if (!found) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": could not find 'X-Arango-Async' header");
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ")
+                  + _masterInfo._endpoint + url + ": could not find 'X-Arango-Async' header");
   }
 
   double const startTime = TRI_microtime();
@@ -627,18 +637,21 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
   Result r = parseResponse(builder, response.get());
 
   if (r.fail()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": response is no object");
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
+                  _masterInfo._endpoint + url + ": response is no object");
   }
 
   VPackSlice const slice = builder.slice();
   if (!slice.isObject()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": response is no object");
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
+                  _masterInfo._endpoint + url + ": response is no object");
   }
 
   VPackSlice const id = slice.get("id");
 
   if (!id.isString()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": response does not contain valid 'id' attribute");
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
+                  _masterInfo._endpoint + url + ": response does not contain valid 'id' attribute");
   }
 
   auto shutdown = [&]() -> void {
@@ -658,7 +671,8 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
   VPackSlice const count = slice.get("count");
 
   if (!count.isNumber()) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": response does not contain valid 'count' attribute");
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
+                  _masterInfo._endpoint + url + ": response does not contain valid 'count' attribute");
   }
 
   if (count.getNumber<size_t>() <= 0) {
@@ -995,20 +1009,24 @@ Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
   TRI_ASSERT(response != nullptr);
   
   if (response->wasHttpError()) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " +  response->getHttpReturnMessage());
+    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
+                  _masterInfo._endpoint + url + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
+                  ": " +  response->getHttpReturnMessage());
   }
 
   Result r = parseResponse(builder, response.get());
   
   if (r.fail()) {
-    return Result(r.errorNumber(), std::string("got invalid response from master at ") + _masterInfo._endpoint + ": invalid response type for initial data. expecting array");
+    return Result(r.errorNumber(), std::string("got invalid response from master at ") +
+                  _masterInfo._endpoint + url + ": invalid response type for initial data. expecting array");
   }
   
   VPackSlice const slice = builder.slice();
   if (!slice.isObject()) {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: DatabaseInitialSyncer::run - inventoryResponse is not an object";
    
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": invalid JSON");
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
+                  _masterInfo._endpoint + url + ": invalid JSON");
   }
 
   return Result();

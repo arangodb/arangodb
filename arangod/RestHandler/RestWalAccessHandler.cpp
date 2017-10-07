@@ -116,7 +116,7 @@ RestStatus RestWalAccessHandler::execute() {
     handleCommandDetermineOpenTransactions(wal);
   } else {
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected GET _api/wal/[tail|range|lastTick]>");
+            "expected GET _api/wal/[tail|range|lastTick|open-transactions]>");
   }
 
   return RestStatus::DONE;
@@ -210,6 +210,56 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     return;
   }
   
+  
+  // grab list of transactions from the body value
+  std::unordered_set<TRI_voc_tid_t> transactionIds;
+  TRI_voc_tick_t firstRegularTick = 0;
+  if (_request->requestType() == arangodb::rest::RequestType::PUT) {
+    std::string const& value5 = _request->value("firstRegularTick", found);
+    if (found) {
+      firstRegularTick =
+      static_cast<TRI_voc_tick_t>(StringUtils::uint64(value5));
+    }
+    // copy default options
+    VPackOptions options = VPackOptions::Defaults;
+    options.checkAttributeUniqueness = true;
+    VPackSlice slice;
+    try {
+      slice = _request->payload(&options);
+    } catch (...) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid body value. expecting array");
+      return;
+    }
+    if (!slice.isArray()) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid body value. expecting array");
+      return;
+    }
+    
+    for (auto const& id : VPackArrayIterator(slice)) {
+      if (!id.isString()) {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                      "invalid body value. expecting array of ids");
+        return;
+      }
+      transactionIds.emplace(StringUtils::uint64(id.copyString()));
+    }
+  }
+  
+  // extract collection
+  /*TRI_voc_cid_t cid = 0;
+  std::string const& value6 = _request->value("collection", found);
+  if (found) {
+    arangodb::LogicalCollection* c = _vocbase->lookupCollection(value6);
+    if (c == nullptr) {
+      generateError(rest::ResponseCode::NOT_FOUND,
+                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      return;
+    }
+    cid = c->cid();
+  }*/
+  
   WalAccessResult result;
   std::map<TRI_voc_tick_t, MyTypeHandler> handlers;
   VPackOptions opts = VPackOptions::Defaults;
@@ -226,7 +276,8 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   
   size_t length = 0;
   if (useVst) {
-    result = wal->tail(tickStart, tickEnd, chunkSize, includeSystem, filter,
+    result = wal->tail(transactionIds, firstRegularTick,
+                       tickStart, tickEnd, chunkSize, includeSystem, filter,
                        [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
                          length++;
                          prepOpts(vocbase);
@@ -243,12 +294,14 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
     // note: we need the CustomTypeHandler here
     VPackDumper dumper(&adapter, &opts);
-    result = wal->tail(tickStart, tickEnd, chunkSize, includeSystem, filter,
+    result = wal->tail(transactionIds, firstRegularTick,
+                       tickStart, tickEnd, chunkSize, includeSystem, filter,
                        [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
                          length++;
                          prepOpts(vocbase);
                          dumper.dump(marker);
                          buffer.appendChar('\n');
+                         //LOG_TOPIC(ERR, Logger::FIXME) << marker.toJson();
                        });
   }
   

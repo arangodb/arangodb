@@ -380,6 +380,7 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
 
 arangodb::LogicalCollection* Syncer::resolveCollection(TRI_vocbase_t* vocbase,
                                                        VPackSlice const& slice) {
+  TRI_ASSERT(vocbase != nullptr);
   VPackSlice uuid;
   if ((uuid = slice.get("cuid")).isString()) {
     return vocbase->lookupCollectionByUuid(uuid.copyString());

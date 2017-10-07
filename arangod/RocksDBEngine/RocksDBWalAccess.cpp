@@ -218,18 +218,22 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
 
     if (column_family_id == _definitionsCF) {
       if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
-        TRI_ASSERT(_lastLogType == RocksDBLogType::DatabaseCreate);
+        TRI_ASSERT(_lastLogType == RocksDBLogType::DatabaseCreate
+                   || _lastLogType == RocksDBLogType::DatabaseDrop);
         {
           VPackObjectBuilder marker(&_builder, true);
           marker->add("tick", VPackValue(std::to_string(_currentSequence)));
           marker->add("type",
                       VPackValue(rocksutils::convertLogType(_lastLogType)));
-          marker->add("db", VPackValue(loadVocbase(_currentDbId)->name()));
-          marker->add("data", RocksDBValue::data(value));
+          if (_lastLogType == RocksDBLogType::DatabaseCreate) {
+            marker->add("db", VPackValue(loadVocbase(_currentDbId)->name()));
+            marker->add("data", RocksDBValue::data(value));
+          } else {
+            marker->add("db", VPackValue(_dropDatabaseName));
+          }
         }
         _callback(loadVocbase(_currentDbId), _builder.slice());
         _builder.clear();
-
       } else if (RocksDBKey::type(key) == RocksDBEntryType::Collection) {
         if (_lastLogType == RocksDBLogType::IndexCreate ||
             _lastLogType == RocksDBLogType::IndexDrop) {
@@ -313,15 +317,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
       
       if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
         TRI_ASSERT(_lastLogType == RocksDBLogType::DatabaseDrop);
-        {
-          VPackObjectBuilder marker(&_builder, true);
-          marker->add("tick", VPackValue(std::to_string(_currentSequence)));
-          marker->add("type",
-                      VPackValue(rocksutils::convertLogType(_lastLogType)));
-          marker->add("db", VPackValue(_dropDatabaseName));
-        }
-        _callback(loadVocbase(_currentDbId), _builder.slice());
-        _builder.clear();
+        // database marker is actually not deleted
       } else if (RocksDBKey::type(key) == RocksDBEntryType::Collection) {
         TRI_ASSERT(_lastLogType == RocksDBLogType::CollectionDrop);
         TRI_ASSERT(_currentDbId != 0 && _currentCid != 0);
@@ -438,7 +434,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
     TRI_voc_cid_t cid;
     if (column_family_id == _definitionsCF) {
       if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
-        return true;
+        return _include.empty();
       } else if (RocksDBKey::type(key) == RocksDBEntryType::Collection ||
                  RocksDBKey::type(key) == RocksDBEntryType::View) {
         cid = RocksDBKey::collectionId(key);
@@ -450,6 +446,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
     } else {
       return false;
     }
+    TRI_ASSERT(cid != 0);
 
     if (!shouldHandleCollection(_currentDbId, cid)) {
       return false;
@@ -473,6 +470,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
   }
 
   bool shouldHandleCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid) {
+    TRI_ASSERT(dbid != 0);
     if (_include.empty()) { // tail everything
       return true;
     }
@@ -552,12 +550,22 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
 
 // iterates over WAL starting at 'from' and returns up to 'chunkSize' documents
 // from the corresponding database
-WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
+WalAccessResult RocksDBWalAccess::tail(std::unordered_set<TRI_voc_tid_t> const& transactionIds,
+                                       TRI_voc_tick_t firstRegularTick,
+                                       uint64_t tickStart, uint64_t tickEnd,
                                        size_t chunkSize, bool includeSystem,
                                        WalFilter const& filter,
                                        MarkerCallback const& func) const {
+  TRI_ASSERT(transactionIds.empty()); // not supported in any way
+  
+  LOG_TOPIC(ERR, Logger::FIXME) << "1. Starting tailing: tickStart " << tickStart
+  << " tickEnd " << tickEnd << " chunkSize " << chunkSize << " includeSystem " << includeSystem;
+  for (TRI_voc_tick_t t : filter) {
+    LOG_TOPIC(WARN, Logger::FIXME) << "Filer vocbase " << t;
+  }
+  
   // first tick actually read
-  uint64_t firstTick = std::max(tickStart - 1, (uint64_t)0);
+  uint64_t firstTick = UINT64_MAX;
   uint64_t lastTick = tickStart; // lastTick at start of a write batch)
   uint64_t lastWrittenTick = tickStart; // lastTick at the end of a write batch
 
@@ -583,20 +591,22 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
       LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan: " << s.ToString();
       break; // s is considered in the end
     }
-
+    
     rocksdb::BatchResult batch = iterator->GetBatch();
     TRI_ASSERT(lastTick == tickStart || batch.sequence >= lastTick);
-    if (batch.sequence <= tickStart) {
+    // record the first tick we are actually considering
+    if (firstTick == UINT64_MAX) {
+      firstTick = batch.sequence;
+    }
+    
+    // TODO why is inclusive <= correct here?
+    if (batch.sequence < tickStart) {
       iterator->Next();  // skip
       continue;
     } else if (batch.sequence > tickEnd) {
       break; // cancel out
     }
 
-    // record the first tick we are actually printing
-    if (firstTick <= tickStart) {
-      firstTick = batch.sequence;
-    }
     lastTick = batch.sequence; // start of the batch
     
     handler->startNewBatch(batch.sequence);
@@ -615,5 +625,6 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
   if (!s.ok()) {
     result.Result::reset(convertStatus(s, rocksutils::StatusHint::wal));
   }
+  LOG_TOPIC(ERR, Logger::FIXME) << "2. firstTick " << firstTick << " lastWrittenTick " << lastWrittenTick;
   return result;
 }

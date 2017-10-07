@@ -45,7 +45,9 @@ using namespace arangodb::rest;
 
 GlobalInitialSyncer::GlobalInitialSyncer(
   ReplicationApplierConfiguration const& configuration)
-    : InitialSyncer(configuration) {}
+    : InitialSyncer(configuration) {
+  _databaseName = TRI_VOC_SYSTEM_DATABASE;
+}
 
 GlobalInitialSyncer::~GlobalInitialSyncer() {
   try {

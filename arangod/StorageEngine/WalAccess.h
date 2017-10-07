@@ -88,7 +88,9 @@ class WalAccess {
                                            WalFilter const& filter,
                                            TransactionCallback const&) const = 0;
 
-  virtual WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd,
+  virtual WalAccessResult tail(std::unordered_set<TRI_voc_tid_t> const& transactionIds,
+                               TRI_voc_tick_t firstRegularTick,
+                               uint64_t tickStart, uint64_t tickEnd,
                                size_t chunkSize,
                                bool includeSystem, WalFilter const& filter,
                                MarkerCallback const&) const = 0;
