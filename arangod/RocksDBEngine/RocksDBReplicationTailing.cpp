@@ -111,7 +111,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       }
       case RocksDBLogType::CollectionRename: {
         _oldCollectionName =
-            RocksDBLogValue::newCollectionName(blob).toString();
+            RocksDBLogValue::oldCollectionName(blob).toString();
         // intentional fallthrough
       }
       case RocksDBLogType::CollectionCreate:
@@ -348,13 +348,11 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         _builder.close();
       }
     } else if (column_family_id == _documentsCF) {
-      // document removes, because of a drop is not transactional and
-      // should not appear in the WAL. Allso fixes
+      // document removes, because of a collection drop is not transactional and
+      // should not appear in the WAL.
       if (!(_seenBeginTransaction || _singleOp)) {
         return rocksdb::Status();
       }
-      // TODO somehow fix counters if we optimize the DELETE in
-      // documentRemove on updates
       if (_lastLogType != RocksDBLogType::DocumentRemove &&
           _lastLogType != RocksDBLogType::SingleRemove) {
         return rocksdb::Status();

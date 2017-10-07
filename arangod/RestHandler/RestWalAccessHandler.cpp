@@ -280,7 +280,9 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
                        tickStart, tickEnd, chunkSize, includeSystem, filter,
                        [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
                          length++;
-                         prepOpts(vocbase);
+                         if (vocbase != nullptr) {// database drop has no vocbase
+                           prepOpts(vocbase);
+                         }
                          _response->addPayload(marker, &opts, true);
                        });
   } else {
@@ -298,7 +300,9 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
                        tickStart, tickEnd, chunkSize, includeSystem, filter,
                        [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
                          length++;
-                         prepOpts(vocbase);
+                         if (vocbase != nullptr) {// database drop has no vocbase
+                           prepOpts(vocbase);
+                         }
                          dumper.dump(marker);
                          buffer.appendChar('\n');
                          //LOG_TOPIC(ERR, Logger::FIXME) << marker.toJson();

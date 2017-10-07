@@ -190,8 +190,13 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
         break;
       }
       case RocksDBLogType::SingleRemove: {
+        writeCommitMarker();
         _removeDocumentKey = RocksDBLogValue::documentKey(blob).toString();
-        // intentional fall through
+        _singleOp = true;
+        _currentDbId = RocksDBLogValue::databaseId(blob);
+        _currentCid = RocksDBLogValue::collectionId(blob);
+        _currentTrxId = 0;
+        break;
       }
       case RocksDBLogType::SinglePut: {
         writeCommitMarker();
@@ -347,7 +352,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
           _lastLogType != RocksDBLogType::SingleRemove) {
         return rocksdb::Status();
       }
-      // TRI_ASSERT(_lastLogType == RocksDBLogType::DocumentRemove ||
+      //TRI_ASSERT(_lastLogType == RocksDBLogType::DocumentRemove ||
       //           _lastLogType == RocksDBLogType::SingleRemove);
       TRI_ASSERT(!_seenBeginTransaction || _currentTrxId != 0);
       TRI_ASSERT(_currentDbId != 0 && _currentCid != 0);
@@ -431,30 +436,39 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
 
   bool shouldHandleMarker(uint32_t column_family_id,
                           rocksdb::Slice const& key) {
-    TRI_voc_cid_t cid;
+    TRI_voc_tick_t dbId = 0;
+    TRI_voc_cid_t cid = 0;
     if (column_family_id == _definitionsCF) {
       if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
         return _include.empty();
-      } else if (RocksDBKey::type(key) == RocksDBEntryType::Collection ||
-                 RocksDBKey::type(key) == RocksDBEntryType::View) {
+      } else if (RocksDBKey::type(key) == RocksDBEntryType::Collection) {
+        //  || RocksDBKey::type(key) == RocksDBEntryType::View
+        dbId = RocksDBKey::databaseId(key);
         cid = RocksDBKey::collectionId(key);
       } else {
         return false;
       }
     } else if (column_family_id == _documentsCF) {
+      dbId = _currentDbId;
       cid = _currentCid;
+       // happens when dropping a collection
+      if (!(_seenBeginTransaction || _singleOp)) {
+        TRI_ASSERT(dbId == 0 && cid == 0);
+        return false;
+      }
     } else {
       return false;
     }
-    TRI_ASSERT(cid != 0);
-
-    if (!shouldHandleCollection(_currentDbId, cid)) {
+    if (!shouldHandleCollection(dbId, cid)) {
       return false;
     }
 
     if (_lastLogType != RocksDBLogType::CollectionDrop) {
-      // no document removes of dropped collections
+      // no document removes of dropped collections / vocbases
       TRI_vocbase_t* vocbase = loadVocbase(_currentDbId);
+      if (vocbase == nullptr) {
+        return false;
+      }
       std::string const collectionName = vocbase->collectionName(cid);
       if (collectionName.empty()) {
         return false;
@@ -470,7 +484,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
   }
 
   bool shouldHandleCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid) {
-    TRI_ASSERT(dbid != 0);
+    TRI_ASSERT(dbid != 0 && cid != 0);
     if (_include.empty()) { // tail everything
       return true;
     }
@@ -482,10 +496,12 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
   }
 
   TRI_vocbase_t* loadVocbase(TRI_voc_tick_t dbid) {
+    TRI_ASSERT(dbid != 0);
     auto const& it = _vocbases.find(dbid);
     if (it == _vocbases.end()) {
       TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->useDatabase(dbid);
       if (vocbase != nullptr) {
+        TRI_DEFER(vocbase->release());
         _vocbases.emplace(dbid, DatabaseGuard(vocbase));
       }
       return vocbase;

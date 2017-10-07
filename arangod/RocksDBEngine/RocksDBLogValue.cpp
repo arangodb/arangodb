@@ -52,8 +52,8 @@ RocksDBLogValue RocksDBLogValue::CollectionDrop(TRI_voc_tick_t dbid,
 
 RocksDBLogValue RocksDBLogValue::CollectionRename(TRI_voc_tick_t dbid,
                                                   TRI_voc_cid_t cid,
-                                                  StringRef const& newName) {
-  return RocksDBLogValue(RocksDBLogType::CollectionRename, dbid, cid, newName);
+                                                  StringRef const& oldName) {
+  return RocksDBLogValue(RocksDBLogType::CollectionRename, dbid, cid, oldName);
 }
 
 RocksDBLogValue RocksDBLogValue::CollectionChange(TRI_voc_tick_t dbid,
@@ -347,7 +347,7 @@ StringRef RocksDBLogValue::collectionUUID(
   return StringRef();
 }
 
-StringRef RocksDBLogValue::newCollectionName(
+StringRef RocksDBLogValue::oldCollectionName(
     rocksdb::Slice const& slice) {
   size_t off = sizeof(RocksDBLogType) + sizeof(uint64_t) * 2;
   TRI_ASSERT(slice.size() >= off);
