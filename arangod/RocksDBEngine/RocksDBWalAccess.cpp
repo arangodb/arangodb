@@ -91,12 +91,11 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
         _responseSize(0) {}
 
   void LogData(rocksdb::Slice const& blob) override {
+    tick();
     RocksDBLogType type = RocksDBLogValue::type(blob);
     TRI_DEFER(_lastLogType = type);
     
-    LOG_TOPIC(ERR, Logger::FIXME) << "[LOG] " << rocksDBLogTypeName(type);
-
-    tick();
+    //LOG_TOPIC(ERR, Logger::FIXME) << "[LOG] " << rocksDBLogTypeName(type);
     switch (type) {
       case RocksDBLogType::DatabaseCreate:{
         _currentDbId = RocksDBLogValue::databaseId(blob);
@@ -225,8 +224,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
     if (!shouldHandleMarker(column_family_id, key)) {
       return rocksdb::Status();
     }
-    LOG_TOPIC(ERR, Logger::ROCKSDB) << "[PUT] cf: " << column_family_id << ", key:" << key.ToString()
-    << "  value: " << value.ToString();
+    //LOG_TOPIC(ERR, Logger::ROCKSDB) << "[PUT] cf: " << column_family_id << ", key:" << key.ToString()
+    //<< "  value: " << value.ToString();
 
     if (column_family_id == _definitionsCF) {
       if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
@@ -319,10 +318,10 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
   rocksdb::Status handleDeletion(uint32_t column_family_id,
                                  rocksdb::Slice const& key) {
     tick();
-    LOG_TOPIC(ERR, Logger::ROCKSDB) << "[Delete] cf: " << column_family_id << " key:" << key.ToString();
     if (!shouldHandleMarker(column_family_id, key)) {
       return rocksdb::Status();
     }
+    //LOG_TOPIC(ERR, Logger::ROCKSDB) << "[Delete] cf: " << column_family_id << " key:" << key.ToString();
 
     if (column_family_id == _definitionsCF) {
       

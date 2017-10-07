@@ -245,7 +245,7 @@ void ReplicationApplier::stopAndJoin(bool resetError) {
 /// active anymore, returns false
 bool ReplicationApplier::sleepIfStillActive(uint64_t sleepTime) {
   while (sleepTime > 0) {
-    if (isTerminated() || !isRunning()) {
+    if (isTerminated()) {
       // already terminated
       return false; 
     }

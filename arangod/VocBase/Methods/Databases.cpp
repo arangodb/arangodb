@@ -144,10 +144,9 @@ arangodb::Result Databases::create(std::string const& dbName,
     return Result(TRI_ERROR_ARANGO_READ_ONLY);
   }
   auto auth = FeatureCacheFeature::instance()->authenticationFeature();
-  if (ExecContext::CURRENT != nullptr) {
-    if (!ExecContext::CURRENT->isAdminUser()) {
-      return TRI_ERROR_FORBIDDEN;
-    }
+  if (ExecContext::CURRENT != nullptr &&
+      !ExecContext::CURRENT->isAdminUser()) {
+    return TRI_ERROR_FORBIDDEN;
   }
 
   VPackSlice options = inOptions;
