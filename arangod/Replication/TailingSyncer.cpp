@@ -616,17 +616,7 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
 
   // handle marker type
   TRI_replication_operation_e type = (TRI_replication_operation_e)typeValue;
-
-  if (type == REPLICATION_DATABASE_CREATE ||
-      type == REPLICATION_DATABASE_DROP) {
-    if (_ignoreDatabaseMarkers) {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "Ignoring database marker";
-      return Result();
-    }
-    return processDBMarker(type, slice);
-  }
-  
-  else if (type == REPLICATION_MARKER_DOCUMENT ||
+  if (type == REPLICATION_MARKER_DOCUMENT ||
            type == REPLICATION_MARKER_REMOVE) {
     return processDocument(type, slice);
   }
@@ -645,10 +635,13 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
 
   else if (type == REPLICATION_COLLECTION_CREATE) {
     if (_ignoreRenameCreateDrop) {
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "Ignoring collection marker";
       return TRI_ERROR_NO_ERROR;
     }
     TRI_vocbase_t* vocbase = resolveVocbase(slice);
     if (vocbase == nullptr) {
+      LOG_TOPIC(WARN, Logger::REPLICATION)
+        << "Did not find database for " << slice.toJson();
       return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
     if (slice.get("collection").isObject()) {
@@ -698,9 +691,14 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED,
                                    "view change not yet implemented");
   }
-
-  else if (_ignoreRenameCreateDrop) {
-    return Result();
+  
+  else if (type == REPLICATION_DATABASE_CREATE ||
+             type == REPLICATION_DATABASE_DROP) {
+    if (_ignoreDatabaseMarkers) {
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "Ignoring database marker";
+      return Result();
+    }
+    return processDBMarker(type, slice);
   }
 
   return Result(TRI_ERROR_REPLICATION_UNEXPECTED_MARKER, std::string("unexpected marker type ") + StringUtils::itoa(type));

@@ -190,13 +190,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
         break;
       }
       case RocksDBLogType::SingleRemove: {
-        writeCommitMarker();
         _removeDocumentKey = RocksDBLogValue::documentKey(blob).toString();
-        _singleOp = true;
-        _currentDbId = RocksDBLogValue::databaseId(blob);
-        _currentCid = RocksDBLogValue::collectionId(blob);
-        _currentTrxId = 0;
-        break;
+        // intentional fall through
       }
       case RocksDBLogType::SinglePut: {
         writeCommitMarker();
@@ -399,8 +394,10 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
       _builder.add("db", VPackValue(loadVocbase(_currentDbId)->name()));
       _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
       _builder.close();
+      _callback(loadVocbase(_currentDbId), _builder.slice());
+      _builder.clear();
     }
-    // rest all states
+    // reset all states
     _lastLogType = RocksDBLogType::Invalid;
     _seenBeginTransaction = false;
     _singleOp = false;
@@ -573,12 +570,8 @@ WalAccessResult RocksDBWalAccess::tail(std::unordered_set<TRI_voc_tid_t> const& 
                                        WalFilter const& filter,
                                        MarkerCallback const& func) const {
   TRI_ASSERT(transactionIds.empty()); // not supported in any way
-  
-  LOG_TOPIC(ERR, Logger::FIXME) << "1. Starting tailing: tickStart " << tickStart
-  << " tickEnd " << tickEnd << " chunkSize " << chunkSize << " includeSystem " << includeSystem;
-  for (TRI_voc_tick_t t : filter) {
-    LOG_TOPIC(WARN, Logger::FIXME) << "Filer vocbase " << t;
-  }
+  //LOG_TOPIC(ERR, Logger::FIXME) << "1. Starting tailing: tickStart " << tickStart
+  //<< " tickEnd " << tickEnd << " chunkSize " << chunkSize << " includeSystem " << includeSystem;
   
   // first tick actually read
   uint64_t firstTick = UINT64_MAX;
@@ -641,6 +634,6 @@ WalAccessResult RocksDBWalAccess::tail(std::unordered_set<TRI_voc_tid_t> const& 
   if (!s.ok()) {
     result.Result::reset(convertStatus(s, rocksutils::StatusHint::wal));
   }
-  LOG_TOPIC(ERR, Logger::FIXME) << "2. firstTick " << firstTick << " lastWrittenTick " << lastWrittenTick;
+  //LOG_TOPIC(ERR, Logger::FIXME) << "2. firstTick " << firstTick << " lastWrittenTick " << lastWrittenTick;
   return result;
 }

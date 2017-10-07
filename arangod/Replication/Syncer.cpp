@@ -351,9 +351,9 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
   std::string name;
   if (slice.isObject()) {
     VPackSlice tmp;
-    if ((tmp = slice.get("database")).isString()) {
+    if ((tmp = slice.get("db")).isString()) { // wal access protocol
       name = tmp.copyString();
-    } if ((tmp = slice.get("db")).isString()) { // wal access protocol
+    } else if ((tmp = slice.get("database")).isString()) { // pre 3.3
       name = tmp.copyString();
     }
   } else if (slice.isString()) {
@@ -364,8 +364,10 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
                                    "could not resolve vocbase id / name");
   }
   
+  // will work with either names or id's
   auto const& it = _vocbases.find(name);
   if (it == _vocbases.end()) {
+    // automatically checks for id in string
     TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
     if (vocbase != nullptr) {
       _vocbases.emplace(name, DatabaseGuard(vocbase));
@@ -517,20 +519,23 @@ Result Syncer::createCollection(TRI_vocbase_t *vocbase, VPackSlice const& slice,
     // collection already exists. TODO: compare attributes
     return Result();
   }
+  
+  VPackSlice uuid = slice.get("globallyUniqueId");
 
   // merge in "isSystem" attribute, doesn't matter if name does not start with '_'
   VPackBuilder s;
   s.openObject();
   s.add("isSystem", VPackValue(true));
-  if (slice.hasKey("globallyUniqueId")) {
+  if (uuid.isString()) {
     // if we received a globallyUniqueId from the remote, then we will always use this id
     // so we can discard the "cid" and "id" values for the collection
-    s.add("id", VPackValue("0"));
-    s.add("cid", VPackValue("0"));
+    s.add("id", VPackSlice::nullSlice());
+    s.add("cid", VPackSlice::nullSlice());
   }
   s.close();
 
-  VPackBuilder merged = VPackCollection::merge(slice, s.slice(), true);
+  VPackBuilder merged = VPackCollection::merge(slice, s.slice(),
+                                               /*mergeValues*/true, /*nullMeansRemove*/true);
 
   try {
     col = vocbase->createCollection(merged.slice());
@@ -543,11 +548,12 @@ Result Syncer::createCollection(TRI_vocbase_t *vocbase, VPackSlice const& slice,
   }
 
   TRI_ASSERT(col != nullptr);
+  TRI_ASSERT(!uuid.isString() ||
+             uuid.compareString(col->globallyUniqueId()) == 0);
 
   if (dst != nullptr) {
     *dst = col;
   }
-
   return Result();
 }
 
