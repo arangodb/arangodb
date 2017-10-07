@@ -71,7 +71,7 @@ TRI_voc_tick_t RocksDBWalAccess::lastTick() const {
 /// should return the list of transactions started, but not committed in that
 /// range (range can be adjusted)
 WalAccessResult RocksDBWalAccess::openTransactions(uint64_t tickStart, uint64_t tickEnd,
-                                                   WalAccess::WalFilter const& filter,
+                                                   WalAccess::Filter const& filter,
                                                    TransactionCallback const&) const {
   return WalAccessResult(TRI_ERROR_NO_ERROR, true, 0);
 }
@@ -79,11 +79,11 @@ WalAccessResult RocksDBWalAccess::openTransactions(uint64_t tickStart, uint64_t 
 /// WAL parser
 class MyWALParser : public rocksdb::WriteBatch::Handler {
  public:
-  MyWALParser(bool includeSystem, WalAccess::WalFilter const& filter,
+  MyWALParser(bool includeSystem, WalAccess::Filter const& filter,
               WalAccess::MarkerCallback const& f)
       : _documentsCF(RocksDBColumnFamily::documents()->GetID()),
         _definitionsCF(RocksDBColumnFamily::definitions()->GetID()),
-        _include(filter),
+        _filter(filter),
         _includeSystem(includeSystem),
         _callback(f),
         _startSequence(0),
@@ -342,8 +342,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
           } else {
             marker->add("cuid", VPackValue(_dropCollectionUUID));
           }
-          VPackObjectBuilder data(&_builder, "data", true);
-          data->add("name", VPackValue(""));  // not used at all
         }
         _callback(loadVocbase(_currentDbId), _builder.slice());
         _builder.clear();
@@ -447,7 +445,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
     TRI_voc_cid_t cid = 0;
     if (column_family_id == _definitionsCF) {
       if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
-        return _include.empty();
+        return _filter.vocbase == 0;
       } else if (RocksDBKey::type(key) == RocksDBEntryType::Collection) {
         //  || RocksDBKey::type(key) == RocksDBEntryType::View
         dbId = RocksDBKey::databaseId(key);
@@ -497,14 +495,11 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
 
   bool shouldHandleCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid) {
     TRI_ASSERT(dbid != 0 && cid != 0);
-    if (_include.empty()) { // tail everything
+    if (_filter.vocbase == 0) { // tail everything
       return true;
     }
-    auto const& it = _include.find(dbid);
-    if (it != _include.end()) {
-      return true;
-    }
-    return false;
+    return _filter.vocbase = dbid &&
+    (_filter.collection == 0 || _filter.collection == cid);
   }
 
   TRI_vocbase_t* loadVocbase(TRI_voc_tick_t dbid) {
@@ -544,7 +539,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
   uint32_t const _definitionsCF;
 
   /// arbitrary collection filter (inclusive)
-  WalAccess::WalFilter _include;
+  WalAccess::Filter _filter;
   /// ignore system collections
   bool const _includeSystem;
 
@@ -581,7 +576,7 @@ WalAccessResult RocksDBWalAccess::tail(std::unordered_set<TRI_voc_tid_t> const& 
                                        TRI_voc_tick_t firstRegularTick,
                                        uint64_t tickStart, uint64_t tickEnd,
                                        size_t chunkSize, bool includeSystem,
-                                       WalFilter const& filter,
+                                       Filter const& filter,
                                        MarkerCallback const& func) const {
   TRI_ASSERT(transactionIds.empty()); // not supported in any way
   //LOG_TOPIC(ERR, Logger::FIXME) << "1. Starting tailing: tickStart " << tickStart

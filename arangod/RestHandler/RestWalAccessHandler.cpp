@@ -34,7 +34,7 @@
 #include "StorageEngine/WalAccess.h"
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
-
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/replication-common.h"
 
 #include <velocypack/Builder.h>
@@ -67,7 +67,7 @@ RestWalAccessHandler::RestWalAccessHandler(GeneralRequest* request,
                                            GeneralResponse* response)
     : RestVocbaseBaseHandler(request, response) {}
 
-bool RestWalAccessHandler::parseFilter(WalAccess::WalFilter& filter) {
+bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
   bool found = false;
   std::string const& value6 = _request->value("global", found);
   if (found && StringUtils::boolean(value6)) {
@@ -77,7 +77,20 @@ bool RestWalAccessHandler::parseFilter(WalAccess::WalFilter& filter) {
       return false;
     }
   } else {
-    filter.insert(_vocbase->id());
+    // filter for collection
+    filter.vocbase = _vocbase->id();
+    
+    // extract collection
+    std::string const& value6 = _request->value("collection", found);
+    if (found) {
+      LogicalCollection* c = _vocbase->lookupCollection(value6);
+      if (c == nullptr) {
+        generateError(rest::ResponseCode::NOT_FOUND,
+                      TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+        return false;
+      }
+      filter.collection = c->cid();
+    }
   }
   return true;
 }
@@ -205,7 +218,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     chunkSize = static_cast<size_t>(StringUtils::uint64(value5));
   }
   
-  WalAccess::WalFilter filter;
+  WalAccess::Filter filter;
   if (!parseFilter(filter)) {
     return;
   }
@@ -246,19 +259,6 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
       transactionIds.emplace(StringUtils::uint64(id.copyString()));
     }
   }
-  
-  // extract collection
-  /*TRI_voc_cid_t cid = 0;
-  std::string const& value6 = _request->value("collection", found);
-  if (found) {
-    arangodb::LogicalCollection* c = _vocbase->lookupCollection(value6);
-    if (c == nullptr) {
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-      return;
-    }
-    cid = c->cid();
-  }*/
   
   WalAccessResult result;
   std::map<TRI_voc_tick_t, MyTypeHandler> handlers;
@@ -376,7 +376,7 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(WalAccess cons
   }
   
   // check whether a database was specified
-  WalAccess::WalFilter filter;
+  WalAccess::Filter filter;
   if (!parseFilter(filter)) {
     return;
   }

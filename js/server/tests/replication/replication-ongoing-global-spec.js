@@ -132,19 +132,23 @@ const connectToSlave = function() {
 };
 
 const testCollectionExists = function(name) {
-  expect(db._collections().indexOf(name)).to.not.equal(-1, `Collection ${name} does not exist although it should`);
+  expect(db._collections().indexOf(name)).to.not.equal(-1, 
+    `Collection ${name} does not exist although it should`);
 };
 
 const testCollectionDoesNotExists = function(name) {
-  expect(db._collections().indexOf(name)).to.equal(-1, `Collection ${name} does exist although it should not`);
+  expect(db._collections().indexOf(name)).to.equal(-1, 
+    `Collection ${name} does exist although it should not`);
 };
 
 const testDBDoesExist= function(name) {
-  expect(db._databases().indexOf(name)).to.not.equal(-1, `Database ${name} does not exist although it should`);
+  expect(db._databases().indexOf(name)).to.not.equal(-1, 
+    `Database ${name} does not exist although it should`);
 };
 
 const testDBDoesNotExist = function(name) {
-  expect(db._databases().indexOf(name)).to.equal(-1, `Database ${name} does exist although it should not`);
+  expect(db._databases().indexOf(name)).to.equal(-1, 
+    `Database ${name} does exist although it should not`);
 };
 
 const cleanUpAllData = function () {
