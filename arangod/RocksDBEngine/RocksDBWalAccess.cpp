@@ -108,8 +108,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
         {
           VPackObjectBuilder marker(&_builder, true);
           marker->add("tick", VPackValue(std::to_string(_currentSequence)));
-          marker->add("type",
-                      VPackValue(rocksutils::convertLogType(_lastLogType)));
+          marker->add("type", VPackValue(rocksutils::convertLogType(type)));
           marker->add("db", VPackValue(name));
         }
         _callback(loadVocbase(_currentDbId), _builder.slice());

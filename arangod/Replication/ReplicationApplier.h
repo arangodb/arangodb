@@ -61,6 +61,7 @@ class ReplicationApplier {
   
   /// @brief test if the replication applier is running
   bool isRunning() const;
+  bool isTerminated() const { return _terminateThread.load(); }
 
   /// @brief set the applier state to stopped
   void threadStopped();
@@ -150,12 +151,13 @@ class ReplicationApplier {
  protected:
   ReplicationApplierConfiguration _configuration;
   ReplicationApplierState _state;
-  
+  /// @brief workaround for deadlock in stop() method
+  /// check for termination without needing _statusLock
+  std::atomic<bool> _terminateThread;
   mutable arangodb::basics::ReadWriteLock _statusLock;
 
   // used only for logging
   std::string _databaseName;
-
   std::unique_ptr<Thread> _thread;
 };
 

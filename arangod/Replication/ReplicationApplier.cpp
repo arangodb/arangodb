@@ -80,6 +80,7 @@ class ApplyThread : public Thread {
 ReplicationApplier::ReplicationApplier(ReplicationApplierConfiguration const& configuration,
                                        std::string&& databaseName) 
       : _configuration(configuration),
+        _terminateThread(false),
         _databaseName(std::move(databaseName)) {
     setProgress(std::string("applier initially created for ") + _databaseName);
 }
@@ -201,6 +202,7 @@ void ReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc
 
   // reset error
   _state._lastError.reset();
+  _terminateThread.store(false);
   
   _thread.reset(new ApplyThread(this, buildSyncer(initialTick, useTick, barrierId)));
   
@@ -243,7 +245,7 @@ void ReplicationApplier::stopAndJoin(bool resetError) {
 /// active anymore, returns false
 bool ReplicationApplier::sleepIfStillActive(uint64_t sleepTime) {
   while (sleepTime > 0) {
-    if (!isRunning()) {
+    if (isTerminated() || !isRunning()) {
       // already terminated
       return false; 
     }
@@ -466,7 +468,7 @@ void ReplicationApplier::doStop(bool resetError, bool joinThread) {
 
   // always stop initial synchronization
   _state._stopInitialSynchronization = true;
-
+  
   if (!_state.isRunning() || _state.isShuttingDown()) {
     // not active or somebody else is shutting us down
     return;
@@ -475,6 +477,7 @@ void ReplicationApplier::doStop(bool resetError, bool joinThread) {
   LOG_TOPIC(DEBUG, Logger::REPLICATION)
       << "requesting replication applier stop for " << _databaseName;
   
+  _terminateThread.store(true);
   _state._state = ReplicationApplierState::ActivityState::SHUTTING_DOWN;
 
   if (resetError) {
@@ -489,6 +492,7 @@ void ReplicationApplier::doStop(bool resetError, bool joinThread) {
     }
     _thread.reset();
   }
+  _terminateThread.store(false);
 }
   
 /// @brief read a tick value from a VelocyPack struct
