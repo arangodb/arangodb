@@ -1,11 +1,13 @@
 v3.3.milestone1 (2017-10-06)
 ----------------------------
 
+* added option `--server.local-authentication`
+
 * UI: added user roles
 
 * added config option `--log.color` to toggle colorful logging to terminal
 
-* added config option `--log.thread-name` to additionally log thread names 
+* added config option `--log.thread-name` to additionally log thread names
 
 * usernames must not start with `:role:`, added new options:
     --server.authentication-timeout
