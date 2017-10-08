@@ -87,28 +87,35 @@ protected:
 
   void SetThrottle();
 
+  int64_t ComputeBacklog();
+
+  void RecalculateThrottle();
+
   // I am unable to figure out static initialization of std::chrono::seconds,
   //  using old school unsigned.
   static const unsigned THROTTLE_SECONDS = 60;
   static const unsigned THROTTLE_INTERVALS = 63;
 
-// following is a heristic value, determined by trial and error.
-//  its job is slow down the rate of change in the current throttle.
-//  do not want sudden changes in one or two intervals to swing
-//  the throttle value wildly.  Goal is a nice, even throttle value.
-//#define THROTTLE_SCALING 17
+  // following is a heristic value, determined by trial and error.
+  //  its job is slow down the rate of change in the current throttle.
+  //  do not want sudden changes in one or two intervals to swing
+  //  the throttle value wildly.  Goal is a nice, even throttle value.
   static const unsigned THROTTLE_SCALING = 17;
+
+  // trigger point where level-0 file is considered "too many pending"
+  //  (from original Google leveldb db/dbformat.h)
+  static const int64_t kL0_SlowdownWritesTrigger = 8;
 
   struct ThrottleData_t
   {
     std::chrono::microseconds m_Micros;
     uint64_t m_Keys;
     uint64_t m_Bytes;
-    //uint64_t m_Backlog;
     uint64_t m_Compactions;
   };
 
   rocksdb::DBImpl * internalRocksDB_;
+  std::once_flag init_flag_;
   std::atomic<bool> thread_running_;
   std::future<void> thread_future_;
 
@@ -121,6 +128,8 @@ protected:
   //  statistics for all other levels.  Remaining intervals contain
   //  most recent interval statistics for last hour.
   ThrottleData_t throttle_data_[THROTTLE_INTERVALS];
+  size_t replace_idx_;
+
   uint64_t throttle_bps_;
   bool first_throttle_;
 
