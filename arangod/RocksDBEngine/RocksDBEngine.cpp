@@ -307,16 +307,12 @@ void RocksDBEngine::start() {
   _options.env->SetBackgroundThreads(static_cast<int>(opts->_numThreadsLow),
                                      rocksdb::Env::Priority::LOW);
 
-  _options.max_write_buffer_number = 9;  //mev: number column families +2
-
-
   // intentionally set the RocksDB logger to warning because it will
   // log lots of things otherwise
   _options.info_log_level = rocksdb::InfoLogLevel::ERROR_LEVEL;
-  _options.info_log_level = rocksdb::InfoLogLevel::INFO_LEVEL; // mev
   auto logger = std::make_shared<RocksDBLogger>(_options.info_log_level);
   _options.info_log = logger;
-  //logger->disable();  // mev
+  logger->disable();
 
   if (opts->_enableStatistics) {
     _options.statistics = rocksdb::CreateDBStatistics();
@@ -354,6 +350,10 @@ void RocksDBEngine::start() {
   std::shared_ptr<RocksDBEventListener> listener(new RocksDBEventListener);
   _options.listeners.push_back(listener);
 
+  // this is cfFamilies.size() + 2 ... but _option needs to be set before
+  //  building cfFamilies
+  _options.max_write_buffer_number = 7 + 2;
+
   // cf options for definitons (dbs, collections, views, ...)
   rocksdb::ColumnFamilyOptions definitionsCF(_options);
 
@@ -386,6 +386,7 @@ void RocksDBEngine::start() {
   cfFamilies.emplace_back("GeoIndex", fixedPrefCF);             // 5
   cfFamilies.emplace_back("FulltextIndex", fixedPrefCF);        // 6
   // DO NOT FORGET TO DESTROY THE CFs ON CLOSE
+  //  Update max_write_buffer_number above if you change number of families used
 
   std::vector<rocksdb::ColumnFamilyHandle*> cfHandles;
   size_t const numberOfColumnFamilies =
