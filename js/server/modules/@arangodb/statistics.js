@@ -562,45 +562,9 @@ exports.garbageCollector = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.installPeriodicTasks = function () {
-  if (typeof internal.registerTask !== 'function') {
-    return;
-  }
-
-  console.debug('Statistics: Installing regular tasks...');
-
-  var interval = exports.STATISTICS_INTERVAL;
-  var interval15 = exports.STATISTICS_HISTORY_INTERVAL;
-
-  // internal.registerTask({
-  //   id: 'statistics-collector',
-  //   name: 'statistics-collector',
-  //   offset: interval / 10,
-  //   period: interval,
-  //   command: "require('@arangodb/statistics').historian();"
-  // });
-
-  // internal.registerTask({
-  //   id: 'statistics-average-collector',
-  //   name: 'statistics-average-collector',
-  //   offset: 2 * interval,
-  //   period: interval15,
-  //   command: "require('@arangodb/statistics').historianAverage();"
-  // });
-
-  // internal.registerTask({
-  //   id: 'statistics-gc',
-  //   name: 'statistics-gc',
-  //   offset: Math.random() * interval15 / 2,
-  //   period: interval15 / 2,
-  //   command: "require('@arangodb/statistics').garbageCollector();"
-  // });
+  console.debug('Statistics: dump installPeriodicTasks()');
 };
 
 exports.startup = function () {
-  internal.registerTask({
-    id: 'statistics-periodic-task-installer',
-    name: 'statistics-periodic-task-installer',
-    offset: 10,
-    command: "require('@arangodb/statistics').installPeriodicTasks();"
-  });
+  console.debug('Statistics: dump startup()');
 };

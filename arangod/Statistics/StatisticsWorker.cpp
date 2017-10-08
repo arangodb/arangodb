@@ -73,7 +73,7 @@ StatisticsWorker::StatisticsWorker() : Thread("StatisticsWorker") {
   _requestTimeDistribution.close();
 }
 
-void StatisticsWorker::collectGarbage() {
+void StatisticsWorker::collectGarbage() const {
 
   auto time = TRI_microtime();
 
@@ -147,7 +147,7 @@ void StatisticsWorker::_collectGarbage(std::string const& collectionName,
 
 
 
-void StatisticsWorker::historian() {
+void StatisticsWorker::historian() const {
   std::string clusterId = "";
 
   if (ServerState::instance()->isRunningInCluster()) {
@@ -185,7 +185,7 @@ void StatisticsWorker::historian() {
 
 
 
-void StatisticsWorker::historianAverage() {
+void StatisticsWorker::historianAverage() const {
   std::string clusterId = "";
 
   if (ServerState::instance()->isRunningInCluster()) {
@@ -209,10 +209,9 @@ void StatisticsWorker::historianAverage() {
     VPackBuilder builder = _compute15Minute(start, clusterId);
     VPackSlice stat15 = builder.slice();
 
-    if (stat15.length() != 0) {
-
+    if (stat15.length()) {
       _saveSlice(stat15, "_statistics15");
-    } // if !null
+    }
   } catch(velocypack::Exception const& ex) {
     std::cout << ex.what() << " " << ex.errorCode() << std::endl;
     std::cout << ex << std::endl;
@@ -852,14 +851,14 @@ void StatisticsWorker::_saveSlice(VPackSlice const& slice,
   }
 }
 
-void StatisticsWorker::createCollections() {
+void StatisticsWorker::createCollections() const {
   if (!ServerState::instance()->isRunningInCluster() ||
        ServerState::instance()->isCoordinator()) {
          _createCollection("_statisticsRaw");
          _createCollection("_statistics");
          _createCollection("_statistics15");
   } else {
-    // wait for collection creation single / cluster db server
+    // wait for collection creation cluster db server
     while (true) {
       usleep(500*1000);
 

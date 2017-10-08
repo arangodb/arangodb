@@ -38,10 +38,10 @@ class StatisticsWorker final : public Thread {
     void run() override;
 
   private:
-    void collectGarbage();
-    void historian();
-    void historianAverage();
-    void createCollections();
+    void collectGarbage() const;
+    void historian() const;
+    void historianAverage() const;
+    void createCollections() const;
     void _createCollection(std::string const&);
     void _collectGarbage(std::string const& collection, double time);
     std::shared_ptr<arangodb::velocypack::Builder> _lastEntry(std::string const& collection, double start, std::string const& clusterId);
