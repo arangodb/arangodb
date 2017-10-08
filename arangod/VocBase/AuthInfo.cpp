@@ -793,6 +793,12 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   READ_LOCKER(readLocker, _authInfoLock);
 
   auto it = _authInfo.find(username);
+  auto feature = AuthenticationFeature::INSTANCE;
+
+  if (it != _authInfo.end() && (it->second.source() == AuthSource::COLLECTION)
+      && feature != nullptr && ! feature->localAuthentication()) {
+    return result;
+  }
 
   if (it == _authInfo.end() || (it->second.source() == AuthSource::LDAP)) {
     TRI_ASSERT(_authenticationHandler);
@@ -843,10 +849,12 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
 
   if (it != _authInfo.end()) {
     AuthUserEntry const& auth = it->second;
+
     if (auth.isActive()) {
       result._authorized = auth.checkPassword(password);
     }
   }
+
   return result;
 }
 
@@ -958,7 +966,6 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
   std::string password = up.substr(n + 1);
 
   AuthResult result = checkPassword(username, password);
-
   double timeout = AuthenticationFeature::INSTANCE->authenticationTimeout();
 
   if (0 < timeout) {
