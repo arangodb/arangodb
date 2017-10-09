@@ -86,7 +86,7 @@
                     <% if (shard.progress.total === 0) { %>
                       <% percent = numeral(0).format('0.00%'); %>
                     <% } else { %>
-                      <% percent = numeral(shard.progress.current / shard.progress.total).format('0.00%'); %>
+                      <% percent = numeral(shard.progress.current / shard.progress.total).format('0.00%'); if (percent === "100.00%") { percent = "99.99%"; } %>
                     <% } %>
                     <div class="<%= genClass1 %> left"><%= percent %></div>
                   <% } else { %>
