@@ -38,24 +38,34 @@ class StatisticsWorker final : public Thread {
     void run() override;
 
   private:
+    // removes old statistics
     void collectGarbage() const;
+    void _collectGarbage(std::string const& collection, double time) const;
+
+    // calculate per second statistics
     void historian() const;
+    VPackBuilder _computePerSeconds(VPackSlice const&, VPackSlice const&, std::string const&) const;
+    VPackBuilder _generateRawStatistics(std::string const& clusterId, double const& now) const;
+
+    // calculate per 15 seconds statistics
     void historianAverage() const;
+    VPackBuilder _compute15Minute(double start, std::string const& clusterId) const;
+
+    // create statistics collections
     void createCollections() const;
-    void _createCollection(std::string const&);
-    void _collectGarbage(std::string const& collection, double time);
-    std::shared_ptr<arangodb::velocypack::Builder> _lastEntry(std::string const& collection, double start, std::string const& clusterId);
-    VPackBuilder _compute15Minute(double start, std::string const& clusterId);
-    VPackBuilder _computePerSeconds(VPackSlice const&, VPackSlice const&, std::string const&);
-    VPackBuilder _avgPercentDistributon(VPackSlice const&, VPackSlice const&, VPackBuilder const&);
+    void _createCollection(std::string const&) const;
 
-    VPackBuilder _generateRawStatistics(std::string const& clusterId, double const& now);
-    VPackBuilder _fillDistribution(basics::StatisticsDistribution const& dist);
 
-    void _saveSlice(VPackSlice const&, std::string const&);
+    std::shared_ptr<arangodb::velocypack::Builder> _lastEntry(std::string const& collection, double start, std::string const& clusterId) const;
+    VPackBuilder _avgPercentDistributon(VPackSlice const&, VPackSlice const&, VPackBuilder const&) const;
+    VPackBuilder _fillDistribution(basics::StatisticsDistribution const& dist) const;
+
+    // save one statistics object
+    void _saveSlice(VPackSlice const&, std::string const&) const;
+
 
     uint64_t const HISTORY_INTERVAL = 15 * 60; // 15 min
-    uint64_t const INTERVAL = 10;
+    uint64_t const INTERVAL = 10; // 10 secs
 
     VPackBuilder _bytesSentDistribution;
     VPackBuilder _bytesReceivedDistribution;

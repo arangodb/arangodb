@@ -83,7 +83,7 @@ void StatisticsWorker::collectGarbage() const {
 }
 
 void StatisticsWorker::_collectGarbage(std::string const& collectionName,
-                                       double start) {
+                                       double start) const {
 
   auto queryRegistryFeature =
        application_features::ApplicationServer::getFeature<
@@ -107,40 +107,34 @@ void StatisticsWorker::_collectGarbage(std::string const& collectionName,
       THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
     }
 
-    VPackSlice result = queryResult.result->slice();
+    VPackSlice keysToRemove = queryResult.result->slice();
 
-    for (auto const& key : VPackArrayIterator(result)) {
+    OperationOptions opOptions;
+    opOptions.returnOld = false;
+    opOptions.ignoreRevs = true;
+    opOptions.waitForSync = false;
+    opOptions.silent = false;
 
-      OperationOptions opOptions;
-      opOptions.returnOld = false;
-      opOptions.ignoreRevs = true;
-      opOptions.waitForSync = false;
-      opOptions.silent = false;
+    auto transactionContext(transaction::StandaloneContext::Create(vocbase));
 
-      auto transactionContext(transaction::StandaloneContext::Create(vocbase));
+    SingleCollectionTransaction trx(transactionContext, collectionName,
+                                    AccessMode::Type::WRITE);
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-      SingleCollectionTransaction trx(transactionContext, collectionName,
-                                      AccessMode::Type::WRITE);
-      trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+    Result res = trx.begin();
 
-      Result res = trx.begin();
-
-      if (!res.ok()) {
-        continue;
-      }
-
-      OperationResult result = trx.remove(collectionName, key, opOptions);
-
-      res = trx.finish(result.code);
-
-      if (!result.successful()) {
-        // ?
-      }
-
-      if (!res.ok()) {
-        // ?
-      }
+    if (!res.ok()) {
+      return;
     }
+
+    OperationResult result = trx.remove(collectionName, keysToRemove, opOptions);
+
+    res = trx.finish(result.code);
+
+    /* useless until we do something
+    if (!res.ok()) {
+      return;
+    } */
 }
 
 
@@ -229,7 +223,8 @@ void StatisticsWorker::historianAverage() const {
   }
 }
 
-std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::_lastEntry(std::string const& collectionName, double start, std::string const& clusterId) {
+std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::_lastEntry(
+  std::string const& collectionName, double start, std::string const& clusterId) const {
   std::string filter = "";
 
   auto queryRegistryFeature =
@@ -263,7 +258,7 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::_lastEntry(std:
   return queryResult.result;
 }
 
-VPackBuilder StatisticsWorker::_compute15Minute(double start, std::string const& clusterId) {
+VPackBuilder StatisticsWorker::_compute15Minute(double start, std::string const& clusterId) const {
   std::string filter = "";
 
   auto queryRegistryFeature =
@@ -472,7 +467,8 @@ VPackBuilder StatisticsWorker::_compute15Minute(double start, std::string const&
   return builder;
 }
 
-VPackBuilder StatisticsWorker::_computePerSeconds(VPackSlice const& current, VPackSlice const& prev, std::string const& clusterId) {
+VPackBuilder StatisticsWorker::_computePerSeconds(
+  VPackSlice const& current, VPackSlice const& prev, std::string const& clusterId) const {
   VPackBuilder result;
   result.openObject();
 
@@ -633,7 +629,8 @@ VPackBuilder StatisticsWorker::_computePerSeconds(VPackSlice const& current, VPa
   return result;
 }
 
-VPackBuilder StatisticsWorker::_avgPercentDistributon(VPackSlice const& now, VPackSlice const& last, VPackBuilder const& cuts) {
+VPackBuilder StatisticsWorker::_avgPercentDistributon(
+  VPackSlice const& now, VPackSlice const& last, VPackBuilder const& cuts) const {
   VPackBuilder builder;
 
   uint32_t n = cuts.slice().length() + 1;
@@ -666,7 +663,7 @@ VPackBuilder StatisticsWorker::_avgPercentDistributon(VPackSlice const& now, VPa
   return builder;
 }
 
-VPackBuilder StatisticsWorker::_generateRawStatistics(std::string const& clusterId, double const& now) {
+VPackBuilder StatisticsWorker::_generateRawStatistics(std::string const& clusterId, double const& now) const {
   ProcessInfo info = TRI_ProcessInfoSelf();
   double rss = static_cast<double>(info._residentSize);
   double rssp = 0;
@@ -790,7 +787,7 @@ VPackBuilder StatisticsWorker::_generateRawStatistics(std::string const& cluster
   return builder;
 }
 
-VPackBuilder StatisticsWorker::_fillDistribution(StatisticsDistribution const& dist) {
+VPackBuilder StatisticsWorker::_fillDistribution(StatisticsDistribution const& dist) const {
   VPackBuilder builder;
   builder.openObject();
 
@@ -809,7 +806,7 @@ VPackBuilder StatisticsWorker::_fillDistribution(StatisticsDistribution const& d
 }
 
 void StatisticsWorker::_saveSlice(VPackSlice const& slice,
-                                  std::string const& collection) {
+                                  std::string const& collection) const {
   if (isStopping()) {
     return;
   }
@@ -829,7 +826,6 @@ void StatisticsWorker::_saveSlice(VPackSlice const& slice,
   Result res = trx.begin();
 
   if (!res.ok()) {
-    // ?
     return;
   }
 
@@ -841,14 +837,14 @@ void StatisticsWorker::_saveSlice(VPackSlice const& slice,
   // result stays valid!
   res = trx.finish(result.code);
 
+  /* useless until we do something
   if (result.failed()) {
-    // ?
     return;
   }
 
   if (!res.ok()) {
-    // ?
-  }
+    return;
+  }*/
 }
 
 void StatisticsWorker::createCollections() const {
@@ -878,7 +874,7 @@ void StatisticsWorker::createCollections() const {
   }
 }
 
-void StatisticsWorker::_createCollection(std::string const& collection) {
+void StatisticsWorker::_createCollection(std::string const& collection) const {
   VPackBuilder s;
   s.openObject();
   s.add("name", VPackValue(collection));
