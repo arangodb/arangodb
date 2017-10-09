@@ -33,6 +33,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -207,19 +208,15 @@ void StatisticsWorker::historianAverage() const {
       _saveSlice(stat15, "_statistics15");
     }
   } catch(velocypack::Exception const& ex) {
-    std::cout << ex.what() << " " << ex.errorCode() << std::endl;
-    std::cout << ex << std::endl;
+    LOG_TOPIC(DEBUG, Logger::STATISTICS) << "vpack exception in historian average "
+    << ex.what() << " " << ex.errorCode() << " " << ex;
 
   } catch(basics::Exception const& ex) {
-    std::cout << ex.what() << std::endl;
-    std::cout << ex.message() << std::endl;
-    std::cout << ex.code() << std::endl;
+    LOG_TOPIC(DEBUG, Logger::STATISTICS) << "Exception in historian average "
+    << ex.what() << " " << ex.message() << " " << ex.code();
 
   } catch (...) {
-    std::cout << "compute 15 min exception\n";
-    // ?
-    // we don't want this error to appear every x seconds
-    // require("console").warn("catch error in historianAverage: %s", err)
+    LOG_TOPIC(DEBUG, Logger::STATISTICS) << "Exception in historian average";
   }
 }
 
@@ -903,15 +900,15 @@ void StatisticsWorker::_createCollection(std::string const& collection) const {
   }
 
   if (res != TRI_ERROR_ARANGO_DUPLICATE_NAME && res != TRI_ERROR_NO_ERROR) {
-    std::cout << "cant create statistics collection " << res << std::endl; // ?
+    LOG_TOPIC(ERR, Logger::STATISTICS) << "Can't create statistics collection " << collection;
   }
 
-  LogicalCollection* coll = nullptr; // = vocbase->lookupCollection(collection);
+  std::shared_ptr<LogicalCollection> col = nullptr;
+  LogicalCollection* coll = nullptr;
 
   if (ServerState::instance()->isCoordinator()) {
     try {
-      std::shared_ptr<LogicalCollection> col =
-          ClusterInfo::instance()->getCollection(vocbase->name(), collection);
+      col = ClusterInfo::instance()->getCollection(vocbase->name(), collection);
       if (col) {
         coll = col.get();
       }
@@ -920,7 +917,6 @@ void StatisticsWorker::_createCollection(std::string const& collection) const {
   } else {
     coll = vocbase->lookupCollection(collection);
   }
-
 
   VPackBuilder t;
   t.openObject();
@@ -938,8 +934,8 @@ void StatisticsWorker::_createCollection(std::string const& collection) const {
   VPackBuilder output;
   Result idxRes = methods::Indexes::ensureIndex(coll, t.slice(), true, output);
   if (!idxRes.ok()) {
-    std::cout << "index create errorNumber " << idxRes.errorNumber() << std::endl;
-    // ?
+    LOG_TOPIC(WARN, Logger::STATISTICS) << "Can't create the skiplist index for collection "
+    << collection << " please create it manually; Error code: " << idxRes.errorNumber();
   }
 }
 
