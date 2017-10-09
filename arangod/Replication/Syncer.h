@@ -60,6 +60,8 @@ class Syncer {
     int _minorVersion;
     TRI_voc_tick_t _lastLogTick;
     bool _active;
+
+    MasterInfo() : _majorVersion(0), _minorVersion(0), _lastLogTick(0), _active(false) {}
   };
   
   Syncer(Syncer const&) = delete;

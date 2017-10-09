@@ -119,6 +119,7 @@ const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFin
   applierConfiguration.endpoint = masterEndpoint;
   applierConfiguration.username = "root";
   applierConfiguration.password = "";
+  applierConfiguration.includeSystem = false;
 
   if (!applierConfiguration.hasOwnProperty('chunkSize')) {
     applierConfiguration.chunkSize = 16384;
