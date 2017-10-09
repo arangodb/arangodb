@@ -51,6 +51,7 @@ class AuthenticationFeature final
   bool _authenticationUnixSockets;
   bool _authenticationSystemOnly;
   double _authenticationTimeout;
+  bool _localAuthentication;
 
   std::string _jwtSecretProgramOption;
   bool _active;
@@ -65,6 +66,7 @@ class AuthenticationFeature final
     authInfo()->setJwtSecret(jwtSecret);
   }
   double authenticationTimeout() const { return _authenticationTimeout; }
+  bool localAuthentication() const { return _localAuthentication; }
 
   AuthInfo* authInfo() const;
   /*AuthLevel canUseDatabase(std::string const& username,
