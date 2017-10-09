@@ -69,6 +69,7 @@ TailingSyncer::TailingSyncer(ReplicationApplier* applier,
                              bool useTick, TRI_voc_tick_t barrierId)
     : Syncer(configuration),
       _applier(applier),
+      _hasWrittenState(false),
       _initialTick(initialTick),
       _useTick(useTick),
       _requireFromPresent(configuration._requireFromPresent),
@@ -291,10 +292,12 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
                                       VPackSlice const& slice) {
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
+  LOG_TOPIC(ERR, Logger::FIXME) << "IXI2";
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
   if (col == nullptr) {
+  LOG_TOPIC(ERR, Logger::FIXME) << "IXI";
     return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
   

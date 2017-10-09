@@ -104,11 +104,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     std::string const colName = _resolver->getCollectionNameCluster(cid);
-    
-    // only valid on coordinator or single server
-    TRI_ASSERT(ServerState::instance()->isCoordinator() ||
-               !ServerState::instance()->isRunningInCluster());
-    
+  
     AuthLevel level = exec->collectionAuthLevel(_vocbase->name(), colName);
     if (level == AuthLevel::NONE) {
       LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()

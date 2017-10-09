@@ -453,7 +453,10 @@ Result Syncer::applyCollectionDumpMarkerInternal(
         // perform an update
         opRes = trx.replace(collectionName, slice, options); 
       }
-    
+   
+      if (opRes.code != TRI_ERROR_NO_ERROR && opRes.errorMessage.empty()) {
+        opRes.errorMessage = TRI_errno_string(opRes.code);
+      } 
       return Result(opRes.code, opRes.errorMessage);
     } catch (arangodb::basics::Exception const& ex) {
       return Result(ex.code(), std::string("document insert/replace operation failed: ") + ex.what());
@@ -481,6 +484,10 @@ Result Syncer::applyCollectionDumpMarkerInternal(
         // ignore document not found errors
         return Result();
       }
+      
+      if (opRes.code != TRI_ERROR_NO_ERROR && opRes.errorMessage.empty()) {
+        opRes.errorMessage = TRI_errno_string(opRes.code);
+      } 
 
       return Result(opRes.code, opRes.errorMessage);
     } catch (arangodb::basics::Exception const& ex) {
@@ -564,10 +571,6 @@ Result Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
-  if (col == nullptr) {
-    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-  }
-
   if (col == nullptr) {
     if (reportError) {
       return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);

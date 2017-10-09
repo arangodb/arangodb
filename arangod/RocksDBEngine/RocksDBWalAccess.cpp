@@ -321,7 +321,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
     //LOG_TOPIC(ERR, Logger::ROCKSDB) << "[Delete] cf: " << column_family_id << " key:" << key.ToString();
 
     if (column_family_id == _definitionsCF) {
-      
       if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
         // we already print this marker upon reading the log marker.
         // databases are deleted when the last reference to it disappears
@@ -568,6 +567,7 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
     
     handler->startNewBatch(batch.sequence);
     s = batch.writeBatchPtr->Iterate(handler.get());
+    
     if (!s.ok()) {
       LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan: " << s.ToString();
       break; // s is considered in the end

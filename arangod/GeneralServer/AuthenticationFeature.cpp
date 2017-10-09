@@ -46,6 +46,7 @@ AuthenticationFeature::AuthenticationFeature(
       _authenticationUnixSockets(true),
       _authenticationSystemOnly(true),
       _authenticationTimeout(0.0),
+      _localAuthentication(true),
       _jwtSecretProgramOption(""),
       _active(true) {
   setOptional(false);
@@ -83,6 +84,10 @@ void AuthenticationFeature::collectOptions(
   options->addOption("--server.authentication-timeout",
                      "timeout for the authentication cache (0 = indefinitely)",
                      new DoubleParameter(&_authenticationTimeout));
+
+  options->addOption("--server.local-authentication",
+                     "enable or disable authentication using the local user database",
+                     new BooleanParameter(&_localAuthentication));
 
   options->addOption(
       "--server.authentication-system-only",
