@@ -248,8 +248,7 @@ std::vector<index_t> State::logLeaderMulti(
       TRI_ASSERT(transaction.length() > 0);
       size_t pos = transaction.keyAt(0).copyString().find(RECONFIGURE);
       idx[j] = logNonBlocking(
-        _log.back().index+1, i[0], term, clientId, true,
-        pos != std::string::npos && (pos == 0 || pos == 1));
+        _log.back().index+1, i[0], term, clientId, true, pos == 0 || pos == 1);
     }
     ++j;
   }

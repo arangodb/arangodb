@@ -346,7 +346,7 @@ public:
   /// for a change using that condition variable.
   index_t _commitIndex;
 
-  index_t _lastReconfiguration;
+  std::atomic<index_t> _lastReconfiguration;
 
   /// @brief Spearhead (write) kv-store
   Store _spearhead;

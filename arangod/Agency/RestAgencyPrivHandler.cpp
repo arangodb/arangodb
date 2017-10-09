@@ -143,8 +143,17 @@ RestStatus RestAgencyPrivHandler::execute() {
         }
       } else if (suffixes[0] == "add-server" || suffixes[0] == "remove-server" ) {
         auto tmp = std::make_shared<Builder>();
-        { VPackObjectBuilder b(tmp.get());
-          tmp->add(suffixes[0], _request->toVelocyPackBuilderPtr()->slice()); }
+        try {
+          { VPackObjectBuilder b(tmp.get());
+            tmp->add(suffixes[0], _request->toVelocyPackBuilderPtr()->slice()); }
+        } catch (std::exception const& e) {
+          std::string errorMessage("Malformed JSON sent to ");
+          errorMessage += suffixes[0] + " interface: " + e.what();
+          LOG_TOPIC(ERR, Logger::AGENCY) << errorMessage;
+          Builder body;
+          body.add(VPackValue(errorMessage));
+          generateResult(rest::ResponseCode::BAD, body.slice());
+        }
         write_ret_t ret;
         try {
           ret = _agent->reconfigure(tmp);
