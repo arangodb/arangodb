@@ -1065,7 +1065,7 @@ bool LogicalCollection::dropIndex(TRI_idx_iid_t iid) {
 
 /// @brief Persist the connected physical collection.
 ///        This should be called AFTER the collection is successfully
-///        created and only on Sinlge/DBServer
+///        created and only on Single/DBServer
 void LogicalCollection::persistPhysicalCollection() {
   // Coordinators are not allowed to have local collections!
   TRI_ASSERT(!ServerState::instance()->isCoordinator());

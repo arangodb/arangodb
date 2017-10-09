@@ -292,10 +292,12 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
                                       VPackSlice const& slice) {
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
+  LOG_TOPIC(ERR, Logger::FIXME) << "IXI2";
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
   if (col == nullptr) {
+  LOG_TOPIC(ERR, Logger::FIXME) << "IXI";
     return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
   

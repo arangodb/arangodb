@@ -963,8 +963,8 @@ void RocksDBEngine::recoveryDone(TRI_vocbase_t* vocbase) {
 
 std::string RocksDBEngine::createCollection(
     TRI_vocbase_t* vocbase, TRI_voc_cid_t cid,
-    arangodb::LogicalCollection const* parameters) {
-  VPackBuilder builder = parameters->toVelocyPackIgnore(
+    arangodb::LogicalCollection const* collection) {
+  VPackBuilder builder = collection->toVelocyPackIgnore(
       {"path", "statusString"}, /*translate cid*/ true,
       /*for persistence*/ true);
 
@@ -975,6 +975,9 @@ std::string RocksDBEngine::createCollection(
     RocksDBCounterManager::CounterAdjustment adj;
     _counterManager->updateCounter(objectId.getUInt(), adj);
   }
+  
+  TRI_ASSERT(cid != 0);
+  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
 
   int res = writeCreateCollectionMarker(
       vocbase->id(), cid, builder.slice(),
@@ -984,38 +987,17 @@ std::string RocksDBEngine::createCollection(
     THROW_ARANGO_EXCEPTION(res);
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  RocksDBCollection* rcoll = toRocksDBCollection(collection->getPhysical());
+  TRI_ASSERT(rcoll->numberDocuments() == 0);
+#endif
+
   return std::string();  // no need to return a path
 }
 
 arangodb::Result RocksDBEngine::persistCollection(
     TRI_vocbase_t* vocbase, arangodb::LogicalCollection const* collection) {
-  TRI_ASSERT(collection != nullptr);
-  TRI_ASSERT(vocbase != nullptr);
-  arangodb::Result result;
-  if (inRecovery()) {
-    // Nothing to do. In recovery we do not write markers.
-    return result;
-  }
-  VPackBuilder builder =
-      collection->toVelocyPackIgnore({"path", "statusString"}, true, true);
-  VPackSlice const slice = builder.slice();
-
-  auto cid = collection->cid();
-  TRI_ASSERT(cid != 0);
-  TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(cid));
-
-  int res = writeCreateCollectionMarker(
-      vocbase->id(), cid, slice,
-      RocksDBLogValue::CollectionCreate(vocbase->id(), cid));
-  result.reset(res);
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (result.ok()) {
-    RocksDBCollection* rcoll = toRocksDBCollection(collection->getPhysical());
-    TRI_ASSERT(rcoll->numberDocuments() == 0);
-  }
-#endif
-  return result;
+  return {};
 }
 
 arangodb::Result RocksDBEngine::dropCollection(

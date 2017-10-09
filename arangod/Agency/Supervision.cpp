@@ -278,7 +278,7 @@ void handleOnStatus(
     handleOnStatusCoordinator(
       agent, snapshot, persisted, transisted, serverID);
   } else if (serverID.compare(0,4,"SNGL") == 0) {
-    // TOOD: do something
+    // TODO: do something
   } else {
     LOG_TOPIC(ERR, Logger::SUPERVISION)
       << "Unknown server type. No supervision action taken. " << serverID;
