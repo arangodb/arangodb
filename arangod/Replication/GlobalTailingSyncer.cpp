@@ -41,9 +41,10 @@ GlobalTailingSyncer::GlobalTailingSyncer(
 }
 
 std::string GlobalTailingSyncer::tailingBaseUrl(std::string const& command) {
-  TRI_ASSERT(!_masterInfo._endpoint.empty() &&
-             _masterInfo._serverId != 0 &&
-             _masterInfo._majorVersion != 0);
+  TRI_ASSERT(!_masterInfo._endpoint.empty());
+  TRI_ASSERT(_masterInfo._serverId != 0);
+  TRI_ASSERT(_masterInfo._majorVersion != 0);
+
   if (_masterInfo._majorVersion < 3 ||
       (_masterInfo._majorVersion == 3 && _masterInfo._minorVersion <= 2)) {
     std::string err = "You need >= 3.3 to perform replication of entire server";

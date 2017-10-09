@@ -678,9 +678,9 @@ Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
 /// @brief get master state
 Result Syncer::getMasterState() {
   if (_isChildSyncer) {
-    TRI_ASSERT(!_masterInfo._endpoint.empty() &&
-               _masterInfo._serverId != 0 &&
-               _masterInfo._majorVersion != 0);
+    TRI_ASSERT(!_masterInfo._endpoint.empty());
+    TRI_ASSERT(_masterInfo._serverId != 0);
+    TRI_ASSERT(_masterInfo._majorVersion != 0);
     return Result();
   }
   
