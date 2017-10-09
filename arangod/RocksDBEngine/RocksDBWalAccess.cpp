@@ -498,7 +498,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
     if (_filter.vocbase == 0) { // tail everything
       return true;
     }
-    return _filter.vocbase = dbid &&
+    return _filter.vocbase == dbid &&
     (_filter.collection == 0 || _filter.collection == cid);
   }
 
