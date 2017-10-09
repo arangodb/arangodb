@@ -82,7 +82,7 @@ static TRI_voc_crc_t Crc28(TRI_voc_crc_t crc, void const* data, size_t length) {
 }
 
 /// @brief check if a marker appears to be created by ArangoDB 2.8
-static bool IsMarker28(void const* marker) {
+static bool IsMarker28(void const* marker, size_t length) {
   struct Marker28 {
     uint32_t       _size; 
     TRI_voc_crc_t        _crc;     
@@ -99,6 +99,10 @@ static bool IsMarker28(void const* marker) {
 
   char const* ptr = static_cast<char const*>(marker);
   Marker28 const* m = static_cast<Marker28 const*>(marker);
+  
+  if (m->_size < o + n || (m->_size - o - n > length)) {
+    return false;
+  }
 
   TRI_voc_crc_t crc = TRI_InitialCrc32();
 
@@ -1873,7 +1877,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
   ok = CheckCrcMarker(reinterpret_cast<MMFilesMarker const*>(ptr), end);
 
   if (!ok) {
-    if (IsMarker28(ptr)) {
+    if (IsMarker28(ptr, len)) {
       TRI_TRACKED_CLOSE_FILE(fd);
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "datafile found from older version of ArangoDB. "
                << "Please dump data from that version with arangodump "
