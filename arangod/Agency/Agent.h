@@ -282,6 +282,9 @@ public:
   friend class State;
   friend class Compactor;
 
+  /// @brief Legitimise agency membership
+  bool legitimate();
+
  private:
 
   /// @brief add agent to configuration (from State after successful local persistence)
@@ -441,6 +444,9 @@ public:
   /// @brief Agent is ready for RAFT
   std::atomic<bool> _ready;
   std::atomic<bool> _preparing;
+
+  /// @brief Keep track of index of version of configuration for efficiency
+  std::atomic<size_t> _configVersion;
 
   /// @brief Keep track of when I last took on leadership
   TimePoint _leaderSince;

@@ -675,7 +675,7 @@ void Constituent::run() {
         " in term " << _term;
       _role = FOLLOWER;
     }
-    while (!this->isStopping()) {
+    while (!this->isStopping() && _agent->legitimate()) {
       
       role_t role;
       {

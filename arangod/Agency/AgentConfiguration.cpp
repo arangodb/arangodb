@@ -802,8 +802,10 @@ arangodb::Result config_t::addServer(VPackSlice const& server) {
 
   std::string errorMessage;
 
-  if (server.isObject() && server.hasKey("id") && server.get("id").isString()
-      && server.hasKey("endpoint") && server.get("endpoint").isString()) {
+  if (server.isObject() &&
+      server.hasKey("id") && server.get("id").isString() &&
+      server.hasKey("endpoint") && server.get("endpoint").isString()) {
+    
     auto id = server.get("id").copyString();
     auto endpoint = server.get("endpoint").copyString();
     auto tmpActive = _active;           // Fail safe
@@ -883,4 +885,13 @@ arangodb::Result config_t::removeServer(VPackSlice const& server) {
 
   return result;
   
+}
+
+/// Still member?
+legitimacy_t config_t::legitimise(size_t const& v) const {
+  READ_LOCKER(readLocker, _lock);
+  return legitimacy_t(
+    _version <= v || std::find(std::begin(_active),std::end(_active),_id)!=_active.end(),
+    _version
+    );
 }

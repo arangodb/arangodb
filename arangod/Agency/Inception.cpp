@@ -81,15 +81,14 @@ void Inception::gossip() {
 
     // Build gossip message
     auto out = std::make_shared<Builder>();
-    out->openObject();
-    out->add("endpoint", VPackValue(config.endpoint()));
-    out->add("id", VPackValue(config.id()));
-    out->add("pool", VPackValue(VPackValueType::Object));
-    for (auto const& i : config.pool()) {
-      out->add(i.first, VPackValue(i.second));
-    }
-    out->close();
-    out->close();
+    { VPackObjectBuilder b(out.get());
+      out->add("endpoint", VPackValue(config.endpoint()));
+      out->add("id", VPackValue(config.id()));
+      out->add(VPackValue("pool"));
+      { VPackObjectBuilder bb(out.get());
+        for (auto const& i : config.pool()) {
+          out->add(i.first, VPackValue(i.second));
+        }}}
 
     auto const path = privApiPrefix + "gossip";
 
@@ -145,8 +144,9 @@ void Inception::gossip() {
         }
         auto hf =
           std::make_unique<std::unordered_map<std::string, std::string>>();
-        LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending gossip message: "
-            << out->toJson() << " to pool member " << clientid;
+        LOG_TOPIC(DEBUG, Logger::AGENCY)
+          << "Sending gossip message: " << out->toJson()
+          << " to pool member " << clientid;
         if (this->isStopping() || _agent->isStopping() || cc == nullptr) {
           return;
         }
@@ -215,10 +215,8 @@ bool Inception::restartingActiveAgent() {
   auto const majority   = (myConfig.size()+1)/2;
 
   Builder greeting;
-  {
-    VPackObjectBuilder b(&greeting);
-    greeting.add(clientId, VPackValue(clientEp));
-  }
+  { VPackObjectBuilder b(&greeting);
+    greeting.add(clientId, VPackValue(clientEp)); }
   auto const& greetstr = greeting.toJson();
 
   seconds const timeout(3600);
@@ -315,15 +313,16 @@ bool Inception::restartingActiveAgent() {
               }
               
               auto agency = std::make_shared<Builder>();
-              agency->openObject();
-              agency->add("term", theirConfig.get("term"));
-              agency->add("id", VPackValue(theirLeaderId));
-              agency->add("active",      tcc.get("active"));
-              agency->add("pool",        tcc.get("pool"));
-              agency->add("min ping",    tcc.get("min ping"));
-              agency->add("max ping",    tcc.get("max ping"));
-              agency->add("timeoutMult", tcc.get("timeoutMult"));
-              agency->close();
+              { VPackObjectBuilder b(agency.get());
+                agency->openObject();
+                agency->add("term", theirConfig.get("term"));
+                agency->add("id", VPackValue(theirLeaderId));
+                agency->add("active",      tcc.get("active"));
+                agency->add("pool",        tcc.get("pool"));
+                agency->add("min ping",    tcc.get("min ping"));
+                agency->add("max ping",    tcc.get("max ping"));
+                agency->add("timeoutMult", tcc.get("timeoutMult")); }
+              
               _agent->notify(agency);
               return true;
             }

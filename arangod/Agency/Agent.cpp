@@ -55,6 +55,7 @@ Agent::Agent(config_t const& config)
     _compactor(this),
     _ready(false),
     _preparing(false),
+    _configVersion(0),
     _joinConfig(nullptr) {
   _state.configure(this);
   _constituent.configure(this);
@@ -809,12 +810,28 @@ void Agent::load() {
   }
 }
 
+
+/// Still member of agency?
+bool Agent::legitimate() {
+  legitimacy_t res = _config.legitimise(_configVersion);
+  _configVersion = res.version;
+  return res.legitimate;
+}
+
+
 /// Still leading? Under MUTEX from ::read or ::write
 bool Agent::challengeLeadership() {
+
+  // Still member of the outfit? If not leadership is challenged.
+  // Should be fine to diverge in membership from LOCK below.
+  if (!legitimate()) {
+    return true;
+  }
+
   MUTEX_LOCKER(tiLocker, _tiLock);
-  size_t good = 0;
   
-  std::string const myid = id();
+  size_t good = 0;
+  std::string const myid = id();  
   
   for (auto const& i : _lastAcked) {
     if (i.first != myid) {  // do not count ourselves
@@ -1081,7 +1098,7 @@ write_ret_t Agent::write(query_t const& query, WriteMode const& wmode) {
     _tiLock.assertNotLockedByCurrentThread();
     MUTEX_LOCKER(ioLocker, _ioLock);
 
-    applied = _spearhead.applyTransactions(chunk);
+    applied = _spearhead.applyTransactions(chunk, wmode);
 
     auto tmp = _state.logLeaderMulti(chunk, applied, term());
     indices.insert(indices.end(), tmp.begin(), tmp.end());
@@ -1202,7 +1219,7 @@ void Agent::persistConfiguration(term_t t) {
       }}} 
   // In case we've lost leadership, no harm will arise as the failed write
   // prevents bogus agency configuration to be replicated among agents. ***
-  write(agency, true); 
+  write(agency, WriteMode(true,true)); 
 }
 
 
@@ -1906,7 +1923,7 @@ write_ret_t Agent::reconfigure(query_t const payload) {
   }
   std::string operation = slice.keyAt(0).copyString();
   Slice opVal = slice.valueAt(0);
-  
+  std::string theID = opVal.get("id").copyString();
 
   // The new configuration to be persisted. ------------------------------------
   // Actual agent's configuration is changed
@@ -1932,7 +1949,7 @@ write_ret_t Agent::reconfigure(query_t const payload) {
     MUTEX_LOCKER(ioLocker, _ioLock);
     for (auto const& i : _config.active()) {
       if (i != id()) {
-        if (_lastReconfiguration > _confirmed[i] && i != opVal.get("id").copyString()) {
+        if (_lastReconfiguration > _confirmed[i] && i != theID) {
           result.reset(
             1, std::string("Cannot remove server from agency.") 
             + std::string("An other reconfiguration is still pending. Only server ")
@@ -1943,6 +1960,8 @@ write_ret_t Agent::reconfigure(query_t const payload) {
     }
     if (result.ok()) {
       result = config.removeServer(opVal);
+      MUTEX_LOCKER(tiLocker, _tiLock);
+      _lastAcked.erase(theID);
     }
   } else {
     result.reset(3, "Unknown agency reconfiguration operation");

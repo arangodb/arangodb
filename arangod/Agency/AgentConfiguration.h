@@ -57,6 +57,12 @@ static const std::string defaultEndpointStr = "tcp://localhost:8529";
 static const std::string versionStr = "version";
 static const std::string startupStr = "startup";
 
+struct legitimacy_t {
+  bool legitimate;
+  size_t version;
+  legitimacy_t(bool l = false, size_t v = 0) : legitimate(l), version(v) {} 
+};
+
 struct config_t {
   std::string _id;
   size_t _agencySize;
@@ -139,6 +145,9 @@ struct config_t {
 
   /// @brief pool size
   size_t compactionKeepSize() const;
+
+  /// @brief still member: version else 0
+  legitimacy_t legitimise(size_t const& ) const;
 
   /// @brief pool size
   size_t version() const;
