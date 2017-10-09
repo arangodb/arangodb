@@ -437,6 +437,9 @@ describe('Global Replication on a fresh boot', function () {
 
       it("should replicate index creation", function () {
         connectToMaster();
+
+        let oIdx = db._collection(docColName).getIndexes();
+
         db._collection(docColName).ensureHashIndex("value");
 
         let mIdx = db._collection(docColName).getIndexes();
@@ -445,7 +448,8 @@ describe('Global Replication on a fresh boot', function () {
         connectToSlave();
 
         let sIdx = db._collection(docColName).getIndexes();
-        expect(sIdx).to.deep.equal(sIdx);
+        expect(sIdx).to.deep.equal(mIdx);
+        expect(sIdx).to.not.deep.equal(oIdx);
       });
     });
   });
@@ -659,6 +663,8 @@ describe('Global Replication on a fresh boot', function () {
       it("should replicate index creation", function () {
         connectToMaster();
         db._useDatabase(dbName);
+        let oIdx = db._collection(docColName).getIndexes();
+
         db._collection(docColName).ensureHashIndex("value");
 
         let mIdx = db._collection(docColName).getIndexes();
@@ -668,7 +674,8 @@ describe('Global Replication on a fresh boot', function () {
         db._useDatabase(dbName);
 
         let sIdx = db._collection(docColName).getIndexes();
-        expect(sIdx).to.deep.equal(sIdx);
+        expect(sIdx).to.deep.equal(mIdx);
+        expect(sIdx).to.not.deep.equal(oIdx);
       });
     });
 
@@ -918,9 +925,10 @@ describe('Test switch off and restart replication', function() {
 
       connectToMaster();
       let mcol = db._collection(col);
+      let omidx = mcol.getIndexes();
       mcol.ensureHashIndex('value');
 
-      let midxs = db._collection(col).getIndexes();
+      let midxs = mcol.getIndexes();
 
       startReplication();
 
@@ -928,6 +936,7 @@ describe('Test switch off and restart replication', function() {
       let scol = db._collection(col);
       let sidxs = scol.getIndexes();
       expect(sidxs).to.deep.equal(midxs);
+      expect(sidxs).to.not.deep.equal(omidx);
 
       connectToMaster();
       db._drop(col);
