@@ -69,8 +69,8 @@ RestWalAccessHandler::RestWalAccessHandler(GeneralRequest* request,
 
 bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
   bool found = false;
-  std::string const& value6 = _request->value("global", found);
-  if (found && StringUtils::boolean(value6)) {
+  std::string const& value1 = _request->value("global", found);
+  if (found && StringUtils::boolean(value1)) {
     if (!_vocbase->isSystem()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
                     "global tailing is only possible from within _system database");
@@ -81,9 +81,9 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
     filter.vocbase = _vocbase->id();
     
     // extract collection
-    std::string const& value6 = _request->value("collection", found);
+    std::string const& value2 = _request->value("collection", found);
     if (found) {
-      LogicalCollection* c = _vocbase->lookupCollection(value6);
+      LogicalCollection* c = _vocbase->lookupCollection(value2);
       if (c == nullptr) {
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
@@ -92,6 +92,47 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
       filter.collection = c->cid();
     }
   }
+  
+  std::string const& value3 = _request->value("includeSystem", found);
+  if (found) {
+    filter.includeSystem = StringUtils::boolean(value3);
+  }
+  
+  // grab list of transactions from the body value
+  if (_request->requestType() == arangodb::rest::RequestType::PUT) {
+    std::string const& value4 = _request->value("firstRegularTick", found);
+    if (found) {
+      filter.firstRegularTick =
+      static_cast<TRI_voc_tick_t>(StringUtils::uint64(value4));
+    }
+    
+    // copy default options
+    VPackOptions options = VPackOptions::Defaults;
+    options.checkAttributeUniqueness = true;
+    VPackSlice slice;
+    try {
+      slice = _request->payload(&options);
+    } catch (...) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid body value. expecting array");
+      return false;
+    }
+    if (!slice.isArray()) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid body value. expecting array");
+      return false;
+    }
+    
+    for (auto const& id : VPackArrayIterator(slice)) {
+      if (!id.isString()) {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                      "invalid body value. expecting array of ids");
+        return false;
+      }
+      filter.transactionIds.emplace(StringUtils::uint64(id.copyString()));
+    }
+  }
+  
   return true;
 }
 
@@ -205,59 +246,15 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     return;
   }
   
-  bool includeSystem = true;
-  std::string const& value4 = _request->value("includeSystem", found);
-  
-  if (found) {
-    includeSystem = StringUtils::boolean(value4);
+  WalAccess::Filter filter;
+  if (!parseFilter(filter)) {
+    return;
   }
   
   size_t chunkSize = 1024 * 1024;  // TODO: determine good default value?
   std::string const& value5 = _request->value("chunkSize", found);
   if (found) {
     chunkSize = static_cast<size_t>(StringUtils::uint64(value5));
-  }
-  
-  WalAccess::Filter filter;
-  if (!parseFilter(filter)) {
-    return;
-  }
-  
-  
-  // grab list of transactions from the body value
-  std::unordered_set<TRI_voc_tid_t> transactionIds;
-  TRI_voc_tick_t firstRegularTick = 0;
-  if (_request->requestType() == arangodb::rest::RequestType::PUT) {
-    std::string const& value5 = _request->value("firstRegularTick", found);
-    if (found) {
-      firstRegularTick =
-      static_cast<TRI_voc_tick_t>(StringUtils::uint64(value5));
-    }
-    // copy default options
-    VPackOptions options = VPackOptions::Defaults;
-    options.checkAttributeUniqueness = true;
-    VPackSlice slice;
-    try {
-      slice = _request->payload(&options);
-    } catch (...) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid body value. expecting array");
-      return;
-    }
-    if (!slice.isArray()) {
-      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                    "invalid body value. expecting array");
-      return;
-    }
-    
-    for (auto const& id : VPackArrayIterator(slice)) {
-      if (!id.isString()) {
-        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                      "invalid body value. expecting array of ids");
-        return;
-      }
-      transactionIds.emplace(StringUtils::uint64(id.copyString()));
-    }
   }
   
   WalAccessResult result;
@@ -276,8 +273,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   
   size_t length = 0;
   if (useVst) {
-    result = wal->tail(transactionIds, firstRegularTick,
-                       tickStart, tickEnd, chunkSize, includeSystem, filter,
+    result = wal->tail(tickStart, tickEnd, chunkSize, filter,
                        [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
                          length++;
                          if (vocbase != nullptr) {// database drop has no vocbase
@@ -296,8 +292,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
     // note: we need the CustomTypeHandler here
     VPackDumper dumper(&adapter, &opts);
-    result = wal->tail(transactionIds, firstRegularTick,
-                       tickStart, tickEnd, chunkSize, includeSystem, filter,
+    result = wal->tail(tickStart, tickEnd, chunkSize, filter,
                        [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
                          length++;
                          if (vocbase != nullptr) {// database drop has no vocbase

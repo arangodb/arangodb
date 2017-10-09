@@ -249,370 +249,297 @@ WalAccessResult MMFilesWalAccess::openTransactions(uint64_t tickStart, uint64_t 
   return res;
 }
 
-/// Tails the wall, this will already sanitize the
-WalAccessResult MMFilesWalAccess::tail(std::unordered_set<TRI_voc_tid_t> const& transactionIds,
-                                       TRI_voc_tick_t firstRegularTick,
-                                       uint64_t tickStart, uint64_t tickEnd, size_t chunkSize,
-                                       bool includeSystem, WalAccess::Filter const& filter,
-                                       MarkerCallback const&) const {
+struct MMFilesWalAccessContext : WalAccessContext {
   
-  return WalAccessResult(TRI_ERROR_INTERNAL, false, 0);
-}
-/*
-static int SliceifyMarker(MMFilesReplicationDumpContext* dump,
-                          TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-                          MMFilesMarker const* marker, bool isDump,
-                          bool withTicks, bool isEdgeCollection) {
-  TRI_ASSERT(MustReplicateWalMarkerType(marker));
-  MMFilesMarkerType const type = marker->getType();
-
-  VPackBuffer<uint8_t> buffer;
-  std::shared_ptr<VPackBuffer<uint8_t>> bufferPtr;
-  bufferPtr.reset(&buffer, arangodb::velocypack::BufferNonDeleter<uint8_t>());
-
-  VPackBuilder builder(bufferPtr, &dump->_vpackOptions);
-  builder.openObject();
-
-  if (!isDump) {
+  MMFilesWalAccessContext(WalAccess::Filter const& f,
+                          WalAccess::MarkerCallback const& c)
+    : WalAccessContext(f, c) {}
+  
+  /// @brief whether or not a marker belongs to a transaction
+  bool isTransactionWalMarker(MMFilesMarker const* marker) {
+    // first check the marker type
+    if (!IsTransactionWalMarkerType(marker)) {
+      return false;
+    }
+    
+    // then check if the marker belongs to the "correct" database
+    if (_filter.vocbase != 0 &&
+        _filter.vocbase != MMFilesDatafileHelper::DatabaseId(marker)) {
+      return false;
+    }
+    return true;
+  }
+  
+  /// @brief whether or not a marker is replicated
+  bool mustReplicateWalMarker(MMFilesMarker const* marker,
+                              TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
+    // first check the marker type
+    if (!MustReplicateWalMarkerType(marker, true)) {
+      return false;
+    }
+    
+    // then check if the marker belongs to the "correct" database
+    if (_filter.vocbase != 0 &&
+        _filter.vocbase != databaseId) {
+      return false;
+    }
+    
+    // finally check if the marker is for a collection that we want to ignore
+    TRI_voc_cid_t cid = collectionId;
+    if (cid != 0) {
+      std::string name = cidToName(databaseId, cid);
+      if (!name.empty() &&
+          TRI_ExcludeCollectionReplication(name, _filter.includeSystem)) {
+        return false;
+      }
+    }
+    
+    if (_filter.collection > 0 &&
+        (cid != _filter.collection && !isTransactionWalMarker(marker))) {
+          // restrict output to a single collection, but a different one
+          return false;
+        }
+    
+    // after first regular tick, dump all transactions normally
+    if (marker->getTick() >= _filter.firstRegularTick) {
+      return true;
+    }
+    
+    if (!_filter.transactionIds.empty()) {
+      TRI_voc_tid_t tid = MMFilesDatafileHelper::TransactionId(marker);
+      if (tid == 0 || _filter.transactionIds.find(tid) == _filter.transactionIds.end()) {
+        return false;
+      }
+    }
+    
+    return true;
+  }
+  
+  int sliceifyMarker(TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
+                     MMFilesMarker const* marker) {
+    TRI_ASSERT(MustReplicateWalMarkerType(marker, true));
+    MMFilesMarkerType const type = marker->getType();
+    
+    /*VPackBuffer<uint8_t> buffer;
+     std::shared_ptr<VPackBuffer<uint8_t>> bufferPtr;
+     bufferPtr.reset(&buffer, arangodb::velocypack::BufferNonDeleter<uint8_t>());
+     */
+    _builder.openObject();
     // logger-follow command
-    builder.add("tick", VPackValue(static_cast<uint64_t>(marker->getTick())));
-    builder.add("type",
+    _builder.add("tick", VPackValue(static_cast<uint64_t>(marker->getTick())));
+    _builder.add("type",
                 VPackValue(static_cast<uint64_t>(TranslateType(marker))));
-
+    
     if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
         type == TRI_DF_MARKER_VPACK_REMOVE ||
         type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION ||
         type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
         type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
       // transaction id
-      builder.add("tid", VPackValue(MMFilesDatafileHelper::TransactionId(marker)));
+      _builder.add("tid", VPackValue(MMFilesDatafileHelper::TransactionId(marker)));
     }
     if (databaseId > 0) {
-      builder.add("database", VPackValue(databaseId));
-      if (collectionId > 0) {
-        builder.add("cid", VPackValue(collectionId));
+      std::string uuid = cidToUUID(databaseId, collectionId);
+      _builder.add("db", VPackValue(databaseId));
+      if (!uuid.empty()) {
+        _builder.add("cuid", VPackValue(uuid));
         // also include collection name
-        char const* cname = NameFromCid(dump, collectionId);
-        if (cname != nullptr) {
-          builder.add("cname", VPackValue(cname));
-        }
+        /*std::string cname = ctx->cidToName(databaseId, collectionId);
+         if (cname.empty()) {
+         builder.add("cname", VPackValue(cname));
+         }*/
       }
     }
-  } else {
-    // collection dump
-    if (withTicks) {
-      builder.add("tick", VPackValue(static_cast<uint64_t>(marker->getTick())));
+    
+    switch (type) {
+      case TRI_DF_MARKER_VPACK_DOCUMENT:
+      case TRI_DF_MARKER_VPACK_REMOVE:
+      case TRI_DF_MARKER_VPACK_CREATE_DATABASE:
+      case TRI_DF_MARKER_VPACK_CREATE_COLLECTION:
+      case TRI_DF_MARKER_VPACK_CREATE_INDEX:
+      case TRI_DF_MARKER_VPACK_CREATE_VIEW:
+      case TRI_DF_MARKER_VPACK_RENAME_COLLECTION:
+      case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION:
+      case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
+      case TRI_DF_MARKER_VPACK_DROP_DATABASE:
+      case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
+      case TRI_DF_MARKER_VPACK_DROP_INDEX:
+      case TRI_DF_MARKER_VPACK_DROP_VIEW: {
+        VPackSlice slice(reinterpret_cast<char const*>(marker) +
+                         MMFilesDatafileHelper::VPackOffset(type));
+        _builder.add("data", slice);
+        break;
+      }
+        
+      case TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION:
+      case TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION:
+      case TRI_DF_MARKER_VPACK_ABORT_TRANSACTION: {
+        // nothing to do
+        break;
+      }
+        
+      default: {
+        TRI_ASSERT(false);
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got invalid marker of type " << static_cast<int>(type);
+        return TRI_ERROR_INTERNAL;
+      }
     }
-    builder.add("type",
-                VPackValue(static_cast<uint64_t>(TranslateType(marker))));
+    
+    _builder.close();
+    _callback(loadVocbase(databaseId), _builder.slice());
+    _responseSize += _builder.size();
+    _builder.clear();
+    
+    return TRI_ERROR_NO_ERROR;
   }
-
-  switch (type) {
-    case TRI_DF_MARKER_VPACK_DOCUMENT:
-    case TRI_DF_MARKER_VPACK_REMOVE:
-    case TRI_DF_MARKER_VPACK_CREATE_DATABASE:
-    case TRI_DF_MARKER_VPACK_CREATE_COLLECTION:
-    case TRI_DF_MARKER_VPACK_CREATE_INDEX:
-    case TRI_DF_MARKER_VPACK_CREATE_VIEW:
-    case TRI_DF_MARKER_VPACK_RENAME_COLLECTION:
-    case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION:
-    case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
-    case TRI_DF_MARKER_VPACK_DROP_DATABASE:
-    case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
-    case TRI_DF_MARKER_VPACK_DROP_INDEX: 
-    case TRI_DF_MARKER_VPACK_DROP_VIEW: { 
-      VPackSlice slice(reinterpret_cast<char const*>(marker) +
-                       MMFilesDatafileHelper::VPackOffset(type));
-      builder.add("data", slice);
-      break;
-    }
-
-    case TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION:
-    case TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION:
-    case TRI_DF_MARKER_VPACK_ABORT_TRANSACTION: {
-      // nothing to do
-      break;
-    }
-
-    default: {
-      TRI_ASSERT(false);
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "got invalid marker of type " << static_cast<int>(type); 
-      return TRI_ERROR_INTERNAL;
-    }
-  }
-
-  builder.close();
-
-  dump->_slices.push_back(std::move(buffer));
-
-  return TRI_ERROR_NO_ERROR;
-}
-/// @brief whether or not a marker belongs to a transaction
-static bool IsTransactionWalMarker(MMFilesReplicationDumpContext* dump,
-                                   MMFilesMarker const* marker) {
-  // first check the marker type
-  if (!IsTransactionWalMarkerType(marker)) {
-    return false;
-  }
-
-  // then check if the marker belongs to the "correct" database
-  if (dump->_vocbase->id() != MMFilesDatafileHelper::DatabaseId(marker)) {
-    return false;
-  }
-
-  return true;
-}
-
-/// @brief whether or not a marker is replicated
-static bool MustReplicateWalMarker(
-    MMFilesReplicationDumpContext* dump, MMFilesMarker const* marker,
-    TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId,
-    TRI_voc_tick_t firstRegularTick,
-    std::unordered_set<TRI_voc_tid_t> const& transactionIds) {
-  // first check the marker type
-  if (!MustReplicateWalMarkerType(marker)) {
-    return false;
-  }
-
-  // then check if the marker belongs to the "correct" database
-  if (dump->_vocbase->id() != databaseId) {
-    return false;
-  }
-
-  // finally check if the marker is for a collection that we want to ignore
-  TRI_voc_cid_t cid = collectionId;
-
-  if (cid != 0) {
-    char const* name = NameFromCid(dump, cid);
-
-    if (name != nullptr &&
-        TRI_ExcludeCollectionReplication(name, dump->_includeSystem)) {
-      return false;
-    }
-  }
-
-  if (dump->_restrictCollection > 0 &&
-      (cid != dump->_restrictCollection &&
-       !IsTransactionWalMarker(dump, marker))) {
-    // restrict output to a single collection, but a different one
-    return false;
-  }
-
-  // after first regular tick, dump all transactions normally
-  if (marker->getTick() >= firstRegularTick) {
-    return true;
-  }
-
-  if (!transactionIds.empty()) {
-    TRI_voc_tid_t tid = MMFilesDatafileHelper::TransactionId(marker);
-    if (tid == 0 || transactionIds.find(tid) == transactionIds.end()) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-/// @brief dump data from the replication log
-int MMFilesDumpLogReplication(
-    MMFilesReplicationDumpContext* dump,
-    std::unordered_set<TRI_voc_tid_t> const& transactionIds,
-    TRI_voc_tick_t firstRegularTick, TRI_voc_tick_t tickMin,
-    TRI_voc_tick_t tickMax, bool outputAsArray) {
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dumping log, tick range " << tickMin << " - " << tickMax;
-
-  // get a custom type handler
-  auto customTypeHandler = dump->_transactionContext->orderCustomTypeHandler();
-  dump->_vpackOptions.customTypeHandler = customTypeHandler.get();
-
-  // ask the logfile manager which datafiles qualify
-  bool fromTickIncluded = false;
-  std::vector<arangodb::MMFilesWalLogfile*> logfiles =
-      MMFilesLogfileManager::instance()->getLogfilesForTickRange(
-          tickMin, tickMax, fromTickIncluded);
-
-  // setup some iteration state
-  int res = TRI_ERROR_NO_ERROR;
-  TRI_voc_tick_t lastFoundTick = 0;
-  TRI_voc_tick_t lastDatabaseId = 0;
-  TRI_voc_cid_t lastCollectionId = 0;
-  bool hasMore = true;
-  bool bufferFull = false;
-
-  try {
-    if (outputAsArray) {
-      Append(dump, "[");
-    }
-    bool first = true;
-
-    // iterate over the datafiles found
-    size_t const n = logfiles.size();
-
-    for (size_t i = 0; i < n; ++i) {
-      arangodb::MMFilesWalLogfile* logfile = logfiles[i];
-
-      char const* ptr;
-      char const* end;
-      MMFilesLogfileManager::instance()->getActiveLogfileRegion(
-          logfile, ptr, end);
-
-      while (ptr < end) {
-        auto const* marker = reinterpret_cast<MMFilesMarker const*>(ptr);
-
-        if (marker->getSize() == 0) {
-          // end of datafile
-          break;
-        }
-
-        MMFilesMarkerType type = marker->getType();
-
-        if (type <= TRI_DF_MARKER_MIN || type >= TRI_DF_MARKER_MAX) {
-          break;
-        }
-
-        // handle special markers
-        if (type == TRI_DF_MARKER_PROLOGUE) {
-          lastDatabaseId = MMFilesDatafileHelper::DatabaseId(marker);
-          lastCollectionId = MMFilesDatafileHelper::CollectionId(marker);
-        } else if (type == TRI_DF_MARKER_HEADER ||
-                   type == TRI_DF_MARKER_FOOTER) {
-          lastDatabaseId = 0;
-          lastCollectionId = 0;
-        } else if (type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION) {
-          // fill collection name cache
-          TRI_voc_tick_t databaseId = MMFilesDatafileHelper::DatabaseId(marker);
-          TRI_ASSERT(databaseId != 0);
-          TRI_voc_cid_t collectionId = MMFilesDatafileHelper::CollectionId(marker);
-          TRI_ASSERT(collectionId != 0);
-
-          if (dump->_vocbase->id() == databaseId) {
-            VPackSlice slice(reinterpret_cast<char const*>(marker) +
-                             MMFilesDatafileHelper::VPackOffset(type));
-            VPackSlice name = slice.get("name");
-            if (name.isString()) {
-              dump->_collectionNames[collectionId] = name.copyString();
+  
+  WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd, size_t chunkSize) {
+    // ask the logfile manager which datafiles qualify
+    bool fromTickIncluded = false;
+    std::vector<arangodb::MMFilesWalLogfile*> logfiles =
+    MMFilesLogfileManager::instance()->getLogfilesForTickRange(tickStart, tickEnd,
+                                                               fromTickIncluded);
+    // always return the logfiles we have used
+    TRI_DEFER(MMFilesLogfileManager::instance()->returnLogfiles(logfiles));
+    
+    // setup some iteration state
+    int res = TRI_ERROR_NO_ERROR;
+    TRI_voc_tick_t lastFoundTick = 0;
+    TRI_voc_tick_t lastDatabaseId = 0;
+    TRI_voc_cid_t lastCollectionId = 0;
+    bool hasMore = true;
+    bool bufferFull = false;
+    
+    try {
+      // iterate over the datafiles found
+      size_t const n = logfiles.size();
+      
+      for (size_t i = 0; i < n; ++i) {
+        arangodb::MMFilesWalLogfile* logfile = logfiles[i];
+        
+        char const* ptr;
+        char const* end;
+        MMFilesLogfileManager::instance()->getActiveLogfileRegion(logfile, ptr, end);
+        
+        while (ptr < end) {
+          auto const* marker = reinterpret_cast<MMFilesMarker const*>(ptr);
+          
+          if (marker->getSize() == 0) {
+            // end of datafile
+            break;
+          }
+          
+          MMFilesMarkerType type = marker->getType();
+          
+          if (type <= TRI_DF_MARKER_MIN || type >= TRI_DF_MARKER_MAX) {
+            break;
+          }
+          
+          // handle special markers
+          if (type == TRI_DF_MARKER_PROLOGUE) {
+            lastDatabaseId = MMFilesDatafileHelper::DatabaseId(marker);
+            lastCollectionId = MMFilesDatafileHelper::CollectionId(marker);
+          } else if (type == TRI_DF_MARKER_HEADER ||
+                     type == TRI_DF_MARKER_FOOTER) {
+            lastDatabaseId = 0;
+            lastCollectionId = 0;
+          } else if (type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION) {
+            // fill collection name cache
+            TRI_voc_tick_t databaseId = MMFilesDatafileHelper::DatabaseId(marker);
+            TRI_ASSERT(databaseId != 0);
+            TRI_voc_cid_t collectionId = MMFilesDatafileHelper::CollectionId(marker);
+            TRI_ASSERT(collectionId != 0);
+            
+            if (_filter.vocbase == databaseId) {
+              VPackSlice slice(reinterpret_cast<char const*>(marker) +
+                               MMFilesDatafileHelper::VPackOffset(type));
+              VPackSlice name = slice.get("name");
+              if (name.isString()) {
+                //dump->_collectionNames[collectionId] = name.copyString();
+              }
+            }
+          } else if (type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION) {
+            // invalidate collection name cache because this is a
+            // rename operation
+            //dump->_collectionNames.clear();
+          }
+          
+          ptr += MMFilesDatafileHelper::AlignedMarkerSize<size_t>(marker);
+          
+          // get the marker's tick and check whether we should include it
+          TRI_voc_tick_t foundTick = marker->getTick();
+          
+          if (foundTick <= tickStart) {
+            // marker too old
+            continue;
+          }
+          
+          if (foundTick >= tickEnd) {
+            hasMore = false;
+            
+            if (foundTick > tickEnd) {
+              // marker too new
+              break;
             }
           }
-        } else if (type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION) {
-          // invalidate collection name cache because this is a
-          // rename operation
-          dump->_collectionNames.clear();
-        }
-
-        ptr += MMFilesDatafileHelper::AlignedMarkerSize<size_t>(marker);
-
-        // get the marker's tick and check whether we should include it
-        TRI_voc_tick_t foundTick = marker->getTick();
-
-        if (foundTick <= tickMin) {
-          // marker too old
-          continue;
-        }
-
-        if (foundTick >= tickMax) {
-          hasMore = false;
-
-          if (foundTick > tickMax) {
-            // marker too new
+          
+          TRI_voc_tick_t databaseId;
+          TRI_voc_cid_t collectionId;
+          
+          if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
+              type == TRI_DF_MARKER_VPACK_REMOVE) {
+            databaseId = lastDatabaseId;
+            collectionId = lastCollectionId;
+          } else {
+            databaseId = MMFilesDatafileHelper::DatabaseId(marker);
+            collectionId = MMFilesDatafileHelper::CollectionId(marker);
+          }
+          
+          if (!mustReplicateWalMarker(marker, databaseId, collectionId)) {
+            continue;
+          }
+          
+          // note the last tick we processed
+          lastFoundTick = foundTick;
+          
+          res = sliceifyMarker(databaseId, collectionId, marker);
+          if (res != TRI_ERROR_NO_ERROR) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
+          
+          if (_responseSize >= chunkSize) {
+            // abort the iteration
+            bufferFull = true;
             break;
           }
         }
-
-        TRI_voc_tick_t databaseId;
-        TRI_voc_cid_t collectionId;
-
-        if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
-            type == TRI_DF_MARKER_VPACK_REMOVE) {
-          databaseId = lastDatabaseId;
-          collectionId = lastCollectionId;
-        } else {
-          databaseId = MMFilesDatafileHelper::DatabaseId(marker);
-          collectionId = MMFilesDatafileHelper::CollectionId(marker);
-        }
-
-        if (!MustReplicateWalMarker(dump, marker, databaseId, collectionId,
-                                    firstRegularTick, transactionIds)) {
-          continue;
-        }
-
-        // note the last tick we processed
-        lastFoundTick = foundTick;
-
-        if (outputAsArray) {
-          if (!first) {
-            Append(dump, ",");
-          } else {
-            first = false;
-          }
-        }
-
-        if (dump->_useVst) {
-          res = SliceifyMarker(dump, databaseId, collectionId, marker, false,
-                               true, false);
-        } else {
-          res = StringifyMarker(dump, databaseId, collectionId, marker, false,
-                                true, false);
-        }
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          THROW_ARANGO_EXCEPTION(res);
-        }
-
-        if (static_cast<uint64_t>(TRI_LengthStringBuffer(dump->_buffer)) >=
-            dump->_chunkSize) {
-          // abort the iteration
-          bufferFull = true;
+        
+        if (!hasMore || bufferFull) {
           break;
         }
       }
-
-      if (!hasMore || bufferFull) {
-        break;
-      }
+    } catch (arangodb::basics::Exception const& ex) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception while dumping replication log: " << ex.what();
+      res = ex.code();
+    } catch (std::exception const& ex) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception while dumping replication log: " << ex.what();
+      res = TRI_ERROR_INTERNAL;
+    } catch (...) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception while dumping replication log";
+      res = TRI_ERROR_INTERNAL;
     }
-
-    if (outputAsArray) {
-      Append(dump, "]");
-    }
-  } catch (arangodb::basics::Exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception while dumping replication log: " << ex.what();
-    res = ex.code();
-  } catch (std::exception const& ex) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught exception while dumping replication log: " << ex.what();
-    res = TRI_ERROR_INTERNAL;
-  } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "caught unknown exception while dumping replication log";
-    res = TRI_ERROR_INTERNAL;
+    
+    return WalAccessResult(res, fromTickIncluded, lastFoundTick);
   }
+  
+};
 
-  // always return the logfiles we have used
-  MMFilesLogfileManager::instance()->returnLogfiles(logfiles);
-
-  dump->_fromTickIncluded = fromTickIncluded;
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    if (lastFoundTick > 0) {
-      // data available for requested range
-      dump->_lastFoundTick = lastFoundTick;
-      dump->_hasMore = hasMore;
-      dump->_bufferFull = bufferFull;
-    } else {
-      // no data available for requested range
-      dump->_lastFoundTick = 0;
-      dump->_hasMore = false;
-      dump->_bufferFull = false;
-    }
-  }
-
-  return res;
+/// Tails the wall, this will already sanitize the
+WalAccessResult MMFilesWalAccess::tail(uint64_t tickStart, uint64_t tickEnd, size_t chunkSize,
+                                       WalAccess::Filter const& filter,
+                                       MarkerCallback const& callback) const {
+  
+  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dumping log, tick range " << tickStart << " - " << tickEnd;
+  MMFilesWalAccessContext ctx(filter, callback);
+  return ctx.tail(tickStart, tickEnd, chunkSize);
 }
-
-/// @brief determine the transactions that were open at a given point in time
-int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext* dump,
-                                             TRI_voc_tick_t tickMin,
-                                             TRI_voc_tick_t tickMax,
-                                             bool useVst) {
- 
-}
-*/
-

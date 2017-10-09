@@ -25,6 +25,7 @@
 #define ARANGOD_STORAGE_ENGINE_WAL_ACCESS_H 1
 
 #include "Basics/Result.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/voc-types.h"
 
 #include <velocypack/Builder.h>
@@ -65,10 +66,22 @@ class WalAccess {
  public:
   
   struct Filter {
-    Filter() : vocbase(0), collection(0) {}
+    Filter() {}
     
-    TRI_voc_tick_t vocbase;
-    TRI_voc_cid_t collection;
+    /// In case collection is == 0,
+    bool includeSystem = false;
+    
+    /// only output markers from this database
+    TRI_voc_tick_t vocbase = 0;
+    /// Only output data from this collection
+    /// FIXME: make a set of collections
+    TRI_voc_cid_t collection = 0;
+    
+    /// only include these transactions, up to
+    /// (not including) firstRegularTick
+    std::unordered_set<TRI_voc_tid_t> transactionIds;
+    /// @brief starting from this tick ignore transactionIds
+    TRI_voc_tick_t firstRegularTick = 0;
   };
   
   typedef std::function<void(TRI_vocbase_t*,
@@ -95,14 +108,56 @@ class WalAccess {
                                            Filter const& filter,
                                            TransactionCallback const&) const = 0;
 
-  virtual WalAccessResult tail(std::unordered_set<TRI_voc_tid_t> const& transactionIds,
-                               TRI_voc_tick_t firstRegularTick,
-                               uint64_t tickStart, uint64_t tickEnd,
-                               size_t chunkSize,
-                               bool includeSystem, Filter const& filter,
+  virtual WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd,
+                               size_t chunkSize, Filter const& filter,
                                MarkerCallback const&) const = 0;
   
 };
-}
+  
+/// @brief helper class used to resolve vocbases
+///        and collections from wal markers in an efficient way
+struct WalAccessContext {
+  
+  WalAccessContext(WalAccess::Filter const& filter,
+                   WalAccess::MarkerCallback const& c)
+  : _filter(filter),
+    _callback(c),
+    _responseSize(0){}
+  
+  ~WalAccessContext() {}
+  
+  /// @brief Check if collection is in filter
+  bool shouldHandleCollection(TRI_voc_tick_t dbid,
+                              TRI_voc_cid_t cid);
+  
+  /// @brief try to get collection, may return null
+  TRI_vocbase_t* loadVocbase(TRI_voc_tick_t dbid);
+  
+  /// @brief get global unique id
+  std::string const& cidToUUID(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);
+  
+  /// @brief cid to collection name
+  std::string cidToName(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);
+  
+public:
+  /// @brief arbitrary collection filter (inclusive)
+  WalAccess::Filter _filter;
+  /// @brief callback for marker output
+  WalAccess::MarkerCallback _callback;
+  
+  /// @brief current response size
+  size_t _responseSize;
+  
+  /// @brief result builder
+  velocypack::Builder _builder;
+  
+  /// @brief cache the vocbases
+  std::map<TRI_voc_tick_t, DatabaseGuard> _vocbases;
+  
+  // @brief collection replication UUID cache
+  std::map<TRI_voc_cid_t, std::string> _uuidCache;
+};
+  
+} // namespace arangodb
 
 #endif

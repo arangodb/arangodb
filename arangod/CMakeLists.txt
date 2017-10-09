@@ -361,6 +361,7 @@ SET(ARANGOD_SOURCES
   StorageEngine/PhysicalCollection.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp
+  StorageEngine/WalAccess.cpp
   Transaction/Context.cpp
   Transaction/Helpers.cpp
   Transaction/Methods.cpp
