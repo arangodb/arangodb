@@ -32,7 +32,7 @@ set(IResearch_INCLUDE_DIR
 if (MSVC)
   add_definitions(/W4)
   # disable "checked iterators" feature
-  add_definitions(-D_SCL_SECURE_NO_WARNINGS) 
+  add_definitions(-D_SCL_SECURE_NO_WARNINGS)
 else()
   add_definitions(-fvisibility=hidden -Wall)
   set(CMAKE_CXX_FLAGS_RELEASE "-s ${CMAKE_CXX_FLAGS_RELEASE}")
@@ -554,6 +554,7 @@ elseif (MSVC)
     COMMAND ${IResearch_STATIC_SCRT_LIBRARIES_CMD}
   )
 elseif (APPLE)
+  find_package(Iconv REQUIRED) # required for Boost locale
   unset(IResearch_STATIC_LIBRARIES)
 
   foreach(ELEMENT
@@ -564,6 +565,7 @@ elseif (APPLE)
     ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
     ${ICU_STATIC_LIBS}
     ${Unwind_STATIC_LIBS}
+    "$<TARGET_FILE:iconv_static>"
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
@@ -574,7 +576,7 @@ elseif (APPLE)
     set(IResearch_STATIC_LIBRARIES "${IResearch_STATIC_LIBRARIES} '${ELEMENT}'")
   endforeach ()
 
-  set(IResearch_STATIC_LIBRARIES_CMD "ar -q -s $<TARGET_FILE:${IResearch_TARGET_NAME}-static> ${IResearch_STATIC_LIBRARIES}")
+  set(IResearch_STATIC_LIBRARIES_CMD "mv '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'.base && libtool -static -o '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>' -a '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'.base ${IResearch_STATIC_LIBRARIES} || rm '$<TARGET_FILE:${IResearch_TARGET_NAME}-static>'")
   add_custom_command(
     TARGET ${IResearch_TARGET_NAME}-static POST_BUILD
     COMMAND sh -c ${IResearch_STATIC_LIBRARIES_CMD}
@@ -861,7 +863,7 @@ set_target_properties(${IResearch_TARGET_NAME}-format-1_0-shared
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME format-1_0
-  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
+  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;FST_NO_DYNAMIC_LINKING"
 )
 
 set_target_properties(${IResearch_TARGET_NAME}-format-1_0-static
@@ -869,7 +871,7 @@ set_target_properties(${IResearch_TARGET_NAME}-format-1_0-static
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME format-1_0-s
-  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"#;FST_NO_DYNAMIC_LINKING"
+  COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING"
 )
 
 # setup CRT
@@ -879,7 +881,7 @@ if(MSVC)
     PREFIX lib
     IMPORT_PREFIX lib
     OUTPUT_NAME format-1_0-scrt
-    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN"
+    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;FST_NO_DYNAMIC_LINKING"
   )
 
   set_target_properties(${IResearch_TARGET_NAME}-format-1_0-static-scrt
@@ -887,7 +889,7 @@ if(MSVC)
     PREFIX lib
     IMPORT_PREFIX lib
     OUTPUT_NAME format-1_0-scrt-s
-    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>"
+    COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;FST_NO_DYNAMIC_LINKING"
   )
 endif()
 

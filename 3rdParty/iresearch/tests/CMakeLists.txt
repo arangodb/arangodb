@@ -186,7 +186,7 @@ target_link_libraries(${IResearchTests_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-shared
   ${IResearch_TARGET_NAME}-analyzer-text-shared
   ${IResearch_TARGET_NAME}-format-1_0-shared
-  ${GTEST_SHARED_LIBS}
+  ${GTEST_STATIC_LIBS}
   ${PTHREAD_LIBRARY}
 )
 
@@ -244,10 +244,16 @@ include_directories(${IResearchTests_TARGET_NAME}-static
 ### @brief copy Boost shared dependencies
 ################################################################################
 foreach(ELEMENT ${Boost_SHARED_sharedRT_LIB_RESOURCES})
+  if (APPLE)
+    set(CP_OPTS "-f") # MacOS does not support hard-linking
+  else()
+    set(CP_OPTS "-lf")
+  endif()
+
   add_custom_command(
     TARGET ${IResearchTests_TARGET_NAME}-shared POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>"
-    COMMAND cp -lf ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>
+    COMMAND cp ${CP_OPTS} ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>
   )
 endforeach()
 
@@ -255,10 +261,16 @@ endforeach()
 ### @brief copy ICU shared dependencies
 ################################################################################
 foreach(ELEMENT ${ICU_SHARED_LIB_RESOURCES})
+  if (APPLE)
+    set(CP_OPTS "-f") # MacOS does not support hard-linking
+  else()
+    set(CP_OPTS "-lf")
+  endif()
+
   add_custom_command(
     TARGET ${IResearchTests_TARGET_NAME}-shared POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>"
-    COMMAND cp -lf ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>
+    COMMAND cp ${CP_OPTS} ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>
   )
 endforeach()
 
@@ -266,10 +278,16 @@ endforeach()
 ### @brief copy BFD shared dependencies
 ################################################################################
 foreach(ELEMENT ${BFD_SHARED_LIB_RESOURCES})
+  if (APPLE)
+    set(CP_OPTS "-f") # MacOS does not support hard-linking
+  else()
+    set(CP_OPTS "-lf")
+  endif()
+
   add_custom_command(
     TARGET ${IResearchTests_TARGET_NAME}-shared POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>"
-    COMMAND cp -lf ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>
+    COMMAND cp ${CP_OPTS} ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>
   )
 endforeach()
 
@@ -277,9 +295,15 @@ endforeach()
 ### @brief copy Unwind shared dependencies
 ################################################################################
 foreach(ELEMENT ${Unwind_SHARED_LIB_RESOURCES})
+  if (APPLE)
+    set(CP_OPTS "-f") # MacOS does not support hard-linking
+  else()
+    set(CP_OPTS "-lf")
+  endif()
+
   add_custom_command(
     TARGET ${IResearchTests_TARGET_NAME}-shared POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E echo "copying library resource:" "${ELEMENT}" " -> " "$<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>"
-    COMMAND cp -lf ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>
+    COMMAND cp ${CP_OPTS} ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared> || ${CMAKE_COMMAND} -E copy ${ELEMENT} $<TARGET_FILE_DIR:${IResearchTests_TARGET_NAME}-shared>
   )
 endforeach()
