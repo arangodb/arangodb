@@ -1,6 +1,9 @@
 v3.1.28 (XXXX-XX-XX)
 --------------------
 
+* fix potential overflow in CRC marker check when a corrupted CRC marker 
+  is found at the very beginning of an MMFiles datafile
+
 * fix double compaction runs
 
 * used the required mutex in Store::clear to avoid races
