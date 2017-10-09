@@ -285,6 +285,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
      std::shared_ptr<VPackBuffer<uint8_t>> bufferPtr;
      bufferPtr.reset(&buffer, arangodb::velocypack::BufferNonDeleter<uint8_t>());
      */
+    _builder.clear();
     _builder.openObject();
     // logger-follow command
     _builder.add("tick", VPackValue(static_cast<uint64_t>(marker->getTick())));
