@@ -69,6 +69,7 @@ TailingSyncer::TailingSyncer(ReplicationApplier* applier,
                              bool useTick, TRI_voc_tick_t barrierId)
     : Syncer(configuration),
       _applier(applier),
+      _hasWrittenState(false),
       _initialTick(initialTick),
       _useTick(useTick),
       _requireFromPresent(configuration._requireFromPresent),
