@@ -52,10 +52,10 @@ class ApplyThread : public Thread {
     TRI_ASSERT(_syncer);
 
     try {
-      int res = _syncer->run();
-      if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_REPLICATION_APPLIER_STOPPED) {
+      Result res = _syncer->run();
+      if (res.fail() && res.isNot(TRI_ERROR_REPLICATION_APPLIER_STOPPED)) {
         LOG_TOPIC(ERR, Logger::REPLICATION) << "error while running applier for " << _applier->databaseName() << ": "
-          << TRI_errno_string(res);
+          << res.errorMessage();
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC(WARN, Logger::REPLICATION) << "caught exception in ApplyThread for " << _applier->databaseName() << " : " << ex.what();
@@ -80,6 +80,7 @@ class ApplyThread : public Thread {
 ReplicationApplier::ReplicationApplier(ReplicationApplierConfiguration const& configuration,
                                        std::string&& databaseName) 
       : _configuration(configuration),
+        _terminateThread(false),
         _databaseName(std::move(databaseName)) {
     setProgress(std::string("applier initially created for ") + _databaseName);
 }
@@ -188,17 +189,20 @@ void ReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc
   }
   
   if (_configuration._endpoint.empty()) {
-    setErrorNoLock(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
+    Result r(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no endpoint configured");
+    setErrorNoLock(r);
+    THROW_ARANGO_EXCEPTION(r);
   }
     
   if (!isGlobal() && _configuration._database.empty()) {
-    setErrorNoLock(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no database configured");
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no database configured");
+    Result r(TRI_ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION, "no database configured");
+    setErrorNoLock(r);
+    THROW_ARANGO_EXCEPTION(r);
   }
 
   // reset error
   _state._lastError.reset();
+  _terminateThread.store(false);
   
   _thread.reset(new ApplyThread(this, buildSyncer(initialTick, useTick, barrierId)));
   
@@ -241,7 +245,7 @@ void ReplicationApplier::stopAndJoin(bool resetError) {
 /// active anymore, returns false
 bool ReplicationApplier::sleepIfStillActive(uint64_t sleepTime) {
   while (sleepTime > 0) {
-    if (!isRunning()) {
+    if (isTerminated()) {
       // already terminated
       return false; 
     }
@@ -420,13 +424,9 @@ std::string ReplicationApplier::endpoint() const {
 }
 
 /// @brief register an applier error
-int ReplicationApplier::setError(int errorCode, char const* msg) {
-  return setErrorNoLock(errorCode, std::string(msg));
-}
-
-int ReplicationApplier::setError(int errorCode, std::string const& msg) {
+void ReplicationApplier::setError(arangodb::Result const& r) {
   WRITE_LOCKER(writeLocker, _statusLock);
-  return setErrorNoLock(errorCode, msg);
+  setErrorNoLock(r);
 }
 
 /// @brief set the progress 
@@ -440,16 +440,15 @@ void ReplicationApplier::setProgress(std::string const& msg) {
 }
 
 /// @brief register an applier error
-int ReplicationApplier::setErrorNoLock(int errorCode, std::string const& msg) {
+void ReplicationApplier::setErrorNoLock(arangodb::Result const& rr) {
   // log error message
-  if (errorCode != TRI_ERROR_REPLICATION_APPLIER_STOPPED) {
+  if (rr.isNot(TRI_ERROR_REPLICATION_APPLIER_STOPPED)) {
     LOG_TOPIC(ERR, Logger::REPLICATION)
         << "replication applier error for " << _databaseName << ": "
-        << (msg.empty() ? TRI_errno_string(errorCode) : msg);
+        << rr.errorMessage();
   }
 
-  _state.setError(errorCode, msg.empty() ? TRI_errno_string(errorCode) : msg);
-  return errorCode;
+  _state.setError(rr.errorNumber(), rr.errorMessage());
 }
 
 void ReplicationApplier::setProgressNoLock(std::string const& msg) {
@@ -469,7 +468,7 @@ void ReplicationApplier::doStop(bool resetError, bool joinThread) {
 
   // always stop initial synchronization
   _state._stopInitialSynchronization = true;
-
+  
   if (!_state.isRunning() || _state.isShuttingDown()) {
     // not active or somebody else is shutting us down
     return;
@@ -478,6 +477,7 @@ void ReplicationApplier::doStop(bool resetError, bool joinThread) {
   LOG_TOPIC(DEBUG, Logger::REPLICATION)
       << "requesting replication applier stop for " << _databaseName;
   
+  _terminateThread.store(true);
   _state._state = ReplicationApplierState::ActivityState::SHUTTING_DOWN;
 
   if (resetError) {
@@ -492,6 +492,7 @@ void ReplicationApplier::doStop(bool resetError, bool joinThread) {
     }
     _thread.reset();
   }
+  _terminateThread.store(false);
 }
   
 /// @brief read a tick value from a VelocyPack struct

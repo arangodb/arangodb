@@ -256,7 +256,7 @@ function BaseTestConfig() {
           if (db._engine().name === "rocksdb") {
             // rocksdb keeps wal longer
             let cc = db._collection(cn).count();
-            assertEqual(cc, 31, "rocksdb must keep wal");
+            assertEqual(cc, 31, "rocksdb must keep wal, documents not there");
           } else {
             // data loss on slave!
             let cc = db._collection(cn).count();
@@ -347,7 +347,7 @@ function BaseTestConfig() {
         function (state) {
           if (db._engine().name === "rocksdb") {
             // rocksdb keeps wal longer
-            assertTrue(replication.applier.state().state.running);            
+            assertTrue(replication.applier.state().state.running, "Applier should be running");            
             assertEqual(db._collection(cn).count(), 30, "rocksdb must keep wal");
           } else {
             // slave should have failed

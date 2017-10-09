@@ -34,7 +34,10 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
-
+class InitialSyncer;
+class ReplicationApplier;
+class ReplicationTransaction;
+  
 namespace httpclient {
 class SimpleHttpResult;
 }
@@ -43,23 +46,28 @@ namespace velocypack {
 class Slice;
 }
 
-class ReplicationTransaction;
-
 class TailingSyncer : public Syncer {
  public:
-  TailingSyncer(ReplicationApplierConfiguration const&,
-                TRI_voc_tick_t initialTick, TRI_voc_tick_t barrierId);
+  TailingSyncer(ReplicationApplier* applier,
+                ReplicationApplierConfiguration const&,
+                TRI_voc_tick_t initialTick,
+                bool useTick, TRI_voc_tick_t barrierId);
 
   virtual ~TailingSyncer();
 
  public:
+  
   /// @brief run method, performs continuous synchronization
-  virtual int run() = 0;
+  Result run();
 
  protected:
+  
+  /// @brief decide based on _masterInfo which api to use
+  virtual std::string tailingBaseUrl(std::string const& command);
+  
   /// @brief set the applier progress
-  virtual void setProgress(std::string const&);
-
+  void setProgress(std::string const&);
+  
   /// @brief abort all ongoing transactions
   void abortOngoingTransactions();
 
@@ -98,17 +106,51 @@ class TailingSyncer : public Syncer {
   /// @brief apply the data from the continuous log
   Result applyLog(httpclient::SimpleHttpResult*, TRI_voc_tick_t firstRegularTick, 
                   uint64_t& processedMarkers, uint64_t& ignoreCount);
-
-  /// @brief called before marker is processed
-  virtual void preApplyMarker(TRI_voc_tick_t firstRegularTick,
-                             TRI_voc_tick_t newTick) {}
-  /// @brief called after a marker was processed
-  virtual void postApplyMarker(uint64_t processedMarkers, bool skipped) {}
+  
+  /// @brief get local replication applier state
+  void getLocalState();
+  
+  /// @brief perform a continuous sync with the master
+  Result runContinuousSync();
+  
+  /// @brief fetch the open transactions we still need to complete
+  Result fetchOpenTransactions(TRI_voc_tick_t fromTick,
+                               TRI_voc_tick_t toTick, TRI_voc_tick_t& startTick);
+  
+  /// @brief run the continuous synchronization
+  Result followMasterLog(TRI_voc_tick_t& fetchTick, TRI_voc_tick_t firstRegularTick,
+                         uint64_t& ignoreCount, bool& worked, bool& masterActive);
+  
+protected:
+  
+  /// @brief save the current applier state
+  virtual Result saveApplierState() = 0;
+  
+  /// @brief create correct initial syncer
+  virtual std::unique_ptr<InitialSyncer> initialSyncer() = 0;
 
  protected:
+  
+  /// @brief pointer to the applier
+  ReplicationApplier* _applier;
+  
+  /// @brief whether or not the replication state file has been written at least
+  /// once with non-empty values. this is required in situations when the
+  /// replication applier is manually started and the master has absolutely no
+  /// new data to provide, and the slave get shut down. in that case, the state
+  /// file would never have been written with the initial start tick, so the
+  /// start tick would be lost. re-starting the slave and the replication
+  /// applier
+  /// with the ticks from the file would then result in a "no start tick
+  /// provided"
+  /// error
+  bool _hasWrittenState;
 
   /// @brief initial tick for continuous synchronization
   TRI_voc_tick_t _initialTick;
+  
+  /// @brief use the initial tick
+  bool _useTick;
 
   /// @brief whether or not the specified from tick must be present when
   /// fetching
@@ -130,6 +172,8 @@ class TailingSyncer : public Syncer {
 
   /// @brief recycled builder for repeated document creation
   arangodb::velocypack::Builder _documentBuilder;
+  
+  static std::string const WalAccessUrl;
 };
 }
 

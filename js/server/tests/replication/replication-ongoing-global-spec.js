@@ -1,4 +1,4 @@
-/* global describe, it, arango, ARGUMENTS, after, before */
+/* global describe, it, arango, ARGUMENTS, after, before, beforeEach */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the replication
@@ -47,6 +47,19 @@ const password = "";
 const dbName = "UnitTestDB";
 const docColName = "UnitTestDocs";
 const edgeColName = "UnitTestEdges";
+
+const config = {
+  endpoint: masterEndpoint,
+  username: username,
+  password: password,
+  verbose: true,
+  /* TODO Do we need those parameters?
+  includeSystem: true,
+  restrictType: "",
+  restrictCollections: [],
+  keepBarrier: false
+  */
+};
 
 // We allow the replication a delay of this many seconds at most
 const delay = 10;
@@ -132,19 +145,23 @@ const connectToSlave = function() {
 };
 
 const testCollectionExists = function(name) {
-  expect(db._collections().indexOf(name)).to.not.equal(-1, `Collection ${name} does not exist although it should`);
+  expect(db._collections().indexOf(name)).to.not.equal(-1, 
+    `Collection ${name} does not exist although it should`);
 };
 
 const testCollectionDoesNotExists = function(name) {
-  expect(db._collections().indexOf(name)).to.equal(-1, `Collection ${name} does exist although it should not`);
+  expect(db._collections().indexOf(name)).to.equal(-1, 
+    `Collection ${name} does exist although it should not`);
 };
 
 const testDBDoesExist= function(name) {
-  expect(db._databases().indexOf(name)).to.not.equal(-1, `Database ${name} does not exist although it should`);
+  expect(db._databases().indexOf(name)).to.not.equal(-1, 
+    `Database ${name} does not exist although it should`);
 };
 
 const testDBDoesNotExist = function(name) {
-  expect(db._databases().indexOf(name)).to.equal(-1, `Database ${name} does exist although it should not`);
+  expect(db._databases().indexOf(name)).to.equal(-1, 
+    `Database ${name} does exist although it should not`);
 };
 
 const cleanUpAllData = function () {
@@ -171,7 +188,15 @@ const cleanUpAllData = function () {
   testCollectionDoesNotExists(edgeColName);
 };
 
-const cleanUp = function() {
+const startReplication = function() {
+    // Setup global replication
+    connectToSlave();
+
+    replication.setupReplicationGlobal(config);
+    waitForReplication();
+};
+
+const stopReplication = function () {
   // Clear the slave
   connectToSlave(); 
 
@@ -191,6 +216,10 @@ const cleanUp = function() {
     require("internal").wait(0.1, false);
   }
 
+};
+
+const cleanUp = function() {
+  stopReplication();
   cleanUpAllData();
 
   connectToMaster();
@@ -201,21 +230,10 @@ describe('Global Replication on a fresh boot', function () {
 
   before(function() {
     cleanUp();
+
+    startReplication();
     // Setup global replication
     connectToSlave();
-
-    let config = {
-      endpoint: masterEndpoint,
-      username: username,
-      password: password,
-      verbose: true,
-      /* TODO Do we need those parameters?
-      includeSystem: true,
-      restrictType: "",
-      restrictCollections: [],
-      keepBarrier: false
-      */
-    };
 
     replication.setupReplicationGlobal(config);
   });
@@ -700,22 +718,7 @@ describe('Setup global replication on empty slave and master has some data', fun
     testCollectionDoesNotExists(docColName);
     testCollectionDoesNotExists(edgeColName);
 
-    // Setup global replication
-    let config = {
-      endpoint: masterEndpoint,
-      username: username,
-      password: password,
-      verbose: true,
-      /* TODO Do we need those parameters?
-      includeSystem: true,
-      restrictType: "",
-      restrictCollections: [],
-      keepBarrier: false
-      */
-    };
-
-    replication.setupReplicationGlobal(config);
-    waitForReplication();
+    startReplication();
   });
 
   after(cleanUp);
@@ -822,6 +825,142 @@ describe('Setup global replication on empty slave and master has some data', fun
         expect(db._collection(docColName).count()).to.equal(100);
       });
 
+    });
+  });
+});
+
+describe('Test switch off and restart replication', function() {
+
+  before(function() {
+    cleanUp();
+
+    startReplication();
+
+    fillMasterWithInitialData();
+  });
+
+  after(cleanUp);
+
+  describe('in _system database', function() {
+
+    beforeEach(function() {
+      connectToSlave();
+      if (!replication.globalApplier.state().state.running) {
+        startReplication();
+      }
+      connectToMaster();
+    });
+
+    after(function() {
+      connectToSlave();
+      stopReplication();
+      try {
+        db._drop("UnittestOtherCollection");
+      } catch (e) {}
+
+      try {
+        db._drop("UnittestOtherCollectionIdx");
+      } catch (e) {}
+
+      connectToMaster();
+      try {
+        db._drop("UnittestOtherCollection");
+      } catch (e) {}
+
+      try {
+        db._drop("UnittestOtherCollectionIdx");
+      } catch (e) {}
+    });
+
+    it('should replicate offline creation / deletion of collection', function() {
+      const col = "UnittestOtherCollection";
+
+      stopReplication();
+
+      connectToMaster();
+
+      let mcol = db._create(col);
+      let mProps = mcol.properties();
+      let mIdxs = mcol.getIndexes();
+
+      startReplication();
+
+      connectToSlave();
+      testCollectionExists(col);
+      let scol = db._collection(col);
+      expect(scol.type()).to.equal(2);
+      expect(scol.properties()).to.deep.equal(mProps);
+      expect(scol.getIndexes()).to.deep.equal(mIdxs);
+
+      // Second part. Delete collection
+
+      stopReplication();
+
+      connectToMaster();
+      db._drop(col);
+
+      startReplication();
+
+      connectToSlave();
+      testCollectionDoesNotExists(col);
+    });
+
+
+    it('should replicate offline creation of an index', function () {
+      const col = "UnittestOtherCollectionIdx";
+
+      connectToMaster();
+
+      db._create(col);
+
+      waitForReplication();
+      stopReplication();
+
+      connectToMaster();
+      let mcol = db._collection(col);
+      mcol.ensureHashIndex('value');
+
+      let midxs = db._collection(col).getIndexes();
+
+      startReplication();
+
+      connectToSlave();
+      let scol = db._collection(col);
+      let sidxs = scol.getIndexes();
+      expect(sidxs).to.deep.equal(midxs);
+
+      connectToMaster();
+      db._drop(col);
+    });
+
+    it('should replicate offline insert of documents', function () {
+      stopReplication();
+
+      connectToMaster();
+
+      testCollectionExists(docColName);
+
+      let docs = [];
+
+      for (let val = 101; val < 200; ++val) {
+        docs.push({value: val});
+      }
+
+      let mcol = db._collection(docColName);
+      mcol.save(docs);
+      let mcount = mcol.count();
+      let mchksm = mcol.checksum(true, true);
+
+      startReplication();
+
+      connectToSlave();
+
+      let scol = db._collection(docColName);
+      let scount = scol.count();
+      let schksm = scol.checksum(true, true);
+
+      expect(scount).to.equal(mcount);
+      expect(schksm).to.equal(mchksm);
     });
   });
 });

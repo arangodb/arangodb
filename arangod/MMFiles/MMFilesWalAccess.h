@@ -49,12 +49,14 @@ namespace arangodb {
     /// should return the list of transactions started, but not committed in that
     /// range (range can be adjusted)
     WalAccessResult openTransactions(uint64_t tickStart, uint64_t tickEnd,
-                                     WalAccess::WalFilter const& filter,
+                                     WalAccess::Filter const& filter,
                                      TransactionCallback const&) const override;
     
     /// Tails the wall, this will already sanitize the
-    WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd, size_t chunkSize,
-                         bool includeSystem, WalFilter const& filter,
+    WalAccessResult tail(std::unordered_set<TRI_voc_tid_t> const& transactionIds,
+                         TRI_voc_tick_t firstRegularTick,
+                         uint64_t tickStart, uint64_t tickEnd, size_t chunkSize,
+                         bool includeSystem, WalAccess::Filter const& filter,
                          MarkerCallback const&) const override;
     
   };

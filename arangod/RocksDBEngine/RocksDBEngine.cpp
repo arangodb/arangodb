@@ -884,7 +884,7 @@ TRI_vocbase_t* RocksDBEngine::createDatabase(
 int RocksDBEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,
                                              VPackSlice const& slice) {
   Result res = writeDatabaseMarker(id, slice,
-                                           RocksDBLogValue::DatabaseCreate(id));
+                                   RocksDBLogValue::DatabaseCreate(id));
   return res.errorNumber();
 }
 
@@ -1046,7 +1046,8 @@ arangodb::Result RocksDBEngine::dropCollection(
 
   // Prepare collection remove batch
   RocksDBLogValue logValue =
-      RocksDBLogValue::CollectionDrop(vocbase->id(), collection->cid(), StringRef(collection->globallyUniqueId()));
+      RocksDBLogValue::CollectionDrop(vocbase->id(), collection->cid(),
+                                      StringRef(collection->globallyUniqueId()));
   rocksdb::WriteBatch batch;
   batch.PutLogData(logValue.slice());
   RocksDBKey key;

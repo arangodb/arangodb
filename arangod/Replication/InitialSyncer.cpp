@@ -84,7 +84,7 @@ Result InitialSyncer::sendStartBatch() {
   
   _batchId = 0;
   std::string const url =
-      BaseUrl + "/batch" + "?serverId=" + _localServerIdString;
+      ReplicationUrl + "/batch" + "?serverId=" + _localServerIdString;
   std::string const body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
 
   // send request
@@ -140,7 +140,7 @@ Result InitialSyncer::sendExtendBatch() {
     return Result();
   }
 
-  std::string const url = BaseUrl + "/batch/" + StringUtils::itoa(_batchId) +
+  std::string const url = ReplicationUrl + "/batch/" + StringUtils::itoa(_batchId) +
                           "?serverId=" + _localServerIdString;
   std::string const body = "{\"ttl\":" + StringUtils::itoa(_batchTtl) + "}";
 
@@ -172,7 +172,7 @@ Result InitialSyncer::sendFinishBatch() {
   }
 
   try {
-    std::string const url = BaseUrl + "/batch/" + StringUtils::itoa(_batchId) +
+    std::string const url = ReplicationUrl + "/batch/" + StringUtils::itoa(_batchId) +
                             "?serverId=" + _localServerIdString;
 
     // send request

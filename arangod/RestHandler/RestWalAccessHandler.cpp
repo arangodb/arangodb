@@ -34,7 +34,7 @@
 #include "StorageEngine/WalAccess.h"
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionNameResolver.h"
-
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/replication-common.h"
 
 #include <velocypack/Builder.h>
@@ -65,7 +65,35 @@ struct MyTypeHandler final : public VPackCustomTypeHandler {
 
 RestWalAccessHandler::RestWalAccessHandler(GeneralRequest* request,
                                            GeneralResponse* response)
-    : RestBaseHandler(request, response) {}
+    : RestVocbaseBaseHandler(request, response) {}
+
+bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
+  bool found = false;
+  std::string const& value6 = _request->value("global", found);
+  if (found && StringUtils::boolean(value6)) {
+    if (!_vocbase->isSystem()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+                    "global tailing is only possible from within _system database");
+      return false;
+    }
+  } else {
+    // filter for collection
+    filter.vocbase = _vocbase->id();
+    
+    // extract collection
+    std::string const& value6 = _request->value("collection", found);
+    if (found) {
+      LogicalCollection* c = _vocbase->lookupCollection(value6);
+      if (c == nullptr) {
+        generateError(rest::ResponseCode::NOT_FOUND,
+                      TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+        return false;
+      }
+      filter.collection = c->cid();
+    }
+  }
+  return true;
+}
 
 RestStatus RestWalAccessHandler::execute() {
   if (_request->execContext() != nullptr &&
@@ -101,7 +129,7 @@ RestStatus RestWalAccessHandler::execute() {
     handleCommandDetermineOpenTransactions(wal);
   } else {
     generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "expected GET _api/wal/[tail|range|lastTick]>");
+            "expected GET _api/wal/[tail|range|lastTick|open-transactions]>");
   }
 
   return RestStatus::DONE;
@@ -190,22 +218,47 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     chunkSize = static_cast<size_t>(StringUtils::uint64(value5));
   }
   
-  // extract collection filer
-  /*TRI_voc_cid_t cid = 0;
-   std::string const& value6 = _request->value("collection", found);
-   if (found) {
-   arangodb::LogicalCollection* c = _vocbase->lookupCollection(value6);
-   
-   if (c == nullptr) {
-   generateError(rest::ResponseCode::NOT_FOUND,
-   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
-   return;
-   }
-   
-   cid = c->cid();
-   }*/
-  // FIXME
-  WalAccess::WalFilter filter;
+  WalAccess::Filter filter;
+  if (!parseFilter(filter)) {
+    return;
+  }
+  
+  
+  // grab list of transactions from the body value
+  std::unordered_set<TRI_voc_tid_t> transactionIds;
+  TRI_voc_tick_t firstRegularTick = 0;
+  if (_request->requestType() == arangodb::rest::RequestType::PUT) {
+    std::string const& value5 = _request->value("firstRegularTick", found);
+    if (found) {
+      firstRegularTick =
+      static_cast<TRI_voc_tick_t>(StringUtils::uint64(value5));
+    }
+    // copy default options
+    VPackOptions options = VPackOptions::Defaults;
+    options.checkAttributeUniqueness = true;
+    VPackSlice slice;
+    try {
+      slice = _request->payload(&options);
+    } catch (...) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid body value. expecting array");
+      return;
+    }
+    if (!slice.isArray()) {
+      generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                    "invalid body value. expecting array");
+      return;
+    }
+    
+    for (auto const& id : VPackArrayIterator(slice)) {
+      if (!id.isString()) {
+        generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                      "invalid body value. expecting array of ids");
+        return;
+      }
+      transactionIds.emplace(StringUtils::uint64(id.copyString()));
+    }
+  }
   
   WalAccessResult result;
   std::map<TRI_voc_tick_t, MyTypeHandler> handlers;
@@ -223,10 +276,13 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   
   size_t length = 0;
   if (useVst) {
-    result = wal->tail(tickStart, tickEnd, chunkSize, includeSystem, filter,
+    result = wal->tail(transactionIds, firstRegularTick,
+                       tickStart, tickEnd, chunkSize, includeSystem, filter,
                        [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
                          length++;
-                         prepOpts(vocbase);
+                         if (vocbase != nullptr) {// database drop has no vocbase
+                           prepOpts(vocbase);
+                         }
                          _response->addPayload(marker, &opts, true);
                        });
   } else {
@@ -240,12 +296,16 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
     // note: we need the CustomTypeHandler here
     VPackDumper dumper(&adapter, &opts);
-    result = wal->tail(tickStart, tickEnd, chunkSize, includeSystem, filter,
+    result = wal->tail(transactionIds, firstRegularTick,
+                       tickStart, tickEnd, chunkSize, includeSystem, filter,
                        [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
                          length++;
-                         prepOpts(vocbase);
+                         if (vocbase != nullptr) {// database drop has no vocbase
+                           prepOpts(vocbase);
+                         }
                          dumper.dump(marker);
                          buffer.appendChar('\n');
+                         //LOG_TOPIC(ERR, Logger::FIXME) << marker.toJson();
                        });
   }
   
@@ -285,7 +345,6 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
       vocbase->updateReplicationClient(serverId, result.lastTick());
     });
   } else {
-    // clears contents
     _response->setResponseCode(rest::ResponseCode::NO_CONTENT);
   }
 }
@@ -316,7 +375,11 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(WalAccess cons
     return;
   }
   
-  WalAccess::WalFilter filter;
+  // check whether a database was specified
+  WalAccess::Filter filter;
+  if (!parseFilter(filter)) {
+    return;
+  }
   
   VPackBuffer<uint8_t> buffer;
   VPackBuilder response(buffer);

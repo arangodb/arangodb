@@ -71,7 +71,7 @@ TRI_voc_tick_t RocksDBWalAccess::lastTick() const {
 /// should return the list of transactions started, but not committed in that
 /// range (range can be adjusted)
 WalAccessResult RocksDBWalAccess::openTransactions(uint64_t tickStart, uint64_t tickEnd,
-                                                   WalAccess::WalFilter const& filter,
+                                                   WalAccess::Filter const& filter,
                                                    TransactionCallback const&) const {
   return WalAccessResult(TRI_ERROR_NO_ERROR, true, 0);
 }
@@ -79,11 +79,11 @@ WalAccessResult RocksDBWalAccess::openTransactions(uint64_t tickStart, uint64_t 
 /// WAL parser
 class MyWALParser : public rocksdb::WriteBatch::Handler {
  public:
-  MyWALParser(bool includeSystem, WalAccess::WalFilter const& filter,
+  MyWALParser(bool includeSystem, WalAccess::Filter const& filter,
               WalAccess::MarkerCallback const& f)
       : _documentsCF(RocksDBColumnFamily::documents()->GetID()),
         _definitionsCF(RocksDBColumnFamily::definitions()->GetID()),
-        _include(filter),
+        _filter(filter),
         _includeSystem(includeSystem),
         _callback(f),
         _startSequence(0),
@@ -91,10 +91,11 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
         _responseSize(0) {}
 
   void LogData(rocksdb::Slice const& blob) override {
+    tick();
     RocksDBLogType type = RocksDBLogValue::type(blob);
     TRI_DEFER(_lastLogType = type);
-
-    tick();
+    
+    //LOG_TOPIC(ERR, Logger::FIXME) << "[LOG] " << rocksDBLogTypeName(type);
     switch (type) {
       case RocksDBLogType::DatabaseCreate:{
         _currentDbId = RocksDBLogValue::databaseId(blob);
@@ -102,7 +103,15 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
       }
       case RocksDBLogType::DatabaseDrop: {
         _currentDbId = RocksDBLogValue::databaseId(blob);
-        _dropDatabaseName = RocksDBLogValue::databaseName(blob).toString();
+        std::string name = RocksDBLogValue::databaseName(blob).toString();
+        {
+          VPackObjectBuilder marker(&_builder, true);
+          marker->add("tick", VPackValue(std::to_string(_currentSequence)));
+          marker->add("type", VPackValue(rocksutils::convertLogType(type)));
+          marker->add("db", VPackValue(name));
+        }
+        _callback(loadVocbase(_currentDbId), _builder.slice());
+        _builder.clear();
         break;
       }
       case RocksDBLogType::CollectionRename:
@@ -215,21 +224,25 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
     if (!shouldHandleMarker(column_family_id, key)) {
       return rocksdb::Status();
     }
+    //LOG_TOPIC(ERR, Logger::ROCKSDB) << "[PUT] cf: " << column_family_id << ", key:" << key.ToString()
+    //<< "  value: " << value.ToString();
 
     if (column_family_id == _definitionsCF) {
       if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
-        TRI_ASSERT(_lastLogType == RocksDBLogType::DatabaseCreate);
-        {
-          VPackObjectBuilder marker(&_builder, true);
-          marker->add("tick", VPackValue(std::to_string(_currentSequence)));
-          marker->add("type",
-                      VPackValue(rocksutils::convertLogType(_lastLogType)));
-          marker->add("db", VPackValue(loadVocbase(_currentDbId)->name()));
-          marker->add("data", RocksDBValue::data(value));
+        TRI_ASSERT(_lastLogType == RocksDBLogType::DatabaseCreate
+                   || _lastLogType == RocksDBLogType::DatabaseDrop);
+        if (_lastLogType == RocksDBLogType::DatabaseCreate) {
+          {
+            VPackObjectBuilder marker(&_builder, true);
+            marker->add("tick", VPackValue(std::to_string(_currentSequence)));
+            marker->add("type",
+                        VPackValue(rocksutils::convertLogType(_lastLogType)));
+            marker->add("db", VPackValue(loadVocbase(_currentDbId)->name()));
+            marker->add("data", RocksDBValue::data(value));
+          }
+          _callback(loadVocbase(_currentDbId), _builder.slice());
+          _builder.clear();
         }
-        _callback(loadVocbase(_currentDbId), _builder.slice());
-        _builder.clear();
-
       } else if (RocksDBKey::type(key) == RocksDBEntryType::Collection) {
         if (_lastLogType == RocksDBLogType::IndexCreate ||
             _lastLogType == RocksDBLogType::IndexDrop) {
@@ -249,7 +262,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
           marker->add("cuid", VPackValue(cidToUUID(_currentDbId, _currentCid)));
           if (_lastLogType == RocksDBLogType::CollectionRename) {
             VPackObjectBuilder data(&_builder, "data", true);
-            data->add("id", VPackValue(std::to_string(_currentCid)));
             data->add("name", VPackValue(cidToName(_currentDbId, _currentCid)));
           } else {  // change and create need full data
             VPackSlice data = RocksDBValue::data(value);
@@ -309,19 +321,13 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
     if (!shouldHandleMarker(column_family_id, key)) {
       return rocksdb::Status();
     }
+    //LOG_TOPIC(ERR, Logger::ROCKSDB) << "[Delete] cf: " << column_family_id << " key:" << key.ToString();
 
     if (column_family_id == _definitionsCF) {
       if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
-        TRI_ASSERT(_lastLogType == RocksDBLogType::DatabaseDrop);
-        {
-          VPackObjectBuilder marker(&_builder, true);
-          marker->add("tick", VPackValue(std::to_string(_currentSequence)));
-          marker->add("type",
-                      VPackValue(rocksutils::convertLogType(_lastLogType)));
-          marker->add("db", VPackValue(_dropDatabaseName));
-        }
-        _callback(loadVocbase(_currentDbId), _builder.slice());
-        _builder.clear();
+        // we already print this marker upon reading the log marker.
+        // databases are deleted when the last reference to it disappears
+        // not when _dropDatabase is called
       } else if (RocksDBKey::type(key) == RocksDBEntryType::Collection) {
         TRI_ASSERT(_lastLogType == RocksDBLogType::CollectionDrop);
         TRI_ASSERT(_currentDbId != 0 && _currentCid != 0);
@@ -335,9 +341,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
           } else {
             marker->add("cuid", VPackValue(_dropCollectionUUID));
           }
-          VPackObjectBuilder data(&_builder, "data", true);
-          data->add("id", VPackValue(std::to_string(_currentCid)));
-          data->add("name", VPackValue(""));  // not used at all
         }
         _callback(loadVocbase(_currentDbId), _builder.slice());
         _builder.clear();
@@ -352,7 +355,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
           _lastLogType != RocksDBLogType::SingleRemove) {
         return rocksdb::Status();
       }
-      // TRI_ASSERT(_lastLogType == RocksDBLogType::DocumentRemove ||
+      //TRI_ASSERT(_lastLogType == RocksDBLogType::DocumentRemove ||
       //           _lastLogType == RocksDBLogType::SingleRemove);
       TRI_ASSERT(!_seenBeginTransaction || _currentTrxId != 0);
       TRI_ASSERT(_currentDbId != 0 && _currentCid != 0);
@@ -399,8 +402,10 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
       _builder.add("db", VPackValue(loadVocbase(_currentDbId)->name()));
       _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
       _builder.close();
+      _callback(loadVocbase(_currentDbId), _builder.slice());
+      _builder.clear();
     }
-    // rest all states
+    // reset all states
     _lastLogType = RocksDBLogType::Invalid;
     _seenBeginTransaction = false;
     _singleOp = false;
@@ -408,7 +413,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
     _currentDbId = 0;
     _currentTrxId = 0;
     _currentCid = 0;
-    _dropDatabaseName.clear();
     _dropCollectionUUID.clear();
     _removeDocumentKey.clear();
     _indexSlice = VPackSlice::illegalSlice();
@@ -436,29 +440,44 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
 
   bool shouldHandleMarker(uint32_t column_family_id,
                           rocksdb::Slice const& key) {
-    TRI_voc_cid_t cid;
+    TRI_voc_tick_t dbId = 0;
+    TRI_voc_cid_t cid = 0;
     if (column_family_id == _definitionsCF) {
       if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
-        return true;
-      } else if (RocksDBKey::type(key) == RocksDBEntryType::Collection ||
-                 RocksDBKey::type(key) == RocksDBEntryType::View) {
+        return _filter.vocbase == 0;
+      } else if (RocksDBKey::type(key) == RocksDBEntryType::Collection) {
+        //  || RocksDBKey::type(key) == RocksDBEntryType::View
+        dbId = RocksDBKey::databaseId(key);
         cid = RocksDBKey::collectionId(key);
+        if (dbId == 0 || cid == 0) {
+          // FIXME: I don't get why this happens, seems broken
+          // to get a key with zero entries here
+          return false;
+        }
       } else {
         return false;
       }
     } else if (column_family_id == _documentsCF) {
+      dbId = _currentDbId;
       cid = _currentCid;
+       // happens when dropping a collection
+      if (!(_seenBeginTransaction || _singleOp)) {
+        TRI_ASSERT(dbId == 0 && cid == 0);
+        return false;
+      }
     } else {
       return false;
     }
-
-    if (!_include.empty() && !shouldHandleCollection(_currentDbId, cid)) {
+    if (!shouldHandleCollection(dbId, cid)) {
       return false;
     }
 
     if (_lastLogType != RocksDBLogType::CollectionDrop) {
-      // no document removes of dropped collections
-      TRI_vocbase_t* vocbase = loadVocbase(_currentDbId);
+      // no document removes of dropped collections / vocbases
+      TRI_vocbase_t* vocbase = loadVocbase(dbId);
+      if (vocbase == nullptr) {
+        return false;
+      }
       std::string const collectionName = vocbase->collectionName(cid);
       if (collectionName.empty()) {
         return false;
@@ -474,19 +493,21 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
   }
 
   bool shouldHandleCollection(TRI_voc_tick_t dbid, TRI_voc_cid_t cid) {
-    auto const& it = _include.find(dbid);
-    if (it != _include.end()) {
-      auto const& it2 = it->second.find(cid);
-      return it2 != it->second.end();
+    TRI_ASSERT(dbid != 0 && cid != 0);
+    if (_filter.vocbase == 0) { // tail everything
+      return true;
     }
-    return false;
+    return _filter.vocbase == dbid &&
+    (_filter.collection == 0 || _filter.collection == cid);
   }
 
   TRI_vocbase_t* loadVocbase(TRI_voc_tick_t dbid) {
+    TRI_ASSERT(dbid != 0);
     auto const& it = _vocbases.find(dbid);
     if (it == _vocbases.end()) {
       TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->useDatabase(dbid);
       if (vocbase != nullptr) {
+        TRI_DEFER(vocbase->release());
         _vocbases.emplace(dbid, DatabaseGuard(vocbase));
       }
       return vocbase;
@@ -517,7 +538,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
   uint32_t const _definitionsCF;
 
   /// arbitrary collection filter (inclusive)
-  WalAccess::WalFilter _include;
+  WalAccess::Filter _filter;
   /// ignore system collections
   bool const _includeSystem;
 
@@ -543,7 +564,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
   TRI_voc_tick_t _currentDbId = 0;
   TRI_voc_tick_t _currentTrxId = 0;
   TRI_voc_cid_t _currentCid = 0;
-  std::string _dropDatabaseName;
   std::string _dropCollectionUUID;
   std::string _removeDocumentKey;
   VPackSlice _indexSlice;
@@ -551,12 +571,18 @@ class MyWALParser : public rocksdb::WriteBatch::Handler {
 
 // iterates over WAL starting at 'from' and returns up to 'chunkSize' documents
 // from the corresponding database
-WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
+WalAccessResult RocksDBWalAccess::tail(std::unordered_set<TRI_voc_tid_t> const& transactionIds,
+                                       TRI_voc_tick_t firstRegularTick,
+                                       uint64_t tickStart, uint64_t tickEnd,
                                        size_t chunkSize, bool includeSystem,
-                                       WalFilter const& filter,
+                                       Filter const& filter,
                                        MarkerCallback const& func) const {
+  TRI_ASSERT(transactionIds.empty()); // not supported in any way
+  //LOG_TOPIC(ERR, Logger::FIXME) << "1. Starting tailing: tickStart " << tickStart
+  //<< " tickEnd " << tickEnd << " chunkSize " << chunkSize << " includeSystem " << includeSystem;
+  
   // first tick actually read
-  uint64_t firstTick = std::max(tickStart - 1, (uint64_t)0);
+  uint64_t firstTick = UINT64_MAX;
   uint64_t lastTick = tickStart; // lastTick at start of a write batch)
   uint64_t lastWrittenTick = tickStart; // lastTick at the end of a write batch
 
@@ -582,20 +608,22 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
       LOG_TOPIC(ERR, Logger::ENGINES) << "error during WAL scan: " << s.ToString();
       break; // s is considered in the end
     }
-
+    
     rocksdb::BatchResult batch = iterator->GetBatch();
     TRI_ASSERT(lastTick == tickStart || batch.sequence >= lastTick);
-    if (batch.sequence <= tickStart) {
+    // record the first tick we are actually considering
+    if (firstTick == UINT64_MAX) {
+      firstTick = batch.sequence;
+    }
+    
+    // TODO why is inclusive <= correct here?
+    if (batch.sequence < tickStart) {
       iterator->Next();  // skip
       continue;
     } else if (batch.sequence > tickEnd) {
       break; // cancel out
     }
 
-    // record the first tick we are actually printing
-    if (firstTick <= tickStart) {
-      firstTick = batch.sequence;
-    }
     lastTick = batch.sequence; // start of the batch
     
     handler->startNewBatch(batch.sequence);
@@ -612,8 +640,9 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
   }
 
   WalAccessResult result(TRI_ERROR_NO_ERROR, firstTick <= tickStart, lastWrittenTick);
-  if (!s.ok()) {  // TODO do something?
+  if (!s.ok()) {
     result.Result::reset(convertStatus(s, rocksutils::StatusHint::wal));
   }
+  //LOG_TOPIC(ERR, Logger::FIXME) << "2. firstTick " << firstTick << " lastWrittenTick " << lastWrittenTick;
   return result;
 }

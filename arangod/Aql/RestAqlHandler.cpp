@@ -56,8 +56,6 @@ RestAqlHandler::RestAqlHandler(GeneralRequest* request,
                                GeneralResponse* response,
                                QueryRegistry* queryRegistry)
     : RestVocbaseBaseHandler(request, response),
-      _context(static_cast<VocbaseContext*>(request->requestContext())),
-      _vocbase(_context->vocbase()),
       _queryRegistry(queryRegistry),
       _qId(0) {
   TRI_ASSERT(_vocbase != nullptr);

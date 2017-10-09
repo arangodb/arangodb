@@ -24,13 +24,13 @@
 #ifndef ARANGOD_REST_HANDLER_REST_WAL_ACCESS_HANDLER_H
 #define ARANGOD_REST_HANDLER_REST_WAL_ACCESS_HANDLER_H 1
 
-#include "RestHandler/RestBaseHandler.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
+#include "StorageEngine/WalAccess.h"
 
 namespace arangodb {
-class WalAccess;
-  
+
 /// Storage engine agnostic handler for using the WalAccess interface
-class RestWalAccessHandler : public arangodb::RestBaseHandler {
+class RestWalAccessHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   RestWalAccessHandler(GeneralRequest*, GeneralResponse*);
 
@@ -40,6 +40,9 @@ class RestWalAccessHandler : public arangodb::RestBaseHandler {
   RestStatus execute() override;
   
 private:
+  
+  bool parseFilter(WalAccess::Filter& filter);
+  
   void handleCommandTickRange(WalAccess const* wal);
   void handleCommandLastTick(WalAccess const* wal);
   void handleCommandTail(WalAccess const* wal);

@@ -109,19 +109,17 @@ TRI_voc_tick_t MMFilesWalAccess::lastTick() const {
 }
 
 /// @brief whether or not a marker belongs to a transaction
-static bool IsTransactionWalMarker(WalAccess::WalFilter const& filter,
+static bool IsTransactionWalMarker(WalAccess::Filter const& filter,
                                    MMFilesMarker const* marker) {
   // first check the marker type
   if (!IsTransactionWalMarkerType(marker)) {
     return false;
   }
   
-  if (!filter.empty()) {
+  if (filter.vocbase != 0) {
     TRI_voc_tick_t dbId = MMFilesDatafileHelper::DatabaseId(marker);
     // then check if the marker belongs to the "correct" database
-    if (filter.find(dbId) != filter.end()) {
-      return false;
-    }
+    return filter.vocbase == dbId;
   }
   return true;
 }
@@ -129,7 +127,7 @@ static bool IsTransactionWalMarker(WalAccess::WalFilter const& filter,
 /// should return the list of transactions started, but not committed in that
 /// range (range can be adjusted)
 WalAccessResult MMFilesWalAccess::openTransactions(uint64_t tickStart, uint64_t tickEnd,
-                                                   WalAccess::WalFilter const& filter,
+                                                   WalAccess::Filter const& filter,
                                                    TransactionCallback const& cb) const {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "determining transactions, tick range "
     << tickStart << " - " << tickEnd;
@@ -252,8 +250,10 @@ WalAccessResult MMFilesWalAccess::openTransactions(uint64_t tickStart, uint64_t 
 }
 
 /// Tails the wall, this will already sanitize the
-WalAccessResult MMFilesWalAccess::tail(uint64_t tickStart, uint64_t tickEnd, size_t chunkSize,
-                                       bool includeSystem, WalFilter const& filter,
+WalAccessResult MMFilesWalAccess::tail(std::unordered_set<TRI_voc_tid_t> const& transactionIds,
+                                       TRI_voc_tick_t firstRegularTick,
+                                       uint64_t tickStart, uint64_t tickEnd, size_t chunkSize,
+                                       bool includeSystem, WalAccess::Filter const& filter,
                                        MarkerCallback const&) const {
   
   return WalAccessResult(TRI_ERROR_INTERNAL, false, 0);

@@ -63,7 +63,14 @@ class WalAccess {
   virtual ~WalAccess() {};
 
  public:
-  typedef std::unordered_map<TRI_voc_tick_t, std::set<TRI_voc_cid_t>> WalFilter;
+  
+  struct Filter {
+    Filter() : vocbase(0), collection(0) {}
+    
+    TRI_voc_tick_t vocbase;
+    TRI_voc_cid_t collection;
+  };
+  
   typedef std::function<void(TRI_vocbase_t*,
                         velocypack::Slice const&)> MarkerCallback;
   typedef std::function<void(TRI_voc_tid_t, TRI_voc_tid_t)> TransactionCallback;
@@ -85,12 +92,14 @@ class WalAccess {
   /// should return the list of transactions started, but not committed in that
   /// range (range can be adjusted)
   virtual WalAccessResult openTransactions(uint64_t tickStart, uint64_t tickEnd,
-                                           WalFilter const& filter,
+                                           Filter const& filter,
                                            TransactionCallback const&) const = 0;
 
-  virtual WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd,
+  virtual WalAccessResult tail(std::unordered_set<TRI_voc_tid_t> const& transactionIds,
+                               TRI_voc_tick_t firstRegularTick,
+                               uint64_t tickStart, uint64_t tickEnd,
                                size_t chunkSize,
-                               bool includeSystem, WalFilter const& filter,
+                               bool includeSystem, Filter const& filter,
                                MarkerCallback const&) const = 0;
   
 };

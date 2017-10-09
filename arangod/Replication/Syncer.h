@@ -193,15 +193,15 @@ class Syncer {
   /// Is this syncer allowed to handle its own batch
   bool _isChildSyncer;
 
-  /// @brief base url of the replication API
-  static std::string const BaseUrl;
-
   /// @brief leaderId, this is used in the cluster to the unique ID of the
   /// source server (the shard leader in this case). We need this information
   /// to apply the changes locally to a shard, which is configured as a
   /// follower and thus only accepts modifications that are replications
   /// from the leader. Leave empty if there is no concept of a "leader".
   std::string _leaderId;
+  
+  /// @brief base url of the replication API
+  static std::string const ReplicationUrl;
 };
 }
 

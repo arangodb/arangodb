@@ -749,10 +749,7 @@ function ReplicationOtherDBSuite() {
       username: "root",
       password: "",
       verbose: true,
-      includeSystem: false,
-      restrictType: "",
-      restrictCollections: [],
-      keepBarrier: false
+      includeSystem: false
     };
 
     replication.setupReplication(config);
@@ -875,7 +872,8 @@ function ReplicationOtherDBSuite() {
     connectToSlave();
 
     // Now test if the Slave did replicate the new database directly...
-    assertEqual(50, collectionCount(cn), "The slave inserted the new collection data into the old one, it skipped the drop.");
+    assertEqual(50, collectionCount(cn), 
+    "The slave inserted the new collection data into the old one, it skipped the drop.");
   };
 
   return suite;

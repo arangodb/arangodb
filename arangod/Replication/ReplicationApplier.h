@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,8 +24,8 @@
 #ifndef ARANGOD_REPLICATION_REPLICATION_APPLIER_H
 #define ARANGOD_REPLICATION_REPLICATION_APPLIER_H 1
 
-#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Basics/Result.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/ReplicationApplierState.h"
 
@@ -39,6 +39,7 @@ class Builder;
 
 /// @brief replication applier interface
 class ReplicationApplier {
+  friend class TailingSyncer;
  public:
   ReplicationApplier(ReplicationApplierConfiguration const& configuration, std::string&& databaseName);
 
@@ -60,6 +61,7 @@ class ReplicationApplier {
   
   /// @brief test if the replication applier is running
   bool isRunning() const;
+  bool isTerminated() const { return _terminateThread.load(); }
 
   /// @brief set the applier state to stopped
   void threadStopped();
@@ -123,8 +125,7 @@ class ReplicationApplier {
   int allowStart();
 
   /// @brief register an applier error
-  int setError(int errorCode, char const* msg);
-  int setError(int errorCode, std::string const& msg);
+  void setError(arangodb::Result const&);
   
   /// @brief set the progress
   void setProgress(char const* msg);
@@ -144,18 +145,19 @@ class ReplicationApplier {
   virtual std::string getStateFilename() const = 0;
 
   /// @brief register an applier error
-  int setErrorNoLock(int errorCode, std::string const& msg);
+  void setErrorNoLock(arangodb::Result const&);
   void setProgressNoLock(std::string const& msg);
 
  protected:
   ReplicationApplierConfiguration _configuration;
   ReplicationApplierState _state;
-  
+  /// @brief workaround for deadlock in stop() method
+  /// check for termination without needing _statusLock
+  std::atomic<bool> _terminateThread;
   mutable arangodb::basics::ReadWriteLock _statusLock;
 
   // used only for logging
   std::string _databaseName;
-
   std::unique_ptr<Thread> _thread;
 };
 

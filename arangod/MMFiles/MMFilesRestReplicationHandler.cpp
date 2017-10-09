@@ -949,13 +949,11 @@ void MMFilesRestReplicationHandler::handleCommandDump() {
   }
 
   std::string const& value7 = _request->value("ticks", found);
-
   if (found) {
     withTicks = StringUtils::boolean(value7);
   }
 
-  arangodb::LogicalCollection* c = _vocbase->lookupCollection(collection);
-
+  LogicalCollection* c = _vocbase->lookupCollection(collection);
   if (c == nullptr) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);

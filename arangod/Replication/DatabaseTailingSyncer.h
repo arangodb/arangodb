@@ -26,6 +26,7 @@
 
 #include "TailingSyncer.h"
 #include "Replication/ReplicationApplierConfiguration.h"
+#include "Replication/DatabaseReplicationApplier.h"
 
 namespace arangodb {
 class DatabaseReplicationApplier;
@@ -38,44 +39,23 @@ class DatabaseTailingSyncer : public TailingSyncer {
                         TRI_voc_tick_t barrierId);
 
  public:
-  /// @brief run method, performs continuous synchronization
-  int run() override;
   
   TRI_vocbase_t* resolveVocbase(velocypack::Slice const&) override { return _vocbase; }
 
   /// @brief return the syncer's replication applier
-  DatabaseReplicationApplier* applier() const { return _applier; }
+  DatabaseReplicationApplier* applier() const {
+    return static_cast<DatabaseReplicationApplier*>(_applier);
+  }
   
   /// @brief finalize the synchronization of a collection by tailing the WAL
   /// and filtering on the collection name until no more data is available
   Result syncCollectionFinalize(std::string const& collectionName);
   
- private:
-  /// @brief set the applier progress
-  void setProgress(std::string const&) override;
-
-  /// @brief called before marker is processed
-  void preApplyMarker(TRI_voc_tick_t firstRegularTick,
-                     TRI_voc_tick_t newTick) override;
-  /// @brief called after a marker was processed
-  void postApplyMarker(uint64_t processedMarkers, bool skipped) override;
-
+ protected:
+    
   /// @brief save the current applier state
-  void saveApplierState();
-
-  /// @brief get local replication applier state
-  void getLocalState();
-
-  /// @brief perform a continuous sync with the master
-  int runContinuousSync(std::string&);
-
-  /// @brief fetch the initial master state
-  Result fetchOpenTransactions(TRI_voc_tick_t fromTick, TRI_voc_tick_t toTick,
-                               TRI_voc_tick_t& startTick);
-
-  /// @brief run the continuous synchronization
-  Result followMasterLog(TRI_voc_tick_t& fetchTick, TRI_voc_tick_t firstRegularTick, 
-                         uint64_t& ignoreCount, bool& worked, bool& masterActive);
+  Result saveApplierState() override;
+  std::unique_ptr<InitialSyncer> initialSyncer() override;
   
   TRI_vocbase_t* vocbase() const {
     TRI_ASSERT(vocbases().size() == 1);
@@ -83,25 +63,10 @@ class DatabaseTailingSyncer : public TailingSyncer {
   }
 
  private:
-  /// @brief pointer to the applier
-  DatabaseReplicationApplier* _applier;
   
+  /// @brief vocbase to use for this run
   TRI_vocbase_t* _vocbase;
-
-  /// @brief use the initial tick
-  bool _useTick;
-
-  /// @brief whether or not the replication state file has been written at least
-  /// once with non-empty values. this is required in situations when the
-  /// replication applier is manually started and the master has absolutely no
-  /// new data to provide, and the slave get shut down. in that case, the state
-  /// file would never have been written with the initial start tick, so the
-  /// start tick would be lost. re-starting the slave and the replication
-  /// applier
-  /// with the ticks from the file would then result in a "no start tick
-  /// provided"
-  /// error
-  bool _hasWrittenState;
+  
 };
 }
 

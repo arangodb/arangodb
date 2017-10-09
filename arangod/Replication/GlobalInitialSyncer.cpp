@@ -45,7 +45,9 @@ using namespace arangodb::rest;
 
 GlobalInitialSyncer::GlobalInitialSyncer(
   ReplicationApplierConfiguration const& configuration)
-    : InitialSyncer(configuration) {}
+    : InitialSyncer(configuration) {
+  _databaseName = TRI_VOC_SYSTEM_DATABASE;
+}
 
 GlobalInitialSyncer::~GlobalInitialSyncer() {
   try {
@@ -59,7 +61,6 @@ Result GlobalInitialSyncer::run(bool incremental) {
     return Result(TRI_ERROR_INTERNAL, "invalid endpoint");
   }
   
-  setProgress("fetching master state");
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: getting master state";
   Result r = getMasterState();
     
@@ -242,16 +243,13 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
 }
 
 Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
-  std::string url = BaseUrl + "/inventory?serverId=" + _localServerIdString +
+  std::string url = ReplicationUrl + "/inventory?serverId=" + _localServerIdString +
   "&batchId=" + std::to_string(_batchId) + "&global=true";
   if (_configuration._includeSystem) {
     url += "&includeSystem=true";
   }
   
   // send request
-  std::string const progress = "fetching master inventory from " + url;
-  setProgress(progress);
-  
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
   
   if (response == nullptr || !response->isComplete()) {

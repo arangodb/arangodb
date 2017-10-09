@@ -165,7 +165,7 @@ for p in `seq $SS_BASE $PORTTOPDB` ; do
 done
 
 echo Done, your cluster is ready at
-for p in `seq $SS_BASE $PORTTOPCO` ; do
+for p in `seq $SS_BASE $PORTTOPDB` ; do
     echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://[::1]:$p"
 done
 

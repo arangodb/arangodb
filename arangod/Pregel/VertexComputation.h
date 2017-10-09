@@ -88,6 +88,10 @@ class VertexContext {
   RangeIterator<Edge<E>> getEdges() const {
     return _graphStore->edgeIterator(_vertexEntry);
   }
+  
+  void setVertexData(V const& val) {
+    _graphStore->replaceVertexData(_vertexEntry, (void*)(&val), sizeof(V));
+  }
 
   /// store data, will potentially move the data around
   void setVertexData(void const* ptr, size_t size) {
