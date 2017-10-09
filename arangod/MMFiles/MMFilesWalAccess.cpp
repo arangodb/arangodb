@@ -42,34 +42,6 @@
 using namespace arangodb;
 using namespace arangodb::mmfilesutils;
 
-/// @brief translate a (local) collection id into a collection name
-/*static char const* UUIDFromCid(MMFilesReplicationDumpContext* dump,
-                               TRI_voc_cid_t cid) {
-  auto it = dump->_collectionNames.find(cid);
-
-  if (it != dump->_collectionNames.end()) {
-    // collection name is in cache already
-    return (*it).second.c_str();
-  }
-
-  // collection name not in cache yet
-  std::string name(dump->_vocbase->collectionName(cid));
-
-  if (!name.empty()) {
-    // insert into cache
-    try {
-      dump->_collectionNames.emplace(cid, std::move(name));
-    } catch (...) {
-      return nullptr;
-    }
-
-    // and look it up again
-    return NameFromCid(dump, cid);
-  }
-
-  return nullptr;
-}*/
-
 Result MMFilesWalAccess::tickRange(std::pair<TRI_voc_tick_t,
                                              TRI_voc_tick_t>& minMax) const {
   auto const ranges = MMFilesLogfileManager::instance()->ranges();
@@ -108,22 +80,6 @@ TRI_voc_tick_t MMFilesWalAccess::lastTick() const {
   return maxTick;
 }
 
-/// @brief whether or not a marker belongs to a transaction
-static bool IsTransactionWalMarker(WalAccess::Filter const& filter,
-                                   MMFilesMarker const* marker) {
-  // first check the marker type
-  if (!IsTransactionWalMarkerType(marker)) {
-    return false;
-  }
-  
-  if (filter.vocbase != 0) {
-    TRI_voc_tick_t dbId = MMFilesDatafileHelper::DatabaseId(marker);
-    // then check if the marker belongs to the "correct" database
-    return filter.vocbase == dbId;
-  }
-  return true;
-}
-
 /// should return the list of transactions started, but not committed in that
 /// range (range can be adjusted)
 WalAccessResult MMFilesWalAccess::openTransactions(uint64_t tickStart, uint64_t tickEnd,
@@ -153,8 +109,7 @@ WalAccessResult MMFilesWalAccess::openTransactions(uint64_t tickStart, uint64_t 
       
       char const* ptr;
       char const* end;
-      MMFilesLogfileManager::instance()->getActiveLogfileRegion(
-                                                                logfile, ptr, end);
+      MMFilesLogfileManager::instance()->getActiveLogfileRegion(logfile, ptr, end);
       
       // LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "scanning logfile " << i;
       while (ptr < end) {
@@ -192,7 +147,13 @@ WalAccessResult MMFilesWalAccess::openTransactions(uint64_t tickStart, uint64_t 
           lastFoundTick = foundTick;
         }
         
-        if (!IsTransactionWalMarker(filter, marker)) {
+        // first check the marker type
+        if (!IsTransactionWalMarkerType(marker)) {
+          continue;
+        }
+        // then check if the marker belongs to the "correct" database
+        if (filter.vocbase != 0 &&
+            filter.vocbase != MMFilesDatafileHelper::DatabaseId(marker)) {
           continue;
         }
         
@@ -200,7 +161,6 @@ WalAccessResult MMFilesWalAccess::openTransactions(uint64_t tickStart, uint64_t 
         TRI_ASSERT(tid > 0);
         
         if (type == TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION) {
-          
           transactions.emplace(tid, foundTick);
         } else if (type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
                    type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
@@ -272,7 +232,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
   
   /// @brief whether or not a marker is replicated
   bool mustReplicateWalMarker(MMFilesMarker const* marker,
-                              TRI_voc_tick_t databaseId, TRI_voc_cid_t collectionId) {
+                              TRI_voc_tick_t databaseId, TRI_voc_cid_t cid) {
     // first check the marker type
     if (!MustReplicateWalMarkerType(marker, true)) {
       return false;
@@ -285,20 +245,21 @@ struct MMFilesWalAccessContext : WalAccessContext {
     }
     
     // finally check if the marker is for a collection that we want to ignore
-    TRI_voc_cid_t cid = collectionId;
     if (cid != 0) {
-      std::string name = cidToName(databaseId, cid);
-      if (!name.empty() &&
-          TRI_ExcludeCollectionReplication(name, _filter.includeSystem)) {
-        return false;
+      LogicalCollection* collection = loadCollection(databaseId, cid);
+      if (collection != nullptr) { // db may be already dropped
+        if (TRI_ExcludeCollectionReplication(collection->name(),
+                                             _filter.includeSystem)) {
+          return false;
+        }
       }
     }
     
     if (_filter.collection > 0 &&
         (cid != _filter.collection && !isTransactionWalMarker(marker))) {
-          // restrict output to a single collection, but a different one
-          return false;
-        }
+      // restrict output to a single collection, but a different one
+      return false;
+    }
     
     // after first regular tick, dump all transactions normally
     if (marker->getTick() >= _filter.firstRegularTick) {
@@ -338,16 +299,34 @@ struct MMFilesWalAccessContext : WalAccessContext {
       // transaction id
       _builder.add("tid", VPackValue(MMFilesDatafileHelper::TransactionId(marker)));
     }
-    if (databaseId > 0) {
-      std::string uuid = cidToUUID(databaseId, collectionId);
-      _builder.add("db", VPackValue(databaseId));
-      if (!uuid.empty()) {
-        _builder.add("cuid", VPackValue(uuid));
-        // also include collection name
-        /*std::string cname = ctx->cidToName(databaseId, collectionId);
-         if (cname.empty()) {
-         builder.add("cname", VPackValue(cname));
-         }*/
+    
+    if (type == TRI_DF_MARKER_VPACK_DROP_DATABASE) {
+      VPackSlice slice(reinterpret_cast<char const*>(marker) +
+                       MMFilesDatafileHelper::VPackOffset(type));
+      _builder.add("db", slice.get("name"));
+    } else if (type == TRI_DF_MARKER_VPACK_DROP_COLLECTION) {
+      TRI_vocbase_t* vocbase = loadVocbase(databaseId);
+      if (vocbase == nullptr) {
+        // ignore markers from dropped dbs
+        return TRI_ERROR_NO_ERROR;
+      }
+      VPackSlice slice(reinterpret_cast<char const*>(marker) +
+                       MMFilesDatafileHelper::VPackOffset(type));
+      _builder.add("db", VPackValue(vocbase->name()));
+      _builder.add("cuid", slice.get("cuid"));
+    } else {
+      TRI_ASSERT(databaseId != 0);
+      TRI_vocbase_t* vocbase = loadVocbase(databaseId);
+      if (vocbase == nullptr) {
+        return TRI_ERROR_NO_ERROR; // ignore dropped dbs
+      }
+      _builder.add("db", VPackValue(vocbase->name()));
+      if (collectionId > 0) {
+        LogicalCollection* col = loadCollection(databaseId, collectionId);
+        if (col == nullptr) {
+          return TRI_ERROR_NO_ERROR; // ignore dropped collections
+        }
+        _builder.add("cuid", VPackValue(col->globallyUniqueId()));
       }
     }
     
@@ -361,8 +340,6 @@ struct MMFilesWalAccessContext : WalAccessContext {
       case TRI_DF_MARKER_VPACK_RENAME_COLLECTION:
       case TRI_DF_MARKER_VPACK_CHANGE_COLLECTION:
       case TRI_DF_MARKER_VPACK_CHANGE_VIEW:
-      case TRI_DF_MARKER_VPACK_DROP_DATABASE:
-      case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
       case TRI_DF_MARKER_VPACK_DROP_INDEX:
       case TRI_DF_MARKER_VPACK_DROP_VIEW: {
         VPackSlice slice(reinterpret_cast<char const*>(marker) +
@@ -370,7 +347,9 @@ struct MMFilesWalAccessContext : WalAccessContext {
         _builder.add("data", slice);
         break;
       }
-        
+      
+      case TRI_DF_MARKER_VPACK_DROP_DATABASE:
+      case TRI_DF_MARKER_VPACK_DROP_COLLECTION:
       case TRI_DF_MARKER_VPACK_BEGIN_TRANSACTION:
       case TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION:
       case TRI_DF_MARKER_VPACK_ABORT_TRANSACTION: {

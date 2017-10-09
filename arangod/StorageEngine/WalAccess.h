@@ -25,6 +25,7 @@
 #define ARANGOD_STORAGE_ENGINE_WAL_ACCESS_H 1
 
 #include "Basics/Result.h"
+#include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/voc-types.h"
 
@@ -133,11 +134,14 @@ struct WalAccessContext {
   /// @brief try to get collection, may return null
   TRI_vocbase_t* loadVocbase(TRI_voc_tick_t dbid);
   
+  LogicalCollection* loadCollection(TRI_voc_tick_t dbid,
+                                    TRI_voc_cid_t cid);
+  
   /// @brief get global unique id
-  std::string const& cidToUUID(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);
+  /*std::string const& cidToUUID(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);
   
   /// @brief cid to collection name
-  std::string cidToName(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);
+  std::string cidToName(TRI_voc_tick_t dbid, TRI_voc_cid_t cid);*/
   
 public:
   /// @brief arbitrary collection filter (inclusive)
@@ -155,7 +159,7 @@ public:
   std::map<TRI_voc_tick_t, DatabaseGuard> _vocbases;
   
   // @brief collection replication UUID cache
-  std::map<TRI_voc_cid_t, std::string> _uuidCache;
+  std::map<TRI_voc_cid_t, CollectionGuard> _collectionCache;
 };
   
 } // namespace arangodb

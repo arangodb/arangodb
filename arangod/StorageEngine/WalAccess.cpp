@@ -53,21 +53,20 @@ TRI_vocbase_t* WalAccessContext::loadVocbase(TRI_voc_tick_t dbid) {
   }
 }
 
-/// @brief get global unique id
-std::string const& WalAccessContext::cidToUUID(TRI_voc_tick_t dbid, TRI_voc_cid_t cid) {
-  auto const& uuid = _uuidCache.find(cid);
-  if (uuid != _uuidCache.end()) {
-    return uuid->second;
-  }
-  
+LogicalCollection* WalAccessContext::loadCollection(TRI_voc_tick_t dbid,
+                                                    TRI_voc_cid_t cid) {
   TRI_vocbase_t* vocbase = loadVocbase(dbid);
-  LogicalCollection* collection = vocbase->lookupCollection(cid);
-  _uuidCache.emplace(cid, collection->globallyUniqueId());
-  return _uuidCache[cid];
+  if (vocbase != nullptr) {
+    auto const& it = _collectionCache.find(cid);
+    if (it != _collectionCache.end()) {
+      return it->second.collection();
+    }
+    LogicalCollection* collection = vocbase->lookupCollection(cid);
+    if (collection != nullptr) {
+      _collectionCache.emplace(cid, CollectionGuard(vocbase, collection));
+      return collection;
+    }
+  }
+  return nullptr;
 }
 
-/// @brief cid to collection name
-std::string WalAccessContext::cidToName(TRI_voc_tick_t dbid, TRI_voc_cid_t cid) {
-  TRI_vocbase_t* vocbase = loadVocbase(dbid);
-  return vocbase->collectionName(cid);
-}

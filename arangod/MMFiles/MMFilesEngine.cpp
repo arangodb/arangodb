@@ -53,6 +53,7 @@
 #include "MMFiles/MMFilesTransactionState.h"
 #include "MMFiles/MMFilesV8Functions.h"
 #include "MMFiles/MMFilesView.h"
+#include "MMFiles/MMFilesWalAccess.h"
 #include "MMFiles/MMFilesWalRecoveryFeature.h"
 #include "MMFiles/mmfiles-replication-dump.h"
 #include "Random/RandomGenerator.h"
@@ -148,7 +149,8 @@ std::string const MMFilesEngine::FeatureName("MMFilesEngine");
 MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
     : StorageEngine(server, EngineName, FeatureName, new MMFilesIndexFactory()),
       _isUpgrade(false),
-      _maxTick(0) {
+      _maxTick(0),
+      _walAccess(new MMFilesWalAccess()) {
   startsAfter("MMFilesPersistentIndex"); // yes, intentional!
     
   server->addFeature(new MMFilesWalRecoveryFeature(server));
@@ -980,6 +982,7 @@ arangodb::Result MMFilesEngine::dropCollection(
     builder.openObject();
     builder.add("id", VPackValue(collection->cid_as_string()));
     builder.add("name", VPackValue(collection->name()));
+    builder.add("cuid", VPackValue(collection->globallyUniqueId()));
     builder.close();
 
     MMFilesCollectionMarker marker(TRI_DF_MARKER_VPACK_DROP_COLLECTION,
@@ -3509,6 +3512,6 @@ Result MMFilesEngine::lastLogger(TRI_vocbase_t* /*vocbase*/, std::shared_ptr<tra
 }
 
 WalAccess const* MMFilesEngine::walAccess() const {
-  THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
-  return nullptr;
+  TRI_ASSERT(_walAccess);
+  return _walAccess.get();
 }
