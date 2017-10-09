@@ -107,6 +107,7 @@ if (USE_IRESEARCH)
   set(ICU_STATIC_LIBS ${ICU_LIBS})
   set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
   set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
+  set(UNWIND_ROOT "invalid")
 
   set(IRESEARCH_EXCLUDE_STATIC_THIRD_PARTY_LIBS TRUE) # disable linking in of 3rd party libraries automatically
   find_package(IResearch REQUIRED) # set IRESEARCH_BUILD_DIR
