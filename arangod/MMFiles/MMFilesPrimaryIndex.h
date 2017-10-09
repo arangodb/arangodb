@@ -26,9 +26,9 @@
 
 #include "Basics/AssocUnique.h"
 #include "Basics/Common.h"
-#include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
 #include "Indexes/IndexLookupContext.h"
+#include "MMFiles/MMFilesIndex.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -105,7 +105,7 @@ class MMFilesPrimaryIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "primary-index-iterator"; }
 
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
   void reset() override;
 
@@ -128,7 +128,7 @@ class MMFilesAllIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "all-index-iterator"; }
 
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
   bool nextDocument(DocumentCallback const& cb, size_t limit) override;
 
   void skip(uint64_t count, uint64_t& skipped) override;
@@ -138,7 +138,7 @@ class MMFilesAllIndexIterator final : public IndexIterator {
  private:
   MMFilesPrimaryIndexImpl const* _index;
   arangodb::basics::BucketPosition _position;
-  std::vector<std::pair<TRI_voc_rid_t, uint8_t const*>> _revisions;
+  std::vector<std::pair<LocalDocumentId, uint8_t const*>> _documentIds;
   bool const _reverse;
   uint64_t _total;
 };
@@ -155,7 +155,7 @@ class MMFilesAnyIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "any-index-iterator"; }
 
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
   void reset() override;
 
@@ -167,7 +167,7 @@ class MMFilesAnyIndexIterator final : public IndexIterator {
   uint64_t _total;
 };
 
-class MMFilesPrimaryIndex final : public Index {
+class MMFilesPrimaryIndex final : public MMFilesIndex {
   friend class MMFilesPrimaryIndexIterator;
 
  public:
@@ -200,10 +200,10 @@ class MMFilesPrimaryIndex final : public Index {
   void toVelocyPack(VPackBuilder&, bool withFigures, bool forPersistence) const override;
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  Result insert(transaction::Methods*, TRI_voc_rid_t,
+  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
                 arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  Result remove(transaction::Methods*, TRI_voc_rid_t,
+  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
                 arangodb::velocypack::Slice const&, bool isRollback) override;
 
   void load() override {}
@@ -247,19 +247,19 @@ class MMFilesPrimaryIndex final : public Index {
   MMFilesSimpleIndexElement lookupSequentialReverse(
       transaction::Methods*, arangodb::basics::BucketPosition& position);
 
-  Result insertKey(transaction::Methods*, TRI_voc_rid_t revisionId,
+  Result insertKey(transaction::Methods*, LocalDocumentId const& documentId,
                    arangodb::velocypack::Slice const&);
-  Result insertKey(transaction::Methods*, TRI_voc_rid_t revisionId,
+  Result insertKey(transaction::Methods*, LocalDocumentId const& documentId,
                    arangodb::velocypack::Slice const&, ManagedDocumentResult&);
 
-  Result removeKey(transaction::Methods*, TRI_voc_rid_t revisionId,
+  Result removeKey(transaction::Methods*, LocalDocumentId const& documentId,
                    arangodb::velocypack::Slice const&);
-  Result removeKey(transaction::Methods*, TRI_voc_rid_t revisionId,
+  Result removeKey(transaction::Methods*, LocalDocumentId const& documentId,
                    arangodb::velocypack::Slice const&, ManagedDocumentResult&);
 
   int resize(transaction::Methods*, size_t);
 
-  void invokeOnAllElements(std::function<bool(DocumentIdentifierToken const&)>);
+  void invokeOnAllElements(std::function<bool(LocalDocumentId const&)>);
   void invokeOnAllElementsForRemoval(
       std::function<bool(MMFilesSimpleIndexElement const&)>);
 
@@ -292,7 +292,7 @@ class MMFilesPrimaryIndex final : public Index {
                      arangodb::aql::AstNode const* valNode, bool isId) const;
 
   MMFilesSimpleIndexElement buildKeyElement(
-      TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&) const;
+      LocalDocumentId const& documentId, arangodb::velocypack::Slice const&) const;
 
  private:
   /// @brief the actual index

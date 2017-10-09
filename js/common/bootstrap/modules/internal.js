@@ -462,6 +462,15 @@ global.DEFINE_MODULE('internal', (function () {
   }
 
   // //////////////////////////////////////////////////////////////////////////////
+  // / @brief input 
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_POLLSTDIN) {
+    exports.pollStdin = global.SYS_POLLSTDIN;
+    delete global.SYS_POLLSTDIN;
+  }
+
+  // //////////////////////////////////////////////////////////////////////////////
   // / @brief output
   // //////////////////////////////////////////////////////////////////////////////
 
@@ -1890,6 +1899,16 @@ global.DEFINE_MODULE('internal', (function () {
   if (global.SYS_IS_STOPPING) {
     exports.isStopping = global.SYS_IS_STOPPING;
     delete global.SYS_IS_STOPPING;
+  }
+
+  if (global.SYS_TERMINAL_SIZE) {
+    exports.terminalSize = global.SYS_TERMINAL_SIZE;
+    delete global.SYS_TERMINAL_SIZE;
+  }
+
+  if (global.SYS_START_FLUX) {
+    exports.startFlux = global.SYS_START_FLUX;
+    delete global.SYS_START_FLUX;
   }
 
   return exports;

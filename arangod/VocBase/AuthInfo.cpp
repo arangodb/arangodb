@@ -103,6 +103,7 @@ bool AuthInfo::parseUsers(VPackSlice const& slice) {
           << s.get("user").copyString();
       continue;
     }
+
     AuthUserEntry auth = AuthUserEntry::fromDocument(s);
 
     // we also need to insert inactive users into the cache here
@@ -121,7 +122,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "system database is unknown";
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
   }
-  
+
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT;
@@ -145,7 +146,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code,
                                    "Error executing user query");
-    //return std::shared_ptr<VPackBuilder>();
+    // return std::shared_ptr<VPackBuilder>();
   }
 
   VPackSlice usersSlice = queryResult.result->slice();
@@ -163,6 +164,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
 static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
                               std::string const& user) {
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+
   if (vocbase == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "_system db is unknown");
   }
@@ -172,7 +174,7 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
   ExecContext* oldExe = ExecContext::CURRENT;
   ExecContext::CURRENT = nullptr;
   TRI_DEFER(ExecContext::CURRENT = oldExe);
-  
+
   std::string const queryStr("FOR u IN _users FILTER u.user == @name RETURN u");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
 
@@ -191,22 +193,27 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
+
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code,
                                    "Error executing user query");
   }
 
   VPackSlice usersSlice = queryResult.result->slice();
+
   if (usersSlice.isNone() || !usersSlice.isArray()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+
   if (usersSlice.length() == 0) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_USER_NOT_FOUND);
   }
 
   VPackSlice doc = usersSlice.at(0);
+
   if (doc.isExternal()) {
     doc = doc.resolveExternals();
   }
+
   return VPackBuilder(doc);
 }
 
@@ -227,12 +234,15 @@ static void ConvertLegacyFormat(VPackSlice doc, VPackBuilder& result) {
 void AuthInfo::loadFromDB() {
   TRI_ASSERT(_queryRegistry != nullptr);
   TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
+
   auto role = ServerState::instance()->getRole();
+
   if (role != ServerState::ROLE_SINGLE &&
       role != ServerState::ROLE_COORDINATOR) {
     _outdated = false;
     return;
   }
+
   if (!_outdated) {
     return;
   }
@@ -245,20 +255,24 @@ void AuthInfo::loadFromDB() {
   }
 
   WRITE_LOCKER(writeLocker, _authInfoLock);
+
   try {
     std::shared_ptr<VPackBuilder> builder = QueryAllUsers(_queryRegistry);
     _authInfo.clear();
     _authBasicCache.clear();
+
     if (builder) {
       VPackSlice usersSlice = builder->slice();
+
       if (usersSlice.length() != 0) {
         parseUsers(usersSlice);
       }
     }
-    _outdated = _authInfo.empty() == true;
+
+    _outdated = (_authInfo.empty() == true);
   } catch (...) {
     LOG_TOPIC(WARN, Logger::AUTHENTICATION)
-      << "Exception when loading users from db";
+        << "Exception when loading users from db";
     _outdated = true;
   }
 }
@@ -266,7 +280,7 @@ void AuthInfo::loadFromDB() {
 // only call from the boostrap feature, must be sure to be the only one
 void AuthInfo::createRootUser() {
   loadFromDB();
-  
+
   MUTEX_LOCKER(locker, _loadFromDBLock);
   WRITE_LOCKER(writeLocker, _authInfoLock);
   auto it = _authInfo.find("root");
@@ -275,7 +289,7 @@ void AuthInfo::createRootUser() {
     return;
   }
   TRI_ASSERT(_authInfo.empty());
-  
+
   try {
     // Attention:
     // the root user needs to have a specific rights grant
@@ -283,6 +297,7 @@ void AuthInfo::createRootUser() {
     auto initDatabaseFeature =
         application_features::ApplicationServer::getFeature<
             InitDatabaseFeature>("InitDatabase");
+
     TRI_ASSERT(initDatabaseFeature != nullptr);
 
     AuthUserEntry entry = AuthUserEntry::newUser(
@@ -308,7 +323,7 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
-  
+
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT;
@@ -355,7 +370,9 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
   return res;
 }
 
-// ================= public ==================
+// -----------------------------------------------------------------------------
+// -- SECTION --                                                          public
+// -----------------------------------------------------------------------------
 
 VPackBuilder AuthInfo::allUsers() {
   // will query db directly, no need for _authInfoLock
@@ -385,16 +402,20 @@ void AuthInfo::reloadAllUsers() {
   // tell other coordinators to reload as well
   AgencyComm agency;
   int maxTries = 10;
+
   while (maxTries-- > 0) {
     AgencyCommResult commRes = agency.getValues("Sync/UserVersion");
+
     if (!commRes.successful()) {
       // Error in communication, note that value not found is not an error
       LOG_TOPIC(TRACE, Logger::AUTHENTICATION)
           << "AuthInfo: no agency communication";
       break;
     }
+
     VPackSlice oldVal = commRes.slice()[0].get(
         {AgencyCommManager::path(), "Sync", "UserVersion"});
+
     if (!oldVal.isInteger()) {
       LOG_TOPIC(ERR, Logger::AUTHENTICATION)
           << "Sync/UserVersion is not a number";
@@ -406,10 +427,12 @@ void AuthInfo::reloadAllUsers() {
     commRes =
         agency.casValue("Sync/UserVersion", oldVal, newVal.slice(), 0.0,
                         AgencyCommManager::CONNECTION_OPTIONS._requestTimeout);
+
     if (commRes.successful()) {
       return;
     }
   }
+
   LOG_TOPIC(WARN, Logger::AUTHENTICATION)
       << "Sync/UserVersion could not be updated";
 }
@@ -419,28 +442,41 @@ Result AuthInfo::storeUser(bool replace, std::string const& user,
   if (user.empty()) {
     return TRI_ERROR_USER_INVALID_NAME;
   }
+
   loadFromDB();
 
   WRITE_LOCKER(writeGuard, _authInfoLock);
   auto const& it = _authInfo.find(user);
+
   if (replace && it == _authInfo.end()) {
     return TRI_ERROR_USER_NOT_FOUND;
   } else if (!replace && it != _authInfo.end()) {
     return TRI_ERROR_USER_DUPLICATE;
   }
 
+  auto const& oldEntry = it->second;
+
+  if (replace) {
+    if (oldEntry.source() == AuthSource::LDAP) {
+      return TRI_ERROR_USER_EXTERNAL;
+    }
+  }
+
   AuthUserEntry entry =
       AuthUserEntry::newUser(user, pass, AuthSource::COLLECTION);
   entry.setActive(active);
+
   if (replace) {
-    TRI_ASSERT(!(it->second.key().empty()));
-    entry._key = it->second.key();
+    TRI_ASSERT(!(oldEntry.key().empty()));
+    entry._key = oldEntry.key();
   }
 
   Result r = storeUserInternal(entry, replace);
+
   if (r.ok()) {
     reloadAllUsers();
   }
+
   return r;
 }
 
@@ -450,7 +486,7 @@ static Result UpdateUser(VPackSlice const& user) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
-  
+
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT;
@@ -474,22 +510,33 @@ static Result UpdateUser(VPackSlice const& user) {
 Result AuthInfo::enumerateUsers(
     std::function<void(AuthUserEntry&)> const& func) {
   loadFromDB();
-  // we require an consisten view on the user object
+
+  // we require an consistent view on the user object
   {
     WRITE_LOCKER(guard, _authInfoLock);
     for (auto& it : _authInfo) {
-      TRI_ASSERT(!it.second.key().empty());
+      auto const& entry = it.second;
+
+      if (entry.source() == AuthSource::LDAP) {
+        continue;
+      }
+
+      TRI_ASSERT(!entry.key().empty());
+
       func(it.second);
       VPackBuilder data = it.second.toVPackBuilder();
       Result r = UpdateUser(data.slice());
+
       if (!r.ok()) {
         return r;
       }
     }
+
     // must also clear the basic cache here because the secret may be
     // invalid now if the password was changed
     _authBasicCache.clear();
   }
+
   // we need to reload data after the next callback
   reloadAllUsers();
   return TRI_ERROR_NO_ERROR;
@@ -500,20 +547,33 @@ Result AuthInfo::updateUser(std::string const& user,
   if (user.empty()) {
     return TRI_ERROR_USER_NOT_FOUND;
   }
+
   loadFromDB();
+
   Result r;
   {  // we require an consisten view on the user object
     WRITE_LOCKER(guard, _authInfoLock);
     auto it = _authInfo.find(user);
+
     if (it == _authInfo.end()) {
       return Result(TRI_ERROR_USER_NOT_FOUND);
     }
-    TRI_ASSERT(!it->second.key().empty());
-    func(it->second);
-    VPackBuilder data = it->second.toVPackBuilder();
+
+    auto& oldEntry = it->second;
+
+    if (oldEntry.source() == AuthSource::LDAP) {
+      return TRI_ERROR_USER_EXTERNAL;
+    }
+
+    TRI_ASSERT(!oldEntry.key().empty());
+
+    func(oldEntry);
+    VPackBuilder data = oldEntry.toVPackBuilder();
     r = UpdateUser(data.slice());
+
     // must also clear the basic cache here because the secret may be
     // invalid now if the password was changed
+
     _authBasicCache.clear();
   }
 
@@ -552,7 +612,7 @@ static Result RemoveUserInternal(AuthUserEntry const& entry) {
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
-  
+
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
   ExecContext* oldExe = ExecContext::CURRENT;
@@ -593,11 +653,19 @@ Result AuthInfo::removeUser(std::string const& user) {
   {
     WRITE_LOCKER(guard, _authInfoLock);
     auto const& it = _authInfo.find(user);
+
     if (it == _authInfo.end()) {
       return TRI_ERROR_USER_NOT_FOUND;
     }
 
-    res = RemoveUserInternal(it->second);
+    auto const& oldEntry = it->second;
+
+    if (oldEntry.source() == AuthSource::LDAP) {
+      return TRI_ERROR_USER_EXTERNAL;
+    }
+
+    res = RemoveUserInternal(oldEntry);
+
     if (res.ok()) {
       _authInfo.erase(it);
       // must also clear the basic cache here because the secret is invalid now
@@ -613,19 +681,30 @@ Result AuthInfo::removeAllUsers() {
   Result res;
   {
     WRITE_LOCKER(guard, _authInfoLock);
+
     for (auto const& pair : _authInfo) {
-      res = RemoveUserInternal(pair.second);
+      auto const& oldEntry = pair.second;
+
+      if (oldEntry.source() == AuthSource::LDAP) {
+        continue;
+      }
+
+      res = RemoveUserInternal(oldEntry);
+
       if (!res.ok()) {
         break;
       }
     }
-    {  // do not get into race conditions with loadFromDB
+
+    // do not get into race conditions with loadFromDB
+    {
       MUTEX_LOCKER(locker, _loadFromDBLock);
       _authInfo.clear();
       _authBasicCache.clear();
       _outdated = true;
     }
   }
+
   reloadAllUsers();
   return res;
 }
@@ -633,6 +712,7 @@ Result AuthInfo::removeAllUsers() {
 VPackBuilder AuthInfo::getConfigData(std::string const& username) {
   loadFromDB();
   VPackBuilder bb = QueryUser(_queryRegistry, username);
+
   return bb.isEmpty() ? bb : VPackBuilder(bb.slice().get("configData"));
 }
 
@@ -641,15 +721,24 @@ Result AuthInfo::setConfigData(std::string const& user,
   loadFromDB();
 
   READ_LOCKER(guard, _authInfoLock);
+
   auto it = _authInfo.find(user);
+
   if (it == _authInfo.end()) {
     return Result(TRI_ERROR_USER_NOT_FOUND);
   }
-  TRI_ASSERT(!it->second.key().empty());
+
+  auto const& oldEntry = it->second;
+
+  if (oldEntry.source() == AuthSource::LDAP) {
+    return TRI_ERROR_USER_EXTERNAL;
+  }
+
+  TRI_ASSERT(!oldEntry.key().empty());
 
   VPackBuilder partial;
   partial.openObject();
-  partial.add(StaticStrings::KeyString, VPackValue(it->second.key()));
+  partial.add(StaticStrings::KeyString, VPackValue(oldEntry.key()));
   partial.add("configData", data);
   partial.close();
 
@@ -667,15 +756,24 @@ Result AuthInfo::setUserData(std::string const& user,
   loadFromDB();
 
   READ_LOCKER(guard, _authInfoLock);
+
   auto it = _authInfo.find(user);
+
   if (it == _authInfo.end()) {
     return Result(TRI_ERROR_USER_NOT_FOUND);
   }
-  TRI_ASSERT(!it->second.key().empty());
+
+  auto const& oldEntry = it->second;
+
+  if (oldEntry.source() == AuthSource::LDAP) {
+    return TRI_ERROR_USER_EXTERNAL;
+  }
+
+  TRI_ASSERT(!oldEntry.key().empty());
 
   VPackBuilder partial;
   partial.openObject();
-  partial.add(StaticStrings::KeyString, VPackValue(it->second.key()));
+  partial.add(StaticStrings::KeyString, VPackValue(oldEntry.key()));
   partial.add("userData", data);
   partial.close();
 
@@ -684,16 +782,29 @@ Result AuthInfo::setUserData(std::string const& user,
 
 AuthResult AuthInfo::checkPassword(std::string const& username,
                                    std::string const& password) {
+  AuthResult result(username);
+
+  if (StringUtils::isPrefix(username, ":role:")) {
+    return result;
+  }
+
   loadFromDB();
 
   READ_LOCKER(readLocker, _authInfoLock);
-  AuthResult result(username);
+
   auto it = _authInfo.find(username);
+  auto feature = AuthenticationFeature::INSTANCE;
+
+  if (it != _authInfo.end() && (it->second.source() == AuthSource::COLLECTION)
+      && feature != nullptr && ! feature->localAuthentication()) {
+    return result;
+  }
 
   if (it == _authInfo.end() || (it->second.source() == AuthSource::LDAP)) {
     TRI_ASSERT(_authenticationHandler);
     AuthenticationResult authResult =
         _authenticationHandler->authenticate(username, password);
+
     if (!authResult.ok()) {
       return result;
     }
@@ -702,48 +813,79 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
     if (authResult.source() == AuthSource::LDAP) {
       AuthUserEntry entry =
           AuthUserEntry::newUser(username, password, AuthSource::LDAP);
+      entry.setRoles(authResult.roles());
+
+      for (auto const& al : authResult.permissions()) {
+        entry.grantDatabase(al.first, al.second);
+      }
 
       // upgrade read-lock to a write-lock
       readLocker.unlock();
       WRITE_LOCKER(writeLocker, _authInfoLock);
 
       it = _authInfo.find(username);
+
       if (it != _authInfo.end()) {
         it->second = entry;
       } else {
         auto r = _authInfo.emplace(username, entry);
+
         if (!r.second) {
           return result;
         }
+
         it = r.first;
       }
+
       AuthUserEntry const& auth = it->second;
+
       if (auth.isActive()) {
         result._authorized = auth.checkPassword(password);
       }
+
       return result;
-    }  // AuthSource::LDAP
+    }
   }
 
   if (it != _authInfo.end()) {
     AuthUserEntry const& auth = it->second;
+
     if (auth.isActive()) {
       result._authorized = auth.checkPassword(password);
     }
   }
+
   return result;
 }
 
-// public
+#include <iostream>
+
 AuthLevel AuthInfo::canUseDatabase(std::string const& username,
                                    std::string const& dbname) {
   loadFromDB();
   READ_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(username);
-  if (it != _authInfo.end()) {
-    return it->second.databaseAuthLevel(dbname);
+
+  if (it == _authInfo.end()) {
+    return AuthLevel::NONE;
   }
-  return AuthLevel::NONE;
+
+  auto const& entry = it->second;
+  AuthLevel level = entry.databaseAuthLevel(dbname);
+
+  for (auto const& role : entry.roles()) {
+    if (level == AuthLevel::RW) {
+      return level;
+    }
+
+    AuthLevel roleLevel = canUseDatabase(role, dbname);
+
+    if (level == AuthLevel::NONE) {
+      level = roleLevel;
+    }
+  }
+
+  return level;
 }
 
 AuthLevel AuthInfo::canUseCollection(std::string const& username,
@@ -752,10 +894,27 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
   loadFromDB();
   READ_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(username);
-  if (it != _authInfo.end()) {
-    return it->second.collectionAuthLevel(dbname, coll);
+
+  if (it == _authInfo.end()) {
+    return AuthLevel::NONE;
   }
-  return AuthLevel::NONE;
+
+  auto const& entry = it->second;
+  AuthLevel level = entry.collectionAuthLevel(dbname, coll);
+
+  for (auto const& role : entry.roles()) {
+    if (level == AuthLevel::RW) {
+      return level;
+    }
+
+    AuthLevel roleLevel = canUseCollection(role, dbname, coll);
+
+    if (level == AuthLevel::NONE) {
+      level = roleLevel;
+    }
+  }
+
+  return level;
 }
 
 // public called from HttpCommTask.cpp and VstCommTask.cpp
@@ -778,6 +937,7 @@ AuthResult AuthInfo::checkAuthentication(AuthenticationMethod authType,
 // private
 AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
   auto role = ServerState::instance()->getRole();
+
   if (role != ServerState::ROLE_SINGLE &&
       role != ServerState::ROLE_COORDINATOR) {
     return AuthResult();
@@ -786,13 +946,15 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
   {
     READ_LOCKER(guard, _authInfoLock);
     auto const& it = _authBasicCache.find(secret);
-    if (it != _authBasicCache.end()) {
+
+    if (it != _authBasicCache.end() && !it->second.expired()) {
       return it->second;
     }
   }
 
   std::string const up = StringUtils::decodeBase64(secret);
   std::string::size_type n = up.find(':', 0);
+
   if (n == std::string::npos || n == 0 || n + 1 > up.size()) {
     LOG_TOPIC(TRACE, arangodb::Logger::AUTHENTICATION)
         << "invalid authentication data found, cannot extract "
@@ -804,6 +966,12 @@ AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
   std::string password = up.substr(n + 1);
 
   AuthResult result = checkPassword(username, password);
+  double timeout = AuthenticationFeature::INSTANCE->authenticationTimeout();
+
+  if (0 < timeout) {
+    result.setExpiry(TRI_microtime() + timeout);
+  }
+
   {
     WRITE_LOCKER(guard, _authInfoLock);
 

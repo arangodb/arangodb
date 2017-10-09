@@ -35,8 +35,8 @@ to_native_path("CPACK_INSTALL_FULL_SYSCONFDIR")
 
 # we wrap HDIUTIL to inject our own parameter:
 find_program(HDIUTIL_EXECUTABLE hdiutil)
-# for now 260MB seems to be enough:
-set(CMAKE_DMG_SIZE 260)
+# for now 280MB seems to be enough:
+set(CMAKE_DMG_SIZE 280)
 configure_file("${PROJECT_SOURCE_DIR}/Installation/MacOSX/Bundle/hdiutilwrapper.sh.in"
   "${CMAKE_CURRENT_BINARY_DIR}/hdiutilwrapper.sh"
   @ONLY)

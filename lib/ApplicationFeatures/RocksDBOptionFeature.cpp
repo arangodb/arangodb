@@ -22,21 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBOptionFeature.h"
-#include "Basics/Exceptions.h"
-#include "Basics/FileUtils.h"
 #include "Basics/process-utils.h"
-#include "Basics/tri-strings.h"
-#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "RestServer/DatabasePathFeature.h"
 
 #include <rocksdb/options.h>
 #include <rocksdb/table.h>
 #include <rocksdb/utilities/transaction_db.h>
-
-#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::application_features;

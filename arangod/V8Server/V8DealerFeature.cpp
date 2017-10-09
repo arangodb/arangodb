@@ -1326,6 +1326,17 @@ bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
   return true;
 }
 
+V8DealerFeature::stats V8DealerFeature::getCurrentContextNumbers() {
+  CONDITION_LOCKER(guard, _contextCondition);
+  return {
+      _contexts.size(),
+      _busyContexts.size(),
+      _dirtyContexts.size(),
+      _freeContexts.size(),
+      _nrMaxContexts
+      };
+}
+
 void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file, V8Context* context, VPackBuilder* builder) {
   v8::HandleScope scope(context->_isolate);
   auto localContext =
