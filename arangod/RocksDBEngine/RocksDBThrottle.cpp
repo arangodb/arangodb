@@ -40,7 +40,9 @@ namespace arangodb {
 // rocksdb flushes and compactions start and stop within same thread, no overlapping
 thread_local std::chrono::steady_clock::time_point gFlushStart;
 
-
+//
+// Setup the object, clearing variables, but do no real work
+//
 RocksDBEventListener::RocksDBEventListener()
   : internalRocksDB_(nullptr), thread_running_(false), throttle_bps_(0), first_throttle_(true)
 {
@@ -48,6 +50,9 @@ RocksDBEventListener::RocksDBEventListener()
 }
 
 
+//
+// Shutdown the background thread only if it was ever started
+//
 RocksDBEventListener::~RocksDBEventListener() {
 
   if (thread_running_.load()) {
@@ -59,6 +64,10 @@ RocksDBEventListener::~RocksDBEventListener() {
 }
 
 
+//
+// rocksdb does not track flush time in its statistics.  Save start time in
+//  a thread specific storage
+//
 void RocksDBEventListener::OnFlushBegin(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) {
 
   // save start time in thread local storage
@@ -82,8 +91,6 @@ void RocksDBEventListener::OnFlushCompleted(rocksdb::DB* db, const rocksdb::Flus
   // start throttle after first data is posted
   //  (have seen some odd zero and small size flushes early)
   if (1024<flush_size) {
-    std::once_flag init_flag_;
-
     std::call_once(init_flag_, &RocksDBEventListener::Startup, this, db);
   } // if
 
@@ -183,13 +190,14 @@ void RocksDBEventListener::RecalculateThrottle() {
   unsigned loop;
   std::chrono::microseconds tot_micros;
   uint64_t tot_bytes, tot_keys, tot_compact, adjustment_bytes;
-  int64_t new_throttle, compaction_backlog;
+  int64_t new_throttle, compaction_backlog, temp_rate;
   bool no_data;
 
   tot_micros*=0;
   tot_keys=0;
   tot_bytes=0;
   tot_compact=0;
+  temp_rate=0;
 
   compaction_backlog = ComputeBacklog();
 
@@ -256,8 +264,6 @@ void RocksDBEventListener::RecalculateThrottle() {
     // change the throttle slowly
     //  (+1 & +2 keep throttle moving toward goal when difference new and
     //   old is less than THROTTLE_SCALING)
-    int64_t temp_rate;
-
     if (!first_throttle_) {
       temp_rate=throttle_bps_;
 
