@@ -1295,9 +1295,9 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
   
   for (auto const& it : VPackArrayIterator(slice)) {
     if (!it.isString()) {
-      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": invalid response type for initial data. expecting array of ids");
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
+                    _masterInfo._endpoint + ": invalid response type for initial data. expecting array of ids");
     }
-    
     _ongoingTransactions.emplace(StringUtils::uint64(it.copyString()), nullptr);
   }
   

@@ -37,6 +37,7 @@
 namespace arangodb {
 class MMFilesCleanupThread;
 class MMFilesCompactorThread;
+class MMFilesWalAccess;
 class PhysicalCollection;
 class PhysicalView;
 class TransactionCollection;
@@ -478,6 +479,8 @@ class MMFilesEngine final : public StorageEngine {
   std::string _databasePath;
   bool _isUpgrade;
   TRI_voc_tick_t _maxTick;
+  /// @brief Local wal access abstraction
+  std::unique_ptr<MMFilesWalAccess> _walAccess;
   std::vector<std::pair<std::string, std::string>> _deleted;
 
   arangodb::basics::ReadWriteLock mutable _pathsLock;

@@ -38,11 +38,10 @@ class RestWalAccessHandler : public arangodb::RestVocbaseBaseHandler {
   char const* name() const override final { return "RestWalAccessHandler"; }
   bool isDirect() const override { return false; }
   RestStatus execute() override;
-  
-private:
-  
+
+ private:
   bool parseFilter(WalAccess::Filter& filter);
-  
+
   void handleCommandTickRange(WalAccess const* wal);
   void handleCommandLastTick(WalAccess const* wal);
   void handleCommandTail(WalAccess const* wal);
