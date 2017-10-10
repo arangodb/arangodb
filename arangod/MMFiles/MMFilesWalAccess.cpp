@@ -96,6 +96,8 @@ WalAccessResult MMFilesWalAccess::openTransactions(
   std::vector<arangodb::MMFilesWalLogfile*> logfiles =
       MMFilesLogfileManager::instance()->getLogfilesForTickRange(
           tickStart, tickEnd, fromTickIncluded);
+  // always return the logfiles we have used
+  TRI_DEFER(MMFilesLogfileManager::instance()->returnLogfiles(logfiles));
 
   // setup some iteration state
   TRI_voc_tick_t lastFoundTick = 0;
@@ -186,26 +188,23 @@ WalAccessResult MMFilesWalAccess::openTransactions(
       }
       cb(it.first, it.second);
     }
-    res.reset(TRI_ERROR_NO_ERROR, fromTickIncluded, lastFoundTick);
-
+    res.reset(TRI_ERROR_NO_ERROR, fromTickIncluded, lastFoundTick,
+              /*checkMore*/lastFoundTick);
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "caught exception while determining open transactions: "
         << ex.what();
-    res.reset(ex.code(), false, 0);
+    res.reset(ex.code(), false, 0, 0);
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "caught exception while determining open transactions: "
         << ex.what();
-    res.reset(TRI_ERROR_INTERNAL, false, 0);
+    res.reset(TRI_ERROR_INTERNAL, false, 0, 0);
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "caught unknown exception while determining open transactions";
-    res.reset(TRI_ERROR_INTERNAL, false, 0);
+    res.reset(TRI_ERROR_INTERNAL, false, 0, 0);
   }
-
-  // always return the logfiles we have used
-  MMFilesLogfileManager::instance()->returnLogfiles(logfiles);
 
   return res;
 }
@@ -514,10 +513,12 @@ struct MMFilesWalAccessContext : WalAccessContext {
           << "caught unknown exception while dumping replication log";
       res = TRI_ERROR_INTERNAL;
     }
+    
+    MMFilesLogfileManagerState const state = MMFilesLogfileManager::instance()->state();
 
     /*LOG_TOPIC(ERR, Logger::FIXME) << "2. fromTickIncluded " << fromTickIncluded
       << " lastFoundTick " << lastFoundTick;*/
-    return WalAccessResult(res, fromTickIncluded, lastFoundTick);
+    return WalAccessResult(res, fromTickIncluded, lastFoundTick, state.lastCommittedTick);
   }
 };
 

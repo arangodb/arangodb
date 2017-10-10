@@ -311,19 +311,19 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     return;
   }
 
-  TRI_voc_tick_t const latest = wal->lastTick();
-  bool const checkMore = (result.lastTick() > 0 && result.lastTick() < latest);
   // transfer ownership of the buffer contents
   _response->setContentType(rest::ContentType::DUMP);
 
   // set headers
+  bool checkMore = result.lastIncludedTick() > 0 &&
+                   result.lastIncludedTick() < result.latestTick();
   _response->setHeaderNC(TRI_REPLICATION_HEADER_CHECKMORE,
                          checkMore ? "true" : "false");
   _response->setHeaderNC(
       TRI_REPLICATION_HEADER_LASTINCLUDED,
-      StringUtils::itoa((length == 0) ? 0 : result.lastTick()));
+      StringUtils::itoa(result.lastIncludedTick()));
   _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
-                         StringUtils::itoa(latest));
+                         StringUtils::itoa(result.latestTick()));
   _response->setHeaderNC(TRI_REPLICATION_HEADER_ACTIVE, "true");
   _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
                          result.fromTickIncluded() ? "true" : "false");
@@ -339,7 +339,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
       serverId = (TRI_server_id_t)StringUtils::uint64(value);
     }
     DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
-      vocbase->updateReplicationClient(serverId, result.lastTick());
+      vocbase->updateReplicationClient(serverId, result.lastIncludedTick());
     });
   } else {
     _response->setResponseCode(rest::ResponseCode::NO_CONTENT);
@@ -393,13 +393,13 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(
   if (res.fail()) {
     generateError(res);
   } else {
-    auto cc = r.lastTick() != 0 ? ResponseCode::OK : ResponseCode::NO_CONTENT;
+    auto cc = r.lastIncludedTick() != 0 ? ResponseCode::OK : ResponseCode::NO_CONTENT;
     generateResult(cc, std::move(buffer));
 
     _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
                            r.fromTickIncluded() ? "true" : "false");
     _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
-                           StringUtils::itoa(r.lastTick()));
+                           StringUtils::itoa(r.lastIncludedTick()));
     /*VPackOptions options(VPackOptions::Defaults);
     options.escapeUnicode = true;
     _response->setPayload(std::move(buffer), true, options);*/

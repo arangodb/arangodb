@@ -1121,7 +1121,7 @@ Result TailingSyncer::runContinuousSync() {
   // run in a loop. the loop is terminated when the applier is stopped or an
   // error occurs
   while (true) {
-    bool worked;
+    bool worked = false;
     bool masterActive = false;
     
     // fetchTick is passed by reference!
@@ -1221,8 +1221,8 @@ Result TailingSyncer::runContinuousSync() {
 
 /// @brief fetch the open transactions we still need to complete
 Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
-                                                  TRI_voc_tick_t toTick,
-                                                  TRI_voc_tick_t& startTick) {
+                                            TRI_voc_tick_t toTick,
+                                            TRI_voc_tick_t& startTick) {
   std::string const baseUrl = tailingBaseUrl("open-transactions");
   std::string const url = baseUrl + "serverId=" + _localServerIdString +
   "&from=" + StringUtils::itoa(fromTick) + "&to=" +

@@ -35,23 +35,40 @@ namespace arangodb {
 
 struct WalAccessResult : public Result {
   WalAccessResult()
-      : Result(TRI_ERROR_NO_ERROR), _fromTickIncluded(false), _lastTick(0) {}
-  WalAccessResult(int code, bool ft, TRI_voc_tick_t last)
-      : Result(code), _fromTickIncluded(ft), _lastTick(last) {}
+      : Result(TRI_ERROR_NO_ERROR),
+        _fromTickIncluded(false),
+        _lastIncludedTick(0),
+        _latestTick(0) {}
+  WalAccessResult(int code, bool ft, TRI_voc_tick_t included,
+                  TRI_voc_tick_t latest)
+      : Result(code),
+        _fromTickIncluded(ft),
+        _lastIncludedTick(included),
+        _latestTick(latest) {}
+  
+  WalAccessResult(WalAccessResult const& other)
+    : Result(other),
+      _fromTickIncluded(other._fromTickIncluded),
+      _lastIncludedTick(other._lastIncludedTick),
+      _latestTick(other._latestTick) {}
 
   bool fromTickIncluded() const { return _fromTickIncluded; }
-  TRI_voc_tick_t lastTick() const { return _lastTick; }
+  TRI_voc_tick_t lastIncludedTick() const { return _lastIncludedTick; }
+  bool latestTick() const { return _latestTick; }
 
-  Result& reset(int errorNumber, bool ft, TRI_voc_tick_t last) {
+  Result& reset(int errorNumber, bool ft, TRI_voc_tick_t included,
+                TRI_voc_tick_t latest) {
     _errorNumber = errorNumber;
     _fromTickIncluded = ft;
-    _lastTick = last;
+    _lastIncludedTick = included;
+    _latestTick = latest;
     return *this;
   }
 
  private:
   bool _fromTickIncluded;
-  TRI_voc_tick_t _lastTick;
+  TRI_voc_tick_t _lastIncludedTick;
+  TRI_voc_tick_t _latestTick;
 };
 
 /// @brief StorageEngine agnostic wal access interface.

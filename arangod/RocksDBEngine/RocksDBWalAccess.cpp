@@ -73,7 +73,7 @@ TRI_voc_tick_t RocksDBWalAccess::lastTick() const {
 WalAccessResult RocksDBWalAccess::openTransactions(uint64_t tickStart, uint64_t tickEnd,
                                                    WalAccess::Filter const& filter,
                                                    TransactionCallback const&) const {
-  return WalAccessResult(TRI_ERROR_NO_ERROR, true, 0);
+  return WalAccessResult(TRI_ERROR_NO_ERROR, true, 0, 0);
 }
 
 /// WAL parser
@@ -553,10 +553,9 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
   //LOG_TOPIC(ERR, Logger::FIXME) << "1. Starting tailing: tickStart " << tickStart
   //<< " tickEnd " << tickEnd << " chunkSize " << chunkSize << " includeSystem " << includeSystem;
   
-  // first tick actually read
-  uint64_t firstTick = UINT64_MAX;
-  uint64_t lastTick = tickStart; // lastTick at start of a write batch)
-  uint64_t lastWrittenTick = tickStart; // lastTick at the end of a write batch
+  uint64_t firstTick = UINT64_MAX; // first tick actually read
+  uint64_t lastTick = tickStart; // lastTick at start of a write batch
+  uint64_t lastWrittenTick = 0; // lastTick at the end of a write batch
 
   auto handler = std::make_unique<MyWALParser>(filter, func);
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
@@ -567,7 +566,7 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
   s = rocksutils::globalRocksDB()->GetUpdatesSince(tickStart, &iterator, ro);
   if (!s.ok()) {
     Result r = convertStatus(s, rocksutils::StatusHint::wal);
-    return WalAccessResult(r.errorNumber(), false, 0);
+    return WalAccessResult(r.errorNumber(), false, 0, 0);
   }
 
   // we need to check if the builder is bigger than the chunksize,
@@ -588,14 +587,13 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
       firstTick = batch.sequence;
     }
     
+    lastTick = batch.sequence; // start of the batch
     if (batch.sequence <= tickStart) {
       iterator->Next();  // skip
       continue;
     } else if (batch.sequence > tickEnd) {
       break; // cancel out
     }
-
-    lastTick = batch.sequence; // start of the batch
     
     handler->startNewBatch(batch.sequence);
     s = batch.writeBatchPtr->Iterate(handler.get());
@@ -610,7 +608,9 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
     iterator->Next();
   }
 
-  WalAccessResult result(TRI_ERROR_NO_ERROR, firstTick <= tickStart, lastWrittenTick);
+  uint64_t latest = rocksutils::globalRocksDB()->GetLatestSequenceNumber();
+  WalAccessResult result(TRI_ERROR_NO_ERROR, firstTick <= tickStart,
+                         lastWrittenTick, latest);
   if (!s.ok()) {
     result.Result::reset(convertStatus(s, rocksutils::StatusHint::wal));
   }
