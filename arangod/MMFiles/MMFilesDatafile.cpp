@@ -320,9 +320,10 @@ int MMFilesDatafile::judge(std::string const& filename) {
 }
 
 /// @brief creates either an anonymous or a physical datafile
-MMFilesDatafile* MMFilesDatafile::create(std::string const& filename, TRI_voc_fid_t fid,
-                                   uint32_t maximalSize,
-                                   bool withInitialMarkers) {
+MMFilesDatafile* MMFilesDatafile::create(std::string const& filename, 
+                                         TRI_voc_fid_t fid,
+                                         uint32_t maximalSize,
+                                         bool withInitialMarkers) {
   size_t pageSize = PageSizeFeature::getPageSize();
 
   TRI_ASSERT(pageSize >= 256);
@@ -599,8 +600,15 @@ int MMFilesDatafile::writeElement(void* position, MMFilesMarker const* marker, b
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "logic error. writing out of bounds of datafile '" << getName() << "'";
     return TRI_ERROR_ARANGO_ILLEGAL_STATE;
   }
-
+  
   memcpy(position, marker, static_cast<size_t>(marker->getSize()));
+  
+  TRI_IF_FAILURE("BreakHeaderMarker") {
+    if (marker->getType() == TRI_DF_MARKER_HEADER) { 
+      // intentionally corrupt the marker
+      reinterpret_cast<MMFilesMarker*>(position)->breakIt();
+    }
+  }
 
   if (forceSync) {
     bool ok = sync(static_cast<char const*>(position), reinterpret_cast<char const*>(position) + marker->getSize());
@@ -670,7 +678,7 @@ int MMFilesDatafile::writeCrcElement(void* position, MMFilesMarker* marker, bool
     crc = TRI_BlockCrc32(crc, (char const*)marker, marker->getSize());
     marker->setCrc(TRI_FinalCrc32(crc));
   }
-
+  
   return writeElement(position, marker, forceSync);
 }
 
