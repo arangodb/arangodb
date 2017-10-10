@@ -715,7 +715,8 @@ if test -n "${DOWNLOAD_SYNCER_USER}"; then
         fi
         if ! test -f "${BUILD_DIR}/${FN}-${SYNCER_REV}"; then
             rm -f "${FN}"
-            curl -LJO# -H 'Accept: application/octet-stream' "${SYNCER_URL}?access_token=${OAUTH_TOKEN}"
+            curl -LJO# -H 'Accept: application/octet-stream' "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" || \
+                ${SRC}/Installation/Jenkins/curl_time_machine.sh "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" "${FN}"
             mv "${FN}" "${BUILD_DIR}/${TN}"
             ${MD5} < "${BUILD_DIR}/${TN}"  | ${SED} "s; .*;;" > "${BUILD_DIR}/${FN}-${SYNCER_REV}"
             OLD_MD5=$(cat "${BUILD_DIR}/${FN}-${SYNCER_REV}")

@@ -51,7 +51,6 @@ Agent::Agent(config_t const& config)
     _readDB(this),
     _transient(this),
     _agentNeedsWakeup(false),
-    _activator(nullptr),
     _compactor(this),
     _ready(false),
     _preparing(false) {
@@ -256,6 +255,10 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
       LOG_TOPIC(WARN, Logger::AGENCY) << "Last confirmation from peer "
         << peerId << " was received more than minPing ago: " << d.count();
     }
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Setting _lastAcked["
+      << peerId << "] to time "
+      << std::chrono::duration_cast<std::chrono::microseconds>(
+          t.time_since_epoch()).count();
     _lastAcked[peerId] = t;
 
     if (index > _confirmed[peerId]) {  // progress this follower?
@@ -288,7 +291,7 @@ void Agent::reportFailed(std::string const& slaveId, size_t toLog) {
 }
 
 /// Followers' append entries
-bool Agent::recvAppendEntriesRPC(
+priv_rpc_ret_t Agent::recvAppendEntriesRPC(
   term_t term, std::string const& leaderId, index_t prevIndex, term_t prevTerm,
   index_t leaderCommitIndex, query_t const& queries) {
 
@@ -297,17 +300,18 @@ bool Agent::recvAppendEntriesRPC(
 
   VPackSlice payload = queries->slice();
 
+  term_t t(this->term());
   // Update commit index
   if (payload.type() != VPackValueType::Array) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Received malformed entries for appending. Discarding!";
-    return false;
+    return priv_rpc_ret_t(false,t);
   }
 
   if (!_constituent.checkLeader(term, leaderId, prevIndex, prevTerm)) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
       << "Not accepting appendEntries from " << leaderId;
-    return false;
+    return priv_rpc_ret_t(false,t);
   }
 
   size_t nqs = payload.length();
@@ -315,7 +319,7 @@ bool Agent::recvAppendEntriesRPC(
   if (nqs == 0) {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Finished empty AppendEntriesRPC from "
       << leaderId << " with term " << term;
-    return true;
+    return priv_rpc_ret_t(true,t);
   }
 
   bool ok = true;
@@ -348,7 +352,7 @@ bool Agent::recvAppendEntriesRPC(
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Finished AppendEntriesRPC from "
     << leaderId << " with term " << term;
 
-  return ok;
+  return priv_rpc_ret_t(ok,t);
 }
 
 /// Leader's append entries
@@ -511,8 +515,7 @@ void Agent::sendAppendEntriesRPC() {
       // Really leading?
       {
         if (challengeLeadership()) {
-          _constituent.candidate();
-          _preparing = false;
+          resign();
           return;
         }
       }
@@ -537,7 +540,10 @@ void Agent::sendAppendEntriesRPC() {
       // message if a timeout occurs.
 
       _lastSent[followerId]    = system_clock::now();
-      _constituent.notifyHeartbeatSent(followerId);
+      // _constituent.notifyHeartbeatSent(followerId);
+      // Do not notify constituent, because the AppendEntriesRPC here could
+      // take a very long time, so this must not disturb the empty ones
+      // being sent out.
 
       LOG_TOPIC(DEBUG, Logger::AGENCY)
         << "Appending (" << (uint64_t) (TRI_microtime() * 1000000000.0) << ") "
@@ -549,6 +555,12 @@ void Agent::sendAppendEntriesRPC() {
           earliestPackage-system_clock::now()).count() << "ms";
     }
   }
+}
+
+
+void Agent::resign(term_t otherTerm) {
+  _constituent.follow(otherTerm);
+  _preparing = false;
 }
 
 
@@ -591,8 +603,13 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
     3 * _config.minPing() * _config.timeoutMult(), true);
   _constituent.notifyHeartbeatSent(followerId);
 
+  double now = TRI_microtime();
   LOG_TOPIC(DEBUG, Logger::AGENCY)
     << "Sending empty appendEntriesRPC to follower " << followerId;
+  double diff = TRI_microtime() - now;
+  if (diff > 0.01) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Logging of a line took more than 1/100 of a second, this is bad:" << diff;
+  }
 }
 
 void Agent::advanceCommitIndex() {
@@ -794,12 +811,37 @@ bool Agent::challengeLeadership() {
   MUTEX_LOCKER(tiLocker, _tiLock);
   size_t good = 0;
   
+  std::string const myid = id();
+  
   for (auto const& i : _lastAcked) {
-    duration<double> m = system_clock::now() - i.second;
-    if (0.9 * _config.minPing() * _config.timeoutMult() > m.count()) {
-      ++good;
+    if (i.first != myid) {  // do not count ourselves
+      duration<double> m = system_clock::now() - i.second;
+      LOG_TOPIC(DEBUG, Logger::AGENCY) << "challengeLeadership: found "
+        "_lastAcked[" << i.first << "] to be "
+        << std::chrono::duration_cast<std::chrono::microseconds>(
+            i.second.time_since_epoch()).count()
+        << " which is " << static_cast<uint64_t>(m.count() * 1000000.0)
+        << " microseconds in the past.";
+
+      // This is rather arbitrary here: We used to have 0.9 here to absolutely
+      // ensure that a leader resigns before another one even starts an election.
+      // However, the Raft paper does not mention this at all. Rather, in the
+      // paper it is written that the leader should resign immediately if it
+      // sees a higher term from another server. Currently we have not
+      // implemented to return the follower's term with a response to
+      // AppendEntriesRPC, so the leader cannot find out a higher term this
+      // way. The leader can, however, see a higher term in the incoming
+      // AppendEntriesRPC a new leader sends out, and it will immediately
+      // resign if it sees that. For the moment, this value here can stay.
+      // We should soon implement sending the follower's term back with
+      // each response and probably get rid of this method altogether,
+      // but this requires a bit more thought.
+      if (_config.maxPing() * _config.timeoutMult() > m.count()) {
+        ++good;
+      }
     }
   }
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "challengeLeadership: good=" << good;
   
   return (good < size() / 2);  // not counting myself
 }
@@ -856,8 +898,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
   {
     // Only leader else redirect
     if (challengeLeadership()) {
-      _constituent.candidate();
-      _preparing = false;
+      resign();
       return trans_ret_t(false, NO_LEADER);
     }
     
@@ -919,8 +960,7 @@ trans_ret_t Agent::transient(query_t const& queries) {
     
     // Only leader else redirect
     if (challengeLeadership()) {
-      _constituent.candidate();
-      _preparing = false;
+      resign();
       return trans_ret_t(false, NO_LEADER);
     }
 
@@ -1032,8 +1072,7 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
 
     // Only leader else redirect
     if (multihost && challengeLeadership()) {
-      _constituent.candidate();
-      _preparing = false;
+      resign();
       return write_ret_t(false, NO_LEADER);
     }
     
@@ -1081,8 +1120,7 @@ read_ret_t Agent::read(query_t const& query) {
 
   // Only leader else redirect
   if (challengeLeadership()) {
-    _constituent.candidate();
-    _preparing = false;
+    resign();
     return read_ret_t(false, NO_LEADER);
   }
 
@@ -1101,10 +1139,6 @@ read_ret_t Agent::read(query_t const& query) {
 
 /// Send out append entries to followers regularly or on event
 void Agent::run() {
-
-  using namespace std::chrono;
-  auto tp = system_clock::now();
-
   // Only run in case we are in multi-host mode
   while (!this->isStopping() && size() > 1) {
 
@@ -1134,14 +1168,6 @@ void Agent::run() {
           // loop often enough in cases of high load.
         }
       }
-      
-      // Detect faulty agent and replace
-      // if possible and only if not already activating
-      if (duration<double>(system_clock::now() - tp).count() > 10.0) {
-        detectActiveAgentFailures();
-        tp = system_clock::now();
-      }
-
     } else {
       CONDITION_LOCKER(guard, _appendCV);
       if (!_agentNeedsWakeup) {
@@ -1152,41 +1178,6 @@ void Agent::run() {
   }
   
 }
-
-
-void Agent::reportActivated(
-  std::string const& failed, std::string const& replacement, query_t state) {
-
-  term_t myterm = _constituent.term();
-      
-  if (state->slice().get("success").getBoolean()) {
-    
-    {
-      MUTEX_LOCKER(tiLocker, _tiLock);
-      _confirmed.erase(failed);
-      auto commitIndex = state->slice().get("commitId").getNumericValue<index_t>();
-      _confirmed[replacement] = commitIndex;
-      _lastAcked[replacement] = system_clock::now();
-      _config.swapActiveMember(failed, replacement);
-    }
-    
-    {
-      MUTEX_LOCKER(actLock, _activatorLock);
-      if (_activator->isRunning()) {
-        _activator->beginShutdown();
-      }
-      _activator.reset(nullptr);
-    }
-    
-  } 
-
-  persistConfiguration(myterm);
-
-  // Notify inactive pool
-  notifyInactive();
-
-}
-
 
 void Agent::persistConfiguration(term_t t) {
 
@@ -1208,48 +1199,6 @@ void Agent::persistConfiguration(term_t t) {
   // In case we've lost leadership, no harm will arise as the failed write
   // prevents bogus agency configuration to be replicated among agents. ***
   write(agency, true); 
-}
-
-
-void Agent::failedActivation(
-  std::string const& failed, std::string const& replacement) {
-  MUTEX_LOCKER(actLock, _activatorLock);
-  _activator.reset(nullptr);
-}
-
-
-void Agent::detectActiveAgentFailures() {
-  // Detect faulty agent if pool larger than agency
-
-  std::unordered_map<std::string, TimePoint> lastAcked;
-  {
-    MUTEX_LOCKER(tiLocker, _tiLock);
-    lastAcked = _lastAcked;
-  }
-
-  MUTEX_LOCKER(actLock, _activatorLock);
-  if (_activator != nullptr) {
-    return;
-  }
-  
-  if (_config.poolSize() > _config.size()) {
-    std::vector<std::string> active = _config.active();
-    for (auto const& id : active) {
-      if (id != this->id()) {
-        auto ds = duration<double>(
-          system_clock::now() - lastAcked.at(id)).count();
-        if (ds > 180.0) {
-          std::string repl = _config.nextAgentInLine();
-          LOG_TOPIC(DEBUG, Logger::AGENCY)
-            << "Active agent " << id << " has failed. << " << repl
-            << " will be promoted to active agency membership";
-          _activator = std::make_unique<AgentActivator>(this, id, repl);
-          _activator->start();
-          return;
-        }
-      }
-    }
-  }
 }
 
 
@@ -1317,9 +1266,6 @@ void Agent::lead() {
 
   persistConfiguration(myterm);
 
-  // Notify inactive pool
-  notifyInactive();
-  
   {
     CONDITION_LOCKER(guard, _waitForCV);
     // Note that when we are stopping
@@ -1709,12 +1655,6 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   return out;
 }
 
-
-void Agent::reportMeasurement(query_t const& query) {
-  if (_inception != nullptr) {
-    _inception->reportIn(query);
-  }
-}
 
 void Agent::resetRAFTTimes(double min_timeout, double max_timeout) {
   _config.pingTimes(min_timeout,max_timeout);

@@ -425,7 +425,12 @@ struct MMFilesMarker {
     t |= makeTick(tick);
     _typeAndTick = t;
   }
-
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+  void breakIt() {
+    _size = 0xffffffff;
+    _crc = 0xdeadbeef;
+  }
+#endif
 };
 
 static_assert(sizeof(MMFilesMarker) == 16, "invalid size for MMFilesMarker");
