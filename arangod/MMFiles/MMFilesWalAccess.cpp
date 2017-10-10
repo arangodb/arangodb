@@ -285,12 +285,12 @@ struct MMFilesWalAccessContext : WalAccessContext {
      std::shared_ptr<VPackBuffer<uint8_t>> bufferPtr;
      bufferPtr.reset(&buffer, arangodb::velocypack::BufferNonDeleter<uint8_t>());
      */
-    _builder.clear();
+    TRI_DEFER(_builder.clear());
     _builder.openObject();
     // logger-follow command
-    _builder.add("tick", VPackValue(static_cast<uint64_t>(marker->getTick())));
-    _builder.add("type",
-                VPackValue(static_cast<uint64_t>(TranslateType(marker))));
+    _builder.add("tick", VPackValue(std::to_string(marker->getTick())));
+    TRI_replication_operation_e tt = TranslateType(marker);
+    _builder.add("type", VPackValue(static_cast<uint64_t>(tt)));
     
     if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
         type == TRI_DF_MARKER_VPACK_REMOVE ||
@@ -298,7 +298,8 @@ struct MMFilesWalAccessContext : WalAccessContext {
         type == TRI_DF_MARKER_VPACK_COMMIT_TRANSACTION ||
         type == TRI_DF_MARKER_VPACK_ABORT_TRANSACTION) {
       // transaction id
-      _builder.add("tid", VPackValue(MMFilesDatafileHelper::TransactionId(marker)));
+      TRI_voc_tid_t tid = MMFilesDatafileHelper::TransactionId(marker);
+      _builder.add("tid", VPackValue(std::to_string(tid)));
     }
     
     if (type == TRI_DF_MARKER_VPACK_DROP_DATABASE) {
@@ -306,6 +307,7 @@ struct MMFilesWalAccessContext : WalAccessContext {
                        MMFilesDatafileHelper::VPackOffset(type));
       _builder.add("db", slice.get("name"));
     } else if (type == TRI_DF_MARKER_VPACK_DROP_COLLECTION) {
+      TRI_ASSERT(databaseId != 0);
       TRI_vocbase_t* vocbase = loadVocbase(databaseId);
       if (vocbase == nullptr) {
         // ignore markers from dropped dbs

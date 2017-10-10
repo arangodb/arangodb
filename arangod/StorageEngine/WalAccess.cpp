@@ -55,6 +55,8 @@ TRI_vocbase_t* WalAccessContext::loadVocbase(TRI_voc_tick_t dbid) {
 
 LogicalCollection* WalAccessContext::loadCollection(TRI_voc_tick_t dbid,
                                                     TRI_voc_cid_t cid) {
+  TRI_ASSERT(dbid != 0);
+  TRI_ASSERT(cid != 0);
   TRI_vocbase_t* vocbase = loadVocbase(dbid);
   if (vocbase != nullptr) {
     auto const& it = _collectionCache.find(cid);
