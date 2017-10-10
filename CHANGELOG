@@ -1,6 +1,8 @@
 v3.2.5 (2017-XX-XX)
 -------------------
 
+* UI: fixed wrong user attribute name validation, issue #3228
+
 * UI: fixed unresponsive events in cluster shards view
 
 * Add statistics about the V8 context counts and number of available/active/busy
