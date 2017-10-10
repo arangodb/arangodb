@@ -91,10 +91,16 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
     setProgress("fetching master state");
 
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: getting master state";
-    Result r = getMasterState();
-    if (r.fail()) {
-      return r;
+    Result r;
+    if (!_isChildSyncer) {
+      r = getMasterState();
+      if (r.fail()) {
+        return r;
+      }
     }
+    TRI_ASSERT(!_masterInfo._endpoint.empty());
+    TRI_ASSERT(_masterInfo._serverId != 0);
+    TRI_ASSERT(_masterInfo._majorVersion != 0);
 
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: got master state";
     if (incremental) {
