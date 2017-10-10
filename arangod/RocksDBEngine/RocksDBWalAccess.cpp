@@ -589,7 +589,7 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
     }
     
     // TODO why is inclusive <= correct here?
-    if (batch.sequence < tickStart) {
+    if (batch.sequence <= tickStart) {
       iterator->Next();  // skip
       continue;
     } else if (batch.sequence > tickEnd) {
