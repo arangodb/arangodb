@@ -54,7 +54,7 @@ struct WalAccessResult : public Result {
 
   bool fromTickIncluded() const { return _fromTickIncluded; }
   TRI_voc_tick_t lastIncludedTick() const { return _lastIncludedTick; }
-  bool latestTick() const { return _latestTick; }
+  TRI_voc_tick_t latestTick() const { return _latestTick; }
 
   Result& reset(int errorNumber, bool ft, TRI_voc_tick_t included,
                 TRI_voc_tick_t latest) {

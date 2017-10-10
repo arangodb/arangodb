@@ -35,8 +35,9 @@ const arangodb = require("@arangodb");
 const replication = require("@arangodb/replication");
 const errors = arangodb.errors;
 const db = arangodb.db;
-const time = require("internal").time;
-const wait = require("internal").wait;
+const internal = require("internal");
+const time = internal.time;
+const wait = internal.wait;
 
 const masterEndpoint = arango.getEndpoint();
 const slaveEndpoint = ARGUMENTS[0];
@@ -114,6 +115,8 @@ const waitForReplication = function() {
     }
     wait(0.5, false);
   }
+  //internal.print(state);
+  //internal.print("lastLogTick: " + lastLogTick);
 
   if (wasOnMaster) {
     connectToMaster();
