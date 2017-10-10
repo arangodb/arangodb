@@ -27,37 +27,37 @@
 #include "StorageEngine/WalAccess.h"
 
 namespace arangodb {
-  
-  /// @brief StorageEngine agnostic wal access interface.
-  /// TODO: add methods for _admin/wal/ and get rid of engine specific handlers
-  class MMFilesWalAccess : public WalAccess {
-  public:
-    MMFilesWalAccess() {}
-    
-    /// {"tickMin":"123", "tickMax":"456", "version":"3.2", "serverId":"abc"}
-    Result tickRange(std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const override;
-    
-    /// {"lastTick":"123",
-    ///  "version":"3.2",
-    ///  "serverId":"abc",
-    ///  "clients": {
-    ///    "serverId": "ass", "lastTick":"123", ...
-    ///  }}
-    ///
-    TRI_voc_tick_t lastTick() const override;
-    
-    /// should return the list of transactions started, but not committed in that
-    /// range (range can be adjusted)
-    WalAccessResult openTransactions(uint64_t tickStart, uint64_t tickEnd,
-                                     WalAccess::Filter const& filter,
-                                     TransactionCallback const&) const override;
-    
-    /// Tails the wall, this will already sanitize the
-    WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd, size_t chunkSize,
-                         WalAccess::Filter const& filter,
-                         MarkerCallback const&) const override;
-    
-  };
+
+/// @brief StorageEngine agnostic wal access interface.
+/// TODO: add methods for _admin/wal/ and get rid of engine specific handlers
+class MMFilesWalAccess : public WalAccess {
+ public:
+  MMFilesWalAccess() {}
+
+  /// {"tickMin":"123", "tickMax":"456", "version":"3.2", "serverId":"abc"}
+  Result tickRange(
+      std::pair<TRI_voc_tick_t, TRI_voc_tick_t>& minMax) const override;
+
+  /// {"lastTick":"123",
+  ///  "version":"3.2",
+  ///  "serverId":"abc",
+  ///  "clients": {
+  ///    "serverId": "ass", "lastTick":"123", ...
+  ///  }}
+  ///
+  TRI_voc_tick_t lastTick() const override;
+
+  /// should return the list of transactions started, but not committed in that
+  /// range (range can be adjusted)
+  WalAccessResult openTransactions(uint64_t tickStart, uint64_t tickEnd,
+                                   WalAccess::Filter const& filter,
+                                   TransactionCallback const&) const override;
+
+  /// Tails the wall, this will already sanitize the
+  WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd, size_t chunkSize,
+                       WalAccess::Filter const& filter,
+                       MarkerCallback const&) const override;
+};
 }
 
 #endif
