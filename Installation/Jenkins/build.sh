@@ -820,8 +820,8 @@ if [ -n "$CPACK" ] && [ -n "${TARGET_DIR}" ] && [ -z "${MSVC}" ];  then
     fi
 fi
 
-mkdir -p "${BUILD_DIR}/lib/Basics/"
-cat "${SOURCE_DIR}/lib/Basics/build.h.in" | sed "s;@ARANGODB_VERSION@;$(date "+%Y-%m-%d %H:%M:%S");" >"${BUILD_DIR}/lib/Basics/build.h"
+mkdir -p "${DST}/lib/Basics/"
+cat "${SOURCE_DIR}/lib/Basics/build-date.h.in" | sed "s;@ARANGODB_BUILD_DATE@;$(date "+%Y-%m-%d %H:%M:%S");" >"${DST}/lib/Basics/build-date.h"
 TRIES=0;
 set +e
 while /bin/true; do
