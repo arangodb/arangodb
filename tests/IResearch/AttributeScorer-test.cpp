@@ -172,7 +172,7 @@ void assertOrderSuccess(
   CHECK((false == !itr));
 
   size_t next = 0;
-  auto callback = [&field, &expectedOrdered, &expectedUnordered, itr, &next](arangodb::DocumentIdentifierToken const& token)->void {
+  auto callback = [&field, &expectedOrdered, &expectedUnordered, itr, &next](arangodb::LocalDocumentId const& token)->void {
     arangodb::ManagedDocumentResult result;
 
     CHECK((itr->readDocument(token, result)));

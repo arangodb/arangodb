@@ -138,7 +138,7 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
     // only copy 1st row of registers inherited from previous frame(s)
     inheritRegisters(cur, res.get(), _pos);
 
-    auto cb = [&](DocumentIdentifierToken const& tkn) {
+    auto cb = [&](LocalDocumentId const& tkn) {
       if (_iter->readDocument(tkn, *_mmdr)) {
         // The result is in the first variable of this depth,
         // we do not need to do a lookup in
@@ -147,7 +147,7 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
         uint8_t const* vpack = _mmdr->vpack();
         if (_mmdr->canUseInExternal()) {
           res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs),
-                        AqlValue(AqlValueHintNoCopy(vpack)));
+                        AqlValue(AqlValueHintDocumentNoCopy(vpack)));
         } else {
           res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs),
                         AqlValue(AqlValueHintCopy(vpack)));
@@ -177,7 +177,7 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
 
   if (send < atMost) {
     // The collection did not have enough results
-    res->shrink(send, false);
+    res->shrink(send);
   }
 
   // Clear out registers no longer needed later:

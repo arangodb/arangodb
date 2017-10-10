@@ -36,12 +36,12 @@
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
-#include "StorageEngine/DocumentIdentifierToken.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
@@ -206,7 +206,7 @@ arangodb::aql::AqlValue aqlFnTokens(
 
 void addFunctions(arangodb::aql::AqlFunctionFeature& functions) {
   arangodb::iresearch::addFunction(functions, arangodb::aql::Function{
-    "TOKENS", // name 
+    "TOKENS", // name
     ".,.", // positional arguments (data,analyzer)
     true, // deterministic (true == called during AST optimization and will be used to calculate values for constant expressions)
     true, // can throw
@@ -681,7 +681,7 @@ IResearchAnalyzerFeature::AnalyzerPool::ptr IResearchAnalyzerFeature::get(
             throw irs::illegal_state(); // this should never happen, treat as an assertion failure
           }
 
-          
+
           analyzers.emplace(
             irs::make_hashed_ref(name, std::hash<irs::string_ref>()),
             pool
@@ -754,12 +754,12 @@ bool IResearchAnalyzerFeature::loadConfiguration() {
 
   std::unordered_map<irs::string_ref, std::pair<AnalyzerPool::ptr, int64_t>> initialized;
   auto visitor = [this, &trx, collection, &initialized](
-      DocumentIdentifierToken const& token
+      LocalDocumentId const& token
   )->bool {
     ManagedDocumentResult result;
 
     if (!collection->readDocument(&trx, token, result)) {
-      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "skipping failed read of an IResearch analyzer persisted configuration token: " << token._data;
+      LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH) << "skipping failed read of an IResearch analyzer persisted configuration token: " << token.id();
 
       return true; // failed to read document, skip
     }

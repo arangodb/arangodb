@@ -1428,7 +1428,7 @@ SECTION("test_start") {
 
   // test feature start load configuration (with configuration collection)
   {
-    
+
     // ensure there is an empty configuration collection
     {
       auto* collection = vocbase->lookupCollection("_iresearch_analyzers");
@@ -1603,7 +1603,7 @@ SECTION("test_tokens") {
     irs::string_ref data("abcdefghijklmnopqrstuvwxyz");
     VPackFunctionParametersWrapper args;
     args->emplace_back(data.c_str(), data.size());
-    args->emplace_back(123.4);
+    args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
     AqlValueWrapper result(impl(nullptr, nullptr, *args));
     CHECK((result->isNone()));
   }
@@ -1617,7 +1617,7 @@ SECTION("test_tokens") {
 
     irs::string_ref analyzer("test_analyzer");
     VPackFunctionParametersWrapper args;
-    args->emplace_back(123.4);
+    args->emplace_back(arangodb::aql::AqlValueHintDouble(123.4));
     args->emplace_back(analyzer.c_str(), analyzer.size());
     AqlValueWrapper result(impl(nullptr, nullptr, *args));
     CHECK((result->isNone()));

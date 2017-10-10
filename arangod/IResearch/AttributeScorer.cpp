@@ -29,11 +29,11 @@
 #include "IResearch/IResearchDocument.h"
 #include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"
-#include "StorageEngine/DocumentIdentifierToken.h"
 #include "Transaction/Methods.h"
 #include "velocypack/Iterator.h"
 #include "velocypack/Parser.h"
 #include "velocypack/Slice.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -212,10 +212,8 @@ void Prepared::prepare_score(score_t& score) const {
         return; // not a valid collection reference
       }
 
-      arangodb::DocumentIdentifierToken colToken;
+      arangodb::LocalDocumentId colToken(docPk.rid());
       arangodb::ManagedDocumentResult docResult;
-
-      colToken._data = docPk.rid();
 
       if (!collection->readDocument(&(trx->value), colToken, docResult)) {
         LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "failed to read document while computing document score, cid '" << docPk.cid() << "', rid '" << docPk.rid() << "'";

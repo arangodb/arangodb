@@ -33,6 +33,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -69,7 +70,7 @@ void IResearchRocksDBRecoveryHelper::PutCF(uint32_t column_family_id,
         transaction::StandaloneContext::Create(vocbase), coll->cid(),
         arangodb::AccessMode::Type::WRITE);
     for (auto link : links) {
-      link->insert(&trx, rev, doc, false);
+      link->insert(&trx, LocalDocumentId(rev), doc, false);
     }
     trx.commit();
 

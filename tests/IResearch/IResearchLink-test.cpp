@@ -330,11 +330,11 @@ SECTION("test_write") {
   auto link = logicalCollection->createIndex(nullptr, linkJson->slice(), created);
   REQUIRE((false == !link && created));
   CHECK((0 == reader.reopen().live_docs_count()));
-  CHECK((TRI_ERROR_BAD_PARAMETER == link->insert(nullptr, 1, doc0->slice(), false).errorNumber()));
+  CHECK((TRI_ERROR_BAD_PARAMETER == link->insert(nullptr, arangodb::LocalDocumentId(1), doc0->slice(), false).errorNumber()));
   {
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    CHECK((link->insert(&trx, 1, doc0->slice(), false).ok()));
+    CHECK((link->insert(&trx, arangodb::LocalDocumentId(1), doc0->slice(), false).ok()));
     CHECK((trx.commit().ok()));
   }
 
@@ -346,7 +346,7 @@ SECTION("test_write") {
   {
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    CHECK((link->insert(&trx, 2, doc1->slice(), false).ok()));
+    CHECK((link->insert(&trx, arangodb::LocalDocumentId(2), doc1->slice(), false).ok()));
     CHECK((trx.commit().ok()));
   }
 
@@ -358,7 +358,7 @@ SECTION("test_write") {
   {
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    CHECK((link->remove(&trx, 2, doc1->slice(), false).ok()));
+    CHECK((link->remove(&trx, arangodb::LocalDocumentId(2), doc1->slice(), false).ok()));
     CHECK((trx.commit().ok()));
   }
 

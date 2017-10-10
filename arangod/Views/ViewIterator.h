@@ -74,7 +74,7 @@ class ViewIterator {
 
   virtual void skip(uint64_t count, uint64_t& skipped) = 0; // same as IndexIterator API
 
-  bool readDocument(arangodb::LocalDocumentId const& token, arangodb::ManagedDocumentResult& result) const;
+  virtual bool readDocument(arangodb::LocalDocumentId const& token, arangodb::ManagedDocumentResult& result) const = 0;
 
  protected:
   ViewImplementation* _view;

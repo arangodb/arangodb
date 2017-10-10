@@ -59,6 +59,7 @@
 #include "velocypack/Builder.h"
 #include "velocypack/Iterator.h"
 #include "Views/ViewIterator.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/PhysicalView.h"
@@ -246,17 +247,14 @@ class ViewIteratorBase : public arangodb::ViewIterator {
   );
   virtual bool hasExtra() const override;
   virtual bool nextExtra(ExtraCallback const& callback, size_t limit) override;
-  virtual bool readDocument(
-    arangodb::DocumentIdentifierToken const& token,
-    arangodb::ManagedDocumentResult& result
-  ) const override;
+  virtual bool readDocument(arangodb::LocalDocumentId const& token, arangodb::ManagedDocumentResult& result) const override;
   virtual char const* typeName() const override;
 
  protected:
   CompoundReader _reader;
 
   bool loadToken(
-    arangodb::DocumentIdentifierToken& buf,
+    arangodb::LocalDocumentId& buf,
     size_t subReaderId,
     irs::doc_id_t subDocId
   ) const noexcept;
@@ -267,10 +265,10 @@ class ViewIteratorBase : public arangodb::ViewIterator {
   char const* _typeName;
 
   irs::doc_id_t subDocId(
-    arangodb::DocumentIdentifierToken const& token
+    arangodb::LocalDocumentId const& token
   ) const noexcept;
   size_t subReaderId(
-    arangodb::DocumentIdentifierToken const& token
+    arangodb::LocalDocumentId const& token
   ) const noexcept;
 };
 
@@ -282,7 +280,7 @@ ViewIteratorBase::ViewIteratorBase(
 ): ViewIterator(&view, &trx),
    _reader(std::move(reader)),
    _typeName(typeName) {
-  typedef decltype(arangodb::DocumentIdentifierToken::_data) doc_id_t;
+  typedef arangodb::LocalDocumentId::BaseType doc_id_t;
   _subDocIdBits = _reader.size()
                 ? irs::math::math_traits<doc_id_t>::clz(_reader.size())
                 : irs::bits_required<doc_id_t>(); // not really a usable scenario (no data)
@@ -296,7 +294,7 @@ bool ViewIteratorBase::hasExtra() const {
 }
 
 bool ViewIteratorBase::loadToken(
-  arangodb::DocumentIdentifierToken& buf,
+  arangodb::LocalDocumentId& buf,
   size_t subReaderId,
   irs::doc_id_t subDocId
 ) const noexcept {
@@ -304,7 +302,7 @@ bool ViewIteratorBase::loadToken(
     return false; // no valid token can be specified for these args
   }
 
-  buf._data = (subReaderId << _subDocIdBits) | subDocId;
+  buf = arangodb::LocalDocumentId::create((subReaderId << _subDocIdBits) | subDocId);
 
   return true;
 }
@@ -323,7 +321,7 @@ bool ViewIteratorBase::nextExtra(ExtraCallback const& callback, size_t limit) {
 }
 
 bool ViewIteratorBase::readDocument(
-    arangodb::DocumentIdentifierToken const& token,
+    arangodb::LocalDocumentId const& token,
     arangodb::ManagedDocumentResult& result
 ) const {
   const auto docId = subDocId(token);
@@ -353,23 +351,21 @@ bool ViewIteratorBase::readDocument(
     return false; // not a valid collection reference
   }
 
-  arangodb::DocumentIdentifierToken colToken;
-
-  colToken._data = docPk.rid();
+  arangodb::LocalDocumentId colToken(docPk.rid());
 
   return collection->readDocument(_trx, colToken, result);
 }
 
 irs::doc_id_t ViewIteratorBase::subDocId(
-  arangodb::DocumentIdentifierToken const& token
+  arangodb::LocalDocumentId const& token
 ) const noexcept {
-  return irs::doc_id_t(token._data & _subDocIdMask);
+  return irs::doc_id_t(token.id() & _subDocIdMask);
 }
 
 size_t ViewIteratorBase::subReaderId(
-  arangodb::DocumentIdentifierToken const& token
+  arangodb::LocalDocumentId const& token
 ) const noexcept {
-  return token._data >> _subDocIdBits;
+  return token.id() >> _subDocIdBits;
 }
 
 char const* ViewIteratorBase::typeName() const {
@@ -389,7 +385,7 @@ class OrderedViewIterator final : public ViewIteratorBase {
     irs::order const& order,
     std::vector<irs::stored_attribute::ptr>&& orderAttrs
   );
-  virtual bool next(TokenCallback const& callback, size_t limit) override;
+  virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) override;
   virtual void reset() override;
   virtual void skip(uint64_t count, uint64_t& skipped) override;
 
@@ -404,7 +400,7 @@ class OrderedViewIterator final : public ViewIteratorBase {
   State _state; // previous iteration state
   arangodb::iresearch::attribute::Transaction _trx; // current transaction
 
-  void next(TokenCallback const& callback, size_t limit, bool sort);
+  void next(LocalDocumentIdCallback const& callback, size_t limit, bool sort);
 };
 
 OrderedViewIterator::OrderedViewIterator(
@@ -437,14 +433,14 @@ OrderedViewIterator::OrderedViewIterator(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief expects a callback taking DocumentIdentifierTokens that are created
+/// @brief expects a callback taking LocalDocumentIds that are created
 ///        from RevisionIds. In addition it expects a limit.
 ///        The iterator has to walk through the Index and call the callback with
 ///        at most limit many elements. On the next iteration it has to continue
 ///        after the last returned Token.
 /// @return has more
 ////////////////////////////////////////////////////////////////////////////////
-bool OrderedViewIterator::next(TokenCallback const& callback, size_t limit) {
+bool OrderedViewIterator::next(LocalDocumentIdCallback const& callback, size_t limit) {
   auto& order = _order;
   auto scoreLess = [&order](
       irs::bstring const& lhs,
@@ -454,9 +450,9 @@ bool OrderedViewIterator::next(TokenCallback const& callback, size_t limit) {
   };
 
   // FIXME use irs::memory_pool
-  std::multimap<irs::bstring, arangodb::DocumentIdentifierToken, decltype(scoreLess)> orderedDocTokens(scoreLess);
+  std::multimap<irs::bstring, arangodb::LocalDocumentId, decltype(scoreLess)> orderedDocTokens(scoreLess);
   auto maxDocCount = _state._skip + limit;
-  arangodb::DocumentIdentifierToken tmpToken;
+  arangodb::LocalDocumentId tmpToken;
 
   for (size_t i = 0, count = _reader.size(); i < count; ++i) {
     auto& segmentReader = _reader[i];
@@ -533,7 +529,7 @@ void OrderedViewIterator::reset() {
 ////////////////////////////////////////////////////////////////////////////////
 void OrderedViewIterator::skip(uint64_t count, uint64_t& skipped) {
   auto skip = _state._skip;
-  arangodb::DocumentIdentifierToken tmpToken;
+  arangodb::LocalDocumentId tmpToken;
 
   skipped = 0;
 
@@ -572,7 +568,7 @@ class UnorderedViewIterator final : public ViewIteratorBase {
     CompoundReader&& reader,
     irs::filter const& filter
   );
-  virtual bool next(TokenCallback const& callback, size_t limit) override;
+  virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) override;
   virtual void reset() override;
   virtual void skip(uint64_t count, uint64_t& skipped) override;
 
@@ -597,15 +593,15 @@ UnorderedViewIterator::UnorderedViewIterator(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief expects a callback taking DocumentIdentifierTokens that are created
+/// @brief expects a callback taking LocalDocumentIds that are created
 ///        from RevisionIds. In addition it expects a limit.
 ///        The iterator has to walk through the Index and call the callback with
 ///        at most limit many elements. On the next iteration it has to continue
 ///        after the last returned Token.
 /// @return has more
 ////////////////////////////////////////////////////////////////////////////////
-bool UnorderedViewIterator::next(TokenCallback const& callback, size_t limit) {
-  arangodb::DocumentIdentifierToken tmpToken;
+bool UnorderedViewIterator::next(LocalDocumentIdCallback const& callback, size_t limit) {
+  arangodb::LocalDocumentId tmpToken;
 
   for (size_t count = _reader.size();
        _state._readerOffset < count;
@@ -654,7 +650,7 @@ void UnorderedViewIterator::reset() {
 void UnorderedViewIterator::skip(uint64_t count, uint64_t& skipped) {
   skipped = 0;
   next(
-    [&skipped](arangodb::DocumentIdentifierToken const&)->void { ++skipped; },
+    [&skipped](arangodb::LocalDocumentId const&)->void { ++skipped; },
     count
   );
 }

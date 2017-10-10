@@ -68,11 +68,11 @@ class IResearchMMFilesLink final
 
   virtual arangodb::Result insert(
     transaction::Methods* trx,
-    TRI_voc_rid_t rid,
+    LocalDocumentId const& documentId,
     VPackSlice const& doc,
     bool isRollback
   ) override {
-    return IResearchLink::insert(trx, rid, doc, isRollback);
+    return IResearchLink::insert(trx, documentId, doc, isRollback);
   }
 
   virtual bool isPersistent() const override {
@@ -109,11 +109,11 @@ class IResearchMMFilesLink final
 
   arangodb::Result remove(
     transaction::Methods* trx,
-    TRI_voc_rid_t rid,
+    LocalDocumentId const& documentId,
     VPackSlice const& doc,
     bool isRollback
   ) override {
-    return IResearchLink::remove(trx, rid, doc, isRollback);
+    return IResearchLink::remove(trx, documentId, doc, isRollback);
   }
 
   ////////////////////////////////////////////////////////////////////////////////

@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, assertFalse, assertNull, fail, AQL_EXECUTE */
+/* global assertEqual, assertTrue, assertFalse, assertNull, fail, db._execute */
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief recovery tests for views
 // /
@@ -89,7 +89,7 @@ function recoverySuite () {
       assertTrue(p.hasOwnProperty('UnitTestsRecoveryDummy'));
       assertTrue(p.UnitTestsRecoveryDummy.includeAllFields);
 
-      var result = AQL_EXECUTE("FOR doc IN VIEW UnitTestsRecoveryView FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length", null, { }).json;
+      var result = db._execute("FOR doc IN VIEW UnitTestsRecoveryView FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length", null, { }).json;
       assertEqual(result[0], 0);
     }
 

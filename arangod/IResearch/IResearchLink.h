@@ -84,7 +84,7 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   arangodb::Result insert(
     transaction::Methods* trx,
-    TRI_voc_rid_t rid,
+    LocalDocumentId const& documentId,
     VPackSlice const& doc,
     bool isRollback
   ); // arangodb::Index override
@@ -127,7 +127,7 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   arangodb::Result remove(
     transaction::Methods* trx,
-    TRI_voc_rid_t rid,
+    LocalDocumentId const& documentId,
     VPackSlice const& doc,
     bool isRollback
   ); // arangodb::Index override

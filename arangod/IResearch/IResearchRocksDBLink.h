@@ -69,10 +69,10 @@ class IResearchRocksDBLink final
   virtual arangodb::Result insertInternal(
       transaction::Methods* trx,
       arangodb::RocksDBMethods*,
-      TRI_voc_rid_t revisionId,
+      LocalDocumentId const& documentId,
       const arangodb::velocypack::Slice& doc
   ) override {
-    return IResearchLink::insert(trx, revisionId, doc, false);
+    return IResearchLink::insert(trx, documentId, doc, false);
   }
 
   virtual bool isSorted() const override {
@@ -106,10 +106,10 @@ class IResearchRocksDBLink final
   virtual arangodb::Result removeInternal(
       transaction::Methods* trx,
       arangodb::RocksDBMethods*,
-      TRI_voc_rid_t revisionId,
+      LocalDocumentId const& documentId,
       const arangodb::velocypack::Slice& doc
   ) override {
-    return IResearchLink::remove(trx, revisionId, doc, false);
+    return IResearchLink::remove(trx, documentId, doc, false);
   }
 
   ////////////////////////////////////////////////////////////////////////////////

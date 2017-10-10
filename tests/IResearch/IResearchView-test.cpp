@@ -187,7 +187,7 @@ struct IResearchViewSetup {
     arangodb::application_features::ApplicationServer::server = nullptr;
     arangodb::EngineSelectorFeature::ENGINE = nullptr;
 
-    // destroy application features 
+    // destroy application features
     for (auto& f : features) {
       if (f.second) {
         f.first->stop();
@@ -336,7 +336,7 @@ SECTION("test_defaults") {
   // new view definition with links (not supported for link creation)
   {
     auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
-    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 101, \"properties\": { \"links\": { \"testCollection\": {} } } }"); 
+    auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 101, \"properties\": { \"links\": { \"testCollection\": {} } } }");
 
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     auto* logicalCollection = vocbase.createCollection(collectionJson->slice());CHECK((nullptr != logicalCollection));
@@ -469,7 +469,7 @@ SECTION("test_insert") {
     std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
-    CHECK((!itr->next([&count](arangodb::DocumentIdentifierToken const&)->void{ ++count; }, 10)));
+    CHECK((!itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
     CHECK((2 == count));
   }
 
@@ -506,7 +506,7 @@ SECTION("test_insert") {
     std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
-    CHECK((!itr->next([&count](arangodb::DocumentIdentifierToken const&)->void{ ++count; }, 10)));
+    CHECK((!itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
     CHECK((2 == count));
   }
 
@@ -540,7 +540,7 @@ SECTION("test_insert") {
     std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
-    CHECK((!itr->next([&count](arangodb::DocumentIdentifierToken const&)->void{ ++count; }, 10)));
+    CHECK((!itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
     CHECK((4 == count));
   }
 
@@ -575,7 +575,7 @@ SECTION("test_insert") {
     std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
-    CHECK((!itr->next([&count](arangodb::DocumentIdentifierToken const&)->void{ ++count; }, 10)));
+    CHECK((!itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
     CHECK((4 == count));
   }
 
@@ -611,7 +611,7 @@ SECTION("test_insert") {
     std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
-    CHECK((!itr->next([&count](arangodb::DocumentIdentifierToken const&)->void{ ++count; }, 10)));
+    CHECK((!itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
     CHECK((4 == count));
   }
 
@@ -648,7 +648,7 @@ SECTION("test_insert") {
     std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
-    CHECK((!itr->next([&count](arangodb::DocumentIdentifierToken const&)->void{ ++count; }, 10)));
+    CHECK((!itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
     CHECK((4 == count));
   }
 }
@@ -794,9 +794,9 @@ SECTION("test_query") {
     CHECK((&trx == itr->transaction()));
     CHECK((view == itr->view()));
     CHECK((false == itr->hasExtra()));
-    CHECK_THROWS(itr->nextExtra([](arangodb::DocumentIdentifierToken const&, arangodb::velocypack::Slice)->void{}, 42));
+    CHECK_THROWS(itr->nextExtra([](arangodb::arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
     size_t count = 0;
-    CHECK((false == itr->next([&count](arangodb::DocumentIdentifierToken const&)->void{ ++count; }, 42)));
+    CHECK((false == itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 42)));
     CHECK((0 == count));
     uint64_t skipped = 0;
     CHECK_NOTHROW((itr->skip(5, skipped)));
@@ -833,9 +833,9 @@ SECTION("test_query") {
     CHECK((&trx == itr->transaction()));
     CHECK((view == itr->view()));
     CHECK((false == itr->hasExtra()));
-    CHECK_THROWS(itr->nextExtra([](arangodb::DocumentIdentifierToken const&, arangodb::velocypack::Slice)->void{}, 42));
+    CHECK_THROWS(itr->nextExtra([](arangodb::arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
     size_t count = 0;
-    CHECK((false == itr->next([&count](arangodb::DocumentIdentifierToken const&)->void{ ++count; }, 42)));
+    CHECK((false == itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 42)));
     CHECK((0 == count));
     uint64_t skipped = 0;
     CHECK_NOTHROW((itr->skip(5, skipped)));
@@ -861,9 +861,9 @@ SECTION("test_query") {
     CHECK((&trx == itr->transaction()));
     CHECK((view == itr->view()));
     CHECK((false == itr->hasExtra()));
-    CHECK_THROWS(itr->nextExtra([](arangodb::DocumentIdentifierToken const&, arangodb::velocypack::Slice)->void{}, 42));
+    CHECK_THROWS(itr->nextExtra([](arangodb::arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
     size_t count = 0;
-    CHECK((false == itr->next([&count](arangodb::DocumentIdentifierToken const&)->void{ ++count; }, 42)));
+    CHECK((false == itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 42)));
     CHECK((0 == count));
     uint64_t skipped = 0;
     CHECK_NOTHROW((itr->skip(5, skipped)));
@@ -889,9 +889,9 @@ SECTION("test_query") {
     CHECK((&trx == itr->transaction()));
     CHECK((view == itr->view()));
     CHECK((false == itr->hasExtra()));
-    CHECK_THROWS(itr->nextExtra([](arangodb::DocumentIdentifierToken const&, arangodb::velocypack::Slice)->void{}, 42));
+    CHECK_THROWS(itr->nextExtra([](arangodb::arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
     size_t count = 0;
-    CHECK((false == itr->next([&count](arangodb::DocumentIdentifierToken const&)->void{ ++count; }, 42)));
+    CHECK((false == itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 42)));
     CHECK((0 == count));
     uint64_t skipped = 0;
     CHECK_NOTHROW((itr->skip(5, skipped)));
@@ -963,12 +963,12 @@ SECTION("test_query") {
     CHECK((&trx == itr->transaction()));
     CHECK((view == itr->view()));
     CHECK((false == itr->hasExtra()));
-    CHECK_THROWS(itr->nextExtra([](arangodb::DocumentIdentifierToken const&, arangodb::velocypack::Slice)->void{}, 42));
+    CHECK_THROWS(itr->nextExtra([](arangodb::arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
 
     {
       std::vector<size_t> const expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
       size_t next = 0;
-      CHECK((true == itr->next([&expected, &next](arangodb::DocumentIdentifierToken const& token)->void{ CHECK((token._data == expected[next++])); }, 10)));
+      CHECK((true == itr->next([&expected, &next](arangodb::arangodb::LocalDocumentId const& token)->void{ CHECK((token.id() == expected[next++])); }, 10)));
       CHECK((expected.size() == next));
     }
 
@@ -980,7 +980,7 @@ SECTION("test_query") {
     {
       std::vector<size_t> const expected = { 6, 7, 8, 9, 10, 11, 12 };
       size_t next = 0;
-      CHECK((false == itr->next([&expected, &next](arangodb::DocumentIdentifierToken const& token)->void{ CHECK((token._data == expected[next++])); }, 10)));
+      CHECK((false == itr->next([&expected, &next](arangodb::arangodb::LocalDocumentId const& token)->void{ CHECK((token.id() == expected[next++])); }, 10)));
       CHECK((expected.size() == next));
     }
 
@@ -1023,13 +1023,13 @@ SECTION("test_query") {
     CHECK((&trx == itr->transaction()));
     CHECK((view == itr->view()));
     CHECK((false == itr->hasExtra()));
-    CHECK_THROWS(itr->nextExtra([](arangodb::DocumentIdentifierToken const&, arangodb::velocypack::Slice)->void{}, 42));
+    CHECK_THROWS(itr->nextExtra([](arangodb::arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
 
     std::vector<size_t> actual;
 
     {
       std::set<size_t> expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
-      CHECK((true == itr->next([&expected, &actual](arangodb::DocumentIdentifierToken const& token)->void{ CHECK((1 == expected.erase(token._data))); actual.emplace_back(token._data); }, 10)));
+      CHECK((true == itr->next([&expected, &actual](arangodb::arangodb::LocalDocumentId const& token)->void{ CHECK((1 == expected.erase(token.id()))); actual.emplace_back(token.id()); }, 10)));
       CHECK((10 == actual.size()));
     }
 
@@ -1043,7 +1043,7 @@ SECTION("test_query") {
       std::unordered_set<size_t> expected1 = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
       for (auto& entry: actual) expected1.erase(entry);
       size_t next = 0;
-      CHECK((false == itr->next([&expected0, &expected1, &next](arangodb::DocumentIdentifierToken const& token)->void{ CHECK(((next < expected0.size() && expected0[next++] == token._data) || (next >= expected0.size() && 1 == expected1.erase(token._data)))); }, 10)));
+      CHECK((false == itr->next([&expected0, &expected1, &next](arangodb::arangodb::LocalDocumentId const& token)->void{ CHECK(((next < expected0.size() && expected0[next++] == token.id()) || (next >= expected0.size() && 1 == expected1.erase(token.id())))); }, 10)));
       CHECK((expected0.size() == next && expected1.empty()));
     }
 
@@ -1087,13 +1087,13 @@ SECTION("test_query") {
     CHECK((&trx == itr->transaction()));
     CHECK((view == itr->view()));
     CHECK((false == itr->hasExtra()));
-    CHECK_THROWS(itr->nextExtra([](arangodb::DocumentIdentifierToken const&, arangodb::velocypack::Slice)->void{}, 42));
+    CHECK_THROWS(itr->nextExtra([](arangodb::arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
 
     std::vector<size_t> actual;
 
     {
       std::set<size_t> expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
-      CHECK((true == itr->next([&expected, &actual](arangodb::DocumentIdentifierToken const& token)->void{ CHECK((1 == expected.erase(token._data))); actual.emplace_back(token._data); }, 10)));
+      CHECK((true == itr->next([&expected, &actual](arangodb::arangodb::LocalDocumentId const& token)->void{ CHECK((1 == expected.erase(token.id()))); actual.emplace_back(token.id()); }, 10)));
       CHECK((10 == actual.size()));
     }
 
@@ -1107,7 +1107,7 @@ SECTION("test_query") {
       std::unordered_set<size_t> expected1 = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
       for (auto& entry: actual) expected1.erase(entry);
       size_t next = 0;
-      CHECK((false == itr->next([&expected0, &expected1, &next](arangodb::DocumentIdentifierToken const& token)->void{ CHECK(((next < expected0.size() && expected0[next++] == token._data) || (next >= expected0.size() && 1 == expected1.erase(token._data)))); }, 10)));
+      CHECK((false == itr->next([&expected0, &expected1, &next](arangodb::arangodb::LocalDocumentId const& token)->void{ CHECK(((next < expected0.size() && expected0[next++] == token.id()) || (next >= expected0.size() && 1 == expected1.erase(token.id())))); }, 10)));
       CHECK((expected0.size() == next && expected1.empty()));
     }
 
@@ -1171,7 +1171,7 @@ SECTION("test_query") {
         CHECK((false == !itr));
 
         size_t count = 0;
-        CHECK((!itr->next([&count](arangodb::DocumentIdentifierToken const&)->void{ ++count; }, i + 1)));
+        CHECK((!itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, i + 1)));
         REQUIRE((i == count));
       }
     }
@@ -1259,7 +1259,7 @@ SECTION("test_unregister_link") {
   PhysicalViewMock::before = [&persisted]()->void { persisted = true; };
 
   auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testCollection\", \"id\": 100 }");
-  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 101, \"properties\": { } }"); 
+  auto viewJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"testView\", \"type\": \"iresearch\", \"id\": 101, \"properties\": { } }");
 
   // link removed before view (in recovery)
   {

@@ -291,7 +291,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
 
 Result IResearchLink::insert(
   transaction::Methods* trx,
-  TRI_voc_rid_t rid,
+  LocalDocumentId const& documentId,
   VPackSlice const& doc,
   bool isRollback
 ) {
@@ -306,7 +306,7 @@ Result IResearchLink::insert(
     return TRI_ERROR_BAD_PARAMETER; // 'trx' required
   }
 
-  return _view->insert(*trx, _collection->cid(), rid, doc, _meta);
+  return _view->insert(*trx, _collection->cid(), documentId.id(), doc, _meta);
 }
 
 bool IResearchLink::isPersistent() const {
@@ -384,7 +384,7 @@ size_t IResearchLink::memory() const {
 
 Result IResearchLink::remove(
   transaction::Methods* trx,
-  TRI_voc_rid_t rid,
+  LocalDocumentId const& documentId,
   VPackSlice const& doc,
   bool isRollback
 ) {
@@ -400,7 +400,7 @@ Result IResearchLink::remove(
   }
 
   // remove documents matching on cid and rid
-  return _view->remove(*trx, _collection->cid(), rid);
+  return _view->remove(*trx, _collection->cid(), documentId.id());
 }
 
 Result IResearchLink::remove(

@@ -275,6 +275,8 @@ struct MMFilesDatafile {
     return old;
   }
 
+  inline TRI_voc_tick_t maxTick() const { return _tickMax; }
+
  private:
   /// @brief returns information about the datafile
   DatafileScan scanHelper();
