@@ -413,16 +413,13 @@ function BaseTestConfig() {
           replication.applier.stop();
           assertFalse(replication.applier.state().state.running);
 
-          internal.wait(0.5, false);
           replication.applier.start();
-          internal.wait(0.5, false);
           assertTrue(replication.applier.state().state.running);
 
           return true;
         },
 
         function(state) {
-          internal.wait(3, false);
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
