@@ -239,7 +239,6 @@ struct MMFilesWalAccessContext : WalAccessContext {
 
     // then check if the marker belongs to the "correct" database
     if (_filter.vocbase != 0 && _filter.vocbase != databaseId) {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "ignoring vocbase";
       return false;
     }
 
@@ -311,7 +310,6 @@ struct MMFilesWalAccessContext : WalAccessContext {
       TRI_ASSERT(databaseId != 0);
       TRI_vocbase_t* vocbase = loadVocbase(databaseId);
       if (vocbase == nullptr) {
-        LOG_TOPIC(ERR, Logger::FIXME) << "1. ignoring db " << databaseId;
         // ignore markers from dropped dbs
         return TRI_ERROR_NO_ERROR;
       }
@@ -323,15 +321,12 @@ struct MMFilesWalAccessContext : WalAccessContext {
       TRI_ASSERT(databaseId != 0);
       TRI_vocbase_t* vocbase = loadVocbase(databaseId);
       if (vocbase == nullptr) {
-        LOG_TOPIC(ERR, Logger::FIXME) << "2. ignoring db " << databaseId;
         return TRI_ERROR_NO_ERROR;  // ignore dropped dbs
       }
       _builder.add("db", VPackValue(vocbase->name()));
       if (collectionId > 0) {
         LogicalCollection* col = loadCollection(databaseId, collectionId);
         if (col == nullptr) {
-          LOG_TOPIC(ERR, Logger::FIXME) << "ignoring collection "
-                                        << collectionId;
           return TRI_ERROR_NO_ERROR;  // ignore dropped collections
         }
         _builder.add("cuid", VPackValue(col->globallyUniqueId()));
