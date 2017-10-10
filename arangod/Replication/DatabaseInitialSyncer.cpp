@@ -915,6 +915,10 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
       return res;
     }
 
+    if (masterName == TRI_COL_NAME_USERS) {
+      reloadUsers();
+    }
+
     // now create indexes
     TRI_ASSERT(indexes.isArray());
     VPackValueLength const n = indexes.length();
@@ -924,7 +928,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
       sendExtendBarrier();
 
       std::string const progress = "creating " + std::to_string(n) +
-                                    " index(es) for " + collectionMsg;
+                                   " index(es) for " + collectionMsg;
       setProgress(progress);
 
       try {

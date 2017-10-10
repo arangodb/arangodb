@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "TailingSyncer.h"
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
@@ -71,6 +70,7 @@ TailingSyncer::TailingSyncer(ReplicationApplier* applier,
       _applier(applier),
       _hasWrittenState(false),
       _initialTick(initialTick),
+      _usersModified(false),
       _useTick(useTick),
       _requireFromPresent(configuration._requireFromPresent),
       _supportsSingleOperations(false),
@@ -292,12 +292,10 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
                                       VPackSlice const& slice) {
   TRI_vocbase_t* vocbase = resolveVocbase(slice);
   if (vocbase == nullptr) {
-  LOG_TOPIC(ERR, Logger::FIXME) << "IXI2";
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
   arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
   if (col == nullptr) {
-  LOG_TOPIC(ERR, Logger::FIXME) << "IXI";
     return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
   
@@ -358,11 +356,16 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
     }
 
     trx->addCollectionAtRuntime(cid, "", AccessMode::Type::EXCLUSIVE);
-    Result r = applyCollectionDumpMarker(*trx, trx->name(cid), type, old, doc);
+  
+    std::string collectionName = trx->name(cid);
+    Result r = applyCollectionDumpMarker(*trx, collectionName, type, old, doc);
 
     if (r.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
       // ignore unique constraint violations for system collections
       r.reset();
+    }
+    if (r.ok() && collectionName == TRI_COL_NAME_USERS) {
+      _usersModified = true;
     }
 
     return r;
@@ -384,8 +387,10 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   if (!res.ok()) {
     return Result(res.errorNumber(), std::string("unable to create replication transaction: ") + res.errorMessage());
   }
+
+  std::string collectionName = trx.name();
     
-  res = applyCollectionDumpMarker(trx, trx.name(), type, old, doc);
+  res = applyCollectionDumpMarker(trx, collectionName, type, old, doc);
   if (res.errorNumber() == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && isSystem) {
     // ignore unique constraint violations for system collections
     res.reset();
@@ -394,6 +399,10 @@ Result TailingSyncer::processDocument(TRI_replication_operation_e type,
   // fix error handling here when function returns result
   if (res.ok()) {
     res = trx.commit();
+
+    if (res.ok() && collectionName == TRI_COL_NAME_USERS) {
+      _usersModified = true;
+    }
   }
 
   return res;
@@ -620,7 +629,7 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
   // handle marker type
   TRI_replication_operation_e type = (TRI_replication_operation_e)typeValue;
   if (type == REPLICATION_MARKER_DOCUMENT ||
-           type == REPLICATION_MARKER_REMOVE) {
+      type == REPLICATION_MARKER_REMOVE) {
     return processDocument(type, slice);
   }
 
@@ -696,7 +705,7 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
   }
   
   else if (type == REPLICATION_DATABASE_CREATE ||
-             type == REPLICATION_DATABASE_DROP) {
+           type == REPLICATION_DATABASE_DROP) {
     if (_ignoreDatabaseMarkers) {
       LOG_TOPIC(WARN, Logger::REPLICATION) << "Ignoring database marker";
       return Result();
@@ -712,6 +721,17 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
                                TRI_voc_tick_t firstRegularTick,
                                uint64_t& processedMarkers,
                                uint64_t& ignoreCount) {
+  // reload users if they were modified
+  _usersModified = false;
+  auto reloader = [this]() {
+    if (_usersModified) {
+      // reload users after initial dump
+      reloadUsers();
+      _usersModified = false;
+    }
+  };
+  TRI_DEFER(reloader());
+
   StringBuffer& data = response->getBody();
   char const* p = data.begin();
   char const* end = p + data.length();
@@ -719,6 +739,7 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
   // buffer must end with a NUL byte
   TRI_ASSERT(*end == '\0');
 
+  // TODO: re-use a builder!
   auto builder = std::make_shared<VPackBuilder>();
 
   while (p < end) {
