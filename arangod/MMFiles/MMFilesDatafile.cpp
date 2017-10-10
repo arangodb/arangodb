@@ -604,10 +604,12 @@ int MMFilesDatafile::writeElement(void* position, MMFilesMarker const* marker, b
   memcpy(position, marker, static_cast<size_t>(marker->getSize()));
   
   TRI_IF_FAILURE("BreakHeaderMarker") {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
     if (marker->getType() == TRI_DF_MARKER_HEADER) { 
       // intentionally corrupt the marker
       reinterpret_cast<MMFilesMarker*>(position)->breakIt();
     }
+#endif
   }
 
   if (forceSync) {
