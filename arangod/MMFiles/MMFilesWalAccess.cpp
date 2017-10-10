@@ -439,14 +439,9 @@ struct MMFilesWalAccessContext : WalAccessContext {
             TRI_voc_cid_t collectionId = MMFilesDatafileHelper::CollectionId(marker);
             TRI_ASSERT(collectionId != 0);
             
-            TRI_vocbase_t* vocbase = loadVocbase(databaseId);
-            LogicalCollection* col = loadCollection(databaseId, collectionId);
-            if (vocbase != nullptr && col != nullptr) {
-              if (_filter.vocbase == 0 || _filter.vocbase == databaseId) {
-                LOG_TOPIC(ERR, Logger::REPLICATION) << "[" << marker->getTick() << "] encoutered (" << vocbase->name()
-                << ")  " << col->name() << " uuid: " << col->globallyUniqueId();
-              }
-            }
+            // this will cache the vocbase and collection for this run
+            loadVocbase(databaseId);
+            loadCollection(databaseId, collectionId);
           }/* else if (type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION) {
             // invalidate collection name cache because this is a
             // rename operation
