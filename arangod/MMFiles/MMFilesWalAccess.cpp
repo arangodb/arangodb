@@ -413,17 +413,15 @@ struct MMFilesWalAccessContext : WalAccessContext {
 
         while (ptr < end) {
           auto const* marker = reinterpret_cast<MMFilesMarker const*>(ptr);
-
           if (marker->getSize() == 0) {
             // end of datafile
             break;
           }
-
           MMFilesMarkerType type = marker->getType();
-
           if (type <= TRI_DF_MARKER_MIN || type >= TRI_DF_MARKER_MAX) {
             break;
           }
+          ptr += MMFilesDatafileHelper::AlignedMarkerSize<size_t>(marker);
 
           // handle special markers
           if (type == TRI_DF_MARKER_PROLOGUE) {
@@ -433,30 +431,28 @@ struct MMFilesWalAccessContext : WalAccessContext {
                      type == TRI_DF_MARKER_FOOTER) {
             lastDatabaseId = 0;
             lastCollectionId = 0;
-          } /*else if (type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION) {
+          } else if (type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION) {
+            
             // fill collection name cache
-            TRI_voc_tick_t databaseId =
-          MMFilesDatafileHelper::DatabaseId(marker);
+            TRI_voc_tick_t databaseId = MMFilesDatafileHelper::DatabaseId(marker);
             TRI_ASSERT(databaseId != 0);
-            TRI_voc_cid_t collectionId =
-          MMFilesDatafileHelper::CollectionId(marker);
+            TRI_voc_cid_t collectionId = MMFilesDatafileHelper::CollectionId(marker);
             TRI_ASSERT(collectionId != 0);
-
-            if (_filter.vocbase == databaseId) {
-              VPackSlice slice(reinterpret_cast<char const*>(marker) +
-                               MMFilesDatafileHelper::VPackOffset(type));
-              VPackSlice name = slice.get("name");
-              if (name.isString()) {
-                //dump->_collectionNames[collectionId] = name.copyString();
+            
+            TRI_vocbase_t* vocbase = loadVocbase(databaseId);
+            LogicalCollection* col = loadCollection(databaseId, collectionId);
+            if (vocbase != nullptr && col != nullptr) {
+              if (_filter.vocbase == 0 || _filter.vocbase == databaseId) {
+                LOG_TOPIC(ERR, Logger::REPLICATION) << "[" << marker->getTick() << "] encoutered (" << vocbase->name()
+                << ")  " << col->name() << " uuid: " << col->globallyUniqueId();
               }
             }
-          } else if (type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION) {
+          }/* else if (type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION) {
             // invalidate collection name cache because this is a
             // rename operation
             dump->_collectionNames.clear();
           }*/
 
-          ptr += MMFilesDatafileHelper::AlignedMarkerSize<size_t>(marker);
 
           // get the marker's tick and check whether we should include it
           TRI_voc_tick_t foundTick = marker->getTick();
@@ -524,6 +520,8 @@ struct MMFilesWalAccessContext : WalAccessContext {
       res = TRI_ERROR_INTERNAL;
     }
 
+    LOG_TOPIC(ERR, Logger::FIXME) << "2. fromTickIncluded " << fromTickIncluded
+      << " lastFoundTick " << lastFoundTick;
     return WalAccessResult(res, fromTickIncluded, lastFoundTick);
   }
 };
@@ -533,10 +531,10 @@ WalAccessResult MMFilesWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
                                        size_t chunkSize,
                                        WalAccess::Filter const& filter,
                                        MarkerCallback const& callback) const {
-  /*LOG_TOPIC(WARN, Logger::FIXME)
+  LOG_TOPIC(WARN, Logger::FIXME)
       << "1. Starting tailing: tickStart " << tickStart << " tickEnd "
       << tickEnd << " chunkSize " << chunkSize << " includeSystem "
-      << filter.includeSystem << " firstRegularTick" << filter.firstRegularTick;*/
+      << filter.includeSystem << " firstRegularTick" << filter.firstRegularTick;
 
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dumping log, tick range "
                                             << tickStart << " - " << tickEnd;

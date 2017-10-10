@@ -380,14 +380,14 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(
   }
 
   VPackBuffer<uint8_t> buffer;
-  VPackBuilder response(buffer);
-  response.openArray();
+  VPackBuilder builder(buffer);
+  builder.openArray();
   WalAccessResult r =
       wal->openTransactions(minMax.first, minMax.second, filter,
                             [&](TRI_voc_tick_t tick, TRI_voc_tid_t tid) {
-                              response.add(VPackValue(std::to_string(tid)));
+                              builder.add(VPackValue(std::to_string(tid)));
                             });
-  response.close();
+  builder.close();
 
   _response->setContentType(rest::ContentType::DUMP);
   if (res.fail()) {
