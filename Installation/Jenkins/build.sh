@@ -147,7 +147,7 @@ MAKE=make
 PACKAGE_MAKE=make
 MAKE_PARAMS=()
 MAKE_CMD_PREFIX=""
-CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL")
+CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL -DGENERATE_BUILD_DATE=OFF")
 INSTALL_PREFIX="/"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
@@ -820,6 +820,8 @@ if [ -n "$CPACK" ] && [ -n "${TARGET_DIR}" ] && [ -z "${MSVC}" ];  then
     fi
 fi
 
+mkdir -p "${DST}/lib/Basics/"
+cat "${SOURCE_DIR}/lib/Basics/build-date.h.in" | sed "s;@ARANGODB_BUILD_DATE@;$(date "+%Y-%m-%d %H:%M:%S");" >"${DST}/lib/Basics/build-date.h"
 TRIES=0;
 set +e
 while /bin/true; do

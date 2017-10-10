@@ -1,11 +1,16 @@
 devel
 -----
 
+* fix potential overflow in CRC marker check when a corrupted CRC marker 
+  is found at the very beginning of an MMFiles datafile
+
+* added option `--server.local-authentication`
+
 * UI: added user roles
 
 * added config option `--log.color` to toggle colorful logging to terminal
 
-* added config option `--log.thread-name` to additionally log thread names 
+* added config option `--log.thread-name` to additionally log thread names
 
 * usernames must not start with `:role:`, added new options:
     --server.authentication-timeout
