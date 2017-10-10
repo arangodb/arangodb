@@ -1,6 +1,9 @@
 devel
 -----
 
+* fix potential overflow in CRC marker check when a corrupted CRC marker 
+  is found at the very beginning of an MMFiles datafile
+
 * added option `--server.local-authentication`
 
 * UI: added user roles
