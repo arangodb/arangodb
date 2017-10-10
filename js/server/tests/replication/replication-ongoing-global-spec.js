@@ -108,7 +108,7 @@ const waitForReplication = function() {
     expect(state.running).to.equal(true, "Slave is not running");
     
     if (compareTicks(state.lastAppliedContinuousTick, lastLogTick) >= 0 ||
-      compareTicks(state.lastProcessedContinuousTick, lastLogTick) >= 0) {
+        compareTicks(state.lastProcessedContinuousTick, lastLogTick) >= 0) {
       // Replication caught up.
       break;
     }
@@ -145,12 +145,12 @@ const connectToSlave = function() {
 };
 
 const testCollectionExists = function(name) {
-  expect(db._collections().indexOf(name)).to.not.equal(-1, 
+  expect(db._collections().map(function(c) { return c.name(); }).indexOf(name)).to.not.equal(-1, 
     `Collection ${name} does not exist although it should`);
 };
 
 const testCollectionDoesNotExists = function(name) {
-  expect(db._collections().indexOf(name)).to.equal(-1, 
+  expect(db._collections().map(function(c) { return c.name(); }).indexOf(name)).to.equal(-1, 
     `Collection ${name} does exist although it should not`);
 };
 
@@ -189,11 +189,11 @@ const cleanUpAllData = function () {
 };
 
 const startReplication = function() {
-    // Setup global replication
-    connectToSlave();
+  // Setup global replication
+  connectToSlave();
 
-    replication.setupReplicationGlobal(config);
-    waitForReplication();
+  replication.setupReplicationGlobal(config);
+  waitForReplication();
 };
 
 const stopReplication = function () {
@@ -231,11 +231,8 @@ describe('Global Replication on a fresh boot', function () {
   before(function() {
     cleanUp();
 
-    startReplication();
     // Setup global replication
-    connectToSlave();
-
-    replication.setupReplicationGlobal(config);
+    startReplication();
   });
 
   after(cleanUp);
@@ -274,7 +271,7 @@ describe('Global Replication on a fresh boot', function () {
       waitForReplication();
       testCollectionDoesNotExists(docColName);
     });
-
+    
     it("should create and drop an empty edge collection", function () {
       connectToMaster();
       // First Part Create Collection
