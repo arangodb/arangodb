@@ -20,7 +20,20 @@ if (USE_IRESEARCH)
     IResearch/IResearchViewMeta-test.cpp
     IResearch/IResearchDocument-test.cpp
     IResearch/IResearchFilter-test.cpp
-    IResearch/IResearchQuery-test.cpp
+    IResearch/IResearchQueryAnd-test.cpp
+    IResearch/IResearchQueryBooleanTerm-test.cpp
+    IResearch/IResearchQueryComplexBoolean-test.cpp
+    IResearch/IResearchQueryExists-test.cpp
+    IResearch/IResearchQueryIn-test.cpp
+    IResearch/IResearchQueryNullTerm-test.cpp
+    IResearch/IResearchQueryNumericTerm-test.cpp
+    IResearch/IResearchQueryOr-test.cpp
+    IResearch/IResearchQueryPhrase-test.cpp
+    IResearch/IResearchQuerySelectAll-test.cpp
+    IResearch/IResearchQueryStartsWith-test.cpp
+    IResearch/IResearchQueryStringTerm-test.cpp
+    IResearch/IResearchQueryTokens-test.cpp
+    IResearch/IResearchQueryValue-test.cpp
     IResearch/StorageEngineMock.cpp
     IResearch/VelocyPackHelper-test.cpp
   )
