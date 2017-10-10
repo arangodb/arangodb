@@ -45,7 +45,7 @@ function runSetup () {
   db._view('UnitTestsRecoveryView').properties(meta);
 
   internal.wal.flush(true, true);
-  internal.debugSetFailAt("FlushThreadSync");
+  internal.debugSetFailAt("FlushThreadDisableAll");
   internal.wait(2); // make sure failure point takes effect
 
   for (let i = 0; i < 10000; i++) {
@@ -73,7 +73,7 @@ function recoverySuite () {
     // / @brief test whether we can restore the trx data
     // //////////////////////////////////////////////////////////////////////////////
 
-    testLinks: function () {
+    testIResearchLinkPopulateNoFlushThread: function () {
       var v = db._view('UnitTestsRecoveryView');
       assertEqual(v.name(), 'UnitTestsRecoveryView');
       assertEqual(v.type(), 'iresearch');

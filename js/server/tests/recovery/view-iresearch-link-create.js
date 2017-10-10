@@ -71,7 +71,7 @@ function recoverySuite () {
     // / @brief test whether we can restore the trx data
     // //////////////////////////////////////////////////////////////////////////////
 
-    testLinks: function () {
+    testIResearchLinkCreate: function () {
       var v = db._view('UnitTestsRecoveryEmpty');
       assertEqual(v.name(), 'UnitTestsRecoveryEmpty');
       assertEqual(v.type(), 'iresearch');
