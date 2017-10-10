@@ -254,25 +254,30 @@ Result GlobalInitialSyncer::fetchInventory(VPackBuilder& builder) {
   
   if (response == nullptr || !response->isComplete()) {
     sendFinishBatch();
-    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
+    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") +
+                  _masterInfo._endpoint + ": " + _client->getErrorMessage());
   }
   
   TRI_ASSERT(response != nullptr);
   
   if (response->wasHttpError()) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
+    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
+                  _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " +
+                  response->getHttpReturnMessage());
   }
 
   Result r = parseResponse(builder, response.get());
 
   if (r.fail()) {
-    return Result(r.errorNumber(), std::string("got invalid response from master at ") + _masterInfo._endpoint + ": invalid response type for initial data. expecting array");
+    return Result(r.errorNumber(), std::string("got invalid response from master at ") + _masterInfo._endpoint +
+                  ": invalid response type for initial data. expecting array");
   }
   
   VPackSlice const slice = builder.slice();
   if (!slice.isObject()) {
     LOG_TOPIC(DEBUG, Logger::REPLICATION) << "client: InitialSyncer::run - inventoryResponse is not an object";
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": invalid JSON");
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
+                  _masterInfo._endpoint + ": invalid JSON");
   }
 
   return Result();

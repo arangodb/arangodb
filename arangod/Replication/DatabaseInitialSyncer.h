@@ -97,9 +97,6 @@ private:
   ///        given list of collections.
   Result runWithInventory(bool incremental,
                           velocypack::Slice collections);
-
-  /// @brief return the last log tick of the master at start
-  TRI_voc_tick_t getLastLogTick() const { return _masterInfo._lastLogTick; }
   
   TRI_vocbase_t* resolveVocbase(velocypack::Slice const&) override { return _vocbase; }
 
@@ -135,7 +132,8 @@ private:
   /// @brief check whether the initial synchronization should be aborted
   bool checkAborted();
   
-  /// @brief insert the batch id and barrier ID
+  /// @brief insert the batch id and barrier ID.
+  ///        For use in globalinitalsyncer
   void useAsChildSyncer(Syncer::MasterInfo const& info,
                         uint64_t barrierId, double barrierUpdateTime,
                         uint64_t batchId, double batchUpdateTime) {

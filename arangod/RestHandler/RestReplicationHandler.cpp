@@ -485,7 +485,7 @@ void RestReplicationHandler::handleCommandMakeSlave() {
   std::string databaseName;
   if (!isGlobal) {
     databaseName = _vocbase->name();
-  } 
+  }
   
   ReplicationApplierConfiguration configuration = ReplicationApplierConfiguration::fromVelocyPack(parsedBody->slice(), databaseName);
   configuration._skipCreateDrop = false;
