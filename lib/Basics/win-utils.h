@@ -33,18 +33,12 @@
 // .............................................................................
 
 typedef enum {
-  TRI_WIN_FINAL_SET_INVALID_HANLE_HANDLER,
-  TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL
-} TRI_win_finalize_e;
-
-typedef enum {
   TRI_WIN_INITIAL_SET_DEBUG_FLAG,
   TRI_WIN_INITIAL_SET_INVALID_HANLE_HANDLER,
   TRI_WIN_INITIAL_SET_MAX_STD_IO,
   TRI_WIN_INITIAL_WSASTARTUP_FUNCTION_CALL
 } TRI_win_initialize_e;
 
-int finalizeWindows(const TRI_win_finalize_e, char const*);
 int initializeWindows(const TRI_win_initialize_e, char const*);
 
 void ADB_WindowsEntryFunction();
