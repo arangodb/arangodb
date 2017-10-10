@@ -42,6 +42,15 @@ else()
         ${boost_src}/libs/locale/src/win32/numeric.cpp
         ${boost_src}/libs/locale/src/win32/win_backend.cpp
       )
+    elseif(APPLE)
+      list(APPEND BOOST_LOCALE_PLATFORM_DEFINE "BOOST_LOCALE_NO_WINAPI_BACKEND=1" "BOOST_LOCALE_WITH_ICU=1") # do not use 'iconv' on MacOS, hence must use ICU instead
+      list(APPEND BOOST_LOCALE_PLATFORM_SRC
+        ${boost_src}/libs/locale/src/posix/codecvt.cpp
+        ${boost_src}/libs/locale/src/posix/collate.cpp
+        ${boost_src}/libs/locale/src/posix/converter.cpp
+        ${boost_src}/libs/locale/src/posix/numeric.cpp
+        ${boost_src}/libs/locale/src/posix/posix_backend.cpp
+      )
     else()
       list(APPEND BOOST_LOCALE_PLATFORM_DEFINE "BOOST_LOCALE_NO_WINAPI_BACKEND=1" "BOOST_LOCALE_WITH_ICONV=1")
       list(APPEND BOOST_LOCALE_PLATFORM_SRC
@@ -90,6 +99,10 @@ else()
     target_include_directories(boost_locale PRIVATE ${ICU_INCLUDE_DIR})
     target_compile_definitions(boost_locale PRIVATE "BOOST_SYSTEM_STATIC_LINK=1")
     target_compile_definitions(boost_locale PUBLIC  "BOOST_ALL_NO_LIB=1")
+
+    if(APPLE)
+      target_link_libraries(boost_locale PUBLIC boost_thread) # must link against boost_thread due to use of ICU on MacOS
+    endif()
 
     foreach(ELEMENT ${BOOST_LOCALE_PLATFORM_DEFINE})
       target_compile_definitions(boost_locale PRIVATE "${ELEMENT}")
