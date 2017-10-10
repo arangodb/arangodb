@@ -37,7 +37,6 @@ const errors = arangodb.errors;
 const db = arangodb.db;
 const internal = require("internal");
 const time = internal.time;
-const wait = internal.wait;
 
 const masterEndpoint = arango.getEndpoint();
 const slaveEndpoint = ARGUMENTS[0];
@@ -100,6 +99,7 @@ const waitForReplication = function() {
   const timeOut = time() + delay * 1000;
   connectToSlave();
 
+  internal.sleep(0.5);  
   while (true) {
     // Guard to abort if failed to replicate
     expect(time()).to.be.below(timeOut, `Replication did not succeed for ${delay} seconds`);
@@ -113,7 +113,7 @@ const waitForReplication = function() {
       // Replication caught up.
       break;
     }
-    wait(0.5, false);
+    internal.sleep(1.0);
   }
   //internal.print(state);
   //internal.print("lastLogTick: " + lastLogTick);
@@ -216,9 +216,8 @@ const stopReplication = function () {
   }
 
   while (replication.globalApplier.state().state.running) {
-    require("internal").wait(0.1, false);
+    internal.sleep(0.1);
   }
-
 };
 
 const cleanUp = function() {

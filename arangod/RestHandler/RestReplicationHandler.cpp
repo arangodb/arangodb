@@ -1729,6 +1729,12 @@ void RestReplicationHandler::handleCommandServerId() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void RestReplicationHandler::handleCommandSync() {
+  bool isGlobal;
+  ReplicationApplier* applier = getApplier(isGlobal);
+  if (applier == nullptr) {
+    return;
+  }
+  
   bool success;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(success);
   if (!success) {
@@ -1745,14 +1751,10 @@ void RestReplicationHandler::handleCommandSync() {
     return;
   }
   
-  bool isGlobal;
-  ReplicationApplier* applier = getApplier(isGlobal);
-  if (applier == nullptr) {
-    return;
-  }
-  
   std::string dbname = isGlobal ? "" : _vocbase->name();
-  ReplicationApplierConfiguration config = ReplicationApplierConfiguration::fromVelocyPack(body, dbname);
+  auto config = ReplicationApplierConfiguration::fromVelocyPack(body, dbname);
+  // will throw if invalid
+  config.validate();
 
   // wait until all data in current logfile got synced
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -1813,7 +1815,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
     return;
   }
 
-  ReplicationApplierConfiguration configuration = applier->configuration();
+  auto configuration = applier->configuration();
   VPackBuilder builder;
   builder.openObject();
   configuration.toVelocyPack(builder, false);
@@ -1846,11 +1848,12 @@ void RestReplicationHandler::handleCommandApplierSetConfig() {
     databaseName = _vocbase->name();
   } 
   
-  ReplicationApplierConfiguration configuration = ReplicationApplierConfiguration::fromVelocyPack(applier->configuration(), parsedBody->slice(), databaseName);
+  auto config = ReplicationApplierConfiguration::fromVelocyPack(applier->configuration(),
+                                                                parsedBody->slice(), databaseName);
   // will throw if invalid
-  configuration.validate();
+  config.validate();
   
-  applier->reconfigure(configuration);
+  applier->reconfigure(config);
   handleCommandApplierGetConfig();
 }
 
