@@ -444,7 +444,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
     _currentTrxId = 0;
     _currentCid = 0;
     _dropCollectionUUID.clear();
-    _removeDocumentKey.clear();
+    //_removeDocumentKey.clear(); can not remove here
     _indexSlice = VPackSlice::illegalSlice();
   }
 
