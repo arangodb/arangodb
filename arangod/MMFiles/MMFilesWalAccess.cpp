@@ -520,8 +520,8 @@ struct MMFilesWalAccessContext : WalAccessContext {
       res = TRI_ERROR_INTERNAL;
     }
 
-    LOG_TOPIC(ERR, Logger::FIXME) << "2. fromTickIncluded " << fromTickIncluded
-      << " lastFoundTick " << lastFoundTick;
+    /*LOG_TOPIC(ERR, Logger::FIXME) << "2. fromTickIncluded " << fromTickIncluded
+      << " lastFoundTick " << lastFoundTick;*/
     return WalAccessResult(res, fromTickIncluded, lastFoundTick);
   }
 };
@@ -531,10 +531,10 @@ WalAccessResult MMFilesWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
                                        size_t chunkSize,
                                        WalAccess::Filter const& filter,
                                        MarkerCallback const& callback) const {
-  LOG_TOPIC(WARN, Logger::FIXME)
+  /*OG_TOPIC(WARN, Logger::FIXME)
       << "1. Starting tailing: tickStart " << tickStart << " tickEnd "
       << tickEnd << " chunkSize " << chunkSize << " includeSystem "
-      << filter.includeSystem << " firstRegularTick" << filter.firstRegularTick;
+      << filter.includeSystem << " firstRegularTick" << filter.firstRegularTick;*/
 
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dumping log, tick range "
                                             << tickStart << " - " << tickEnd;

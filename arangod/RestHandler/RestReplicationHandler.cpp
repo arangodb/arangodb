@@ -1744,32 +1744,15 @@ void RestReplicationHandler::handleCommandSync() {
                   "<endpoint> must be a valid endpoint");
     return;
   }
-
-  bool const verbose = VelocyPackHelper::getBooleanValue(body, "verbose", false);
-  bool const incremental =
-    VelocyPackHelper::getBooleanValue(body, "incremental", false);
-
-  ReplicationApplierConfiguration config;
-  config._endpoint = endpoint;
-  config._database = VelocyPackHelper::getStringValue(body, "database", _vocbase->name());
-  config._username = VelocyPackHelper::getStringValue(body, "username", "");
-  config._password = VelocyPackHelper::getStringValue(body, "password", "");
-  config._jwt = VelocyPackHelper::getStringValue(body, "jwt", "");
-  config._includeSystem = VelocyPackHelper::getBooleanValue(body, "includeSystem", true);
-  config._verbose = verbose;
   
-  VPackSlice const restriction = body.get("restrictCollections");
-  if (restriction.isArray()) {
-    for (VPackSlice const& cname : VPackArrayIterator(restriction)) {
-      if (cname.isString()) {
-        config._restrictCollections.insert(
-            std::pair<std::string, bool>(cname.copyString(), true));
-      }
-    }
+  bool isGlobal;
+  ReplicationApplier* applier = getApplier(isGlobal);
+  if (applier == nullptr) {
+    return;
   }
-
-  config._restrictType = VelocyPackHelper::getStringValue(body, "restrictType", "");
-  // TODO: validate 
+  
+  std::string dbname = isGlobal ? "" : _vocbase->name();
+  ReplicationApplierConfiguration config = ReplicationApplierConfiguration::fromVelocyPack(body, dbname);
 
   // wait until all data in current logfile got synced
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
@@ -1777,21 +1760,25 @@ void RestReplicationHandler::handleCommandSync() {
   engine->waitForSync(5.0);
 
   TRI_ASSERT(!config._skipCreateDrop);
-  DatabaseInitialSyncer syncer(_vocbase, config);
+  std::unique_ptr<InitialSyncer> syncer;
+  if (isGlobal) {
+    syncer.reset(new GlobalInitialSyncer(config));
+  } else {
+    syncer.reset(new DatabaseInitialSyncer(_vocbase, config));
+  }
 
-  Result r = syncer.run(incremental);
+  Result r = syncer->run(config._incremental);
   if (r.fail()) {
     LOG_TOPIC(ERR, Logger::REPLICATION)
       << "failed to sync: " << r.errorMessage();
     generateError(r);
   }
 
+  // FIXME: change response for databases
   VPackBuilder result;
   result.add(VPackValue(VPackValueType::Object));
-
   result.add("collections", VPackValue(VPackValueType::Array));
-
-  for (auto const& it : syncer.getProcessedCollections()) {
+  for (auto const& it : syncer->getProcessedCollections()) {
     std::string const cidString = StringUtils::itoa(it.first);
     // Insert a collection
     result.add(VPackValue(VPackValueType::Object));
@@ -1799,16 +1786,15 @@ void RestReplicationHandler::handleCommandSync() {
     result.add("name", VPackValue(it.second));
     result.close();  // one collection
   }
-
   result.close();  // collections
 
-  auto tickString = std::to_string(syncer.getLastLogTick());
+  auto tickString = std::to_string(syncer->getLastLogTick());
   result.add("lastLogTick", VPackValue(tickString));
 
   bool const keepBarrier =
     VelocyPackHelper::getBooleanValue(body, "keepBarrier", false);
   if (keepBarrier) {
-    auto barrierId = std::to_string(syncer.stealBarrier());
+    auto barrierId = std::to_string(syncer->stealBarrier());
     result.add("barrierId", VPackValue(barrierId));
   }
 

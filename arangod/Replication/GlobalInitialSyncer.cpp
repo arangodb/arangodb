@@ -159,6 +159,10 @@ Result GlobalInitialSyncer::run(bool incremental) {
       if (r.fail()) {
         return r;
       }
+      // lets just merge them for now
+      for (auto const& it : syncer.getProcessedCollections()) {
+        _processedCollections.emplace(it.first, it.second);
+      }
     
       // we need to pass on the update times to the next syncer
       _barrierUpdateTime = syncer.barrierUpdateTime();
