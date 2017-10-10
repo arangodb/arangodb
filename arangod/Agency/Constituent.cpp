@@ -685,10 +685,10 @@ void Constituent::run() {
 
       if (role == FOLLOWER) {
         static double const M = 1.0e6;
-        int64_t a = static_cast<int64_t>(M * _agent->config().minPing() *
-                                         _agent->config().timeoutMult());
-        int64_t b = static_cast<int64_t>(M * _agent->config().maxPing() *
-                                         _agent->config().timeoutMult());
+        int64_t a = static_cast<int64_t>(
+          M * _agent->config().minPing() * _agent->config().timeoutMult());
+        int64_t b = static_cast<int64_t>(
+          M * _agent->config().maxPing() * _agent->config().timeoutMult());
         int64_t randTimeout = RandomGenerator::interval(a, b);
         int64_t randWait = randTimeout;
 

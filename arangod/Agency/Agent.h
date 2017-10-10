@@ -276,7 +276,7 @@ public:
   bool haveJoinConfig() const;
 
   /// @brief Join a rafting agecy
-  void join();
+  void join(query_t const& config = nullptr);
 
   /// @brief State reads persisted state and prepares the agent
   friend class State;

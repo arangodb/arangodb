@@ -1562,7 +1562,11 @@ bool Agent::haveJoinConfig() const {
   return (_joinConfig != nullptr);
 }
 
-void Agent::join() {
+void Agent::join(query_t const& config) {
+
+  if (config != nullptr) {
+    _joinConfig = config;
+  }
 
   MUTEX_LOCKER(guard, _joinLock);
   TRI_ASSERT(_joinConfig != nullptr);

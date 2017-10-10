@@ -254,7 +254,23 @@ bool Inception::restartingActiveAgent() {
         auto const& theirConfig   = theirConfigVP->slice();
         auto const& tcc           = theirConfig.get("configuration");
         auto const& theirId       = tcc.get("id").copyString();
-        
+        auto const& theirActive   = tcc.get("active");
+        auto const& theirLeaderId = theirConfig.get("leaderId").copyString();
+
+        TRI_ASSERT(theirActive.isArray());
+        bool found = false;
+        for (auto const& i : VPackArrayIterator(theirActive)) {
+          if(i.copyString() == clientId) {
+            found = true;
+            break;
+          }
+        }
+        if (!found && !theirLeaderId.empty()) {
+          query_t jc = std::make_shared<Builder>();
+          jc->add(tcc);
+          _agent->join(jc);
+          return true;
+        }
         _agent->updatePeerEndpoint(theirId, p);
         informed.push_back(p);
       }
