@@ -143,7 +143,7 @@ configure_file (
   NEWLINE_STYLE UNIX
 )
 
-if (GENERATE_BUILD_DATE)
+if (NOT DEFINED GENERATE_BUILD_DATE OR GENERATE_BUILD_DATE)
   set(GENERATE_BUILD_DATE ON CACHE INTERNAL "whether we should generate the build date")
   configure_file (
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build-date.h.in"
