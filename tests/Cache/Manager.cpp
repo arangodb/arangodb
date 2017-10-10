@@ -87,7 +87,7 @@ TEST_CASE("cache::Manager", "[cache][!hide][longRunning]") {
     uint64_t operationCount = 4 * 1024 * 1024;
     std::atomic<uint64_t> hitCount(0);
     std::atomic<uint64_t> missCount(0);
-    auto worker = [&manager, &caches, cacheCount, initialInserts,
+    auto worker = [&caches, cacheCount, initialInserts,
                    operationCount, &hitCount,
                    &missCount](uint64_t lower, uint64_t upper) -> void {
       // fill with some initial data

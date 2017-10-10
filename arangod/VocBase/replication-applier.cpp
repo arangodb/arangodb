@@ -1243,7 +1243,7 @@ void TRI_replication_applier_t::toVelocyPack(VPackBuilder& builder) const {
 
   arangodb::basics::ScopeGuard guard{
       []() -> void {},
-      [&state, &config]() -> void {
+      [&state]() -> void {
         TRI_DestroyStateReplicationApplier(&state);
       }};
 

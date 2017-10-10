@@ -183,7 +183,7 @@ struct SLPAGraphFormat : public GraphFormat<SLPAValue, int8_t> {
         }
       }
       std::sort(vec.begin(), vec.end(),
-                [ptr](std::pair<uint64_t, double> a, std::pair<uint64_t, double> b) {
+                [](std::pair<uint64_t, double> a, std::pair<uint64_t, double> b) {
                   return a.second > b.second;
                 });
 

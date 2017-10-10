@@ -337,7 +337,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 
   if (store) {
     auto self = shared_from_this();
-    handler->initEngine(_loop, [this, self](RestHandler* handler) {
+    handler->initEngine(_loop, [self](RestHandler* handler) {
       GeneralServerFeature::JOB_MANAGER->finishAsyncJob(handler);
     });
   } else {
@@ -349,7 +349,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 
   auto job = std::make_unique<Job>(
       _server, std::move(handler),
-      [self, this](std::shared_ptr<RestHandler> h) { h->asyncRunEngine(); });
+      [self](std::shared_ptr<RestHandler> h) { h->asyncRunEngine(); });
 
   return SchedulerFeature::SCHEDULER->queue(std::move(job));
 }
