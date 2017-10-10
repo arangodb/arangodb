@@ -554,7 +554,6 @@ elseif (MSVC)
     COMMAND ${IResearch_STATIC_SCRT_LIBRARIES_CMD}
   )
 elseif (APPLE)
-  find_package(Iconv REQUIRED) # required for Boost locale
   unset(IResearch_STATIC_LIBRARIES)
 
   foreach(ELEMENT
@@ -565,7 +564,6 @@ elseif (APPLE)
     ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
     ${ICU_STATIC_LIBS}
     ${Unwind_STATIC_LIBS}
-    "$<TARGET_FILE:iconv_static>"
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
