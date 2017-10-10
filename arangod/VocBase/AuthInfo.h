@@ -44,13 +44,18 @@ namespace arangodb {
 
 class AuthResult {
  public:
-  AuthResult() : _authorized(false) {}
+  AuthResult() : _authorized(false), _expiry(0) {}
 
   explicit AuthResult(std::string const& username)
-      : _username(username), _authorized(false) {}
+      : _username(username), _authorized(false), _expiry(0) {}
 
+  void setExpiry(double expiry) { _expiry = expiry; }
+  bool expired() { return _expiry != 0 && _expiry < TRI_microtime(); }
+
+ public:
   std::string _username;
-  bool _authorized;
+  bool _authorized;  // User exists and password was checked
+  double _expiry;
 };
 
 class AuthJwtResult : public AuthResult {
@@ -79,6 +84,10 @@ class AuthInfo {
   /// Trigger eventual reload, user facing API call
   void reloadAllUsers();
 
+  /// Create the root user with a default password, will fail if the user
+  /// already exists. Only ever call if you can guarantee to be in charge
+  void createRootUser();
+
   VPackBuilder allUsers();
   /// Add user from arangodb, do not use for LDAP  users
   Result storeUser(bool replace, std::string const& user,
@@ -87,7 +96,7 @@ class AuthInfo {
   Result updateUser(std::string const& username,
                     std::function<void(AuthUserEntry&)> const&);
   Result accessUser(std::string const& username,
-                  std::function<void(AuthUserEntry const&)> const&);
+                    std::function<void(AuthUserEntry const&)> const&);
   velocypack::Builder serializeUser(std::string const& user);
   Result removeUser(std::string const& user);
   Result removeAllUsers();
@@ -113,14 +122,10 @@ class AuthInfo {
   std::string jwtSecret();
   std::string generateJwt(VPackBuilder const&);
   std::string generateRawJwt(VPackBuilder const&);
-  /*
-    std::shared_ptr<AuthContext> getAuthContext(std::string const& username,
-                                                std::string const& database);*/
 
  private:
   void loadFromDB();
   bool parseUsers(velocypack::Slice const& slice);
-  void insertInitial();
   Result storeUserInternal(AuthUserEntry const& user, bool replace);
 
   AuthResult checkAuthenticationBasic(std::string const& secret);

@@ -28,6 +28,7 @@
 #include "Aql/IndexNode.h"
 #include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StaticStrings.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
@@ -59,17 +60,17 @@ DocumentProducingBlock::DocumentProducingFunction DocumentProducingBlock::buildC
   auto const& projection = _node->projection();
 
   if (projection.size() == 1) {
-    if (projection[0] == "_id") {
+    if (projection[0] == StaticStrings::IdString) {
       // return _id attribute
       return [this](AqlItemBlock* res, VPackSlice slice, size_t registerId, size_t& row, size_t fromRow) {
         VPackSlice found = transaction::helpers::extractIdFromDocument(slice);
         if (found.isCustom()) {
           // _id as a custom type needs special treatment
           res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
-                          transaction::helpers::extractIdString(_trxPtr->resolver(), found, slice));
+                            transaction::helpers::extractIdString(_trxPtr->resolver(), found, slice));
         } else {
           res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
-                          AqlValueHintCopy(found.begin()));
+                            AqlValueHintCopy(found.begin()));
         }
         if (row != fromRow) {
           // re-use already copied AQLValues
@@ -77,16 +78,16 @@ DocumentProducingBlock::DocumentProducingFunction DocumentProducingBlock::buildC
         }
         ++row;
       };
-    } else if (projection[0] == "_key") {
+    } else if (projection[0] == StaticStrings::KeyString) {
       // return _key attribute
       return [this](AqlItemBlock* res, VPackSlice slice, size_t registerId, size_t& row, size_t fromRow) {
         VPackSlice found = transaction::helpers::extractKeyFromDocument(slice);
         if (_useRawDocumentPointers) {
           res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
-                          AqlValueHintNoCopy(found.begin()));
+                            AqlValueHintDocumentNoCopy(found.begin()));
         } else {
           res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
-                          AqlValueHintCopy(found.begin()));
+                            AqlValueHintCopy(found.begin()));
         }
         if (row != fromRow) {
           // re-use already copied AQLValues
@@ -104,15 +105,15 @@ DocumentProducingBlock::DocumentProducingFunction DocumentProducingBlock::buildC
       if (slice.isNone()) {
         // attribute not found
         res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
-                        VPackSlice::nullSlice());
+                          VPackSlice::nullSlice());
       } else {
         uint8_t const* vpack = slice.begin();
         if (_useRawDocumentPointers) {
           res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
-                          AqlValueHintNoCopy(vpack));
+                            AqlValueHintDocumentNoCopy(vpack));
         } else {
           res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
-                          AqlValueHintCopy(vpack));
+                            AqlValueHintCopy(vpack));
         }
       }
       if (row != fromRow) {
@@ -128,10 +129,10 @@ DocumentProducingBlock::DocumentProducingFunction DocumentProducingBlock::buildC
     uint8_t const* vpack = slice.begin();
     if (_useRawDocumentPointers) {
       res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
-                      AqlValueHintNoCopy(vpack));
+                        AqlValueHintDocumentNoCopy(vpack));
     } else {
       res->emplaceValue(row, static_cast<arangodb::aql::RegisterId>(registerId),
-                      AqlValueHintCopy(vpack));
+                        AqlValueHintCopy(vpack));
     }
     if (row != fromRow) {
       // re-use already copied AQLValues

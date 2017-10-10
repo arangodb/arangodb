@@ -65,8 +65,8 @@ class BindParameters {
 
   /// @brief strip collection name prefixes from the parameters
   /// the values must be a VelocyPack array
-  static arangodb::velocypack::Builder StripCollectionNames(
-      arangodb::velocypack::Slice const&, char const*);
+  static void stripCollectionNames(arangodb::velocypack::Slice const&, 
+                                   std::string const& collectionName, arangodb::velocypack::Builder& result);
 
  private:
   /// @brief process the parameters

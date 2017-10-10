@@ -396,7 +396,7 @@ std::unique_ptr<IndexIterator> LogicalCollection::getAnyIterator(
 
 void LogicalCollection::invokeOnAllElements(
     transaction::Methods* trx,
-    std::function<bool(DocumentIdentifierToken const&)> callback) {
+    std::function<bool(LocalDocumentId const&)> callback) {
   _physical->invokeOnAllElements(trx, callback);
 }
 
@@ -1199,38 +1199,17 @@ Result LogicalCollection::remove(transaction::Methods* trx,
                                  TRI_voc_rid_t& prevRev,
                                  ManagedDocumentResult& previous) {
   resultMarkerTick = 0;
-
-  TRI_voc_rid_t revisionId = 0;
-  if (options.isRestore) {
-    VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(slice);
-    if (!oldRev.isString()) {
-      revisionId = TRI_HybridLogicalClock();
-    } else {
-      bool isOld;
-      VPackValueLength l;
-      char const* p = oldRev.getString(l);
-      revisionId = TRI_StringToRid(p, l, isOld, false);
-      if (isOld || revisionId == UINT64_MAX) {
-        // Do not tolerate old revisions or illegal ones
-        revisionId = TRI_HybridLogicalClock();
-      }
-    }
-  } else {
-    revisionId = TRI_HybridLogicalClock();
-  }
-
-  return getPhysical()->remove(trx, slice, previous, options, resultMarkerTick,
-                               lock, revisionId, prevRev);
+  return getPhysical()->remove(trx, slice, previous, options, resultMarkerTick, lock, prevRev);
 }
 
 bool LogicalCollection::readDocument(transaction::Methods* trx,
-                                     DocumentIdentifierToken const& token,
+                                     LocalDocumentId const& token,
                                      ManagedDocumentResult& result) {
   return getPhysical()->readDocument(trx, token, result);
 }
 
 bool LogicalCollection::readDocumentWithCallback(transaction::Methods* trx,
-                                                 DocumentIdentifierToken const& token,
+                                                 LocalDocumentId const& token,
                                                  IndexIterator::DocumentCallback const& cb) {
   return getPhysical()->readDocumentWithCallback(trx, token, cb);
 }
@@ -1275,42 +1254,42 @@ ChecksumResult LogicalCollection::checksum(bool withRevisions, bool withData) co
   uint64_t hash = 0;
         
   ManagedDocumentResult mmdr;
-  trx.invokeOnAllElements(name(), [&hash, &withData, &withRevisions, &trx, &collection, &mmdr](DocumentIdentifierToken const& token) {
-      if (collection->readDocument(&trx, token, mmdr)) {
+  trx.invokeOnAllElements(name(), [&hash, &withData, &withRevisions, &trx, &collection, &mmdr](LocalDocumentId const& token) {
+    if (collection->readDocument(&trx, token, mmdr)) {
       VPackSlice const slice(mmdr.vpack());
 
       uint64_t localHash = transaction::helpers::extractKeyFromDocument(slice).hashString(); 
 
       if (withRevisions) {
-      localHash += transaction::helpers::extractRevSliceFromDocument(slice).hash();
+        localHash += transaction::helpers::extractRevSliceFromDocument(slice).hash();
       }
 
       if (withData) {
-      // with data
-      uint64_t const n = slice.length() ^ 0xf00ba44ba5;
-      uint64_t seed = fasthash64_uint64(n, 0xdeadf054);
+        // with data
+        uint64_t const n = slice.length() ^ 0xf00ba44ba5;
+        uint64_t seed = fasthash64_uint64(n, 0xdeadf054);
 
-      for (auto const& it : VPackObjectIterator(slice, false)) {
-      // loop over all attributes, but exclude _rev, _id and _key
-      // _id is different for each collection anyway, _rev is covered by withRevisions, and _key
-      // was already handled before
-      VPackValueLength keyLength;
-      char const* key = it.key.getString(keyLength);
-      if (keyLength >= 3 && 
-          key[0] == '_' &&
-          ((keyLength == 3 && memcmp(key, "_id", 3) == 0) ||
-           (keyLength == 4 && (memcmp(key, "_key", 4) == 0 || memcmp(key, "_rev", 4) == 0)))) {
-        // exclude attribute
-        continue;
-      }
+        for (auto const& it : VPackObjectIterator(slice, false)) {
+          // loop over all attributes, but exclude _rev, _id and _key
+          // _id is different for each collection anyway, _rev is covered by withRevisions, and _key
+          // was already handled before
+          VPackValueLength keyLength;
+          char const* key = it.key.getString(keyLength);
+          if (keyLength >= 3 && 
+              key[0] == '_' &&
+              ((keyLength == 3 && memcmp(key, "_id", 3) == 0) ||
+              (keyLength == 4 && (memcmp(key, "_key", 4) == 0 || memcmp(key, "_rev", 4) == 0)))) {
+            // exclude attribute
+            continue;
+          }
 
-      localHash ^= it.key.hash(seed) ^ 0xba5befd00d; 
-      localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421; 
-      }
+          localHash ^= it.key.hash(seed) ^ 0xba5befd00d; 
+          localHash += it.value.normalizedHash(seed) ^ 0xd4129f526421; 
+        }
       }
 
       hash ^= localHash;
-      }
+    }
     return true;
   });
 

@@ -33,7 +33,6 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
-#include "StorageEngine/DocumentIdentifierToken.h"
 #include "Utils/OperationCursor.h"
 #include "V8/v8-globals.h"
 #include "VocBase/LogicalCollection.h"
@@ -447,8 +446,13 @@ bool IndexBlock::readIndex(
     }
 
     TRI_ASSERT(atMost >= _returned);
-  
-    if (_cursor->nextDocument(callback, atMost - _returned)) {
+ 
+
+    // TODO: optimize for the case when produceResult() is false
+    // in this case we do not need to fetch the documents at all 
+    bool res = _cursor->nextDocument(callback, atMost - _returned);
+
+    if (res) {
       // We have returned enough.
       // And this index could return more.
       // We are good.
@@ -506,17 +510,17 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
   IndexIterator::DocumentCallback callback;
   if (_indexes.size() > 1) {
     // Activate uniqueness checks
-    callback = [&](DocumentIdentifierToken const& token, VPackSlice slice) {
-      TRI_ASSERT(res.get() != nullptr);
+    callback = [&](LocalDocumentId const& token, VPackSlice slice) {
+      TRI_ASSERT(res != nullptr);
       if (!_isLastIndex) {
         // insert & check for duplicates in one go
-        if (!_alreadyReturned.emplace(token._data).second) {
+        if (!_alreadyReturned.emplace(token.id()).second) {
           // Document already in list. Skip this
           return;
         }
       } else {
         // only check for duplicates
-        if (_alreadyReturned.find(token._data) != _alreadyReturned.end()) {
+        if (_alreadyReturned.find(token.id()) != _alreadyReturned.end()) {
           // Document found, skip
           return;
         }
@@ -526,7 +530,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     };
   } else {
     // No uniqueness checks
-    callback = [&](DocumentIdentifierToken const& token, VPackSlice slice) {
+    callback = [&](LocalDocumentId const& token, VPackSlice slice) {
       TRI_ASSERT(res.get() != nullptr);
       _documentProducer(res.get(), slice, curRegs, _returned, copyFromRow);
     };
@@ -599,7 +603,7 @@ AqlItemBlock* IndexBlock::getSome(size_t atLeast, size_t atMost) {
     return nullptr;
   }
   if (_returned < atMost) {
-    res->shrink(_returned, false);
+    res->shrink(_returned);
   }
 
   // Clear out registers no longer needed later:
@@ -693,7 +697,7 @@ arangodb::OperationCursor* IndexBlock::orderCursor(size_t currentIndex) {
     IndexNode const* node = static_cast<IndexNode const*>(getPlanNode());
     _cursors[currentIndex].reset(_trx->indexScanForCondition(
         _indexes[currentIndex], conditionNode, node->outVariable(), _mmdr.get(),
-        UINT64_MAX, transaction::Methods::defaultBatchSize(), node->_reverse));
+        node->_reverse));
   } else {
     // cursor for index already exists, reset and reuse it
     _cursors[currentIndex]->reset();

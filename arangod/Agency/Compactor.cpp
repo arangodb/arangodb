@@ -32,7 +32,7 @@ using namespace arangodb::consensus;
 
 // @brief Construct with agent
 Compactor::Compactor(Agent* agent) :
-  Thread("Compactor"), _agent(agent), _waitInterval(1000000) {
+  Thread("Compactor"), _agent(agent), _wakeupCompactor(false), _waitInterval(1000000) {
 }
 
 
@@ -49,10 +49,14 @@ void Compactor::run() {
 
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting compactor personality";
 
-  CONDITION_LOCKER(guard, _cv);
-      
   while (true) {
-    _cv.wait();
+    {
+      CONDITION_LOCKER(guard, _cv);
+      if (!_wakeupCompactor) {
+        _cv.wait();
+      }
+    }
+    _wakeupCompactor = false;
     
     if (this->isStopping()) {
       break;
@@ -74,8 +78,9 @@ void Compactor::run() {
 void Compactor::wakeUp () {
   {
     CONDITION_LOCKER(guard, _cv);
-    guard.broadcast();
+    _wakeupCompactor = true;
   }
+  _cv.broadcast();
 }
 
 
@@ -86,9 +91,6 @@ void Compactor::beginShutdown() {
     
   Thread::beginShutdown();
 
-  {
-    CONDITION_LOCKER(guard, _cv);
-    guard.broadcast();
-  }
-  
+  wakeUp();
+
 }

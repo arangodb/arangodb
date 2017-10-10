@@ -190,11 +190,6 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  // expecting two arguments
-  if (args.Length() != 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("ALL(<skip>, <limit>)");
-  }
-
   arangodb::LogicalCollection* collection =
       TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(),
                                                    WRP_VOCBASE_COL_TYPE);
@@ -203,18 +198,6 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  // extract skip and limit
-  int64_t skip = 0;
-  uint64_t limit = UINT64_MAX;
-
-  if (!args[0]->IsNull() && !args[0]->IsUndefined()) {
-    skip = TRI_ObjectToInt64(args[0]);
-  }
-
-  if (!args[1]->IsNull() && !args[1]->IsUndefined()) {
-    limit = TRI_ObjectToUInt64(args[1], false);
-  }
-  
   std::string const collectionName(collection->name());
 
   std::shared_ptr<transaction::V8Context> transactionContext =
@@ -230,8 +213,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // We directly read the entire cursor. so batchsize == limit
   std::unique_ptr<OperationCursor> opCursor =
-      trx.indexScan(collectionName, transaction::Methods::CursorType::ALL, nullptr, skip,
-                    limit, limit, false);
+      trx.indexScan(collectionName, transaction::Methods::CursorType::ALL, nullptr, false);
 
   if (opCursor->failed()) {
     TRI_V8_THROW_EXCEPTION(opCursor->code);
@@ -259,7 +241,7 @@ static void JS_AllQuery(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
   
-  opCursor->allDocuments([&resultBuilder](DocumentIdentifierToken const& token, VPackSlice slice) {
+  opCursor->allDocuments([&resultBuilder](LocalDocumentId const& token, VPackSlice slice) {
     resultBuilder.add(slice);
   });
 
@@ -447,10 +429,8 @@ static void JS_LookupByKeys(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  VPackBuilder strippedBuilder =
-      arangodb::aql::BindParameters::StripCollectionNames(keys.slice(), collection->name().c_str());
-
-  bindVars->add("keys", strippedBuilder.slice());
+  bindVars->add(VPackValue("keys"));
+  arangodb::aql::BindParameters::stripCollectionNames(keys.slice(), collection->name(), *bindVars.get());
   bindVars->close();
 
   std::string const queryString(

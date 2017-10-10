@@ -37,6 +37,7 @@ fi
 
 if test -f /scripts/prepare_buildenv.sh; then
     echo "Sourcing docker container environment settings"
+    # shellcheck disable=SC1091
     . /scripts/prepare_buildenv.sh
 fi
 if test -z "${PARALLEL_BUILDS}"; then
@@ -120,10 +121,9 @@ fi
 
 COMPILE_MATTERS="3rdParty"
 
-# setup make options
 if test -z "${CXX}"; then
-    CC="/usr/bin/gcc-4.9"
-    CXX="/usr/bin/g++-4.9"
+    CC=/usr/bin/gcc
+    CXX=/usr/bin/g++
 fi
 
 CFLAGS="-g -fno-omit-frame-pointer"
@@ -147,7 +147,7 @@ MAKE=make
 PACKAGE_MAKE=make
 MAKE_PARAMS=()
 MAKE_CMD_PREFIX=""
-CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL")
+CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL -DGENERATE_BUILD_DATE=OFF")
 INSTALL_PREFIX="/"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
@@ -216,11 +216,13 @@ CLEAN_IT=0
 while [ $# -gt 0 ];  do
     case "$1" in
         --clang)
+            GCC5=0
             CLANG=1
             shift
             ;;
 
         --clang36)
+            GCC5=0
             CLANG36=1
             shift
             ;;
@@ -231,6 +233,7 @@ while [ $# -gt 0 ];  do
             ;;
 
         --gcc6)
+            GCC5=0
             GCC6=1
             shift
             ;;
@@ -386,6 +389,12 @@ while [ $# -gt 0 ];  do
         --downloadStarter)
             shift
             DOWNLOAD_STARTER=1
+            ;;
+
+        --downloadSyncer)
+            shift
+            DOWNLOAD_SYNCER_USER=$1
+            shift
             ;;
 
         --enterprise)
@@ -633,9 +642,98 @@ if test -n "${ENTERPRISE_GIT_URL}" ; then
     )
 fi
 
+THIRDPARTY_BIN=""
+THIRDPARTY_SBIN=""
+if test -n "${DOWNLOAD_SYNCER_USER}"; then
+    count=0
+    SEQNO="$$"
+    while test -z "${OAUTH_REPLY}"; do
+        OAUTH_REPLY=$(
+            curl -s "https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations" \
+                 --data "{\"scopes\":[\"repo\", \"repo_deployment\"],\"note\":\"Release${SEQNO}-${OSNAME}\"}"
+                   )
+        if test -n "$(echo "${OAUTH_REPLY}" |grep already_exists)"; then
+            # retry with another number... 
+            OAUTH_REPLY=""
+            SEQNO=$((SEQNO + 1))
+            count=$((count + 1))
+            if test "${count}" -gt 20; then
+                echo "failed to login to github! Giving up."
+                exit 1
+            fi
+        fi
+    done
+    OAUTH_TOKEN=$(echo "$OAUTH_REPLY" | \
+                         grep '"token"'  |\
+                         sed -e 's;.*": *";;' -e 's;".*;;'
+                  )
+    OAUTH_ID=$(echo "$OAUTH_REPLY" | \
+                      grep '"id"'  |\
+                      sed -e 's;.*": *;;' -e 's;,;;'
+            )
+
+    # shellcheck disable=SC2064
+    trap "curl -s -X DELETE \"https://$DOWNLOAD_SYNCER_USER@api.github.com/authorizations/${OAUTH_ID}\"" EXIT
+
+    if test -f "${SRC}/SYNCER_REV"; then
+        SYNCER_REV=$(cat "${SRC}/SYNCER_REV")
+    else
+        SYNCER_REV=$(curl -s "https://api.github.com/repos/arangodb/arangosync/releases?access_token=${OAUTH_TOKEN}" | \
+                             grep tag_name | \
+                             head -n 1 | \
+                             ${SED} -e "s;.*: ;;" -e 's;";;g' -e 's;,;;'
+                   )
+    fi
+    SYNCER_REPLY=$(curl -s "https://api.github.com/repos/arangodb/arangosync/releases/tags/${SYNCER_REV}?access_token=${OAUTH_TOKEN}")
+    DOWNLOAD_URLS=$(echo "${SYNCER_REPLY}" |grep 'browser_download_url
+"url".*asset.*' |
+                           ${SED} -e "s;.*: ;;" -e 's;";;g'
+                 )
+    LINE_NO=$(echo "${DOWNLOAD_URLS}" | grep -n "${OSNAME}" | ${SED} -e 's;:http.*;;g')
+    LINE_NO=$((LINE_NO - 1))
+    SYNCER_URL=$(echo "${DOWNLOAD_URLS}" | head -n "${LINE_NO}" |tail -n 1)
+    
+    if test -n "${SYNCER_URL}"; then
+        mkdir -p "${BUILD_DIR}"
+        if test "${isCygwin}" == 1; then
+            TN=arangosync.exe
+        else
+            TN=arangosync
+        fi
+        if test -f "${TN}"; then
+            rm -f "${TN}"
+        fi
+
+        FN=$(echo "${DOWNLOAD_URLS}" | grep "${OSNAME}" | ${SED} -e 's;.*/;;g')
+        echo "$FN"
+        if test -f "${BUILD_DIR}/${FN}-${SYNCER_REV}"; then
+            CURRENT_MD5=$(${MD5} < "${BUILD_DIR}/${TN}" | ${SED} "s; .*;;")
+            OLD_MD5=$(cat "${BUILD_DIR}/${FN}-${SYNCER_REV}")
+            if test "${CURRENT_MD5}" != "${OLD_MD5}"; then
+                rm -f "${BUILD_DIR}/${FN}-${SYNCER_REV}"
+            fi
+        fi
+        if ! test -f "${BUILD_DIR}/${FN}-${SYNCER_REV}"; then
+            rm -f "${FN}"
+            curl -LJO# -H 'Accept: application/octet-stream' "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" || \
+                ${SRC}/Installation/Jenkins/curl_time_machine.sh "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" "${FN}"
+            mv "${FN}" "${BUILD_DIR}/${TN}"
+            ${MD5} < "${BUILD_DIR}/${TN}"  | ${SED} "s; .*;;" > "${BUILD_DIR}/${FN}-${SYNCER_REV}"
+            OLD_MD5=$(cat "${BUILD_DIR}/${FN}-${SYNCER_REV}")
+            chmod a+x "${BUILD_DIR}/${TN}"
+            echo "downloaded ${BUILD_DIR}/${FN}-${SYNCER_REV} MD5: ${OLD_MD5}"
+        else
+            echo "using already downloaded ${BUILD_DIR}/${FN}-${SYNCER_REV} MD5: ${OLD_MD5}"
+        fi
+    fi
+    # Log out again:
+
+    THIRDPARTY_SBIN=("${THIRDPARTY_SBIN}${BUILD_DIR}/${TN}")
+fi
+
 if test "${DOWNLOAD_STARTER}" == 1; then
-    if test -f ${SRC}/STARTER_REV; then
-        STARTER_REV=$(cat ${SRC}/STARTER_REV)
+    if test -f "${SRC}/STARTER_REV"; then
+        STARTER_REV=$(cat "${SRC}/STARTER_REV")
     else
         # we utilize https://developer.github.com/v3/repos/ to get the newest release:
         STARTER_REV=$(curl -s https://api.github.com/repos/arangodb-helper/arangodb/releases | \
@@ -659,20 +757,38 @@ if test "${DOWNLOAD_STARTER}" == 1; then
         if test -f "${TN}"; then
             rm -f "${TN}"
         fi
-        FN=$(echo "${STARTER_URL}" |${SED} "s;.*/;;")
 
-        echo $FN
+        FN=$(echo "${STARTER_URL}" |${SED} "s;.*/;;")
+        echo "$FN"
+        if test -f "${BUILD_DIR}/${FN}-${STARTER_REV}"; then
+            CURRENT_MD5=$(${MD5} < "${BUILD_DIR}/${TN}" | ${SED} "s; .*;;")
+            OLD_MD5=$(cat "${BUILD_DIR}/${FN}-${STARTER_REV}")
+            if test "${CURRENT_MD5}" != "${OLD_MD5}"; then
+                rm -f "${BUILD_DIR}/${FN}-${STARTER_REV}"
+            fi
+        fi
+
         if ! test -f "${BUILD_DIR}/${FN}-${STARTER_REV}"; then
+            rm -f "${FN}"
             curl -LO "${STARTER_URL}"
-            cp "${FN}" "${BUILD_DIR}/${TN}"
-            touch "${BUILD_DIR}/${FN}-${STARTER_REV}"
+            mv "${FN}" "${BUILD_DIR}/${TN}"
+            ${MD5} < "${BUILD_DIR}/${TN}" | ${SED} "s; .*;;" > "${BUILD_DIR}/${FN}-${STARTER_REV}"
             chmod a+x "${BUILD_DIR}/${TN}"
-            echo "downloaded ${BUILD_DIR}/${FN}-${STARTER_REV} MD5: $(${MD5} < "${BUILD_DIR}/${TN}")"
+            OLD_MD5=$(cat "${BUILD_DIR}/${FN}-${STARTER_REV}")
+            echo "downloaded ${BUILD_DIR}/${FN}-${STARTER_REV} MD5: ${OLD_MD5}"
         else
-            echo "using already downloaded ${BUILD_DIR}/${FN}-${STARTER_REV} MD5: $(${MD5} < "${BUILD_DIR}/${TN}")"
+            echo "using already downloaded ${BUILD_DIR}/${FN}-${STARTER_REV} MD5: ${OLD_MD5}"
         fi
     fi
-    CONFIGURE_OPTIONS+=("-DTHIRDPARTY_BIN=${BUILD_DIR}/${TN}")
+    THIRDPARTY_BIN=("${THIRDPARTY_BIN}${BUILD_DIR}/${TN}")
+fi
+
+if test -n "${THIRDPARTY_BIN}"; then 
+    CONFIGURE_OPTIONS+=("-DTHIRDPARTY_BIN=${THIRDPARTY_BIN}")
+fi
+
+if test -n "${THIRDPARTY_SBIN}"; then 
+    CONFIGURE_OPTIONS+=("-DTHIRDPARTY_SBIN=${THIRDPARTY_SBIN}")
 fi
 
 test -d "${BUILD_DIR}" || mkdir "${BUILD_DIR}"
@@ -692,6 +808,7 @@ set -e
 
 if test "${PARTIAL_STATE}" == 0; then
     rm -rf CMakeFiles CMakeCache.txt CMakeCPackOptions.cmake cmake_install.cmake CPackConfig.cmake CPackSourceConfig.cmake
+    # shellcheck disable=SC2068
     CFLAGS="${CFLAGS}" CXXFLAGS="${CXXFLAGS}" LDFLAGS="${LDFLAGS}" LIBS="${LIBS}" \
           cmake "${SOURCE_DIR}" ${CONFIGURE_OPTIONS[@]} -G "${GENERATOR}" || exit 1
 fi
@@ -703,9 +820,12 @@ if [ -n "$CPACK" ] && [ -n "${TARGET_DIR}" ] && [ -z "${MSVC}" ];  then
     fi
 fi
 
+mkdir -p "${DST}/lib/Basics/"
+cat "${SOURCE_DIR}/lib/Basics/build-date.h.in" | sed "s;@ARANGODB_BUILD_DATE@;$(date "+%Y-%m-%d %H:%M:%S");" >"${DST}/lib/Basics/build-date.h"
 TRIES=0;
 set +e
 while /bin/true; do
+    # shellcheck disable=SC2068
     ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS[@]}
     RC=$?
     if test "${isCygwin}" == 1 -a "${RC}" != 0 -a "${TRIES}" == 0; then
@@ -814,6 +934,7 @@ if test -n "${TARGET_DIR}";  then
                             ${SED} -e "s/.*optimized;//"  -e "s/;.*//" -e "s;/lib.*lib;;"  -e "s;\([a-zA-Z]*\):;/cygdrive/\1;"
                   )
             DLLS=$(find "${SSLDIR}" -name \*.dll |grep -i release)
+            # shellcheck disable=SC2086
             cp ${DLLS} "bin/${BUILD_CONFIG}"
             cp "bin/${BUILD_CONFIG}/"* bin/
             cp "tests/${BUILD_CONFIG}/"*exe bin/

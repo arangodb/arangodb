@@ -26,8 +26,10 @@
 
 #include "Basics/AssocMulti.h"
 #include "Basics/Common.h"
+#include "Basics/fasthash.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "MMFiles/MMFilesIndex.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -42,8 +44,69 @@ class LocalTaskQueue;
 
 class MMFilesEdgeIndex;
 
+struct MMFilesEdgeIndexHelper {
+  /// @brief hashes an edge key
+  static inline uint64_t HashKey(void*, VPackSlice const* key) {
+    TRI_ASSERT(key != nullptr);
+    // we can get away with the fast hash function here, as edge
+    // index values are restricted to strings
+    return MMFilesSimpleIndexElement::hash(*key);
+  }
+
+  /// @brief hashes an edge
+  static inline uint64_t HashElement(void*, MMFilesSimpleIndexElement const& element,
+                                     bool byKey) {
+    if (byKey) {
+      return element.hash();
+    }
+
+    uint64_t documentId = element.localDocumentIdValue();
+    return fasthash64_uint64(documentId, 0x56781234);
+  }
+
+  /// @brief checks if key and element match
+  inline bool IsEqualKeyElement(void* userData, VPackSlice const* left,
+                                MMFilesSimpleIndexElement const& right) const {
+    TRI_ASSERT(left != nullptr);
+    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+    TRI_ASSERT(context != nullptr);
+
+    try {
+      VPackSlice tmp = right.slice(context);
+      TRI_ASSERT(tmp.isString());
+      return left->equals(tmp);
+    } catch (...) {
+      return false;
+    }
+  }
+
+  /// @brief checks for elements are equal
+  inline bool IsEqualElementElement(void*, MMFilesSimpleIndexElement const& left,
+                                    MMFilesSimpleIndexElement const& right) const {
+    return left.localDocumentId() == right.localDocumentId();
+  }
+
+  /// @brief checks for elements are equal
+  inline bool IsEqualElementElementByKey(void* userData,
+                                         MMFilesSimpleIndexElement const& left,
+                                         MMFilesSimpleIndexElement const& right) const {
+    IndexLookupContext* context = static_cast<IndexLookupContext*>(userData);
+    try {
+      VPackSlice lSlice = left.slice(context);
+      VPackSlice rSlice = right.slice(context);
+
+      TRI_ASSERT(lSlice.isString());
+      TRI_ASSERT(rSlice.isString());
+
+      return lSlice.equals(rSlice);
+    } catch (...) {
+      return false;
+    }
+  }
+};
+
 typedef arangodb::basics::AssocMulti<arangodb::velocypack::Slice,
-                                     MMFilesSimpleIndexElement, uint32_t, false>
+                                     MMFilesSimpleIndexElement, uint32_t, false, MMFilesEdgeIndexHelper>
     TRI_MMFilesEdgeIndexHash_t;
 
 class MMFilesEdgeIndexIterator final : public IndexIterator {
@@ -59,7 +122,7 @@ class MMFilesEdgeIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "edge-index-iterator"; }
 
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
   void reset() override;
 
@@ -73,13 +136,11 @@ class MMFilesEdgeIndexIterator final : public IndexIterator {
   MMFilesSimpleIndexElement _lastElement;
 };
 
-class MMFilesEdgeIndex final : public Index {
+class MMFilesEdgeIndex final : public MMFilesIndex {
  public:
   MMFilesEdgeIndex() = delete;
 
   MMFilesEdgeIndex(TRI_idx_iid_t, arangodb::LogicalCollection*);
-
-  ~MMFilesEdgeIndex();
 
  public:
   IndexType type() const override { return Index::TRI_IDX_TYPE_EDGE_INDEX; }
@@ -103,14 +164,14 @@ class MMFilesEdgeIndex final : public Index {
 
   void toVelocyPackFigures(VPackBuilder&) const override;
 
-  Result insert(transaction::Methods*, TRI_voc_rid_t,
+  Result insert(transaction::Methods*, LocalDocumentId const& documentId,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
-  Result remove(transaction::Methods*, TRI_voc_rid_t,
+  Result remove(transaction::Methods*, LocalDocumentId const& documentId,
              arangodb::velocypack::Slice const&, bool isRollback) override;
 
   void batchInsert(transaction::Methods*,
-                   std::vector<std::pair<TRI_voc_rid_t, VPackSlice>> const&,
+                   std::vector<std::pair<LocalDocumentId, VPackSlice>> const&,
                    std::shared_ptr<arangodb::basics::LocalTaskQueue>) override;
 
   void load() override {}
@@ -120,9 +181,9 @@ class MMFilesEdgeIndex final : public Index {
 
   bool hasBatchInsert() const override { return true; }
 
-  TRI_MMFilesEdgeIndexHash_t* from() { return _edgesFrom; }
+  TRI_MMFilesEdgeIndexHash_t* from() { return _edgesFrom.get(); }
 
-  TRI_MMFilesEdgeIndexHash_t* to() { return _edgesTo; }
+  TRI_MMFilesEdgeIndexHash_t* to() { return _edgesTo.get(); }
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
                                arangodb::aql::Variable const*, size_t, size_t&,
@@ -158,16 +219,16 @@ class MMFilesEdgeIndex final : public Index {
                      arangodb::aql::AstNode const* valNode) const;
 
   MMFilesSimpleIndexElement buildFromElement(
-      TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;
+      LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) const;
   MMFilesSimpleIndexElement buildToElement(
-      TRI_voc_rid_t, arangodb::velocypack::Slice const& doc) const;
+      LocalDocumentId const& documentId, arangodb::velocypack::Slice const& doc) const;
 
  private:
   /// @brief the hash table for _from
-  TRI_MMFilesEdgeIndexHash_t* _edgesFrom;
+  std::unique_ptr<TRI_MMFilesEdgeIndexHash_t> _edgesFrom;
 
   /// @brief the hash table for _to
-  TRI_MMFilesEdgeIndexHash_t* _edgesTo;
+  std::unique_ptr<TRI_MMFilesEdgeIndexHash_t> _edgesTo;
 
   /// @brief number of buckets effectively used by the index
   size_t _numBuckets;

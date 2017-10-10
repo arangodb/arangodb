@@ -26,7 +26,7 @@
 //
 // typeName() returns a string descibing the type of the indexIterator
 //
-// The next() function of the IndexIterator expects a callback taking DocumentIdentifierTokens
+// The next() function of the IndexIterator expects a callback taking LocalDocumentIds
 // that are created from RevisionIds. In addition it expects a limit.
 // The iterator has to walk through the Index and call the callback with at most limit
 // many elements. On the next iteration it has to continue after the last returned Token.
@@ -47,6 +47,7 @@
 
 #include "Basics/Common.h"
 #include "Indexes/IndexLookupContext.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
@@ -61,10 +62,10 @@ class Methods;
 /// at the index itself
 class IndexIterator {
  public:
-  typedef std::function<void(DocumentIdentifierToken const& token)> TokenCallback;
-  typedef std::function<void(DocumentIdentifierToken const& token,
+  typedef std::function<void(LocalDocumentId const& token)> LocalDocumentIdCallback;
+  typedef std::function<void(LocalDocumentId const& token,
                              velocypack::Slice extra)> DocumentCallback;
-  typedef std::function<void(DocumentIdentifierToken const& token,
+  typedef std::function<void(LocalDocumentId const& token,
                              velocypack::Slice extra)> ExtraCallback;
 
  public:
@@ -83,7 +84,7 @@ class IndexIterator {
 
   virtual bool hasExtra() const;
 
-  virtual bool next(TokenCallback const& callback, size_t limit) = 0;
+  virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) = 0;
   virtual bool nextDocument(DocumentCallback const& callback, size_t limit);
   virtual bool nextExtra(ExtraCallback const& callback, size_t limit);
 
@@ -109,7 +110,7 @@ class EmptyIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "empty-index-iterator"; }
 
-  bool next(TokenCallback const&, size_t) override {
+  bool next(LocalDocumentIdCallback const&, size_t) override {
     return false;
   }
 
@@ -151,7 +152,7 @@ class MultiIndexIterator final : public IndexIterator {
     ///        If one iterator is exhausted, the next one is used.
     ///        If callback is called less than limit many times
     ///        all iterators are exhausted
-    bool next(TokenCallback const& callback, size_t limit) override;
+    bool next(LocalDocumentIdCallback const& callback, size_t limit) override;
 
     /// @brief Reset the cursor
     ///        This will reset ALL internal iterators and start all over again

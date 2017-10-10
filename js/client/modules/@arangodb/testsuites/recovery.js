@@ -119,6 +119,9 @@ function recovery (options) {
   let status = true;
 
   let recoveryTests = tu.scanTestPath('js/server/tests/recovery');
+
+  recoveryTests = tu.splitBuckets(options, recoveryTests);
+
   let count = 0;
 
   let orgTmp = process.env.TMPDIR;

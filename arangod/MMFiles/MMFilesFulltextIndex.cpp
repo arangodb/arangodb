@@ -27,9 +27,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesToken.h"
 #include "MMFiles/mmfiles-fulltext-index.h"
-#include "StorageEngine/DocumentIdentifierToken.h"
 #include "StorageEngine/TransactionState.h"
 
 #include <velocypack/Iterator.h>
@@ -62,21 +60,10 @@ void MMFilesFulltextIndex::extractWords(std::set<std::string>& words,
   }
 }
 
-TRI_voc_rid_t MMFilesFulltextIndex::fromDocumentIdentifierToken(
-    DocumentIdentifierToken const& token) {
-  auto tkn = static_cast<MMFilesToken const*>(&token);
-  return tkn->revisionId();
-}
-
-DocumentIdentifierToken MMFilesFulltextIndex::toDocumentIdentifierToken(
-    TRI_voc_rid_t revisionId) {
-  return MMFilesToken{revisionId};
-}
-
 MMFilesFulltextIndex::MMFilesFulltextIndex(TRI_idx_iid_t iid,
                              arangodb::LogicalCollection* collection,
                              VPackSlice const& info)
-    : Index(iid, collection, info),
+    : MMFilesIndex(iid, collection, info),
       _fulltextIndex(nullptr),
       _minWordLength(TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT) {
   TRI_ASSERT(iid != 0);
@@ -212,25 +199,25 @@ bool MMFilesFulltextIndex::matchesDefinition(VPackSlice const& info) const {
 }
 
 Result MMFilesFulltextIndex::insert(transaction::Methods*,
-                                    TRI_voc_rid_t revisionId,
+                                    LocalDocumentId const& documentId,
                                     VPackSlice const& doc, bool isRollback) {
   int res = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
 
   if (!words.empty()) {
-    res = TRI_InsertWordsMMFilesFulltextIndex(_fulltextIndex, revisionId, words);
+    res = TRI_InsertWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
   }
   return IndexResult(res, this);
 }
 
 Result MMFilesFulltextIndex::remove(transaction::Methods*,
-                                    TRI_voc_rid_t revisionId,
+                                    LocalDocumentId const& documentId,
                                     VPackSlice const& doc, bool isRollback) {
   int res = TRI_ERROR_NO_ERROR;
   std::set<std::string> words = wordlist(doc);
 
   if (!words.empty()) {
-    res = TRI_RemoveWordsMMFilesFulltextIndex(_fulltextIndex, revisionId, words);
+    res = TRI_RemoveWordsMMFilesFulltextIndex(_fulltextIndex, documentId, words);
   }
   return IndexResult(res, this);
 }

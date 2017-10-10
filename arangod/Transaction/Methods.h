@@ -71,7 +71,7 @@ class Context;
 
 /// @brief forward declarations
 class CollectionNameResolver;
-struct DocumentIdentifierToken;
+class LocalDocumentId;
 class Index;
 class ManagedDocumentResult;
 struct OperationCursor;
@@ -233,7 +233,7 @@ class Methods {
 
   /// @brief Iterate over all elements of the collection.
   ENTERPRISE_VIRT void invokeOnAllElements(std::string const& collectionName,
-                           std::function<bool(arangodb::DocumentIdentifierToken const&)>);
+                           std::function<bool(arangodb::LocalDocumentId const&)>);
 
   /// @brief return one  document from a collection, fast path
   ///        If everything went well the result will contain the found document
@@ -353,8 +353,7 @@ class Methods {
   OperationCursor* indexScanForCondition(IndexHandle const&,
                                          arangodb::aql::AstNode const*,
                                          arangodb::aql::Variable const*,
-                                         ManagedDocumentResult*,
-                                         uint64_t, uint64_t, bool);
+                                         ManagedDocumentResult*, bool reverse);
 
   /// @brief factory for OperationCursor objects
   /// note: the caller must have read-locked the underlying collection when
@@ -363,8 +362,7 @@ class Methods {
   std::unique_ptr<OperationCursor> indexScan(std::string const& collectionName,
                                              CursorType cursorType,
                                              ManagedDocumentResult*,
-                                             uint64_t skip, uint64_t limit,
-                                             uint64_t batchSize, bool reverse);
+                                             bool reverse);
 
   /// @brief test if a collection is already locked
   ENTERPRISE_VIRT bool isLocked(arangodb::LogicalCollection*,

@@ -81,7 +81,6 @@ if (USE_PRECOMPILED_V8)
 
   set(V8_LIBS
     "${V8_BIN_DIR}/libv8_base.a;${V8_BIN_DIR}/libv8_libbase.a;${V8_BIN_DIR}/libv8_libplatform.a;${V8_BIN_DIR}/libv8_nosnapshot.a"
-    ${libev_BINARY_DIR}/libev.a
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
     FORCE
