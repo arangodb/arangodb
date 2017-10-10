@@ -566,7 +566,7 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
   s = rocksutils::globalRocksDB()->GetUpdatesSince(tickStart, &iterator, ro);
   if (!s.ok()) {
     Result r = convertStatus(s, rocksutils::StatusHint::wal);
-    return WalAccessResult(r.errorNumber(), false, 0, 0);
+    return WalAccessResult(r.errorNumber(), false, 0, rocksutils::globalRocksDB()->GetLatestSequenceNumber());
   }
 
   // we need to check if the builder is bigger than the chunksize,
