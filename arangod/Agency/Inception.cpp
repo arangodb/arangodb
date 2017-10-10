@@ -330,7 +330,6 @@ bool Inception::restartingActiveAgent() {
               
               auto agency = std::make_shared<Builder>();
               { VPackObjectBuilder b(agency.get());
-                agency->openObject();
                 agency->add("term", theirConfig.get("term"));
                 agency->add("id", VPackValue(theirLeaderId));
                 agency->add("active",      tcc.get("active"));
