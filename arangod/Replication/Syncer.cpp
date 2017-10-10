@@ -24,6 +24,7 @@
 #include "Syncer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
@@ -817,4 +818,10 @@ Result Syncer::handleStateResponse(VPackSlice const& slice) {
       << _masterInfo._lastLogTick;
 
   return Result();
+}
+
+void Syncer::reloadUsers() {
+  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
+  authentication->authInfo()->outdate();
+  authentication->authInfo()->reloadAllUsers();
 }

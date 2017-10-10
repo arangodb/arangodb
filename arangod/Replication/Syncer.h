@@ -90,6 +90,8 @@ class Syncer {
   Result sendRemoveBarrier();
 
  protected:
+  /// @brief reload all users
+  void reloadUsers();
   
   /// @brief parse a velocypack response
   Result parseResponse(arangodb::velocypack::Builder&,

@@ -149,6 +149,9 @@ protected:
   /// @brief initial tick for continuous synchronization
   TRI_voc_tick_t _initialTick;
   
+  /// @brief whether or not an operation modified the _users collection
+  bool _usersModified;
+  
   /// @brief use the initial tick
   bool _useTick;
 

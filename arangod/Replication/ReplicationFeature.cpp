@@ -110,6 +110,9 @@ void ReplicationFeature::stop() {
 }
 
 void ReplicationFeature::unprepare() {
+  if (_globalReplicationApplier != nullptr) {
+    _globalReplicationApplier->stop(true);
+  }
   _globalReplicationApplier.reset();
 }
     

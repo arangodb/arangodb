@@ -396,10 +396,10 @@ struct MMFilesWalAccessContext : WalAccessContext {
     TRI_voc_tick_t lastFoundTick = 0;
     TRI_voc_tick_t lastDatabaseId = 0;
     TRI_voc_cid_t lastCollectionId = 0;
-    bool hasMore = true;
-    bool bufferFull = false;
 
     try {
+      bool hasMore = true;
+      bool bufferFull = false;
       // iterate over the datafiles found
       size_t const n = logfiles.size();
 
