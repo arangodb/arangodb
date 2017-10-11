@@ -460,23 +460,27 @@ describe('Global Replication on a fresh boot', function () {
       testDBDoesNotExist(dbName);
 
       db._createDatabase(dbName);
+      testDBDoesExist(dbName);
+
       waitForReplication();
 
       connectToSlave();
       testDBDoesExist(dbName);
-
-      connectToMaster();
-      db._useDatabase(dbName);
     });
 
     after(function() {
+      connectToSlave();
+      testDBDoesExist(dbName);
+
       connectToMaster();
       // Flip always uses _system
+      testDBDoesExist(dbName);
       db._dropDatabase(dbName);
+      testDBDoesNotExist(dbName);
 
       waitForReplication();
       connectToSlave();
-      testDBDoesExist(dbName);
+      testDBDoesNotExist(dbName); 
     });
 
     it("should create and drop an empty document collection", function () {
@@ -486,12 +490,13 @@ describe('Global Replication on a fresh boot', function () {
       let mcol = db._create(docColName);
       let mProps = mcol.properties();
       let mIdxs = mcol.getIndexes();
+      testCollectionExists(docColName); 
 
       connectToSlave();
-      db._useDatabase(dbName);
       // Validate it is created properly
       waitForReplication();
-      testCollectionExists(docColName);
+      db._useDatabase(dbName);
+      testCollectionExists(docColName); 
       let scol = db._collection(docColName);
       expect(scol.type()).to.equal(2);
       expect(scol.properties()).to.deep.equal(mProps);
@@ -519,9 +524,9 @@ describe('Global Replication on a fresh boot', function () {
       let mIdxs = mcol.getIndexes();
 
       connectToSlave();
-      db._useDatabase(dbName);
       // Validate it is created properly
       waitForReplication();
+      db._useDatabase(dbName);
       testCollectionExists(edgeColName);
       let scol = db._collection(edgeColName);
       expect(scol.type()).to.equal(3);
@@ -535,9 +540,9 @@ describe('Global Replication on a fresh boot', function () {
       testCollectionDoesNotExists(edgeColName);
 
       connectToSlave();
-      db._useDatabase(dbName);
-      // Validate it is created properly
+      // Validate it is deleted properly
       waitForReplication();
+      db._useDatabase(dbName);
       testCollectionDoesNotExists(edgeColName);
     });
 
@@ -549,9 +554,9 @@ describe('Global Replication on a fresh boot', function () {
         db._create(docColName);
 
         connectToSlave();
-        db._useDatabase(dbName);
         // Validate it is created properly
         waitForReplication();
+        db._useDatabase(dbName);
         testCollectionExists(docColName);
       });
 
@@ -561,9 +566,9 @@ describe('Global Replication on a fresh boot', function () {
         db._drop(docColName);
 
         connectToSlave();
-        db._useDatabase(dbName);
         // Validate it is created properly
         waitForReplication();
+        db._useDatabase(dbName);
         testCollectionDoesNotExists(docColName);
       });
 
@@ -627,9 +632,9 @@ describe('Global Replication on a fresh boot', function () {
         let original = db._collection(docColName).document(key);
 
         connectToSlave();
-        db._useDatabase(dbName);
         waitForReplication();
 
+        db._useDatabase(dbName);
         let replica = db._collection(docColName).document(key);
         expect(replica).to.deep.equal(original);
       });
@@ -687,7 +692,6 @@ const fillMasterWithInitialData = function () {
   testCollectionDoesNotExists(docColName);
   testCollectionDoesNotExists(edgeColName);
 
-  
   let docs = [];
   for (let i = 0; i < 100; ++i) {
     docs.push({value: i});
@@ -904,13 +908,13 @@ describe('Test switch off and restart replication', function() {
 
       connectToMaster();
       db._drop(col);
+      testCollectionDoesNotExists(col);
 
       startReplication();
 
       connectToSlave();
       testCollectionDoesNotExists(col);
     });
-
 
     it('should replicate offline creation of an index', function () {
       const col = "UnittestOtherCollectionIdx";
@@ -968,7 +972,7 @@ describe('Test switch off and restart replication', function() {
       let schksm = scol.checksum(true, true);
 
       expect(scount).to.equal(mcount);
-      expect(schksm).to.equal(mchksm);
+      expect(schksm.checksum).to.equal(mchksm.checksum);
     });
   });
 });

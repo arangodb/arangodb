@@ -273,13 +273,18 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
     if (vocbase != nullptr && name != TRI_VOC_SYSTEM_DATABASE) {
       TRI_vocbase_t* system = DatabaseFeature::DATABASE->systemDatabase();
       TRI_ASSERT(system != nullptr);
+      // delete from cache by id and name
+      _vocbases.erase(std::to_string(vocbase->id()));
+      _vocbases.erase(name);
+      
       Result res = methods::Databases::drop(system, name);
+
       if (res.fail()) {
         LOG_TOPIC(ERR, Logger::REPLICATION) << res.errorMessage();
       }
       return res;
     } else {
-      TRI_ASSERT(false);// this should never  occur anyway
+      return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
     
   }

@@ -70,7 +70,7 @@ class MMFilesTransactionState final : public TransactionState {
   }
   
   /// @brief add a WAL operation for a transaction collection
-  int addOperation(LocalDocumentId const& documentId,
+  int addOperation(LocalDocumentId const& documentId, TRI_voc_rid_t revisionId,
                    MMFilesDocumentOperation&, MMFilesWalMarker const* marker, bool&);
   
   /// @brief get the transaction id for usage in a marker

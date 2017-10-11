@@ -248,8 +248,6 @@ struct MMFilesWalAccessContext : WalAccessContext {
     if (cid != 0) {
       if (_filter.collection != 0 &&
           (cid != _filter.collection && !isTransactionWalMarker(marker))) {
-        LOG_TOPIC(ERR, Logger::REPLICATION)
-            << "restrict output to a single collection, but a different one";
         // restrict output to a single collection, but a different one
         return false;
       }

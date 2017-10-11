@@ -95,7 +95,7 @@ std::shared_ptr<Index> PhysicalCollection::lookupIndex(
 void PhysicalCollection::mergeObjectsForUpdate(
     transaction::Methods* trx, VPackSlice const& oldValue,
     VPackSlice const& newValue, bool isEdgeCollection, LocalDocumentId const& documentId,
-    bool mergeObjects, bool keepNull, VPackBuilder& b, bool isRestore) const {
+    bool mergeObjects, bool keepNull, VPackBuilder& b, bool isRestore, TRI_voc_rid_t& revisionId) const {
   b.openObject();
 
   VPackSlice keySlice = oldValue.get(StaticStrings::KeyString);
@@ -165,12 +165,15 @@ void PhysicalCollection::mergeObjectsForUpdate(
     VPackSlice s = newValue.get(StaticStrings::RevString);
     if (s.isString()) {
       b.add(StaticStrings::RevString, s);
+      VPackValueLength l;
+      char const* p = s.getString(l);
+      revisionId = TRI_StringToRid(p, l, false);
       handled = true;
     }
   }
   if (!handled) {
-    std::string newRevSt = TRI_RidToString(documentId.id());
-    b.add(StaticStrings::RevString, VPackValue(newRevSt));
+    revisionId = TRI_HybridLogicalClock();
+    b.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
   }
 
   // add other attributes after the system attributes
@@ -237,7 +240,7 @@ int PhysicalCollection::newObjectForInsert(
     transaction::Methods* trx, VPackSlice const& value,
     VPackSlice const& fromSlice, VPackSlice const& toSlice,
     LocalDocumentId const& documentId, bool isEdgeCollection, 
-    VPackBuilder& builder, bool isRestore) const {
+    VPackBuilder& builder, bool isRestore, TRI_voc_rid_t& revisionId) const {
   builder.openObject();
 
   // add system attributes first, in this order:
@@ -299,12 +302,15 @@ int PhysicalCollection::newObjectForInsert(
     s = value.get(StaticStrings::RevString);
     if (s.isString()) {
       builder.add(StaticStrings::RevString, s);
+      VPackValueLength l;
+      char const* p = s.getString(l);
+      revisionId = TRI_StringToRid(p, l, false);
       handled = true;
     }
   }
   if (!handled) {
-    std::string newRevSt = TRI_RidToString(documentId.id());
-    builder.add(StaticStrings::RevString, VPackValue(newRevSt));
+    revisionId = TRI_HybridLogicalClock();
+    builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
   }
 
   // add other attributes after the system attributes
@@ -319,7 +325,7 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
                                             VPackSlice const& oldValue,
                                             LocalDocumentId const& documentId,
                                             VPackBuilder& builder,
-                                            bool isRestore) const {
+                                            bool isRestore, TRI_voc_rid_t& revisionId) const {
   // create an object consisting of _key and _rev (in this order)
   builder.openObject();
   if (oldValue.isString()) {
@@ -329,7 +335,8 @@ void PhysicalCollection::newObjectForRemove(transaction::Methods* trx,
     TRI_ASSERT(s.isString());
     builder.add(StaticStrings::KeyString, s);
   }
-  builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(documentId.id())));
+  revisionId = TRI_HybridLogicalClock();
+  builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
   builder.close();
 }
 
@@ -339,7 +346,7 @@ void PhysicalCollection::newObjectForReplace(
     transaction::Methods* trx, VPackSlice const& oldValue,
     VPackSlice const& newValue, VPackSlice const& fromSlice,
     VPackSlice const& toSlice, bool isEdgeCollection, LocalDocumentId const& documentId,
-    VPackBuilder& builder, bool isRestore) const {
+    VPackBuilder& builder, bool isRestore, TRI_voc_rid_t& revisionId) const {
   builder.openObject();
 
   // add system attributes first, in this order:
@@ -370,12 +377,15 @@ void PhysicalCollection::newObjectForReplace(
     s = newValue.get(StaticStrings::RevString);
     if (s.isString()) {
       builder.add(StaticStrings::RevString, s);
+      VPackValueLength l;
+      char const* p = s.getString(l);
+      revisionId = TRI_StringToRid(p, l, false);
       handled = true;
     }
   }
   if (!handled) {
-    std::string newRevSt = TRI_RidToString(documentId.id());
-    builder.add(StaticStrings::RevString, VPackValue(newRevSt));
+    revisionId = TRI_HybridLogicalClock();
+    builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(revisionId)));
   }
 
   // add other attributes after the system attributes

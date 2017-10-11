@@ -50,10 +50,11 @@ struct HealthRecord {
   std::string status;
   std::string endpoint;
   std::string lastAcked;
+  std::string hostId;
 
   HealthRecord(
-    std::string const& sn, std::string const& ep) :
-    shortName(sn), endpoint(ep) {}
+    std::string const& sn, std::string const& ep, std::string const& ho) :
+    shortName(sn), endpoint(ep), hostId(ho) {}
 
   HealthRecord(Node const& node) {
     *this = node;
@@ -71,6 +72,9 @@ struct HealthRecord {
         lastAcked = node("LastAcked").toJson();
         syncTime = node("SyncTime").toJson();
       }
+      if (node.has("Host")) {
+        hostId = node("Host").toJson();
+      }
     }
     return *this;
   }
@@ -80,6 +84,7 @@ struct HealthRecord {
     syncStatus = other.syncStatus;
     status = other.status;
     endpoint = other.endpoint;
+    hostId = other.hostId;
     return *this;
   }
 
@@ -87,6 +92,7 @@ struct HealthRecord {
     TRI_ASSERT(obj.isOpenObject());
     obj.add("ShortName", VPackValue(shortName));
     obj.add("Endpoint", VPackValue(endpoint));
+    obj.add("Host", VPackValue(hostId));
     obj.add("SyncStatus", VPackValue(syncStatus));
     obj.add("Status", VPackValue(status));
     if (syncTime.empty()) { 
@@ -329,13 +335,20 @@ std::vector<check_t> Supervision::check(std::string const& type) {
       shortName(_snapshot(targetShortID + serverID + "/ShortName").toJson());
     
     // Endpoint
-    std::string endpoint, epPath = serverID + "/endpoint";
+    std::string endpoint;
+    std::string epPath = serverID + "/endpoint";
     if (serversRegistered.has(epPath)) {
       endpoint = serversRegistered(epPath).toJson();
     }
+    std::string hostId;
+    std::string hoPath = serverID + "/host";
+    if (serversRegistered.has(hoPath)) {
+      hostId = serversRegistered(hoPath).toJson();
+    }
 
     // Health records from persistence, from transience and a new one
-    HealthRecord transist(shortName, endpoint), persist(shortName, endpoint);
+    HealthRecord transist(shortName, endpoint, hostId);
+    HealthRecord persist(shortName, endpoint, hostId);
     
     // Get last health entries from transient and persistent key value stores
     if (_transient.has(healthPrefix + serverID)) {

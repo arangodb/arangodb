@@ -180,6 +180,14 @@ class ServerState {
   /// @brief set the server address
   void setAddress(std::string const&);
 
+  /// @brief find a host identification string
+  void findHost(std::string const& fallback);
+
+  /// @brief get a string to identify the host we are running on
+  std::string getHost() {
+    return _host;
+  }
+
   /// @brief get the current state
   StateEnum getState();
 
@@ -273,6 +281,9 @@ class ServerState {
 
   /// @brief the server's own address, can be set just once
   std::string _address;
+
+  /// @brief an identification string for the host a server is running on
+  std::string _host;
 
   /// @brief r/w lock for state
   arangodb::basics::ReadWriteLock _lock;

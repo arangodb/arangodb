@@ -1390,10 +1390,11 @@ OperationResult transaction::Methods::insertLocal(
 
     ManagedDocumentResult result;
     TRI_voc_tick_t resultMarkerTick = 0;
+    TRI_voc_rid_t revisionId = 0;
 
     Result res =
         collection->insert(this, value, result, options, resultMarkerTick,
-                           !isLocked(collection, AccessMode::Type::WRITE));
+                           !isLocked(collection, AccessMode::Type::WRITE), revisionId);
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
@@ -1410,9 +1411,7 @@ OperationResult transaction::Methods::insertLocal(
     StringRef keyString(transaction::helpers::extractKeyFromDocument(
         VPackSlice(result.vpack())));
 
-    buildDocumentIdentity(collection, resultBuilder, cid, keyString,
-                          transaction::helpers::extractRevFromDocument(
-                              VPackSlice(result.vpack())),
+    buildDocumentIdentity(collection, resultBuilder, cid, keyString, revisionId,
                           0, nullptr, options.returnNew ? &result : nullptr);
 
     return TRI_ERROR_NO_ERROR;
