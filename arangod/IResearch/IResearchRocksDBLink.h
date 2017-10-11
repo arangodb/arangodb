@@ -44,10 +44,10 @@ class IResearchRocksDBLink final
 
   virtual void batchInsert(
     transaction::Methods* trx,
-    std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const& documents,
+    std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue
   ) {
-    return IResearchLink::batchInsert(trx, documents, queue);
+    IResearchLink::batchInsert(trx, documents, queue);
   }
 
   virtual bool canBeDropped() const override {

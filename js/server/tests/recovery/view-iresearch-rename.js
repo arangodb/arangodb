@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertNull, assertTrue, assertFalse, assertNotNull */
+/* global assertEqual, assertNull, assertTrue, assertFalse, assertNotNull, AQL_EXECUTE */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief tests for dump/reload
@@ -73,7 +73,7 @@ function recoverySuite () {
 
       assertNull(db._view('UnitTestsRecovery1'));
       v = db._view('UnitTestsRecovery2');
-      res = db._execute('FOR doc IN VIEW `UnitTestsRecovery2` FILTER doc.num > 0 RETURN doc', null, {}).json;
+      res = AQL_EXECUTE('FOR doc IN VIEW `UnitTestsRecovery2` FILTER doc.num > 0 RETURN doc', null, {}).json;
       assertEqual(res.length, 2);
     }
 

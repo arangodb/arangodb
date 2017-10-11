@@ -26,6 +26,7 @@
 
 #include "IResearchViewMeta.h"
 
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/ViewImplementation.h"
 #include "Utils/FlushTransaction.h"
 
@@ -114,7 +115,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   int insert(
     transaction::Methods& trx,
     TRI_voc_cid_t cid,
-    TRI_voc_rid_t rid,
+    arangodb::LocalDocumentId const& documentId,
     arangodb::velocypack::Slice const& doc,
     IResearchLinkMeta const& meta
   );
@@ -129,7 +130,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   int insert(
     transaction::Methods& trx,
     TRI_voc_cid_t cid,
-    std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const& batch,
+    std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& batch,
     IResearchLinkMeta const& meta
   );
 
@@ -183,7 +184,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   /// @brief remove documents matching 'cid' and 'rid' from the iResearch View
   ///        to be done in the scope of transaction 'tid'
   ////////////////////////////////////////////////////////////////////////////////
-  int remove(transaction::Methods& trx, TRI_voc_cid_t cid, TRI_voc_rid_t rid);
+  int remove(transaction::Methods& trx, TRI_voc_cid_t cid, arangodb::LocalDocumentId const& documentId);
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief called for a filter condition that was previously handed to the view

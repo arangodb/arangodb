@@ -268,7 +268,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
 
   // add collection_2
   {
-    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\" \"collection_2\" }");
+    auto collectionJson = arangodb::velocypack::Parser::fromJson("{ \"name\": \"collection_2\" }");
     logicalCollection2 = vocbase.createCollection(collectionJson->slice());
     REQUIRE((nullptr != logicalCollection2));
   }

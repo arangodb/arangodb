@@ -1768,7 +1768,7 @@ TRI_voc_cid_t IResearchView::id() const noexcept {
 int IResearchView::insert(
     transaction::Methods& trx,
     TRI_voc_cid_t cid,
-    TRI_voc_rid_t rid,
+    arangodb::LocalDocumentId const& documentId,
     arangodb::velocypack::Slice const& doc,
     IResearchLinkMeta const& meta
 ) {
@@ -1786,7 +1786,7 @@ int IResearchView::insert(
   DataStore* store;
 
   if (_inRecovery) {
-    _storePersisted._writer->remove(FilterFactory::filter(cid, rid));
+    _storePersisted._writer->remove(FilterFactory::filter(cid, documentId.id()));
 
     store = &_storePersisted;
   } else {
@@ -1802,8 +1802,8 @@ int IResearchView::insert(
 
   TRI_ASSERT(store);
 
-  auto insert = [&body, cid, rid] (irs::index_writer::document& doc) {
-    insertDocument(doc, body, cid, rid);
+  auto insert = [&body, cid, documentId] (irs::index_writer::document& doc) {
+    insertDocument(doc, body, cid, documentId.id());
 
     return false; // break the loop
   };
@@ -1815,16 +1815,16 @@ int IResearchView::insert(
 
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
       << "failed inserting into iResearch view '" << id()
-      << "', collection '" << cid << "', revision '" << rid << "'";
+      << "', collection '" << cid << "', revision '" << documentId.id() << "'";
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
       << "caught exception while inserting into iResearch view '" << id()
-      << "', collection '" << cid << "', revision '" << rid << "': " << e.what();
+      << "', collection '" << cid << "', revision '" << documentId.id() << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
       << "caught exception while inserting into iResearch view '" << id()
-      << "', collection '" << cid << "', revision '" << rid << "'";
+      << "', collection '" << cid << "', revision '" << documentId.id() << "'";
     IR_EXCEPTION();
   }
 
@@ -1834,7 +1834,7 @@ int IResearchView::insert(
 int IResearchView::insert(
     transaction::Methods& trx,
     TRI_voc_cid_t cid,
-    std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const& batch,
+    std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& batch,
     IResearchLinkMeta const& meta
 ) {
   if (!trx.state()) {
@@ -1845,7 +1845,7 @@ int IResearchView::insert(
 
   if (_inRecovery) {
     for (auto& doc : batch) {
-      _storePersisted._writer->remove(FilterFactory::filter(cid, doc.first));
+      _storePersisted._writer->remove(FilterFactory::filter(cid, doc.first.id()));
     }
 
     store = &_storePersisted;
@@ -1889,7 +1889,7 @@ int IResearchView::insert(
     body.reset(begin->second, meta);
     // FIXME: what if the body is empty?
 
-    insertDocument(doc, body, cid, begin->first);
+    insertDocument(doc, body, cid, begin->first.id());
 
     return ++begin != end && ++batchCount < commitBatch;
   };
@@ -2202,13 +2202,13 @@ void IResearchView::open() {
 int IResearchView::remove(
   transaction::Methods& trx,
   TRI_voc_cid_t cid,
-  TRI_voc_rid_t rid
+  arangodb::LocalDocumentId const& documentId
 ) {
   if (!trx.state()) {
     return TRI_ERROR_BAD_PARAMETER; // 'trx' and transaction id required
   }
 
-  std::shared_ptr<irs::filter> shared_filter(FilterFactory::filter(cid, rid));
+  std::shared_ptr<irs::filter> shared_filter(FilterFactory::filter(cid, documentId.id()));
   TidStore* store;
 
   {
@@ -2237,12 +2237,12 @@ int IResearchView::remove(
   } catch (std::exception const& e) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
       << "caught exception while removing from iResearch view '" << id()
-      << "', collection '" << cid << "', revision '" << rid << "': " << e.what();
+      << "', collection '" << cid << "', revision '" << documentId.id() << "': " << e.what();
     IR_EXCEPTION();
   } catch (...) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
       << "caught exception while removing from iResearch view '" << id()
-      << "', collection '" << cid << "', revision '" << rid << "'";
+      << "', collection '" << cid << "', revision '" << documentId.id() << "'";
     IR_EXCEPTION();
   }
 

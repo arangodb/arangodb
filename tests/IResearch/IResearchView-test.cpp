@@ -456,10 +456,10 @@ SECTION("test_insert") {
 
       linkMeta._includeAllFields = true;
       CHECK((trx.begin().ok()));
-      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 1, docJson->slice(), linkMeta)));
-      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 2, docJson->slice(), linkMeta)));
-      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 1, docJson->slice(), linkMeta))); // 2nd time
-      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 2, docJson->slice(), linkMeta))); // 2nd time
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, arangodb::LocalDocumentId(1), docJson->slice(), linkMeta)));
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, arangodb::LocalDocumentId(2), docJson->slice(), linkMeta)));
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, arangodb::LocalDocumentId(1), docJson->slice(), linkMeta))); // 2nd time
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, arangodb::LocalDocumentId(2), docJson->slice(), linkMeta))); // 2nd time
       CHECK((trx.commit().ok()));
       CHECK((view->sync()));
     }
@@ -469,7 +469,7 @@ SECTION("test_insert") {
     std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
-    CHECK((!itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
+    CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
     CHECK((2 == count));
   }
 
@@ -488,9 +488,9 @@ SECTION("test_insert") {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-      std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> batch = {
-        { 1, docJson->slice() },
-        { 2, docJson->slice() },
+      std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> batch = {
+        { arangodb::LocalDocumentId(1), docJson->slice() },
+        { arangodb::LocalDocumentId(2), docJson->slice() },
       };
 
       linkMeta._includeAllFields = true;
@@ -506,7 +506,7 @@ SECTION("test_insert") {
     std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
-    CHECK((!itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
+    CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
     CHECK((2 == count));
   }
 
@@ -527,10 +527,10 @@ SECTION("test_insert") {
 
       linkMeta._includeAllFields = true;
       CHECK((trx.begin().ok()));
-      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 1, docJson->slice(), linkMeta)));
-      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 2, docJson->slice(), linkMeta)));
-      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 1, docJson->slice(), linkMeta))); // 2nd time
-      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 2, docJson->slice(), linkMeta))); // 2nd time
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, arangodb::LocalDocumentId(1), docJson->slice(), linkMeta)));
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, arangodb::LocalDocumentId(2), docJson->slice(), linkMeta)));
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, arangodb::LocalDocumentId(1), docJson->slice(), linkMeta))); // 2nd time
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, arangodb::LocalDocumentId(2), docJson->slice(), linkMeta))); // 2nd time
       CHECK((trx.commit().ok()));
       CHECK((view->sync()));
     }
@@ -540,7 +540,7 @@ SECTION("test_insert") {
     std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
-    CHECK((!itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
+    CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
     CHECK((4 == count));
   }
 
@@ -563,10 +563,10 @@ SECTION("test_insert") {
 
       linkMeta._includeAllFields = true;
       CHECK((trx.begin().ok()));
-      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 1, docJson->slice(), linkMeta)));
-      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 2, docJson->slice(), linkMeta)));
-      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 1, docJson->slice(), linkMeta))); // 2nd time
-      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, 2, docJson->slice(), linkMeta))); // 2nd time
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, arangodb::LocalDocumentId(1), docJson->slice(), linkMeta)));
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, arangodb::LocalDocumentId(2), docJson->slice(), linkMeta)));
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, arangodb::LocalDocumentId(1), docJson->slice(), linkMeta))); // 2nd time
+      CHECK((TRI_ERROR_NO_ERROR == view->insert(trx, 1, arangodb::LocalDocumentId(2), docJson->slice(), linkMeta))); // 2nd time
       CHECK((trx.commit().ok()));
     }
 
@@ -575,7 +575,7 @@ SECTION("test_insert") {
     std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
-    CHECK((!itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
+    CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
     CHECK((4 == count));
   }
 
@@ -593,9 +593,9 @@ SECTION("test_insert") {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
       arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
-      std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> batch = {
-        { 1, docJson->slice() },
-        { 2, docJson->slice() },
+      std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> batch = {
+        { arangodb::LocalDocumentId(1), docJson->slice() },
+        { arangodb::LocalDocumentId(2), docJson->slice() },
       };
 
       linkMeta._includeAllFields = true;
@@ -611,7 +611,7 @@ SECTION("test_insert") {
     std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
-    CHECK((!itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
+    CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
     CHECK((4 == count));
   }
 
@@ -631,9 +631,9 @@ SECTION("test_insert") {
       arangodb::transaction::Options options;
       options.waitForSync = true;
       arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, options);
-      std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> batch = {
-        { 1, docJson->slice() },
-        { 2, docJson->slice() },
+      std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> batch = {
+        { arangodb::LocalDocumentId(1), docJson->slice() },
+        { arangodb::LocalDocumentId(2), docJson->slice() },
       };
 
       linkMeta._includeAllFields = true;
@@ -648,7 +648,7 @@ SECTION("test_insert") {
     std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
-    CHECK((!itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
+    CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
     CHECK((4 == count));
   }
 }
@@ -794,9 +794,9 @@ SECTION("test_query") {
     CHECK((&trx == itr->transaction()));
     CHECK((view == itr->view()));
     CHECK((false == itr->hasExtra()));
-    CHECK_THROWS(itr->nextExtra([](arangodb::arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
+    CHECK_THROWS(itr->nextExtra([](arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
     size_t count = 0;
-    CHECK((false == itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 42)));
+    CHECK((false == itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 42)));
     CHECK((0 == count));
     uint64_t skipped = 0;
     CHECK_NOTHROW((itr->skip(5, skipped)));
@@ -833,9 +833,9 @@ SECTION("test_query") {
     CHECK((&trx == itr->transaction()));
     CHECK((view == itr->view()));
     CHECK((false == itr->hasExtra()));
-    CHECK_THROWS(itr->nextExtra([](arangodb::arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
+    CHECK_THROWS(itr->nextExtra([](arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
     size_t count = 0;
-    CHECK((false == itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 42)));
+    CHECK((false == itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 42)));
     CHECK((0 == count));
     uint64_t skipped = 0;
     CHECK_NOTHROW((itr->skip(5, skipped)));
@@ -861,9 +861,9 @@ SECTION("test_query") {
     CHECK((&trx == itr->transaction()));
     CHECK((view == itr->view()));
     CHECK((false == itr->hasExtra()));
-    CHECK_THROWS(itr->nextExtra([](arangodb::arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
+    CHECK_THROWS(itr->nextExtra([](arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
     size_t count = 0;
-    CHECK((false == itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 42)));
+    CHECK((false == itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 42)));
     CHECK((0 == count));
     uint64_t skipped = 0;
     CHECK_NOTHROW((itr->skip(5, skipped)));
@@ -889,9 +889,9 @@ SECTION("test_query") {
     CHECK((&trx == itr->transaction()));
     CHECK((view == itr->view()));
     CHECK((false == itr->hasExtra()));
-    CHECK_THROWS(itr->nextExtra([](arangodb::arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
+    CHECK_THROWS(itr->nextExtra([](arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
     size_t count = 0;
-    CHECK((false == itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, 42)));
+    CHECK((false == itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 42)));
     CHECK((0 == count));
     uint64_t skipped = 0;
     CHECK_NOTHROW((itr->skip(5, skipped)));
@@ -916,7 +916,7 @@ SECTION("test_query") {
       CHECK((trx.begin().ok()));
 
       for (size_t i = 0; i < 12; ++i) {
-        view->insert(trx, 1, i, doc->slice(), meta);
+        view->insert(trx, 1, arangodb::LocalDocumentId(i), doc->slice(), meta);
       }
 
       CHECK((trx.commit().ok()));
@@ -963,12 +963,12 @@ SECTION("test_query") {
     CHECK((&trx == itr->transaction()));
     CHECK((view == itr->view()));
     CHECK((false == itr->hasExtra()));
-    CHECK_THROWS(itr->nextExtra([](arangodb::arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
+    CHECK_THROWS(itr->nextExtra([](arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
 
     {
       std::vector<size_t> const expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
       size_t next = 0;
-      CHECK((true == itr->next([&expected, &next](arangodb::arangodb::LocalDocumentId const& token)->void{ CHECK((token.id() == expected[next++])); }, 10)));
+      CHECK((true == itr->next([&expected, &next](arangodb::LocalDocumentId const& token)->void{ CHECK((token.id() == expected[next++])); }, 10)));
       CHECK((expected.size() == next));
     }
 
@@ -980,7 +980,7 @@ SECTION("test_query") {
     {
       std::vector<size_t> const expected = { 6, 7, 8, 9, 10, 11, 12 };
       size_t next = 0;
-      CHECK((false == itr->next([&expected, &next](arangodb::arangodb::LocalDocumentId const& token)->void{ CHECK((token.id() == expected[next++])); }, 10)));
+      CHECK((false == itr->next([&expected, &next](arangodb::LocalDocumentId const& token)->void{ CHECK((token.id() == expected[next++])); }, 10)));
       CHECK((expected.size() == next));
     }
 
@@ -1007,7 +1007,7 @@ SECTION("test_query") {
       CHECK((trx.begin().ok()));
 
       for (size_t i = 0; i < 12; ++i) {
-        view->insert(trx, 1, i, doc->slice(), meta);
+        view->insert(trx, 1, arangodb::LocalDocumentId(i), doc->slice(), meta);
       }
 
       CHECK((trx.commit().ok()));
@@ -1023,13 +1023,13 @@ SECTION("test_query") {
     CHECK((&trx == itr->transaction()));
     CHECK((view == itr->view()));
     CHECK((false == itr->hasExtra()));
-    CHECK_THROWS(itr->nextExtra([](arangodb::arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
+    CHECK_THROWS(itr->nextExtra([](arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
 
     std::vector<size_t> actual;
 
     {
       std::set<size_t> expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
-      CHECK((true == itr->next([&expected, &actual](arangodb::arangodb::LocalDocumentId const& token)->void{ CHECK((1 == expected.erase(token.id()))); actual.emplace_back(token.id()); }, 10)));
+      CHECK((true == itr->next([&expected, &actual](arangodb::LocalDocumentId const& token)->void{ CHECK((1 == expected.erase(token.id()))); actual.emplace_back(token.id()); }, 10)));
       CHECK((10 == actual.size()));
     }
 
@@ -1043,7 +1043,7 @@ SECTION("test_query") {
       std::unordered_set<size_t> expected1 = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
       for (auto& entry: actual) expected1.erase(entry);
       size_t next = 0;
-      CHECK((false == itr->next([&expected0, &expected1, &next](arangodb::arangodb::LocalDocumentId const& token)->void{ CHECK(((next < expected0.size() && expected0[next++] == token.id()) || (next >= expected0.size() && 1 == expected1.erase(token.id())))); }, 10)));
+      CHECK((false == itr->next([&expected0, &expected1, &next](arangodb::LocalDocumentId const& token)->void{ CHECK(((next < expected0.size() && expected0[next++] == token.id()) || (next >= expected0.size() && 1 == expected1.erase(token.id())))); }, 10)));
       CHECK((expected0.size() == next && expected1.empty()));
     }
 
@@ -1070,7 +1070,7 @@ SECTION("test_query") {
       CHECK((trx.begin().ok()));
 
       for (size_t i = 0; i < 12; ++i) {
-        view->insert(trx, 1, i, doc->slice(), meta);
+        view->insert(trx, 1, arangodb::LocalDocumentId(i), doc->slice(), meta);
       }
 
       CHECK((trx.commit().ok()));
@@ -1087,13 +1087,13 @@ SECTION("test_query") {
     CHECK((&trx == itr->transaction()));
     CHECK((view == itr->view()));
     CHECK((false == itr->hasExtra()));
-    CHECK_THROWS(itr->nextExtra([](arangodb::arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
+    CHECK_THROWS(itr->nextExtra([](arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
 
     std::vector<size_t> actual;
 
     {
       std::set<size_t> expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
-      CHECK((true == itr->next([&expected, &actual](arangodb::arangodb::LocalDocumentId const& token)->void{ CHECK((1 == expected.erase(token.id()))); actual.emplace_back(token.id()); }, 10)));
+      CHECK((true == itr->next([&expected, &actual](arangodb::LocalDocumentId const& token)->void{ CHECK((1 == expected.erase(token.id()))); actual.emplace_back(token.id()); }, 10)));
       CHECK((10 == actual.size()));
     }
 
@@ -1107,7 +1107,7 @@ SECTION("test_query") {
       std::unordered_set<size_t> expected1 = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
       for (auto& entry: actual) expected1.erase(entry);
       size_t next = 0;
-      CHECK((false == itr->next([&expected0, &expected1, &next](arangodb::arangodb::LocalDocumentId const& token)->void{ CHECK(((next < expected0.size() && expected0[next++] == token.id()) || (next >= expected0.size() && 1 == expected1.erase(token.id())))); }, 10)));
+      CHECK((false == itr->next([&expected0, &expected1, &next](arangodb::LocalDocumentId const& token)->void{ CHECK(((next < expected0.size() && expected0[next++] == token.id()) || (next >= expected0.size() && 1 == expected1.erase(token.id())))); }, 10)));
       CHECK((expected0.size() == next && expected1.empty()));
     }
 
@@ -1171,7 +1171,7 @@ SECTION("test_query") {
         CHECK((false == !itr));
 
         size_t count = 0;
-        CHECK((!itr->next([&count](arangodb::arangodb::LocalDocumentId const&)->void{ ++count; }, i + 1)));
+        CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, i + 1)));
         REQUIRE((i == count));
       }
     }

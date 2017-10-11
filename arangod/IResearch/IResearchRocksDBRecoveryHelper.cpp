@@ -99,7 +99,7 @@ void IResearchRocksDBRecoveryHelper::DeleteCF(uint32_t column_family_id,
         transaction::StandaloneContext::Create(vocbase), coll->cid(),
         arangodb::AccessMode::Type::WRITE);
     for (auto link : links) {
-      link->remove(&trx, rev, false);
+      link->remove(&trx, LocalDocumentId(rev), false);
     }
     trx.commit();
 

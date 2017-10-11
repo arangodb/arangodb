@@ -158,7 +158,7 @@ bool IResearchLink::allowExpansion() const {
 
 void IResearchLink::batchInsert(
     transaction::Methods* trx,
-    std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const& batch,
+    std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>> const& batch,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue /*= nullptr*/
 ) {
   if (batch.empty()) {
@@ -291,7 +291,7 @@ bool IResearchLink::init(arangodb::velocypack::Slice const& definition) {
 
 Result IResearchLink::insert(
   transaction::Methods* trx,
-  LocalDocumentId const& documentId,
+  arangodb::LocalDocumentId const& documentId,
   VPackSlice const& doc,
   bool isRollback
 ) {
@@ -306,7 +306,7 @@ Result IResearchLink::insert(
     return TRI_ERROR_BAD_PARAMETER; // 'trx' required
   }
 
-  return _view->insert(*trx, _collection->cid(), documentId.id(), doc, _meta);
+  return _view->insert(*trx, _collection->cid(), documentId, doc, _meta);
 }
 
 bool IResearchLink::isPersistent() const {
@@ -400,12 +400,12 @@ Result IResearchLink::remove(
   }
 
   // remove documents matching on cid and rid
-  return _view->remove(*trx, _collection->cid(), documentId.id());
+  return _view->remove(*trx, _collection->cid(), documentId);
 }
 
 Result IResearchLink::remove(
   transaction::Methods* trx,
-  TRI_voc_rid_t rid,
+  arangodb::LocalDocumentId const& documentId,
   bool isRollback
 ) {
   ReadMutex mutex(_mutex); // '_view' can be asynchronously modified
@@ -419,8 +419,8 @@ Result IResearchLink::remove(
     return TRI_ERROR_BAD_PARAMETER; // 'trx' required
   }
 
-  // remove documents matching on cid and rid
-  return _view->remove(*trx, _collection->cid(), rid);
+  // remove documents matching on cid and documentId
+  return _view->remove(*trx, _collection->cid(), documentId);
 }
 
 /*static*/ bool IResearchLink::setType(arangodb::velocypack::Builder& builder) {

@@ -223,11 +223,13 @@ void ensureConfigCollection(TRI_vocbase_t& vocbase) {
   static const std::string json =
     std::string("{\"isSystem\": true, \"name\": \"") + ANALYZER_COLLECTION_NAME + "\"}";
 
-  try {
-    vocbase.createCollection(arangodb::velocypack::Parser::fromJson(json)->slice());
-  } catch(arangodb::basics::Exception& e) {
-    if (TRI_ERROR_ARANGO_DUPLICATE_NAME != e.code()) {
-      throw e;
+  if (!arangodb::ServerState::instance()->isCoordinator()) {
+    try {
+      vocbase.createCollection(arangodb::velocypack::Parser::fromJson(json)->slice());
+    } catch(arangodb::basics::Exception& e) {
+      if (TRI_ERROR_ARANGO_DUPLICATE_NAME != e.code()) {
+        throw e;
+      }
     }
   }
 }

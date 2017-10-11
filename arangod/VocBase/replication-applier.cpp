@@ -142,7 +142,7 @@ static int LoadConfiguration(TRI_vocbase_t* vocbase,
   if (value.isNumber()) {
     config->_maxConnectRetries = value.getNumber<int64_t>();
   }
-  
+
   value = slice.get("lockTimeoutRetries");
 
   if (value.isNumber()) {
@@ -299,9 +299,9 @@ static VPackBuilder VPackApplyState(TRI_replication_applier_state_t const* state
   VPackBuilder builder;
   builder.openObject();
 
-  builder.add("serverId", VPackValue(std::to_string(state->_serverId))); 
-  builder.add("lastProcessedContinuousTick", VPackValue(std::to_string(state->_lastProcessedContinuousTick))); 
-  builder.add("lastAppliedContinuousTick", VPackValue(std::to_string(state->_lastAppliedContinuousTick))); 
+  builder.add("serverId", VPackValue(std::to_string(state->_serverId)));
+  builder.add("lastProcessedContinuousTick", VPackValue(std::to_string(state->_lastProcessedContinuousTick)));
+  builder.add("lastAppliedContinuousTick", VPackValue(std::to_string(state->_lastAppliedContinuousTick)));
   builder.add("safeResumeTick", VPackValue(std::to_string(state->_safeResumeTick)));
   builder.close();
 
@@ -432,7 +432,7 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier(TRI_vocbase_t* vocbase) 
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_replication_applier_configuration_t::
-    TRI_replication_applier_configuration_t() 
+    TRI_replication_applier_configuration_t()
     : _endpoint(),
       _database(),
       _username(),
@@ -483,7 +483,7 @@ void TRI_replication_applier_configuration_t::toVelocyPack(
   if (!_database.empty()) {
     builder.add("database", VPackValue(_database));
   }
-  
+
   bool hasUsernamePassword = false;
   if (!_username.empty()) {
     hasUsernamePassword = true;
@@ -683,8 +683,8 @@ int TRI_RemoveStateReplicationApplier(TRI_vocbase_t* vocbase) {
     LOG_TOPIC(TRACE, Logger::REPLICATION) << "removing replication state file '"
                                           << filename << "'";
     return TRI_UnlinkFile(filename.c_str());
-  } 
-  
+  }
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1256,7 +1256,7 @@ void TRI_replication_applier_t::toVelocyPack(VPackBuilder& builder) const {
   builder.add("version", VPackValue(ARANGODB_VERSION));
   builder.add("serverId", VPackValue(std::to_string(ServerIdFeature::getId())));
   builder.close();  // server
-  
+
   if (!config._endpoint.empty()) {
     builder.add("endpoint", VPackValue(config._endpoint));
   }

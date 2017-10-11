@@ -60,7 +60,7 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   virtual void batchInsert(
     transaction::Methods* trx,
-    std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const& batch,
+    std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const& batch,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue = nullptr
   ); // arangodb::Index override
 
@@ -127,7 +127,7 @@ class IResearchLink {
   ////////////////////////////////////////////////////////////////////////////////
   arangodb::Result remove(
     transaction::Methods* trx,
-    LocalDocumentId const& documentId,
+    arangodb::LocalDocumentId const& documentId,
     VPackSlice const& doc,
     bool isRollback
   ); // arangodb::Index override
@@ -138,7 +138,7 @@ class IResearchLink {
   //////////////////////////////////////////////////////////////////////////////
   arangodb::Result remove(
     transaction::Methods* trx,
-    TRI_voc_rid_t rid,
+    arangodb::LocalDocumentId const& documentId,
     bool isRollback
   );
 

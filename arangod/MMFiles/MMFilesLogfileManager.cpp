@@ -34,6 +34,7 @@
 #include "Basics/files.h"
 #include "Basics/hashes.h"
 #include "Basics/memory-map.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -1600,7 +1601,8 @@ MMFilesLogfileManagerState MMFilesLogfileManager::state() {
     }
     usleep(10000);
   }
-  TRI_ASSERT(state.lastCommittedTick > 0);
+  TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator() ||
+             state.lastCommittedTick > 0);
 
   state.timeString = utilities::timeString();
 
