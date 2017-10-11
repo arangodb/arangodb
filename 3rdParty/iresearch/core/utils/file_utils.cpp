@@ -18,6 +18,10 @@
 #include "error/error.hpp"
 #include "utils/log.hpp"
 
+#if defined(__APPLE__)
+  #include <sys/param.h> // for MAXPATHLEN
+#endif
+
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -429,6 +433,21 @@ handle_t open(FILE* file, const file_path_t mode) NOEXCEPT {
     path[length] = '\0';
 
     return open(path, mode);
+  #elif defined(__APPLE__)
+    // MacOS approach is to open the original file via the file descriptor link under /dev/fd
+    // the link is garanteed to point to the original inode even if the original file was removed
+    // unfortunatly this results in the original file descriptor being dup()'ed
+    // therefore try to get the original file name from the existing descriptor and reopen it
+    // FIXME TODO assume that the file has not moved and was not deleted
+    auto fd = ::fileno(file);
+    char path[MAXPATHLEN + 1]; // F_GETPATH requires a buffer of size at least MAXPATHLEN, +1 for \0
+
+    if (0 > fd || 0 > fcntl(fd, F_GETPATH, path)) {
+      IR_FRMT_ERROR("Failed to get file path from file handle, error %d", errno);
+      return nullptr;
+    }
+
+    return open(path, mode);
   #else
     // posix approach is to open the original file via the file descriptor link under /proc/self/fd
     // the link is garanteed to point to the original inode even if the original file was removed
@@ -498,5 +517,9 @@ bool visit_directory(
   #endif
 }
 
-NS_END
-NS_END
+NS_END // file_utils
+NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
