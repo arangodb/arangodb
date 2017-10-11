@@ -1,2 +1,2 @@
-shell> curl --header 'If-None-Match: "_VtC-_ri---"' --dump - http://localhost:8529/_api/document/products/11422
+shell> curl --header 'If-None-Match: "_Vurxm4a---"' --dump - http://localhost:8529/_api/document/products/10830
 

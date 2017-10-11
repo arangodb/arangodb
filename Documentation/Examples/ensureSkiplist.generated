@@ -4,7 +4,7 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
   <span class="hljs-string">"fields"</span> : [ 
     <span class="hljs-string">"first"</span> 
   ], 
-  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/18061"</span>, 
+  <span class="hljs-string">"id"</span> : <span class="hljs-string">"names/17468"</span>, 
   <span class="hljs-string">"isNewlyCreated"</span> : <span class="hljs-literal">true</span>, 
   <span class="hljs-string">"sparse"</span> : <span class="hljs-literal">false</span>, 
   <span class="hljs-string">"type"</span> : <span class="hljs-string">"skiplist"</span>, 
@@ -13,31 +13,31 @@ arangosh&gt; db.names.ensureIndex({ <span class="hljs-attr">type</span>: <span c
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/18064"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"18064"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VtC-eAW---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17471"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17471"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VuryCc6---"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/18068"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"18068"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VtC-eAa---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17475"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17475"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VuryCc6--_"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"John"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/18071"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"18071"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VtC-eAe---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17478"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17478"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VuryCd----"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tim"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/18074"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"18074"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VtC-eAe--_"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17481"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17481"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VuryCd---_"</span> 
 }
 arangosh&gt; db.names.save({ <span class="hljs-string">"first"</span> : <span class="hljs-string">"Tom"</span> });
 { 
-  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/18077"</span>, 
-  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"18077"</span>, 
-  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VtC-eAi---"</span> 
+  <span class="hljs-string">"_id"</span> : <span class="hljs-string">"names/17484"</span>, 
+  <span class="hljs-string">"_key"</span> : <span class="hljs-string">"17484"</span>, 
+  <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VuryCd---A"</span> 
 }
