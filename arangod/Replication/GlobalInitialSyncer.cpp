@@ -208,7 +208,6 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
     TRI_vocbase_t* vocbase = resolveVocbase(nameSlice);
     if (vocbase == nullptr) {
       // database is missing. we need to create it now
-      
       Result r = methods::Databases::create(dbName, VPackSlice::emptyArraySlice(),
                                             VPackSlice::emptyObjectSlice());
       if (r.fail()) {
@@ -223,8 +222,6 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
         return Result(TRI_ERROR_INTERNAL, msg);
       }
     } else {
-      DatabaseGuard guard(vocbase);
-
       // database already exists. now check which collections should survive
       std::unordered_set<std::string> survivingCollections;
 
