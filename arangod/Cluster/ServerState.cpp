@@ -67,6 +67,46 @@ ServerState::ServerState()
   storeRole(ROLE_UNDEFINED);
 }
 
+void ServerState::findHost(std::string const& fallback) {
+  // Compute a string identifying the host on which we are running, note
+  // that this is more complicated than immediately obvious, because we
+  // could sit in a container which is deployed by Kubernetes or Mesos or
+  // some other orchestration framework:
+
+  // the following is set by Mesos or by an administrator:
+  char* p = getenv("HOST");
+  if (p != NULL) {
+    _host = p;
+    return;
+  }
+
+  // the following is set by Kubernetes when using the downward API:
+  p = getenv("NODE_NAME");
+  if (p != NULL) {
+    _host = p;
+    return;
+  }
+
+  // Now look at the contents of the file /etc/machine-id, if it exists:
+  std::string name = "/etc/machine-id";
+  try {
+    _host = arangodb::basics::FileUtils::slurp(name);
+    while (!_host.empty() &&
+           (_host.back() == '\r' || _host.back() == '\n' ||
+            _host.back() == ' ')) {
+      _host.erase(_host.size() - 1);
+    }
+    if (!_host.empty()) {
+      return;
+    }
+  } catch (...) { }
+
+  // Finally, as a last resort, take the fallback, coming from
+  // the ClusterFeature with the value of --cluster.my-address
+  // or by the AgencyFeature with the value of --agency.my-address:
+  _host = fallback;
+}
+
 ServerState::~ServerState() {}
 
 ////////////////////////////////////////////////////////////////////////////////

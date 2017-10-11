@@ -153,6 +153,8 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (!_enableCluster) {
     ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
+    auto ss = ServerState::instance();
+    ss->findHost("localhost");
     return;
   }
 
@@ -182,6 +184,19 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "system replication factor must be greater 0";
     FATAL_ERROR_EXIT();
   }
+
+  std::string fallback = _myAddress;
+  // Now extract the hostname/IP:
+  auto pos = fallback.find("://");
+  if (pos != std::string::npos) {
+    fallback = fallback.substr(pos+3);
+  }
+  pos = fallback.rfind(':');
+  if (pos != std::string::npos) {
+    fallback = fallback.substr(0, pos);
+  }
+  auto ss = ServerState::instance();
+  ss->findHost(fallback);
 
   if (!_myRole.empty()) {
     _requestedRole = ServerState::stringToRole(_myRole);
@@ -435,6 +450,7 @@ void ClusterFeature::start() {
     try {
       VPackObjectBuilder b(&builder);
       builder.add("endpoint", VPackValue(_myAddress));
+      builder.add("host", VPackValue(ServerState::instance()->getHost()));
     } catch (...) {
       LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "out of memory";
       FATAL_ERROR_EXIT();
