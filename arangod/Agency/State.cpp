@@ -1225,8 +1225,100 @@ std::vector<std::vector<log_t>> State::inquire(query_t const& query) const {
 
 // Index of last log entry
 index_t State::lastIndex() const {
-  MUTEX_LOCKER(mutexLocker, _logLock); 
+  MUTEX_LOCKER(mutexLocker, _logLock);
   TRI_ASSERT(!_log.empty());
   return _log.back().index;
+}
+
+/// @brief this method is intended for manual recovery only. It only looks
+/// at the persisted data structure and tries to recover the latest state.
+/// The returned builder has the complete state of the agency and index
+/// is set to the index of the last log entry and term is set to the term
+/// of the last entry.
+std::shared_ptr<VPackBuilder> State::latestAgencyState(
+    TRI_vocbase_t* vocbase, index_t& index, term_t& term) {
+  // First get the latest snapshot, if there is any:
+  std::string aql(
+      std::string("FOR c IN compact SORT c._key DESC LIMIT 1 RETURN c"));
+  arangodb::aql::Query query(false, vocbase, aql::QueryString(aql), nullptr,
+                             nullptr, arangodb::aql::PART_MAIN);
+
+  auto queryResult = query.execute(QueryRegistryFeature::QUERY_REGISTRY);
+
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  }
+
+  VPackSlice result = queryResult.result->slice();
+
+  Store store(nullptr);
+  index = 0;
+  term = 0;
+  if (result.isArray() && result.length() == 1) {
+    // Result can only have length 0 or 1.
+    VPackSlice ii = result[0].resolveExternals();
+    buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
+    store = ii.get("readDB");
+    index = arangodb::basics::StringUtils::uint64(ii.get("_key").copyString());
+    term = arangodb::basics::StringUtils::uint64(ii.get("term").copyString());
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Read snapshot at index "
+      << index << " with term " << term;
+  }
+
+  // Now get the rest of the log entries, if there are any:
+  aql = "FOR l IN log SORT l._key RETURN l";
+  arangodb::aql::Query query2(false, vocbase, aql::QueryString(aql), nullptr,
+                              nullptr, arangodb::aql::PART_MAIN);
+
+  auto queryResult2 = query2.execute(QueryRegistryFeature::QUERY_REGISTRY);
+
+  if (queryResult2.code != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult2.code, queryResult2.details);
+  }
+
+  result = queryResult2.result->slice();
+
+  if (result.isArray() && result.length() > 0) {
+    VPackBuilder b;
+    {
+      VPackArrayBuilder bb(&b);
+      for (auto const& i : VPackArrayIterator(result)) {
+
+        buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
+
+        auto ii = i.resolveExternals();
+        auto req = ii.get("request");
+        tmp->append(req.startAs<char const>(), req.byteSize());
+
+        std::string clientId = req.hasKey("clientId") ?
+          req.get("clientId").copyString() : std::string();
+
+        log_t entry(
+              basics::StringUtils::uint64(
+                ii.get(StaticStrings::KeyString).copyString()),
+              ii.get("term").getNumber<uint64_t>(), tmp, clientId);
+
+        if (entry.index <= index) {
+          LOG_TOPIC(WARN, Logger::AGENCY)
+            << "Found unnecessary log entry with index " << entry.index
+            << " and term " << entry.term;
+        } else {
+          b.add(VPackSlice(entry.entry->data()));
+          if (entry.index != index + 1) {
+            LOG_TOPIC(WARN, Logger::AGENCY)
+              << "Did not find log entries for indexes " << index +1
+              << " to " << entry.index - 1 << ", skipping...";
+          }
+          index = entry.index;   // they come in ascending order
+          term = entry.term;
+        }
+      }
+    }
+    store.applyLogEntries(b, index, term, false);
+  }
+
+  auto builder = std::make_shared<VPackBuilder>();
+  store.dumpToBuilder(*builder);
+  return builder;
 }
 
