@@ -735,7 +735,7 @@ describe('Setup global replication on empty slave and master has some data', fun
     before(function() {
       db._useDatabase("_system");
     });
-
+    
     it("should have synced the document collection", function () {
       connectToMaster();
       // First Part Create Collection
@@ -754,7 +754,7 @@ describe('Setup global replication on empty slave and master has some data', fun
     it("should have synced the edge collection", function () {
       connectToMaster();
       // First Part Create Collection
-      let mcol = db._createEdgeCollection(edgeColName);
+      let mcol = db._collection(edgeColName);
       let mProps = mcol.properties();
       let mIdxs = mcol.getIndexes();
 
@@ -808,7 +808,7 @@ describe('Setup global replication on empty slave and master has some data', fun
       db._useDatabase(dbName);
 
       // First Part Create Collection
-      let mcol = db._createEdgeCollection(edgeColName);
+      let mcol = db._collection(edgeColName);
       let mProps = mcol.properties();
       let mIdxs = mcol.getIndexes();
 
