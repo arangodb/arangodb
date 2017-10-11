@@ -3,6 +3,11 @@ v3.3.milestone1 (2017-10-06)
 
 * added option `--server.local-authentication`
 
+* fix potential overflow in CRC marker check when a corrupted CRC marker 
+  is found at the very beginning of an MMFiles datafile
+
+* added option `--server.local-authentication`
+
 * UI: added user roles
 
 * added config option `--log.color` to toggle colorful logging to terminal
