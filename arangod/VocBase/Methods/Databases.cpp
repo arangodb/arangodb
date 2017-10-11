@@ -123,7 +123,7 @@ arangodb::Result Databases::info(TRI_vocbase_t* vocbase, VPackBuilder& result) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "unexpected type for 'id' attribute");
       }
-      result.add("path", value.get("none"));
+      result.add("path", VPackValue("none"));
       result.add("isSystem", VPackValue(name[0] == '_'));
     }
   } else {
