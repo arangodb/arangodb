@@ -1260,13 +1260,17 @@ Result TailingSyncer::fetchOpenTransactions(TRI_voc_tick_t fromTick,
   }
   
   // fetch the tick from where we need to start scanning later
-  header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
-  
+  header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
   if (!found) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
-                  _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTTICK +
-                  " is missing in determine-open-transactions response");
+    // we changed the API in 3.3 to use last included
+    header = response->getHeaderField(TRI_REPLICATION_HEADER_LASTTICK, found);
+    if (!found) {
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
+                    _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTTICK +
+                    " is missing in determine-open-transactions response");
+    }
   }
+  
   TRI_voc_tick_t readTick = StringUtils::uint64(header);
   
   if (!fromIncluded && _requireFromPresent && fromTick > 0) {

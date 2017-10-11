@@ -398,8 +398,8 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(
 
     _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
                            r.fromTickIncluded() ? "true" : "false");
-    _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
-                           StringUtils::itoa(r.latestTick()));
+    _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
+                           StringUtils::itoa(r.lastIncludedTick()));
     /*VPackOptions options(VPackOptions::Defaults);
     options.escapeUnicode = true;
     _response->setPayload(std::move(buffer), true, options);*/

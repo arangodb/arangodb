@@ -188,8 +188,10 @@ WalAccessResult MMFilesWalAccess::openTransactions(
       }
       cb(it.first, it.second);
     }
+    
+    MMFilesLogfileManagerState const state = MMFilesLogfileManager::instance()->state();
     res.reset(TRI_ERROR_NO_ERROR, fromTickIncluded, lastFoundTick,
-              /*checkMore*/lastFoundTick);
+              /*latest*/state.lastCommittedTick);
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "caught exception while determining open transactions: "
