@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, fail, AQL_EXECUTE */
+/*global assertTrue, assertEqual, assertNotEqual, fail, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ COUNT
@@ -31,7 +31,19 @@
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
 var internal = require("internal");
+var helper = require("@arangodb/aql-helper");
 var errors = internal.errors;
+var _ = require("lodash");
+  
+var containsDistinct = function(query) {
+  var plan = AQL_EXPLAIN(query).plan;
+
+  var nodes = helper.findExecutionNodes(plan, "CollectNode");
+  assertTrue(nodes.length >= 1);
+  assertTrue(nodes.reduce(function(node, prev) {
+    return prev || (node.collectOptions.method === 'distinct');
+  }), false);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -39,7 +51,7 @@ var errors = internal.errors;
 
 function ahuacatlDistinct () {
   var c;
-
+        
   return {
     setUp : function () {
       db._drop("UnitTestsCollection");
@@ -86,7 +98,9 @@ function ahuacatlDistinct () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistinctInTopLevelForWithInteger : function () {
-      var result = AQL_EXECUTE("FOR i IN " + c.name() + " RETURN DISTINCT i.value2").json;
+      var query = "FOR i IN " + c.name() + " RETURN DISTINCT i.value2";
+      containsDistinct(query);
+      var result = AQL_EXECUTE(query).json;
       result = result.sort();
 
       assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ], result);
@@ -97,7 +111,9 @@ function ahuacatlDistinct () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistinctInTopLevelForWithString : function () {
-      var result = AQL_EXECUTE("FOR i IN " + c.name() + " RETURN DISTINCT i.value4").json;
+      var query = "FOR i IN " + c.name() + " RETURN DISTINCT i.value4";
+      containsDistinct(query);
+      var result = AQL_EXECUTE(query).json;
       result = result.sort();
 
       assertEqual([ "test0", "test1", "test2", "test3", "test4", "test5", "test6", "test7", "test8", "test9" ], result);
@@ -108,7 +124,9 @@ function ahuacatlDistinct () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistinctOnDistinctValuesWithInteger : function () {
-      var result = AQL_EXECUTE("FOR i IN " + c.name() + " RETURN DISTINCT i.value1").json;
+      var query = "FOR i IN " + c.name() + " RETURN DISTINCT i.value1";
+      containsDistinct(query);
+      var result = AQL_EXECUTE(query).json;
       assertEqual(100, result.length);
     },
 
@@ -117,7 +135,9 @@ function ahuacatlDistinct () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistinctOnDistinctValuesWithString : function () {
-      var result = AQL_EXECUTE("FOR i IN " + c.name() + " RETURN DISTINCT i.value3").json;
+      var query = "FOR i IN " + c.name() + " RETURN DISTINCT i.value3";
+      containsDistinct(query);
+      var result = AQL_EXECUTE(query).json;
       assertEqual(100, result.length);
     },
 
@@ -126,7 +146,9 @@ function ahuacatlDistinct () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistinctInTopLevelForWithExpression : function () {
-      var result = AQL_EXECUTE("FOR i IN " + c.name() + " RETURN DISTINCT i.value1 % 10").json;
+      var query = "FOR i IN " + c.name() + " RETURN DISTINCT i.value1 % 10";
+      containsDistinct(query);
+      var result = AQL_EXECUTE(query).json;
       result = result.sort();
 
       assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ], result);
@@ -137,7 +159,9 @@ function ahuacatlDistinct () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistinctReferringToLet : function () {
-      var result = AQL_EXECUTE("LET a = PASSTHRU(1) FOR i IN " + c.name() + " RETURN DISTINCT a").json;
+      var query = "LET a = PASSTHRU(1) FOR i IN " + c.name() + " RETURN DISTINCT a";
+      containsDistinct(query);
+      var result = AQL_EXECUTE(query).json;
       assertEqual([ 1 ], result);
     },
 
@@ -146,7 +170,9 @@ function ahuacatlDistinct () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistinctInSubquery : function () {
-      var result = AQL_EXECUTE("LET values = (FOR i IN " + c.name() + " RETURN DISTINCT i.value2) RETURN values").json[0];
+      var query = "LET values = (FOR i IN " + c.name() + " RETURN DISTINCT i.value2) RETURN values";
+      containsDistinct(query);
+      var result = AQL_EXECUTE(query).json[0];
       result = result.sort();
 
       assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9 ], result);
@@ -157,7 +183,9 @@ function ahuacatlDistinct () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistinctInSubqueries : function () {
-      var result = AQL_EXECUTE("LET values1 = (FOR i IN " + c.name() + " RETURN DISTINCT i.value2) LET values2 = (FOR i IN " + c.name() + " RETURN DISTINCT i.value4) RETURN [ values1, values2 ]").json[0];
+      var query = "LET values1 = (FOR i IN " + c.name() + " RETURN DISTINCT i.value2) LET values2 = (FOR i IN " + c.name() + " RETURN DISTINCT i.value4) RETURN [ values1, values2 ]";
+      containsDistinct(query);
+      var result = AQL_EXECUTE(query).json[0];
       var integers = result[0].sort();
       var strings  = result[1].sort();
 
@@ -170,7 +198,9 @@ function ahuacatlDistinct () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistinctOnDistinctValuesInSubqueries : function () {
-      var result = AQL_EXECUTE("LET values1 = (FOR i IN " + c.name() + " RETURN DISTINCT i.value1) LET values2 = (FOR i IN " + c.name() + " RETURN DISTINCT i.value3) RETURN [ values1, values2 ]").json[0];
+      var query = "LET values1 = (FOR i IN " + c.name() + " RETURN DISTINCT i.value1) LET values2 = (FOR i IN " + c.name() + " RETURN DISTINCT i.value3) RETURN [ values1, values2 ]";
+      containsDistinct(query);
+      var result = AQL_EXECUTE(query).json[0];
       var integers = result[0];
       var strings  = result[1];
 
@@ -183,7 +213,9 @@ function ahuacatlDistinct () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistinctWithCollect1 : function () {
-      var result = AQL_EXECUTE("FOR i IN " + c.name() + " COLLECT x = i.value1 % 11 RETURN DISTINCT x").json;
+      var query = "FOR i IN " + c.name() + " COLLECT x = i.value1 % 11 RETURN DISTINCT x";
+      containsDistinct(query);
+      var result = AQL_EXECUTE(query).json;
       result = result.sort(function(l, r) {
         return l - r;
       });
@@ -196,7 +228,9 @@ function ahuacatlDistinct () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistinctWithCollect2 : function () {
-      var result = AQL_EXECUTE("FOR i IN " + c.name() + " COLLECT x = i.value1 RETURN DISTINCT x % 11").json;
+      var query = "FOR i IN " + c.name() + " COLLECT x = i.value1 RETURN DISTINCT x % 11";
+      containsDistinct(query);
+      var result = AQL_EXECUTE(query).json;
       result = result.sort(function(l, r) {
         return l - r;
       });
@@ -209,7 +243,9 @@ function ahuacatlDistinct () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistinctWithArrays1 : function () {
-      var result = AQL_EXECUTE("FOR i IN 1..2 RETURN DISTINCT (FOR j IN [ 1, 2, 3, 4, 1, 3 ] RETURN j)").json;
+      var query = "FOR i IN 1..2 RETURN DISTINCT (FOR j IN [ 1, 2, 3, 4, 1, 3 ] RETURN j)";
+      containsDistinct(query);
+      var result = AQL_EXECUTE(query).json;
 
       assertEqual(1, result.length);
       assertEqual([ 1, 2, 3, 4, 1, 3 ], result[0]);
@@ -220,13 +256,15 @@ function ahuacatlDistinct () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistinctWithArrays2 : function () {
-      var result = AQL_EXECUTE("FOR i IN 1..2 RETURN (FOR j IN [ 1, 2, 3, 4, 1, 3 ] RETURN DISTINCT j)").json;
+      var query = "FOR i IN 1..2 RETURN (FOR j IN [ 1, 2, 3, 4, 1, 3 ] RETURN DISTINCT j)";
+      containsDistinct(query);
+      var result = AQL_EXECUTE(query).json;
 
       assertEqual(2, result.length);
       assertEqual([ 1, 2, 3, 4 ], result[0].sort(function (l, r) { return l - r; }));
       assertEqual([ 1, 2, 3, 4 ], result[1].sort(function (l, r)  { return l - r; }));
     }
-
+    
   };
 }
 
@@ -259,11 +297,8 @@ function ahuacatlCollect () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCollect1 : function () {
-      var result = AQL_EXECUTE(`FOR result IN UnitTestsCollection
-                                  COLLECT key=result.a.key,
-                                          name = result.a.name INTO group
-                                  LIMIT 2,5
-                                  RETURN [key,name]`).json;
+      var query = "FOR result IN UnitTestsCollection COLLECT key=result.a.key, name = result.a.name INTO group LIMIT 2,5 RETURN [key,name]";
+      var result = AQL_EXECUTE(query).json;
       assertEqual([[0,2],[0,3],[0,4],[0,5],[0,6]], result);
     }
 
