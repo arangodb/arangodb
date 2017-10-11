@@ -138,8 +138,8 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
 }
 
 RestStatus RestWalAccessHandler::execute() {
-  if (_request->execContext() != nullptr &&
-      !_request->execContext()->isAdminUser()) {
+  if (ExecContext::CURRENT == nullptr ||
+      !ExecContext::CURRENT->isAdminUser()) {
     generateError(ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;
   }

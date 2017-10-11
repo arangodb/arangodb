@@ -49,7 +49,6 @@ struct Indexes {
                                  arangodb::velocypack::Builder&);
 
   static arangodb::Result ensureIndex(
-      ExecContext const*,
       LogicalCollection* collection,
       velocypack::Slice const& definition, bool create,
       velocypack::Builder& output);

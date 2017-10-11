@@ -41,8 +41,8 @@ RocksDBRestWalHandler::RocksDBRestWalHandler(GeneralRequest* request,
     : RestBaseHandler(request, response) {}
 
 RestStatus RocksDBRestWalHandler::execute() {
-  if (_request->execContext() != nullptr &&
-      !_request->execContext()->isAdminUser()) {
+  if (ExecContext::CURRENT == nullptr ||
+      !ExecContext::CURRENT->isAdminUser()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_FORBIDDEN);
     return RestStatus::DONE;
   }

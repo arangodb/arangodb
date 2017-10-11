@@ -365,19 +365,20 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
   }
   
   std::string const& path = request->requestPath();
-  std::string const& dbname = request->databaseName();
   std::string const& username = request->user();
   rest::ResponseCode result = request->authorized() ? rest::ResponseCode::OK :
     rest::ResponseCode::UNAUTHORIZED;
   
   AuthLevel dbLevel = AuthLevel::NONE;
-
-  // mop: inside authenticateRequest() request->user will be populated
-  bool forceOpen = false;  
-  if (request->authorized() && !username.empty()) {
-    request->setExecContext(ExecContext::create(username, dbname));
-    dbLevel = request->execContext()->databaseAuthLevel();
+  if (request->requestContext() != nullptr && request->authorized()) {
+    ExecContext* exec = static_cast<ExecContext*>(request->requestContext());
+    TRI_ASSERT(exec->isSuperuser() ||
+               !exec->user().empty());
+    dbLevel = exec->databaseAuthLevel();
   }
+
+  // mop: inside the authenticateRequest() request->user will be populated
+  bool forceOpen = false;
   
   // we need to check for some special cases, where users may be allowed
   // to proceed even unauthorized
@@ -440,7 +441,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
           (StringUtils::isPrefix(path, ApiUser + username + '/') ||
            StringUtils::isPrefix(path, AdminAardvark))) {
         // check for GET /_db/_system/_api/user/USERNAME/database
-        request->setExecContext(nullptr);
+        //request->setExecContext(nullptr);
         return rest::ResponseCode::OK;
       }
     }

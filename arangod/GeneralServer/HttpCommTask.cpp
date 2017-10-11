@@ -26,6 +26,7 @@
 
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/tri-strings.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
@@ -35,6 +36,7 @@
 #include "Rest/HttpRequest.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Utils/Events.h"
+#include "VocBase/AuthInfo.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
@@ -321,9 +323,8 @@ bool HttpCommTask::processRead(double startTime) {
       // request context for that request
       _incompleteRequest.reset(
           new HttpRequest(_connectionInfo, sptr, slen, _allowMethodOverride));
-
-      GeneralServerFeature::HANDLER_FACTORY->setRequestContext(
-          _incompleteRequest.get());
+      //GeneralServerFeature::HANDLER_FACTORY->setRequestContext(
+      //    _incompleteRequest.get());
       _incompleteRequest->setClientTaskId(_taskId);
 
       // check HTTP protocol version
@@ -850,10 +851,11 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
         AuthResult result = _authentication->authInfo()->
           checkAuthentication(authMethod, auth);
         
+        request->setAuthenticationMethod(authMethod);
         request->setAuthorized(result._authorized);
+        request->setUser(std::move(result._username));
+
         if (result._authorized) {
-          request->setUser(std::move(result._username));
-          
           events::Authenticated(request, authMethod);
           return rest::ResponseCode::OK;
         }

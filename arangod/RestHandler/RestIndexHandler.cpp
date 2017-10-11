@@ -200,8 +200,7 @@ RestStatus RestIndexHandler::createIndex() {
   }
 
   VPackBuilder output;
-  Result res = methods::Indexes::ensureIndex(_request->execContext(),
-                                             coll, body, true, output);
+  Result res = methods::Indexes::ensureIndex(coll, body, true, output);
   if (res.ok()) {
     VPackSlice created = output.slice().get("isNewlyCreated");
     auto r = created.isBool() && created.getBool() ? rest::ResponseCode::CREATED

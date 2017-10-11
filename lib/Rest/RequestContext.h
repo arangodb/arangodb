@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,32 +18,21 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_REST_REQUEST_CONTEXT_H
 #define ARANGODB_REST_REQUEST_CONTEXT_H 1
 
-#include "Basics/Common.h"
-
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
-
 namespace arangodb {
-class GeneralRequest;
-
 class RequestContext {
   RequestContext(const RequestContext&) = delete;
   RequestContext& operator=(const RequestContext&) = delete;
 
  public:
-  RequestContext(GeneralRequest* request) : _request(request) {}
+  RequestContext() {}
   virtual ~RequestContext() {}
-
- protected:
-  GeneralRequest* _request;
 };
-
 }
 
 #endif

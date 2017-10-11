@@ -61,8 +61,7 @@ MMFilesCollectionExport::~MMFilesCollectionExport() {
   }
 }
 
-void MMFilesCollectionExport::run(ExecContext const* exec,
-                                  uint64_t maxWaitTime, size_t limit) {
+void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
 
   // try to acquire the exclusive lock on the compaction

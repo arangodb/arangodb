@@ -17,13 +17,14 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Baesler
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGOD_UTILS_EXECCONTEXT_H
 #define ARANGOD_UTILS_EXECCONTEXT_H 1
 
 #include <string>
+#include "Rest/RequestContext.h"
 #include "Utils/Authentication.h"
 
 namespace arangodb {
@@ -31,39 +32,42 @@ namespace transaction {
 class Methods;
 }
 
-class ExecContext {
-private:
-  ExecContext(bool isSuper, std::string const& user, std::string const& database,
-              AuthLevel systemLevel, AuthLevel dbLevel)
+/// Carries some information about the current
+/// context in which this thread is executed.
+/// We should strive to have it always accessible
+/// from ExecContext::CURRENT. Inherits from request
+/// context for convencience
+class ExecContext : public RequestContext {
+ protected:
+  ExecContext(bool isSuper, std::string const& user,
+              std::string const& database, AuthLevel systemLevel,
+              AuthLevel dbLevel)
       : _isSuperuser(isSuper),
         _user(user),
         _database(database),
         _systemDbAuthLevel(systemLevel),
         _databaseAuthLevel(dbLevel) {
-          TRI_ASSERT(!_isSuperuser || _user.empty());
-        }
+    TRI_ASSERT(!_isSuperuser || _user.empty());
+  }
   ExecContext(ExecContext const&) = delete;
 
  public:
-  
-  /// @brief an internal superuser context
+  virtual ~ExecContext() {}
+
+  /// @brief an internal superuser context, is
+  ///        a singleton instance, deleting is an error
   static ExecContext const* superuser();
-  
-  /// @brief a reference to a user with NONE for everything. Caller
-  ///        is responsible for deleting the object
-  static ExecContext* createUnauthorized(std::string const& user,
-                                         std::string const& db);
   
   /// @brief create user context, caller is responsible for deleting
   static ExecContext* create(std::string const& user, std::string const& db);
 
   /// @brief current user, may be empty for internal superuser
   std::string const& user() const { return _user; }
-  
-  //std::string const& database() const { return _database; }
+
+  // std::string const& database() const { return _database; }
   /// @brief authentication level on _system. Always RW for superuser
   AuthLevel systemAuthLevel() const { return _systemDbAuthLevel; };
-  
+
   /// @brief Authentication level on database selected in the current
   ///        request scope. Should almost always contain something,
   ///        if this thread originated in v8 or from HTTP / VST
@@ -71,7 +75,7 @@ private:
 
   /// @brief any internal operation is a superuser.
   bool isSuperuser() const { return _isSuperuser; }
-  
+
   /// @brief is allowed to manage users, create databases, ...
   bool isAdminUser() const {
     TRI_ASSERT(!_isSuperuser || _systemDbAuthLevel == AuthLevel::RW);
@@ -84,11 +88,11 @@ private:
   }
   /// @brief returns true if auth level is above or equal `requested`
   bool canUseDatabase(std::string const& db, AuthLevel requested) const;
-  
+
   /// @brief returns auth level for user
   AuthLevel collectionAuthLevel(std::string const& dbname,
                                 std::string const& collection) const;
-  
+
   /// @brief returns true if auth levels is above or equal `requested`
   bool canUseCollection(std::string const& collection,
                         AuthLevel requested) const {
@@ -99,26 +103,23 @@ private:
                         AuthLevel requested) const {
     return requested <= collectionAuthLevel(db, coll);
   }
-  
+
  public:
-  
   /// Should always contain a reference to current user context
   static thread_local ExecContext const* CURRENT;
 
  private:
-  
   bool _isSuperuser;
   std::string const _user;
   std::string const _database;
   AuthLevel const _systemDbAuthLevel;
   AuthLevel const _databaseAuthLevel;
-  
+
   static ExecContext SUPERUSER;
 };
 
 /// @brief scope guard for the exec context
 struct ExecContextScope {
-  
   explicit ExecContextScope(ExecContext const* exe)
       : _old(ExecContext::CURRENT) {
     ExecContext::CURRENT = exe;
@@ -127,7 +128,6 @@ struct ExecContextScope {
   ~ExecContextScope() { ExecContext::CURRENT = _old; }
 
  private:
-  
   ExecContext const* _old;
 };
 }

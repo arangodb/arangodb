@@ -25,6 +25,7 @@
 
 #include "Basics/ReadLocker.h"
 #include "Basics/StringRef.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/tri-strings.h"

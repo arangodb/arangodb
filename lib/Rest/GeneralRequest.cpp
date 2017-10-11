@@ -24,10 +24,10 @@
 
 #include "GeneralRequest.h"
 
+#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
 #include "Logger/Logger.h"
-#include "Rest/RequestContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -187,9 +187,6 @@ GeneralRequest::~GeneralRequest() {
   if (_requestContext != nullptr && _isRequestContextOwner) {
     delete _requestContext;
   }
-  if (_execContext != nullptr) {
-    delete _execContext;
-  }
 }
 
 void GeneralRequest::setRequestContext(RequestContext* requestContext,
@@ -207,13 +204,6 @@ void GeneralRequest::setRequestContext(RequestContext* requestContext,
 
   _requestContext = requestContext;
   _isRequestContextOwner = isRequestContextOwner;
-}
-
-void GeneralRequest::setExecContext(ExecContext* execContext) {
-  if (_execContext != nullptr) {
-    delete _execContext;
-  }
-  _execContext = execContext;
 }
 
 void GeneralRequest::setFullUrl(char const* begin, char const* end) {
