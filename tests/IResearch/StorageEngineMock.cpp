@@ -77,7 +77,7 @@ std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(arangodb::t
     auto& entry = documents[i];
 
     if (entry.second) {
-      TRI_voc_rid_t revId = i + 1; // always > 0
+      auto revId = arangodb::LocalDocumentId::create(i + 1); // always > 0
 
       docs.emplace_back(revId, entry.first.slice());
     }
