@@ -972,7 +972,7 @@ describe('Test switch off and restart replication', function() {
       let schksm = scol.checksum(true, true);
 
       expect(scount).to.equal(mcount);
-      expect(schksm).to.equal(mchksm);
+      expect(schksm.checksum).to.equal(mchksm.checksum);
     });
   });
 });
