@@ -45,6 +45,9 @@ function runSetup () {
     c.insert({ value: i });
   }
   internal.wal.flush(true, true);
+  internal.debugClearFailAt();
+  // to make sure the WAL logfile is not going to be processed on recovery
+  internal.wait(3, false);
   internal.debugSegfault('crashing server');
 }
 

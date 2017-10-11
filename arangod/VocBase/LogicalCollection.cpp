@@ -1115,10 +1115,11 @@ Result LogicalCollection::insert(transaction::Methods* trx,
                                  VPackSlice const slice,
                                  ManagedDocumentResult& result,
                                  OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick, bool lock) {
+                                 TRI_voc_tick_t& resultMarkerTick, bool lock,
+                                 TRI_voc_tick_t& revisionId) {
   resultMarkerTick = 0;
   return getPhysical()->insert(trx, slice, result, options, resultMarkerTick,
-                               lock);
+                               lock, revisionId);
 }
 
 /// @brief updates a document or edge in a collection
@@ -1137,31 +1138,13 @@ Result LogicalCollection::update(transaction::Methods* trx,
 
   prevRev = 0;
 
-  TRI_voc_rid_t revisionId = 0;
-  if (options.isRestore) {
-    VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(newSlice);
-    if (!oldRev.isString()) {
-      return Result(TRI_ERROR_ARANGO_DOCUMENT_REV_BAD);
-    }
-    bool isOld;
-    VPackValueLength l;
-    char const* p = oldRev.getString(l);
-    revisionId = TRI_StringToRid(p, l, isOld, false);
-    if (isOld) {
-      // Do not tolerate old revision IDs
-      revisionId = TRI_HybridLogicalClock();
-    }
-  } else {
-    revisionId = TRI_HybridLogicalClock();
-  }
-
   VPackSlice key = newSlice.get(StaticStrings::KeyString);
   if (key.isNone()) {
     return Result(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   return getPhysical()->update(trx, newSlice, result, options, resultMarkerTick,
-                               lock, prevRev, previous, revisionId, key);
+                               lock, prevRev, previous, key);
 }
 
 /// @brief replaces a document or edge in a collection
@@ -1193,27 +1176,9 @@ Result LogicalCollection::replace(transaction::Methods* trx,
     }
   }
 
-  TRI_voc_rid_t revisionId = 0;
-  if (options.isRestore) {
-    VPackSlice oldRev = TRI_ExtractRevisionIdAsSlice(newSlice);
-    if (!oldRev.isString()) {
-      return Result(TRI_ERROR_ARANGO_DOCUMENT_REV_BAD);
-    }
-    bool isOld;
-    VPackValueLength l;
-    char const* p = oldRev.getString(l);
-    revisionId = TRI_StringToRid(p, l, isOld, false);
-    if (isOld || revisionId == UINT64_MAX) {
-      // Do not tolerate old revision ticks or invalid ones:
-      revisionId = TRI_HybridLogicalClock();
-    }
-  } else {
-    revisionId = TRI_HybridLogicalClock();
-  }
-
   return getPhysical()->replace(trx, newSlice, result, options,
                                 resultMarkerTick, lock, prevRev, previous,
-                                revisionId, fromSlice, toSlice);
+                                fromSlice, toSlice);
 }
 
 /// @brief removes a document or edge
@@ -1224,7 +1189,8 @@ Result LogicalCollection::remove(transaction::Methods* trx,
                                  TRI_voc_rid_t& prevRev,
                                  ManagedDocumentResult& previous) {
   resultMarkerTick = 0;
-  return getPhysical()->remove(trx, slice, previous, options, resultMarkerTick, lock, prevRev);
+  TRI_voc_rid_t revisionId = 0;
+  return getPhysical()->remove(trx, slice, previous, options, resultMarkerTick, lock, prevRev, revisionId);
 }
 
 bool LogicalCollection::readDocument(transaction::Methods* trx,
@@ -1360,8 +1326,11 @@ std::string LogicalCollection::generateGloballyUniqueId() const {
     result.append(StaticStrings::SystemDatabase);
   } else {
     result.reserve(64);
-    result.append(ServerState::instance()->getId());
-    result.push_back('/');
+    std::string id = ServerState::instance()->getId();
+    if (!id.empty()) {
+      result.append(id);
+      result.push_back('/');
+    }
     result.append(_vocbase->name());
   }
   result.push_back('/');

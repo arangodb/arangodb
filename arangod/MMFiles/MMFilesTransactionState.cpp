@@ -216,6 +216,7 @@ Result MMFilesTransactionState::abortTransaction(transaction::Methods* activeTrx
 
 /// @brief add a WAL operation for a transaction collection
 int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
+                                          TRI_voc_rid_t revisionId,
                                           MMFilesDocumentOperation& operation,
                                           MMFilesWalMarker const* marker,
                                           bool& waitForSync) {
@@ -354,7 +355,7 @@ int MMFilesTransactionState::addOperation(LocalDocumentId const& documentId,
         _vocbase, collection->name());
   }
 
-  physical->setRevision(documentId.id(), false);
+  physical->setRevision(revisionId, false);
 
   TRI_IF_FAILURE("TransactionOperationAtEnd") { return TRI_ERROR_DEBUG; }
 

@@ -133,6 +133,7 @@ class Syncer {
   virtual TRI_vocbase_t* resolveVocbase(velocypack::Slice const&);
    
   LogicalCollection* resolveCollection(TRI_vocbase_t*, arangodb::velocypack::Slice const& slice);
+
   std::unordered_map<std::string, DatabaseGuard> const& vocbases() const {
     return _vocbases;
   }

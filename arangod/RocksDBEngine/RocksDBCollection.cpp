@@ -808,7 +808,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                                  arangodb::ManagedDocumentResult& mdr,
                                  OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick,
-                                 bool /*lock*/) {
+                                 bool /*lock*/, TRI_voc_rid_t& revisionId) {
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
@@ -848,14 +848,11 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   transaction::BuilderLeaser builder(trx);
   RocksDBOperationResult res(
       newObjectForInsert(trx, slice, fromSlice, toSlice, documentId,
-                         isEdgeCollection, *builder.get(), options.isRestore));
+                         isEdgeCollection, *builder.get(), options.isRestore, revisionId));
   if (res.fail()) {
     return res;
   }
   VPackSlice newSlice = builder->slice();
-
-  TRI_voc_rid_t revisionId =
-      transaction::helpers::extractRevFromDocument(newSlice);
 
   auto state = RocksDBTransactionState::toState(trx);
   auto mthds = RocksDBTransactionState::toMethods(trx);
@@ -896,7 +893,6 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
                                  TRI_voc_tick_t& resultMarkerTick,
                                  bool /*lock*/, TRI_voc_rid_t& prevRev,
                                  ManagedDocumentResult& previous,
-                                 TRI_voc_rid_t const& revisionId,
                                  arangodb::velocypack::Slice const key) {
   resultMarkerTick = 0;
   LocalDocumentId const documentId = LocalDocumentId::create();
@@ -945,10 +941,11 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   }
 
   // merge old and new values
+  TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
   mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
                         documentId, options.mergeObjects,
-                        options.keepNull, *builder.get(), options.isRestore);
+                        options.keepNull, *builder.get(), options.isRestore, revisionId);
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
@@ -996,8 +993,7 @@ Result RocksDBCollection::replace(
     transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
     ManagedDocumentResult& mdr, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool /*lock*/, TRI_voc_rid_t& prevRev,
-    ManagedDocumentResult& previous, TRI_voc_rid_t const revisionId,
-    arangodb::velocypack::Slice const fromSlice,
+    ManagedDocumentResult& previous, arangodb::velocypack::Slice const fromSlice,
     arangodb::velocypack::Slice const toSlice) {
   resultMarkerTick = 0;
   LocalDocumentId const documentId = LocalDocumentId::create();
@@ -1040,10 +1036,11 @@ Result RocksDBCollection::replace(
   }
 
   // merge old and new values
+  TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
   newObjectForReplace(trx, oldDoc, newSlice, fromSlice, toSlice,
                       isEdgeCollection, documentId,
-                      *builder.get(), options.isRestore);
+                      *builder.get(), options.isRestore, revisionId);
 
   if (_isDBServer) {
     // Need to check that no sharding keys have changed:
@@ -1095,7 +1092,8 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
                                  OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick,
                                  bool /*lock*/, 
-                                 TRI_voc_rid_t& prevRev) {
+                                 TRI_voc_rid_t& prevRev,
+                                 TRI_voc_rid_t& revisionId) {
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
@@ -1103,7 +1101,7 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   prevRev = 0;
 
   transaction::BuilderLeaser builder(trx);
-  newObjectForRemove(trx, slice, documentId, *builder.get(), options.isRestore);
+  newObjectForRemove(trx, slice, documentId, *builder.get(), options.isRestore, revisionId);
 
   VPackSlice key;
   if (slice.isString()) {

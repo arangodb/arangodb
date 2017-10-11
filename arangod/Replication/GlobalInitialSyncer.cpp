@@ -29,9 +29,10 @@
 #include "RestServer/DatabaseFeature.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/Methods/Databases.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-#include "VocBase/Methods/Databases.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -206,7 +207,7 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
     std::string const dbName = nameSlice.copyString();
     TRI_vocbase_t* vocbase = resolveVocbase(nameSlice);
     if (vocbase == nullptr) {
-      // database is missing we need to create it now
+      // database is missing. we need to create it now
       
       Result r = methods::Databases::create(dbName, VPackSlice::emptyArraySlice(),
                                             VPackSlice::emptyObjectSlice());
@@ -221,7 +222,53 @@ Result GlobalInitialSyncer::updateServerInventory(VPackSlice const& masterDataba
         LOG_TOPIC(WARN, Logger::REPLICATION) << msg;
         return Result(TRI_ERROR_INTERNAL, msg);
       }
+    } else {
+      DatabaseGuard guard(vocbase);
+
+      // database already exists. now check which collections should survive
+      std::unordered_set<std::string> survivingCollections;
+
+      for (auto const& coll : VPackArrayIterator(collections)) {
+        if (!coll.isObject() || !coll.hasKey("parameters")) {
+          // somehow invalid
+          continue; 
+        }
+        VPackSlice const params = coll.get("parameters");
+        auto existingCollection = resolveCollection(vocbase, params);
+        if (existingCollection != nullptr) {
+          survivingCollections.emplace(existingCollection->globallyUniqueId());
+        }
+      }
+    
+      std::vector<arangodb::LogicalCollection*> toDrop;
+
+      // drop all collections that do not exist (anymore) on the master 
+      vocbase->processCollections([&survivingCollections, &toDrop](arangodb::LogicalCollection* collection) {
+        if (survivingCollections.find(collection->globallyUniqueId()) != survivingCollections.end()) {
+          // collection should surive
+          return;
+        }
+
+        if (collection->isSystem()) {
+          // we will not drop system collections here
+          return;
+        }
+
+        toDrop.emplace_back(collection);
+      }, false);
+
+      for (auto const& collection : toDrop) { 
+        try {
+          int res = vocbase->dropCollection(collection, false, -1.0);
+          if (res != TRI_ERROR_NO_ERROR) {
+            LOG_TOPIC(ERR, Logger::FIXME) << "unable to drop collection " << collection->name() << ": " << TRI_errno_string(res);
+          }
+        } catch (...) {
+          LOG_TOPIC(ERR, Logger::FIXME) << "unable to drop collection " << collection->name();
+        }
+      }
     }
+
     existingDBs.erase(dbName); // remove dbs that exists on the master
     
     sendExtendBatch();

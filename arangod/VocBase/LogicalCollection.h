@@ -299,7 +299,7 @@ class LogicalCollection {
 
   Result insert(transaction::Methods*, velocypack::Slice const,
                 ManagedDocumentResult& result, OperationOptions&,
-                TRI_voc_tick_t&, bool);
+                TRI_voc_tick_t&, bool, TRI_voc_tick_t& revisionId);
   Result update(transaction::Methods*, velocypack::Slice const,
                 ManagedDocumentResult& result, OperationOptions&,
                 TRI_voc_tick_t&, bool, TRI_voc_rid_t& prevRev,
