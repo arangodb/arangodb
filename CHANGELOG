@@ -1,6 +1,9 @@
 v3.2.5 (2017-XX-XX)
 -------------------
 
+* fixed issue #3395: AQL: cannot instantiate CollectBlock with undetermined 
+  aggregation method
+
 * fix potential overflow in CRC marker check when a corrupted CRC marker 
   is found at the very beginning of an MMFiles datafile
 

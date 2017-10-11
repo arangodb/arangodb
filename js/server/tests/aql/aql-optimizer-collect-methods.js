@@ -56,7 +56,7 @@ function optimizerCollectMethodsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of plans
 ////////////////////////////////////////////////////////////////////////////////
-
+    
     testHashedNumberOfPlans : function () {
       var queries = [
         "FOR j IN " + c.name() + " COLLECT value = j RETURN value",
@@ -437,8 +437,25 @@ function optimizerCollectMethodsTestSuite () {
       
       result = AQL_EXECUTE("FOR doc IN " + c.name() + " COLLECT id = doc.group INTO g RETURN { id, g }").json;
       assertEqual(10, result.length);
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test many collects
+////////////////////////////////////////////////////////////////////////////////
+
+    testManyCollects : function () {
+      c.truncate();
+      c.insert({ value: 3 });
+      var q = "", g = [];
+      for (var i = 0; i < 10; ++i) {
+        q += "LET q" + i + " = (FOR doc IN " + c.name() + " COLLECT id = doc.value RETURN id) ";
+        g.push("q" + i);
+      }
+      q += "RETURN INTERSECTION(" + g.join(", ") + ")";
+      assertTrue(AQL_EXPLAIN(q, null).stats.plansCreated >= 256);
+      var result = AQL_EXECUTE(q).json;
+      assertEqual([3], result[0]);
+    }
   };
 }
 
