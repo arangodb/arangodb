@@ -1,6 +1,11 @@
 devel
 -----
 
+* minimum number of V8 contexts in console mode must be 2, not 1. this is
+  required to ensure the console gets one dedicated V8 context and all other
+  operations have at least one extra context. This requirement was not enforced
+  anymore.
+
 * fix potential overflow in CRC marker check when a corrupted CRC marker 
   is found at the very beginning of an MMFiles datafile
 
