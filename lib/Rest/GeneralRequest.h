@@ -30,6 +30,7 @@
 
 #include "Endpoint/ConnectionInfo.h"
 #include "Rest/CommonDefines.h"
+#include "Rest/RequestContext.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -45,8 +46,6 @@ struct Options;
 namespace basics {
 class StringBuffer;
 }
-
-class RequestContext;
 
 using rest::RequestType;
 using rest::ContentType;
@@ -84,7 +83,6 @@ class GeneralRequest {
         _clientTaskId(0),
         _authorized(false),
         _requestContext(nullptr),
-        _execContext(nullptr),
         _isRequestContextOwner(false),
         _type(RequestType::ILLEGAL),
         _contentType(ContentType::UNSET),
@@ -108,7 +106,9 @@ class GeneralRequest {
     _databaseName = databaseName;
   }
 
-  /// @brief User exists and password was checked
+  /// @brief User exists on this server or on external auth system
+  ///  and password was checked. Must not imply any access rights
+  ///  to any specific resource
   bool authorized() const { return _authorized; }
   void setAuthorized(bool a) { _authorized = a; }
   
@@ -117,12 +117,12 @@ class GeneralRequest {
   void setUser(std::string const& user) { _user = user; }
   void setUser(std::string&& user) { _user = std::move(user); }
 
+  /// @brief the request context depends on the application
   RequestContext* requestContext() const { return _requestContext; }
-  void setRequestContext(RequestContext*, bool);
-
-  ExecContext const* execContext() const { return _execContext; }
-  void setExecContext(ExecContext*);
-
+  /// @brief set request context and whether this requests is allowed
+  ///        to delete it
+  void setRequestContext(RequestContext*, bool isOwner);
+  
   RequestType requestType() const { return _type; }
   void setRequestType(RequestType type) { _type = type; }
 
@@ -214,9 +214,10 @@ class GeneralRequest {
 
   // request context
   RequestContext* _requestContext;
+  bool _isRequestContextOwner;
+
   ExecContext* _execContext = nullptr;
 
-  bool _isRequestContextOwner;
   rest::AuthenticationMethod _authenticationMethod =
       rest::AuthenticationMethod::NONE;
 

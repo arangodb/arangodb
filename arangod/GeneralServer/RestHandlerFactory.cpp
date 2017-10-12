@@ -27,7 +27,6 @@
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
 #include "Rest/GeneralRequest.h"
-#include "Rest/RequestContext.h"
 
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestVersionHandler.h"

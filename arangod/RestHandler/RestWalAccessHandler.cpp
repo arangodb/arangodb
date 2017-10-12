@@ -138,8 +138,8 @@ bool RestWalAccessHandler::parseFilter(WalAccess::Filter& filter) {
 }
 
 RestStatus RestWalAccessHandler::execute() {
-  if (_request->execContext() != nullptr &&
-      !_request->execContext()->isAdminUser()) {
+  if (ExecContext::CURRENT == nullptr ||
+      !ExecContext::CURRENT->isAdminUser()) {
     generateError(ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
     return RestStatus::DONE;
   }
@@ -398,7 +398,7 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(
 
     _response->setHeaderNC(TRI_REPLICATION_HEADER_FROMPRESENT,
                            r.fromTickIncluded() ? "true" : "false");
-    _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
-                           StringUtils::itoa(r.latestTick()));
+    _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTINCLUDED,
+                           StringUtils::itoa(r.lastIncludedTick()));
   }
 }

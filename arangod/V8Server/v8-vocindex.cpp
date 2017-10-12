@@ -88,9 +88,8 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   TRI_V8ToVPackSimple(isolate, builder, args[0]);
   
   VPackBuilder output;
-  ExecContext const* exec = ExecContext::CURRENT;
-  Result res = methods::Indexes::ensureIndex(exec, collection,
-                                             builder.slice(), create, output);
+  Result res = methods::Indexes::ensureIndex(collection, builder.slice(),
+                                             create, output);
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }

@@ -555,6 +555,7 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
   std::string const baseUrl = ReplicationUrl + "/keys";
   std::string url = baseUrl + "/keys" + "?collection=" + cid +
                     "&to=" + std::to_string(maxTick) +
+                    "&serverId=" + _localServerIdString +
                     "&batchId=" + std::to_string(_batchId);
 
   std::string progress = "fetching collection keys for collection '" +

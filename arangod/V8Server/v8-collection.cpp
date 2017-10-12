@@ -3015,7 +3015,7 @@ static void JS_CollectionVocbase(
   if (ExecContext::CURRENT != nullptr &&
       !ExecContext::CURRENT->canUseCollection(name, AuthLevel::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "No access to collection");
+                                   "No access to collection " + name);
   }
 
   v8::Handle<v8::Value> result = WrapCollection(isolate, collection);

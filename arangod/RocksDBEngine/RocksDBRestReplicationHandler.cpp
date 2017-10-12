@@ -71,7 +71,8 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       return;
     }
 
-    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", RocksDBReplicationContext::DefaultTTL);
+    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl",
+                                                           RocksDBReplicationContext::DefaultTTL);
     RocksDBReplicationContext* ctx = _manager->createContext(ttl);
 
     // create transaction+snapshot

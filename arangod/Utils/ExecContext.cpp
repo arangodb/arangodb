@@ -17,31 +17,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Manuel Baesler
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ExecContext.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "StorageEngine/TransactionState.h"
-#include "Transaction/Methods.h"
 #include "VocBase/AuthInfo.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
 
 thread_local ExecContext const* ExecContext::CURRENT = nullptr;
+
 ExecContext ExecContext::SUPERUSER(true, "", "", AuthLevel::RW, AuthLevel::RW);
 
-/// @brief an internal superuser context
-ExecContext const* ExecContext::superuser() {
-  return &ExecContext::SUPERUSER;
-}
-
+/// @brief an internal superuser context, is
+///        a singleton instance, deleting is an error
+ExecContext const* ExecContext::superuser() { return &ExecContext::SUPERUSER; }
+/*
 /// @brief a reference to a user with NONE for everything
 ExecContext* ExecContext::createUnauthorized(std::string const& user,
                                              std::string const& db) {
   return new ExecContext(false, user, db, AuthLevel::NONE, AuthLevel::NONE);
-}
+}*/
 
 ExecContext* ExecContext::create(std::string const& user,
                                  std::string const& dbname) {
@@ -81,14 +79,13 @@ AuthLevel ExecContext::collectionAuthLevel(std::string const& dbname,
     // handle fixed permissions here outside auth module.
     // TODO: move this block above, such that it takes effect
     //       when authentication is disabled
-    if (dbname == TRI_VOC_SYSTEM_DATABASE &&
-        coll == TRI_COL_NAME_USERS) {
+    if (dbname == TRI_VOC_SYSTEM_DATABASE && coll == TRI_COL_NAME_USERS) {
       return AuthLevel::NONE;
     } else if (coll == "_queues") {
       return AuthLevel::RO;
     } else if (coll == "_frontend") {
       return AuthLevel::RW;
-    } // fall through
+    }  // fall through
     return auth->authInfo()->canUseCollection(_user, dbname, coll);
   }
   return AuthLevel::RW;

@@ -23,6 +23,7 @@
 #include "ReplicationFeature.h"
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ClusterFeature.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -67,8 +68,8 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
 }
 
 void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
-  
-  if (_enableFailover && !AgencyCommManager::isEnabled()) {
+  auto feature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
+  if (_enableFailover && feature->agencyEndpoints().empty()) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
     << "automatic failover needs to be started with agency endpoint configured";
     FATAL_ERROR_EXIT();

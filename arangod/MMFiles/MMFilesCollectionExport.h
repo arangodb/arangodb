@@ -49,7 +49,7 @@ class MMFilesCollectionExport {
   ~MMFilesCollectionExport();
 
  public:
-  void run(ExecContext const*, uint64_t, size_t);
+  void run(uint64_t, size_t);
 
  private:
   std::unique_ptr<arangodb::CollectionGuard> _guard;

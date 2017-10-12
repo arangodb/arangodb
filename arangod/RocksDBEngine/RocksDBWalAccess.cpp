@@ -559,10 +559,12 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
   }
   //LOG_TOPIC(ERR, Logger::FIXME) << "1. Starting tailing: tickStart " << tickStart
   //<< " tickEnd " << tickEnd << " chunkSize " << chunkSize << " includeSystem " << includeSystem;
+  rocksdb::TransactionDB* db = rocksutils::globalRocksDB();
   
   uint64_t firstTick = UINT64_MAX; // first tick actually read
   uint64_t lastTick = tickStart; // lastTick at start of a write batch
   uint64_t lastWrittenTick = 0; // lastTick at the end of a write batch
+  uint64_t latest = db->GetLatestSequenceNumber();
 
   auto handler = std::make_unique<MyWALParser>(filter, func);
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
@@ -570,11 +572,10 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
   rocksdb::Status s;
   // no need verifying the WAL contents
   rocksdb::TransactionLogIterator::ReadOptions ro(false);
-  s = rocksutils::globalRocksDB()->GetUpdatesSince(tickStart, &iterator, ro);
+  s = db->GetUpdatesSince(tickStart, &iterator, ro);
   if (!s.ok()) {
     Result r = convertStatus(s, rocksutils::StatusHint::wal);
-    auto latestSequence = rocksutils::globalRocksDB()->GetLatestSequenceNumber();
-    return WalAccessResult(r.errorNumber(), tickStart == latestSequence, 0, latestSequence);
+    return WalAccessResult(r.errorNumber(), tickStart == latest, 0, latest);
   }
 
   // we need to check if the builder is bigger than the chunksize,
@@ -615,7 +616,6 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
     iterator->Next();
   }
 
-  uint64_t latest = rocksutils::globalRocksDB()->GetLatestSequenceNumber();
   WalAccessResult result(TRI_ERROR_NO_ERROR, firstTick <= tickStart,
                          lastWrittenTick, latest);
   if (!s.ok()) {

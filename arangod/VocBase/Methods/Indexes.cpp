@@ -321,11 +321,12 @@ Result Indexes::ensureIndexCoordinator(
   return Result(res, errorMsg);
 }
 
-Result Indexes::ensureIndex(ExecContext const* exec, LogicalCollection* collection,
+Result Indexes::ensureIndex(LogicalCollection* collection,
                             VPackSlice const& definition, bool create,
                             VPackBuilder& output) {
   // can read indexes with RO on db and collection. Modifications require RW/RW
-  if (exec != nullptr) {
+  if (ExecContext::CURRENT != nullptr) {
+    ExecContext const* exec = ExecContext::CURRENT;
     AuthLevel lvl = exec->databaseAuthLevel();
     bool canModify = exec->canUseCollection(collection->name(), AuthLevel::RW);
     bool canRead = exec->canUseCollection(collection->name(), AuthLevel::RO);
