@@ -332,7 +332,7 @@ V8Task::callbackFunction() {
 
 void V8Task::start() {
   TRI_ASSERT(ExecContext::CURRENT == nullptr ||
-             ExecContext::CURRENT == ExecContext::superuser() ||
+             ExecContext::CURRENT->isAdminUser() ||
              (!_user.empty() && ExecContext::CURRENT->user() == _user));
   
   auto ioService = SchedulerFeature::SCHEDULER->ioService();
