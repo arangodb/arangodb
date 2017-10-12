@@ -479,7 +479,7 @@ void SimpleHttpClient::setRequest(
     rest::RequestType method, std::string const& location, char const* body,
     size_t bodyLength,
     std::unordered_map<std::string, std::string> const& headers) {
-  // clear read-buffer (no pipeling!)
+  // clear read-buffer (no pipelining!)
   _readBufferOffset = 0;
   _readBuffer.reset();
 

@@ -138,11 +138,11 @@ class Syncer {
     return _vocbases;
   }
   
+ private:
+  
   /// @brief extract the collection by either id or name, may return nullptr!
   LogicalCollection* getCollectionByIdOrName(TRI_vocbase_t*, TRI_voc_cid_t,
                                              std::string const&);
-  
- private:
   
   /// @brief apply a single marker from the collection dump
   Result applyCollectionDumpMarkerInternal(transaction::Methods&,

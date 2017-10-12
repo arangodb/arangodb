@@ -132,7 +132,7 @@ Syncer::~Syncer() {
 
 /// @brief parse a velocypack response
 Result Syncer::parseResponse(VPackBuilder& builder,
-                          SimpleHttpResult const* response) const {
+                             SimpleHttpResult const* response) const {
   try {
     VPackParser parser(builder);
     parser.parse(response->getBody().begin(), response->getBody().length());
@@ -504,7 +504,8 @@ Result Syncer::applyCollectionDumpMarkerInternal(
 }
 
 /// @brief creates a collection, based on the VelocyPack provided
-Result Syncer::createCollection(TRI_vocbase_t *vocbase, VPackSlice const& slice,
+Result Syncer::createCollection(TRI_vocbase_t* vocbase, 
+                                VPackSlice const& slice,
                                 LogicalCollection** dst) {
   if (dst != nullptr) {
     *dst = nullptr;
@@ -579,7 +580,7 @@ Result Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
 
     return Result();
   }
-
+    
   return Result(vocbase->dropCollection(col, true, -1.0));
 }
 

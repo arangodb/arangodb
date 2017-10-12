@@ -53,12 +53,6 @@ const config = {
   username: username,
   password: password,
   verbose: true,
-  /* TODO Do we need those parameters?
-  includeSystem: true,
-  restrictType: "",
-  restrictCollections: [],
-  keepBarrier: false
-  */
 };
 
 // We allow the replication a delay of this many seconds at most
@@ -671,13 +665,20 @@ describe('Global Replication on a fresh boot', function () {
 
         db._collection(docColName).ensureHashIndex("value");
 
-        let mIdx = db._collection(docColName).getIndexes();
+        let mIdx = db._collection(docColName).getIndexes().map(function(idx) { 
+          delete idx.selectivityEstimate; 
+          return idx; 
+        });
 
         waitForReplication();
         connectToSlave();
         db._useDatabase(dbName);
 
-        let sIdx = db._collection(docColName).getIndexes();
+        let sIdx = db._collection(docColName).getIndexes().map(function(idx) { 
+          delete idx.selectivityEstimate; 
+          return idx; 
+        });
+        
         expect(sIdx).to.deep.equal(mIdx);
         expect(sIdx).to.not.deep.equal(oIdx);
       });

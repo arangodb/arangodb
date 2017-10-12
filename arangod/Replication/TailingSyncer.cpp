@@ -652,7 +652,7 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
 
   else if (type == REPLICATION_COLLECTION_CREATE) {
     if (_ignoreRenameCreateDrop) {
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "Ignoring collection marker";
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Ignoring collection marker";
       return TRI_ERROR_NO_ERROR;
     }
     TRI_vocbase_t* vocbase = resolveVocbase(slice);
@@ -712,7 +712,7 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
   else if (type == REPLICATION_DATABASE_CREATE ||
            type == REPLICATION_DATABASE_DROP) {
     if (_ignoreDatabaseMarkers) {
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "Ignoring database marker";
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Ignoring database marker";
       return Result();
     }
     return processDBMarker(type, slice);

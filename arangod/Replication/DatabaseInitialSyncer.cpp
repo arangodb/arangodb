@@ -82,7 +82,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
 
   int res = vocbase()->replicationApplier()->preventStart();
   if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+    return Result(res);
   }
 
   TRI_DEFER(vocbase()->replicationApplier()->allowStart());
@@ -110,13 +110,11 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
                                                 "not supported with a master < "
                                                 "ArangoDB 2.7";
         incremental = false;
-      }
-    }
-
-    if (incremental) {
-      r = sendFlush();
-      if (r.fail()) {
-        return r;
+      } else {
+        r = sendFlush();
+        if (r.fail()) {
+          return r;
+        }
       }
     }
 
@@ -255,8 +253,7 @@ Result DatabaseInitialSyncer::applyCollectionDump(transaction::Methods& trx,
       parser.parse(p, static_cast<size_t>(q - p));
     } catch (velocypack::Exception const& e) {
       // TODO: improve error reporting
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "while parsing collection"
-        << " dump: " << e.what();
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "while parsing collection dump: " << e.what();
       return Result(e.errorCode(), e.what());
     }
 
@@ -770,11 +767,14 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   std::string const masterName =
       VelocyPackHelper::getStringValue(parameters, "name", "");
 
-  TRI_voc_cid_t const cid = VelocyPackHelper::extractIdValue(parameters);
+  TRI_voc_cid_t const masterCid = VelocyPackHelper::extractIdValue(parameters);
 
-  if (cid == 0) {
+  if (masterCid == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "collection id is missing in response");
   }
+  
+  std::string const masterUuid =
+      VelocyPackHelper::getStringValue(parameters, "globallyUniqueId", "");
 
   VPackSlice const type = parameters.get("type");
 
@@ -787,13 +787,13 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
   std::string const collectionMsg = "collection '" + masterName + "', type " +
                                     typeString + ", id " +
-                                    StringUtils::itoa(cid);
+                                    StringUtils::itoa(masterCid);
 
   // phase handling
   if (phase == PHASE_VALIDATE) {
     // validation phase just returns ok if we got here (aborts above if data is
     // invalid)
-    _processedCollections.emplace(cid, masterName);
+    _processedCollections.emplace(masterCid, masterName);
 
     return Result();
   }
@@ -802,77 +802,91 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   // -------------------------------------------------------------------------------------
 
   if (phase == PHASE_DROP_CREATE) {
-    if (!incremental) {
-      // first look up the collection by the cid
-      arangodb::LogicalCollection* col =
-          getCollectionByIdOrName(vocbase(), cid, masterName);
+    arangodb::LogicalCollection* col = resolveCollection(vocbase(), parameters);
 
-      if (col != nullptr) {
-        bool truncate = false;
+    if (col == nullptr) {
+      // not found...
+      col = vocbase()->lookupCollection(masterName);
 
-        if (col->name() == TRI_COL_NAME_USERS) {
-          // better not throw away the _users collection. otherwise it is gone
-          // and this may be a problem if the
-          // server crashes in-between.
-          truncate = true;
-        }
-
-        if (truncate) {
-          // system collection
-          setProgress("truncating " + collectionMsg);
-
-          SingleCollectionTransaction trx(
-              transaction::StandaloneContext::Create(vocbase()), col->cid(),
-              AccessMode::Type::EXCLUSIVE);
-
-          Result res = trx.begin();
-
-          if (!res.ok()) {
-            return Result(res.errorNumber(), std::string("unable to truncate ") + collectionMsg + ": " + res.errorMessage());
-          }
-
-          OperationOptions options;
-          if (!_leaderId.empty()) {
-            options.isSynchronousReplicationFrom = _leaderId;
-          }
-          OperationResult opRes = trx.truncate(col->name(), options);
-
-          if (!opRes.successful()) {
-            return Result(opRes.code, std::string("unable to truncate ") + collectionMsg + ": " + TRI_errno_string(opRes.code));
-          }
-
-          res = trx.finish(opRes.code);
-
-          if (!res.ok()) {
-            return Result(res.errorNumber(), std::string("unable to truncate ") + collectionMsg + ": " + res.errorMessage());
-          }
-        } else {
-          // regular collection
-          if (_configuration._skipCreateDrop) {
-            setProgress("dropping " + collectionMsg + " skipped because of configuration");
-            return Result();
-          }
-          setProgress("dropping " + collectionMsg);
-
+      if (col != nullptr && (col->name() != masterName || (!masterUuid.empty() && col->globallyUniqueId() != masterUuid))) {
+        // found another collection with the same name locally.
+        // in this case we must drop it because we will run into duplicate
+        // name conflicts otherwise
+        try {
           int res = vocbase()->dropCollection(col, true, -1.0);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            return Result(res, std::string("unable to drop ") + collectionMsg + ": " + TRI_errno_string(res));
+          if (res == TRI_ERROR_NO_ERROR) {
+            col = nullptr;
           }
+        } catch (...) {
         }
       }
     }
 
-    arangodb::LogicalCollection* col = nullptr;
+    if (col != nullptr) {
+      if (!incremental) {
+        // first look up the collection
+        if (col != nullptr) {
+          bool truncate = false;
 
-    if (incremental) {
-      col = getCollectionByIdOrName(vocbase(), cid, masterName);
+          if (col->name() == TRI_COL_NAME_USERS) {
+            // better not throw away the _users collection. otherwise it is gone
+            // and this may be a problem if the
+            // server crashes in-between.
+            truncate = true;
+          }
 
-      if (col != nullptr) {
+          if (truncate) {
+            // system collection
+            setProgress("truncating " + collectionMsg);
+
+            SingleCollectionTransaction trx(
+                transaction::StandaloneContext::Create(vocbase()), col->cid(),
+                AccessMode::Type::EXCLUSIVE);
+
+            Result res = trx.begin();
+
+            if (!res.ok()) {
+              return Result(res.errorNumber(), std::string("unable to truncate ") + collectionMsg + ": " + res.errorMessage());
+            }
+
+            OperationOptions options;
+            if (!_leaderId.empty()) {
+              options.isSynchronousReplicationFrom = _leaderId;
+            }
+            OperationResult opRes = trx.truncate(col->name(), options);
+
+            if (!opRes.successful()) {
+              return Result(opRes.code, std::string("unable to truncate ") + collectionMsg + ": " + TRI_errno_string(opRes.code));
+            }
+
+            res = trx.finish(opRes.code);
+
+            if (!res.ok()) {
+              return Result(res.errorNumber(), std::string("unable to truncate ") + collectionMsg + ": " + res.errorMessage());
+            }
+          } else {
+            // regular collection
+            if (_configuration._skipCreateDrop) {
+              setProgress("dropping " + collectionMsg + " skipped because of configuration");
+              return Result();
+            }
+            setProgress("dropping " + collectionMsg);
+
+            int res = vocbase()->dropCollection(col, true, -1.0);
+
+            if (res != TRI_ERROR_NO_ERROR) {
+              return Result(res, std::string("unable to drop ") + collectionMsg + ": " + TRI_errno_string(res));
+            }
+          }
+        }
+      } else {
+        // incremental case
+        TRI_ASSERT(incremental);
+
         // collection is already present
         std::string const progress =
             "checking/changing parameters of " + collectionMsg;
-        setProgress(progress.c_str());
+        setProgress(progress);
         return changeCollection(col, parameters);
       }
     }
@@ -880,18 +894,18 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     std::string progress = "creating " + collectionMsg;
     if (_configuration._skipCreateDrop) {
       progress += " skipped because of configuration";
-      setProgress(progress.c_str());
+      setProgress(progress);
       return Result();
     }
     
-    setProgress(progress.c_str());
+    setProgress(progress);
 
     Result r = createCollection(vocbase(), parameters, &col);
 
     if (r.fail()) {
       return Result(r.errorNumber(), std::string("unable to create ") + collectionMsg + ": " + TRI_errno_string(r.errorNumber()));
     }
-
+   
     return r;
   }
 
@@ -900,12 +914,12 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
   else if (phase == PHASE_DUMP) {
     std::string const progress = "dumping data for " + collectionMsg;
-    setProgress(progress.c_str());
+    setProgress(progress);
 
-    arangodb::LogicalCollection* col = getCollectionByIdOrName(vocbase(), cid, masterName);
+    arangodb::LogicalCollection* col = resolveCollection(vocbase(), parameters);
 
     if (col == nullptr) {
-      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, std::string("cannot dump: ") + collectionMsg + " not found");
+      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, std::string("cannot dump: ") + collectionMsg + " not found on slave");
     }
 
     Result res;
@@ -913,9 +927,9 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     READ_LOCKER(readLocker, vocbase()->_inventoryLock);
 
     if (incremental && getSize(col) > 0) {
-      res = handleCollectionSync(col, StringUtils::itoa(cid), masterName, _masterInfo._lastLogTick);
+      res = handleCollectionSync(col, StringUtils::itoa(masterCid), masterName, _masterInfo._lastLogTick);
     } else {
-      res = handleCollectionDump(col, StringUtils::itoa(cid), masterName, _masterInfo._lastLogTick);
+      res = handleCollectionDump(col, StringUtils::itoa(masterCid), masterName, _masterInfo._lastLogTick);
     }
 
     if (!res.ok()) {
