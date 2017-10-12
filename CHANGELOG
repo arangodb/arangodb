@@ -1,6 +1,8 @@
 devel
 -----
 
+* make AQL `DISTINCT` not change the order of the results it is applied on
+
 * fix potential overflow in CRC marker check when a corrupted CRC marker 
   is found at the very beginning of an MMFiles datafile
 
