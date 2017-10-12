@@ -64,7 +64,7 @@ class ReplicationApplier {
   bool isTerminated() const { return _terminateThread.load(); }
 
   /// @brief set the applier state to stopped
-  void threadStopped();
+  void markThreadStopped();
   
   /// @brief start the replication applier
   virtual void start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
