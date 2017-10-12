@@ -84,9 +84,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(
     testSize >>= 1;
   }
   // setting the number of background jobs to
-  //  ... for edge case of 6 to 8 cpus, be sure to reserve one of 6 for I/O (mev)
   _maxBackgroundJobs = static_cast<int32_t>(std::max((size_t)2,
-                                                     std::min((TRI_numberProcessors()*5)/6, (size_t)12)));
+                                                     std::min(TRI_numberProcessors(), (size_t)8)));
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Daemon");
