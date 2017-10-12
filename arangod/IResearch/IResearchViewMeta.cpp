@@ -693,10 +693,16 @@ bool IResearchViewMeta::init(
 
       auto locale = field.copyString();
 
-      // use UTF-8 encoding since that is what JSON objects use
-      _locale = std::locale::classic().name() == locale
-        ? std::locale::classic()
-        : irs::locale_utils::locale(locale, true);
+      try {
+        // use UTF-8 encoding since that is what JSON objects use
+        _locale = std::locale::classic().name() == locale
+          ? std::locale::classic()
+          : irs::locale_utils::locale(locale, true);
+      } catch(...) {
+        errorField = fieldName;
+
+        return false;
+      }
     }
   }
 
