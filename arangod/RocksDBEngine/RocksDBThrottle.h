@@ -57,10 +57,12 @@ namespace arangodb {
 /// If these values change, make sure to reflect the changes in
 /// RocksDBPrefixExtractor as well.
 ////////////////////////////////////////////////////////////////////////////////
-class RocksDBEventListener : public rocksdb::EventListener {
+class RocksDBThrottle : public rocksdb::EventListener {
 public:
-  RocksDBEventListener();
-  virtual ~RocksDBEventListener();
+  RocksDBThrottle();
+  virtual ~RocksDBThrottle();
+
+  CompactionEventListener * GetCompactionEventListener() override;
 
   void OnFlushBegin(rocksdb::DB* db,
                     const rocksdb::FlushJobInfo& flush_job_info) override;
@@ -71,9 +73,13 @@ public:
   void OnCompactionCompleted(rocksdb::DB* db,
                              const rocksdb::CompactionJobInfo& ci) override;
 
+
+
   void SetFamilies(std::vector<rocksdb::ColumnFamilyHandle *> & Families) {
     families_=Families;
   }
+
+  static void AdjustThreadPriority(int Adjustment);
 
 
 protected:
@@ -90,6 +96,7 @@ protected:
   int64_t ComputeBacklog();
 
   void RecalculateThrottle();
+
 
   // I am unable to figure out static initialization of std::chrono::seconds,
   //  using old school unsigned.
@@ -108,10 +115,10 @@ protected:
 
   struct ThrottleData_t
   {
-    std::chrono::microseconds m_Micros;
-    uint64_t m_Keys;
-    uint64_t m_Bytes;
-    uint64_t m_Compactions;
+    std::chrono::microseconds _micros;
+    uint64_t _keys;
+    uint64_t _bytes;
+    uint64_t _compactions;
   };
 
   rocksdb::DBImpl * internalRocksDB_;
@@ -136,7 +143,7 @@ protected:
   std::unique_ptr<WriteControllerToken> delay_token_;
   std::vector<rocksdb::ColumnFamilyHandle *> families_;
 
-};// class RocksDBEventListener
+};// class RocksDBThrottle
 
 } // namespace arangodb
 
