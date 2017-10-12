@@ -42,6 +42,7 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Socket.h"
+#include "RestServer/VocbaseContext.h"
 #include "Utils/Events.h"
 
 using namespace arangodb;
@@ -369,14 +370,9 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
   rest::ResponseCode result = request->authorized() ? rest::ResponseCode::OK :
     rest::ResponseCode::UNAUTHORIZED;
   
-  AuthLevel dbLevel = AuthLevel::NONE;
-  if (request->requestContext() != nullptr && request->authorized()) {
-    ExecContext* exec = static_cast<ExecContext*>(request->requestContext());
-    TRI_ASSERT(exec->isSuperuser() ||
-               !exec->user().empty());
-    dbLevel = exec->databaseAuthLevel();
-  }
-
+  VocbaseContext* vc = static_cast<VocbaseContext*>(request->requestContext());
+  TRI_ASSERT(vc != nullptr);
+  
   // mop: inside the authenticateRequest() request->user will be populated
   bool forceOpen = false;
   
@@ -407,6 +403,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
         if (path[0] != '/' || (path.size() > 1 && path[1] != '_')) {
           forceOpen = true;
           result = rest::ResponseCode::OK;
+          vc->upgradeFoxxRights();
         }
       }
     }
@@ -419,6 +416,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
         forceOpen = true;
+        vc->upgradeFoxxRights();
       }
     }
   }
@@ -426,14 +424,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
   if (result != rest::ResponseCode::OK) {
     return result;
   }
-  
-  // mop: internal request => no username present
-  if (username.empty()) {
-    // mop: set user to root so that the foxx stuff
-    // knows about us
-    return rest::ResponseCode::OK;
-  }
-  
+
   // check that we are allowed to see the database
   if (!forceOpen) {
     if (!request->authorized()) {
@@ -441,13 +432,19 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
           (StringUtils::isPrefix(path, ApiUser + username + '/') ||
            StringUtils::isPrefix(path, AdminAardvark))) {
         // check for GET /_db/_system/_api/user/USERNAME/database
-        //request->setExecContext(nullptr);
+        vc->upgradeFoxxRights();
         return rest::ResponseCode::OK;
       }
     }
     
-    if (dbLevel == AuthLevel::NONE &&
-        !StringUtils::isPrefix(path, ApiUser)) {
+    AuthLevel dbLevel = AuthLevel::NONE;
+    if (request->requestContext() != nullptr) {
+      ExecContext* exec = static_cast<ExecContext*>(request->requestContext());
+      TRI_ASSERT(exec->isSuperuser() || !exec->user().empty());
+      dbLevel = exec->databaseAuthLevel();
+    }
+    
+    if (dbLevel == AuthLevel::NONE && !StringUtils::isPrefix(path, ApiUser)) {
       events::NotAuthorized(request);
       result = rest::ResponseCode::UNAUTHORIZED;
     }

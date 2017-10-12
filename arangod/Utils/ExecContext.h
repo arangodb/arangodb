@@ -108,12 +108,13 @@ class ExecContext : public RequestContext {
   /// Should always contain a reference to current user context
   static thread_local ExecContext const* CURRENT;
 
- private:
+ protected:
+  
   bool _isSuperuser;
   std::string const _user;
   std::string const _database;
-  AuthLevel const _systemDbAuthLevel;
-  AuthLevel const _databaseAuthLevel;
+  AuthLevel _systemDbAuthLevel;
+  AuthLevel _databaseAuthLevel;
 
   static ExecContext SUPERUSER;
 };

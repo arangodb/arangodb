@@ -33,7 +33,6 @@
 #include "Basics/Result.h"
 #include "Rest/CommonDefines.h"
 #include "Utils/Authentication.h"
-#include "Utils/ExecContext.h"
 #include "VocBase/AuthUserEntry.h"
 
 #include <velocypack/Builder.h>

@@ -848,14 +848,17 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
       }
       
       if (authMethod != AuthenticationMethod::NONE) {
-        AuthResult result = _authentication->authInfo()->
-          checkAuthentication(authMethod, auth);
-        
         request->setAuthenticationMethod(authMethod);
-        request->setAuthorized(result._authorized);
-        request->setUser(std::move(result._username));
-
-        if (result._authorized) {
+        if (_authentication->isActive()) {
+          AuthResult result = _authentication->authInfo()->
+            checkAuthentication(authMethod, auth);
+          request->setAuthorized(result._authorized);
+          request->setUser(std::move(result._username));
+        } else {
+          request->setAuthorized(true);
+        }
+        
+        if (request->authorized()) {
           events::Authenticated(request, authMethod);
           return rest::ResponseCode::OK;
         }

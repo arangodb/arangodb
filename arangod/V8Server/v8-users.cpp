@@ -27,6 +27,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
+#include "Utils/ExecContext.h"
 
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"

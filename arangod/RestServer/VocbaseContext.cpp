@@ -39,6 +39,12 @@ VocbaseContext* VocbaseContext::create(GeneralRequest* req,
   TRI_ASSERT(vocbase != nullptr);
   // _vocbase has already been refcounted for us
   TRI_ASSERT(!vocbase->isDangling());
+  AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
+  if (!auth->isActive()) {
+    return new VocbaseContext(req, vocbase, /*isSuperuser*/ true,
+                              /*sysLevel*/ AuthLevel::RW,
+                              /*sysLevel*/ AuthLevel::RW);
+  }
 
   if (req->authorized()) {
     // superusers will have an empty username. This MUST be invalid
@@ -51,23 +57,22 @@ VocbaseContext* VocbaseContext::create(GeneralRequest* req,
       }
       return new VocbaseContext(req, vocbase, /*isSuperuser*/ true,
                                 /*sysLevel*/ AuthLevel::RW,
-                                /*sysLevel*/ AuthLevel::RW);
-    } else {
-      AuthInfo* ai = AuthenticationFeature::INSTANCE->authInfo();
-      TRI_ASSERT(ai != nullptr);
-      AuthLevel dbLvl = ai->canUseDatabase(req->user(), req->databaseName());
-      AuthLevel sysLvl = dbLvl;
-      if (req->databaseName() != TRI_VOC_SYSTEM_DATABASE) {
-        sysLvl = ai->canUseDatabase(req->user(), TRI_VOC_SYSTEM_DATABASE);
-      }
-      return new VocbaseContext(req, vocbase, /*isSuperuser*/ false,
-                                /*sysLevel*/ sysLvl,
-                                /*sysLevel*/ dbLvl);
+                                /*dbLevel*/ AuthLevel::RW);
     }
+    AuthInfo* ai = auth->authInfo();
+    TRI_ASSERT(ai != nullptr);
+    AuthLevel dbLvl = ai->canUseDatabase(req->user(), req->databaseName());
+    AuthLevel sysLvl = dbLvl;
+    if (req->databaseName() != TRI_VOC_SYSTEM_DATABASE) {
+      sysLvl = ai->canUseDatabase(req->user(), TRI_VOC_SYSTEM_DATABASE);
+    }
+    return new VocbaseContext(req, vocbase, /*isSuperuser*/ false,
+                              /*sysLevel*/ sysLvl,
+                              /*dbLevel*/ dbLvl);
   }
   return new VocbaseContext(req, vocbase, /*isSuperuser*/ false,
                             /*sysLevel*/ AuthLevel::NONE,
-                            /*sysLevel*/ AuthLevel::NONE);
+                            /*dbLevel*/ AuthLevel::NONE);
 }
 
 VocbaseContext::VocbaseContext(GeneralRequest* req, TRI_vocbase_t* vocbase,
@@ -83,4 +88,12 @@ VocbaseContext::VocbaseContext(GeneralRequest* req, TRI_vocbase_t* vocbase,
 VocbaseContext::~VocbaseContext() {
   TRI_ASSERT(!_vocbase->isDangling());
   _vocbase->release();
+}
+
+
+/// FIXME: workaround to enable foxx aps with superuse rights
+void VocbaseContext::upgradeFoxxRights() {
+  _isSuperuser = true;
+  _systemDbAuthLevel = AuthLevel::RW;
+  _databaseAuthLevel = AuthLevel::RW;
 }

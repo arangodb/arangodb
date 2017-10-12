@@ -47,10 +47,14 @@ class VocbaseContext final : public arangodb::ExecContext {
   static double ServerSessionTtl;
   ~VocbaseContext();
 
-  static VocbaseContext* create(GeneralRequest*, TRI_vocbase_t*);
-
  public:
+  
+  static VocbaseContext* create(GeneralRequest*, TRI_vocbase_t*);
+  
   TRI_vocbase_t* vocbase() const { return _vocbase; }
+  
+  /// FIXME: workaround to enable foxx aps with superuse rights
+  void upgradeFoxxRights();
 
  private:
   TRI_vocbase_t* _vocbase;
