@@ -400,7 +400,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
   // read lock
   // check if the collection is already loaded
   {
-    READ_LOCKER_EVENTUAL(locker, collection->_lock, 1000);
+    READ_LOCKER_EVENTUAL(locker, collection->_lock);
 
     // return original status to the caller
     if (setStatus) {
@@ -473,7 +473,7 @@ int TRI_vocbase_t::loadCollection(arangodb::LogicalCollection* collection,
     while (true) {
       TRI_vocbase_col_status_e status;
       {
-        READ_LOCKER_EVENTUAL(readLocker, collection->_lock, 1000);
+        READ_LOCKER_EVENTUAL(readLocker, collection->_lock);
         status = collection->status();
       }
 
@@ -1049,7 +1049,7 @@ int TRI_vocbase_t::unloadCollection(arangodb::LogicalCollection* collection,
         TRI_vocbase_col_status_e status;
 
         {
-          READ_LOCKER_EVENTUAL(readLocker, collection->_lock, 1000);
+          READ_LOCKER_EVENTUAL(readLocker, collection->_lock);
           status = collection->status();
         }
 
