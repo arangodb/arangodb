@@ -117,13 +117,6 @@ private:
     return "none";
   }
 
-  /// @brief return the collections that were synced
-  std::map<TRI_voc_cid_t, std::string> const& getProcessedCollections() const {
-    return _processedCollections;
-  }
-
-  std::string progress() { return _progress; }
-  
   TRI_vocbase_t* vocbase() const {
     TRI_ASSERT(vocbases().size() == 1);
     return vocbases().begin()->second.database();

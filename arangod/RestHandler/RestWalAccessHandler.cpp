@@ -252,7 +252,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     return;
   }
 
-  size_t chunkSize = 1024 * 1024;  // TODO: determine good default value?
+  size_t chunkSize = 1024 * 1024;  
   std::string const& value5 = _request->value("chunkSize", found);
   if (found) {
     chunkSize = static_cast<size_t>(StringUtils::uint64(value5));
@@ -302,7 +302,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
                     }
                     dumper.dump(marker);
                     buffer.appendChar('\n');
-                    //LOG_TOPIC(ERR, Logger::FIXME) << marker.toJson(&opts);
+                    // LOG_TOPIC(ERR, Logger::FIXME) << marker.toJson(&opts);
                   });
   }
 
@@ -336,7 +336,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
 
     TRI_server_id_t serverId = 0;
     if (found) {
-      serverId = (TRI_server_id_t)StringUtils::uint64(value);
+      serverId = static_cast<TRI_server_id_t>(StringUtils::uint64(value));
     }
     DatabaseFeature::DATABASE->enumerateDatabases([&](TRI_vocbase_t* vocbase) {
       vocbase->updateReplicationClient(serverId, result.lastIncludedTick());
@@ -400,8 +400,5 @@ void RestWalAccessHandler::handleCommandDetermineOpenTransactions(
                            r.fromTickIncluded() ? "true" : "false");
     _response->setHeaderNC(TRI_REPLICATION_HEADER_LASTTICK,
                            StringUtils::itoa(r.latestTick()));
-    /*VPackOptions options(VPackOptions::Defaults);
-    options.escapeUnicode = true;
-    _response->setPayload(std::move(buffer), true, options);*/
   }
 }

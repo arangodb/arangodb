@@ -142,16 +142,17 @@ Result GlobalInitialSyncer::run(bool incremental) {
       }
       
       TRI_vocbase_t* vocbase = resolveVocbase(nameSlice);
-      TRI_ASSERT(vocbase != nullptr);
       if (vocbase == nullptr) {
         return Result(TRI_ERROR_INTERNAL, "vocbase not found");
       }
-
+      
+      DatabaseGuard guard(nameSlice.copyString());
+      
       // change database name in place
-      std::string const oldName = _configuration._database;
-      _configuration._database = nameSlice.copyString();
-      TRI_DEFER(_configuration._database = oldName);
-      DatabaseInitialSyncer syncer(vocbase, _configuration);
+      auto configurationCopy = _configuration;
+      configurationCopy._database = nameSlice.copyString();
+      
+      DatabaseInitialSyncer syncer(vocbase, configurationCopy);
       
       syncer.useAsChildSyncer(_masterInfo, _barrierId, _barrierUpdateTime,
                               _batchId, _batchUpdateTime);
@@ -159,10 +160,6 @@ Result GlobalInitialSyncer::run(bool incremental) {
       Result r = syncer.runWithInventory(false, collections);
       if (r.fail()) {
         return r;
-      }
-      // lets just merge them for now
-      for (auto const& it : syncer.getProcessedCollections()) {
-        _processedCollections.emplace(it.first, it.second);
       }
     
       // we need to pass on the update times to the next syncer

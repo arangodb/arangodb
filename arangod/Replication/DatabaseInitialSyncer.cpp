@@ -82,7 +82,7 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
 
   int res = vocbase()->replicationApplier()->preventStart();
   if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+    return Result(res);
   }
 
   TRI_DEFER(vocbase()->replicationApplier()->allowStart());
@@ -110,13 +110,11 @@ Result DatabaseInitialSyncer::runWithInventory(bool incremental,
                                                 "not supported with a master < "
                                                 "ArangoDB 2.7";
         incremental = false;
-      }
-    }
-
-    if (incremental) {
-      r = sendFlush();
-      if (r.fail()) {
-        return r;
+      } else {
+        r = sendFlush();
+        if (r.fail()) {
+          return r;
+        }
       }
     }
 
@@ -255,8 +253,7 @@ Result DatabaseInitialSyncer::applyCollectionDump(transaction::Methods& trx,
       parser.parse(p, static_cast<size_t>(q - p));
     } catch (velocypack::Exception const& e) {
       // TODO: improve error reporting
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "while parsing collection"
-        << " dump: " << e.what();
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "while parsing collection dump: " << e.what();
       return Result(e.errorCode(), e.what());
     }
 
@@ -769,9 +766,9 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   std::string const masterName =
       VelocyPackHelper::getStringValue(parameters, "name", "");
 
-  TRI_voc_cid_t const cid = VelocyPackHelper::extractIdValue(parameters);
+  TRI_voc_cid_t const masterCid = VelocyPackHelper::extractIdValue(parameters);
 
-  if (cid == 0) {
+  if (masterCid == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "collection id is missing in response");
   }
 
@@ -786,13 +783,13 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
   std::string const collectionMsg = "collection '" + masterName + "', type " +
                                     typeString + ", id " +
-                                    StringUtils::itoa(cid);
+                                    StringUtils::itoa(masterCid);
 
   // phase handling
   if (phase == PHASE_VALIDATE) {
     // validation phase just returns ok if we got here (aborts above if data is
     // invalid)
-    _processedCollections.emplace(cid, masterName);
+    _processedCollections.emplace(masterCid, masterName);
 
     return Result();
   }
@@ -802,9 +799,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
   if (phase == PHASE_DROP_CREATE) {
     if (!incremental) {
-      // first look up the collection by the cid
-      arangodb::LogicalCollection* col =
-          getCollectionByIdOrName(vocbase(), cid, masterName);
+      // first look up the collection
+      arangodb::LogicalCollection* col = resolveCollection(vocbase(), parameters);
 
       if (col != nullptr) {
         bool truncate = false;
@@ -865,13 +861,13 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     arangodb::LogicalCollection* col = nullptr;
 
     if (incremental) {
-      col = getCollectionByIdOrName(vocbase(), cid, masterName);
+      col = resolveCollection(vocbase(), parameters);
 
       if (col != nullptr) {
         // collection is already present
         std::string const progress =
             "checking/changing parameters of " + collectionMsg;
-        setProgress(progress.c_str());
+        setProgress(progress);
         return changeCollection(col, parameters);
       }
     }
@@ -879,18 +875,18 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     std::string progress = "creating " + collectionMsg;
     if (_configuration._skipCreateDrop) {
       progress += " skipped because of configuration";
-      setProgress(progress.c_str());
+      setProgress(progress);
       return Result();
     }
     
-    setProgress(progress.c_str());
+    setProgress(progress);
 
     Result r = createCollection(vocbase(), parameters, &col);
 
     if (r.fail()) {
       return Result(r.errorNumber(), std::string("unable to create ") + collectionMsg + ": " + TRI_errno_string(r.errorNumber()));
     }
-
+   
     return r;
   }
 
@@ -899,12 +895,12 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
   else if (phase == PHASE_DUMP) {
     std::string const progress = "dumping data for " + collectionMsg;
-    setProgress(progress.c_str());
+    setProgress(progress);
 
-    arangodb::LogicalCollection* col = getCollectionByIdOrName(vocbase(), cid, masterName);
+    arangodb::LogicalCollection* col = resolveCollection(vocbase(), parameters);
 
     if (col == nullptr) {
-      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, std::string("cannot dump: ") + collectionMsg + " not found");
+      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, std::string("cannot dump: ") + collectionMsg + " not found on slave");
     }
 
     Result res;
@@ -912,9 +908,9 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     READ_LOCKER(readLocker, vocbase()->_inventoryLock);
 
     if (incremental && getSize(col) > 0) {
-      res = handleCollectionSync(col, StringUtils::itoa(cid), masterName, _masterInfo._lastLogTick);
+      res = handleCollectionSync(col, StringUtils::itoa(masterCid), masterName, _masterInfo._lastLogTick);
     } else {
-      res = handleCollectionDump(col, StringUtils::itoa(cid), masterName, _masterInfo._lastLogTick);
+      res = handleCollectionDump(col, StringUtils::itoa(masterCid), masterName, _masterInfo._lastLogTick);
     }
 
     if (!res.ok()) {

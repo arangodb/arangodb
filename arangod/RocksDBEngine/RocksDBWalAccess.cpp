@@ -550,6 +550,13 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
                                        size_t chunkSize, Filter const& filter,
                                        MarkerCallback const& func) const {
   TRI_ASSERT(filter.transactionIds.empty()); // not supported in any way
+  
+  // we have to start scanning at tickStart - 1 here because GetUpdatesSince will
+  // exclude the specified tick value. we however want to check whether the provided
+  // tick value is still somewhere present in the RocksDB WAL
+  if (tickStart > 0) {
+    tickStart = tickStart - 1;
+  }
   //LOG_TOPIC(ERR, Logger::FIXME) << "1. Starting tailing: tickStart " << tickStart
   //<< " tickEnd " << tickEnd << " chunkSize " << chunkSize << " includeSystem " << includeSystem;
   
@@ -566,7 +573,8 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
   s = rocksutils::globalRocksDB()->GetUpdatesSince(tickStart, &iterator, ro);
   if (!s.ok()) {
     Result r = convertStatus(s, rocksutils::StatusHint::wal);
-    return WalAccessResult(r.errorNumber(), false, 0, rocksutils::globalRocksDB()->GetLatestSequenceNumber());
+    auto latestSequence = rocksutils::globalRocksDB()->GetLatestSequenceNumber();
+    return WalAccessResult(r.errorNumber(), tickStart == latestSequence, 0, latestSequence);
   }
 
   // we need to check if the builder is bigger than the chunksize,
@@ -581,7 +589,6 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
     }
     
     rocksdb::BatchResult batch = iterator->GetBatch();
-    TRI_ASSERT(lastTick == tickStart || batch.sequence >= lastTick);
     // record the first tick we are actually considering
     if (firstTick == UINT64_MAX) {
       firstTick = batch.sequence;
