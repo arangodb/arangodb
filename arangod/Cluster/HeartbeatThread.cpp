@@ -508,7 +508,7 @@ void HeartbeatThread::runSingleServer() {
         continue; // readjust applier endpoint later
       }
       
-      // Case 1: Current server is leader
+      // Case 2: Current server is leader
       if (leader.compareString(_myId) == 0) {
         LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Currently leader" << _myId;
         // updating the value to keep our leadership
@@ -528,7 +528,7 @@ void HeartbeatThread::runSingleServer() {
         continue; // nothing more to do
       }
       
-      // Case 2: Current server is follower
+      // Case 3: Current server is follower
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Still slave of " << _myId;
       std::string endpoint = ci->getServerEndpoint(leader.copyString());
       if (endpoint.empty()) {
@@ -536,7 +536,7 @@ void HeartbeatThread::runSingleServer() {
         continue;
       }
       
-      if (applier->endpoint() != endpoint) {
+      if (applier->endpoint() != endpoint) { //  || !applier->isRunning()
         if (applier->isRunning()) {
           applier->stopAndJoin(true);
         }
