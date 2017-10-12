@@ -843,7 +843,7 @@ Result TailingSyncer::applyLog(SimpleHttpResult* response,
 /// @brief run method, performs continuous synchronization
 Result TailingSyncer::run() {
   if (_client == nullptr || _connection == nullptr || _endpoint == nullptr) {
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL);
   }
   
   TRI_DEFER(sendRemoveBarrier());
@@ -851,7 +851,6 @@ Result TailingSyncer::run() {
   
 retry:
   double const start = TRI_microtime();
-  std::string errorMsg;
   
   Result res;
   uint64_t connectRetries = 0;
@@ -862,7 +861,7 @@ retry:
     _applier->_state._failedConnects = 0;
   }
   
-  while (_applier->isRunning()) {
+  while (true) {
     setProgress("fetching master state information");
     res = getMasterState();
     
@@ -902,13 +901,11 @@ retry:
       _applier->_state._failedConnects = 0;
       _applier->_state._totalRequests++;
     } catch (basics::Exception const& ex) {
-      res = ex.code();
-      errorMsg = ex.what();
+      res = Result(ex.code(), ex.what());
     } catch (std::exception const& ex) {
-      res = TRI_ERROR_INTERNAL;
-      errorMsg = ex.what();
+      res = Result(TRI_ERROR_INTERNAL, ex.what());
     } catch (...) {
-      res.reset(TRI_ERROR_INTERNAL);
+      res.reset(TRI_ERROR_INTERNAL, "caught unknown exception");
     }
   }
   
@@ -1015,14 +1012,11 @@ retry:
           _useTick = true;
           goto retry;
         }
-        res = r.errorNumber();
-        errorMsg = r.errorMessage();
-        LOG_TOPIC(WARN, Logger::REPLICATION)
-        << "(Global tailing) Initial replication failed: " << r.errorMessage();
+        res.reset(r.errorNumber(), r.errorMessage());
+        LOG_TOPIC(WARN, Logger::REPLICATION) << "(global tailing) initial replication failed: " << res.errorMessage();
         // fall through otherwise
       } catch (...) {
-        errorMsg = "caught an exception";
-        res = TRI_ERROR_INTERNAL;
+        res.reset(TRI_ERROR_INTERNAL, "caught unknown exception during initial replication");
       }
     }
     
