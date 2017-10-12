@@ -32,18 +32,67 @@
 //   http://www.apache.org/licenses/LICENSE-2.0
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "RocksDBThrottle.h"
+
+#include <sys/syscall.h>
+#include <sys/resource.h>
 
 namespace arangodb {
 
 // rocksdb flushes and compactions start and stop within same thread, no overlapping
 thread_local std::chrono::steady_clock::time_point gFlushStart;
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// AdjustThreadPriority() below uses the Linux setpriority() function to dynamically
+///  lower and raise a given thread's scheduling priority.  The Linux default is
+///  to only allow a thread to lower its priority, not to raise it.  Even if the
+///  raise would be to a previous priority.
+///
+/// To get full performance benefit of this code, the user's needs three settings:
+///
+///  1. /etc/pam.d/login must contain the line "auth	   require    pam_cap.so"
+///  2. /etc/security/capability.conf must contain "cap_sys_nice      arangodb"
+///  3. root must execute this command "setcap cap_sys_nice+ie arangod" on
+///      the arangodb binary executable
+///
+////////////////////////////////////////////////////////////////////////////////
+
+// code will dynamically change a thread's priority based upon the compaction's level:
+//  base +1 : flush mem buffer to level 0
+//  base +2 : level 0 compaction to level 1
+//  base +3 : all other compactions
+struct sPriorityInfo {
+  bool _baseSet;
+  int _basePriority;
+  int _currentPriority;
+};
+
+thread_local sPriorityInfo gThreadPriority={false, 0, 0};
+
+///
+/// @brief Object that RocksDBThrottle gives to a compaction thread
+///
+class RocksDBCompactionListener : public rocksdb::CompactionEventListener {
+
+  ///
+  /// @brief This is called for every key in a compaction.  Our code only uses "level"
+  ///  to help manipulate thread priority
+  void OnCompaction(int level, const Slice& key,
+                    CompactionListenerValueType value_type,
+                    const Slice& existing_value,
+                    const SequenceNumber& sn, bool is_new) override
+  {RocksDBThrottle::AdjustThreadPriority( (0==level) ? 2 : 3);};
+
+};// RocksDBCompactionListener
+
+RocksDBCompactionListener gCompactionListener;
+
+
 //
 // Setup the object, clearing variables, but do no real work
 //
-RocksDBEventListener::RocksDBEventListener()
+RocksDBThrottle::RocksDBThrottle()
   : internalRocksDB_(nullptr), thread_running_(false), throttle_bps_(0), first_throttle_(true)
 {
   memset(&throttle_data_, 0, sizeof(throttle_data_));
@@ -53,7 +102,7 @@ RocksDBEventListener::RocksDBEventListener()
 //
 // Shutdown the background thread only if it was ever started
 //
-RocksDBEventListener::~RocksDBEventListener() {
+RocksDBThrottle::~RocksDBThrottle() {
 
   if (thread_running_.load()) {
     thread_running_.store(false);
@@ -64,21 +113,33 @@ RocksDBEventListener::~RocksDBEventListener() {
 }
 
 
-//
-// rocksdb does not track flush time in its statistics.  Save start time in
-//  a thread specific storage
-//
-void RocksDBEventListener::OnFlushBegin(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) {
+///
+/// @brief CompactionEventListener::OnCompaction() will get called for every key in a
+///  compaction. We only need the "level" parameter to see if thread priority should change.
+///
+//#ifdef OS_LINUX
+#if 1
+CompactionEventListener * RocksDBThrottle::GetCompactionEventListener() {return &gCompactionListener;};
+#else
+CompactionEventListener * RocksDBThrottle::GetCompactionEventListener() {return nullptr;};
+#endif
+
+///
+/// @brief rocksdb does not track flush time in its statistics.  Save start time in
+///  a thread specific storage
+///
+void RocksDBThrottle::OnFlushBegin(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) {
 
   // save start time in thread local storage
   gFlushStart = std::chrono::steady_clock::now();
+  AdjustThreadPriority(1);
 
   return;
 
-} // RocksDBEventListener::OnFlushBegin
+} // RocksDBThrottle::OnFlushBegin
 
 
-void RocksDBEventListener::OnFlushCompleted(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) {
+void RocksDBThrottle::OnFlushCompleted(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) {
   std::chrono::microseconds flush_time;
   uint64_t flush_size;
 
@@ -91,38 +152,38 @@ void RocksDBEventListener::OnFlushCompleted(rocksdb::DB* db, const rocksdb::Flus
   // start throttle after first data is posted
   //  (have seen some odd zero and small size flushes early)
   if (1024<flush_size) {
-    std::call_once(init_flag_, &RocksDBEventListener::Startup, this, db);
+    std::call_once(init_flag_, &RocksDBThrottle::Startup, this, db);
   } // if
 
-} // RocksDBEventListener::OnFlushCompleted
+} // RocksDBThrottle::OnFlushCompleted
 
 
-void RocksDBEventListener::OnCompactionCompleted(rocksdb::DB* db,
+void RocksDBThrottle::OnCompactionCompleted(rocksdb::DB* db,
                                                  const rocksdb::CompactionJobInfo& ci) {
 
   std::chrono::microseconds elapsed(ci.stats.elapsed_micros);
   SetThrottleWriteRate(elapsed, ci.stats.num_output_records, ci.stats.total_output_bytes, false);
 
-} // RocksDBEventListener::OnCompactionCompleted
+} // RocksDBThrottle::OnCompactionCompleted
 
 
-void RocksDBEventListener::Startup(rocksdb::DB* db) {
+void RocksDBThrottle::Startup(rocksdb::DB* db) {
   internalRocksDB_ = (rocksdb::DBImpl *)db;
 
   // addresses race condition during fast start/stop
   {
     std::unique_lock<std::mutex> ul(thread_mutex_);
 
-    thread_future_ = std::async(std::launch::async, &RocksDBEventListener::ThreadLoop, this);
+    thread_future_ = std::async(std::launch::async, &RocksDBThrottle::ThreadLoop, this);
 
     while(!thread_running_.load())
       thread_condvar_.wait(ul);
   }   // mutex
 
-} // RocksDBEventListener::Startup
+} // RocksDBThrottle::Startup
 
 
-void RocksDBEventListener::SetThrottleWriteRate(std::chrono::microseconds Micros,
+void RocksDBThrottle::SetThrottleWriteRate(std::chrono::microseconds Micros,
                                                 uint64_t Keys, uint64_t Bytes, bool IsLevel0) {
   // lock thread_mutex_ while we update throttle_data_
   std::unique_lock<std::mutex> ul(thread_mutex_);
@@ -131,10 +192,10 @@ void RocksDBEventListener::SetThrottleWriteRate(std::chrono::microseconds Micros
   // index 0 for level 0 compactions, index 1 for all others
   target_idx = (IsLevel0 ? 0 : 1);
 
-  throttle_data_[target_idx].m_Micros+=Micros;
-  throttle_data_[target_idx].m_Keys+=Keys;
-  throttle_data_[target_idx].m_Bytes+=Bytes;
-  throttle_data_[target_idx].m_Compactions+=1;
+  throttle_data_[target_idx]._micros+=Micros;
+  throttle_data_[target_idx]._keys+=Keys;
+  throttle_data_[target_idx]._bytes+=Bytes;
+  throttle_data_[target_idx]._compactions+=1;
 
   // attempt to override throttle changes by rocksdb ... hammer this often
   //  (note that thread_mutex_ IS HELD)
@@ -144,7 +205,7 @@ void RocksDBEventListener::SetThrottleWriteRate(std::chrono::microseconds Micros
 };
 
 
-void RocksDBEventListener::ThreadLoop() {
+void RocksDBThrottle::ThreadLoop() {
 
   replace_idx_=2;
 
@@ -180,13 +241,13 @@ void RocksDBEventListener::ThreadLoop() {
 
   } // while
 
-} // RocksDBEventListener::ThreadLoop
+} // RocksDBThrottle::ThreadLoop
 
 
 //
 // Routine to actually perform the throttle calculation,
 //  now is external routing from ThreadLoop() to easy unit test
-void RocksDBEventListener::RecalculateThrottle() {
+void RocksDBThrottle::RecalculateThrottle() {
   unsigned loop;
   std::chrono::microseconds tot_micros;
   uint64_t tot_bytes, tot_keys, tot_compact, adjustment_bytes;
@@ -214,15 +275,15 @@ void RocksDBEventListener::RecalculateThrottle() {
     //  time for testing.
     for (loop=2; loop<THROTTLE_INTERVALS; ++loop)
     {
-      tot_micros+=throttle_data_[loop].m_Micros;
-      tot_keys+=throttle_data_[loop].m_Keys;
-      tot_bytes+=throttle_data_[loop].m_Bytes;
-      tot_compact+=throttle_data_[loop].m_Compactions;
+      tot_micros+=throttle_data_[loop]._micros;
+      tot_keys+=throttle_data_[loop]._keys;
+      tot_bytes+=throttle_data_[loop]._bytes;
+      tot_compact+=throttle_data_[loop]._compactions;
     }   // for
   } // unique_lock
 
     // flag to skip throttle changes if zero data available
-  no_data = (0 == tot_bytes && 0 == throttle_data_[0].m_Bytes);
+  no_data = (0 == tot_bytes && 0 == throttle_data_[0]._bytes);
 
   // reduce bytes by 10% for each excess level_0 files and/or excess write buffers
   adjustment_bytes = (tot_bytes*compaction_backlog)/10;
@@ -249,9 +310,9 @@ void RocksDBEventListener::RecalculateThrottle() {
     // attempt to most recent level0
     //  (only use most recent level0 until level1+ data becomes available,
     //   useful on restart of heavily loaded server)
-    else if (0!=throttle_data_[0].m_Bytes && 0!=throttle_data_[0].m_Micros.count())
+    else if (0!=throttle_data_[0]._bytes && 0!=throttle_data_[0]._micros.count())
     {
-      new_throttle=(throttle_data_[0].m_Bytes * 1000000) / throttle_data_[0].m_Micros.count();
+      new_throttle=(throttle_data_[0]._bytes * 1000000) / throttle_data_[0]._micros.count();
     }   // else if
     else
     {
@@ -291,13 +352,13 @@ void RocksDBEventListener::RecalculateThrottle() {
 
   } // !no_data && unlock thread_mutex_
 
-} // RocksDBEventListener::RecalculateThrottle
+} // RocksDBThrottle::RecalculateThrottle
 
 
 //
 // Hack a throttle rate into the WriteController object
 //
-void RocksDBEventListener::SetThrottle() {
+void RocksDBThrottle::SetThrottle() {
   // called by routine with thread_mutex_ held
 
   // this routine can get called before internalRocksDB_ is set
@@ -310,14 +371,15 @@ void RocksDBEventListener::SetThrottle() {
       delay_token_.reset();
     } // else
   } // if
-} // RocksDBEventListener::SetThrottle
+} // RocksDBThrottle::SetThrottle
 
 
+  /// @brief translate a (local) collection id into a collection name
 //
 // Use rocksdb's internal statistics to determine if
 //  additional slowing of writes is warranted
 //
-int64_t RocksDBEventListener::ComputeBacklog() {
+int64_t RocksDBThrottle::ComputeBacklog() {
   int64_t compaction_backlog, imm_backlog, imm_trigger;
   bool ret_flag;
   std::string ret_string, property_name;
@@ -366,6 +428,47 @@ int64_t RocksDBEventListener::ComputeBacklog() {
   } // if
 
   return compaction_backlog;
-} // RocksDBEventListener::Computebacklog
+} // RocksDBThrottle::Computebacklog
+
+
+/// @brief Adjust the active thread's priority to match the work
+///  it is performing.  The routine is called HEAVILY.
+void RocksDBThrottle::AdjustThreadPriority(int Adjustment) {
+//#ifdef OS_LINUX
+  // initialize thread infor if this the first time the thread has ever called
+  if (!gThreadPriority._baseSet) {
+    pid_t tid;
+    int ret_val;
+
+    tid = syscall(SYS_gettid);
+    if (-1!=(int)tid)
+    {
+      errno=0;
+      ret_val=getpriority(PRIO_PROCESS, tid);
+      // ret_val could be -1 legally, so double test
+      if (-1!=ret_val || 0==errno) {
+        gThreadPriority._baseSet = true;
+        gThreadPriority._basePriority = ret_val;
+        gThreadPriority._currentPriority = ret_val;
+      }   // if
+    }   // if
+  } // if
+
+  // only change priorities if we
+  if (gThreadPriority._baseSet
+      && (gThreadPriority._basePriority+Adjustment)!=gThreadPriority._currentPriority) {
+
+    pid_t tid;
+    tid = syscall(SYS_gettid);
+    if (-1!=(int)tid)
+    {
+      gThreadPriority._currentPriority = gThreadPriority._basePriority + Adjustment;
+      setpriority(PRIO_PROCESS, tid, gThreadPriority._currentPriority);
+    } // if
+  } // if
+
+//#endif
+} // RocksDBThrottle::AdjustThreadPriority
+
 
 } // namespace arangodb
