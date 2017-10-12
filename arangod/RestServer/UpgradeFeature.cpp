@@ -121,8 +121,8 @@ void UpgradeFeature::start() {
     
     Result res = ai->removeAllUsers();
     if (res.fail()) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to create clear users: "
-                                               << res.errorMessage();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to clear users: "
+                                              << res.errorMessage();
       *_result = EXIT_FAILURE;
       return;
     }
@@ -133,11 +133,15 @@ void UpgradeFeature::start() {
     }
 
     if (res.fail()) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to create root user: "
-                                               << res.errorMessage();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to create root user: "
+                                              << res.errorMessage();
       *_result = EXIT_FAILURE;
       return;
     }
+    auto oldLevel = arangodb::Logger::FIXME.level();
+    arangodb::Logger::FIXME.setLogLevel(arangodb::LogLevel::INFO);
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "Password changed.";
+    arangodb::Logger::FIXME.setLogLevel(oldLevel);
     *_result = EXIT_SUCCESS;
   }
 
