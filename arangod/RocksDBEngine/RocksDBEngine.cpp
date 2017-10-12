@@ -347,7 +347,7 @@ void RocksDBEngine::start() {
   // TODO: enable memtable_insert_with_hint_prefix_extractor?
   _options.bloom_locality = 1;
 
-  std::shared_ptr<RocksDBEventListener> listener(new RocksDBEventListener);
+  std::shared_ptr<RocksDBThrottle> listener(new RocksDBThrottle);
   _options.listeners.push_back(listener);
 
   // this is cfFamilies.size() + 2 ... but _option needs to be set before
