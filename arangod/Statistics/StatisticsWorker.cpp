@@ -641,8 +641,10 @@ VPackBuilder StatisticsWorker::_avgPercentDistributon(
   }
 
   if ( count != 0) {
+    Slice counts = now.get("counts");
+    Slice lastCounts = last.get("counts");
     for (uint32_t i = 0;  i < n;  i++) {
-      result[i] = (now.get("counts").at(i).getNumber<float>() - last.get("counts").at(i).getNumber<float>()) / count;
+      result[i] = (counts.at(i).getNumber<float>() - lastCounts.at(i).getNumber<float>()) / count;
     }
   }
 
