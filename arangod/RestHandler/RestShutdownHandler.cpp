@@ -29,6 +29,7 @@
 #include "Agency/AgencyComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::application_features;

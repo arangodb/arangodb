@@ -30,6 +30,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionManager.h"
+#include "Utils/ExecContext.h"
 
 #include <rocksdb/utilities/transaction_db.h>
 

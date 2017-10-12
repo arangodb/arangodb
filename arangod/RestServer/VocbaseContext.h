@@ -53,8 +53,10 @@ class VocbaseContext final : public arangodb::ExecContext {
   
   TRI_vocbase_t* vocbase() const { return _vocbase; }
   
-  /// FIXME: workaround to enable foxx aps with superuse rights
-  void upgradeFoxxRights();
+  /// FIXME: workaround to enable foxx aps with superuser rights
+  void upgradeSuperuser();
+  /// @brief upgrade user to allow reading and loggin in
+  void upgradeReadOnly();
 
  private:
   TRI_vocbase_t* _vocbase;

@@ -92,8 +92,16 @@ VocbaseContext::~VocbaseContext() {
 
 
 /// FIXME: workaround to enable foxx aps with superuse rights
-void VocbaseContext::upgradeFoxxRights() {
+void VocbaseContext::upgradeSuperuser() {
   _isSuperuser = true;
   _systemDbAuthLevel = AuthLevel::RW;
   _databaseAuthLevel = AuthLevel::RW;
+}
+
+void VocbaseContext::upgradeReadOnly() {
+  TRI_ASSERT(!_isSuperuser);
+  TRI_ASSERT(_systemDbAuthLevel != AuthLevel::RW);
+  TRI_ASSERT(_databaseAuthLevel != AuthLevel::RW);
+  _systemDbAuthLevel = AuthLevel::RO;
+  _databaseAuthLevel = AuthLevel::RO;
 }

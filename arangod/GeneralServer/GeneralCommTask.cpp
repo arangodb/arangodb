@@ -372,9 +372,14 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
   
   VocbaseContext* vc = static_cast<VocbaseContext*>(request->requestContext());
   TRI_ASSERT(vc != nullptr);
+  if (vc->databaseAuthLevel() == AuthLevel::NONE &&
+      !StringUtils::isPrefix(path, ApiUser)) {
+    events::NotAuthorized(request);
+    result = rest::ResponseCode::UNAUTHORIZED;
+  }
   
   // mop: inside the authenticateRequest() request->user will be populated
-  bool forceOpen = false;
+  //bool forceOpen = false;
   
   // we need to check for some special cases, where users may be allowed
   // to proceed even unauthorized
@@ -388,7 +393,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
     if (ci.endpointType == Endpoint::DomainType::UNIX &&
         !_authentication->authenticationUnixSockets()) {
       // no authentication required for unix domain socket connections
-      forceOpen = true;
+      //forceOpen = true;
       result = rest::ResponseCode::OK;
     }
 #endif
@@ -401,9 +406,10 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
         // check if path starts with /_
         // or path begins with /
         if (path[0] != '/' || (path.size() > 1 && path[1] != '_')) {
-          forceOpen = true;
+          // simon: upgrade rights for Foxx apps. FIXME
+          //forceOpen = true;
           result = rest::ResponseCode::OK;
-          vc->upgradeFoxxRights();
+          vc->upgradeSuperuser();
         }
       }
     }
@@ -411,16 +417,17 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
     if (result != rest::ResponseCode::OK) {
       if (path == "/" ||
           StringUtils::isPrefix(path, Open) ||
-          StringUtils::isPrefix(path, AdminAardvark)) {
+          StringUtils::isPrefix(path, AdminAardvark) ||
+          StringUtils::isPrefix(path, ApiUser + username + '/')) {
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
-        forceOpen = true;
-        vc->upgradeFoxxRights();
+        //forceOpen = true;
+        vc->upgradeSuperuser();
       }
     }
   }
-  
+  /*
   if (result != rest::ResponseCode::OK) {
     return result;
   }
@@ -432,23 +439,11 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
           (StringUtils::isPrefix(path, ApiUser + username + '/') ||
            StringUtils::isPrefix(path, AdminAardvark))) {
         // check for GET /_db/_system/_api/user/USERNAME/database
-        vc->upgradeFoxxRights();
+        vc->upgradeReadOnly();
         return rest::ResponseCode::OK;
       }
     }
-    
-    AuthLevel dbLevel = AuthLevel::NONE;
-    if (request->requestContext() != nullptr) {
-      ExecContext* exec = static_cast<ExecContext*>(request->requestContext());
-      TRI_ASSERT(exec->isSuperuser() || !exec->user().empty());
-      dbLevel = exec->databaseAuthLevel();
-    }
-    
-    if (dbLevel == AuthLevel::NONE && !StringUtils::isPrefix(path, ApiUser)) {
-      events::NotAuthorized(request);
-      result = rest::ResponseCode::UNAUTHORIZED;
-    }
-  }
+  }*/
   
   return result;
 }

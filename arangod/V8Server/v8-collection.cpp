@@ -55,6 +55,7 @@
 #include "Transaction/Hints.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -2989,11 +2990,10 @@ static void JS_CollectionVocbase(
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("_collection(<name>|<identifier>)");
   }
-
+  
   v8::Handle<v8::Value> val = args[0];
-  arangodb::LogicalCollection const* collection = nullptr;
-
   std::string const name = TRI_ObjectToString(val);
+  arangodb::LogicalCollection const* collection = nullptr;
   if (ServerState::instance()->isCoordinator()) {
     try {
       std::shared_ptr<LogicalCollection> const ci =
@@ -3011,7 +3011,8 @@ static void JS_CollectionVocbase(
   if (collection == nullptr) {
     TRI_V8_RETURN_NULL();
   }
-
+  
+  // check authentication after ensuring the collection exists
   if (ExecContext::CURRENT != nullptr &&
       !ExecContext::CURRENT->canUseCollection(name, AuthLevel::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,

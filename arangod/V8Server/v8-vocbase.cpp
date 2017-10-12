@@ -65,6 +65,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/UserTransaction.h"
 #include "Transaction/V8Context.h"
+#include "Utils/ExecContext.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
