@@ -772,6 +772,9 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   if (masterCid == 0) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "collection id is missing in response");
   }
+  
+  std::string const masterUuid =
+      VelocyPackHelper::getStringValue(parameters, "globallyUniqueId", "");
 
   VPackSlice const type = parameters.get("type");
 
@@ -799,72 +802,87 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
   // -------------------------------------------------------------------------------------
 
   if (phase == PHASE_DROP_CREATE) {
-    if (!incremental) {
-      // first look up the collection
-      arangodb::LogicalCollection* col = resolveCollection(vocbase(), parameters);
+    arangodb::LogicalCollection* col = resolveCollection(vocbase(), parameters);
 
-      if (col != nullptr) {
-        bool truncate = false;
+    if (col == nullptr) {
+      // not found...
+      col = vocbase()->lookupCollection(masterName);
 
-        if (col->name() == TRI_COL_NAME_USERS) {
-          // better not throw away the _users collection. otherwise it is gone
-          // and this may be a problem if the
-          // server crashes in-between.
-          truncate = true;
-        }
-
-        if (truncate) {
-          // system collection
-          setProgress("truncating " + collectionMsg);
-
-          SingleCollectionTransaction trx(
-              transaction::StandaloneContext::Create(vocbase()), col->cid(),
-              AccessMode::Type::EXCLUSIVE);
-
-          Result res = trx.begin();
-
-          if (!res.ok()) {
-            return Result(res.errorNumber(), std::string("unable to truncate ") + collectionMsg + ": " + res.errorMessage());
-          }
-
-          OperationOptions options;
-          if (!_leaderId.empty()) {
-            options.isSynchronousReplicationFrom = _leaderId;
-          }
-          OperationResult opRes = trx.truncate(col->name(), options);
-
-          if (!opRes.successful()) {
-            return Result(opRes.code, std::string("unable to truncate ") + collectionMsg + ": " + TRI_errno_string(opRes.code));
-          }
-
-          res = trx.finish(opRes.code);
-
-          if (!res.ok()) {
-            return Result(res.errorNumber(), std::string("unable to truncate ") + collectionMsg + ": " + res.errorMessage());
-          }
-        } else {
-          // regular collection
-          if (_configuration._skipCreateDrop) {
-            setProgress("dropping " + collectionMsg + " skipped because of configuration");
-            return Result();
-          }
-          setProgress("dropping " + collectionMsg);
-
+      if (col != nullptr && (col->name() != masterName || (!masterUuid.empty() && col->globallyUniqueId() != masterUuid))) {
+        // found another collection with the same name locally.
+        // in this case we must drop it because we will run into duplicate
+        // name conflicts otherwise
+        try {
           int res = vocbase()->dropCollection(col, true, -1.0);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            return Result(res, std::string("unable to drop ") + collectionMsg + ": " + TRI_errno_string(res));
+          if (res == TRI_ERROR_NO_ERROR) {
+            col = nullptr;
           }
+        } catch (...) {
         }
       }
     }
 
-    arangodb::LogicalCollection* col = nullptr;
+    if (col != nullptr) {
+      if (!incremental) {
+        // first look up the collection
+        if (col != nullptr) {
+          bool truncate = false;
 
-    if (incremental) {
-      col = resolveCollection(vocbase(), parameters);
+          if (col->name() == TRI_COL_NAME_USERS) {
+            // better not throw away the _users collection. otherwise it is gone
+            // and this may be a problem if the
+            // server crashes in-between.
+            truncate = true;
+          }
 
-      if (col != nullptr) {
+          if (truncate) {
+            // system collection
+            setProgress("truncating " + collectionMsg);
+
+            SingleCollectionTransaction trx(
+                transaction::StandaloneContext::Create(vocbase()), col->cid(),
+                AccessMode::Type::EXCLUSIVE);
+
+            Result res = trx.begin();
+
+            if (!res.ok()) {
+              return Result(res.errorNumber(), std::string("unable to truncate ") + collectionMsg + ": " + res.errorMessage());
+            }
+
+            OperationOptions options;
+            if (!_leaderId.empty()) {
+              options.isSynchronousReplicationFrom = _leaderId;
+            }
+            OperationResult opRes = trx.truncate(col->name(), options);
+
+            if (!opRes.successful()) {
+              return Result(opRes.code, std::string("unable to truncate ") + collectionMsg + ": " + TRI_errno_string(opRes.code));
+            }
+
+            res = trx.finish(opRes.code);
+
+            if (!res.ok()) {
+              return Result(res.errorNumber(), std::string("unable to truncate ") + collectionMsg + ": " + res.errorMessage());
+            }
+          } else {
+            // regular collection
+            if (_configuration._skipCreateDrop) {
+              setProgress("dropping " + collectionMsg + " skipped because of configuration");
+              return Result();
+            }
+            setProgress("dropping " + collectionMsg);
+
+            int res = vocbase()->dropCollection(col, true, -1.0);
+
+            if (res != TRI_ERROR_NO_ERROR) {
+              return Result(res, std::string("unable to drop ") + collectionMsg + ": " + TRI_errno_string(res));
+            }
+          }
+        }
+      } else {
+        // incremental case
+        TRI_ASSERT(incremental);
+
         // collection is already present
         std::string const progress =
             "checking/changing parameters of " + collectionMsg;
