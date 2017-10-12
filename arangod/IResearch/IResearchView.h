@@ -384,6 +384,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   irs::async_utils::thread_pool _threadPool;
   std::function<void(transaction::Methods* trx)> _transactionCallback;
   std::atomic<bool> _inRecovery;
+  std::shared_ptr<std::atomic<bool>> _inRecoveryValid; // true until end of recovery (for use with asynchronous post-recovery callbacks)
 };
 
 NS_END // iresearch

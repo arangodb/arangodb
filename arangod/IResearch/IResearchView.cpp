@@ -829,14 +829,24 @@ arangodb::iresearch::IResearchLink* findFirstMatchingLink(
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a callback to be called after recovery to persist properties
 ////////////////////////////////////////////////////////////////////////////////
-arangodb::Result persistProperties(arangodb::PhysicalView& view) {
+arangodb::Result persistProperties(
+    arangodb::PhysicalView& view,
+    std::shared_ptr<std::atomic<bool>> const& inRecoveryValid
+) {
   auto* feature = arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
 
   if (!feature) {
     return view.persistProperties(); // database cannot be in recovery if there is no Database feature
   }
 
-  return feature->registerPostRecoveryCallback([&view]()->arangodb::Result {
+  return feature->registerPostRecoveryCallback([&view, inRecoveryValid]()->arangodb::Result {
+    if (!inRecoveryValid->load()) {
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "Invalid call to post-recovery callback of iResearch view";
+
+      return arangodb::Result(); // view no longer in recovery state
+    }
+
     return view.persistProperties();
   });
 }
@@ -1177,13 +1187,23 @@ IResearchView::IResearchView(
    _memoryNode(&_memoryNodes[0]), // set current memory node (arbitrarily 0)
    _toFlush(&_memoryNodes[1]), // set flush-pending memory node (not same as _memoryNode)
    _threadPool(0, 0), // 0 == create pool with no threads, i.e. not running anything
-   _inRecovery(false) {
+   _inRecovery(false),
+   _inRecoveryValid(irs::memory::make_unique<std::atomic<bool>>(true)) {
 
   // set up in-recovery insertion hooks
   auto* feature = arangodb::iresearch::getFeature<arangodb::DatabaseFeature>("Database");
 
   if (feature) {
-    feature->registerPostRecoveryCallback([this]()->arangodb::Result {
+    auto inRecoveryValid = _inRecoveryValid; // create copy for lambda
+
+    feature->registerPostRecoveryCallback([this, inRecoveryValid]()->arangodb::Result {
+      if (!inRecoveryValid->load()) {
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "Invalid call to post-recovery callback of iResearch view";
+
+        return arangodb::Result(); // view no longer in recovery state
+      }
+
       if (_storePersisted) {
         LOG_TOPIC(DEBUG, iresearch::IResearchFeature::IRESEARCH)
           << "starting persisted-sync sync for iResearch view '" << id() << "'";
@@ -1209,6 +1229,7 @@ IResearchView::IResearchView(
 
       _threadPool.max_threads(_meta._threadsMaxTotal); // start pool
       _inRecovery = false;
+      _inRecoveryValid->store(false);
       return arangodb::Result();
     });
   }
@@ -1336,6 +1357,7 @@ IResearchView::IResearchView(
 }
 
 IResearchView::~IResearchView() {
+  _inRecoveryValid->store(false); // mark recovery callbacks as invalid
   _asyncTerminate.store(true); // mark long-running async jobs for terminatation
 
   {
@@ -1514,7 +1536,7 @@ int IResearchView::drop(TRI_voc_cid_t cid) {
   _meta._collections.erase(cid); // will no longer be fully indexed
   mutex.unlock(true); // downgrade to a read-lock
 
-  auto res = persistProperties(metaStore); // persist '_meta' definition
+  auto res = persistProperties(metaStore, _inRecoveryValid); // persist '_meta' definition
 
   if (!res.ok()) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
@@ -2060,7 +2082,7 @@ bool IResearchView::linkRegister(IResearchLink& link) {
   }
 
   auto& metaStore = *(_logicalView->getPhysical());
-  auto res = persistProperties(metaStore); // persist '_meta' definition
+  auto res = persistProperties(metaStore, _inRecoveryValid); // persist '_meta' definition
 
   if (res.ok()) {
     link.updateView(sptr(this, std::move(unregistrar)), true); // will not deadlock since checked for duplicate cid above
@@ -2130,6 +2152,7 @@ void IResearchView::open() {
 
   if (engine) {
     _inRecovery = engine->inRecovery();
+    _inRecoveryValid->store(_inRecovery); // if not in recovery then callbacks are not valid
   } else {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
       << "failure to get storage engine while starting feature 'IResearchAnalyzer'";
@@ -2544,7 +2567,7 @@ arangodb::Result IResearchView::updateProperties(
     metaBackup = std::move(_meta);
     _meta = std::move(meta);
 
-    res = persistProperties(metaStore); // persist '_meta' definition (so that on failure can revert meta)
+    res = persistProperties(metaStore, _inRecoveryValid); // persist '_meta' definition (so that on failure can revert meta)
 
     if (!res.ok()) {
       _meta = std::move(metaBackup); // revert to original meta
