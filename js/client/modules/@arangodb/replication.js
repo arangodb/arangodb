@@ -241,12 +241,11 @@ var sync = function (global, config) {
   } else {
     url = '/_api/replication/sync';
   }
-  const body = JSON.stringify(config || {});
   const headers = {
     'X-Arango-Async': 'store'
   };
 
-  const requestResult = internal.db._connection.PUT_RAW(url, body, headers);
+  const requestResult = internal.db._connection.PUT_RAW(url, JSON.stringify(config || {}), headers);
   arangosh.checkRequestResult(requestResult);
 
   if (config.async) {
