@@ -124,10 +124,10 @@ var compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal
     username: "root",
     password: "",
     verbose: true,
-    includeSystem: includeSystem,
-    restrictType: restrictType,
-    restrictCollections: restrictCollections,
-    keepBarrier: keepBarrier
+    includeSystem,
+    restrictType,
+    restrictCollections,
+    keepBarrier
   });
 
   assertTrue(syncResult.hasOwnProperty('lastLogTick'));

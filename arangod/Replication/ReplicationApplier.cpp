@@ -68,7 +68,7 @@ class ApplyThread : public Thread {
     } catch (...) {
     }
 
-    _applier->threadStopped();
+    _applier->markThreadStopped();
   }
 
  private:
@@ -93,7 +93,7 @@ bool ReplicationApplier::isRunning() const {
   return _state.isRunning();
 }
 
-void ReplicationApplier::threadStopped() {
+void ReplicationApplier::markThreadStopped() {
   WRITE_LOCKER(writeLocker, _statusLock);
   _state._state = ReplicationApplierState::ActivityState::INACTIVE;
   setProgressNoLock("applier shut down");

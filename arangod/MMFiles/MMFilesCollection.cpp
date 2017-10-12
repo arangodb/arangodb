@@ -3300,6 +3300,8 @@ Result MMFilesCollection::update(
         return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
       }
     }
+  } else {
+    revisionId = TRI_ExtractRevisionId(VPackSlice(static_cast<MMFilesMarkerEnvelope*>(options.recoveryData)->vpack()));
   }
 
   // create marker
