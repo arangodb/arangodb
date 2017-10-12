@@ -562,9 +562,9 @@ SECTION("test_writeDefaults") {
   tmpSlice = slice.get("commitBulk");
   CHECK((true == tmpSlice.isObject() && 3 == tmpSlice.length()));
   tmpSlice2 = tmpSlice.get("cleanupIntervalStep");
-  CHECK((true == tmpSlice2.isUInt() && 10 == tmpSlice2.getUInt()));
+  CHECK((true == tmpSlice2.isNumber<size_t>() && 10 == tmpSlice2.getNumber<size_t>()));
   tmpSlice2 = tmpSlice.get("commitIntervalBatchSize");
-  CHECK((true == tmpSlice2.isUInt() && 10000 == tmpSlice2.getUInt()));
+  CHECK((true == tmpSlice2.isNumber<size_t>() && 10000 == tmpSlice2.getNumber<size_t>()));
   tmpSlice2 = tmpSlice.get("consolidate");
   CHECK((true == tmpSlice2.isObject() && 4 == tmpSlice2.length()));
 
@@ -589,11 +589,11 @@ SECTION("test_writeDefaults") {
   tmpSlice = slice.get("commitItem");
   CHECK((true == tmpSlice.isObject() && 4 == tmpSlice.length()));
   tmpSlice2 = tmpSlice.get("cleanupIntervalStep");
-  CHECK((true == tmpSlice2.isUInt() && 10 == tmpSlice2.getUInt()));
+  CHECK((true == tmpSlice2.isNumber<size_t>() && 10 == tmpSlice2.getNumber<size_t>()));
   tmpSlice2 = tmpSlice.get("commitIntervalMsec");
-  CHECK((true == tmpSlice2.isUInt() && 60000 == tmpSlice2.getUInt()));
+  CHECK((true == tmpSlice2.isNumber<size_t>() && 60000 == tmpSlice2.getNumber<size_t>()));
   tmpSlice2 = tmpSlice.get("commitTimeoutMsec");
-  CHECK((true == tmpSlice2.isUInt() && 5000 == tmpSlice2.getUInt()));
+  CHECK((true == tmpSlice2.isNumber<size_t>() && 5000 == tmpSlice2.getNumber<size_t>()));
   tmpSlice2 = tmpSlice.get("consolidate");
   CHECK((true == tmpSlice2.isObject() && 4 == tmpSlice2.length()));
 
@@ -743,11 +743,11 @@ SECTION("test_writeCustomizedValues") {
   tmpSlice = slice.get("commitItem");
   CHECK((true == tmpSlice.isObject() && 4 == tmpSlice.length()));
   tmpSlice2 = tmpSlice.get("cleanupIntervalStep");
-  CHECK((true == tmpSlice2.isUInt() && 654 == tmpSlice2.getUInt()));
+  CHECK((true == tmpSlice2.isNumber<size_t>() && 654 == tmpSlice2.getNumber<size_t>()));
   tmpSlice2 = tmpSlice.get("commitIntervalMsec");
-  CHECK((true == tmpSlice2.isUInt() && 456 == tmpSlice2.getUInt()));
+  CHECK((true == tmpSlice2.isNumber<size_t>() && 456 == tmpSlice2.getNumber<size_t>()));
   tmpSlice2 = tmpSlice.get("commitTimeoutMsec");
-  CHECK((true == tmpSlice2.isUInt() && 789 == tmpSlice2.getUInt()));
+  CHECK((true == tmpSlice2.isNumber<size_t>() && 789 == tmpSlice2.getNumber<size_t>()));
   tmpSlice2 = tmpSlice.get("consolidate");
   CHECK((true == tmpSlice2.isObject() && 4 == tmpSlice2.length()));
 
