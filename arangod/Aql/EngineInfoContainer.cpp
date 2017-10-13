@@ -647,5 +647,5 @@ void EngineInfoContainerDBServer::buildEngines(
 
 void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
   // TODO Parse Collections
-  _graphNodes.emplace(node);
+  _graphNodes.emplace_back(node);
 }

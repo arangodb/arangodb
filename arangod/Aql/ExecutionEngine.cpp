@@ -401,7 +401,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           break;
         case ExecutionNode::TRAVERSAL:
         case ExecutionNode::SHORTEST_PATH:
-          _dbServerParts.addGraphNode(static_cast<GraphNode*>(en));
+          _dbserverParts.addGraphNode(static_cast<GraphNode*>(en));
           break;
         default:
           // Do nothing

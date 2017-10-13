@@ -38,6 +38,7 @@ namespace aql {
 class Collection;
 class ExecutionEngine;
 class ExecutionNode;
+class GraphNode;
 class Query;
 class QueryRegistry;
 
@@ -191,7 +192,7 @@ class EngineInfoContainerDBServer {
                     std::unordered_map<std::string, std::string>& queryIds,
                     std::unordered_set<ShardID>* lockedShards) const;
 
-  // Insert a GraphNode that eeds to generate TraverserEngines on
+  // Insert a GraphNode that needs to generate TraverserEngines on
   // the DBServers. The GraphNode itself will retain on the coordinator.
   void addGraphNode(GraphNode* node);
 
