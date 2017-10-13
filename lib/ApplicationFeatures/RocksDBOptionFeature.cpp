@@ -86,6 +86,16 @@ RocksDBOptionFeature::RocksDBOptionFeature(
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(std::max((size_t)2,
                                                      std::min(TRI_numberProcessors(), (size_t)8)));
+#ifdef WIN32
+  // Windows code does not (yet) support lowering thread priority of
+  //  compactions.  Therefore it is possible for rocksdb to use all
+  //  CPU time on compactions.  Essential network communications can be lost.
+  //  Save one CPU for ArangoDB network and other activities.
+  if (2<_maxBackgroundJobs) {
+    --_maxBackgroundJobs;
+  } // if
+#endif
+
   setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Daemon");
