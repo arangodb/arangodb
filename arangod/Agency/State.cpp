@@ -881,32 +881,41 @@ bool State::loadRemaining() {
       index_t index(basics::StringUtils::uint64(
                       ii.get(StaticStrings::KeyString).copyString()));
       term_t term(ii.get("term").getNumber<uint64_t>());
-      if (lastIndex > 0 && index-lastIndex > 1) {
-        std::shared_ptr<Buffer<uint8_t>> buf =
-          std::make_shared<Buffer<uint8_t>>();
-        VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
-        buf->append(value.startAs<char const>(), value.byteSize());
-        for (index_t i = lastIndex+1; i < index; ++i) {
-          LOG_TOPIC(WARN, Logger::AGENCY) << "Missing index " << i << " in RAFT log.";
-          _log.push_back(log_t(i, term, buf, std::string()));
-        }
-      }
-      
-      try {
-        _log.push_back(
-          log_t(
-            basics::StringUtils::uint64(
-              ii.get(StaticStrings::KeyString).copyString()),
-            ii.get("term").getNumber<uint64_t>(), tmp, clientId));
-      } catch (std::exception const& e) {
-        LOG_TOPIC(ERR, Logger::AGENCY)
-          << "Failed to convert " +
-          ii.get(StaticStrings::KeyString).copyString() +
-          " to integer."
-          << e.what();
-      }
 
-      lastIndex = index;
+      // Ignore log entries, which are older than compaction index _cur
+      if (index > _cur) {
+
+        // Empty pacthes :
+        // 1 LastIndex initially 0 so that we know this is the first iteration
+        // 2 index > lastIndex always so that index-lastIndex does not overflow!
+        if (lastIndex > 0 && index > lastIndex && index-lastIndex > 1) {
+          std::shared_ptr<Buffer<uint8_t>> buf =
+            std::make_shared<Buffer<uint8_t>>();
+          VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+          buf->append(value.startAs<char const>(), value.byteSize());
+          for (index_t i = lastIndex+1; i < index; ++i) {
+            LOG_TOPIC(WARN, Logger::AGENCY) << "Missing index " << i << " in RAFT log.";
+            _log.push_back(log_t(i, term, buf, std::string()));
+          }
+        }
+
+        // Real entries
+        try {
+          _log.push_back(
+            log_t(
+              basics::StringUtils::uint64(
+                ii.get(StaticStrings::KeyString).copyString()),
+              ii.get("term").getNumber<uint64_t>(), tmp, clientId));
+        } catch (std::exception const& e) {
+          LOG_TOPIC(ERR, Logger::AGENCY)
+            << "Failed to convert " +
+            ii.get(StaticStrings::KeyString).copyString() +
+            " to integer."
+            << e.what();
+        }
+        
+        lastIndex = index;
+      }
 
     }
   }
