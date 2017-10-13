@@ -1,6 +1,8 @@
 v3.2.5 (2017-XX-XX)
 -------------------
 
+* fixed issue #3395: AQL: cannot instantiate CollectBlock with undetermined 
+  aggregation method
 
 * UI: fixed wrong user attribute name validation, issue #3228
 
