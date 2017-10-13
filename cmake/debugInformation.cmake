@@ -26,7 +26,7 @@ macro(install_debinfo
       OUTPUT_VARIABLE READELF_RESULT)
 
     string(REGEX
-      REPLACE ".*ID: *([a-z0-9]*).*" "\\1"
+      REPLACE ".*ID: *([a-f0-9]*).*" "\\1"
       FILE_CHECKSUM
       "${READELF_RESULT}"
       )
@@ -52,12 +52,13 @@ endmacro()
 macro(detect_binary_id_type sourceVar)
   set(${sourceVar} false)
   if (NOT MSVC AND CMAKE_STRIP AND READELF_EXECUTABLE)
+    message("xx")
     execute_process(
       COMMAND ${READELF_EXECUTABLE} -n ${READELF_EXECUTABLE}
       OUTPUT_VARIABLE READELF_RESULT)
 
     string(REGEX
-      REPLACE ".*ID: *([a-z0-9]*).*" "\\1"
+      REPLACE ".*ID: *([a-f0-9]*).*" "\\1"
       FILE_CHECKSUM
       "${READELF_RESULT}"
       )
