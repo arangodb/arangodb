@@ -268,9 +268,13 @@ void handleOnStatusCoordinator(
     }
     
   }
-
 }
 
+void handleOnStatusSingle(
+   Agent* agent, Node const& snapshot, HealthRecord& persisted,
+   HealthRecord& transisted, std::string const& serverID) {
+  // We should be fine without anything
+}
   
 void handleOnStatus(
   Agent* agent, Node const& snapshot, HealthRecord& persisted,
@@ -284,7 +288,7 @@ void handleOnStatus(
     handleOnStatusCoordinator(
       agent, snapshot, persisted, transisted, serverID);
   } else if (serverID.compare(0,4,"SNGL") == 0) {
-    // TODO: do something
+    handleOnStatusSingle(agent, snapshot, persisted, transisted, serverID);
   } else {
     LOG_TOPIC(ERR, Logger::SUPERVISION)
       << "Unknown server type. No supervision action taken. " << serverID;
@@ -305,7 +309,8 @@ std::vector<check_t> Supervision::check(std::string const& type) {
   std::vector<std::string> todelete;
   for (auto const& machine : _snapshot(healthPrefix).children()) {
     if ((type == "DBServers" && machine.first.compare(0,4,"PRMR") == 0) ||
-        (type == "Coordinators" && machine.first.compare(0,4,"CRDN") == 0)) {
+        (type == "Coordinators" && machine.first.compare(0,4,"CRDN") == 0) ||
+        (type == "Singles" && machine.first.compare(0,4,"SNGL") == 0)) {
       todelete.push_back(machine.first);
     }
   }
@@ -479,6 +484,8 @@ bool Supervision::doChecks() {
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_PRIMARY));
   TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR) == "Coordinators");
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR));
+  TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE) == "Singles");
+  check(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE));
   return true;
 }
 

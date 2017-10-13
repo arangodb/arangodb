@@ -22,6 +22,7 @@
 
 #include "RestClusterHandler.h"
 #include "Agency/AgencyComm.h"
+#include "Agency/Supervision.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Replication/ReplicationFeature.h"
@@ -103,8 +104,8 @@ void RestClusterHandler::handleCommandEndpoints() {
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
+/// Talk to the agency and figure out current status
 void RestClusterHandler::handleCommandServerInfo() {
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "demo handler working very hard";
   if (!ServerState::instance()->isSingleServer()) {
     generateError(Result(TRI_ERROR_FORBIDDEN,
                          "only single server can serve this request"));
@@ -122,31 +123,50 @@ void RestClusterHandler::handleCommandServerInfo() {
   ClusterInfo* ci = ClusterInfo::instance();
   TRI_ASSERT(ci != nullptr);
   
-  ServerID leaderId;
-  AgencyComm agency;
   std::string const leaderPath = "Plan/AsyncReplication/Leader";
-  AgencyCommResult result = agency.getValues(leaderPath);
-  if (result.successful()) {
-    std::vector<std::string> components = AgencyCommManager::slicePath(leaderPath);
-    VPackSlice slice = result.slice()[0].get(components);
-    leaderId = slice.copyString();
+  std::string const healthPath = "Supervision/Health";
+  AgencyComm agency;
+  
+  AgencyReadTransaction trx(std::vector<std::string>({
+    AgencyCommManager::path(healthPath),
+    AgencyCommManager::path(leaderPath)}));
+  AgencyCommResult result = agency.sendTransactionWithFailover(trx, 1.0);
+  
+  if (!result.successful()) {
+    generateError(ResponseCode::SERVER_ERROR, result.errorCode(),
+                  result.errorMessage());
+    return;
   }
+
+  std::vector<std::string> path = AgencyCommManager::slicePath(leaderPath);
+  VPackSlice slice = result.slice()[0].get(path);
+  ServerID leaderId = slice.isString() ? slice.copyString() : "";
+  path = AgencyCommManager::slicePath(healthPath);
+  VPackSlice healthMap = result.slice()[0].get(path);
   
   std::unordered_map<ServerID, std::string> serverMap = ci->getServers();
+  
   VPackBuilder builder;
-  auto const& it = serverMap.find(leaderId);
-  if (it != serverMap.end()) {
+  if (leaderId.empty() ||
+      serverMap.find(leaderId) != serverMap.end()) {
     VPackObjectBuilder obj(&builder, true);
-    obj->add("leader", VPackValue(it->second));
+    obj->add("leader", VPackValue(serverMap[leaderId]));
     
     VPackArrayBuilder followers(&builder, "followers", true);
     for (auto const& pair : serverMap) {
       if (pair.first != leaderId) {
-        followers->add(VPackValue(pair.second));
+        VPackSlice status = healthMap.get({pair.first, "Status"});
+        if (status.isString() &&
+            status.compareString(consensus::Supervision::HEALTH_STATUS_GOOD) == 0) {
+          followers->add(VPackValue(pair.second));
+        }
       }
     }
   } else {
-    LOG_TOPIC(INFO, Logger::CLUSTER) << "Could not resolve server id";
+    LOG_TOPIC(INFO, Logger::CLUSTER) << "Leadership challenge is ongoing";
+    VPackObjectBuilder obj(&builder, true);
+    obj->add("leader", VPackSlice::nullSlice());
+    obj->add("followers", VPackSlice::emptyArraySlice());
   }
   generateResult(ResponseCode::OK, builder.slice());
 }
