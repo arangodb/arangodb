@@ -383,12 +383,6 @@ void Agent::sendAppendEntriesRPC() {
         lastAcked = _lastAcked[followerId];
         earliestPackage = _earliestPackage[followerId];
       }
-      {
-        CONDITION_LOCKER(guard, _waitForCV);
-        if (lastConfirmed == 0) {
-          lastConfirmed =  _commitIndex;
-        }
-      }
 
       if (
         ((system_clock::now() - earliestPackage).count() < 0)) {
