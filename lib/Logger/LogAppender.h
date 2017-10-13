@@ -53,14 +53,14 @@ class LogAppender {
   virtual ~LogAppender() {}
 
  public:
-  virtual bool logMessage(LogLevel, std::string const& message,
+  virtual void logMessage(LogLevel, std::string const& message,
                           size_t offset) = 0;
 
   virtual std::string details() = 0;
 
  public:
-  bool logMessage(LogLevel level, std::string const& message) {
-    return logMessage(level, message, 0);
+  void logMessage(LogLevel level, std::string const& message) {
+    logMessage(level, message, 0);
   }
 
   bool checkContent(std::string const& message) {

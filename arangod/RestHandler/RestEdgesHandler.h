@@ -30,7 +30,7 @@
 #include <velocypack/Builder.h>
 
 namespace arangodb {
-struct LocalDocumentId;
+class LocalDocumentId;
 class SingleCollectionTransaction;
 
 namespace aql {

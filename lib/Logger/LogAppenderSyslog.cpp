@@ -81,7 +81,7 @@ LogAppenderSyslog::LogAppenderSyslog(std::string const& facility,
   _opened = true;
 }
 
-bool LogAppenderSyslog::logMessage(LogLevel level, std::string const& message,
+void LogAppenderSyslog::logMessage(LogLevel level, std::string const& message,
                                    size_t offset) {
   int priority = LOG_ERR;
 
@@ -110,9 +110,6 @@ bool LogAppenderSyslog::logMessage(LogLevel level, std::string const& message,
   if (_opened) {
     ::syslog(priority, "%s", message.c_str() + offset);
   }
-
-  // not logging to TTY
-  return false;
 }
 
 std::string LogAppenderSyslog::details() {

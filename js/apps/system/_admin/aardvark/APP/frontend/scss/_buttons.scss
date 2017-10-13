@@ -32,6 +32,12 @@
   @extend %neutral;
 }
 
+.button-disabled {
+  @extend %btn;
+  @extend %neutral;
+  cursor: not-allowed;
+}
+
 .button-header {
   @extend %bare-btn;
   @extend %header;
