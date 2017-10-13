@@ -56,7 +56,9 @@ std::atomic<LogLevel> Logger::_level(LogLevel::INFO);
 bool Logger::_showLineNumber(false);
 bool Logger::_shortenFilenames(true);
 bool Logger::_showThreadIdentifier(false);
+bool Logger::_showThreadName(false);
 bool Logger::_threaded(false);
+bool Logger::_useColor(true);
 bool Logger::_useLocalTime(false);
 bool Logger::_keepLogRotate(false);
 bool Logger::_useMicrotime(false);
@@ -182,6 +184,27 @@ void Logger::setShowThreadIdentifier(bool show) {
 }
 
 // NOTE: this function should not be called if the logging is active.
+void Logger::setShowThreadName(bool show) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "cannot change show thread name if logging is active");
+  }
+
+  _showThreadName = show;
+}
+
+// NOTE: this function should not be called if the logging is active.
+void Logger::setUseColor(bool value) {
+  if (_active) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "cannot change color if logging is active");
+  }
+
+  _useColor = value;
+}
+
+
+// NOTE: this function should not be called if the logging is active.
 void Logger::setUseLocalTime(bool show) {
   if (_active) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
@@ -291,17 +314,23 @@ void Logger::log(char const* function, char const* file, long int line,
   }
 
   // append the process / thread identifier
-  TRI_pid_t processId = Thread::currentProcessId();
+  out << '[' << Thread::currentProcessId();
 
   if (_showThreadIdentifier) {
-    uint64_t threadNumber = Thread::currentThreadNumber();
-    snprintf(buf, sizeof(buf), "[%llu-%llu] ",
-             (unsigned long long)processId, (unsigned long long)threadNumber);
-  } else {
-    snprintf(buf, sizeof(buf), "[%llu] ",
-             (unsigned long long)processId);
+    out << '-' << Thread::currentThreadNumber();
   }
-  out << buf;
+
+  // log thread name
+  if (_showThreadName) {
+    char const* threadName =  Thread::currentThreadName();
+    if (threadName == nullptr) {
+      threadName = "main";
+    }
+   
+    out << '-' << threadName;
+  }
+
+  out << "] ";
   
   if (_showRole && _role != '\0') {
     out << _role << ' ';
