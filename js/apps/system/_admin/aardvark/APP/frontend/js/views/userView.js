@@ -270,37 +270,9 @@
       }
     },
 
-    validateUsername: function (username) {
-      if (username === '') {
-        arangoHelper.arangoError('You have to define an username');
-        $('#newUsername').closest('th').css('backgroundColor', 'red');
-        return false;
-      }
-      if (!username.match(/^[a-zA-Z][a-zA-Z0-9_-]*$/)) {
-        arangoHelper.arangoError(
-          'Wrong Username', 'Username may only contain numbers, letters, _ and -'
-        );
-        return false;
-      }
-      return true;
-    },
-
     editUserPassword: function () {
       window.modalView.hide();
       this.createEditUserPasswordModal();
-    },
-
-    validateName: function (name) {
-      if (name === '') {
-        return true;
-      }
-      if (!name.match(/^[a-zA-Z][a-zA-Z0-9_-]*$/)) {
-        arangoHelper.arangoError(
-          'Wrong Username', 'Username may only contain numbers, letters, _ and -'
-        );
-        return false;
-      }
-      return true;
     },
 
     submitEditUser: function (username) {
@@ -309,10 +281,6 @@
 
       if (!this.validateStatus(status)) {
         $('#editStatus').closest('th').css('backgroundColor', 'red');
-        return;
-      }
-      if (!this.validateName(name)) {
-        $('#editName').closest('th').css('backgroundColor', 'red');
         return;
       }
       var user = this.collection.findWhere({'user': username});

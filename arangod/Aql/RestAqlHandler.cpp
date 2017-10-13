@@ -138,9 +138,14 @@ void RestAqlHandler::createQueryFromVelocyPack() {
     answerBody.add("queryId",
                    VPackValue(arangodb::basics::StringUtils::itoa(_qId)));
     answerBody.add("ttl", VPackValue(ttl));
+  } catch (arangodb::basics::Exception const& ex) {
+    generateError(rest::ResponseCode::BAD, ex.code());
+    return;
+  } catch (std::exception const& ex) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_FAILED, ex.what());
+    return;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not keep query in registry";
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
 
@@ -206,8 +211,12 @@ void RestAqlHandler::parseQuery() {
     }
     sendResponse(rest::ResponseCode::OK, answerBuilder.slice(),
                  transactionContext.get());
+  } catch (basics::Exception const& ex) {
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_FAILED, ex.what());
   } catch (...) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_OUT_OF_MEMORY,
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY,
                   "out of memory");
   }
 }
@@ -266,8 +275,12 @@ void RestAqlHandler::explainQuery() {
     }
     sendResponse(rest::ResponseCode::OK, answerBuilder.slice(),
                  query->trx()->transactionContext().get());
+  } catch (basics::Exception const& ex) {
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_FAILED, ex.what());
   } catch (...) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_OUT_OF_MEMORY,
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY,
                   "out of memory");
   }
 }
@@ -352,9 +365,15 @@ void RestAqlHandler::createQueryFromString() {
     answerBody.add("queryId",
                    VPackValue(arangodb::basics::StringUtils::itoa(_qId)));
     answerBody.add("ttl", VPackValue(ttl));
+  } catch (basics::Exception const& ex) {
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
+    return;
+  } catch (std::exception const& ex) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_FAILED, ex.what());
+    return;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not keep query in registry";
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY,
+                  "out of memory");
     return;
   }
 
@@ -873,11 +892,14 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
     }
     sendResponse(rest::ResponseCode::OK, answerBuilder.slice(),
                  transactionContext.get());
-  } catch (arangodb::basics::Exception const& e) {
-    generateError(rest::ResponseCode::BAD, e.code());
+  } catch (arangodb::basics::Exception const& ex) {
+    generateError(rest::ResponseCode::BAD, ex.code());
+    return;
+  } catch (std::exception const& ex) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_FAILED, ex.what());
     return;
   } catch (...) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
 }
