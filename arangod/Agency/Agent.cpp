@@ -385,7 +385,7 @@ void Agent::sendAppendEntriesRPC() {
       }
       {
         CONDITION_LOCKER(guard, _waitForCV);
-        if (lastConfirmed <  _commitIndex) {
+        if (lastConfirmed == 0) {
           lastConfirmed =  _commitIndex;
         }
       }
@@ -1263,6 +1263,18 @@ bool Agent::prepareLead() {
 /// Becoming leader
 void Agent::lead() {
 
+  {
+    // We cannot start sendAppendentries before first log index.
+    // Any missing indices before _commitIndex were compacted.
+    // DO NOT EDIT without understanding the consequences for sendAppendEntries!
+    CONDITION_LOCKER(guard, _waitForCV);
+    for (auto& i : _confirmed) {
+      if (i.first != id()) {
+        i.second = _commitIndex;
+      }
+    }
+  }
+  
   // Wake up run
   wakeupMainLoop();
 
