@@ -410,7 +410,7 @@ void HeartbeatThread::runSingleServer() {
   double const interval = (double)_interval / 1000.0 / 1000.0;
   ReplicationFeature* replication = ReplicationFeature::INSTANCE;
   TRI_ASSERT(replication != nullptr);
-  if (!replication->enableAutomaticFailover()) {
+  if (!replication->isAutomaticFailoverEnabled()) {
     LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Automatic failover is disabled, yet "
       << "the heartbeat thread is running on a single server. "
       << "Please add --replication.automatic-failover true";

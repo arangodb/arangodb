@@ -41,7 +41,7 @@ ReplicationFeature* ReplicationFeature::INSTANCE = nullptr;
 ReplicationFeature::ReplicationFeature(ApplicationServer* server)
     : ApplicationFeature(server, "Replication"),
       _replicationApplierAutoStart(true),
-      _enableFailover(false) {
+      _enableReplicationFailover(false) {
 
   setOptional(false);
   requiresElevatedPrivileges(false);
@@ -64,12 +64,12 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
   
   options->addHiddenOption("--replication.automatic-failover",
                            "Allow failover",
-                           new BooleanParameter(&_enableFailover));
+                           new BooleanParameter(&_enableReplicationFailover));
 }
 
 void ReplicationFeature::validateOptions(std::shared_ptr<options::ProgramOptions> options) {
   auto feature = ApplicationServer::getFeature<ClusterFeature>("Cluster");
-  if (_enableFailover && feature->agencyEndpoints().empty()) {
+  if (_enableReplicationFailover && feature->agencyEndpoints().empty()) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
     << "automatic failover needs to be started with agency endpoint configured";
     FATAL_ERROR_EXIT();

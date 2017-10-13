@@ -77,8 +77,12 @@ class ClusterFeature : public application_features::ApplicationFeature {
     return _agencyCallbackRegistry.get();
   }
 
-  std::string const agencyCallbacksPath() {
+  std::string const agencyCallbacksPath() const {
     return "/_api/agency/agency-callbacks";
+  };
+  
+  std::string const clusterRestPath() const {
+    return "/_api/cluster";
   };
 
   void setUnregisterOnShutdown(bool);
