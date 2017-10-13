@@ -2901,6 +2901,11 @@ std::shared_ptr<VPackBuilder> ClusterInfo::getCurrent() {
   return _current;
 }
 
+std::unordered_map<ServerID, std::string> ClusterInfo::getServers() {
+  READ_LOCKER(readLocker, _serversProt.lock);
+  std::unordered_map<ServerID, std::string> serv = _servers;
+  return serv;
+}
 
 std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
   READ_LOCKER(readLocker, _serversProt.lock);

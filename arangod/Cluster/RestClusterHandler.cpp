@@ -124,14 +124,15 @@ void RestClusterHandler::handleCommandServerInfo() {
   
   ServerID leaderId;
   AgencyComm agency;
-  std::string const leaderPath = "/Plan/AsyncReplication/Leader";
+  std::string const leaderPath = "Plan/AsyncReplication/Leader";
   AgencyCommResult result = agency.getValues(leaderPath);
   if (result.successful()) {
-    VPackSlice slice = result.slice()[0].get(AgencyCommManager::slicePath(leaderPath));
+    std::vector<std::string> components = AgencyCommManager::slicePath(leaderPath);
+    VPackSlice slice = result.slice()[0].get(components);
     leaderId = slice.copyString();
   }
   
-  std::unordered_map<ServerID, std::string> serverMap = ci->getServerAliases();
+  std::unordered_map<ServerID, std::string> serverMap = ci->getServers();
   VPackBuilder builder;
   auto const& it = serverMap.find(leaderId);
   if (it != serverMap.end()) {
