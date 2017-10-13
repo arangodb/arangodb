@@ -865,7 +865,7 @@ bool State::loadRemaining() {
     
     TRI_ASSERT(_log.empty());  // was cleared in loadCompacted
     std::string clientId;
-    index_t lastIndex = 0;
+    index_t lastIndex = _cur;
     for (auto const& i : VPackArrayIterator(result)) {
 
       buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
