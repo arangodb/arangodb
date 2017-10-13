@@ -652,8 +652,8 @@ function ahuacatlCollectionCountTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCollections : function () {
-      assertEqual(db._collections().map((col) => {return {name:col.name(),_id:''+col._id}}), getQueryResults('RETURN NOOPT(COLLECTIONS())')[0]);
-      assertEqual(db._collections().map((col) => {return {name:col.name(),_id:''+col._id}}), getQueryResults('RETURN NOOPT(V8(COLLECTIONS()))')[0]);
+      assertEqual(db._collections().map((col) => {return {name:col.name(),_id:col._id}}), getQueryResults('RETURN NOOPT(COLLECTIONS())')[0]);
+      assertEqual(db._collections().map((col) => {return {name:col.name(),_id:col._id}}), getQueryResults('RETURN NOOPT(V8(COLLECTIONS()))')[0]);
     }
   }
 }

@@ -35,8 +35,12 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fpconv.h"
 #include "Basics/tri-strings.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Random/UniformCharacter.h"
+#include "RestServer/FeatureCacheFeature.h"
+#include "Pregel/PregelFeature.h"
+#include "Pregel/Worker.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Transaction/Helpers.h"
@@ -44,6 +48,7 @@
 #include "Transaction/Context.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "V8Server/v8-collection.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
@@ -1604,10 +1609,6 @@ AqlValue Functions::Sleep(arangodb::aql::Query* query,
   return AqlValue(AqlValueHintNull());
 }
 
-#include "GeneralServer/AuthenticationFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
-#include "V8Server/v8-collection.h"
-
 /// @brief function COLLECTIONS
 AqlValue Functions::Collections(arangodb::aql::Query* query,
                           transaction::Methods* trx,
@@ -1636,6 +1637,7 @@ AqlValue Functions::Collections(arangodb::aql::Query* query,
     colls = GetCollectionsCluster(vocbase);
   } else {
     colls = vocbase->collections(false);
+    cleanup = []() {};
   }
 
   // make sure memory is cleaned up
@@ -1663,8 +1665,6 @@ AqlValue Functions::Collections(arangodb::aql::Query* query,
     builder->add("_id", VPackValue(collection->cid_as_string()));
     builder->add("name", VPackValue(collection->name()));
     builder->close();
-
-    collection = nullptr;
   }
 
   builder->close();
@@ -3553,9 +3553,6 @@ AqlValue Functions::IsSameCollection(
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return AqlValue(AqlValueHintNull());
 }
-
-#include "Pregel/PregelFeature.h"
-#include "Pregel/Worker.h"
 
 AqlValue Functions::PregelResult(arangodb::aql::Query* query, transaction::Methods* trx,
                                         VPackFunctionParameters const& parameters) {
