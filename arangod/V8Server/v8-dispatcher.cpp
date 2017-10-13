@@ -761,21 +761,18 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   doc.add("runAsUser", VPackValue(runAsUser));
   doc.close();
   
+  LOG_TOPIC(TRACE, Logger::FIXME) << "Adding queue " << key;
   auto ctx = transaction::V8Context::Create(vocbase, false);
   SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::EXCLUSIVE);
-  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
+  
   OperationOptions opts;
   OperationResult result = trx.insert("_queues", doc.slice(), opts);
-  if (result.successful()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "Added queue " << key;
-  }
   if (!result.successful() &&
       result.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "Replaced queue " << key;
     result = trx.replace("_queues", doc.slice(), opts);
   }
   res = trx.finish(result.code);
@@ -783,7 +780,6 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
   
-
   TRI_V8_RETURN(v8::Boolean::New(isolate, result.successful()));
   TRI_V8_TRY_CATCH_END
 }
@@ -811,8 +807,9 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
                                    "deleteQueue() needs db RW permissions");
   }
   
+  LOG_TOPIC(TRACE, Logger::FIXME) << "Removing queue " << key;
   auto ctx = transaction::V8Context::Create(vocbase, false);
-  SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::EXCLUSIVE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();
   if (!res.ok()) {
