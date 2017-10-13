@@ -1,6 +1,8 @@
 devel
 -----
 
+* UI: added word wrapping to query editor
+
 * fixed issue #3395: AQL: cannot instantiate CollectBlock with undetermined 
   aggregation method
 
