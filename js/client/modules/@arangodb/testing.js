@@ -58,6 +58,7 @@ let optionsDocumentation = [
   '                   conjunction with `server`.',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
+  '   - `iresearch`: if set to true enable the iResearch-related tests',
   '   - `dbServers`: number of DB-Servers to use',
   '   - `coordinators`: number coordinators to use',
   '   - `agency`: if set to true agency tests are done',
@@ -113,6 +114,7 @@ const optionsDefaults = {
   'extraArgs': {},
   'extremeVerbosity': false,
   'force': true,
+  'iresearch':false,
   'jsonReply': false,
   'loopEternal': false,
   'loopSleepSec': 1,
@@ -562,4 +564,3 @@ exports.unitTest = unitTest;
 exports.internalMembers = internalMembers;
 exports.testFuncs = testFuncs;
 exports.unitTestPrettyPrintResults = unitTestPrettyPrintResults;
-
