@@ -1,6 +1,8 @@
 devel
 -----
 
+* UI: fixed wrong user attribute name validation, issue #3228
+
 * make AQL return a proper error message in case of a unique key constraint
   violation. previously it only returned the generic "unique constraint violated"
   error message but omitted the details about which index caused the problem.
