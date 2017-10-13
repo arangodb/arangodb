@@ -477,14 +477,14 @@ def checkoutEnterprise() {
                 userRemoteConfigs: [[credentialsId: credentials, url: enterpriseRepo]]])
     }
     catch (exc) {
-        echo "Failed ${sourceBranchLabel}, trying enterprise branch devel"
+        echo "Failed ${sourceBranchLabel}, trying enterprise branch 3.2"
 
         checkout(
             changelog: false,
             poll: false,
             scm: [
                 $class: 'GitSCM',
-                branches: [[name: "*/devel"]],
+                branches: [[name: "*/3.2"]],
                 doGenerateSubmoduleConfigurations: false,
                 extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
                 submoduleCfg: [],
