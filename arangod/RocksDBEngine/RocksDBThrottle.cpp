@@ -37,6 +37,8 @@
 #include <sys/syscall.h>
 #include <sys/resource.h>
 
+#include "Basics/MutexLocker.h"
+
 namespace arangodb {
 
 // rocksdb flushes and compactions start and stop within same thread, no overlapping
@@ -107,7 +109,7 @@ RocksDBThrottle::~RocksDBThrottle() {
   if (thread_running_.load()) {
     thread_running_.store(false);
 
-    thread_condvar_.notify_one();
+    thread_condvar_.signal();
     thread_future_.wait();
   } // if
 }
@@ -117,12 +119,11 @@ RocksDBThrottle::~RocksDBThrottle() {
 /// @brief CompactionEventListener::OnCompaction() will get called for every key in a
 ///  compaction. We only need the "level" parameter to see if thread priority should change.
 ///
-//#ifdef OS_LINUX
-#if 1
+#ifndef WIN32
 CompactionEventListener * RocksDBThrottle::GetCompactionEventListener() {return &gCompactionListener;};
 #else
 CompactionEventListener * RocksDBThrottle::GetCompactionEventListener() {return nullptr;};
-#endif
+#endif  // WIN32
 
 ///
 /// @brief rocksdb does not track flush time in its statistics.  Save start time in
@@ -171,14 +172,10 @@ void RocksDBThrottle::Startup(rocksdb::DB* db) {
   internalRocksDB_ = (rocksdb::DBImpl *)db;
 
   // addresses race condition during fast start/stop
-  {
-    std::unique_lock<std::mutex> ul(thread_mutex_);
+  thread_future_ = std::async(std::launch::async, &RocksDBThrottle::ThreadLoop, this);
 
-    thread_future_ = std::async(std::launch::async, &RocksDBThrottle::ThreadLoop, this);
-
-    while(!thread_running_.load())
-      thread_condvar_.wait(ul);
-  }   // mutex
+  while(!thread_running_.load())
+    thread_condvar_.wait(10);
 
 } // RocksDBThrottle::Startup
 
@@ -186,7 +183,7 @@ void RocksDBThrottle::Startup(rocksdb::DB* db) {
 void RocksDBThrottle::SetThrottleWriteRate(std::chrono::microseconds Micros,
                                                 uint64_t Keys, uint64_t Bytes, bool IsLevel0) {
   // lock thread_mutex_ while we update throttle_data_
-  std::unique_lock<std::mutex> ul(thread_mutex_);
+    MUTEX_LOCKER(mutexLocker, thread_mutex_);
   unsigned target_idx;
 
   // index 0 for level 0 compactions, index 1 for all others
@@ -210,11 +207,8 @@ void RocksDBThrottle::ThreadLoop() {
   replace_idx_=2;
 
   // addresses race condition during fast start/stop
-  {
-    std::unique_lock<std::mutex> ul(thread_mutex_);
-    thread_running_.store(true);
-    thread_condvar_.notify_one();
-  }   // mutex
+  thread_running_.store(true);
+  thread_condvar_.signal();
 
   while(thread_running_.load()) {
     //
@@ -226,19 +220,10 @@ void RocksDBThrottle::ThreadLoop() {
     if (THROTTLE_INTERVALS==replace_idx_)
       replace_idx_=2;
 
-    {
-      // lock thread_mutex_ while we update throttle_data_ and
-      // wait on thread_condvar_
-      std::unique_lock<std::mutex> ul(thread_mutex_);
-
-      // sleep 1 minute
-      std::chrono::seconds wait_seconds(THROTTLE_SECONDS);
-
-      if (thread_running_.load()) { // test in case of race at shutdown
-        thread_condvar_.wait_for(ul, wait_seconds);
-      } //if
-    } // unlock thread_mutex_
-
+    // wait on thread_condvar_
+    if (thread_running_.load()) { // test in case of race at shutdown
+      thread_condvar_.wait(THROTTLE_SECONDS * 1000000);
+    } //if
   } // while
 
 } // RocksDBThrottle::ThreadLoop
@@ -263,7 +248,7 @@ void RocksDBThrottle::RecalculateThrottle() {
   compaction_backlog = ComputeBacklog();
 
   {
-    std::unique_lock<std::mutex> ul(thread_mutex_);
+    MUTEX_LOCKER(mutexLocker, thread_mutex_);
 
     throttle_data_[replace_idx_]=throttle_data_[1];
     //throttle_data_[replace_idx_].m_Backlog=0;
@@ -295,7 +280,7 @@ void RocksDBThrottle::RecalculateThrottle() {
 
   // lock thread_mutex_ while we update throttle_data_
   if (!no_data) {
-    std::unique_lock<std::mutex> ul(thread_mutex_);
+    MUTEX_LOCKER(mutexLocker, thread_mutex_);
 
     // non-level0 data available?
     if (0!=tot_bytes && 0!=tot_micros.count())
@@ -355,9 +340,9 @@ void RocksDBThrottle::RecalculateThrottle() {
 } // RocksDBThrottle::RecalculateThrottle
 
 
-//
-// Hack a throttle rate into the WriteController object
-//
+///
+/// @brief Hack a throttle rate into the WriteController object
+///
 void RocksDBThrottle::SetThrottle() {
   // called by routine with thread_mutex_ held
 
@@ -374,11 +359,10 @@ void RocksDBThrottle::SetThrottle() {
 } // RocksDBThrottle::SetThrottle
 
 
-  /// @brief translate a (local) collection id into a collection name
-//
-// Use rocksdb's internal statistics to determine if
-//  additional slowing of writes is warranted
-//
+///
+/// @brief Use rocksdb's internal statistics to determine if
+///  additional slowing of writes is warranted
+///
 int64_t RocksDBThrottle::ComputeBacklog() {
   int64_t compaction_backlog, imm_backlog, imm_trigger;
   bool ret_flag;
@@ -434,7 +418,7 @@ int64_t RocksDBThrottle::ComputeBacklog() {
 /// @brief Adjust the active thread's priority to match the work
 ///  it is performing.  The routine is called HEAVILY.
 void RocksDBThrottle::AdjustThreadPriority(int Adjustment) {
-//#ifdef OS_LINUX
+#ifndef WIN32
   // initialize thread infor if this the first time the thread has ever called
   if (!gThreadPriority._baseSet) {
     pid_t tid;
@@ -467,7 +451,7 @@ void RocksDBThrottle::AdjustThreadPriority(int Adjustment) {
     } // if
   } // if
 
-//#endif
+#endif   // WIN32
 } // RocksDBThrottle::AdjustThreadPriority
 
 

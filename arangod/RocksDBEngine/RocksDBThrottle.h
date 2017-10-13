@@ -40,14 +40,22 @@
 #include <future>
 
 #include "Basics/Common.h"
+#include "Basics/ConditionVariable.h"
+#include "Basics/Mutex.h"
 
-
+// public rocksdb headers
 #include <rocksdb/db.h>
 #include <rocksdb/listener.h>
 
+// NOT public rocksdb headers
 // ugliness starts here ... this will go away if rocksdb adds pluggable write_controller.
+//  need either ROCKSDB_PLATFORM_POSIX or OS_WIN set before the <db/...> includes
 using namespace rocksdb;
+#ifndef WIN32
 #define ROCKSDB_PLATFORM_POSIX 1
+#else
+#define OS_WIN 1
+#endif
 #include <db/db_impl.h>
 #include <db/write_controller.h>
 
@@ -126,8 +134,8 @@ protected:
   std::atomic<bool> thread_running_;
   std::future<void> thread_future_;
 
-  std::mutex thread_mutex_;
-  std::condition_variable thread_condvar_;
+  Mutex thread_mutex_;
+  basics::ConditionVariable thread_condvar_;
 
   // this array stores compaction statistics used in throttle calculation.
   //  Index 0 of this array accumulates the current minute's compaction data for level 0.
