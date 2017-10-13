@@ -552,7 +552,7 @@ if (USE_MAINTAINER_MODE)
 endif ()
 
 include(debugInformation)
-find_program(FILE_EXECUTABLE file)
+find_program(READELF_EXECUTABLE readelf)
 detect_binary_id_type(CMAKE_DEBUG_FILENAMES_SHA_SUM)
 
 ################################################################################
