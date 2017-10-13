@@ -39,7 +39,6 @@
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBMethods.h"
-#include "RocksDBEngine/RocksDBToken.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBValue.h"
@@ -93,7 +92,7 @@ RocksDBPrimaryIndexIterator::~RocksDBPrimaryIndexIterator() {
   }
 }
 
-bool RocksDBPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool RocksDBPrimaryIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   if (limit == 0 || !_iterator.valid()) {
     // No limit no data, or we are actually done. The last call should have
     // returned false
@@ -103,10 +102,12 @@ bool RocksDBPrimaryIndexIterator::next(TokenCallback const& cb, size_t limit) {
 
   while (limit > 0) {
     // TODO: prevent copying of the value into result, as we don't need it here!
-    RocksDBToken token = _index->lookupKey(_trx, StringRef(*_iterator));
-    cb(token);
+    LocalDocumentId documentId = _index->lookupKey(_trx, StringRef(*_iterator));
+    if (documentId.isSet()) {
+      cb(documentId);
+      --limit;
+    }
 
-    --limit;
     _iterator.next();
     if (!_iterator.valid()) {
       return false;
@@ -139,7 +140,10 @@ void RocksDBPrimaryIndex::load() {
   if (useCache()) {
     // FIXME: make the factor configurable
     RocksDBCollection* rdb = static_cast<RocksDBCollection*>(_collection->getPhysical());
-    _cache->sizeHint(0.3 * rdb->numberDocuments());
+    uint64_t numDocs = rdb->numberDocuments();
+    if (numDocs > 0) {
+      _cache->sizeHint(static_cast<uint64_t>(0.3 * numDocs));
+    }
   }
 }
 
@@ -154,7 +158,7 @@ void RocksDBPrimaryIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   builder.close();
 }
 
-RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
+LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
                                             arangodb::StringRef keyRef) const {
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, keyRef);
@@ -169,7 +173,7 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     if (f.found()) {
       rocksdb::Slice s(reinterpret_cast<char const*>(f.value()->value()),
                        f.value()->valueSize());
-      return RocksDBToken(RocksDBValue::revisionId(s));
+      return LocalDocumentId(RocksDBValue::revisionId(s));
     } else if (f.result().errorNumber() == TRI_ERROR_LOCK_TIMEOUT) {
       // assuming someone is currently holding a write lock, which
       // is why we cannot access the TransactionalBucket.
@@ -185,7 +189,7 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 
   arangodb::Result r = mthds->Get(_cf, key.ref(), value.buffer());
   if (!r.ok()) {
-    return RocksDBToken();
+    return LocalDocumentId();
   }
 
   if (useCache() && !lockTimeout) {
@@ -208,21 +212,20 @@ RocksDBToken RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
     }
   }
 
-  return RocksDBToken(RocksDBValue::revisionId(value));
+  return LocalDocumentId(RocksDBValue::revisionId(value));
 }
 
 Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
                                            RocksDBMethods* mthd,
-                                           TRI_voc_rid_t revisionId,
+                                           LocalDocumentId const& documentId,
                                            VPackSlice const& slice) {
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
-  auto value = RocksDBValue::PrimaryIndexValue(revisionId);
+  auto value = RocksDBValue::PrimaryIndexValue(documentId.id());
 
-  // acquire rocksdb transaction
   if (mthd->Exists(_cf, key.ref())) {
-    return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+    return IndexResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, this);
   }
 
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
@@ -233,27 +236,26 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
 
 Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
                                            RocksDBMethods* mthd,
-                      TRI_voc_rid_t oldRevision,
-                      arangodb::velocypack::Slice const& oldDoc,
-                      TRI_voc_rid_t newRevision,
-                      velocypack::Slice const& newDoc) {
+                                           LocalDocumentId const& oldDocumentId,
+                                           arangodb::velocypack::Slice const& oldDoc,
+                                           LocalDocumentId const& newDocumentId,
+                                           velocypack::Slice const& newDoc) {
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
-  auto value = RocksDBValue::PrimaryIndexValue(newRevision);
+  auto value = RocksDBValue::PrimaryIndexValue(newDocumentId.id());
 
   TRI_ASSERT(mthd->Exists(_cf, key.ref()));
   blackListKey(key->string().data(),
               static_cast<uint32_t>(key->string().size()));
   Result status = mthd->Put(_cf, key.ref(), value.string(), rocksutils::index);
-
   return IndexResult(status.errorNumber(), this);
 }
 
 Result RocksDBPrimaryIndex::removeInternal(transaction::Methods* trx,
                                            RocksDBMethods* mthd,
-                                           TRI_voc_rid_t revisionId,
+                                           LocalDocumentId const& documentId,
                                            VPackSlice const& slice) {
   // TODO: deal with matching revisions?
   RocksDBKeyLeaser key(trx);

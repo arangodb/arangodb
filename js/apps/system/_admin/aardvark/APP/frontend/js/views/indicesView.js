@@ -376,7 +376,7 @@
 
     resetIndexForms: function () {
       $('#indexHeader input').val('').prop('checked', false);
-      $('#newIndexType').val('Geo').prop('selected', true);
+      $('#newIndexType').val('unknown').prop('selected', true);
       this.selectIndexType();
     },
 

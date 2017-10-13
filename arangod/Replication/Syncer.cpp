@@ -51,10 +51,7 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 using namespace arangodb::httpclient;
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief base url of the replication API
-////////////////////////////////////////////////////////////////////////////////
-
 std::string const Syncer::BaseUrl = "/_api/replication";
 
 Syncer::Syncer(TRI_vocbase_t* vocbase,
@@ -129,10 +126,7 @@ Syncer::~Syncer() {
   delete _endpoint;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief parse a velocypack response
-////////////////////////////////////////////////////////////////////////////////
-
 int Syncer::parseResponse(std::shared_ptr<VPackBuilder> builder, 
                           SimpleHttpResult const* response) const {
   try {
@@ -145,10 +139,7 @@ int Syncer::parseResponse(std::shared_ptr<VPackBuilder> builder,
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief request location rewriter (injects database name)
-////////////////////////////////////////////////////////////////////////////////
-
 std::string Syncer::rewriteLocation(void* data, std::string const& location) {
   Syncer* s = static_cast<Syncer*>(data);
 
@@ -165,10 +156,7 @@ std::string Syncer::rewriteLocation(void* data, std::string const& location) {
   return "/_db/" + s->_databaseName + "/" + location;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief steal the barrier id from the syncer
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_voc_tick_t Syncer::stealBarrier() {
   auto id = _barrierId;
   _barrierId = 0;
@@ -176,10 +164,7 @@ TRI_voc_tick_t Syncer::stealBarrier() {
   return id;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief send a "create barrier" command
-////////////////////////////////////////////////////////////////////////////////
-
 int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
   _barrierId = 0;
 
@@ -230,10 +215,7 @@ int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief send an "extend barrier" command
-////////////////////////////////////////////////////////////////////////////////
-
 int Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
   if (_barrierId == 0) {
     return TRI_ERROR_NO_ERROR;
@@ -271,10 +253,7 @@ int Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief send a "remove barrier" command
-////////////////////////////////////////////////////////////////////////////////
-
 int Syncer::sendRemoveBarrier() {
   if (_barrierId == 0) {
     return TRI_ERROR_NO_ERROR;
@@ -308,26 +287,17 @@ int Syncer::sendRemoveBarrier() {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the collection id from VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
 TRI_voc_cid_t Syncer::getCid(VPackSlice const& slice) const {
   return VelocyPackHelper::extractIdValue(slice);
 }
 
-///////////////////////////////////////////////////////////////////////////////
 /// @brief extract the collection name from VelocyPack
-////////////////////////////////////////////////////////////////////////////////
-
 std::string Syncer::getCName(VPackSlice const& slice) const {
   return arangodb::basics::VelocyPackHelper::getStringValue(slice, "cname", "");
 }
 
-///////////////////////////////////////////////////////////////////////////////
 /// @brief extract the collection by either id or name, may return nullptr!
-////////////////////////////////////////////////////////////////////////////////
-  
 arangodb::LogicalCollection* Syncer::getCollectionByIdOrName(TRI_voc_cid_t cid, std::string const& name) { 
   arangodb::LogicalCollection* idCol = nullptr;
   arangodb::LogicalCollection* nameCol = nullptr;
@@ -366,11 +336,38 @@ arangodb::LogicalCollection* Syncer::getCollectionByIdOrName(TRI_voc_cid_t cid, 
   return idCol;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief apply the data from a collection dump or the continuous log
-////////////////////////////////////////////////////////////////////////////////
-
 int Syncer::applyCollectionDumpMarker(
+    transaction::Methods& trx, std::string const& collectionName,
+    TRI_replication_operation_e type, VPackSlice const& old, 
+    VPackSlice const& slice, std::string& errorMsg) {
+
+  if (_configuration._lockTimeoutRetries > 0) {
+    decltype(_configuration._lockTimeoutRetries) tries = 0;
+
+    while (true) {
+      int res = applyCollectionDumpMarkerInternal(trx, collectionName, type, old, slice, errorMsg);
+
+      if (res != TRI_ERROR_LOCK_TIMEOUT) {
+        return res;
+      }
+
+      // lock timeout
+
+      if (++tries > _configuration._lockTimeoutRetries) {
+        // timed out
+        return res;
+      }
+     
+      usleep(50000); 
+      // retry
+    }
+  } else {
+    return applyCollectionDumpMarkerInternal(trx, collectionName, type, old, slice, errorMsg);
+  }
+}
+
+/// @brief apply the data from a collection dump or the continuous log
+int Syncer::applyCollectionDumpMarkerInternal(
     transaction::Methods& trx, std::string const& collectionName,
     TRI_replication_operation_e type, VPackSlice const& old, 
     VPackSlice const& slice, std::string& errorMsg) {
@@ -454,10 +451,7 @@ int Syncer::applyCollectionDumpMarker(
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a collection, based on the VelocyPack provided
-////////////////////////////////////////////////////////////////////////////////
-
 int Syncer::createCollection(VPackSlice const& slice, arangodb::LogicalCollection** dst) {
   if (dst != nullptr) {
     *dst = nullptr;
@@ -519,10 +513,7 @@ int Syncer::createCollection(VPackSlice const& slice, arangodb::LogicalCollectio
   return TRI_ERROR_NO_ERROR;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief drops a collection, based on the VelocyPack provided
-////////////////////////////////////////////////////////////////////////////////
-
 int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
   arangodb::LogicalCollection* col = getCollectionByIdOrName(getCid(slice), getCName(slice));
 
@@ -537,10 +528,7 @@ int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
   return _vocbase->dropCollection(col, true, -1.0);
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an index, based on the VelocyPack provided
-////////////////////////////////////////////////////////////////////////////////
-
 int Syncer::createIndex(VPackSlice const& slice) {
   VPackSlice indexSlice = slice.get("index");
   if (!indexSlice.isObject()) {
@@ -585,10 +573,7 @@ int Syncer::createIndex(VPackSlice const& slice) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief drops an index, based on the VelocyPack provided
-////////////////////////////////////////////////////////////////////////////////
-
 int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
   std::string id;
   if (slice.hasKey("data")) {
@@ -629,10 +614,7 @@ int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get master state
-////////////////////////////////////////////////////////////////////////////////
-
 int Syncer::getMasterState(std::string& errorMsg) {
   std::string const url =
       BaseUrl + "/logger-state?serverId=" + _localServerIdString;
@@ -689,10 +671,7 @@ int Syncer::getMasterState(std::string& errorMsg) {
   return res;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief handle the state response of the master
-////////////////////////////////////////////////////////////////////////////////
-
 int Syncer::handleStateResponse(VPackSlice const& slice, std::string& errorMsg) {
   std::string const endpointString =
       " from endpoint '" + _masterInfo._endpoint + "'";

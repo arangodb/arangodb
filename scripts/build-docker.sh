@@ -10,18 +10,23 @@ mkdir -p ${ROOTDIR}/build-tmp
 
 VERSION=$(cat ${ROOTDIR}/VERSION)
 export DEBVERSION=${VERSION}-1
-DOCKERTAG=${VERSION}-local
+DOCKERTAG=${DOCKERTAG:=${VERSION}-local}
 DEBIMAGE_NAME="arangodb3-${DEBVERSION}_amd64"
 BUILDDEB_ARGS="--gcc6"
 BUILDDEB_DOCKER_ARGS=""
 
 DOCKERFILENAME=Dockerfile$(echo ${VERSION} | cut -d '.' -f 1,2 --output-delimiter=).local
+
 for i in $@; do
     if test "$i" == "--enterprise"; then
         DEBIMAGE_NAME="arangodb3e-${DEBVERSION}_amd64"
-        BUILDDEB_ARGS="--enterprise git@github.com:arangodb/enterprise.git "
+        BUILDDEB_ARGS+=" --enterprise git@github.com:arangodb/enterprise.git "
+    fi
+    if test "$i" == "--maintainer"; then
+        BUILDDEB_ARGS+=" --maintainer"
     fi
 done
+
 if [ ! -z "${SSH_AUTH_SOCK}" ]; then
     BUILDDEB_DOCKER_ARGS="${BUILDDEB_DOCKER_ARGS} -v ${SSH_AUTH_SOCK}:/.ssh-agent -e SSH_AUTH_SOCK=/.ssh-agent"
 fi
@@ -30,13 +35,18 @@ fi
 if [ ! -e ${BUILDDIR}/.build-docker-containers ]; then
     cd ${BUILDDIR} 
     git clone https://github.com/arangodb-helper/build-docker-containers ${BUILDDIR}/.build-docker-containers
+else
+    (cd ${BUILDDIR}/.build-docker-containers && git pull)
 fi
+
 docker build -t arangodb/debian-stretch-builder ${BUILDDIR}/.build-docker-containers/distros/debian/stretch/build/
 
 # Ensure arangodb/arangodb-docker exists 
 if [ ! -e ${BUILDDIR}/.arangodb-docker ]; then
     cd ${BUILDDIR}
     git clone https://github.com/arangodb/arangodb-docker ${BUILDDIR}/.arangodb-docker
+else
+    (cd ${BUILDDIR}/.arangodb-docker && git pull)
 fi 
 
 # Build stretch package

@@ -25,7 +25,7 @@
 #define ARANGOD_INDEXES_INDEX_LOOKUP_CONTEXT_H 1
 
 #include "Basics/Common.h"
-#include "StorageEngine/DocumentIdentifierToken.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
@@ -42,7 +42,7 @@ class IndexLookupContext {
   IndexLookupContext(transaction::Methods* trx, LogicalCollection* collection, ManagedDocumentResult* result, size_t numFields);
   ~IndexLookupContext() {}
 
-  uint8_t const* lookup(DocumentIdentifierToken token);
+  uint8_t const* lookup(LocalDocumentId token);
 
   ManagedDocumentResult* result() { return _result; }
 

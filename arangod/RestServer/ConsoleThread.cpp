@@ -98,7 +98,7 @@ void ConsoleThread::inner() {
             << ")" << std::endl;
   std::cout << "Copyright (c) ArangoDB GmbH" << std::endl;
 
-  v8::Local<v8::String> name(TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
+  v8::Local<v8::String> name(TRI_V8_ASCII_STRING(isolate, TRI_V8_SHELL_COMMAND_NAME));
 
   auto localContext = v8::Local<v8::Context>::New(isolate, _context->_context);
   localContext->Enter();
@@ -132,8 +132,8 @@ start_pretty_print();
 )SCRIPT";
 
     TRI_ExecuteJavaScriptString(isolate, localContext,
-                                TRI_V8_ASCII_STRING(startupScript),
-                                TRI_V8_ASCII_STRING("(startup)"), false);
+                                TRI_V8_ASCII_STRING(isolate, startupScript),
+                                TRI_V8_ASCII_STRING(isolate, "(startup)"), false);
 
 #ifndef _WIN32
     // allow SIGINT in this particular thread... otherwise we cannot CTRL-C the
@@ -201,7 +201,7 @@ start_pretty_print();
 
         console.setExecutingCommand(true);
         TRI_ExecuteJavaScriptString(isolate, localContext,
-                                    TRI_V8_STRING(input.c_str()), name, true);
+                                    TRI_V8_STD_STRING(isolate, input), name, true);
         console.setExecutingCommand(false);
 
         if (_userAborted.load()) {

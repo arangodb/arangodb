@@ -174,6 +174,7 @@ function graphForClient (g) {
     orphanCollections: g._orphanCollections(),
     isSmart: g.__isSmart || false,
     numberOfShards: g.__numberOfShards || 0,
+    replicationFactor: g.__replicationFactor || 1,
     smartGraphAttribute: g.__smartGraphAttribute || '',
     _id: g.__id,
     _rev: g.__rev
@@ -227,12 +228,13 @@ router.post('/', function (req, res) {
   try {
     if (isEnterprise && req.body.isSmart === true) {
       const smartGraphAttribute = req.body.options.smartGraphAttribute;
+      const replicationFactor = req.body.options.replicationFactor;
       const numberOfShards = req.body.options.numberOfShards;
       g = SmartGraph._create(
         req.body.name,
         req.body.edgeDefinitions,
         req.body.orphanCollections,
-        {waitForSync, numberOfShards, smartGraphAttribute}
+        {waitForSync, numberOfShards, smartGraphAttribute, replicationFactor}
       );
     } else {
       if (req.body.options && req.body.options.numberOfShards && cluster.isCluster()) {

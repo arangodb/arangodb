@@ -83,9 +83,6 @@ class ProgramOptions {
     bool _failed;
   };
 
-  // function type for determining terminal width
-  typedef std::function<size_t()> TerminalWidthFuncType;
-
   // function type for determining the similarity between two strings
   typedef std::function<int(std::string const&, std::string const&)>
       SimilarityFuncType;
@@ -194,7 +191,7 @@ class ProgramOptions {
   std::string translateShorthand(std::string const& name) const;
   
   void walk(std::function<void(Section const&, Option const&)> const& callback,
-            bool onlyTouched) const;
+            bool onlyTouched, bool includeObsolete = false) const;
 
   // checks whether a specific option exists
   // if the option does not exist, this will flag an error
@@ -276,8 +273,6 @@ class ProgramOptions {
   // map with old options and their new equivalents, used for printing more
   // meaningful error messages when an invalid (but once valid) option was used
   std::unordered_map<std::string, std::string> _oldOptions;
-  // callback function for determining the terminal width
-  TerminalWidthFuncType _terminalWidth;
   // callback function for determining the similarity between two option names
   SimilarityFuncType _similarity;
   // option processing result

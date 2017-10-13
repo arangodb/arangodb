@@ -144,9 +144,10 @@ class Supervision : public arangodb::Thread {
   /// @brief Move shard from one db server to other db server
   bool removeShard(std::string const& from);
 
-  /// @brief Check machines under path in agency
-  std::vector<check_t> checkDBServers();
-  std::vector<check_t> checkCoordinators();
+  /// @brief Check machines in agency
+  std::vector<check_t> check(std::string const&);
+
+  // @brief Check shards in agency
   std::vector<check_t> checkShards();
 
   void workJobs();

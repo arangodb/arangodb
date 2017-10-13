@@ -44,11 +44,11 @@
   r = VPackParser::fromJson(rValue);  \
   CHECK(expected == func(l->slice(), r->slice(), true)); \
 
-#define INIT_BUFFER  TRI_string_buffer_t* sb = TRI_CreateStringBuffer(TRI_UNKNOWN_MEM_ZONE);
-#define FREE_BUFFER  TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, sb);
+#define INIT_BUFFER  TRI_string_buffer_t* sb = TRI_CreateStringBuffer();
+#define FREE_BUFFER  TRI_FreeStringBuffer(sb);
 #define STRINGIFY    TRI_StringifyJson(sb, json);
 #define STRING_VALUE sb->_buffer
-#define FREE_JSON    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+#define FREE_JSON    TRI_FreeJson(json);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite

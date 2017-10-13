@@ -97,20 +97,20 @@ SECTION("tst_1") {
     };    
   
   size_t len = 0;
-  char* result = TRI_normalize_utf8_to_NFC(TRI_CORE_MEM_ZONE, (const char*) decomposed, strlen((const char*) decomposed),&len);
+  char* result = TRI_normalize_utf8_to_NFC((const char*) decomposed, strlen((const char*) decomposed),&len);
 /*
   size_t outLength;
-  char* uni = TRI_EscapeUtf8StringZ (TRI_CORE_MEM_ZONE, (const char*) decomposed, strlen((const char*) decomposed), true, &outLength);
+  char* uni = TRI_EscapeUtf8StringZ ((const char*) decomposed, strlen((const char*) decomposed), true, &outLength);
   printf("\nOriginal: %s\nEscaped: %s\n", decomposed, uni);
 
-  char* uni2 = TRI_EscapeUtf8StringZ (TRI_CORE_MEM_ZONE, (const char*) composed, strlen((const char*) composed), true, &outLength);
+  char* uni2 = TRI_EscapeUtf8StringZ ((const char*) composed, strlen((const char*) composed), true, &outLength);
   printf("\nOriginal: %s\nEscaped: %s\n", composed, uni2);
 */  
   size_t l1 = sizeof(composed) - 1;
   size_t l2 = strlen(result);
   CHECK((l1) == l2);
   CHECK(std::string((char*) composed, l1) == std::string(result, l2));
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);
+  TRI_FreeString(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,7 +133,7 @@ SECTION("tst_2") {
     };    
   
   int32_t len = 0;
-  char* result = TRI_tolower_utf8(TRI_CORE_MEM_ZONE, (const char*) gruessgott1, (int32_t) strlen((const char*) gruessgott1), &len);
+  char* result = TRI_tolower_utf8((const char*) gruessgott1, (int32_t) strlen((const char*) gruessgott1), &len);
 
 
   //printf("\nOriginal: %s\nLower: %s (%d)\n", gruessgott1, result, len);
@@ -141,7 +141,7 @@ SECTION("tst_2") {
   size_t l2 = strlen(result);
   CHECK((l1) == l2);
   CHECK(std::string((char*) lower, l1) == std::string(result, l2));
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);  
+  TRI_FreeString(result);  
 
   std::string testString((const char*) gruessgott1);
   std::string expectString((const char*) lower);
@@ -149,12 +149,12 @@ SECTION("tst_2") {
   CHECK(std::string(expectString) == resultString);
   
   len = 0;
-  result = TRI_tolower_utf8(TRI_CORE_MEM_ZONE, (const char*) gruessgott2, (int32_t) strlen((const char*) gruessgott2), &len);
+  result = TRI_tolower_utf8((const char*) gruessgott2, (int32_t) strlen((const char*) gruessgott2), &len);
   //printf("\nOriginal: %s\nLower: %s (%d)\n", gruessgott2, result, len);
   l2 = strlen(result);
   CHECK((l1) == l2);
   CHECK(std::string((char*) lower, l1) == std::string(result, l2));
-  TRI_FreeString(TRI_CORE_MEM_ZONE, result);    
+  TRI_FreeString(result);    
 }
 
 SECTION("tst_3") {

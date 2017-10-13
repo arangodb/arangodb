@@ -33,7 +33,7 @@ using namespace arangodb::basics;
 
 /// @brief converts a V8 object to a string
 std::string TRI_ObjectToString(v8::Handle<v8::Value> value) {
-  TRI_Utf8ValueNFC utf8Value(TRI_UNKNOWN_MEM_ZONE, value);
+  TRI_Utf8ValueNFC utf8Value(value);
 
   if (*utf8Value == nullptr) {
     return "";

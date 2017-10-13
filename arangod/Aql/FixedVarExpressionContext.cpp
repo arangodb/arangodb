@@ -45,7 +45,7 @@ AqlValue FixedVarExpressionContext::getVariableValue(Variable const* variable, b
   auto it = _vars.find(variable);
   if (it == _vars.end()) {
     TRI_ASSERT(false);
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
   if (doCopy) {
     mustDestroy = true;

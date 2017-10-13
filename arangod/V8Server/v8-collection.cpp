@@ -228,7 +228,7 @@ static int V8ToVPackNoKeyRevId (v8::Isolate* isolate,
   uint32_t const n = names->Length();
   for (uint32_t i = 0; i < n; ++i) {
     v8::Handle<v8::Value> key = names->Get(i);
-    TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, key);
+    TRI_Utf8ValueNFC str(key);
     if (*str == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
@@ -938,11 +938,12 @@ static int ULVocbaseColCoordinator(std::string const& databaseName,
 
 static void DropVocbaseColCoordinator(
     v8::FunctionCallbackInfo<v8::Value> const& args,
-    arangodb::LogicalCollection* collection) {
+    arangodb::LogicalCollection* collection,
+    bool allowDropSystem) {
   // cppcheck-suppress *
   v8::Isolate* isolate = args.GetIsolate();
 
-  if (collection->isSystem()) {
+  if (collection->isSystem() && !allowDropSystem) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -995,35 +996,35 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   std::string const dbname = collection->dbName();
   std::string const collName = collection->name();
+    
+  bool allowDropSystem = false;
+  double timeout = -1.0;  // forever, unless specified otherwise
+  if (args.Length() > 0) {
+    // options
+    if (args[0]->IsObject()) {
+      TRI_GET_GLOBALS();
+      v8::Handle<v8::Object> optionsObject = args[0].As<v8::Object>();
+      TRI_GET_GLOBAL_STRING(IsSystemKey);
+      if (optionsObject->Has(IsSystemKey)) {
+        allowDropSystem = TRI_ObjectToBoolean(optionsObject->Get(IsSystemKey));
+      }
+      TRI_GET_GLOBAL_STRING(TimeoutKey);
+      if (optionsObject->Has(TimeoutKey)) {
+        timeout = TRI_ObjectToDouble(optionsObject->Get(TimeoutKey));
+      }
+    } else {
+      allowDropSystem = TRI_ObjectToBoolean(args[0]);
+    }
+  }
 
   // If we are a coordinator in a cluster, we have to behave differently:
   if (ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
-    DropVocbaseColCoordinatorEnterprise(args, collection);
+    DropVocbaseColCoordinatorEnterprise(args, collection, allowDropSystem);
 #else
-    DropVocbaseColCoordinator(args, collection);
+    DropVocbaseColCoordinator(args, collection, allowDropSystem);
 #endif
   } else {
-    bool allowDropSystem = false;
-    double timeout = -1.0;  // forever, unless specified otherwise
-    if (args.Length() > 0) {
-      // options
-      if (args[0]->IsObject()) {
-        TRI_GET_GLOBALS();
-        v8::Handle<v8::Object> optionsObject = args[0].As<v8::Object>();
-        TRI_GET_GLOBAL_STRING(IsSystemKey);
-        if (optionsObject->Has(IsSystemKey)) {
-          allowDropSystem = TRI_ObjectToBoolean(optionsObject->Get(IsSystemKey));
-        }
-        TRI_GET_GLOBAL_STRING(TimeoutKey);
-        if (optionsObject->Has(TimeoutKey)) {
-          timeout = TRI_ObjectToDouble(optionsObject->Get(TimeoutKey));
-        }
-      } else {
-        allowDropSystem = TRI_ObjectToBoolean(args[0]);
-      }
-    }
-
     int res = collection->vocbase()->dropCollection(collection, allowDropSystem, timeout);
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot drop collection");
@@ -1124,7 +1125,7 @@ static void JS_SetTheLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
     std::string theLeader;
     if (args.Length() >= 1 && args[0]->IsString()) {
-      TRI_Utf8ValueNFC l(TRI_UNKNOWN_MEM_ZONE, args[0]);
+      TRI_Utf8ValueNFC l(args[0]);
       theLeader = std::string(*l, l.length());
     }
     collection->followers()->setTheLeader(theLeader);
@@ -1180,7 +1181,7 @@ static void JS_GetLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
     theLeader = realCollection->followers()->getLeader();
   }
 
-  v8::Handle<v8::String> res = TRI_V8_STD_STRING2(isolate, theLeader);
+  v8::Handle<v8::String> res = TRI_V8_STD_STRING(isolate, theLeader);
   TRI_V8_RETURN(res);
   TRI_V8_TRY_CATCH_END
 }
@@ -1319,7 +1320,7 @@ static void JS_GetFollowers(v8::FunctionCallbackInfo<v8::Value> const& args) {
     std::shared_ptr<std::vector<ServerID> const> followers = followerInfo->get();
     uint32_t i = 0;
     for (auto const& n : *followers) {
-      list->Set(i++, TRI_V8_STD_STRING(n));
+      list->Set(i++, TRI_V8_STD_STRING(isolate, n));
     }
   }
 
@@ -1402,7 +1403,7 @@ static void JS_NameVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (collectionName.empty()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
-  v8::Handle<v8::Value> result = TRI_V8_STD_STRING(collectionName);
+  v8::Handle<v8::Value> result = TRI_V8_STD_STRING(isolate, collectionName);
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
 }
@@ -1424,7 +1425,7 @@ static void JS_PathVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string const path(collection->getPhysical()->path());
-  v8::Handle<v8::Value> result = TRI_V8_STD_STRING(path);
+  v8::Handle<v8::Value> result = TRI_V8_STD_STRING(isolate, path);
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -1609,7 +1610,7 @@ static int RenameGraphCollections(v8::Isolate* isolate,
                                   std::string const& newName) {
   v8::HandleScope scope(isolate);
 
-  StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  StringBuffer buffer(true);
   buffer.appendText("require('@arangodb/general-graph')._renameCollection(");
   buffer.appendJsonEncoded(oldName.c_str(), oldName.size());
   buffer.appendChar(',');
@@ -1618,8 +1619,8 @@ static int RenameGraphCollections(v8::Isolate* isolate,
 
   TRI_ExecuteJavaScriptString(
       isolate, isolate->GetCurrentContext(),
-      TRI_V8_ASCII_PAIR_STRING(buffer.c_str(), buffer.length()),
-      TRI_V8_ASCII_STRING("collection rename"), false);
+      TRI_V8_ASCII_PAIR_STRING(isolate, buffer.c_str(), buffer.length()),
+      TRI_V8_ASCII_STRING(isolate, "collection rename"), false);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2408,7 +2409,7 @@ static void JS_RevisionVocbaseCol(
   }
 
   std::string ridString = TRI_RidToString(revisionId);
-  TRI_V8_RETURN(TRI_V8_STD_STRING(ridString));
+  TRI_V8_RETURN(TRI_V8_STD_STRING(isolate, ridString));
   TRI_V8_TRY_CATCH_END
 }
 
@@ -3130,45 +3131,45 @@ static void JS_CompletionsVocbase(
   v8::Handle<v8::Array> result = v8::Array::New(isolate);
   // add collection names
   for (auto& name : names) {
-    result->Set(j++, TRI_V8_STD_STRING(name));
+    result->Set(j++, TRI_V8_STD_STRING(isolate, name));
   }
 
   // add function names. these are hard coded
-  result->Set(j++, TRI_V8_ASCII_STRING("_changeMode()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_collection()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_collections()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_create()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_createDatabase()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_createDocumentCollection()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_createEdgeCollection()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_createView()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_createStatement()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_currentWalFiles()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_document()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_drop()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_dropDatabase()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_dropView()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_engine()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_engineStats()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_executeTransaction()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_exists()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_id"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_isSystem()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_databases()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_engine()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_name()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_path()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_pregelStart()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_pregelStatus()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_pregelStop()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_query()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_remove()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_replace()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_update()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_useDatabase()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_version()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_view()"));
-  result->Set(j++, TRI_V8_ASCII_STRING("_views()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_changeMode()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_collection()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_collections()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_create()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_createDatabase()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_createDocumentCollection()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_createEdgeCollection()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_createView()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_createStatement()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_currentWalFiles()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_document()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_drop()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_dropDatabase()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_dropView()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_engine()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_engineStats()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_executeTransaction()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_exists()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_id"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_isSystem()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_databases()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_engine()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_name()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_path()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStart()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStatus()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_pregelStop()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_query()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_remove()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_replace()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_update()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_useDatabase()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_version()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_view()"));
+  result->Set(j++, TRI_V8_ASCII_STRING(isolate, "_views()"));
 
   TRI_V8_RETURN(result);
   TRI_V8_TRY_CATCH_END
@@ -3337,115 +3338,115 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context,
                            TRI_vocbase_t* vocbase, TRI_v8_global_t* v8g,
                            v8::Isolate* isolate,
                            v8::Handle<v8::ObjectTemplate> ArangoDBNS) {
-  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_changeMode"),
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING(isolate, "_changeMode"),
                        JS_ChangeOperationModeVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_collection"),
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING(isolate, "_collection"),
                        JS_CollectionVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_collections"),
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING(isolate, "_collections"),
                        JS_CollectionsVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_COMPLETIONS"),
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING(isolate, "_COMPLETIONS"),
                        JS_CompletionsVocbase, true);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_document"),
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING(isolate, "_document"),
                        JS_DocumentVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_exists"),
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING(isolate, "_exists"),
                        JS_ExistsVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_remove"),
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING(isolate, "_remove"),
                        JS_RemoveVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_replace"),
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING(isolate, "_replace"),
                        JS_ReplaceVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_update"),
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING(isolate, "_update"),
                        JS_UpdateVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_pregelStart"),
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING(isolate, "_pregelStart"),
                        JS_PregelStart);
   TRI_AddMethodVocbase(isolate, ArangoDBNS,
-                       TRI_V8_ASCII_STRING("_pregelStatus"), JS_PregelStatus);
+                       TRI_V8_ASCII_STRING(isolate, "_pregelStatus"), JS_PregelStatus);
   TRI_AddMethodVocbase(isolate, ArangoDBNS,
-                       TRI_V8_ASCII_STRING("_pregelCancel"), JS_PregelCancel);
+                       TRI_V8_ASCII_STRING(isolate, "_pregelCancel"), JS_PregelCancel);
   TRI_AddMethodVocbase(isolate, ArangoDBNS,
-                       TRI_V8_ASCII_STRING("_pregelAqlResult"),
+                       TRI_V8_ASCII_STRING(isolate, "_pregelAqlResult"),
                        JS_PregelAQLResult);
 
   // an internal API used for storing a document without wrapping a V8
   // collection object
-  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("__save"),
+  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING(isolate, "__save"),
                        JS_SaveVocbase, true);
 
   v8::Handle<v8::ObjectTemplate> rt;
   v8::Handle<v8::FunctionTemplate> ft;
 
   ft = v8::FunctionTemplate::New(isolate);
-  ft->SetClassName(TRI_V8_ASCII_STRING("ArangoCollection"));
+  ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoCollection"));
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(3);
 
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("count"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "count"),
                        JS_CountVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("document"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "document"),
                        JS_DocumentVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("_binaryDocument"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_binaryDocument"),
                        JS_BinaryDocumentVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("drop"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "drop"),
                        JS_DropVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("exists"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "exists"),
                        JS_ExistsVocbaseVPack);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("figures"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "figures"),
                        JS_FiguresVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("insert"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "insert"),
                        JS_InsertVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("_binaryInsert"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "_binaryInsert"),
                        JS_BinaryInsertVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("setTheLeader"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "setTheLeader"),
                        JS_SetTheLeader, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getLeader"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getLeader"),
                        JS_GetLeader, true);
 #ifdef DEBUG_SYNC_REPLICATION
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("addFollower"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "addFollower"),
                        JS_AddFollower, true);
 #endif
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("removeFollower"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "removeFollower"),
                        JS_RemoveFollower, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getFollowers"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getFollowers"),
                        JS_GetFollowers, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("load"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "load"),
                        JS_LoadVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("name"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "name"),
                        JS_NameVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("path"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "path"),
                        JS_PathVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("planId"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "planId"),
                        JS_PlanIdVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("properties"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "properties"),
                        JS_PropertiesVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("remove"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "remove"),
                        JS_RemoveVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("revision"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "revision"),
                        JS_RevisionVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("rename"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "rename"),
                        JS_RenameVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("replace"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "replace"),
                        JS_ReplaceVocbaseCol);
   TRI_AddMethodVocbase(
-      isolate, rt, TRI_V8_ASCII_STRING("save"),
+      isolate, rt, TRI_V8_ASCII_STRING(isolate, "save"),
       JS_InsertVocbaseCol);  // note: save is now an alias for insert
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("status"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "status"),
                        JS_StatusVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("TRUNCATE"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "TRUNCATE"),
                        JS_TruncateVocbaseCol, true);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("type"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "type"),
                        JS_TypeVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("unload"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "unload"),
                        JS_UnloadVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("update"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "update"),
                        JS_UpdateVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("version"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "version"),
                        JS_VersionVocbaseCol);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("loadIndexesIntoMemory"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "loadIndexesIntoMemory"),
                        JS_WarmupVocbaseCol);
 
   TRI_InitV8IndexCollection(isolate, rt);
 
   v8g->VocbaseColTempl.Reset(isolate, rt);
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("ArangoCollection"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "ArangoCollection"),
                                ft->GetFunction());
 }

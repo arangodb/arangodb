@@ -47,11 +47,6 @@ statistics = true
 @DEFINEUID@uid = arangodb
 
 
-[scheduler]
-# number of threads used for I/O, use 0 to make arangod determine
-# the number of threads automatically
-# threads = 0
-
 [javascript]
 startup-directory = @PKGDATADIR@/js
 app-path = @LOCALSTATEDIR@/lib/arangodb3-apps

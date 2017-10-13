@@ -1,4 +1,3 @@
-
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
@@ -25,10 +24,11 @@
 #ifndef ARANGOD_INDEXES_INDEX_H
 #define ARANGOD_INDEXES_INDEX_H 1
 
-#include "Basics/AttributeNameParser.h"
 #include "Basics/Common.h"
+#include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -74,6 +74,7 @@ class Index {
 
   Index(TRI_idx_iid_t, LogicalCollection*, arangodb::velocypack::Slice const&);
 
+  /// TODO: can we remove this?
   explicit Index(arangodb::velocypack::Slice const&);
 
   virtual ~Index();
@@ -248,14 +249,14 @@ class Index {
   virtual void toVelocyPackFigures(arangodb::velocypack::Builder&) const;
   std::shared_ptr<arangodb::velocypack::Builder> toVelocyPackFigures() const;
 
-  virtual Result insert(transaction::Methods*, TRI_voc_rid_t revisionId,
+  virtual Result insert(transaction::Methods*, LocalDocumentId const& documentId,
                      arangodb::velocypack::Slice const&, bool isRollback) = 0;
-  virtual Result remove(transaction::Methods*, TRI_voc_rid_t revisionId,
+  virtual Result remove(transaction::Methods*, LocalDocumentId const& documentId,
                      arangodb::velocypack::Slice const&, bool isRollback) = 0;
 
   virtual void batchInsert(
       transaction::Methods*,
-      std::vector<std::pair<TRI_voc_rid_t, arangodb::velocypack::Slice>> const&,
+      std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const&,
       std::shared_ptr<arangodb::basics::LocalTaskQueue> queue);
 
   virtual void load() = 0;

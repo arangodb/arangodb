@@ -1,82 +1,81 @@
-/*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertTrue, assertFalse, assertNotNull */
+/* jshint globalstrict:false, strict:false */
+/* global assertEqual, assertTrue, assertFalse, assertNotNull */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test the document interface
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
-/// @author Dr. Frank Celler
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test the document interface
+// /
+// / @file
+// /
+// / DISCLAIMER
+// /
+// / Copyright 2010-2012 triagens GmbH, Cologne, Germany
+// /
+// / Licensed under the Apache License, Version 2.0 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     http://www.apache.org/licenses/LICENSE-2.0
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// /
+// / @author Dr. Frank Celler
+// / @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+// //////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var arangodb = require("@arangodb");
+var jsunity = require('jsunity');
+var arangodb = require('@arangodb');
 var db = arangodb.db;
-var internal = require("internal");
+var internal = require('internal');
 var wait = internal.wait;
-var print = internal.print;
 var ArangoCollection = arangodb.ArangoCollection;
 
 var mmfilesEngine = false;
-if (db._engine().name === "mmfiles") {
+if (db._engine().name === 'mmfiles') {
   mmfilesEngine = true;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite: buckets
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief test suite: buckets
+// //////////////////////////////////////////////////////////////////////////////
 
 function EdgeIndexBucketsSuite () {
-  var vn = "UnitTestsCollectionVertex";
+  var vn = 'UnitTestsCollectionVertex';
   var vertex = null;
 
-  var en1 = "UnitTestsCollectionEdge1";
+  var en1 = 'UnitTestsCollectionEdge1';
   var edge1 = null;
-  var en2 = "UnitTestsCollectionEdge2";
+  var en2 = 'UnitTestsCollectionEdge2';
   var edge2 = null;
-  var en3 = "UnitTestsCollectionEdge3";
+  var en3 = 'UnitTestsCollectionEdge3';
   var edge3 = null;
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       db._drop(en1);
       db._drop(en2);
       db._drop(en3);
 
       var options = {};
-      if (mmfilesEngine){
+      if (mmfilesEngine) {
         options = { indexBuckets: 1 };
       }
       edge1 = db._createEdgeCollection(en1, options);
-      if (mmfilesEngine){
+      if (mmfilesEngine) {
         options = { indexBuckets: 16 };
       }
       edge2 = db._createEdgeCollection(en2, options);
-      if (mmfilesEngine){
+      if (mmfilesEngine) {
         options = { indexBuckets: 128 };
       }
       edge3 = db._createEdgeCollection(en3, options);
@@ -85,31 +84,34 @@ function EdgeIndexBucketsSuite () {
       vertex = db._create(vn);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       edge1.drop();
       edge2.drop();
       edge3.drop();
       edge1 = null;
       edge2 = null;
       edge3 = null;
+      vertex.drop();
       wait(0.0);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare results with different buckets
-////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief compare results with different buckets
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testSaveEdgeBuckets : function () {
-      var i, j, n = 50;
+    testSaveEdgeBuckets: function () {
+      var i;
+      var j;
+      var n = 50;
       for (i = 0; i < n; ++i) {
         for (j = 0; j < n; ++j) {
-          edge1.save(vn + "/v" + i, vn + "/v" + j, { });
-          edge2.save(vn + "/v" + i, vn + "/v" + j, { });
-          edge3.save(vn + "/v" + i, vn + "/v" + j, { });
+          edge1.save(vn + '/v' + i, vn + '/v' + j, { });
+          edge2.save(vn + '/v' + i, vn + '/v' + j, { });
+          edge3.save(vn + '/v' + i, vn + '/v' + j, { });
         }
       }
 
@@ -133,32 +135,34 @@ function EdgeIndexBucketsSuite () {
       edge3 = db._collection(en3);
 
       for (i = 0; i < n; ++i) {
-        assertEqual(n, edge1.outEdges(vn + "/v" + i).length);
-        assertEqual(n, edge2.outEdges(vn + "/v" + i).length);
-        assertEqual(n, edge3.outEdges(vn + "/v" + i).length);
+        assertEqual(n, edge1.outEdges(vn + '/v' + i).length);
+        assertEqual(n, edge2.outEdges(vn + '/v' + i).length);
+        assertEqual(n, edge3.outEdges(vn + '/v' + i).length);
 
-        assertEqual(n, edge1.inEdges(vn + "/v" + i).length);
-        assertEqual(n, edge2.inEdges(vn + "/v" + i).length);
-        assertEqual(n, edge3.inEdges(vn + "/v" + i).length);
+        assertEqual(n, edge1.inEdges(vn + '/v' + i).length);
+        assertEqual(n, edge2.inEdges(vn + '/v' + i).length);
+        assertEqual(n, edge3.inEdges(vn + '/v' + i).length);
 
-        assertEqual((n * 2) - 1, edge1.edges(vn + "/v" + i).length);
-        assertEqual((n * 2) - 1, edge2.edges(vn + "/v" + i).length);
-        assertEqual((n * 2) - 1, edge3.edges(vn + "/v" + i).length);
-      } 
+        assertEqual((n * 2) - 1, edge1.edges(vn + '/v' + i).length);
+        assertEqual((n * 2) - 1, edge2.edges(vn + '/v' + i).length);
+        assertEqual((n * 2) - 1, edge3.edges(vn + '/v' + i).length);
+      }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief compare results with different buckets
-////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief compare results with different buckets
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testRemoveEdgeBuckets : function () {
-      var i, j, n = 40;
+    testRemoveEdgeBuckets: function () {
+      var i;
+      var j;
+      var n = 40;
       for (i = 0; i < n; ++i) {
         for (j = 0; j < n; ++j) {
-          edge1.save(vn + "/v" + i, vn + "/v" + j, { _key: i + "-" + j });
-          edge2.save(vn + "/v" + i, vn + "/v" + j, { _key: i + "-" + j });
-          edge3.save(vn + "/v" + i, vn + "/v" + j, { _key: i + "-" + j });
-        } 
+          edge1.save(vn + '/v' + i, vn + '/v' + j, { _key: i + '-' + j });
+          edge2.save(vn + '/v' + i, vn + '/v' + j, { _key: i + '-' + j });
+          edge3.save(vn + '/v' + i, vn + '/v' + j, { _key: i + '-' + j });
+        }
       }
 
       // remove a few random documents
@@ -188,7 +192,7 @@ function EdgeIndexBucketsSuite () {
       edge2 = db._collection(en2);
       edge3 = db._collection(en3);
 
-      edge1.toArray().forEach(function(doc) {
+      edge1.toArray().forEach(function (doc) {
         var from = doc._from;
         var to = doc._to;
         var ref;
@@ -214,12 +218,11 @@ function EdgeIndexBucketsSuite () {
   };
 }
 
-
 function EdgeIndexSuite () {
-  var vn = "UnitTestsCollectionVertex";
+  var vn = 'UnitTestsCollectionVertex';
   var vertex = null;
 
-  var en = "UnitTestsCollectionEdge";
+  var en = 'UnitTestsCollectionEdge';
   var edge = null;
 
   var v1 = null;
@@ -227,26 +230,26 @@ function EdgeIndexSuite () {
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set up
-////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief set up
+    // //////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUp: function () {
       db._drop(en);
       edge = db._createEdgeCollection(en);
 
       db._drop(vn);
       vertex = db._create(vn);
 
-      v1 = vertex.save({ a : 1 });
-      v2 = vertex.save({ a : 2 });
+      v1 = vertex.save({ a: 1 });
+      v2 = vertex.save({ a: 2 });
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tear down
-////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief tear down
+    // //////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDown: function () {
       edge.drop();
       vertex.drop();
       edge = null;
@@ -254,77 +257,84 @@ function EdgeIndexSuite () {
       wait(0.0);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test batch size limit
-////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test batch size limit
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testIndexBatchsizeLimit : function () {
-      [20, 900, 1000, 1100, 2000].forEach( function(n){
+    testIndexBatchsizeLimit: function () {
+      [20, 900, 1000, 1100, 2000].forEach(function (n) {
         var toKeys = [];
         for (var i = 0; i < n; ++i) {
-            var to = "b" + n + "/"+i;
-            edge.insert({_from : "a/" + n, _to : to});
-            toKeys.push(to);
+          var to = 'b' + n + '/' + i;
+          edge.insert({
+            _from: 'a/' + n,
+            _to: to
+          });
+          toKeys.push(to);
         }
 
-        assertEqual(n,edge.byExample({ _from : "a/" + n }).toArray().length, "compare 1");
-        assertEqual(n,edge.byExample({ _from : "a/" + n }).toArray().length, "compare 2");
-        var rv = edge.byExample({ _from : "a/" + n }).toArray();
-        assertEqual(n,rv.length, "compare 3");
+        assertEqual(n, edge.byExample({
+          _from: 'a/' + n
+        }).toArray().length, 'compare 1');
 
-        //assert equal values
-        if(n <= 1001){
-            var keys = rv.map(function(x){ return x._to; });
-            keys.sort();
-            toKeys.sort();
-            keys.forEach(function(x,i){
-              assertEqual(x,toKeys[i], "compare exact values");
-            });
+        assertEqual(n, edge.byExample({
+          _from: 'a/' + n
+        }).toArray().length, 'compare 2');
+
+        var rv = edge.byExample({ _from: 'a/' + n }).toArray();
+        assertEqual(n, rv.length, 'compare 3');
+
+        // assert equal values
+        if (n <= 1001) {
+          var keys = rv.map(function (x) { return x._to; });
+          keys.sort();
+          toKeys.sort();
+          keys.forEach(function (x, i) {
+            assertEqual(x, toKeys[i], 'compare exact values');
+          });
         }
-
       });
     },
 
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test index presence
+    // //////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index presence
-////////////////////////////////////////////////////////////////////////////////
-
-    testIndexPresence : function () {
+    testIndexPresence: function () {
       var indexes = edge.getIndexes();
       assertEqual(2, indexes.length);
-      assertEqual("edge", indexes[1].type);
-      assertEqual([ "_from", "_to" ], indexes[1].fields);
+      assertEqual('edge', indexes[1].type);
+      assertEqual([ '_from', '_to' ], indexes[1].fields);
       assertFalse(indexes[1].unique);
       assertFalse(indexes[1].sparse);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index selectivity
-////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test index selectivity
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testIndexSelectivityEmpty : function () {
+    testIndexSelectivityEmpty: function () {
       var edgeIndex = edge.getIndexes()[1];
-      assertTrue(edgeIndex.hasOwnProperty("selectivityEstimate"));
+      assertTrue(edgeIndex.hasOwnProperty('selectivityEstimate'));
       assertEqual(1, edgeIndex.selectivityEstimate);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index selectivity
-////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test index selectivity
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testIndexSelectivityOneDoc : function () {
+    testIndexSelectivityOneDoc: function () {
       edge.save(v1, v2, { });
       var edgeIndex = edge.getIndexes()[1];
-      assertTrue(edgeIndex.hasOwnProperty("selectivityEstimate"));
+      assertTrue(edgeIndex.hasOwnProperty('selectivityEstimate'));
       assertEqual(1, edgeIndex.selectivityEstimate);
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index selectivity
-////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test index selectivity
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testIndexSelectivityDuplicateDocs : function () {
+    testIndexSelectivityDuplicateDocs: function () {
       var i, c, edgeIndex, expectedSelectivity;
 
       for (i = 0; i < 1000; ++i) {
@@ -348,57 +358,54 @@ function EdgeIndexSuite () {
         expectedSelectivity = (c === 0 ? 1 : 1 / c);
         // allow for some floating-point deviations
         assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
-      } 
+      }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index selectivity
-////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test index selectivity
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testIndexSelectivityUniqueDocs : function () {
+    testIndexSelectivityUniqueDocs: function () {
       for (var i = 0; i < 1000; ++i) {
-        edge.save(vn + "/from" + i, vn + "/to" + i, { });
+        edge.save(vn + '/from' + i, vn + '/to' + i, { });
         var edgeIndex = edge.getIndexes()[1];
         assertTrue(1, edgeIndex.selectivityEstimate);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index selectivity
-////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test index selectivity
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testIndexSelectivityUniqueDocsFrom : function () {
+    testIndexSelectivityUniqueDocsFrom: function () {
       for (var i = 0; i < 1000; ++i) {
-        edge.save(vn + "/from" + i, vn + "/1", { });
+        edge.save(vn + '/from' + i, vn + '/1', { });
         var edgeIndex = edge.getIndexes()[1];
         var expectedSelectivity = (1 + (1 / (i + 1))) * 0.5;
         assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
       }
     },
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index selectivity
-////////////////////////////////////////////////////////////////////////////////
+    // //////////////////////////////////////////////////////////////////////////////
+    // / @brief test index selectivity
+    // //////////////////////////////////////////////////////////////////////////////
 
-    testIndexSelectivityRepeatingDocs : function () {
+    testIndexSelectivityRepeatingDocs: function () {
       for (var i = 0; i < 1000; ++i) {
         if (i > 0) {
           var edgeIndex = edge.getIndexes()[1];
           var expectedSelectivity = (1 + (Math.min(i, 20) / i)) * 0.5;
           assertTrue(Math.abs(expectedSelectivity - edgeIndex.selectivityEstimate) <= 0.001);
         }
-        edge.save(vn + "/from" + (i % 20), vn + "/to" + i, { });
+        edge.save(vn + '/from' + (i % 20), vn + '/to' + i, { });
       }
     }
-
-
   };
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief executes the test suite
+// //////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(EdgeIndexSuite);
 jsunity.run(EdgeIndexBucketsSuite);

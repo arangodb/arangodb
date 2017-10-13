@@ -9,17 +9,22 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 cd ${DIR}/..
 
+BUILD_CONFIGURATION="standard"
+
 EP=""
 for i in $@; do
     if test "$i" == "--enterprise"; then
         EP="EP"
+    fi
+    if test "$i" == "--maintainer"; then
+        BUILD_CONFIGURATION="maintainer"
     fi
 done
 
 export CPU_CORES=$(grep -c ^processor /proc/cpuinfo)
 
 ./Installation/Jenkins/build.sh \
-    standard \
+    ${BUILD_CONFIGURATION} \
     --rpath \
     --parallel ${CPU_CORES} \
     --package DEB \

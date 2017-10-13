@@ -27,7 +27,6 @@
 #include "Basics/Common.h"
 
 #include "Basics/Mutex.h"
-#include "Basics/tri-strings.h"
 #include "Logger/LogLevel.h"
 
 namespace arangodb {
@@ -40,13 +39,11 @@ class LogAppender {
 
   static void addAppender(std::string const& definition,
                           std::string const& contentFilter = "");
-  static void addTtyAppender();
 
   static std::pair<std::shared_ptr<LogAppender>, LogTopic*> buildAppender(
       std::string const& definition, std::string const& contentFilter);
 
   static void log(LogMessage*);
-  static void writeStderr(LogLevel, std::string const&);
 
   static void reopen();
   static void shutdown();
@@ -56,19 +53,18 @@ class LogAppender {
   virtual ~LogAppender() {}
 
  public:
-  virtual bool logMessage(LogLevel, std::string const& message,
+  virtual void logMessage(LogLevel, std::string const& message,
                           size_t offset) = 0;
 
   virtual std::string details() = 0;
 
  public:
-  bool logMessage(LogLevel level, std::string const& message) {
-    return logMessage(level, message, 0);
+  void logMessage(LogLevel level, std::string const& message) {
+    logMessage(level, message, 0);
   }
 
   bool checkContent(std::string const& message) {
-    return _filter.empty() ||
-           TRI_IsContainedString(message.c_str(), _filter.c_str());
+    return _filter.empty() || (message.find(_filter) != std::string::npos);
   }
 
  protected:
@@ -76,7 +72,6 @@ class LogAppender {
 
  private:
   static Mutex _appendersLock;
-  static std::unique_ptr<LogAppender> _ttyAppender;
   static std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>
       _topics2appenders;
   static std::map<std::pair<std::string, std::string>,

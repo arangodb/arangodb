@@ -41,12 +41,6 @@ using namespace std;
 // --SECTION--                                                    private macros
 // -----------------------------------------------------------------------------
 
-#define INIT_MULTI \
-  arangodb::basics::AssocMulti<void, void*, uint32_t, false> a1( \
-      HashKey, HashElement, IsEqualKeyElement, IsEqualElementElement, IsEqualElementElementByKey);
-
-#define DESTROY_MULTI ;
-  
 #define ELEMENT(name, v, k) \
   data_container_t name; \
   name.key   = k; \
@@ -59,43 +53,55 @@ struct data_container_t {
   data_container_t (int key, int value) : value(value), key(key) {};
 };
 
-static uint64_t HashKey (void* userData, void const* e) {
-  int const* key = (int const*) e;
-
-  return fasthash64(key, sizeof(int), 0x12345678);
-}
-
-static uint64_t HashElement (void* userData, void const* e, bool byKey) {
-  data_container_t const* element = (data_container_t const*) e;
-
-  if (byKey) {
-    return fasthash64(&element->key, sizeof(element->key), 0x12345678);
+struct AssocMultiTestHelper {
+  static inline uint64_t HashKey(void* userData, void const* e) {
+    int const* key = (int const*) e;
+    return fasthash64(key, sizeof(int), 0x12345678);
   }
-  else {
-    return fasthash64(&element->value, sizeof(element->value), 0x12345678);
+
+  static inline uint64_t HashElement(void* userData,
+                                     void const* e, 
+                                     bool byKey) {
+    data_container_t const* element = (data_container_t const*) e;
+
+    if (byKey) {
+      return fasthash64(&element->key, sizeof(element->key), 0x12345678);
+    }
+    else {
+      return fasthash64(&element->value, sizeof(element->value), 0x12345678);
+    }
   }
-}
 
-static bool IsEqualKeyElement (void* userData, void const* k, void const* r) {
-  int const* key = (int const*) k;
-  data_container_t const* element = (data_container_t const*) r;
+  bool IsEqualKeyElement(void* userData,
+                         void const* k, 
+                         void const* r) const {
+    int const* key = (int const*) k;
+    data_container_t const* element = (data_container_t const*) r;
 
-  return *key == element->key;
-}
+    return *key == element->key;
+  }
 
-static bool IsEqualElementElement (void* userData, void const* l, void const* r) {
-  data_container_t const* left = (data_container_t const*) l;
-  data_container_t const* right = (data_container_t const*) r;
+  bool IsEqualElementElement(void* userData,
+                             void const* l, 
+                             void const* r) const {
+    data_container_t const* left = (data_container_t const*) l;
+    data_container_t const* right = (data_container_t const*) r;
 
-  return left->value == right->value;
-}
+    return left->value == right->value;
+  }
 
-static bool IsEqualElementElementByKey (void* userData, void const* l, void const* r) {
-  data_container_t const* left = (data_container_t const*) l;
-  data_container_t const* right = (data_container_t const*) r;
+  bool IsEqualElementElementByKey(void* userData,
+                                  void const* l, 
+                                  void const* r) const {
+    data_container_t const* left = (data_container_t const*) l;
+    data_container_t const* right = (data_container_t const*) r;
 
-  return left->key == right->key;
-}
+    return left->key == right->key;
+  }
+};
+
+#define INIT_MULTI \
+  arangodb::basics::AssocMulti<void, void*, uint32_t, false, AssocMultiTestHelper> a1((AssocMultiTestHelper()));
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private constants
@@ -118,8 +124,6 @@ SECTION("tst_init") {
   INIT_MULTI
 
   CHECK((uint32_t) 0 == a1.size());
-
-  DESTROY_MULTI
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,8 +143,6 @@ SECTION("tst_insert_few") {
   CHECK(&e1 == a1.remove(nullptr, &e1));
   CHECK((uint32_t) 0 == a1.size());
   CHECK(r == a1.lookup(nullptr, &e1));
-
-  DESTROY_MULTI
 }
 
 // Note MODULUS must be a divisor of NUMBER_OF_ELEMENTS
@@ -262,8 +264,6 @@ SECTION("tst_insert_delete_many") {
   }
   v.clear();
   delete one_more;
-
-  DESTROY_MULTI
 }
 }
 

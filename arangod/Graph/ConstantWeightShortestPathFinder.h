@@ -27,6 +27,7 @@
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/ShortestPathFinder.h"
+#include "Graph/EdgeDocumentToken.h"
 
 namespace arangodb {
 
@@ -43,17 +44,16 @@ class Slice;
 
 namespace graph {
 
-struct EdgeDocumentToken;
 struct ShortestPathOptions;
 
 class ConstantWeightShortestPathFinder : public ShortestPathFinder {
  private:
   struct PathSnippet {
     arangodb::StringRef const _pred;
-    std::unique_ptr<graph::EdgeDocumentToken> _path;
+    graph::EdgeDocumentToken _path;
 
     PathSnippet(arangodb::StringRef& pred,
-                std::unique_ptr<graph::EdgeDocumentToken>&& path);
+                graph::EdgeDocumentToken&& path);
   };
 
   typedef std::deque<arangodb::StringRef> Closure;
@@ -91,7 +91,7 @@ class ConstantWeightShortestPathFinder : public ShortestPathFinder {
   Closure _nextClosure;
 
   std::vector<arangodb::StringRef> _neighbors;
-  std::vector<std::unique_ptr<graph::EdgeDocumentToken>> _edges;
+  std::vector<graph::EdgeDocumentToken> _edges;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief The options to modify this shortest path computation

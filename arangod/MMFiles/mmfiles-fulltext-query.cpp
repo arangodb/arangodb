@@ -43,7 +43,7 @@ static TRI_fulltext_query_operation_e ParseOperation(char c) {
 static char* NormalizeWord(char const* word, size_t wordLength) {
   // normalize string
   size_t outLength;
-  char* copy = TRI_normalize_utf8_to_NFC(TRI_UNKNOWN_MEM_ZONE, word, wordLength,
+  char* copy = TRI_normalize_utf8_to_NFC(word, wordLength,
                                          &outLength);
 
   if (copy == nullptr) {
@@ -52,9 +52,9 @@ static char* NormalizeWord(char const* word, size_t wordLength) {
 
   // lower case string
   int32_t outLength2;
-  char* copy2 = TRI_tolower_utf8(TRI_UNKNOWN_MEM_ZONE, copy, (int32_t)outLength,
+  char* copy2 = TRI_tolower_utf8(copy, (int32_t)outLength,
                                  &outLength2);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy);
+  TRI_Free(copy);
 
   if (copy2 == nullptr) {
     return nullptr;
@@ -64,16 +64,16 @@ static char* NormalizeWord(char const* word, size_t wordLength) {
   ptrdiff_t prefixLength = prefixEnd - copy2;
 
   char* copy3 = static_cast<char*>(TRI_Allocate(
-      TRI_UNKNOWN_MEM_ZONE, sizeof(char) * ((size_t)prefixLength + 1)));
+      sizeof(char) * ((size_t)prefixLength + 1)));
 
   if (copy3 == nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy2);
+    TRI_Free(copy2);
     return nullptr;
   }
 
   memcpy(copy3, copy2, ((size_t)prefixLength) * sizeof(char));
   copy3[prefixLength] = '\0';
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy2);
+  TRI_Free(copy2);
 
   return copy3;
 }
@@ -82,7 +82,7 @@ static char* NormalizeWord(char const* word, size_t wordLength) {
 TRI_fulltext_query_t* TRI_CreateQueryMMFilesFulltextIndex(size_t numWords,
                                                    size_t maxResults) {
   TRI_fulltext_query_t* query = static_cast<TRI_fulltext_query_t*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_query_t)));
+      TRI_Allocate(sizeof(TRI_fulltext_query_t)));
 
   if (query == nullptr) {
     return nullptr;
@@ -90,33 +90,31 @@ TRI_fulltext_query_t* TRI_CreateQueryMMFilesFulltextIndex(size_t numWords,
 
   // fill word vector with NULLs
   query->_words = static_cast<char**>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(char*) * numWords));
+      TRI_Allocate(sizeof(char*) * numWords));
 
   if (query->_words == nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, query);
+    TRI_Free(query);
     return nullptr;
   }
 
   memset(query->_words, 0, sizeof(char*) * numWords);
 
   query->_matches = static_cast<TRI_fulltext_query_match_e*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                   sizeof(TRI_fulltext_query_match_e) * numWords));
+      TRI_Allocate(                   sizeof(TRI_fulltext_query_match_e) * numWords));
 
   if (query->_matches == nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, query->_words);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, query);
+    TRI_Free(query->_words);
+    TRI_Free(query);
     return nullptr;
   }
 
   query->_operations = static_cast<TRI_fulltext_query_operation_e*>(
-      TRI_Allocate(TRI_UNKNOWN_MEM_ZONE,
-                   sizeof(TRI_fulltext_query_operation_e) * numWords));
+      TRI_Allocate(                   sizeof(TRI_fulltext_query_operation_e) * numWords));
 
   if (query->_operations == nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, query->_matches);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, query->_words);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, query);
+    TRI_Free(query->_matches);
+    TRI_Free(query->_words);
+    TRI_Free(query);
     return nullptr;
   }
 
@@ -128,19 +126,19 @@ TRI_fulltext_query_t* TRI_CreateQueryMMFilesFulltextIndex(size_t numWords,
 
 /// @brief free a fulltext query
 void TRI_FreeQueryMMFilesFulltextIndex(TRI_fulltext_query_t* query) {
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, query->_operations);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, query->_matches);
+  TRI_Free(query->_operations);
+  TRI_Free(query->_matches);
 
   for (size_t i = 0; i < query->_numWords; ++i) {
     char* word = query->_words[i];
 
     if (word != nullptr) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, word);
+      TRI_Free(word);
     }
   }
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, query->_words);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, query);
+  TRI_Free(query->_words);
+  TRI_Free(query);
 }
 
 /// @brief create a fulltext query from a query string

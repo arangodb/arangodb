@@ -82,7 +82,7 @@ void RestExplainHandler::explainQuery() {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER, msg);
   };
 
-  if (!body.isObject() || body.length() < 1 || body.length() > 3) {
+  if (!body.isObject()) {
     badParamError(
         "expected usage: AQL_EXPLAIN(<queryString>, <bindVars>, "
         "<options>)");

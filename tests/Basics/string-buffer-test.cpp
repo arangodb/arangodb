@@ -86,7 +86,7 @@ SECTION("tst_str_append") {
   size_t l1, l2;
 
   TRI_string_buffer_t sb;
-  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+  TRI_InitStringBuffer(&sb);
 
   TRI_AppendStringStringBuffer(&sb, STR);
   TRI_AppendStringStringBuffer(&sb, STR);
@@ -122,7 +122,7 @@ SECTION("tst_char_append") {
   size_t l1, l2, i;
 
   TRI_string_buffer_t sb;
-  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+  TRI_InitStringBuffer(&sb);
   
   for (i = 0;  i != 20;  ++i) {
     TRI_AppendCharStringBuffer(&sb, 'a');
@@ -146,8 +146,8 @@ SECTION("tst_swp") {
   size_t l1, l2, i;
 
   TRI_string_buffer_t sb1, sb2;
-  TRI_InitStringBuffer(&sb1, TRI_CORE_MEM_ZONE);
-  TRI_InitStringBuffer(&sb2, TRI_CORE_MEM_ZONE);
+  TRI_InitStringBuffer(&sb1);
+  TRI_InitStringBuffer(&sb2);
   
   for (i = 0;  i != 20;  ++i) {
     TRI_AppendCharStringBuffer(&sb1, 'a');
@@ -177,7 +177,7 @@ SECTION("tst_begin_end_empty_clear") {
   const char * ptr;
 
   TRI_string_buffer_t sb;
-  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+  TRI_InitStringBuffer(&sb);
   
   TRI_AppendStringStringBuffer(&sb, STR);
   
@@ -207,8 +207,8 @@ SECTION("tst_cpy") {
   size_t l1, i;
 
   TRI_string_buffer_t sb1, sb2;
-  TRI_InitStringBuffer(&sb1, TRI_CORE_MEM_ZONE);
-  TRI_InitStringBuffer(&sb2, TRI_CORE_MEM_ZONE);
+  TRI_InitStringBuffer(&sb1);
+  TRI_InitStringBuffer(&sb2);
   
   for (i = 0;  i != 20;  ++i) {
     TRI_AppendCharStringBuffer(&sb1, 'a');
@@ -237,7 +237,7 @@ SECTION("tst_erase_frnt") {
   size_t l;
 
   TRI_string_buffer_t sb;
-  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+  TRI_InitStringBuffer(&sb);
   TRI_AppendStringStringBuffer(&sb, Z_2_T);
   TRI_EraseFrontStringBuffer(&sb, 5);
   
@@ -263,7 +263,7 @@ SECTION("tst_erase_frnt2") {
   size_t l;
 
   TRI_string_buffer_t sb;
-  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+  TRI_InitStringBuffer(&sb);
   TRI_AppendStringStringBuffer(&sb, "abcdef");
   TRI_EraseFrontStringBuffer(&sb, 5);
 
@@ -293,7 +293,7 @@ SECTION("tst_erase_frnt3") {
   size_t l, i;
 
   TRI_string_buffer_t sb;
-  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+  TRI_InitStringBuffer(&sb);
   for (i = 0;  i != 500;  ++i) {
     TRI_AppendCharStringBuffer(&sb, 'a');
   }
@@ -351,7 +351,7 @@ SECTION("tst_replace") {
   TRI_string_buffer_t sb;
   TRI_string_buffer_t sb2;
 
-  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+  TRI_InitStringBuffer(&sb);
 
   TRI_AppendStringStringBuffer(&sb, ABC_const);
   TRI_ReplaceStringStringBuffer(&sb, "REP", 3);
@@ -368,7 +368,7 @@ SECTION("tst_replace") {
   TRI_ClearStringBuffer(&sb);
   TRI_AppendStringStringBuffer(&sb, ABC_const);
 
-  TRI_InitStringBuffer(&sb2, TRI_CORE_MEM_ZONE);
+  TRI_InitStringBuffer(&sb2);
   TRI_AppendStringStringBuffer(&sb2, "REP");
 
   TRI_DestroyStringBuffer(&sb);
@@ -386,7 +386,7 @@ SECTION("tst_smpl_utils") {
 
   // these are built on prev. tested building blocks...
   TRI_string_buffer_t sb;
-  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+  TRI_InitStringBuffer(&sb);
   TRI_AppendInteger3StringBuffer(&sb, 123);
 
   CHECK(std::string(ONETWOTHREE, STRLEN(ONETWOTHREE)) == std::string(sb._buffer, STRLEN(sb._buffer)));
@@ -414,7 +414,7 @@ SECTION("tst_smpl_utils") {
 SECTION("tst_length") {
   TRI_string_buffer_t sb;
 
-  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+  TRI_InitStringBuffer(&sb);
 
   CHECK((0UL) == TRI_LengthStringBuffer(&sb));
 
@@ -436,7 +436,7 @@ SECTION("tst_length") {
 SECTION("tst_clear") {
   TRI_string_buffer_t sb;
 
-  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+  TRI_InitStringBuffer(&sb);
   CHECK((0UL) == TRI_LengthStringBuffer(&sb));
 
   // clear an empty buffer
@@ -463,7 +463,7 @@ SECTION("tst_clear") {
 SECTION("tst_steal") {
   TRI_string_buffer_t sb;
 
-  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+  TRI_InitStringBuffer(&sb);
   TRI_AppendStringStringBuffer(&sb, "foo bar baz");
 
   const char* ptr = TRI_BeginStringBuffer(&sb);
@@ -486,7 +486,7 @@ SECTION("tst_steal") {
   CHECK((0) == strcmp(stolen, ptr));
 
   // must manually free the string
-  TRI_Free(TRI_CORE_MEM_ZONE, stolen);
+  TRI_Free(stolen);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -496,7 +496,7 @@ SECTION("tst_steal") {
 SECTION("tst_last_char") {
   TRI_string_buffer_t sb;
 
-  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+  TRI_InitStringBuffer(&sb);
 
   TRI_AppendStringStringBuffer(&sb, "f");
   CHECK(((unsigned int) 'f') == (unsigned int) TRI_LastCharStringBuffer(&sb));
@@ -529,7 +529,7 @@ SECTION("tst_last_char") {
 SECTION("tst_reserve") {
   TRI_string_buffer_t sb;
 
-  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+  TRI_InitStringBuffer(&sb);
   CHECK((0UL) == TRI_LengthStringBuffer(&sb));
  
   TRI_ReserveStringBuffer(&sb, 0);
@@ -571,7 +571,7 @@ SECTION("tst_timing") {
 
   // integer
   for (j = 0;  j < repeats;  ++j) {
-    TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+    TRI_InitStringBuffer(&sb);
 
     for (i = 0;  i < loop1;  ++i) {
       TRI_AppendInt32StringBuffer(&sb, 12345678);
@@ -590,7 +590,7 @@ SECTION("tst_timing") {
   t1 = TRI_microtime();
 
   for (j = 0;  j < repeats;  ++j) {
-    TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+    TRI_InitStringBuffer(&sb);
 
     for (i = 0;  i < loop2;  ++i) {
       TRI_AppendCharStringBuffer(&sb, 'A');
@@ -615,7 +615,7 @@ SECTION("tst_doubles") {
   TRI_string_buffer_t sb;
   double value;
   
-  TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
+  TRI_InitStringBuffer(&sb);
 
   // + inf
   value = HUGE_VAL;

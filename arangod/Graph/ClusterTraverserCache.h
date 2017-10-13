@@ -53,46 +53,57 @@ class ClusterTraverserCache : public TraverserCache {
       std::unordered_map<ServerID, traverser::TraverserEngineID> const*
           engines);
 
-  ~ClusterTraverserCache();
+  ~ClusterTraverserCache() {}
+  
+  /// @brief will convert the EdgeDocumentToken to a slice
+  arangodb::velocypack::Slice lookupToken(EdgeDocumentToken const& token) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Inserts the real document stored within the token
-  ///        into the given builder.
-  ///        The document will be looked up in the Datalake
+  ///        into the given builder. No need for actual lookup
   //////////////////////////////////////////////////////////////////////////////
-
-  void insertIntoResult(StringRef idString,
-                        arangodb::velocypack::Builder& builder) override;
-
-  void insertIntoResult(graph::EdgeDocumentToken const* idToken,
-                        arangodb::velocypack::Builder& builder) override;
+  void insertEdgeIntoResult(graph::EdgeDocumentToken const& idToken,
+                            arangodb::velocypack::Builder& builder) override;
+  
+  /// Lookup document in cache and add it into the builder
+  void insertVertexIntoResult(StringRef idString,
+                              velocypack::Builder& builder) override;
+  /// Lookup document in cache and transform it to an AqlValue
+  aql::AqlValue fetchVertexAqlResult(StringRef idString) override;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Return AQL value containing the result
-  ///        The document will be looked up in the Datalake
+  ///        The document will either be fetched from storage or looked up in
+  ///        the datalake (on the coordinator)
   //////////////////////////////////////////////////////////////////////////////
+  aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const& idToken) override;
 
-  aql::AqlValue fetchAqlResult(StringRef idString) override;
+  std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines() const {
+    return _engines;
+  }
 
-  aql::AqlValue fetchAqlResult(graph::EdgeDocumentToken const* idToken) override;
+  /// Map of already fetched vertices and edges (raw _id attribute)
+  std::unordered_map<StringRef, arangodb::velocypack::Slice>& cache() {
+    return _cache;
+  }
 
-  std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines();
+  std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake() {
+    return _datalake;
+  }
 
-  std::unordered_map<StringRef, arangodb::velocypack::Slice>& edges();
+  size_t& insertedDocuments() {
+    return _insertedDocuments;
+  }
 
-  std::vector<std::shared_ptr<arangodb::velocypack::Builder>>& datalake();
-
-  size_t& insertedDocuments();
-
-  size_t& filteredDocuments();
+  size_t& filteredDocuments() {
+    return _filteredDocuments;
+  }
   
-  arangodb::velocypack::Slice lookupToken(EdgeDocumentToken const* token) override;
-
  private:
-  std::unordered_map<StringRef, arangodb::velocypack::Slice> _edges;
-
+  /// @brief link by _id into our data dump
+  std::unordered_map<StringRef, arangodb::velocypack::Slice> _cache;
+  /// @brief dump for our edge and vertex documents
   std::vector<std::shared_ptr<arangodb::velocypack::Builder>> _datalake;
-
   std::unordered_map<ServerID, traverser::TraverserEngineID> const* _engines;
 };
 

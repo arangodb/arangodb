@@ -43,6 +43,7 @@ const testPort = require('internal').testPort;
 const download = require('internal').download;
 const time = require('internal').time;
 const wait = require('internal').wait;
+const sleep = require('internal').sleep;
 
 /* Constants: */
 // const BLUE = require('internal').COLORS.COLOR_BLUE;
@@ -245,7 +246,21 @@ function cleanupLastDirectory (options) {
       // Avoid attempting to remove the same directory multiple times
       if ((cleanupDirectories.indexOf(cleanupDirectory) === -1) &&
           (fs.exists(cleanupDirectory))) {
-        fs.removeDirectoryRecursive(cleanupDirectory, true);
+        let i = 0;
+        while (i < 5) {
+          try {
+            fs.removeDirectoryRecursive(cleanupDirectory, true);
+            return;
+          } catch (x) {
+            print('failed to delete directory "' + cleanupDirectory + '" - "' +
+                  x + '" - Will retry in 5 seconds"');
+            sleep(5);
+          }
+          i += 1;
+        }
+        print('failed to delete directory "' + cleanupDirectory + '" - "' +
+              '" - Deferring cleanup for test run end."');
+        cleanupDirectories.unshift(cleanupDirectory);
       }
       break;
     }
@@ -750,13 +765,10 @@ function shutdownArangod (arangod, options, forceTerminate) {
   if ((arangod.exitStatus === undefined) ||
       (arangod.exitStatus.status === 'RUNNING')) {
     if (forceTerminate) {
-      killExternal(arangod.pid, abortSignal);
-      arangod.exitStatus = {
-        SIGNAL: String(abortSignal)
-      };
+      arangod.exitStatus = killExternal(arangod.pid, abortSignal);
       analyzeServerCrash(arangod, options, 'shutdown timeout; instance forcefully KILLED because of fatal timeout in testrun');
     } else if (options.useKillExternal) {
-      killExternal(arangod.pid);
+      arangod.exitStatus = killExternal(arangod.pid);
     } else {
       const requestOptions = makeAuthorizationHeaders(options);
       requestOptions.method = 'DELETE';
@@ -849,7 +861,7 @@ function shutdownInstance (instanceInfo, options, forceTerminate) {
             ];
           }
           */
-          killExternal(arangod.pid, abortSignal);
+          arangod.exitStatus = killExternal(arangod.pid, abortSignal);
           analyzeServerCrash(arangod, options, 'shutdown timeout; instance forcefully KILLED after 60s - ' + arangod.exitStatus.signal);
           return false;
         } else {
@@ -972,7 +984,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
 
       if (!checkArangoAlive(arangod, options)) {
         instanceInfo.arangods.forEach(arangod => {
-          killExternal(arangod.pid, abortSignal);
+          arangod.exitStatus = killExternal(arangod.pid, abortSignal);
           analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
         });
 
@@ -995,7 +1007,7 @@ function startInstanceCluster (instanceInfo, protocol, options,
     // Didn't startup in 10 minutes? kill it, give up.
     if (count > 1200) {
       instanceInfo.arangods.forEach(arangod => {
-        killExternal(arangod.pid, abortSignal);
+        arangod.exitStatus = killExternal(arangod.pid, abortSignal);
         analyzeServerCrash(arangod, options, 'startup timeout; forcefully terminating ' + arangod.role + ' with pid: ' + arangod.pid);
       });
       throw new Error('cluster startup timed out after 10 minutes!');
@@ -1167,6 +1179,7 @@ function startInstanceSingleServer (instanceInfo, protocol, options,
 
 function startInstance (protocol, options, addArgs, testname, tmpDir) {
   let rootDir = fs.join(tmpDir || fs.getTempPath(), testname);
+
   let instanceInfo = {
     rootDir,
     arangods: []
@@ -1175,11 +1188,13 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
   const startTime = time();
   try {
     if (options.hasOwnProperty('server')) {
-      return { endpoint: options.server,
+      let rc = { endpoint: options.server,
                rootDir: options.serverRoot,
                url: options.server.replace('tcp', 'http'),
                arangods: []
-             };
+               };
+      arango.reconnect(rc.endpoint, '_system', 'root', '');
+      return rc;
     } else if (options.cluster) {
       startInstanceCluster(instanceInfo, protocol, options,
                            addArgs, rootDir);
@@ -1195,9 +1210,15 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
       let count = 0;
       instanceInfo.arangods.forEach(arangod => {
         while (true) {
+          wait(0.5, false);
           if (options.useReconnect) {
             try {
-              arango.reconnect(instanceInfo.endpoint, '_system', options.username, options.password);
+              arango.reconnect(instanceInfo.endpoint,
+                               '_system',
+                               options.username,
+                               options.password,
+                               count > 50
+                              );
               break;
             } catch (e) {
             }
@@ -1215,7 +1236,6 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
               throw new Error('startup failed! bailing out!');
             }
           }
-          wait(0.5, false);
         }
       });
     }
@@ -1239,7 +1259,6 @@ function startInstance (protocol, options, addArgs, testname, tmpDir) {
     print(e, e.stack);
     return false;
   }
-
   return instanceInfo;
 }
 

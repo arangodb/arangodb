@@ -52,8 +52,8 @@ LoggerFeature::LoggerFeature(application_features::ApplicationServer* server,
 
   _levels.push_back("info");
 
-  // if stdout is not a tty, then the default for _foregroundTty becomes false
-  _foregroundTty = (isatty(STDOUT_FILENO) != 0);
+  // if stdout is a tty, then the default for _foregroundTty becomes true
+  _foregroundTty = (isatty(STDOUT_FILENO) == 1);
 }
 
 LoggerFeature::~LoggerFeature() {
@@ -71,6 +71,9 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            new VectorParameter<StringParameter>(&_levels));
 
   options->addSection("log", "Configure the logging");
+  
+  options->addOption("--log.color", "use colors for TTY logging",
+                     new BooleanParameter(&_useColor));
 
   options->addOption("--log.output,-o", "log destination(s)",
                      new VectorParameter<StringParameter>(&_output));
@@ -85,6 +88,10 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addOption("--log.use-microtime",
                      "use microtime instead",
                      new BooleanParameter(&_useMicrotime));
+  
+  options->addOption("--log.role",
+                     "log server role",
+                     new BooleanParameter(&_showRole));
 
   options->addHiddenOption("--log.prefix",
                            "prefix log message with this string",
@@ -104,7 +111,11 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addHiddenOption("--log.thread",
                            "show thread identifier in log message",
-                           new BooleanParameter(&_thread));
+                           new BooleanParameter(&_threadId));
+  
+  options->addHiddenOption("--log.thread-name",
+                           "show thread name in log message",
+                           new BooleanParameter(&_threadName));
 
   options->addHiddenOption("--log.performance",
                            "shortcut for '--log.level performance=trace'",
@@ -115,7 +126,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            new BooleanParameter(&_keepLogRotate));
 
   options->addHiddenOption("--log.foreground-tty",
-                           "also log to tty if not backgrounded",
+                           "also log to tty if backgrounded",
                            new BooleanParameter(&_foregroundTty));
 
   options->addHiddenOption("--log.force-direct",
@@ -125,7 +136,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
 void LoggerFeature::loadOptions(
     std::shared_ptr<options::ProgramOptions> options,
-    const char *binaryPath) {
+    char const* binaryPath) {
   // for debugging purpose, we set the log levels NOW
   // this might be overwritten latter
   Logger::setLogLevel(_levels);
@@ -158,24 +169,27 @@ void LoggerFeature::prepare() {
 #endif
 
   Logger::setLogLevel(_levels);
+  Logger::setShowRole(_showRole);
+  Logger::setUseColor(_useColor);
   Logger::setUseLocalTime(_useLocalTime);
   Logger::setUseMicrotime(_useMicrotime);
   Logger::setShowLineNumber(_lineNumber);
   Logger::setShortenFilenames(_shortenFilenames);
-  Logger::setShowThreadIdentifier(_thread);
+  Logger::setShowThreadIdentifier(_threadId);
+  Logger::setShowThreadName(_threadName);
   Logger::setOutputPrefix(_prefix);
   Logger::setKeepLogrotate(_keepLogRotate);
 
-  for (auto definition : _output) {
+  for (auto const& definition : _output) {
     if (_supervisor && StringUtils::isPrefix(definition, "file://")) {
-      definition += ".supervisor";
+      LogAppender::addAppender(definition + ".supervisor");
+    } else {
+      LogAppender::addAppender(definition);
     }
-
-    LogAppender::addAppender(definition);
   }
 
-  if (!_backgrounded && _foregroundTty) {
-    LogAppender::addTtyAppender();
+  if (_foregroundTty) {
+    LogAppender::addAppender("-");
   }
 
   if (_forceDirect || _supervisor) {

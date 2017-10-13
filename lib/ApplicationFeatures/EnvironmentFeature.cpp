@@ -212,8 +212,6 @@ void EnvironmentFeature::prepare() {
 
 void EnvironmentFeature::start() {
 #ifdef __linux__
-  bool usingRocksDB =
-    (EngineSelectorFeature::engineName() == RocksDBEngine::EngineName);
   try {
     std::string value =
         basics::FileUtils::slurp("/proc/sys/vm/overcommit_memory");
@@ -235,7 +233,7 @@ void EnvironmentFeature::start() {
     //  space is not permitted to exceed swap plus this percentage
     //  of physical RAM.
 
-    if (usingRocksDB) {
+    if (EngineSelectorFeature::engineName() == RocksDBEngine::EngineName) {
       if (v != 2) {
         LOG_TOPIC(WARN, Logger::MEMORY)
           << "/proc/sys/vm/overcommit_memory is set to '" << v
@@ -264,7 +262,7 @@ void EnvironmentFeature::start() {
         if (static_cast<double>(r) < 0.99 * rr) {
           LOG_TOPIC(WARN, Logger::MEMORY)
             << "/proc/sys/vm/overcommit_ratio is set to '" << r
-            << "'. It is recommended to set it to at least'" << std::llround(rr)
+            << "'. It is recommended to set it to at least '" << std::llround(rr)
             << "' (100 * (max(0, (RAM - Swap Space)) / RAM)) to utilize all "
             << "available RAM. Setting it to this value will minimize swap "
             << "usage, but may result in more out-of-memory errors, while "

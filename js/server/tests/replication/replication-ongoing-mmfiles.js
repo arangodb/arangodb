@@ -99,7 +99,9 @@ function ReplicationSuite() {
     replication.applier.stop();
     replication.applier.forget();
 
-    internal.wait(1, false);
+    while (replication.applier.state().state.running) {
+      internal.wait(0.1, false);
+    }
 
     var includeSystem = true;
     var restrictType = "";
@@ -375,7 +377,6 @@ function ReplicationSuite() {
 
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite

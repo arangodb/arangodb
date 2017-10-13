@@ -211,22 +211,27 @@ EdgeCursor* ShortestPathOptions::nextReverseCursorCoordinator(StringRef vid) {
 
 void ShortestPathOptions::fetchVerticesCoordinator(
     std::deque<StringRef> const& vertexIds) {
-  if (arangodb::ServerState::instance()->isCoordinator()) {
-    std::unordered_set<StringRef> fetch;
-    auto ch = static_cast<ClusterTraverserCache*>(cache());
-    // In Coordinator all caches are ClusterTraverserCache instances
-    TRI_ASSERT(ch != nullptr);
-    std::unordered_map<StringRef, VPackSlice>& found = ch->edges();
-    for (auto it : vertexIds) {
-      if (found.find(it) == found.end()) {
-        // We do not have this vertex
-        fetch.emplace(it);
-      }
+  //TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
+  if (!arangodb::ServerState::instance()->isCoordinator()) {
+    return;
+  }
+  
+  // In Coordinator all caches are ClusterTraverserCache instances
+  auto ch = reinterpret_cast<ClusterTraverserCache*>(cache());
+  TRI_ASSERT(ch != nullptr);
+  // get the map of _ids into the datalake
+  std::unordered_map<StringRef, VPackSlice>& cache = ch->cache();
+  
+  std::unordered_set<StringRef> fetch;
+  for (auto it : vertexIds) {
+    if (cache.find(it) == cache.end()) {
+      // We do not have this vertex
+      fetch.emplace(it);
     }
-    if (!fetch.empty()) {
-      transaction::BuilderLeaser leased(trx());
-      fetchVerticesFromEngines(trx()->databaseName(), ch->engines(), fetch,
-                               found, ch->datalake(), *(leased.get()));
-    }
+  }
+  if (!fetch.empty()) {
+    transaction::BuilderLeaser leased(trx());
+    fetchVerticesFromEngines(trx()->databaseName(), ch->engines(), fetch,
+                             cache, ch->datalake(), *(leased.get()));
   }
 }

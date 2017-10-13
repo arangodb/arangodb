@@ -81,7 +81,7 @@ std::vector<std::string> Databases::list(std::string const& user) {
     if (ServerState::instance()->isCoordinator()) {
       auto auth = FeatureCacheFeature::instance()->authenticationFeature();
       std::vector<std::string> names;
-      std::vector<std::string> dbs = databaseFeature->getDatabaseNames();
+      std::vector<std::string> dbs = databaseFeature->getDatabaseNamesCoordinator();
       for (std::string const& db : dbs) {
         if (auth->canUseDatabase(user, db) != AuthLevel::NONE) {
           names.push_back(db);
@@ -284,10 +284,10 @@ arangodb::Result Databases::create(std::string const& dbName,
     // now run upgrade and copy users into context
     TRI_ASSERT(sanitizedUsers.slice().isArray());
     v8::Handle<v8::Object> userVar = v8::Object::New(ctx->_isolate);
-    userVar->Set(TRI_V8_ASCII_STRING("users"),
+    userVar->Set(TRI_V8_ASCII_STRING(isolate, "users"),
                  TRI_VPackToV8(isolate, sanitizedUsers.slice()));
     isolate->GetCurrentContext()->Global()->Set(
-        TRI_V8_ASCII_STRING("UPGRADE_ARGS"), userVar);
+        TRI_V8_ASCII_STRING(isolate, "UPGRADE_ARGS"), userVar);
 
     // initalize database
     bool allowUseDatabase = v8g->_allowUseDatabase;
@@ -335,10 +335,10 @@ arangodb::Result Databases::create(std::string const& dbName,
     // copy users into context
     TRI_ASSERT(sanitizedUsers.slice().isArray());
     v8::Handle<v8::Object> userVar = v8::Object::New(ctx->_isolate);
-    userVar->Set(TRI_V8_ASCII_STRING("users"),
+    userVar->Set(TRI_V8_ASCII_STRING(isolate, "users"),
                  TRI_VPackToV8(isolate, sanitizedUsers.slice()));
     isolate->GetCurrentContext()->Global()->Set(
-        TRI_V8_ASCII_STRING("UPGRADE_ARGS"), userVar);
+        TRI_V8_ASCII_STRING(isolate, "UPGRADE_ARGS"), userVar);
 
     // switch databases
     {
@@ -459,9 +459,9 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
 
     TRI_ExecuteJavaScriptString(
         isolate, isolate->GetCurrentContext(),
-        TRI_V8_ASCII_STRING("require('internal').executeGlobalContextFunction('"
+        TRI_V8_ASCII_STRING(isolate, "require('internal').executeGlobalContextFunction('"
                             "reloadRouting')"),
-        TRI_V8_ASCII_STRING("reload routing"), false);
+        TRI_V8_ASCII_STRING(isolate, "reload routing"), false);
   }
 
   auto auth = FeatureCacheFeature::instance()->authenticationFeature();

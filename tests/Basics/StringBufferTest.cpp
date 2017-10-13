@@ -42,7 +42,7 @@ TEST_CASE("StringBufferTest", "[string]") {
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("test_StringBuffer1") {
-  StringBuffer buffer(TRI_CORE_MEM_ZONE);
+  StringBuffer buffer(true);
 
   CHECK(buffer.length() == (size_t) 0);
   CHECK(std::string(buffer.c_str()) == "");
@@ -63,7 +63,7 @@ SECTION("test_StringBuffer1") {
 ////////////////////////////////////////////////////////////////////////////////
 
 SECTION("test_StringBuffer2") {
-  StringBuffer buffer(TRI_CORE_MEM_ZONE);
+  StringBuffer buffer(true);
 
   CHECK(buffer.length() == (size_t) 0);
   CHECK(std::string(buffer.c_str()) == "");

@@ -53,6 +53,7 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/replication-applier.h"
@@ -86,6 +87,15 @@ RestStatus MMFilesRestReplicationHandler::execute() {
   size_t const len = suffixes.size();
 
   if (len >= 1) {
+    // we are getting into trouble during the dumping of "_users"
+    // this workaround avoids the auth check in addCollectionAtRuntime
+    ExecContext* old = ExecContext::CURRENT;
+    if (old != nullptr && 
+        old->systemAuthLevel() != AuthLevel::NONE) {
+      ExecContext::CURRENT = nullptr;
+    }
+    TRI_DEFER(ExecContext::CURRENT = old);
+
     std::string const& command = suffixes[0];
 
     if (command == "logger-state") {
@@ -765,7 +775,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
   if (found) {
     includeSystem = StringUtils::boolean(value4);
   }
-
+  
   // grab list of transactions from the body value
   std::unordered_set<TRI_voc_tid_t> transactionIds;
 
@@ -839,6 +849,7 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
                                       tickStart, tickEnd, false);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    generateError(GeneralResponse::responseCode(res), res);
     return;
   }
   bool const checkMore = (dump._lastFoundTick > 0 &&
@@ -2381,6 +2392,8 @@ void MMFilesRestReplicationHandler::handleCommandApplierSetConfig() {
       body, "ignoreErrors", config._ignoreErrors);
   config._maxConnectRetries = VelocyPackHelper::getNumericValue<uint64_t>(
       body, "maxConnectRetries", config._maxConnectRetries);
+  config._lockTimeoutRetries = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "lockTimeoutRetries", config._lockTimeoutRetries);
   config._sslProtocol = VelocyPackHelper::getNumericValue<uint32_t>(
       body, "sslProtocol", config._sslProtocol);
   config._chunkSize = VelocyPackHelper::getNumericValue<uint64_t>(

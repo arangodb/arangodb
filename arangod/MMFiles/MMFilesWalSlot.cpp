@@ -74,13 +74,13 @@ void MMFilesWalSlot::finalize(MMFilesWalMarker const* marker) {
   dfm->setTypeAndTick(marker->type(), _tick);
 
   // set size
-  dfm->setSize(static_cast<TRI_voc_size_t>(size));
+  dfm->setSize(static_cast<uint32_t>(size));
 
   // calculate the crc
   dfm->setCrc(0);
   TRI_voc_crc_t crc = TRI_InitialCrc32();
   crc = TRI_BlockCrc32(crc, static_cast<char const*>(_mem),
-                       static_cast<TRI_voc_size_t>(size));
+                       static_cast<uint32_t>(size));
   dfm->setCrc(TRI_FinalCrc32(crc));
 
   TRI_IF_FAILURE("WalSlotCrc") {
@@ -104,13 +104,13 @@ void MMFilesWalSlot::fill(void* src, size_t size) {
   marker->setTick(_tick);
 
   // set size
-  marker->setSize(static_cast<TRI_voc_size_t>(size));
+  marker->setSize(static_cast<uint32_t>(size));
 
   // calculate the crc
   marker->setCrc(0);
   TRI_voc_crc_t crc = TRI_InitialCrc32();
   crc = TRI_BlockCrc32(crc, (char const*)marker,
-                       static_cast<TRI_voc_size_t>(size));
+                       static_cast<uint32_t>(size));
   marker->setCrc(TRI_FinalCrc32(crc));
 
   TRI_IF_FAILURE("WalSlotCrc") {

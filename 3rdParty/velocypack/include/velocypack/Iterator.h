@@ -157,6 +157,7 @@ class ArrayIterator {
     _current = nullptr;
     if (_size > 0) {
       auto h = _slice.head();
+      VELOCYPACK_ASSERT(h != 0x01); // no empty array allowed here
       if (h == 0x13) {
         _current = _slice.at(0).start();
       } else {
@@ -194,6 +195,7 @@ class ObjectIterator {
 
     if (_size > 0) {
       auto h = slice.head();
+      VELOCYPACK_ASSERT(h != 0x0a); // no empty object allowed here
       if (h == 0x14) {
         _current = slice.keyAt(0, false).start();
       } else if (useSequentialIteration) {

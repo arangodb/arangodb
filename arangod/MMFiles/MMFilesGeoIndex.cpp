@@ -30,7 +30,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesToken.h"
 #include "StorageEngine/TransactionState.h"
 
 using namespace arangodb;
@@ -143,7 +142,7 @@ size_t MMFilesGeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
   return numDocs;
 }
 
-bool MMFilesGeoIndexIterator::next(TokenCallback const& cb, size_t limit) {
+bool MMFilesGeoIndexIterator::next(LocalDocumentIdCallback const& cb, size_t limit) {
   if (!_cursor) {
     createCursor(_lat, _lon);
 
@@ -193,7 +192,7 @@ bool MMFilesGeoIndexIterator::next(TokenCallback const& cb, size_t limit) {
     }
 
     for (size_t i = 0; i < numDocs; ++i) {
-      cb(::MMFilesGeoIndex::toDocumentIdentifierToken(
+      cb(::MMFilesGeoIndex::toLocalDocumentId(
           coords->coordinates[i].data));
     }
     // If we return less then limit many docs we are done.
@@ -215,15 +214,9 @@ void MMFilesGeoIndexIterator::createCursor(double lat, double lon) {
   replaceCursor(::GeoIndex_NewCursor(_index->_geoIndex, &_coor));
 }
 
-uint64_t MMFilesGeoIndex::fromDocumentIdentifierToken(
-    DocumentIdentifierToken const& token) {
-  auto tkn = static_cast<MMFilesToken const*>(&token);
-  return static_cast<uint64_t>(tkn->revisionId());
-}
-
-DocumentIdentifierToken MMFilesGeoIndex::toDocumentIdentifierToken(
+LocalDocumentId MMFilesGeoIndex::toLocalDocumentId(
     uint64_t internal) {
-  return MMFilesToken{internal};
+  return LocalDocumentId{internal};
 }
 
 /// @brief creates an IndexIterator for the given Condition
@@ -243,7 +236,7 @@ void MMFilesGeoIndexIterator::reset() { replaceCursor(nullptr); }
 MMFilesGeoIndex::MMFilesGeoIndex(TRI_idx_iid_t iid,
                                  arangodb::LogicalCollection* collection,
                                  VPackSlice const& info)
-    : Index(iid, collection, info),
+    : MMFilesIndex(iid, collection, info),
       _variant(INDEX_GEO_INDIVIDUAL_LAT_LON),
       _geoJson(false),
       _geoIndex(nullptr) {
@@ -385,7 +378,7 @@ bool MMFilesGeoIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-Result MMFilesGeoIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId,
+Result MMFilesGeoIndex::insert(transaction::Methods*, LocalDocumentId const& documentId,
                                VPackSlice const& doc, bool isRollback) {
   double latitude;
   double longitude;
@@ -433,7 +426,7 @@ Result MMFilesGeoIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId,
   GeoCoordinate gc;
   gc.latitude = latitude;
   gc.longitude = longitude;
-  gc.data = static_cast<uint64_t>(revisionId);
+  gc.data = static_cast<uint64_t>(documentId.id());
 
   int res = GeoIndex_insert(_geoIndex, &gc);
 
@@ -454,7 +447,7 @@ Result MMFilesGeoIndex::insert(transaction::Methods*, TRI_voc_rid_t revisionId,
   return Result(TRI_ERROR_NO_ERROR);
 }
 
-Result MMFilesGeoIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId,
+Result MMFilesGeoIndex::remove(transaction::Methods*, LocalDocumentId const& documentId,
                                VPackSlice const& doc, bool isRollback) {
   double latitude = 0.0;
   double longitude = 0.0;
@@ -505,7 +498,7 @@ Result MMFilesGeoIndex::remove(transaction::Methods*, TRI_voc_rid_t revisionId,
   GeoCoordinate gc;
   gc.latitude = latitude;
   gc.longitude = longitude;
-  gc.data = static_cast<uint64_t>(revisionId);
+  gc.data = static_cast<uint64_t>(documentId.id());
 
   // ignore non-existing elements in geo-index
   GeoIndex_remove(_geoIndex, &gc);

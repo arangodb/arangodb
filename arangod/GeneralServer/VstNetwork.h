@@ -85,7 +85,7 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
       dataLength + static_cast<uint32_t>(chunkHeaderLength(sendTotalLen));
 
   auto buffer =
-      std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, chunkLength, false);
+      std::make_unique<StringBuffer>(chunkLength, false);
 
   LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "chunkLength: " << chunkLength;
   appendLittleEndian(buffer.get(), chunkLength);
@@ -135,7 +135,7 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
       dataLength + static_cast<uint32_t>(chunkHeaderLength(sendTotalLen));
 
   auto buffer =
-      std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE, chunkLength, false);
+      std::make_unique<StringBuffer>(chunkLength, false);
 
   appendLittleEndian(buffer.get(), chunkLength);
   appendLittleEndian(buffer.get(), chunk);
@@ -240,7 +240,7 @@ inline std::vector<std::unique_ptr<basics::StringBuffer>> createChunkForNetwork(
 
     // reserve buffer
     auto vstPayload = std::make_unique<basics::StringBuffer>(
-        TRI_UNKNOWN_MEM_ZONE, payloadLength, false);
+        payloadLength, false);
 
     // fill buffer
     for (auto const& slice : slices) {

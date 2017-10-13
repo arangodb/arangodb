@@ -11,11 +11,13 @@ searchMDPPPaths = [
   "Manual",
   "AQL",
   "HTTP",
+  "Cookbook"
 ]
 searchPaths = [
   "Documentation/Books/Manual/",
   "Documentation/Books/AQL/",
   "Documentation/Books/HTTP/",
+  "Documentation/Books/Cookbook/",
   "Documentation/DocuBlocks/"
 ]
 fullSuccess = True
@@ -38,7 +40,8 @@ def file_content(filepath):
       if ((_start != None) and
           (not searchMDPPPaths[0] in filepath) and 
           (not searchMDPPPaths[1] in filepath) and 
-          (not searchMDPPPaths[2] in filepath)):
+          (not searchMDPPPaths[2] in filepath) and 
+          (not searchMDPPPaths[3] in filepath)):
         print "next startDocuBlock found without endDocuBlock inbetween in file %s [%s]" %(filepath, line)
         raise
       _start = line[0]

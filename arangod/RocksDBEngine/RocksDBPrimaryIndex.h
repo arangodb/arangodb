@@ -29,7 +29,6 @@
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
-#include "RocksDBEngine/RocksDBToken.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -61,7 +60,7 @@ class RocksDBPrimaryIndexIterator final : public IndexIterator {
 
   char const* typeName() const override { return "primary-index-iterator"; }
 
-  bool next(TokenCallback const& cb, size_t limit) override;
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
 
   void reset() override;
 
@@ -106,7 +105,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
 
-  RocksDBToken lookupKey(transaction::Methods* trx,
+  LocalDocumentId lookupKey(transaction::Methods* trx,
                          arangodb::StringRef key) const;
 
   bool supportsFilterCondition(arangodb::aql::AstNode const*,
@@ -124,21 +123,22 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
 
   void invokeOnAllElements(
       transaction::Methods* trx,
-      std::function<bool(DocumentIdentifierToken const&)> callback) const;
+      std::function<bool(LocalDocumentId const&)> callback) const;
 
   /// insert index elements into the specified write batch.
   Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
-                        TRI_voc_rid_t,
+                        LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&) override;
   
   Result updateInternal(transaction::Methods* trx, RocksDBMethods*,
-                        TRI_voc_rid_t oldRevision,
+                        LocalDocumentId const& oldDocumentId,
                         arangodb::velocypack::Slice const& oldDoc,
-                        TRI_voc_rid_t newRevision,
+                        LocalDocumentId const& newDocumentId,
                         velocypack::Slice const& newDoc) override;
 
   /// remove index elements and put it in the specified write batch.
-  Result removeInternal(transaction::Methods*, RocksDBMethods*, TRI_voc_rid_t,
+  Result removeInternal(transaction::Methods*, RocksDBMethods*, 
+                        LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&) override;
 
  protected:

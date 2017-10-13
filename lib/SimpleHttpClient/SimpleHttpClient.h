@@ -97,13 +97,12 @@ struct SimpleHttpClientParams {
   /// @brief sets username and password
   ////////////////////////////////////////////////////////////////////////////////
 
-  void setUserNamePassword(std::string const& prefix,
+  void setUserNamePassword(char const* prefix,
                            std::string const& username,
                            std::string const& password) {
-    std::string value =
-        arangodb::basics::StringUtils::encodeBase64(username + ":" + password);
-
-    _pathToBasicAuth.push_back(std::make_pair(prefix, value));
+    TRI_ASSERT(prefix != nullptr);
+    TRI_ASSERT(strcmp(prefix, "/") == 0);
+    _basicAuth = arangodb::basics::StringUtils::encodeBase64(username + ":" + password);
   }
 
   //////////////////////////////////////////////////////////////////////////////
@@ -144,7 +143,7 @@ struct SimpleHttpClientParams {
 
   size_t _maxPacketSize = SimpleHttpClientParams::MaxPacketSize;
 
-  std::vector<std::pair<std::string, std::string>> _pathToBasicAuth;
+  std::string _basicAuth;
 
   std::string _jwt = "";
 

@@ -57,6 +57,10 @@ describe('_api/gharial', () => {
     } catch (e) {
     }
     try {
+      db._drop(oColName2);
+    } catch (e) {
+    }
+    try {
       db._graphs.remove(graphName);
     } catch (e) {
     }
@@ -91,7 +95,7 @@ describe('_api/gharial', () => {
       req = request.get(url + "/" + graphName); 
     } while (req.statusCode !== 200);
 
-    expect(db._collection(eColName)).to.not.be.null;
+    expect(db._collection(eColName)).to.not.be.null; 
     expect(db._collection(vColName)).to.not.be.null;
   });
 

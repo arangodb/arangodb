@@ -51,6 +51,7 @@ describe('Foxx service', () => {
     foxxManager.uninstall(mount, {force: true});
   });
   afterEach(() => {
+    waitForJob();
     download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
       method: 'delete'
     });
@@ -82,6 +83,7 @@ describe('Foxx service', () => {
       method: 'post'
     });
     expect(res.code).to.equal(204);
+    waitForJob();
     res = download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
       method: 'post'
     });

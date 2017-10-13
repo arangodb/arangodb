@@ -102,7 +102,7 @@ int RocksDBReplicationContext::bindCollection(
     
     // we are getting into trouble during the dumping of "_users"
     // this workaround avoids the auth check in addCollectionAtRuntime
-    ExecContext *old = ExecContext::CURRENT;
+    ExecContext* old = ExecContext::CURRENT;
     if (old != nullptr && old->systemAuthLevel() == AuthLevel::RW) {
       ExecContext::CURRENT = nullptr;
     }
@@ -162,7 +162,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
   VPackBuilder builder(&_vpackOptions);
 
   auto cb = [this, &type, &buff, &adapter, &compat28,
-             &builder](DocumentIdentifierToken const& token) {
+             &builder](LocalDocumentId const& documentId) {
     builder.clear();
 
     builder.openObject();
@@ -170,11 +170,11 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     builder.add("type", VPackValue(type));
 
     // set data
-    bool ok = _collection->readDocument(_trx.get(), token, _mdr);
+    bool ok = _collection->readDocument(_trx.get(), documentId, _mdr);
 
     if (!ok) {
       LOG_TOPIC(ERR, Logger::REPLICATION)
-          << "could not get document with token: " << token._data;
+          << "could not get document with token: " << documentId.id();
       throw RocksDBReplicationResult(TRI_ERROR_INTERNAL, _lastTick);
     }
 
@@ -225,8 +225,8 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
   std::string lowKey;
   VPackSlice highKey;  // FIXME: no good keeping this
   uint64_t hash = 0x012345678;
-  auto cb = [&](DocumentIdentifierToken const& token) {
-    bool ok = _collection->readDocument(_trx.get(), token, _mdr);
+  auto cb = [&](LocalDocumentId const& documentId) {
+    bool ok = _collection->readDocument(_trx.get(), documentId, _mdr);
     if (!ok) {
       // TODO: do something here?
       return;
@@ -250,12 +250,17 @@ arangodb::Result RocksDBReplicationContext::dumpKeyChunks(VPackBuilder& b,
     try {
       _hasMore = _iter->next(cb, chunkSize);
 
+      if (lowKey.empty()) {
+        // if lowKey is empty, no new documents were found
+        break;
+      }
       b.add(VPackValue(VPackValueType::Object));
       b.add("low", VPackValue(lowKey));
       b.add("high", VPackValue(highKey.copyString()));
       b.add("hash", VPackValue(std::to_string(hash)));
       b.close();
       lowKey.clear();  // reset string
+      hash = 0x012345678;   // the next block ought to start with a clean sheet
     } catch (std::exception const&) {
       return rv.reset(TRI_ERROR_INTERNAL);
     }
@@ -316,12 +321,29 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
     }
   }
 
-  auto cb = [&](DocumentIdentifierToken const& token, StringRef const& key) {
-    RocksDBToken const& rt = static_cast<RocksDBToken const&>(token);
-
+  auto cb = [&](LocalDocumentId const& documentId, StringRef const& key) {
     b.openArray();
     b.add(VPackValuePair(key.data(), key.size(), VPackValueType::String));
-    b.add(VPackValue(std::to_string(rt.revisionId())));
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    b.add(VPackValue(std::to_string(documentId.id()))); // TODO: must return the revision here 
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
+    /////////////////////////////////////////////////////////////////////////////////////////////////////
     b.close();
   };
 
@@ -385,7 +407,7 @@ arangodb::Result RocksDBReplicationContext::dumpDocuments(
     }
   }
 
-  auto cb = [&](DocumentIdentifierToken const& token) {
+  auto cb = [&](LocalDocumentId const& token) {
     bool ok = _collection->readDocument(_trx.get(), token, _mdr);
     if (!ok) {
       // TODO: do something here?

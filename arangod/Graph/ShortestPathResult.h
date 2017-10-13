@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
+#include "Graph/EdgeDocumentToken.h"
 
 namespace arangodb {
 
@@ -48,7 +49,6 @@ namespace graph {
 
 class AttributeWeightShortestPathFinder;
 class ConstantWeightShortestPathFinder;
-struct EdgeDocumentToken;
 class TraverserCache;
 
 class ShortestPathResult {
@@ -101,7 +101,7 @@ class ShortestPathResult {
   std::deque<arangodb::StringRef> _vertices;
 
   /// @brief edges
-  std::deque<std::unique_ptr<arangodb::graph::EdgeDocumentToken>> _edges;
+  std::deque<arangodb::graph::EdgeDocumentToken> _edges;
 };
 
 

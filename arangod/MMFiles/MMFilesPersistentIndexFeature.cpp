@@ -249,20 +249,6 @@ int MMFilesPersistentIndexFeature::dropPrefix(std::string const& prefix) {
     }
     u.append(builder.slice().startAs<char const>(), builder.slice().byteSize());
 
-#if 0
-    for (size_t i = 0; i < prefix.size(); i += sizeof(TRI_idx_iid_t)) {
-      char const* x = prefix.c_str() + i;
-      size_t o;
-      char* q = TRI_EncodeHexString(x, 8, &o);
-      if (q != nullptr) {
-        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "RocksDB prefix part: " << q;
-        TRI_FreeString(TRI_CORE_MEM_ZONE, q);
-      }
-    }
-
-    LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dropping RocksDB range: " << VPackSlice(l.c_str() + MMFilesPersistentIndex::keyPrefixSize()).toJson() << " - " << VPackSlice(u.c_str() + MMFilesPersistentIndex::keyPrefixSize()).toJson();
-#endif
-
     // delete files in range lower..upper
     rocksdb::Slice lower(l.c_str(), l.size());
     rocksdb::Slice upper(u.c_str(), u.size());

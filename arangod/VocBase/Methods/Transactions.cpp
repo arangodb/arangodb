@@ -49,8 +49,8 @@ Result executeTransaction(
   v8::TryCatch tryCatch;
 
   v8::Handle<v8::Object> request = v8::Object::New(isolate);
-  v8::Handle<v8::Value> jsPortTypeKey= TRI_V8_ASCII_STRING("portType");
-  v8::Handle<v8::Value> jsPortTypeValue = TRI_V8_ASCII_STRING(portType.c_str());
+  v8::Handle<v8::Value> jsPortTypeKey= TRI_V8_ASCII_STRING(isolate, "portType");
+  v8::Handle<v8::Value> jsPortTypeValue = TRI_V8_ASCII_STRING(isolate, portType.c_str());
   if (!request->Set(jsPortTypeKey, jsPortTypeValue)){
     rv.reset(TRI_ERROR_INTERNAL, "could not set portType");
     return rv;
@@ -122,8 +122,8 @@ Result executeTransactionJS(
   
   // do extra sanity checking for user facing APIs, parsing
   // is performed in `transaction::Options::fromVelocyPack`
-  if (object->Has(TRI_V8_ASCII_STRING("lockTimeout")) &&
-      !object->Get(TRI_V8_ASCII_STRING("lockTimeout"))->IsNumber()) {
+  if (object->Has(TRI_V8_ASCII_STRING(isolate, "lockTimeout")) &&
+      !object->Get(TRI_V8_ASCII_STRING(isolate, "lockTimeout"))->IsNumber()) {
     rv.reset(TRI_ERROR_BAD_PARAMETER,
              "<lockTimeout> must be a valid numeric value");
     return rv;
@@ -158,8 +158,8 @@ Result executeTransactionJS(
   // "collections"
   std::string collectionError;
 
-  if (!object->Has(TRI_V8_ASCII_STRING("collections")) ||
-      !object->Get(TRI_V8_ASCII_STRING("collections"))->IsObject()) {
+  if (!object->Has(TRI_V8_ASCII_STRING(isolate, "collections")) ||
+      !object->Get(TRI_V8_ASCII_STRING(isolate, "collections"))->IsObject()) {
     collectionError = "missing/invalid collections definition for transaction";
     rv.reset(TRI_ERROR_BAD_PARAMETER, collectionError);
     return rv;
@@ -167,7 +167,7 @@ Result executeTransactionJS(
 
   // extract collections
   v8::Handle<v8::Object> collections = v8::Handle<v8::Object>::Cast(
-      object->Get(TRI_V8_ASCII_STRING("collections")));
+      object->Get(TRI_V8_ASCII_STRING(isolate, "collections")));
 
   if (collections.IsEmpty()) {
     collectionError =
@@ -180,19 +180,19 @@ Result executeTransactionJS(
   std::vector<std::string> writeCollections;
   std::vector<std::string> exclusiveCollections;
 
-  if (collections->Has(TRI_V8_ASCII_STRING("allowImplicit"))) {
+  if (collections->Has(TRI_V8_ASCII_STRING(isolate, "allowImplicit"))) {
     trxOptions.allowImplicitCollections = TRI_ObjectToBoolean(
-        collections->Get(TRI_V8_ASCII_STRING("allowImplicit")));
+        collections->Get(TRI_V8_ASCII_STRING(isolate, "allowImplicit")));
   }
   
   auto getCollections = [&isolate](v8::Handle<v8::Object> obj,
                                    std::vector<std::string>& collections,
                                    char const* attributeName,
                                    std::string &collectionError) -> bool {
-    if (obj->Has(TRI_V8_ASCII_STRING(attributeName))) {
-      if (obj->Get(TRI_V8_ASCII_STRING(attributeName))->IsArray()) {
+    if (obj->Has(TRI_V8_ASCII_STRING(isolate, attributeName))) {
+      if (obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName))->IsArray()) {
         v8::Handle<v8::Array> names = v8::Handle<v8::Array>::Cast(
-            obj->Get(TRI_V8_ASCII_STRING(attributeName)));
+            obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName)));
 
         for (uint32_t i = 0; i < names->Length(); ++i) {
           v8::Handle<v8::Value> collection = names->Get(i);
@@ -205,9 +205,9 @@ Result executeTransactionJS(
 
           collections.emplace_back(TRI_ObjectToString(collection));
         }
-      } else if (obj->Get(TRI_V8_ASCII_STRING(attributeName))->IsString()) {
+      } else if (obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName))->IsString()) {
         collections.emplace_back(
-          TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(attributeName))));
+          TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, attributeName))));
       } else {
         collectionError += std::string(" There is no array in '") + attributeName + "'";
         return false;
@@ -234,7 +234,7 @@ Result executeTransactionJS(
       "missing/invalid action definition for transaction";
   std::string actionError = actionErrorPrototype;
 
-  if (!object->Has(TRI_V8_ASCII_STRING("action"))) {
+  if (!object->Has(TRI_V8_ASCII_STRING(isolate, "action"))) {
     rv.reset(TRI_ERROR_BAD_PARAMETER, actionError);
     return rv;
   }
@@ -242,9 +242,9 @@ Result executeTransactionJS(
   // function parameters
   v8::Handle<v8::Value> params;
 
-  if (object->Has(TRI_V8_ASCII_STRING("params"))) {
+  if (object->Has(TRI_V8_ASCII_STRING(isolate, "params"))) {
     params =
-        v8::Handle<v8::Array>::Cast(object->Get(TRI_V8_ASCII_STRING("params")));
+        v8::Handle<v8::Array>::Cast(object->Get(TRI_V8_ASCII_STRING(isolate, "params")));
   } else {
     params = v8::Undefined(isolate);
   }
@@ -255,9 +255,9 @@ Result executeTransactionJS(
   }
 
   bool embed = false;
-  if (object->Has(TRI_V8_ASCII_STRING("embed"))) {
+  if (object->Has(TRI_V8_ASCII_STRING(isolate, "embed"))) {
     v8::Handle<v8::Value> v =
-        v8::Handle<v8::Object>::Cast(object->Get(TRI_V8_ASCII_STRING("embed")));
+        v8::Handle<v8::Object>::Cast(object->Get(TRI_V8_ASCII_STRING(isolate, "embed")));
     embed = TRI_ObjectToBoolean(v);
   }
 
@@ -265,24 +265,24 @@ Result executeTransactionJS(
 
   // callback function
   v8::Handle<v8::Function> action;
-  if (object->Get(TRI_V8_ASCII_STRING("action"))->IsFunction()) {
+  if (object->Get(TRI_V8_ASCII_STRING(isolate, "action"))->IsFunction()) {
     action = v8::Handle<v8::Function>::Cast(
-        object->Get(TRI_V8_ASCII_STRING("action")));
+        object->Get(TRI_V8_ASCII_STRING(isolate, "action")));
     v8::Local<v8::Value> v8_fnname = action->GetName();
     std::string fnname = TRI_ObjectToString(v8_fnname);
     if (fnname.length() == 0) {
-      action->SetName(TRI_V8_ASCII_STRING("userTransactionFunction"));
+      action->SetName(TRI_V8_ASCII_STRING(isolate, "userTransactionFunction"));
     }
-  } else if (object->Get(TRI_V8_ASCII_STRING("action"))->IsString()) {
+  } else if (object->Get(TRI_V8_ASCII_STRING(isolate, "action"))->IsString()) {
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
     v8::Local<v8::Function> ctor = v8::Local<v8::Function>::Cast(
-        current->Get(TRI_V8_ASCII_STRING("Function")));
+        current->Get(TRI_V8_ASCII_STRING(isolate, "Function")));
 
     // Invoke Function constructor to create function with the given body and no
     // arguments
-    std::string body = TRI_ObjectToString( object->Get(TRI_V8_ASCII_STRING("action"))->ToString());
+    std::string body = TRI_ObjectToString( object->Get(TRI_V8_ASCII_STRING(isolate, "action"))->ToString());
     body = "return (" + body + ")(params);";
-    v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING("params"), TRI_V8_STD_STRING(body)};
+    v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"), TRI_V8_STD_STRING(isolate, body)};
     v8::Local<v8::Object> function = ctor->NewInstance(2, args);
 
     action = v8::Local<v8::Function>::Cast(function);
@@ -295,7 +295,7 @@ Result executeTransactionJS(
       tryCatch.Reset(); //reset as we have transferd the error message into the Result
       return rv;
     }
-    action->SetName(TRI_V8_ASCII_STRING("userTransactionSource"));
+    action->SetName(TRI_V8_ASCII_STRING(isolate, "userTransactionSource"));
   } else {
     rv.reset(TRI_ERROR_BAD_PARAMETER, actionError);
     return rv;

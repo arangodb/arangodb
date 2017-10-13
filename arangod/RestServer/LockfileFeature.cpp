@@ -51,7 +51,7 @@ void LockfileFeature::start() {
   if (res != TRI_ERROR_NO_ERROR) {
     std::string otherPID;
     try {
-      otherPID = FileUtils::slurp(_lockFilename.c_str());
+      otherPID = FileUtils::slurp(_lockFilename);
     } catch (...) {}
     if (otherPID.empty()) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "failed to read/write lockfile, please check the file permissions of the lockfile '" << _lockFilename << "'";

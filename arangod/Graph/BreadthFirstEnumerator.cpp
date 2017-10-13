@@ -26,8 +26,8 @@
 #include "Graph/EdgeCursor.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/TraverserCache.h"
-#include "VocBase/Traverser.h"
-#include "VocBase/TraverserOptions.h"
+#include "Graph/Traverser.h"
+#include "Graph/TraverserOptions.h"
 
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -37,18 +37,18 @@ using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
 BreadthFirstEnumerator::PathStep::PathStep(StringRef const vertex)
-    : sourceIdx(0), edge(nullptr), vertex(vertex) {}
+    : sourceIdx(0), edge(EdgeDocumentToken()), vertex(vertex) {}
 
 BreadthFirstEnumerator::PathStep::PathStep(
-    size_t sourceIdx, std::unique_ptr<EdgeDocumentToken>&& edge,
+    size_t sourceIdx, EdgeDocumentToken&& edge,
     StringRef const vertex)
-    : sourceIdx(sourceIdx), edge(edge.release()), vertex(vertex) {}
+    : sourceIdx(sourceIdx), edge(edge), vertex(vertex) {}
 
 BreadthFirstEnumerator::PathStep::~PathStep() {}
 
 BreadthFirstEnumerator::PathStep::PathStep(PathStep& other)
     : sourceIdx(other.sourceIdx),
-      edge(other.edge.release()),
+      edge(other.edge),
       vertex(other.vertex) {}
 
 BreadthFirstEnumerator::BreadthFirstEnumerator(Traverser* traverser,
@@ -128,13 +128,13 @@ bool BreadthFirstEnumerator::next() {
       bool shouldReturnPath = _currentDepth + 1 >= _opts->minDepth;
       bool didInsert = false;
 
-      auto callback = [&](std::unique_ptr<graph::EdgeDocumentToken>&& eid,
+      auto callback = [&](graph::EdgeDocumentToken&& eid,
                           VPackSlice e, size_t cursorIdx) -> void {
         
         if (_opts->hasEdgeFilter(_currentDepth, cursorIdx)) {
           VPackSlice edge = e;
           if (edge.isString()) {
-            edge = _opts->cache()->lookupToken(eid.get());
+            edge = _opts->cache()->lookupToken(eid);
           }
           if (!_traverser->edgeMatchesConditions(edge, nextVertex, _currentDepth,
                                                  cursorIdx)) {
@@ -177,8 +177,7 @@ bool BreadthFirstEnumerator::next() {
 
 arangodb::aql::AqlValue BreadthFirstEnumerator::lastVertexToAqlValue() {
   TRI_ASSERT(_lastReturned < _schreier.size());
-  return _traverser->fetchVertexData(
-      StringRef(_schreier[_lastReturned]->vertex));
+  return _traverser->fetchVertexData(_schreier[_lastReturned]->vertex);
 }
 
 arangodb::aql::AqlValue BreadthFirstEnumerator::lastEdgeToAqlValue() {
@@ -188,7 +187,7 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::lastEdgeToAqlValue() {
     return arangodb::aql::AqlValue(
         arangodb::basics::VelocyPackHelper::NullValue());
   }
-  return _opts->cache()->fetchAqlResult(_schreier[_lastReturned]->edge.get());
+  return _opts->cache()->fetchEdgeAqlResult(_schreier[_lastReturned]->edge);
 }
 
 arangodb::aql::AqlValue BreadthFirstEnumerator::pathToAqlValue(
@@ -208,7 +207,7 @@ arangodb::aql::AqlValue BreadthFirstEnumerator::pathToAqlValue(
   result.add(VPackValue("edges"));
   result.openArray();
   for (auto const& idx : fullPath) {
-    _opts->cache()->insertIntoResult(_schreier[idx]->edge.get(), result);
+    _opts->cache()->insertEdgeIntoResult(_schreier[idx]->edge, result);
   }
   result.close();  // edges
   result.add(VPackValue("vertices"));

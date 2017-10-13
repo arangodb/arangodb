@@ -26,10 +26,11 @@
 #include <math.h>
 #include <time.h>
 
-#include "Logger/Logger.h"
 #include "Basics/Exceptions.h"
 #include "Basics/tri-strings.h"
 #include "Basics/StringBuffer.h"
+#include "Basics/fpconv.h"
+#include "Logger/Logger.h"
 
 #include "zlib.h"
 #include "zconf.h"  
@@ -1587,13 +1588,10 @@ std::string itoa(uint64_t attr) {
 }
 
 std::string ftoa(double i) {
-  StringBuffer buffer(TRI_CORE_MEM_ZONE);
-
-  buffer.appendDecimal(i);
-
-  std::string result(buffer.c_str());
-
-  return result;
+  char buffer[64];
+  int length = fpconv_dtoa(i, &buffer[0]);
+  
+  return std::string(&buffer[0], static_cast<size_t>(length));
 }
 
 // .............................................................................
@@ -2271,25 +2269,25 @@ size_t numEntries(std::string const& sourceStr, std::string const& delimiter) {
 }
 
 std::string encodeHex(std::string const& str) {
-  char* tmp;
   size_t len;
-
-  tmp = TRI_EncodeHexString(str.c_str(), str.length(), &len);
-  auto result = std::string(tmp, len);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
-
-  return result;
+  char* tmp = TRI_EncodeHexString(str.c_str(), str.length(), &len);
+  
+  if (tmp != nullptr) {
+    TRI_DEFER(TRI_FreeString(tmp));
+    return std::string(tmp, len);
+  }
+  return std::string();
 }
 
 std::string decodeHex(std::string const& str) {
-  char* tmp;
   size_t len;
-
-  tmp = TRI_DecodeHexString(str.c_str(), str.length(), &len);
-  auto result = std::string(tmp, len);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, tmp);
-
-  return result;
+  char* tmp = TRI_DecodeHexString(str.c_str(), str.length(), &len);
+  
+  if (tmp != nullptr) {
+    TRI_DEFER(TRI_FreeString(tmp));
+    return std::string(tmp, len);
+  }
+  return std::string();
 }
 
 bool gzipUncompress(char const* compressed, size_t compressedLength, std::string& uncompressed) {

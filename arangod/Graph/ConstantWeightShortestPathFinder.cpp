@@ -43,7 +43,7 @@ using namespace arangodb;
 using namespace arangodb::graph;
 
 ConstantWeightShortestPathFinder::PathSnippet::PathSnippet(
-    StringRef& pred, std::unique_ptr<EdgeDocumentToken>&& path)
+    StringRef& pred, EdgeDocumentToken&& path)
     : _pred(pred), _path(std::move(path)) {}
 
 ConstantWeightShortestPathFinder::ConstantWeightShortestPathFinder(
@@ -176,7 +176,7 @@ void ConstantWeightShortestPathFinder::expandVertex(bool backward,
     edgeCursor.reset(_options->nextCursor(_mmdr.get(), vertex));
   }
 
-  auto callback = [&](std::unique_ptr<EdgeDocumentToken>&& eid, VPackSlice edge,
+  auto callback = [&](EdgeDocumentToken&& eid, VPackSlice edge,
                       size_t cursorIdx) -> void {
     if (edge.isString()) {
       if (edge.compareString(vertex.data(), vertex.length()) != 0) {

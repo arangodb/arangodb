@@ -481,7 +481,7 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
 
     std::sort(collections.begin(), collections.end(), SortCollections);
 
-    StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+    StringBuffer buffer(true);
 
     // step2: run the actual import
     for (VPackSlice const& collection : collections) {

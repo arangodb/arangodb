@@ -225,7 +225,7 @@ class RandomDeviceDirect : public RandomDevice {
     char* ptr = reinterpret_cast<char*>(&buffer);
 
     while (0 < n) {
-      ssize_t r = TRI_READ(fd, ptr, (TRI_read_t)n);
+      ssize_t r = TRI_READ(fd, ptr, static_cast<TRI_read_t>(n));
 
       if (r == 0) {
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "read on random device failed: nothing read";
@@ -308,16 +308,17 @@ class RandomDeviceCombined : public RandomDevice {
     char* ptr = reinterpret_cast<char*>(&buffer);
 
     while (0 < n) {
-      ssize_t r = TRI_READ(fd, ptr, (TRI_read_t)n);
+      ssize_t r = TRI_READ(fd, ptr, static_cast<TRI_read_t>(n));
 
       if (r == 0) {
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "read on random device failed: nothing read";
         FATAL_ERROR_EXIT();
-      } else if (errno == EWOULDBLOCK || errno == EAGAIN) {
-        LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "not enough entropy (got " << (sizeof(buffer) - n)
-                  << "), switching to pseudo-random";
-        break;
-      } else if (r < 0) {
+      } else if (r < 0) { 
+        if (errno == EWOULDBLOCK || errno == EAGAIN) {
+          LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "not enough entropy (got " << (sizeof(buffer) - n)
+                    << "), switching to pseudo-random";
+          break;
+        }
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "read on random device failed: " << strerror(errno);
         FATAL_ERROR_EXIT();
       }

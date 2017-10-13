@@ -216,7 +216,7 @@ bool FailedFollower::start() {
         
     }
   }
-  
+
   // Abort job blocking shard if abortable
   try {
     std::string jobId = _snapshot(blockedShardsPrefix + _shard).getString();

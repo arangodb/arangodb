@@ -45,19 +45,19 @@ struct TRI_blob_t {
 /// @brief destorys the data of blob, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyBlob(TRI_memory_zone_t*, TRI_blob_t*);
+void TRI_DestroyBlob(TRI_blob_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a blob into given destination
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CopyToBlob(TRI_memory_zone_t*, TRI_blob_t* dst, TRI_blob_t const* src);
+int TRI_CopyToBlob(TRI_blob_t* dst, TRI_blob_t const* src);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assigns a blob value by reference into given destination
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AssignToBlob(TRI_memory_zone_t* zone, TRI_blob_t* dst,
+int TRI_AssignToBlob(TRI_blob_t* dst,
                      TRI_blob_t const* src);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -94,7 +94,7 @@ typedef struct TRI_json_t {
 /// @brief creates a null object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_CreateNullJson(TRI_memory_zone_t*);
+TRI_json_t* TRI_CreateNullJson();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a null object
@@ -106,7 +106,7 @@ void TRI_InitNullJson(TRI_json_t*);
 /// @brief creates a boolean object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_CreateBooleanJson(TRI_memory_zone_t*, bool);
+TRI_json_t* TRI_CreateBooleanJson(bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a boolean object
@@ -118,7 +118,7 @@ void TRI_InitBooleanJson(TRI_json_t*, bool);
 /// @brief creates a number object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_CreateNumberJson(TRI_memory_zone_t*, double);
+TRI_json_t* TRI_CreateNumberJson(double);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes a number object
@@ -130,14 +130,14 @@ void TRI_InitNumberJson(TRI_json_t*, double);
 /// @brief creates a string object with given length
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_CreateStringJson(TRI_memory_zone_t*, char* value,
+TRI_json_t* TRI_CreateStringJson(char* value,
                                  size_t length);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a string object with given length, copying the string
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_CreateStringCopyJson(TRI_memory_zone_t*, char const*, size_t);
+TRI_json_t* TRI_CreateStringCopyJson(char const*, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a string object
@@ -149,7 +149,7 @@ void TRI_InitStringJson(TRI_json_t*, char*, size_t);
 /// @brief initializes a string object
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitStringCopyJson(TRI_memory_zone_t*, TRI_json_t*, char const*,
+int TRI_InitStringCopyJson(TRI_json_t*, char const*,
                            size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -162,37 +162,37 @@ void TRI_InitStringReferenceJson(TRI_json_t*, char const*, size_t);
 /// @brief creates an array, with the specified initial size
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_CreateArrayJson(TRI_memory_zone_t*, size_t = 0);
+TRI_json_t* TRI_CreateArrayJson(size_t = 0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes an array with a given size
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitArrayJson(TRI_memory_zone_t*, TRI_json_t*, size_t = 0);
+void TRI_InitArrayJson(TRI_json_t*, size_t = 0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates an object with a given size
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_CreateObjectJson(TRI_memory_zone_t*, size_t = 0);
+TRI_json_t* TRI_CreateObjectJson(size_t = 0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes an object, using a specific initial size
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitObjectJson(TRI_memory_zone_t*, TRI_json_t*, size_t = 0);
+void TRI_InitObjectJson(TRI_json_t*, size_t = 0);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a json object, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyJson(TRI_memory_zone_t*, TRI_json_t*);
+void TRI_DestroyJson(TRI_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys a json object and frees the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeJson(TRI_memory_zone_t*, TRI_json_t*);
+void TRI_FreeJson(TRI_json_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determines the length of an array json
@@ -250,7 +250,7 @@ bool TRI_IsStringJson(TRI_json_t const* json);
 /// @brief adds a new sub-object to an array, copying it
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_PushBackArrayJson(TRI_memory_zone_t*, TRI_json_t* array,
+int TRI_PushBackArrayJson(TRI_json_t* array,
                           TRI_json_t const* object);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -263,7 +263,7 @@ int TRI_PushBack2ArrayJson(TRI_json_t* array, TRI_json_t const* object);
 /// @brief adds a new sub-object, not copying it but freeing the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_PushBack3ArrayJson(TRI_memory_zone_t*, TRI_json_t* array,
+int TRI_PushBack3ArrayJson(TRI_json_t* array,
                            TRI_json_t* object);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -276,14 +276,14 @@ TRI_json_t* TRI_LookupArrayJson(TRI_json_t const*, size_t);
 /// @brief adds a new attribute  to an object, not copying it
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_Insert2ObjectJson(TRI_memory_zone_t*, TRI_json_t* object,
+void TRI_Insert2ObjectJson(TRI_json_t* object,
                            char const* name, TRI_json_t const* subobject);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new attribute, not copying it but freeing the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_Insert3ObjectJson(TRI_memory_zone_t*, TRI_json_t* object,
+void TRI_Insert3ObjectJson(TRI_json_t* object,
                            char const* name, TRI_json_t* subobject);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -296,14 +296,14 @@ TRI_json_t* TRI_LookupObjectJson(TRI_json_t const* object, char const* name);
 /// @brief deletes an element from a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_DeleteObjectJson(TRI_memory_zone_t* zone, TRI_json_t* object,
+bool TRI_DeleteObjectJson(TRI_json_t* object,
                           char const* name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replaces an element in a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ReplaceObjectJson(TRI_memory_zone_t* zone, TRI_json_t* object,
+bool TRI_ReplaceObjectJson(TRI_json_t* object,
                            char const* name, TRI_json_t const* replacement);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -316,13 +316,13 @@ int TRI_StringifyJson(struct TRI_string_buffer_t*, TRI_json_t const* object);
 /// @brief copies a json object into a given buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CopyToJson(TRI_memory_zone_t*, TRI_json_t* dst, TRI_json_t const* src);
+int TRI_CopyToJson(TRI_json_t* dst, TRI_json_t const* src);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies a json object
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_CopyJson(TRI_memory_zone_t*, TRI_json_t const*);
+TRI_json_t* TRI_CopyJson(TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief default deleter for TRI_json_t
@@ -336,7 +336,7 @@ class default_delete<TRI_json_t> {
  public:
   void operator()(TRI_json_t* json) {
     if (json != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      TRI_FreeJson(json);
     }
   }
 };

@@ -48,8 +48,8 @@ class AqlItemBlock;
 struct AqlValue;
 class Ast;
 class AttributeAccessor;
+class ExecutionPlan;
 class ExpressionContext;
-class V8Executor;
 struct V8Expression;
 
 /// @brief AqlExpression, used in execution plans and execution blocks
@@ -62,10 +62,10 @@ class Expression {
   Expression() = delete;
 
   /// @brief constructor, using an AST start node
-  Expression(Ast*, AstNode*);
+  Expression(ExecutionPlan* plan, Ast*, AstNode*);
 
   /// @brief constructor, using VPack
-  Expression(Ast*, arangodb::velocypack::Slice const&);
+  Expression(ExecutionPlan* plan, Ast*, arangodb::velocypack::Slice const&);
 
   ~Expression();
  
@@ -84,7 +84,7 @@ class Expression {
   /// @brief whether or not the expression can throw an exception
   inline bool canThrow() {
     if (_type == UNPROCESSED) {
-      analyzeExpression();
+      initExpression();
     }
     return _canThrow;
   }
@@ -92,7 +92,7 @@ class Expression {
   /// @brief whether or not the expression can safely run on a DB server
   inline bool canRunOnDBServer() {
     if (_type == UNPROCESSED) {
-      analyzeExpression();
+      initExpression();
     }
     return _canRunOnDBServer;
   }
@@ -100,16 +100,16 @@ class Expression {
   /// @brief whether or not the expression is deterministic
   inline bool isDeterministic() {
     if (_type == UNPROCESSED) {
-      analyzeExpression();
+      initExpression();
     }
     return _isDeterministic;
   }
 
   /// @brief clone the expression, needed to clone execution plans
-  Expression* clone(Ast* ast) {
+  Expression* clone(ExecutionPlan* plan, Ast* ast) {
     // We do not need to copy the _ast, since it is managed by the
     // query object and the memory management of the ASTs
-    return new Expression(ast != nullptr ? ast : _ast, _node);
+    return new Expression(plan, ast != nullptr ? ast : _ast, _node);
   }
 
   /// @brief return all variables used in the expression
@@ -133,7 +133,7 @@ class Expression {
   /// @brief check whether this is a JSON expression
   inline bool isJson() {
     if (_type == UNPROCESSED) {
-      analyzeExpression();
+      initExpression();
     }
     return _type == JSON;
   }
@@ -141,7 +141,7 @@ class Expression {
   /// @brief check whether this is a V8 expression
   inline bool isV8() {
     if (_type == UNPROCESSED) {
-      analyzeExpression();
+      initExpression();
     }
     return _type == V8;
   }
@@ -149,7 +149,7 @@ class Expression {
   /// @brief get expression type as string
   std::string typeString() {
     if (_type == UNPROCESSED) {
-      analyzeExpression();
+      initExpression();
     }
 
     switch (_type) {
@@ -213,14 +213,23 @@ class Expression {
   void clearVariable(Variable const* variable) { _variables.erase(variable); }
 
  private:
+  /// @brief free the internal data structures
+  void freeInternals() noexcept;
+
+  /// @brief reset internal attributes after variables in the expression were changed
+  void invalidateAfterReplacements();
 
   /// @brief find a value in an array
   bool findInArray(AqlValue const&, AqlValue const&,
                    transaction::Methods*,
                    AstNode const*) const;
 
+  void initConstantExpression();
+  void initSimpleExpression();
+  void initV8Expression();
+
   /// @brief analyze the expression (determine its type etc.)
-  void analyzeExpression();
+  void initExpression();
 
   /// @brief build the expression (if appropriate, compile it into
   /// executable code)
@@ -329,11 +338,12 @@ class Expression {
       bool& mustDestroy);
 
  private:
+  /// @brief the query execution plan. note: this may be a nullptr for expressions
+  /// created in the early optimization stage!
+  ExecutionPlan* _plan;
+
   /// @brief the AST
   Ast* _ast;
-
-  /// @brief the V8 executor
-  V8Executor* _executor;
 
   /// @brief the AST node that contains the expression to execute
   AstNode* _node;
@@ -342,9 +352,7 @@ class Expression {
   /// if the expression is a constant, it will be stored as plain JSON instead
   union {
     V8Expression* _func;
-
     uint8_t* _data;
-
     AttributeAccessor* _accessor;
   };
 
@@ -363,9 +371,6 @@ class Expression {
   /// @brief whether or not the top-level attributes of the expression were
   /// determined
   bool _hasDeterminedAttributes;
-
-  /// @brief whether or not the expression has been built/compiled
-  bool _built;
 
   /// @brief the top-level attributes used in the expression, grouped
   /// by variable name

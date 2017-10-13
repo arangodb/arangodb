@@ -92,8 +92,8 @@ StringRef transaction::helpers::extractKeyPart(VPackSlice slice) {
 /// @brief extract the _id attribute from a slice, and convert it into a 
 /// string, static method
 std::string transaction::helpers::extractIdString(CollectionNameResolver const* resolver,
-                                         VPackSlice slice,
-                                         VPackSlice const& base) {
+                                                  VPackSlice slice,
+                                                  VPackSlice const& base) {
   VPackSlice id;
 
   if (slice.isExternal()) {
@@ -102,6 +102,10 @@ std::string transaction::helpers::extractIdString(CollectionNameResolver const* 
    
   if (slice.isObject()) {
     // extract id attribute from object
+    if (slice.isEmptyObject()) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+    }
+
     uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
     if (*p == basics::VelocyPackHelper::KeyAttribute) {
       // skip over attribute name
@@ -115,7 +119,7 @@ std::string transaction::helpers::extractIdString(CollectionNameResolver const* 
         if (id.isCustom()) {
           // we should be pointing to a custom value now
           TRI_ASSERT(id.head() == 0xf3);
- 
+
           return makeIdFromCustom(resolver, id, key);
         }
         if (id.isString()) {
@@ -237,7 +241,6 @@ VPackSlice transaction::helpers::extractToFromDocument(VPackSlice slice) {
   }
   // this method must only be called on edges
   // this means we must have at least the attributes  _key, _id, _from, _to and _rev
-
   uint8_t const* p = slice.begin() + slice.findDataOffset(slice.head());
   VPackValueLength count = 0;
 

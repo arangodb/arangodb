@@ -37,7 +37,7 @@
 
 #define VECTOR_INIT \
   TRI_vector_t v1; \
-  TRI_InitVector(&v1, TRI_CORE_MEM_ZONE, sizeof(int));
+  TRI_InitVector(&v1, sizeof(int));
 
 #define VECTOR_DESTROY \
   TRI_DestroyVector(&v1);

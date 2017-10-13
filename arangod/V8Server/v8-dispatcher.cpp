@@ -435,13 +435,13 @@ void V8Task::work() {
     // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
     auto current = isolate->GetCurrentContext()->Global();
     auto ctor = v8::Local<v8::Function>::Cast(
-        current->Get(TRI_V8_ASCII_STRING("Function")));
+        current->Get(TRI_V8_ASCII_STRING(isolate, "Function")));
 
     // Invoke Function constructor to create function with the given body and
     // no
     // arguments
-    v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING("params"),
-                                     TRI_V8_STD_STRING(_command)};
+    v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
+                                     TRI_V8_STD_STRING(isolate, _command)};
     v8::Local<v8::Object> function = ctor->NewInstance(2, args);
 
     v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
@@ -496,12 +496,12 @@ static bool TryCompile(v8::Isolate* isolate, std::string const& command) {
   // get built-in Function constructor (see ECMA-262 5th edition 15.3.2)
   auto current = isolate->GetCurrentContext()->Global();
   auto ctor = v8::Local<v8::Function>::Cast(
-      current->Get(TRI_V8_ASCII_STRING("Function")));
+      current->Get(TRI_V8_ASCII_STRING(isolate, "Function")));
 
   // Invoke Function constructor to create function with the given body and no
   // arguments
-  v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING("params"),
-                                   TRI_V8_STD_STRING(command)};
+  v8::Handle<v8::Value> args[2] = {TRI_V8_ASCII_STRING(isolate, "params"),
+                                   TRI_V8_STD_STRING(isolate, command)};
   v8::Local<v8::Object> function = ctor->NewInstance(2, args);
 
   v8::Handle<v8::Function> action = v8::Local<v8::Function>::Cast(function);
@@ -513,8 +513,8 @@ static std::string GetTaskId(v8::Isolate* isolate, v8::Handle<v8::Value> arg) {
   if (arg->IsObject()) {
     // extract "id" from object
     v8::Handle<v8::Object> obj = arg.As<v8::Object>();
-    if (obj->Has(TRI_V8_ASCII_STRING("id"))) {
-      return TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("id")));
+    if (obj->Has(TRI_V8_ASCII_STRING(isolate, "id"))) {
+      return TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "id")));
     }
   }
 
@@ -548,9 +548,9 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // job id
   std::string id;
 
-  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("id"))) {
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "id"))) {
     // user-specified id
-    id = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("id")));
+    id = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "id")));
   } else {
     // auto-generated id
     id = std::to_string(TRI_NewTickServer());
@@ -559,30 +559,30 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // job name
   std::string name;
 
-  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("name"))) {
-    name = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("name")));
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "name"))) {
+    name = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "name")));
   } else {
     name = "user-defined task";
   }
 
   bool isSystem = false;
 
-  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("isSystem"))) {
-    isSystem = TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING("isSystem")));
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "isSystem"))) {
+    isSystem = TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING(isolate, "isSystem")));
   }
 
   // offset in seconds into period or from now on if no period
   double offset = 0.0;
 
-  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("offset"))) {
-    offset = TRI_ObjectToDouble(obj->Get(TRI_V8_ASCII_STRING("offset")));
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "offset"))) {
+    offset = TRI_ObjectToDouble(obj->Get(TRI_V8_ASCII_STRING(isolate, "offset")));
   }
 
   // period in seconds & count
   double period = 0.0;
 
-  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("period"))) {
-    period = TRI_ObjectToDouble(obj->Get(TRI_V8_ASCII_STRING("period")));
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "period"))) {
+    period = TRI_ObjectToDouble(obj->Get(TRI_V8_ASCII_STRING(isolate, "period")));
 
     if (period <= 0.0) {
       TRI_V8_THROW_EXCEPTION_PARAMETER(
@@ -591,8 +591,8 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   std::string runAsUser;
-  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("runAsUser"))) {
-    runAsUser = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("runAsUser")));
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "runAsUser"))) {
+    runAsUser = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "runAsUser")));
   }
   // only the superroot is allowed to run tasks as an arbitrary user
   if (ExecContext::CURRENT != nullptr) {
@@ -604,18 +604,18 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // extract the command
-  if (!obj->HasOwnProperty(TRI_V8_ASCII_STRING("command"))) {
+  if (!obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "command"))) {
     TRI_V8_THROW_EXCEPTION_PARAMETER("command must be specified");
   }
 
   std::string command;
-  if (obj->Get(TRI_V8_ASCII_STRING("command"))->IsFunction()) {
+  if (obj->Get(TRI_V8_ASCII_STRING(isolate, "command"))->IsFunction()) {
     // need to add ( and ) around function because call would otherwise break
     command = "(" +
-              TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("command"))) +
+              TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "command"))) +
               ")(params)";
   } else {
-    command = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING("command")));
+    command = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "command")));
   }
 
   if (!TryCompile(isolate, command)) {
@@ -625,9 +625,9 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   // extract the parameters
   auto parameters = std::make_shared<VPackBuilder>();
 
-  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING("params"))) {
+  if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "params"))) {
     int res = TRI_V8ToVPack(isolate, *parameters,
-                            obj->Get(TRI_V8_ASCII_STRING("params")), false);
+                            obj->Get(TRI_V8_ASCII_STRING(isolate, "params")), false);
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -836,24 +836,24 @@ void TRI_InitV8Dispatcher(v8::Isolate* isolate,
 
   // _queues is a RO collection and can only be written in C++, as superroot
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_CREATE_QUEUE"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_CREATE_QUEUE"),
                                JS_CreateQueue);
 
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_DELETE_QUEUE"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_DELETE_QUEUE"),
                                JS_DeleteQueue);
 
   // we need a scheduler and a dispatcher to define periodic tasks
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_REGISTER_TASK"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_REGISTER_TASK"),
                                JS_RegisterTask);
 
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_UNREGISTER_TASK"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_UNREGISTER_TASK"),
                                JS_UnregisterTask);
 
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_GET_TASK"), JS_GetTask);
+                               TRI_V8_ASCII_STRING(isolate, "SYS_GET_TASK"), JS_GetTask);
 }
 
 void TRI_ShutdownV8Dispatcher() { V8Task::shutdownTasks(); }

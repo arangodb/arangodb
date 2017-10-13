@@ -501,6 +501,13 @@ void GraphNode::getConditionVariables(std::vector<Variable const*>& res) const {
   // No variables used, nothing todo
 }
 
+Collection const* GraphNode::collection() const {
+  TRI_ASSERT(ServerState::instance()->isCoordinator());
+  TRI_ASSERT(!_edgeColls.empty());
+  TRI_ASSERT(_edgeColls.front() != nullptr);
+  return _edgeColls.front().get();
+}
+
 #ifndef USE_ENTERPRISE
 void GraphNode::enhanceEngineInfo(VPackBuilder& builder) const {
   if (_graphObj != nullptr) {

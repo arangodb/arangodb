@@ -122,7 +122,7 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
       uint64_t const n = ARANGOBENCH->complexity();
       TRI_string_buffer_t* buffer;
 
-      buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+      buffer = TRI_CreateSizedStringBuffer(256);
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t)(globalCounter / 4);
@@ -145,7 +145,7 @@ struct DocumentCrudAppendTest : public BenchmarkOperation {
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
       char* ptr = TRI_StealStringBuffer(buffer);
-      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+      TRI_FreeStringBuffer(buffer);
 
       return (char const*)ptr;
     } else if (mod == 1 || mod == 3) {
@@ -207,7 +207,7 @@ struct DocumentCrudWriteReadTest : public BenchmarkOperation {
       uint64_t const n = ARANGOBENCH->complexity();
       TRI_string_buffer_t* buffer;
 
-      buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+      buffer = TRI_CreateSizedStringBuffer(256);
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t)(globalCounter / 2);
@@ -226,7 +226,7 @@ struct DocumentCrudWriteReadTest : public BenchmarkOperation {
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
       char* ptr = TRI_StealStringBuffer(buffer);
-      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+      TRI_FreeStringBuffer(buffer);
 
       return (char const*)ptr;
     } else {
@@ -287,7 +287,7 @@ struct ShapesTest : public BenchmarkOperation {
       uint64_t const n = ARANGOBENCH->complexity();
       TRI_string_buffer_t* buffer;
 
-      buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+      buffer = TRI_CreateSizedStringBuffer(256);
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t)(globalCounter / 3);
@@ -313,7 +313,7 @@ struct ShapesTest : public BenchmarkOperation {
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
       char* ptr = TRI_StealStringBuffer(buffer);
-      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+      TRI_FreeStringBuffer(buffer);
 
       return (char const*)ptr;
     } else {
@@ -371,7 +371,7 @@ struct ShapesAppendTest : public BenchmarkOperation {
       uint64_t const n = ARANGOBENCH->complexity();
       TRI_string_buffer_t* buffer;
 
-      buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+      buffer = TRI_CreateSizedStringBuffer(256);
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t)(globalCounter / 2);
@@ -397,7 +397,7 @@ struct ShapesAppendTest : public BenchmarkOperation {
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
       char* ptr = TRI_StealStringBuffer(buffer);
-      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+      TRI_FreeStringBuffer(buffer);
 
       return (char const*)ptr;
     } else {
@@ -460,7 +460,7 @@ struct RandomShapesTest : public BenchmarkOperation {
       uint64_t const n = ARANGOBENCH->complexity();
       TRI_string_buffer_t* buffer;
 
-      buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+      buffer = TRI_CreateSizedStringBuffer(256);
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t)(globalCounter / 3);
@@ -489,7 +489,7 @@ struct RandomShapesTest : public BenchmarkOperation {
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
       char* ptr = TRI_StealStringBuffer(buffer);
-      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+      TRI_FreeStringBuffer(buffer);
 
       return (char const*)ptr;
     } else {
@@ -559,7 +559,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
       uint64_t const n = ARANGOBENCH->complexity();
       TRI_string_buffer_t* buffer;
 
-      buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+      buffer = TRI_CreateSizedStringBuffer(256);
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t)(globalCounter / 5);
@@ -582,7 +582,7 @@ struct DocumentCrudTest : public BenchmarkOperation {
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
       char* ptr = TRI_StealStringBuffer(buffer);
-      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+      TRI_FreeStringBuffer(buffer);
 
       return (char const*)ptr;
     } else if (mod == 1 || mod == 3 || mod == 4) {
@@ -657,7 +657,7 @@ struct EdgeCrudTest : public BenchmarkOperation {
       uint64_t const n = ARANGOBENCH->complexity();
       TRI_string_buffer_t* buffer;
 
-      buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+      buffer = TRI_CreateSizedStringBuffer(256);
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t)(globalCounter / 4);
@@ -693,7 +693,7 @@ struct EdgeCrudTest : public BenchmarkOperation {
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
       char* ptr = TRI_StealStringBuffer(buffer);
-      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+      TRI_FreeStringBuffer(buffer);
 
       return (char const*)ptr;
     } else if (mod == 1 || mod == 3 || mod == 4) {
@@ -763,7 +763,7 @@ struct SkiplistTest : public BenchmarkOperation {
     if (mod == 0 || mod == 2) {
       TRI_string_buffer_t* buffer;
 
-      buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+      buffer = TRI_CreateSizedStringBuffer(256);
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t)(globalCounter / 4);
@@ -778,7 +778,7 @@ struct SkiplistTest : public BenchmarkOperation {
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
       char* ptr = TRI_StealStringBuffer(buffer);
-      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+      TRI_FreeStringBuffer(buffer);
 
       return (char const*)ptr;
     } else if (mod == 1 || mod == 3 || mod == 4) {
@@ -848,7 +848,7 @@ struct HashTest : public BenchmarkOperation {
     if (mod == 0 || mod == 2) {
       TRI_string_buffer_t* buffer;
 
-      buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+      buffer = TRI_CreateSizedStringBuffer(256);
       TRI_AppendStringStringBuffer(buffer, "{\"_key\":\"");
 
       size_t keyId = (size_t)(globalCounter / 4);
@@ -863,7 +863,7 @@ struct HashTest : public BenchmarkOperation {
       *length = TRI_LengthStringBuffer(buffer);
       *mustFree = true;
       char* ptr = TRI_StealStringBuffer(buffer);
-      TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+      TRI_FreeStringBuffer(buffer);
 
       return (char const*)ptr;
     } else if (mod == 1 || mod == 3 || mod == 4) {
@@ -884,7 +884,7 @@ struct DocumentImportTest : public BenchmarkOperation {
 
     uint64_t const n = ARANGOBENCH->complexity();
 
-    _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 16384);
+    _buffer = TRI_CreateSizedStringBuffer(16384);
     for (uint64_t i = 0; i < n; ++i) {
       TRI_AppendStringStringBuffer(_buffer, "{\"key1\":\"");
       TRI_AppendUInt64StringBuffer(_buffer, i);
@@ -896,7 +896,7 @@ struct DocumentImportTest : public BenchmarkOperation {
     _length = TRI_LengthStringBuffer(_buffer);
   }
 
-  ~DocumentImportTest() { TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, _buffer); }
+  ~DocumentImportTest() { TRI_FreeStringBuffer(_buffer); }
 
   bool setUp(SimpleHttpClient* client) override {
     return DeleteCollection(client, ARANGOBENCH->collection()) &&
@@ -936,7 +936,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
 
     uint64_t const n = ARANGOBENCH->complexity();
 
-    _buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 4096);
+    _buffer = TRI_CreateSizedStringBuffer(4096);
     TRI_AppendCharStringBuffer(_buffer, '{');
 
     for (uint64_t i = 1; i <= n; ++i) {
@@ -954,7 +954,7 @@ struct DocumentCreationTest : public BenchmarkOperation {
   }
 
   ~DocumentCreationTest() {
-    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, _buffer);
+    TRI_FreeStringBuffer(_buffer);
   }
 
   bool setUp(SimpleHttpClient* client) override {
@@ -1016,7 +1016,7 @@ struct CollectionCreationTest : public BenchmarkOperation {
     TRI_string_buffer_t* buffer;
     char* data;
 
-    buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 64);
+    buffer = TRI_CreateSizedStringBuffer(64);
     if (buffer == 0) {
       return 0;
     }
@@ -1029,7 +1029,7 @@ struct CollectionCreationTest : public BenchmarkOperation {
 
     // this will free the string buffer frame, but not the string
     data = TRI_StealStringBuffer(buffer);
-    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+    TRI_FreeStringBuffer(buffer);
 
     *mustFree = true;
     return (char const*)data;
@@ -1074,7 +1074,7 @@ struct TransactionAqlTest : public BenchmarkOperation {
                       bool* mustFree) override {
     size_t const mod = globalCounter % 8;
     TRI_string_buffer_t* buffer;
-    buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+    buffer = TRI_CreateSizedStringBuffer(256);
 
     if (mod == 0) {
       TRI_AppendStringStringBuffer(buffer, "{\"query\":\"FOR c IN ");
@@ -1125,7 +1125,7 @@ struct TransactionAqlTest : public BenchmarkOperation {
     *length = TRI_LengthStringBuffer(buffer);
     *mustFree = true;
     char* ptr = TRI_StealStringBuffer(buffer);
-    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+    TRI_FreeStringBuffer(buffer);
 
     return (char const*)ptr;
   }
@@ -1161,7 +1161,7 @@ struct TransactionCountTest : public BenchmarkOperation {
                       size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) override {
     TRI_string_buffer_t* buffer;
-    buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+    buffer = TRI_CreateSizedStringBuffer(256);
 
     TRI_AppendStringStringBuffer(buffer, "{ \"collections\": { \"write\": \"");
     TRI_AppendStringStringBuffer(buffer, ARANGOBENCH->collection().c_str());
@@ -1178,7 +1178,7 @@ struct TransactionCountTest : public BenchmarkOperation {
     *length = TRI_LengthStringBuffer(buffer);
     *mustFree = true;
     char* ptr = TRI_StealStringBuffer(buffer);
-    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+    TRI_FreeStringBuffer(buffer);
 
     return (char const*)ptr;
   }
@@ -1216,7 +1216,7 @@ struct TransactionDeadlockTest : public BenchmarkOperation {
                       bool* mustFree) override {
     size_t const mod = globalCounter % 2;
     TRI_string_buffer_t* buffer;
-    buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+    buffer = TRI_CreateSizedStringBuffer(256);
 
     TRI_AppendStringStringBuffer(buffer, "{ \"collections\": { ");
     TRI_AppendStringStringBuffer(buffer, "\"write\": [ \"");
@@ -1243,7 +1243,7 @@ struct TransactionDeadlockTest : public BenchmarkOperation {
     *length = TRI_LengthStringBuffer(buffer);
     *mustFree = true;
     char* ptr = TRI_StealStringBuffer(buffer);
-    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+    TRI_FreeStringBuffer(buffer);
 
     return (char const*)ptr;
   }
@@ -1284,7 +1284,7 @@ struct TransactionMultiTest : public BenchmarkOperation {
                       bool* mustFree) override {
     size_t const mod = globalCounter % 2;
     TRI_string_buffer_t* buffer;
-    buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+    buffer = TRI_CreateSizedStringBuffer(256);
 
     TRI_AppendStringStringBuffer(buffer, "{ \"collections\": { ");
 
@@ -1326,7 +1326,7 @@ struct TransactionMultiTest : public BenchmarkOperation {
     *length = TRI_LengthStringBuffer(buffer);
     *mustFree = true;
     char* ptr = TRI_StealStringBuffer(buffer);
-    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+    TRI_FreeStringBuffer(buffer);
 
     return (char const*)ptr;
   }
@@ -1364,7 +1364,7 @@ struct TransactionMultiCollectionTest : public BenchmarkOperation {
                       size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) override {
     TRI_string_buffer_t* buffer;
-    buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+    buffer = TRI_CreateSizedStringBuffer(256);
 
     TRI_AppendStringStringBuffer(buffer, "{ \"collections\": { ");
 
@@ -1401,7 +1401,7 @@ struct TransactionMultiCollectionTest : public BenchmarkOperation {
     *length = TRI_LengthStringBuffer(buffer);
     *mustFree = true;
     char* ptr = TRI_StealStringBuffer(buffer);
-    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+    TRI_FreeStringBuffer(buffer);
 
     return (char const*)ptr;
   }
@@ -1436,7 +1436,7 @@ struct AqlInsertTest : public BenchmarkOperation {
                       size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) override {
     TRI_string_buffer_t* buffer;
-    buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+    buffer = TRI_CreateSizedStringBuffer(256);
 
     TRI_AppendStringStringBuffer(buffer,
                                  "{\"query\":\"INSERT { _key: \\\"test");
@@ -1457,7 +1457,7 @@ struct AqlInsertTest : public BenchmarkOperation {
     *length = TRI_LengthStringBuffer(buffer);
     *mustFree = true;
     char* ptr = TRI_StealStringBuffer(buffer);
-    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+    TRI_FreeStringBuffer(buffer);
 
     return (char const*)ptr;
   }
@@ -1489,7 +1489,7 @@ struct AqlV8Test : public BenchmarkOperation {
                       size_t const threadCounter, size_t const globalCounter,
                       bool* mustFree) override {
     TRI_string_buffer_t* buffer;
-    buffer = TRI_CreateSizedStringBuffer(TRI_UNKNOWN_MEM_ZONE, 256);
+    buffer = TRI_CreateSizedStringBuffer(256);
 
     TRI_AppendStringStringBuffer(buffer,
                                  "{\"query\":\"INSERT { _key: \\\"test");
@@ -1512,7 +1512,7 @@ struct AqlV8Test : public BenchmarkOperation {
     *length = TRI_LengthStringBuffer(buffer);
     *mustFree = true;
     char* ptr = TRI_StealStringBuffer(buffer);
-    TRI_FreeStringBuffer(TRI_UNKNOWN_MEM_ZONE, buffer);
+    TRI_FreeStringBuffer(buffer);
 
     return (char const*)ptr;
   }

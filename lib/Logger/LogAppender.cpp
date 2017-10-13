@@ -29,15 +29,12 @@
 #include "Basics/StringUtils.h"
 #include "Logger/LogAppenderFile.h"
 #include "Logger/LogAppenderSyslog.h"
-#include "Logger/LogAppenderTty.h"
 #include "Logger/Logger.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 
 arangodb::Mutex LogAppender::_appendersLock;
-
-std::unique_ptr<LogAppender> LogAppender::_ttyAppender(nullptr);
 
 std::map<size_t, std::vector<std::shared_ptr<LogAppender>>>
     LogAppender::_topics2appenders;
@@ -63,10 +60,10 @@ void LogAppender::addAppender(std::string const& definition,
 
   LogTopic* topic = appender.second;
   size_t n = (topic == nullptr) ? LogTopic::MAX_LOG_TOPICS : topic->id();
-  _topics2appenders[n].emplace_back(appender.first);
+  if (std::find(_topics2appenders[n].begin(), _topics2appenders[n].end(), appender.first) == _topics2appenders[n].end()) {
+    _topics2appenders[n].emplace_back(appender.first);
+  }
 }
-
-void LogAppender::addTtyAppender() { _ttyAppender.reset(new LogAppenderTty()); }
 
 std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
     std::string const& definition, std::string const& filter) {
@@ -74,7 +71,7 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
   std::string topicName;
   std::string output;
   std::string contentFilter;
-
+ 
   if (v.size() == 1) {
     output = v[0];
     contentFilter = filter;
@@ -143,20 +140,30 @@ std::pair<std::shared_ptr<LogAppender>, LogTopic*> LogAppender::buildAppender(
   }
 #endif
 
-  // everything else must be file-based logging
-  std::string filename;
+  if (output == "+" || output == "-") {
+    for (auto const& it : _definition2appenders) {
+      if (it.first.first == "+" || it.first.first == "-") {
+        // alreay got a logger for stderr/stdout
+        return {nullptr, nullptr};
+      }
+    }
+  }
 
-  if (output == "-" || output == "+") {
-    filename = output;
+  // everything else must be file-/stream-based logging
+  std::shared_ptr<LogAppenderStream> result;
+  
+  if (output == "+") {
+    result.reset(new LogAppenderStderr(contentFilter));
+  } else if (output == "-") {
+    result.reset(new LogAppenderStdout(contentFilter));
   } else if (StringUtils::isPrefix(output, "file://")) {
-    filename = output.substr(7);
+    result.reset(new LogAppenderFile(output.substr(7), contentFilter));
   } else {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unknown output definition '" << output << "'";
     return {nullptr, nullptr};
   }
 
   try {
-    auto result = std::make_shared<LogAppenderFile>(filename, contentFilter);
     _definition2appenders[key] = result;
 
     return {result, topic};
@@ -171,12 +178,11 @@ void LogAppender::log(LogMessage* message) {
   size_t topicId = message->_topicId;
   std::string const& m = message->_message;
   size_t offset = message->_offset;
-  bool shownStd = false;
 
   MUTEX_LOCKER(guard, _appendersLock);
 
   // output to appender
-  auto output = [&level, &m, &offset, &shownStd](size_t n) -> bool {
+  auto output = [&level, &m, &offset](size_t n) -> bool {
     auto const& it = _topics2appenders.find(n);
     bool shown = false;
 
@@ -185,8 +191,7 @@ void LogAppender::log(LogMessage* message) {
 
       for (auto const& appender : appenders) {
         if (appender->checkContent(m)) {
-          bool s = appender->logMessage(level, m, offset);
-          shownStd |= s;
+          appender->logMessage(level, m, offset);
         }
 
         shown = true;
@@ -208,30 +213,8 @@ void LogAppender::log(LogMessage* message) {
     shown = output(LogTopic::MAX_LOG_TOPICS);
   }
 
-  if (_ttyAppender != nullptr && !shownStd) {
-    _ttyAppender->logMessage(level, m, offset);
-    shown = true;
-  }
-
-  if (!shown) {
-    writeStderr(level, m);
-  }
-
   for (auto const& logger : _loggers) {
     logger(message);
-  }
-}
-
-void LogAppender::writeStderr(LogLevel level, std::string const& msg) {
-  if (level == LogLevel::FATAL) {
-    fprintf(stderr, "%s%s%s\n", ShellColorsFeature::SHELL_COLOR_RED, msg.c_str(), ShellColorsFeature::SHELL_COLOR_RESET);
-  } else if (level == LogLevel::ERR) {
-    fprintf(stderr, "%s%s%s\n", ShellColorsFeature::SHELL_COLOR_RED, msg.c_str(), ShellColorsFeature::SHELL_COLOR_RESET);
-    fflush(stderr);
-  } else if (level == LogLevel::WARN) {
-    fprintf(stderr, "%s%s%s\n", ShellColorsFeature::SHELL_COLOR_YELLOW, msg.c_str(), ShellColorsFeature::SHELL_COLOR_RESET);
-  } else {
-    fprintf(stderr, "%s\n", msg.c_str());
   }
 }
 
@@ -239,15 +222,14 @@ void LogAppender::shutdown() {
   MUTEX_LOCKER(guard, _appendersLock);
 
   LogAppenderSyslog::close();
-  LogAppenderFile::close();
+  LogAppenderFile::closeAll();
 
   _topics2appenders.clear();
   _definition2appenders.clear();
-  _ttyAppender.reset(nullptr);
 }
 
 void LogAppender::reopen() {
   MUTEX_LOCKER(guard, _appendersLock);
 
-  LogAppenderFile::reopen();
+  LogAppenderFile::reopenAll();
 }

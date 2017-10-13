@@ -36,26 +36,26 @@ void ManagedDocumentResult::clone(ManagedDocumentResult& cloned) const {
   if (_useString) {
     cloned._useString = true;
     cloned._string = _string;
-    cloned._lastRevisionId = _lastRevisionId;
+    cloned._localDocumentId = _localDocumentId;
     cloned._vpack = reinterpret_cast<uint8_t*>(const_cast<char*>(cloned._string.data()));
   } else if (_managed) {
-    cloned.setManaged(_vpack, _lastRevisionId);
+    cloned.setManaged(_vpack, _localDocumentId);
   } else {
-    cloned.setUnmanaged(_vpack, _lastRevisionId);
+    cloned.setUnmanaged(_vpack, _localDocumentId);
   }
 }
 
 //add unmanaged vpack 
-void ManagedDocumentResult::setUnmanaged(uint8_t const* vpack, TRI_voc_rid_t revisionId) {
+void ManagedDocumentResult::setUnmanaged(uint8_t const* vpack, LocalDocumentId const& documentId) {
   if(_managed || _useString) {
     reset();
   }
   TRI_ASSERT(_length == 0);
   _vpack = const_cast<uint8_t*>(vpack);
-  _lastRevisionId = revisionId;
+  _localDocumentId = documentId;
 }
 
-void ManagedDocumentResult::setManaged(uint8_t const* vpack, TRI_voc_rid_t revisionId) {
+void ManagedDocumentResult::setManaged(uint8_t const* vpack, LocalDocumentId const& documentId) {
   VPackSlice slice(vpack);
   auto newLen = slice.byteSize();
   if (_length >= newLen && _managed){
@@ -66,24 +66,24 @@ void ManagedDocumentResult::setManaged(uint8_t const* vpack, TRI_voc_rid_t revis
     std::memcpy(_vpack, vpack, newLen);
     _length=newLen;
   }
-  _lastRevisionId = revisionId;
+  _localDocumentId = documentId;
   _managed = true;
 }
 
-void ManagedDocumentResult::setManagedAfterStringUsage(TRI_voc_rid_t revisionId) {
+void ManagedDocumentResult::setManagedAfterStringUsage(LocalDocumentId const& documentId) {
   TRI_ASSERT(!_string.empty());
   TRI_ASSERT(_useString);
   
   _vpack = reinterpret_cast<uint8_t*>(const_cast<char*>(_string.data()));
-  _lastRevisionId = revisionId;
+  _localDocumentId = documentId;
   _useString = true;
 }
 
-void ManagedDocumentResult::setManaged(std::string&& str, TRI_voc_rid_t revisionId) {
+void ManagedDocumentResult::setManaged(std::string&& str, LocalDocumentId const& documentId) {
   reset();
   _string = std::move(str);
   _vpack = reinterpret_cast<uint8_t*>(const_cast<char*>(_string.data()));
-  _lastRevisionId = revisionId;
+  _localDocumentId = documentId;
   _useString = true;
 }
 
@@ -99,7 +99,7 @@ void ManagedDocumentResult::reset() noexcept {
     _useString = false;
   }
 
-  _lastRevisionId = 0;
+  _localDocumentId.clear();
   _vpack = nullptr;
 }
 

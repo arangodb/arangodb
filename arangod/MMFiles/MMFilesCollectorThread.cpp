@@ -50,6 +50,7 @@
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ManagedDocumentResult.h"
 
 using namespace arangodb;
 
@@ -593,7 +594,7 @@ void MMFilesCollectorThread::processCollectionMarker(
   auto const* walMarker = reinterpret_cast<MMFilesMarker const*>(operation.walPosition);
   TRI_ASSERT(walMarker != nullptr);
   TRI_ASSERT(reinterpret_cast<MMFilesMarker const*>(operation.datafilePosition));
-  TRI_voc_size_t const datafileMarkerSize = operation.datafileMarkerSize;
+  uint32_t const datafileMarkerSize = operation.datafileMarkerSize;
   TRI_voc_fid_t const fid = operation.datafileId;
 
   MMFilesMarkerType const type = walMarker->getType();
@@ -612,11 +613,19 @@ void MMFilesCollectorThread::processCollectionMarker(
     bool wasAdjusted = false;
     MMFilesSimpleIndexElement element = physical->primaryIndex()->lookupKey(&trx, keySlice);
 
-    if (element &&
-        element.revisionId() == revisionId) { 
-      // make it point to datafile now
-      MMFilesMarker const* newPosition = reinterpret_cast<MMFilesMarker const*>(operation.datafilePosition);
-      wasAdjusted = physical->updateRevisionConditional(element.revisionId(), walMarker, newPosition, fid, false); 
+    if (element) {
+      ManagedDocumentResult mmdr;
+      if (collection->readDocument(&trx, element.localDocumentId(), mmdr)) {
+        uint8_t const* vpack = mmdr.vpack();
+        if (vpack != nullptr) {
+          TRI_voc_rid_t currentRevision = transaction::helpers::extractRevFromDocument(VPackSlice(vpack));
+          if (revisionId == currentRevision) {
+            // make it point to datafile now
+            MMFilesMarker const* newPosition = reinterpret_cast<MMFilesMarker const*>(operation.datafilePosition);
+            wasAdjusted = physical->updateLocalDocumentIdConditional(element.localDocumentId(), walMarker, newPosition, fid, false); 
+          }
+        }
+      }
     }
       
     if (wasAdjusted) {
@@ -643,11 +652,19 @@ void MMFilesCollectorThread::processCollectionMarker(
 
     MMFilesSimpleIndexElement found = physical->primaryIndex()->lookupKey(&trx, keySlice);
 
-    if (found && 
-        found.revisionId() > revisionId) {
-      // somebody re-created the document with a newer revision
-      dfi.numberDead++;
-      dfi.sizeDead += encoding::alignedSize<int64_t>(datafileMarkerSize);
+    if (found) { 
+      ManagedDocumentResult mmdr;
+      if (collection->readDocument(&trx, found.localDocumentId(), mmdr)) {
+        uint8_t const* vpack = mmdr.vpack();
+        if (vpack != nullptr) {
+          TRI_voc_rid_t currentRevisionId = transaction::helpers::extractRevFromDocument(VPackSlice(vpack));
+          if (currentRevisionId > revisionId) {
+            // somebody re-created the document with a newer revision
+            dfi.numberDead++;
+            dfi.sizeDead += encoding::alignedSize<int64_t>(datafileMarkerSize);
+          }
+        }
+      }
     }
   }
 }

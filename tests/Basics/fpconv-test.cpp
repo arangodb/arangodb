@@ -64,7 +64,7 @@ SECTION("tst_nan") {
   CHECK(std::string("NaN") == std::string(out, length));
 #endif
   
-  StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
+  StringBuffer buf(true);
   buf.appendDecimal(value);
   CHECK(std::string("NaN") == std::string(buf.c_str(), buf.length()));
 }
@@ -84,7 +84,7 @@ SECTION("tst_inf") {
 
   CHECK(std::string("inf") == std::string(out, length));
   
-  StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
+  StringBuffer buf(true);
   buf.appendDecimal(value);
   CHECK(std::string("inf") == std::string(buf.c_str(), buf.length()));
 }
@@ -104,7 +104,7 @@ SECTION("tst_huge_val") {
 
   CHECK(std::string("inf") == std::string(out, length));
   
-  StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
+  StringBuffer buf(true);
   buf.appendDecimal(value);
   CHECK(std::string("inf") == std::string(buf.c_str(), buf.length()));
 }
@@ -124,7 +124,7 @@ SECTION("tst_huge_val_neg") {
 
   CHECK(std::string("-inf") == std::string(out, length));
   
-  StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
+  StringBuffer buf(true);
   buf.appendDecimal(value);
   CHECK(std::string("-inf") == std::string(buf.c_str(), buf.length()));
 }
@@ -143,7 +143,7 @@ SECTION("tst_zero") {
 
   CHECK(std::string("0") == std::string(out, length));
   
-  StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
+  StringBuffer buf(true);
   buf.appendDecimal(value);
   CHECK(std::string("0") == std::string(buf.c_str(), buf.length()));
 }
@@ -162,7 +162,7 @@ SECTION("tst_zero_neg") {
 
   CHECK(std::string("0") == std::string(out, length));
   
-  StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
+  StringBuffer buf(true);
   buf.appendDecimal(value);
   CHECK(std::string("0") == std::string(buf.c_str(), buf.length()));
 }
@@ -181,7 +181,7 @@ SECTION("tst_value_high") {
 
   CHECK(std::string("4.32e+261") == std::string(out, length));
   
-  StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
+  StringBuffer buf(true);
   buf.appendDecimal(value);
   CHECK(std::string("4.32e+261") == std::string(buf.c_str(), buf.length()));
 }
@@ -200,7 +200,7 @@ SECTION("tst_value_low") {
 
   CHECK(std::string("-4.32e+261") == std::string(out, length));
   
-  StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
+  StringBuffer buf(true);
   buf.appendDecimal(value);
   CHECK(std::string("-4.32e+261") == std::string(buf.c_str(), buf.length()));
 }
@@ -219,7 +219,7 @@ SECTION("tst_value_small") {
 
   CHECK(std::string("4.32e-261") == std::string(out, length));
   
-  StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
+  StringBuffer buf(true);
   buf.appendDecimal(value);
   CHECK(std::string("4.32e-261") == std::string(buf.c_str(), buf.length()));
 }
@@ -238,7 +238,7 @@ SECTION("tst_value_mchacki1") {
 
   CHECK(std::string("1.374") == std::string(out, length));
   
-  StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
+  StringBuffer buf(true);
   buf.appendDecimal(value);
   CHECK(std::string("1.374") == std::string(buf.c_str(), buf.length()));
 }
@@ -257,7 +257,7 @@ SECTION("tst_value_mchacki2") {
 
   CHECK(std::string("56.94837631946843") == std::string(out, length));
   
-  StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
+  StringBuffer buf(true);
   buf.appendDecimal(value);
   CHECK(std::string("56.94837631946843") == std::string(buf.c_str(), buf.length()));
 }
@@ -272,14 +272,14 @@ SECTION("tst_value_mchacki2_roundtrip") {
   value = 56.94837631946843;
 
   TRI_string_buffer_t buffer;
-  TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitStringBuffer(&buffer);
 
-  auto json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, value);
+  auto json = TRI_CreateNumberJson(value);
   TRI_StringifyJson(&buffer, json);
 
   CHECK(std::string("56.94837631946843") == std::string(buffer._buffer, buffer._current - buffer._buffer));
 
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  TRI_FreeJson(json);
   TRI_DestroyStringBuffer(&buffer);
 }
 
@@ -297,7 +297,7 @@ SECTION("tst_one_third") {
 
   CHECK(std::string("0.3333333333333333") == std::string(out, length));
   
-  StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
+  StringBuffer buf(true);
   buf.appendDecimal(value);
   CHECK(std::string("0.3333333333333333") == std::string(buf.c_str(), buf.length()));
 }
@@ -312,14 +312,14 @@ SECTION("tst_one_third_roundtrip") {
   value = 1.0 / 3.0;
 
   TRI_string_buffer_t buffer;
-  TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitStringBuffer(&buffer);
 
-  auto json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, value);
+  auto json = TRI_CreateNumberJson(value);
   TRI_StringifyJson(&buffer, json);
 
   CHECK(std::string("0.3333333333333333") == std::string(buffer._buffer, buffer._current - buffer._buffer));
 
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  TRI_FreeJson(json);
   TRI_DestroyStringBuffer(&buffer);
 }
 
@@ -337,7 +337,7 @@ SECTION("tst_04") {
 
   CHECK(std::string("0.4") == std::string(out, length));
   
-  StringBuffer buf(TRI_UNKNOWN_MEM_ZONE);
+  StringBuffer buf(true);
   buf.appendDecimal(value);
   CHECK(std::string("0.4") == std::string(buf.c_str(), buf.length()));
 }
@@ -352,14 +352,14 @@ SECTION("tst_04_roundtrip") {
   value = 0.1 + 0.3;
 
   TRI_string_buffer_t buffer;
-  TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitStringBuffer(&buffer);
 
-  auto json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, value);
+  auto json = TRI_CreateNumberJson(value);
   TRI_StringifyJson(&buffer, json);
 
   CHECK(std::string("0.4") == std::string(buffer._buffer, buffer._current - buffer._buffer));
   
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  TRI_FreeJson(json);
   TRI_DestroyStringBuffer(&buffer);
 }
 
@@ -373,14 +373,14 @@ SECTION("tst_value_high_roundtrip") {
   value = 4.32e261;
 
   TRI_string_buffer_t buffer;
-  TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitStringBuffer(&buffer);
 
-  auto json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, value);
+  auto json = TRI_CreateNumberJson(value);
   TRI_StringifyJson(&buffer, json);
 
   CHECK(std::string("4.32e+261") == std::string(buffer._buffer, buffer._current - buffer._buffer));
   
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  TRI_FreeJson(json);
   TRI_DestroyStringBuffer(&buffer);
 }
 
@@ -394,14 +394,14 @@ SECTION("tst_value_low_roundtrip") {
   value = -4.32e261;
 
   TRI_string_buffer_t buffer;
-  TRI_InitStringBuffer(&buffer, TRI_UNKNOWN_MEM_ZONE);
+  TRI_InitStringBuffer(&buffer);
 
-  auto json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, value);
+  auto json = TRI_CreateNumberJson(value);
   TRI_StringifyJson(&buffer, json);
 
   CHECK(std::string("-4.32e+261") == std::string(buffer._buffer, buffer._current - buffer._buffer));
 
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  TRI_FreeJson(json);
   TRI_DestroyStringBuffer(&buffer);
 }
 }

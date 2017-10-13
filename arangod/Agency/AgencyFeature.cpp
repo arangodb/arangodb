@@ -190,8 +190,7 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (_maxElectionTimeout <= 2. * _minElectionTimeout) {
     LOG_TOPIC(WARN, Logger::AGENCY)
-        << "agency.election-timeout-max should probably be chosen longer!"
-        << " " << __FILE__ << __LINE__;
+        << "agency.election-timeout-max should probably be chosen longer!";
   }
 
   if (_compactionKeepSize == 0) {
@@ -209,6 +208,19 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
                                        << "' specified for --agency.my-address";
       FATAL_ERROR_EXIT();
     }
+
+    std::string fallback = unified;
+    // Now extract the hostname/IP:
+    auto pos = fallback.find("://");
+    if (pos != std::string::npos) {
+      fallback = fallback.substr(pos+3);
+    }
+    pos = fallback.rfind(':');
+    if (pos != std::string::npos) {
+      fallback = fallback.substr(0, pos);
+    }
+    auto ss = ServerState::instance();
+    ss->findHost(fallback);
   }
 }
 

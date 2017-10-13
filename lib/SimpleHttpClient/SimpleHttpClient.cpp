@@ -52,8 +52,8 @@ SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
     : _connection(connection),
       _deleteConnectionOnDestruction(false),
       _params(params),
-      _writeBuffer(TRI_UNKNOWN_MEM_ZONE, false),
-      _readBuffer(TRI_UNKNOWN_MEM_ZONE),
+      _writeBuffer(false),
+      _readBuffer(false),
       _readBufferOffset(0),
       _state(IN_CONNECT),
       _written(0),
@@ -73,8 +73,8 @@ SimpleHttpClient::SimpleHttpClient(
     std::unique_ptr<GeneralClientConnection>& connection,
     SimpleHttpClientParams const& params)
     : SimpleHttpClient(connection.get(), params) {
-    _deleteConnectionOnDestruction = true;
-    connection.release();
+  _deleteConnectionOnDestruction = true;
+  connection.release();
 }
 
 SimpleHttpClient::~SimpleHttpClient() {
@@ -530,28 +530,10 @@ void SimpleHttpClient::setRequest(
   }
 
   // do basic authorization
-  if (!_params._pathToBasicAuth.empty()) {
-    std::string foundPrefix;
-    std::string foundValue;
-    auto i = _params._pathToBasicAuth.begin();
-
-    for (; i != _params._pathToBasicAuth.end(); ++i) {
-      std::string& f = i->first;
-
-      if (l->compare(0, f.size(), f) == 0) {
-        // f is prefix of l
-        if (f.length() > foundPrefix.length()) {
-          foundPrefix = f;
-          foundValue = i->second;
-        }
-      }
-    }
-
-    if (!foundValue.empty()) {
-      _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: Basic "));
-      _writeBuffer.appendText(foundValue);
-      _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
-    }
+  if (!_params._basicAuth.empty()) {
+    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: Basic "));
+    _writeBuffer.appendText(_params._basicAuth);
+    _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
   }
   if (!_params._jwt.empty()) {
     _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Authorization: bearer "));
@@ -677,7 +659,9 @@ void SimpleHttpClient::processHeader() {
       // found content-length header in response
       else if (_result->hasContentLength() && _result->getContentLength() > 0) {
         if (_result->getContentLength() > _params._maxPacketSize) {
-          setErrorMessage("Content-Length > max packet size found", true);
+          std::string errorMessage("ignoring HTTP response with 'Content-Length' bigger than max packet size (");
+          errorMessage += std::to_string(_result->getContentLength()) + " > " + std::to_string(_params._maxPacketSize) + ")";
+          setErrorMessage(errorMessage, true);
 
           // reset connection
           this->close();
@@ -801,7 +785,7 @@ void SimpleHttpClient::processChunkedHeader() {
 
   // empty lines are an error
   if (line[0] == '\r' || line.empty()) {
-    setErrorMessage("found invalid content-length", true);
+    setErrorMessage("found invalid Content-Length", true);
     // reset connection
     this->close();
     _state = DEAD;
@@ -814,7 +798,7 @@ void SimpleHttpClient::processChunkedHeader() {
   try {
     contentLength = static_cast<uint32_t>(std::stol(line, nullptr, 16));
   } catch (...) {
-    setErrorMessage("found invalid content-length", true);
+    setErrorMessage("found invalid Content-Length", true);
     // reset connection
     this->close();
     _state = DEAD;
@@ -824,7 +808,9 @@ void SimpleHttpClient::processChunkedHeader() {
 
   // failed: too many bytes
   if (contentLength > _params._maxPacketSize) {
-    setErrorMessage("Content-Length > max packet size found!", true);
+    std::string errorMessage("ignoring HTTP response with 'Content-Length' bigger than max packet size (");
+    errorMessage += std::to_string(contentLength) + " > " + std::to_string(_params._maxPacketSize) + ")";
+    setErrorMessage(errorMessage, true);
     // reset connection
     this->close();
     _state = DEAD;

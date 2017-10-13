@@ -25,7 +25,7 @@
 #define ARANGOD_MMFILES_PATH_BASED_INDEX_H 1
 
 #include "Basics/Common.h"
-#include "Indexes/Index.h"
+#include "MMFiles/MMFilesIndex.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
@@ -38,7 +38,7 @@ enum AstNodeType : uint32_t;
 
 class FixedSizeAllocator;
 
-class MMFilesPathBasedIndex : public Index {
+class MMFilesPathBasedIndex : public MMFilesIndex {
 
  public:
   MMFilesPathBasedIndex() = delete;
@@ -74,7 +74,7 @@ class MMFilesPathBasedIndex : public Index {
   /// @brief helper function to insert a document into any index type
   template<typename T>
   int fillElement(std::vector<T*>& elements, 
-          TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const&);
+          LocalDocumentId const& documentId, arangodb::velocypack::Slice const&);
 
   /// @brief return the number of paths
   inline size_t numPaths() const { return _paths.size(); }

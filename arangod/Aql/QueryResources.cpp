@@ -43,7 +43,7 @@ QueryResources::QueryResources(ResourceMonitor* resourceMonitor)
 QueryResources::~QueryResources() {
   // free strings
   for (auto& it : _strings) {
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, it);
+    TRI_FreeString(it);
   }
     
   _resourceMonitor->decreaseMemoryUsage(_strings.capacity() * sizeof(char*) + _stringsLength);
@@ -107,7 +107,7 @@ char* QueryResources::registerString(char const* p, size_t length) {
     return _shortStringStorage.registerString(p, length);
   }
 
-  char* copy = TRI_DuplicateString(TRI_UNKNOWN_MEM_ZONE, p, length);
+  char* copy = TRI_DuplicateString(p, length);
   return registerLongString(copy, length);
 }
 
@@ -125,7 +125,7 @@ char* QueryResources::registerEscapedString(char const* p, size_t length,
     return const_cast<char*>(EmptyString);
   }
 
-  char* copy = TRI_UnescapeUtf8String(TRI_UNKNOWN_MEM_ZONE, p, length, &outLength, false);
+  char* copy = TRI_UnescapeUtf8String(p, length, &outLength, false);
   return registerLongString(copy, outLength);
 }
 
@@ -159,7 +159,7 @@ char* QueryResources::registerLongString(char* copy, size_t length) {
     return copy;
   } catch (...) {
     // prevent memleak
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, copy);
+    TRI_FreeString(copy);
     throw;
   }
 }

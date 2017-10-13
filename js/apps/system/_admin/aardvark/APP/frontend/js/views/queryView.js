@@ -505,6 +505,7 @@
       outputEditor.setReadOnly(true);
       outputEditor.getSession().setMode('ace/mode/json');
       outputEditor.setOption('vScrollBarAlwaysVisible', true);
+      outputEditor.setOption('showPrintMargin', false);
       this.setEditorAutoHeight(outputEditor);
 
       // Store sent query and bindParameter

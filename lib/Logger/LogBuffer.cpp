@@ -25,6 +25,7 @@
 #include <iostream>
 
 #include "Basics/MutexLocker.h"
+#include "Basics/tri-strings.h"
 #include "Logger/LogAppender.h"
 #include "Logger/Logger.h"
 

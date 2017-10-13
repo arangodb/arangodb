@@ -1212,6 +1212,10 @@ void ClusterCommThread::run() {
     }
   }
   _cc->communicator()->abortRequests();
+  LOG_TOPIC(DEBUG, Logger::CLUSTER) << "waiting for curl to stop remaining handles";
+  while (_cc->communicator()->work_once() > 0) {
+    usleep(10);
+  }
 
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "stopped ClusterComm thread";
 }

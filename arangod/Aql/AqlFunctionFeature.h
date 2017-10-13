@@ -47,8 +47,15 @@ class AqlFunctionFeature final : public application_features::ApplicationFeature
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void unprepare() override final;
+  
+  /// @brief returns a reference to a built-in function
+  static Function const* getFunctionByName(std::string const&);
 
   void add(Function const& func);
+
+  // add a function alias
+  void addAlias(std::string const& alias, std::string const& original);
+
   void toVelocyPack(arangodb::velocypack::Builder&);
   Function const* byName(std::string const& name);
   std::string const& getOperatorName(AstNodeType const type,

@@ -34,7 +34,8 @@ using namespace arangodb::aql;
 
 /// @brief create the accessor
 AttributeAccessor::AttributeAccessor(
-    std::vector<std::string>&& attributeParts, Variable const* variable)
+    std::vector<std::string>&& attributeParts, Variable const* variable,
+    bool dataIsFromCollection)
     : _attributeParts(attributeParts),
       _variable(variable),
       _type(EXTRACT_MULTI) {
@@ -43,14 +44,18 @@ AttributeAccessor::AttributeAccessor(
   TRI_ASSERT(!_attributeParts.empty());
 
   // determine accessor type
+  // it is only safe to use the optimized accessor functions for system attributes
+  // when the input data are collection documents. it is not safe to use them for
+  // non-collection data, as the optimized functions may easily create out-of-bounds
+  // accesses in that case
   if (_attributeParts.size() == 1) {
-    if (attributeParts[0] == StaticStrings::KeyString) {
+    if (dataIsFromCollection && attributeParts[0] == StaticStrings::KeyString) {
       _type = EXTRACT_KEY;
-    } else if (attributeParts[0] == StaticStrings::IdString) {
+    } else if (dataIsFromCollection && attributeParts[0] == StaticStrings::IdString) {
       _type = EXTRACT_ID;
-    } else if (attributeParts[0] == StaticStrings::FromString) {
+    } else if (dataIsFromCollection && attributeParts[0] == StaticStrings::FromString) {
       _type = EXTRACT_FROM;
-    } else if (attributeParts[0] == StaticStrings::ToString) {
+    } else if (dataIsFromCollection && attributeParts[0] == StaticStrings::ToString) {
       _type = EXTRACT_TO;
     } else {
       _type = EXTRACT_SINGLE;
@@ -84,7 +89,7 @@ AqlValue AttributeAccessor::getSystem(transaction::Methods* trx,
       return value.getToAttribute(trx, mustDestroy, true);
     default: {
       mustDestroy = false;
-      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      return AqlValue(AqlValueHintNull());
     }
   }
 }
@@ -103,7 +108,7 @@ AqlValue AttributeAccessor::getDynamic(transaction::Methods* trx,
       return value.get(trx, _attributeParts, mustDestroy, true);
     default: {
       mustDestroy = false;
-      return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+      return AqlValue(AqlValueHintNull());
     }
   }
 }

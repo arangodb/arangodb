@@ -93,6 +93,12 @@ class ServerState {
 
   /// @brief flush the server state (used for testing)
   void flush();
+  
+  bool isSingleServer() { return isSingleServer(loadRole()); }
+  
+  static bool isSingleServer(ServerState::RoleEnum role) {
+    return (role == ServerState::ROLE_SINGLE);
+  }
 
   /// @brief check whether the server is a coordinator
   bool isCoordinator() { return isCoordinator(loadRole()); }
@@ -135,6 +141,11 @@ class ServerState {
   static bool isRunningInCluster(ServerState::RoleEnum role) { 
     return isClusterRole(role); 
   }
+  
+  bool isSingleServerOrCoordinator() {
+    RoleEnum role = loadRole();
+    return isCoordinator(role) || isSingleServer(role);
+  }
 
   /// @brief get the server role
   RoleEnum getRole();
@@ -172,6 +183,14 @@ class ServerState {
 
   /// @brief set the server address
   void setAddress(std::string const&);
+
+  /// @brief find a host identification string
+  void findHost(std::string const& fallback);
+
+  /// @brief get a string to identify the host we are running on
+  std::string getHost() {
+    return _host;
+  }
 
   /// @brief get the current state
   StateEnum getState();
@@ -271,6 +290,9 @@ class ServerState {
 
   /// @brief the server's own address, can be set just once
   std::string _address;
+
+  /// @brief an identification string for the host a server is running on
+  std::string _host;
 
   /// @brief r/w lock for state
   arangodb::basics::ReadWriteLock _lock;

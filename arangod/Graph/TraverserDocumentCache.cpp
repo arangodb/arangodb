@@ -93,19 +93,14 @@ VPackSlice TraverserDocumentCache::lookupAndCache(StringRef id) {
 }
 
 // These two do not use the cache.
-void TraverserDocumentCache::insertIntoResult(EdgeDocumentToken const* idToken,
-                                              VPackBuilder& builder) {
+void TraverserDocumentCache::insertEdgeIntoResult(EdgeDocumentToken const& idToken,
+                                                  VPackBuilder& builder) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  builder.add(lookupInCollection(static_cast<SingleServerEdgeDocumentToken const*>(idToken)));
+  builder.add(lookupToken(idToken));
 }
 
-aql::AqlValue TraverserDocumentCache::fetchAqlResult(EdgeDocumentToken const* idToken) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  return aql::AqlValue(lookupInCollection(static_cast<SingleServerEdgeDocumentToken const*>(idToken)));
-}
-
-void TraverserDocumentCache::insertIntoResult(StringRef idString,
-                                              VPackBuilder& builder) {
+void TraverserDocumentCache::insertVertexIntoResult(StringRef idString,
+                                                    VPackBuilder& builder) {
   if (_cache != nullptr) {
     auto finding = lookup(idString);
     if (finding.found()) {
@@ -120,7 +115,12 @@ void TraverserDocumentCache::insertIntoResult(StringRef idString,
   builder.add(lookupAndCache(idString));
 }
 
-aql::AqlValue TraverserDocumentCache::fetchAqlResult(StringRef idString) {
+aql::AqlValue TraverserDocumentCache::fetchEdgeAqlResult(EdgeDocumentToken const& idToken) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  return aql::AqlValue(lookupToken(idToken));
+}
+
+aql::AqlValue TraverserDocumentCache::fetchVertexAqlResult(StringRef idString) {
   if (_cache != nullptr) {
     auto finding = lookup(idString);
     if (finding.found()) {
@@ -162,18 +162,3 @@ void TraverserDocumentCache::insertDocument(
   }
 }
 
-bool TraverserDocumentCache::validateFilter(
-    StringRef idString, std::function<bool(VPackSlice const&)> filterFunc) {
-  if (_cache != nullptr) {
-    auto finding = lookup(idString);
-    if (finding.found()) {
-      auto val = finding.value();
-      VPackSlice slice(val->value());
-      // finding makes sure that slice contant stays valid.
-      return filterFunc(slice);
-    }
-  }
-  // Not in cache. Fetch and insert.
-  VPackSlice slice = lookupAndCache(idString);
-  return filterFunc(slice);
-}

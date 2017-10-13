@@ -47,6 +47,10 @@ function TemplateMiddlewareSpec () {
       templateCollection = db._create("templateTest");
     },
 
+    tearDown: function () {
+      db._drop("templateTest");
+    },
+
     testRenderingATemplateWhenInitializedWithACollection: function () {
       templateCollection.save({
         path: "simple/path",

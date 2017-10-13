@@ -63,7 +63,7 @@ static void ProcessCsvAdd(TRI_csv_parser_t* parser, char const* field, size_t,
   v8::Handle<v8::Array>* array =
       reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 
-  (*array)->Set((uint32_t)column, TRI_V8_STRING(field));
+  (*array)->Set((uint32_t)column, TRI_V8_STRING(isolate, field));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,7 +76,7 @@ static void ProcessCsvEnd(TRI_csv_parser_t* parser, char const* field, size_t,
   v8::Handle<v8::Array>* array =
       reinterpret_cast<v8::Handle<v8::Array>*>(parser->_dataBegin);
 
-  (*array)->Set((uint32_t)column, TRI_V8_STRING(field));
+  (*array)->Set((uint32_t)column, TRI_V8_STRING(isolate, field));
 
   v8::Handle<v8::Function>* cb =
       reinterpret_cast<v8::Handle<v8::Function>*>(parser->_dataEnd);
@@ -122,7 +122,7 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // extract the filename
-  TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC filename(args[0]);
 
   if (*filename == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be an UTF8 filename");
@@ -132,8 +132,8 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
   v8::Handle<v8::Function> cb = v8::Handle<v8::Function>::Cast(args[1]);
 
   // extract the options
-  v8::Handle<v8::String> separatorKey = TRI_V8_ASCII_STRING("separator");
-  v8::Handle<v8::String> quoteKey = TRI_V8_ASCII_STRING("quote");
+  v8::Handle<v8::String> separatorKey = TRI_V8_ASCII_STRING(isolate, "separator");
+  v8::Handle<v8::String> quoteKey = TRI_V8_ASCII_STRING(isolate, "quote");
 
   std::string separator = ",";
   std::string quote = "\"";
@@ -171,7 +171,7 @@ static void JS_ProcessCsvFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_csv_parser_t parser;
 
-  TRI_InitCsvParser(&parser, TRI_UNKNOWN_MEM_ZONE, ProcessCsvBegin,
+  TRI_InitCsvParser(&parser, ProcessCsvBegin,
                     ProcessCsvAdd, ProcessCsvEnd, isolate);
 
   TRI_SetSeparatorCsvParser(&parser, separator[0]);
@@ -237,7 +237,7 @@ static void JS_ProcessJsonFile(
   }
 
   // extract the filename
-  TRI_Utf8ValueNFC filename(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  TRI_Utf8ValueNFC filename(args[0]);
 
   if (*filename == 0) {
     TRI_V8_THROW_TYPE_ERROR("<filename> must be an UTF8 filename");
@@ -274,7 +274,7 @@ static void JS_ProcessJsonFile(
       if (object->IsUndefined()) {
         if (error != nullptr) {
           std::string msg = error;
-          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, error);
+          TRI_FreeString(error);
           TRI_V8_THROW_SYNTAX_ERROR(msg.c_str());
         } else {
           TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -282,7 +282,7 @@ static void JS_ProcessJsonFile(
       }
 
       if (error != nullptr) {
-        TRI_FreeString(TRI_CORE_MEM_ZONE, error);
+        TRI_FreeString(error);
       }
 
       v8::Handle<v8::Number> r = v8::Integer::New(isolate, (int)row);
@@ -313,10 +313,10 @@ void TRI_InitV8Shell(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   // .............................................................................
 
   TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING("SYS_PROCESS_CSV_FILE"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_PROCESS_CSV_FILE"),
                                JS_ProcessCsvFile);
   TRI_AddGlobalFunctionVocbase(isolate, 
-                               TRI_V8_ASCII_STRING("SYS_PROCESS_JSON_FILE"),
+                               TRI_V8_ASCII_STRING(isolate, "SYS_PROCESS_JSON_FILE"),
                                JS_ProcessJsonFile);
 
   bool isTty = (isatty(STDOUT_FILENO) != 0);
@@ -331,101 +331,101 @@ void TRI_InitV8Shell(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 
   v8::Handle<v8::Object> colors = v8::Object::New(isolate);
 
-  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_RED"),
-                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_RED)
+  colors->ForceSet(TRI_V8_ASCII_STRING(isolate, "COLOR_RED"),
+                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_RED)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_RED"),
-                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BOLD_RED)
+  colors->ForceSet(TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_RED"),
+                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_RED)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_GREEN"),
-                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_GREEN)
+  colors->ForceSet(TRI_V8_ASCII_STRING(isolate, "COLOR_GREEN"),
+                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_GREEN)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_GREEN"),
-                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BOLD_GREEN)
+  colors->ForceSet(TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_GREEN"),
+                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_GREEN)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BLUE"),
-                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BLUE)
+  colors->ForceSet(TRI_V8_ASCII_STRING(isolate, "COLOR_BLUE"),
+                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BLUE)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_BLUE"),
-                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BOLD_BLUE)
+  colors->ForceSet(TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_BLUE"),
+                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_BLUE)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_YELLOW"),
-                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_YELLOW)
+  colors->ForceSet(TRI_V8_ASCII_STRING(isolate, "COLOR_YELLOW"),
+                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_YELLOW)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_YELLOW"),
-                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BOLD_YELLOW)
+  colors->ForceSet(TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_YELLOW"),
+                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_YELLOW)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_WHITE"),
-                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_WHITE)
+  colors->ForceSet(TRI_V8_ASCII_STRING(isolate, "COLOR_WHITE"),
+                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_WHITE)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_WHITE"),
-                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BOLD_WHITE)
+  colors->ForceSet(TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_WHITE"),
+                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_WHITE)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_CYAN"),
-                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_CYAN)
+  colors->ForceSet(TRI_V8_ASCII_STRING(isolate, "COLOR_CYAN"),
+                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_CYAN)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_CYAN"),
-                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BOLD_CYAN)
+  colors->ForceSet(TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_CYAN"),
+                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_CYAN)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_MAGENTA"),
-                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_MAGENTA)
+  colors->ForceSet(TRI_V8_ASCII_STRING(isolate, "COLOR_MAGENTA"),
+                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_MAGENTA)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_MAGENTA"),
-                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BOLD_MAGENTA)
+  colors->ForceSet(TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_MAGENTA"),
+                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_MAGENTA)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BLACK"),
-                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BLACK)
+  colors->ForceSet(TRI_V8_ASCII_STRING(isolate, "COLOR_BLACK"),
+                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BLACK)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BOLD_BLACK"),
-                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BOLD_BLACK)
+  colors->ForceSet(TRI_V8_ASCII_STRING(isolate, "COLOR_BOLD_BLACK"),
+                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BOLD_BLACK)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BLINK"),
-                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BLINK)
+  colors->ForceSet(TRI_V8_ASCII_STRING(isolate, "COLOR_BLINK"),
+                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BLINK)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_BRIGHT"),
-                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_BRIGHT)
+  colors->ForceSet(TRI_V8_ASCII_STRING(isolate, "COLOR_BRIGHT"),
+                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_BRIGHT)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  colors->ForceSet(TRI_V8_ASCII_STRING("COLOR_RESET"),
-                   isTty ? TRI_V8_ASCII_STRING(ShellColorsFeature::SHELL_COLOR_RESET)
+  colors->ForceSet(TRI_V8_ASCII_STRING(isolate, "COLOR_RESET"),
+                   isTty ? TRI_V8_ASCII_STRING(isolate, ShellColorsFeature::SHELL_COLOR_RESET)
                          : v8::String::Empty(isolate),
                    v8::ReadOnly);
 
-  TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING("COLORS"),
+  TRI_AddGlobalVariableVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "COLORS"),
                                colors);
 }

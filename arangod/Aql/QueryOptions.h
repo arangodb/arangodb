@@ -61,7 +61,7 @@ struct QueryOptions {
   std::unordered_set<std::string> shardIds;
 #ifdef USE_ENTERPRISE
   // TODO: remove as soon as we have cluster wide transactions
-  std::unordered_set<std::string> inaccessibleShardIds;
+  std::unordered_set<std::string> inaccessibleCollections;
 #endif
 
   transaction::Options transactionOptions;

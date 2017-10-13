@@ -48,7 +48,7 @@ static inline v8::Handle<v8::Value> ObjectVPackString(v8::Isolate* isolate,
   if (l == 0) {
     return v8::String::Empty(isolate);
   }
-  return TRI_V8_PAIR_STRING(val, l);
+  return TRI_V8_PAIR_STRING(isolate, val, l);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,7 +76,7 @@ static v8::Handle<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
     if (k.isString()) {
       // regular attribute
       char const* p = k.getString(l);
-      object->ForceSet(TRI_V8_PAIR_STRING(p, l),
+      object->ForceSet(TRI_V8_PAIR_STRING(isolate, p, l),
                        TRI_VPackToV8(isolate, it.value(), options, &slice));
     } else {
       // optimized code path for translated system attributes
@@ -85,7 +85,7 @@ static v8::Handle<v8::Value> ObjectVPackObject(v8::Isolate* isolate,
       if (v.isString()) {
         char const* p = v.getString(l);
         // value of _key, _id, _from, _to, and _rev is ASCII too
-        sub = TRI_V8_ASCII_PAIR_STRING(p, l);
+        sub = TRI_V8_ASCII_PAIR_STRING(isolate, p, l);
       } else {
         sub = TRI_VPackToV8(isolate, v, options, &slice);
       }
@@ -238,7 +238,7 @@ v8::Handle<v8::Value> TRI_VPackToV8(v8::Isolate* isolate,
       }
       std::string id =
           options->customTypeHandler->toString(slice, options, *base);
-      return TRI_V8_STD_STRING(id);
+      return TRI_V8_STD_STRING(isolate, id);
     }
     case VPackValueType::None:
     default: { return v8::Undefined(isolate); }

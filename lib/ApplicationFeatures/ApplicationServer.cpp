@@ -371,6 +371,14 @@ void ApplicationServer::validateOptions() {
       reportFeatureProgress(_state, feature->name());
     }
   }
+
+  // inform about obsolete options  
+  _options->walk([](Section const& section, Option const& option) {
+    if (option.obsolete) {
+      LOG_TOPIC(WARN, Logger::STARTUP) << "obsolete option '" << option.displayName() << "' used in configuration. "
+                                       << "setting this option will not have any effect.";
+    }
+  }, true, true);
 }
 
 // setup and validate all feature dependencies, determine feature order

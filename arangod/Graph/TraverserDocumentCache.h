@@ -48,12 +48,12 @@ class TraverserDocumentCache : public TraverserCache {
    ///        The document will be taken from the hash-cache.
    ///        If it is not cached it will be looked up in the StorageEngine
    //////////////////////////////////////////////////////////////////////////////
-
-   void insertIntoResult(StringRef idString,
+   void insertEdgeIntoResult(EdgeDocumentToken const& etkn,
                          arangodb::velocypack::Builder& builder) override;
-
-   void insertIntoResult(EdgeDocumentToken const* etkn,
-                         arangodb::velocypack::Builder& builder) override;
+  
+   /// Looks up the document and inserts it into the builder
+   void insertVertexIntoResult(StringRef idString,
+                               arangodb::velocypack::Builder& builder) override;
 
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Return AQL value containing the result
@@ -61,27 +61,17 @@ class TraverserDocumentCache : public TraverserCache {
    ///        If it is not cached it will be looked up in the StorageEngine
    //////////////////////////////////////////////////////////////////////////////
   
-   aql::AqlValue fetchAqlResult(StringRef idString) override;
-
-   aql::AqlValue fetchAqlResult(arangodb::graph::EdgeDocumentToken const*) override;
+   aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const&) override;
+  
+   aql::AqlValue fetchVertexAqlResult(StringRef idString) override;
 
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Insert value into store
    //////////////////////////////////////////////////////////////////////////////
 
    void insertDocument(StringRef idString,
-                       arangodb::velocypack::Slice const& document) override;
+                       arangodb::velocypack::Slice const& document);
 
-   //////////////////////////////////////////////////////////////////////////////
-   /// @brief Throws the document referenced by the token into the filter
-   ///        function and returns it result.
-   ///        The document will be taken from the hash-cache.
-   ///        If it is not cached it will be looked up in the StorageEngine
-   //////////////////////////////////////////////////////////////////////////////
-
-   bool validateFilter(StringRef idString,
-       std::function<bool(arangodb::velocypack::Slice const&)> filterFunc) override;
- 
   protected:
 
    //////////////////////////////////////////////////////////////////////////////

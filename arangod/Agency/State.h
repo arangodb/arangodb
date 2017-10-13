@@ -28,6 +28,7 @@
 #include "Agency/Store.h"
 #include "Cluster/ClusterComm.h"
 #include "Utils/OperationOptions.h"
+#include "Basics/MutexLocker.h"
 
 #include <velocypack/vpack.h>
 
@@ -54,7 +55,7 @@ class Agent;
 class State {
  public:
   /// @brief Default constructor
-  explicit State(std::string const& end_point = "tcp://localhost:8529");
+  State();
 
   /// @brief Default Destructor
   virtual ~State();
@@ -63,15 +64,15 @@ class State {
   void append(query_t const& query);
 
   /// @brief Log entries (leader)
-  std::vector<index_t> log(query_t const& query,
+  std::vector<index_t> logLeaderMulti(query_t const& query,
                            std::vector<bool> const& indices, term_t term);
 
   /// @brief Single log entry (leader)
-  index_t log(velocypack::Slice const& slice, term_t term,
+  index_t logLeaderSingle(velocypack::Slice const& slice, term_t term,
               std::string const& clientId = std::string());
     
   /// @brief Log entries (followers)
-  arangodb::consensus::index_t log(query_t const& queries, size_t ndups = 0);
+  arangodb::consensus::index_t logFollower(query_t const&);
   
   /// @brief Find entry at index with term
   bool find(index_t index, term_t term);
@@ -81,10 +82,15 @@ class State {
   std::vector<log_t> get(
     index_t = 0, index_t = (std::numeric_limits<uint64_t>::max)()) const;
   
+ private:
   /// @brief Get complete log entries bound by lower and upper bounds.
   ///        Default: [first, last]
   log_t at(index_t) const;
   
+  /// @brief non-locking version of at
+  log_t atNoLock(index_t) const;
+
+ public:
   /// @brief Check for a log entry, returns 0, if the log does not
   /// contain an entry with index `index`, 1, if it does contain one
   /// with term `term` and -1, if it does contain one with another term
@@ -137,11 +143,13 @@ class State {
   /// @brief compact state machine
   bool compact(arangodb::consensus::index_t cind);
 
+ private:
   /// @brief Remove RAFT conflicts. i.e. All indices, where higher term version
   ///        exists are overwritten, a snapshot in first position is ignored
   ///        as well, the flag gotSnapshot has to be true in this case.
   size_t removeConflicts(query_t const&, bool gotSnapshot);
 
+ public:
   /// @brief Persist active agency in pool, throws an exception in case of error
   void persistActiveAgents(query_t const& active, query_t const& pool);
 
@@ -154,19 +162,25 @@ class State {
   /// `index` to 0 if there is no compacted snapshot.
   bool loadLastCompactedSnapshot(Store& store, index_t& index, term_t& term);
 
+  /// @brief nextCompactionAfter
+  index_t nextCompactionAfter() const {
+    return _nextCompactionAfter;
+  }
+  
+ private:
+
   /// @brief Persist a compaction snapshot
   bool persistCompactionSnapshot(arangodb::consensus::index_t cind,
                                  arangodb::consensus::term_t term,
                                  arangodb::consensus::Store& snapshot);
 
-  /// @brief restoreLogFromSnapshot, needed in the follower, this erases the
+  /// @brief storeLogFromSnapshot, needed in the follower, this erases the
   /// complete log and persists the given snapshot. After this operation, the
   /// log is empty and something ought to be appended to it rather quickly.
-  bool restoreLogFromSnapshot(arangodb::consensus::Store& snapshot,
+  /// Therefore, this is only called from logFollower under the _logLock.
+  bool storeLogFromSnapshot(arangodb::consensus::Store& snapshot,
                               arangodb::consensus::index_t index,
                               arangodb::consensus::term_t term);
-
- private:
 
   /// @brief Log single log entry. Must be guarded by caller.
   index_t logNonBlocking(
@@ -206,9 +220,6 @@ class State {
   /// @brief Remove obsolete logs
   bool removeObsolete(arangodb::consensus::index_t cind);
 
-  /// @brief Persist read database
-  bool persistReadDB(arangodb::consensus::index_t cind);
-
   /// @brief Our agent
   Agent* _agent;
 
@@ -220,9 +231,13 @@ class State {
   */
   mutable arangodb::Mutex _logLock; 
   std::deque<log_t> _log;           /**< @brief  State entries */
+        // Invariant: This has at least one entry at all times!
   bool _collectionsChecked;         /**< @brief Collections checked */
   bool _collectionsLoaded;
   std::multimap<std::string,arangodb::consensus::index_t> _clientIdLookupTable;
+
+  /// @brief Next compaction after
+  std::atomic<index_t> _nextCompactionAfter;
 
   /// @brief Our query registry
   aql::QueryRegistry* _queryRegistry;

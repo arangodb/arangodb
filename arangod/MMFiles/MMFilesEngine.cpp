@@ -35,6 +35,7 @@
 #include "MMFiles/MMFilesAqlFunctions.h"
 #include "MMFiles/MMFilesCleanupThread.h"
 #include "MMFiles/MMFilesCollection.h"
+#include "MMFiles/MMFilesCompactionFeature.h"
 #include "MMFiles/MMFilesCompactorThread.h"
 #include "MMFiles/MMFilesDatafile.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
@@ -153,6 +154,7 @@ MMFilesEngine::MMFilesEngine(application_features::ApplicationServer* server)
   server->addFeature(new MMFilesWalRecoveryFeature(server));
   server->addFeature(new MMFilesLogfileManager(server));
   server->addFeature(new MMFilesPersistentIndexFeature(server));
+  server->addFeature(new MMFilesCompactionFeature(server));
 }
 
 MMFilesEngine::~MMFilesEngine() {}
@@ -3138,7 +3140,7 @@ int MMFilesEngine::transferMarkersWorker(
 
     if (type == TRI_DF_MARKER_VPACK_DOCUMENT ||
         type == TRI_DF_MARKER_VPACK_REMOVE) {
-      TRI_voc_size_t const size = source->getSize();
+      uint32_t const size = source->getSize();
 
       char* dst = nextFreeMarkerPosition(collection, tick, type, size, cache);
 
@@ -3168,10 +3170,10 @@ int MMFilesEngine::transferMarkersWorker(
 char* MMFilesEngine::nextFreeMarkerPosition(LogicalCollection* collection,
                                             TRI_voc_tick_t tick,
                                             MMFilesMarkerType type,
-                                            TRI_voc_size_t size,
+                                            uint32_t size,
                                             MMFilesCollectorCache* cache) {
   // align the specified size
-  size = encoding::alignedSize<TRI_voc_size_t>(size);
+  size = encoding::alignedSize<uint32_t>(size);
 
   char* dst = nullptr;  // will be modified by reserveJournalSpace()
   MMFilesDatafile* datafile =

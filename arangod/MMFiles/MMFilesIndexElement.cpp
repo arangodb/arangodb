@@ -24,12 +24,11 @@
 #include "MMFilesIndexElement.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
-#include "MMFiles/MMFilesToken.h"
 
 using namespace arangodb;
 
-MMFilesHashIndexElement::MMFilesHashIndexElement(TRI_voc_rid_t revisionId, std::vector<std::pair<VPackSlice, uint32_t>> const& values) 
-    : _revisionId(revisionId), _hash(static_cast<uint32_t>(hash(values))) {
+MMFilesHashIndexElement::MMFilesHashIndexElement(LocalDocumentId const& documentId, std::vector<std::pair<VPackSlice, uint32_t>> const& values) 
+    : _localDocumentId(documentId), _hash(static_cast<uint32_t>(hash(values))) {
    
   for (size_t i = 0; i < values.size(); ++i) {
     subObject(i)->fill(values[i].first, values[i].second);
@@ -37,10 +36,10 @@ MMFilesHashIndexElement::MMFilesHashIndexElement(TRI_voc_rid_t revisionId, std::
 }
 
 MMFilesHashIndexElement* MMFilesHashIndexElement::initialize(MMFilesHashIndexElement* element, 
-                                               TRI_voc_rid_t revisionId, 
+                                               LocalDocumentId const& documentId,
                                                std::vector<std::pair<arangodb::velocypack::Slice, uint32_t>> const& values) {
   TRI_ASSERT(!values.empty());
-  return new (element) MMFilesHashIndexElement(revisionId, values);
+  return new (element) MMFilesHashIndexElement(documentId, values);
 }
 
 /// @brief velocypack sub-object (for indexes, as part of IndexElement, 
@@ -58,7 +57,7 @@ arangodb::velocypack::Slice MMFilesHashIndexElement::slice(IndexLookupContext* c
   if (offset == 0) {
     return basics::VelocyPackHelper::NullValue();
   } 
-  uint8_t const* vpack = context->lookup(MMFilesToken{_revisionId});
+  uint8_t const* vpack = context->lookup(LocalDocumentId{_localDocumentId.id()});
   if (vpack == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   } 
@@ -104,8 +103,9 @@ uint64_t MMFilesHashIndexElement::hash(std::vector<std::pair<arangodb::velocypac
   return hash & 0x00000000FFFFFFFFULL;
 }
 
-MMFilesSkiplistIndexElement::MMFilesSkiplistIndexElement(TRI_voc_rid_t revisionId, std::vector<std::pair<VPackSlice, uint32_t>> const& values) 
-    : _revisionId(revisionId) {
+MMFilesSkiplistIndexElement::MMFilesSkiplistIndexElement(LocalDocumentId const& documentId,
+                                                         std::vector<std::pair<VPackSlice, uint32_t>> const& values) 
+    : _localDocumentId(documentId) {
    
   for (size_t i = 0; i < values.size(); ++i) {
     subObject(i)->fill(values[i].first, values[i].second);
@@ -113,10 +113,10 @@ MMFilesSkiplistIndexElement::MMFilesSkiplistIndexElement(TRI_voc_rid_t revisionI
 }
 
 MMFilesSkiplistIndexElement* MMFilesSkiplistIndexElement::initialize(MMFilesSkiplistIndexElement* element,
-                                                       TRI_voc_rid_t revisionId, 
+                                                       LocalDocumentId const& documentId,
                                                        std::vector<std::pair<arangodb::velocypack::Slice, uint32_t>> const& values) {
   TRI_ASSERT(!values.empty());
-  return new (element) MMFilesSkiplistIndexElement(revisionId, values);
+  return new (element) MMFilesSkiplistIndexElement(documentId, values);
 }
 
 /// @brief velocypack sub-object (for indexes, as part of IndexElement, 
@@ -134,15 +134,16 @@ arangodb::velocypack::Slice MMFilesSkiplistIndexElement::slice(IndexLookupContex
   if (offset == 0) {
     return basics::VelocyPackHelper::NullValue();
   } 
-  uint8_t const* vpack = context->lookup(MMFilesToken{_revisionId});
+  uint8_t const* vpack = context->lookup(LocalDocumentId{_localDocumentId.id()});
   if (vpack == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   } 
   return VPackSlice(vpack + sub->value.offset);
 }
 
-MMFilesSimpleIndexElement::MMFilesSimpleIndexElement(TRI_voc_rid_t revisionId, arangodb::velocypack::Slice const& value, uint32_t offset)
-    : _revisionId(revisionId), _hashAndOffset(hash(value) | (static_cast<uint64_t>(offset) << 32)) {} 
+MMFilesSimpleIndexElement::MMFilesSimpleIndexElement(LocalDocumentId const& documentId, 
+                                                     arangodb::velocypack::Slice const& value, uint32_t offset)
+    : _localDocumentId(documentId), _hashAndOffset(hash(value) | (static_cast<uint64_t>(offset) << 32)) {} 
   
 uint64_t MMFilesSimpleIndexElement::hash(arangodb::velocypack::Slice const& value) {
   TRI_ASSERT(value.isString());
@@ -150,7 +151,7 @@ uint64_t MMFilesSimpleIndexElement::hash(arangodb::velocypack::Slice const& valu
 }
 
 VPackSlice MMFilesSimpleIndexElement::slice(IndexLookupContext* context) const {
-  uint8_t const* vpack = context->lookup(MMFilesToken{_revisionId});
+  uint8_t const* vpack = context->lookup(_localDocumentId);
   if (vpack == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
   } 

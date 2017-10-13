@@ -44,12 +44,16 @@ function ahuacatlListTestSuite () {
 
   return {
 
-    setUp : function () {
+    setUpAll : function () {
       internal.db._drop(collectionName);
       collection = internal.db._create(collectionName);
+      
+      for (var i = 0; i < 10; ++i) {
+        collection.save({_key: "test" + i});
+      }
     },
 
-    tearDown: function () {
+    tearDownAll: function () {
       internal.db._drop(collectionName);
     },
 
@@ -720,16 +724,13 @@ function ahuacatlListTestSuite () {
     },
 
     testAppendDocuments : function () {
-      for (var i = 0; i < 10; ++i) {
-        collection.save({_key: "test" + i});
-      }
-
       var bindVars = {"@collection" : collectionName};
       var actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x) RETURN APPEND([], tmp)", bindVars);
       assertEqual(actual.length, 1);
       actual = actual[0];
       assertEqual(actual.length, 10);
       actual = actual.sort(function(l, r) { if (l._key < r._key) { return -1;} else if (l._key > r._key) { return 1;} return 0; });
+      var i;
       for (i = 0; i < 10; ++i) {
         assertEqual(actual[i]._key, "test" + i);
       }
@@ -766,15 +767,13 @@ function ahuacatlListTestSuite () {
     },
 
     testAppendDocuments2 : function () {
-      for (var i = 0; i < 10; ++i) {
-        collection.save({_key: "test" + i});
-      }
       var bindVars = {"@collection" : collectionName};
       var actual = getQueryResults("LET tmp = (FOR x IN @@collection SORT x._key RETURN x) RETURN APPEND(tmp, 'stringvalue')", bindVars);
       assertEqual(actual.length, 1);
       actual = actual[0];
       assertEqual(actual.length, 11);
       assertEqual(actual[10], 'stringvalue');
+      var i;
       for (i = 0; i < 10; ++i) {
         assertEqual(actual[i]._key, "test" + i);
       }
@@ -798,9 +797,6 @@ function ahuacatlListTestSuite () {
     },
 
     testAppendDocuments3 : function () {
-      for (var i = 0; i < 10; ++i) {
-        collection.save({_key: "test" + i});
-      }
       var bindVars = {"@collection" : collectionName};
       var actual = getQueryResults("LET tmp = (FOR x IN @@collection RETURN x._id) RETURN APPEND(tmp, 'stringvalue')", bindVars);
       assertEqual(actual.length, 1);
@@ -808,6 +804,7 @@ function ahuacatlListTestSuite () {
       assertEqual(actual.length, 11);
       actual = actual.sort(function(l, r) { if (l < r) { return -1;} else if (l > r) { return 1;} return 0; });
       assertEqual('stringvalue', actual[10]);
+      var i;
       for (i = 0; i < 10; ++i) {
         assertEqual(actual[i], collectionName + "/test" + i);
       }

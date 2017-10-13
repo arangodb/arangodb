@@ -172,6 +172,8 @@ class Optimizer {
   /// @brief add a plan to the optimizer
   void addPlan(std::unique_ptr<ExecutionPlan>, OptimizerRule const*, bool, int newLevel = 0);
 
+  void disableRule(int rule);
+
   /// @brief getBest, ownership of the plan remains with the optimizer
   ExecutionPlan* getBest() {
     if (_plans.empty()) {
@@ -229,6 +231,9 @@ class Optimizer {
 
   /// @brief current list of plans (while applying optimizer rules)
   PlanList _newPlans;
+  
+  // which optimizer rules are disabled?
+  std::unordered_set<int> _disabledIds;
 
   /// @brief maximal number of plans to produce
   size_t const _maxNumberOfPlans;

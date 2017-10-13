@@ -53,7 +53,7 @@ ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, uint64_t depth,
                         VPackValueType::String));
 
   fetchEdgesFromEngines(trx->databaseName(), _cache->engines(), b->slice(),
-                        depth, _cache->edges(), _edgeList, _cache->datalake(),
+                        depth, _cache->cache(), _edgeList, _cache->datalake(),
                         *(leased.get()), _cache->filteredDocuments(),
                         _cache->insertedDocuments());
 }
@@ -73,19 +73,16 @@ ClusterEdgeCursor::ClusterEdgeCursor(StringRef vertexId, bool backward,
   b->add(VPackValuePair(vertexId.data(), vertexId.length(),
                         VPackValueType::String));
   fetchEdgesFromEngines(trx->databaseName(), _cache->engines(), b->slice(),
-                        backward, _cache->edges(), _edgeList,
+                        backward, _cache->cache(), _edgeList,
                         _cache->datalake(), *(leased.get()),
                         _cache->insertedDocuments());
 }
 
 bool ClusterEdgeCursor::next(
-    std::function<void(std::unique_ptr<EdgeDocumentToken>&&, VPackSlice, size_t)> callback) {
+    std::function<void(EdgeDocumentToken&&, VPackSlice, size_t)> callback) {
   if (_position < _edgeList.size()) {
     VPackSlice edge = _edgeList[_position];
-    std::string eid =
-        transaction::helpers::extractIdString(_resolver, edge, VPackSlice());
-    StringRef persId = _cache->persistString(StringRef(eid));
-    callback(std::make_unique<ClusterEdgeDocumentToken>(persId), edge, _position);
+    callback(EdgeDocumentToken(edge), edge, _position);
     ++_position;
     return true;
   }
@@ -93,11 +90,8 @@ bool ClusterEdgeCursor::next(
 }
 
 void ClusterEdgeCursor::readAll(
-    std::function<void(std::unique_ptr<EdgeDocumentToken>&&, VPackSlice, size_t)> callback) {
-  for (auto const& edge : _edgeList) {
-    std::string eid =
-        transaction::helpers::extractIdString(_resolver, edge, VPackSlice());
-    StringRef persId = _cache->persistString(StringRef(eid));
-    callback(std::make_unique<ClusterEdgeDocumentToken>(persId), edge, _position);
+    std::function<void(EdgeDocumentToken&&, VPackSlice, size_t)> callback) {
+  for (VPackSlice const& edge : _edgeList) {
+    callback(EdgeDocumentToken(edge), edge, _position);
   }
 }

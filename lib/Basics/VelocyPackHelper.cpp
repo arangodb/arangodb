@@ -392,12 +392,12 @@ int VelocyPackHelper::compareNumberValues(VPackValueType lhsType,
     // fallthrough to double comparison
   }
 
-  double left = lhs.getNumericValue<double>();
-  double right = rhs.getNumericValue<double>();
-  if (left == right) {
+  double l = lhs.getNumericValue<double>();
+  double r = rhs.getNumericValue<double>();
+  if (l == r) {
     return 0;
   }
-  return (left < right ? -1 : 1);
+  return (l < r ? -1 : 1);
 }
   
 //////////////////////////////////////////////////////////////////////////////
@@ -413,18 +413,17 @@ int VelocyPackHelper::compareStringValues(char const* left, VPackValueLength nl,
     size_t len = static_cast<size_t>(nl < nr ? nl : nr);
     res = memcmp(left, right, len);
   }
-  if (res < 0) {
-    return -1;
+  
+  if (res != 0) {
+    return (res < 0 ? -1 : 1);
   }
-  if (res > 0) {
-    return 1;
-  }
+  
   // res == 0
   if (nl == nr) {
     return 0;
   }
   // res == 0, but different string lengths
-  return nl < nr ? -1 : 1;
+  return (nl < nr ? -1 : 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -576,17 +575,17 @@ uint64_t VelocyPackHelper::stringUInt64(VPackSlice const& slice) {
 std::shared_ptr<VPackBuilder> VelocyPackHelper::velocyPackFromFile(
     std::string const& path) {
   size_t length;
-  char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, path.c_str(), &length);
+  char* content = TRI_SlurpFile(path.c_str(), &length);
   if (content != nullptr) {
     // The Parser might throw;
     std::shared_ptr<VPackBuilder> b;
     try {
       auto b = VPackParser::fromJson(reinterpret_cast<uint8_t const*>(content),
                                      length);
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, content);
+      TRI_Free(content);
       return b;
     } catch (...) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, content);
+      TRI_Free(content);
       throw;
     }
   }
@@ -600,7 +599,7 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
     return false;
   }
 
-  arangodb::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  arangodb::basics::StringBuffer buffer(false);
   arangodb::basics::VPackStringBufferAdapter bufferAdapter(
       buffer.stringBuffer());
   try {
@@ -626,7 +625,7 @@ static bool PrintVelocyPack(int fd, VPackSlice const& slice,
   size_t n = buffer.length();
 
   while (0 < n) {
-    ssize_t m = TRI_WRITE(fd, p, (TRI_write_t)n);
+    ssize_t m = TRI_WRITE(fd, p, static_cast<TRI_write_t>(n));
 
     if (m <= 0) {
       return false;
@@ -719,12 +718,8 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
     int8_t lWeight = TypeWeight(lhs);
     int8_t rWeight = TypeWeight(rhs);
 
-    if (lWeight < rWeight) {
-      return -1;
-    }
-
-    if (lWeight > rWeight) {
-      return 1;
+    if (lWeight != rWeight) {
+      return (lWeight < rWeight ? -1 : 1);
     }
 
     TRI_ASSERT(lWeight == rWeight);

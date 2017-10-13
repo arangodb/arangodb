@@ -25,13 +25,13 @@
 
 #include "Basics/Exceptions.h"
 #include "Logger/Logger.h"
-#include "MMFiles/MMFilesToken.h"
 #include "MMFiles/mmfiles-fulltext-list.h"
 #include "MMFiles/mmfiles-fulltext-query.h"
-#include "StorageEngine/DocumentIdentifierToken.h"
 
 #include <algorithm>
 #include <set>
+
+using namespace arangodb;
 
 /// @brief use padding for pointers in binary data
 #ifndef TRI_UNALIGNED_ACCESS
@@ -151,7 +151,7 @@ static inline void* ReallocateMemory(index__t* const idx, void* old,
   TRI_ASSERT(oldSize > 0);
 #endif
 
-  data = TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, old, newSize);
+  data = TRI_Reallocate(old, newSize);
   if (data != nullptr) {
     idx->_memoryAllocated += newSize;
     idx->_memoryAllocated -= oldSize;
@@ -167,7 +167,7 @@ static inline void* AllocateMemory(index__t* const idx, size_t const size) {
   TRI_ASSERT(size > 0);
 #endif
 
-  data = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, size);
+  data = TRI_Allocate(size);
   if (data != nullptr) {
     idx->_memoryAllocated += size;
   }
@@ -183,7 +183,7 @@ static inline void FreeMemory(index__t* const idx, void* data,
 #endif
 
   idx->_memoryAllocated -= size;
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, data);
+  TRI_Free(data);
 }
 
 /// @brief adjust the number of followers for a node
@@ -971,7 +971,7 @@ void TRI_TruncateMMFilesFulltextIndex(TRI_fts_index_t* ftx) {
 }
 
 int TRI_RemoveWordsMMFilesFulltextIndex(TRI_fts_index_t* ftx,
-                                        TRI_voc_rid_t document,
+                                        LocalDocumentId const& documentId,
                                         std::set<std::string> const& wordlist) {
   index__t* idx = static_cast<index__t*>(ftx);
 
@@ -1061,7 +1061,7 @@ int TRI_RemoveWordsMMFilesFulltextIndex(TRI_fts_index_t* ftx,
     }
 
     if (node != nullptr) {
-      RemoveDoc(idx, node, document);
+      RemoveDoc(idx, node, documentId.id());
       // store length of word just removed
       // we'll use that to compare with the next word for duplicate removal
       lastLength = i;
@@ -1081,7 +1081,7 @@ int TRI_RemoveWordsMMFilesFulltextIndex(TRI_fts_index_t* ftx,
 /// - save redundant lookups of prefix nodes for adjacent words with shared
 ///   prefixes
 int TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t* ftx,
-                                        TRI_voc_rid_t document,
+                                        LocalDocumentId const& documentId,
                                         std::set<std::string> const& wordlist) {
   if (wordlist.empty()) {
     return TRI_ERROR_NO_ERROR;
@@ -1173,7 +1173,7 @@ int TRI_InsertWordsMMFilesFulltextIndex(TRI_fts_index_t* ftx,
       paths[i + 1] = node;
     }
     
-    if (!InsertDoc(idx, node, document)) {
+    if (!InsertDoc(idx, node, documentId.id())) {
       // document was added at least once, mark it as deleted
       return TRI_ERROR_OUT_OF_MEMORY;
     }

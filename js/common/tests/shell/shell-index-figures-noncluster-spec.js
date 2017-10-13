@@ -163,13 +163,18 @@ describe('Index figures', function () {
 
 // hash index ///////////////////////////////////////////////////////////
   describe('hash index', function () {
+    const colName = "UnitTestDoggyHash";
     var col;
     before('create collection',function(){
-      col = db._createDocumentCollection("UnitTestDoggyHash");
+      db._drop(colName);
+      col = db._createDocumentCollection(colName);
       col.ensureIndex({type: "hash", fields: ["name"]});
       for(var i = 0; i < 100; i++){
         col.insert({"name":"Harry"+i});
       }
+    });
+    after(function() {
+      db._drop(colName);
     });
     it('verify index types', function() {
       var indexes = col.getIndexes(true);
@@ -200,13 +205,18 @@ describe('Index figures', function () {
 
 // skiplist index ///////////////////////////////////////////////////////////
   describe('skiplist index', function () {
+    const colName = "UnitTestDoggySkip";
     var col;
     before('create collection',function(){
-      col = db._createDocumentCollection("UnitTestDoggySkip");
+      db._drop(colName);
+      col = db._createDocumentCollection(colName);
       col.ensureIndex({type: "skiplist", fields: ["name"]});
       for(var i = 0; i < 100; i++){
         col.insert({"name":"Harry"+i});
       }
+    });
+    after(function() {
+      db._drop(colName);
     });
     it('verify index types', function() {
       var indexes = col.getIndexes(true);
@@ -237,13 +247,18 @@ describe('Index figures', function () {
 
 // fulltest index ///////////////////////////////////////////////////////////
   describe('fulltext index', function () {
+    const colName = "UnitTestDoggyFull";
     var col;
     before('create collection',function(){
-      col = db._createDocumentCollection("UnitTestDoggyFull");
+      db._drop(colName);
+      col = db._createDocumentCollection(colName);
       col.ensureIndex({type: "fulltext", fields: ["name"], minLength : 3});
       for(var i = 0; i < 100; i++){
         col.insert({"name":"Harry"+i});
       }
+    });
+    after(function() {
+      db._drop(colName);
     });
     it('verify index types', function() {
       var indexes = col.getIndexes(true);
@@ -274,9 +289,11 @@ describe('Index figures', function () {
 
 // geo index ///////////////////////////////////////////////////////////
   describe('geo index', function () {
+    const colName = "UnitTestGeoSpass";
     var col;
     before('create collection',function(){
-      col = db._createDocumentCollection("UnitTestGeoSpass");
+      db._drop(colName);
+      col = db._createDocumentCollection(colName);
       col.ensureIndex({type: "geo", fields: ["loc"]});
       for(var i = 0; i < 10; i++){
         for(var j = 0; j < 10; j++){
@@ -285,6 +302,9 @@ describe('Index figures', function () {
                     });
         }
       }
+    });
+    after(function() {
+      db._drop(colName);
     });
     it('verify index types', function() {
       var indexes = col.getIndexes(true);

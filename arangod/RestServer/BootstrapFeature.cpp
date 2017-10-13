@@ -26,6 +26,7 @@
 #include "Aql/QueryList.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/Parameters.h"
@@ -131,6 +132,9 @@ static void raceForClusterBootstrap() {
       sleep(1);
       continue;
     }
+    
+    LOG_TOPIC(DEBUG, Logger::STARTUP) << "Creating the root user";
+    AuthenticationFeature::INSTANCE->authInfo()->createRootUser();
 
     LOG_TOPIC(DEBUG, Logger::STARTUP)
         << "raceForClusterBootstrap: bootstrap done";
@@ -157,6 +161,11 @@ void BootstrapFeature::start() {
   if (!ss->isRunningInCluster()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
     V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase, "server/server.js", nullptr);
+    // Agency is not allowed to call this
+    if (ServerState::instance()->isSingleServer()) {
+      // only creates root user if it does not exist
+      AuthenticationFeature::INSTANCE->authInfo()->createRootUser();
+    }
   } else if (ss->isCoordinator()) {
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Racing for cluster bootstrap...";
     raceForClusterBootstrap();

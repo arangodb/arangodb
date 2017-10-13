@@ -133,6 +133,7 @@ const optionsDefaults = {
   'storageEngine': 'mmfiles',
   'test': undefined,
   'testBuckets': undefined,
+  'useReconnect': true,
   'username': 'root',
   'valgrind': false,
   'valgrindFileBase': '',
@@ -517,8 +518,7 @@ function unitTest (cases, options) {
 
     if (status && localOptions.cleanup) {
       pu.cleanupLastDirectory(localOptions);
-    }
-    else {
+    } else {
       cleanup = false;
     }
   }

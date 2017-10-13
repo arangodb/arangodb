@@ -7,7 +7,10 @@ At the heart of the Foxx framework lies the [Foxx Router](Router/README.md) whic
 
 While Foxx is primarily designed to be used to access the database itself, ArangoDB also provides an [API to make HTTP requests](Modules.md) to external services.
 
-Finally, [scripts](Scripts.md) can be used to perform one-off tasks, which can also be scheduled to be performed asynchronously using the built-in job queue.
+[Scripts](Scripts.md) can be used to perform one-off tasks, which can also be scheduled to be performed asynchronously using the built-in job queue.
+
+Finally, Foxx services can be installed and managed over the Web-UI or through
+ArangoDBs [HTTP API](../../HTTP/Foxx/Management.html).
 
 How does it work
 ----------------

@@ -34,8 +34,8 @@ inline std::string stringify(v8::Isolate* isolate, v8::Handle<v8::Value> value) 
 	if (value.IsEmpty()) {
    return std::string{};
   }
-  v8::Local<v8::Object> json = isolate->GetCurrentContext()->Global()->Get(TRI_V8_ASCII_STRING("JSON"))->ToObject();
-  v8::Local<v8::Function> stringify = json->Get(TRI_V8_ASCII_STRING("stringify")).As<v8::Function>();
+  v8::Local<v8::Object> json = isolate->GetCurrentContext()->Global()->Get(TRI_V8_ASCII_STRING(isolate, "JSON"))->ToObject();
+  v8::Local<v8::Function> stringify = json->Get(TRI_V8_ASCII_STRING(isolate, "stringify")).As<v8::Function>();
   v8::Local<v8::Value> args[1] = { value };
   v8::Local<v8::Value> jsString = stringify->Call(json, 1, args);
   v8::String::Utf8Value const rv(jsString);
@@ -113,24 +113,24 @@ inline std::tuple<bool,bool,Result> extractArangoError(v8::Isolate* isolate, v8:
 
   try {
 
-    if(object->Has(TRI_V8_ASCII_STRING("errorNum")) &&
-       object->Has(TRI_V8_ASCII_STRING("errorMessage"))
+    if(object->Has(TRI_V8_ASCII_STRING(isolate, "errorNum")) &&
+       object->Has(TRI_V8_ASCII_STRING(isolate, "errorMessage"))
       )
     {
-      int errorNum = static_cast<int>(TRI_ObjectToInt64(object->Get(TRI_V8_ASCII_STRING("errorNum"))));
-      std::string  errorMessage = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING("errorMessage")));
+      int errorNum = static_cast<int>(TRI_ObjectToInt64(object->Get(TRI_V8_ASCII_STRING(isolate, "errorNum"))));
+      std::string  errorMessage = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING(isolate, "errorMessage")));
       std::get<1>(rv) = true;
       std::get<2>(rv).reset(errorNum,errorMessage);
       tryCatch.Reset();
       return rv;
     }
 
-    if(object->Has(TRI_V8_ASCII_STRING("name")) &&
-       object->Has(TRI_V8_ASCII_STRING("message"))
+    if(object->Has(TRI_V8_ASCII_STRING(isolate, "name")) &&
+       object->Has(TRI_V8_ASCII_STRING(isolate, "message"))
       )
     {
-      std::string  name = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING("name")));
-      std::string  message = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING("message")));
+      std::string  name = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING(isolate, "name")));
+      std::string  message = *v8::String::Utf8Value(object->Get(TRI_V8_ASCII_STRING(isolate, "message")));
       if(name == "TypeError"){
         std::get<2>(rv).reset(TRI_ERROR_TYPE_ERROR, message);
       } else {

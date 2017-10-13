@@ -233,7 +233,7 @@ std::string Utf8Helper::getCollatorCountry() {
 
 std::string Utf8Helper::toLowerCase(std::string const& src) {
   int32_t utf8len = 0;
-  char* utf8 = tolower(TRI_UNKNOWN_MEM_ZONE, src.c_str(), (int32_t)src.length(),
+  char* utf8 = tolower(src.c_str(), (int32_t)src.length(),
                        utf8len);
 
   if (utf8 == nullptr) {
@@ -241,7 +241,7 @@ std::string Utf8Helper::toLowerCase(std::string const& src) {
   }
 
   std::string result(utf8, utf8len);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, utf8);
+  TRI_Free(utf8);
   return result;
 }
 
@@ -249,12 +249,12 @@ std::string Utf8Helper::toLowerCase(std::string const& src) {
 /// @brief Lowercase the characters in a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* Utf8Helper::tolower(TRI_memory_zone_t* zone, char const* src,
+char* Utf8Helper::tolower(char const* src,
                           int32_t srcLength, int32_t& dstLength) {
   char* utf8_dest = nullptr;
 
   if (src == nullptr || srcLength == 0) {
-    utf8_dest = (char*)TRI_Allocate(zone, sizeof(char));
+    utf8_dest = (char*)TRI_Allocate(sizeof(char));
     if (utf8_dest != nullptr) {
       utf8_dest[0] = '\0';
     }
@@ -272,7 +272,7 @@ char* Utf8Helper::tolower(TRI_memory_zone_t* zone, char const* src,
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error in ucasemap_open(...): " << u_errorName(status);
   } else {
     utf8_dest =
-        (char*)TRI_Allocate(zone, (srcLength + 1) * sizeof(char));
+        (char*)TRI_Allocate((srcLength + 1) * sizeof(char));
     if (utf8_dest == nullptr) {
       return nullptr;
     }
@@ -282,9 +282,9 @@ char* Utf8Helper::tolower(TRI_memory_zone_t* zone, char const* src,
 
     if (status == U_BUFFER_OVERFLOW_ERROR) {
       status = U_ZERO_ERROR;
-      TRI_Free(zone, utf8_dest);
+      TRI_Free(utf8_dest);
       utf8_dest =
-          (char*)TRI_Allocate(zone, (dstLength + 1) * sizeof(char));
+          (char*)TRI_Allocate((dstLength + 1) * sizeof(char));
       if (utf8_dest == nullptr) {
         return nullptr;
       }
@@ -295,13 +295,13 @@ char* Utf8Helper::tolower(TRI_memory_zone_t* zone, char const* src,
 
     if (U_FAILURE(status)) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error in ucasemap_utf8ToLower(...): " << u_errorName(status);
-      TRI_Free(zone, utf8_dest);
+      TRI_Free(utf8_dest);
     } else {
       return utf8_dest;
     }
   }
 
-  utf8_dest = TRI_LowerAsciiString(zone, src);
+  utf8_dest = TRI_LowerAsciiString(src);
 
   if (utf8_dest != nullptr) {
     dstLength = (int32_t)strlen(utf8_dest);
@@ -315,14 +315,14 @@ char* Utf8Helper::tolower(TRI_memory_zone_t* zone, char const* src,
 
 std::string Utf8Helper::toUpperCase(std::string const& src) {
   int32_t utf8len = 0;
-  char* utf8 = toupper(TRI_UNKNOWN_MEM_ZONE, src.c_str(), (int32_t)src.length(),
+  char* utf8 = toupper(src.c_str(), (int32_t)src.length(),
                        utf8len);
   if (utf8 == nullptr) {
     return std::string();
   }
 
   std::string result(utf8, utf8len);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, utf8);
+  TRI_Free(utf8);
   return result;
 }
 
@@ -330,12 +330,12 @@ std::string Utf8Helper::toUpperCase(std::string const& src) {
 /// @brief Lowercase the characters in a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* Utf8Helper::toupper(TRI_memory_zone_t* zone, char const* src,
+char* Utf8Helper::toupper(char const* src,
                           int32_t srcLength, int32_t& dstLength) {
   char* utf8_dest = nullptr;
 
   if (src == nullptr || srcLength == 0) {
-    utf8_dest = (char*)TRI_Allocate(zone, sizeof(char));
+    utf8_dest = (char*)TRI_Allocate(sizeof(char));
     if (utf8_dest != nullptr) {
       utf8_dest[0] = '\0';
     }
@@ -353,7 +353,7 @@ char* Utf8Helper::toupper(TRI_memory_zone_t* zone, char const* src,
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error in ucasemap_open(...): " << u_errorName(status);
   } else {
     utf8_dest =
-        (char*)TRI_Allocate(zone, (srcLength + 1) * sizeof(char));
+        (char*)TRI_Allocate((srcLength + 1) * sizeof(char));
     if (utf8_dest == nullptr) {
       return nullptr;
     }
@@ -363,9 +363,9 @@ char* Utf8Helper::toupper(TRI_memory_zone_t* zone, char const* src,
 
     if (status == U_BUFFER_OVERFLOW_ERROR) {
       status = U_ZERO_ERROR;
-      TRI_Free(zone, utf8_dest);
+      TRI_Free(utf8_dest);
       utf8_dest =
-          (char*)TRI_Allocate(zone, (dstLength + 1) * sizeof(char));
+          (char*)TRI_Allocate((dstLength + 1) * sizeof(char));
       if (utf8_dest == nullptr) {
         return nullptr;
       }
@@ -376,13 +376,13 @@ char* Utf8Helper::toupper(TRI_memory_zone_t* zone, char const* src,
 
     if (U_FAILURE(status)) {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error in ucasemap_utf8ToUpper(...): " << u_errorName(status);
-      TRI_Free(zone, utf8_dest);
+      TRI_Free(utf8_dest);
     } else {
       return utf8_dest;
     }
   }
 
-  utf8_dest = TRI_UpperAsciiString(zone, src);
+  utf8_dest = TRI_UpperAsciiString(src);
 
   if (utf8_dest != nullptr) {
     dstLength = (int32_t)strlen(utf8_dest);
@@ -417,7 +417,7 @@ bool Utf8Helper::tokenize(std::set<std::string>& words,
     // lower case string
     int32_t lowerLength = 0;
     char* lower =
-        tolower(TRI_UNKNOWN_MEM_ZONE, text.c_str(), (int32_t)textLength, lowerLength);
+        tolower(text.c_str(), (int32_t)textLength, lowerLength);
 
     if (lower == nullptr) {
       // out of memory
@@ -425,15 +425,15 @@ bool Utf8Helper::tokenize(std::set<std::string>& words,
     }
 
     if (lowerLength == 0) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, lower);
+      TRI_Free(lower);
       return false;
     }
 
-    textUtf16 = TRI_Utf8ToUChar(TRI_UNKNOWN_MEM_ZONE, lower, lowerLength,
+    textUtf16 = TRI_Utf8ToUChar(lower, lowerLength,
                                 &textUtf16Length);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, lower);
+    TRI_Free(lower);
   } else {
-    textUtf16 = TRI_Utf8ToUChar(TRI_UNKNOWN_MEM_ZONE, text.c_str(), (int32_t)textLength,
+    textUtf16 = TRI_Utf8ToUChar(text.c_str(), (int32_t)textLength,
                                 &textUtf16Length);
   }
 
@@ -445,16 +445,16 @@ bool Utf8Helper::tokenize(std::set<std::string>& words,
   const Locale& locale = _coll->getLocale(type, status);
 
   if (U_FAILURE(status)) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
+    TRI_Free(textUtf16);
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "error in Collator::getLocale(...): " << u_errorName(status);
     return false;
   }
 
   UChar* tempUtf16 = (UChar*)TRI_Allocate(
-      TRI_UNKNOWN_MEM_ZONE, (textUtf16Length + 1) * sizeof(UChar));
+      (textUtf16Length + 1) * sizeof(UChar));
 
   if (tempUtf16 == nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
+    TRI_Free(textUtf16);
     return false;
   }
 
@@ -477,20 +477,20 @@ bool Utf8Helper::tokenize(std::set<std::string>& words,
       utext.extractBetween(start, (int32_t)(start + chunkLength), tempUtf16, 0);
 
       size_t utf8WordLength;
-      char* utf8Word = TRI_UCharToUtf8(TRI_UNKNOWN_MEM_ZONE, tempUtf16,
+      char* utf8Word = TRI_UCharToUtf8(tempUtf16,
                                        chunkLength, &utf8WordLength);
       if (utf8Word != nullptr) {
         std::string word(utf8Word, utf8WordLength);
         words.emplace(word);
-        TRI_Free(TRI_UNKNOWN_MEM_ZONE, utf8Word);
+        TRI_Free(utf8Word);
       }
     }
   }
 
   delete wordIterator;
 
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, tempUtf16);
+  TRI_Free(textUtf16);
+  TRI_Free(tempUtf16);
 
   return true;
 }
@@ -590,9 +590,9 @@ std::string Utf8Helper::replace(RegexMatcher* matcher,
 /// Basic/Utf8Helper.cpp)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_tolower_utf8(TRI_memory_zone_t* zone, char const* src,
+char* TRI_tolower_utf8(char const* src,
                        int32_t srcLength, int32_t* dstLength) {
-  return Utf8Helper::DefaultUtf8Helper.tolower(zone, src, srcLength,
+  return Utf8Helper::DefaultUtf8Helper.tolower(src, srcLength,
                                                *dstLength);
 }
 
@@ -600,7 +600,7 @@ char* TRI_tolower_utf8(TRI_memory_zone_t* zone, char const* src,
 /// @brief convert a utf-8 string to a uchar (utf-16)
 ////////////////////////////////////////////////////////////////////////////////
 
-UChar* TRI_Utf8ToUChar(TRI_memory_zone_t* zone, char const* utf8,
+UChar* TRI_Utf8ToUChar(char const* utf8,
                        size_t inLength, size_t* outLength) {
   int32_t utf16Length;
 
@@ -613,7 +613,7 @@ UChar* TRI_Utf8ToUChar(TRI_memory_zone_t* zone, char const* utf8,
   }
 
   UChar* utf16 =
-      (UChar*)TRI_Allocate(zone, (utf16Length + 1) * sizeof(UChar));
+      (UChar*)TRI_Allocate((utf16Length + 1) * sizeof(UChar));
   if (utf16 == nullptr) {
     return nullptr;
   }
@@ -624,7 +624,7 @@ UChar* TRI_Utf8ToUChar(TRI_memory_zone_t* zone, char const* utf8,
   u_strFromUTF8(utf16, utf16Length + 1, nullptr, utf8, (int32_t)inLength,
                 &status);
   if (status != U_ZERO_ERROR) {
-    TRI_Free(zone, utf16);
+    TRI_Free(utf16);
     return nullptr;
   }
 
@@ -637,7 +637,7 @@ UChar* TRI_Utf8ToUChar(TRI_memory_zone_t* zone, char const* utf8,
 /// @brief convert a uchar (utf-16) to a utf-8 string
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_UCharToUtf8(TRI_memory_zone_t* zone, UChar const* uchar,
+char* TRI_UCharToUtf8(UChar const* uchar,
                       size_t inLength, size_t* outLength) {
   int32_t utf8Length;
 
@@ -649,7 +649,7 @@ char* TRI_UCharToUtf8(TRI_memory_zone_t* zone, UChar const* uchar,
     return nullptr;
   }
 
-  char* utf8 = static_cast<char*>(TRI_Allocate(zone, utf8Length + 1));
+  char* utf8 = static_cast<char*>(TRI_Allocate(utf8Length + 1));
 
   if (utf8 == nullptr) {
     return nullptr;
@@ -661,7 +661,7 @@ char* TRI_UCharToUtf8(TRI_memory_zone_t* zone, UChar const* uchar,
   u_strToUTF8(utf8, utf8Length + 1, nullptr, uchar, (int32_t)inLength, &status);
 
   if (status != U_ZERO_ERROR) {
-    TRI_Free(zone, utf8);
+    TRI_Free(utf8);
     return nullptr;
   }
 
@@ -674,7 +674,7 @@ char* TRI_UCharToUtf8(TRI_memory_zone_t* zone, UChar const* uchar,
 /// @brief normalize an utf8 string (NFC)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_normalize_utf8_to_NFC(TRI_memory_zone_t* zone, char const* utf8,
+char* TRI_normalize_utf8_to_NFC(char const* utf8,
                                 size_t inLength, size_t* outLength) {
   size_t utf16Length;
 
@@ -682,7 +682,7 @@ char* TRI_normalize_utf8_to_NFC(TRI_memory_zone_t* zone, char const* utf8,
   char* utf8Dest;
 
   if (inLength == 0) {
-    utf8Dest = static_cast<char*>(TRI_Allocate(zone, sizeof(char)));
+    utf8Dest = static_cast<char*>(TRI_Allocate(sizeof(char)));
 
     if (utf8Dest != nullptr) {
       utf8Dest[0] = '\0';
@@ -690,16 +690,16 @@ char* TRI_normalize_utf8_to_NFC(TRI_memory_zone_t* zone, char const* utf8,
     return utf8Dest;
   }
 
-  UChar* utf16 = TRI_Utf8ToUChar(zone, utf8, inLength, &utf16Length);
+  UChar* utf16 = TRI_Utf8ToUChar(utf8, inLength, &utf16Length);
 
   if (utf16 == nullptr) {
     return nullptr;
   }
 
   // continue in TR_normalize_utf16_to_NFC
-  utf8Dest = TRI_normalize_utf16_to_NFC(zone, (uint16_t const*)utf16,
+  utf8Dest = TRI_normalize_utf16_to_NFC((uint16_t const*)utf16,
                                         (int32_t)utf16Length, outLength);
-  TRI_Free(zone, utf16);
+  TRI_Free(utf16);
 
   return utf8Dest;
 }
@@ -708,13 +708,13 @@ char* TRI_normalize_utf8_to_NFC(TRI_memory_zone_t* zone, char const* utf8,
 /// @brief normalize an utf8 string (NFC)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_normalize_utf16_to_NFC(TRI_memory_zone_t* zone, uint16_t const* utf16,
+char* TRI_normalize_utf16_to_NFC(uint16_t const* utf16,
                                  size_t inLength, size_t* outLength) {
   *outLength = 0;
   char* utf8Dest;
 
   if (inLength == 0) {
-    utf8Dest = static_cast<char*>(TRI_Allocate(zone, sizeof(char)));
+    utf8Dest = static_cast<char*>(TRI_Allocate(sizeof(char)));
     if (utf8Dest != nullptr) {
       utf8Dest[0] = '\0';
     }
@@ -741,7 +741,7 @@ char* TRI_normalize_utf16_to_NFC(TRI_memory_zone_t* zone, uint16_t const* utf16,
   } else {
     // use dynamic memory
     utf16Dest =
-        (UChar*)TRI_Allocate(zone, (inLength + 1) * sizeof(UChar));
+        (UChar*)TRI_Allocate((inLength + 1) * sizeof(UChar));
     if (utf16Dest == nullptr) {
       return nullptr;
     }
@@ -767,7 +767,7 @@ char* TRI_normalize_utf16_to_NFC(TRI_memory_zone_t* zone, uint16_t const* utf16,
       // + overhead size)
       if (mustFree) {
         // free original buffer first so we don't leak
-        TRI_Free(zone, utf16Dest);
+        TRI_Free(utf16Dest);
         mustFree = false;
       }
 
@@ -791,7 +791,7 @@ char* TRI_normalize_utf16_to_NFC(TRI_memory_zone_t* zone, uint16_t const* utf16,
       }
 
       utf16Dest = (UChar*)TRI_Allocate(
-          zone, (inLength + overhead + 1) * sizeof(UChar));
+          (inLength + overhead + 1) * sizeof(UChar));
 
       if (utf16Dest != nullptr) {
         // got new memory. now try again with the adjusted, bigger buffer
@@ -802,7 +802,7 @@ char* TRI_normalize_utf16_to_NFC(TRI_memory_zone_t* zone, uint16_t const* utf16,
     }
 
     if (mustFree) {
-      TRI_Free(zone, utf16Dest);
+      TRI_Free(utf16Dest);
     }
 
     return nullptr;
@@ -810,10 +810,10 @@ char* TRI_normalize_utf16_to_NFC(TRI_memory_zone_t* zone, uint16_t const* utf16,
 
   // Convert data back from UChar (UTF-16) to UTF-8
   utf8Dest =
-      TRI_UCharToUtf8(zone, utf16Dest, (size_t)utf16DestLength, outLength);
+      TRI_UCharToUtf8(utf16Dest, (size_t)utf16DestLength, outLength);
 
   if (mustFree) {
-    TRI_Free(zone, utf16Dest);
+    TRI_Free(utf16Dest);
   }
 
   return utf8Dest;

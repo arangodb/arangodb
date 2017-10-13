@@ -208,6 +208,10 @@ describe ArangoDB do
 
           after do
             drop_graph(sync, graph_name)
+            ArangoDB.drop_collection(bought_collection)
+            ArangoDB.drop_collection(friend_collection)
+            ArangoDB.drop_collection(product_collection)
+            ArangoDB.drop_collection(user_collection)
           end
 
           it "can create an empty graph" do
@@ -402,6 +406,8 @@ describe ArangoDB do
 
           after do
             drop_graph(sync, graph_name)
+            ArangoDB.drop_collection(friend_collection)
+            ArangoDB.drop_collection(user_collection)
           end
 
           it "can create a vertex" do
@@ -569,6 +575,8 @@ describe ArangoDB do
 
           after do
             drop_graph(sync, graph_name)
+            ArangoDB.drop_collection(friend_collection)
+            ArangoDB.drop_collection(user_collection)
           end
 
           it "can create an edge" do
@@ -798,6 +806,8 @@ describe ArangoDB do
 
           after do
             drop_graph(sync, graph_name)
+            ArangoDB.drop_collection(friend_collection)
+            ArangoDB.drop_collection(user_collection)
           end
 
           describe "should throw 404 if graph is unknown on route" do

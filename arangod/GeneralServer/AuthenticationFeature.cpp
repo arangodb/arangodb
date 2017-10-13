@@ -45,6 +45,8 @@ AuthenticationFeature::AuthenticationFeature(
       _authInfo(nullptr),
       _authenticationUnixSockets(true),
       _authenticationSystemOnly(true),
+      _authenticationTimeout(0.0),
+      _localAuthentication(true),
       _jwtSecretProgramOption(""),
       _active(true) {
   setOptional(true);
@@ -79,6 +81,14 @@ void AuthenticationFeature::collectOptions(
                      "enable or disable authentication for ALL client requests",
                      new BooleanParameter(&_active));
 
+  options->addOption("--server.authentication-timeout",
+                     "timeout for the authentication cache (0 = indefinitely)",
+                     new DoubleParameter(&_authenticationTimeout));
+
+  options->addOption("--server.local-authentication",
+                     "enable or disable authentication using the local user database",
+                     new BooleanParameter(&_localAuthentication));
+
   options->addOption(
       "--server.authentication-system-only",
       "use HTTP authentication only for requests to /_api and /_admin",
@@ -98,7 +108,7 @@ void AuthenticationFeature::collectOptions(
 void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   if (!_jwtSecretProgramOption.empty()) {
     if (_jwtSecretProgramOption.length() > _maxSecretLength) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+      LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
           << "Given JWT secret too long. Max length is " << _maxSecretLength;
       FATAL_ERROR_EXIT();
     }

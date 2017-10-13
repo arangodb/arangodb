@@ -30,6 +30,7 @@
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
+#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -212,19 +213,14 @@ RestStatus RestBatchHandler::executeHttp() {
     {
       // ignore any errors here, will be handled later by inspecting the response
       try {
+        ExecContext* old = ExecContext::CURRENT;
+        ExecContext::CURRENT = nullptr;
+
+        TRI_DEFER(ExecContext::CURRENT = old);
         handler->syncRunEngine();
       } catch (...) {
       }
 
-#if 0
-      int result = TRI_ERROR_NO_ERROR; 
-      if (result != TRI_ERROR_NO_ERROR) {
-        generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
-                      "executing a handler for batch part failed");
-
-        return RestStatus::FAIL;
-      }
-#endif
       HttpResponse* partResponse =
           dynamic_cast<HttpResponse*>(handler->response());
 

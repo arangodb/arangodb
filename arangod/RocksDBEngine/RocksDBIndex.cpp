@@ -227,15 +227,15 @@ int RocksDBIndex::drop() {
 }
 
 Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* mthd,
-                      TRI_voc_rid_t oldRevision,
-                      arangodb::velocypack::Slice const& oldDoc,
-                      TRI_voc_rid_t newRevision,
+                                    LocalDocumentId const& oldDocumentId,
+                                    arangodb::velocypack::Slice const& oldDoc,
+                                    LocalDocumentId const& newDocumentId,
                                     arangodb::velocypack::Slice const& newDoc) {
-  Result res = removeInternal(trx, mthd, oldRevision, oldDoc);
+  Result res = removeInternal(trx, mthd, oldDocumentId, oldDoc);
   if (!res.ok()) {
-      return res;
+    return res;
   }
-  return insertInternal(trx, mthd, newRevision, newDoc);
+  return insertInternal(trx, mthd, newDocumentId, newDoc);
 }
 
 void RocksDBIndex::truncate(transaction::Methods* trx) {

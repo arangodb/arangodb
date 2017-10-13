@@ -42,7 +42,7 @@ static std::vector<arangodb::basics::AttributeName> const KeyAttribute
 MMFilesPathBasedIndex::MMFilesPathBasedIndex(TRI_idx_iid_t iid,
                                arangodb::LogicalCollection* collection,
                                VPackSlice const& info, size_t baseSize, bool allowPartialIndex)
-    : Index(iid, collection, info),
+    : MMFilesIndex(iid, collection, info),
       _deduplicate(arangodb::basics::VelocyPackHelper::getBooleanValue(
           info, "deduplicate", true)),
       _useExpansion(false),
@@ -116,8 +116,8 @@ bool MMFilesPathBasedIndex::implicitlyUnique() const {
 /// @brief helper function to insert a document into any index type
 template<typename T>
 int MMFilesPathBasedIndex::fillElement(std::vector<T*>& elements,
-                                TRI_voc_rid_t revisionId,
-                                VPackSlice const& doc) {
+                                       LocalDocumentId const& documentId,
+                                       VPackSlice const& doc) {
   if (doc.isNone()) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "encountered invalid marker with slice of type None";
     return TRI_ERROR_INTERNAL;
@@ -136,7 +136,7 @@ int MMFilesPathBasedIndex::fillElement(std::vector<T*>& elements,
       // because of index sparsity!
       T* element = static_cast<T*>(_allocator->allocate());
       TRI_ASSERT(element != nullptr);
-      element = T::initialize(element, revisionId, slices);
+      element = T::initialize(element, documentId, slices);
 
       if (element == nullptr) {
         return TRI_ERROR_OUT_OF_MEMORY;
@@ -178,7 +178,7 @@ int MMFilesPathBasedIndex::fillElement(std::vector<T*>& elements,
         TRI_ASSERT(info.size() == n);
         T* element = static_cast<T*>(_allocator->allocate());
         TRI_ASSERT(element != nullptr);
-        element = T::initialize(element, revisionId, info);
+        element = T::initialize(element, documentId, info);
 
         if (element == nullptr) {
           return TRI_ERROR_OUT_OF_MEMORY;
@@ -374,7 +374,7 @@ void MMFilesPathBasedIndex::fillPaths(std::vector<std::vector<std::string>>& pat
 
 // template instanciations for fillElement
 template
-int MMFilesPathBasedIndex::fillElement(std::vector<MMFilesHashIndexElement*>& elements, TRI_voc_rid_t revisionId, VPackSlice const& doc);
+int MMFilesPathBasedIndex::fillElement(std::vector<MMFilesHashIndexElement*>&, LocalDocumentId const&, VPackSlice const& doc);
 
 template
-int MMFilesPathBasedIndex::fillElement(std::vector<MMFilesSkiplistIndexElement*>& elements, TRI_voc_rid_t revisionId, VPackSlice const& doc);
+int MMFilesPathBasedIndex::fillElement(std::vector<MMFilesSkiplistIndexElement*>&, LocalDocumentId const&, VPackSlice const& doc);

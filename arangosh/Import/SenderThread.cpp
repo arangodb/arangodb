@@ -43,7 +43,7 @@ SenderThread::SenderThread(
     ImportStatistics* stats)
     : Thread("Import Sender"),
       _client(client.release()),
-      _data(TRI_UNKNOWN_MEM_ZONE, false),
+      _data(false),
       _hasError(false),
       _idle(true),
       _ready(false),

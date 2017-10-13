@@ -68,7 +68,7 @@ static void JS_LeadingAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::Handle<v8::Object> r = v8::Object::New(isolate);
 
-  r->Set(TRI_V8_ASCII_STRING("leading"),
+  r->Set(TRI_V8_ASCII_STRING(isolate, "leading"),
          v8::Boolean::New(isolate, agent->leading()));
 
   TRI_V8_RETURN(r);
@@ -154,8 +154,7 @@ static void JS_WriteAgent(v8::FunctionCallbackInfo<v8::Value> const& args) {
     try {
       max_index = *std::max_element(ret.indices.begin(), ret.indices.end());
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__
-                                      << __LINE__;
+      LOG_TOPIC(WARN, Logger::AGENCY) << e.what();
     }
 
     if (max_index > 0) {
@@ -182,29 +181,29 @@ void TRI_InitV8Agency(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   // ...........................................................................
 
   ft = v8::FunctionTemplate::New(isolate);
-  ft->SetClassName(TRI_V8_ASCII_STRING("ArangoAgent"));
+  ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoAgent"));
 
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(2);
 
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("enabled"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "enabled"),
                        JS_EnabledAgent);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("leading"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "leading"),
                        JS_LeadingAgent);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("read"), JS_ReadAgent);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("write"),
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "read"), JS_ReadAgent);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "write"),
                        JS_WriteAgent);
 
   v8g->AgentTempl.Reset(isolate, rt);
-  ft->SetClassName(TRI_V8_ASCII_STRING("ArangoAgentCtor"));
+  ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ArangoAgentCtor"));
 
-  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING("ArangoAgentCtor"),
+  TRI_AddGlobalFunctionVocbase(isolate, TRI_V8_ASCII_STRING(isolate, "ArangoAgentCtor"),
                                ft->GetFunction(), true);
   
   // register the global object
   v8::Handle<v8::Object> aa = rt->NewInstance();
   if (!aa.IsEmpty()) {
     TRI_AddGlobalVariableVocbase(isolate,
-                                 TRI_V8_ASCII_STRING("ArangoAgent"), aa);
+                                 TRI_V8_ASCII_STRING(isolate, "ArangoAgent"), aa);
   }
 }

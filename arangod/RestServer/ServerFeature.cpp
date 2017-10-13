@@ -146,7 +146,7 @@ void ServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
   if (_operationMode == OperationMode::MODE_CONSOLE) {
     ApplicationServer::disableFeatures({"Daemon", "Supervisor"});
-    v8dealer->increaseContexts();
+    v8dealer->setMinimumContexts(2);
   }
 
   if (_operationMode == OperationMode::MODE_SERVER ||

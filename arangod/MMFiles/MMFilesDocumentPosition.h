@@ -26,6 +26,7 @@
 
 #include "Basics/Common.h"
 #include "MMFiles/MMFilesDatafileHelper.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 
 namespace arangodb {
@@ -33,30 +34,30 @@ namespace arangodb {
 class MMFilesDocumentPosition {
  public:
   constexpr MMFilesDocumentPosition() 
-          : _revisionId(0), _fid(0), _dataptr(nullptr) {}
+          : _localDocumentId(), _fid(0), _dataptr(nullptr) {}
 
-  MMFilesDocumentPosition(TRI_voc_rid_t revisionId, void const* dataptr, TRI_voc_fid_t fid, bool isWal) noexcept
-          : _revisionId(revisionId), _fid(fid), _dataptr(dataptr) {
+  MMFilesDocumentPosition(LocalDocumentId const& documentId, void const* dataptr, TRI_voc_fid_t fid, bool isWal) noexcept
+          : _localDocumentId(documentId), _fid(fid), _dataptr(dataptr) {
     if (isWal) {
       _fid |= MMFilesDatafileHelper::WalFileBitmask();
     }
   }
 
   MMFilesDocumentPosition(MMFilesDocumentPosition const& other) noexcept
-          : _revisionId(other._revisionId), _fid(other._fid), _dataptr(other._dataptr) {}
+          : _localDocumentId(other._localDocumentId), _fid(other._fid), _dataptr(other._dataptr) {}
   
   MMFilesDocumentPosition& operator=(MMFilesDocumentPosition const& other) noexcept {
-    _revisionId = other._revisionId;
+    _localDocumentId = other._localDocumentId;
     _fid = other._fid;
     _dataptr = other._dataptr; 
     return *this;
   }
   
   MMFilesDocumentPosition(MMFilesDocumentPosition&& other) noexcept
-          : _revisionId(other._revisionId), _fid(other._fid), _dataptr(other._dataptr) {}
+          : _localDocumentId(other._localDocumentId), _fid(other._fid), _dataptr(other._dataptr) {}
   
   MMFilesDocumentPosition& operator=(MMFilesDocumentPosition&& other) noexcept {
-    _revisionId = other._revisionId;
+    _localDocumentId = other._localDocumentId;
     _fid = other._fid;
     _dataptr = other._dataptr; 
     return *this;
@@ -65,13 +66,17 @@ class MMFilesDocumentPosition {
   ~MMFilesDocumentPosition() {}
   
   inline void clear() noexcept {
-    _revisionId = 0;
+    _localDocumentId.clear();
     _fid = 0;
     _dataptr = nullptr;
   }
 
-  inline TRI_voc_rid_t revisionId() const noexcept { 
-    return _revisionId;
+  inline LocalDocumentId localDocumentId() const noexcept { 
+    return _localDocumentId;
+  }
+  
+  inline LocalDocumentId::BaseType localDocumentIdValue() const noexcept { 
+    return _localDocumentId.id();
   }
   
   // return the datafile id.
@@ -110,15 +115,15 @@ class MMFilesDocumentPosition {
   }
 
   inline operator bool() const noexcept {
-    return (_revisionId != 0 && _dataptr != nullptr);
+    return (_localDocumentId.isSet() && _dataptr != nullptr);
   }
   
   inline bool operator==(MMFilesDocumentPosition const& other) const noexcept { 
-    return (_revisionId == other._revisionId && _fid == other._fid && _dataptr == other._dataptr);
+    return (_localDocumentId == other._localDocumentId && _fid == other._fid && _dataptr == other._dataptr);
   }
 
  private:
-  TRI_voc_rid_t _revisionId;
+  LocalDocumentId _localDocumentId;
   // this is the datafile identifier
   TRI_voc_fid_t _fid;   
   // this is the pointer to the beginning of the vpack

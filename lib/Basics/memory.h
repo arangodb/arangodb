@@ -29,49 +29,6 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief memory zone id
-////////////////////////////////////////////////////////////////////////////////
-
-typedef uint32_t TRI_memory_zone_id_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief memory zone
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_memory_zone_s {
-  bool _failed;
-  bool _failable;
-} TRI_memory_zone_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief core memory zone, allocation will never fail
-////////////////////////////////////////////////////////////////////////////////
-
-extern TRI_memory_zone_t* TRI_CORE_MEM_ZONE;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief unknown memory zone
-////////////////////////////////////////////////////////////////////////////////
-
-extern TRI_memory_zone_t* TRI_UNKNOWN_MEM_ZONE;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the memory zone for a zone id
-////////////////////////////////////////////////////////////////////////////////
-
-inline TRI_memory_zone_t* TRI_MemoryZone(TRI_memory_zone_id_t zid) {
-  return (zid == 0 ? TRI_CORE_MEM_ZONE : TRI_UNKNOWN_MEM_ZONE); 
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the memory zone id for a zone
-////////////////////////////////////////////////////////////////////////////////
-
-inline TRI_memory_zone_id_t TRI_MemoryZoneId(TRI_memory_zone_t const* zone) {
-  return (zone == TRI_CORE_MEM_ZONE ? 0 : 1);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief system memory allocation
 ///
 /// This will not add the memory zone information even when compiled with
@@ -94,10 +51,10 @@ void* TRI_SystemAllocate(uint64_t, bool);
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#define TRI_Allocate(a, b) TRI_AllocateZ((a), (b), __FILE__, __LINE__)
-void* TRI_AllocateZ(TRI_memory_zone_t*, uint64_t, char const*, int);
+#define TRI_Allocate(a) TRI_AllocateZ((a), __FILE__, __LINE__)
+void* TRI_AllocateZ(uint64_t, char const*, int);
 #else
-void* TRI_Allocate(TRI_memory_zone_t*, uint64_t);
+void* TRI_Allocate(uint64_t);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,11 +62,11 @@ void* TRI_Allocate(TRI_memory_zone_t*, uint64_t);
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#define TRI_Reallocate(a, b, c) \
-  TRI_ReallocateZ((a), (b), (c), __FILE__, __LINE__)
-void* TRI_ReallocateZ(TRI_memory_zone_t*, void*, uint64_t, char const*, int);
+#define TRI_Reallocate(a, b) \
+  TRI_ReallocateZ((a), (b), __FILE__, __LINE__)
+void* TRI_ReallocateZ(void*, uint64_t, char const*, int);
 #else
-void* TRI_Reallocate(TRI_memory_zone_t*, void*, uint64_t);
+void* TRI_Reallocate(void*, uint64_t);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -117,10 +74,10 @@ void* TRI_Reallocate(TRI_memory_zone_t*, void*, uint64_t);
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#define TRI_Free(a, b) TRI_FreeZ((a), (b), __FILE__, __LINE__)
-void TRI_FreeZ(TRI_memory_zone_t*, void*, char const*, int);
+#define TRI_Free(a) TRI_FreeZ((a), __FILE__, __LINE__)
+void TRI_FreeZ(void*, char const*, int);
 #else
-void TRI_Free(TRI_memory_zone_t*, void*);
+void TRI_Free(void*);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -156,8 +113,5 @@ void TRI_ZeroMemory(void* m, size_t size);
 
 /// @brief initialize memory subsystem
 void TRI_InitializeMemory(void);
-
-/// @brief shut down memory subsystem
-void TRI_ShutdownMemory(void);
 
 #endif

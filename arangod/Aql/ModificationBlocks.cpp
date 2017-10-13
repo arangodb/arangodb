@@ -129,7 +129,7 @@ AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
         std::unique_ptr<AqlItemBlock> res(
             ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
 
-        if (res.get() == nullptr) {
+        if (res == nullptr) {
           break;
         }
 
@@ -142,7 +142,7 @@ AqlItemBlock* ModificationBlock::getSome(size_t atLeast, size_t atMost) {
 
         replyBlocks.reset(work(blocks));
 
-        if (replyBlocks.get() != nullptr) {
+        if (replyBlocks != nullptr) {
           break;
         }
       }
@@ -368,8 +368,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
                 errorCode = TRI_ERROR_NO_ERROR;
               }
               if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
-                result->setValue(dstRow, _outRegOld,
-                                 AqlValue(it.get("old")));
+                result->emplaceValue(dstRow, _outRegOld, it.get("old"));
               }
               handleResult(errorCode, ep->_options.ignoreErrors);
               ++iter;
@@ -391,8 +390,7 @@ AqlItemBlock* RemoveBlock::work(std::vector<AqlItemBlock*>& blocks) {
           errorCode = TRI_ERROR_NO_ERROR;
         }
         if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
-          result->setValue(dstRow, _outRegOld,
-                           AqlValue(opRes.slice().get("old")));
+          result->emplaceValue(dstRow, _outRegOld, opRes.slice().get("old"));
         }
         handleResult(errorCode, ep->_options.ignoreErrors);
         ++dstRow;
@@ -469,7 +467,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
             if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
               // return $NEW
-              result->setValue(dstRow, _outRegNew, AqlValue(opRes.slice().get("new")));
+              result->emplaceValue(dstRow, _outRegNew, opRes.slice().get("new"));
             }
           } else {
             errorCode = TRI_ERROR_NO_ERROR;
@@ -517,7 +515,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
                   elm, "error", false);
               if (!wasError) {
                 // return $NEW
-                result->setValue(dstRow, _outRegNew, AqlValue(elm.get("new")));
+                result->emplaceValue(dstRow, _outRegNew, elm.get("new"));
               }
               ++iter;
             }
@@ -677,11 +675,11 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
       if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
         if (ep->_outVariableOld != nullptr) {
           // store $OLD
-          result->setValue(dstRow, _outRegOld, AqlValue(opRes.slice().get("old")));
+          result->emplaceValue(dstRow, _outRegOld, opRes.slice().get("old"));
         }
         if (ep->_outVariableNew != nullptr) {
           // store $NEW
-          result->setValue(dstRow, _outRegNew, AqlValue(opRes.slice().get("new")));
+          result->emplaceValue(dstRow, _outRegNew, opRes.slice().get("new"));
         }
       }
 
@@ -709,11 +707,11 @@ AqlItemBlock* UpdateBlock::work(std::vector<AqlItemBlock*>& blocks) {
             if (!wasError) {
               if (ep->_outVariableOld != nullptr) {
                 // store $OLD
-                result->setValue(dstRow, _outRegOld, AqlValue(elm.get("old")));
+                result->emplaceValue(dstRow, _outRegOld, elm.get("old"));
               }
               if (ep->_outVariableNew != nullptr) {
                 // store $NEW
-                result->setValue(dstRow, _outRegNew, AqlValue(elm.get("new")));
+                result->emplaceValue(dstRow, _outRegNew, elm.get("new"));
               }
             }
             ++iter;
@@ -899,7 +897,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
                       elm, "error", false);
               if (!wasError) {
                 // return $NEW
-                result->setValue(insRows[i], _outRegNew, AqlValue(elm.get("new")));
+                result->emplaceValue(insRows[i], _outRegNew, elm.get("new"));
               }
               ++i;
             }
@@ -913,7 +911,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
         errorCode = opRes.code; 
 
         if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
-          result->setValue(dstRow - 1, _outRegNew, AqlValue(opRes.slice().get("new")));
+          result->emplaceValue(dstRow - 1, _outRegNew, opRes.slice().get("new"));
         }
         handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage);
       }
@@ -944,7 +942,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
                       elm, "error", false);
               if (!wasError) {
                 // return $NEW
-                result->setValue(upRows[i], _outRegNew, AqlValue(elm.get("new")));
+                result->emplaceValue(upRows[i], _outRegNew, elm.get("new"));
               }
               ++i;
             }
@@ -963,7 +961,7 @@ AqlItemBlock* UpsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
 
         if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
           // store $NEW
-          result->setValue(dstRow - 1, _outRegNew, AqlValue(opRes.slice().get("new")));
+          result->emplaceValue(dstRow - 1, _outRegNew, opRes.slice().get("new"));
         }
         handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage);
       }
@@ -1113,13 +1111,11 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
       if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
         if (ep->_outVariableOld != nullptr) {
           // store $OLD
-          result->setValue(dstRow, _outRegOld,
-                           AqlValue(opRes.slice().get("old")));
+          result->emplaceValue(dstRow, _outRegOld, opRes.slice().get("old"));
         }
         if (ep->_outVariableNew != nullptr) {
           // store $NEW
-          result->setValue(dstRow, _outRegNew,
-                           AqlValue(opRes.slice().get("new")));
+          result->emplaceValue(dstRow, _outRegNew, opRes.slice().get("new"));
         }
       }
 
@@ -1146,11 +1142,11 @@ AqlItemBlock* ReplaceBlock::work(std::vector<AqlItemBlock*>& blocks) {
             if (!wasError) {
               if (ep->_outVariableOld != nullptr) {
                 // store $OLD
-                result->setValue(dstRow, _outRegOld, AqlValue(elm.get("old")));
+                result->emplaceValue(dstRow, _outRegOld, elm.get("old"));
               }
               if (ep->_outVariableNew != nullptr) {
                 // store $NEW
-                result->setValue(dstRow, _outRegNew, AqlValue(elm.get("new")));
+                result->emplaceValue(dstRow, _outRegNew, elm.get("new"));
               }
             }
             ++iter;

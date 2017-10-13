@@ -84,7 +84,7 @@ void DaemonFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
   if (absoluteFile != nullptr) {
     _pidFile = std::string(absoluteFile);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, absoluteFile);
+    TRI_Free(absoluteFile);
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "using absolute pid file '"
                                               << _pidFile << "'";
   } else {

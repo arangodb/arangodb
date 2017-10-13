@@ -30,7 +30,6 @@
 #include "Basics/Exceptions.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
-#include "StorageEngine/DocumentIdentifierToken.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Utils/OperationCursor.h"
@@ -50,7 +49,7 @@ EnumerateCollectionBlock::EnumerateCollectionBlock(
           _trx->indexScan(_collection->getName(),
                           (ep->_random ? transaction::Methods::CursorType::ANY
                                        : transaction::Methods::CursorType::ALL),
-                          _mmdr.get(), 0, UINT64_MAX, 1000, false)) {
+                          _mmdr.get(), false)) {
   TRI_ASSERT(_cursor->successful());
 }
 
@@ -195,13 +194,13 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
     if (produceResult()) {
       // properly build up results by fetching the actual documents
       // using nextDocument()
-      tmp = _cursor->nextDocument([&](DocumentIdentifierToken const&, VPackSlice slice) {
+      tmp = _cursor->nextDocument([&](LocalDocumentId const&, VPackSlice slice) {
         _documentProducer(res.get(), slice, curRegs, send, 0);
       }, atMost);
     } else {
       // performance optimization: we do not need the documents at all,
       // so just call next()
-      tmp = _cursor->next([&](DocumentIdentifierToken const&) {
+      tmp = _cursor->next([&](LocalDocumentId const&) {
         _documentProducer(res.get(), VPackSlice::nullSlice(), curRegs, send, 0);
       }, atMost);
     }
@@ -216,7 +215,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome(size_t,  // atLeast,
 
   if (send < atMost) {
     // The collection did not have enough results
-    res->shrink(send, false);
+    res->shrink(send);
   }
 
   // Clear out registers no longer needed later:

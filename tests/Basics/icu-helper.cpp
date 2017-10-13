@@ -16,7 +16,7 @@ IcuInitializer::IcuInitializer() {}
 
 IcuInitializer::~IcuInitializer() {
   if (icuDataPtr != nullptr) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, icuDataPtr);
+    TRI_Free(icuDataPtr);
   }
   icuDataPtr = nullptr;
 }

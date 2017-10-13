@@ -69,16 +69,21 @@ function ahuacatlFunctionsTestSuite () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
+    setUpAll : function () {
       db._drop(collectionName);
       collection = db._create(collectionName);
+      
+      // Insert 10 elements
+      for (var i = 0; i < 10; ++i) {
+        collection.save({});
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-    tearDown : function () {
+    tearDownAll : function () {
       db._drop(collectionName);
     },
 
@@ -2580,10 +2585,6 @@ function ahuacatlFunctionsTestSuite () {
     },
 
     testIntersectionAllDocuments : function () {
-      // Insert 10 elements
-      for (var i = 0; i < 10; ++i) {
-        collection.save({});
-      }
       var bindVars = {"@collection": collectionName};
       var actual = getQueryResults("LET list = (FOR x IN @@collection RETURN x) RETURN INTERSECTION(list, list)", bindVars);
       assertEqual(actual.length, 1);
@@ -2591,10 +2592,6 @@ function ahuacatlFunctionsTestSuite () {
     },
 
     testIntersectionAllDocuments2 : function () {
-      // Insert 10 elements
-      for (var i = 0; i < 10; ++i) {
-        collection.save({});
-      }
       var bindVars = {"@collection": collectionName};
       var actual = getQueryResults("RETURN INTERSECTION((FOR x IN @@collection RETURN x), (FOR x IN @@collection RETURN x))", bindVars);
       assertEqual(actual.length, 1);
@@ -2602,10 +2599,6 @@ function ahuacatlFunctionsTestSuite () {
     },
 
     testIntersectionSingleDocuments : function () {
-      // Insert 10 elements
-      for (var i = 0; i < 10; ++i) {
-        collection.save({});
-      }
       var bindVars = {"@collection": collectionName};
       var actual = getQueryResults("FOR x IN @@collection RETURN INTERSECTION([x], [x])", bindVars);
       assertEqual(actual.length, 10);

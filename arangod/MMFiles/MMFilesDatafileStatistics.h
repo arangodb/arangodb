@@ -31,8 +31,17 @@
 
 namespace arangodb {
 
+
 /// @brief datafile statistics manager for a single collection
 class MMFilesDatafileStatistics {
+ public:
+  struct CompactionStats {
+    uint64_t _compactionCount;
+    uint64_t _compactionBytesRead;
+    uint64_t _compactionBytesWritten;
+    uint64_t _filesCombined;
+  };
+
  public:
   MMFilesDatafileStatistics(MMFilesDatafileStatistics const&) = delete;
   MMFilesDatafileStatistics& operator=(MMFilesDatafileStatistics const&) = delete;
@@ -40,6 +49,12 @@ class MMFilesDatafileStatistics {
   ~MMFilesDatafileStatistics();
 
  public:
+  // @brief increase collection statistics
+  void compactionRun(uint64_t noCombined, uint64_t read, uint64_t written);
+
+  // @brief get current collection statistics
+  MMFilesDatafileStatistics::CompactionStats getStats();
+  
   /// @brief create (empty) statistics for a datafile
   void create(TRI_voc_fid_t);
 
@@ -76,6 +91,10 @@ class MMFilesDatafileStatistics {
 
   /// @brief per-file statistics
   std::unordered_map<TRI_voc_fid_t, MMFilesDatafileStatisticsContainer*> _stats;
+
+  // @brief per-collection runtime statistics
+  arangodb::basics::ReadWriteLock            _statisticsLock;
+  MMFilesDatafileStatistics::CompactionStats _localStats;
 };
 }
 

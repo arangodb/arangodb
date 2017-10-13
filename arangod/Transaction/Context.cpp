@@ -114,7 +114,7 @@ bool transaction::Context::isPinned(TRI_voc_cid_t cid) {
 /// @brief temporarily lease a StringBuffer object
 basics::StringBuffer* transaction::Context::leaseStringBuffer(size_t initialSize) {
   if (_stringBuffer == nullptr) {
-    _stringBuffer.reset(new basics::StringBuffer(TRI_UNKNOWN_MEM_ZONE, initialSize, false));
+    _stringBuffer.reset(new basics::StringBuffer(initialSize, false));
   } else {
     _stringBuffer->reset();
   }

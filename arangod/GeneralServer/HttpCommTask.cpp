@@ -459,7 +459,7 @@ bool HttpCommTask::processRead(double startTime) {
         if (found && StringUtils::trim(expect) == "100-continue") {
           LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "received a 100-continue request";
 
-          WriteBuffer buffer(new StringBuffer(TRI_UNKNOWN_MEM_ZONE), nullptr);
+          WriteBuffer buffer(new StringBuffer(false), nullptr);
 
           buffer._buffer->appendText(
               TRI_CHAR_LENGTH_PAIR("HTTP/1.1 100 (Continue)\r\n\r\n"));

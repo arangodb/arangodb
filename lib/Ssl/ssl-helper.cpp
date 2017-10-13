@@ -77,8 +77,7 @@ boost::asio::ssl::context arangodb::sslContext(
   if (sslctx.native_handle() == nullptr) {
     // could not create SSL context - this is mostly due to the OpenSSL
     // library not having been initialized
-    LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "unable to create SSL context";
-    FATAL_ERROR_EXIT();
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unable to create SSL context");
   }
 
   // load our keys and certificates

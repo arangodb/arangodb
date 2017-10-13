@@ -207,7 +207,7 @@ curl -L http://$SERVER:$PORT/_api/agency/read -d '[["/a/b/c"],["/a/b/d"],["/a/x/
 
 The write API must obviously be more versatile and needs a more detailed appreciation. Write operations are arrays of transactions with preconditions, i.e. `[[U,P]]`, where the system tries to apply all updates in the outer array in turn, rejecting those whose precondition is not fulfilled by the current state. It is guaranteed that the transactions in the write request are sequenced adjacent to each other (with no intervention from other write requests). Only the ones with failed preconditions are left out.
 
-For `P`, the value of a key is an object with attributes `"old"` or `"oldEmpty"` or `"isArray"`. With `"old"` one can specify a JSON value that has to be present for the condition to be fulfilled. With `"oldEmpty"`, which can take a boolean value, one can specify that the key value needs to be not set `true` or set to an arbitrary value `false`. With `"isArray"` one can specify that the value must be an array. As a shortcut, `"old"` values of scalar or array type may be stored directly in the attribute.
+For `P`, the value of a key is an object with attributes `"old"`, `"oldNot"`, `"oldEmpty"` or `"isArray"`. With `"old"` one can specify a JSON value that has to be present for the condition to be fulfilled. With `"oldNot"` one may check for a value to not be equal to the test. While with `"oldEmpty"`, which can take a boolean value, one can specify that the key value needs to be not set `true` or set to an arbitrary value `false`. With `"isArray"` one can specify that the value must be an array. As a shortcut, `"old"` values of scalar or array type may be stored directly in the attribute.
 Examples:
 
 ```js

@@ -33,6 +33,7 @@
 #include "Replication/InitialSyncer.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Utils/OperationOptions.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/replication-applier.h"
 
@@ -208,6 +209,8 @@ void RestReplicationHandler::handleCommandMakeSlave() {
       body, "ignoreErrors", defaults._ignoreErrors);
   config._maxConnectRetries = VelocyPackHelper::getNumericValue<uint64_t>(
       body, "maxConnectRetries", defaults._maxConnectRetries);
+  config._lockTimeoutRetries = VelocyPackHelper::getNumericValue<uint64_t>(
+      body, "lockTimeoutRetries", defaults._lockTimeoutRetries);
   config._sslProtocol = VelocyPackHelper::getNumericValue<uint32_t>(
       body, "sslProtocol", defaults._sslProtocol);
   config._chunkSize = VelocyPackHelper::getNumericValue<uint64_t>(

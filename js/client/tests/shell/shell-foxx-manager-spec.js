@@ -1,4 +1,4 @@
-/* global describe, it, beforeEach, afterEach, before, after*/
+/* global describe, it, beforeEach, afterEach */
 'use strict';
 
 const FoxxManager = require('@arangodb/foxx/manager');
@@ -40,6 +40,12 @@ describe('Foxx Manager', function () {
         }
         try {
           db._drop(setupTeardownCol);
+        } catch (e) {
+        }
+
+        try {
+          // some tests create these:
+          db._drop('testmount_setup');
         } catch (e) {
         }
       });
@@ -95,6 +101,16 @@ describe('Foxx Manager', function () {
           db._drop(setupTeardownCol);
         } catch (e) {
         }
+        try {
+          // some tests create these:
+          db._drop('testmount_setup');
+        } catch (e) {
+        }
+        try {
+          // some tests create these:
+          db._drop('testmount_setup');
+        } catch (e) {
+        }
       });
 
       it('should not contains in _apps', function () {
@@ -146,6 +162,11 @@ describe('Foxx Manager', function () {
           db._drop(setupTeardownCol);
         } catch (e) {
         }
+        try {
+          // some tests create these:
+          db._drop('testmount_setup');
+        } catch (e) {
+        }
       });
 
       it('should update it checksum in _apps', function () {
@@ -187,6 +208,11 @@ describe('Foxx Manager', function () {
       afterEach(function () {
         try {
           FoxxManager.uninstall(mount, {force: false});
+        } catch (e) {
+        }
+        try {
+          // some tests create these:
+          db._drop('testmount_setup');
         } catch (e) {
         }
       });
@@ -269,6 +295,11 @@ describe('Foxx Manager', function () {
       afterEach(function () {
         try {
           FoxxManager.uninstall(mount, {force: false});
+        } catch (e) {
+        }
+        try {
+          // some tests create these:
+          db._drop('testmount_setup');
         } catch (e) {
         }
       });

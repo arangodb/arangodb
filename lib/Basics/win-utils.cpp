@@ -139,51 +139,6 @@ static void InvalidParameterHandler(
   LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Invalid handle parameter passed";
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// Called from the 'main' and performs any initialization requirements which
-// are specific to windows.
-//
-// If this function returns 0, then no errors encountered. If < 0, then the
-// calling function should terminate the application. If > 0, then the
-// calling function should decide what to do.
-////////////////////////////////////////////////////////////////////////////////
-
-int finalizeWindows(const TRI_win_finalize_e finalizeWhat, char const* data) {
-  // ............................................................................
-  // The data is used to transport information from the calling function to here
-  // it may be NULL (and will be in most cases)
-  // ............................................................................
-
-  switch (finalizeWhat) {
-    case TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL: {
-      /*
-        TODO: we can't always determine when to call this properly.
-        if we have closed libev, its ok, if we have active socket operations
-        these will fail with errors.
-      int result =
-        WSACleanup();  // could this cause error on server termination?
-      if (result != 0) {
-        // can not use LOG_ etc here since the logging may have terminated
-        printf(
-            "ERROR: Could not perform a valid Winsock2 cleanup. WSACleanup "
-            "returned error %d.",
-            result);
-        return -1;
-      }
-      */
-      return 0;
-    }
-
-    default: {
-      // can not use LOG_ etc here since the logging may have terminated
-      printf("ERROR: Invalid windows finalization called");
-      return -1;
-    }
-  }
-
-  return -1;
-}
-
 int initializeWindows(const TRI_win_initialize_e initializeWhat,
                       char const* data) {
   // ............................................................................
@@ -598,11 +553,6 @@ void ADB_WindowsExitFunction(int exitCode, void* data) {
   if (serviceAbort != nullptr) {
     serviceAbort();
   }
-  int res = finalizeWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
-
-  if (res != 0) {
-    exit(EXIT_FAILURE);
-  }
 
   exit(exitCode);
 }
@@ -720,4 +670,18 @@ bool terminalKnowsANSIColors()
   
   // Windows 8 onwards the CMD window understands ANSI-Colorcodes.
   return IsWindows8OrGreater();
+}
+
+#include <atlstr.h>
+std::string getFileNameFromHandle(HANDLE fileHandle) {
+  char  buff[sizeof(FILE_NAME_INFO) + sizeof(WCHAR)*MAX_PATH];
+  FILE_NAME_INFO *FileInformation = (FILE_NAME_INFO*) buff;
+
+  if (!GetFileInformationByHandleEx(fileHandle,
+                                    FileNameInfo,
+                                    FileInformation, sizeof(buff)
+                                    )) {
+    return std::string();
+  }
+  return std::string((LPCTSTR)CString(FileInformation->FileName));
 }

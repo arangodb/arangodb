@@ -51,6 +51,7 @@ class TRI_replication_applier_configuration_t {
   double _connectTimeout;
   uint64_t _ignoreErrors;
   uint64_t _maxConnectRetries;
+  uint64_t _lockTimeoutRetries;
   uint64_t _chunkSize;
   uint64_t _connectionRetryWaitTime;
   uint64_t _idleMinWaitTime;  // 500 * 1000

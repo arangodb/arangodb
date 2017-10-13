@@ -335,7 +335,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         for (auto& it : _groupRegisters) {
           int cmp = AqlValue::Compare(
               _trx, _currentGroup.groupValues[i], 
-              cur->getValue(_pos, it.second), false);
+              cur->getValueReference(_pos, it.second), false);
 
           if (cmp != 0) {
             // group change
@@ -415,7 +415,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
             TRI_ASSERT(cur != nullptr);
             emitGroup(cur, res.get(), skipped, skipping);
             ++skipped;
-            res->shrink(skipped, false);
+            res->shrink(skipped);
           } else {
             ++skipped;
           }
@@ -454,7 +454,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
 
   if (!skipping) {
     TRI_ASSERT(skipped > 0);
-    res->shrink(skipped, false);
+    res->shrink(skipped);
   }
 
   result = res.release();
@@ -500,8 +500,8 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
         }
         res->setValue(row, _aggregateRegisters[j].first, it->stealValue());
       } else {
-        res->setValue(
-            row, _aggregateRegisters[j].first, AqlValue(arangodb::basics::VelocyPackHelper::NullValue()));
+        res->emplaceValue(
+            row, _aggregateRegisters[j].first, arangodb::basics::VelocyPackHelper::NullValue());
       }
       ++j;
     }
@@ -512,7 +512,7 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
 
       if (static_cast<CollectNode const*>(_exeNode)->_count) {
         // only set group count in result register
-        res->setValue(row, _collectRegister, AqlValue(static_cast<uint64_t>(_currentGroup.groupLength)));
+        res->emplaceValue(row, _collectRegister, AqlValueHintUInt(static_cast<uint64_t>(_currentGroup.groupLength)));
       } else if (static_cast<CollectNode const*>(_exeNode)->_expressionVariable !=
                 nullptr) {
         // copy expression result into result register
@@ -671,7 +671,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
           result->setValue(row, _aggregateRegisters[j++].first,
                            r->stealValue());
         }
-      } else if (en->_count) {
+      } else {
         // set group count in result register
         TRI_ASSERT(!it.second->empty());
         result->setValue(row, _collectRegister,
@@ -702,8 +702,6 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
       TRI_IF_FAILURE("HashedCollectBlock::getOrSkipSomeOuter") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
-
-      throwIfKilled();  // check if we were aborted
 
       groupValues.clear();
 
@@ -777,6 +775,8 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
       if (++_pos >= cur->size()) {
         _buffer.pop_front();
         _pos = 0;
+        
+        throwIfKilled();  // check if we were aborted
 
         bool hasMore = !_buffer.empty();
 

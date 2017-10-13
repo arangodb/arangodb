@@ -46,8 +46,12 @@ namespace aql {
 namespace graph {
 
 struct EdgeDocumentToken;
-struct SingleServerEdgeDocumentToken;
 
+/// Small wrapper around the actual datastore in
+/// which edges and vertices are stored. The cluster can overwrite this
+/// with an implementation which caches entire documents,
+/// the single server / db server can just work with raw
+/// document tokens and retrieve documents as needed
 class TraverserCache {
 
   public:
@@ -58,45 +62,28 @@ class TraverserCache {
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Inserts the real document stored within the token
    ///        into the given builder.
-   ///        The document will be looked up in the StorageEngine
    //////////////////////////////////////////////////////////////////////////////
-
-   virtual void insertIntoResult(StringRef idString,
-                                 arangodb::velocypack::Builder& builder);
-
-   virtual void insertIntoResult(EdgeDocumentToken const* etkn,
-                                 arangodb::velocypack::Builder& builder);
+   virtual void insertEdgeIntoResult(graph::EdgeDocumentToken const& etkn,
+                                     velocypack::Builder& builder);
 
    //////////////////////////////////////////////////////////////////////////////
-   /// @brief Return AQL value containing the result
-   ///        The document will be looked up in the StorageEngine
+   /// @brief Inserts the real document identified by the _id string
    //////////////////////////////////////////////////////////////////////////////
-
-   virtual aql::AqlValue fetchAqlResult(arangodb::graph::EdgeDocumentToken const*);
+   virtual void insertVertexIntoResult(StringRef idString,
+                                       velocypack::Builder& builder);
 
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Return AQL value containing the result
    ///        The document will be looked up in the StorageEngine
    //////////////////////////////////////////////////////////////////////////////
-  
-   virtual aql::AqlValue fetchAqlResult(StringRef idString);
+   virtual aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const&);
 
    //////////////////////////////////////////////////////////////////////////////
-   /// @brief Insert value into store
-   //////////////////////////////////////////////////////////////////////////////
-
-   virtual void insertDocument(StringRef idString,
-                               arangodb::velocypack::Slice const& document);
-
-   //////////////////////////////////////////////////////////////////////////////
-   /// @brief Throws the document referenced by the token into the filter
-   ///        function and returns it result.
+   /// @brief Return AQL value containing the result
    ///        The document will be looked up in the StorageEngine
    //////////////////////////////////////////////////////////////////////////////
+   virtual aql::AqlValue fetchVertexAqlResult(StringRef idString);
 
-   virtual bool validateFilter(StringRef idString,
-                               std::function<bool(arangodb::velocypack::Slice const&)> filterFunc);
-  
    size_t getAndResetInsertedDocuments() {
      size_t tmp = _insertedDocuments;
      _insertedDocuments = 0;
@@ -124,7 +111,7 @@ class TraverserCache {
    }
   
   /// Only valid until the next call to this class
-  virtual arangodb::velocypack::Slice lookupToken(EdgeDocumentToken const* token);
+  virtual velocypack::Slice lookupToken(EdgeDocumentToken const& token);
 
   protected:
 
@@ -133,12 +120,7 @@ class TraverserCache {
    ///        The Slice returned here is only valid until the NEXT call of this
    ///        function.
    //////////////////////////////////////////////////////////////////////////////
-
-   arangodb::velocypack::Slice lookupInCollection(
-       StringRef idString);
-
-   arangodb::velocypack::Slice lookupInCollection(
-       SingleServerEdgeDocumentToken const* idToken) const;
+  arangodb::velocypack::Slice lookupInCollection(arangodb::StringRef idString);
 
   protected:
 

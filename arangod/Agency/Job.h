@@ -92,8 +92,7 @@ struct Job {
       status();   // This runs everything to to with state PENDING if needed!
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, Logger::AGENCY) << "Exception caught in status() method: "
-        << e.what() << ": " << __FILE__
-        << ":" << __LINE__;
+        << e.what();
       finish(server, shard, false, e.what());
     }
     try {
@@ -106,7 +105,7 @@ struct Job {
       }
     } catch (std::exception const& e) {
       LOG_TOPIC(WARN, Logger::AGENCY) << "Exception caught in create() or "
-        "start() method: " << e.what() << ": " << __FILE__ << ":" << __LINE__;
+        "start() method: " << e.what();
       finish("", "", false, e.what());
     }
   }
@@ -212,8 +211,7 @@ inline arangodb::consensus::write_ret_t singleWriteTransaction(
     }
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::SUPERVISION)
-      << "Supervision failed to build transaction.";
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << e.what() << " " << __FILE__ << __LINE__;
+      << "Supervision failed to build single-write transaction: " << e.what();
   }
   
   auto ret = _agent->write(envelope);
@@ -260,8 +258,7 @@ inline arangodb::consensus::trans_ret_t generalTransaction(
     }
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::SUPERVISION)
-      << "Supervision failed to build transaction.";
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << e.what() << " " << __FILE__ << __LINE__;
+      << "Supervision failed to build transaction: " << e.what();
   }
 
   auto ret = _agent->transact(envelope);
@@ -297,8 +294,7 @@ inline arangodb::consensus::trans_ret_t transient(AgentInterface* _agent,
     }
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::SUPERVISION)
-        << "Supervision failed to build transaction.";
-    LOG_TOPIC(ERR, Logger::SUPERVISION) << e.what() << " " << __FILE__ << __LINE__;
+        << "Supervision failed to build transaction for transient: " << e.what();
   }
 
   

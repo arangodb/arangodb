@@ -127,6 +127,9 @@ class GraphNode : public ExecutionNode {
 
   virtual void getConditionVariables(std::vector<Variable const*>&) const;
 
+  /// @brief return any of the collections
+  Collection const* collection() const;
+
  private:
 
   void addEdgeCollection(std::string const& n, TRI_edge_direction_e dir);

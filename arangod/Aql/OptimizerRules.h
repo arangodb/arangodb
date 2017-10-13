@@ -108,6 +108,12 @@ void removeFiltersCoveredByIndexRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void interchangeAdjacentEnumerationsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                          OptimizerRule const*);
 
+/// @brief optimize queries in the cluster so that the entire query gets pushed to a single server
+void optimizeClusterSingleShardRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
+
+/// @brief try to find candidates for shard-local joins in the cluster
+void optimizeClusterJoinsRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);
+
 /// @brief scatter operations in cluster - send all incoming rows to all remote
 /// clients
 void scatterInClusterRule(Optimizer*, std::unique_ptr<ExecutionPlan>, OptimizerRule const*);

@@ -25,7 +25,7 @@
 #define ARANGOD_CLUSTER_CLUSTER_EDGE_CURSOR_H 1
 
 #include "Graph/EdgeCursor.h"
-#include "VocBase/TraverserOptions.h"
+#include "Graph/TraverserOptions.h"
 
 namespace arangodb {
 class CollectionNameResolver;
@@ -48,11 +48,11 @@ class ClusterEdgeCursor : public graph::EdgeCursor {
 
   ~ClusterEdgeCursor() {}
 
-  bool next(std::function<void(std::unique_ptr<graph::EdgeDocumentToken>&&,
+  bool next(std::function<void(graph::EdgeDocumentToken&&,
                                arangodb::velocypack::Slice, size_t)>
                 callback) override;
 
-  void readAll(std::function<void(std::unique_ptr<graph::EdgeDocumentToken>&&,
+  void readAll(std::function<void(graph::EdgeDocumentToken&&,
                                   arangodb::velocypack::Slice, size_t)>
                    callback) override;
 

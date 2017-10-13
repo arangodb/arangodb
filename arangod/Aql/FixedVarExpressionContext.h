@@ -24,7 +24,7 @@
 #ifndef ARANGOD_AQL_FIXED_VAR_EXPRESSION_CONTEXT_H
 #define ARANGOD_AQL_FIXED_VAR_EXPRESSION_CONTEXT_H 1
 
-#include "Aql/ExpressionContext.h"
+#include "ExpressionContext.h"
 #include "Aql/AqlValue.h"
 
 namespace arangodb {

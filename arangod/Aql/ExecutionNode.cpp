@@ -441,12 +441,13 @@ void ExecutionNode::cloneHelper(ExecutionNode* other, ExecutionPlan* plan,
 void ExecutionNode::cloneDependencies(ExecutionPlan* plan,
                                       ExecutionNode* theClone,
                                       bool withProperties) const {
+  TRI_ASSERT(theClone != nullptr);
   auto it = _dependencies.begin();
   while (it != _dependencies.end()) {
     auto c = (*it)->clone(plan, true, withProperties);
+    TRI_ASSERT(c != nullptr);
     try {
       c->_parents.emplace_back(theClone);
-      TRI_ASSERT(c != nullptr);
       theClone->_dependencies.emplace_back(c);
     } catch (...) {
       delete c;
@@ -1141,6 +1142,13 @@ EnumerateCollectionNode::EnumerateCollectionNode(
       _random(base.get("random").getBoolean()) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_collection != nullptr);
+  
+  if (_collection == nullptr) {
+    std::string msg("collection '");
+    msg.append(base.get("collection").copyString());
+    msg.append("' not found");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+  }
 }
 
 /// @brief toVelocyPack, for EnumerateCollectionNode
@@ -1186,6 +1194,7 @@ ExecutionNode* EnumerateCollectionNode::clone(ExecutionPlan* plan,
 /// its unique dependency
 double EnumerateCollectionNode::estimateCost(size_t& nrItems) const {
   size_t incoming;
+  TRI_ASSERT(!_dependencies.empty());
   double depCost = _dependencies.at(0)->getCost(incoming);
   transaction::Methods* trx = _plan->getAst()->query()->trx();
   size_t count = _collection->count(trx);
@@ -1239,6 +1248,7 @@ ExecutionNode* EnumerateListNode::clone(ExecutionPlan* plan,
 
 /// @brief the cost of an enumerate list node
 double EnumerateListNode::estimateCost(size_t& nrItems) const {
+  TRI_ASSERT(!_dependencies.empty());
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
 
@@ -1308,6 +1318,7 @@ void LimitNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 
 /// @brief estimateCost
 double LimitNode::estimateCost(size_t& nrItems) const {
+  TRI_ASSERT(!_dependencies.empty());
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
   nrItems = (std::min)(_limit,
@@ -1321,7 +1332,7 @@ CalculationNode::CalculationNode(ExecutionPlan* plan,
     : ExecutionNode(plan, base),
       _conditionVariable(Variable::varFromVPack(plan->getAst(), base, "conditionVariable", true)),
       _outVariable(Variable::varFromVPack(plan->getAst(), base, "outVariable")),
-      _expression(new Expression(plan->getAst(), base)),
+      _expression(new Expression(plan, plan->getAst(), base)),
       _canRemoveIfThrows(false) {}
 
 /// @brief toVelocyPack, for CalculationNode
@@ -1362,7 +1373,7 @@ ExecutionNode* CalculationNode::clone(ExecutionPlan* plan,
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
 
-  auto c = new CalculationNode(plan, _id, _expression->clone(plan->getAst()),
+  auto c = new CalculationNode(plan, _id, _expression->clone(plan, plan->getAst()),
                                conditionVariable, outVariable);
   c->_canRemoveIfThrows = _canRemoveIfThrows;
 
@@ -1466,6 +1477,7 @@ void SubqueryNode::replaceOutVariable(Variable const* var) {
 
 /// @brief estimateCost
 double SubqueryNode::estimateCost(size_t& nrItems) const {
+  TRI_ASSERT(!_dependencies.empty());
   double depCost = _dependencies.at(0)->getCost(nrItems);
   size_t nrItemsSubquery;
   double subCost = _subquery->getCost(nrItemsSubquery);
@@ -1631,6 +1643,7 @@ ExecutionNode* FilterNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 /// @brief estimateCost
 double FilterNode::estimateCost(size_t& nrItems) const {
+  TRI_ASSERT(!_dependencies.empty());
   double depCost = _dependencies.at(0)->getCost(nrItems);
   // We are pessimistic here by not reducing the nrItems. However, in the
   // worst case the filter does not reduce the items at all. Furthermore,
@@ -1679,6 +1692,7 @@ ExecutionNode* ReturnNode::clone(ExecutionPlan* plan, bool withDependencies,
 
 /// @brief estimateCost
 double ReturnNode::estimateCost(size_t& nrItems) const {
+  TRI_ASSERT(!_dependencies.empty());
   double depCost = _dependencies.at(0)->getCost(nrItems);
   return depCost + nrItems;
 }

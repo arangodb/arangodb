@@ -215,49 +215,9 @@ struct IndexBucket {
     TRI_ASSERT(filename == nullptr);
 
     return -1;
-#if 0
-    if (filesize < FileBackedThreshold) {
-      // use new/malloc
-      return -1;
-    }
-
-    // create a temporary file
-    long errorCode;
-    std::string errorMessage;
-
-    if (TRI_GetTempName(nullptr, &filename, false, errorCode, errorMessage) != TRI_ERROR_NO_ERROR) {
-      // go on without file, but with regular new/malloc
-      return -1;
-    } 
-
-    TRI_ASSERT(filename != nullptr);
-    
-    int fd = TRI_CreateDatafile(filename, filesize);
-
-    if (fd < 0) {
-      TRI_Free(TRI_CORE_MEM_ZONE, filename);
-      filename = nullptr;
-    } 
-    
-    return fd;
-#endif
   }
 
-  void deallocateTempfile() {
-#if 0
-    if (_file >= 0) {
-      // close file pointer and reset fd
-      TRI_TRACKED_CLOSE_FILE(_file);
-      _file = -1;
-    }
-    if (_filename != nullptr) {
-      TRI_UnlinkFile(_filename);
-      TRI_Free(TRI_CORE_MEM_ZONE, _filename);
-      _filename = nullptr;
-    }
-    TRI_ASSERT(_file == -1);
-#endif
-  }
+  void deallocateTempfile() {}
 };
 
 }

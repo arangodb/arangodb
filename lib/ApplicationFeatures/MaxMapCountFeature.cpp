@@ -26,11 +26,14 @@
 #include "Basics/FileUtils.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
+#include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Logger/Logger.h"
+
+#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -41,6 +44,8 @@ static bool checkMaxMappings = arangodb::MaxMapCountFeature::needsChecking();
 static uint64_t maxMappings = UINT64_MAX; 
 static std::string mapsFilename;
 
+static StringBuffer fileBuffer(8192, false);
+
 // cache for the current number of mappings for this process
 // (read from /proc/<pid>/maps
 static Mutex mutex;
@@ -48,7 +53,7 @@ static double lastStamp = 0.0;
 static bool lastValue = false;
 static bool checkInFlight = false;
 
-static constexpr double cacheLifetime = 5.0; 
+static constexpr double cacheLifetime = 7.5; 
 
 static double lastLogStamp = 0.0;
 static constexpr double logFrequency = 10.0;
@@ -100,7 +105,7 @@ void MaxMapCountFeature::prepare() {
     mapsFilename.clear();
   } else {
     try {
-      basics::FileUtils::slurp(mapsFilename.c_str());
+      basics::FileUtils::slurp(mapsFilename);
     } catch (...) {
       // maps file not readable
       mapsFilename.clear();
@@ -136,9 +141,9 @@ uint64_t MaxMapCountFeature::minimumExpectedMaxMappings() {
   uint64_t nproc = TRI_numberProcessors();
 
   // we expect at most 8 times the number of cores as the effective number of threads,
-  // and we want to allow at most 1000 mmaps per thread
-  if (nproc * 8 * 1000 > expected) {
-    expected = nproc * 8 * 1000;
+  // and we want to allow at least 8000 mmaps per thread
+  if (nproc * 8 * 8000 > expected) {
+    expected = nproc * 8 * 8000;
   }
 
   return expected;
@@ -179,13 +184,13 @@ bool MaxMapCountFeature::isNearMaxMappings() {
 
 bool MaxMapCountFeature::isNearMaxMappingsInternal(double& suggestedCacheTime) noexcept {
   try {
-    std::string value =
-        basics::FileUtils::slurp(mapsFilename.c_str());
+    // recycle the same buffer for reading the maps file
+    basics::FileUtils::slurp(mapsFilename, fileBuffer);
     
-    size_t const nmaps = StringUtils::split(value, '\n').size();
+    size_t const nmaps = std::count(fileBuffer.begin(), fileBuffer.end(), '\n');
     if (nmaps + 1024 < maxMappings) {
-      if (nmaps >= maxMappings * 0.95) {
-        // 95 % or more of the max mappings are in use. don't cache for too long
+      if (nmaps > maxMappings * 0.90) {
+        // more than 90% of the max mappings are in use. don't cache for too long
         suggestedCacheTime = 0.001;
       } else if (nmaps >= maxMappings / 2.0) {
         // we're above half of the max mappings. reduce cache time a bit
@@ -202,7 +207,8 @@ bool MaxMapCountFeature::isNearMaxMappingsInternal(double& suggestedCacheTime) n
     if (lastLogStamp + logFrequency < now) {
       // do not log too often to avoid log spamming
       lastLogStamp = now;
-      LOG_TOPIC(WARN, Logger::MEMORY) << "process is near the maximum number of memory mappings. current: " << nmaps << ", maximum: " << maxMappings;
+      LOG_TOPIC(WARN, Logger::MEMORY) << "process is near the maximum number of memory mappings. current: " << nmaps << ", maximum: " << maxMappings 
+                                      << ". it may be sensible to increase the maximum number of mappings per process";
     }
     return true;
   } catch (...) {

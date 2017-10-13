@@ -52,7 +52,7 @@ SocketTask::SocketTask(arangodb::EventLoop loop,
     : Task(loop, "SocketTask"),
       _connectionStatistics(nullptr),
       _connectionInfo(std::move(connectionInfo)),
-      _readBuffer(TRI_UNKNOWN_MEM_ZONE, READ_BLOCK_SIZE + 1, false),
+      _readBuffer(READ_BLOCK_SIZE + 1, false),
       _stringBuffers{_stringBuffersArena},
       _writeBuffer(nullptr, nullptr),
       _peer(std::move(socket)),
@@ -61,7 +61,9 @@ SocketTask::SocketTask(arangodb::EventLoop loop,
       _useKeepAliveTimer(keepAliveTimeout > 0.0),
       _keepAliveTimerActive(false),
       _closeRequested(false),
-      _abandoned(false) {
+      _abandoned(false),
+      _closedSend(false),
+      _closedReceive(false) {
   _connectionStatistics = ConnectionStatistics::acquire();
   ConnectionStatistics::SET_START(_connectionStatistics);
 
@@ -259,7 +261,7 @@ StringBuffer* SocketTask::leaseStringBuffer(size_t length) {
     }
     _stringBuffers.pop_back();
   } else {
-    buffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE, length, false);
+    buffer = new StringBuffer(length, false);
   }
 
   TRI_ASSERT(buffer != nullptr);
@@ -418,11 +420,11 @@ bool SocketTask::reserveMemory() {
 bool SocketTask::trySyncRead() {
   _lock.assertLockedByCurrentThread();
 
-  boost::system::error_code err;
-
   if (_abandoned) {
     return false;
   }
+  
+  boost::system::error_code err;
 
   if (0 == _peer->available(err)) {
     return false;
@@ -431,6 +433,11 @@ bool SocketTask::trySyncRead() {
   if (err) {
     LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "read failed with "
                                             << err.message();
+    return false;
+  }
+
+  if (!reserveMemory()) {
+    LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
     return false;
   }
 
@@ -471,13 +478,9 @@ bool SocketTask::processAll() {
     }
   }
 
-  if (_closeRequested) {
-    // it is too early to close the stream here, as there may
-    // be some writeBuffers which still need to be sent to the client
-    return false;
-  }
-  
-  return true;
+  // it is too early to close the stream here, as there may
+  // be some writeBuffers which still need to be sent to the client
+  return !_closeRequested;
 }
 
 // will acquire the _lock
@@ -494,11 +497,6 @@ void SocketTask::asyncReadSome() {
       size_t n = 0;
 
       while (++n <= MAX_DIRECT_TRIES) {
-        if (!reserveMemory()) {
-          LOG_TOPIC(TRACE, Logger::COMMUNICATION) << "failed to reserve memory";
-          return;
-        }
-
         if (!trySyncRead()) {
           if (n < MAX_DIRECT_TRIES) {
             std::this_thread::yield();
@@ -511,7 +509,7 @@ void SocketTask::asyncReadSome() {
         processAll();
         compactify();
       }
-    } catch (boost::system::system_error& err) {
+    } catch (boost::system::system_error const& err) {
       LOG_TOPIC(DEBUG, Logger::COMMUNICATION) << "i/o stream failed with: "
         << err.what();
 

@@ -107,7 +107,8 @@ void UpgradeFeature::start() {
   if (_upgradeCheck) {
     upgradeDatabase();
 
-    if (!init->restoreAdmin() && !init->defaultPassword().empty()) {
+    if (!init->restoreAdmin() && !init->defaultPassword().empty() &&
+        ServerState::instance()->isSingleServerOrCoordinator()) {
       ai->updateUser("root", [&](AuthUserEntry& entry) {
         entry.updatePassword(init->defaultPassword());
       });
@@ -115,11 +116,10 @@ void UpgradeFeature::start() {
   }
 
   // change admin user
-  if (init->restoreAdmin()) {
-    Result res;
-
-    res = ai->removeAllUsers();
-
+  if (init->restoreAdmin() &&
+      ServerState::instance()->isSingleServerOrCoordinator()) {
+    
+    Result res = ai->removeAllUsers();
     if (res.fail()) {
       LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to create clear users: "
                                                << res.errorMessage();
@@ -128,7 +128,6 @@ void UpgradeFeature::start() {
     }
 
     res = ai->storeUser(true, "root", init->defaultPassword(), true);
-
     if (res.fail() && res.errorNumber() == TRI_ERROR_USER_NOT_FOUND) {
       res = ai->storeUser(false, "root", init->defaultPassword(), true);
     }
@@ -139,7 +138,6 @@ void UpgradeFeature::start() {
       *_result = EXIT_FAILURE;
       return;
     }
-
     *_result = EXIT_SUCCESS;
   }
 
@@ -193,20 +191,20 @@ void UpgradeFeature::upgradeDatabase() {
 
           v8::Handle<v8::Object> args = v8::Object::New(context->_isolate);
 
-          args->Set(TRI_V8_ASCII_STRING2(context->_isolate, "upgrade"),
+          args->Set(TRI_V8_ASCII_STRING(context->_isolate, "upgrade"),
                     v8::Boolean::New(context->_isolate, _upgrade));
 
 
           localContext->Global()->Set(
-              TRI_V8_ASCII_STRING2(context->_isolate, "UPGRADE_ARGS"), args);
+              TRI_V8_ASCII_STRING(context->_isolate, "UPGRADE_ARGS"), args);
 
           bool ok = TRI_UpgradeDatabase(vocbase, localContext);
 
           if (!ok) {
-            if (localContext->Global()->Has(TRI_V8_ASCII_STRING2(
+            if (localContext->Global()->Has(TRI_V8_ASCII_STRING(
                     context->_isolate, "UPGRADE_STARTED"))) {
             
-              uint64_t upgradeType = TRI_ObjectToUInt64(localContext->Global()->Get(TRI_V8_ASCII_STRING2(context->_isolate, "UPGRADE_TYPE")), false);
+              uint64_t upgradeType = TRI_ObjectToUInt64(localContext->Global()->Get(TRI_V8_ASCII_STRING(context->_isolate, "UPGRADE_TYPE")), false);
 
               localContext->Exit();
   // 0 = undecided

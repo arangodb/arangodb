@@ -47,6 +47,10 @@ class V8ShellFeature final : public application_features::ApplicationFeature {
   void start() override final;
   void unprepare() override final;
 
+  std::string const& startupDirectory() {
+    return _startupDirectory;
+  }
+  
  private:
   std::string _startupDirectory;
   std::vector<std::string> _moduleDirectory;

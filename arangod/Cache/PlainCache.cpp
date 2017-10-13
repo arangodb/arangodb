@@ -175,17 +175,17 @@ uint64_t PlainCache::allocationSize(bool enableWindowedStats) {
                               : 0);
 }
 
-std::shared_ptr<Cache> PlainCache::create(Manager* manager, uint64_t id, Metadata metadata,
+std::shared_ptr<Cache> PlainCache::create(Manager* manager, uint64_t id, Metadata&& metadata,
                                           std::shared_ptr<Table> table,
                                           bool enableWindowedStats) {
   return std::make_shared<PlainCache>(Cache::ConstructionGuard(), manager, id,
-                                      metadata, table, enableWindowedStats);
+                                      std::move(metadata), table, enableWindowedStats);
 }
 
 PlainCache::PlainCache(Cache::ConstructionGuard guard, Manager* manager, uint64_t id,
-                       Metadata metadata, std::shared_ptr<Table> table,
+                       Metadata&& metadata, std::shared_ptr<Table> table,
                        bool enableWindowedStats)
-    : Cache(guard, manager, id, metadata, table, enableWindowedStats,
+    : Cache(guard, manager, id, std::move(metadata), table, enableWindowedStats,
             PlainCache::bucketClearer, PlainBucket::slotsData) {}
 
 PlainCache::~PlainCache() {
@@ -233,10 +233,9 @@ void PlainCache::migrateBucket(void* sourcePtr,
   source->lock(Cache::triesGuarantee);
 
   // lock target bucket(s)
-  int64_t tries = Cache::triesGuarantee;
-  targets->applyToAllBuckets([tries](void* ptr) -> bool {
+  targets->applyToAllBuckets([](void* ptr) -> bool {
     auto targetBucket = reinterpret_cast<PlainBucket*>(ptr);
-    return targetBucket->lock(tries);
+    return targetBucket->lock(Cache::triesGuarantee);
   });
 
   for (size_t j = 0; j < PlainBucket::slotsData; j++) {
@@ -287,7 +286,7 @@ void PlainCache::migrateBucket(void* sourcePtr,
 }
 
 std::tuple<Result, PlainBucket*, Table*> PlainCache::getBucket(
-    uint32_t hash, int64_t maxTries, bool singleOperation) {
+    uint32_t hash, uint64_t maxTries, bool singleOperation) {
   Result status;
   PlainBucket* bucket = nullptr;
   Table* source = nullptr;
@@ -315,10 +314,9 @@ std::tuple<Result, PlainBucket*, Table*> PlainCache::getBucket(
 }
 
 Table::BucketClearer PlainCache::bucketClearer(Metadata* metadata) {
-  int64_t tries = Cache::triesGuarantee;
-  return [metadata, tries](void* ptr) -> void {
+  return [metadata](void* ptr) -> void {
     auto bucket = reinterpret_cast<PlainBucket*>(ptr);
-    bucket->lock(tries);
+    bucket->lock(Cache::triesGuarantee);
     for (size_t j = 0; j < PlainBucket::slotsData; j++) {
       if (bucket->_cachedData[j] != nullptr) {
         uint64_t size = bucket->_cachedData[j]->size();

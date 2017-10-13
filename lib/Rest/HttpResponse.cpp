@@ -46,7 +46,7 @@ bool HttpResponse::HIDE_PRODUCT_HEADER = false;
 HttpResponse::HttpResponse(ResponseCode code)
     : GeneralResponse(code),
       _isHeadResponse(false),
-      _body(TRI_UNKNOWN_MEM_ZONE, false),
+      _body(false),
       _bodySize(0) {
   _generateBody = false;
   _contentType = ContentType::TEXT;
@@ -72,7 +72,7 @@ void HttpResponse::setCookie(std::string const& name, std::string const& value,
                              std::string const& domain, bool secure,
                              bool httpOnly) {
   std::unique_ptr<StringBuffer> buffer =
-      std::make_unique<StringBuffer>(TRI_UNKNOWN_MEM_ZONE);
+      std::make_unique<StringBuffer>(false);
 
   std::string tmp = StringUtils::trim(name);
   buffer->appendText(tmp);
@@ -120,7 +120,7 @@ void HttpResponse::setCookie(std::string const& name, std::string const& value,
     buffer->appendText(TRI_CHAR_LENGTH_PAIR("; HttpOnly"));
   }
 
-  _cookies.emplace_back(buffer->c_str());
+  _cookies.emplace_back(buffer->data(), buffer->length());
 }
 
 void HttpResponse::headResponse(size_t size) {
@@ -340,7 +340,7 @@ void HttpResponse::addPayloadPostHook(
       } else {
         // TODO can we optimize this?
         // Just dump some where else to find real length
-        StringBuffer tmp(TRI_UNKNOWN_MEM_ZONE, false);
+        StringBuffer tmp(false);
 
         // convert object to string
         VPackStringBufferAdapter buffer(tmp.stringBuffer());

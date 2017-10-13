@@ -152,7 +152,7 @@ v8::Handle<v8::Object> WrapCollection(v8::Isolate* isolate,
     TRI_GET_GLOBAL_STRING(VersionKeyHidden);
     result->ForceSet(_IdKey, TRI_V8UInt64String<TRI_voc_cid_t>(isolate, collection->cid()),
                      v8::ReadOnly);
-    result->Set(_DbNameKey, TRI_V8_STRING(collection->vocbase()->name().c_str()));
+    result->Set(_DbNameKey, TRI_V8_STD_STRING(isolate, collection->vocbase()->name()));
     result->ForceSet(
         VersionKeyHidden,
         v8::Integer::NewFromUnsigned(isolate, 5),
