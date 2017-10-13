@@ -52,7 +52,7 @@ identified by its @LIT{lid} and the identifiers are in ascending
 order.
 
 @RESTREPLYBODY{level,string,required,string}
-A list of the log-levels for all log entries.
+A list of the loglevels for all log entries.
 
 @RESTREPLYBODY{timestamp,array,required,string}
 a list of the timestamps as seconds since 1970-01-01 for all log
@@ -115,8 +115,8 @@ It can set the loglevel of all facilities by only specifying the loglevel as str
 Possible loglevels are:
  - FATAL - There will be no way out of this. ArangoDB will go down after this message.
  - ERROR - This is an error. you should investigate and fix it. It may harm your production.
- - WARNING - This may be serious application wise, but we don't know.
- - INFO - Somethings happened, take notice, but no drama attached.
+ - WARNING - This may be serious application-wise, but we don't know.
+ - INFO - Something has happened, take notice, but no drama attached.
  - DEBUG - output debug messages
  - TRACE - trace - prepare your log to be flooded - don't use in production.
 
