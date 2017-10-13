@@ -84,7 +84,7 @@ public:
 
 
   void SetFamilies(std::vector<rocksdb::ColumnFamilyHandle *> & Families) {
-    families_=Families;
+    _families=Families;
   }
 
   static void AdjustThreadPriority(int Adjustment);
@@ -108,18 +108,18 @@ protected:
 
   // I am unable to figure out static initialization of std::chrono::seconds,
   //  using old school unsigned.
-  static const unsigned THROTTLE_SECONDS = 60;
-  static const unsigned THROTTLE_INTERVALS = 63;
+  static constexpr unsigned THROTTLE_SECONDS = 60;
+  static constexpr unsigned THROTTLE_INTERVALS = 63;
 
   // following is a heristic value, determined by trial and error.
   //  its job is slow down the rate of change in the current throttle.
   //  do not want sudden changes in one or two intervals to swing
   //  the throttle value wildly.  Goal is a nice, even throttle value.
-  static const unsigned THROTTLE_SCALING = 17;
+  static constexpr unsigned THROTTLE_SCALING = 17;
 
   // trigger point where level-0 file is considered "too many pending"
   //  (from original Google leveldb db/dbformat.h)
-  static const int64_t kL0_SlowdownWritesTrigger = 8;
+  static constexpr int64_t kL0_SlowdownWritesTrigger = 8;
 
   struct ThrottleData_t
   {
@@ -129,27 +129,27 @@ protected:
     uint64_t _compactions;
   };
 
-  rocksdb::DBImpl * internalRocksDB_;
-  std::once_flag init_flag_;
-  std::atomic<bool> thread_running_;
-  std::future<void> thread_future_;
+  rocksdb::DBImpl * _internalRocksDB;
+  std::once_flag _initFlag;
+  std::atomic<bool> _threadRunning;
+  std::future<void> _threadFuture;
 
-  Mutex thread_mutex_;
-  basics::ConditionVariable thread_condvar_;
+  Mutex _threadMutex;
+  basics::ConditionVariable _threadCondvar;
 
   // this array stores compaction statistics used in throttle calculation.
   //  Index 0 of this array accumulates the current minute's compaction data for level 0.
   //  Index 1 accumulates accumulates current minute's compaction
   //  statistics for all other levels.  Remaining intervals contain
   //  most recent interval statistics for last hour.
-  ThrottleData_t throttle_data_[THROTTLE_INTERVALS];
-  size_t replace_idx_;
+  ThrottleData_t _throttleData[THROTTLE_INTERVALS];
+  size_t _replaceIdx;
 
-  uint64_t throttle_bps_;
-  bool first_throttle_;
+  uint64_t _throttleBps;
+  bool _firstThrottle;
 
-  std::unique_ptr<WriteControllerToken> delay_token_;
-  std::vector<rocksdb::ColumnFamilyHandle *> families_;
+  std::unique_ptr<WriteControllerToken> _delayToken;
+  std::vector<rocksdb::ColumnFamilyHandle *> _families;
 
 };// class RocksDBThrottle
 
