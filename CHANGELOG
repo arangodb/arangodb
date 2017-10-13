@@ -1,6 +1,9 @@
 v3.2.5 (2017-XX-XX)
 -------------------
 
+
+* UI: fixed wrong user attribute name validation, issue #3228
+
 * fix potential overflow in CRC marker check when a corrupted CRC marker 
   is found at the very beginning of an MMFiles datafile
 
