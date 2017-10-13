@@ -23,6 +23,7 @@
 
 #include "RestVersionHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
@@ -68,6 +69,10 @@ RestStatus RestVersionHandler::execute() {
       auto server = application_features::ApplicationServer::server
                         ->getFeature<ServerFeature>("Server");
       result.add("mode", VPackValue(server->operationModeString()));
+    }
+    std::string host = ServerState::instance()->getHost();
+    if (!host.empty()) {
+      result.add("host", VPackValue(host));
     }
 
     result.close();
