@@ -865,6 +865,7 @@ bool State::loadRemaining() {
     
     TRI_ASSERT(_log.empty());  // was cleared in loadCompacted
     std::string clientId;
+    index_t lastIndex = 0;
     for (auto const& i : VPackArrayIterator(result)) {
 
       buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
@@ -876,6 +877,21 @@ bool State::loadRemaining() {
       clientId = req.hasKey("clientId") ?
         req.get("clientId").copyString() : std::string();
 
+      // Dummy fill missing entries (Not good at all.)
+      index_t index(basics::StringUtils::uint64(
+                      ii.get(StaticStrings::KeyString).copyString()));
+      term_t term(ii.get("term").getNumber<uint64_t>());
+      if (lastIndex > 0 && index-lastIndex > 1) {
+        std::shared_ptr<Buffer<uint8_t>> buf =
+          std::make_shared<Buffer<uint8_t>>();
+        VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+        buf->append(value.startAs<char const>(), value.byteSize());
+        for (index_t i = lastIndex+1; i < index; ++i) {
+          LOG_TOPIC(WARN, Logger::AGENCY) << "Missing index " << i << " in RAFT log.";
+          _log.push_back(log_t(i, term, buf, std::string()));
+        }
+      }
+      
       try {
         _log.push_back(
           log_t(
@@ -889,6 +905,9 @@ bool State::loadRemaining() {
           " to integer."
           << e.what();
       }
+
+      lastIndex = index;
+
     }
   }
   if (_log.empty()) {
