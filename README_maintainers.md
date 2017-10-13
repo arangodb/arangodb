@@ -714,6 +714,10 @@ should consist of several *RESTRETURNCODE* tokens.
 
 **Supported Tokens:**
 
+RESTREPLYBODY
+-------------
+Similar  to RESTBODYPARAM - just what the server will reply with.
+
 RESTHEADER
 ----------
 Up to 2 parameters.

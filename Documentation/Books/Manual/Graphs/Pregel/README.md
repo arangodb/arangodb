@@ -276,8 +276,8 @@ This should work well on large graphs and on smaller ones as well. The memory re
 algorithm. The algorithm can be used like this
 
 ```javascript
-    var pregel = require("@arangodb/pregel");
-    var handle = pregel.start("effectivecloseness", "yourgraph", {resultField: "closeness"});
+    const pregel = require("@arangodb/pregel");
+    const handle = pregel.start("effectivecloseness", "yourgraph", {resultField: "closeness"});
 ```
 
 ##### LineRank
@@ -299,8 +299,8 @@ This can be considered a scalable equivalent to vertex betweeness, which can be 
 The algorithm is from the paper *Centralities in Large Networks: Algorithms and Observations (U Kang et.al. 2011)*
 
 ```javascript
-    var pregel = require("@arangodb/pregel");
-    var handle = pregel.start("linerank", "yourgraph", {"resultField": "rank"});
+    const pregel = require("@arangodb/pregel");
+    const handle = pregel.start("linerank", "yourgraph", {"resultField": "rank"});
 ```
 
 
@@ -323,10 +323,38 @@ The default bound is 500 iterations, which is likely too large for your applicat
 Should work best on undirected graphs, results on directed graphs might vary depending on the density of your graph.
 
 ```javascript
-    var pregel = require("@arangodb/pregel");
-    var handle = pregel.start("labelpropagation", "yourgraph", {maxGSS:100, resultField: "community"});
+    const pregel = require("@arangodb/pregel");
+    const handle = pregel.start("labelpropagation", "yourgraph", {maxGSS:100, resultField: "community"});
 ```
 
 ##### Speaker-Listener Label Propagation
+
+
+The [Speaker-listener Label Propagation](https://arxiv.org/pdf/1109.5720.pdf) (SLPA) can be used to implement community detection. It works similar to the label propagation algorithm,
+but now every node additionally accumulates a memory of observed labels (instead of forgetting all but one label).
+
+Before the algorithm run, every vertex is initialized with an unique ID (the initial community label).
+During the run three steps are executed for each vertex:
+
+1. Current vertex is the listener all other vertices are speakers
+2. Each speaker sends out a label from memory, we send out a random label with a probability
+proportional to the number of times the vertex observed the label
+3. The listener remembers one of the labels, we always choose the most frequently observed label
+
+```javascript
+const pregel = require("@arangodb/pregel");
+const handle = pregel.start("slpa", "yourgraph", {maxGSS:100, resultField: "community"});
+```
+
+You can also execute SLPA with the `maxCommunities` parameter to limit the number of ouput communities.
+Internally the algorithm will still keep the memory of all labels, but the output is reduced to just he `n` most frequently
+observed labels.
+
+```javascript
+const pregel = require("@arangodb/pregel");
+const handle = pregel.start("slpa", "yourgraph", {maxGSS:100, resultField:"community", maxCommunities:1});
+// check the status periodically for completion
+pregel.status(handle);
+```
 
 

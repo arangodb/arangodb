@@ -131,6 +131,9 @@ install(
 ### @brief detect if we're on a systemd enabled system; if install unit file.
 ################################################################################
 
+set(SYSTEMD_FOUND false)
+set(IS_SYSTEMD_INSTALL 0)
+
 if (UNIX)
   if (${USE_ENTERPRISE})
     set(SERVICE_NAME "arangodb3e")
@@ -143,7 +146,6 @@ if (UNIX)
   if(NOT PKG_CONFIG_FOUND)
   	message(STATUS "pkg-config not found - skipping systemd detection")
   else()
-    set(IS_SYSTEMD_INSTALL 0)
     set(SYSTEMD_UNIT_DIR "")
     message(STATUS "detecting systemd")
     pkg_check_modules(SYSTEMD systemd)

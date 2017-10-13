@@ -147,7 +147,7 @@ MAKE=make
 PACKAGE_MAKE=make
 MAKE_PARAMS=()
 MAKE_CMD_PREFIX=""
-CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL")
+CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL -DGENERATE_BUILD_DATE=OFF")
 INSTALL_PREFIX="/"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
@@ -715,7 +715,8 @@ if test -n "${DOWNLOAD_SYNCER_USER}"; then
         fi
         if ! test -f "${BUILD_DIR}/${FN}-${SYNCER_REV}"; then
             rm -f "${FN}"
-            curl -LJO# -H 'Accept: application/octet-stream' "${SYNCER_URL}?access_token=${OAUTH_TOKEN}"
+            curl -LJO# -H 'Accept: application/octet-stream' "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" || \
+                ${SRC}/Installation/Jenkins/curl_time_machine.sh "${SYNCER_URL}?access_token=${OAUTH_TOKEN}" "${FN}"
             mv "${FN}" "${BUILD_DIR}/${TN}"
             ${MD5} < "${BUILD_DIR}/${TN}"  | ${SED} "s; .*;;" > "${BUILD_DIR}/${FN}-${SYNCER_REV}"
             OLD_MD5=$(cat "${BUILD_DIR}/${FN}-${SYNCER_REV}")
@@ -819,6 +820,8 @@ if [ -n "$CPACK" ] && [ -n "${TARGET_DIR}" ] && [ -z "${MSVC}" ];  then
     fi
 fi
 
+mkdir -p "${DST}/lib/Basics/"
+cat "${SOURCE_DIR}/lib/Basics/build-date.h.in" | sed "s;@ARANGODB_BUILD_DATE@;$(date "+%Y-%m-%d %H:%M:%S");" >"${DST}/lib/Basics/build-date.h"
 TRIES=0;
 set +e
 while /bin/true; do

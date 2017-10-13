@@ -55,9 +55,6 @@ public:
   /// @brief Defualt dtor
   virtual ~Inception();
 
-  /// @brief Report in from other agents measurements
-  void reportIn(query_t const&);
-
   /// @brief Report acknowledged version for peer id
   void reportVersionForEp(std::string const&, size_t);
 
