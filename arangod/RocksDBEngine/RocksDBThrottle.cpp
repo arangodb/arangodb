@@ -51,13 +51,18 @@ thread_local std::chrono::steady_clock::time_point gFlushStart;
 ///  to only allow a thread to lower its priority, not to raise it.  Even if the
 ///  raise would be to a previous priority.
 ///
-/// To get full performance benefit of this code, the user's needs three settings:
+/// To get full performance benefit of this code, the server needs three settings:
 ///
 ///  1. /etc/pam.d/login must contain the line "auth	   require    pam_cap.so"
 ///  2. /etc/security/capability.conf must contain "cap_sys_nice      arangodb"
 ///  3. root must execute this command "setcap cap_sys_nice+ie arangod" on
 ///      the arangodb binary executable
 ///
+/// The above settings allow the code to vary the threads across 3 priorities based upon
+///  the current compaction's level.  Without the settings, threads eventual lock into only 2
+///  different priorities (which is still far better having everything at same priority).
+///
+/// The code does not (yet) support Windows.
 ////////////////////////////////////////////////////////////////////////////////
 
 // code will dynamically change a thread's priority based upon the compaction's level:
