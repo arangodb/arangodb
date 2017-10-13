@@ -1262,6 +1262,7 @@ void Agent::lead() {
     // Any missing indices before _commitIndex were compacted.
     // DO NOT EDIT without understanding the consequences for sendAppendEntries!
     CONDITION_LOCKER(guard, _waitForCV);
+    MUTEX_LOCKER(tiLocker, _tiLock);
     for (auto& i : _confirmed) {
       if (i.first != id()) {
         i.second = _commitIndex;
