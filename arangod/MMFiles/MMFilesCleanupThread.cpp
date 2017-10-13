@@ -75,7 +75,7 @@ void MMFilesCleanupThread::run() {
         
       // check if we can get the compactor lock exclusively
       // check if compaction is currently disallowed
-      engine->tryPreventCompaction(_vocbase, [this, &collections, &iterations](TRI_vocbase_t* vocbase) {
+      engine->tryPreventCompaction(_vocbase, [this, &collections](TRI_vocbase_t* vocbase) {
         try {
           // copy all collections
           collections = vocbase->collections(true);

@@ -4,6 +4,19 @@ devel
 * fixed issue #3395: AQL: cannot instantiate CollectBlock with undetermined 
   aggregation method
 
+* minimum number of V8 contexts in console mode must be 2, not 1. this is
+  required to ensure the console gets one dedicated V8 context and all other
+  operations have at least one extra context. This requirement was not enforced
+  anymore.
+
+* UI: fixed wrong user attribute name validation, issue #3228
+
+* make AQL return a proper error message in case of a unique key constraint
+  violation. previously it only returned the generic "unique constraint violated"
+  error message but omitted the details about which index caused the problem.
+
+  This addresses https://stackoverflow.com/questions/46427126/arangodb-3-2-unique-constraint-violation-id-or-key
+
 * fix potential overflow in CRC marker check when a corrupted CRC marker 
   is found at the very beginning of an MMFiles datafile
 
@@ -35,6 +48,13 @@ devel
 * increase the recommended value for `/proc/sys/vm/max_map_count` to a value
   eight times as high as the previous recommended value. Increasing the
   values helps to prevent an ArangoDB server from running out of memory mappings.
+
+  The raised minimum recommended value may lead to ArangoDB showing some startup
+  warnings as follows:
+
+      WARNING {memory} maximum number of memory mappings per process is 65530, which seems too low. it is recommended to set it to at least 512000
+      WARNING {memory} execute 'sudo sysctl -w "vm.max_map_count=512000"'
+
 
 
 v3.2.4 (2017-XX-XX)
