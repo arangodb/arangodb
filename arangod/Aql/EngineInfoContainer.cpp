@@ -28,6 +28,7 @@
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/GraphNode.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/Query.h"
@@ -76,7 +77,7 @@ void EngineInfoContainerCoordinator::EngineInfo::buildEngine(
   TRI_ASSERT(lockedShards != nullptr);
   {
     auto uniqEngine = std::make_unique<ExecutionEngine>(query);
-    query->engine(uniqEngine.release());
+    query->setEngine(uniqEngine.release());
   }
 
   auto engine = query->engine();
@@ -291,7 +292,7 @@ ExecutionEngine* EngineInfoContainerCoordinator::buildEngines(
     try {
       info.buildEngine(localQuery, registry, queryIds, lockedShards);
     } catch (...) {
-      localQuery->engine(nullptr);  // engine is already destroyed internally
+      localQuery->releaseEngine();
       if (!first) {
         delete localQuery;
       }
@@ -421,7 +422,7 @@ void EngineInfoContainerDBServer::addNode(ExecutionNode* node) {
       break;
     case ExecutionNode::INDEX:
       handleCollection(
-          static_cast<EnumerateCollectionNode*>(node)->collection(), false);
+          static_cast<IndexNode*>(node)->collection(), false);
       break;
     case ExecutionNode::INSERT:
     case ExecutionNode::UPDATE:
@@ -646,6 +647,15 @@ void EngineInfoContainerDBServer::buildEngines(
 }
 
 void EngineInfoContainerDBServer::addGraphNode(GraphNode* node) {
-  // TODO Parse Collections
+  // Add all Edge Collections to the Transactions, Traversals do never write
+  for (auto const& col : node->edgeColls()) {
+    handleCollection(col.get(), false);
+  }
+
+  // Add all Vertex Collections to the Transactions, Traversals do never write
+  for (auto const& col : node->vertexColls()) {
+    handleCollection(col.get(), false);
+  }
+
   _graphNodes.emplace_back(node);
 }
