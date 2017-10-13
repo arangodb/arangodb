@@ -52,7 +52,6 @@ endmacro()
 macro(detect_binary_id_type sourceVar)
   set(${sourceVar} false)
   if (NOT MSVC AND CMAKE_STRIP AND READELF_EXECUTABLE)
-    message("xx")
     execute_process(
       COMMAND ${READELF_EXECUTABLE} -n ${READELF_EXECUTABLE}
       OUTPUT_VARIABLE READELF_RESULT)
