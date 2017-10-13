@@ -1,6 +1,8 @@
 v3.0.13 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #3408
+
 * fixed issue #2441
 
 * replication bugfixes
