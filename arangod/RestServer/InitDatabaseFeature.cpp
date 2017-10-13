@@ -109,7 +109,6 @@ void InitDatabaseFeature::prepare() {
           _password = password1;
           break;
         }
-
         LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "passwords do not match, please repeat";
       } else {
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "initialization aborted by user";
@@ -123,6 +122,9 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
   std::string password;
 
   arangodb::Logger::flush();
+  // Wait for the logger thread to flush eventually existing output.
+  sleep(0.5);
+  std::cerr << std::flush;
   std::cout << message << ": " << std::flush;
 
 #ifdef TRI_HAVE_TERMIOS_H
