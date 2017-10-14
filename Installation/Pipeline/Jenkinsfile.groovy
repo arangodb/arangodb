@@ -106,13 +106,13 @@ resultsLink = [:]
 // -----------------------------------------------------------------------------
 
 // github proxy repositiory
-final proxyRepo = 'http://c1:8088/github.com/arangodb/arangodb'
+proxyRepo = 'http://c1:8088/github.com/arangodb/arangodb'
 
 // github repositiory for enterprise version
-final enterpriseRepo = 'http://c1:8088/github.com/arangodb/enterprise'
+enterpriseRepo = 'http://c1:8088/github.com/arangodb/enterprise'
 
 // Jenkins credentials for enterprise repositiory
-final credentials = '8d893d23-6714-4f35-a239-c847c798e080'
+credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 
 // source branch for pull requests
 mainBranch = "unknown"
@@ -138,15 +138,15 @@ if (env.BRANCH_NAME =~ /^PR-/) {
   sourceBranchLabel = sourceBranchLabel - reg
 }
 
-final branchLabel = sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
+branchLabel = sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
 
-final buildJenkins = [
+buildJenkins = [
     "linux": "linux && build",
     "mac" : "mac",
     "windows": "windows"
 ]
 
-final testJenkins = [
+testJenkins = [
     "linux": "linux && tests",
     "mac" : "mac",
     "windows": "windows"
@@ -632,6 +632,7 @@ def setBuildsAndTests() {
 <tr><td>CHANGE_TARGET</td><td>${env.CHANGE_TARGET}</td></tr>
 <tr><td>JOB_NAME</td><td>${env.JOB_NAME}</td></tr>
 <tr><td>CAUSE</td><td>${causeDescription}</td></tr>
+<tr><td>BUILD TYPE</td><td>${buildType} / ${params.Type}</td></tr>
 <tr></tr>
 <tr><td>Building Docker</td><td>${useDocker}<td></tr>
 <tr></tr>
