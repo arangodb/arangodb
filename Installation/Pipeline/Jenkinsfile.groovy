@@ -14,19 +14,20 @@ properties([
     parameters([
         choice(
             defaultValue: 'Auto',
-            choices: 'Auto\nQuick Test\nPR Test\nNightly test\nCustomized',
-            description: 'Type of build/test configuration',
+            choices: 'Auto\nQuick Test\nPR Test\nNightly Test\nNone\nCustomized',
+            description: 'Type of build/test configuration\n' +
+                         'The values below are only relevant for type "Customized"',
             name: 'Type'
         ),
         booleanParam(
             defaultValue: false,
             description: 'clean build directories',
-            name: 'cleanBuild'
+            name: 'CleanBuild'
         ),
         booleanParam(
             defaultValue: false,
             description: 'run tests',
-            name: 'runTests'
+            name: 'RunTests'
         ),
         booleanParam(
             defaultValue: false,
@@ -71,23 +72,24 @@ properties([
     ])
 ])
 
-cleanBuild = params.cleanBuild
-runTests = params.runTests
+buildType = parameters.Type;
+cleanBuild = params.CleanBuild
+runTests = params.RunTests
 restrictions = [:]
 
 // OS
-useLinux = params.Linux
-useMac = params.Mac
-useWindows = params.Windows
-useDocker = params.Docker
+useLinux = false
+useMac = false
+useWindows = false
+useDocker = false
 
 // EDITION
-useCommunity = params.Community
-useEnterprise = params.Enterprise
+useCommunity = false
+useEnterprise = false
 
 // MAINTAINER
-useMaintainer = params.Maintainer
-useUser = params.User
+useMaintainer = false
+useUser = false
 
 // overview of configured builds and tests
 overview = ""
@@ -535,90 +537,106 @@ def checkCommitMessages() {
     if (causeDescription =~ /Started by user/) {
         echo "build started by user"
     }
-    else if (skip) {
+
+    if (skip) {
+        buildType = "None"
+    }
+
+    if (buildType == "Auto") {
+        if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == /^3\\.[0-9]*/) {
+            echo "build main branch"
+            buildType = "Nightly Test"
+        }
+        else if (env.BRANCH_NAME =~ /^PR-/) {
+            echo "build pull-request"
+            buildType = "PR Test"
+        }
+        else {
+            echo "build branch"
+            buildType = "Quick Test"
+        }
+    }
+}
+
+def setBuildsAndTests() {
+    if (buildType == "None") {
         useLinux = false
         useMac = false
         useWindows = false
-
-        useCommunity = false
-        useEnterprise = false
-
-        useMaintainer = false
-        useUser = false
-
-        // runResilience = false
-        runTests = false
     }
-    else {
-        if (env.BRANCH_NAME == "devel" || env.BRANCH_NAME == "3.2") {
-            echo "build of main branch"
+    else if (buildType == "Customized") {
+        useLinux = params.Linux
+        useMac = params.Mac
+        useWindows = params.Windows
+        useDocker = params.Docker
 
-            useDocker = true
+        useCommunity = params.Community
+        useEnterprise = params.Enterprise
 
-            restrictions = [
-                // OS EDITION MAINTAINER
-                "build-linux-community-maintainer" : true,
-                "build-linux-enterprise-maintainer" : true,
-                "build-linux-community-user" : true,
-                "build-linux-enterprise-user" : true,
-                "build-mac-community-user" : true,
-                "build-mac-enterprise-user" : true,
-                "build-windows-community-user" : true,
-                "build-windows-enterprise-user" : true,
+        useMaintainer = params.Maintainer
+        useUser = params.User
+    }
+    else if (buildType == "Quick Test") {
+        restrictions = [
+            // OS EDITION MAINTAINER
+            "build-linux-enterprise-maintainer" : true,
 
-                // OS EDITION MAINTAINER MODE ENGINE
-                "test-linux-community-maintainer-singleserver-mmfiles" : true,
-                "test-linux-community-maintainer-singleserver-rocksdb" : true,
-                "test-linux-enterprise-user-cluster-mmfiles" : true,
-                "test-linux-enterprise-user-cluster-rocksdb" : true,
-                "test-mac-community-user-singleserver-rocksdb" : true,
-                "test-mac-enterprise-user-cluster-rocksdb" : true,
-                "test-windows-community-user-singleserver-rocksdb" : true,
-                "test-windows-mac-enterprise-user-cluster-rocksdb" : true,
-            ]
-        }
-        else if (env.BRANCH_NAME =~ /^PR-/) {
-            echo "build of PR"
+            // OS EDITION MAINTAINER MODE ENGINE
+            "test-linux-enterprise-maintainer-singleserver-rocksdb" : true,
+            "test-linux-enterprise-maintainer-cluster-mmfiles" : true
+        ]
+    }
+    else if (buildType == "PR Test") {
+        restrictions = [
+            // OS EDITION MAINTAINER
+            "build-linux-community-maintainer" : true,
+            "build-linux-enterprise-maintainer" : true,
+            "build-mac-enterprise-user" : true,
+            "build-windows-enterprise-maintainer" : true,
 
-            restrictions = [
-                // OS EDITION MAINTAINER
-                "build-linux-community-maintainer" : true,
-                "build-linux-enterprise-maintainer" : true,
-                "build-mac-enterprise-user" : true,
-                "build-windows-enterprise-maintainer" : true,
+            // OS EDITION MAINTAINER MODE ENGINE
+            "test-linux-enterprise-maintainer-cluster-rocksdb" : true,
+            "test-linux-community-maintainer-singleserver-mmfiles" : true
+        ]
+    }
+    else if (buildType == "Nightly Test") {
+        useDocker = true
 
-                // OS EDITION MAINTAINER MODE ENGINE
-                "test-linux-enterprise-maintainer-cluster-rocksdb" : true,
-                "test-linux-community-maintainer-singleserver-mmfiles" : true
-            ]
-        }
-        else {
-            echo "build of branch"
+        restrictions = [
+            // OS EDITION MAINTAINER
+            "build-linux-community-maintainer" : true,
+            "build-linux-enterprise-maintainer" : true,
+            "build-linux-community-user" : true,
+            "build-linux-enterprise-user" : true,
+            "build-mac-community-user" : true,
+            "build-mac-enterprise-user" : true,
+            "build-windows-community-user" : true,
+            "build-windows-enterprise-user" : true,
 
-            useDocker = false
-
-            restrictions = [
-                // OS EDITION MAINTAINER
-                "build-linux-enterprise-maintainer" : true,
-
-                // OS EDITION MAINTAINER MODE ENGINE
-                "test-linux-enterprise-maintainer-singleserver-rocksdb" : true,
-                "test-linux-enterprise-maintainer-cluster-mmfiles" : true
-            ]
-        }
+            // OS EDITION MAINTAINER MODE ENGINE
+            "test-linux-community-maintainer-singleserver-mmfiles" : true,
+            "test-linux-community-maintainer-singleserver-rocksdb" : true,
+            "test-linux-enterprise-user-cluster-mmfiles" : true,
+            "test-linux-enterprise-user-cluster-rocksdb" : true,
+            "test-mac-community-user-singleserver-rocksdb" : true,
+            "test-mac-enterprise-user-cluster-rocksdb" : true,
+            "test-windows-community-user-singleserver-rocksdb" : true,
+            "test-windows-mac-enterprise-user-cluster-rocksdb" : true,
+        ]
     }
 
-    overview = """BRANCH_NAME: ${env.BRANCH_NAME}
-SOURCE: ${sourceBranchLabel}
-MAIN: ${mainBranch}
-BRANCH: ${env.BRANCH_NAME}
-CHANGE_ID: ${env.CHANGE_ID}
-CHANGE_TARGET: ${env.CHANGE_TARGET}
-JOB_NAME: ${env.JOB_NAME}
-CAUSE: ${causeDescription}
-
-Building Docker: ${useDocker}
-
+    overview = """<html><body><table>
+<tr><td>BRANCH_NAME</td><td>${env.BRANCH_NAME}</td></tr>
+<tr><td>SOURCE</td><td>${sourceBranchLabel}</td></tr>
+<tr><td>MAIN</td><td>${mainBranch}</td></tr>
+<tr><td>BRANCH</td><td>${env.BRANCH_NAME}</td></tr>
+<tr><td>CHANGE_ID</td><td>${env.CHANGE_ID}</td></tr>
+<tr><td>CHANGE_TARGET</td><td>${env.CHANGE_TARGET}</td></tr>
+<tr><td>JOB_NAME</td><td>${env.JOB_NAME}</td></tr>
+<tr><td>CAUSE</td><td>${causeDescription}</td></tr>
+<tr></tr>
+<tr><td>Building Docker</td><td>${useDocker}<td></tr>
+<tr></tr>
 """
 
     if (restrictions) {
@@ -635,24 +653,26 @@ Building Docker: ${useDocker}
         // runResilience = true
         runTests = true
 
-        overview += "Restrictions:\n"
+        overview += "<tr><td>Restrictions</td></tr>\n"
 
         for (r in restrictions.keySet()) {
-            overview += "    " + r + "\n"
+            overview += "<tr><td></td><td>" + r + "</td></tr>\n"
         }
     }
     else {
-        overview += """Linux: ${useLinux}
-Mac: ${useMac}
-Windows: ${useWindows}
-Clean Build: ${cleanBuild}
-Building Community: ${useCommunity}
-Building Enterprise: ${useEnterprise}
-Building Maintainer: ${useMaintainer}
-Building Non-Maintainer: ${useUser}
-Running Tests: ${runTests}
+        overview += """<tr><td>Linux</td><td>${useLinux}<td></tr>
+<tr><td>Mac</td><td>${useMac}<td></tr>
+<tr><td>Windows</td><td>${useWindows}<td></tr>
+<tr><td>Clean Build</td><td>${cleanBuild}<td></tr>
+<tr><td>Building Community</td><td>${useCommunity}<td></tr>
+<tr><td>Building Enterprise</td><td>${useEnterprise}<td></tr>
+<tr><td>Building Maintainer</td><td>${useMaintainer}<td></tr>
+<tr><td>Building Non-Maintainer</td><td>${useUser}<td></tr>
+<tr><td>Running Tests</td><td>${runTests}<td></tr>
 """
     }
+
+    overview += "</table></body></html>\n"
 }
 
 // -----------------------------------------------------------------------------
@@ -1471,10 +1491,11 @@ timestamps {
         }
 
         checkCommitMessages()
+        setBuildsAndTests()
 
         node("linux") {
-            fileOperations([fileCreateOperation(fileContent: overview, fileName: "overview.txt")])
-            archiveArtifacts(allowEmptyArchive: true, artifacts: "overview.txt")
+            fileOperations([fileCreateOperation(fileContent: overview, fileName: "overview.html")])
+            archiveArtifacts(allowEmptyArchive: true, artifacts: "overview.html")
         }
 
         runOperatingSystems(['linux', 'mac', 'windows'])
