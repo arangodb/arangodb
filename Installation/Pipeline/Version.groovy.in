@@ -1,0 +1,17 @@
+def major() {
+    return "@ARANGODB_VERSION_MAJOR@"
+}
+
+def minor() {
+    return "@ARANGODB_VERSION_MINOR@"
+}
+
+def revision() {
+    return "@ARANGODB_VERSION_REVISION@"
+}
+
+def version() {
+    return "@ARANGODB_VERSION@"
+}
+
+return this

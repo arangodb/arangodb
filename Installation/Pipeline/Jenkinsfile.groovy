@@ -1,120 +1,93 @@
 //  -*- mode: groovy-mode
 
-properties([buildDiscarder(logRotator(artifactDaysToKeepStr: '3', artifactNumToKeepStr: '5', daysToKeepStr: '3', numToKeepStr: '5'))])
-
+properties([buildDiscarder(logRotator(
+    artifactDaysToKeepStr: '3',
+    artifactNumToKeepStr: '5',
+    daysToKeepStr: '3',
+    numToKeepStr: '5'))])
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             SELECTABLE PARAMETERS
 // -----------------------------------------------------------------------------
 
-def defaultLinux = true
-def defaultMac = false
-def defaultWindows = false
-def defaultBuild = true
-def defaultDocker = false
-def defaultCleanBuild = false
-def defaultCommunity = true
-def defaultEnterprise = true
-def defaultMaintainer = true
-def defaultUser = false
-// def defaultRunResilience = false
-def defaultRunTests = true
-
 properties([
     parameters([
-        booleanParam(
-            defaultValue: defaultLinux,
-            description: 'build and run tests on Linux',
-            name: 'Linux'
+        choice(
+            defaultValue: 'Auto',
+            choices: ['Auto', 'Quick Test', 'PR Test', 'Nightly test', 'Customized'],
+            description: 'Type of build/test configuration',
+            name: 'Type'
         ),
         booleanParam(
-            defaultValue: defaultMac,
-            description: 'build and run tests on Mac',
-            name: 'Mac'
-        ),
-        booleanParam(
-            defaultValue: defaultWindows,
-            description: 'build and run tests in Windows',
-            name: 'Windows'
-        ),
-        booleanParam(
-            defaultValue: defaultDocker,
-            description: 'build docker images',
-            name: 'Docker'
-        ),
-        booleanParam(
-            defaultValue: defaultCleanBuild,
+            defaultValue: false,
             description: 'clean build directories',
             name: 'cleanBuild'
         ),
         booleanParam(
-            defaultValue: defaultCommunity,
-            description: 'build and run tests for community',
+            defaultValue: false,
+            description: 'run tests',
+            name: 'runTests'
+        ),
+        booleanParam(
+            defaultValue: false,
+            description: 'OS: Linux',
+            name: 'Linux'
+        ),
+        booleanParam(
+            defaultValue: false,
+            description: 'OS: Mac',
+            name: 'Mac'
+        ),
+        booleanParam(
+            defaultValue: false,
+            description: 'OS: Windows',
+            name: 'Windows'
+        ),
+        booleanParam(
+            defaultValue: false,
+            description: 'OS: images',
+            name: 'Docker'
+        ),
+        booleanParam(
+            defaultValue: false,
+            description: 'EDITION: community',
             name: 'Community'
         ),
         booleanParam(
-            defaultValue: defaultEnterprise,
-            description: 'build and run tests for enterprise',
+            defaultValue: false,
+            description: 'EDITION: enterprise',
             name: 'Enterprise'
         ),
         booleanParam(
-            defaultValue: defaultMaintainer,
-            description: 'build in maintainer mode',
+            defaultValue: false,
+            description: 'MAINTAINER: maintainer mode',
             name: 'Maintainer'
         ),
         booleanParam(
-            defaultValue: defaultUser,
-            description: 'build in user (aka non-maintainer) mode',
+            defaultValue: false,
+            description: 'MAINTAINER: user (aka non-maintainer) mode',
             name: 'User'
-        ),
-        // booleanParam(
-        //     defaultValue: defaultRunResilience,
-        //     description: 'run resilience tests',
-        //     name: 'runResilience'
-        // ),
-        booleanParam(
-            defaultValue: defaultRunTests,
-            description: 'run tests',
-            name: 'runTests'
         )
     ])
 ])
 
-// start with empty build directory
 cleanBuild = params.cleanBuild
+runTests = params.runTests
+restrictions = [:]
 
-// build linux
+// OS
 useLinux = params.Linux
-
-// build mac
 useMac = params.Mac
-
-// build windows
 useWindows = params.Windows
-
-// build docker image
 useDocker = params.Docker
 
-// build and test community
+// EDITION
 useCommunity = params.Community
-
-// build and test enterprise
 useEnterprise = params.Enterprise
 
-// build maintainer mode
+// MAINTAINER
 useMaintainer = params.Maintainer
-
-// build user mode
 useUser = params.User
-
-// run resilience tests
-//runResilience = params.runResilience
-
-// run tests
-runTests = params.runTests
-
-// restrict builds
-restrictions = [:]
 
 // overview of configured builds and tests
 overview = ""
@@ -130,21 +103,30 @@ resultsLink = [:]
 // --SECTION--                                             CONSTANTS AND HELPERS
 // -----------------------------------------------------------------------------
 
-// github proxy repositiory
-proxyRepo = 'http://c1:8088/github.com/arangodb/arangodb'
+// get version
+final version = load 'Installation/Pipeline/Version.groovy'
 
-// github repositiory for resilience tests
-// resilienceRepo = 'http://c1:8088/github.com/arangodb/resilience-tests'
+// github proxy repositiory
+final proxyRepo = 'http://c1:8088/github.com/arangodb/arangodb'
 
 // github repositiory for enterprise version
-enterpriseRepo = 'http://c1:8088/github.com/arangodb/enterprise'
+final enterpriseRepo = 'http://c1:8088/github.com/arangodb/enterprise'
 
 // Jenkins credentials for enterprise repositiory
-credentials = '8d893d23-6714-4f35-a239-c847c798e080'
+final credentials = '8d893d23-6714-4f35-a239-c847c798e080'
 
 // source branch for pull requests
-if (env.JOB_BASE_NAME == "arangodb-ci-devel") {
-    env.BRANCH_NAME = "devel"
+mainBranch = "unknown"
+
+if (version.revision() == "devel") {
+    mainBranch = "devel"
+}
+else if (
+    mainBranch = version.major() + "." + version.minor()
+}
+
+if (! env.BRANCH_NAME) {
+    env.BRANCH_NAME = mainBranch
 }
 
 sourceBranchLabel = env.BRANCH_NAME
@@ -157,15 +139,15 @@ if (env.BRANCH_NAME =~ /^PR-/) {
   sourceBranchLabel = sourceBranchLabel - reg
 }
 
-branchLabel = sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
+final branchLabel = sourceBranchLabel.replaceAll(/[^0-9a-z]/, '-')
 
-buildJenkins = [
+final buildJenkins = [
     "linux": "linux && build",
     "mac" : "mac",
     "windows": "windows"
 ]
 
-testJenkins = [
+final testJenkins = [
     "linux": "linux && tests",
     "mac" : "mac",
     "windows": "windows"
@@ -474,14 +456,14 @@ def checkoutEnterprise() {
                 userRemoteConfigs: [[credentialsId: credentials, url: enterpriseRepo]]])
     }
     catch (exc) {
-        echo "Failed ${sourceBranchLabel}, trying enterprise branch devel"
+        echo "Failed ${sourceBranchLabel}, trying enterprise branch ${mainBranch}"
 
         checkout(
             changelog: false,
             poll: false,
             scm: [
                 $class: 'GitSCM',
-                branches: [[name: "*/devel"]],
+                branches: [[name: "*/${mainBranch}"]],
                 doGenerateSubmoduleConfigurations: false,
                 extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'enterprise']],
                 submoduleCfg: [],
@@ -626,6 +608,8 @@ def checkCommitMessages() {
 
     overview = """BRANCH_NAME: ${env.BRANCH_NAME}
 SOURCE: ${sourceBranchLabel}
+MAIN: ${mainBranch}
+BRANCH: ${env.BRANCH_NAME}
 CHANGE_ID: ${env.CHANGE_ID}
 CHANGE_TARGET: ${env.CHANGE_TARGET}
 JOB_NAME: ${env.JOB_NAME}
