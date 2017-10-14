@@ -249,7 +249,7 @@ void BootstrapFeature::start() {
   }
   
   // Start service properly:
-  rest::RestHandlerFactory::setMaintenance(false);
+  rest::RestHandlerFactory::setServerMode(rest::RestHandlerFactory::Mode::DEFAULT);
 
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB (version " << ARANGODB_VERSION_FULL
             << ") is ready for business. Have fun!";

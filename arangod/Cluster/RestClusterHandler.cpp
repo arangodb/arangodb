@@ -112,8 +112,8 @@ void RestClusterHandler::handleCommandServerInfo() {
     return;
   }
   
-  auto feature = application_features::ApplicationServer::getFeature<ReplicationFeature>("Replication");
-  if (!feature->isAutomaticFailoverEnabled() ||
+  ReplicationFeature* replication = ReplicationFeature::INSTANCE;
+  if (!replication->isAutomaticFailoverEnabled() ||
       !AgencyCommManager::isEnabled()) {
     generateError(Result(TRI_ERROR_FORBIDDEN,
                          "automatic failover is not enabled"));
