@@ -121,7 +121,7 @@ mainBranch = "unknown"
 if (version.revision() == "devel") {
     mainBranch = "devel"
 }
-else if (
+else { 
     mainBranch = version.major() + "." + version.minor()
 }
 
