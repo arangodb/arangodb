@@ -14,7 +14,7 @@ properties([
     parameters([
         choice(
             defaultValue: 'Auto',
-            choices: ['Auto', 'Quick Test', 'PR Test', 'Nightly test', 'Customized'],
+            choices: 'Auto\nQuick Test\nPR Test\nNightly test\nCustomized',
             description: 'Type of build/test configuration',
             name: 'Type'
         ),
