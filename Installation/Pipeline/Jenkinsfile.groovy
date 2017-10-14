@@ -72,7 +72,7 @@ properties([
     ])
 ])
 
-buildType = parameters.Type;
+buildType = params.Type;
 cleanBuild = params.CleanBuild
 runTests = params.RunTests
 restrictions = [:]
