@@ -554,6 +554,9 @@ def checkCommitMessages() {
 }
 
 def setBuildsAndTests() {
+    def causes = currentBuild.rawBuild.getCauses()
+    def causeDescription = causes[0].getShortDescription();
+
     if (buildType == "None") {
         useLinux = false
         useMac = false
