@@ -104,7 +104,9 @@ resultsLink = [:]
 // -----------------------------------------------------------------------------
 
 // get version
-final version = load 'Installation/Pipeline/Version.groovy'
+node("master") {
+    final version = load 'Installation/Pipeline/Version.groovy'
+}
 
 // github proxy repositiory
 final proxyRepo = 'http://c1:8088/github.com/arangodb/arangodb'
