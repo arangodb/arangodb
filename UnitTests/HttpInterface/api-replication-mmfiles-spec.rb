@@ -2177,7 +2177,7 @@ describe ArangoDB do
 
         i.should eq(100)
       end
-      
+=begin
       it "checks the dump for an edge collection, 2.8 compat mode" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false, 2, "UnitTestDB")
         cid2 = ArangoDB.create_collection("UnitTestsReplication2", false, 3, "UnitTestDB")
@@ -2232,7 +2232,7 @@ describe ArangoDB do
 
         i.should eq(100)
       end
-
+ =end
       it "checks the dump for an edge collection, small chunkSize" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false, 2, "UnitTestDB")
         cid2 = ArangoDB.create_collection("UnitTestsReplication2", false, 3, "UnitTestDB")
@@ -2417,7 +2417,7 @@ describe ArangoDB do
 
         i.should eq(100)
       end
-      
+=begin
       it "checks the dump for a non-empty collection, 2.8 compat mode" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false, 2, "UnitTestDB")
 
@@ -2458,7 +2458,7 @@ describe ArangoDB do
 
         i.should eq(100)
       end
-      
+=end
       it "fetches incremental parts of a collection dump" do
         cid = ArangoDB.create_collection("UnitTestsReplication", false, 2, "UnitTestDB")
 
