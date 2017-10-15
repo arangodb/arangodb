@@ -349,7 +349,7 @@ def logStopStage(os, logFile) {
         def key = logFile.split('/')[0]
 
         if (key in resultsDuration) {
-            resultsDuration[key] = diff + resultsDuration[key]
+            resultsDuration[key] = resultsDuration[key].plus(diff)
         }
         else {
             resultsDuration[key] = diff
