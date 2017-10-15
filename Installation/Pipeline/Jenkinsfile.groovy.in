@@ -934,7 +934,7 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
 
           stage("${stageName}-${name}") {
               def archDir  = "${os}-${edition}-${maintainer}"
-              def arch     = "${archDir}/03-test-${mode}-${engine}"
+              def arch     = "${archDir}/03-test/${mode}-${engine}"
               def archFail = "${arch}-FAIL"
               def archRun  = "${arch}-RUN"
 
@@ -1032,7 +1032,7 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
 
 def executeTests(os, edition, maintainer, mode, engine, stageName) {
     def archDir  = "${os}-${edition}-${maintainer}"
-    def arch     = "${archDir}/03-test-${mode}-${engine}"
+    def arch     = "${archDir}/03-test/${mode}-${engine}"
     def archFail = "${arch}-FAIL"
     def archRun  = "${arch}-RUN"
 
