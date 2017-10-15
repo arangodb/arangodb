@@ -341,27 +341,29 @@ def logStopStage(os, logFile) {
         shellAndPipe("echo 'finished ${logFile}: ${resultsStop[logFile]}'", logFile)
     }
 
-    def start = resultsStart[logFile] ?: null
-    def stop = resultsStop[logFile] ?: null
+    if (os != null) {
+        def start = resultsStart[logFile] ?: null
+        def stop = resultsStop[logFile] ?: null
 
-    if (start && stop) {
-        def diff = groovy.time.TimeCategory.minus(stop, start).toMilliseconds() / 1000.0
-        def keys = logFile.split('/')
-        def key = ""
-        def sep = ""
+        if (start && stop) {
+            def diff = groovy.time.TimeCategory.minus(stop, start).toMilliseconds() / 1000.0
+            def keys = logFile.split('/')
+            def key = ""
+            def sep = ""
 
-        for (p in keys) { 
-            key = key + sep + p
-            sep = "/"
+            for (p in keys) { 
+                key = key + sep + p
+                sep = "/"
 
-            if (resultsDuration.containsKey(key)) {
-                resultsDuration[key] = resultsDuration[key] + diff
+                if (resultsDuration.containsKey(key)) {
+                    resultsDuration[key] = resultsDuration[key] + diff
+                }
+                else {
+                    resultsDuration[key] = diff
+                }
+
+                echo "Duration ${key}: ${resultsDuration[key]}"
             }
-            else {
-                resultsDuration[key] = diff
-            }
-
-            echo "Duration ${key}: ${resultsDuration[key]}"
         }
     }
 
