@@ -350,7 +350,7 @@ def logStopStage(os, logFile) {
         def key = ""
         def sep = ""
 
-        for (p in keys[1..-1]) { 
+        for (p in keys) { 
             key = key + sep + p
             sep = "/"
 
@@ -360,6 +360,8 @@ def logStopStage(os, logFile) {
             else {
                 resultsDuration[key] = diff
             }
+
+            echo "Duration ${key}: ${resultsDuration[key]}"
         }
     }
 

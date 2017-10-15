@@ -360,6 +360,8 @@ def logStopStage(os, logFile) {
             else {
                 resultsDuration[key] = diff
             }
+
+            echo "Duration ${key}: ${resultsDuration[key]}"
         }
     }
 
