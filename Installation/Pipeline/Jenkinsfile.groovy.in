@@ -345,11 +345,11 @@ def logStopStage(os, logFile) {
     def stop = resultsStop[logFile] ?: null
 
     if (start && stop) {
-        def diff = groovy.time.TimeCategory.minus(stop, start)
+        def diff = groovy.time.TimeCategory.minus(stop, start).toMilliseconds() / 1000.0
         def key = logFile.split('/')[0]
 
         if (resultsDuration.containsKey(key)) {
-            resultsDuration[key] = resultsDuration[key].plus(diff)
+            resultsDuration[key] = resultsDuration[key] + diff
         }
         else {
             resultsDuration[key] = diff
