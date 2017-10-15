@@ -137,15 +137,21 @@ else ()
   string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
 endif ()
 
-configure_file (
+configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build.h"
   NEWLINE_STYLE UNIX
 )
 
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Pipeline/Jenkinsfile.groovy.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Pipeline/Jenkinsfile.groovy"
+  NEWLINE_STYLE UNIX @ONLY
+)
+
 if (NOT DEFINED GENERATE_BUILD_DATE OR GENERATE_BUILD_DATE)
   set(GENERATE_BUILD_DATE ON CACHE INTERNAL "whether we should generate the build date")
-  configure_file (
+  configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build-date.h.in"
     "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-date.h"
     NEWLINE_STYLE UNIX
@@ -193,7 +199,7 @@ else ()
   set(HAVE_ARANGODB_BUILD_REPOSITORY "0")
 endif()
 
-configure_file (
+configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build-repository.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-repository.h"
   NEWLINE_STYLE UNIX
