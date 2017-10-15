@@ -1,10 +1,12 @@
 //  -*- mode: groovy-mode
 
-properties([buildDiscarder(logRotator(
-    artifactDaysToKeepStr: '3',
-    artifactNumToKeepStr: '5',
-    daysToKeepStr: '3',
-    numToKeepStr: '5'))])
+node {
+    properties([buildDiscarder(logRotator(
+        artifactDaysToKeepStr: '3',
+        artifactNumToKeepStr: '5',
+        daysToKeepStr: '3',
+        numToKeepStr: '5'))])
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             SELECTABLE PARAMETERS
@@ -890,7 +892,7 @@ def setupTestEnvironment(os, edition, maintainer, logFile, runDir) {
     }
 }
 
-def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex, stageName, name, port) {
+def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex, stageName, name, port, concurrency) {
   return {
           def portInterval = 40
 
@@ -906,84 +908,87 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
               def logFileFailedRel = "${arch}-FAIL/${name}.log"
 
               def runDir = "run.${testIndex}"
+              def concurrencyIndex = testIndex % concurrency
 
-              logStartStage(os, logFileRel, logFileRel)
+              lock("tests-${env.NODE_NAME}-${concurrencyIndex") {
+                  logStartStage(os, logFileRel, logFileRel)
 
-              try {
+                  try {
 
-                  // setup links
-                  setupTestEnvironment(os, edition, maintainer, logFile, runDir)
+                      // setup links
+                      setupTestEnvironment(os, edition, maintainer, logFile, runDir)
 
-                  // assemble command
-                  def command = "./build/bin/arangosh " +
-                                "-c etc/jenkins/arangosh.conf " +
-                                "--log.level warning " +
-                                "--javascript.execute UnitTests/unittest.js " +
-                                "${test} -- " +
-                                "${testArgs} " + 
-                                "--minPort " + (port + testIndex * portInterval) + " " +
-                                "--maxPort " + (port + (testIndex + 1) * portInterval - 1)
+                      // assemble command
+                      def command = "./build/bin/arangosh " +
+                                    "-c etc/jenkins/arangosh.conf " +
+                                    "--log.level warning " +
+                                    "--javascript.execute UnitTests/unittest.js " +
+                                    "${test} -- " +
+                                    "${testArgs} " + 
+                                    "--minPort " + (port + testIndex * portInterval) + " " +
+                                    "--maxPort " + (port + (testIndex + 1) * portInterval - 1)
 
-                  // 30 minutes is the super absolute max max max.
-                  // even in the worst situations ArangoDB MUST be able to
-                  // finish within 60 minutes. Even if the features are green
-                  // this is completely broken performance wise...
-                  // DO NOT INCREASE!!
+                      // 30 minutes is the super absolute max max max.
+                      // even in the worst situations ArangoDB MUST be able to
+                      // finish within 60 minutes. Even if the features are green
+                      // this is completely broken performance wise...
+                      // DO NOT INCREASE!!
 
-                  timeout(os == 'linux' ? 30 : 60) {
-                      def tmpDir = pwd() + "/" + runDir + "/tmp"
+                      timeout(os == 'linux' ? 30 : 60) {
+                          def tmpDir = pwd() + "/" + runDir + "/tmp"
 
-                      withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
-                          if (os == "windows") {
-                              def hostname = powershell(returnStdout: true, script: "hostname")
+                          withEnv(["TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
+                              if (os == "windows") {
+                                  def hostname = powershell(returnStdout: true, script: "hostname")
 
-                              echo "executing ${command} on ${hostname}"
-                              powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
-                          }
-                          else {
-                              shellAndPipe("echo \"Host: `hostname`\"", logFile)
-                              shellAndPipe("echo \"PWD:  `pwd`\"", logFile)
-                              shellAndPipe("echo \"Date: `date`\"", logFile)
+                                  echo "executing ${command} on ${hostname}"
+                                  powershell "cd ${runDir} ; ${command} | Add-Content -PassThru ${logFile}"
+                              }
+                              else {
+                                  shellAndPipe("echo \"Host: `hostname`\"", logFile)
+                                  shellAndPipe("echo \"PWD:  `pwd`\"", logFile)
+                                  shellAndPipe("echo \"Date: `date`\"", logFile)
 
-                              shellAndPipe("cd ${runDir} ; ./build/bin/arangosh --version", logFile)
+                                  shellAndPipe("cd ${runDir} ; ./build/bin/arangosh --version", logFile)
 
-                              command = "(cd ${runDir} ; ${command})"
-                              echo "executing ${command}"
-                              shellAndPipe(command, logFile)
+                                  command = "(cd ${runDir} ; ${command})"
+                                  echo "executing ${command}"
+                                  shellAndPipe(command, logFile)
+                              }
                           }
                       }
+
+                      checkCores(os, runDir)
+                      logStopStage(os, logFileRel)
                   }
+                  catch (exc) {
+                      logExceptionStage(os, logFileRel, logFileFailedRel, exc)
 
-                  checkCores(os, runDir)
-                  logStopStage(os, logFileRel)
-              }
-              catch (exc) {
-                  logExceptionStage(os, logFileRel, logFileFailedRel, exc)
+                      def msg = exc.toString()
 
-                  def msg = exc.toString()
+                      echo "caught error, copying log to ${logFileFailed}: ${msg}"
 
-                  echo "caught error, copying log to ${logFileFailed}: ${msg}"
+                      fileOperations([
+                          fileCreateOperation(fileContent: "TEST FAILED: ${msg}", fileName: "${archDir}-FAIL.txt")
+                      ])
 
-                  fileOperations([
-                      fileCreateOperation(fileContent: "TEST FAILED: ${msg}", fileName: "${archDir}-FAIL.txt")
-                  ])
+                      if (os == 'linux' || os == 'mac') {
+                          sh "echo \"${msg}\" >> ${logFile}"
+                      }
+                      else {
+                          powershell "echo \"${msg}\" | Out-File -filepath ${logFile} -append"
+                      }
 
-                  if (os == 'linux' || os == 'mac') {
-                      sh "echo \"${msg}\" >> ${logFile}"
+                      copyFile(os, logFile, logFileFailed)
+                      throw exc
                   }
-                  else {
-                      powershell "echo \"${msg}\" | Out-File -filepath ${logFile} -append"
+                  finally {
+                      saveCores(os, runDir, name, archRun)
+
+                      archiveArtifacts allowEmptyArchive: true,
+                          artifacts: "${archDir}-FAIL.txt, ${archRun}/**, ${logFileRel}, ${logFileFailedRel}",
+                          defaultExcludes: false
                   }
-
-                  copyFile(os, logFile, logFileFailed)
-                  throw exc
-              }
-              finally {
-                  saveCores(os, runDir, name, archRun)
-
-                  archiveArtifacts allowEmptyArchive: true,
-                      artifacts: "${archDir}-FAIL.txt, ${archRun}/**, ${logFileRel}, ${logFileFailedRel}",
-                      defaultExcludes: false
               }
           }
     }
@@ -997,6 +1002,12 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
 
     def testIndex = 0
     def tests = getTests(os, edition, maintainer, mode, engine)
+
+    def concurrency = 2
+
+    if (os == 'linux') {
+        concurrency = 8
+    }
 
     node(testJenkins[os]) {
 
@@ -1039,7 +1050,7 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
 
                 testMap["${stageName}-${name}"] = singleTest(os, edition, maintainer, mode, engine,
                                                              test, testArgs, testIndex,
-                                                             stageName, name, port)
+                                                             stageName, name, port, concurrency)
 
                 return testMap
             }
@@ -1368,6 +1379,7 @@ def createDockerImage(edition, maintainer, stageName) {
                         try {
                             logStartStage(os, logFile, logFile)
 
+                            shellAndPipe("rm -rf build/.arangodb-docker", logFile)
                             shellAndPipe("./scripts/build-docker.sh", logFile)
                             shellAndPipe("docker tag arangodb:${packageName}-${branchLabel} registry.arangodb.biz:5000/arangodb/${packageName}:${branchLabel}", logFile)
                             shellAndPipe("docker push registry.arangodb.biz:5000/arangodb/${packageName}:${branchLabel}", logFile)
