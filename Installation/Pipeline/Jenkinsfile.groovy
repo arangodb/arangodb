@@ -415,7 +415,7 @@ def generateResult() {
             lb = ""
         }
 
-        diff total = resultsDuration[key] ?: ""
+        def total = resultsDuration[key] ?: ""
 
         results += "${key}: ${startf} - ${stopf} (${diff}) ${msg}\n"
         html += "<tr ${color}><td>${la}${key}${lb}</td><td>${startf}</td><td>${stopf}</td><td align=\"right\">${diff}</td><td align=\"right\">${total}</td><td align=\"right\">${msg}</td></tr>\n"
