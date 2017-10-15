@@ -341,14 +341,14 @@ def logStopStage(os, logFile) {
         shellAndPipe("echo 'finished ${logFile}: ${resultsStop[logFile]}'", logFile)
     }
 
-    def start = resultsStart[logFile] ?: ""
-    def stop = resultsStop[logFile] ?: ""
+    def start = resultsStart[logFile] ?: null
+    def stop = resultsStop[logFile] ?: null
 
-    if (start != "" && stop != "") {
+    if (start && stop) {
         def diff = groovy.time.TimeCategory.minus(stop, start)
         def key = logFile.split('/')[0]
 
-        if (key in resultsDuration) {
+        if (resultsDuration.containsKey(key)) {
             resultsDuration[key] = resultsDuration[key].plus(diff)
         }
         else {
@@ -552,6 +552,10 @@ def checkCommitMessages() {
 
     if (causeDescription =~ /Started by user/) {
         echo "build started by user"
+
+        if (buildType == "Auto") {
+            buildType = "Customized"
+        }
     }
 
     if (skip) {

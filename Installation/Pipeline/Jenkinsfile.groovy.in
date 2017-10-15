@@ -552,6 +552,10 @@ def checkCommitMessages() {
 
     if (causeDescription =~ /Started by user/) {
         echo "build started by user"
+
+        if (buildType == "Auto") {
+            buildType = "Customized"
+        }
     }
 
     if (skip) {
