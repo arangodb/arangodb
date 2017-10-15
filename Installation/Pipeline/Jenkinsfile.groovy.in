@@ -76,8 +76,9 @@ properties([
 
 buildType = params.Type;
 cleanBuild = params.CleanBuild
-runTests = params.RunTests
 restrictions = [:]
+
+runTests = false
 
 // OS
 useLinux = false
@@ -102,6 +103,7 @@ resultsStart = [:]
 resultsStop = [:]
 resultsStatus = [:]
 resultsLink = [:]
+resultsDuration = [:]
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             CONSTANTS AND HELPERS
@@ -339,6 +341,21 @@ def logStopStage(os, logFile) {
         shellAndPipe("echo 'finished ${logFile}: ${resultsStop[logFile]}'", logFile)
     }
 
+    def start = resultsStart[logFile] ?: ""
+    def stop = resultsStop[logFile] ?: ""
+
+    if (start != "" && stop != "") {
+        def diff = groovy.time.TimeCategory.minus(stop, start)
+        def key = logFile.split('/')[0]
+
+        if (key in resultsDuration) {
+            resultsDuration[key] = groovy.time.TimeCategory.add(diff, resultsDuration[key])
+        }
+        else {
+            resultsDuration[key] = diff
+        }
+    }
+
     generateResult()
 }
 
@@ -364,7 +381,7 @@ def logExceptionStage(os, logFile, link, exc) {
 def generateResult() {
     def results = ""
     def html = "<html><body><table>\n"
-    html += "<tr><th>Name</th><th>Start</th><th>Stop</th><th>Duration</th><th>Message</th></tr>\n"
+    html += "<tr><th>Name</th><th>Start</th><th>Stop</th><th>Duration</th><th>Total Time</th><th>Message</th></tr>\n"
 
     for (key in resultsKeys.sort()) {
         def start = resultsStart[key] ?: ""
@@ -398,8 +415,10 @@ def generateResult() {
             lb = ""
         }
 
+        diff total = resultsDuration[key] ?: ""
+
         results += "${key}: ${startf} - ${stopf} (${diff}) ${msg}\n"
-        html += "<tr ${color}><td>${la}${key}${lb}</td><td>${startf}</td><td>${stopf}</td><td align=\"right\">${diff}</td><td align=\"right\">${msg}</td></tr>\n"
+        html += "<tr ${color}><td>${la}${key}${lb}</td><td>${startf}</td><td>${stopf}</td><td align=\"right\">${diff}</td><td align=\"right\">${total}</td><td align=\"right\">${msg}</td></tr>\n"
     }
 
     html += "</table></body></html>\n"
@@ -575,6 +594,8 @@ def setBuildsAndTests() {
 
         useMaintainer = params.Maintainer
         useUser = params.User
+
+        runTests = params.RunTests
     }
     else if (buildType == "Quick Test") {
         restrictions = [
@@ -583,7 +604,7 @@ def setBuildsAndTests() {
 
             // OS EDITION MAINTAINER MODE ENGINE
             "test-linux-enterprise-maintainer-singleserver-rocksdb" : true,
-            "test-linux-enterprise-maintainer-cluster-mmfiles" : true
+            "test-linux-enterprise-maintainer-cluster-mmfiles" : true,
         ]
     }
     else if (buildType == "PR Test") {
@@ -596,7 +617,7 @@ def setBuildsAndTests() {
 
             // OS EDITION MAINTAINER MODE ENGINE
             "test-linux-enterprise-maintainer-cluster-rocksdb" : true,
-            "test-linux-community-maintainer-singleserver-mmfiles" : true
+            "test-linux-community-maintainer-singleserver-mmfiles" : true,
         ]
     }
     else if (buildType == "Nightly Test") {
