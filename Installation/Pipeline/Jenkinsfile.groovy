@@ -910,7 +910,7 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
               def runDir = "run.${testIndex}"
               def concurrencyIndex = testIndex % concurrency
 
-              lock("tests-${env.NODE_NAME}-${concurrencyIndex") {
+              lock("tests-${env.NODE_NAME}-${concurrencyIndex}") {
                   logStartStage(os, logFileRel, logFileRel)
 
                   try {
