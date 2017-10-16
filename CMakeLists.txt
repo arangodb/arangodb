@@ -75,7 +75,6 @@ set(ARANGODB_VERSION_MAJOR      "3")
 set(ARANGODB_VERSION_MINOR      "2")
 set(ARANGODB_VERSION_REVISION   "4")
 set(ARANGODB_PACKAGE_REVISION   "1")
-
 # version for the windows rc file needs to be numeric:
 if (ARANGODB_VERSION_REVISION GREATER -1)
   set(ARANGODB_NUMERIC_VERSION_REVISION "${ARANGODB_VERSION_REVISION}")
@@ -144,11 +143,16 @@ configure_file (
   NEWLINE_STYLE UNIX
 )
 
-configure_file (
-  "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build-date.h.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-date.h"
-  NEWLINE_STYLE UNIX
-)
+if (NOT DEFINED GENERATE_BUILD_DATE OR GENERATE_BUILD_DATE)
+  set(GENERATE_BUILD_DATE ON CACHE INTERNAL "whether we should generate the build date")
+  configure_file (
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build-date.h.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-date.h"
+    NEWLINE_STYLE UNIX
+    )
+else()
+  set(GENERATE_BUILD_DATE OFF CACHE INTERNAL "whether we should generate the build date")
+endif()
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/VERSION.in"
@@ -548,7 +552,7 @@ if (USE_MAINTAINER_MODE)
 endif ()
 
 include(debugInformation)
-find_program(FILE_EXECUTABLE file)
+find_program(READELF_EXECUTABLE readelf)
 detect_binary_id_type(CMAKE_DEBUG_FILENAMES_SHA_SUM)
 
 ################################################################################

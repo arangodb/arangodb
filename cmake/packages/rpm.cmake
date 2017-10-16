@@ -1,18 +1,17 @@
 # -*- mode: CMAKE; -*-
 
+
 set(CPACK_GENERATOR "RPM")
 if (CMAKE_DEBUG_FILENAMES_SHA_SUM)
   set(CPACK_DEBUG_DIRECTORY_PATTERN "/usr/lib*/debug/.build-id/*")
 else()
   set(CPACK_DEBUG_DIRECTORY_PATTERN "/usr/lib*/debug/*")
 endif()
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_X ${PROJECT_BINARY_DIR}/bin)
+include(arangosh/dbg.cmake)
+include(arangod/dbg.cmake)
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Installation/rpm/arangodb.spec.in" "${CMAKE_CURRENT_BINARY_DIR}/arangodb.spec" @ONLY IMMEDIATE)
 set(CPACK_RPM_USER_BINARY_SPECFILE "${CMAKE_CURRENT_BINARY_DIR}/arangodb.spec")
-
-
-################################################################################
-# This produces the RPM packages, using client/rpm.txt for the second package.
-################################################################################
 
 # deploy the Init script:
 if (RPM_DISTRO STREQUAL "SUSE13")
@@ -54,10 +53,6 @@ set(CPACK_RPM_PACKAGE_RELOCATABLE FALSE)
 
 set(CPACK_TEMPORARY_DIRECTORY         "${PROJECT_BINARY_DIR}/_CPack_Packages/${CMAKE_SYSTEM_NAME}/RPM/RPMS/${ARANGODB_PACKAGE_ARCHITECTURE}")
 set(CPACK_TEMPORARY_PACKAGE_FILE_NAME "${CPACK_TEMPORARY_DIRECTORY}/${CPACK_PACKAGE_FILE_NAME}.rpm")
-
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_X ${PROJECT_BINARY_DIR}/bin)
-include(arangosh/dbg.cmake)
-include(arangod/dbg.cmake)
 
 add_custom_target(package-arongodb-server
   COMMAND ${CMAKE_COMMAND} .
