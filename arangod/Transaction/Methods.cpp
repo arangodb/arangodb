@@ -2103,7 +2103,6 @@ OperationResult transaction::Methods::removeLocal(
           payload.add(StaticStrings::KeyString, s);
           s = result.get(StaticStrings::RevString);
           payload.add(StaticStrings::RevString, s);
-          TRI_SanitizeObject(doc, payload);
         };
 
         VPackSlice ourResult = resultBuilder.slice();
