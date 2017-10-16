@@ -188,10 +188,11 @@ WalAccessResult MMFilesWalAccess::openTransactions(
       }
       cb(it.first, it.second);
     }
-    
-    MMFilesLogfileManagerState const state = MMFilesLogfileManager::instance()->state();
+
+    MMFilesLogfileManagerState const state =
+        MMFilesLogfileManager::instance()->state();
     res.reset(TRI_ERROR_NO_ERROR, fromTickIncluded, lastFoundTick,
-              /*latest*/state.lastCommittedTick);
+              /*latest*/ state.lastCommittedTick);
   } catch (arangodb::basics::Exception const& ex) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME)
         << "caught exception while determining open transactions: "
@@ -426,22 +427,22 @@ struct MMFilesWalAccessContext : WalAccessContext {
             lastDatabaseId = 0;
             lastCollectionId = 0;
           } else if (type == TRI_DF_MARKER_VPACK_CREATE_COLLECTION) {
-            
             // fill collection name cache
-            TRI_voc_tick_t databaseId = MMFilesDatafileHelper::DatabaseId(marker);
+            TRI_voc_tick_t databaseId =
+                MMFilesDatafileHelper::DatabaseId(marker);
             TRI_ASSERT(databaseId != 0);
-            TRI_voc_cid_t collectionId = MMFilesDatafileHelper::CollectionId(marker);
+            TRI_voc_cid_t collectionId =
+                MMFilesDatafileHelper::CollectionId(marker);
             TRI_ASSERT(collectionId != 0);
-            
+
             // this will cache the vocbase and collection for this run
             loadVocbase(databaseId);
             loadCollection(databaseId, collectionId);
-          }/* else if (type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION) {
-            // invalidate collection name cache because this is a
-            // rename operation
-            dump->_collectionNames.clear();
-          }*/
-
+          } /* else if (type == TRI_DF_MARKER_VPACK_RENAME_COLLECTION) {
+             // invalidate collection name cache because this is a
+             // rename operation
+             dump->_collectionNames.clear();
+           }*/
 
           // get the marker's tick and check whether we should include it
           TRI_voc_tick_t foundTick = marker->getTick();
@@ -508,27 +509,38 @@ struct MMFilesWalAccessContext : WalAccessContext {
           << "caught unknown exception while dumping replication log";
       res = TRI_ERROR_INTERNAL;
     }
-    
-    MMFilesLogfileManagerState const state = MMFilesLogfileManager::instance()->state();
 
-    /*LOG_TOPIC(ERR, Logger::FIXME) << "2. fromTickIncluded " << fromTickIncluded
+    MMFilesLogfileManagerState const state =
+        MMFilesLogfileManager::instance()->state();
+
+    /*LOG_TOPIC(ERR, Logger::FIXME) << "2. fromTickIncluded " <<
+      fromTickIncluded
       << " lastFoundTick " << lastFoundTick;*/
-    return WalAccessResult(res, fromTickIncluded, lastFoundTick, state.lastCommittedTick);
+    return WalAccessResult(res, fromTickIncluded, lastFoundTick,
+                           state.lastCommittedTick);
   }
 };
 
 /// Tails the wall, this will already sanitize the
 WalAccessResult MMFilesWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
                                        size_t chunkSize,
+                                       TRI_voc_tid_t barrierId,
                                        WalAccess::Filter const& filter,
                                        MarkerCallback const& callback) const {
   /*OG_TOPIC(WARN, Logger::FIXME)
       << "1. Starting tailing: tickStart " << tickStart << " tickEnd "
       << tickEnd << " chunkSize " << chunkSize << " includeSystem "
-      << filter.includeSystem << " firstRegularTick" << filter.firstRegularTick;*/
+      << filter.includeSystem << " firstRegularTick" <<
+     filter.firstRegularTick;*/
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "dumping log, tick range "
-                                            << tickStart << " - " << tickEnd;
+  LOG_TOPIC(TRACE, arangodb::Logger::REPLICATION)
+      << "dumping log, tick range " << tickStart << " - " << tickEnd;
+
+  if (barrierId > 0) {
+    // extend the WAL logfile barrier
+    MMFilesLogfileManager::instance()->extendLogfileBarrier(barrierId, 180,
+                                                            tickStart);
+  }
   MMFilesWalAccessContext ctx(filter, callback);
   return ctx.tail(tickStart, tickEnd, chunkSize);
 }

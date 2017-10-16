@@ -256,6 +256,15 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   std::string const& value5 = _request->value("chunkSize", found);
   if (found) {
     chunkSize = static_cast<size_t>(StringUtils::uint64(value5));
+    chunkSize = std::min((size_t)128 * 1024 * 1024, chunkSize);
+  }
+  
+  // check if a barrier id was specified in request
+  TRI_voc_tid_t barrierId = 0;
+  std::string const& value3 = _request->value("barrier", found);
+  
+  if (found) {
+    barrierId = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value3));
   }
 
   WalAccessResult result;
@@ -274,7 +283,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
   size_t length = 0;
   if (useVst) {
     result =
-        wal->tail(tickStart, tickEnd, chunkSize, filter,
+        wal->tail(tickStart, tickEnd, chunkSize, barrierId, filter,
                   [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
                     length++;
                     if (vocbase != nullptr) {  // database drop has no vocbase
@@ -294,7 +303,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
     // note: we need the CustomTypeHandler here
     VPackDumper dumper(&adapter, &opts);
     result =
-        wal->tail(tickStart, tickEnd, chunkSize, filter,
+        wal->tail(tickStart, tickEnd, chunkSize, barrierId, filter,
                   [&](TRI_vocbase_t* vocbase, VPackSlice const& marker) {
                     length++;
                     if (vocbase != nullptr) {  // database drop has no vocbase

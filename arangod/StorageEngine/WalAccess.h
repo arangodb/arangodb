@@ -45,12 +45,12 @@ struct WalAccessResult : public Result {
         _fromTickIncluded(ft),
         _lastIncludedTick(included),
         _latestTick(latest) {}
-  
+
   WalAccessResult(WalAccessResult const& other)
-    : Result(other),
-      _fromTickIncluded(other._fromTickIncluded),
-      _lastIncludedTick(other._lastIncludedTick),
-      _latestTick(other._latestTick) {}
+      : Result(other),
+        _fromTickIncluded(other._fromTickIncluded),
+        _lastIncludedTick(other._lastIncludedTick),
+        _latestTick(other._latestTick) {}
 
   bool fromTickIncluded() const { return _fromTickIncluded; }
   TRI_voc_tick_t lastIncludedTick() const { return _lastIncludedTick; }
@@ -126,7 +126,8 @@ class WalAccess {
       TransactionCallback const&) const = 0;
 
   virtual WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd,
-                               size_t chunkSize, Filter const& filter,
+                               size_t chunkSize, TRI_voc_tid_t barrierId,
+                               Filter const& filter,
                                MarkerCallback const&) const = 0;
 };
 

@@ -809,7 +809,7 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   LOG_TOPIC(TRACE, Logger::FIXME) << "Removing queue " << key;
   auto ctx = transaction::V8Context::Create(vocbase, false);
-  SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::EXCLUSIVE);
+  SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();
   if (!res.ok()) {

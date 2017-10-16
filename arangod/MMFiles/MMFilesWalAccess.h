@@ -55,7 +55,7 @@ class MMFilesWalAccess : public WalAccess {
 
   /// Tails the wall, this will already sanitize the
   WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd, size_t chunkSize,
-                       WalAccess::Filter const& filter,
+                       TRI_voc_tid_t barrierId, WalAccess::Filter const& filter,
                        MarkerCallback const&) const override;
 };
 }
