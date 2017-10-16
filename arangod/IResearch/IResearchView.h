@@ -65,7 +65,20 @@ NS_BEGIN(iresearch)
 
 class IResearchLink;
 struct IResearchLinkMeta;
-class IResearchView;
+
+///////////////////////////////////////////////////////////////////////////////
+/// --SECTION--                                              utility constructs
+///////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////
+/// @brief a cookie/flag denoting validitiy with a read-write mutex to lock
+///        scope for the duration of required operations after ensuring validity
+///////////////////////////////////////////////////////////////////////////////
+struct AsyncValid {
+  irs::async_utils::read_write_mutex _mutex; // read-lock to prevent flag modification
+  bool _valid; // do not need atomic because need to hold lock anyway
+  AsyncValid(bool valid): _valid(valid) {}
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 /// --SECTION--                                                   IResearchView
@@ -384,7 +397,7 @@ class IResearchView final: public arangodb::ViewImplementation,
   irs::async_utils::thread_pool _threadPool;
   std::function<void(transaction::Methods* trx)> _transactionCallback;
   std::atomic<bool> _inRecovery;
-  std::shared_ptr<std::atomic<bool>> _inRecoveryValid; // true until end of recovery (for use with asynchronous post-recovery callbacks)
+  std::shared_ptr<AsyncValid> _valid; // true for the lifetime of the view (for use with asynchronous callbacks)
 };
 
 NS_END // iresearch
