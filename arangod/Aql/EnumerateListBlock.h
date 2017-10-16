@@ -63,12 +63,6 @@ class EnumerateListBlock : public ExecutionBlock {
   /// @brief current position in the _inVariable
   size_t _index;
 
-  /// @brief current block in DOCVEC
-  size_t _thisBlock;
-  
-  /// @brief number of elements in DOCVEC before the current block
-  size_t _seen;
-
   /// @brief total number of elements in DOCVEC
   size_t _docVecSize;
 
