@@ -598,8 +598,8 @@ bool HttpCommTask::processRead(double startTime) {
     handleSimpleError(authResult, *_incompleteRequest, TRI_ERROR_USER_CHANGE_PASSWORD,
                       "change password", 1);
   } else {  // not authenticated
-    HttpResponse resp(rest::ResponseCode::UNAUTHORIZED, leaseStringBuffer(0));
     std::string realm = "Bearer token_type=\"JWT\", realm=\"ArangoDB\"";
+    HttpResponse resp(rest::ResponseCode::UNAUTHORIZED, leaseStringBuffer(0));
     resp.setHeaderNC(StaticStrings::WwwAuthenticate, std::move(realm));
     addResponse(&resp, nullptr);
   }
