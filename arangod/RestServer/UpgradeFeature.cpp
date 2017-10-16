@@ -107,7 +107,8 @@ void UpgradeFeature::start() {
   if (_upgradeCheck) {
     upgradeDatabase();
 
-    if (!init->restoreAdmin() && !init->defaultPassword().empty()) {
+    if (!init->restoreAdmin() && !init->defaultPassword().empty() &&
+        ServerState::instance()->isSingleServerOrCoordinator()) {
       ai->updateUser("root", [&](AuthUserEntry& entry) {
         entry.updatePassword(init->defaultPassword());
       });
@@ -115,31 +116,32 @@ void UpgradeFeature::start() {
   }
 
   // change admin user
-  if (init->restoreAdmin()) {
-    Result res;
-
-    res = ai->removeAllUsers();
-
+  if (init->restoreAdmin() &&
+      ServerState::instance()->isSingleServerOrCoordinator()) {
+    
+    Result res = ai->removeAllUsers();
     if (res.fail()) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to create clear users: "
-                                               << res.errorMessage();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to clear users: "
+                                              << res.errorMessage();
       *_result = EXIT_FAILURE;
       return;
     }
 
     res = ai->storeUser(true, "root", init->defaultPassword(), true);
-
     if (res.fail() && res.errorNumber() == TRI_ERROR_USER_NOT_FOUND) {
       res = ai->storeUser(false, "root", init->defaultPassword(), true);
     }
 
     if (res.fail()) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "failed to create root user: "
-                                               << res.errorMessage();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "failed to create root user: "
+                                              << res.errorMessage();
       *_result = EXIT_FAILURE;
       return;
     }
-
+    auto oldLevel = arangodb::Logger::FIXME.level();
+    arangodb::Logger::FIXME.setLogLevel(arangodb::LogLevel::INFO);
+    LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "Password changed.";
+    arangodb::Logger::FIXME.setLogLevel(oldLevel);
     *_result = EXIT_SUCCESS;
   }
 

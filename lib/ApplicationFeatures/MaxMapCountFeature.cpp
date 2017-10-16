@@ -141,9 +141,9 @@ uint64_t MaxMapCountFeature::minimumExpectedMaxMappings() {
   uint64_t nproc = TRI_numberProcessors();
 
   // we expect at most 8 times the number of cores as the effective number of threads,
-  // and we want to allow at most 1000 mmaps per thread
-  if (nproc * 8 * 1000 > expected) {
-    expected = nproc * 8 * 1000;
+  // and we want to allow at least 8000 mmaps per thread
+  if (nproc * 8 * 8000 > expected) {
+    expected = nproc * 8 * 8000;
   }
 
   return expected;
@@ -207,7 +207,8 @@ bool MaxMapCountFeature::isNearMaxMappingsInternal(double& suggestedCacheTime) n
     if (lastLogStamp + logFrequency < now) {
       // do not log too often to avoid log spamming
       lastLogStamp = now;
-      LOG_TOPIC(WARN, Logger::MEMORY) << "process is near the maximum number of memory mappings. current: " << nmaps << ", maximum: " << maxMappings;
+      LOG_TOPIC(WARN, Logger::MEMORY) << "process is near the maximum number of memory mappings. current: " << nmaps << ", maximum: " << maxMappings 
+                                      << ". it may be sensible to increase the maximum number of mappings per process";
     }
     return true;
   } catch (...) {

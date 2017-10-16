@@ -185,7 +185,7 @@ class Traverser {
   /// @brief Destructor
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual ~Traverser();
+  virtual ~Traverser() {};
 
   void done() { _done = true; }
     

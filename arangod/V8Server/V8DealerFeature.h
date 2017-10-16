@@ -39,6 +39,13 @@ class Thread;
 class V8Context;
 
 class V8DealerFeature final : public application_features::ApplicationFeature {
+  struct stats {
+    size_t available;
+    size_t busy;
+    size_t dirty;
+    size_t free;
+    size_t max;
+  };
  public:
   static V8DealerFeature* DEALER;
   static constexpr ssize_t ANY_CONTEXT = -1;
@@ -97,10 +104,14 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
       TRI_vocbase_t*);
 
   void setMinimumContexts(size_t nr) { 
-    if (_nrMinContexts < nr) {
-      _nrMinContexts = nr;
+    _nrMinContexts = nr; 
+    // max contexts must not be lower than min contexts
+    if (_nrMinContexts > _nrMaxContexts) {
+      _nrMaxContexts = nr;
     }
   }
+
+  V8DealerFeature::stats getCurrentContextNumbers();
 
   void setNumberContexts(size_t nr) { _forceNrContexts = nr; }
 

@@ -26,6 +26,8 @@
 
 #include "Basics/Common.h"
 
+#include <iosfwd>
+
 namespace arangodb {
 namespace transaction {
 
@@ -59,5 +61,7 @@ static inline char const* statusString(Status status) {
 
 }
 }
+
+std::ostream& operator<<(std::ostream& stream, arangodb::transaction::Status const& s);
 
 #endif

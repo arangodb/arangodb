@@ -68,7 +68,7 @@ constexpr auto TRI_VOC_SYSTEM_DATABASE = "_system";
 constexpr size_t TRI_COL_NAME_LENGTH = 64;
 
 /// @brief default maximal collection journal size
-constexpr size_t TRI_JOURNAL_DEFAULT_SIZE = 1024 * 1024 * 32;  // 32 MB
+constexpr size_t TRI_JOURNAL_DEFAULT_SIZE = 1024 * 1024 * 32;  // 32 MiB
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief minimal collection journal size (for testing, we allow very small
@@ -77,11 +77,11 @@ constexpr size_t TRI_JOURNAL_DEFAULT_SIZE = 1024 * 1024 * 32;  // 32 MB
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 
-constexpr size_t TRI_JOURNAL_MINIMAL_SIZE = 16 * 1024;  // 16 KB
+constexpr size_t TRI_JOURNAL_MINIMAL_SIZE = 16 * 1024;  // 16 KiB
 
 #else
 
-constexpr size_t TRI_JOURNAL_MINIMAL_SIZE = 1024 * 1024;  // 1 MB
+constexpr size_t TRI_JOURNAL_MINIMAL_SIZE = 1024 * 1024;  // 1 MiB
 
 #endif
 

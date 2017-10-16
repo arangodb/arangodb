@@ -27,13 +27,12 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "MMFiles/MMFilesFulltextIndex.h"
 #include "MMFiles/MMFilesGeoIndex.h"
-#include "MMFiles/MMFilesToken.h"
 #include "MMFiles/mmfiles-fulltext-index.h"
 #include "MMFiles/mmfiles-fulltext-query.h"
-#include "StorageEngine/DocumentIdentifierToken.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -65,11 +64,11 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
   }
 
   struct geo_coordinate_distance_t {
-    geo_coordinate_distance_t(double distance, DocumentIdentifierToken token)
+    geo_coordinate_distance_t(double distance, LocalDocumentId token)
         : _distance(distance), _token(token) {}
 
     double _distance;
-    DocumentIdentifierToken _token;
+    LocalDocumentId _token;
   };
 
   std::vector<geo_coordinate_distance_t> distances;
@@ -80,7 +79,7 @@ static AqlValue buildGeoResult(transaction::Methods* trx,
     for (size_t i = 0; i < nCoords; ++i) {
       distances.emplace_back(geo_coordinate_distance_t(
           cors->distances[i],
-          arangodb::MMFilesGeoIndex::toDocumentIdentifierToken(
+          arangodb::MMFilesGeoIndex::toLocalDocumentId(
               cors->coordinates[i].data)));
     }
   } catch (...) {
@@ -288,7 +287,7 @@ AqlValue MMFilesAqlFunctions::Fulltext(
 
   ManagedDocumentResult mmdr;
   for (auto const& it : queryResult) {
-    if (collection->readDocument(trx, MMFilesToken{it}, mmdr)) {
+    if (collection->readDocument(trx, LocalDocumentId{it}, mmdr)) {
       mmdr.addToBuilder(*builder.get(), true);
     }
   }

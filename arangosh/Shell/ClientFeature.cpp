@@ -53,6 +53,7 @@ ClientFeature::ClientFeature(application_features::ApplicationServer* server,
       _sslProtocol(TLS_V12),
       _retries(DEFAULT_RETRIES),
       _warn(false),
+      _warnConnect(true),
       _haveServerPassword(false){
   setOptional(true);
   requiresElevatedPrivileges(false);

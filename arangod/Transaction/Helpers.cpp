@@ -92,8 +92,8 @@ StringRef transaction::helpers::extractKeyPart(VPackSlice slice) {
 /// @brief extract the _id attribute from a slice, and convert it into a 
 /// string, static method
 std::string transaction::helpers::extractIdString(CollectionNameResolver const* resolver,
-                                         VPackSlice slice,
-                                         VPackSlice const& base) {
+                                                  VPackSlice slice,
+                                                  VPackSlice const& base) {
   VPackSlice id;
 
   if (slice.isExternal()) {

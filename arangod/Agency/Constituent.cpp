@@ -63,7 +63,7 @@ void Constituent::configure(Agent* agent) {
 
   if (size() == 1) {
     _role = LEADER;
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to LEADER in term " << _term;
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to LEADER in term " << _term;
   }
   
 }
@@ -111,7 +111,7 @@ void Constituent::termNoLock(term_t t) {
   _term = t;
 
   if (tmp != t) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << _id << ": changing term, current role:"
+    LOG_TOPIC(INFO, Logger::AGENCY) << _id << ": changing term, current role:"
       << roleStr[_role] << " new term " << t;
 
     _cast = false;
@@ -203,10 +203,14 @@ void Constituent::follow(term_t t) {
 void Constituent::followNoLock(term_t t) {
   _castLock.assertLockedByCurrentThread();
 
-  _term = t;
+  if (t > 0 && t != _term) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Changing term from " << _term << " to " <<  t;
+    _term = t;
+  }
   _role = FOLLOWER;
 
-  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _role to FOLLOWER in term " << _term;
+  LOG_TOPIC(INFO, Logger::AGENCY) << "Set _role to FOLLOWER in term " << _term;
 
   if (_leaderID == _id) {
     _leaderID = NO_LEADER;
@@ -227,12 +231,10 @@ void Constituent::lead(term_t term) {
 
   _agent->beginPrepareLeadership();
   TRI_DEFER(_agent->endPrepareLeadership());
-  
+
   if (!_agent->prepareLead()) {
-    {
-      MUTEX_LOCKER(guard, _castLock);
-      followNoLock(term);
-    }
+    MUTEX_LOCKER(guard, _castLock);
+    followNoLock(term);
     return;
   }
 
@@ -273,7 +275,7 @@ void Constituent::candidate() {
 
   if (_leaderID != NO_LEADER) {
     _leaderID = NO_LEADER;
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to NO_LEADER";
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to NO_LEADER in Constituent::candidate";
   }
 
   if (_role != CANDIDATE) {
@@ -341,9 +343,16 @@ bool Constituent::checkLeader(
   
   if (term > _term) {
     termNoLock(term);
+    if (_role != FOLLOWER) {
+      followNoLock(term);
+    }
+
+    _cast = false;
+    _votedFor = "";
   }
 
-  if (!logMatches(prevLogIndex, prevLogTerm)) {
+  if ((prevLogIndex != 0 || prevLogTerm != 0) &&
+      !logMatches(prevLogIndex, prevLogTerm)) {
     return false;
   }
   
@@ -577,7 +586,7 @@ void Constituent::update(std::string const& leaderID, term_t t) {
   _term = t;
 
   if (_leaderID != leaderID) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
+    LOG_TOPIC(INFO, Logger::AGENCY)
       << "Constituent::update: setting _leaderID to " << leaderID
       << " in term " << _term;
     _leaderID = leaderID;
@@ -656,12 +665,14 @@ void Constituent::run() {
   if (size() == 1) {
     MUTEX_LOCKER(guard, _castLock);
     _leaderID = _agent->config().id();
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Set _leaderID to " << _leaderID
+    LOG_TOPIC(INFO, Logger::AGENCY) << "Set _leaderID to " << _leaderID
       << " in term " << _term;
   } else {
 
     {
       MUTEX_LOCKER(guard, _castLock);
+      LOG_TOPIC(INFO, Logger::AGENCY) << "Setting role to follower"
+        " in term " << _term;
       _role = FOLLOWER;
     }
     while (!this->isStopping()) {
@@ -732,13 +743,48 @@ void Constituent::run() {
       } else if (role == CANDIDATE) {
         callElection();  // Run for office
       } else {
-        int32_t left =
-          static_cast<int32_t>(100000.0 * _agent->config().minPing() *
-                               _agent->config().timeoutMult());
-        long randTimeout = static_cast<long>(left);
+        double interval = 0.25 * _agent->config().minPing()
+                               * _agent->config().timeoutMult();
+
+        double now = TRI_microtime();
+        double nextWakeup = interval;  // might be lowered below
+
+        std::string const myid = _agent->id();
+        for (auto const& followerId : _agent->config().active()) {
+          if (followerId != myid) {
+            bool needed = false;
+            {
+              MUTEX_LOCKER(guard, _heartBeatMutex);
+              auto it = _lastHeartbeatSent.find(followerId);
+              if (it == _lastHeartbeatSent.end()) {
+                needed = true;
+              } else {
+                double diff = now - it->second;
+                if (diff >= interval) {
+                  needed = true;
+                } else {
+                  // diff < interval, so only needed again in interval-diff s
+                  double waitOnly = interval - diff;
+                  if (nextWakeup > waitOnly) {
+                    nextWakeup = waitOnly;
+                  }
+                  LOG_TOPIC(DEBUG, Logger::AGENCY)
+                    << "No need for empty AppendEntriesRPC: " << diff;
+                }
+              }
+            }
+            if (needed) {
+              _agent->sendEmptyAppendEntriesRPC(followerId);
+            }
+          }
+        }
+
+        // This is the smallest time until any of the followers need a
+        // new empty heartbeat:
+        uint64_t timeout = static_cast<uint64_t>(1000000.0 * nextWakeup);
         {
           CONDITION_LOCKER(guardv, _cv);
-          _cv.wait(randTimeout);
+          _cv.wait(timeout);
         }
       }
     }
@@ -763,3 +809,10 @@ int64_t Constituent::countRecentElectionEvents(double threshold) {
   }
   return count;
 }
+
+// Notify about heartbeat being sent out:
+void Constituent::notifyHeartbeatSent(std::string followerId) {
+  MUTEX_LOCKER(guard, _heartBeatMutex);
+  _lastHeartbeatSent[followerId] = TRI_microtime();
+}
+

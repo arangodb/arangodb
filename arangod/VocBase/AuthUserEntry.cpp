@@ -168,6 +168,73 @@ AuthUserEntry AuthUserEntry::newUser(std::string const& user,
   return entry;
 }
 
+void AuthUserEntry::fromDocumentRoles(AuthUserEntry& entry,
+                                      VPackSlice const& rolesSlice) {
+  for (auto const& it : VPackArrayIterator(rolesSlice)) {
+    if (it.isString()) {
+      std::string const role = it.copyString();
+
+      entry._roles.insert(role);
+    }
+  }
+}
+
+void AuthUserEntry::fromDocumentDatabases(AuthUserEntry& entry,
+                                          VPackSlice const& databasesSlice,
+                                          VPackSlice const& userSlice) {
+  for (auto const& obj : VPackObjectIterator(databasesSlice)) {
+    std::string const dbName = obj.key.copyString();
+
+    if (obj.value.isObject()) {
+      AuthLevel databaseAuth = AuthLevel::NONE;
+
+      auto const permissionsSlice = obj.value.get("permissions");
+
+      if (permissionsSlice.isObject()) {
+        databaseAuth = AuthLevelFromSlice(permissionsSlice);
+      }
+
+      try {
+        entry.grantDatabase(dbName, databaseAuth);
+      } catch (arangodb::basics::Exception const& e) {
+        LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << e.message();
+      }
+
+      VPackSlice collectionsSlice = obj.value.get("collections");
+
+      if (collectionsSlice.isObject()) {
+        for (auto const& collection : VPackObjectIterator(collectionsSlice)) {
+          std::string const cName = collection.key.copyString();
+          auto const permissionsSlice = collection.value.get("permissions");
+
+          if (permissionsSlice.isObject()) {
+            try {
+              entry.grantCollection(dbName, cName,
+                                    AuthLevelFromSlice(permissionsSlice));
+            } catch (arangodb::basics::Exception const& e) {
+              LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << e.message();
+            }
+          }
+        }
+      }
+    } else {
+      LOG_TOPIC(DEBUG, arangodb::Logger::CONFIG)
+          << "updating deprecated access rights struct for user '"
+          << userSlice.copyString() << "'";
+      VPackValueLength length;
+      char const* value = obj.value.getString(length);
+
+      if (TRI_CaseEqualString(value, "rw", 2)) {
+        entry.grantDatabase(dbName, AuthLevel::RW);
+        entry.grantCollection(dbName, "*", AuthLevel::RW);
+      } else if (TRI_CaseEqualString(value, "ro", 2)) {
+        entry.grantDatabase(dbName, AuthLevel::RO);
+        entry.grantCollection(dbName, "*", AuthLevel::RO);
+      }
+    }
+  }
+}
+
 AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
   if (slice.isNone() || !slice.isObject()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
@@ -175,6 +242,7 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
 
   VPackSlice const keySlice =
       transaction::helpers::extractKeyFromDocument(slice);
+
   if (!keySlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "cannot extract key");
@@ -182,6 +250,7 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
 
   // extract "user" attribute
   VPackSlice const userSlice = slice.get("user");
+
   if (!userSlice.isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "cannot extract username");
@@ -195,6 +264,7 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
   }
 
   VPackSlice const simpleSlice = authDataSlice.get("simple");
+
   if (!simpleSlice.isObject()) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot extract simple";
     return AuthUserEntry();
@@ -213,6 +283,7 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
 
   // extract "active" attribute
   VPackSlice const activeSlice = authDataSlice.get("active");
+
   if (!activeSlice.isBoolean()) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "cannot extract active flag";
     return AuthUserEntry();
@@ -229,56 +300,17 @@ AuthUserEntry AuthUserEntry::fromDocument(VPackSlice const& slice) {
 
   // extract "databases" attribute
   VPackSlice const databasesSlice = slice.get("databases");
+
   if (databasesSlice.isObject()) {
-    for (auto const& obj : VPackObjectIterator(databasesSlice)) {
-      std::string const dbName = obj.key.copyString();
+    fromDocumentDatabases(entry, databasesSlice, userSlice);
+  }
 
-      if (obj.value.isObject()) {
-        AuthLevel databaseAuth = AuthLevel::NONE;
+  // extract "roles" attribute
+  VPackSlice const rolesSlice = slice.get("roles");
 
-        auto const permissionsSlice = obj.value.get("permissions");
-        if (permissionsSlice.isObject()) {
-          databaseAuth = AuthLevelFromSlice(permissionsSlice);
-        }
-        try {
-          entry.grantDatabase(dbName, databaseAuth);
-        } catch(arangodb::basics::Exception const& e) {
-          LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << e.message();
-        }
-
-        VPackSlice collectionsSlice = obj.value.get("collections");
-        if (collectionsSlice.isObject()) {
-          for (auto const& collection : VPackObjectIterator(collectionsSlice)) {
-            std::string const cName = collection.key.copyString();
-            auto const permissionsSlice = collection.value.get("permissions");
-            if (permissionsSlice.isObject()) {
-              try {
-                entry.grantCollection(dbName, cName,
-                                    AuthLevelFromSlice(permissionsSlice));
-              } catch(arangodb::basics::Exception const& e) {
-                LOG_TOPIC(DEBUG, Logger::AUTHORIZATION) << e.message();
-              }
-            }  // if
-          }  // for
-        }    // if
-
-      } else {
-        LOG_TOPIC(DEBUG, arangodb::Logger::CONFIG)
-            << "updating deprecated access rights struct for user '"
-            << userSlice.copyString() << "'";
-        VPackValueLength length;
-        char const* value = obj.value.getString(length);
-
-        if (TRI_CaseEqualString(value, "rw", 2)) {
-          entry.grantDatabase(dbName, AuthLevel::RW);
-          entry.grantCollection(dbName, "*", AuthLevel::RW);
-        } else if (TRI_CaseEqualString(value, "ro", 2)) {
-          entry.grantDatabase(dbName, AuthLevel::RO);
-          entry.grantCollection(dbName, "*", AuthLevel::RO);
-        }
-      }
-    }  // for
-  }    // if
+  if (rolesSlice.isArray()) {
+    fromDocumentRoles(entry, rolesSlice);
+  }
 
   // ensure the root user always has the right to change permissions
   if (entry._username == "root") {
@@ -317,13 +349,16 @@ VPackBuilder AuthUserEntry::toVPackBuilder() const {
 
   VPackBuilder builder;
   VPackObjectBuilder o(&builder, true);
+
   if (!_key.empty()) {
     builder.add(StaticStrings::KeyString, VPackValue(_key));
   }
+
   builder.add("user", VPackValue(_username));
   AddSource(builder, _source);
 
-  {  // authData sub-object
+  // authData sub-object
+  {
     VPackObjectBuilder o2(&builder, "authData", true);
     builder.add("active", VPackValue(_active));
     if (_source == AuthSource::COLLECTION) {
@@ -333,17 +368,23 @@ VPackBuilder AuthUserEntry::toVPackBuilder() const {
       builder.add("method", VPackValue(_passwordMethod));
     }
   }
+
   {  // databases sub-object
     VPackObjectBuilder o2(&builder, "databases", true);
     for (auto const& dbCtxPair : _dbAccess) {
       VPackObjectBuilder o3(&builder, dbCtxPair.first, true);
-      {  // permissions
+
+      // permissions
+      {
         VPackObjectBuilder o4(&builder, "permissions", true);
         AuthLevel lvl = dbCtxPair.second._databaseAuthLevel;
         AddAuthLevel(builder, lvl);
       }
-      {  // collections
+
+      // collections
+      {
         VPackObjectBuilder o4(&builder, "collections", true);
+
         for (auto const& colAccessPair : dbCtxPair.second._collectionAccess) {
           VPackObjectBuilder o4(&builder, colAccessPair.first, true);
           VPackObjectBuilder o5(&builder, "permissions", true);
@@ -361,6 +402,7 @@ void AuthUserEntry::grantDatabase(std::string const& dbname, AuthLevel level) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Cannot set rights for empty db name");
   }
+
   if (_username == "root" && dbname == StaticStrings::SystemDatabase &&
       level != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -368,12 +410,14 @@ void AuthUserEntry::grantDatabase(std::string const& dbname, AuthLevel level) {
   }
 
   auto it = _dbAccess.find(dbname);
+
   if (it != _dbAccess.end()) {
     it->second._databaseAuthLevel = level;
   } else {
-    // grantDatabase is not supposed to change any rights on the collection
-    // level
-    // code which relies on the old behaviour will need to be adjusted
+    // grantDatabase is not supposed to change any rights on the
+    // collection level code which relies on the old behaviour
+    // will need to be adjusted
+
     _dbAccess.emplace(
         dbname,
         DBAuthContext(level, std::unordered_map<std::string, AuthLevel>()));
@@ -396,13 +440,14 @@ void AuthUserEntry::grantCollection(std::string const& dbname,
                                     std::string const& coll,
                                     AuthLevel const level) {
   if (dbname.empty() || coll.empty()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_BAD_PARAMETER,
         "Cannot set rights for empty db / collection name");
   } else if (coll[0] == '_') {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-        "Cannot set rights for system collections");
+                                   "Cannot set rights for system collections");
   } else if (_username == "root" && dbname == StaticStrings::SystemDatabase &&
-      coll == "*" && level != AuthLevel::RW) {
+             coll == "*" && level != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "Cannot lower access level of 'root' to "
                                    " a system collection");
@@ -418,9 +463,10 @@ void AuthUserEntry::grantCollection(std::string const& dbname,
     if (it != _dbAccess.end()) {
       dbLevel = it->second._databaseAuthLevel;
     }
-    _dbAccess.emplace(dbname, DBAuthContext(
-                          dbLevel, std::unordered_map<std::string, AuthLevel>(
-                                       {{coll, level}})));
+    _dbAccess.emplace(
+        dbname,
+        DBAuthContext(dbLevel, std::unordered_map<std::string, AuthLevel>(
+                                   {{coll, level}})));
   }
 }
 
@@ -517,7 +563,7 @@ bool AuthUserEntry::hasSpecificCollection(
 AuthLevel AuthUserEntry::DBAuthContext::collectionAuthLevel(
     std::string const& collectionName, bool& notFound) const {
   std::unordered_map<std::string, AuthLevel>::const_iterator pair =
-    _collectionAccess.find(collectionName);
+      _collectionAccess.find(collectionName);
   if (pair != _collectionAccess.end()) {
     return pair->second;
   }

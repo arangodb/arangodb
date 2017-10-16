@@ -392,12 +392,12 @@ int VelocyPackHelper::compareNumberValues(VPackValueType lhsType,
     // fallthrough to double comparison
   }
 
-  double left = lhs.getNumericValue<double>();
-  double right = rhs.getNumericValue<double>();
-  if (left == right) {
+  double l = lhs.getNumericValue<double>();
+  double r = rhs.getNumericValue<double>();
+  if (l == r) {
     return 0;
   }
-  return (left < right ? -1 : 1);
+  return (l < r ? -1 : 1);
 }
   
 //////////////////////////////////////////////////////////////////////////////
@@ -413,18 +413,17 @@ int VelocyPackHelper::compareStringValues(char const* left, VPackValueLength nl,
     size_t len = static_cast<size_t>(nl < nr ? nl : nr);
     res = memcmp(left, right, len);
   }
-  if (res < 0) {
-    return -1;
+  
+  if (res != 0) {
+    return (res < 0 ? -1 : 1);
   }
-  if (res > 0) {
-    return 1;
-  }
+  
   // res == 0
   if (nl == nr) {
     return 0;
   }
   // res == 0, but different string lengths
-  return nl < nr ? -1 : 1;
+  return (nl < nr ? -1 : 1);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -719,12 +718,8 @@ int VelocyPackHelper::compare(VPackSlice lhs, VPackSlice rhs, bool useUTF8,
     int8_t lWeight = TypeWeight(lhs);
     int8_t rWeight = TypeWeight(rhs);
 
-    if (lWeight < rWeight) {
-      return -1;
-    }
-
-    if (lWeight > rWeight) {
-      return 1;
+    if (lWeight != rWeight) {
+      return (lWeight < rWeight ? -1 : 1);
     }
 
     TRI_ASSERT(lWeight == rWeight);

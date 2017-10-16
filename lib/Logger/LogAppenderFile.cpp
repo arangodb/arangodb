@@ -39,9 +39,9 @@ std::vector<std::pair<int, std::string>> LogAppenderFile::_fds = {};
 
 LogAppenderStream::LogAppenderStream(std::string const& filename,
                                      std::string const& filter, int fd)
-    : LogAppender(filter), _bufferSize(0), _fd(fd), _isTty(false) {}
+    : LogAppender(filter), _bufferSize(0), _fd(fd), _useColors(false) {}
   
-bool LogAppenderStream::logMessage(LogLevel level, std::string const& message,
+void LogAppenderStream::logMessage(LogLevel level, std::string const& message,
                                    size_t offset) {
   // check max. required output length
   size_t const neededBufferSize = TRI_MaxLengthEscapeControlsCString(message.size());
@@ -60,7 +60,7 @@ bool LogAppenderStream::logMessage(LogLevel level, std::string const& message,
       _bufferSize = neededBufferSize * 2;
     } catch (...) {
       // if allocation fails, simply give up
-      return false;
+      return;
     }
   }
   
@@ -78,8 +78,6 @@ bool LogAppenderStream::logMessage(LogLevel level, std::string const& message,
     _buffer.reset();
     _bufferSize = 0;
   }
-
-  return _isTty;
 }
 
 LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const& filter)
@@ -116,20 +114,20 @@ LogAppenderFile::LogAppenderFile(std::string const& filename, std::string const&
     }
   }
   
-  _isTty = (isatty(_fd) == 1);
+  _useColors = ((isatty(_fd) == 1) && Logger::getUseColor());
 }
 
 void LogAppenderFile::writeLogMessage(LogLevel level, char const* buffer, size_t len) {
   bool giveUp = false;
-  int fd = _fd;
 
   while (len > 0) {
-    ssize_t n = TRI_WRITE(fd, buffer, static_cast<TRI_write_t>(len));
+    ssize_t n = TRI_WRITE(_fd, buffer, static_cast<TRI_write_t>(len));
 
     if (n < 0) {
       fprintf(stderr, "cannot log data: %s\n", TRI_LAST_ERROR_STR);
-      return;  // give up, but do not try to log failure
-    } else if (n == 0) {
+      return;  // give up, but do not try to log the failure via the Logger
+    } 
+    if (n == 0) {
       if (!giveUp) {
         giveUp = true;
         continue;
@@ -141,8 +139,10 @@ void LogAppenderFile::writeLogMessage(LogLevel level, char const* buffer, size_t
   }
 
   if (level == LogLevel::FATAL) {
-    FILE* f = TRI_FDOPEN(fd, "w+");
+    FILE* f = TRI_FDOPEN(_fd, "a");
     if (f != nullptr) {
+      // valid file pointer...
+      // now flush the file one last time before we shut down
       fflush(f);
     }
   }
@@ -204,6 +204,7 @@ void LogAppenderFile::closeAll() {
     it.first = -1;
 
     if (fd > STDERR_FILENO) {
+      fsync(fd);
       TRI_TRACKED_CLOSE_FILE(fd);
     }
   }
@@ -211,7 +212,7 @@ void LogAppenderFile::closeAll() {
   
 LogAppenderStdStream::LogAppenderStdStream(std::string const& filename, std::string const& filter, int fd)
     : LogAppenderStream(filename, filter, fd) {
-  _isTty = (isatty(_fd) == 1);
+  _useColors = ((isatty(_fd) == 1) && Logger::getUseColor());
 }
 
 LogAppenderStdStream::~LogAppenderStdStream() {
@@ -221,15 +222,15 @@ LogAppenderStdStream::~LogAppenderStdStream() {
 }
   
 void LogAppenderStdStream::writeLogMessage(LogLevel level, char const* buffer, size_t len) {
-  writeLogMessage(_fd, _isTty, level, buffer, len, false);
+  writeLogMessage(_fd, _useColors, level, buffer, len, false);
 }
 
-void LogAppenderStdStream::writeLogMessage(int fd, bool isTty, LogLevel level, char const* buffer, size_t len, bool appendNewline) {
+void LogAppenderStdStream::writeLogMessage(int fd, bool useColors, LogLevel level, char const* buffer, size_t len, bool appendNewline) {
   // out stream
   FILE* fp = (fd == STDOUT_FILENO ? stdout : stderr);
   char const* nl = (appendNewline ? "\n" : "");
 
-  if (isTty) {
+  if (useColors) {
     // joyful color output
     if (level == LogLevel::FATAL || level == LogLevel::ERR) {
       fprintf(fp, "%s%s%s%s", ShellColorsFeature::SHELL_COLOR_RED, buffer, ShellColorsFeature::SHELL_COLOR_RESET, nl);
@@ -243,8 +244,12 @@ void LogAppenderStdStream::writeLogMessage(int fd, bool isTty, LogLevel level, c
     fprintf(fp, "%s%s", buffer, nl);
   }
 
-  if (level == LogLevel::FATAL || level == LogLevel::ERR || level == LogLevel::WARN) {
+  if (level == LogLevel::FATAL || level == LogLevel::ERR || 
+      level == LogLevel::WARN || level == LogLevel::INFO) {
     // flush the output so it becomes visible immediately
+    // at least for log levels that are used seldomly
+    // it would probably be overkill to flush everytime we
+    // encounter a log message for level DEBUG or TRACE
     fflush(fp);
   }
 }

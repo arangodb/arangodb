@@ -182,34 +182,32 @@ void InternalRestTraverserHandler::queryEngine() {
     }
 
     switch (engine->getType()) {
-      case BaseEngine::EngineType::TRAVERSER:
-        {
-          VPackSlice depthSlice = body.get("depth");
-          if (!depthSlice.isInteger()) {
-            generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                          "expecting 'depth' to be an integer value");
-            return;
-          }
-          // Save Cast BaseTraverserEngines are all of type TRAVERSER
-          auto eng = static_cast<BaseTraverserEngine*>(engine);
-          TRI_ASSERT(eng != nullptr);
-          eng->getEdges(keysSlice, depthSlice.getNumericValue<size_t>(), result);
-          break;
+      case BaseEngine::EngineType::TRAVERSER: {
+        VPackSlice depthSlice = body.get("depth");
+        if (!depthSlice.isInteger()) {
+          generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                        "expecting 'depth' to be an integer value");
+          return;
         }
-      case BaseEngine::EngineType::SHORTESTPATH:
-        {
-          VPackSlice bwSlice = body.get("backward");
-          if (!bwSlice.isBool()) {
-            generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                          "expecting 'backward' to be a boolean value");
-            return;
-          }
-          // Save Cast ShortestPathEngines are all of type SHORTESTPATH
-          auto eng = static_cast<ShortestPathEngine*>(engine);
-          TRI_ASSERT(eng != nullptr);
-          eng->getEdges(keysSlice, bwSlice.getBoolean(), result);
-          break;
+        // Save Cast BaseTraverserEngines are all of type TRAVERSER
+        auto eng = static_cast<BaseTraverserEngine*>(engine);
+        TRI_ASSERT(eng != nullptr);
+        eng->getEdges(keysSlice, depthSlice.getNumericValue<size_t>(), result);
+        break;
+      }
+      case BaseEngine::EngineType::SHORTESTPATH: {
+        VPackSlice bwSlice = body.get("backward");
+        if (!bwSlice.isBool()) {
+          generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                        "expecting 'backward' to be a boolean value");
+          return;
         }
+        // Save Cast ShortestPathEngines are all of type SHORTESTPATH
+        auto eng = static_cast<ShortestPathEngine*>(engine);
+        TRI_ASSERT(eng != nullptr);
+        eng->getEdges(keysSlice, bwSlice.getBoolean(), result);
+        break;
+      }
       default:
         generateError(ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                       "this engine does not support the requested operation.");

@@ -149,8 +149,6 @@ Traverser::Traverser(arangodb::traverser::TraverserOptions* opts,
   }
 }
 
-Traverser::~Traverser() {}
-
 bool arangodb::traverser::Traverser::edgeMatchesConditions(VPackSlice e,
                                                            StringRef vid,
                                                            uint64_t depth,

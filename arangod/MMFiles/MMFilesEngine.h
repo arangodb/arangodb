@@ -369,7 +369,7 @@ class MMFilesEngine final : public StorageEngine {
 
   /// @brief get the next free position for a new marker of the specified size
   char* nextFreeMarkerPosition(LogicalCollection* collection, TRI_voc_tick_t,
-                               MMFilesMarkerType, TRI_voc_size_t,
+                               MMFilesMarkerType, uint32_t,
                                MMFilesCollectorCache*);
 
   /// @brief set the tick of a marker and calculate its CRC value

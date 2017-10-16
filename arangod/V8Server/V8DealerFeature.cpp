@@ -227,7 +227,11 @@ void V8DealerFeature::start() {
 
   // set singleton
   DEALER = this;
-
+  
+  if (_nrMinContexts < 1) {
+    _nrMinContexts = 1;
+  }
+  
   // try to guess a suitable number of contexts
   if (0 == _nrMaxContexts && 0 == _forceNrContexts) {
     SchedulerFeature* scheduler =
@@ -240,12 +244,9 @@ void V8DealerFeature::start() {
     _nrMaxContexts = _forceNrContexts;
   }
 
-  if (_nrMinContexts < 1) {
-    _nrMinContexts = 1;
-  }
-
   if (_nrMinContexts > _nrMaxContexts) {
-    _nrMinContexts = _nrMaxContexts;
+    // max contexts must not be lower than min contexts
+    _nrMaxContexts = _nrMinContexts;
   }
 
   LOG_TOPIC(DEBUG, Logger::V8) << "number of V8 contexts: min: " << _nrMinContexts << ", max: " << _nrMaxContexts;
@@ -1324,6 +1325,17 @@ bool V8DealerFeature::loadJavaScriptFileInContext(TRI_vocbase_t* vocbase,
   
   exitContextInternal(context);
   return true;
+}
+
+V8DealerFeature::stats V8DealerFeature::getCurrentContextNumbers() {
+  CONDITION_LOCKER(guard, _contextCondition);
+  return {
+      _contexts.size(),
+      _busyContexts.size(),
+      _dirtyContexts.size(),
+      _freeContexts.size(),
+      _nrMaxContexts
+      };
 }
 
 void V8DealerFeature::loadJavaScriptFileInternal(std::string const& file, V8Context* context, VPackBuilder* builder) {

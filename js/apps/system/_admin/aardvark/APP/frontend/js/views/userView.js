@@ -104,12 +104,20 @@
         )
       );
 
-      buttons.push(
-        window.modalView.createNotificationButton(
-          'Change Password',
-          this.editUserPassword.bind(this)
-        )
-      );
+      if (this.username.substring(0, 6) === ':role:') {
+        buttons.push(
+          window.modalView.createDisabledButton(
+            'Change Password'
+          )
+        );
+      } else {
+        buttons.push(
+          window.modalView.createNotificationButton(
+            'Change Password',
+            this.editUserPassword.bind(this)
+          )
+        );
+      }
       buttons.push(
         window.modalView.createSuccessButton(
           'Save',
@@ -161,23 +169,38 @@
           id: 'editStatus'
         }
       ];
-      buttons = [
+      buttons = [];
+      buttons.push(
         {
           title: 'Delete',
           type: window.modalView.buttons.DELETE,
           callback: this.submitDeleteUser.bind(this, username)
-        },
-        {
-          title: 'Change Password',
-          type: window.modalView.buttons.NOTIFICATION,
-          callback: this.createEditUserPasswordModal.bind(this, username)
-        },
+        }
+      );
+      if (this.username.substring(0, 6) === ':role:') {
+        buttons.push(
+          {
+            title: 'Change Password',
+            type: window.modalView.buttons.DISABLED,
+            callback: this.createEditUserPasswordModal.bind(this, username)
+          }
+        );
+      } else {
+        buttons.push(
+          {
+            title: 'Change Password',
+            type: window.modalView.buttons.NOTIFICATION,
+            callback: this.createEditUserPasswordModal.bind(this, username)
+          }
+        );
+      }
+      buttons.push(
         {
           title: 'Save',
           type: window.modalView.buttons.SUCCESS,
           callback: this.submitEditUser.bind(this, username)
         }
-      ];
+      );
 
       window.modalView.show(
         'modalTable.ejs',
@@ -247,37 +270,9 @@
       }
     },
 
-    validateUsername: function (username) {
-      if (username === '') {
-        arangoHelper.arangoError('You have to define an username');
-        $('#newUsername').closest('th').css('backgroundColor', 'red');
-        return false;
-      }
-      if (!username.match(/^[a-zA-Z][a-zA-Z0-9_-]*$/)) {
-        arangoHelper.arangoError(
-          'Wrong Username', 'Username may only contain numbers, letters, _ and -'
-        );
-        return false;
-      }
-      return true;
-    },
-
     editUserPassword: function () {
       window.modalView.hide();
       this.createEditUserPasswordModal();
-    },
-
-    validateName: function (name) {
-      if (name === '') {
-        return true;
-      }
-      if (!name.match(/^[a-zA-Z][a-zA-Z0-9_-]*$/)) {
-        arangoHelper.arangoError(
-          'Wrong Username', 'Username may only contain numbers, letters, _ and -'
-        );
-        return false;
-      }
-      return true;
     },
 
     submitEditUser: function (username) {
@@ -286,10 +281,6 @@
 
       if (!this.validateStatus(status)) {
         $('#editStatus').closest('th').css('backgroundColor', 'red');
-        return;
-      }
-      if (!this.validateName(name)) {
-        $('#editName').closest('th').css('backgroundColor', 'red');
         return;
       }
       var user = this.collection.findWhere({'user': username});

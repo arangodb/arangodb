@@ -635,7 +635,7 @@ int MMFilesWalSlots::writeHeader(MMFilesWalSlot* slot) {
   TRI_ASSERT(_logfile != nullptr);
 
   MMFilesDatafileHeaderMarker header = MMFilesDatafileHelper::CreateHeaderMarker(
-    static_cast<TRI_voc_size_t>(_logfile->allocatedSize()), 
+    static_cast<uint32_t>(_logfile->allocatedSize()), 
     static_cast<TRI_voc_fid_t>(_logfile->id())
   );
   size_t const size = header.base.getSize();

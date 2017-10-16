@@ -254,7 +254,7 @@ void Communicator::wait() {
 void Communicator::createRequestInProgress(NewRequest const& newRequest) {
   if (!_enabled) {
     LOG_TOPIC(DEBUG, arangodb::Logger::COMMUNICATION) << "Request to  '" << newRequest._destination.url() << "' was not even started because communication is disabled";
-    newRequest._callbacks._onError(TRI_COMMUNICATOR_DISABLED, {nullptr});
+    callErrorFn(newRequest._ticketId, newRequest._destination, newRequest._callbacks, TRI_COMMUNICATOR_DISABLED, {nullptr});
     return;
   }
 
@@ -428,9 +428,9 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
                       dynamic_cast<HttpResponse*>(response.get()));
 
       if (httpStatusCode < 400) {
-        rip->_callbacks._onSuccess(std::move(response));
+        callSuccessFn(rip->_ticketId, rip->_destination, rip->_callbacks, std::move(response));
       } else {
-        rip->_callbacks._onError(httpStatusCode, std::move(response));
+        callErrorFn(rip, httpStatusCode, std::move(response));
       }
       break;
     }
@@ -439,32 +439,32 @@ void Communicator::handleResult(CURL* handle, CURLcode rc) {
     case CURLE_COULDNT_RESOLVE_HOST:
     case CURLE_URL_MALFORMAT:
     case CURLE_SEND_ERROR:
-      rip->_callbacks._onError(TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT, {nullptr});
+      callErrorFn(rip, TRI_SIMPLE_CLIENT_COULD_NOT_CONNECT, {nullptr});
       break;
     case CURLE_OPERATION_TIMEDOUT:
     case CURLE_RECV_ERROR:
     case CURLE_GOT_NOTHING:
       if (rip->_aborted) {
-        rip->_callbacks._onError(TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
+        callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
       } else {
-        rip->_callbacks._onError(TRI_ERROR_CLUSTER_TIMEOUT, {nullptr});
+        callErrorFn(rip, TRI_ERROR_CLUSTER_TIMEOUT, {nullptr});
       }
       break;
     case CURLE_WRITE_ERROR:
       if (rip->_aborted) {
-        rip->_callbacks._onError(TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
+        callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
       } else {
         LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Got a write error from curl but request was not aborted";
-        rip->_callbacks._onError(TRI_ERROR_INTERNAL, {nullptr});
+        callErrorFn(rip, TRI_ERROR_INTERNAL, {nullptr});
       }
       break;
     case CURLE_ABORTED_BY_CALLBACK:
       TRI_ASSERT(rip->_aborted);
-      rip->_callbacks._onError(TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
+      callErrorFn(rip, TRI_COMMUNICATOR_REQUEST_ABORTED, {nullptr});
       break;
     default:
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Curl return " << rc;
-      rip->_callbacks._onError(TRI_ERROR_INTERNAL, {nullptr});
+      callErrorFn(rip, TRI_ERROR_INTERNAL, {nullptr});
       break;
   } 
     
@@ -650,4 +650,39 @@ void Communicator::abortRequestInternal(Ticket ticketId) {
                      ") // ");
   LOG_TOPIC(WARN, Logger::REQUESTS) << prefix << "aborting request to " << handle->second->_rip->_destination.url();
   handle->second->_rip->_aborted = true;
+}
+
+void Communicator::callErrorFn(RequestInProgress* rip, int const& errorCode, std::unique_ptr<GeneralResponse> response) {
+  callErrorFn(rip->_ticketId, rip->_destination, rip->_callbacks, errorCode, std::move(response));
+}
+
+void Communicator::callErrorFn(Ticket const& ticketId, Destination const& destination,
+                               Callbacks const& callbacks, int const& errorCode,
+                               std::unique_ptr<GeneralResponse> response) {
+  auto start = TRI_microtime();
+  callbacks._onError(errorCode, std::move(response));
+  std::string prefix("Communicator(" + std::to_string(ticketId) + ") // ");
+  // callbacks are executed from the curl loop..if they take a long time this blocks all traffic!
+  // implement an async solution in that case!
+  auto total = TRI_microtime() - start;
+  if (total > CALLBACK_WARN_TIME) {
+    LOG_TOPIC(WARN, Logger::COMMUNICATION) << prefix << "error callback for request to "
+      << destination.url() << " took " << total << "s";
+  }
+}
+
+void Communicator::callSuccessFn(Ticket const& ticketId, Destination const& destination,
+                                 Callbacks const& callbacks, std::unique_ptr<GeneralResponse> response) {
+  // ALMOST the same code as in callErrorFn. just almost so I did copy paste
+  // could be generalized but probably that code would be even more verbose
+  auto start = TRI_microtime();
+  callbacks._onSuccess(std::move(response));
+  std::string prefix("Communicator(" + std::to_string(ticketId) + ") // ");
+  // callbacks are executed from the curl loop..if they take a long time this blocks all traffic!
+  // implement an async solution in that case!
+  auto total = TRI_microtime() - start;
+  if (total > CALLBACK_WARN_TIME) {
+    LOG_TOPIC(WARN, Logger::COMMUNICATION) << prefix << "success callback for request to "
+      << destination.url() << " took " << (total) << "s";
+  }
 }

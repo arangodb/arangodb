@@ -26,7 +26,6 @@
 #include "Graph/BaseOptions.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Graph/TraverserCache.h"
-#include "StorageEngine/DocumentIdentifierToken.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Helpers.h"
@@ -87,7 +86,7 @@ static bool CheckInaccesible(transaction::Methods* trx,
 void SingleServerEdgeCursor::getDocAndRunCallback(OperationCursor* cursor, Callback callback) {
   auto collection = cursor->collection();
   EdgeDocumentToken etkn(collection->cid(), _cache[_cachePos++]);
-  if (collection->readDocument(_trx, etkn.token(), *_mmdr)) {
+  if (collection->readDocument(_trx, etkn.localDocumentId(), *_mmdr)) {
     VPackSlice edgeDoc(_mmdr->vpack());
 #ifdef USE_ENTERPRISE
     if (_trx->state()->options().skipInaccessibleCollections) {
@@ -160,8 +159,8 @@ bool SingleServerEdgeCursor::next(std::function<void(EdgeDocumentToken&&, VPackS
     } else {
       if (cursor->hasExtra()) {
         bool operationSuccessfull = false;
-        auto extraCB = [&](DocumentIdentifierToken const& token, VPackSlice edge){
-          if (token._data != 0) {
+        auto extraCB = [&](LocalDocumentId const& token, VPackSlice edge){
+          if (token.isSet()) {
 #ifdef USE_ENTERPRISE
             if (_trx->state()->options().skipInaccessibleCollections &&
                 CheckInaccesible(_trx, edge)) {
@@ -184,8 +183,8 @@ bool SingleServerEdgeCursor::next(std::function<void(EdgeDocumentToken&&, VPackS
         }
       } else {
         _cache.clear();
-        auto cb = [&](DocumentIdentifierToken const& token) {
-          if (token._data != 0) {
+        auto cb = [&](LocalDocumentId const& token) {
+          if (token.isSet()) {
             // Document found
             _cache.emplace_back(token);
           }
@@ -216,7 +215,7 @@ void SingleServerEdgeCursor::readAll(
       LogicalCollection* collection = cursor->collection();
       auto cid = collection->cid();
       if (cursor->hasExtra()) {
-        auto cb = [&](DocumentIdentifierToken const& token, VPackSlice edge) {
+        auto cb = [&](LocalDocumentId const& token, VPackSlice edge) {
 #ifdef USE_ENTERPRISE
           if (_trx->state()->options().skipInaccessibleCollections &&
               CheckInaccesible(_trx, edge)) {
@@ -227,7 +226,7 @@ void SingleServerEdgeCursor::readAll(
         };
         cursor->allWithExtra(cb);
       } else {
-        auto cb = [&](DocumentIdentifierToken const& token) {
+        auto cb = [&](LocalDocumentId const& token) {
           if (collection->readDocument(_trx, token, *_mmdr)) {
             VPackSlice edgeDoc(_mmdr->vpack());
 #ifdef USE_ENTERPRISE

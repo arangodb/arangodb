@@ -503,15 +503,12 @@ int InitialSyncer::applyCollectionDump(transaction::Methods& trx,
 
     ++markersProcessed;
 
-    VPackBuilder oldBuilder;
-    oldBuilder.openObject();
-    oldBuilder.add(StaticStrings::KeyString, VPackValue(key));
-    if (!rev.empty()) {
-      oldBuilder.add(StaticStrings::RevString, VPackValue(rev));
-    }
-    oldBuilder.close();
+    transaction::BuilderLeaser oldBuilder(&trx);
+    oldBuilder->openObject();
+    oldBuilder->add(StaticStrings::KeyString, VPackValue(key));
+    oldBuilder->close();
 
-    VPackSlice const old = oldBuilder.slice();
+    VPackSlice const old = oldBuilder->slice();
 
     int res = applyCollectionDumpMarker(trx, collectionName, type, old, doc,
                                         errorMsg);

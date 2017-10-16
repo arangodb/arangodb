@@ -25,27 +25,6 @@
 
 #include "fasthash.h"
   
-static constexpr uint64_t m = 0x880355f21e6d1965ULL;
-
-// Compression function for Merkle-Damgard construction.
-// This function is generated using the framework provided.
-
-static inline uint64_t mix(uint64_t h) {
-  h ^= h >> 23;
-  h *= 0x2127599bf4325c37ULL;
-  h ^= h >> 47;
-
-  return h;
-}
-
-uint64_t fasthash64_uint64(uint64_t value, uint64_t seed) {
-  uint64_t h = seed ^ 4619197404915747624ULL; // this is h = seed ^ (sizeof(uint64_t) * m), but prevents VS warning C4307: integral constant overflow 
-  h ^= mix(value);
-  h *= m;
-
-  return mix(h);
-}
-  
 uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
 #ifndef TRI_UNALIGNED_ACCESS
   // byte-wise hashing to support platforms that don't permit
@@ -53,7 +32,7 @@ uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
   // memory access strategy of fasthash64)
   uint8_t const* pos = (uint8_t const*)buf;
   uint8_t const* end = pos + len;
-  uint64_t h = seed ^ (len * m);
+  uint64_t h = seed ^ (len * fasthash_m);
   
   while (pos != end) {
     len = end - pos;
@@ -79,14 +58,14 @@ uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
         v ^= (uint64_t)pos[1] << 8;
       case 1:
         v ^= (uint64_t)pos[0];
-        h ^= mix(v);
-        h *= m;
+        h ^= fasthash_mix(v);
+        h *= fasthash_m;
     }
 
     pos += len;
   }
 
-  return mix(h);
+  return fasthash_mix(h);
 #else
   // uint64_t-wise hashing for platforms that allow dereferencing
   // unaligned pointers to uint64_t memory
@@ -94,13 +73,13 @@ uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
   uint64_t const* pos = (uint64_t const*)buf;
   uint64_t const* end = pos + (len / 8);
   const unsigned char* pos2;
-  uint64_t h = seed ^ (len * m);
+  uint64_t h = seed ^ (len * fasthash_m);
   uint64_t v;
 
   while (pos != end) {
     v = *pos++;
-    h ^= mix(v);
-    h *= m;
+    h ^= fasthash_mix(v);
+    h *= fasthash_m;
   }
   
   pos2 = (const unsigned char*)pos;
@@ -121,11 +100,11 @@ uint64_t fasthash64(const void* buf, size_t len, uint64_t seed) {
       v ^= (uint64_t)pos2[1] << 8;
     case 1:
       v ^= (uint64_t)pos2[0];
-      h ^= mix(v);
-      h *= m;
+      h ^= fasthash_mix(v);
+      h *= fasthash_m;
   }
 
-  return mix(h);
+  return fasthash_mix(h);
 #endif
 }
 

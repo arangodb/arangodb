@@ -130,7 +130,7 @@ void AggregatorMin::reduce(AqlValue const& cmpValue) {
 
 AqlValue AggregatorMin::stealValue() {
   if (value.isEmpty()) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
   AqlValue copy = value;
   value.erase();
@@ -151,7 +151,7 @@ void AggregatorMax::reduce(AqlValue const& cmpValue) {
 
 AqlValue AggregatorMax::stealValue() {
   if (value.isEmpty()) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
   AqlValue copy = value;
   value.erase();
@@ -184,7 +184,7 @@ void AggregatorSum::reduce(AqlValue const& cmpValue) {
 
 AqlValue AggregatorSum::stealValue() {
   if (invalid || std::isnan(sum) || sum == HUGE_VAL || sum == -HUGE_VAL) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   builder.clear();
@@ -223,7 +223,7 @@ void AggregatorAverage::reduce(AqlValue const& cmpValue) {
 AqlValue AggregatorAverage::stealValue() {
   if (invalid || count == 0 || std::isnan(sum) || sum == HUGE_VAL ||
       sum == -HUGE_VAL) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   TRI_ASSERT(count > 0);
@@ -267,7 +267,7 @@ void AggregatorVarianceBase::reduce(AqlValue const& cmpValue) {
 AqlValue AggregatorVariance::stealValue() {
   if (invalid || count == 0 || (count == 1 && !population) || std::isnan(sum) ||
       sum == HUGE_VAL || sum == -HUGE_VAL) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   TRI_ASSERT(count > 0);
@@ -289,7 +289,7 @@ AqlValue AggregatorVariance::stealValue() {
 AqlValue AggregatorStddev::stealValue() {
   if (invalid || count == 0 || (count == 1 && !population) || std::isnan(sum) ||
       sum == HUGE_VAL || sum == -HUGE_VAL) {
-    return AqlValue(arangodb::basics::VelocyPackHelper::NullValue());
+    return AqlValue(AqlValueHintNull());
   }
 
   TRI_ASSERT(count > 0);

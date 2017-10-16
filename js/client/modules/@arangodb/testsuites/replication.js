@@ -1,5 +1,5 @@
 /* jshint strict: false, sub: true */
-/* global */
+/* global arango */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -69,7 +69,7 @@ function replicationOngoing (options) {
                          customInstanceInfos,
                          startStopHandlers) {
       let message;
-      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let slave = pu.startInstance('tcp', options, {}, 'slave_ongoing');
       let state = (typeof slave === 'object');
 
       if (state) {
@@ -109,7 +109,7 @@ function replicationOngoing (options) {
 
   };
 
-  return tu.performTests(options, testCases, 'replication_sync', tu.runInArangosh, {}, startStopHandlers);
+  return tu.performTests(options, testCases, 'replication_ongoing', tu.runInArangosh, {}, startStopHandlers);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -129,7 +129,7 @@ function replicationStatic (options) {
                          startStopHandlers) {
       let message;
       let res = true;
-      let slave = pu.startInstance('tcp', options, {}, 'slave_sync');
+      let slave = pu.startInstance('tcp', options, {}, 'slave_static');
       let state = (typeof slave === 'object');
 
       if (state) {

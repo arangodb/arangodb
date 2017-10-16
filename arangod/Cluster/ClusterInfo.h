@@ -125,7 +125,7 @@ class CollectionInfoCurrent {
 
   std::unordered_map<ShardID, int> errorNum() const {
     std::unordered_map<ShardID, int> m;
-    TRI_voc_size_t s;
+    int s;
 
     for (auto const& it: _vpacks) {
       s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(), "errorNum", 0);

@@ -31,6 +31,7 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Utils/OperationOptions.h"
+#include "VocBase/LocalDocumentId.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 
@@ -125,6 +126,7 @@ int syncChunkRocksDB(
   }
   TRI_ASSERT(numKeys > 0);
 
+  ManagedDocumentResult mmdr;
   size_t i = 0;
   size_t nextStart = 0;
 
@@ -186,18 +188,23 @@ int syncChunkRocksDB(
       toFetch.emplace_back(i);
     } else {
       // see if key exists
-      DocumentIdentifierToken token = physical->lookupKey(trx, keySlice);
-      if (token._data == 0) {
+      LocalDocumentId const documentId = physical->lookupKey(trx, keySlice);
+      if (!documentId.isSet()) {
         // key not found locally
         toFetch.emplace_back(i);
-      } else if (token._data !=
-                 basics::StringUtils::uint64(pair.at(1).copyString())) {
-        // key found, but revision id differs
-        toFetch.emplace_back(i);
-        ++nextStart;
       } else {
-        // a match - nothing to do!
-        ++nextStart;
+        TRI_voc_rid_t currentRevisionId = 0;
+        if (physical->readDocument(trx, documentId, mmdr)) {
+          currentRevisionId = transaction::helpers::extractRevFromDocument(VPackSlice(mmdr.vpack()));
+        }
+        if (TRI_RidToString(currentRevisionId) != pair.at(1).copyString()) {
+          // key found, but revision id differs
+          toFetch.emplace_back(i);
+          ++nextStart;
+        } else {
+          // a match - nothing to do!
+          ++nextStart;
+        }
       }
     }
 
@@ -312,9 +319,9 @@ int syncChunkRocksDB(
         return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
       }
 
-      DocumentIdentifierToken token = physical->lookupKey(trx, keySlice);
+      LocalDocumentId const documentId = physical->lookupKey(trx, keySlice);
 
-      if (!token._data) {
+      if (!documentId.isSet()) {
         // INSERT
         OperationResult opRes = trx->insert(collectionName, it, options);
         res = opRes.code;
@@ -448,7 +455,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
     std::unique_ptr<IndexIterator> iterator =
         ph->getSortedAllIterator(&trx, &mmdr);
     iterator->next(
-        [&](DocumentIdentifierToken const& token) {
+        [&](LocalDocumentId const& token) {
           if (coll->readDocument(&trx, token, mmdr) == false) {
             return;
           }
@@ -600,7 +607,7 @@ int handleSyncKeysRocksDB(InitialSyncer& syncer,
     std::unique_ptr<IndexIterator> iterator =
         ph->getSortedAllIterator(&trx, &mmdr);
     iterator->next(
-        [&](DocumentIdentifierToken const& token) {
+        [&](LocalDocumentId const& token) {
           if (col->readDocument(&trx, token, mmdr) == false) {
             return;
           }

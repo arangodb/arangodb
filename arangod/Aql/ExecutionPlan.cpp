@@ -121,6 +121,7 @@ static std::unique_ptr<graph::BaseOptions> CreateTraversalOptions(
                 arangodb::traverser::TraverserOptions::UniquenessLevel::GLOBAL;
           }
         } else if (name == "uniqueEdges" && value->isStringValue()) {
+          // path is the default
           if (value->stringEquals("none", true)) {
             options->uniqueEdges =
                 arangodb::traverser::TraverserOptions::UniquenessLevel::NONE;

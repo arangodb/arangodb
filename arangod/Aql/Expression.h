@@ -84,7 +84,7 @@ class Expression {
   /// @brief whether or not the expression can throw an exception
   inline bool canThrow() {
     if (_type == UNPROCESSED) {
-      analyzeExpression();
+      initExpression();
     }
     return _canThrow;
   }
@@ -92,7 +92,7 @@ class Expression {
   /// @brief whether or not the expression can safely run on a DB server
   inline bool canRunOnDBServer() {
     if (_type == UNPROCESSED) {
-      analyzeExpression();
+      initExpression();
     }
     return _canRunOnDBServer;
   }
@@ -100,7 +100,7 @@ class Expression {
   /// @brief whether or not the expression is deterministic
   inline bool isDeterministic() {
     if (_type == UNPROCESSED) {
-      analyzeExpression();
+      initExpression();
     }
     return _isDeterministic;
   }
@@ -133,7 +133,7 @@ class Expression {
   /// @brief check whether this is a JSON expression
   inline bool isJson() {
     if (_type == UNPROCESSED) {
-      analyzeExpression();
+      initExpression();
     }
     return _type == JSON;
   }
@@ -141,7 +141,7 @@ class Expression {
   /// @brief check whether this is a V8 expression
   inline bool isV8() {
     if (_type == UNPROCESSED) {
-      analyzeExpression();
+      initExpression();
     }
     return _type == V8;
   }
@@ -149,7 +149,7 @@ class Expression {
   /// @brief get expression type as string
   std::string typeString() {
     if (_type == UNPROCESSED) {
-      analyzeExpression();
+      initExpression();
     }
 
     switch (_type) {
@@ -213,14 +213,23 @@ class Expression {
   void clearVariable(Variable const* variable) { _variables.erase(variable); }
 
  private:
+  /// @brief free the internal data structures
+  void freeInternals() noexcept;
+
+  /// @brief reset internal attributes after variables in the expression were changed
+  void invalidateAfterReplacements();
 
   /// @brief find a value in an array
   bool findInArray(AqlValue const&, AqlValue const&,
                    transaction::Methods*,
                    AstNode const*) const;
 
+  void initConstantExpression();
+  void initSimpleExpression();
+  void initV8Expression();
+
   /// @brief analyze the expression (determine its type etc.)
-  void analyzeExpression();
+  void initExpression();
 
   /// @brief build the expression (if appropriate, compile it into
   /// executable code)
@@ -343,9 +352,7 @@ class Expression {
   /// if the expression is a constant, it will be stored as plain JSON instead
   union {
     V8Expression* _func;
-
     uint8_t* _data;
-
     AttributeAccessor* _accessor;
   };
 
@@ -364,9 +371,6 @@ class Expression {
   /// @brief whether or not the top-level attributes of the expression were
   /// determined
   bool _hasDeterminedAttributes;
-
-  /// @brief whether or not the expression has been built/compiled
-  bool _built;
 
   /// @brief the top-level attributes used in the expression, grouped
   /// by variable name

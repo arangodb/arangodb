@@ -53,6 +53,7 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionKeysRepository.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/replication-applier.h"
@@ -86,6 +87,15 @@ RestStatus MMFilesRestReplicationHandler::execute() {
   size_t const len = suffixes.size();
 
   if (len >= 1) {
+    // we are getting into trouble during the dumping of "_users"
+    // this workaround avoids the auth check in addCollectionAtRuntime
+    ExecContext* old = ExecContext::CURRENT;
+    if (old != nullptr && 
+        old->systemAuthLevel() != AuthLevel::NONE) {
+      ExecContext::CURRENT = nullptr;
+    }
+    TRI_DEFER(ExecContext::CURRENT = old);
+
     std::string const& command = suffixes[0];
 
     if (command == "logger-state") {

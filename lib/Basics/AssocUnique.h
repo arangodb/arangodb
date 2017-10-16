@@ -51,51 +51,30 @@ namespace basics {
 /// @brief associative array
 ////////////////////////////////////////////////////////////////////////////////
 
-template <class Key, class Element>
+template <class Key, class Element, class AssocUniqueHelper>
 class AssocUnique {
  private:
   typedef void UserData;
   typedef arangodb::basics::BucketPosition BucketPosition;
 
  public:
-  typedef std::function<uint64_t(UserData*, Key const*)> HashKeyFuncType;
-  typedef std::function<uint64_t(UserData*, Element const&)>
-      HashElementFuncType;
-  typedef std::function<bool(UserData*, Key const*, uint64_t hash,
-                             Element const&)>
-      IsEqualKeyElementFuncType;
-  typedef std::function<bool(UserData*, Element const&, Element const&)>
-      IsEqualElementElementFuncType;
-
   typedef std::function<bool(Element&)> CallbackElementFuncType;
 
   typedef arangodb::basics::IndexBucket<Element, uint64_t, SIZE_MAX> Bucket;
 
  private:
+  AssocUniqueHelper _helper;
   std::vector<Bucket> _buckets;
   size_t _bucketsMask;
-
-  HashKeyFuncType const _hashKey;
-  HashElementFuncType const _hashElement;
-  IsEqualKeyElementFuncType const _isEqualKeyElement;
-  IsEqualElementElementFuncType const _isEqualElementElement;
-  IsEqualElementElementFuncType const _isEqualElementElementByKey;
 
   std::function<std::string()> _contextCallback;
 
  public:
-  AssocUnique(HashKeyFuncType hashKey, HashElementFuncType hashElement,
-              IsEqualKeyElementFuncType isEqualKeyElement,
-              IsEqualElementElementFuncType isEqualElementElement,
-              IsEqualElementElementFuncType isEqualElementElementByKey,
+  AssocUnique(AssocUniqueHelper&& helper,
               size_t numberBuckets = 1,
               std::function<std::string()> contextCallback =
                   []() -> std::string { return ""; })
-      : _hashKey(hashKey),
-        _hashElement(hashElement),
-        _isEqualKeyElement(isEqualKeyElement),
-        _isEqualElementElement(isEqualElementElement),
-        _isEqualElementElementByKey(isEqualElementElementByKey),
+      : _helper(std::move(helper)),
         _contextCallback(contextCallback) {
     // Make the number of buckets a power of two:
     size_t ex = 0;
@@ -180,7 +159,7 @@ class AssocUnique {
 
         if (element) {
           uint64_t i, k;
-          i = k = _hashElement(userData, element) % n;
+          i = k = _helper.HashElement(userData, element, true) % n;
 
           for (; i < n && copy._table[i]; ++i)
             ;
@@ -251,12 +230,12 @@ class AssocUnique {
     uint64_t k = i;
 
     for (; i < n && b._table[i] &&
-           !_isEqualElementElementByKey(userData, element, b._table[i]);
+           !_helper.IsEqualElementElementByKey(userData, element, b._table[i]);
          ++i)
       ;
     if (i == n) {
       for (i = 0; i < k && b._table[i] &&
-                  !_isEqualElementElementByKey(userData, element, b._table[i]);
+                  !_helper.IsEqualElementElementByKey(userData, element, b._table[i]);
            ++i)
         ;
     }
@@ -371,7 +350,7 @@ class AssocUnique {
   //////////////////////////////////////////////////////////////////////////////
 
   Element find(UserData* userData, Element const& element) const {
-    uint64_t i = _hashElement(userData, element);
+    uint64_t i = _helper.HashElement(userData, element, true);
     Bucket const& b = _buckets[i & _bucketsMask];
 
     uint64_t const n = b._nrAlloc;
@@ -379,12 +358,12 @@ class AssocUnique {
     uint64_t k = i;
 
     for (; i < n && b._table[i] &&
-           !_isEqualElementElementByKey(userData, element, b._table[i]);
+           !_helper.IsEqualElementElementByKey(userData, element, b._table[i]);
          ++i)
       ;
     if (i == n) {
       for (i = 0; i < k && b._table[i] &&
-                  !_isEqualElementElementByKey(userData, element, b._table[i]);
+                  !_helper.IsEqualElementElementByKey(userData, element, b._table[i]);
            ++i)
         ;
     }
@@ -403,7 +382,7 @@ class AssocUnique {
   //////////////////////////////////////////////////////////////////////////////
 
   Element findByKey(UserData* userData, Key const* key) const {
-    uint64_t hash = _hashKey(userData, key);
+    uint64_t hash = _helper.HashKey(userData, key);
     uint64_t i = hash;
     uint64_t bucketId = i & _bucketsMask;
     Bucket const& b = _buckets[static_cast<size_t>(bucketId)];
@@ -413,12 +392,12 @@ class AssocUnique {
     uint64_t k = i;
 
     for (; i < n && b._table[i] &&
-           !_isEqualKeyElement(userData, key, hash, b._table[i]);
+           !_helper.IsEqualKeyElement(userData, key, b._table[i]);
          ++i)
       ;
     if (i == n) {
       for (i = 0; i < k && b._table[i] &&
-                  !_isEqualKeyElement(userData, key, hash, b._table[i]);
+                  !_helper.IsEqualKeyElement(userData, key, b._table[i]);
            ++i)
         ;
     }
@@ -432,7 +411,7 @@ class AssocUnique {
   }
 
   Element* findByKeyRef(UserData* userData, Key const* key) const {
-    uint64_t hash = _hashKey(userData, key);
+    uint64_t hash = _helper.HashKey(userData, key);
     uint64_t i = hash;
     uint64_t bucketId = i & _bucketsMask;
     Bucket const& b = _buckets[static_cast<size_t>(bucketId)];
@@ -442,12 +421,12 @@ class AssocUnique {
     uint64_t k = i;
 
     for (; i < n && b._table[i] &&
-           !_isEqualKeyElement(userData, key, hash, b._table[i]);
+           !_helper.IsEqualKeyElement(userData, key, b._table[i]);
          ++i)
       ;
     if (i == n) {
       for (i = 0; i < k && b._table[i] &&
-                  !_isEqualKeyElement(userData, key, hash, b._table[i]);
+                  !_helper.IsEqualKeyElement(userData, key, b._table[i]);
            ++i)
         ;
     }
@@ -469,7 +448,7 @@ class AssocUnique {
 
   Element findByKey(UserData* userData, Key const* key,
                     BucketPosition& position, uint64_t& hash) const {
-    hash = _hashKey(userData, key);
+    hash = _helper.HashKey(userData, key);
     uint64_t i = hash;
     uint64_t bucketId = i & _bucketsMask;
     Bucket const& b = _buckets[static_cast<size_t>(bucketId)];
@@ -479,12 +458,12 @@ class AssocUnique {
     uint64_t k = i;
 
     for (; i < n && b._table[i] &&
-           !_isEqualKeyElement(userData, key, hash, b._table[i]);
+           !_helper.IsEqualKeyElement(userData, key, b._table[i]);
          ++i)
       ;
     if (i == n) {
       for (i = 0; i < k && b._table[i] &&
-                  !_isEqualKeyElement(userData, key, hash, b._table[i]);
+                  !_helper.IsEqualKeyElement(userData, key, b._table[i]);
            ++i)
         ;
     }
@@ -507,7 +486,7 @@ class AssocUnique {
   //////////////////////////////////////////////////////////////////////////////
 
   int insert(UserData* userData, Element const& element) {
-    uint64_t hash = _hashElement(userData, element);
+    uint64_t hash = _helper.HashElement(userData, element, true);
     Bucket& b = _buckets[hash & _bucketsMask];
 
     if (!checkResize(userData, b, 0)) {
@@ -624,7 +603,7 @@ class AssocUnique {
         }
 
         std::shared_ptr<Partitioner> worker;
-        worker.reset(new Partitioner(queue, _hashElement, contextDestroyer,
+        worker.reset(new Partitioner(queue, AssocUniqueHelper::HashElement, contextDestroyer,
                                      data, lower, upper, contextCreator(),
                                      bucketFlags, bucketMapLocker, allBuckets,
                                      inserters));
@@ -657,7 +636,7 @@ class AssocUnique {
     uint64_t k = TRI_IncModU64(i, n);
 
     while (b._table[k]) {
-      uint64_t j = _hashElement(userData, b._table[k]) % n;
+      uint64_t j = _helper.HashElement(userData, b._table[k], true) % n;
 
       if ((i < k && !(i < j && j <= k)) || (k < i && !(i < j || j <= k))) {
         b._table[i] = b._table[k];
@@ -680,7 +659,7 @@ class AssocUnique {
   //////////////////////////////////////////////////////////////////////////////
 
   Element removeByKey(UserData* userData, Key const* key) {
-    uint64_t hash = _hashKey(userData, key);
+    uint64_t hash = _helper.HashKey(userData, key);
     uint64_t i = hash;
     Bucket& b = _buckets[i & _bucketsMask];
 
@@ -689,12 +668,12 @@ class AssocUnique {
     uint64_t k = i;
 
     for (; i < n && b._table[i] &&
-           !_isEqualKeyElement(userData, key, hash, b._table[i]);
+           !_helper.IsEqualKeyElement(userData, key, b._table[i]);
          ++i)
       ;
     if (i == n) {
       for (i = 0; i < k && b._table[i] &&
-                  !_isEqualKeyElement(userData, key, hash, b._table[i]);
+                  !_helper.IsEqualKeyElement(userData, key, b._table[i]);
            ++i)
         ;
     }
@@ -713,7 +692,7 @@ class AssocUnique {
   //////////////////////////////////////////////////////////////////////////////
 
   Element remove(UserData* userData, Element const& element) {
-    uint64_t i = _hashElement(userData, element);
+    uint64_t i = _helper.HashElement(userData, element, true);
     Bucket& b = _buckets[i & _bucketsMask];
 
     uint64_t const n = b._nrAlloc;
@@ -721,12 +700,12 @@ class AssocUnique {
     uint64_t k = i;
 
     for (; i < n && b._table[i] &&
-           !_isEqualElementElement(userData, element, b._table[i]);
+           !_helper.IsEqualElementElement(userData, element, b._table[i]);
          ++i)
       ;
     if (i == n) {
       for (i = 0; i < k && b._table[i] &&
-                  !_isEqualElementElement(userData, element, b._table[i]);
+                  !_helper.IsEqualElementElement(userData, element, b._table[i]);
            ++i)
         ;
     }

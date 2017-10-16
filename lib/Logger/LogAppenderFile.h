@@ -32,7 +32,7 @@ class LogAppenderStream : public LogAppender {
   LogAppenderStream(std::string const& filename, std::string const& filter, int fd);
   ~LogAppenderStream() {}
 
-  bool logMessage(LogLevel, std::string const& message,
+  void logMessage(LogLevel, std::string const& message,
                   size_t offset) override final;
 
   virtual std::string details() override = 0;
@@ -56,8 +56,8 @@ class LogAppenderStream : public LogAppender {
   /// @brief file descriptor 
   int _fd;
   
-  /// @brief whether or not the outfile is a tty 
-  bool _isTty;
+  /// @brief whether or not we should use colors
+  bool _useColors;
 };
 
 class LogAppenderFile : public LogAppenderStream {
@@ -85,7 +85,7 @@ class LogAppenderStdStream : public LogAppenderStream {
 
   std::string details() override final { return std::string(); }
   
-  static void writeLogMessage(int fd, bool isTty, LogLevel, char const* p, size_t length, bool appendNewline);
+  static void writeLogMessage(int fd, bool useColors, LogLevel, char const* p, size_t length, bool appendNewline);
 
  private:
   void writeLogMessage(LogLevel, char const*, size_t) override final;

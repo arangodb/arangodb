@@ -225,6 +225,7 @@ void TRI_InitializeErrorMessages () {
   REG_ERROR(ERROR_USER_DUPLICATE, "duplicate user");
   REG_ERROR(ERROR_USER_NOT_FOUND, "user not found");
   REG_ERROR(ERROR_USER_CHANGE_PASSWORD, "user must change his password");
+  REG_ERROR(ERROR_USER_EXTERNAL, "user is external");
   REG_ERROR(ERROR_SERVICE_INVALID_NAME, "invalid service name");
   REG_ERROR(ERROR_SERVICE_INVALID_MOUNT, "invalid mount");
   REG_ERROR(ERROR_SERVICE_DOWNLOAD_FAILED, "service download failed");

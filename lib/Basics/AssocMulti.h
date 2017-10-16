@@ -94,8 +94,8 @@ namespace basics {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-template <class Key, class Element, class IndexType = size_t,
-          bool useHashCache = true>
+template <class Key, class Element, class IndexType,
+          bool useHashCache, class AssocMultiHelper>
 class AssocMulti {
  private:
   typedef void UserData;
@@ -103,13 +103,6 @@ class AssocMulti {
  public:
   static IndexType const INVALID_INDEX = ((IndexType)0) - 1;
 
-  typedef std::function<uint64_t(UserData*, Key const*)> HashKeyFuncType;
-  typedef std::function<uint64_t(UserData*, Element const&, bool)>
-      HashElementFuncType;
-  typedef std::function<bool(UserData*, Key const*, Element const&)>
-      IsEqualKeyElementFuncType;
-  typedef std::function<bool(UserData*, Element const&, Element const&)>
-      IsEqualElementElementFuncType;
   typedef std::function<bool(Element&)> CallbackElementFuncType;
 
  private:
@@ -117,6 +110,7 @@ class AssocMulti {
 
   typedef arangodb::basics::IndexBucket<EntryType, IndexType, SIZE_MAX> Bucket;
 
+  AssocMultiHelper _helper;
   std::vector<Bucket> _buckets;
   size_t _bucketsMask;
 
@@ -133,24 +127,15 @@ class AssocMulti {
   uint64_t _nrProbesD;  // statistics: number of misses while removing
 #endif
 
-  HashKeyFuncType const _hashKey;
-  HashElementFuncType const _hashElement;
-  IsEqualKeyElementFuncType const _isEqualKeyElement;
-  IsEqualElementElementFuncType const _isEqualElementElement;
-  IsEqualElementElementFuncType const _isEqualElementElementByKey;
-
   std::function<std::string()> _contextCallback;
   IndexType _initialSize;
 
  public:
-  AssocMulti(HashKeyFuncType hashKey, HashElementFuncType hashElement,
-             IsEqualKeyElementFuncType isEqualKeyElement,
-             IsEqualElementElementFuncType isEqualElementElement,
-             IsEqualElementElementFuncType isEqualElementElementByKey,
+  AssocMulti(AssocMultiHelper&& helper,
              size_t numberBuckets = 1, IndexType initialSize = 64,
              std::function<std::string()> contextCallback =
                  []() -> std::string { return ""; })
-      :
+      : _helper(std::move(helper)),
 #ifdef TRI_INTERNAL_STATS
         _nrFinds(0),
         _nrAdds(0),
@@ -160,11 +145,6 @@ class AssocMulti {
         _nrProbesF(0),
         _nrProbesD(0),
 #endif
-        _hashKey(hashKey),
-        _hashElement(hashElement),
-        _isEqualKeyElement(isEqualKeyElement),
-        _isEqualElementElement(isEqualElementElement),
-        _isEqualElementElementByKey(isEqualElementElementByKey),
         _contextCallback(contextCallback),
         _initialSize(initialSize) {
 
@@ -272,7 +252,7 @@ class AssocMulti {
 #endif
 
     // compute the hash by the key only first
-    uint64_t hashByKey = _hashElement(userData, element, true);
+    uint64_t hashByKey = _helper.HashElement(userData, element, true);
     Bucket& b = _buckets[hashByKey & _bucketsMask];
 
     auto result =
@@ -360,7 +340,7 @@ class AssocMulti {
         }
 
         std::shared_ptr<Partitioner> worker;
-        worker.reset(new Partitioner(queue, _hashElement, contextDestroyer,
+        worker.reset(new Partitioner(queue, AssocMultiHelper::HashElement, contextDestroyer,
                                      data, lower, upper, contextCreator(),
                                      bucketFlags, bucketMapLocker, allBuckets,
                                      inserters));
@@ -466,7 +446,7 @@ class AssocMulti {
         b._table[i].value &&
         (b._table[i].prev != INVALID_INDEX ||
          (useHashCache && b._table[i].readHashCache() != hashByKey) ||
-         !_isEqualElementElementByKey(userData, element, b._table[i].value))) {
+         !_helper.IsEqualElementElementByKey(userData, element, b._table[i].value))) {
       i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
       // update statistics
@@ -491,7 +471,7 @@ class AssocMulti {
     // list of which we want to make element a member. Perhaps an
     // equal element is right here:
     if (checkEquality &&
-        _isEqualElementElement(userData, element, b._table[i].value)) {
+        _helper.IsEqualElementElement(userData, element, b._table[i].value)) {
       Element old = b._table[i].value;
       if (overwrite) {
         TRI_ASSERT(!useHashCache || b._table[i].readHashCache() == hashByKey);
@@ -694,7 +674,7 @@ class AssocMulti {
     }
 
     // compute the hash
-    uint64_t hashByKey = _hashKey(userData, key);
+    uint64_t hashByKey = _helper.HashKey(userData, key);
     Bucket const& b = _buckets[hashByKey & _bucketsMask];
     IndexType hashIndex = hashToIndex(hashByKey);
     IndexType i = hashIndex % b._nrAlloc;
@@ -708,7 +688,7 @@ class AssocMulti {
     while (b._table[i].value &&
            (b._table[i].prev != INVALID_INDEX ||
             (useHashCache && b._table[i].readHashCache() != hashByKey) ||
-            !_isEqualKeyElement(userData, key, b._table[i].value))) {
+            !_helper.IsEqualKeyElement(userData, key, b._table[i].value))) {
       i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
       _nrProbesF++;
@@ -757,7 +737,7 @@ class AssocMulti {
     }
 
     // compute the hash
-    uint64_t hashByKey = _hashElement(userData, element, true);
+    uint64_t hashByKey = _helper.HashElement(userData, element, true);
     Bucket const& b = _buckets[hashByKey & _bucketsMask];
     IndexType hashIndex = hashToIndex(hashByKey);
     IndexType i = hashIndex % b._nrAlloc;
@@ -772,7 +752,7 @@ class AssocMulti {
         b._table[i].value &&
         (b._table[i].prev != INVALID_INDEX ||
          (useHashCache && b._table[i].readHashCache() != hashByKey) ||
-         !_isEqualElementElementByKey(userData, element, b._table[i].value))) {
+         !_helper.IsEqualElementElementByKey(userData, element, b._table[i].value))) {
       i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
       _nrProbesF++;
@@ -822,7 +802,7 @@ class AssocMulti {
       return;
     }
 
-    uint64_t hashByKey = _hashElement(userData, element, true);
+    uint64_t hashByKey = _helper.HashElement(userData, element, true);
     Bucket const& b = _buckets[hashByKey & _bucketsMask];
     uint64_t hashByElm;
     IndexType i = findElementPlace(userData, b, element, true, hashByElm);
@@ -838,7 +818,7 @@ class AssocMulti {
       while (b._table[i].value &&
              (b._table[i].prev != INVALID_INDEX ||
               (useHashCache && b._table[i].readHashCache() != hashByKey) ||
-              !_isEqualElementElementByKey(userData, element,
+              !_helper.IsEqualElementElementByKey(userData, element,
                                            b._table[i].value))) {
         i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
@@ -935,7 +915,7 @@ class AssocMulti {
         if (useHashCache) {
           // We need to exchange the hashCache value by that of the key:
           b->_table[i].writeHashCache(
-              _hashElement(userData, b->_table[i].value, true));
+              _helper.HashElement(userData, b->_table[i].value, true));
         }
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
         check(userData, false, false);
@@ -1063,7 +1043,7 @@ class AssocMulti {
           if (useHashCache) {
             hashByKey = oldTable[j].readHashCache();
           } else {
-            hashByKey = _hashElement(userData, oldTable[j].value, true);
+            hashByKey = _helper.HashElement(userData, oldTable[j].value, true);
           }
           IndexType insertPosition =
               insertFirst(userData, copy, oldTable[j].value, hashByKey);
@@ -1078,7 +1058,7 @@ class AssocMulti {
             if (useHashCache) {
               hashByElm = oldTable[k].readHashCache();
             } else {
-              hashByElm = _hashElement(userData, oldTable[k].value, false);
+              hashByElm = _helper.HashElement(userData, oldTable[k].value, false);
             }
             insertFurther(userData, copy, oldTable[k].value, hashByKey,
                           hashByElm, insertPosition);
@@ -1147,7 +1127,7 @@ class AssocMulti {
             if (b._table[i].prev == INVALID_INDEX) {
               // We are the first in a linked list.
               uint64_t hashByKey =
-                  _hashElement(userData, b._table[i].value, true);
+                  _helper.HashElement(userData, b._table[i].value, true);
               hashIndex = hashToIndex(hashByKey);
               j = hashIndex % b._nrAlloc;
               if (useHashCache && b._table[i].readHashCache() != hashByKey) {
@@ -1156,7 +1136,7 @@ class AssocMulti {
               for (k = j; k != i;) {
                 if (!b._table[k].value ||
                     (b._table[k].prev == INVALID_INDEX &&
-                     _isEqualElementElementByKey(userData, b._table[i].value,
+                     _helper.IsEqualElementElementByKey(userData, b._table[i].value,
                                                  b._table[k].value))) {
                   ok = false;
                   std::cout << "Alarm pos bykey: " << i << std::endl;
@@ -1166,7 +1146,7 @@ class AssocMulti {
             } else {
               // We are not the first in a linked list.
               uint64_t hashByElm =
-                  _hashElement(userData, b._table[i].value, false);
+                  _helper.HashElement(userData, b._table[i].value, false);
               hashIndex = hashToIndex(hashByElm);
               j = hashIndex % b._nrAlloc;
               if (useHashCache && b._table[i].readHashCache() != hashByElm) {
@@ -1174,7 +1154,7 @@ class AssocMulti {
               }
               for (k = j; k != i;) {
                 if (!b._table[k].value ||
-                    _isEqualElementElement(userData, b._table[i].value,
+                    _helper.IsEqualElementElement(userData, b._table[i].value,
                                            b._table[k].value)) {
                   ok = false;
                   std::cout << "Alarm unique: " << k << ", " << i << std::endl;
@@ -1209,14 +1189,14 @@ class AssocMulti {
     // pointer into the table, which is either empty or points to
     // an entry that compares equal to element.
 
-    hashByElm = _hashElement(userData, element, false);
+    hashByElm = _helper.HashElement(userData, element, false);
     IndexType hashindex = hashToIndex(hashByElm);
     IndexType i = hashindex % b._nrAlloc;
 
     while (b._table[i].value &&
            (!checkEquality ||
             (useHashCache && b._table[i].readHashCache() != hashByElm) ||
-            !_isEqualElementElement(userData, element, b._table[i].value))) {
+            !_helper.IsEqualElementElement(userData, element, b._table[i].value))) {
       i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
       _nrProbes++;
@@ -1234,7 +1214,7 @@ class AssocMulti {
     // This performs a complete lookup for an element. It returns a slot
     // number. This slot is either empty or contains an element that
     // compares equal to element.
-    uint64_t hashByKey = _hashElement(userData, element, true);
+    uint64_t hashByKey = _helper.HashElement(userData, element, true);
     Bucket const& b = _buckets[hashByKey & _bucketsMask];
     buck = const_cast<Bucket*>(&b);
     IndexType hashIndex = hashToIndex(hashByKey);
@@ -1246,7 +1226,7 @@ class AssocMulti {
         b._table[i].value &&
         (b._table[i].prev != INVALID_INDEX ||
          (useHashCache && b._table[i].readHashCache() != hashByKey) ||
-         !_isEqualElementElementByKey(userData, element, b._table[i].value))) {
+         !_helper.IsEqualElementElementByKey(userData, element, b._table[i].value))) {
       i = incr(b, i);
 #ifdef TRI_INTERNAL_STATS
       _nrProbes++;
@@ -1255,7 +1235,7 @@ class AssocMulti {
 
     if (b._table[i].value) {
       // It might be right here!
-      if (_isEqualElementElement(userData, element, b._table[i].value)) {
+      if (_helper.IsEqualElementElement(userData, element, b._table[i].value)) {
         return i;
       }
 
@@ -1326,7 +1306,7 @@ class AssocMulti {
       // Find out where this element ought to be:
       // If it is the start of one of the linked lists, we need to hash
       // by key, otherwise, we hash by the full identity of the element:
-      uint64_t hash = _hashElement(userData, b._table[j].value,
+      uint64_t hash = _helper.HashElement(userData, b._table[j].value,
                                    b._table[j].prev == INVALID_INDEX);
       IndexType hashIndex = hashToIndex(hash);
       IndexType k = hashIndex % b._nrAlloc;

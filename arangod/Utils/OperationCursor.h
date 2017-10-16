@@ -48,7 +48,6 @@ struct OperationCursor {
   std::unique_ptr<IndexIterator> _indexIterator;
   bool _hasMore;
   uint64_t _limit;
-  uint64_t const _originalLimit;
   uint64_t const _batchSize;
 
  public:
@@ -56,20 +55,14 @@ struct OperationCursor {
       : code(code),
         _hasMore(false),
         _limit(0),
-        _originalLimit(0),
         _batchSize(1000) {}
 
-  OperationCursor(IndexIterator* iterator, uint64_t limit, uint64_t batchSize)
+  OperationCursor(IndexIterator* iterator, uint64_t batchSize)
       : code(TRI_ERROR_NO_ERROR),
         _indexIterator(iterator),
-        _hasMore(true),
-        _limit(limit),  // _limit is modified later on
-        _originalLimit(limit),
-        _batchSize(batchSize) {
-    if (_indexIterator == nullptr) {
-      _hasMore = false;
-    }
-  }
+        _hasMore(_indexIterator != nullptr),
+        _limit(UINT64_MAX),  // _limit is modified later on
+        _batchSize(batchSize) {}
 
   ~OperationCursor() {}
   
@@ -79,7 +72,12 @@ struct OperationCursor {
   
   LogicalCollection* collection() const;
 
-  bool hasMore();
+  inline bool hasMore() {
+    if (_hasMore && _limit == 0) {
+      _hasMore = false;
+    }
+    return _hasMore;
+  }
 
   bool successful() const {
     return code == TRI_ERROR_NO_ERROR;
@@ -95,7 +93,7 @@ struct OperationCursor {
   void reset();
 
 /// @brief Calls cb for the next batchSize many elements 
-  bool next(IndexIterator::TokenCallback const& callback,
+  bool next(IndexIterator::LocalDocumentIdCallback const& callback,
       uint64_t batchSize);
   
 /// @brief Calls cb for the next batchSize many elements 
@@ -106,7 +104,7 @@ struct OperationCursor {
                     uint64_t batchSize);
   
 /// @brief convenience function to retrieve all results
-  void all(IndexIterator::TokenCallback const& callback) {
+  void all(IndexIterator::LocalDocumentIdCallback const& callback) {
     while (next(callback, 1000)) {}
   }
 

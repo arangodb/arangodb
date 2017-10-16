@@ -354,7 +354,7 @@ static int distributeBabyOnShards(
     ClusterInfo* ci, std::string const& collid,
     std::shared_ptr<LogicalCollection> collinfo,
     std::vector<std::pair<ShardID, VPackValueLength>>& reverseMapping,
-    VPackSlice const node, VPackValueLength const index) {
+    VPackSlice const node, VPackValueLength const index, bool isRestore) {
   ShardID shardID;
   bool userSpecifiedKey = false;
   std::string _key = "";
@@ -402,7 +402,8 @@ static int distributeBabyOnShards(
 
     // Now perform the above mentioned check:
     if (userSpecifiedKey &&
-        (!usesDefaultShardingAttributes || !collinfo->allowUserKeys())) {
+        (!usesDefaultShardingAttributes || !collinfo->allowUserKeys()) &&
+        !isRestore) {
       return TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
     }
   }
@@ -973,14 +974,15 @@ int createDocumentOnCoordinator(
     VPackValueLength length = slice.length();
     for (VPackValueLength idx = 0; idx < length; ++idx) {
       res = distributeBabyOnShards(shardMap, ci, collid, collinfo,
-                                   reverseMapping, slice.at(idx), idx);
+                                   reverseMapping, slice.at(idx), idx,
+                                   options.isRestore);
       if (res != TRI_ERROR_NO_ERROR) {
         return res;
       }
     }
   } else {
     res = distributeBabyOnShards(shardMap, ci, collid, collinfo, reverseMapping,
-                                 slice, 0);
+                                 slice, 0, options.isRestore);
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
     }
@@ -992,7 +994,8 @@ int createDocumentOnCoordinator(
   std::string const optsUrlPart =
       std::string("&waitForSync=") + (options.waitForSync ? "true" : "false") +
       "&returnNew=" + (options.returnNew ? "true" : "false") + "&returnOld=" +
-      (options.returnOld ? "true" : "false");
+      (options.returnOld ? "true" : "false") + "&isRestore=" +
+      (options.isRestore ? "true" : "false");
 
   VPackBuilder reqBuilder;
 
@@ -1707,7 +1710,12 @@ int fetchEdgesFromEngines(
         resSlice, "readIndex", 0);
     VPackSlice edges = resSlice.get("edges");
     for (auto const& e : VPackArrayIterator(edges)) {
-      VPackSlice id = transaction::helpers::extractIdFromDocument(e);
+      VPackSlice id = e.get(StaticStrings::IdString);
+      if (!id.isString()) {
+        // invalid id type
+        LOG_TOPIC(ERR, Logger::FIXME) << "got invalid edge id type: " << id.typeName();
+        continue;
+      }
       StringRef idRef(id);
       auto resE = cache.find(idRef);
       if (resE == cache.end()) {
@@ -1809,7 +1817,13 @@ void fetchVerticesFromEngines(
       }
       TRI_ASSERT(result.find(key) == result.end());
       auto val = VPackBuilder::clone(pair.value);
-      VPackSlice id = transaction::helpers::extractIdFromDocument(val.slice());
+
+      VPackSlice id = val.slice().get(StaticStrings::IdString);
+      if (!id.isString()) {
+        // invalid id type
+        LOG_TOPIC(ERR, Logger::FIXME) << "got invalid edge id type: " << id.typeName();
+        continue;
+      }
       TRI_ASSERT(id.isString());
       result.emplace(StringRef(id), val.steal());
     }
@@ -2129,7 +2143,8 @@ int modifyDocumentOnCoordinator(
   std::string optsUrlPart =
       std::string("?waitForSync=") + (options.waitForSync ? "true" : "false");
   optsUrlPart +=
-      std::string("&ignoreRevs=") + (options.ignoreRevs ? "true" : "false");
+      std::string("&ignoreRevs=") + (options.ignoreRevs ? "true" : "false") +
+      std::string("&isRestore=") + (options.isRestore ? "true" : "false");
 
   arangodb::rest::RequestType reqType;
   if (isPatch) {
@@ -2689,7 +2704,12 @@ int fetchEdgesFromEngines(
         resSlice, "readIndex", 0);
     VPackSlice edges = resSlice.get("edges");
     for (auto const& e : VPackArrayIterator(edges)) {
-      VPackSlice id = transaction::helpers::extractIdFromDocument(e);
+      VPackSlice id = e.get(StaticStrings::IdString);
+      if (!id.isString()) {
+        // invalid id type
+        LOG_TOPIC(ERR, Logger::FIXME) << "got invalid edge id type: " << id.typeName();
+        continue;
+      }
       StringRef idRef(id);
       auto resE = cache.find(idRef);
       if (resE == cache.end()) {

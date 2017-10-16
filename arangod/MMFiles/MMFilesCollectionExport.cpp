@@ -115,7 +115,7 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
 
     MMFilesCollection* mmColl = MMFilesCollection::toMMFilesCollection(_collection);
     ManagedDocumentResult mmdr;
-    trx.invokeOnAllElements(_collection->name(), [this, &limit, &trx, &mmdr, mmColl](DocumentIdentifierToken const& token) {
+    trx.invokeOnAllElements(_collection->name(), [this, &limit, &trx, &mmdr, mmColl](LocalDocumentId const& token) {
       if (limit == 0) {
         return false;
       }

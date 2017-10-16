@@ -292,7 +292,7 @@ MMFilesCompactorThread::CompactionInitialContext MMFilesCompactorThread::getComp
         MMFilesSimpleIndexElement element = primaryIndex->lookupKey(context._trx, keySlice);
         if (element) {
           MMFilesDocumentPosition const old =
-              physical->lookupRevision(element.revisionId());
+              physical->lookupDocument(element.localDocumentId());
           markerPtr = reinterpret_cast<MMFilesMarker const*>(
               static_cast<uint8_t const*>(old.dataptr()) -
               MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
@@ -386,7 +386,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
       MMFilesMarker const* markerPtr = nullptr;
       MMFilesSimpleIndexElement element = primaryIndex->lookupKey(context->_trx, keySlice);
       if (element) {
-        MMFilesDocumentPosition const old = physical->lookupRevision(element.revisionId());
+        MMFilesDocumentPosition const old = physical->lookupDocument(element.localDocumentId());
         markerPtr = reinterpret_cast<MMFilesMarker const*>(static_cast<uint8_t const*>(old.dataptr()) - MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT));
       }
         
@@ -409,7 +409,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
 
       // let marker point to the new position
       uint8_t const* dataptr = reinterpret_cast<uint8_t const*>(result) + MMFilesDatafileHelper::VPackOffset(TRI_DF_MARKER_VPACK_DOCUMENT);
-      physical->updateRevision(element.revisionId(), dataptr, targetFid, false);
+      physical->updateLocalDocumentId(element.localDocumentId(), dataptr, targetFid, false);
 
       context->_dfi.numberAlive++;
       context->_dfi.sizeAlive += MMFilesDatafileHelper::AlignedMarkerSize<int64_t>(marker);
@@ -455,7 +455,7 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   // we are re-using the _fid of the first original datafile!
   MMFilesDatafile* compactor = nullptr;
   try {
-    compactor = physical->createCompactor(initial._fid, static_cast<TRI_voc_size_t>(initial._targetSize));
+    compactor = physical->createCompactor(initial._fid, static_cast<uint32_t>(initial._targetSize));
   } catch (std::exception const& ex) {
     LOG_TOPIC(ERR, Logger::COMPACTOR) << "could not create compactor file: " << ex.what();
     return;

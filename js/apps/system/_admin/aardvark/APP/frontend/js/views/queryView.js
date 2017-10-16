@@ -1132,6 +1132,7 @@
       this.aqlEditor = ace.edit('aqlEditor');
       this.aqlEditor.$blockScrolling = Infinity;
       this.aqlEditor.getSession().setMode('ace/mode/aql');
+      this.aqlEditor.getSession().setUseWrapMode(true);
       this.aqlEditor.setFontSize('10pt');
       this.aqlEditor.setShowPrintMargin(false);
 

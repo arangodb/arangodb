@@ -50,7 +50,7 @@ function appendHeader() {
     '      <a href="#" data-book="HTTP">HTTP</a>\n' +
     '    </li>\n' +
     '    <li>\n' +
-    '      <a href="#" data-book="cookbook">Cookbook</a>\n' +
+    '      <a href="#" data-book="Cookbook">Cookbook</a>\n' +
     '    </li>\n' +
     '    <li class="downloadIcon" title="Download">\n' +
     '      <a href="https://www.arangodb.com/download-arangodb-docs" target="_blank">\n' +
@@ -131,7 +131,7 @@ function appendHeader() {
         "Manual": "",
         "AQL": "/Aql",
         "HTTP": "/HttpApi",
-        "cookbook": "/cookbook"
+        "Cookbook": "/Cookbook"
       };
       currentBook = legacyMap[currentBook];
     } else {
