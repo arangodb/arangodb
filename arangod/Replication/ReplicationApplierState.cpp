@@ -50,7 +50,7 @@ ReplicationApplierState::ReplicationApplierState()
 ReplicationApplierState::~ReplicationApplierState() {}
 
 ReplicationApplierState& ReplicationApplierState::operator=(ReplicationApplierState const& other) {
-  reset();
+  reset(true);
 
   _state = other._state;
   _lastAppliedContinuousTick = other._lastAppliedContinuousTick;
@@ -74,12 +74,11 @@ ReplicationApplierState& ReplicationApplierState::operator=(ReplicationApplierSt
   return *this;
 }
 
-void ReplicationApplierState::reset() {
+void ReplicationApplierState::reset(bool resetState) {
   _lastProcessedContinuousTick = 0;
   _lastAppliedContinuousTick = 0;
   _lastAvailableContinuousTick = 0;
   _safeResumeTick = 0;
-  _state = ActivityState::INACTIVE;
   _preventStart = false;
   _stopInitialSynchronization = false;
   _progressMsg.clear();
@@ -92,6 +91,10 @@ void ReplicationApplierState::reset() {
   _totalFailedConnects = 0;
   _totalEvents = 0;
   _skippedOperations = 0;
+  
+  if (resetState) {
+    _state = ActivityState::INACTIVE;
+  }
 }
 
 void ReplicationApplierState::toVelocyPack(VPackBuilder& result, bool full) const {

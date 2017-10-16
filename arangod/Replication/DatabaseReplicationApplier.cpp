@@ -55,7 +55,7 @@ DatabaseReplicationApplier::DatabaseReplicationApplier(ReplicationApplierConfigu
 
 DatabaseReplicationApplier::~DatabaseReplicationApplier() {
   try {
-    stop(true);
+    stop();
   } catch (...) {}
 }
   
@@ -82,7 +82,7 @@ void DatabaseReplicationApplier::forget() {
   }
   // TODO: move to ReplicationApplier
 
-  stopAndJoin(true);
+  stopAndJoin();
 
   removeState();
 

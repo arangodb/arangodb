@@ -61,19 +61,21 @@ class ReplicationApplier {
   
   /// @brief test if the replication applier is running
   bool isRunning() const;
-  bool isTerminated() const { return _terminateThread.load(); }
 
   /// @brief set the applier state to stopped
   void markThreadStopped();
   
   /// @brief start the replication applier
-  virtual void start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
+  void start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc_tick_t barrierId);
+  
+  /// @brief stop the replication applier, resets the error message
+  void stop();
   
   /// @brief stop the replication applier
-  virtual void stop(bool resetError);
+  void stop(Result const& r);
   
   /// @brief stop the replication applier and join the apply thread
-  virtual void stopAndJoin(bool resetError);
+  void stopAndJoin();
   
   /// @brief sleeps for the specific number of microseconds if the
   /// applier is still active, and returns true. if the applier is not
@@ -86,19 +88,19 @@ class ReplicationApplier {
   /// @brief load the applier state from persistent storage
   /// must currently be called while holding the write-lock
   /// returns whether a previous state was found
-  virtual bool loadState();
+  bool loadState();
 
   /// @brief store the configuration for the applier
   virtual void storeConfiguration(bool doSync) = 0;
 
   /// @brief remove the replication application state file
-  virtual void removeState();
+  void removeState();
   
   /// @brief store the applier state in persistent storage
-  virtual void persistState(bool doSync);
+  void persistState(bool doSync);
  
   /// @brief store the current applier state in the passed vpack builder 
-  virtual void toVelocyPack(arangodb::velocypack::Builder& result) const;
+  void toVelocyPack(arangodb::velocypack::Builder& result) const;
   
   /// @brief return the current configuration
   ReplicationApplierConfiguration configuration() const;
@@ -133,7 +135,7 @@ class ReplicationApplier {
 
  private:
   /// @brief stop the replication applier and join the apply thread
-  void doStop(bool resetError, bool joinThread);
+  void doStop(Result const& r, bool joinThread);
 
   static void readTick(arangodb::velocypack::Slice const& slice, 
                        char const* attributeName,
@@ -153,7 +155,6 @@ class ReplicationApplier {
   ReplicationApplierState _state;
   /// @brief workaround for deadlock in stop() method
   /// check for termination without needing _statusLock
-  std::atomic<bool> _terminateThread;
   mutable arangodb::basics::ReadWriteLock _statusLock;
 
   // used only for logging

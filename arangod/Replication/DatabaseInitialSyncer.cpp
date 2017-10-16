@@ -706,10 +706,8 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
 
   // now we can fetch the complete chunk information from the master
   try {
-    std::string errorMsg;
-    int res = EngineSelectorFeature::ENGINE->handleSyncKeys(
-        *this, col, id.copyString(), cid, collectionName, maxTick, errorMsg);
-    return Result(res, errorMsg);
+    return EngineSelectorFeature::ENGINE->handleSyncKeys(
+        *this, col, id.copyString(), cid, collectionName, maxTick);
   } catch (arangodb::basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {

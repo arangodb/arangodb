@@ -47,7 +47,7 @@ struct ReplicationApplierState {
   
   ReplicationApplierState& operator=(ReplicationApplierState const& other);
 
-  void reset();
+  void reset(bool resetState);
   void toVelocyPack(arangodb::velocypack::Builder& result, bool full) const;
 
   bool hasProcessedSomething() const {

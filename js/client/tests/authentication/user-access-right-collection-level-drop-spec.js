@@ -135,7 +135,6 @@ describe('User Rights Management', () => {
                       expect(col.document('123')._key).to.equal('123', 'Precondition failed, document does not exist.');
                     }
                     col.remove('123');
-                    print("was able to remove document " + name + " >>>>>>>>>>>>>>>>>>");                                            
                     expect(true).to.equal(false, "was able to remove document");
                   } catch (e) {
                     if (hasReadAccess) {

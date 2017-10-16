@@ -1774,6 +1774,7 @@ void RestReplicationHandler::handleCommandSync() {
     LOG_TOPIC(ERR, Logger::REPLICATION)
       << "failed to sync: " << r.errorMessage();
     generateError(r);
+    return;
   }
 
   // FIXME: change response for databases
@@ -1902,7 +1903,7 @@ void RestReplicationHandler::handleCommandApplierStop() {
     return;
   }
 
-  applier->stopAndJoin(true);
+  applier->stopAndJoin();
   handleCommandApplierGetState();
 }
 

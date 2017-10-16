@@ -496,7 +496,7 @@ void HeartbeatThread::runSingleServer() {
         LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vaccuum detected, "
         << "attempting a takeover";
         if (applier->isRunning()) {
-          applier->stopAndJoin(true);
+          applier->stopAndJoin();
         }
         
         result = _agency.casValue(leaderPath, myIdBuilder.slice(), false,
@@ -525,7 +525,7 @@ void HeartbeatThread::runSingleServer() {
           LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Cannot update leadership value";
         }
         if (applier->isRunning()) {
-          applier->stopAndJoin(true);
+          applier->stopAndJoin();
         }
         
         // allow server access
@@ -547,7 +547,7 @@ void HeartbeatThread::runSingleServer() {
       // configure applier for new endpoint if necessary
       if (applier->endpoint() != endpoint) {
         if (applier->isRunning()) {
-          applier->stopAndJoin(true);
+          applier->stopAndJoin();
         }
         
         ReplicationApplierConfiguration config = applier->configuration();

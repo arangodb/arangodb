@@ -592,7 +592,7 @@ static void StopApplierReplication(v8::FunctionCallbackInfo<v8::Value> const& ar
 
   ReplicationApplier* applier = getContinuousApplier(isolate, applierType);
 
-  applier->stopAndJoin(true);
+  applier->stopAndJoin();
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END

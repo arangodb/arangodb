@@ -40,13 +40,13 @@ GlobalReplicationApplier::GlobalReplicationApplier(ReplicationApplierConfigurati
 
 GlobalReplicationApplier::~GlobalReplicationApplier() {
   try {
-    stop(true);
+    stop();
   } catch (...) {}
 }
 
 /// @brief stop the applier and "forget" everything
 void GlobalReplicationApplier::forget() {
-  stopAndJoin(true);
+  stopAndJoin();
 
   removeState();
 
