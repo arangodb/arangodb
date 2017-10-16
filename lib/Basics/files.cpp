@@ -2101,7 +2101,7 @@ std::string TRI_GetTempPath() {
       // sleep for a random amout of time and try again soon
       // with this, we try to avoid races between multiple processes
       // that try to create temp directories at the same time
-      std::this_thread::sleep_for(std::chrono::microseconds(5000 + RandomGenerator::interval(uint64_t(20000))));
+      std::this_thread::sleep_for(std::chrono::milliseconds(5 + RandomGenerator::interval(uint64_t(20))));
     }
 
     atexit(SystemTempPathCleaner);

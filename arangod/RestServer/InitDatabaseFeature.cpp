@@ -125,7 +125,7 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
 
   arangodb::Logger::flush();
   // Wait for the logger thread to flush eventually existing output.
-  std::this_thread::sleep_for(std::chrono::microseconds(500));
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
   std::cerr << std::flush;
   std::cout << message << ": " << std::flush;
 
