@@ -706,7 +706,7 @@ class AgencyComm {
                         double, std::string const&, std::string const&,
                         std::string const& clientId = std::string());
 
-  bool tryInitializeStructure(std::string const& jwtSecret);
+  bool tryInitializeStructure();
 
   bool shouldInitializeStructure();
 };

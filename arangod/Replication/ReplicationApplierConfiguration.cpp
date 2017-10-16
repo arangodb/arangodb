@@ -24,8 +24,8 @@
 #include "ReplicationApplierConfiguration.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
+#include "GeneralServer/AuthenticationFeature.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -198,10 +198,10 @@ ReplicationApplierConfiguration ReplicationApplierConfiguration::fromVelocyPack(
     } else {
       auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
       if (cluster->isEnabled()) {
-        auto cc = ClusterComm::instance();
-        if (cc != nullptr) {
+        auto af = AuthenticationFeature::INSTANCE;
+        if (af != nullptr) {
           // nullptr happens only during controlled shutdown
-          configuration._jwt = ClusterComm::instance()->jwt();
+          configuration._jwt = af->jwtToken();
         }
       }
     }

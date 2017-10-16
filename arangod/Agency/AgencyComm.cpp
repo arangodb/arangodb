@@ -1177,14 +1177,9 @@ bool AgencyComm::ensureStructureInitialized() {
     while (shouldInitializeStructure()) {
       LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
           << "Agency is fresh. Needs initial structure.";
-      // mop: we initialized it .. great success
-      std::string secret;
+      // mop: we are the chosen one .. great success
 
-      if (authentication->isActive()) {
-        secret = authentication->jwtSecret();
-      }
-
-      if (tryInitializeStructure(secret)) {
+      if (tryInitializeStructure()) {
         LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
             << "Successfully initialized agency";
         break;
@@ -1214,7 +1209,7 @@ bool AgencyComm::ensureStructureInitialized() {
     sleep(1);
   }
 
-  AgencyCommResult secretResult = getValues("Secret");
+  /*AgencyCommResult secretResult = getValues("Secret");
   VPackSlice secretValue = secretResult.slice()[0].get(
       std::vector<std::string>({AgencyCommManager::path(), "Secret"}));
 
@@ -1223,9 +1218,9 @@ bool AgencyComm::ensureStructureInitialized() {
     return false;
   }
   std::string const secret = secretValue.copyString();
-  if (!secret.empty()) {
+  if (!secret.empty() && secret != authentication->jwtSecret()) {
     authentication->setJwtSecret(secretValue.copyString());
-  }
+  }*/
   return true;
 }
 
@@ -1616,7 +1611,8 @@ AgencyCommResult AgencyComm::send(
       << "': " << body;
 
   arangodb::httpclient::SimpleHttpClientParams params(timeout, false);
-  params.setJwt(ClusterComm::instance()->jwt());
+  TRI_ASSERT(AuthenticationFeature::INSTANCE != nullptr);
+  params.setJwt(AuthenticationFeature::INSTANCE->jwtToken());
   params.keepConnectionOnDestruction(true);
   arangodb::httpclient::SimpleHttpClient client(connection, params);
 
@@ -1682,7 +1678,7 @@ AgencyCommResult AgencyComm::send(
   return result;
 }
 
-bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
+bool AgencyComm::tryInitializeStructure() {
   VPackBuilder builder;
 
   try {
@@ -1749,8 +1745,6 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
         addEmptyVPackObject("_system", builder);
       }
     }
-
-    builder.add("Secret", VPackValue(jwtSecret)); // Secret
 
     builder.add(VPackValue("Sync")); // Sync ----------------------------------
     {

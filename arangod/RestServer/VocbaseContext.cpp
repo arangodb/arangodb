@@ -40,7 +40,7 @@ VocbaseContext* VocbaseContext::create(GeneralRequest* req,
   // _vocbase has already been refcounted for us
   TRI_ASSERT(!vocbase->isDangling());
   AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
-  if (!auth->isActive()) {
+  if (auth != nullptr && !auth->isActive()) {
     return new VocbaseContext(req, vocbase, /*isSuperuser*/ true,
                               /*sysLevel*/ AuthLevel::RW,
                               /*sysLevel*/ AuthLevel::RW);

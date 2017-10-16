@@ -52,9 +52,9 @@ RestStatus RestClusterHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (!suffixes.empty() && suffixes[0] == "endpoints") {
     handleCommandEndpoints();
-  } else if (!suffixes.empty() && suffixes[0] == "serverInfo") {
+  } /*else if (!suffixes.empty() && suffixes[0] == "serverInfo") {
     handleCommandServerInfo();
-  } else {
+  }*/ else {
     generateError(Result(TRI_ERROR_FORBIDDEN,
                          "expecting _api/cluster/endpoints"));
   }
@@ -83,90 +83,81 @@ RestStatus RestClusterHandler::execute() {
 // //////////////////////////////////////////////////////////////////////////////
 void RestClusterHandler::handleCommandEndpoints() {
   TRI_ASSERT(AgencyCommManager::isEnabled());
-  if (!ServerState::instance()->isCoordinator()) {
+  ClusterInfo* ci = ClusterInfo::instance();
+  TRI_ASSERT(ci != nullptr);
+  std::vector<ServerID> endpoints;
+  
+  if (ServerState::instance()->isCoordinator()) {
+    endpoints = ci->getCurrentCoordinators();
+  } else if (ServerState::instance()->isSingleServer()) {
+    
+    ReplicationFeature* replication = ReplicationFeature::INSTANCE;
+    if (!replication->isAutomaticFailoverEnabled() ||
+        !AgencyCommManager::isEnabled()) {
+      generateError(Result(TRI_ERROR_FORBIDDEN,
+                           "automatic failover is not enabled"));
+      return;
+    }
+    
+    std::string const leaderPath = "Plan/AsyncReplication/Leader";
+    std::string const healthPath = "Supervision/Health";
+    AgencyComm agency;
+    
+    AgencyReadTransaction trx(std::vector<std::string>({
+      AgencyCommManager::path(healthPath),
+      AgencyCommManager::path(leaderPath)}));
+    AgencyCommResult result = agency.sendTransactionWithFailover(trx, 1.0);
+    
+    if (!result.successful()) {
+      generateError(ResponseCode::SERVER_ERROR, result.errorCode(),
+                    result.errorMessage());
+      return;
+    }
+    
+    std::vector<std::string> path = AgencyCommManager::slicePath(leaderPath);
+    VPackSlice slice = result.slice()[0].get(path);
+    ServerID leaderId = slice.isString() ? slice.copyString() : "";
+    path = AgencyCommManager::slicePath(healthPath);
+    VPackSlice healthMap = result.slice()[0].get(path);
+    
+    
+    
+    if (!leaderId.empty()) {
+      endpoints.push_back(leaderId);
+      
+      // {"serverId" : {"Status" : "GOOD", ...}}
+      for (VPackObjectIterator::ObjectPair const& pair : VPackObjectIterator(healthMap)) {
+        TRI_ASSERT(pair.key.isString() && pair.value.isObject());
+        if (pair.key.compareString(leaderId) != 0) {
+          VPackSlice status = pair.value.get("Status");
+          if (status.isString() &&
+              status.compareString(consensus::Supervision::HEALTH_STATUS_GOOD) == 0) {
+            endpoints.push_back(pair.key.copyString());
+          }
+        }
+      }
+      
+    } else {
+      LOG_TOPIC(INFO, Logger::CLUSTER) << "Leadership challenge is ongoing";
+    }
+    
+  } else {
     generateError(Result(TRI_ERROR_FORBIDDEN,
                          "only coordinators can serve this request"));
     return;
   }
   
-  std::vector<std::string> endpoints = AgencyCommManager::MANAGER->endpoints();
-  // make the list of endpoints unique
-  std::sort(endpoints.begin(), endpoints.end());
-  endpoints.assign(endpoints.begin(),
-                   std::unique(endpoints.begin(), endpoints.end()));
-  
   VPackBuilder builder;
-  builder.openArray();
-  for (size_t i = 0; i < endpoints.size(); ++i) {
-    builder.add(VPackValue(endpoints[i]));
+  builder.openObject();
+  builder.add("error", VPackValue(false));
+  builder.add("code", VPackValue(200));
+  {
+    VPackArrayBuilder array(&builder, "endpoints", true);
+    for (ServerID const& sid : endpoints) {
+      array->add(VPackValue(ci->getServerEndpoint(sid)));
+    }
   }
   builder.close();
   generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
-/// Talk to the agency and figure out current status
-void RestClusterHandler::handleCommandServerInfo() {
-  if (!ServerState::instance()->isSingleServer()) {
-    generateError(Result(TRI_ERROR_FORBIDDEN,
-                         "only single server can serve this request"));
-    return;
-  }
-  
-  ReplicationFeature* replication = ReplicationFeature::INSTANCE;
-  if (!replication->isAutomaticFailoverEnabled() ||
-      !AgencyCommManager::isEnabled()) {
-    generateError(Result(TRI_ERROR_FORBIDDEN,
-                         "automatic failover is not enabled"));
-    return;
-  }
-  
-  ClusterInfo* ci = ClusterInfo::instance();
-  TRI_ASSERT(ci != nullptr);
-  
-  std::string const leaderPath = "Plan/AsyncReplication/Leader";
-  std::string const healthPath = "Supervision/Health";
-  AgencyComm agency;
-  
-  AgencyReadTransaction trx(std::vector<std::string>({
-    AgencyCommManager::path(healthPath),
-    AgencyCommManager::path(leaderPath)}));
-  AgencyCommResult result = agency.sendTransactionWithFailover(trx, 1.0);
-  
-  if (!result.successful()) {
-    generateError(ResponseCode::SERVER_ERROR, result.errorCode(),
-                  result.errorMessage());
-    return;
-  }
-
-  std::vector<std::string> path = AgencyCommManager::slicePath(leaderPath);
-  VPackSlice slice = result.slice()[0].get(path);
-  ServerID leaderId = slice.isString() ? slice.copyString() : "";
-  path = AgencyCommManager::slicePath(healthPath);
-  VPackSlice healthMap = result.slice()[0].get(path);
-  
-  std::unordered_map<ServerID, std::string> serverMap = ci->getServers();
-  
-  VPackBuilder builder;
-  if (leaderId.empty() ||
-      serverMap.find(leaderId) != serverMap.end()) {
-    VPackObjectBuilder obj(&builder, true);
-    obj->add("leader", VPackValue(serverMap[leaderId]));
-    
-    VPackArrayBuilder followers(&builder, "followers", true);
-    for (auto const& pair : serverMap) {
-      if (pair.first != leaderId) {
-        VPackSlice status = healthMap.get({pair.first, "Status"});
-        if (status.isString() &&
-            status.compareString(consensus::Supervision::HEALTH_STATUS_GOOD) == 0) {
-          followers->add(VPackValue(pair.second));
-        }
-      }
-    }
-  } else {
-    LOG_TOPIC(INFO, Logger::CLUSTER) << "Leadership challenge is ongoing";
-    VPackObjectBuilder obj(&builder, true);
-    obj->add("leader", VPackSlice::nullSlice());
-    obj->add("followers", VPackSlice::emptyArraySlice());
-  }
-  generateResult(ResponseCode::OK, builder.slice());
-}

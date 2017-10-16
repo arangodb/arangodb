@@ -107,13 +107,13 @@ bool RestHandlerFactory::setRequestContext(GeneralRequest* request) {
 ////////////////////////////////////////////////////////////////////////////////
 
 RestHandler* RestHandlerFactory::createHandler(
-    std::unique_ptr<GeneralRequest> request,
-    std::unique_ptr<GeneralResponse> response) const {
-  std::string const& path = request->requestPath();
+    std::unique_ptr<GeneralRequest> req,
+    std::unique_ptr<GeneralResponse> res) const {
+  std::string const& path = req->requestPath();
   
   // In the shutdown phase we simply return 503:
   if (application_features::ApplicationServer::isStopping()) {
-    return new MaintenanceHandler(request.release(), response.release(), false);
+    return new MaintenanceHandler(req.release(), res.release(), false);
   }
 
   // In the bootstrap phase, we would like that coordinators answer the
@@ -125,12 +125,14 @@ RestHandler* RestHandlerFactory::createHandler(
         (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
          path.find("/_api/aql") == std::string::npos)) {
       LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
-      return new MaintenanceHandler(request.release(), response.release(), false);
+      return new MaintenanceHandler(req.release(), res.release(), false);
     }
   } else if (mode == RestHandlerFactory::Mode::REDIRECT) {
-    ExecContext* exec = static_cast<ExecContext*>(request->requestContext());
-    if (!exec->isAdminUser()) {
-      return new MaintenanceHandler(request.release(), response.release(), true);
+    if (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+        path.find("/_api/cluster/") == std::string::npos &&
+        path.find("/_api/version") == std::string::npos &&
+        path.find("/_admin/shutdown") == std::string::npos) {
+      return new MaintenanceHandler(req.release(), res.release(), true);
     }
   }
 
@@ -170,17 +172,17 @@ RestHandler* RestHandlerFactory::createHandler(
         size_t n = path.find_first_of('/', l);
 
         while (n != std::string::npos) {
-          request->addSuffix(path.substr(l, n - l));
+          req->addSuffix(path.substr(l, n - l));
           l = n + 1;
           n = path.find_first_of('/', l);
         }
 
         if (l < path.size()) {
-          request->addSuffix(path.substr(l));
+          req->addSuffix(path.substr(l));
         }
 
         modifiedPath = &ROOT_PATH;
-        request->setPrefix(ROOT_PATH);
+        req->setPrefix(ROOT_PATH);
       }
     }
 
@@ -191,26 +193,26 @@ RestHandler* RestHandlerFactory::createHandler(
       size_t n = path.find_first_of('/', l);
 
       while (n != std::string::npos) {
-        request->addSuffix(path.substr(l, n - l));
+        req->addSuffix(path.substr(l, n - l));
         l = n + 1;
         n = path.find_first_of('/', l);
       }
 
       if (l < path.size()) {
-        request->addSuffix(path.substr(l));
+        req->addSuffix(path.substr(l));
       }
 
       modifiedPath = &prefix;
 
       i = ii.find(prefix);
-      request->setPrefix(prefix);
+      req->setPrefix(prefix);
     }
   }
 
   // no match
   if (i == ii.end()) {
     if (_notFound != nullptr) {
-      return _notFound(request.release(), response.release(), nullptr);
+      return _notFound(req.release(), res.release(), nullptr);
     }
 
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no not-found handler, giving up";
@@ -218,8 +220,7 @@ RestHandler* RestHandlerFactory::createHandler(
   }
 
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found handler for path '" << *modifiedPath << "'";
-  return i->second.first(request.release(), response.release(),
-                         i->second.second);
+  return i->second.first(req.release(), res.release(), i->second.second);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

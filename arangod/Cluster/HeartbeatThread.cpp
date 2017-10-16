@@ -409,6 +409,8 @@ void HeartbeatThread::runDBServer() {
 void HeartbeatThread::runSingleServer() {
   // convert timeout to seconds
   double const interval = (double)_interval / 1000.0 / 1000.0;
+  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+  TRI_ASSERT(auth != nullptr);
   ReplicationFeature* replication = ReplicationFeature::INSTANCE;
   TRI_ASSERT(replication != nullptr);
   if (!replication->isAutomaticFailoverEnabled()) {
@@ -542,8 +544,8 @@ void HeartbeatThread::runSingleServer() {
       // enable redirections to leader
       RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::REDIRECT);
       
-      // (re)start applier if necessary
-      if (applier->endpoint() != endpoint || !applier->isRunning()) {
+      // configure applier for new endpoint if necessary
+      if (applier->endpoint() != endpoint) {
         if (applier->isRunning()) {
           applier->stopAndJoin();
         }
@@ -551,7 +553,7 @@ void HeartbeatThread::runSingleServer() {
         ReplicationApplierConfiguration config = applier->configuration();
         config._endpoint = endpoint;
         if (config._jwt.empty()) {
-          config._jwt = AuthenticationFeature::INSTANCE->generateJwtToken();
+          config._jwt = auth->jwtToken();
         }
         // TODO: how do we initially configure the applier
         
@@ -575,6 +577,11 @@ void HeartbeatThread::runSingleServer() {
 
         applier->reconfigure(config);
         applier->start(lastLogTick, true, barrierId);
+        
+      } else if (!applier->isRunning()) {
+        // restart applier if possible
+        LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Restarting stopped applier...";
+        applier->start(0, false, 0);
       }
             
     } catch (std::exception const& e) {

@@ -116,71 +116,62 @@ void AuthenticationFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
   }
 }
 
-std::string AuthenticationFeature::generateNewJwtSecret() {
-  std::string jwtSecret = "";
-  uint16_t m = 254;
-
-  for (size_t i = 0; i < _maxSecretLength; i++) {
-    jwtSecret += (1 + RandomGenerator::interval(m));
-  }
-  return jwtSecret;
-}
-
-std::string AuthenticationFeature::generateJwtToken() const {
+void AuthenticationFeature::generateJwtToken() {
   VPackBuilder body;
   body.openObject();
   body.add("server_id", VPackValue(ServerState::instance()->getId()));
   body.close();
-  return authInfo()->generateJwt(body);
+  _jwtToken = authInfo()->generateJwt(body);
 }
 
 void AuthenticationFeature::prepare() {
-  if (isEnabled()) {
-    std::unique_ptr<AuthenticationHandler> handler;
+  TRI_ASSERT(isEnabled());
+  
+  std::unique_ptr<AuthenticationHandler> handler;
 #if USE_ENTERPRISE
-    if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")
-            ->isEnabled()) {
-      handler.reset(new LdapAuthenticationHandler());
-    } else {
-      handler.reset(new DefaultAuthenticationHandler());
-    }
-#else
+  if (application_features::ApplicationServer::getFeature<LdapFeature>("Ldap")
+          ->isEnabled()) {
+    handler.reset(new LdapAuthenticationHandler());
+  } else {
     handler.reset(new DefaultAuthenticationHandler());
-#endif
-    _authInfo = new AuthInfo(std::move(handler));
-
-    std::string jwtSecret = _jwtSecretProgramOption;
-    if (jwtSecret.empty()) {
-      jwtSecret = generateNewJwtSecret();
-    }
-    authInfo()->setJwtSecret(jwtSecret);
   }
+#else
+  handler.reset(new DefaultAuthenticationHandler());
+#endif
+  _authInfo = new AuthInfo(std::move(handler));
+
+  std::string jwtSecret = _jwtSecretProgramOption;
+  if (jwtSecret.empty()) {
+    uint16_t m = 254;
+    for (size_t i = 0; i < _maxSecretLength; i++) {
+      jwtSecret += (1 + RandomGenerator::interval(m));
+    }
+  }
+  authInfo()->setJwtSecret(jwtSecret);
+  generateJwtToken();
+  
+  INSTANCE = this;
 }
 
 void AuthenticationFeature::start() {
-  INSTANCE = this;
+  TRI_ASSERT(isEnabled());
 
-  std::ostringstream out;
+  LOG_TOPIC(INFO, Logger::AUTHENTICATION) << "Authentication is turned " << (_active ? "on" : "off");
 
-  out << "Authentication is turned " << (_active ? "on" : "off");
+  auto queryRegistryFeature =
+      application_features::ApplicationServer::getFeature<
+          QueryRegistryFeature>("QueryRegistry");
+  _authInfo->setQueryRegistry(queryRegistryFeature->queryRegistry());
 
-  if (isEnabled()) {
-    auto queryRegistryFeature =
-        application_features::ApplicationServer::getFeature<
-            QueryRegistryFeature>("QueryRegistry");
-    _authInfo->setQueryRegistry(queryRegistryFeature->queryRegistry());
-
-    if (_active && _authenticationSystemOnly) {
-      out << " (system only)";
-    }
-
-#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-    out << ", authentication for unix sockets is turned "
-        << (_authenticationUnixSockets ? "on" : "off");
-#endif
+  if (_active && _authenticationSystemOnly) {
+    LOG_TOPIC(INFO, Logger::AUTHENTICATION) << " (system only)";
   }
 
-  LOG_TOPIC(INFO, arangodb::Logger::FIXME) << out.str();
+#ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
+    LOG_TOPIC(INFO, Logger::AUTHENTICATION) << ", authentication for unix sockets is turned "
+      << (_authenticationUnixSockets ? "on" : "off");
+#endif
+
 }
 
 AuthInfo* AuthenticationFeature::authInfo() const {
