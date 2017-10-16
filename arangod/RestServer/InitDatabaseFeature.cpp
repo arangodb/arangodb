@@ -22,7 +22,9 @@
 
 #include "InitDatabaseFeature.h"
 
+#include <chrono>
 #include <iostream>
+#include <thread>
 
 #include "Basics/FileUtils.h"
 #include "Basics/terminal-utils.h"
@@ -123,7 +125,7 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
 
   arangodb::Logger::flush();
   // Wait for the logger thread to flush eventually existing output.
-  sleep(0.5);
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
   std::cerr << std::flush;
   std::cout << message << ": " << std::flush;
 

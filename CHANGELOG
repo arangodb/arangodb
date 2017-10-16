@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #3408: Hard crash in query for pagination
+
 * UI: fixed unresponsive events in cluster shards view
 
 * UI: added word wrapping to query editor
