@@ -493,7 +493,7 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
     }
 
     // extract ttl
-    double expires = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+    double expires = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", RocksDBReplicationContext::DefaultTTL);
 
     int res = TRI_ERROR_NO_ERROR;
     bool busy;
