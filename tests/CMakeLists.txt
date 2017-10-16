@@ -34,6 +34,7 @@ if (USE_IRESEARCH)
     IResearch/IResearchQueryStringTerm-test.cpp
     IResearch/IResearchQueryTokens-test.cpp
     IResearch/IResearchQueryValue-test.cpp
+    IResearch/IResearchQueryJoin-test.cpp
     IResearch/StorageEngineMock.cpp
     IResearch/VelocyPackHelper-test.cpp
   )

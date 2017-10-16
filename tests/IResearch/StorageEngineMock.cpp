@@ -36,6 +36,99 @@
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/ticks.h"
 
+NS_LOCAL
+
+class IndexMock final : public arangodb::Index {
+ public:
+  IndexMock()
+    : arangodb::Index(0, nullptr, std::vector<std::vector<arangodb::basics::AttributeName>>(), false, false) {
+  }
+  virtual char const* typeName() const { return "IndexMock"; }
+  virtual bool allowExpansion() const { return false; }
+  virtual IndexType type() const { return TRI_IDX_TYPE_UNKNOWN; }
+  virtual bool canBeDropped() const { return true; }
+  virtual bool isSorted() const { return true; }
+  virtual bool hasSelectivityEstimate() const { return false; }
+  virtual size_t memory() const { return 0; }
+  virtual arangodb::Result insert(
+      arangodb::transaction::Methods*,
+      arangodb::LocalDocumentId const&,
+      arangodb::velocypack::Slice const&,
+      bool) {
+    TRI_ASSERT(false);
+    return arangodb::Result();
+  }
+  virtual arangodb::Result remove(
+      arangodb::transaction::Methods*,
+      arangodb::LocalDocumentId const&,
+      arangodb::velocypack::Slice const&,
+      bool) {
+    TRI_ASSERT(false);
+    return arangodb::Result();
+  }
+  virtual void load() {}
+  virtual void unload() {}
+} EMPTY_INDEX;
+
+class ReverseAllIteratorMock final : public arangodb::IndexIterator {
+ public:
+  ReverseAllIteratorMock(
+      uint64_t size,
+      arangodb::LogicalCollection* coll,
+      arangodb::transaction::Methods* trx,
+      arangodb::ManagedDocumentResult* mmdr)
+    : arangodb::IndexIterator(coll, trx, mmdr, &EMPTY_INDEX),
+      _end(size) {
+  }
+
+  virtual char const* typeName() const override {
+    return "ReverseAllIteratorMock";
+  }
+
+  virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) override {
+    while (_end && limit) {
+      callback(arangodb::LocalDocumentId(--_end));
+      --limit;
+    }
+
+    return 0 == limit;
+  }
+
+ private:
+  uint64_t _end;
+}; // ReverseAllIteratorMock
+
+class AllIteratorMock final : public arangodb::IndexIterator {
+ public:
+  AllIteratorMock(
+      uint64_t size,
+      arangodb::LogicalCollection* coll,
+      arangodb::transaction::Methods* trx,
+      arangodb::ManagedDocumentResult* mmdr)
+    : arangodb::IndexIterator(coll, trx, mmdr, &EMPTY_INDEX),
+      _end(size) {
+  }
+
+  virtual char const* typeName() const override {
+    return "AllIteratorMock";
+  }
+
+  virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) override {
+    while (_begin < _end && limit) {
+      callback(arangodb::LocalDocumentId(_begin++));
+      --limit;
+    }
+
+    return 0 == limit;
+  }
+
+ private:
+  uint64_t _begin{};
+  uint64_t _end;
+}; // AllIteratorMock
+
+NS_END
+
 void ContextDataMock::pinData(arangodb::LogicalCollection* collection) {
   if (collection) {
     pinned.emplace(collection->cid());
@@ -135,8 +228,12 @@ void PhysicalCollectionMock::figuresSpecific(std::shared_ptr<arangodb::velocypac
 
 std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAllIterator(arangodb::transaction::Methods* trx, arangodb::ManagedDocumentResult* mdr, bool reverse) const {
   before();
-  TRI_ASSERT(false);
-  return nullptr;
+
+  if (reverse) {
+    return irs::memory::make_unique<ReverseAllIteratorMock>(documents.size(), this->_logicalCollection, trx, mdr);
+  }
+
+  return irs::memory::make_unique<AllIteratorMock>(documents.size(), this->_logicalCollection, trx, mdr);
 }
 
 std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAnyIterator(arangodb::transaction::Methods* trx, arangodb::ManagedDocumentResult* mdr) const {
@@ -184,13 +281,12 @@ arangodb::Result PhysicalCollectionMock::insert(arangodb::transaction::Methods* 
   }
 
   documents.emplace_back(std::move(builder), true);
+  arangodb::LocalDocumentId docId(documents.size()); // always > 0
 
-  TRI_voc_rid_t revId = documents.size(); // always > 0
-
-  result.setUnmanaged(documents.back().first.data(), arangodb::LocalDocumentId(revId));
+  result.setUnmanaged(documents.back().first.data(), docId);
 
   for (auto& index : _indexes) {
-    if (!index->insert(trx, arangodb::LocalDocumentId(revId), newSlice, false).ok()) {
+    if (!index->insert(trx, docId, newSlice, false).ok()) {
       return arangodb::Result(TRI_ERROR_BAD_PARAMETER);
     }
   }
@@ -231,8 +327,7 @@ size_t PhysicalCollectionMock::memory() const {
 
 uint64_t PhysicalCollectionMock::numberDocuments(arangodb::transaction::Methods*) const {
   before();
-  TRI_ASSERT(false);
-  return 0;
+  return documents.size();
 }
 
 void PhysicalCollectionMock::open(bool ignoreErrors) {
