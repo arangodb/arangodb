@@ -1,4 +1,4 @@
-v3.2.5 (2017-XX-XX)
+v3.2.5 (2017-10-16)
 -------------------
 
 * fixed issue #3408: Hard crash in query for pagination

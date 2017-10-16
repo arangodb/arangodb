@@ -1,9 +1,9 @@
 shell> curl --dump - http://localhost:8529/_api/replication/dump?collection=testCollection
 
 HTTP/1.1 200 OK
-content-type: application/x-arango-dump; charset=utf-8
 x-content-type-options: nosniff
-x-arango-replication-lastincluded: 11667
+content-type: application/x-arango-dump; charset=utf-8
 x-arango-replication-checkmore: false
+x-arango-replication-lastincluded: 11651
 
-"{\"tick\":\"11661\",\"type\":2300,\"data\":{\"_id\":\"testCollection/123456\",\"_key\":\"123456\",\"_rev\":\"_Vp0dWxK---\",\"b\":1,\"c\":false,\"d\":\"additional value\"}}\n{\"tick\":\"11665\",\"type\":2302,\"data\":{\"_key\":\"foobar\",\"_rev\":\"_Vp0dWxK--A\"}}\n{\"tick\":\"11667\",\"type\":2302,\"data\":{\"_key\":\"abcdef\",\"_rev\":\"_Vp0dWxK--B\"}}\n"
+"{\"tick\":\"11645\",\"type\":2300,\"data\":{\"_id\":\"testCollection/123456\",\"_key\":\"123456\",\"_rev\":\"_VwZY1Sa--A\",\"b\":1,\"c\":false,\"d\":\"additional value\"}}\n{\"tick\":\"11649\",\"type\":2302,\"data\":{\"_key\":\"foobar\",\"_rev\":\"_VwZY1Se--_\"}}\n{\"tick\":\"11651\",\"type\":2302,\"data\":{\"_key\":\"abcdef\",\"_rev\":\"_VwZY1Se--A\"}}\n"
