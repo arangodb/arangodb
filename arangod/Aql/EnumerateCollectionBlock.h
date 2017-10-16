@@ -33,7 +33,7 @@
 
 namespace arangodb {
 
-struct LocalDocumentId;
+class LocalDocumentId;
 class ManagedDocumentResult;
 struct OperationCursor;
 

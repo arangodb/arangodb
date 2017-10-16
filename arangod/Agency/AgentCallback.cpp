@@ -42,7 +42,16 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
   if (res->status == CL_COMM_SENT) {
     if (_agent) {
       auto body = res->result->getBodyVelocyPack();
-      if (!body->slice().get("success").isTrue()) {
+      term_t otherTerm = 0;
+      try {
+        otherTerm = body->slice().get("term").getNumber<term_t>();
+      } catch (std::exception const& e) {
+        LOG_TOPIC(WARN, Logger::AGENCY) <<
+          "Received agent call back without or with invalid term";
+      }
+      if (otherTerm > _agent->term()) {
+        _agent->resign(otherTerm);
+      } else if (!body->slice().get("success").isTrue()) {
         LOG_TOPIC(DEBUG, Logger::CLUSTER)
           << "Got negative answer from follower, will retry later.";
         _agent->reportFailed(_slaveID, _toLog);

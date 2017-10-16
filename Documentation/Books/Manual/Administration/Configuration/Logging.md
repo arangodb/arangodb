@@ -109,7 +109,16 @@ will be printed in UTC / Zulu time. The date and time format used in logs
 is always `YYYY-MM-DD HH:MM:SS`, regardless of this setting. If UTC time
 is used, a `Z` will be appended to indicate Zulu time.
 
-### Line number
+
+### Color logging
+
+`--log.color value`
+
+Logging to terminal output is by default colored. Colorful logging can be 
+turned off by setting the value to false.
+
+
+### Source file and Line number
 
 Log line number: `--log.line-number`
 
@@ -124,9 +133,9 @@ Log prefix: `--log.prefix prefix`
 
 This option is used specify an prefix to logged text.
 
-### Thread
+### Threads
 
-Log thread identifier: `--log.thread`
+Log thread identifier: `--log.thread true`
 
 Whenever log output is generated, the process ID is written as part of the
 log information. Setting this option appends the thread id of the calling
@@ -144,9 +153,12 @@ when no thread is logged and
 
 when this command line option is set.
 
+To also log thread names, it is possible to set the `--log.thread-name`
+option. By default `--log.thread-name` is set to `false`.
+
 ### Role
 
-Log role: `--log.role`
+Log role: `--log.role true`
 
 When set to `true`, this option will make the ArangoDB logger print a single 
 character with the server's role into each logged message. The roles are: 

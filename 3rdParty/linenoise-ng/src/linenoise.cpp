@@ -85,10 +85,15 @@
  */
 
 #ifdef _WIN32
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
 
 #include <conio.h>
 #include <windows.h>
 #include <io.h>
+
+#include <algorithm>
 
 #if defined(_MSC_VER) && _MSC_VER < 1900
 #define snprintf _snprintf  // Microsoft headers use underscores in some names

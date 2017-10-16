@@ -75,7 +75,6 @@ set(ARANGODB_VERSION_MAJOR      "3")
 set(ARANGODB_VERSION_MINOR      "3")
 set(ARANGODB_VERSION_REVISION   "devel")
 set(ARANGODB_PACKAGE_REVISION   "1")
-
 # version for the windows rc file needs to be numeric:
 if (ARANGODB_VERSION_REVISION GREATER -1)
   set(ARANGODB_NUMERIC_VERSION_REVISION "${ARANGODB_VERSION_REVISION}")
@@ -138,17 +137,28 @@ else ()
   string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
 endif ()
 
-configure_file (
+configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build.h"
   NEWLINE_STYLE UNIX
 )
 
-configure_file (
-  "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build-date.h.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-date.h"
-  NEWLINE_STYLE UNIX
+configure_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Pipeline/Jenkinsfile.groovy.in"
+  "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Pipeline/Jenkinsfile.groovy"
+  NEWLINE_STYLE UNIX @ONLY
 )
+
+if (NOT DEFINED GENERATE_BUILD_DATE OR GENERATE_BUILD_DATE)
+  set(GENERATE_BUILD_DATE ON CACHE INTERNAL "whether we should generate the build date")
+  configure_file(
+    "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build-date.h.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-date.h"
+    NEWLINE_STYLE UNIX
+    )
+else()
+  set(GENERATE_BUILD_DATE OFF CACHE INTERNAL "whether we should generate the build date")
+endif()
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/VERSION.in"
@@ -189,7 +199,7 @@ else ()
   set(HAVE_ARANGODB_BUILD_REPOSITORY "0")
 endif()
 
-configure_file (
+configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build-repository.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-repository.h"
   NEWLINE_STYLE UNIX
@@ -548,7 +558,7 @@ if (USE_MAINTAINER_MODE)
 endif ()
 
 include(debugInformation)
-find_program(FILE_EXECUTABLE file)
+find_program(READELF_EXECUTABLE readelf)
 detect_binary_id_type(CMAKE_DEBUG_FILENAMES_SHA_SUM)
 
 ################################################################################

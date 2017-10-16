@@ -21,6 +21,7 @@ x-content-type-options: nosniff
   <span class="hljs-string">"connectTimeout"</span> : <span class="hljs-number">10</span>, 
   <span class="hljs-string">"ignoreErrors"</span> : <span class="hljs-number">0</span>, 
   <span class="hljs-string">"maxConnectRetries"</span> : <span class="hljs-number">100</span>, 
+  <span class="hljs-string">"lockTimeoutRetries"</span> : <span class="hljs-number">0</span>, 
   <span class="hljs-string">"sslProtocol"</span> : <span class="hljs-number">0</span>, 
   <span class="hljs-string">"chunkSize"</span> : <span class="hljs-number">4194304</span>, 
   <span class="hljs-string">"autoStart"</span> : <span class="hljs-literal">false</span>, 

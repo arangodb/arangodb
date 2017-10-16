@@ -71,7 +71,7 @@ class Context;
 
 /// @brief forward declarations
 class CollectionNameResolver;
-struct LocalDocumentId;
+class LocalDocumentId;
 class Index;
 class ManagedDocumentResult;
 struct OperationCursor;

@@ -45,7 +45,7 @@ class ManagedDocumentResult;
 class Result;
 class RocksDBPrimaryIndex;
 class RocksDBVPackIndex;
-struct LocalDocumentId;
+class LocalDocumentId;
 
 class RocksDBCollection final : public PhysicalCollection {
   friend class RocksDBEngine;
