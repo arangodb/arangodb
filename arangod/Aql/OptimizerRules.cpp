@@ -933,7 +933,7 @@ void arangodb::aql::specializeCollectRule(Optimizer* opt,
          (!collectNode->hasOutVariable() || collectNode->count()) &&
          collectNode->getOptions().canUseHashMethod());
 
-    if (canUseHashAggregation) {
+    if (canUseHashAggregation && !opt->runOnlyRequiredRules()) {
       // create a new plan with the adjusted COLLECT node
       std::unique_ptr<ExecutionPlan> newPlan(plan->clone());
 

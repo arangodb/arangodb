@@ -25,7 +25,6 @@
 #define ARANGOD_CONSENSUS_AGENT_H 1
 
 #include "Agency/AgencyCommon.h"
-#include "Agency/AgentActivator.h"
 #include "Agency/AgentCallback.h"
 #include "Agency/AgentConfiguration.h"
 #include "Agency/AgentInterface.h"
@@ -134,13 +133,16 @@ class Agent : public arangodb::Thread,
 
   /// @brief Received by followers to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
-  bool recvAppendEntriesRPC(term_t term, std::string const& leaderId,
-                            index_t prevIndex, term_t prevTerm,
+  priv_rpc_ret_t recvAppendEntriesRPC(term_t term, std::string const& leaderId,
+                                      index_t prevIndex, term_t prevTerm,
                             index_t leaderCommitIndex, query_t const& queries);
 
+  /// @brief Resign leadership
+  void resign(term_t otherTerm = 0);
+
+ private:
   /// @brief Invoked by leader to replicate log entries ($5.3);
   ///        also used as heartbeat ($5.2).
- private:
   void sendAppendEntriesRPC();
 
   /// @brief check whether _confirmed indexes have been advance so that we
@@ -166,12 +168,6 @@ class Agent : public arangodb::Thread,
 
   /// @brief Persisted agents
   bool persistedAgents();
-
-  /// @brief Activate new agent in pool to replace failed
-  void reportActivated(std::string const&, std::string const&, query_t);
-
-  /// @brief Activate new agent in pool to replace failed
-  void failedActivation(std::string const&, std::string const&);
 
   /// @brief Gossip in
   bool activeAgency();
@@ -227,9 +223,6 @@ class Agent : public arangodb::Thread,
   /// @brief Get notification as inactive pool member
   void notify(query_t const&);
 
-  /// @brief Detect active agent failures
-  void detectActiveAgentFailures();
-
   /// @brief All there is in the state machine
   query_t allLogs() const;
 
@@ -241,9 +234,6 @@ class Agent : public arangodb::Thread,
 
   /// @brief Become active agent
   query_t activate(query_t const&);
-
-  /// @brief Report measured round trips to inception
-  void reportMeasurement(query_t const&);
 
   /// @brief Are we ready for RAFT?
   bool ready() const;
@@ -400,8 +390,8 @@ class Agent : public arangodb::Thread,
 
   /// Rules for the locks: This covers the following locks:
   ///    _ioLock (here)
-  ///    _logLock (in State)
-  ///    _tiLock (here)
+  ///    _logLock (in State)         _waiForCV (here)
+  ///    _tiLock (here)              _tiLock (here)
   /// One may never acquire a log in this list whilst holding another one
   /// that appears further down on this list. This is to prevent deadlock.
   /// For _logLock: This is local to State and we make sure that the few
@@ -415,9 +405,6 @@ class Agent : public arangodb::Thread,
 
   /// @brief Inception thread getting an agent up to join RAFT from cmd or persistence
   std::unique_ptr<Inception> _inception;
-
-  /// @brief Activator thread for the leader to wake up a sleeping agent from pool
-  std::unique_ptr<AgentActivator> _activator;
 
   /// @brief Compactor
   Compactor _compactor;
