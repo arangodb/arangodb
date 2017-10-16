@@ -25,6 +25,7 @@
 #define ARANGOD_REPLICATION_DATABASE_INITIAL_SYNCER_H 1
 
 #include "Replication/InitialSyncer.h"
+#include "Basics/Result.h"
 #include "Cluster/ServerState.h"
 
 struct TRI_vocbase_t;
@@ -34,45 +35,41 @@ class LogicalCollection;
 class DatabaseInitialSyncer;
 class ReplicationApplierConfiguration;
 
-int handleSyncKeysMMFiles(DatabaseInitialSyncer& syncer,
-                          arangodb::LogicalCollection* col,
-                          std::string const& keysId, std::string const& cid,
-                          std::string const& collectionName,
-                          TRI_voc_tick_t maxTick, std::string& errorMsg);
+/*
+arangodb::Result handleSyncKeysMMFiles(DatabaseInitialSyncer& syncer,
+                                       arangodb::LogicalCollection* col,
+                                       std::string const& keysId, std::string const& cid,
+                                       std::string const& collectionName,
+                                       TRI_voc_tick_t maxTick);
 
-int handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
-                          arangodb::LogicalCollection* col,
-                          std::string const& keysId, std::string const& cid,
-                          std::string const& collectionName,
-                          TRI_voc_tick_t maxTick, std::string& errorMsg);
+arangodb::Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
+                                       arangodb::LogicalCollection* col,
+                                       std::string const& keysId, std::string const& cid,
+                                       std::string const& collectionName,
+                                       TRI_voc_tick_t maxTick);
 
-int syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
-                     std::string const& keysId, uint64_t chunkId,
-                     std::string const& lowString,
-                     std::string const& highString,
-                     std::vector<std::pair<std::string, uint64_t>> const& markers,
-                     std::string& errorMsg);
-  
+arangodb::Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
+                                  std::string const& keysId, uint64_t chunkId,
+                                  std::string const& lowString,
+                                  std::string const& highString,
+                                  std::vector<std::pair<std::string, uint64_t>> const& markers);
+  */
 class DatabaseInitialSyncer : public InitialSyncer {
+  friend ::arangodb::Result handleSyncKeysMMFiles(DatabaseInitialSyncer& syncer, arangodb::LogicalCollection* col,
+                                                              std::string const& keysId, std::string const& cid,
+                                                              std::string const& collectionName, TRI_voc_tick_t maxTick);
   
-  friend int ::arangodb::handleSyncKeysMMFiles(DatabaseInitialSyncer& syncer, arangodb::LogicalCollection* col,
-                                               std::string const& keysId, std::string const& cid,
-                                               std::string const& collectionName, TRI_voc_tick_t maxTick,
-                                               std::string& errorMsg);
+  friend ::arangodb::Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer, arangodb::LogicalCollection* col,
+                                                              std::string const& keysId, std::string const& cid,
+                                                              std::string const& collectionName, TRI_voc_tick_t maxTick);
   
-  friend int ::arangodb::handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer, arangodb::LogicalCollection* col,
-                                               std::string const& keysId, std::string const& cid,
-                                               std::string const& collectionName, TRI_voc_tick_t maxTick,
-                                               std::string& errorMsg);
-  
-  friend int syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
-                              std::string const& keysId, uint64_t chunkId,
-                              std::string const& lowString,
-                              std::string const& highString,
-                              std::vector<std::pair<std::string, uint64_t>> const& markers,
-                              std::string& errorMsg);
-  
-private:
+  friend ::arangodb::Result syncChunkRocksDB(DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
+                                           std::string const& keysId, uint64_t chunkId,
+                                           std::string const& lowString,
+                                           std::string const& highString,
+                                           std::vector<std::pair<std::string, uint64_t>> const& markers);
+
+ private:
   /// @brief apply phases
   typedef enum {
     PHASE_NONE,

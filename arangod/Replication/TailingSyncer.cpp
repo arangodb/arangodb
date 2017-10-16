@@ -911,8 +911,7 @@ retry:
   
   if (res.fail()) {
     // stop ourselves
-    _applier->stop(false);
-    _applier->setError(res);
+    _applier->stop(res);
     return res;
   }
   
@@ -921,10 +920,8 @@ retry:
   }
   
   if (res.fail()) {
-    _applier->setError(res);
-    
     // stop ourselves
-    _applier->stop(false);
+    _applier->stop(res);
     
     if (res.is(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT) ||
         res.is(TRI_ERROR_REPLICATION_NO_START_TICK)) {
@@ -1032,7 +1029,6 @@ void TailingSyncer::getLocalState() {
   uint64_t oldTotalFailedConnects = _applier->_state._totalFailedConnects;
   
   bool const foundState = _applier->loadState();
-  _applier->_state._state = ReplicationApplierState::ActivityState::RUNNING;
   _applier->_state._totalRequests = oldTotalRequests;
   _applier->_state._totalFailedConnects = oldTotalFailedConnects;
   
@@ -1042,7 +1038,7 @@ void TailingSyncer::getLocalState() {
     _applier->persistState(true);
     return;
   }
-  
+ 
   if (_masterInfo._serverId != _applier->_state._serverId &&
       _applier->_state._serverId != 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_MASTER_CHANGE,
@@ -1088,7 +1084,7 @@ Result TailingSyncer::runContinuousSync() {
   << ", initialTick: " << _initialTick;
   
   if (fromTick == 0) {
-    return TRI_ERROR_REPLICATION_NO_START_TICK;
+    return Result(TRI_ERROR_REPLICATION_NO_START_TICK);
   }
   
   // get the applier into a sensible start state by fetching the list of
@@ -1108,7 +1104,7 @@ Result TailingSyncer::runContinuousSync() {
   
   if (fetchTick > fromTick) {
     // must not happen
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL);
   }
   
   std::string const progress =
@@ -1210,12 +1206,12 @@ Result TailingSyncer::runContinuousSync() {
     // this will make the applier thread sleep if there is nothing to do,
     // but will also check for cancelation
     if (!_applier->sleepIfStillActive(sleepTime)) {
-      return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
+      return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
   }
   
   // won't be reached
-  return TRI_ERROR_INTERNAL;
+  return Result(TRI_ERROR_INTERNAL);
 }
 
 /// @brief fetch the open transactions we still need to complete
@@ -1524,4 +1520,3 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
   
   return Result();
 }
-

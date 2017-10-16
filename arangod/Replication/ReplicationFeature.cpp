@@ -93,7 +93,7 @@ void ReplicationFeature::start() {
 void ReplicationFeature::beginShutdown() {
   try {
     if (_globalReplicationApplier != nullptr) {
-      _globalReplicationApplier->stop(true);
+      _globalReplicationApplier->stop();
     }
   } catch (...) {
     // ignore any error
@@ -103,7 +103,7 @@ void ReplicationFeature::beginShutdown() {
 void ReplicationFeature::stop() {
   try {
     if (_globalReplicationApplier != nullptr) {
-      _globalReplicationApplier->stop(true);
+      _globalReplicationApplier->stop();
     }
   } catch (...) {
     // ignore any error
@@ -112,7 +112,7 @@ void ReplicationFeature::stop() {
 
 void ReplicationFeature::unprepare() {
   if (_globalReplicationApplier != nullptr) {
-    _globalReplicationApplier->stop(true);
+    _globalReplicationApplier->stop();
   }
   _globalReplicationApplier.reset();
 }
@@ -145,6 +145,6 @@ void ReplicationFeature::stopApplier(TRI_vocbase_t* vocbase) {
   TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
 
   if (vocbase->replicationApplier() != nullptr) {
-    vocbase->replicationApplier()->stopAndJoin(false);
+    vocbase->replicationApplier()->stopAndJoin();
   }
 }

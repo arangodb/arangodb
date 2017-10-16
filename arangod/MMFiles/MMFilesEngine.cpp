@@ -3411,14 +3411,13 @@ int MMFilesEngine::saveReplicationApplierConfiguration(std::string const& filena
   return TRI_ERROR_NO_ERROR;
 }
 
-int MMFilesEngine::handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
-                          arangodb::LogicalCollection* col,
-                          std::string const& keysId,
-                          std::string const& cid,
-                          std::string const& collectionName,
-                          TRI_voc_tick_t maxTick,
-                          std::string& errorMsg) {
-  return handleSyncKeysMMFiles(syncer, col, keysId, cid, collectionName,maxTick, errorMsg);
+Result MMFilesEngine::handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
+                                     arangodb::LogicalCollection* col,
+                                     std::string const& keysId,
+                                     std::string const& cid,
+                                     std::string const& collectionName,
+                                     TRI_voc_tick_t maxTick) {
+  return handleSyncKeysMMFiles(syncer, col, keysId, cid, collectionName,maxTick);
 }
   
 Result MMFilesEngine::createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder){

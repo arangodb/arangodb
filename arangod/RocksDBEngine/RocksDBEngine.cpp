@@ -1674,15 +1674,14 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   builder.close();
 }
 
-int RocksDBEngine::handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
-                                  arangodb::LogicalCollection* col,
-                                  std::string const& keysId,
-                                  std::string const& cid,
-                                  std::string const& collectionName,
-                                  TRI_voc_tick_t maxTick,
-                                  std::string& errorMsg) {
+Result RocksDBEngine::handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
+                                     arangodb::LogicalCollection* col,
+                                     std::string const& keysId,
+                                     std::string const& cid,
+                                     std::string const& collectionName,
+                                     TRI_voc_tick_t maxTick) {
   return handleSyncKeysRocksDB(syncer, col, keysId, cid, collectionName,
-                               maxTick, errorMsg);
+                               maxTick);
 }
  
 Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
