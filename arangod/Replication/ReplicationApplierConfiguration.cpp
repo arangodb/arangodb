@@ -97,7 +97,7 @@ void ReplicationApplierConfiguration::reset() {
 
 /// @brief get a VelocyPack representation
 /// expects builder to be in an open Object state
-void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool includePassword) const {
+void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool includePassword, bool includeJwt) const {
   if (!_endpoint.empty()) {
     builder.add("endpoint", VPackValue(_endpoint));
   }
@@ -114,7 +114,7 @@ void ReplicationApplierConfiguration::toVelocyPack(VPackBuilder& builder, bool i
     hasUsernamePassword = true;
     builder.add("password", VPackValue(_password));
   }
-  if (!hasUsernamePassword && !_jwt.empty()) {
+  if (includeJwt && !hasUsernamePassword && !_jwt.empty()) {
     builder.add("jwt", VPackValue(_jwt));
   }
 

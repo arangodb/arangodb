@@ -469,7 +469,7 @@ static void ConfigureApplierReplication(v8::FunctionCallbackInfo<v8::Value> cons
     // no argument: return the current configuration
     VPackBuilder builder;
     builder.openObject();
-    configuration.toVelocyPack(builder, true);
+    configuration.toVelocyPack(builder, true, true);
     builder.close();
 
     v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());
@@ -513,7 +513,7 @@ static void ConfigureApplierReplication(v8::FunctionCallbackInfo<v8::Value> cons
     // and return it
     builder.clear();
     builder.openObject();
-    configuration.toVelocyPack(builder, true);
+    configuration.toVelocyPack(builder, true, true);
     builder.close();
    
     v8::Handle<v8::Value> result = TRI_VPackToV8(isolate, builder.slice());

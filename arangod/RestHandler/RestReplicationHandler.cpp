@@ -1819,7 +1819,7 @@ void RestReplicationHandler::handleCommandApplierGetConfig() {
   auto configuration = applier->configuration();
   VPackBuilder builder;
   builder.openObject();
-  configuration.toVelocyPack(builder, false);
+  configuration.toVelocyPack(builder, false, false);
   builder.close();
 
   generateResult(rest::ResponseCode::OK, builder.slice());

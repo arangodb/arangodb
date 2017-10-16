@@ -59,7 +59,7 @@ void GlobalReplicationApplier::forget() {
 void GlobalReplicationApplier::storeConfiguration(bool doSync) {
   VPackBuilder builder;
   builder.openObject();
-  _configuration.toVelocyPack(builder, true);
+  _configuration.toVelocyPack(builder, true, true);
   builder.close();
 
   LOG_TOPIC(DEBUG, Logger::REPLICATION) << "storing applier configuration " << builder.slice().toJson() << " for " << _databaseName;
