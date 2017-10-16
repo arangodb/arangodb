@@ -23,6 +23,7 @@
 #include "AuthenticationFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomGenerator.h"
@@ -125,6 +126,14 @@ std::string AuthenticationFeature::generateNewJwtSecret() {
   return jwtSecret;
 }
 
+std::string AuthenticationFeature::generateJwtToken() const {
+  VPackBuilder body;
+  body.openObject();
+  body.add("server_id", VPackValue(ServerState::instance()->getId()));
+  body.close();
+  return authInfo()->generateJwt(body);
+}
+
 void AuthenticationFeature::prepare() {
   if (isEnabled()) {
     std::unique_ptr<AuthenticationHandler> handler;
@@ -173,25 +182,6 @@ void AuthenticationFeature::start() {
 
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << out.str();
 }
-/*
-AuthLevel AuthenticationFeature::canUseDatabase(std::string const& username,
-                                                std::string const& dbname) {
-  if (!isActive()) {
-    return AuthLevel::RW;
-  }
-
-  return authInfo()->canUseDatabase(username, dbname);
-}
-
-AuthLevel AuthenticationFeature::canUseCollection(std::string const& username,
-                                                  std::string const& dbname,
-                                                  std::string const& coll) {
-  if (!isActive()) {
-    return AuthLevel::RW;
-  }
-
-  return authInfo()->canUseCollection(username, dbname, coll);
-}*/
 
 AuthInfo* AuthenticationFeature::authInfo() const {
   TRI_ASSERT(_authInfo != nullptr);  

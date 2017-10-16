@@ -65,6 +65,8 @@ class AuthenticationFeature final
   void setJwtSecret(std::string const& jwtSecret) {
     authInfo()->setJwtSecret(jwtSecret);
   }
+  std::string generateJwtToken() const;
+      
   double authenticationTimeout() const { return _authenticationTimeout; }
   bool localAuthentication() const { return _localAuthentication; }
 

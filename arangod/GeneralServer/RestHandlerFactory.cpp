@@ -26,8 +26,9 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
+#include "Replication/ReplicationFeature.h"
+#include "Replication/GlobalReplicationApplier.h"
 #include "Rest/GeneralRequest.h"
-
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestVersionHandler.h"
 
@@ -36,22 +37,38 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 static std::string const ROOT_PATH = "/";
-std::atomic<bool> RestHandlerFactory::_maintenanceMode(false);
+std::atomic<RestHandlerFactory::Mode> RestHandlerFactory::_serverMode(RestHandlerFactory::Mode::DEFAULT);
 
 namespace {
 class MaintenanceHandler : public RestHandler {
+  bool _redirect;
  public:
   explicit MaintenanceHandler(GeneralRequest* request,
-                              GeneralResponse* response)
-      : RestHandler(request, response){};
+                              GeneralResponse* response,
+                              bool redirect)
+      : RestHandler(request, response), _redirect(redirect) {};
 
   char const* name() const override final { return "MaintenanceHandler"; }
 
   bool isDirect() const override { return true; };
 
   RestStatus execute() override {
+    // use this to redirect requests
+    if (_redirect) {
+      ReplicationFeature* replication = ReplicationFeature::INSTANCE;
+      if (replication != nullptr && replication->isAutomaticFailoverEnabled()) {
+        GlobalReplicationApplier* applier = replication->globalReplicationApplier();
+        if (applier != nullptr && applier->isRunning()) {
+          std::string endpoint = applier->endpoint();
+          resetResponse(rest::ResponseCode::TEMPORARY_REDIRECT);
+          _response->setHeader("Location", endpoint + _request->requestPath());
+          _response->setHeader("x-arango-redirect", endpoint);
+          return RestStatus::DONE;
+        }
+      }
+    }
+    
     resetResponse(rest::ResponseCode::SERVICE_UNAVAILABLE);
-
     return RestStatus::DONE;
   };
 
@@ -61,6 +78,14 @@ class MaintenanceHandler : public RestHandler {
 };
 }
 
+void RestHandlerFactory::setServerMode(RestHandlerFactory::Mode value) {
+  _serverMode.store(value, std::memory_order_release);
+}
+
+RestHandlerFactory::Mode RestHandlerFactory::serverMode() {
+  return _serverMode.load(std::memory_order_acquire);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new handler factory
 ////////////////////////////////////////////////////////////////////////////////
@@ -68,12 +93,6 @@ class MaintenanceHandler : public RestHandler {
 RestHandlerFactory::RestHandlerFactory(context_fptr setContext,
                                        void* contextData)
     : _setContext(setContext), _contextData(contextData), _notFound(nullptr) {}
-
-void RestHandlerFactory::setMaintenance(bool value) {
-  _maintenanceMode.store(value);
-}
-
-bool RestHandlerFactory::isMaintenance() { return _maintenanceMode.load(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set request context, wrapper method
@@ -94,18 +113,24 @@ RestHandler* RestHandlerFactory::createHandler(
   
   // In the shutdown phase we simply return 503:
   if (application_features::ApplicationServer::isStopping()) {
-    return new MaintenanceHandler(request.release(), response.release());
+    return new MaintenanceHandler(request.release(), response.release(), false);
   }
 
   // In the bootstrap phase, we would like that coordinators answer the
   // following endpoints, but not yet others:
-  if (_maintenanceMode.load()) {
+  RestHandlerFactory::Mode mode = RestHandlerFactory::serverMode();
+  if (mode == Mode::MAINTENANCE) {
     if ((!ServerState::instance()->isCoordinator() &&
          path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
         (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
          path.find("/_api/aql") == std::string::npos)) {
       LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
-      return new MaintenanceHandler(request.release(), response.release());
+      return new MaintenanceHandler(request.release(), response.release(), false);
+    }
+  } else if (mode == RestHandlerFactory::Mode::REDIRECT) {
+    ExecContext* exec = static_cast<ExecContext*>(request->requestContext());
+    if (!exec->isAdminUser()) {
+      return new MaintenanceHandler(request.release(), response.release(), true);
     }
   }
 

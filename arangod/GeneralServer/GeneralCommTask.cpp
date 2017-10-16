@@ -423,27 +423,10 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
         //forceOpen = true;
-        vc->upgradeSuperuser();
-      }
-    }
-  }
-  /*
-  if (result != rest::ResponseCode::OK) {
-    return result;
-  }
-
-  // check that we are allowed to see the database
-  if (!forceOpen) {
-    if (!request->authorized()) {
-      if (request->requestType() == RequestType::GET &&
-          (StringUtils::isPrefix(path, ApiUser + username + '/') ||
-           StringUtils::isPrefix(path, AdminAardvark))) {
-        // check for GET /_db/_system/_api/user/USERNAME/database
         vc->upgradeReadOnly();
-        return rest::ResponseCode::OK;
       }
     }
-  }*/
+  }
   
   return result;
 }

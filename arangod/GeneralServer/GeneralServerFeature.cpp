@@ -34,6 +34,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
+#include "Cluster/RestClusterHandler.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
@@ -237,7 +238,7 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
 }
 
 void GeneralServerFeature::prepare() {
-  RestHandlerFactory::setMaintenance(true);
+  RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::MAINTENANCE);
   GENERAL_SERVER = this;
 }
 
@@ -460,6 +461,9 @@ void GeneralServerFeature::defineHandlers() {
         RestHandlerCreator<RestAgencyCallbacksHandler>::createData<
             AgencyCallbackRegistry*>,
         cluster->agencyCallbackRegistry());
+    // add "_api/cluster" handler
+    _handlerFactory->addPrefixHandler(cluster->clusterRestPath(),
+                                      RestHandlerCreator<RestClusterHandler>::createNoData);
   }
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH,

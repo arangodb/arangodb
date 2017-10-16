@@ -99,7 +99,6 @@ for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
         --server.statistics false \
         --server.threads 16 \
         --log.file cluster/$port.log \
-        --log.force-direct true \
         --log.level $LOG_LEVEL_AGENCY \
         $STORAGE_ENGINE \
         $AUTHENTICATION \
@@ -122,6 +121,7 @@ start() {
         --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
         --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
         --cluster.my-role $ROLE \
+	--replication.automatic-failover true \
         --log.file cluster/$PORT.log \
         --log.level $LOG_LEVEL \
         --server.statistics true \
@@ -129,7 +129,6 @@ start() {
         --javascript.startup-directory $SRC_DIR/js \
         --javascript.module-directory $SRC_DIR/enterprise/js \
         --javascript.app-path cluster/apps$PORT \
-        --log.force-direct true \
         --log.level $LOG_LEVEL_CLUSTER \
         $STORAGE_ENGINE \
         $AUTHENTICATION \

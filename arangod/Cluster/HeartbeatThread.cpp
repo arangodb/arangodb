@@ -54,6 +54,7 @@
 
 using namespace arangodb;
 using namespace arangodb::application_features;
+using namespace arangodb::rest;
 
 std::atomic<bool> HeartbeatThread::HasRunOnce(false);
 
@@ -188,7 +189,7 @@ void HeartbeatThread::run() {
   // ohhh the dbserver is online...pump some documents into it
   // which fails when it is still in maintenance mode
   if (!ServerState::instance()->isCoordinator(role)) {
-    while (arangodb::rest::RestHandlerFactory::isMaintenance()) {
+    while (RestHandlerFactory::isMaintenance()) {
       if (isStopping()) {
         // startup aborted
         return;
@@ -410,7 +411,7 @@ void HeartbeatThread::runSingleServer() {
   double const interval = (double)_interval / 1000.0 / 1000.0;
   ReplicationFeature* replication = ReplicationFeature::INSTANCE;
   TRI_ASSERT(replication != nullptr);
-  if (!replication->enableAutomaticFailover()) {
+  if (!replication->isAutomaticFailoverEnabled()) {
     LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Automatic failover is disabled, yet "
       << "the heartbeat thread is running on a single server. "
       << "Please add --replication.automatic-failover true";
@@ -488,7 +489,7 @@ void HeartbeatThread::runSingleServer() {
       VPackBuilder myIdBuilder;
       myIdBuilder.add(VPackValue(_myId));
       
-      // Case 1: No leader in agency. Race for leadershiü
+      // Case 1: No leader in agency. Race for leadership
       if (!leader.isString()) {
         LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vaccuum detected, "
         << "attempting a takeover";
@@ -500,8 +501,9 @@ void HeartbeatThread::runSingleServer() {
                                   /* ttl */ std::min(30.0, interval * 4),
                                   /* timeout */ 30.0);
         if (result.successful()) {
-          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "all your bases belong to us";
+          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "All your base are belong to us";
           applier->stop(/* reset error */true);
+          RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::DEFAULT);
         } else {
           LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Takeover attempt failed";
         }
@@ -511,6 +513,7 @@ void HeartbeatThread::runSingleServer() {
       // Case 2: Current server is leader
       if (leader.compareString(_myId) == 0) {
         LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Currently leader" << _myId;
+        
         // updating the value to keep our leadership
         result = _agency.casValue(leaderPath, /* old */ myIdBuilder.slice(),
                                   /* new */ myIdBuilder.slice(),
@@ -523,7 +526,8 @@ void HeartbeatThread::runSingleServer() {
           applier->stopAndJoin();
         }
         
-        // TODO allow server access
+        // allow server access
+        RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::DEFAULT);
         
         continue; // nothing more to do
       }
@@ -535,17 +539,19 @@ void HeartbeatThread::runSingleServer() {
         LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to resolve leader endpoint";
         continue;
       }
+      // enable redirections to leader
+      RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::REDIRECT);
       
-      if (applier->endpoint() != endpoint) { //  || !applier->isRunning()
+      // (re)start applier if necessary
+      if (applier->endpoint() != endpoint || !applier->isRunning()) {
         if (applier->isRunning()) {
           applier->stopAndJoin();
         }
         
         ReplicationApplierConfiguration config = applier->configuration();
         config._endpoint = endpoint;
-        std::string jwt = AuthenticationFeature::INSTANCE->jwtSecret();
         if (config._jwt.empty()) {
-          config._jwt = jwt;
+          config._jwt = AuthenticationFeature::INSTANCE->generateJwtToken();
         }
         // TODO: how do we initially configure the applier
         
@@ -559,7 +565,8 @@ void HeartbeatThread::runSingleServer() {
         // but not initially
         Result r = syncer.run(true);
         if (r.fail()) {
-          LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Initial sync from leader failed!";
+          LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Initial sync from leader "
+          << "failed: " << r.errorMessage();
           continue;
         }
         // steal the barrier from the syncer

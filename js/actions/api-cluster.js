@@ -1625,12 +1625,16 @@ actions.defineHttp({
 // / @end Docu Block
 // //////////////////////////////////////////////////////////////////////////////
 
+/// MOVED TO RestClusterHandler.cpp
+/*
 actions.defineHttp({
   url: '_api/cluster/endpoints',
   allowUseDatabase: false,
   prefix: false,
 
   callback: function (req, res) {
+    /// MOVED TO RestClusterHandler.cpp
+    
     if (!require('@arangodb/cluster').isCoordinator()) {
       actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
         'only coordinators can serve this request');
@@ -1650,3 +1654,4 @@ actions.defineHttp({
     actions.resultOk(req, res, actions.HTTP_OK, result);
   }
 });
+*/

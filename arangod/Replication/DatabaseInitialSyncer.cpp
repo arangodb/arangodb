@@ -1125,7 +1125,7 @@ Result DatabaseInitialSyncer::handleLeaderCollections(VPackSlice const& collSlic
   // ----------------------------------------------------------------------------------
 
   // iterate over all collections from the master...
-  auto phases = std::array<sync_phase_e, 3>({ PHASE_VALIDATE, PHASE_DROP_CREATE, PHASE_DUMP });
+  std::array<sync_phase_e, 3> phases{{ PHASE_VALIDATE, PHASE_DROP_CREATE, PHASE_DUMP }};
   for (auto const& phase : phases) {
     Result r = iterateCollections(collections, incremental, phase);
 

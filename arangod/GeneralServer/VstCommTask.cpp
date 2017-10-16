@@ -370,11 +370,9 @@ bool VstCommTask::processRead(double startTime) {
           _connectionInfo, std::move(message), chunkHeader._messageID));
       request->setAuthorized(_authorized);
       request->setUser(_authenticatedUser);
-      GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
-      
-      if (request->requestContext() == nullptr) {
-        handleSimpleError(
-                          rest::ResponseCode::NOT_FOUND, *request,
+      bool res = GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
+      if (!res || request->requestContext() == nullptr) {
+        handleSimpleError(rest::ResponseCode::NOT_FOUND, *request,
                           TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
                           TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
                           chunkHeader._messageID);

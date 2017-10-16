@@ -64,16 +64,20 @@ class ReplicationFeature final
   void stopApplier(TRI_vocbase_t* vocbase);
       
   /// @brief automatic failover of replication using the agency
-  bool enableAutomaticFailover() const {
-    return _enableFailover;
+  bool isAutomaticFailoverEnabled() const {
+    return _enableReplicationFailover;
   }
  
  public:
   static ReplicationFeature* INSTANCE;
    
  private:
+      
   bool _replicationApplierAutoStart;
-  bool _enableFailover;
+      
+  /// Enable the automatic failover
+  bool _enableReplicationFailover;
+      
   std::unique_ptr<GlobalReplicationApplier> _globalReplicationApplier;
 };
 }

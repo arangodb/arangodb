@@ -1,6 +1,10 @@
 devel
 -----
 
+* UI: fixed unresponsive events in cluster shards view
+
+* UI: added word wrapping to query editor
+
 * fixed issue #3395: AQL: cannot instantiate CollectBlock with undetermined 
   aggregation method
 
@@ -46,6 +50,8 @@ devel
  threads we expose through the server statistics interface.
 
 * removed `--compat28` parameter from arangodump and replication API
+  
+  old Arango versions will no longer be supported by these tools.
 
 * increase the recommended value for `/proc/sys/vm/max_map_count` to a value
   eight times as high as the previous recommended value. Increasing the

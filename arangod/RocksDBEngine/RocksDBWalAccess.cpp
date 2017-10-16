@@ -421,6 +421,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler, public WalAccessContext
     // starting new write batch
     _startSequence = startSequence;
     _currentSequence = startSequence;
+    _startOfBatch = true;
   }
 
   void writeCommitMarker() {
