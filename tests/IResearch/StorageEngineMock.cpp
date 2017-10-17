@@ -238,8 +238,7 @@ std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAllIterator(
 
 std::unique_ptr<arangodb::IndexIterator> PhysicalCollectionMock::getAnyIterator(arangodb::transaction::Methods* trx, arangodb::ManagedDocumentResult* mdr) const {
   before();
-  TRI_ASSERT(false);
-  return nullptr;
+  return irs::memory::make_unique<AllIteratorMock>(documents.size(), this->_logicalCollection, trx, mdr);
 }
 
 void PhysicalCollectionMock::getPropertiesVPack(arangodb::velocypack::Builder&) const {
