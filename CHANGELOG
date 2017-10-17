@@ -1,5 +1,10 @@
 v3.2.5 (2017-XX-XX)
 -------------------
+* BUGFIX: general-graph module and _api/gharial now accept cluster options
+  for collection creation. It is now possible to set replicationFactor and
+  numberOfShards for all collections created via this graph object.
+  So adding a new collection will not result in a singleShard and
+  no replication anymore.
 
 * minimum number of V8 contexts in console mode must be 2, not 1. this is
   required to ensure the console gets one dedicated V8 context and all other
