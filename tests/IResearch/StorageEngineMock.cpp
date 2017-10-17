@@ -615,7 +615,7 @@ void StorageEngineMock::createIndex(TRI_vocbase_t* vocbase, TRI_voc_cid_t collec
 
 arangodb::Result StorageEngineMock::createLoggerState(TRI_vocbase_t*, VPackBuilder&) {
   TRI_ASSERT(false);
-  return arangodb::Result(false);
+  return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 arangodb::PhysicalCollection* StorageEngineMock::createPhysicalCollection(arangodb::LogicalCollection* collection, VPackSlice const& info) {
@@ -628,7 +628,7 @@ arangodb::PhysicalView* StorageEngineMock::createPhysicalView(arangodb::LogicalV
 
 arangodb::Result StorageEngineMock::createTickRanges(VPackBuilder&) {
   TRI_ASSERT(false);
-  return arangodb::Result(false);
+  return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 arangodb::TransactionCollection* StorageEngineMock::createTransactionCollection(arangodb::TransactionState* state, TRI_voc_cid_t cid, arangodb::AccessMode::Type, int nestingLevel) {
@@ -688,7 +688,7 @@ arangodb::Result StorageEngineMock::dropView(TRI_vocbase_t* vocbase, arangodb::L
 
 arangodb::Result StorageEngineMock::firstTick(uint64_t&) {
   TRI_ASSERT(false);
-  return arangodb::Result(false);
+  return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 void StorageEngineMock::getCollectionInfo(TRI_vocbase_t* vocbase, TRI_voc_cid_t cid, arangodb::velocypack::Builder& result, bool includeIndexes, TRI_voc_tick_t maxTick) {
@@ -744,7 +744,7 @@ bool StorageEngineMock::inRecovery() {
 
 arangodb::Result StorageEngineMock::lastLogger(TRI_vocbase_t*, std::shared_ptr<arangodb::transaction::Context>, uint64_t, uint64_t, std::shared_ptr<VPackBuilder>&) {
   TRI_ASSERT(false);
-  return arangodb::Result(false);
+  return arangodb::Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
 TRI_vocbase_t* StorageEngineMock::openDatabase(arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) {
