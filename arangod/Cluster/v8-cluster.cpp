@@ -656,7 +656,7 @@ static void JS_GetCollectionInfoClusterInfo(
   for (auto const& p : VPackObjectIterator(shards)) {
     TRI_ASSERT(p.value.isArray());
     v8::Handle<v8::Array> shorts =
-        v8::Array::New(isolate, static_cast<int>(p.value.length()));
+        v8::Array::New(isolate);
     uint32_t pos = 0;
     for (auto const& s : VPackArrayIterator(p.value)) {
       try {
@@ -664,7 +664,8 @@ static void JS_GetCollectionInfoClusterInfo(
         if (t.at(0) == '_') {
           t = t.substr(1);
         }
-        shorts->Set(pos++, TRI_V8_STD_STRING(isolate, serverAliases.at(t)));
+        shorts->Set(pos, TRI_V8_STD_STRING(isolate, serverAliases.at(t)));
+        pos++;
       } catch (...) {}
     }
     shardShorts->Set(TRI_V8_STD_STRING(isolate, p.key.copyString()), shorts);
@@ -729,14 +730,15 @@ static void JS_GetCollectionInfoCurrentClusterInfo(
   v8::Handle<v8::Array> list =
       v8::Array::New(isolate, static_cast<int>(servers.size()));
   v8::Handle<v8::Array> shorts =
-      v8::Array::New(isolate, static_cast<int>(servers.size()));
+      v8::Array::New(isolate);
   auto serverAliases = ClusterInfo::instance()->getServerAliases();
   uint32_t pos = 0;
   for (auto const& s : servers) {
     try {
       shorts->Set(pos, TRI_V8_STD_STRING(isolate, serverAliases.at(s)));
     } catch (...) {}
-    list->Set(pos++, TRI_V8_STD_STRING(isolate, s));
+    list->Set(pos, TRI_V8_STD_STRING(isolate, s));
+    pos++;
   }
   result->Set(TRI_V8_ASCII_STRING(isolate, "servers"), list);
   result->Set(TRI_V8_ASCII_STRING(isolate, "shorts"), shorts);
