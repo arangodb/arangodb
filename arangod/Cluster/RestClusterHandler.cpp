@@ -123,19 +123,24 @@ void RestClusterHandler::handleCommandEndpoints() {
     
     
     if (!leaderId.empty()) {
-      endpoints.push_back(leaderId);
       
       // {"serverId" : {"Status" : "GOOD", ...}}
       for (VPackObjectIterator::ObjectPair const& pair : VPackObjectIterator(healthMap)) {
         TRI_ASSERT(pair.key.isString() && pair.value.isObject());
         if (pair.key.compareString(leaderId) != 0) {
           VPackSlice status = pair.value.get("Status");
-          if (status.isString() &&
-              status.compareString(consensus::Supervision::HEALTH_STATUS_GOOD) == 0) {
+          TRI_ASSERT(status.isString());
+          
+          if (status.compareString(consensus::Supervision::HEALTH_STATUS_GOOD) == 0) {
+            endpoints.insert(endpoints.begin(), pair.key.copyString());
+          } else if (status.compareString(consensus::Supervision::HEALTH_STATUS_BAD) == 0) {
             endpoints.push_back(pair.key.copyString());
           }
         }
       }
+      
+      // master always in front
+      endpoints.insert(endpoints.begin(), leaderId);
       
     } else {
       LOG_TOPIC(INFO, Logger::CLUSTER) << "Leadership challenge is ongoing";
