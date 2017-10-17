@@ -378,6 +378,10 @@ struct MMFilesWalAccessContext : WalAccessContext {
   }
 
   WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd, size_t chunkSize) {
+    
+    MMFilesLogfileManagerState const state =
+    MMFilesLogfileManager::instance()->state();
+    
     // ask the logfile manager which datafiles qualify
     bool fromTickIncluded = false;
     std::vector<arangodb::MMFilesWalLogfile*> logfiles =
@@ -510,12 +514,6 @@ struct MMFilesWalAccessContext : WalAccessContext {
       res = TRI_ERROR_INTERNAL;
     }
 
-    MMFilesLogfileManagerState const state =
-        MMFilesLogfileManager::instance()->state();
-
-    /*LOG_TOPIC(ERR, Logger::FIXME) << "2. fromTickIncluded " <<
-      fromTickIncluded
-      << " lastFoundTick " << lastFoundTick;*/
     return WalAccessResult(res, fromTickIncluded, lastFoundTick,
                            state.lastCommittedTick);
   }

@@ -130,7 +130,7 @@ RestHandler* RestHandlerFactory::createHandler(
          path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
         (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
          path.find("/_api/aql") == std::string::npos)) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
       return new MaintenanceHandler(req.release(), res.release(), false);
     }
   } else if (mode == RestHandlerFactory::Mode::REDIRECT) {
@@ -138,6 +138,7 @@ RestHandler* RestHandlerFactory::createHandler(
         path.find("/_api/cluster/") == std::string::npos &&
         path.find("/_api/version") == std::string::npos &&
         path.find("/_admin/shutdown") == std::string::npos) {
+      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
       return new MaintenanceHandler(req.release(), res.release(), true);
     }
   }
