@@ -178,14 +178,21 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
     if (r.fail()) {
       return r;
     }
-
+    
+    // update the tick from which we will fetch in the next round
+    if (lastIncludedTick > fromTick) {
+      fromTick = lastIncludedTick;
+    } else if (checkMore) {
+      // we got the same tick again, this indicates we're at the end
+      checkMore = false;
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "we got the same tick again, "
+        << "this indicates we're at the end";
+    }
     
     if (!checkMore) {
       // done!
       return Result();
     }
-    
-    // update the tick from which we will fetch in the next round
-    fromTick = lastIncludedTick;
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Fetching more data fromTick " << fromTick;
   }
 }
