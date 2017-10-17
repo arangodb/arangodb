@@ -3786,14 +3786,25 @@ function ahuacatlFunctionsTestSuite () {
       ];
 
       tests.forEach(function (data) {
-        var query = "RETURN MATCHES(" + JSON.stringify(data.doc) + ", " + JSON.stringify(data.examples);
+        let query = "RETURN NOOPT(MATCHES(" + JSON.stringify(data.doc) + ", " + JSON.stringify(data.examples);
         if (data.flag !== null) {
-          query += ", " + JSON.stringify(data.flag) + ")";
+          query += ", " + JSON.stringify(data.flag) + "))";
         }
         else {
-          query += ")";
+          query += "))";
         }
-        var actual = getQueryResults(query);
+        let actual = getQueryResults(query);
+        assertEqual(data.expected, actual);
+
+
+        query = "RETURN NOOPT(V8(MATCHES(" + JSON.stringify(data.doc) + ", " + JSON.stringify(data.examples);
+        if (data.flag !== null) {
+          query += `, ${JSON.stringify(data.flag)})))`;
+        }
+        else {
+          query += ')))';
+        }
+        actual = getQueryResults(query);
         assertEqual(data.expected, actual);
       });
     },
