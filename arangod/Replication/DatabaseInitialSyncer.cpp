@@ -898,7 +898,7 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     
     setProgress(progress);
 
-    LOG_TOPIC(ERR, Logger::REPLICATION) << "Dump creating collection " << parameters.toJson();
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "Dump creating collection " << parameters.toJson();
     Result r = createCollection(vocbase(), parameters, &col);
 
     if (r.fail()) {
