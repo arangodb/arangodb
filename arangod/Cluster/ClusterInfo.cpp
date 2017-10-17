@@ -1858,7 +1858,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     // now create a new index
     std::unordered_set<std::string> const ignoreKeys{
         "allowUserKeys", "cid", /* cid really ignore?*/
-        "count",         "planId", "version", "objectId"
+        "count",         "globallyUniqueId", "planId", "version", "objectId"
     };
     c->setStatus(TRI_VOC_COL_STATUS_LOADED);
     collectionBuilder = c->toVelocyPackIgnore(ignoreKeys, false, false);

@@ -800,6 +800,10 @@ function executePlanForCollections(plannedCollections) {
                 let save = {id: collectionInfo.id, name: collectionInfo.name};
                 delete collectionInfo.id;     // must not
                 delete collectionInfo.name;
+                if (collectionInfo.hasOwnProperty('globallyUniqueId')) {
+                  console.warn('unexpected globallyUniqueId');
+                }
+                delete collectionInfo.globallyUniqueId;
                 try {
                   if (collectionInfo.type === ArangoCollection.TYPE_EDGE) {
                     db._createEdgeCollection(shardName, collectionInfo);
