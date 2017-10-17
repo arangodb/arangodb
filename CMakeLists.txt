@@ -882,9 +882,9 @@ if (MSVC)
 endif()
 
 include(ArangoDBInstall)
+include(frontend/aardvark)
 if (NOT(SKIP_PACKAGING))
   include(packages/packages)
-  include(frontend/aardvark)
 endif()
 
 ################################################################################
