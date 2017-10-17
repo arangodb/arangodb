@@ -37,6 +37,7 @@
 #include <sys/syscall.h>
 #include <sys/resource.h>
 
+#include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
 
 namespace arangodb {
@@ -80,7 +81,7 @@ thread_local sPriorityInfo gThreadPriority={false, 0, 0};
 
 // rocksdb flushes and compactions start and stop within same thread, no overlapping
 //  (OSX 10.12 requires a static initializer for thread_local ... time_point on mac does not have
-//   one in clang 9.0.0)    
+//   one in clang 9.0.0)
 thread_local uint8_t gFlushStart[sizeof(std::chrono::steady_clock::time_point)];
 
 
@@ -118,6 +119,7 @@ RocksDBThrottle::RocksDBThrottle()
 // Shutdown the background thread only if it was ever started
 //
 RocksDBThrottle::~RocksDBThrottle() {
+  CONDITION_LOCKER(guard, _threadCondvar);
 
   if (_threadRunning.load()) {
     _threadRunning.store(false);
@@ -225,8 +227,12 @@ void RocksDBThrottle::ThreadLoop() {
   _replaceIdx=2;
 
   // addresses race condition during fast start/stop
-  _threadRunning.store(true);
-  _threadCondvar.signal();
+  {
+    CONDITION_LOCKER(guard, _threadCondvar);
+
+    _threadRunning.store(true);
+    _threadCondvar.signal();
+  } // lock
 
   while(_threadRunning.load()) {
     //
@@ -239,9 +245,13 @@ void RocksDBThrottle::ThreadLoop() {
       _replaceIdx=2;
 
     // wait on _threadCondvar
-    if (_threadRunning.load()) { // test in case of race at shutdown
-      _threadCondvar.wait(THROTTLE_SECONDS * 1000000);
-    } //if
+    {
+      CONDITION_LOCKER(guard, _threadCondvar);
+
+      if (_threadRunning.load()) { // test in case of race at shutdown
+        _threadCondvar.wait(THROTTLE_SECONDS * 1000000);
+      } //if
+    } // lock
   } // while
 
 } // RocksDBThrottle::ThreadLoop
