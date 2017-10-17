@@ -68,7 +68,7 @@ class MaintenanceHandler : public RestHandler {
           
           resetResponse(rest::ResponseCode::TEMPORARY_REDIRECT);
           _response->setHeader("Location", endpoint + _request->requestPath());
-          _response->setHeader("x-arango-redirect", endpoint);
+          _response->setHeader("x-arango-endpoint", applier->endpoint());
           return RestStatus::DONE;
         }
       }
