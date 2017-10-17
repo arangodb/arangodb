@@ -94,7 +94,7 @@ if (typeof internal.arango !== 'undefined') {
     // proxy the db object, so we can track access to non-existing collections
     exports.db = new Proxy(db, {
       get(target, name) {
-        if (!db.hasOwnProperty(name) && typeof name === 'string') {
+        if (!target.hasOwnProperty(name) && target[name] === undefined && typeof name === 'string') {
           // unknown collection, try re-populating the cache
           db._collections();
         }
