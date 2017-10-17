@@ -79,7 +79,10 @@ thread_local sPriorityInfo gThreadPriority={false, 0, 0};
 
 
 // rocksdb flushes and compactions start and stop within same thread, no overlapping
-thread_local std::chrono::steady_clock::time_point gFlushStart;
+//  (OSX 10.12 requires a static initializer for thread_local ... time_point on mac does not have
+//   one in clang 9.0.0)    
+thread_local uint8_t gFlushStart[sizeof(std::chrono::steady_clock::time_point)];
+
 
 
 ///
@@ -142,7 +145,8 @@ CompactionEventListener * RocksDBThrottle::GetCompactionEventListener() {return 
 void RocksDBThrottle::OnFlushBegin(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) {
 
   // save start time in thread local storage
-  gFlushStart = std::chrono::steady_clock::now();
+  std::chrono::steady_clock::time_point osx_hack = std::chrono::steady_clock::now();
+  memcpy(gFlushStart, &osx_hack, sizeof(std::chrono::steady_clock::time_point));
   AdjustThreadPriority(1);
 
   return;
@@ -153,8 +157,12 @@ void RocksDBThrottle::OnFlushBegin(rocksdb::DB* db, const rocksdb::FlushJobInfo&
 void RocksDBThrottle::OnFlushCompleted(rocksdb::DB* db, const rocksdb::FlushJobInfo& flush_job_info) {
   std::chrono::microseconds flush_time;
   uint64_t flush_size;
+  std::chrono::steady_clock::time_point osx_hack;
 
-  flush_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - gFlushStart);
+  memcpy(&osx_hack, gFlushStart, sizeof(std::chrono::steady_clock::time_point));
+
+  flush_time = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now()
+                                                                     - osx_hack);
   flush_size = flush_job_info.table_properties.data_size + flush_job_info.table_properties.index_size
     + flush_job_info.table_properties.filter_size;
 
