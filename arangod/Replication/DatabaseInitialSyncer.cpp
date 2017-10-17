@@ -898,10 +898,13 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     
     setProgress(progress);
 
+    LOG_TOPIC(ERR, Logger::REPLICATION) << "Dump creating collection " << parameters.toJson();
     Result r = createCollection(vocbase(), parameters, &col);
 
     if (r.fail()) {
-      return Result(r.errorNumber(), std::string("unable to create ") + collectionMsg + ": " + TRI_errno_string(r.errorNumber()));
+      return Result(r.errorNumber(), std::string("unable to create ") +
+                    collectionMsg + ": " + TRI_errno_string(r.errorNumber()) +
+                    ". Collection info " + parameters.toJson());
     }
    
     return r;
@@ -917,7 +920,8 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     arangodb::LogicalCollection* col = resolveCollection(vocbase(), parameters);
 
     if (col == nullptr) {
-      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, std::string("cannot dump: ") + collectionMsg + " not found on slave");
+      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, std::string("cannot dump: ") +
+                    collectionMsg + " not found on slave. Collection info " + parameters.toJson());
     }
 
     Result res;
