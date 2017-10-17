@@ -106,7 +106,7 @@ void RestClusterHandler::handleCommandEndpoints() {
     AgencyReadTransaction trx(std::vector<std::string>({
       AgencyCommManager::path(healthPath),
       AgencyCommManager::path(leaderPath)}));
-    AgencyCommResult result = agency.sendTransactionWithFailover(trx, 1.0);
+    AgencyCommResult result = agency.sendTransactionWithFailover(trx, 5.0);
     
     if (!result.successful()) {
       generateError(ResponseCode::SERVER_ERROR, result.errorCode(),
@@ -120,30 +120,31 @@ void RestClusterHandler::handleCommandEndpoints() {
     path = AgencyCommManager::slicePath(healthPath);
     VPackSlice healthMap = result.slice()[0].get(path);
     
-    
-    
-    if (!leaderId.empty()) {
-      endpoints.push_back(leaderId);
+    if (leaderId.empty()) {
+      generateError(Result(TRI_ERROR_INTERNAL, "Leadership challenge is ongoing"));
+      return;
+    }
       
-      // {"serverId" : {"Status" : "GOOD", ...}}
-      for (VPackObjectIterator::ObjectPair const& pair : VPackObjectIterator(healthMap)) {
-        TRI_ASSERT(pair.key.isString() && pair.value.isObject());
-        if (pair.key.compareString(leaderId) != 0) {
-          VPackSlice status = pair.value.get("Status");
-          if (status.isString() &&
-              status.compareString(consensus::Supervision::HEALTH_STATUS_GOOD) == 0) {
-            endpoints.push_back(pair.key.copyString());
-          }
+    // {"serverId" : {"Status" : "GOOD", ...}}
+    for (VPackObjectIterator::ObjectPair const& pair : VPackObjectIterator(healthMap)) {
+      TRI_ASSERT(pair.key.isString() && pair.value.isObject());
+      if (pair.key.compareString(leaderId) != 0) {
+        VPackSlice status = pair.value.get("Status");
+        TRI_ASSERT(status.isString());
+        
+        if (status.compareString(consensus::Supervision::HEALTH_STATUS_GOOD) == 0) {
+          endpoints.insert(endpoints.begin(), pair.key.copyString());
+        } else if (status.compareString(consensus::Supervision::HEALTH_STATUS_BAD) == 0) {
+          endpoints.push_back(pair.key.copyString());
         }
       }
-      
-    } else {
-      LOG_TOPIC(INFO, Logger::CLUSTER) << "Leadership challenge is ongoing";
     }
     
+    // master always in front
+    endpoints.insert(endpoints.begin(), leaderId);
+
   } else {
-    generateError(Result(TRI_ERROR_FORBIDDEN,
-                         "only coordinators can serve this request"));
+    generateError(Result(TRI_ERROR_FORBIDDEN, "can not serve this request"));
     return;
   }
   

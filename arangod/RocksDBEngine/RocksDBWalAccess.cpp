@@ -579,7 +579,7 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
   uint64_t firstTick = UINT64_MAX;  // first tick actually read
   uint64_t lastTick = tickStart;    // lastTick at start of a write batch
   uint64_t lastWrittenTick = 0;     // lastTick at the end of a write batch
-  uint64_t latest = db->GetLatestSequenceNumber();
+  uint64_t latestTick = db->GetLatestSequenceNumber();
 
   auto handler = std::make_unique<MyWALParser>(filter, func);
   std::unique_ptr<rocksdb::TransactionLogIterator> iterator;  // reader();
@@ -590,7 +590,8 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
   s = db->GetUpdatesSince(tickStart, &iterator, ro);
   if (!s.ok()) {
     Result r = convertStatus(s, rocksutils::StatusHint::wal);
-    return WalAccessResult(r.errorNumber(), tickStart == latest, 0, latest);
+    return WalAccessResult(r.errorNumber(), tickStart == latestTick,
+                           0, latestTick);
   }
 
   // we need to check if the builder is bigger than the chunksize,
@@ -634,7 +635,7 @@ WalAccessResult RocksDBWalAccess::tail(uint64_t tickStart, uint64_t tickEnd,
   }
 
   WalAccessResult result(TRI_ERROR_NO_ERROR, firstTick <= tickStart,
-                         lastWrittenTick, latest);
+                         lastWrittenTick, latestTick);
   if (!s.ok()) {
     result.Result::reset(convertStatus(s, rocksutils::StatusHint::wal));
   }
