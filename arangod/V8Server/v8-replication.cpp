@@ -220,99 +220,63 @@ static void SynchronizeReplication(
   configuration.validate();
 
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
- 
+  std::unique_ptr<InitialSyncer> syncer;
+  
+
   if (applierType == APPLIER_DATABASE) { 
     // database-specific synchronization
-    DatabaseInitialSyncer syncer(vocbase, configuration);
-  
+    syncer.reset(new DatabaseInitialSyncer(vocbase, configuration));
+    
     if (object->Has(TRI_V8_ASCII_STRING(isolate, "leaderId"))) {
-      syncer.setLeaderId(TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "leaderId"))));
+      syncer->setLeaderId(TRI_ObjectToString(object->Get(TRI_V8_ASCII_STRING(isolate, "leaderId"))));
     }
-
-    try {
-      Result r = syncer.run(configuration._incremental);
-      
-      if (r.fail()) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), "cannot sync from remote endpoint: " + r.errorMessage() + ". last progress message was '" + syncer.progress() + "'");
-      }
-
-      if (keepBarrier) {
-        result->Set(TRI_V8_ASCII_STRING(isolate, "barrierId"),
-                    TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer.stealBarrier()));
-      }
-      
-      result->Set(TRI_V8_ASCII_STRING(isolate, "lastLogTick"),
-                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer.getLastLogTick()));
-
-      std::map<TRI_voc_cid_t, std::string>::const_iterator it;
-      std::map<TRI_voc_cid_t, std::string> const& c =
-          syncer.getProcessedCollections();
-
-      uint32_t j = 0;
-      v8::Handle<v8::Array> collections = v8::Array::New(isolate);
-      for (it = c.begin(); it != c.end(); ++it) {
-        std::string const cidString = StringUtils::itoa((*it).first);
-
-        v8::Handle<v8::Object> ci = v8::Object::New(isolate);
-        ci->Set(TRI_V8_ASCII_STRING(isolate, "id"), TRI_V8_STD_STRING(isolate, cidString));
-        ci->Set(TRI_V8_ASCII_STRING(isolate, "name"), TRI_V8_STD_STRING(isolate, (*it).second));
-
-        collections->Set(j++, ci);
-      }
-
-      result->Set(TRI_V8_ASCII_STRING(isolate, "collections"), collections);
-    } catch (arangodb::basics::Exception const& ex) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), std::string("cannot sync from remote endpoint: ") + ex.what() + ". last progress message was '" + syncer.progress() + "'");
-    } catch (std::exception const& ex) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot sync from remote endpoint: ") + ex.what() + ". last progress message was '" + syncer.progress() + "'");
-    } catch (...) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot sync from remote endpoint: unknown exception. last progress message was '") + syncer.progress() + "'");
-    }
-  } else {
-    // global synchronization
+  } else if (applierType == APPLIER_GLOBAL) {
     configuration._skipCreateDrop = false;
-    GlobalInitialSyncer syncer(configuration);
+    syncer.reset(new GlobalInitialSyncer(configuration));
+  } else {
+    TRI_ASSERT(false);
+  }
 
-    try {
-      Result r = syncer.run(configuration._incremental);
-      
-      if (r.fail()) {
-        LOG_TOPIC(ERR, Logger::REPLICATION) << "global synchronization error: " << r.errorMessage();
-        TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), "cannot sync from remote endpoint: " + r.errorMessage() + ". last progress message was '" + syncer.progress() + "'");
-      }
-
-      if (keepBarrier) {
-        result->Set(TRI_V8_ASCII_STRING(isolate, "barrierId"),
-                    TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer.stealBarrier()));
-      }
-
-      result->Set(TRI_V8_ASCII_STRING(isolate, "lastLogTick"),
-                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer.getLastLogTick()));
-
-      std::map<TRI_voc_cid_t, std::string>::const_iterator it;
-      std::map<TRI_voc_cid_t, std::string> const& c =
-          syncer.getProcessedCollections();
-
-      uint32_t j = 0;
-      v8::Handle<v8::Array> collections = v8::Array::New(isolate);
-      for (it = c.begin(); it != c.end(); ++it) {
-        std::string const cidString = StringUtils::itoa((*it).first);
-
-        v8::Handle<v8::Object> ci = v8::Object::New(isolate);
-        ci->Set(TRI_V8_ASCII_STRING(isolate, "id"), TRI_V8_STD_STRING(isolate, cidString));
-        ci->Set(TRI_V8_ASCII_STRING(isolate, "name"), TRI_V8_STD_STRING(isolate, (*it).second));
-
-        collections->Set(j++, ci);
-      }
-
-      result->Set(TRI_V8_ASCII_STRING(isolate, "collections"), collections);
-    } catch (arangodb::basics::Exception const& ex) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), std::string("cannot sync from remote endpoint: ") + ex.what() + ". last progress message was '" + syncer.progress() + "'");
-    } catch (std::exception const& ex) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot sync from remote endpoint: ") + ex.what() + ". last progress message was '" + syncer.progress() + "'");
-    } catch (...) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot sync from remote endpoint: unknown exception. last progress message was '") + syncer.progress() + "'");
+  try {
+    Result r = syncer->run(configuration._incremental);
+    
+    if (r.fail()) {
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "Initial sync failed: " << r.errorMessage();
+      TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), "cannot sync from remote endpoint: " + r.errorMessage() +
+                                     ". last progress message was '" + syncer->progress() + "'");
     }
+
+    if (keepBarrier) {
+      result->Set(TRI_V8_ASCII_STRING(isolate, "barrierId"),
+                  TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer->stealBarrier()));
+    }
+    
+    result->Set(TRI_V8_ASCII_STRING(isolate, "lastLogTick"),
+                TRI_V8UInt64String<TRI_voc_tick_t>(isolate, syncer->getLastLogTick()));
+
+    std::map<TRI_voc_cid_t, std::string>::const_iterator it;
+    std::map<TRI_voc_cid_t, std::string> const& c =
+        syncer->getProcessedCollections();
+
+    uint32_t j = 0;
+    v8::Handle<v8::Array> collections = v8::Array::New(isolate);
+    for (it = c.begin(); it != c.end(); ++it) {
+      std::string const cidString = StringUtils::itoa((*it).first);
+
+      v8::Handle<v8::Object> ci = v8::Object::New(isolate);
+      ci->Set(TRI_V8_ASCII_STRING(isolate, "id"), TRI_V8_STD_STRING(isolate, cidString));
+      ci->Set(TRI_V8_ASCII_STRING(isolate, "name"), TRI_V8_STD_STRING(isolate, (*it).second));
+
+      collections->Set(j++, ci);
+    }
+
+    result->Set(TRI_V8_ASCII_STRING(isolate, "collections"), collections);
+  } catch (arangodb::basics::Exception const& ex) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(ex.code(), std::string("cannot sync from remote endpoint: ") + ex.what() + ". last progress message was '" + syncer->progress() + "'");
+  } catch (std::exception const& ex) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot sync from remote endpoint: ") + ex.what() + ". last progress message was '" + syncer->progress() + "'");
+  } catch (...) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::string("cannot sync from remote endpoint: unknown exception. last progress message was '") + syncer->progress() + "'");
   }
 
   // Now check forSynchronousReplication flag and tell ClusterInfo
@@ -403,7 +367,9 @@ static void JS_SynchronizeReplicationFinalize(
   }
 
   if (r.fail()) {
-    std::string errorMsg = std::string("cannot sync data for shard '") + collection + "' from remote endpoint: " + r.errorMessage();
+    LOG_TOPIC(ERR, Logger::REPLICATION) << "syncCollectionFinalize failed: " << r.errorMessage();
+    std::string errorMsg = std::string("cannot sync data for shard '") + collection +
+    "' from remote endpoint: " + r.errorMessage();
     TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), errorMsg);
   }
 

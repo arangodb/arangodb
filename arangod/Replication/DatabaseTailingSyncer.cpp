@@ -112,6 +112,8 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
   _ignoreRenameCreateDrop = true;
   
   TRI_voc_tick_t fromTick = _initialTick;
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "starting syncCollectionFinalize:"
+  << collectionName << ", fromTick " << fromTick;
   
   while (true) {
     if (application_features::ApplicationServer::isStopping()) {
