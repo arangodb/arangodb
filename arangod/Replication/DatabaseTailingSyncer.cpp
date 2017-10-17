@@ -151,14 +151,13 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
       checkMore = StringUtils::boolean(header);
     }
     
-    TRI_voc_tick_t lastIncludedTick;
     header =
     response->getHeaderField(TRI_REPLICATION_HEADER_LASTINCLUDED, found);
     if (!found) {
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
                     _masterInfo._endpoint + ": required header " + TRI_REPLICATION_HEADER_LASTINCLUDED + " is missing");
     }
-    lastIncludedTick = StringUtils::uint64(header);
+    TRI_voc_tick_t lastIncludedTick = StringUtils::uint64(header);
     
     // was the specified from value included the result?
     bool fromIncluded = false;
@@ -179,10 +178,14 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
     if (r.fail()) {
       return r;
     }
+
     
-    if (!checkMore) {  // || processedMarkers == 0) { // TODO: check if we need this
+    if (!checkMore) {
       // done!
       return Result();
     }
+    
+    // update the tick from which we will fetch in the next round
+    fromTick = lastIncludedTick;
   }
 }
