@@ -106,7 +106,7 @@ void RestClusterHandler::handleCommandEndpoints() {
     AgencyReadTransaction trx(std::vector<std::string>({
       AgencyCommManager::path(healthPath),
       AgencyCommManager::path(leaderPath)}));
-    AgencyCommResult result = agency.sendTransactionWithFailover(trx, 1.0);
+    AgencyCommResult result = agency.sendTransactionWithFailover(trx, 5.0);
     
     if (!result.successful()) {
       generateError(ResponseCode::SERVER_ERROR, result.errorCode(),
