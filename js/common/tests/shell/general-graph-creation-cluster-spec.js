@@ -43,6 +43,7 @@ describe('General graph creation', function () {
   const vn2 = 'UnitTestVerticesOther';
   const en2 = 'UnitTestEdgesOther';
   const on2 = 'UnitTestOrphansOther';
+  const vn3 = 'UnitTestVerticesModified';
 
   const clean = () => {
     try {
@@ -56,6 +57,7 @@ describe('General graph creation', function () {
     expect(db._collection(vn2)).to.not.exist;
     expect(db._collection(en2)).to.not.exist;
     expect(db._collection(on2)).to.not.exist;
+    expect(db._collection(vn3)).to.not.exist;
   };
 
   before(clean);
@@ -86,6 +88,11 @@ describe('General graph creation', function () {
 
       describe('replication factor', function () {
 
+        it('should be stored in the internal document', function () {
+          let gdoc = db._collection('_graphs').document(gn);
+          expect(gdoc.replicationFactor).to.equal(1);
+        });
+
         it('should be 1 for vertex collection', function () {
           let props = db._collection(vn).properties();
           expect(props.replicationFactor).to.equal(1);
@@ -104,6 +111,11 @@ describe('General graph creation', function () {
       });
 
       describe('number of shards', function () {
+
+        it('should be stored in the internal document', function () {
+          let gdoc = db._collection('_graphs').document(gn);
+          expect(gdoc.numberOfShards).to.equal(1);
+        });
 
         it('should be 1 for vertex collection', function () {
           let props = db._collection(vn).properties();
@@ -170,6 +182,35 @@ describe('General graph creation', function () {
 
         it('should be 1 for orphan collection', function () {
           let props = db._collection(on2).properties();
+          expect(props.numberOfShards).to.equal(1);
+        });
+
+      });
+
+    });
+
+    describe('modify edge definition', function () {
+      before(function() {
+        // We modify the first relation by adding a new vertex collection
+        let rel = graph._relation(en, vn, vn3);
+        g._editEdgeDefinitions(rel);
+
+        expect(db._collection(vn3)).to.exist;
+      });
+
+      describe('replication factor', function () {
+
+        it(`should be 1 for vertex collection`, function () {
+          let props = db._collection(vn3).properties();
+          expect(props.replicationFactor).to.equal(1);
+        });
+
+      });
+
+      describe('number of shards', function () {
+
+        it(`should be 1 for vertex collection`, function () {
+          let props = db._collection(vn3).properties();
           expect(props.numberOfShards).to.equal(1);
         });
 
@@ -210,6 +251,11 @@ describe('General graph creation', function () {
 
       describe('replication factor', function () {
 
+        it('should be stored in the internal document', function () {
+          let gdoc = db._collection('_graphs').document(gn);
+          expect(gdoc.replicationFactor).to.equal(replicationFactor);
+        });
+
         it(`should be ${replicationFactor} for vertex collection`, function () {
           let props = db._collection(vn).properties();
           expect(props.replicationFactor).to.equal(replicationFactor);
@@ -228,6 +274,11 @@ describe('General graph creation', function () {
       });
 
       describe('number of shards', function () {
+
+        it('should be stored in the internal document', function () {
+          let gdoc = db._collection('_graphs').document(gn);
+          expect(gdoc.numberOfShards).to.equal(numberOfShards);
+        });
 
         it(`should be ${numberOfShards} for vertex collection`, function () {
           let props = db._collection(vn).properties();
@@ -294,6 +345,35 @@ describe('General graph creation', function () {
 
         it(`should be ${numberOfShards} for orphan collection`, function () {
           let props = db._collection(on2).properties();
+          expect(props.numberOfShards).to.equal(numberOfShards);
+        });
+
+      });
+
+    });
+
+    describe('modify edge definition', function () {
+      before(function() {
+        // We modify the first relation by adding a new vertex collection
+        let rel = graph._relation(en, vn, vn3);
+        g._editEdgeDefinitions(rel);
+
+        expect(db._collection(vn3)).to.exist;
+      });
+
+      describe('replication factor', function () {
+
+        it(`should be ${replicationFactor} for vertex collection`, function () {
+          let props = db._collection(vn3).properties();
+          expect(props.replicationFactor).to.equal(replicationFactor);
+        });
+
+      });
+
+      describe('number of shards', function () {
+
+        it(`should be ${numberOfShards} for vertex collection`, function () {
+          let props = db._collection(vn3).properties();
           expect(props.numberOfShards).to.equal(numberOfShards);
         });
 
