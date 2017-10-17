@@ -313,6 +313,26 @@ var transformExampleToAQL = function (examples, collections, bindVars, varname) 
 // //////////////////////////////////////////////////////////////////////////////
 
 var sortEdgeDefinition = function (edgeDefinition) {
+  if (typeof edgeDefinition.from === 'string') {
+    edgeDefinition.from = [edgeDefinition.from];
+  }
+  else if (! Array.isArray(edgeDefinition.from)) {
+    throw new ArangoError({
+      errorNum: internal.errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.code,
+      errorMessage: `The attribute "from" has to be an array of collections in this definition: ${JSON.stringify(edgeDefinition)}`
+    });
+  }
+
+  if (typeof edgeDefinition.to === 'string') {
+    edgeDefinition.to = [edgeDefinition.to];
+  }
+  else if (! Array.isArray(edgeDefinition.to)) {
+    throw new ArangoError({
+      errorNum: internal.errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.code,
+      errorMessage: `The attribute "to" has to be an array of collections in this definition: ${JSON.stringify(edgeDefinition)}`
+    });
+  }
+ 
   edgeDefinition.from = edgeDefinition.from.sort();
   edgeDefinition.to = edgeDefinition.to.sort();
   return edgeDefinition;
