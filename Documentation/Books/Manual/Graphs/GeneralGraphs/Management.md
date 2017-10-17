@@ -121,7 +121,7 @@ After having introduced edge definitions a graph can be created.
 
 Create a graph
 
-`graph_module._create(graphName, edgeDefinitions, orphanCollections)`
+`graph_module._create(graphName, edgeDefinitions, orphanCollections, options)`
 
 The creation of a graph requires the name of the graph and a definition of its edges.
 
@@ -129,6 +129,8 @@ For every type of edge definition a convenience method exists that can be used t
 Optionally a list of vertex collections can be added, which are not used in any edge definition.
 These collections are referred to as orphan collections within this chapter.
 All collections used within the creation process are created if they do not exist.
+Furthermore we can define options that should be used for all collections
+created using this graoh module.
 
 
 **Parameters**
@@ -136,7 +138,9 @@ All collections used within the creation process are created if they do not exis
 * graphName (required) Unique identifier of the graph
 * edgeDefinitions (optional) List of relation definition objects
 * orphanCollections (optional) List of additional vertex collection names
-
+* options (optional) JSON object defining options that should be used for created collections. Has the following fields:
+  * numberOfShards (optional) Integer number of shards that each collection should be devided into (cluster-only). Default: 1
+  * replicationFactor (optional) Integer number of replicas that each collection should maintain (cluster-only). Default: 1
 
 **Examples**
 
@@ -170,11 +174,28 @@ Create a graph with edge definitions and orphan collections:
     @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph2}
       var graph_module = require("@arangodb/general-graph");
     | graph = graph_module._create("myGraph",
-      [graph_module._relation("myRelation", ["male", "female"], ["male", "female"])], ["sessions"]);
+    | [graph_module._relation("myRelation", ["male", "female"], ["male", "female"])],
+      ["sessions"]);
     ~ graph_module._drop("myGraph", true);
     @END_EXAMPLE_ARANGOSH_OUTPUT
     @endDocuBlock generalGraphCreateGraph2
 
+Create a graph with edge definitions, orphan collections and options:
+
+    @startDocuBlockInline generalGraphCreateGraph3
+    @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph3}
+      var graph_module = require("@arangodb/general-graph");
+    | graph = graph_module._create("myGraph",
+    | [graph_module._relation("myRelation", ["male", "female"], ["male", "female"])],
+    | ["sessions"],
+    | {
+    |    numberOfShards: 3,
+    |    replicationFactor: 2
+      });
+    ~ graph_module._drop("myGraph", true);
+    @END_EXAMPLE_ARANGOSH_OUTPUT
+ 
+With this example all collections will have `3` shards and an replicationFactor of `2`.
 
 
 #### Complete Example to create a graph
