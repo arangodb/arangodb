@@ -51,9 +51,10 @@ describe('General graph creation', function () {
 
   const clean = () => {
     try {
-      request['delete'](`/_api/gharial/${gn}?dropCollections=true`, extend(endpoint, {}));
+      request['delete'](`/_api/gharial/${gn}?dropCollections=true`);
     } catch (ignore) {
     }
+
     expect(db._collection(vn)).to.not.exist;
     expect(db._collection(en)).to.not.exist;
     expect(db._collection(on)).to.not.exist;
@@ -233,7 +234,7 @@ describe('General graph creation', function () {
           collection: en
         };
 
-        let res = request.put(`/_api/gharial/${gn}/edge`, extend(endpoint, {
+        let res = request.put(`/_api/gharial/${gn}/edge/${en}`, extend(endpoint, {
           body: JSON.stringify(body)
         }));
 
@@ -373,6 +374,7 @@ describe('General graph creation', function () {
         body = {
           collection: on2
         };
+
         res = request.post(`/_api/gharial/${gn}/vertex`, extend(endpoint, {
           body: JSON.stringify(body)
         }));
@@ -438,7 +440,7 @@ describe('General graph creation', function () {
           collection: en
         };
 
-        let res = request.put(`/_api/gharial/${gn}/edge`, extend(endpoint, {
+        let res = request.put(`/_api/gharial/${gn}/edge/${en}`, extend(endpoint, {
           body: JSON.stringify(body)
         }));
 
