@@ -41,15 +41,13 @@
 
 namespace arangodb {
 
-// rocksdb flushes and compactions start and stop within same thread, no overlapping
-thread_local std::chrono::steady_clock::time_point gFlushStart;
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// AdjustThreadPriority() below uses the Linux setpriority() function to dynamically
 ///  lower and raise a given thread's scheduling priority.  The Linux default is
 ///  to only allow a thread to lower its priority, not to raise it.  Even if the
 ///  raise would be to a previous priority.
+///
+/// Servers with 4 cores or less REALLY need the full benefit of AdjustThreadPriority().
 ///
 /// To get full performance benefit of this code, the server needs three settings:
 ///
@@ -61,6 +59,8 @@ thread_local std::chrono::steady_clock::time_point gFlushStart;
 /// The above settings allow the code to vary the threads across 3 priorities based upon
 ///  the current compaction's level.  Without the settings, threads eventual lock into only 2
 ///  different priorities (which is still far better having everything at same priority).
+///
+/// Setting 3 above must be applied to the arangod binary after every build or installation.
 ///
 /// The code does not (yet) support Windows.
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,6 +76,11 @@ struct sPriorityInfo {
 };
 
 thread_local sPriorityInfo gThreadPriority={false, 0, 0};
+
+
+// rocksdb flushes and compactions start and stop within same thread, no overlapping
+thread_local std::chrono::steady_clock::time_point gFlushStart;
+
 
 ///
 /// @brief Object that RocksDBThrottle gives to a compaction thread
