@@ -180,17 +180,11 @@ Result Syncer::sendCreateBarrier(TRI_voc_tick_t minTick) {
   // send request
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
       rest::RequestType::POST, url, body.c_str(), body.size()));
-
-  if (response == nullptr || !response->isComplete()) {
-    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
+  
+  if (hasFailed(response.get())) {
+    return buildHttpError(response.get(), url);
   }
 
-  TRI_ASSERT(response != nullptr);
-
-  if (response->wasHttpError()) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
-  }
-    
   VPackBuilder builder;
   Result r = parseResponse(builder, response.get());
   if (r.fail()) {
@@ -262,17 +256,8 @@ Result Syncer::sendRemoveBarrier() {
     std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
         rest::RequestType::DELETE_REQ, url, nullptr, 0));
 
-    if (response == nullptr || !response->isComplete()) {
-      return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") +
-                    _masterInfo._endpoint + ": " + _client->getErrorMessage());
-    }
-
-    TRI_ASSERT(response != nullptr);
-
-    if (response->wasHttpError()) {
-      return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
-                    _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
-                    ": " + response->getHttpReturnMessage());
+    if (hasFailed(response.get())) {
+      return buildHttpError(response.get(), url);
     }
     _barrierId = 0;
     _barrierUpdateTime = 0;
@@ -281,24 +266,6 @@ Result Syncer::sendRemoveBarrier() {
     return Result(TRI_ERROR_INTERNAL);
   }
 }
-/*
-TRI_voc_tick_t Syncer::getDbId(velocypack::Slice const& slice) const {
-  if (slice.isObject()) {
-    VPackSlice id = slice.get("database");
-    if (id.isString()) {
-      // string cid, e.g. "9988488"
-      return StringUtils::uint64(id.copyString());
-    } else if (id.isNumber()) {
-      // numeric cid, e.g. 9988488
-      return id.getNumericValue<uint64_t>();
-    } else if (!id.isNone()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "invalid value for 'database' attribute");
-    }
-    TRI_ASSERT(id.isNone());
-  }
-  return 0;
-}*/
 
 /// @brief extract the collection id from VelocyPack
 TRI_voc_cid_t Syncer::getCid(VPackSlice const& slice) const {
@@ -703,13 +670,9 @@ Result Syncer::getMasterState() {
   // restore old settings
   _client->params().setMaxRetries(maxRetries);
   _client->params().setRetryWaitTime(retryWaitTime);
-
-  if (response == nullptr || !response->isComplete()) {
-    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
-  }
-
-  if (response->wasHttpError()) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
+    
+  if (hasFailed(response.get())) {
+    return buildHttpError(response.get(), url);
   }
 
   VPackBuilder builder;
@@ -825,4 +788,21 @@ void Syncer::reloadUsers() {
   auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
   authentication->authInfo()->outdate();
   authentication->authInfo()->reloadAllUsers();
+}
+  
+bool Syncer::hasFailed(SimpleHttpResult* response) const {
+  return (response == nullptr || !response->isComplete() || response->wasHttpError());
+}
+
+Result Syncer::buildHttpError(SimpleHttpResult* response, std::string const& url) const {
+  TRI_ASSERT(hasFailed(response));
+
+  if (response == nullptr || !response->isComplete()) {
+    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + _masterInfo._endpoint + url + ": " + _client->getErrorMessage());
+  }
+
+  TRI_ASSERT(response->wasHttpError());
+  return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
+                _masterInfo._endpoint + url + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " +
+                response->getHttpReturnMessage(); // + " - " + response->getBody().toString());
 }

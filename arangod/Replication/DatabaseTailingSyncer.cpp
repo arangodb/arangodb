@@ -128,17 +128,8 @@ Result DatabaseTailingSyncer::syncCollectionFinalize(std::string const& collecti
     // send request
     std::unique_ptr<SimpleHttpResult> response(_client->request(rest::RequestType::GET, url, nullptr, 0));
     
-    if (response == nullptr || !response->isComplete()) {
-      return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("got invalid response from master at ") +
-                    _masterInfo._endpoint + url + ": " + _client->getErrorMessage());
-    }
-    
-    TRI_ASSERT(response != nullptr);
-    
-    if (response->wasHttpError()) {
-      return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
-                    _masterInfo._endpoint + url + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
-                    ": " + response->getHttpReturnMessage());
+    if (hasFailed(response.get())) {
+      return buildHttpError(response.get(), url);
     }
     
     if (response->getHttpReturnCode() == 204) {

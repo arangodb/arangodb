@@ -138,6 +138,12 @@ class Syncer {
     return _vocbases;
   }
   
+  /// @brief whether or not the HTTP result is valid or not
+  bool hasFailed(arangodb::httpclient::SimpleHttpResult* response) const;
+
+  /// @brief create an error result from a failed HTTP request/response
+  Result buildHttpError(arangodb::httpclient::SimpleHttpResult* response, std::string const& url) const;
+  
  private:
   
   /// @brief extract the collection by either id or name, may return nullptr!

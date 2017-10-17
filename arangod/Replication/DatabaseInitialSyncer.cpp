@@ -200,16 +200,8 @@ Result DatabaseInitialSyncer::sendFlush() {
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
       rest::RequestType::PUT, url, body.c_str(), body.size()));
 
-  if (response == nullptr || !response->isComplete()) {
-    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
-  }
-
-  TRI_ASSERT(response != nullptr);
-
-  if (response->wasHttpError()) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
-                  _masterInfo._endpoint + url + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-                  response->getHttpReturnMessage());
+  if (hasFailed(response.get())) {
+    return buildHttpError(response.get(), url);
   }
 
   _hasFlushed = true;
@@ -391,16 +383,8 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
     std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
         rest::RequestType::GET, url, nullptr, 0, headers));
 
-    if (response == nullptr || !response->isComplete()) {
-      return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
-    }
-
-    TRI_ASSERT(response != nullptr);
-
-    if (response->wasHttpError()) {
-      return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
-                    _masterInfo._endpoint + url + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-                    response->getHttpReturnMessage());
+    if (hasFailed(response.get())) {
+      return buildHttpError(response.get(), url);
     }
 
     // use async mode for first batch
@@ -462,10 +446,8 @@ Result DatabaseInitialSyncer::handleCollectionDump(arangodb::LogicalCollection* 
       // fallthrough here in case everything went well
     }
     
-    if (response->wasHttpError()) {
-      return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
-                    _masterInfo._endpoint + url + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
-                    ": " + response->getHttpReturnMessage());
+    if (hasFailed(response.get())) {
+      return buildHttpError(response.get(), url);
     }
 
     if (response->hasContentLength()) {
@@ -572,16 +554,8 @@ Result DatabaseInitialSyncer::handleCollectionSync(arangodb::LogicalCollection* 
   std::unique_ptr<SimpleHttpResult> response(
       _client->retryRequest(rest::RequestType::POST, url, nullptr, 0, headers));
 
-  if (response == nullptr || !response->isComplete()) {
-    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
-  }
-
-  TRI_ASSERT(response != nullptr);
-
-  if (response->wasHttpError()) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
-                  _masterInfo._endpoint + url + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
-                  ": " + response->getHttpReturnMessage());
+  if (hasFailed(response.get())) {
+    return buildHttpError(response.get(), url);
   }
 
   bool found = false;
@@ -1025,23 +999,13 @@ Result DatabaseInitialSyncer::fetchInventory(VPackBuilder& builder) {
   std::string const progress = "fetching master inventory from " + url;
   setProgress(progress);
   
-  std::unique_ptr<SimpleHttpResult> response(
-                                             _client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
+  std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
   
-  if (response == nullptr || !response->isComplete()) {
+  if (hasFailed(response.get())) {
     sendFinishBatch();
-    
-    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
+    return buildHttpError(response.get(), url);
   }
   
-  TRI_ASSERT(response != nullptr);
-  
-  if (response->wasHttpError()) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
-                  _masterInfo._endpoint + url + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
-                  ": " +  response->getHttpReturnMessage());
-  }
-
   Result r = parseResponse(builder, response.get());
   
   if (r.fail()) {

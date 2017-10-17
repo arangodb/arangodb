@@ -94,14 +94,8 @@ Result InitialSyncer::sendStartBatch() {
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
       rest::RequestType::POST, url, body.c_str(), body.size()));
 
-  if (response == nullptr || !response->isComplete()) {
-    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
-  }
-
-  TRI_ASSERT(response != nullptr);
-
-  if (response->wasHttpError()) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
+  if (hasFailed(response.get())) {
+    return buildHttpError(response.get(), url);
   }
 
   VPackBuilder builder;
@@ -150,16 +144,11 @@ Result InitialSyncer::sendExtendBatch() {
 
   std::unique_ptr<SimpleHttpResult> response(
       _client->request(rest::RequestType::PUT, url, body.c_str(), body.size()));
-
-  if (response == nullptr || !response->isComplete()) {
-    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
+  
+  if (hasFailed(response.get())) {
+    return buildHttpError(response.get(), url);
   }
-
-  TRI_ASSERT(response != nullptr);
-
-  if (response->wasHttpError()) {
-    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
-  } 
+  
   _batchUpdateTime = TRI_microtime();
 
   return Result();
@@ -182,15 +171,10 @@ Result InitialSyncer::sendFinishBatch() {
     std::unique_ptr<SimpleHttpResult> response(
         _client->retryRequest(rest::RequestType::DELETE_REQ, url, nullptr, 0));
 
-    if (response == nullptr || !response->isComplete()) {
-      return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + _masterInfo._endpoint + ": " + _client->getErrorMessage());
+    if (hasFailed(response.get())) {
+      return buildHttpError(response.get(), url);
     }
-
-    TRI_ASSERT(response != nullptr);
-
-    if (response->wasHttpError()) {
-      return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
-    } 
+    
     _batchId = 0;
     _batchUpdateTime = 0;
     return Result();
