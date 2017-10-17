@@ -85,7 +85,6 @@ thread_local sPriorityInfo gThreadPriority={false, 0, 0};
 thread_local uint8_t gFlushStart[sizeof(std::chrono::steady_clock::time_point)];
 
 
-
 ///
 /// @brief Object that RocksDBThrottle gives to a compaction thread
 ///
@@ -119,14 +118,18 @@ RocksDBThrottle::RocksDBThrottle()
 // Shutdown the background thread only if it was ever started
 //
 RocksDBThrottle::~RocksDBThrottle() {
-  CONDITION_LOCKER(guard, _threadCondvar);
 
   if (_threadRunning.load()) {
-    _threadRunning.store(false);
+    {
+      CONDITION_LOCKER(guard, _threadCondvar);
 
-    _threadCondvar.signal();
+      _threadRunning.store(false);
+      _threadCondvar.signal();
+    } // lock
+
     _threadFuture.wait();
   } // if
+
 }
 
 
@@ -189,13 +192,16 @@ void RocksDBThrottle::OnCompactionCompleted(rocksdb::DB* db,
 
 
 void RocksDBThrottle::Startup(rocksdb::DB* db) {
+  CONDITION_LOCKER(guard, _threadCondvar);
+
   _internalRocksDB = (rocksdb::DBImpl *)db;
 
   // addresses race condition during fast start/stop
   _threadFuture = std::async(std::launch::async, &RocksDBThrottle::ThreadLoop, this);
 
-  while(!_threadRunning.load())
+  while(!_threadRunning.load()) {
     _threadCondvar.wait(10);
+  } // while
 
 } // RocksDBThrottle::Startup
 
@@ -219,7 +225,7 @@ void RocksDBThrottle::SetThrottleWriteRate(std::chrono::microseconds Micros,
   SetThrottle();
 
   return;
-};
+} // RocksDBThrottle::SetThrottleWriteRate
 
 
 void RocksDBThrottle::ThreadLoop() {
