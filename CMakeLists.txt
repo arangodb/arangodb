@@ -872,7 +872,7 @@ include_directories(
 )
 
 ################################################################################
-## PATHS, installation, packages
+## PATHS, installation, packages, frontend
 ################################################################################
 
 if (MSVC)
@@ -884,6 +884,7 @@ endif()
 include(ArangoDBInstall)
 if (NOT(SKIP_PACKAGING))
   include(packages/packages)
+  include(frontend/aardvark)
 endif()
 
 ################################################################################
