@@ -830,9 +830,8 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   result.add(VPackValue("parameters"));
 
   std::unordered_set<std::string> ignoreKeys{"allowUserKeys", "cid", "count",
-                                             "objectId",
                                              "statusString", "version",
-                                             "distributeShardsLike"};
+                                             "distributeShardsLike", "objectId"};
   VPackBuilder params = toVelocyPackIgnore(ignoreKeys, false, false);
   { VPackObjectBuilder guard(&result);
     for (auto const& p : VPackObjectIterator(params.slice())) {
@@ -1320,29 +1319,42 @@ Result LogicalCollection::compareChecksums(VPackSlice checksumSlice, std::string
 }
 
 std::string LogicalCollection::generateGloballyUniqueId() const {
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
+  
+  
   std::string result;
-  if (_vocbase->isSystem()) {
+  /*if (_vocbase->isSystem()) {
     result.reserve(32);
     result.append(StaticStrings::SystemDatabase);
-  } else {
-    result.reserve(64);
+  } else {*/
+  result.reserve(64);
+  if (!_vocbase->isSystem()) {
     std::string id = ServerState::instance()->getId();
     if (!id.empty()) {
       result.append(id);
       result.push_back('/');
     }
-    result.append(_vocbase->name());
   }
-  result.push_back('/');
-  if (isSystem()) {
+    //result.append(_vocbase->name());
+  //}
+  //result.push_back('/');
+  
+  if (ServerState::isCoordinator(role)) {
+    TRI_ASSERT(_planId != 0);
+    result.append(std::to_string(_planId));
+  } else if (ServerState::isDBServer(role)) {
+    TRI_ASSERT(_planId != 0);
+    // we add the shard name to the collection. If we every
+    // replicate shards, we identify them clusterwide
+    result.append(std::to_string(_planId));
+    result.push_back('/');
     result.append(_name);
   } else {
-    result.append(std::to_string(_cid));
-  }
- 
-  if (_planId > 0 && ServerState::instance()->isDBServer()) {
-    result.push_back('/');
-    result.append(std::to_string(_cid));
+    if (isSystem()) {
+      result.append(_name);
+    } else {
+      result.append(std::to_string(_cid));
+    }
   }
   return result;
 }

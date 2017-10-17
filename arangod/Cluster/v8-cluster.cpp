@@ -634,6 +634,7 @@ static void JS_GetCollectionInfoClusterInfo(
   std::unordered_set<std::string> ignoreKeys{"allowUserKeys",
                                              "avoidServers",
                                              "cid",
+                                             "globallyUniqueId",
                                              "count",
                                              "distributeShardsLike",
                                              "indexBuckets",
@@ -641,7 +642,8 @@ static void JS_GetCollectionInfoClusterInfo(
                                              "numberOfShards",
                                              "path",
                                              "planId",
-                                             "version"};
+                                             "version",
+                                             "objectId"};
   VPackBuilder infoBuilder = ci->toVelocyPackIgnore(ignoreKeys, false, false);
   VPackSlice info = infoBuilder.slice();
 

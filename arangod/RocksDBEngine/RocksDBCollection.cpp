@@ -486,8 +486,8 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   arangodb::aql::PlanCache::instance()->invalidate(
       _logicalCollection->vocbase());
 #endif
-  // Until here no harm is done if sth fails. The shared ptr will clean up. if
-  // left before
+  // Until here no harm is done if something fails. The shared_ptr will
+  // clean up, if left before
   {
     WRITE_LOCKER(guard, _indexesLock);
     addIndex(idx);
