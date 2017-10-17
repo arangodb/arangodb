@@ -60,6 +60,12 @@ class MaintenanceHandler : public RestHandler {
         GlobalReplicationApplier* applier = replication->globalReplicationApplier();
         if (applier != nullptr && applier->isRunning()) {
           std::string endpoint = applier->endpoint();
+          std::string const tcp = "tcp://";
+          if (endpoint.find(tcp) == 0) {
+            endpoint = std::string(_request->protocol()) + "://" +
+                       endpoint.substr(tcp.size());
+          }
+          
           resetResponse(rest::ResponseCode::TEMPORARY_REDIRECT);
           _response->setHeader("Location", endpoint + _request->requestPath());
           _response->setHeader("x-arango-redirect", endpoint);
