@@ -2426,27 +2426,26 @@ AqlValue Functions::Matches(arangodb::aql::Query* query,
   AqlValueMaterializer materializer(trx);
   VPackSlice docSlice = materializer.slice(docToFind, false);
 
+
+  auto options = trx->transactionContextPtr()->getVPackOptions();
+
   int32_t idx = -1;
   for (auto const& name : VPackArrayIterator(materializer.slice(exampleDocs, false))) {
     idx++;
-    if (basics::VelocyPackHelper::VPackEqual()(name, docSlice)) {
+    if (basics::VelocyPackHelper::compare(name, docSlice, true, options) == 0) {
       if (retIdx) {
-        transaction::BuilderLeaser builder(trx);
-        builder->add(VPackValue(idx));
-        return AqlValue(builder.get());
+        return AqlValue(AqlValueHintInt(idx));
       } else {
-        return AqlValue(arangodb::basics::VelocyPackHelper::TrueValue());
+        return AqlValue(AqlValueHintBool(true));
       }
     }
   }
 
   if (retIdx) {
-    transaction::BuilderLeaser builder(trx);
-    builder->add(VPackValue(-1));
-    return AqlValue(builder.get());
+    return AqlValue(AqlValueHintInt(-1));
   }
 
-  return AqlValue(arangodb::basics::VelocyPackHelper::FalseValue());
+  return AqlValue(AqlValueHintBool(false));
 }
 
 /// @brief function ROUND
