@@ -409,7 +409,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(result.isArray());
 
     arangodb::velocypack::ArrayIterator resultIt(result);
-    CHECK(expectedDocs.size() == resultIt.size());
+    REQUIRE(expectedDocs.size() == resultIt.size());
 
     // Check documents
     auto expectedDoc = expectedDocs.begin();

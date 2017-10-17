@@ -78,11 +78,15 @@ class ReverseAllIteratorMock final : public arangodb::IndexIterator {
       arangodb::transaction::Methods* trx,
       arangodb::ManagedDocumentResult* mmdr)
     : arangodb::IndexIterator(coll, trx, mmdr, &EMPTY_INDEX),
-      _end(size) {
+      _end(size), _size(size) {
   }
 
   virtual char const* typeName() const override {
     return "ReverseAllIteratorMock";
+  }
+
+  virtual void reset() override {
+    _end = _size;
   }
 
   virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) override {
@@ -96,6 +100,7 @@ class ReverseAllIteratorMock final : public arangodb::IndexIterator {
 
  private:
   uint64_t _end;
+  uint64_t _size; // the original size
 }; // ReverseAllIteratorMock
 
 class AllIteratorMock final : public arangodb::IndexIterator {
@@ -111,6 +116,10 @@ class AllIteratorMock final : public arangodb::IndexIterator {
 
   virtual char const* typeName() const override {
     return "AllIteratorMock";
+  }
+
+  virtual void reset() override {
+    _begin = 0;
   }
 
   virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) override {
