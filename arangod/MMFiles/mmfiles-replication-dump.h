@@ -27,7 +27,7 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StringBuffer.h"
-#include "Transaction/StandaloneContext.h"
+#include "Transaction/Context.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
@@ -42,7 +42,7 @@
 
 /// @brief replication dump container
 struct MMFilesReplicationDumpContext {
-  MMFilesReplicationDumpContext(std::shared_ptr<arangodb::transaction::StandaloneContext> const&
+  MMFilesReplicationDumpContext(std::shared_ptr<arangodb::transaction::Context> const&
                              transactionContext,
                          size_t chunkSize, bool includeSystem,
                          TRI_voc_cid_t restrictCollection, bool useVst = false)
@@ -59,7 +59,6 @@ struct MMFilesReplicationDumpContext {
         _hasMore(false),
         _includeSystem(includeSystem),
         _fromTickIncluded(false),
-        _compat28(false),
         _slices(),
         _useVst(useVst) {
     if (_chunkSize == 0) {
@@ -83,7 +82,7 @@ struct MMFilesReplicationDumpContext {
     }
   }
 
-  std::shared_ptr<arangodb::transaction::StandaloneContext> _transactionContext;
+  std::shared_ptr<arangodb::transaction::Context> _transactionContext;
   TRI_vocbase_t* _vocbase;
   TRI_string_buffer_t* _buffer;
   size_t _chunkSize;
@@ -96,7 +95,6 @@ struct MMFilesReplicationDumpContext {
   bool _hasMore;
   bool _includeSystem;
   bool _fromTickIncluded;
-  bool _compat28;
   std::vector<VPackBuffer<uint8_t>> _slices;
   bool _useVst;
 };
@@ -116,5 +114,6 @@ int MMFilesDumpLogReplication(MMFilesReplicationDumpContext*,
 int MMFilesDetermineOpenTransactionsReplication(MMFilesReplicationDumpContext*,
                                              TRI_voc_tick_t, TRI_voc_tick_t,
                                              bool useVst = false);
+
 
 #endif

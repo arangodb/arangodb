@@ -46,8 +46,10 @@ function runSetup () {
     c.insert({ value: i });
   }
   internal.wal.flush(true, true);
+  
   internal.debugSetFailAt('LogfileManagerFlush');
   internal.wait(5, false);
+  
   internal.debugSegfault('crashing server');
 }
 

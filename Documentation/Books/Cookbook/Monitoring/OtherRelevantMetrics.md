@@ -89,9 +89,9 @@ If you're running a cluster, you can match the specific instances by command-lin
 
     LoadPlugin processes
     <Plugin processes>
-      ProcessMatch "Claus" "/usr/bin/arangod .*--cluster.my-id Claus.*"
-      ProcessMatch "Pavel" "/usr/bin/arangod .*--cluster.my-id Pavel.*"
-      ProcessMatch "Perry" "/usr/bin/arangod .*--cluster.my-id Perry.*"
+      ProcessMatch "Claus" "/usr/bin/arangod .*--cluster.my-address *:8530"
+      ProcessMatch "Pavel" "/usr/bin/arangod .*--cluster.my-address *:8629"
+      ProcessMatch "Perry" "/usr/bin/arangod .*--cluster.my-address *:8630"
       Process "etcd-arango"
     </Plugin>
 

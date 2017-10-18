@@ -41,6 +41,7 @@
 #include "RestServer/InitDatabaseFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -125,10 +126,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope(ExecContext::superuser());
   std::string const queryStr("FOR user IN _users RETURN user");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
   arangodb::aql::Query query(false, vocbase,
@@ -145,11 +143,11 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code,
-                                   "Error executing user query");
-    // return std::shared_ptr<VPackBuilder>();
+                                   "Error executing user query: " + queryResult.details);
   }
 
   VPackSlice usersSlice = queryResult.result->slice();
+
   if (usersSlice.isNone()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   } else if (!usersSlice.isArray()) {
@@ -171,10 +169,7 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope(ExecContext::superuser());
   std::string const queryStr("FOR u IN _users FILTER u.user == @name RETURN u");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
 
@@ -188,14 +183,14 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
                              emptyBuilder, arangodb::aql::PART_MAIN);
 
   auto queryResult = query.execute(queryRegistry);
+
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
-
     THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code,
-                                   "Error executing user query");
+                                   "Error executing user query: " + queryResult.details);
   }
 
   VPackSlice usersSlice = queryResult.result->slice();
@@ -270,8 +265,12 @@ void AuthInfo::loadFromDB() {
     }
 
     _outdated = (_authInfo.empty() == true);
-  } catch (...) {
+  } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::AUTHENTICATION)
+        << "Exception when loading users from db: " << ex.what();
+    _outdated = true;
+  } catch (...) {
+    LOG_TOPIC(TRACE, Logger::AUTHENTICATION)
         << "Exception when loading users from db";
     _outdated = true;
   }
@@ -326,10 +325,7 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope(ExecContext::superuser());
   auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
@@ -454,9 +450,11 @@ Result AuthInfo::storeUser(bool replace, std::string const& user,
     return TRI_ERROR_USER_DUPLICATE;
   }
 
-  auto const& oldEntry = it->second;
+  std::string oldKey; // will only be populated during replace
 
   if (replace) {
+    auto const& oldEntry = it->second;
+    oldKey = oldEntry.key();
     if (oldEntry.source() == AuthSource::LDAP) {
       return TRI_ERROR_USER_EXTERNAL;
     }
@@ -467,8 +465,8 @@ Result AuthInfo::storeUser(bool replace, std::string const& user,
   entry.setActive(active);
 
   if (replace) {
-    TRI_ASSERT(!(oldEntry.key().empty()));
-    entry._key = oldEntry.key();
+    TRI_ASSERT(!oldKey.empty());
+    entry._key = std::move(oldKey);
   }
 
   Result r = storeUserInternal(entry, replace);
@@ -489,10 +487,7 @@ static Result UpdateUser(VPackSlice const& user) {
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope(ExecContext::superuser());
   auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
@@ -510,8 +505,7 @@ static Result UpdateUser(VPackSlice const& user) {
 Result AuthInfo::enumerateUsers(
     std::function<void(AuthUserEntry&)> const& func) {
   loadFromDB();
-
-  // we require an consistent view on the user object
+  // we require a consistent view on the user object
   {
     WRITE_LOCKER(guard, _authInfoLock);
     for (auto& it : _authInfo) {
@@ -551,7 +545,7 @@ Result AuthInfo::updateUser(std::string const& user,
   loadFromDB();
 
   Result r;
-  {  // we require an consisten view on the user object
+  {  // we require a consistent view on the user object
     WRITE_LOCKER(guard, _authInfoLock);
     auto it = _authInfo.find(user);
 
@@ -615,10 +609,7 @@ static Result RemoveUserInternal(AuthUserEntry const& entry) {
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope(ExecContext::superuser());
   auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
@@ -783,8 +774,7 @@ Result AuthInfo::setUserData(std::string const& user,
 AuthResult AuthInfo::checkPassword(std::string const& username,
                                    std::string const& password) {
   AuthResult result(username);
-
-  if (StringUtils::isPrefix(username, ":role:")) {
+  if (username.empty() || StringUtils::isPrefix(username, ":role:")) {
     return result;
   }
 
@@ -962,7 +952,6 @@ AuthResult AuthInfo::checkAuthentication(AuthenticationMethod authType,
 // private
 AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
   auto role = ServerState::instance()->getRole();
-
   if (role != ServerState::ROLE_SINGLE &&
       role != ServerState::ROLE_COORDINATOR) {
     return AuthResult();

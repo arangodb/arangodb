@@ -25,7 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 
-#include "Actions/RestActionHandler.h"
 #include "Basics/asio-helper.h"
 
 namespace arangodb {

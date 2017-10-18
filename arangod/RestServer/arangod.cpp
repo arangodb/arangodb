@@ -57,6 +57,7 @@
 #include "Pregel/PregelFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/BootstrapFeature.h"
 #include "RestServer/CheckVersionFeature.h"
@@ -165,6 +166,7 @@ static int runServer(int argc, char** argv, ArangoGlobalContext &context) {
     server.addFeature(new pregel::PregelFeature(&server));
     server.addFeature(new PrivilegeFeature(&server));
     server.addFeature(new RandomFeature(&server));
+    server.addFeature(new ReplicationFeature(&server));
     server.addFeature(new QueryRegistryFeature(&server));
     server.addFeature(new SchedulerFeature(&server));
     server.addFeature(new ScriptFeature(&server, &ret));

@@ -298,10 +298,9 @@ int MMFilesWalRecoverState::executeSingleOperation(
   res = TRI_ERROR_INTERNAL;
 
   try {
-    SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(vocbase), collectionId,
-        AccessMode::Type::WRITE);
-
+    auto ctx = transaction::StandaloneContext::Create(vocbase);
+    SingleCollectionTransaction trx(ctx, collectionId,
+                                    AccessMode::Type::WRITE);
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
     trx.addHint(transaction::Hints::Hint::NO_BEGIN_MARKER);
     trx.addHint(transaction::Hints::Hint::NO_ABORT_MARKER);
@@ -907,9 +906,9 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
           ++state->errorCount;
           return state->canContinue();
         } else {
-          arangodb::SingleCollectionTransaction trx(
-              arangodb::transaction::StandaloneContext::Create(vocbase),
-              collectionId, AccessMode::Type::WRITE);
+          auto ctx = transaction::StandaloneContext::Create(vocbase);
+          arangodb::SingleCollectionTransaction trx(ctx, collectionId,
+                                                    AccessMode::Type::WRITE);
           std::shared_ptr<arangodb::Index> unused;
           int res = physical->restoreIndex(&trx, payloadSlice, unused);
 
@@ -1508,9 +1507,9 @@ int MMFilesWalRecoverState::fillIndexes() {
     // activate secondary indexes
     physical->useSecondaryIndexes(true);
 
-    arangodb::SingleCollectionTransaction trx(
-        arangodb::transaction::StandaloneContext::Create(collection->vocbase()),
-        collection->cid(), AccessMode::Type::WRITE);
+    auto ctx = transaction::StandaloneContext::Create(collection->vocbase());
+    arangodb::SingleCollectionTransaction trx(ctx, collection->cid(),
+                                              AccessMode::Type::WRITE);
 
     int res = physical->fillAllIndexes(&trx);
 

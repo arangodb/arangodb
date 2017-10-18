@@ -24,24 +24,23 @@
 #define ARANGOD_ROCKSDB_ROCKSDB_INCREMENTAL_SYNC_H 1
 
 #include "Basics/Common.h"
-#include "Replication/InitialSyncer.h"
+#include "Replication/DatabaseInitialSyncer.h"
 #include "VocBase/LogicalCollection.h"
 
 namespace arangodb {
 class LogicalCollection;
 
-int syncChunkRocksDB(
-    InitialSyncer& syncer, SingleCollectionTransaction* trx,
+Result syncChunkRocksDB(
+    DatabaseInitialSyncer& syncer, SingleCollectionTransaction* trx,
     std::string const& keysId, uint64_t chunkId, std::string const& lowString,
     std::string const& highString,
-    std::vector<std::pair<std::string, uint64_t>> const& markers,
-    std::string& errorMsg);
+    std::vector<std::pair<std::string, uint64_t>> const& markers);
 
-int handleSyncKeysRocksDB(InitialSyncer& syncer,
-                          arangodb::LogicalCollection* col,
-                          std::string const& keysId, std::string const& cid,
-                          std::string const& collectionName,
-                          TRI_voc_tick_t maxTick, std::string& errorMsg);
+Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
+                             arangodb::LogicalCollection* col,
+                             std::string const& keysId, std::string const& cid,
+                             std::string const& collectionName,
+                             TRI_voc_tick_t maxTick);
 }
 
 #endif
