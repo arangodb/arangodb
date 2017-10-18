@@ -357,8 +357,8 @@ void EngineInfoContainerDBServer::DBServerInfo::combineTraverserEngines(
   // the traverserEngineInfos to wire the correct GraphNodes
   // to the correct engine ids
   for (auto const& it : _traverserEngineInfos) {
-    it.first->addEngine(idIter.value().getNumber<traverser::TraverserEngineID>(),
-                        serverID);
+    it.first->addEngine(
+        idIter.value().getNumber<traverser::TraverserEngineID>(), serverID);
     idIter.next();
   }
 }
@@ -376,6 +376,7 @@ void EngineInfoContainerDBServer::DBServerInfo::injectQueryOptions(
 
 std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>
 EngineInfoContainerDBServer::createDBServerMapping(
+    std::unordered_set<std::string> const& restrictToShards,
     std::unordered_set<ShardID>* lockedShards) const {
   auto ci = ClusterInfo::instance();
 
@@ -388,7 +389,7 @@ EngineInfoContainerDBServer::createDBServerMapping(
     if (_engines.find(it.first) != _engines.end()) {
       engines = &_engines.find(it.first)->second;
     }
-    auto shardIds = it.first->shardIds(_includedShards);
+    auto shardIds = it.first->shardIds(restrictToShards);
     for (auto const& s : *(shardIds.get())) {
       lockedShards->emplace(s);
       auto const servers = ci->getResponsibleServer(s);
@@ -412,8 +413,9 @@ EngineInfoContainerDBServer::createDBServerMapping(
 }
 
 void EngineInfoContainerDBServer::injectGraphNodesToMapping(
-    Query* query, std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>&
-                      dbServerMapping) const {
+    Query* query, std::unordered_set<std::string> const& restrictToShards,
+    std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>&
+        dbServerMapping) const {
   if (_graphNodes.empty()) {
     return;
   }
@@ -465,7 +467,7 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
     };
 
     for (size_t i = 0; i < length; ++i) {
-      auto shardIds = edges[i]->shardIds(_includedShards);
+      auto shardIds = edges[i]->shardIds(restrictToShards);
       for (auto const& shard : *shardIds) {
         auto pair = findServerLists(shard);
         pair->second.edgeCollections[i].emplace_back(shard);
@@ -487,7 +489,7 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
         if (knownEdges.find(collection.second->getName()) == knownEdges.end()) {
           // This collection is not one of the edge collections used in this
           // graph.
-          auto shardIds = collection.second->shardIds(_includedShards);
+          auto shardIds = collection.second->shardIds(restrictToShards);
           for (ShardID const& shard : *shardIds) {
             auto pair = findServerLists(shard);
             pair->second.vertexCollections[collection.second->getName()]
@@ -523,7 +525,7 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       // This Traversal is started with a GRAPH. It knows all relevant
       // collections.
       for (auto const& it : vertices) {
-        auto shardIds = it->shardIds(_includedShards);
+        auto shardIds = it->shardIds(restrictToShards);
         for (ShardID const& shard : *shardIds) {
           auto pair = findServerLists(shard);
           pair->second.vertexCollections[it->getName()].emplace_back(shard);
@@ -570,17 +572,18 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
 
 void EngineInfoContainerDBServer::buildEngines(
     Query* query, std::unordered_map<std::string, std::string>& queryIds,
+    std::unordered_set<std::string> const& restrictToShards,
     std::unordered_set<ShardID>* lockedShards) const {
   TRI_ASSERT(_engineStack.empty());
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "We have " << _engines.size()
                                           << " DBServer engines";
 
   // We create a map for DBServer => All Query snippets executed there
-  auto dbServerMapping = createDBServerMapping(lockedShards);
+  auto dbServerMapping = createDBServerMapping(restrictToShards, lockedShards);
   // This Mapping does not contain Traversal Engines
   //
   // We add traversal engines if necessary
-  injectGraphNodesToMapping(query, dbServerMapping);
+  injectGraphNodesToMapping(query, restrictToShards, dbServerMapping);
 
   auto cc = ClusterComm::instance();
 

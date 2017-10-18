@@ -157,6 +157,7 @@ class EngineInfoContainerDBServer {
   //   * After this step DBServer-Collections are locked!
   void buildEngines(Query* query,
                     std::unordered_map<std::string, std::string>& queryIds,
+                    std::unordered_set<std::string> const& restrictToShards,
                     std::unordered_set<ShardID>* lockedShards) const;
 
   // Insert a GraphNode that needs to generate TraverserEngines on
@@ -170,11 +171,12 @@ class EngineInfoContainerDBServer {
   // @brief Helper to create DBServerInfos and sort collections/shards into
   // them
   std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>
-  createDBServerMapping(std::unordered_set<ShardID>* lockedShards) const;
+  createDBServerMapping(std::unordered_set<std::string> const& restrictToShards,
+      std::unordered_set<ShardID>* lockedShards) const;
 
   // @brief Helper to inject the TraverserEngines into the correct infos
   void injectGraphNodesToMapping(
-      Query* query,
+      Query* query, std::unordered_set<std::string> const& restrictToShards,
       std::map<ServerID, EngineInfoContainerDBServer::DBServerInfo>&
           dbServerMapping) const;
 
@@ -198,10 +200,6 @@ class EngineInfoContainerDBServer {
   // @brief List of all graphNodes that need to create TraverserEngines on
   // DBServers
   std::vector<GraphNode*> _graphNodes;
-
-  // @brief A restricted set of shards to be used. No other shards will
-  // be used at all.
-  std::unordered_set<std::string> _includedShards;
 };
 
 }  // aql

@@ -62,6 +62,7 @@ void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
 
 void EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     Query* query, QueryRegistry* queryRegistry,
+    std::unordered_set<std::string> const& restrictToShards,
     std::unordered_map<std::string, std::string>& queryIds,
     std::unordered_set<ShardID> const* lockedShards) const {
   TRI_ASSERT(!_nodes.empty());
@@ -132,8 +133,7 @@ void EngineInfoContainerCoordinator::EngineInfo::buildEngine(
       auto gatherNode = static_cast<GatherNode const*>(en);
       Collection const* collection = gatherNode->collection();
 
-      // auto shardIds = collection->shardIds(_includedShards);
-      auto shardIds = collection->shardIds();
+      auto shardIds = collection->shardIds(restrictToShards);
       for (auto const& shardId : *shardIds) {
         std::string theId =
             arangodb::basics::StringUtils::itoa(remoteNode->id()) + ":" +
@@ -142,7 +142,7 @@ void EngineInfoContainerCoordinator::EngineInfo::buildEngine(
         auto it = queryIds.find(theId);
         if (it == queryIds.end()) {
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "could not find query id in list");
+                                         "could not find query id " + theId + " in list");
         }
 
         auto serverList = clusterInfo->getResponsibleServer(shardId);
@@ -264,6 +264,7 @@ QueryId EngineInfoContainerCoordinator::closeSnippet() {
 
 ExecutionEngine* EngineInfoContainerCoordinator::buildEngines(
     Query* query, QueryRegistry* registry,
+    std::unordered_set<std::string> const& restrictToShards,
     std::unordered_map<std::string, std::string>& queryIds,
     std::unordered_set<ShardID> const* lockedShards) const {
   TRI_ASSERT(_engineStack.size() == 1);
@@ -281,7 +282,7 @@ ExecutionEngine* EngineInfoContainerCoordinator::buildEngines(
       }
     }
     try {
-      info.buildEngine(localQuery, registry, queryIds, lockedShards);
+      info.buildEngine(localQuery, registry, restrictToShards, queryIds, lockedShards);
     } catch (...) {
       localQuery->releaseEngine();
       if (!first) {

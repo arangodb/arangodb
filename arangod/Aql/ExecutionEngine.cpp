@@ -199,7 +199,7 @@ ExecutionBlock* ExecutionEngine::CreateBlock(
                              remote->ownName(), remote->queryId());
     }
   }
-        
+
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
 }
 
@@ -451,14 +451,15 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     // QueryIds are filled by responses of DBServer parts.
     std::unordered_map<std::string, std::string> queryIds;
 
-    _dbserverParts.buildEngines(query, queryIds, lockedShards);
+    _dbserverParts.buildEngines(query, queryIds, query->queryOptions().shardIds,
+                                lockedShards);
 
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.
-    return _coordinatorParts.buildEngines(query, registry, queryIds,
+    return _coordinatorParts.buildEngines(query, registry,
+                                          query->queryOptions().shardIds, queryIds,
                                           lockedShards);
   }
-
 };
 
 struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
@@ -652,7 +653,6 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
                              EngineInfo* info, QueryId& connectedId,
                              std::string const& shardId,
                              VPackSlice const& planSlice) {
-
     Collection* collection = info->getCollection();
     TRI_ASSERT(collection != nullptr);
 
@@ -681,8 +681,13 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
       }
       // add the collection
       result.openObject();
-      result.add("name", VPackValue(auxiliaryCollection->getName())); // returns the *current* shard 
-      result.add("type", VPackValue(AccessMode::typeString(auxiliaryCollection->accessType)));
+      result.add(
+          "name",
+          VPackValue(
+              auxiliaryCollection->getName()));  // returns the *current* shard
+      result.add(
+          "type",
+          VPackValue(AccessMode::typeString(auxiliaryCollection->accessType)));
       result.close();
     }
     result.close();  // collections
@@ -703,7 +708,8 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
       aql::QueryOptions opts = query->queryOptions();
       TRI_ASSERT(opts.transactionOptions.skipInaccessibleCollections);
       opts.inaccessibleCollections.insert(shardId);
-      opts.inaccessibleCollections.insert(collection->getCollection()->cid_as_string());
+      opts.inaccessibleCollections.insert(
+          collection->getCollection()->cid_as_string());
       opts.toVelocyPack(result, true);
     } else {
       // the toVelocyPack will open & close the "options" object
@@ -817,7 +823,7 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
     auto cc = arangodb::ClusterComm::instance();
     if (cc != nullptr) {
       // nullptr only happens on controlled shutdown
-      
+
       auto auxiliaryCollections = info->getAuxiliaryCollections();
       // iterate over all shards of the collection
       size_t nr = 0;
@@ -825,7 +831,7 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
       for (auto const& shardId : *shardIds) {
         // inject the current shard id into the collection
         collection->setCurrentShard(shardId);
-      
+
         // inject the current shard id for auxiliary collections
         std::string auxShardId;
         for (auto const& auxiliaryCollection : auxiliaryCollections) {
@@ -843,15 +849,14 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
         generatePlanForOneShard(b, nr, info, connectedId, shardId, true);
 
         ++nr;
-        distributePlanToShard(coordTransactionID, info,
-                              connectedId, shardId,
+        distributePlanToShard(coordTransactionID, info, connectedId, shardId,
                               b.slice());
       }
 
       collection->resetCurrentShard();
-      
+
       // reset shard for auxiliary collections too
-      for (auto const& auxiliaryCollection: auxiliaryCollections) {
+      for (auto const& auxiliaryCollection : auxiliaryCollections) {
         auxiliaryCollection->resetCurrentShard();
       }
 
@@ -998,9 +1003,7 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
     // We have to initialize all options. After this point the node
     // is not cloneable any more.
     en->prepareOptions();
-    VPackBuilder optsBuilder;
-    graph::BaseOptions* opts = en->options();
-    opts->buildEngineInfo(optsBuilder);
+
     // All info in opts is identical for each traverser engine.
     // Only the shards are different.
     std::vector<std::unique_ptr<arangodb::aql::Collection>> const& edges =
@@ -1068,11 +1071,14 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
             pair->second.vertexCollections[collection.second->getName()]
                 .emplace_back(shard);
 #ifdef USE_ENTERPRISE
-            if (trx->isInaccessibleCollectionId(collection.second->getPlanId())) {
-              TRI_ASSERT(ServerState::instance()->isSingleServerOrCoordinator());
+            if (trx->isInaccessibleCollectionId(
+                    collection.second->getPlanId())) {
+              TRI_ASSERT(
+                  ServerState::instance()->isSingleServerOrCoordinator());
               TRI_ASSERT(trxOps.skipInaccessibleCollections);
               pair->second.inaccessibleShards.insert(shard);
-              pair->second.inaccessibleShards.insert(collection.second->getCollection()->cid_as_string());
+              pair->second.inaccessibleShards.insert(
+                  collection.second->getCollection()->cid_as_string());
             }
 #endif
           }
@@ -1103,7 +1109,8 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
           if (trx->isInaccessibleCollectionId(it->getPlanId())) {
             TRI_ASSERT(trxOps.skipInaccessibleCollections);
             pair->second.inaccessibleShards.insert(shard);
-            pair->second.inaccessibleShards.insert(it->getCollection()->cid_as_string());
+            pair->second.inaccessibleShards.insert(
+                it->getCollection()->cid_as_string());
           }
 #endif
         }
@@ -1155,6 +1162,10 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
       // nullptr only happens on controlled shutdown
       return;
     }
+    VPackBuilder optsBuilder;
+    graph::BaseOptions* opts = en->options();
+    opts->buildEngineInfo(optsBuilder);
+
     bool hasVars = false;
     VPackBuilder varInfo;
     std::vector<aql::Variable const*> vars;
@@ -1421,7 +1432,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
     ExecutionBlock* root = nullptr;
 
     if (isCoordinator) {
-#if 1 
+#if 1
       // New Node
       try {
         std::unique_ptr<std::unordered_set<std::string>> lockedShards;
@@ -1448,7 +1459,8 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
 
         TRI_ASSERT(engine != nullptr);
 
-        // We can always use the _noLockHeaders. They have not been modified until now
+        // We can always use the _noLockHeaders. They have not been modified
+        // until now
         // And it is correct to set the previously locked to nullptr if the
         // headers are nullptr.
         engine->_previouslyLockedShards = CollectionLockState::_noLockHeaders;
@@ -1470,7 +1482,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
 #else
       root = nullptr;
       engine = nullptr;
- 
+
       // instantiate the engine on the coordinator
       auto inst =
           std::make_unique<CoordinatorInstanciatorOld>(query, queryRegistry);
@@ -1516,10 +1528,11 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
         // TODO is this enough? Do we have to somehow inform the other engines?
         for (auto& te : inst.get()->traverserEngines) {
           std::string traverserId =
-      arangodb::basics::StringUtils::itoa(te.first);
+              arangodb::basics::StringUtils::itoa(te.first);
           for (auto const& shardId : te.second) {
             if (forLocking.find(shardId) == forLocking.end()) {
-              // No other node stated that it is responsible for locking this shard.
+              // No other node stated that it is responsible for locking this
+              // shard.
               // So the traverser engine has to step in.
               forLocking.emplace(shardId, std::make_pair(traverserId, true));
             }
@@ -1558,7 +1571,7 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
           auto cc = arangodb::ClusterComm::instance();
           if (cc == nullptr) {
             // nullptr only happens on controlled shutdown
-            THROW_ARANGO_EXCEPTION( TRI_ERROR_SHUTTING_DOWN);
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
           }
 
           TRI_vocbase_t* vocbase = query->vocbase();
@@ -1617,8 +1630,8 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
               std::unordered_map<std::string, std::string> headers;
               auto res =
                   cc->syncRequest("", coordTransactionID, "shard:" + shardId,
-                                  arangodb::rest::RequestType::PUT,
-                                  url, "{\"code\": 0}", headers, 120.0);
+                                  arangodb::rest::RequestType::PUT, url,
+                                  "{\"code\": 0}", headers, 120.0);
               // Ignore result, we need to try to remove all.
               // However, log the incident if we have an errorMessage.
               if (!res->errorMessage.empty()) {
@@ -1637,25 +1650,25 @@ ExecutionEngine* ExecutionEngine::instantiateFromPlan(
               }
             }
           }
-          // Also we need to destroy all traverser engines that have been pushed to DBServers
+          // Also we need to destroy all traverser engines that have been pushed
+          // to DBServers
           {
-
             std::string const url(
                 "/_db/" +
                 arangodb::basics::StringUtils::urlEncode(vocbase->name()) +
                 "/_internal/traverser/");
             for (auto& te : inst.get()->traverserEngines) {
               std::string traverserId =
-      arangodb::basics::StringUtils::itoa(te.first);
+                  arangodb::basics::StringUtils::itoa(te.first);
               arangodb::CoordTransactionID coordTransactionID =
                   TRI_NewTickServer();
               std::unordered_map<std::string, std::string> headers;
               // NOTE: te.second is the list of shards. So we just send delete
               // to the first of those shards
-              auto res = cc->syncRequest(
-                  "", coordTransactionID, "shard:" + *(te.second.begin()),
-                  RequestType::DELETE_REQ, url + traverserId, "", headers,
-      90.0);
+              auto res = cc->syncRequest("", coordTransactionID,
+                                         "shard:" + *(te.second.begin()),
+                                         RequestType::DELETE_REQ,
+                                         url + traverserId, "", headers, 90.0);
 
               // Ignore result, we need to try to remove all.
               // However, log the incident if we have an errorMessage.
