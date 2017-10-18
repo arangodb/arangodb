@@ -487,7 +487,7 @@ static void DocumentVocbase(
   LogicalCollection const* col = nullptr;
 
   vocbase = GetContextVocBase(isolate);
-  if (vocbase == nullptr) {
+  if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -729,7 +729,7 @@ static void RemoveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   LogicalCollection const* col = nullptr;
 
   vocbase = GetContextVocBase(isolate);
-  if (vocbase == nullptr) {
+  if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -1100,7 +1100,7 @@ static void JS_SetTheLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
-  if (vocbase == nullptr) {
+  if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -1154,7 +1154,7 @@ static void JS_GetLeader(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
-  if (vocbase == nullptr) {
+  if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -1198,7 +1198,7 @@ static void JS_AddFollower(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
-  if (vocbase == nullptr) {
+  if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -1246,7 +1246,7 @@ static void JS_RemoveFollower(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
-  if (vocbase == nullptr) {
+  if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -1292,7 +1292,7 @@ static void JS_GetFollowers(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
-  if (vocbase == nullptr) {
+  if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -2440,11 +2440,7 @@ static void JS_SaveVocbase(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (vocbase->isDropped()) {
+  if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -2966,11 +2962,7 @@ static void JS_CollectionVocbase(
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
-  if (vocbase == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-  }
-
-  if (vocbase->isDropped()) {
+  if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -3008,7 +3000,7 @@ static void JS_CollectionVocbase(
                                              name);
     if (level == AuthLevel::NONE) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                     "No access to collection");
+                                     std::string("No access to collection '") + name + "'");
     }
   }
 
@@ -3032,7 +3024,7 @@ static void JS_CollectionsVocbase(
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
-  if (vocbase == nullptr) {
+  if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
@@ -3112,7 +3104,7 @@ static void JS_CompletionsVocbase(
 
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
 
-  if (vocbase == nullptr) {
+  if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_RETURN(v8::Array::New(isolate));
   }
 

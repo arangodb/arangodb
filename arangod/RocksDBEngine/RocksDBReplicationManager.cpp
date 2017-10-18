@@ -246,7 +246,7 @@ void RocksDBReplicationManager::drop(TRI_vocbase_t* vocbase) {
     }
   }
 
-  garbageCollect(true);
+  garbageCollect(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

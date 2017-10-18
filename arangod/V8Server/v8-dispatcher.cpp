@@ -727,59 +727,60 @@ static void JS_GetTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_END
 }
 
-/// creates a new object in _queues
+/// creates a new object in _queues, circumvents permission blocks
 static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
-  if (args.Length() < 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("createQueue(<id>)");
+  
+  TRI_GET_GLOBALS();
+  TRI_vocbase_t* vocbase = v8g->_vocbase;
+  if (vocbase == nullptr || vocbase->isDropped()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-
+  
+  if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsNumber()) {
+    TRI_V8_THROW_EXCEPTION_USAGE("createQueue(<id>, <maxWorkers>)");
+  }
+  
   std::string runAsUser;
-  if (ExecContext::CURRENT != nullptr) {
-    if (ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW) {
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr) {
+    if (exec->databaseAuthLevel() != AuthLevel::RW) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "createQueue() needs db RW permissions");
     }
-    runAsUser = ExecContext::CURRENT->user();
+    runAsUser = exec->user();
   }
-  // stupid trick to force superuser rights
-  ExecContext *exe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = exe);
-
-  VPackBuilder docs;
-  {
-    int res = TRI_V8ToVPack(isolate, docs, args[0], true);
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
-  }
-  docs.add("runAsUser", VPackValue(runAsUser));
-  docs.close();
-
-  TRI_GET_GLOBALS();
-
-  auto transactionContext = std::make_shared<transaction::V8Context>(v8g->_vocbase, true);
-  SingleCollectionTransaction trx(transactionContext, "_queues",
-                                  AccessMode::Type::EXCLUSIVE);
+  
+  std::string key = TRI_ObjectToString(args[0]);
+  uint64_t maxWorkers = TRI_ObjectToUInt64(args[1], false);
+  
+  VPackBuilder doc;
+  doc.openObject();
+  doc.add(StaticStrings::KeyString, VPackValue(key));
+  doc.add("maxWorkers", VPackValue(maxWorkers));
+  doc.add("runAsUser", VPackValue(runAsUser));
+  doc.close();
+  
+  LOG_TOPIC(TRACE, Logger::FIXME) << "Adding queue " << key;
+  auto ctx = transaction::V8Context::Create(vocbase, false);
+  SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::EXCLUSIVE);
   Result res = trx.begin();
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-
+  
   OperationOptions opts;
-  OperationResult result = trx.insert("_queues", docs.slice(), opts);
+  OperationResult result = trx.insert("_queues", doc.slice(), opts);
   if (!result.successful() &&
       result.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-    result = trx.replace("_queues", docs.slice(), opts);
+    result = trx.replace("_queues", doc.slice(), opts);
   }
   res = trx.finish(result.code);
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-
+  
   TRI_V8_RETURN(v8::Boolean::New(isolate, result.successful()));
   TRI_V8_TRY_CATCH_END
 }
@@ -787,41 +788,41 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
 static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
-
+  
+  TRI_GET_GLOBALS();
+  TRI_vocbase_t* vocbase = v8g->_vocbase;
+  if (vocbase == nullptr || vocbase->isDropped()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("deleteQueue(<id>)");
   }
   std::string key = TRI_ObjectToString(args[0]);
-  VPackBuilder keyB;
-  keyB(VPackValue(VPackValueType::Object))(StaticStrings::KeyString, VPackValue(key))();
-
-  ExecContext *exe = ExecContext::CURRENT;
-  if (exe != nullptr && exe->databaseAuthLevel() != AuthLevel::RW) {
+  VPackBuilder doc;
+  doc(VPackValue(VPackValueType::Object))(StaticStrings::KeyString, VPackValue(key))();
+  
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr && exec->databaseAuthLevel() != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "deleteQueue() needs db RW permissions");
   }
-  // stupid trick to force superuser rights
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = exe);
-
-  TRI_GET_GLOBALS();
-
-  auto transactionContext = std::make_shared<transaction::V8Context>(v8g->_vocbase, true);
-  SingleCollectionTransaction trx(transactionContext, "_queues",
-                                  AccessMode::Type::WRITE);
+  
+  LOG_TOPIC(TRACE, Logger::FIXME) << "Removing queue " << key;
+  auto ctx = transaction::V8Context::Create(vocbase, false);
+  SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::EXCLUSIVE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-
   OperationOptions opts;
-  OperationResult result = trx.remove("_queues", keyB.slice(), opts);
+  OperationResult result = trx.remove("_queues", doc.slice(), opts);
   res = trx.finish(result.code);
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-
+  
   TRI_V8_RETURN(v8::Boolean::New(isolate, result.successful()));
   TRI_V8_TRY_CATCH_END
 }

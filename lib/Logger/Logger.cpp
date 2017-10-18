@@ -350,7 +350,7 @@ void Logger::log(char const* function, char const* file, long int line,
         filename = shortened + 1;
       }
     }
-    out << '[' << filename << ':' << line << "] ";
+    out << '[' << function << "@" << filename << ':' << line << "] ";
   }
 
   // generate the complete message

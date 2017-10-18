@@ -9,6 +9,12 @@ devel
       arangosh1> db.test.insert({}); // shell1 is not aware of the collection created
                                      // in shell2, so the insert will fail
 
+* make AQL `DISTINCT` not change the order of the results it is applied on
+
+* show C++ function name of call site in ArangoDB log output
+
+  This requires option `--log.line-number` to be set to *true*
+
 * fixed issue #3408: Hard crash in query for pagination
 
 * UI: fixed unresponsive events in cluster shards view
