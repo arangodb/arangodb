@@ -466,7 +466,8 @@ SECTION("test_insert") {
 
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
+    arangodb::aql::Variable variable("testVariable", 0);
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, &variable, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
     CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
@@ -503,7 +504,8 @@ SECTION("test_insert") {
 
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
+    arangodb::aql::Variable variable("testVariable", 0);
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, &variable, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
     CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
@@ -537,7 +539,8 @@ SECTION("test_insert") {
 
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
+    arangodb::aql::Variable variable("testVariable", 0);
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, &variable, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
     CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
@@ -572,7 +575,8 @@ SECTION("test_insert") {
 
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
+    arangodb::aql::Variable variable("testVariable", 0);
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, &variable, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
     CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
@@ -608,7 +612,8 @@ SECTION("test_insert") {
 
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
+    arangodb::aql::Variable variable("testVariable", 0);
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, &variable, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
     CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
@@ -645,7 +650,8 @@ SECTION("test_insert") {
 
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
+    arangodb::aql::Variable variable("testVariable", 0);
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, &variable, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
     CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
@@ -787,7 +793,8 @@ SECTION("test_query") {
 
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, nullptr, nullptr, nullptr));
+    arangodb::aql::Variable variable("testVariable", 0);
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, nullptr, &variable, nullptr));
 
     CHECK((false == !itr));
     CHECK((std::string("iresearch-unordered-iterator") == itr->typeName()));
@@ -826,7 +833,7 @@ SECTION("test_query") {
     arangodb::aql::SortCondition order(nullptr, sorts, constAttributes, variableDefinitions);
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, &order));
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, &variable, &order));
 
     CHECK((false == !itr));
     CHECK((std::string("iresearch-ordered-iterator") == itr->typeName()));
@@ -854,7 +861,8 @@ SECTION("test_query") {
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     CHECK((trx.begin().ok()));
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
+    arangodb::aql::Variable variable("testVariable", 0);
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, &variable, nullptr));
 
     CHECK((false == !itr));
     CHECK((std::string("iresearch-unordered-iterator") == itr->typeName()));
@@ -882,7 +890,8 @@ SECTION("test_query") {
     arangodb::aql::SortCondition order;
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, &order));
+    arangodb::aql::Variable variable("testVariable", 0);
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, &variable, &order));
 
     CHECK((false == !itr));
     CHECK((std::string("iresearch-unordered-iterator") == itr->typeName()));
@@ -956,7 +965,7 @@ SECTION("test_query") {
     arangodb::aql::SortCondition order(nullptr, sorts, constAttributes, variableDefinitions);
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &filter, nullptr, &order));
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &filter, &variable, &order));
 
     CHECK((false == !itr));
     CHECK((std::string("iresearch-ordered-iterator") == itr->typeName()));
@@ -1016,7 +1025,8 @@ SECTION("test_query") {
 
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
+    arangodb::aql::Variable variable("testVariable", 0);
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, &variable, nullptr));
 
     CHECK((false == !itr));
     CHECK((std::string("iresearch-unordered-iterator") == itr->typeName()));
@@ -1080,7 +1090,8 @@ SECTION("test_query") {
     arangodb::aql::SortCondition order;
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, &order));
+    arangodb::aql::Variable variable("testVariable", 0);
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, &variable, &order));
 
     CHECK((false == !itr));
     CHECK((std::string("iresearch-unordered-iterator") == itr->typeName()));
@@ -1151,6 +1162,8 @@ SECTION("test_query") {
 
     options.waitForSync = true;
 
+    arangodb::aql::Variable variable("testVariable", 0);
+
     // test insert + query
     for (size_t i = 1; i < 200; ++i) {
       // insert
@@ -1167,7 +1180,7 @@ SECTION("test_query") {
       {
         arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
         CHECK((trx.begin().ok()));
-        std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, nullptr, nullptr));
+        std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, &noop, &variable, nullptr));
         CHECK((false == !itr));
 
         size_t count = 0;

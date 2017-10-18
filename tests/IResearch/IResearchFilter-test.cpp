@@ -175,9 +175,11 @@ void assertFilterSuccess(std::string const& queryString, irs::filter const& expe
   auto* filterNode = root->getMember(1);
   REQUIRE(filterNode);
 
+  static arangodb::aql::Variable const REF("TEST_VAR", 0);
+
   irs::Or actual;
-  CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, *filterNode)));
-  CHECK((arangodb::iresearch::FilterFactory::filter(&actual, *filterNode)));
+  CHECK((arangodb::iresearch::FilterFactory::filter(nullptr, *filterNode, REF)));
+  CHECK((arangodb::iresearch::FilterFactory::filter(&actual, *filterNode, REF)));
   CHECK(expected == actual);
 }
 
@@ -211,9 +213,11 @@ void assertFilterFail(std::string const& queryString) {
   auto* filterNode = root->getMember(1);
   REQUIRE(filterNode);
 
+  static arangodb::aql::Variable const REF("TEST_VAR", 0);
+
   irs::Or actual;
-  CHECK((!arangodb::iresearch::FilterFactory::filter(nullptr, *filterNode)));
-  CHECK((!arangodb::iresearch::FilterFactory::filter(&actual, *filterNode)));
+  CHECK((!arangodb::iresearch::FilterFactory::filter(nullptr, *filterNode, REF)));
+  CHECK((!arangodb::iresearch::FilterFactory::filter(&actual, *filterNode, REF)));
 }
 
 NS_END

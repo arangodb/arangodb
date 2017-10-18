@@ -49,7 +49,7 @@
 NS_LOCAL
 
 typedef std::function<
-  bool(irs::boolean_filter*, arangodb::aql::AstNode const&)
+  bool(irs::boolean_filter*, arangodb::aql::AstNode const&, arangodb::aql::Variable const&)
 > ConvertionHandler;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -380,7 +380,8 @@ bool byRange(
 
 bool fromInterval(
     irs::boolean_filter* filter,
-    arangodb::aql::AstNode const& node
+    arangodb::aql::AstNode const& node,
+    arangodb::aql::Variable const& ref
 ) {
   TRI_ASSERT(
     arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT == node.type
@@ -391,7 +392,7 @@ bool fromInterval(
 
   arangodb::iresearch::NormalizedCmpNode normNode;
 
-  if (!arangodb::iresearch::normalizeCmpNode(node, normNode)) {
+  if (!arangodb::iresearch::normalizeCmpNode(node, ref, normNode)) {
     auto const* typeName = arangodb::iresearch::getNodeTypeName(node.type);
 
     if (typeName) {
@@ -415,7 +416,8 @@ bool fromInterval(
 
 bool fromBinaryEq(
     irs::boolean_filter* filter,
-    arangodb::aql::AstNode const& node
+    arangodb::aql::AstNode const& node,
+    arangodb::aql::Variable const& ref
 ) {
   TRI_ASSERT(
     arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ == node.type
@@ -424,7 +426,7 @@ bool fromBinaryEq(
 
   arangodb::iresearch::NormalizedCmpNode normalized;
 
-  if (!arangodb::iresearch::normalizeCmpNode(node, normalized)) {
+  if (!arangodb::iresearch::normalizeCmpNode(node, ref, normalized)) {
     LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Unable to normalize operator '=='";
     return false; // unable to normalize node
   }
@@ -442,7 +444,8 @@ bool fromBinaryEq(
 
 bool fromRange(
     irs::boolean_filter* filter,
-    arangodb::aql::AstNode const& node
+    arangodb::aql::AstNode const& node,
+    arangodb::aql::Variable const& ref
 ) {
   TRI_ASSERT(arangodb::aql::NODE_TYPE_RANGE == node.type);
 
@@ -461,7 +464,8 @@ bool fromRange(
 
 bool fromIn(
     irs::boolean_filter* filter,
-    arangodb::aql::AstNode const& node
+    arangodb::aql::AstNode const& node,
+    arangodb::aql::Variable const& ref
 ) {
   TRI_ASSERT(
     arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN == node.type
@@ -474,7 +478,7 @@ bool fromIn(
   }
 
   auto const* attributeNode = arangodb::iresearch::checkAttributeAccess(
-    node.getMemberUnchecked(0)
+    node.getMemberUnchecked(0), ref
   );
 
   if (!attributeNode) {
@@ -569,7 +573,8 @@ bool fromIn(
 
 bool fromValue(
     irs::boolean_filter* filter,
-    arangodb::aql::AstNode const& node
+    arangodb::aql::AstNode const& node,
+    arangodb::aql::Variable const& ref
 ) {
   TRI_ASSERT(
     arangodb::aql::NODE_TYPE_VALUE == node.type
@@ -590,7 +595,8 @@ bool fromValue(
 
 bool fromNegation(
     irs::boolean_filter* filter,
-    arangodb::aql::AstNode const& node
+    arangodb::aql::AstNode const& node,
+    arangodb::aql::Variable const& ref
 ) {
   TRI_ASSERT(arangodb::aql::NODE_TYPE_OPERATOR_UNARY_NOT == node.type);
 
@@ -606,12 +612,13 @@ bool fromNegation(
     filter = &filter->add<irs::Not>().filter<irs::And>();
   }
 
-  return arangodb::iresearch::FilterFactory::filter(filter, *member);
+  return arangodb::iresearch::FilterFactory::filter(filter, *member, ref);
 }
 
 bool rangeFromBinaryAnd(
     irs::boolean_filter* filter,
-    arangodb::aql::AstNode const& node
+    arangodb::aql::AstNode const& node,
+    arangodb::aql::Variable const& ref
 ) {
   TRI_ASSERT(
     arangodb::aql::NODE_TYPE_OPERATOR_BINARY_AND == node.type
@@ -630,8 +637,8 @@ bool rangeFromBinaryAnd(
 
   arangodb::iresearch::NormalizedCmpNode lhsNormNode, rhsNormNode;
 
-  if (arangodb::iresearch::normalizeCmpNode(*lhsNode, lhsNormNode)
-      && arangodb::iresearch::normalizeCmpNode(*rhsNode, rhsNormNode)) {
+  if (arangodb::iresearch::normalizeCmpNode(*lhsNode, ref, lhsNormNode)
+      && arangodb::iresearch::normalizeCmpNode(*rhsNode, ref, rhsNormNode)) {
     bool const lhsInclude = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE == lhsNormNode.cmp;
     bool const rhsInclude = arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE == rhsNormNode.cmp;
 
@@ -660,7 +667,8 @@ bool rangeFromBinaryAnd(
 template<typename Filter>
 bool fromGroup(
     irs::boolean_filter* filter,
-    arangodb::aql::AstNode const& node
+    arangodb::aql::AstNode const& node,
+    arangodb::aql::Variable const& ref
 ) {
   TRI_ASSERT(arangodb::aql::NODE_TYPE_OPERATOR_BINARY_AND == node.type
    || arangodb::aql::NODE_TYPE_OPERATOR_BINARY_OR == node.type
@@ -676,7 +684,7 @@ bool fromGroup(
 
   // Note: cannot optimize for single member in AND/OR since 'a OR NOT b' translates to 'a OR (OR NOT b)'
 
-  if (std::is_same<Filter, irs::And>::value && 2 == n && rangeFromBinaryAnd(filter, node)) {
+  if (std::is_same<Filter, irs::And>::value && 2 == n && rangeFromBinaryAnd(filter, node, ref)) {
     // range case
     return true;
   }
@@ -689,7 +697,7 @@ bool fromGroup(
     auto const* valueNode = node.getMemberUnchecked(i);
     TRI_ASSERT(valueNode);
 
-    if (!arangodb::iresearch::FilterFactory::filter(filter, *valueNode)) {
+    if (!arangodb::iresearch::FilterFactory::filter(filter, *valueNode, ref)) {
       return false;
     }
   }
@@ -700,7 +708,8 @@ bool fromGroup(
 // EXISTS(<attribute>, <"type"|"analyzer">, <analyzer-name|"string"|"null"|"bool","numeric">)
 bool fromFuncExists(
     irs::boolean_filter* filter,
-    arangodb::aql::AstNode const& args
+    arangodb::aql::AstNode const& args,
+    arangodb::aql::Variable const& ref
 ) {
   auto const argc = args.numMembers();
 
@@ -711,7 +720,7 @@ bool fromFuncExists(
 
   // 1st argument defines a field
   auto const* fieldArg = arangodb::iresearch::checkAttributeAccess(
-    args.getMemberUnchecked(0)
+    args.getMemberUnchecked(0), ref
   );
 
   if (!fieldArg) {
@@ -874,7 +883,8 @@ bool fromFuncExists(
 // PHRASE(<attribute>, <value> [, <offset>, <value>, ...], <analyzer>)
 bool fromFuncPhrase(
     irs::boolean_filter* filter,
-    arangodb::aql::AstNode const& args
+    arangodb::aql::AstNode const& args,
+    arangodb::aql::Variable const& ref
 ) {
   auto* analyzerFeature = arangodb::iresearch::getFeature<
     arangodb::iresearch::IResearchAnalyzerFeature
@@ -900,7 +910,7 @@ bool fromFuncPhrase(
 
   // 1st argument defines a field
   auto const* fieldArg = arangodb::iresearch::checkAttributeAccess(
-    args.getMemberUnchecked(0)
+    args.getMemberUnchecked(0), ref
   );
 
   if (!fieldArg) {
@@ -994,7 +1004,8 @@ bool fromFuncPhrase(
 // STARTS_WITH(<attribute>, <prefix>, [<scoring-limit>])
 bool fromFuncStartsWith(
     irs::boolean_filter* filter,
-    arangodb::aql::AstNode const& args
+    arangodb::aql::AstNode const& args,
+    arangodb::aql::Variable const& ref
 ) {
   auto const argc = args.numMembers();
 
@@ -1005,7 +1016,7 @@ bool fromFuncStartsWith(
 
   // 1st argument defines a field
   auto const* field = arangodb::iresearch::checkAttributeAccess(
-    args.getMemberUnchecked(0)
+    args.getMemberUnchecked(0), ref
   );
 
   if (!field) {
@@ -1039,7 +1050,8 @@ std::map<irs::string_ref, ConvertionHandler> const FCallUserConvertionHandlers;
 
 bool fromFCallUser(
     irs::boolean_filter* filter,
-    arangodb::aql::AstNode const& node
+    arangodb::aql::AstNode const& node,
+    arangodb::aql::Variable const& ref
 ) {
   TRI_ASSERT(arangodb::aql::NODE_TYPE_FCALL_USER == node.type);
 
@@ -1071,7 +1083,7 @@ bool fromFCallUser(
     return false;
   }
 
-  return entry->second(filter, *args);
+  return entry->second(filter, *args, ref);
 }
 
 std::map<std::string, ConvertionHandler> const FCallSystemConvertionHandlers{
@@ -1083,7 +1095,8 @@ std::map<std::string, ConvertionHandler> const FCallSystemConvertionHandlers{
 
 bool fromFCall(
     irs::boolean_filter* filter,
-    arangodb::aql::AstNode const& node
+    arangodb::aql::AstNode const& node,
+    arangodb::aql::Variable const& ref
 ) {
   TRI_ASSERT(arangodb::aql::NODE_TYPE_FCALL == node.type);
 
@@ -1108,12 +1121,13 @@ bool fromFCall(
     return false;
   }
 
-  return entry->second(filter, *args);
+  return entry->second(filter, *args, ref);
 }
 
 bool fromFilter(
     irs::boolean_filter* filter,
-    arangodb::aql::AstNode const& node
+    arangodb::aql::AstNode const& node,
+    arangodb::aql::Variable const& ref
 ) {
   TRI_ASSERT(arangodb::aql::NODE_TYPE_FILTER == node.type);
 
@@ -1124,7 +1138,7 @@ bool fromFilter(
 
   auto const* member = node.getMemberUnchecked(0);
 
-  return member && arangodb::iresearch::FilterFactory::filter(filter, *member);
+  return member && arangodb::iresearch::FilterFactory::filter(filter, *member, ref);
 }
 
 NS_END
@@ -1167,44 +1181,45 @@ NS_BEGIN(iresearch)
 
 /*static*/ bool FilterFactory::filter(
     irs::boolean_filter* filter,
-    arangodb::aql::AstNode const& node
+    arangodb::aql::AstNode const& node,
+    arangodb::aql::Variable const& ref
 ) {
   switch (node.type) {
     case arangodb::aql::NODE_TYPE_FILTER: // FILTER
-      return fromFilter(filter, node);
+      return fromFilter(filter, node, ref);
     case arangodb::aql::NODE_TYPE_OPERATOR_UNARY_NOT: // unary minus
-      return fromNegation(filter, node);
+      return fromNegation(filter, node, ref);
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_AND: // logical and
-      return fromGroup<irs::And>(filter, node);
+      return fromGroup<irs::And>(filter, node, ref);
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_OR: // logical or
-      return fromGroup<irs::Or>(filter, node);
+      return fromGroup<irs::Or>(filter, node, ref);
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ: // compare ==
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NE: // compare !=
-      return fromBinaryEq(filter, node);
+      return fromBinaryEq(filter, node, ref);
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT: // compare <
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE: // compare <=
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT: // compare >
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE: // compare >=
-      return fromInterval(filter, node);
+      return fromInterval(filter, node, ref);
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN: // compare in
     case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_NIN: // compare not in
-      return fromIn(filter, node);
+      return fromIn(filter, node, ref);
     case arangodb::aql::NODE_TYPE_OPERATOR_TERNARY: // ternary
       break;
     case arangodb::aql::NODE_TYPE_VALUE : // value
     case arangodb::aql::NODE_TYPE_ARRAY:  // array
     case arangodb::aql::NODE_TYPE_OBJECT: // object
-      return fromValue(filter, node);
+      return fromValue(filter, node, ref);
     case arangodb::aql::NODE_TYPE_FCALL: // function call
-      return fromFCall(filter, node);
+      return fromFCall(filter, node, ref);
     case arangodb::aql::NODE_TYPE_FCALL_USER: // user function call
-      return fromFCallUser(filter, node);
+      return fromFCallUser(filter, node, ref);
     case arangodb::aql::NODE_TYPE_RANGE: // range
-      return fromRange(filter, node);
+      return fromRange(filter, node, ref);
     case arangodb::aql::NODE_TYPE_OPERATOR_NARY_AND: // n-ary and
-      return fromGroup<irs::And>(filter, node);
+      return fromGroup<irs::And>(filter, node, ref);
     case arangodb::aql::NODE_TYPE_OPERATOR_NARY_OR: // n-ary or
-      return fromGroup<irs::Or>(filter, node);
+      return fromGroup<irs::Or>(filter, node, ref);
     default:
       break;
   }

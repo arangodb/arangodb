@@ -163,12 +163,13 @@ void assertOrderSuccess(
     sorts.emplace_back(&variables.back(), sortNode->getMember(i)->getMember(1)->value.value._bool);
     variableNodes.emplace(variables.back().id, sortNode->getMember(i)->getMember(0));
   }
+  REQUIRE(!variables.empty());
 
   static std::vector<std::string> const EMPTY;
   arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
   arangodb::aql::SortCondition order(nullptr, sorts, attrs, variableNodes);
   CHECK((trx.begin().ok()));
-  std::shared_ptr<arangodb::ViewIterator> itr(view.iteratorForCondition(&trx, filterNode, nullptr, &order));
+  std::shared_ptr<arangodb::ViewIterator> itr(view.iteratorForCondition(&trx, filterNode, &variables[0], &order));
   CHECK((false == !itr));
 
   size_t next = 0;

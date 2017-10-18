@@ -38,6 +38,7 @@ NS_BEGIN(arangodb)
 NS_BEGIN(aql)
 
 struct AstNode; // forward declaration
+struct Variable; // forward declaration
 
 NS_END // aql
 
@@ -53,7 +54,8 @@ struct FilterFactory {
   ////////////////////////////////////////////////////////////////////////////////
   static bool filter(
     irs::boolean_filter* filter,
-    arangodb::aql::AstNode const& node
+    arangodb::aql::AstNode const& node,
+    arangodb::aql::Variable const& ref
   );
 }; // FilterFactory
 

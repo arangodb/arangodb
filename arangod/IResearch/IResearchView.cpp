@@ -1973,6 +1973,13 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
     return nullptr;
   }
 
+  if (!reference) {
+    LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
+      << "no variable reference supplied while querying iResearch view '" << id() << "'";
+
+    return nullptr;
+  }
+
   if (!node) {
     // in case if filter is not specified
     // seet it to surrogate 'RETURN ALL' node
@@ -1983,7 +1990,7 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
 
   irs::Or filter;
 
-  if (!FilterFactory::filter(&filter, *node)) {
+  if (!FilterFactory::filter(&filter, *node, *reference)) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
       << "failed to build filter while querying iResearch view '" << id()
       << "', query" << node->toVelocyPack(true)->toJson();
@@ -2298,7 +2305,7 @@ bool IResearchView::supportsFilterCondition(
   double& /*estimatedCost*/
 ) const {
   // no way to estimate items/cost before preparing the query
-  return !node || FilterFactory::filter(nullptr, *node);
+  return !node || (reference && FilterFactory::filter(nullptr, *node, *reference));
 }
 
 bool IResearchView::supportsSortCondition(

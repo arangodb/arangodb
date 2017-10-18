@@ -231,7 +231,11 @@ inline arangodb::aql::AstNode const* getNode(
 /// @returns true if the specified 'in' nodes has been successfully normalized,
 ///          false otherwise
 ////////////////////////////////////////////////////////////////////////////////
-bool normalizeCmpNode(arangodb::aql::AstNode const& in, NormalizedCmpNode& out);
+bool normalizeCmpNode(
+  arangodb::aql::AstNode const& in,
+  arangodb::aql::Variable const& ref,
+  NormalizedCmpNode& out
+);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks 2 nodes of type NODE_TYPE_ATTRIBUTE_ACCESS for equality
@@ -254,7 +258,8 @@ std::string nameFromAttributeAccess(arangodb::aql::AstNode const& node);
 /// @returns the specified node on success, nullptr otherwise
 ////////////////////////////////////////////////////////////////////////////////
 arangodb::aql::AstNode const* checkAttributeAccess(
-  arangodb::aql::AstNode const* node
+  arangodb::aql::AstNode const* node,
+  arangodb::aql::Variable const& ref
 ) noexcept;
 
 } // iresearch
