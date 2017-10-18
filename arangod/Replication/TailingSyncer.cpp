@@ -1051,8 +1051,8 @@ void TailingSyncer::getLocalState() {
 
 /// @brief perform a continuous sync with the master
 Result TailingSyncer::runContinuousSync() {
-  static uint64_t const MinWaitTime = 300 * 1000;        // 0.30 seconds
-  static uint64_t const MaxWaitTime = 60 * 1000 * 1000;  // 60 seconds
+  static uint64_t const MinWaitTime = 300 * 1000;        //  0.30 seconds
+  static uint64_t const MaxWaitTime = 60 * 1000 * 1000;  // 60    seconds
   uint64_t connectRetries = 0;
   uint64_t inactiveCycles = 0;
   
@@ -1063,7 +1063,7 @@ Result TailingSyncer::runContinuousSync() {
   
   {
     WRITE_LOCKER_EVENTUAL(writeLocker, _applier->_statusLock);
-    
+
     if (_useTick) {
       // use user-defined tick
       fromTick = _initialTick;
@@ -1074,6 +1074,12 @@ Result TailingSyncer::runContinuousSync() {
       // if we already transferred some data, we'll use the last applied tick
       if (_applier->_state._lastAppliedContinuousTick >= fromTick) {
         fromTick = _applier->_state._lastAppliedContinuousTick;
+      } else {
+        LOG_TOPIC(WARN, Logger::REPLICATION)
+        << "restarting continuous synchronization from previous state"
+        << ", lastAppliedContinuousTick in state: " << _applier->_state._lastAppliedContinuousTick
+        << ", lastProcessedContinuousTick in state: " << _applier->_state._lastProcessedContinuousTick
+        << ", safeResumeTick in state: " << _applier->_state._safeResumeTick << ", fromTick: 0";
       }
       safeResumeTick = _applier->_state._safeResumeTick;
     }

@@ -225,7 +225,7 @@ void ReplicationApplier::start(TRI_voc_tick_t initialTick, bool useTick, TRI_voc
     LOG_TOPIC(INFO, Logger::REPLICATION)
         << "re-started replication applier for "
         << _databaseName << ", endpoint '" << _configuration._endpoint
-        << "'";
+        << "' from previous state";
   }
 }
 
