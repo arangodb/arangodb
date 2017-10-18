@@ -34,6 +34,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/TraverserEngineRegistry.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
@@ -56,14 +57,16 @@ using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 RestAqlHandler::RestAqlHandler(GeneralRequest* request,
                                GeneralResponse* response,
-                               QueryRegistry* queryRegistry)
+                               std::pair<QueryRegistry*, traverser::TraverserEngineRegistry*>* registries)
     : RestVocbaseBaseHandler(request, response),
       _context(static_cast<VocbaseContext*>(request->requestContext())),
       _vocbase(_context->vocbase()),
-      _queryRegistry(queryRegistry),
+      _queryRegistry(registries->first),
+      _traverserRegistry(registries->second),
       _qId(0) {
   TRI_ASSERT(_vocbase != nullptr);
   TRI_ASSERT(_queryRegistry != nullptr);
+  TRI_ASSERT(_traverserRegistry != nullptr);
 }
 
 // returns the queue name
@@ -130,7 +133,7 @@ void RestAqlHandler::setupClusterQuery() {
 
   VPackSlice optionsSlice = querySlice.get("options");
   if (!optionsSlice.isObject()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::AQL)
         << "Invalid VelocyPack: \"options\" attribute missing.";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"options\"");
@@ -139,16 +142,25 @@ void RestAqlHandler::setupClusterQuery() {
 
   VPackSlice snippetsSlice = querySlice.get("snippets");
   if (!snippetsSlice.isObject()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::AQL)
         << "Invalid VelocyPack: \"snippets\" attribute missing.";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"snippets\"");
     return;
   }
 
+  VPackSlice traverserSlice = querySlice.get("traverserEngines");
+  if (!traverserSlice.isNone() && !traverserSlice.isArray()) {
+    LOG_TOPIC(ERR, arangodb::Logger::AQL)
+        << "Invalid VelocyPack: \"traverserEngines\" attribute is not an array.";
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
+                  "if \"traverserEngines\" is set in the body, it has to be an array");
+    return;
+  }
+
   VPackSlice variablesSlice = querySlice.get("variables");
   if (!variablesSlice.isArray()) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME)
+    LOG_TOPIC(ERR, arangodb::Logger::AQL)
         << "Invalid VelocyPack: \"variables\" attribute missing.";
     generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                   "body must be an object with attribute \"variables\"");
@@ -213,6 +225,40 @@ void RestAqlHandler::setupClusterQuery() {
 
   VPackBuilder answerBuilder;
   answerBuilder.openObject();
+  bool res = false;
+  res = registerSnippets(snippetsSlice, collectionBuilder.slice(), variablesSlice,
+                         options, ttl, answerBuilder);
+  if (!res) {
+    // TODO we need to trigger cleanup here??
+    // Registering the snippets failed.
+    return;
+  }
+
+  if (!traverserSlice.isNone()) {
+    res = registerTraverserEngines(traverserSlice, ttl, answerBuilder);
+    if (!res) {
+      // TODO we need to trigger cleanup here??
+      // Registering the traverser engines failed.
+      return;
+    }
+  }
+
+  answerBuilder.close();
+
+  generateSuccess(rest::ResponseCode::OK, answerBuilder.slice());
+}
+
+bool RestAqlHandler::registerSnippets(
+    VPackSlice const snippetsSlice,
+    VPackSlice const collectionSlice,
+    VPackSlice const variablesSlice,
+    std::shared_ptr<VPackBuilder> options,
+    double const ttl,
+    VPackBuilder& answerBuilder
+    ) {
+  TRI_ASSERT(answerBuilder.isOpenObject());
+  answerBuilder.add(VPackValue("snippets"));
+  answerBuilder.openObject();
   // NOTE: We need to clean up all engines if we bail out during the following
   // loop
   bool firstSnippet = true;
@@ -220,7 +266,7 @@ void RestAqlHandler::setupClusterQuery() {
     auto planBuilder = std::make_shared<VPackBuilder>();
     planBuilder->openObject();
     planBuilder->add(VPackValue("collections"));
-    planBuilder->add(collectionBuilder.slice());
+    planBuilder->add(collectionSlice);
 
       // hard-code initialize: false
     planBuilder->add("initialize", VPackValue(false));
@@ -243,12 +289,12 @@ void RestAqlHandler::setupClusterQuery() {
           << "failed to instantiate the query: " << ex.what();
       generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN,
                     ex.what());
-      return;
+      return false;
     } catch (...) {
       LOG_TOPIC(ERR, arangodb::Logger::AQL)
           << "failed to instantiate the query";
       generateError(rest::ResponseCode::BAD, TRI_ERROR_QUERY_BAD_JSON_PLAN);
-      return;
+      return false;
     }
 
     try {
@@ -268,17 +314,17 @@ void RestAqlHandler::setupClusterQuery() {
             if (res != TRI_ERROR_NO_ERROR) {
               generateError(rest::ResponseCode::SERVER_ERROR,
                   res, TRI_errno_string(res));
-              return;
+              return false;
             }
           } catch (basics::Exception  const& e) {
             generateError(rest::ResponseCode::SERVER_ERROR,
                 e.code(), e.message());
-            return;
+            return false;
           } catch (...) {
             generateError(rest::ResponseCode::SERVER_ERROR,
                           TRI_ERROR_HTTP_SERVER_ERROR,
                           "Unable to lock all collections.");
-            return;
+            return false;
           }
           // If we get here we successfully locked the collections.
           // If we bail out up to this point nothing is kept alive.
@@ -296,14 +342,43 @@ void RestAqlHandler::setupClusterQuery() {
           << "could not keep query in registry";
       generateError(rest::ResponseCode::BAD, TRI_ERROR_INTERNAL,
                     "could not keep query in registry");
-      return;
+      return false;
     }
+  }
+  answerBuilder.close(); // Snippets
 
- }
-  
-  answerBuilder.close();
+  return true;
+}
 
-  generateSuccess(rest::ResponseCode::OK, answerBuilder.slice());
+bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines, double ttl, VPackBuilder& answerBuilder) {
+  TRI_ASSERT(traverserEngines.isArray());
+
+  TRI_ASSERT(answerBuilder.isOpenObject());
+  answerBuilder.add(VPackValue("traverserEngines"));
+  answerBuilder.openArray();
+
+  for (auto const& te : VPackArrayIterator(traverserEngines)) {
+    try {
+      traverser::TraverserEngineID id =
+          _traverserRegistry->createNew(_vocbase, te, ttl);
+      TRI_ASSERT(id != 0);
+      answerBuilder.add(VPackValue(id));
+    } catch (basics::Exception const& e) {
+      LOG_TOPIC(ERR, arangodb::Logger::AQL)
+          << "Failed to instanciate traverser engines. Reason: " << e.message();
+      generateError(rest::ResponseCode::SERVER_ERROR, e.code(), e.message());
+      return false;
+    } catch (...) {
+      LOG_TOPIC(ERR, arangodb::Logger::AQL)
+          << "Failed to instanciate traverser engines.";
+      generateError(rest::ResponseCode::SERVER_ERROR,
+                    TRI_ERROR_HTTP_SERVER_ERROR,
+                    "Unable to instanciate traverser engines");
+      return false;
+    }
+  }
+  // Everything went well
+  return true;
 }
 
 // POST method for /_api/aql/instantiate (internal)

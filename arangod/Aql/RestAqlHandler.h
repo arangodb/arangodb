@@ -33,12 +33,18 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
+namespace traverser {
+class TraverserEngineRegistry;
+}
+
 namespace aql {
 
 /// @brief shard control request handler
 class RestAqlHandler : public RestVocbaseBaseHandler {
  public:
-  RestAqlHandler(GeneralRequest*, GeneralResponse*, QueryRegistry*);
+  RestAqlHandler(GeneralRequest*, GeneralResponse*,
+                 std::pair<QueryRegistry*, traverser::TraverserEngineRegistry*>*);
 
  public:
   char const* name() const override final { return "RestAqlHandler"; }
@@ -125,7 +131,17 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
   //  }
 
   void setupClusterQuery();
- 
+
+  bool registerSnippets(arangodb::velocypack::Slice const snippets,
+                        arangodb::velocypack::Slice const collections,
+                        arangodb::velocypack::Slice const variables,
+                        std::shared_ptr<arangodb::velocypack::Builder> options,
+                        double const ttl,
+                        arangodb::velocypack::Builder& answer);
+
+  bool registerTraverserEngines(arangodb::velocypack::Slice const traversers,
+                                double const ttl,
+                                arangodb::velocypack::Builder& answer);
 
   // Send slice as result with the given response type.
   void sendResponse(rest::ResponseCode,
@@ -155,6 +171,9 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
 
   // our query registry
   QueryRegistry* _queryRegistry;
+
+  // our traversal engine registry
+  traverser::TraverserEngineRegistry* _traverserRegistry;
 
   // id of current query
   QueryId _qId;

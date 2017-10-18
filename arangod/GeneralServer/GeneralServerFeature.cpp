@@ -334,6 +334,11 @@ void GeneralServerFeature::defineHandlers() {
   auto queryRegistry = QueryRegistryFeature::QUERY_REGISTRY;
   auto traverserEngineRegistry =
       TraverserEngineRegistryFeature::TRAVERSER_ENGINE_REGISTRY;
+  if (_combinedRegistries == nullptr) {
+    _combinedRegistries = std::make_unique<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>> (queryRegistry, traverserEngineRegistry);
+  } else {
+    TRI_ASSERT(false);
+  }
 
   // ...........................................................................
   // /_msg
@@ -414,10 +419,14 @@ void GeneralServerFeature::defineHandlers() {
       RestVocbaseBaseHandler::VIEW_PATH,
       RestHandlerCreator<RestViewHandler>::createNoData);
 
+  // This is the only handler were we need to inject
+  // more than one data object. So we created the combinedRegistries
+  // for it.
   _handlerFactory->addPrefixHandler(
       "/_api/aql",
-      RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>,
-      queryRegistry);
+      RestHandlerCreator<aql::RestAqlHandler>::createData<
+          std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>*>,
+          _combinedRegistries.get());
 
   _handlerFactory->addPrefixHandler(
       "/_api/aql-builtin",

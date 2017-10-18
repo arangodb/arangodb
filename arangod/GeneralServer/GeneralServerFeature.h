@@ -29,6 +29,15 @@
 #include "Basics/asio-helper.h"
 
 namespace arangodb {
+
+namespace aql {
+class QueryRegistry;
+}
+
+namespace traverser {
+class TraverserEngineRegistry;
+}
+
 namespace rest {
 class AsyncJobManager;
 class RestHandlerFactory;
@@ -112,6 +121,7 @@ class GeneralServerFeature final
  private:
   std::unique_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
+  std::unique_ptr<std::pair<aql::QueryRegistry*, traverser::TraverserEngineRegistry*>> _combinedRegistries;
   std::vector<rest::GeneralServer*> _servers;
 };
 }
