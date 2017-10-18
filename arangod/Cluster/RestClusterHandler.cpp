@@ -26,25 +26,23 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Replication/ReplicationFeature.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/Version.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
-
-#include "Rest/HttpRequest.h"
-#include "Rest/Version.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 RestClusterHandler::RestClusterHandler(GeneralRequest* request,
-                                 GeneralResponse* response)
+                                       GeneralResponse* response)
     : RestBaseHandler(request, response) {}
 
 RestStatus RestClusterHandler::execute() {
-
   if (_request->requestType() != RequestType::GET) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN,
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED,
                   "only the GET method is allowed");
     return RestStatus::DONE;
   }
@@ -62,25 +60,7 @@ RestStatus RestClusterHandler::execute() {
   return RestStatus::DONE;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @start Docu Block JSF_getClusterEndpoints
-// / @brief returns information about all coordinator endpoints
-// /
-// / @ RESTHEADER{GET /_api/cluster/endpoints, Get information
-// / about all coordinator endpoints
-// /
-// / @ RESTDESCRIPTION Returns an array of objects, which each have
-// / the attribute `endpoint`, whose value is a string with the endpoint
-// / description. There is an entry for each coordinator in the cluster.
-// /
-// / @ RESTRETURNCODES
-// /
-// / @ RESTRETURNCODE{200} is returned when everything went well.
-// /
-// / @ RESTRETURNCODE{403} server is not a coordinator or method was not GET.
-// /
-// / @end Docu Block
-// //////////////////////////////////////////////////////////////////////////////
+/// @brief returns information about all coordinator endpoints
 void RestClusterHandler::handleCommandEndpoints() {
   TRI_ASSERT(AgencyCommManager::isEnabled());
   ClusterInfo* ci = ClusterInfo::instance();
@@ -144,7 +124,7 @@ void RestClusterHandler::handleCommandEndpoints() {
     endpoints.insert(endpoints.begin(), leaderId);
 
   } else {
-    generateError(Result(TRI_ERROR_FORBIDDEN, "can not serve this request"));
+    generateError(Result(TRI_ERROR_FORBIDDEN, "cannot serve this request"));
     return;
   }
   

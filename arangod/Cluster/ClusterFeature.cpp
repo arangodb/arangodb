@@ -140,7 +140,6 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-
   if (options->processingResult().touched("cluster.disable-dispatcher-kickstarter") ||
       options->processingResult().touched("cluster.disable-dispatcher-frontend")) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
