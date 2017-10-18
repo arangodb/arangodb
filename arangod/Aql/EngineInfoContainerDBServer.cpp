@@ -33,6 +33,7 @@
 #include "Aql/Query.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
+#include "Graph/BaseOptions.h"
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -271,12 +272,78 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
     }
   }
   infoBuilder.close();  // snippets
+  injectTraverserEngines(infoBuilder);
   infoBuilder.close();  // Object
 }
 
+void EngineInfoContainerDBServer::DBServerInfo::injectTraverserEngines(VPackBuilder& infoBuilder) const {
+  if (_traverserEngineInfos.empty()) {
+    return;
+  }
+  TRI_ASSERT(infoBuilder.isOpenObject());
+  infoBuilder.add(VPackValue("traverserEngines"));
+  infoBuilder.openArray();
+  for (auto const& it : _traverserEngineInfos) {
+    GraphNode* en = it.first;
+    auto const& list = it.second;
+    infoBuilder.openObject();
+    {
+      // Options
+      infoBuilder.add(VPackValue("options"));
+      graph::BaseOptions* opts = en->options();
+      opts->buildEngineInfo(infoBuilder);
+    }
+    {
+      // Variables
+      std::vector<aql::Variable const*> vars;
+      en->getConditionVariables(vars);
+      if (!vars.empty()) {
+        infoBuilder.add(VPackValue("variables"));
+        infoBuilder.openArray();
+        for (auto v : vars) {
+          v->toVelocyPack(infoBuilder);
+        }
+        infoBuilder.close();
+      }
+    }
+
+    infoBuilder.add(VPackValue("shards"));
+    infoBuilder.openObject();
+    infoBuilder.add(VPackValue("vertices"));
+    infoBuilder.openObject();
+    for (auto const& col : list.vertexCollections) {
+      infoBuilder.add(VPackValue(col.first));
+      infoBuilder.openArray();
+      for (auto const& v : col.second) {
+        infoBuilder.add(VPackValue(v));
+      }
+      infoBuilder.close();  // this collection
+    }
+    infoBuilder.close();  // vertices
+
+    infoBuilder.add(VPackValue("edges"));
+    infoBuilder.openArray();
+    for (auto const& edgeShards : list.edgeCollections) {
+      infoBuilder.openArray();
+      for (auto const& e : edgeShards) {
+        infoBuilder.add(VPackValue(e));
+      }
+      infoBuilder.close();
+    }
+    infoBuilder.close();  // edges
+    infoBuilder.close();  // shards
+
+    en->enhanceEngineInfo(infoBuilder);
+
+    infoBuilder.close();  // base
+  }
+
+  infoBuilder.close(); // traverserEngines
+}
+
 void EngineInfoContainerDBServer::DBServerInfo::addTraverserEngine(
-    TraverserEngineShardLists&& shards) {
-  _traverserEngineInfos.push_back(std::move(shards));
+    GraphNode* node, TraverserEngineShardLists&& shards) {
+  _traverserEngineInfos.push_back(std::make_pair(node, std::move(shards)));
 }
 
 void EngineInfoContainerDBServer::DBServerInfo::injectQueryOptions(
@@ -473,7 +540,8 @@ void EngineInfoContainerDBServer::injectGraphNodesToMapping(
       // This condition is guaranteed because all shards have been prepared
       // for locking in the EngineInfos
       TRI_ASSERT(dbServerMapping.find(it.first) != dbServerMapping.end());
-      dbServerMapping.find(it.first)->second.addTraverserEngine(std::move(it.second));
+      dbServerMapping.find(it.first)->second.addTraverserEngine(
+          en, std::move(it.second));
     }
   }
 }

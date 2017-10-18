@@ -108,9 +108,12 @@ class EngineInfoContainerDBServer {
 
     void buildMessage(Query* query, velocypack::Builder& infoBuilder) const;
 
-    void addTraverserEngine(TraverserEngineShardLists&& shards);
+    void addTraverserEngine(GraphNode* node, TraverserEngineShardLists&& shards);
 
    private:
+
+    void injectTraverserEngines(VPackBuilder& infoBuilder) const;
+
     void injectQueryOptions(Query* query,
                             velocypack::Builder& infoBuilder) const;
 
@@ -123,7 +126,7 @@ class EngineInfoContainerDBServer {
         _engineInfos;
 
     // @brief List of all information required for traverser engines
-    std::vector<TraverserEngineShardLists> _traverserEngineInfos;
+    std::vector<std::pair<GraphNode*, TraverserEngineShardLists>> _traverserEngineInfos;
   };
 
  public:
