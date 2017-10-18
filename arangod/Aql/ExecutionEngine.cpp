@@ -1129,7 +1129,7 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
     // Shards are not overlapping between Engines as there is exactly
     // one engine per server.
     //
-    // The resulting JSON is a s follows:
+    // The resulting JSON is as follows:
     //
     // {
     //   "options": <options.toVelocyPack>,
