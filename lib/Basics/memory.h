@@ -29,72 +29,22 @@
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief system memory allocation
-///
-/// This will not add the memory zone information even when compiled with
-/// --enable-maintainer-mode.
-/// Internally, this will call just malloc, and probably memset.
-/// Using this function instead of malloc/memset allows us to track all memory
-/// allocations easier.
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#define TRI_SystemAllocate(a, b) \
-  TRI_SystemAllocateZ((a), (b), __FILE__, __LINE__)
-void* TRI_SystemAllocateZ(uint64_t, bool, char const*, int);
-#else
-void* TRI_SystemAllocate(uint64_t, bool);
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for allocate
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#define TRI_Allocate(a) TRI_AllocateZ((a), __FILE__, __LINE__)
-void* TRI_AllocateZ(uint64_t, char const*, int);
-#else
-void* TRI_Allocate(uint64_t);
-#endif
+void* TRI_Allocate(size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for reallocate
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#define TRI_Reallocate(a, b) \
-  TRI_ReallocateZ((a), (b), __FILE__, __LINE__)
-void* TRI_ReallocateZ(void*, uint64_t, char const*, int);
-#else
-void* TRI_Reallocate(void*, uint64_t);
-#endif
+void* TRI_Reallocate(void*, size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief basic memory management for deallocate
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#define TRI_Free(a) TRI_FreeZ((a), __FILE__, __LINE__)
-void TRI_FreeZ(void*, char const*, int);
-#else
 void TRI_Free(void*);
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief free memory allocated by low-level system functions
-///
-/// this can be used to free memory that was not allocated by TRI_Allocate, but
-/// by system functions as malloc et al. This memory must not be passed to
-/// TRI_Free because TRI_Free might subtract the memory zone from the original
-/// pointer if compiled with --enable-maintainer-mode.
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#define TRI_SystemFree(a) TRI_SystemFreeZ((a), __FILE__, __LINE__)
-void TRI_SystemFreeZ(void*, char const*, int);
-#else
-void TRI_SystemFree(void*);
-#endif
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 void TRI_AllowMemoryFailures();

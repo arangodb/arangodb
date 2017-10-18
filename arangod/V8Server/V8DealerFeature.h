@@ -104,8 +104,8 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
       TRI_vocbase_t*);
 
   void setMinimumContexts(size_t nr) { 
-    if (_nrMinContexts < nr) {
-      _nrMinContexts = nr;
+    if (nr > _nrMinContexts) {
+      _nrMinContexts = nr; 
     }
   }
 
