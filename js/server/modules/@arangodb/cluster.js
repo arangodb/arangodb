@@ -801,7 +801,8 @@ function executePlanForCollections(plannedCollections) {
                 delete collectionInfo.id;     // must not
                 delete collectionInfo.name;
                 if (collectionInfo.hasOwnProperty('globallyUniqueId')) {
-                  console.warn('unexpected globallyUniqueId');
+                  console.warn('unexpected globallyUniqueId in %s',
+                    JSON.stringify(collectionInfo));
                 }
                 delete collectionInfo.globallyUniqueId;
                 try {
@@ -1594,7 +1595,7 @@ function handleChanges (plan, current) {
       // Ooops! We do not seem to be a primary any more!
       changed = ArangoServerState.redetermineRole();
     }
-  } else { // role === "SECONDARY"
+  } /*else { // role === "SECONDARY"
     // Note that the secondary role no longer exists outside the schmutz -Simon 
     if (plan.DBServers[myId]) {
       changed = ArangoServerState.redetermineRole();
@@ -1616,7 +1617,7 @@ function handleChanges (plan, current) {
         changed = ArangoServerState.redetermineRole();
       }
     }
-  }
+  }*/
   var oldRole = role;
   if (changed) {
     role = ArangoServerState.role();

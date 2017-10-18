@@ -487,15 +487,16 @@ void HeartbeatThread::runSingleServer() {
         continue;
       }
       std::string const leaderPath = "/Plan/AsyncReplication/Leader";
-      VPackSlice leader = asyncReplication.get("Leader");
+      VPackSlice leaderSlice = asyncReplication.get("Leader");
       VPackBuilder myIdBuilder;
       myIdBuilder.add(VPackValue(_myId));
       
       // Case 1: No leader in agency. Race for leadership
-      if (!leader.isString()) {
+      if (!leaderSlice.isString()) {
         LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vaccuum detected, "
         << "attempting a takeover";
         if (applier->isRunning()) {
+          // FIXME: do we keep this running anyway ?
           applier->stopAndJoin();
         }
         
@@ -503,18 +504,21 @@ void HeartbeatThread::runSingleServer() {
                                   /* ttl */ std::min(30.0, interval * 4),
                                   /* timeout */ 30.0);
         if (result.successful()) {
+          // sucessfull leadership takeover
           LOG_TOPIC(INFO, Logger::HEARTBEAT) << "All your base are belong to us";
-          applier->stop(/* reset error */true);
+          applier->stop(/* reset error */true); // TODO: should we use join here?
           RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::DEFAULT);
+          ServerState::instance()->setFoxxmaster(_myId);
         } else {
-          LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Takeover attempt failed";
+          LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Takeover attempt failed";
         }
-        continue; // readjust applier endpoint later
+        continue; // readjust applier endpoint next round
       }
       
       // Case 2: Current server is leader
-      if (leader.compareString(_myId) == 0) {
+      if (leaderSlice.compareString(_myId) == 0) {
         LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Currently leader" << _myId;
+        ServerState::instance()->setFoxxmaster(_myId);
         
         // updating the value to keep our leadership
         result = _agency.casValue(leaderPath, /* old */ myIdBuilder.slice(),
@@ -522,7 +526,7 @@ void HeartbeatThread::runSingleServer() {
                                   /* ttl */ std::min(30.0, interval * 4),
                                   /* timeout */ 30.0);
         if (!result.successful()) {
-          LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Cannot update leadership value";
+          LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Cannot update leadership value";
         }
         if (applier->isRunning()) {
           applier->stopAndJoin();
@@ -535,11 +539,14 @@ void HeartbeatThread::runSingleServer() {
       }
       
       // Case 3: Current server is follower
-      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Still slave of " << _myId;
-      std::string endpoint = ci->getServerEndpoint(leader.copyString());
+      std::string const leader = leaderSlice.copyString();
+      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Slave of " << leader;
+      ServerState::instance()->setFoxxmaster(leader);
+      
+      std::string endpoint = ci->getServerEndpoint(leader);
       if (endpoint.empty()) {
         LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to resolve leader endpoint";
-        continue;
+        continue; // try again next time
       }
       // enable redirections to leader
       RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::REDIRECT);
@@ -569,7 +576,7 @@ void HeartbeatThread::runSingleServer() {
         if (r.fail()) {
           LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Initial sync from leader "
           << "failed: " << r.errorMessage();
-          continue;
+          continue; // try again next time
         }
         // steal the barrier from the syncer
         TRI_voc_tick_t barrierId = syncer.stealBarrier();

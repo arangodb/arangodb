@@ -115,8 +115,7 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addHiddenOption("--cluster.agency-prefix", "agency prefix",
                      new StringParameter(&_agencyPrefix));
 
-  options->addHiddenOption("--cluster.my-local-info", "this server's local info",
-                     new StringParameter(&_myLocalInfo));
+  options->addObsoleteOption("--cluster.my-local-info", "this server's local info", false);
 
   options->addObsoleteOption("--cluster.my-id", "this server's id", false);
 
@@ -271,10 +270,10 @@ void ClusterFeature::prepare() {
   } else {
     reportRole(_requestedRole);
   }
-
-  if (_requestedRole == ServerState::ROLE_SINGLE) {
+  
+  /*if (_requestedRole == ServerState::ROLE_SINGLE) {
     ServerState::instance()->forceRole(_requestedRole);
-  }
+  }*/
 
   ServerState::instance()->setClusterEnabled();
 
@@ -307,8 +306,6 @@ void ClusterFeature::prepare() {
                << AgencyCommManager::MANAGER->endpointsString() << ")";
     FATAL_ERROR_EXIT();
   }
-
-  ServerState::instance()->setLocalInfo(_myLocalInfo);
 
   if (!ServerState::instance()->integrateIntoCluster(_requestedRole, _myAddress)) {
     LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't integrate into cluster.";

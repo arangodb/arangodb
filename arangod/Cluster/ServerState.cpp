@@ -57,12 +57,11 @@ ServerState::ServerState()
     : _id(),
       _address(),
       _lock(),
-      _role(),
-      _idOfPrimary(""),
+      _role(RoleEnum::ROLE_UNDEFINED),
       _state(STATE_UNDEFINED),
       _initialized(false),
       _clusterEnabled(false),
-      _foxxmaster(""),
+      _foxxmaster(),
       _foxxmasterQueueupdate(false) {
   storeRole(ROLE_UNDEFINED);
 }
@@ -212,40 +211,13 @@ std::string ServerState::stateToString(StateEnum state) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief find and set our role
-////////////////////////////////////////////////////////////////////////////////
-void ServerState::findAndSetRoleBlocking() {
-  while (true) {
-    auto role = determineRole(_localInfo, _id);
-    LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Found my role: " << role;
-
-    if (storeRole(role)) {
-      break;
-    }
-    sleep(1);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief flush the server state (used for testing)
-////////////////////////////////////////////////////////////////////////////////
-
-void ServerState::flush() { findAndSetRoleBlocking(); }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the server role
 ////////////////////////////////////////////////////////////////////////////////
 
 ServerState::RoleEnum ServerState::getRole() {
   auto role = loadRole();
-
-  if (role != ServerState::ROLE_UNDEFINED || !_clusterEnabled) {
-    return role;
-  }
-
-  //TRI_ASSERT(!_id.empty());
-  findAndSetRoleBlocking();
-  return loadRole();
+  TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
+  return role;
 }
 
 bool ServerState::unregister() {
@@ -253,11 +225,7 @@ bool ServerState::unregister() {
   TRI_ASSERT(AgencyCommManager::isEnabled());
 
   std::string const& id = getId();
-  std::string localInfoEncoded = StringUtils::urlEncode(_localInfo);
-  AgencyOperation deleteLocalIdMap("Target/MapLocalToID/" + localInfoEncoded,
-                                   AgencySimpleOperationType::DELETE_OP);
-
-  std::vector<AgencyOperation> operations = {deleteLocalIdMap};
+  std::vector<AgencyOperation> operations;
   const std::string agencyListKey = roleToAgencyListKey(loadRole());
   operations.push_back(AgencyOperation("Plan/" + agencyListKey + "/" + id,
                                        AgencySimpleOperationType::DELETE_OP));
@@ -295,7 +263,9 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
     FATAL_ERROR_EXIT();
   }
 
-  findAndSetRoleBlocking();
+  Logger::setRole(roleToString(role)[0]);
+  _role.store(role, std::memory_order_release);
+  
   LOG_TOPIC(DEBUG, Logger::CLUSTER) << "We successfully announced ourselves as "
     << roleToString(role) << " and our id is "
     << id;
@@ -525,28 +495,6 @@ bool ServerState::registerAtAgency(AgencyComm& comm,
 void ServerState::setRole(ServerState::RoleEnum role) { storeRole(role); }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the server local info
-////////////////////////////////////////////////////////////////////////////////
-
-std::string ServerState::getLocalInfo() {
-  READ_LOCKER(readLocker, _lock);
-  return _localInfo;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the server local info
-////////////////////////////////////////////////////////////////////////////////
-
-void ServerState::setLocalInfo(std::string const& localInfo) {
-  if (localInfo.empty()) {
-    return;
-  }
-
-  WRITE_LOCKER(writeLocker, _lock);
-  _localInfo = localInfo;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the server id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -696,76 +644,6 @@ void ServerState::forceRole(ServerState::RoleEnum role) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief redetermine the server role, we do this after a plan change.
-/// This is needed for automatic failover. This calls determineRole with
-/// previous values of _info and _id. In particular, the _id will usually
-/// already be set. If the current role cannot be determined from the
-/// agency or is not unique, then the system keeps the old role.
-/// Returns true if there is a change and false otherwise.
-////////////////////////////////////////////////////////////////////////////////
-
-bool ServerState::redetermineRole() {
-  std::string saveIdOfPrimary = _idOfPrimary;
-  RoleEnum role = determineRole(_localInfo, _id);
-  LOG_TOPIC(INFO, Logger::CLUSTER) << "Redetermined role from agency: "
-                                   << role;
-  if (role == ServerState::ROLE_UNDEFINED) {
-    return false;
-  }
-  RoleEnum oldRole = loadRole();
-  TRI_ASSERT(oldRole == ROLE_UNDEFINED || role == oldRole);
-  if (role != oldRole) {
-    LOG_TOPIC(INFO, Logger::CLUSTER) << "Changed role to: " << role;
-    if (!storeRole(role)) {
-      return false;
-    }
-    return true;
-  }
-  if (_idOfPrimary != saveIdOfPrimary) {
-    LOG_TOPIC(INFO, Logger::CLUSTER) << "The ID of our primary has changed!";
-    return true;
-  }
-  return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief determine the server role by fetching data from the agency
-/// Note: this method must be called under the _lock
-////////////////////////////////////////////////////////////////////////////////
-
-ServerState::RoleEnum ServerState::determineRole(std::string const& info,
-                                                 std::string& id) {
-  if (id.empty()) {
-    int res = lookupLocalInfoToId(info, id);
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not lookupLocalInfoToId";
-      return ServerState::ROLE_UNDEFINED;
-    }
-    // When we get here, we have have successfully looked up our id
-    LOG_TOPIC(DEBUG, Logger::CLUSTER) << "Learned my own Id: " << id;
-    setId(id);
-  }
-
-  ServerState::RoleEnum role = ServerState::ROLE_UNDEFINED;// loadRole();
-/*
-  if (role == ServerState::ROLE_SINGLE) {
-    // role of single server does never change
-    return role;
-  }
-*/
-  if (isInServerList(ServerState::ROLE_COORDINATOR, id)) {
-    role = ServerState::ROLE_COORDINATOR;
-  } else if (isInServerList(ServerState::ROLE_PRIMARY, id)) {
-    role = ServerState::ROLE_PRIMARY;
-  } else if (isInServerList(ServerState::ROLE_SINGLE, id)) {
-    role = ServerState::ROLE_SINGLE;
-  }
-  // TODO: does not hold true anymore FIXME
-  // TRI_ASSERT(role == loadRole());
-  return role;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a state transition for a primary server
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -806,103 +684,12 @@ bool ServerState::checkCoordinatorState(StateEnum state) {
   return false;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the server id by using the local info
-////////////////////////////////////////////////////////////////////////////////
-
-int ServerState::lookupLocalInfoToId(std::string const& localInfo,
-                                     std::string& id) {
-  // fetch value at Plan/DBServers
-  // we need to do this to determine the server's role
-
-  std::string const key = "Target/MapLocalToID";
-
-  int count = 0;
-  while (++count <= 600) {
-    AgencyComm comm;
-    AgencyCommResult result = comm.getValues(key);
-
-    if (!result.successful()) {
-      std::string const endpoints = AgencyCommManager::MANAGER->endpointsString();
-
-      LOG_TOPIC(DEBUG, Logger::STARTUP)
-          << "Could not fetch configuration from agency endpoints ("
-          << endpoints << "): got status code " << result._statusCode
-          << ", message: " << result.errorMessage() << ", key: " << key;
-    } else {
-      VPackSlice slice = result.slice()[0].get(std::vector<std::string>(
-          {AgencyCommManager::path(), "Target", "MapLocalToID"}));
-
-      if (!slice.isObject()) {
-        LOG_TOPIC(DEBUG, Logger::STARTUP) << "Target/MapLocalToID corrupt: "
-                                          << "no object.";
-      } else {
-        slice = slice.get(localInfo);
-        if (slice.isObject()) {
-          id = arangodb::basics::VelocyPackHelper::getStringValue(slice, "ID",
-                                                                  "");
-          if (id.empty()) {
-            LOG_TOPIC(ERR, Logger::STARTUP) << "ID not set!";
-            return TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID;
-          }
-          std::string description =
-              arangodb::basics::VelocyPackHelper::getStringValue(
-                  slice, "Description", "");
-          if (!description.empty()) {
-            setDescription(description);
-          }
-          return TRI_ERROR_NO_ERROR;
-        }
-      }
-    }
-    sleep(1);
-  };
-  return TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup the server role by scanning Plan/[DBServers] for our id
-////////////////////////////////////////////////////////////////////////////////
-
-bool ServerState::isInServerList(ServerState::RoleEnum role,
-                                 std::string const& id) {
-  // fetch value at Plan/DBServers
-  // we need to do this to determine the server's role
-
-  std::string agencyListKey = roleToAgencyListKey(role);
-  std::string const key = "Plan/" + agencyListKey;
-
-  AgencyComm comm;
-  AgencyCommResult result = comm.getValues(key);
-  if (!result.successful()) {
-    std::string const endpoints = AgencyCommManager::MANAGER->endpointsString();
-    LOG_TOPIC(TRACE, Logger::CLUSTER)
-        << "Could not fetch configuration from agency endpoints (" << endpoints
-        << "): got status code " << result._statusCode
-        << ", message: " << result.errorMessage() << ", key: " << key;
-    return false;
-  }
-
-  VPackSlice servers = result.slice()[0].get(std::vector<std::string>(
-      {AgencyCommManager::path(), "Plan", agencyListKey}));
-
-  // check if we can find ourselves in the list returned by the agency
-  if (servers.isObject() && !servers.get(id).isNone()) {
-    // we are in the list. this means we are a primary server
-    return true;
-  } else {
-    LOG_TOPIC(TRACE, Logger::CLUSTER)
-      << "Got an invalid JSON response for Plan/DBServers";
-  }
-
-  return false;
-}
-
 //////////////////////////////////////////////////////////////////////////////
 /// @brief store the server role
 //////////////////////////////////////////////////////////////////////////////
 
 bool ServerState::storeRole(RoleEnum role) {
+  // this method will be called on a single server too
   if (AgencyCommManager::isEnabled()) {// isClusterRole(role)
     try {
       VPackBuilder builder;
@@ -913,7 +700,7 @@ bool ServerState::storeRole(RoleEnum role) {
       std::unique_ptr<AgencyTransaction> trx(new AgencyWriteTransaction(op));
 
       AgencyComm comm; // should not throw anything
-      AgencyCommResult res = comm.sendTransactionWithFailover(*trx.get(), 0.0);
+      AgencyCommResult res = comm.sendTransactionWithFailover(*trx.get(), 1.0);
       if (!res.successful()) {
           return false;
       }
@@ -930,7 +717,7 @@ bool ServerState::storeRole(RoleEnum role) {
 }
 
 bool ServerState::isFoxxmaster() {
-  return !isRunningInCluster() || _foxxmaster == getId();
+  return /*!isRunningInCluster() ||*/ _foxxmaster == getId();
 }
 
 std::string const& ServerState::getFoxxmaster() { return _foxxmaster; }
@@ -938,8 +725,8 @@ std::string const& ServerState::getFoxxmaster() { return _foxxmaster; }
 void ServerState::setFoxxmaster(std::string const& foxxmaster) {
   if (_foxxmaster != foxxmaster) {
     setFoxxmasterQueueupdate(true);
+    _foxxmaster = foxxmaster;
   }
-  _foxxmaster = foxxmaster;
 }
 
 bool ServerState::getFoxxmasterQueueupdate() { return _foxxmasterQueueupdate; }

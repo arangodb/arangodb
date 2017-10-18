@@ -157,7 +157,7 @@ class ServerState {
   void setRole(RoleEnum);
 
   /// @brief get the server local info
-  std::string getLocalInfo();
+  std::string getLocalInfo() { return ""; }
 
   /// @brief get the server id
   std::string getId();
@@ -166,7 +166,7 @@ class ServerState {
   std::string getDescription();
 
   /// @brief set the server local info
-  void setLocalInfo(std::string const&);
+  void setLocalInfo(std::string const&) {};
 
   /// @brief set the server id
   void setId(std::string const&);
@@ -203,14 +203,6 @@ class ServerState {
   /// @brief sets the JavaScript startup path
   void setJavaScriptPath(std::string const&);
 
-  /// @brief redetermine the server role, we do this after a plan change.
-  /// This is needed for automatic failover. This calls determineRole with
-  /// previous values of _info and _id. In particular, the _id will usually
-  /// already be set. If the current role cannot be determined from the
-  /// agency or is not unique, then the system keeps the old role.
-  /// Returns true if there is a change and false otherwise.
-  bool redetermineRole();
-  
   bool isFoxxmaster();
 
   std::string const& getFoxxmaster();
@@ -226,25 +218,9 @@ class ServerState {
   RoleEnum loadRole() {
     return static_cast<RoleEnum>(_role.load(std::memory_order_consume));
   }
-  
-  /// @brief determine role and save role blocking
-  void findAndSetRoleBlocking();
 
   /// @brief store the server role
   bool storeRole(RoleEnum role);
-
-  /// @brief determine the server role
-  RoleEnum determineRole(std::string const& info, std::string& id);
-  
-  /// @brief we are new and need to determine our role from the plan
-  RoleEnum takeOnRole(std::string const& id);
-
-  /// @brief lookup the server id by using the local info
-  int lookupLocalInfoToId(std::string const& localInfo, std::string& id);
-
-  /// @brief lookup the server role by scanning Plan/DBServers,
-  /// Plan/Coordinators or Plan/Singles for our id
-  bool isInServerList(ServerState::RoleEnum role, std::string const& id);
 
   /// @brief validate a state transition for a primary server
   bool checkPrimaryState(StateEnum);
@@ -266,10 +242,7 @@ class ServerState {
  private:
   /// @brief the pointer to the singleton instance
   static ServerState* _theinstance;
-
-  /// @brief the server's local info, can be set just once
-  std::string _localInfo;
-
+  
   /// @brief the server's id, can be set just once
   std::string _id;
 
@@ -289,10 +262,7 @@ class ServerState {
   arangodb::basics::ReadWriteLock _lock;
 
   /// @brief the server role
-  std::atomic<int> _role;
-
-  /// @brief a secondary stores the ID of its primary here:
-  std::string _idOfPrimary;
+  std::atomic<RoleEnum> _role;
 
   /// @brief the current state
   StateEnum _state;

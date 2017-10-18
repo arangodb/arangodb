@@ -1020,25 +1020,6 @@ static void JS_AddressServerState(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief flush the server state (used for testing only)
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_FlushServerState(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("flush()");
-  }
-
-  ServerState::instance()->flush();
-
-  TRI_V8_RETURN_TRUE();
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the servers local info
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1088,19 +1069,6 @@ static void JS_isFoxxmaster(v8::FunctionCallbackInfo<v8::Value> const& args) {
   } else {
     TRI_V8_RETURN_FALSE();
   }
-  TRI_V8_TRY_CATCH_END
-}
-
-static void JS_getFoxxmaster(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("getFoxxmaster()");
-  }
-
-  std::string const id = ServerState::instance()->getFoxxmaster();
-  TRI_V8_RETURN_STD_STRING(id);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1337,12 +1305,13 @@ static void JS_RedetermineRoleServerState(
     TRI_V8_THROW_EXCEPTION_USAGE("redetermineRole()");
   }
 
-  bool changed = ServerState::instance()->redetermineRole();
+  /*bool changed = ServerState::instance()->redetermineRole();
   if (changed) {
     TRI_V8_RETURN_TRUE();
   } else {
-    TRI_V8_RETURN_FALSE();
-  }
+    
+  }*/
+  TRI_V8_RETURN_FALSE();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2091,16 +2060,12 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "address"),
                        JS_AddressServerState);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "flush"),
-                       JS_FlushServerState, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "localInfo"),
                        JS_LocalInfoServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "id"),
                        JS_IdServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "isFoxxmaster"),
                        JS_isFoxxmaster);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getFoxxmaster"),
-                       JS_getFoxxmaster);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getFoxxmasterQueueupdate"),
                        JS_getFoxxmasterQueueupdate);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "idOfPrimary"),
