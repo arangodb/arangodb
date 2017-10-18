@@ -276,8 +276,7 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
 
 void EngineInfoContainerDBServer::DBServerInfo::addTraverserEngine(
     TraverserEngineShardLists&& shards) {
-  // TODO
-  TRI_ASSERT(false);
+  _traverserEngineInfos.push_back(std::move(shards));
 }
 
 void EngineInfoContainerDBServer::DBServerInfo::injectQueryOptions(
