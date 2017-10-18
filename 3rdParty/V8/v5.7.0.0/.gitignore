@@ -4,7 +4,6 @@
 *.lib
 *.log
 *.map
-*.mk
 *.ncb
 *.pdb
 *.pyc
