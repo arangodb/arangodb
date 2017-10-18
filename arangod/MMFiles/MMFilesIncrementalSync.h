@@ -31,10 +31,11 @@
 #include "MMFiles/MMFilesDitch.h"
 #include "MMFiles/MMFilesIndexElement.h"
 #include "MMFiles/MMFilesPrimaryIndex.h"
-#include "Replication/InitialSyncer.h"
+#include "Replication/DatabaseInitialSyncer.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Transaction/Helpers.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LocalDocumentId.h"
 
@@ -109,13 +110,12 @@ static bool FindRange(std::vector<uint8_t const*> const& markers,
   return found;
 }
 
-int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
-                          arangodb::LogicalCollection* col,
-                          std::string const& keysId,
-                          std::string const& cid,
-                          std::string const& collectionName,
-                          TRI_voc_tick_t maxTick,
-                          std::string& errorMsg) {
+Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
+                             arangodb::LogicalCollection* col,
+                             std::string const& keysId,
+                             std::string const& cid,
+                             std::string const& collectionName,
+                             TRI_voc_tick_t maxTick) {
 
   std::string progress =
       "collecting local keys for collection '" + collectionName + "'";
@@ -136,9 +136,7 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
     Result res = trx.begin();
 
     if (!res.ok()) {
-      errorMsg = std::string("unable to start transaction (") + std::string(__FILE__) + std::string(":") + std::to_string(__LINE__) + std::string("): ") + res.errorMessage();
-      res.reset(res.errorNumber(), errorMsg);
-      return res.errorNumber();
+      return Result(res.errorNumber(), std::string("unable to start transaction (") + std::string(__FILE__) + std::string(":") + std::to_string(__LINE__) + std::string("): ") + res.errorMessage());
     }
 
     ditch = arangodb::MMFilesCollection::toMMFilesCollection(col)
@@ -146,7 +144,7 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
                 ->createMMFilesDocumentDitch(false, __FILE__, __LINE__);
 
     if (ditch == nullptr) {
-      return TRI_ERROR_OUT_OF_MEMORY;
+      return Result(TRI_ERROR_OUT_OF_MEMORY);
     }
   }
 
@@ -164,9 +162,7 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
     Result res = trx.begin();
 
     if (!res.ok()) {
-      errorMsg =std::string("unable to start transaction (") + std::string(__FILE__) + std::string(":") + std::to_string(__LINE__) + std::string("): ") + res.errorMessage();
-      res.reset(res.errorNumber(), errorMsg);
-      return res.errorNumber();
+      return Result(res.errorNumber(), std::string("unable to start transaction (") + std::string(__FILE__) + std::string(":") + std::to_string(__LINE__) + std::string("): ") + res.errorMessage());
     }
 
     // We do not take responsibility for the index.
@@ -193,13 +189,11 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
         });
 
     if (syncer.checkAborted()) {
-      return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
+      return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
     syncer.sendExtendBatch();
     syncer.sendExtendBarrier();
-
-  
 
     std::string progress = "sorting " + std::to_string(markers.size()) +
                            " local key(s) for collection '" + collectionName +
@@ -235,7 +229,7 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
   }
 
   if (syncer.checkAborted()) {
-    return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
+    return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
   }
 
   syncer.sendExtendBatch();
@@ -244,7 +238,7 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
   std::vector<size_t> toFetch;
 
   TRI_voc_tick_t const chunkSize = 5000;
-  std::string const baseUrl = syncer.BaseUrl + "/keys";
+  std::string const baseUrl = syncer.ReplicationUrl + "/keys";
 
   std::string url =
       baseUrl + "/" + keysId + "?chunkSize=" + std::to_string(chunkSize);
@@ -256,40 +250,26 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
       syncer._client->retryRequest(rest::RequestType::GET, url, nullptr, 0));
 
   if (response == nullptr || !response->isComplete()) {
-    errorMsg = "could not connect to master at " + syncer._masterInfo._endpoint +
-               ": " + syncer._client->getErrorMessage();
-
-    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + syncer._masterInfo._endpoint + ": " + syncer._client->getErrorMessage());
   }
 
   TRI_ASSERT(response != nullptr);
 
   if (response->wasHttpError()) {
-    errorMsg = "got invalid response from master at " + syncer._masterInfo._endpoint +
-               ": HTTP " + basics::StringUtils::itoa(response->getHttpReturnCode()) +
-               ": " + response->getHttpReturnMessage();
-
-    return TRI_ERROR_REPLICATION_MASTER_ERROR;
+    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": HTTP " + basics::StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
   }
 
-  auto builder = std::make_shared<VPackBuilder>();
-  int res = syncer.parseResponse(builder, response.get());
+  VPackBuilder builder;
+  Result r = syncer.parseResponse(builder, response.get());
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    errorMsg = "got invalid response from master at " +
-               std::string(syncer._masterInfo._endpoint) +
-               ": invalid response is no array";
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+  if (r.fail()) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": invalid response is no array");
   }
 
-  VPackSlice const slice = builder->slice();
+  VPackSlice const slice = builder.slice();
 
   if (!slice.isArray()) {
-    errorMsg = "got invalid response from master at " + syncer._masterInfo._endpoint +
-               ": response is no array";
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
   }
 
   OperationOptions options;
@@ -307,15 +287,13 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
   if (n > 0) {
     // first chunk
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer._vocbase), col->cid(),
+        transaction::StandaloneContext::Create(syncer.vocbase()), col->cid(),
         AccessMode::Type::WRITE);
 
     Result res = trx.begin();
 
     if (!res.ok()) {
-      errorMsg = std::string("unable to start transaction (") + std::string(__FILE__) + std::string(":") + std::to_string(__LINE__) + std::string("): ") + res.errorMessage();
-      res.reset(res.errorNumber(), errorMsg);
-      return res.errorNumber();
+      return Result(res.errorNumber(), std::string("unable to start transaction: ") + res.errorMessage());
     }
 
     VPackSlice chunk = slice.at(0);
@@ -377,19 +355,17 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
   // now process each chunk
   for (size_t i = 0; i < n; ++i) {
     if (syncer.checkAborted()) {
-      return TRI_ERROR_REPLICATION_APPLIER_STOPPED;
+      return Result(TRI_ERROR_REPLICATION_APPLIER_STOPPED);
     }
 
     SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(syncer._vocbase), col->cid(),
+        transaction::StandaloneContext::Create(syncer.vocbase()), col->cid(),
         AccessMode::Type::WRITE);
 
     Result res = trx.begin();
 
     if (!res.ok()) {
-      errorMsg =std::string("unable to start transaction (") + std::string(__FILE__) + std::string(":") + std::to_string(__LINE__) + std::string("): ") + res.errorMessage();
-      res.reset(res.errorNumber(), res.errorMessage());
-      return res.errorNumber();
+      return Result(res.errorNumber(), std::string("unable to start transaction : ") + res.errorMessage());
     }
 
     trx.pinData(col->cid());  // will throw when it fails
@@ -416,10 +392,7 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
     VPackSlice chunk = slice.at(i);
 
     if (!chunk.isObject()) {
-      errorMsg = "got invalid response from master at " +
-                 syncer._masterInfo._endpoint + ": chunk is no object";
-
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": chunk is no object");
     }
 
     VPackSlice const lowSlice = chunk.get("low");
@@ -428,11 +401,7 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
 
     if (!lowSlice.isString() || !highSlice.isString() ||
         !hashSlice.isString()) {
-      errorMsg = "got invalid response from master at " +
-                 syncer._masterInfo._endpoint +
-                 ": chunks in response have an invalid format";
-
-      return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": chunks in response have an invalid format");
     }
 
     std::string const lowString = lowSlice.copyString();
@@ -475,39 +444,25 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
           syncer._client->retryRequest(rest::RequestType::PUT, url, nullptr, 0));
 
       if (response == nullptr || !response->isComplete()) {
-        errorMsg = "could not connect to master at " + syncer._masterInfo._endpoint +
-                   ": " + syncer._client->getErrorMessage();
-
-        return TRI_ERROR_REPLICATION_NO_RESPONSE;
+        return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + syncer._masterInfo._endpoint + ": " + syncer._client->getErrorMessage());
       }
 
       TRI_ASSERT(response != nullptr);
 
       if (response->wasHttpError()) {
-        errorMsg = "got invalid response from master at " +
-                   syncer._masterInfo._endpoint + ": HTTP " +
-                   basics::StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-                   response->getHttpReturnMessage();
-
-        return TRI_ERROR_REPLICATION_MASTER_ERROR;
+        return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": HTTP " + basics::StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
       }
 
-      auto builder = std::make_shared<VPackBuilder>();
-      int res = syncer.parseResponse(builder, response.get());
+      VPackBuilder builder;
+      Result r  = syncer.parseResponse(builder, response.get());
 
-      if (res != TRI_ERROR_NO_ERROR) {
-        errorMsg = "got invalid response from master at " +
-                   syncer._masterInfo._endpoint + ": response is no array";
-
-        return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+      if (r.fail()) {
+        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
       }
 
-      VPackSlice const slice = builder->slice();
+      VPackSlice const slice = builder.slice();
       if (!slice.isArray()) {
-        errorMsg = "got invalid response from master at " +
-                   syncer._masterInfo._endpoint + ": response is no array";
-
-        return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+        return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
       }
 
       // delete all keys at start of the range
@@ -539,21 +494,14 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
         VPackSlice const pair = slice.at(i);
 
         if (!pair.isArray() || pair.length() != 2) {
-          errorMsg = "got invalid response from master at " +
-                     syncer._masterInfo._endpoint +
-                     ": response key pair is no valid array";
-
-          return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response key pair is no valid array");
         }
 
         // key
         VPackSlice const keySlice = pair.at(0);
 
         if (!keySlice.isString()) {
-          errorMsg = "got invalid response from master at " +
-                     syncer._masterInfo._endpoint + ": response key is no string";
-
-          return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response key is no string");
         }
 
         // rid
@@ -663,66 +611,42 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
                                   keyJsonString.c_str(), keyJsonString.size()));
 
         if (response == nullptr || !response->isComplete()) {
-          errorMsg = "could not connect to master at " + syncer._masterInfo._endpoint +
-                     ": " + syncer._client->getErrorMessage();
-
-          return TRI_ERROR_REPLICATION_NO_RESPONSE;
+          return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + syncer._masterInfo._endpoint + ": " + syncer._client->getErrorMessage());
         }
 
         TRI_ASSERT(response != nullptr);
 
         if (response->wasHttpError()) {
-          errorMsg = "got invalid response from master at " +
-                     syncer._masterInfo._endpoint + ": HTTP " +
-                     basics::StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-                     response->getHttpReturnMessage();
-
-          return TRI_ERROR_REPLICATION_MASTER_ERROR;
+          return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": HTTP " + basics::StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
         }
 
-        auto builder = std::make_shared<VPackBuilder>();
-        int res = syncer.parseResponse(builder, response.get());
+        VPackBuilder builder;
+        Result r = syncer.parseResponse(builder, response.get());
 
-        if (res != TRI_ERROR_NO_ERROR) {
-          errorMsg = "got invalid response from master at " +
-                     std::string(syncer._masterInfo._endpoint) +
-                     ": response is no array";
-
-          return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+        if (r.fail()) {
+          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
         }
 
-        VPackSlice const slice = builder->slice();
+        VPackSlice const slice = builder.slice();
         if (!slice.isArray()) {
-          errorMsg = "got invalid response from master at " +
-                     syncer._masterInfo._endpoint + ": response is no array";
-
-          return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
         }
 
         for (auto const& it : VPackArrayIterator(slice)) {
           if (!it.isObject()) {
-            errorMsg = "got invalid response from master at " +
-                       syncer._masterInfo._endpoint + ": document is no object";
-
-            return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+            return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": document is no object");
           }
 
           VPackSlice const keySlice = it.get(StaticStrings::KeyString);
 
           if (!keySlice.isString()) {
-            errorMsg = "got invalid response from master at " +
-                       syncer._masterInfo._endpoint + ": document key is invalid";
-
-            return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+            return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": document key is invalid");
           }
 
           VPackSlice const revSlice = it.get(StaticStrings::RevString);
 
           if (!revSlice.isString()) {
-            errorMsg = "got invalid response from master at " +
-                       syncer._masterInfo._endpoint + ": document revision is invalid";
-
-            return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+            return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": document revision is invalid");
           }
 
           MMFilesSimpleIndexElement element = idx->lookupKey(&trx, keySlice);
@@ -730,15 +654,21 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
           if (!element) {
             // INSERT
             OperationResult opRes = trx.insert(collectionName, it, options);
-            res = opRes.code;
+            if (opRes.code != TRI_ERROR_NO_ERROR) {
+              if (opRes.errorMessage.empty()) {
+                return Result(opRes.code);
+              } 
+              return Result(opRes.code, opRes.errorMessage);
+            }
           } else {
             // UPDATE
             OperationResult opRes = trx.replace(collectionName, it, options);
-            res = opRes.code;
-          }
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            return res;
+            if (opRes.code != TRI_ERROR_NO_ERROR) {
+              if (opRes.errorMessage.empty()) {
+                return Result(opRes.code);
+              }
+              return Result(opRes.code, opRes.errorMessage);
+            }
           }
         }
       }
@@ -747,11 +677,11 @@ int handleSyncKeysMMFiles(arangodb::InitialSyncer& syncer,
     res = trx.commit();
 
     if (!res.ok()) {
-      return res.errorNumber();
+      return res;
     }
   }
 
-  return res;
+  return Result();
 }
 }
 

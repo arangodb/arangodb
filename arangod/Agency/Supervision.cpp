@@ -36,6 +36,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
+#include "Cluster/ServerState.h"
 
 using namespace arangodb;
 using namespace arangodb::consensus;
@@ -181,7 +182,7 @@ void Supervision::upgradeZero(Builder& builder) {
         builder.add(VPackValue(failedServersPrefix));
         { VPackObjectBuilder oo(&builder);
           if (fails.length() > 0) {
-            for (auto const& fail : VPackArrayIterator(fails)) {
+            for (VPackSlice fail : VPackArrayIterator(fails)) {
               builder.add(VPackValue(fail.copyString()));
               { VPackObjectBuilder ooo(&builder); }
             }
@@ -267,9 +268,13 @@ void handleOnStatusCoordinator(
     }
     
   }
-
 }
 
+void handleOnStatusSingle(
+   Agent* agent, Node const& snapshot, HealthRecord& persisted,
+   HealthRecord& transisted, std::string const& serverID) {
+  // We should be fine without anything
+}
   
 void handleOnStatus(
   Agent* agent, Node const& snapshot, HealthRecord& persisted,
@@ -282,9 +287,11 @@ void handleOnStatus(
   } else if (serverID.compare(0,4,"CRDN") == 0) {
     handleOnStatusCoordinator(
       agent, snapshot, persisted, transisted, serverID);
+  } else if (serverID.compare(0,4,"SNGL") == 0) {
+    handleOnStatusSingle(agent, snapshot, persisted, transisted, serverID);
   } else {
     LOG_TOPIC(ERR, Logger::SUPERVISION)
-      << "Unknown server type. No supervision action taken.";
+      << "Unknown server type. No supervision action taken. " << serverID;
   }
   
 }
@@ -301,7 +308,9 @@ std::vector<check_t> Supervision::check(std::string const& type) {
   auto const& serversRegistered = _snapshot(currentServersRegisteredPrefix);
   std::vector<std::string> todelete;
   for (auto const& machine : _snapshot(healthPrefix).children()) {
-    if (machine.first.compare(0, 2, (type == "DBServers") ? "PR" : "CR") == 0) {
+    if ((type == "DBServers" && machine.first.compare(0,4,"PRMR") == 0) ||
+        (type == "Coordinators" && machine.first.compare(0,4,"CRDN") == 0) ||
+        (type == "Singles" && machine.first.compare(0,4,"SNGL") == 0)) {
       todelete.push_back(machine.first);
     }
   }
@@ -416,7 +425,7 @@ std::vector<check_t> Supervision::check(std::string const& type) {
           if (envelope != nullptr) {                       // Failed server
             TRI_ASSERT(
               envelope->slice().isArray() && envelope->slice()[0].isObject());
-            for (const auto& i : VPackObjectIterator(envelope->slice()[0])) {
+            for (VPackObjectIterator::ObjectPair i : VPackObjectIterator(envelope->slice()[0])) {
               pReport->add(i.key.copyString(), i.value);
             }
           }} // Operation
@@ -471,11 +480,14 @@ bool Supervision::updateSnapshot() {
 // All checks, guarded by main thread
 bool Supervision::doChecks() {
   _lock.assertLockedByCurrentThread();
-  check("DBServers");
-  check("Coordinators");
+  TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_PRIMARY) == "DBServers");
+  check(ServerState::roleToAgencyListKey(ServerState::ROLE_PRIMARY));
+  TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR) == "Coordinators");
+  check(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR));
+  TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE) == "Singles");
+  check(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE));
   return true;
 }
-
 
 void Supervision::run() {
   // First wait until somebody has initialized the ArangoDB data, before

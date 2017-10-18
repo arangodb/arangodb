@@ -77,151 +77,147 @@ describe('User Rights Management', () => {
 
   it('should test rights for', () => {
     for (let name of userSet) {
-      let canUse = false;
       try {
         switchUser(name, dbName);
-        canUse = true;
       } catch (e) {
-        canUse = false;
+        continue;
       }
 
-      if (canUse) {
-        describe(`user ${name}`, () => {
-          before(() => {
+      describe(`user ${name}`, () => {
+        before(() => {
+          switchUser(name, dbName);
+        });
+
+        describe('administrate on db level', () => {
+          const rootTestCollection = (colName, switchBack = true) => {
+            switchUser('root', dbName);
+            let col = db._collection(colName);
+            if (switchBack) {
+              switchUser(name, dbName);
+            }
+            return col !== null;
+          };
+
+          const rootCreateCollection = (colName, edge = false) => {
+            if (!rootTestCollection(colName, false)) {
+              if (edge) {
+                db._createEdgeCollection(colName);
+              } else {
+                db._create(colName);
+              }
+              if (colLevel['none'].has(name)) {
+                users.grantCollection(name, dbName, colName, 'none');
+              } else if (colLevel['ro'].has(name)) {
+                users.grantCollection(name, dbName, colName, 'ro');
+              } else if (colLevel['rw'].has(name)) {
+                users.grantCollection(name, dbName, colName, 'rw');
+              }
+            }
             switchUser(name, dbName);
-          });
+          };
 
-          describe('administrate on db level', () => {
-            const rootTestCollection = (colName, switchBack = true) => {
-              switchUser('root', dbName);
+          const rootDropCollection = (colName) => {
+            switchUser('root', dbName);
+            try {
               let col = db._collection(colName);
-              if (switchBack) {
-                switchUser(name, dbName);
+              if (col) {
+                col.drop();
               }
-              return col !== null;
-            };
+            } catch(ignored) {}
+            switchUser(name, dbName);
+          };
 
-            const rootCreateCollection = (colName, edge = false) => {
-              if (!rootTestCollection(colName, false)) {
-                if (edge) {
-                  db._createEdgeCollection(colName);
-                } else {
-                  db._create(colName);
-                }
-                if (colLevel['none'].has(name)) {
-                  users.grantCollection(name, dbName, colName, 'none');
-                } else if (colLevel['ro'].has(name)) {
-                  users.grantCollection(name, dbName, colName, 'ro');
-                } else if (colLevel['rw'].has(name)) {
-                  users.grantCollection(name, dbName, colName, 'rw');
-                }
-              }
-              switchUser(name, dbName);
-            };
+          const rootTestGraph = () => {
+            switchUser('root', dbName);
+            const graph = graphModule._exists(testGraphName);
+            switchUser(name, dbName);
+            return graph !== false;
+          };
 
-            const rootDropCollection = (colName) => {
-              switchUser('root', dbName);
-              try {
-                let col = db._collection(colName);
-                if (col) {
-                  col.drop();
-                }
-              } catch(ignored) {}
-              switchUser(name, dbName);
-            };
+          const rootDropGraph = () => {
+            switchUser('root', dbName);
+            try {
+              graphModule._drop(testGraphName, true);
+            } catch(ignored) {}
+            switchUser(name, dbName);
+          };
 
-            const rootTestGraph = () => {
-              switchUser('root', dbName);
-              const graph = graphModule._exists(testGraphName);
-              switchUser(name, dbName);
-              return graph !== false;
-            };
+          describe('create a', () => {
+            before(() => {
+              db._useDatabase(dbName);
+              rootDropGraph();
+            });
 
-            const rootDropGraph = () => {
-              switchUser('root', dbName);
-              try {
-                graphModule._drop(testGraphName, true);
-              } catch(ignored) {}
-              switchUser(name, dbName);
-            };
+            after(() => {
+              rootDropGraph();
+              rootDropCollection(testEdgeColName);
+              rootDropCollection(testVertexColName);
+            });
 
-            describe('create a', () => {
-              before(() => {
-                db._useDatabase(dbName);
-                rootDropGraph();
-              });
-
-              after(() => {
-                rootDropGraph();
-                rootDropCollection(testEdgeColName);
-                rootDropCollection(testVertexColName);
-              });
-
-              it('graph', () => {
-                expect(rootTestGraph()).to.equal(false, 'Precondition failed, the graph still exists');
-                expect(rootTestCollection(testEdgeColName)).to.equal(false, 'Precondition failed, the edge collection still exists');
-                expect(rootTestCollection(testVertexColName)).to.equal(false, 'Precondition failed, the vertex collection still exists');
-                if (dbLevel['rw'].has(name)) {
-                  let g = graphModule._create(testGraphName, [{
-                    collection: testEdgeColName,
-                    'from': [ testVertexColName ],
-                    'to': [ testVertexColName ]
-                  }]);
-                  expect(rootTestGraph()).to.equal(true, 'Graph creation reported success, but graph was not found afterwards.');
-                  expect(rootTestCollection(testEdgeColName)).to.equal(true, 'Graph creation reported success, but edge colleciton was not found afterwards.');
-                  expect(rootTestCollection(testVertexColName)).to.equal(true, 'Graph creation reported success, but vertex colleciton was not found afterwards.');
-                } else {
-                  try {
-                    graphModule._create(testGraphName, [{
-                      collection: testEdgeColName,
-                      'from': [ testVertexColName ],
-                      'to': [ testVertexColName ]
-                    }]);
-                  } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
-                  }
-                  expect(rootTestGraph()).to.equal(false, `${name} was able to create a graph with insufficent rights`);
-                }
-              });
-
-              it('graph with existing collections', () => {
-                rootDropGraph();
-
-                rootCreateCollection(testEdgeColName, true);
-                rootCreateCollection(testVertexColName, false);
-                expect(rootTestGraph()).to.equal(false, 'Precondition failed, the graph still exists');
-                expect(rootTestCollection(testEdgeColName)).to.equal(true, 'Precondition failed, the edge collection still not exists');
-                expect(rootTestCollection(testVertexColName)).to.equal(true, 'Precondition failed, the vertex collection still not exists');
-                if (dbLevel['rw'].has(name) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
+            it('graph', () => {
+              expect(rootTestGraph()).to.equal(false, 'Precondition failed, the graph still exists');
+              expect(rootTestCollection(testEdgeColName)).to.equal(false, 'Precondition failed, the edge collection still exists');
+              expect(rootTestCollection(testVertexColName)).to.equal(false, 'Precondition failed, the vertex collection still exists');
+              if (dbLevel['rw'].has(name)) {
+                let g = graphModule._create(testGraphName, [{
+                  collection: testEdgeColName,
+                  'from': [ testVertexColName ],
+                  'to': [ testVertexColName ]
+                }]);
+                expect(rootTestGraph()).to.equal(true, 'Graph creation reported success, but graph was not found afterwards.');
+                expect(rootTestCollection(testEdgeColName)).to.equal(true, 'Graph creation reported success, but edge colleciton was not found afterwards.');
+                expect(rootTestCollection(testVertexColName)).to.equal(true, 'Graph creation reported success, but vertex colleciton was not found afterwards.');
+              } else {
+                try {
                   graphModule._create(testGraphName, [{
                     collection: testEdgeColName,
                     'from': [ testVertexColName ],
                     'to': [ testVertexColName ]
                   }]);
-                  expect(rootTestGraph()).to.equal(true, 'Graph creation reported success, but graph was not found afterwards.');
-                  expect(rootTestCollection(testEdgeColName)).to.equal(true, 'Graph creation reported success, but edge colleciton was not found afterwards.');
-                  expect(rootTestCollection(testVertexColName)).to.equal(true, 'Graph creation reported success, but vertex colleciton was not found afterwards.');
-                } else {
-                  try {
-                    graphModule._create(testGraphName, [{
-                      collection: testEdgeColName,
-                      'from': [ testVertexColName ],
-                      'to': [ testVertexColName ]
-                    }]);
-                  } catch (e) {
-                    if (dbLevel['ro'].has(name) && !colLevel['none'].has(name)) {
-                      expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code);
-                    } else {
-                      expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
-                    }
-                  }
-                  expect(rootTestGraph()).to.equal(false, `${name} was able to create a graph with insufficent rights`);
+                } catch (e) {
+                  expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
                 }
-              });
+                expect(rootTestGraph()).to.equal(false, `${name} was able to create a graph with insufficent rights`);
+              }
+            });
+
+            it('graph with existing collections', () => {
+              rootDropGraph();
+
+              rootCreateCollection(testEdgeColName, true);
+              rootCreateCollection(testVertexColName, false);
+              expect(rootTestGraph()).to.equal(false, 'Precondition failed, the graph still exists');
+              expect(rootTestCollection(testEdgeColName)).to.equal(true, 'Precondition failed, the edge collection still not exists');
+              expect(rootTestCollection(testVertexColName)).to.equal(true, 'Precondition failed, the vertex collection still not exists');
+              if (dbLevel['rw'].has(name) && (colLevel['rw'].has(name) || colLevel['ro'].has(name))) {
+                graphModule._create(testGraphName, [{
+                  collection: testEdgeColName,
+                  'from': [ testVertexColName ],
+                  'to': [ testVertexColName ]
+                }]);
+                expect(rootTestGraph()).to.equal(true, 'Graph creation reported success, but graph was not found afterwards.');
+                expect(rootTestCollection(testEdgeColName)).to.equal(true, 'Graph creation reported success, but edge colleciton was not found afterwards.');
+                expect(rootTestCollection(testVertexColName)).to.equal(true, 'Graph creation reported success, but vertex colleciton was not found afterwards.');
+              } else {
+                try {
+                  graphModule._create(testGraphName, [{
+                    collection: testEdgeColName,
+                    'from': [ testVertexColName ],
+                    'to': [ testVertexColName ]
+                  }]);
+                } catch (e) {
+                  if (dbLevel['ro'].has(name) && !colLevel['none'].has(name)) {
+                    expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code);
+                  } else {
+                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
+                  }
+                }
+                expect(rootTestGraph()).to.equal(false, `${name} was able to create a graph with insufficent rights`);
+              }
             });
           });
         });
-      }
+      });
     }
   });
 });

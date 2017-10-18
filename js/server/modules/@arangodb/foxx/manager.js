@@ -75,9 +75,6 @@ function getPeerCoordinatorIds () {
 }
 
 function isFoxxmaster () {
-  if (!ArangoClusterControl.isCluster()) {
-    return true;
-  }
   return global.ArangoServerState.isFoxxmaster();
 }
 

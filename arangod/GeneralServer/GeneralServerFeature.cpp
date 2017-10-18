@@ -24,6 +24,7 @@
 
 #include <stdexcept>
 
+#include "Actions/RestActionHandler.h"
 #include "Agency/AgencyFeature.h"
 #include "Agency/RestAgencyHandler.h"
 #include "Agency/RestAgencyPrivHandler.h"
@@ -33,6 +34,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/RestAgencyCallbacksHandler.h"
+#include "Cluster/RestClusterHandler.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
@@ -72,6 +74,7 @@
 #include "RestHandler/RestUsersHandler.h"
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestViewHandler.h"
+#include "RestHandler/RestWalAccessHandler.h"
 #include "RestHandler/WorkMonitorHandler.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/EndpointFeature.h"
@@ -226,17 +229,16 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
     vocbase->release();
     return false;
   }
-
+  
   // the vocbase context is now responsible for releasing the vocbase
-  request->setRequestContext(new VocbaseContext(request, vocbase),
-                             true);
+  request->setRequestContext(VocbaseContext::create(request, vocbase), true);
 
   // the "true" means the request is the owner of the context
   return true;
 }
 
 void GeneralServerFeature::prepare() {
-  RestHandlerFactory::setMaintenance(true);
+  RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::MAINTENANCE);
   GENERAL_SERVER = this;
 }
 
@@ -413,7 +415,7 @@ void GeneralServerFeature::defineHandlers() {
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::VIEW_PATH,
       RestHandlerCreator<RestViewHandler>::createNoData);
-
+  
   _handlerFactory->addPrefixHandler(
       "/_api/aql",
       RestHandlerCreator<aql::RestAqlHandler>::createData<aql::QueryRegistry*>,
@@ -435,6 +437,9 @@ void GeneralServerFeature::defineHandlers() {
 
   _handlerFactory->addPrefixHandler(
       "/_api/pregel", RestHandlerCreator<RestPregelHandler>::createNoData);
+  
+  _handlerFactory->addPrefixHandler(
+      "/_api/wal", RestHandlerCreator<RestWalAccessHandler>::createNoData);
 
   if (agency->isEnabled()) {
     _handlerFactory->addPrefixHandler(
@@ -456,6 +461,9 @@ void GeneralServerFeature::defineHandlers() {
         RestHandlerCreator<RestAgencyCallbacksHandler>::createData<
             AgencyCallbackRegistry*>,
         cluster->agencyCallbackRegistry());
+    // add "_api/cluster" handler
+    _handlerFactory->addPrefixHandler(cluster->clusterRestPath(),
+                                      RestHandlerCreator<RestClusterHandler>::createNoData);
   }
   _handlerFactory->addPrefixHandler(
       RestVocbaseBaseHandler::INTERNAL_TRAVERSER_PATH,
@@ -528,7 +536,7 @@ void GeneralServerFeature::defineHandlers() {
   }
 
   // ...........................................................................
-  // /_admin
+  // actions defined in v8
   // ...........................................................................
 
   _handlerFactory->addPrefixHandler(

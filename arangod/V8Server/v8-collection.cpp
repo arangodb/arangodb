@@ -55,6 +55,7 @@
 #include "Transaction/Hints.h"
 #include "Transaction/V8Context.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -613,7 +614,6 @@ static void RemoveVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   auto transactionContext = std::make_shared<transaction::V8Context>(vocbase, true);
-
   SingleCollectionTransaction trx(transactionContext, collectionName, AccessMode::Type::WRITE);
   if (!args[0]->IsArray()) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -979,14 +979,10 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
-  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-  TRI_ASSERT(auth != nullptr);
-  if (ExecContext::CURRENT != nullptr && auth->isActive()) {
-    AuthLevel level = ExecContext::CURRENT->databaseAuthLevel();
-    AuthLevel level2 = auth->canUseCollection(ExecContext::CURRENT->user(),
-                                              ExecContext::CURRENT->database(),
-                                              collection->name());
-    if (level != AuthLevel::RW || level2 != AuthLevel::RW) {
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr) {
+    if (exec->databaseAuthLevel() != AuthLevel::RW ||
+        !exec->canUseCollection(collection->name(), AuthLevel::RW)) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "Insufficient rights to drop collection");
     }
@@ -1031,8 +1027,8 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
 
-  if (ServerState::instance()->isCoordinator() ||
-      !ServerState::instance()->isRunningInCluster()) {
+  if (ServerState::instance()->isSingleServerOrCoordinator()) {
+    AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
     auth->authInfo()->enumerateUsers([&](AuthUserEntry& entry) {
       entry.removeCollection(dbname, collName);
     });
@@ -1474,14 +1470,13 @@ static void JS_PropertiesVocbaseCol(
   }
 
   bool const isModification = (args.Length() != 0);
-  if (ExecContext::CURRENT != nullptr) {
-    AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
-    auto level = ExecContext::CURRENT->databaseAuthLevel();
-    auto level2 = auth->canUseCollection(ExecContext::CURRENT->user(),
-                                         ExecContext::CURRENT->database(),
-                                         collection->name());
-    if ((isModification && (level != AuthLevel::RW || level2 != AuthLevel::RW)) ||
-        level == AuthLevel::NONE || level2 == AuthLevel::NONE) {
+  
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr) {
+    bool canModify = exec->canUseCollection(collection->name(), AuthLevel::RW);
+    bool canRead = exec->canUseCollection(collection->name(), AuthLevel::RO);
+    if ((isModification && (exec->databaseAuthLevel() != AuthLevel::RW || !canModify)) ||
+        exec->databaseAuthLevel() == AuthLevel::NONE || !canRead) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
   }
@@ -1644,14 +1639,11 @@ static void JS_RenameVocbaseCol(
   }
 
   std::string const name = TRI_ObjectToString(args[0]);
-  if (ExecContext::CURRENT != nullptr) {
-    AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-    TRI_ASSERT(auth != nullptr);
-    AuthLevel level = ExecContext::CURRENT->databaseAuthLevel();
-    AuthLevel level2 = auth->canUseCollection(ExecContext::CURRENT->user(),
-                                              ExecContext::CURRENT->database(),
-                                              name);
-    if (level != AuthLevel::RW || level2 != AuthLevel::RW) {
+  
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr) {
+    if (!exec->canUseDatabase(AuthLevel::RW) ||
+        !exec->canUseCollection(name, AuthLevel::RW)) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
   }
@@ -2170,21 +2162,21 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   // now check the access rights to collections
-  if (ExecContext::CURRENT != nullptr) {
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr) {
     VPackSlice storeSlice = paramBuilder.slice().get("store");
     bool storeResults = !storeSlice.isBool() || storeSlice.getBool();
-    AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
     for (std::string const& ec : paramVertices) {
-      AuthLevel lvl = auth->canUseCollection(ExecContext::CURRENT->user(),
-                                             ExecContext::CURRENT->database(), ec);
-      if ((storeResults && lvl != AuthLevel::RW) || lvl == AuthLevel::NONE) {
+      bool canWrite = exec->canUseCollection(ec, AuthLevel::RW);
+      bool canRead = exec->canUseCollection(ec, AuthLevel::RO);
+      if ((storeResults && !canWrite) || !canRead) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
       }
     }
     for (std::string const& ec : paramEdges) {
-      AuthLevel lvl = auth->canUseCollection(ExecContext::CURRENT->user(),
-                                             ExecContext::CURRENT->database(), ec);
-      if ((storeResults && lvl != AuthLevel::RW) || lvl == AuthLevel::NONE) {
+      bool canWrite = exec->canUseCollection(ec, AuthLevel::RW);
+      bool canRead = exec->canUseCollection(ec, AuthLevel::RO);
+      if ((storeResults && !canWrite) || !canRead) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
       }
     }
@@ -2709,6 +2701,28 @@ static void JS_BinaryInsertVocbaseCol(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the globally unique id of a collection
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_GloballyUniqueIdVocbaseCol(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+
+  arangodb::LogicalCollection* collection =
+      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+
+  if (collection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+
+  std::string uniqueId = collection->globallyUniqueId();
+
+  TRI_V8_RETURN(TRI_V8_ASCII_STD_STRING(isolate, uniqueId));
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of a collection
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2763,15 +2777,13 @@ static void JS_TruncateVocbaseCol(
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
-
+  
   // Manually check this here, because truncate messes up the return code
-  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
-  if (auth->isActive() && ExecContext::CURRENT != nullptr) {
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr) {
     CollectionNameResolver resolver(collection->vocbase());
     std::string const cName = resolver.getCollectionNameCluster(collection->cid());
-    AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
-                                             collection->vocbase()->name(), cName);
-    if (level != AuthLevel::RW) {
+    if (!exec->canUseCollection(collection->vocbase()->name(), cName, AuthLevel::RW)) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
   }
@@ -2970,11 +2982,10 @@ static void JS_CollectionVocbase(
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("_collection(<name>|<identifier>)");
   }
-
+  
   v8::Handle<v8::Value> val = args[0];
-  arangodb::LogicalCollection const* collection = nullptr;
-
   std::string const name = TRI_ObjectToString(val);
+  arangodb::LogicalCollection const* collection = nullptr;
   if (ServerState::instance()->isCoordinator()) {
     try {
       std::shared_ptr<LogicalCollection> const ci =
@@ -2992,16 +3003,12 @@ static void JS_CollectionVocbase(
   if (collection == nullptr) {
     TRI_V8_RETURN_NULL();
   }
-
-  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-  if (ExecContext::CURRENT != nullptr && auth != nullptr) {
-    AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
-                                             ExecContext::CURRENT->database(),
-                                             name);
-    if (level == AuthLevel::NONE) {
-      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                     std::string("No access to collection '") + name + "'");
-    }
+  
+  // check authentication after ensuring the collection exists
+  if (ExecContext::CURRENT != nullptr &&
+      !ExecContext::CURRENT->canUseCollection(name, AuthLevel::RO)) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                   std::string("No access to collection '") + name + "'");
   }
 
   v8::Handle<v8::Value> result = WrapCollection(isolate, collection);
@@ -3057,7 +3064,6 @@ static void JS_CollectionsVocbase(
     return StringUtils::tolower(lhs->name()) < StringUtils::tolower(rhs->name());
   });
 
-  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
   bool error = false;
 
   // already create an array of the correct size
@@ -3067,12 +3073,10 @@ static void JS_CollectionsVocbase(
   for (size_t i = 0; i < n; ++i) {
     auto& collection = colls[i];
 
-    if (auth->isActive() && ExecContext::CURRENT != nullptr) {
-      AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
-                             vocbase->name(), collection->name());
-      if (level == AuthLevel::NONE) {
-        continue;
-      }
+    if (ExecContext::CURRENT != nullptr &&
+        !ExecContext::CURRENT->canUseCollection(vocbase->name(),
+                                               collection->name(), AuthLevel::RO)) {
+      continue;
     }
 
     v8::Handle<v8::Value> c = WrapCollection(isolate, collection);
@@ -3400,6 +3404,8 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context,
                        JS_RemoveFollower, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "getFollowers"),
                        JS_GetFollowers, true);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "globallyUniqueId"),
+                       JS_GloballyUniqueIdVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "load"),
                        JS_LoadVocbaseCol);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "name"),

@@ -524,7 +524,8 @@ class AgencyCommManager {
   static std::string path();
   static std::string path(std::string const&);
   static std::string path(std::string const&, std::string const&);
-
+  static std::vector<std::string> slicePath(std::string const&);
+  
   static std::string generateStamp();
 
  public:
@@ -705,7 +706,7 @@ class AgencyComm {
                         double, std::string const&, std::string const&,
                         std::string const& clientId = std::string());
 
-  bool tryInitializeStructure(std::string const& jwtSecret);
+  bool tryInitializeStructure();
 
   bool shouldInitializeStructure();
 };

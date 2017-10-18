@@ -32,6 +32,7 @@
 #include "Basics/FileUtils.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
+#include "Basics/WriteLocker.h"
 #include "Basics/files.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngineRegistry.h"
@@ -40,6 +41,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
@@ -55,7 +57,6 @@
 #include "VocBase/AuthInfo.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/replication-applier.h"
 #include "VocBase/vocbase.h"
 #include "VocBase/ticks.h"
 
@@ -233,7 +234,6 @@ DatabaseFeature::DatabaseFeature(ApplicationServer* server)
       _vocbase(nullptr),
       _databasesLists(new DatabasesLists()),
       _isInitiallyEmpty(false),
-      _replicationApplier(true),
       _checkVersion(false),
       _upgrade(false) {
   setOptional(false);
@@ -255,9 +255,6 @@ DatabaseFeature::~DatabaseFeature() {
 
 void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addSection("database", "Configure the database");
-
-  options->addOldOption("server.disable-replication-applier",
-                        "database.replication-applier");
 
   options->addOption("--database.maximal-journal-size",
                      "default maximal journal size, can be overwritten when "
@@ -284,11 +281,6 @@ void DatabaseFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
       "--database.throw-collection-not-loaded-error",
       "throw an error when accessing a collection that is still loading",
       new AtomicBooleanParameter(&_throwCollectionNotLoadedError));
-
-  options->addHiddenOption(
-      "--database.replication-applier",
-      "switch to enable or disable the replication applier",
-      new BooleanParameter(&_replicationApplier));
 
   options->addHiddenOption(
       "--database.check-30-revisions",
@@ -445,22 +437,10 @@ void DatabaseFeature::recoveryDone() {
     // execute the engine-specific callbacks on successful recovery
     engine->recoveryDone(vocbase);
 
-    // start the replication applier, which is engine-unspecific
-    TRI_ASSERT(vocbase->replicationApplier() != nullptr);
+    ReplicationFeature* replicationFeature =
+        ApplicationServer::getFeature<ReplicationFeature>("Replication");
 
-    if (vocbase->replicationApplier()->_configuration._autoStart) {
-      if (!_replicationApplier) {
-        LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "replication applier explicitly deactivated for database '"
-                  << vocbase->name() << "'";
-      } else {
-        int res = vocbase->replicationApplier()->start(0, false, 0);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to start replication applier for database '"
-                    << vocbase->name() << "': " << TRI_errno_string(res);
-        }
-      }
-    }
+    replicationFeature->startApplier(vocbase);
   }
 }
 
@@ -494,7 +474,7 @@ int DatabaseFeature::createDatabaseCoordinator(TRI_voc_tick_t id,
       std::make_unique<TRI_vocbase_t>(TRI_VOCBASE_TYPE_COORDINATOR, id, name);
 
   try {
-    vocbase->addReplicationApplier(TRI_CreateReplicationApplier(vocbase.get()));
+    vocbase->addReplicationApplier();
   } catch (...) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
@@ -572,12 +552,15 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     TRI_ASSERT(vocbase != nullptr);
 
     try {
-      vocbase->addReplicationApplier(
-          TRI_CreateReplicationApplier(vocbase.get()));
+      vocbase->addReplicationApplier();
+    } catch (basics::Exception const& ex) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "initializing replication applier for database '"
+                                              << vocbase->name() << "' failed: " << ex.what();
+      return ex.code();
     } catch (std::exception const& ex) {
-      LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "initializing replication applier for database '"
-                 << vocbase->name() << "' failed: " << ex.what();
-      FATAL_ERROR_EXIT();
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "initializing replication applier for database '"
+                                              << vocbase->name() << "' failed: " << ex.what();
+      return TRI_ERROR_INTERNAL;
     }
 
     // enable deadlock detection
@@ -592,20 +575,18 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
     // create app directory for database if it does not exist
     int res = createApplicationDirectory(name, appPath);
 
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+
     if (! engine->inRecovery()) {
       // starts compactor etc.
       engine->recoveryDone(vocbase.get());
+    
+      ReplicationFeature* replicationFeature =
+          ApplicationServer::getFeature<ReplicationFeature>("Replication");
 
-      // start the replication applier
-      if (_replicationApplier &&
-          vocbase->replicationApplier()->_configuration._autoStart) {
-        res = vocbase->replicationApplier()->start(0, false, 0);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "unable to start replication applier for database '"
-                    << name << "': " << TRI_errno_string(res);
-        }
-      }
+      replicationFeature->startApplier(vocbase.get());
 
       // increase reference counter
       bool result = vocbase->use();
@@ -882,6 +863,7 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
     std::string const& username) {
   std::vector<std::string> names;
 
+  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
   {
     auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
@@ -893,11 +875,11 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
         continue;
       }
 
-      auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
-      auto level = authentication->canUseDatabase(username, vocbase->name());
-
-      if (level == AuthLevel::NONE) {
-        continue;
+      if (authentication->isActive()) {
+        auto level = authentication->authInfo()->canUseDatabase(username, vocbase->name());
+        if (level == AuthLevel::NONE) {
+          continue;
+        }
       }
 
       names.emplace_back(vocbase->name());
@@ -909,6 +891,34 @@ std::vector<std::string> DatabaseFeature::getDatabaseNamesForUser(
       [](std::string const& l, std::string const& r) -> bool { return l < r; });
 
   return names;
+}
+
+/// @brief return the list of all database names
+void DatabaseFeature::inventory(VPackBuilder& result,
+                                TRI_voc_tick_t maxTick, 
+                                std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter) {
+  result.openObject();
+  {
+    auto unuser(_databasesProtector.use());
+    auto theLists = _databasesLists.load();
+
+    for (auto& p : theLists->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
+      TRI_ASSERT(vocbase != nullptr);
+      if (vocbase->isDropped()) {
+        continue;
+      }
+
+      result.add(VPackValue(vocbase->name()));
+      result.add(VPackValue(VPackValueType::Object));
+      result.add("id", VPackValue(std::to_string(vocbase->id())));
+      result.add("name", VPackValue(vocbase->name()));
+      result.add(VPackValue("collections"));
+      vocbase->inventory(result, maxTick, nameFilter);
+      result.close();
+    }
+  }
+  result.close();
 }
 
 void DatabaseFeature::useSystemDatabase() {
@@ -1004,14 +1014,28 @@ TRI_vocbase_t* DatabaseFeature::lookupDatabaseCoordinator(
 
 /// @brief lookup a database by its name, not increasing its reference count
 TRI_vocbase_t* DatabaseFeature::lookupDatabase(std::string const& name) {
+  if (name.empty()) {
+    return nullptr;
+  }
+  
   auto unuser(_databasesProtector.use());
   auto theLists = _databasesLists.load();
-
-  for (auto& p : theLists->_databases) {
-    TRI_vocbase_t* vocbase = p.second;
-
-    if (name == vocbase->name()) {
-      return vocbase;
+  
+  // database names with a number in front are invalid names
+  if (name[0] >= '0' && name[0] <= '9') {
+    TRI_voc_tick_t id = StringUtils::uint64(name);
+    for (auto& p : theLists->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
+      if (vocbase->id() == id) {
+        return vocbase;
+      }
+    }
+  } else {
+    for (auto& p : theLists->_databases) {
+      TRI_vocbase_t* vocbase = p.second;
+      if (name == vocbase->name()) {
+        return vocbase;
+      }
     }
   }
 
@@ -1104,19 +1128,19 @@ void DatabaseFeature::updateContexts() {
 
 void DatabaseFeature::closeDatabases() {
   // stop the replication appliers so all replication transactions can end
-  if (_replicationApplier) {
-    MUTEX_LOCKER(mutexLocker,
-                 _databasesMutex);  // Only one should do this at a time
-    // No need for the thread protector here, because we have the mutex
+  ReplicationFeature* replicationFeature =
+      ApplicationServer::getFeature<ReplicationFeature>("Replication");
 
-    for (auto& p : _databasesLists.load()->_databases) {
-      TRI_vocbase_t* vocbase = p.second;
-      TRI_ASSERT(vocbase != nullptr);
-      TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
-      if (vocbase->replicationApplier() != nullptr) {
-        vocbase->replicationApplier()->stop(false, true);
-      }
-    }
+  MUTEX_LOCKER(mutexLocker,
+               _databasesMutex);  // Only one should do this at a time
+  // No need for the thread protector here, because we have the mutex
+
+  for (auto& p : _databasesLists.load()->_databases) {
+    TRI_vocbase_t* vocbase = p.second;
+    TRI_ASSERT(vocbase != nullptr);
+    TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_NORMAL);
+    
+    replicationFeature->stopApplier(vocbase);
   }
 }
 
@@ -1196,13 +1220,14 @@ int DatabaseFeature::createBaseApplicationDirectory(std::string const& appPath,
 /// @brief create app subdirectory for a database
 int DatabaseFeature::createApplicationDirectory(std::string const& name,
                                                 std::string const& basePath) {
+  int res = TRI_ERROR_NO_ERROR;
+
   if (basePath.empty()) {
-    return TRI_ERROR_NO_ERROR;
+    return res;
   }
 
   std::string const path = basics::FileUtils::buildFilename(
       basics::FileUtils::buildFilename(basePath, "_db"), name);
-  int res = TRI_ERROR_NO_ERROR;
   if (!TRI_IsDirectory(path.c_str())) {
     long systemError;
     std::string errorMessage;
@@ -1267,7 +1292,7 @@ int DatabaseFeature::iterateDatabases(VPackSlice const& databases) {
       TRI_vocbase_t* database = engine->openDatabase(it, _upgrade);
 
       try {
-        database->addReplicationApplier(TRI_CreateReplicationApplier(database));
+        database->addReplicationApplier();
       } catch (std::exception const& ex) {
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "initializing replication applier for database '"
                    << database->name() << "' failed: " << ex.what();

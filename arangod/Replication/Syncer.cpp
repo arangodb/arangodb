@@ -24,7 +24,9 @@
 #include "Syncer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Rest/HttpRequest.h"
+#include "RestServer/DatabaseFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
@@ -33,6 +35,7 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
+#include "Transaction/StandaloneContext.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
@@ -52,35 +55,37 @@ using namespace arangodb::rest;
 using namespace arangodb::httpclient;
 
 /// @brief base url of the replication API
-std::string const Syncer::BaseUrl = "/_api/replication";
+std::string const Syncer::ReplicationUrl = "/_api/replication";
 
-Syncer::Syncer(TRI_vocbase_t* vocbase,
-               TRI_replication_applier_configuration_t const* configuration)
-    : _vocbase(vocbase),
-      _configuration(),
+Syncer::Syncer(ReplicationApplierConfiguration const& configuration)
+    : _configuration(configuration),
       _masterInfo(),
       _endpoint(nullptr),
       _connection(nullptr),
       _client(nullptr),
       _barrierId(0),
+      _barrierTtl(600),
       _barrierUpdateTime(0),
-      _barrierTtl(600) {
-  if (configuration->_database.empty()) {
-    // use name of current database
-    _databaseName = vocbase->name();
-  } else {
+      _isChildSyncer(false) {
+  TRI_ASSERT(ServerState::instance()->isSingleServer() ||
+             ServerState::instance()->isDBServer());
+  if (!_configuration._database.empty()) {
     // use name from configuration
-    _databaseName = configuration->_database;
+    _databaseName = _configuration._database;
+  }
+ 
+  if (_configuration._chunkSize == 0) {
+    _configuration._chunkSize = 2 * 1024 * 1024; // default: 2 MB
+  }
+  if (_configuration._chunkSize < 16 * 1024) {
+    _configuration._chunkSize = 16 * 1024;
   }
 
   // get our own server-id
   _localServerId = ServerIdFeature::getId();
   _localServerIdString = StringUtils::itoa(_localServerId);
 
-  _configuration.update(configuration);
-  _useCollectionId = _configuration._useCollectionId;
-
-  _masterInfo._endpoint = configuration->_endpoint;
+  _masterInfo._endpoint = _configuration._endpoint;
 
   _endpoint = Endpoint::clientFactory(_configuration._endpoint);
 
@@ -98,7 +103,7 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
       params.setRetryMessage(std::string("retrying failed HTTP request for endpoint '") +
                              _configuration._endpoint +
                              std::string("' for replication applier in database '" +
-                                         _vocbase->name() + "'"));
+                                         _databaseName + "'"));
       
       std::string username = _configuration._username;
       std::string password = _configuration._password;
@@ -108,7 +113,6 @@ Syncer::Syncer(TRI_vocbase_t* vocbase,
         params.setJwt(_configuration._jwt);
       }
       params.setLocationRewriter(this, &rewriteLocation);
-      
       _client = new SimpleHttpClient(_connection, params);
     }
   }
@@ -127,29 +131,27 @@ Syncer::~Syncer() {
 }
 
 /// @brief parse a velocypack response
-int Syncer::parseResponse(std::shared_ptr<VPackBuilder> builder, 
-                          SimpleHttpResult const* response) const {
+Result Syncer::parseResponse(VPackBuilder& builder,
+                             SimpleHttpResult const* response) const {
   try {
     VPackParser parser(builder);
     parser.parse(response->getBody().begin(), response->getBody().length());
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   }
   catch (...) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE);
   }
 }
 
 /// @brief request location rewriter (injects database name)
 std::string Syncer::rewriteLocation(void* data, std::string const& location) {
   Syncer* s = static_cast<Syncer*>(data);
-
   TRI_ASSERT(s != nullptr);
-
-  if (location.substr(0, 5) == "/_db/") {
-    // location already contains /_db/
-    return location;
-  }
-
+    if (location.substr(0, 5) == "/_db/") {
+      // location already contains /_db/
+      return location;
+    }
+  TRI_ASSERT(!s->_databaseName.empty());
   if (location[0] == '/') {
     return "/_db/" + s->_databaseName + location;
   }
@@ -165,70 +167,59 @@ TRI_voc_tick_t Syncer::stealBarrier() {
 }
 
 /// @brief send a "create barrier" command
-int Syncer::sendCreateBarrier(std::string& errorMsg, TRI_voc_tick_t minTick) {
+Result Syncer::sendCreateBarrier(TRI_voc_tick_t minTick) {
+  if (_isChildSyncer) {
+    return Result();
+  }
   _barrierId = 0;
 
-  std::string const url = BaseUrl + "/barrier";
+  std::string const url = ReplicationUrl + "/barrier";
   std::string const body = "{\"ttl\":" + StringUtils::itoa(_barrierTtl) +
                            ",\"tick\":\"" + StringUtils::itoa(minTick) + "\"}";
 
   // send request
   std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
       rest::RequestType::POST, url, body.c_str(), body.size()));
-
-  if (response == nullptr || !response->isComplete()) {
-    errorMsg = "could not connect to master at " + _masterInfo._endpoint +
-               ": " + _client->getErrorMessage();
-
-    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+  
+  if (hasFailed(response.get())) {
+    return buildHttpError(response.get(), url);
   }
 
-  TRI_ASSERT(response != nullptr);
-
-  int res = TRI_ERROR_NO_ERROR;
-
-  if (response->wasHttpError()) {
-    res = TRI_ERROR_REPLICATION_MASTER_ERROR;
-
-    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
-               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
-               ": " + response->getHttpReturnMessage();
-  } else {
-    auto builder = std::make_shared<VPackBuilder>();
-    res = parseResponse(builder, response.get());
-
-    if (res == TRI_ERROR_NO_ERROR) {
-      VPackSlice const slice = builder->slice();
-      std::string const id = VelocyPackHelper::getStringValue(slice, "id", "");
-
-      if (id.empty()) {
-        res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-      } else {
-        _barrierId = StringUtils::uint64(id);
-        _barrierUpdateTime = TRI_microtime();
-        LOG_TOPIC(DEBUG, Logger::REPLICATION) << "created WAL logfile barrier "
-                                              << _barrierId;
-      }
-    }
+  VPackBuilder builder;
+  Result r = parseResponse(builder, response.get());
+  if (r.fail()) {
+    return r;
   }
 
-  return res;
+  VPackSlice const slice = builder.slice();
+  std::string const id = VelocyPackHelper::getStringValue(slice, "id", "");
+
+  if (id.empty()) {
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "id is missing in create barrier response");
+  }
+
+  _barrierId = StringUtils::uint64(id);
+  _barrierUpdateTime = TRI_microtime();
+  LOG_TOPIC(DEBUG, Logger::REPLICATION) << "created WAL logfile barrier "
+                                        << _barrierId;
+
+  return Result();
 }
 
 /// @brief send an "extend barrier" command
-int Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
-  if (_barrierId == 0) {
-    return TRI_ERROR_NO_ERROR;
+Result Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
+  if (_isChildSyncer || _barrierId == 0) {
+    return Result();
   }
 
   double now = TRI_microtime();
 
   if (now <= _barrierUpdateTime + _barrierTtl - 120.0) {
     // no need to extend the barrier yet
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   }
 
-  std::string const url = BaseUrl + "/barrier/" + StringUtils::itoa(_barrierId);
+  std::string const url = ReplicationUrl + "/barrier/" + StringUtils::itoa(_barrierId);
   std::string const body = "{\"ttl\":" + StringUtils::itoa(_barrierTtl) +
                            ",\"tick\"" + StringUtils::itoa(tick) + "\"}";
 
@@ -237,53 +228,42 @@ int Syncer::sendExtendBarrier(TRI_voc_tick_t tick) {
       rest::RequestType::PUT, url, body.c_str(), body.size()));
 
   if (response == nullptr || !response->isComplete()) {
-    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE);
   }
 
   TRI_ASSERT(response != nullptr);
 
-  int res = TRI_ERROR_NO_ERROR;
-
   if (response->wasHttpError()) {
-    res = TRI_ERROR_REPLICATION_MASTER_ERROR;
-  } else {
-    _barrierUpdateTime = TRI_microtime();
+    return Result(TRI_ERROR_REPLICATION_MASTER_ERROR);
   }
 
-  return res;
+  _barrierUpdateTime = TRI_microtime();
+
+  return Result();
 }
 
 /// @brief send a "remove barrier" command
-int Syncer::sendRemoveBarrier() {
-  if (_barrierId == 0) {
-    return TRI_ERROR_NO_ERROR;
+Result Syncer::sendRemoveBarrier() {
+  if (_isChildSyncer || _barrierId == 0) {
+    return Result();
   }
 
   try {
     std::string const url =
-        BaseUrl + "/barrier/" + StringUtils::itoa(_barrierId);
+        ReplicationUrl + "/barrier/" + StringUtils::itoa(_barrierId);
 
     // send request
     std::unique_ptr<SimpleHttpResult> response(_client->retryRequest(
         rest::RequestType::DELETE_REQ, url, nullptr, 0));
 
-    if (response == nullptr || !response->isComplete()) {
-      return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    if (hasFailed(response.get())) {
+      return buildHttpError(response.get(), url);
     }
-
-    TRI_ASSERT(response != nullptr);
-
-    int res = TRI_ERROR_NO_ERROR;
-
-    if (response->wasHttpError()) {
-      res = TRI_ERROR_REPLICATION_MASTER_ERROR;
-    } else {
-      _barrierId = 0;
-      _barrierUpdateTime = 0;
-    }
-    return res;
+    _barrierId = 0;
+    _barrierUpdateTime = 0;
+    return Result();
   } catch (...) {
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL);
   }
 }
 
@@ -298,61 +278,111 @@ std::string Syncer::getCName(VPackSlice const& slice) const {
 }
 
 /// @brief extract the collection by either id or name, may return nullptr!
-arangodb::LogicalCollection* Syncer::getCollectionByIdOrName(TRI_voc_cid_t cid, std::string const& name) { 
-  arangodb::LogicalCollection* idCol = nullptr;
+LogicalCollection* Syncer::getCollectionByIdOrName(TRI_vocbase_t* vocbase,
+                                                   TRI_voc_cid_t cid,
+                                                   std::string const& name) {
+  
+  arangodb::LogicalCollection* idCol = vocbase->lookupCollection(cid);
   arangodb::LogicalCollection* nameCol = nullptr;
-
-  if (_useCollectionId) {
-    idCol = _vocbase->lookupCollection(cid);
-  }
 
   if (!name.empty()) {
     // try looking up the collection by name then
-    nameCol = _vocbase->lookupCollection(name);
+    nameCol = vocbase->lookupCollection(name);
   }
-
+  
   if (idCol != nullptr && nameCol != nullptr) {
     if (idCol->cid() == nameCol->cid()) {
       // found collection by id and name, and both are identical!
       return idCol;
-    } 
+    }
     // found different collections by id and name
     TRI_ASSERT(!name.empty());
     if (name[0] == '_') {
       // system collection. always return collection by name when in doubt
       return nameCol;
     }
-
+    
     // no system collection. still prefer local collection
     return nameCol;
   }
-
+  
   if (nameCol != nullptr) {
     TRI_ASSERT(idCol == nullptr);
     return nameCol;
   }
- 
+  
   // may be nullptr
   return idCol;
 }
 
-int Syncer::applyCollectionDumpMarker(
+TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
+  std::string name;
+  if (slice.isObject()) {
+    VPackSlice tmp;
+    if ((tmp = slice.get("db")).isString()) { // wal access protocol
+      name = tmp.copyString();
+    } else if ((tmp = slice.get("database")).isString()) { // pre 3.3
+      name = tmp.copyString();
+    }
+  } else if (slice.isString()) {
+    name = slice.copyString();
+  }
+  if (name.empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_REPLICATION_INVALID_RESPONSE,
+                                   "could not resolve vocbase id / name");
+  }
+  
+  // will work with either names or id's
+  auto const& it = _vocbases.find(name);
+  if (it == _vocbases.end()) {
+    // automatically checks for id in string
+    TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->lookupDatabase(name);
+    if (vocbase != nullptr) {
+      _vocbases.emplace(name, DatabaseGuard(vocbase));
+    } else {
+      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "could not find database '" << name << "'";
+    }
+    return vocbase;
+  } else {
+    return it->second.database();
+  }
+}
+
+arangodb::LogicalCollection* Syncer::resolveCollection(TRI_vocbase_t* vocbase,
+                                                       VPackSlice const& slice) {
+  TRI_ASSERT(vocbase != nullptr);
+  VPackSlice uuid;
+  if ((uuid = slice.get("cuid")).isString()) {
+    return vocbase->lookupCollectionByUuid(uuid.copyString());
+  } else if ((uuid = slice.get("globallyUniqueId")).isString()) {
+    return vocbase->lookupCollectionByUuid(uuid.copyString());
+  } else {
+    // extract "cid"
+    TRI_voc_cid_t cid = getCid(slice);
+    if (cid == 0) {
+      return nullptr;
+    }
+    // extract optional "cname"
+    return getCollectionByIdOrName(vocbase, cid, getCName(slice));
+  }
+}
+
+Result Syncer::applyCollectionDumpMarker(
     transaction::Methods& trx, std::string const& collectionName,
     TRI_replication_operation_e type, VPackSlice const& old, 
-    VPackSlice const& slice, std::string& errorMsg) {
+    VPackSlice const& slice) {
 
   if (_configuration._lockTimeoutRetries > 0) {
     decltype(_configuration._lockTimeoutRetries) tries = 0;
 
     while (true) {
-      int res = applyCollectionDumpMarkerInternal(trx, collectionName, type, old, slice, errorMsg);
+      Result res = applyCollectionDumpMarkerInternal(trx, collectionName, type, old, slice);
 
-      if (res != TRI_ERROR_LOCK_TIMEOUT) {
+      if (res.errorNumber() != TRI_ERROR_LOCK_TIMEOUT) {
         return res;
       }
 
       // lock timeout
-
       if (++tries > _configuration._lockTimeoutRetries) {
         // timed out
         return res;
@@ -362,17 +392,15 @@ int Syncer::applyCollectionDumpMarker(
       // retry
     }
   } else {
-    return applyCollectionDumpMarkerInternal(trx, collectionName, type, old, slice, errorMsg);
+    return applyCollectionDumpMarkerInternal(trx, collectionName, type, old, slice);
   }
 }
 
 /// @brief apply the data from a collection dump or the continuous log
-int Syncer::applyCollectionDumpMarkerInternal(
-    transaction::Methods& trx, std::string const& collectionName,
-    TRI_replication_operation_e type, VPackSlice const& old, 
-    VPackSlice const& slice, std::string& errorMsg) {
-
-  int res = TRI_ERROR_INTERNAL;
+Result Syncer::applyCollectionDumpMarkerInternal(
+      transaction::Methods& trx, std::string const& collectionName,
+      TRI_replication_operation_e type, VPackSlice const& old, 
+      VPackSlice const& slice) {
 
   if (type == REPLICATION_MARKER_DOCUMENT) {
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
@@ -393,22 +421,18 @@ int Syncer::applyCollectionDumpMarkerInternal(
         // perform an update
         opRes = trx.replace(collectionName, slice, options); 
       }
-    
-      res = opRes.code;
+   
+      if (opRes.code != TRI_ERROR_NO_ERROR && opRes.errorMessage.empty()) {
+        opRes.errorMessage = TRI_errno_string(opRes.code);
+      } 
+      return Result(opRes.code, opRes.errorMessage);
     } catch (arangodb::basics::Exception const& ex) {
-      res = ex.code();
-      errorMsg = "document insert/replace operation failed: " +
-                 std::string(TRI_errno_string(res));
+      return Result(ex.code(), std::string("document insert/replace operation failed: ") + ex.what());
     } catch (std::exception const& ex) {
-      res = TRI_ERROR_INTERNAL;
-      errorMsg = "document insert/replace operation failed: " +
-                 std::string(ex.what());
+      return Result(TRI_ERROR_INTERNAL, std::string("document insert/replace operation failed: ") + ex.what());
     } catch (...) {
-      res = TRI_ERROR_INTERNAL;
-      errorMsg = "document insert/replace operation failed: unknown exception";
+      return Result(TRI_ERROR_INTERNAL, std::string("document insert/replace operation failed: unknown exception"));
     }
-
-    return res;
   }
 
   else if (type == REPLICATION_MARKER_REMOVE) {
@@ -426,198 +450,211 @@ int Syncer::applyCollectionDumpMarkerInternal(
       if (opRes.successful() ||
           opRes.code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
         // ignore document not found errors
-        return TRI_ERROR_NO_ERROR;
+        return Result();
       }
+      
+      if (opRes.code != TRI_ERROR_NO_ERROR && opRes.errorMessage.empty()) {
+        opRes.errorMessage = TRI_errno_string(opRes.code);
+      } 
 
-      res = opRes.code;
+      return Result(opRes.code, opRes.errorMessage);
     } catch (arangodb::basics::Exception const& ex) {
-      res = ex.code();
-      errorMsg = "document remove operation failed: " +
-                 std::string(TRI_errno_string(res));
+      return Result(ex.code(), std::string("document remove operation failed: ") + ex.what());
     } catch (std::exception const& ex) {
-      errorMsg = "document remove operation failed: " +
-                 std::string(ex.what());
+      return Result(TRI_ERROR_INTERNAL, std::string("document remove operation failed: ") + ex.what());
     } catch (...) {
-      res = TRI_ERROR_INTERNAL;
-      errorMsg = "document remove operation failed: unknown exception";
+      return Result(TRI_ERROR_INTERNAL, std::string("document remove operation failed: unknown exception"));
     }
-    
-    return res;
   }
     
-  res = TRI_ERROR_REPLICATION_UNEXPECTED_MARKER;
-  errorMsg = "unexpected marker type " + StringUtils::itoa(type);
-
-  return res;
+  return Result(TRI_ERROR_REPLICATION_UNEXPECTED_MARKER, std::string("unexpected marker type ") + StringUtils::itoa(type));
 }
 
 /// @brief creates a collection, based on the VelocyPack provided
-int Syncer::createCollection(VPackSlice const& slice, arangodb::LogicalCollection** dst) {
+Result Syncer::createCollection(TRI_vocbase_t* vocbase, 
+                                VPackSlice const& slice,
+                                LogicalCollection** dst) {
   if (dst != nullptr) {
     *dst = nullptr;
   }
 
   if (!slice.isObject()) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "collection slice is no object");
   }
 
   std::string const name = VelocyPackHelper::getStringValue(slice, "name", "");
-
   if (name.empty()) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-  }
-
-  TRI_voc_cid_t const cid = getCid(slice);
-
-  if (cid == 0) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "no name specified for collection");
   }
 
   TRI_col_type_e const type = static_cast<TRI_col_type_e>(VelocyPackHelper::getNumericValue<int>(
       slice, "type", TRI_COL_TYPE_DOCUMENT));
 
-  arangodb::LogicalCollection* col = getCollectionByIdOrName(cid, name);
-
+  arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
   if (col != nullptr && col->type() == type) {
     // collection already exists. TODO: compare attributes
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   }
+  
+  VPackSlice uuid = slice.get("globallyUniqueId");
 
-  // merge in "isSystem" attribute
+  // merge in "isSystem" attribute, doesn't matter if name does not start with '_'
   VPackBuilder s;
   s.openObject();
   s.add("isSystem", VPackValue(true));
+  if (uuid.isString()) {
+    // if we received a globallyUniqueId from the remote, then we will always use this id
+    // so we can discard the "cid" and "id" values for the collection
+    s.add("id", VPackSlice::nullSlice());
+    s.add("cid", VPackSlice::nullSlice());
+  }
   s.close();
 
-  VPackBuilder merged = VPackCollection::merge(s.slice(), slice, true);
+  VPackBuilder merged = VPackCollection::merge(slice, s.slice(),
+                                               /*mergeValues*/true, /*nullMeansRemove*/true);
 
-  int res = TRI_ERROR_NO_ERROR;
   try {
-    col = _vocbase->createCollection(merged.slice());
+    col = vocbase->createCollection(merged.slice());
   } catch (basics::Exception const& ex) {
-    res = ex.code();
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    res = TRI_ERROR_INTERNAL;
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    return res;
+    return Result(TRI_ERROR_INTERNAL);
   }
 
   TRI_ASSERT(col != nullptr);
+  TRI_ASSERT(!uuid.isString() ||
+             uuid.compareString(col->globallyUniqueId()) == 0);
 
   if (dst != nullptr) {
     *dst = col;
   }
-
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
 /// @brief drops a collection, based on the VelocyPack provided
-int Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
-  arangodb::LogicalCollection* col = getCollectionByIdOrName(getCid(slice), getCName(slice));
-
+Result Syncer::dropCollection(VPackSlice const& slice, bool reportError) {
+  TRI_vocbase_t* vocbase = resolveVocbase(slice);
+  if (vocbase == nullptr) {
+    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
   if (col == nullptr) {
     if (reportError) {
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     }
 
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   }
-
-  return _vocbase->dropCollection(col, true, -1.0);
+    
+  return Result(vocbase->dropCollection(col, true, -1.0));
 }
 
 /// @brief creates an index, based on the VelocyPack provided
-int Syncer::createIndex(VPackSlice const& slice) {
+Result Syncer::createIndex(VPackSlice const& slice) {
   VPackSlice indexSlice = slice.get("index");
   if (!indexSlice.isObject()) {
     indexSlice = slice.get("data");
   }
 
   if (!indexSlice.isObject()) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "index slice is not an object");
   }
 
-  TRI_voc_cid_t cid = getCid(slice);
-  std::string cnameString = getCName(slice);
+  TRI_vocbase_t* vocbase = resolveVocbase(slice);
+  if (vocbase == nullptr) {
+    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
+  if (col == nullptr) {
+    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
 
   try {
-    CollectionGuard guard(_vocbase, cid, cnameString);
+    CollectionGuard guard(vocbase, col);
 
     if (guard.collection() == nullptr) {
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     }
 
-    LogicalCollection* collection = guard.collection();
-
-    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(_vocbase), guard.collection()->cid(), AccessMode::Type::WRITE);
+    SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
+                                    guard.collection()->cid(), AccessMode::Type::WRITE);
 
     Result res = trx.begin();
 
     if (!res.ok()) {
-      return res.errorNumber();
+      return res;
     }
 
-    auto physical = collection->getPhysical();
+    auto physical = guard.collection()->getPhysical();
     TRI_ASSERT(physical != nullptr);
     std::shared_ptr<arangodb::Index> idx;
     res = physical->restoreIndex(&trx, indexSlice, idx);
     res = trx.finish(res);
 
-    return res.errorNumber();
+    return res;
   } catch (arangodb::basics::Exception const& ex) {
-    return ex.code();
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL);
   }
 }
 
 /// @brief drops an index, based on the VelocyPack provided
-int Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
+Result Syncer::dropIndex(arangodb::velocypack::Slice const& slice) {
   std::string id;
   if (slice.hasKey("data")) {
     id = VelocyPackHelper::getStringValue(slice.get("data"), "id", "");
   } else {
     id = VelocyPackHelper::getStringValue(slice, "id", "");
   }
-
+  
   if (id.empty()) {
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "id not found in index drop slice");
   }
 
   TRI_idx_iid_t const iid = StringUtils::uint64(id);
 
-  TRI_voc_cid_t const cid = getCid(slice);
-  std::string cnameString = getCName(slice);
+  TRI_vocbase_t* vocbase = resolveVocbase(slice);
+  if (vocbase == nullptr) {
+    return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
+  if (col == nullptr) {
+    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
 
   try {
-    CollectionGuard guard(_vocbase, cid, cnameString);
-
-    if (guard.collection() == nullptr) {
-      return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-    }
-
-    LogicalCollection* collection = guard.collection();
-
-    bool result = collection->dropIndex(iid);
-
+    CollectionGuard guard(vocbase, col);
+    bool result = guard.collection()->dropIndex(iid);
     if (!result) {
-      return TRI_ERROR_NO_ERROR;
+      return Result(); // TODO: why do we ignore failures here?
     }
 
-    return TRI_ERROR_NO_ERROR;
+    return Result();
   } catch (arangodb::basics::Exception const& ex) {
-    return ex.code();
+    return Result(ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    return Result(TRI_ERROR_INTERNAL, ex.what());
   } catch (...) {
-    return TRI_ERROR_INTERNAL;
+    return Result(TRI_ERROR_INTERNAL);
   }
 }
 
 /// @brief get master state
-int Syncer::getMasterState(std::string& errorMsg) {
+Result Syncer::getMasterState() {
+  if (_isChildSyncer) {
+    TRI_ASSERT(!_masterInfo._endpoint.empty());
+    TRI_ASSERT(_masterInfo._serverId != 0);
+    TRI_ASSERT(_masterInfo._majorVersion != 0);
+    return Result();
+  }
+  
   std::string const url =
-      BaseUrl + "/logger-state?serverId=" + _localServerIdString;
+      ReplicationUrl + "/logger-state?serverId=" + _localServerIdString;
 
   // store old settings
   size_t maxRetries = _client->params().getMaxRetries();
@@ -633,46 +670,30 @@ int Syncer::getMasterState(std::string& errorMsg) {
   // restore old settings
   _client->params().setMaxRetries(maxRetries);
   _client->params().setRetryWaitTime(retryWaitTime);
-
-  if (response == nullptr || !response->isComplete()) {
-    errorMsg = "could not connect to master at " + _masterInfo._endpoint +
-               ": " + _client->getErrorMessage();
-
-    return TRI_ERROR_REPLICATION_NO_RESPONSE;
+    
+  if (hasFailed(response.get())) {
+    return buildHttpError(response.get(), url);
   }
 
-  if (response->wasHttpError()) {
-    errorMsg = "got invalid response from master at " + _masterInfo._endpoint +
-               ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) +
-               ": " + response->getHttpReturnMessage();
-    return TRI_ERROR_REPLICATION_MASTER_ERROR;
+  VPackBuilder builder;
+  Result r = parseResponse(builder, response.get());
+
+  if (r.fail()) {
+    return r;
   }
+    
+  VPackSlice const slice = builder.slice();
 
-  auto builder = std::make_shared<VPackBuilder>();
-  int res = parseResponse(builder, response.get());
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    VPackSlice const slice = builder->slice();
-
-    if (!slice.isObject()) {
-      LOG_TOPIC(DEBUG, Logger::REPLICATION) << "syncer::getMasterState - state is not an object";
-      res = TRI_ERROR_REPLICATION_INVALID_RESPONSE;
-      errorMsg = "got invalid response from master at " +
-                 _masterInfo._endpoint + ": invalid JSON";
-    }
-    else {
-      res = handleStateResponse(slice, errorMsg);
-    }
+  if (!slice.isObject()) {
+    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "syncer::getMasterState - state is not an object";
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + _masterInfo._endpoint + ": invalid JSON");
   }
-
-  if (res != TRI_ERROR_NO_ERROR){
-    LOG_TOPIC(DEBUG, Logger::REPLICATION) << "syncer::getMasterState - handleStateResponse failed";
-  }
-  return res;
+  
+  return handleStateResponse(slice);
 }
 
 /// @brief handle the state response of the master
-int Syncer::handleStateResponse(VPackSlice const& slice, std::string& errorMsg) {
+Result Syncer::handleStateResponse(VPackSlice const& slice) {
   std::string const endpointString =
       " from endpoint '" + _masterInfo._endpoint + "'";
 
@@ -680,25 +701,20 @@ int Syncer::handleStateResponse(VPackSlice const& slice, std::string& errorMsg) 
   VPackSlice const state = slice.get("state");
 
   if (!state.isObject()) {
-    errorMsg = "state section is missing in response" + endpointString;
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("state section is missing in response") + endpointString);
   }
 
   // state."lastLogTick"
   VPackSlice const tick = state.get("lastLogTick");
 
   if (!tick.isString()) {
-    errorMsg = "lastLogTick is missing in response" + endpointString;
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("lastLogTick is missing in response") + endpointString);
   }
 
   TRI_voc_tick_t const lastLogTick = VelocyPackHelper::stringUInt64(tick);
 
   if (lastLogTick == 0) {
-    errorMsg = "lastLogTick is 0 in response" + endpointString;
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("lastLogTick is 0 in response") + endpointString);
   }
 
   // state."running"
@@ -708,27 +724,21 @@ int Syncer::handleStateResponse(VPackSlice const& slice, std::string& errorMsg) 
   VPackSlice const server = slice.get("server");
 
   if (!server.isObject()) {
-    errorMsg = "server section is missing in response" + endpointString;
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("server section is missing in response") + endpointString);
   }
 
   // server."version"
   VPackSlice const version = server.get("version");
 
   if (!version.isString()) {
-    errorMsg = "server version is missing in response" + endpointString;
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("server version is missing in response") + endpointString);
   }
 
   // server."serverId"
   VPackSlice const serverId = server.get("serverId");
 
   if (!serverId.isString()) {
-    errorMsg = "server id is missing in response" + endpointString;
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("server id is missing in response") + endpointString);
   }
 
   // validate all values we got
@@ -737,17 +747,12 @@ int Syncer::handleStateResponse(VPackSlice const& slice, std::string& errorMsg) 
 
   if (masterId == 0) {
     // invalid master id
-    errorMsg = "invalid server id in response" + endpointString;
-
-    return TRI_ERROR_REPLICATION_INVALID_RESPONSE;
+    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("invalid server id in response") + endpointString);
   }
 
   if (masterIdString == _localServerIdString) {
     // master and replica are the same instance. this is not supported.
-    errorMsg = "got same server id (" + _localServerIdString + ")" +
-               endpointString + " as the local applier server's id";
-
-    return TRI_ERROR_REPLICATION_LOOP;
+    return Result(TRI_ERROR_REPLICATION_LOOP, std::string("got same server id (") + _localServerIdString + ")" + endpointString + " as the local applier server's id");
   }
 
   int major = 0;
@@ -756,18 +761,12 @@ int Syncer::handleStateResponse(VPackSlice const& slice, std::string& errorMsg) 
   std::string const versionString(version.copyString());
 
   if (sscanf(versionString.c_str(), "%d.%d", &major, &minor) != 2) {
-    errorMsg = "invalid master version info" + endpointString + ": '" +
-               versionString + "'";
-
-    return TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE;
+    return Result(TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE, std::string("invalid master version info") + endpointString + ": '" + versionString + "'");
   }
 
   if (major != 3) {
     // we can connect to 3.x only
-    errorMsg = "got incompatible master version" + endpointString + ": '" +
-               versionString + "'";
-
-    return TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE;
+    return Result(TRI_ERROR_REPLICATION_MASTER_INCOMPATIBLE, std::string("got incompatible master version") + endpointString + ": '" + versionString + "'");
   }
 
   _masterInfo._majorVersion = major;
@@ -782,5 +781,28 @@ int Syncer::handleStateResponse(VPackSlice const& slice, std::string& errorMsg) 
       << "." << _masterInfo._minorVersion << ", last log tick "
       << _masterInfo._lastLogTick;
 
-  return TRI_ERROR_NO_ERROR;
+  return Result();
+}
+
+void Syncer::reloadUsers() {
+  auto authentication = application_features::ApplicationServer::getFeature<AuthenticationFeature>("Authentication");
+  authentication->authInfo()->outdate();
+  authentication->authInfo()->reloadAllUsers();
+}
+  
+bool Syncer::hasFailed(SimpleHttpResult* response) const {
+  return (response == nullptr || !response->isComplete() || response->wasHttpError());
+}
+
+Result Syncer::buildHttpError(SimpleHttpResult* response, std::string const& url) const {
+  TRI_ASSERT(hasFailed(response));
+
+  if (response == nullptr || !response->isComplete()) {
+    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + _masterInfo._endpoint + " for URL " + url + ": " + _client->getErrorMessage());
+  }
+
+  TRI_ASSERT(response->wasHttpError());
+  return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
+                _masterInfo._endpoint + " for URL " + url + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " +
+                response->getHttpReturnMessage() + " - " + response->getBody().toString());
 }

@@ -316,12 +316,14 @@ void TRI_GetBacktrace(std::string& btstr) {
             btstr += strings[i] + std::string("() [") + ss.str() +
                      std::string("] ") + demangled_name + '\n';
           } else {
-            btstr += strings[i] + '\n';
+            btstr += strings[i];
+            btstr += '\n';
           }
           TRI_Free(demangled_name);
         }
       } else {
-        btstr += strings[i] + '\n';
+        btstr += strings[i];
+        btstr += '\n';
       }
     } else {
       ss << stack_frames[i];

@@ -147,6 +147,11 @@ void Version::initialize() {
   Values["asan"] = "true";
 #else
   Values["asan"] = "false";
+#if defined(__has_feature)
+#  if __has_feature(address_sanitizer)
+  Values["asan"] = "true";
+#  endif
+#endif
 #endif
 
 #if defined(__SSE4_2__) && !defined(NO_SSE42)
