@@ -3008,7 +3008,7 @@ static void JS_CollectionVocbase(
                                              name);
     if (level == AuthLevel::NONE) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                     "No access to collection");
+                                     std::string("No access to collection '") + name + "'");
     }
   }
 
