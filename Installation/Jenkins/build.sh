@@ -139,7 +139,7 @@ MAKE=make
 PACKAGE_MAKE=make
 MAKE_PARAMS=""
 MAKE_CMD_PREFIX=""
-CONFIGURE_OPTIONS="$CMAKE_OPENSSL ${CONFIGURE_OPTIONS}"
+CONFIGURE_OPTIONS+=("$CMAKE_OPENSSL -DGENERATE_BUILD_DATE=OFF")
 INSTALL_PREFIX="/"
 MAINTAINER_MODE="-DUSE_MAINTAINER_MODE=off"
 
@@ -683,7 +683,27 @@ if [ -n "$CPACK"  -a -n "${TARGET_DIR}" -a -z "${MSVC}" ];  then
     fi
 fi
 
-${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS}
+mkdir -p "${DST}/lib/Basics/"
+cat "${SOURCE_DIR}/lib/Basics/build-date.h.in" | sed "s;@ARANGODB_BUILD_DATE@;$(date "+%Y-%m-%d %H:%M:%S");" >"${DST}/lib/Basics/build-date.h"
+TRIES=0;
+set +e
+while /bin/true; do
+    # shellcheck disable=SC2068
+    ${MAKE_CMD_PREFIX} ${MAKE} ${MAKE_PARAMS[@]}
+    RC=$?
+    if test "${isCygwin}" == 1 -a "${RC}" != 0 -a "${TRIES}" == 0; then
+        # sometimes windows will fail on a messed up working copy,
+        # but succed on second try. So we retry once.
+        TRIES=1
+        continue
+    fi
+    if test "${RC}" != 0; then
+        exit ${RC}
+    fi
+    break
+done
+set -e
+
 
 (cd ${SOURCE_DIR}; git rev-parse HEAD > last_compiled_version.sha)
 
