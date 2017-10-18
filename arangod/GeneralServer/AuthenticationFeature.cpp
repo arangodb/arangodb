@@ -156,7 +156,9 @@ void AuthenticationFeature::prepare() {
 void AuthenticationFeature::start() {
   TRI_ASSERT(isEnabled());
 
-  LOG_TOPIC(INFO, Logger::AUTHENTICATION) << "Authentication is turned " << (_active ? "on" : "off");
+  std::ostringstream out;
+
+  out << "Authentication is turned " << (_active ? "on" : "off");
 
   auto queryRegistryFeature =
       application_features::ApplicationServer::getFeature<
@@ -164,14 +166,15 @@ void AuthenticationFeature::start() {
   _authInfo->setQueryRegistry(queryRegistryFeature->queryRegistry());
 
   if (_active && _authenticationSystemOnly) {
-    LOG_TOPIC(INFO, Logger::AUTHENTICATION) << " (system only)";
+    out << " (system only)";
   }
 
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
-    LOG_TOPIC(INFO, Logger::AUTHENTICATION) << ", authentication for unix sockets is turned "
-      << (_authenticationUnixSockets ? "on" : "off");
+    out << ", authentication for unix sockets is turned "
+        << (_authenticationUnixSockets ? "on" : "off");
 #endif
 
+  LOG_TOPIC(INFO, arangodb::Logger::AUTHENTICATION) << out.str();
 }
 
 AuthInfo* AuthenticationFeature::authInfo() const {

@@ -798,11 +798,11 @@ Result Syncer::buildHttpError(SimpleHttpResult* response, std::string const& url
   TRI_ASSERT(hasFailed(response));
 
   if (response == nullptr || !response->isComplete()) {
-    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + _masterInfo._endpoint + url + ": " + _client->getErrorMessage());
+    return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + _masterInfo._endpoint + " for URL " + url + ": " + _client->getErrorMessage());
   }
 
   TRI_ASSERT(response->wasHttpError());
   return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
-                _masterInfo._endpoint + url + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " +
-                response->getHttpReturnMessage(); // + " - " + response->getBody().toString());
+                _masterInfo._endpoint + " for URL " + url + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " +
+                response->getHttpReturnMessage() + " - " + response->getBody().toString());
 }
