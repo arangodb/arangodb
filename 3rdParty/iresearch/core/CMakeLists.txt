@@ -509,8 +509,8 @@ elseif (MSVC)
     "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_FILESYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_FILESYSTEM_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_LOCALE_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_RELEASE}>"
-    ${ICU_STATIC_LIBS}
     ${Unwind_STATIC_LIBS}
+    $<TARGET_FILE:icu-static>
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
@@ -535,8 +535,8 @@ elseif (MSVC)
     "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_FILESYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_FILESYSTEM_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_LOCALE_LIBRARY_RELEASE}>"
     "$<$<CONFIG:Debug>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_DEBUG}>$<$<NOT:$<CONFIG:Debug>>:${Boost_STATIC_staticRT_SYSTEM_LIBRARY_RELEASE}>"
-    ${ICU_STATIC_LIBS}
     ${Unwind_STATIC_LIBS}
+    $<TARGET_FILE:icu-static>
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static-scrt>"
@@ -562,8 +562,8 @@ elseif (APPLE)
     ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
-    ${ICU_STATIC_LIBS}
     ${Unwind_STATIC_LIBS}
+    $<TARGET_FILE:icu-static>
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
@@ -589,8 +589,8 @@ else()
     ${Boost_STATIC_sharedRT_LOCALE_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_SYSTEM_LIBRARY_DEBUG}
     ${Boost_STATIC_sharedRT_THREAD_LIBRARY_DEBUG}
-    ${ICU_STATIC_LIBS}
     ${Unwind_STATIC_LIBS}
+    $<TARGET_FILE:icu-static>
     "$<TARGET_FILE:lz4_static>"
     "$<TARGET_FILE:stemmer-static>"
     "$<TARGET_FILE:${IResearch_TARGET_NAME}-analyzer-text-static>"
@@ -711,6 +711,7 @@ set_target_properties(${IResearch_TARGET_NAME}-analyzer-text-shared
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME analyzer-text
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;BOOST_ALL_DYN_LINK"
 )
 
@@ -744,14 +745,14 @@ endif()
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-shared
   ${IResearch_TARGET_NAME}-shared
   ${Boost_SHARED_sharedRT_LIBRARIES}
-  ${ICU_SHARED_LIBS}
-  ${Snowball_SHARED_LIB}
+  icu-shared
+  stemmer-shared
 )
 
 target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-static
   ${IResearch_TARGET_NAME}-static
-  ${ICU_STATIC_LIBS}
-  ${Snowball_STATIC_LIB}
+  icu-static
+  stemmer-static
 )
 
 # setup CRT
@@ -759,14 +760,14 @@ if(MSVC)
   target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-shared-scrt
     ${IResearch_TARGET_NAME}-shared-scrt
     ${Boost_SHARED_sharedRT_LIBRARIES}
-    ${ICU_SHARED_LIBS}
-    ${Snowball_SHARED_LIB}
+    icu-shared
+    snowball-shared
   )
 
   target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
     ${IResearch_TARGET_NAME}-static-scrt
-    ${ICU_STATIC_LIBS}
-    ${Snowball_STATIC_LIB}
+    icu-static
+    snowball-static
   )
 endif()
 
@@ -861,6 +862,7 @@ set_target_properties(${IResearch_TARGET_NAME}-format-1_0-shared
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME format-1_0
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_EXPORTS;IRESEARCH_DLL_PLUGIN;FST_NO_DYNAMIC_LINKING"
 )
 
@@ -1016,6 +1018,7 @@ set_target_properties(${IResearch_TARGET_NAME}-scorer-tfidf-shared
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME scorer-tfidf
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_IMPORTS;IRESEARCH_DLL_PLUGIN"
 )
 
@@ -1141,6 +1144,7 @@ set_target_properties(${IResearch_TARGET_NAME}-scorer-bm25-shared
   PREFIX lib
   IMPORT_PREFIX lib
   OUTPUT_NAME scorer-bm25
+  DEBUG_POSTFIX "" # otherwise library names will not match expected dynamically loaded value
   COMPILE_DEFINITIONS "$<$<CONFIG:Debug>:IRESEARCH_DEBUG>;IRESEARCH_DLL;IRESEARCH_DLL_IMPORTS;IRESEARCH_DLL_PLUGIN"
 )
 
