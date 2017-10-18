@@ -113,7 +113,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
     // avoid extra lookups of auth context, if we use the same db as stored
     // in the execution context initialized by RestServer/VocbaseContext
     AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
-                                     _vocbase->name(), colName);
+                                             _vocbase->name(), colName);
     
     if (level == AuthLevel::NONE) {
       LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << ExecContext::CURRENT->user()

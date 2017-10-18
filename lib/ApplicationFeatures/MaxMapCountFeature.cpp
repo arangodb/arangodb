@@ -207,8 +207,8 @@ bool MaxMapCountFeature::isNearMaxMappingsInternal(double& suggestedCacheTime) n
     if (lastLogStamp + logFrequency < now) {
       // do not log too often to avoid log spamming
       lastLogStamp = now;
-      LOG_TOPIC(WARN, Logger::MEMORY) << "process is near the maximum number of memory mappings. current: " << nmaps << ", maximum: " << maxMappings 
-                                      << ". it may be sensible to increase the maximum number of mappings per process";
+      LOG_TOPIC(ERR, Logger::MEMORY) << "process is near the maximum number of memory mappings. current: " << nmaps << ", maximum: " << maxMappings 
+                                     << ". it may be sensible to increase the maximum number of mappings per process";
     }
     return true;
   } catch (...) {

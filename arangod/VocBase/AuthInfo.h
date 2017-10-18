@@ -78,7 +78,7 @@ class AuthInfo {
     _queryRegistry = registry;
   }
 
-  /// Tells coordinator to reload his data. Only call in HearBeat thread
+  /// Tells coordinator to reload its data. Only called in HeartBeat thread
   void outdate() { _outdated = true; }
 
   /// Trigger eventual reload, user facing API call
@@ -124,6 +124,12 @@ class AuthInfo {
   std::string generateRawJwt(VPackBuilder const&);
 
  private:
+  // internal method called by canUseCollection
+  // asserts that collection name is non-empty and already translated
+  // from collection id to name
+  AuthLevel canUseCollectionInternal(std::string const& username,
+                                     std::string const& dbname,
+                                     std::string const& coll);
   void loadFromDB();
   bool parseUsers(velocypack::Slice const& slice);
   Result storeUserInternal(AuthUserEntry const& user, bool replace);

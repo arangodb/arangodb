@@ -23,7 +23,7 @@
 #ifndef ARANGOD_UTILS_EXECCONTEXT_H
 #define ARANGOD_UTILS_EXECCONTEXT_H 1
 
-#include <string>
+#include "Basics/Common.h"
 #include "Utils/Authentication.h"
 
 namespace arangodb {
