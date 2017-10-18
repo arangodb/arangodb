@@ -1,6 +1,6 @@
 //  -*- mode: groovy-mode
 
-node {
+node("master") {
     properties([buildDiscarder(logRotator(
         artifactDaysToKeepStr: '3',
         artifactNumToKeepStr: '5',
