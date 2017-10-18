@@ -1498,8 +1498,7 @@ function migrateAnyServer(plan, current) {
 // /////////////////////////////////////////////////////////////////////////////
 // / @brief make sure that replication is set up for all databases
 // /////////////////////////////////////////////////////////////////////////////
-
-function setupReplication () {
+function setupReplication () {// simon: is not used currently
   console.topic('heartbeat=debug', 'Setting up replication...');
 
   var db = require('internal').db;

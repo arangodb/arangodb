@@ -114,8 +114,10 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addHiddenOption("--cluster.agency-prefix", "agency prefix",
                      new StringParameter(&_agencyPrefix));
-
-  options->addObsoleteOption("--cluster.my-local-info", "this server's local info", false);
+  // FIXME: make obsolete in > 3.3
+  //options->addObsoleteOption("--cluster.my-local-info", "this server's local info", false);
+  options->addHiddenOption("--cluster.my-local-info", "this server's local info",
+                           new StringParameter(&_myLocalInfo));
 
   options->addObsoleteOption("--cluster.my-id", "this server's id", false);
 
@@ -269,10 +271,6 @@ void ClusterFeature::prepare() {
   } else {
     reportRole(_requestedRole);
   }
-  
-  /*if (_requestedRole == ServerState::ROLE_SINGLE) {
-    ServerState::instance()->forceRole(_requestedRole);
-  }*/
 
   ServerState::instance()->setClusterEnabled();
 
@@ -306,7 +304,8 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  if (!ServerState::instance()->integrateIntoCluster(_requestedRole, _myAddress)) {
+  // FIXME: remove mylocalInfo > 3.3
+  if (!ServerState::instance()->integrateIntoCluster(_requestedRole, _myAddress, _myLocalInfo)) {
     LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't integrate into cluster.";
     FATAL_ERROR_EXIT();
   }

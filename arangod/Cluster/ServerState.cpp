@@ -238,14 +238,80 @@ bool ServerState::unregister() {
   return r.successful();
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup the server id by using the local info
+////////////////////////////////////////////////////////////////////////////////
+
+static int LookupLocalInfoToId(std::string const& localInfo,
+                               std::string& id,
+                               std::string& description) {
+  // fetch value at Plan/DBServers
+  // we need to do this to determine the server's role
+  
+  std::string const key = "Target/MapLocalToID";
+  
+  int count = 0;
+  while (++count <= 600) {
+    AgencyComm comm;
+    AgencyCommResult result = comm.getValues(key);
+    
+    if (!result.successful()) {
+      std::string const endpoints = AgencyCommManager::MANAGER->endpointsString();
+      
+      LOG_TOPIC(DEBUG, Logger::STARTUP)
+      << "Could not fetch configuration from agency endpoints ("
+      << endpoints << "): got status code " << result._statusCode
+      << ", message: " << result.errorMessage() << ", key: " << key;
+    } else {
+      VPackSlice slice = result.slice()[0].get(std::vector<std::string>(
+                                    {AgencyCommManager::path(), "Target", "MapLocalToID"}));
+      
+      if (!slice.isObject()) {
+        LOG_TOPIC(DEBUG, Logger::STARTUP) << "Target/MapLocalToID corrupt: "
+        << "no object.";
+      } else {
+        slice = slice.get(localInfo);
+        if (slice.isObject()) {
+          id = arangodb::basics::VelocyPackHelper::getStringValue(slice, "ID",
+                                                                  "");
+          if (id.empty()) {
+            LOG_TOPIC(ERR, Logger::STARTUP) << "ID not set!";
+            return TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID;
+          }
+          description = basics::VelocyPackHelper::getStringValue(slice, "Description", "");
+          return TRI_ERROR_NO_ERROR;
+        }
+      }
+    }
+    sleep(1);
+  };
+  return TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID;
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to integrate into a cluster
 ////////////////////////////////////////////////////////////////////////////////
 bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
-                                       std::string const& myAddress) {
+                                       std::string const& myAddress,
+                                       std::string const& myLocalInfo) {
 
   AgencyComm comm;
   AgencyCommResult result;
+  
+  if (!myLocalInfo.empty()) {
+    LOG_TOPIC(WARN, Logger::STARTUP) << "--cluster.my-local-info is deprecated and will be deleted.";
+    std::string myId, description;
+    int res = LookupLocalInfoToId(myLocalInfo, myId, description);
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not lookup ID with information"
+      << " provided in --cluster.my-local-info";
+      FATAL_ERROR_EXIT();
+    }
+    writePersistedId(myId);
+    setId(myId);
+  }
 
   std::string id;
   if (!hasPersistedId()) {
@@ -514,28 +580,6 @@ void ServerState::setId(std::string const& id) {
 
   WRITE_LOCKER(writeLocker, _lock);
   _id = id;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief get the server description
-////////////////////////////////////////////////////////////////////////////////
-
-std::string ServerState::getDescription() {
-  READ_LOCKER(readLocker, _lock);
-  return _description;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief set the server description
-////////////////////////////////////////////////////////////////////////////////
-
-void ServerState::setDescription(std::string const& description) {
-  if (description.empty()) {
-    return;
-  }
-
-  WRITE_LOCKER(writeLocker, _lock);
-  _description = description;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

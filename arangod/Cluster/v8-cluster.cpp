@@ -1020,25 +1020,6 @@ static void JS_AddressServerState(
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the servers local info
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_LocalInfoServerState(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  ONLY_IN_CLUSTER
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("localInfo()");
-  }
-
-  std::string const li = ServerState::instance()->getLocalInfo();
-  TRI_V8_RETURN_STD_STRING(li);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief return the servers id
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1104,24 +1085,6 @@ static void JS_IdOfPrimaryServerState(
   }
     
   TRI_V8_RETURN_STRING("");// no more secondaries
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the servers description
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_DescriptionServerState(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("description()");
-  }
-
-  std::string const description = ServerState::instance()->getDescription();
-  TRI_V8_RETURN_STD_STRING(description);
   TRI_V8_TRY_CATCH_END
 }
 
@@ -1221,27 +1184,6 @@ static void JS_RoleServerState(
       ServerState::roleToString(ServerState::instance()->getRole());
 
   TRI_V8_RETURN_STD_STRING(role);
-  TRI_V8_TRY_CATCH_END
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets the server local info (used for testing)
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_SetLocalInfoServerState(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  ONLY_IN_CLUSTER
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("setLocalInfo(<info>)");
-  }
-
-  std::string const li = TRI_ObjectToString(args[0]);
-  ServerState::instance()->setLocalInfo(li);
-
-  TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END
 }
 
@@ -2060,8 +2002,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "address"),
                        JS_AddressServerState);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "localInfo"),
-                       JS_LocalInfoServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "id"),
                        JS_IdServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "isFoxxmaster"),
@@ -2070,8 +2010,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_getFoxxmasterQueueupdate);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "idOfPrimary"),
                        JS_IdOfPrimaryServerState);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "description"),
-                       JS_DescriptionServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "javaScriptPath"),
                        JS_JavaScriptPathServerState);
 #ifdef DEBUG_SYNC_REPLICATION
@@ -2084,8 +2022,6 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
                        JS_IsCoordinatorServerState);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "role"),
                        JS_RoleServerState);
-  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "setLocalInfo"),
-                       JS_SetLocalInfoServerState, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "setId"),
                        JS_SetIdServerState, true);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING(isolate, "setRole"),

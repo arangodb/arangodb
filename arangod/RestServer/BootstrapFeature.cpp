@@ -161,11 +161,12 @@ void BootstrapFeature::start() {
   auto vocbase = DatabaseFeature::DATABASE->systemDatabase();
 
   auto ss = ServerState::instance();
-  if (ss->isRunningInCluster()) {
+  ServerState::RoleEnum role =  ss->getRole();
+  if (ServerState::isRunningInCluster(role)) {
     // the coordinators will race to perform the cluster initialization.
     // The coordinatpr who does it will create system collections and
     // the root user
-    if (ss->isCoordinator()) {
+    if (ServerState::isCoordinator(role)) {
       LOG_TOPIC(DEBUG, Logger::STARTUP) << "Racing for cluster bootstrap...";
       raceForClusterBootstrap();
       bool success = false;
@@ -201,7 +202,7 @@ void BootstrapFeature::start() {
           sleep(1);
         }
       }
-    } else if (ss->isDBServer()) {
+    } else if (ServerState::isDBServer(role)) {
       LOG_TOPIC(DEBUG, Logger::STARTUP)
       << "Running server/bootstrap/db-server.js";
       V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase,
@@ -210,47 +211,47 @@ void BootstrapFeature::start() {
       TRI_ASSERT(false);
     }
   } else {
+
+    // become leader before running server.js to ensure the leader
+    // is the foxxmaster. Everything else is handled in heartbeat
+    if (ServerState::isSingleServer(role) && AgencyCommManager::isEnabled()) {
+      std::string const leaderPath = "Plan/AsyncReplication/Leader";
+      std::string const myId = ServerState::instance()->getId();
+      
+      try {
+        VPackBuilder myIdBuilder;
+        myIdBuilder.add(VPackValue(myId));
+        AgencyComm agency;
+        AgencyCommResult res = agency.casValue(leaderPath, myIdBuilder.slice(), false,
+                                                  /* ttl */ 60.0, /* timeout */ 5.0);
+        if (res.successful()) {
+          // sucessfull leadership takeover
+          ServerState::instance()->setFoxxmaster(myId);
+          LOG_TOPIC(INFO, Logger::STARTUP) << "Became leader in automatic failover setup";
+        } else {
+          res = agency.getValues(leaderPath);
+          if (res.successful()) {
+            VPackSlice value = res.slice()[0].get(AgencyCommManager::slicePath(leaderPath));
+            ss->setFoxxmaster(value.copyString());
+            LOG_TOPIC(INFO, Logger::STARTUP) << "Following " << ss->getFoxxmaster();
+          }
+        }
+      } catch(...) {} // weglaecheln
+    }
+    
+    // will run foxx/manager.js internally and start queues etc
     LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/server.js";
     V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase, "server/server.js", nullptr);
     // Agency is not allowed to call this
-    if (ServerState::instance()->isSingleServer()) {
+    if (ServerState::isSingleServer(role)) {
       // only creates root user if it does not exist
       AuthenticationFeature::INSTANCE->authInfo()->createRootUser();
     }
     
-    // single server with an agency attached to it
-    /*if (AgencyCommManager::isEnabled()) {
-      
-      AgencyComm agency;
-      std::string const path = "/Plan/AsyncReplication/Leader";
-      std::vector<std::string> slicePath = AgencyCommManager::slicePath(path);
-      
-      while (true) {
-        /// returns if we are boostrap lead or bootstrap is done
-        bool inCharge = raceForBoostrapLead();
-        if (!inCharge) {
-          LOG_TOPIC(TRACE, Logger::STARTUP) << "We are slave";
-          break;
-        }
-
-        VPackBuilder newJson;
-        newJson.add(VPackValue(ServerState::instance()->getId()));
-        AgencyCommResult r = agency.casValue(path, VPackSlice::nullSlice(),
-                                             newJson.slice(), 0, 300.0);
-        if (r.successful()) {
-          LOG_TOPIC(TRACE, Logger::STARTUP) << "We are master now";
-          break;
-        }
-        
-        // lets try again
-        sleep(1);
-      }
-    }*/
   }
   
   // Start service properly:
   rest::RestHandlerFactory::setServerMode(rest::RestHandlerFactory::Mode::DEFAULT);
-
   LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "ArangoDB (version " << ARANGODB_VERSION_FULL
             << ") is ready for business. Have fun!";
 

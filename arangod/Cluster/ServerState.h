@@ -149,30 +149,19 @@ class ServerState {
   /// @brief get the server role
   RoleEnum getRole();
   
-  bool integrateIntoCluster(RoleEnum role, std::string const& myAddr);
+  bool integrateIntoCluster(RoleEnum role, std::string const& myAddr,
+                            std::string const& myLocalInfo);
   
   bool unregister();
 
   /// @brief set the server role
   void setRole(RoleEnum);
 
-  /// @brief get the server local info
-  std::string getLocalInfo() { return ""; }
-
   /// @brief get the server id
   std::string getId();
-
-  /// @brief get the server description
-  std::string getDescription();
-
-  /// @brief set the server local info
-  void setLocalInfo(std::string const&) {};
-
+  
   /// @brief set the server id
   void setId(std::string const&);
-
-  /// @brief set the server description
-  void setDescription(std::string const& description);
 
   /// @brief get the server address
   std::string getAddress();
@@ -245,9 +234,6 @@ class ServerState {
   
   /// @brief the server's id, can be set just once
   std::string _id;
-
-  /// @brief the server's description
-  std::string _description;
 
   /// @brief the JavaScript startup path, can be set just once
   std::string _javaScriptStartupPath;

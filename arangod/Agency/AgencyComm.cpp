@@ -498,8 +498,9 @@ std::string AgencyCommManager::path(std::string const& p1,
          basics::StringUtils::trim(p2, "/");
 }
 
-std::vector<std::string> AgencyCommManager::slicePath(std::string const& path) {
-  std::vector<std::string> split = basics::StringUtils::split(path, '/');
+std::vector<std::string> AgencyCommManager::slicePath(std::string const& p1) {
+  std::string const p2 = basics::StringUtils::trim(p1, "/");
+  std::vector<std::string> split = basics::StringUtils::split(p2, '/');
   if (split.size() > 0 && split[0] != AgencyCommManager::path()) {
     split.insert(split.begin(), AgencyCommManager::path());
   }
