@@ -915,33 +915,9 @@ Then adjust the docker images in the config (`arangodb3.json`) and redeploy it u
 Front-End (WebUI)
 =========
 
-To see the changes of possible modifications in javascript files, templates
-and scss files please use grunt to generate the bundled version. 
-
-To install grunt (with all related dependencies), just go to the frontend app
-folder (/js/apps/system/_admin/aardvark/APP) and run: 
-
-`npm install`
-
-On Mac OS you also have to install grunt-cli:
-
-`(sudo) npm install -g grunt-cli`
-
-Then you can choose between three choices:
-
-1. Build all arangodb related files:
-
-  * `grunt`
-
-2. Build all arangodb related files, including libraries. This should always
-be used when we offer a new major release of arangodb.
-
-  * `grunt deploy`
-
-3. Live build arangodb related files, when a file has been changed. This task
-does not include the minifying process.
-
-  * `grunt watch`
+To build the current frontend build please use the command: `make frontend`.
+The command `make frontend_clean` will remove all available node modules and
+start a clean installation.
 
 --------------------------------------------------------------------------------
 NPM dependencies

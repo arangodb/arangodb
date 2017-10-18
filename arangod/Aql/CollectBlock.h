@@ -27,6 +27,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/AqlValue.h"
+#include "Aql/AqlValueGroup.h"
 #include "Aql/CollectNode.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
@@ -149,28 +150,29 @@ class HashedCollectBlock : public ExecutionBlock {
   /// this register is also used for counting in case WITH COUNT INTO var is
   /// used
   RegisterId _collectRegister;
+};
 
-  /// @brief hasher for a vector of AQL values
-  struct GroupKeyHash {
-    GroupKeyHash(transaction::Methods* trx, size_t num)
-        : _trx(trx), _num(num) {}
+class DistinctCollectBlock : public ExecutionBlock {
+ public:
+  DistinctCollectBlock(ExecutionEngine*, CollectNode const*);
+  ~DistinctCollectBlock();
 
-    size_t operator()(std::vector<AqlValue> const& value) const;
+  int initialize() override final;
+  
+  /// @brief initializeCursor
+  int initializeCursor(AqlItemBlock* items, size_t pos) override;
 
-    transaction::Methods* _trx;
-    size_t const _num;
-  };
+ private:
+  int getOrSkipSome(size_t atLeast, size_t atMost, bool skipping,
+                    AqlItemBlock*& result, size_t& skipped) override;
 
-  /// @brief comparator for a vector of AQL values
-  struct GroupKeyEqual {
-    explicit GroupKeyEqual(transaction::Methods* trx)
-        : _trx(trx) {}
+  void clearValues();
 
-    bool operator()(std::vector<AqlValue> const&,
-                    std::vector<AqlValue> const&) const;
-
-    transaction::Methods* _trx;
-  };
+ private:
+  /// @brief pairs, consisting of out register and in register
+  std::vector<std::pair<RegisterId, RegisterId>> _groupRegisters;
+  
+  std::unique_ptr<std::unordered_set<std::vector<AqlValue>, AqlValueGroupHash, AqlValueGroupEqual>> _seen;
 };
 
 }  // namespace arangodb::aql

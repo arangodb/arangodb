@@ -45,6 +45,9 @@ bool CollectOptions::canUseHashMethod() const {
   if (method == CollectMethod::COLLECT_METHOD_SORTED) {
     return false;
   }
+  if (method == CollectMethod::COLLECT_METHOD_DISTINCT) {
+    return false;
+  }
 
   return true;
 }
@@ -64,6 +67,9 @@ CollectOptions::CollectMethod CollectOptions::methodFromString(
   if (method == "sorted") {
     return CollectMethod::COLLECT_METHOD_SORTED;
   }
+  if (method == "distinct") {
+    return CollectMethod::COLLECT_METHOD_DISTINCT;
+  }
 
   return CollectMethod::COLLECT_METHOD_UNDEFINED;
 }
@@ -76,6 +82,9 @@ std::string CollectOptions::methodToString(
   }
   if (method == CollectMethod::COLLECT_METHOD_SORTED) {
     return std::string("sorted");
+  }
+  if (method == CollectMethod::COLLECT_METHOD_DISTINCT) {
+    return std::string("distinct");
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
