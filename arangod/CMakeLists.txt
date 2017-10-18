@@ -120,7 +120,8 @@ SET(ARANGOD_SOURCES
   Aql/ConditionFinder.cpp
   Aql/DocumentProducingBlock.cpp
   Aql/DocumentProducingNode.cpp
-  Aql/EngineInfoContainer.cpp
+  Aql/EngineInfoContainerCoordinator.cpp
+  Aql/EngineInfoContainerDBServer.cpp
   Aql/EnumerateCollectionBlock.cpp
   Aql/EnumerateListBlock.cpp
   Aql/ExecutionBlock.cpp
