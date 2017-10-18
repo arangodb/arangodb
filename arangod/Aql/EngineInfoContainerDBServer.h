@@ -110,6 +110,9 @@ class EngineInfoContainerDBServer {
 
     void addTraverserEngine(GraphNode* node, TraverserEngineShardLists&& shards);
 
+    void combineTraverserEngines(ServerID const& serverID,
+                                 arangodb::velocypack::Slice const ids);
+
    private:
 
     void injectTraverserEngines(VPackBuilder& infoBuilder) const;

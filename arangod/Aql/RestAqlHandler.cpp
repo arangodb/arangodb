@@ -377,6 +377,7 @@ bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
       return false;
     }
   }
+  answerBuilder.close(); // traverserEngines
   // Everything went well
   return true;
 }

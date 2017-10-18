@@ -33,6 +33,7 @@
 #include "Aql/Query.h"
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/TraverserEngineRegistry.h"
 #include "Graph/BaseOptions.h"
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
@@ -342,6 +343,26 @@ void EngineInfoContainerDBServer::DBServerInfo::injectTraverserEngines(
   infoBuilder.close();  // traverserEngines
 }
 
+void EngineInfoContainerDBServer::DBServerInfo::combineTraverserEngines(
+    ServerID const& serverID, VPackSlice const ids) {
+  if (ids.length() != _traverserEngineInfos.size()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+                                   "The DBServer was not able to create enough "
+                                   "traversal engines. This can happen during "
+                                   "failover. Please check; " +
+                                       serverID);
+  }
+  auto idIter = VPackArrayIterator(ids);
+  // We need to use the same order of iterating over
+  // the traverserEngineInfos to wire the correct GraphNodes
+  // to the correct engine ids
+  for (auto const& it : _traverserEngineInfos) {
+    it.first->addEngine(idIter.value().getNumber<traverser::TraverserEngineID>(),
+                        serverID);
+    idIter.next();
+  }
+}
+
 void EngineInfoContainerDBServer::DBServerInfo::addTraverserEngine(
     GraphNode* node, TraverserEngineShardLists&& shards) {
   _traverserEngineInfos.push_back(std::make_pair(node, std::move(shards)));
@@ -575,7 +596,7 @@ void EngineInfoContainerDBServer::buildEngines(
   std::unordered_map<std::string, std::string> headers;
   // Build Lookup Infos
   VPackBuilder infoBuilder;
-  for (auto const& it : dbServerMapping) {
+  for (auto& it : dbServerMapping) {
     LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Building Engine Info for "
                                             << it.first;
     infoBuilder.clear();
@@ -611,7 +632,10 @@ void EngineInfoContainerDBServer::buildEngines(
                                          it.first);
     }
 
-    for (auto const& resEntry : VPackObjectIterator(response.get("result"))) {
+    VPackSlice result = response.get("result");
+    VPackSlice snippets = result.get("snippets");
+
+    for (auto const& resEntry : VPackObjectIterator(snippets)) {
       if (!resEntry.value.isString()) {
         // TODO could not register all engines. Need to cleanup.
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
@@ -621,6 +645,20 @@ void EngineInfoContainerDBServer::buildEngines(
                                            it.first);
       }
       queryIds.emplace(resEntry.key.copyString(), resEntry.value.copyString());
+    }
+
+    VPackSlice travEngines = result.get("traverserEngines");
+    if (!travEngines.isNone()) {
+      if (!travEngines.isArray()) {
+        // TODO could not register all traversal engines. Need to cleanup.
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_CLUSTER_AQL_COMMUNICATION,
+                                       "Unable to deploy query on all required "
+                                       "servers. This can happen during "
+                                       "Failover. Please check: " +
+                                           it.first);
+      }
+
+      it.second.combineTraverserEngines(it.first, travEngines);
     }
   }
 }
