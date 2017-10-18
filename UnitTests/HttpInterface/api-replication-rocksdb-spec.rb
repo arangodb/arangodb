@@ -552,7 +552,6 @@ describe ArangoDB do
 
       after do
         ArangoDB.delete(api + "/batch/#{@batchId}", :body => "")
-        ArangoDB.put(api + "/logger-stop", :body => "")
         ArangoDB.drop_collection("UnitTestsReplication")
         ArangoDB.drop_collection("UnitTestsReplication2")
       end
@@ -1673,7 +1672,6 @@ describe ArangoDB do
 
       after do
         ArangoDB.delete(api + "/batch/#{@batchId}", :body => "")
-        ArangoDB.put(api + "/logger-stop", :body => "")
         ArangoDB.drop_collection("UnitTestsReplication", "UnitTestDB")
         ArangoDB.drop_collection("UnitTestsReplication2", "UnitTestDB")
       end

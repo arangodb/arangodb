@@ -39,15 +39,17 @@ function runSetup () {
   db._drop('UnitTestsRecovery');
   var c = db._create('UnitTestsRecovery');
   internal.wal.flush(true, true);
+  internal.wait(1, false);
 
   internal.debugSetFailAt('BreakHeaderMarker');
   for (var i = 0; i < 10; ++i) {
     c.insert({ value: i });
   }
   internal.wal.flush(true, true);
-  internal.debugClearFailAt();
-  // to make sure the WAL logfile is not going to be processed on recovery
-  internal.wait(3, false);
+  
+  internal.debugSetFailAt('LogfileManagerFlush');
+  internal.wait(5, false);
+  
   internal.debugSegfault('crashing server');
 }
 
