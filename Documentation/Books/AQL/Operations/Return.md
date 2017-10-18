@@ -193,7 +193,9 @@ returned twice:
 ]
 ```
 
-Note: the order of results is undefined for *RETURN DISTINCT*.
+Note: the order of results was undefined for *RETURN DISTINCT* until before ArangoDB 
+3.3. Starting with ArangoDB 3.3, *RETURN DISTINCT* will not change the order of the
+results it is applied on.
 
 Note: *RETURN DISTINCT* is not allowed on the top-level of a query if there is no *FOR* 
 loop preceding it.

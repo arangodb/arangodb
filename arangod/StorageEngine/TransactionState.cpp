@@ -106,6 +106,7 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
     std::string const colName = _resolver->getCollectionNameCluster(cid);
   
     AuthLevel level = exec->collectionAuthLevel(_vocbase->name(), colName);
+
     if (level == AuthLevel::NONE) {
       LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
                                              << " has collection AuthLevel::NONE";

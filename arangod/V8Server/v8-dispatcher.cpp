@@ -736,7 +736,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-
+  
   if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsNumber()) {
     TRI_V8_THROW_EXCEPTION_USAGE("createQueue(<id>, <maxWorkers>)");
   }
@@ -753,7 +753,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   std::string key = TRI_ObjectToString(args[0]);
   uint64_t maxWorkers = TRI_ObjectToUInt64(args[1], false);
-
+  
   VPackBuilder doc;
   doc.openObject();
   doc.add(StaticStrings::KeyString, VPackValue(key));
@@ -793,7 +793,7 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (vocbase == nullptr || vocbase->isDropped()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
-
+  
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("deleteQueue(<id>)");
   }
@@ -821,7 +821,7 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-
+  
   TRI_V8_RETURN(v8::Boolean::New(isolate, result.successful()));
   TRI_V8_TRY_CATCH_END
 }
