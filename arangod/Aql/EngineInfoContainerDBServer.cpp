@@ -276,7 +276,8 @@ void EngineInfoContainerDBServer::DBServerInfo::buildMessage(
   infoBuilder.close();  // Object
 }
 
-void EngineInfoContainerDBServer::DBServerInfo::injectTraverserEngines(VPackBuilder& infoBuilder) const {
+void EngineInfoContainerDBServer::DBServerInfo::injectTraverserEngines(
+    VPackBuilder& infoBuilder) const {
   if (_traverserEngineInfos.empty()) {
     return;
   }
@@ -338,7 +339,7 @@ void EngineInfoContainerDBServer::DBServerInfo::injectTraverserEngines(VPackBuil
     infoBuilder.close();  // base
   }
 
-  infoBuilder.close(); // traverserEngines
+  infoBuilder.close();  // traverserEngines
 }
 
 void EngineInfoContainerDBServer::DBServerInfo::addTraverserEngine(
@@ -579,6 +580,8 @@ void EngineInfoContainerDBServer::buildEngines(
                                             << it.first;
     infoBuilder.clear();
     it.second.buildMessage(query, infoBuilder);
+    LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Sending the Engine info: "
+                                            << infoBuilder.toJson();
 
     // Now we send to DBServers. We expect a body with {id => engineId} plus 0
     // => trxEngine
