@@ -37,6 +37,7 @@
 #include "Utils/SingleCollectionTransaction.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/ExecutionPlan.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
 #include "IResearch/IResearchFilterFactory.h"
@@ -373,19 +374,48 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   //
   // FOR x IN collection_3
   //   FOR d IN VIEW testView
-  // FILTER d.seq == x.seq
+  //   FILTER d.seq == x.seq
   // RETURN d;
-  {
-    auto queryResult = executeQuery(
-      vocbase,
-      "FOR x IN collection_3 FOR d IN VIEW testView FILTER d.seq == x.seq RETURN d"
-    );
-    REQUIRE(TRI_ERROR_NO_ERROR != queryResult.code);
-  }
+//  {
+//    std::vector<arangodb::velocypack::Slice> expectedDocs {
+//      arangodb::velocypack::Slice(insertedDocsView[0].vpack()),
+//      arangodb::velocypack::Slice(insertedDocsView[1].vpack()),
+//      arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
+//      arangodb::velocypack::Slice(insertedDocsView[3].vpack()),
+//      arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+//      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+//      arangodb::velocypack::Slice(insertedDocsView[6].vpack()),
+//      arangodb::velocypack::Slice(insertedDocsView[7].vpack())
+//    };
+//
+//    auto queryResult = executeQuery(
+//      vocbase,
+//      "FOR x IN collection_3 FOR d IN VIEW testView FILTER d.seq == x.seq RETURN d"
+//    );
+//    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+//
+//    auto result = queryResult.result->slice();
+//    CHECK(result.isArray());
+//
+//    arangodb::velocypack::ArrayIterator resultIt(result);
+//    REQUIRE(expectedDocs.size() == resultIt.size());
+//
+//    // Check documents
+//    auto expectedDoc = expectedDocs.begin();
+//    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+//      auto const actualDoc = resultIt.value();
+//      auto const resolved = actualDoc.resolveExternals();
+//
+//      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+//    }
+//    CHECK(expectedDoc == expectedDocs.end());
+//  }
 
+  // FIXME: add checks for proper execution plan!!!
+  // Note: unable to push condition to the `View` now
   // FOR d IN VIEW testView
   //   FOR x IN collection_3
-  // FILTER d.seq == x.seq
+  //   FILTER d.seq == x.seq
   // RETURN d;
   {
     std::vector<arangodb::velocypack::Slice> expectedDocs {
@@ -421,6 +451,193 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     }
     CHECK(expectedDoc == expectedDocs.end());
   }
+
+  // FIXME: add checks for proper execution plan!!!
+  // Note: unable to push condition to the `View` now
+  // FOR d IN VIEW testView
+  //   FOR x IN collection_3
+  //   FILTER d.seq == x.seq && d.name == 'B'
+  // RETURN d;
+  {
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsView[1].vpack())
+    };
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FOR x IN collection_3 FILTER d.seq == x.seq && d.name == 'B' RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // FIXME: add checks for proper execution plan!!!
+  // Note: unable to push condition to the `View` now
+  // FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 RETURN c)
+  //   FOR x IN collection_3
+  //   FILTER d.seq == x.seq
+  // RETURN d;
+  {
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[6].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[7].vpack())
+    };
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // FIXME: add checks for proper execution plan!!!
+  // Note: unable to push condition to the `View` now
+  // FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c)
+  //   FOR x IN collection_3
+  //   FILTER d.seq == x.seq
+  // RETURN d;
+  {
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsView[7].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[6].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[4].vpack())
+    };
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // FIXME: add checks for proper execution plan!!!
+  // Note: unable to push condition to the `View` now
+  // FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c)
+  //   FOR x IN collection_3
+  //   FILTER d.seq == x.seq
+  // LIMIT 2
+  // RETURN d;
+  {
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsView[7].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[6].vpack()),
+    };
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq LIMIT 2 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // FIXME: add checks for proper execution plan!!!
+  // Note: unable to push condition to the `View` now
+  // FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC LIMIT 3 RETURN c)
+  //   FOR x IN collection_3
+  //   FILTER d.seq == x.seq
+  // RETURN d;
+  {
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsView[7].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[6].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[5].vpack())
+    };
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC LIMIT 5 RETURN c) FOR x IN collection_3 FILTER d.seq == x.seq RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // FIXME
+  // FOR d IN (FOR c IN VIEW testView FILTER c.name >= 'E' && c.seq < 10 SORT TFIDF(c) ASC, c.seq DESC LIMIT 3 RETURN c)
+  //   FOR x IN collection_3
+  //   FILTER d.seq == x.seq
+  // SORT TFIDF(d)
+  // RETURN d;
 }
 
 // -----------------------------------------------------------------------------

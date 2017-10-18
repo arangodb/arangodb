@@ -90,8 +90,8 @@ class ReverseAllIteratorMock final : public arangodb::IndexIterator {
   }
 
   virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) override {
-    while (_end && limit) {
-      callback(arangodb::LocalDocumentId(--_end));
+    while (_end && limit) { // `_end` always > 0
+      callback(arangodb::LocalDocumentId(_end--));
       --limit;
     }
 
@@ -124,7 +124,7 @@ class AllIteratorMock final : public arangodb::IndexIterator {
 
   virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) override {
     while (_begin < _end && limit) {
-      callback(arangodb::LocalDocumentId(_begin++));
+      callback(arangodb::LocalDocumentId(++_begin)); // always > 0
       --limit;
     }
 
