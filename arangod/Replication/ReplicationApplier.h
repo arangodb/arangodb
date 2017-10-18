@@ -129,6 +129,8 @@ class ReplicationApplier {
   /// @brief register an applier error
   void setError(arangodb::Result const&);
   
+  Result lastError() const;
+  
   /// @brief set the progress
   void setProgress(char const* msg);
   void setProgress(std::string const& msg);

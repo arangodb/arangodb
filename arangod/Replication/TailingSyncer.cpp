@@ -959,6 +959,7 @@ retry:
       }
       
       if (!_configuration._autoResync) {
+        LOG_TOPIC(INFO, Logger::REPLICATION) << "Auto resync disabled, applier will stop";
         return res;
       }
       

@@ -559,6 +559,8 @@ void HeartbeatThread::runSingleServer() {
         
         ReplicationApplierConfiguration config = applier->configuration();
         config._endpoint = endpoint;
+        config._autoResync = true;
+        config._autoResyncRetries = 3;
         if (config._jwt.empty()) {
           config._jwt = auth->jwtToken();
         }
@@ -572,7 +574,7 @@ void HeartbeatThread::runSingleServer() {
         GlobalInitialSyncer syncer(config);
         // sync incrementally on failover to other follower,
         // but not initially
-        Result r = syncer.run(true);
+        Result r = syncer.run(false);
         if (r.fail()) {
           LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Initial sync from leader "
           << "failed: " << r.errorMessage();
@@ -584,11 +586,25 @@ void HeartbeatThread::runSingleServer() {
 
         applier->reconfigure(config);
         applier->start(lastLogTick, true, barrierId);
-        
       } else if (!applier->isRunning()) {
-        // restart applier if possible
-        LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Restarting stopped applier...";
-        applier->start(0, false, 0);
+        
+        // try to restart the applier
+        if (applier->hasState()) {
+          Result error = applier->lastError();
+          if (error.is(TRI_ERROR_REPLICATION_APPLIER_STOPPED)) {
+            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "User stopped applier, please restart";
+            continue;
+          } else if (error.isNot(TRI_ERROR_REPLICATION_NO_START_TICK) ||
+                     error.isNot(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
+            // restart applier if possible
+            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Restarting stopped applier...";
+            applier->start(0, false, 0);
+            continue; // check again next time
+          }
+        }
+      
+        // complete resync next round
+        applier->forget();
       }
             
     } catch (std::exception const& e) {

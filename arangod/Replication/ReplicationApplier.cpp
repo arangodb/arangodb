@@ -432,6 +432,11 @@ void ReplicationApplier::setError(arangodb::Result const& r) {
   setErrorNoLock(r);
 }
 
+Result ReplicationApplier::lastError() const {
+  WRITE_LOCKER_EVENTUAL(writeLocker, _statusLock);
+  return Result(_state._lastError.code, _state._lastError.message);
+}
+
 /// @brief set the progress 
 void ReplicationApplier::setProgress(char const* msg) {
   return setProgress(std::string(msg));

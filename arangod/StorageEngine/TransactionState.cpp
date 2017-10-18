@@ -102,7 +102,8 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   LOG_TRX(this, nestingLevel) << "adding collection " << cid;
 
   ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
+  if (exec != nullptr && !exec->isSuperuser()) {
+    // no need to lookup name as superuser, cluster_sync breaks otherwise
     std::string const colName = _resolver->getCollectionNameCluster(cid);
   
     AuthLevel level = exec->collectionAuthLevel(_vocbase->name(), colName);
