@@ -138,7 +138,7 @@ void registerScorers(arangodb::aql::AqlFunctionFeature& functions) {
       std::move(upperName),
       ".|+", // positional arguments (attribute [, <scorer-specific properties>...])
       true, // deterministic
-      true, // can throw
+      false, // can't throw
       true, // can be run on server
       true, // can pass arguments by reference
       &noop // function implementation (use function name as placeholder)
