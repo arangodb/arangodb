@@ -831,7 +831,11 @@ int MMFilesLogfileManager::waitForCollectorQueue(TRI_voc_cid_t cid, double timeo
 // this is useful to ensure that any open writes up to this point have made
 // it into a logfile
 int MMFilesLogfileManager::flush(bool waitForSync, bool waitForCollector,
-                          bool writeShutdownFile) {
+                                 bool writeShutdownFile) {
+  TRI_IF_FAILURE("LogfileManagerFlush") {
+    return TRI_ERROR_NO_ERROR;
+  }
+  
   TRI_ASSERT(!_inRecovery);
 
   MMFilesWalLogfile::IdType lastOpenLogfileId;
