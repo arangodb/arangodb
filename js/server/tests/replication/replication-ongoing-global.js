@@ -787,6 +787,8 @@ function ReplicationOtherDBSuite() {
 
     // Section - Slave
     connectToSlave();
+    
+    assertTrue(replication.globalApplier.state().state.running);
 
     // Now do the evil stuff: drop the database that is replicating right now.
     db._useDatabase("_system");
@@ -848,18 +850,34 @@ function ReplicationOtherDBSuite() {
 
     // Now should still have empty collection
     assertEqual(0, collectionCount(cn));
+    
+    assertFalse(replication.globalApplier.state().state.running);
   };
 
   suite.testDropDatabaseOnMasterDuringReplication = function() {
+    var waitUntil = function(cb) {
+      var tries = 0;
+      while (tries++ < 60 * 2) {
+        if (cb) {
+          return;
+        }
+        internal.wait(0.5, false);
+      }
+      assertFalse(true, "required condition not satisified: " + String(cb));
+    };
+
     setupReplication();
 
     // Section - Master
     // Now do the evil stuff: drop the database that is replicating from right now.
     connectToMaster();
     db._useDatabase("_system");
+    
+    waitUntil(function() { return (db._databases().indexOf(dbName) !== -1); });
 
     // This shall not fail.
     db._dropDatabase(dbName);
+    waitUntil(function() { return (db._databases().indexOf(dbName) === -1); });
 
     // The DB should be gone and the server should be running.
     let dbs = db._databases();
@@ -867,16 +885,20 @@ function ReplicationOtherDBSuite() {
 
     // Now recreate a new database with this name
     db._createDatabase(dbName);
+    waitUntil(function() { return (db._databases().indexOf(dbName) !== -1); });
+    
     db._useDatabase(dbName);
-
     db._createDocumentCollection(cn);
     db._collection(cn).save(docs);
 
     // Section - Slave
     connectToSlave();
+    // database now present on slave
 
     // Now test if the Slave did replicate the new database directly...
     assertEqual(50, collectionCount(cn), "The slave inserted the new collection data into the old one, it skipped the drop.");
+    
+    assertTrue(replication.globalApplier.state().state.running);
   };
 
   return suite;
