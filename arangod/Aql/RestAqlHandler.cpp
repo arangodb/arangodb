@@ -56,8 +56,6 @@ RestAqlHandler::RestAqlHandler(GeneralRequest* request,
                                GeneralResponse* response,
                                QueryRegistry* queryRegistry)
     : RestVocbaseBaseHandler(request, response),
-      _context(static_cast<VocbaseContext*>(request->requestContext())),
-      _vocbase(_context->vocbase()),
       _queryRegistry(queryRegistry),
       _qId(0) {
   TRI_ASSERT(_vocbase != nullptr);
@@ -140,9 +138,14 @@ void RestAqlHandler::createQueryFromVelocyPack() {
     answerBody.add("queryId",
                    VPackValue(arangodb::basics::StringUtils::itoa(_qId)));
     answerBody.add("ttl", VPackValue(ttl));
+  } catch (arangodb::basics::Exception const& ex) {
+    generateError(rest::ResponseCode::BAD, ex.code());
+    return;
+  } catch (std::exception const& ex) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_FAILED, ex.what());
+    return;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not keep query in registry";
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
 
@@ -208,8 +211,12 @@ void RestAqlHandler::parseQuery() {
     }
     sendResponse(rest::ResponseCode::OK, answerBuilder.slice(),
                  transactionContext.get());
+  } catch (basics::Exception const& ex) {
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_FAILED, ex.what());
   } catch (...) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_OUT_OF_MEMORY,
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY,
                   "out of memory");
   }
 }
@@ -268,8 +275,12 @@ void RestAqlHandler::explainQuery() {
     }
     sendResponse(rest::ResponseCode::OK, answerBuilder.slice(),
                  query->trx()->transactionContext().get());
+  } catch (basics::Exception const& ex) {
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_FAILED, ex.what());
   } catch (...) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_OUT_OF_MEMORY,
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY,
                   "out of memory");
   }
 }
@@ -354,9 +365,15 @@ void RestAqlHandler::createQueryFromString() {
     answerBody.add("queryId",
                    VPackValue(arangodb::basics::StringUtils::itoa(_qId)));
     answerBody.add("ttl", VPackValue(ttl));
+  } catch (basics::Exception const& ex) {
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
+    return;
+  } catch (std::exception const& ex) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_FAILED, ex.what());
+    return;
   } catch (...) {
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not keep query in registry";
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY,
+                  "out of memory");
     return;
   }
 
@@ -706,6 +723,11 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
 
           try {
             res = query->trx()->lockCollections();
+          } catch (std::exception const& ex) {
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR,
+                          std::string("lock lead to an exception: ") + ex.what());
+            return;
           } catch (...) {
             generateError(rest::ResponseCode::SERVER_ERROR,
                           TRI_ERROR_HTTP_SERVER_ERROR,
@@ -763,6 +785,11 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             }
             skipped = block->skipSomeForShard(atLeast, atMost, shardId);
           }
+        } catch (std::exception const& ex) {
+          generateError(rest::ResponseCode::SERVER_ERROR,
+                        TRI_ERROR_HTTP_SERVER_ERROR,
+                        std::string("skipSome lead to an exception: ") + ex.what());
+          return;
         } catch (...) {
           generateError(rest::ResponseCode::SERVER_ERROR,
                         TRI_ERROR_HTTP_SERVER_ERROR,
@@ -790,6 +817,11 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           }
           answerBuilder.add("exhausted", VPackValue(exhausted));
           answerBuilder.add("error", VPackValue(false));
+        } catch (std::exception const& ex) {
+          generateError(rest::ResponseCode::SERVER_ERROR,
+                        TRI_ERROR_HTTP_SERVER_ERROR,
+                        std::string("skip lead to an exception: ") + ex.what());
+          return;
         } catch (...) {
           generateError(rest::ResponseCode::SERVER_ERROR,
                         TRI_ERROR_HTTP_SERVER_ERROR,
@@ -801,7 +833,10 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         try {
           res = query->engine()->initialize();
         } catch (arangodb::basics::Exception const& ex) {
-          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), "initialize lead to an exception: " + ex.message());
+          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), std::string("initialize lead to an exception: ") + ex.what());
+          return;
+        } catch (std::exception const& ex) {
+          generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, std::string("initialize lead to an exception: ") + ex.what());
           return;
         } catch (...) {
           generateError(rest::ResponseCode::SERVER_ERROR,
@@ -825,7 +860,10 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             res = query->engine()->initializeCursor(items.get(), pos);
           }
         } catch (arangodb::basics::Exception const& ex) {
-          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), "initializeCursor lead to an exception: " + ex.message());
+          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), std::string("initializeCursor lead to an exception: ") + ex.what());
+          return;
+        } catch (std::exception const& ex) {
+          generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, std::string("initializeCursor lead to an exception: ") + ex.what());
           return;
         } catch (...) {
           generateError(rest::ResponseCode::SERVER_ERROR,
@@ -857,7 +895,10 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           _queryRegistry->destroy(_vocbase, _qId, errorCode);
           _qId = 0;
         } catch (arangodb::basics::Exception const& ex) {
-          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), "shutdown lead to an exception: " + ex.message());
+          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), std::string("shutdown lead to an exception: ") + ex.what());
+          return;
+        } catch (std::exception const& ex) {
+          generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, std::string("shutdown lead to an exception: ") + ex.what());
           return;
         } catch (...) {
           generateError(rest::ResponseCode::SERVER_ERROR,
@@ -875,11 +916,14 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
     }
     sendResponse(rest::ResponseCode::OK, answerBuilder.slice(),
                  transactionContext.get());
-  } catch (arangodb::basics::Exception const& e) {
-    generateError(rest::ResponseCode::BAD, e.code());
+  } catch (arangodb::basics::Exception const& ex) {
+    generateError(rest::ResponseCode::BAD, ex.code());
+    return;
+  } catch (std::exception const& ex) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_FAILED, ex.what());
     return;
   } catch (...) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_OUT_OF_MEMORY);
+    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
 }

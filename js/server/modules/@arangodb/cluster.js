@@ -545,7 +545,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
     let startTime = new Date();
     sy = rep.syncCollection(shard,
       { endpoint: ep, incremental: true, keepBarrier: true,
-        useCollectionId: false, leaderId: leader, skipCreateDrop: true });
+        leaderId: leader, skipCreateDrop: true });
     let endTime = new Date();
     let longSync = false;
     if (endTime - startTime > 5000) {
@@ -800,6 +800,11 @@ function executePlanForCollections(plannedCollections) {
                 let save = {id: collectionInfo.id, name: collectionInfo.name};
                 delete collectionInfo.id;     // must not
                 delete collectionInfo.name;
+                if (collectionInfo.hasOwnProperty('globallyUniqueId')) {
+                  console.warn('unexpected globallyUniqueId in %s',
+                    JSON.stringify(collectionInfo));
+                }
+                delete collectionInfo.globallyUniqueId;
                 try {
                   if (collectionInfo.type === ArangoCollection.TYPE_EDGE) {
                     db._createEdgeCollection(shardName, collectionInfo);
@@ -1167,7 +1172,7 @@ function updateCurrentForCollections(localErrors, plannedCollections,
                 if (currentCollections[database][collection].hasOwnProperty(shard)) {
                   let cur = currentCollections[database][collection][shard];
                   if (!localCollections.hasOwnProperty(shard) &&
-                      cur.servers[0] === ourselves &&
+                      cur.servers && cur.servers[0] === ourselves &&
                       !shardMap.hasOwnProperty(shard)) {
                     Object.assign(trx, makeDropCurrentEntryCollection(database, collection, shard));
                   }
@@ -1371,6 +1376,7 @@ function executePlanForDatabases(plannedDatabases) {
       console.topic('heartbeat=debug', "dropping local database '%s'", name);
 
       // Do we have to stop a replication applier first?
+      // Note that the secondary role no longer exists outside the schmutz -Simon 
       if (ArangoServerState.role() === 'SECONDARY') {
         try {
           db._useDatabase(name);
@@ -1492,8 +1498,7 @@ function migrateAnyServer(plan, current) {
 // /////////////////////////////////////////////////////////////////////////////
 // / @brief make sure that replication is set up for all databases
 // /////////////////////////////////////////////////////////////////////////////
-
-function setupReplication () {
+function setupReplication () {// simon: is not used currently
   console.topic('heartbeat=debug', 'Setting up replication...');
 
   var db = require('internal').db;
@@ -1533,6 +1538,7 @@ function setupReplication () {
 
 // /////////////////////////////////////////////////////////////////////////////
 // / @brief role change from secondary to primary
+// / Note that the secondary role no longer exists outside the schmutz -Simon 
 // /////////////////////////////////////////////////////////////////////////////
 
 function secondaryToPrimary () {
@@ -1568,6 +1574,7 @@ function secondaryToPrimary () {
 // /////////////////////////////////////////////////////////////////////////////
 
 function primaryToSecondary () {
+  // Note that the secondary role no longer exists outside the schmutz -Simon 
   console.topic('heartbeat=info', 'Switching role from primary to secondary...');
 }
 
@@ -1587,7 +1594,8 @@ function handleChanges (plan, current) {
       // Ooops! We do not seem to be a primary any more!
       changed = ArangoServerState.redetermineRole();
     }
-  } else { // role === "SECONDARY"
+  } /*else { // role === "SECONDARY"
+    // Note that the secondary role no longer exists outside the schmutz -Simon 
     if (plan.DBServers[myId]) {
       changed = ArangoServerState.redetermineRole();
       if (!changed) {
@@ -1603,16 +1611,17 @@ function handleChanges (plan, current) {
           break;
         }
       }
-      if (found !== ArangoServerState.idOfPrimary()) {
+      if (found !== ArangoServerState.idOfPrimary()) { // this is always "" now
         // Note this includes the case that we are not found at all!
         changed = ArangoServerState.redetermineRole();
       }
     }
-  }
+  }*/
   var oldRole = role;
   if (changed) {
     role = ArangoServerState.role();
     console.topic('heartbeat=info', 'Our role has changed to ' + role);
+    // Note that the secondary role no longer exists outside the schmutz -Simon 
     if (oldRole === 'SECONDARY' && role === 'PRIMARY') {
       secondaryToPrimary();
     } else if (oldRole === 'PRIMARY' && role === 'SECONDARY') {

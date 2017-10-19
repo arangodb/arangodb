@@ -39,186 +39,148 @@ var internal = require("internal");
 var masterEndpoint = arango.getEndpoint();
 var slaveEndpoint = ARGUMENTS[0];
 
+const cn = "UnitTestsReplication";
+const cn2 = "UnitTestsReplication2";
+
+const connectToMaster = function() {
+  arango.reconnect(masterEndpoint, db._name(), "root", "");
+  db._flushCache();
+};
+
+const connectToSlave = function() {
+  arango.reconnect(slaveEndpoint, db._name(), "root", "");
+  db._flushCache();
+};
+
+const collectionChecksum = function(name) {
+  var c = db._collection(name).checksum(true, true);
+  return c.checksum;
+};
+
+const collectionCount = function(name) {
+  return db._collection(name).count();
+};
+
+const compareTicks = function(l, r) {
+  var i;
+  if (l === null) {
+    l = "0";
+  }
+  if (r === null) {
+    r = "0";
+  }
+  if (l.length !== r.length) {
+    return l.length - r.length < 0 ? -1 : 1;
+  }
+
+  // length is equal
+  for (i = 0; i < l.length; ++i) {
+    if (l[i] !== r[i]) {
+      return l[i] < r[i] ? -1 : 1;
+    }
+  }
+
+  return 0;
+};
+
+const compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal, applierConfiguration) {
+  var state = {};
+
+  db._flushCache();
+  masterFunc(state);
+
+  connectToSlave();
+  replication.applier.stop();
+  replication.applier.forget();
+
+  while (replication.applier.state().state.running) {
+    internal.wait(0.1, false);
+  }
+
+  var syncResult = replication.sync({
+    endpoint: masterEndpoint,
+    username: "root",
+    password: "",
+    verbose: true,
+    includeSystem: false,
+    keepBarrier: false
+  });
+
+  assertTrue(syncResult.hasOwnProperty('lastLogTick'));
+
+  connectToMaster();
+  masterFunc2(state);
+
+  // use lastLogTick as of now
+  state.lastLogTick = replication.logger.state().state.lastLogTick;
+
+  applierConfiguration = applierConfiguration || {};
+  applierConfiguration.endpoint = masterEndpoint;
+  applierConfiguration.username = "root";
+  applierConfiguration.password = "";
+
+  if (!applierConfiguration.hasOwnProperty('chunkSize')) {
+    applierConfiguration.chunkSize = 16384;
+  }
+
+  connectToSlave();
+
+  replication.applier.properties(applierConfiguration);
+  replication.applier.start(syncResult.lastLogTick);
+
+  var printed = false, handled = false;
+
+  while (true) {
+    if (!handled) {
+      var r = slaveFuncOngoing(state);
+      if (r === "wait") {
+        // special return code that tells us to hang on
+        internal.wait(0.5, false);
+        continue;
+      }
+
+      handled = true;
+    }
+
+    var slaveState = replication.applier.state();
+
+    if (slaveState.state.lastError.errorNum > 0) {
+      console.log("slave has errored:", JSON.stringify(slaveState.state.lastError));
+      break;
+    }
+
+    if (!slaveState.state.running) {
+      console.log("slave is not running");
+      break;
+    }
+
+    if (compareTicks(slaveState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
+        compareTicks(slaveState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) { // ||
+     //          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) {
+      console.log("slave has caught up. state.lastLogTick:", state.lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick);
+      break;
+    }
+      
+    if (!printed) {
+      console.log("waiting for slave to catch up");
+      printed = true;
+    }
+    internal.wait(0.5, false);
+  }
+
+  db._flushCache();
+  slaveFuncFinal(state);
+};
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
+/// @brief Base Test Config. Identitical part for _system and other DB
 ////////////////////////////////////////////////////////////////////////////////
 
-function ReplicationSuite() {
+function BaseTestConfig() {
   'use strict';
-  var cn = "UnitTestsReplication";
-  var cn2 = "UnitTestsReplication2";
-
-  var connectToMaster = function() {
-    arango.reconnect(masterEndpoint, db._name(), "root", "");
-    db._flushCache();
-  };
-
-  var connectToSlave = function() {
-    arango.reconnect(slaveEndpoint, db._name(), "root", "");
-    db._flushCache();
-  };
-
-  var collectionChecksum = function(name) {
-    var c = db._collection(name).checksum(true, true);
-    return c.checksum;
-  };
-
-  var collectionCount = function(name) {
-    return db._collection(name).count();
-  };
-
-  var compareTicks = function(l, r) {
-    var i;
-    if (l === null) {
-      l = "0";
-    }
-    if (r === null) {
-      r = "0";
-    }
-    if (l.length !== r.length) {
-      return l.length - r.length < 0 ? -1 : 1;
-    }
-
-    // length is equal
-    for (i = 0; i < l.length; ++i) {
-      if (l[i] !== r[i]) {
-        return l[i] < r[i] ? -1 : 1;
-      }
-    }
-
-    return 0;
-  };
-
-  var compare = function(masterFunc, masterFunc2, slaveFuncOngoing, slaveFuncFinal, applierConfiguration) {
-    var state = {};
-
-    db._flushCache();
-    masterFunc(state);
-
-    connectToSlave();
-    replication.applier.stop();
-    replication.applier.forget();
-
-    while (replication.applier.state().state.running) {
-      internal.wait(0.1, false);
-    }
-
-    var syncResult = replication.sync({
-      endpoint: masterEndpoint,
-      username: "root",
-      password: "",
-      verbose: true,
-      includeSystem: false,
-      keepBarrier: false
-    });
-
-    assertTrue(syncResult.hasOwnProperty('lastLogTick'));
-
-    connectToMaster();
-    masterFunc2(state);
-
-    // use lastLogTick as of now
-    state.lastLogTick = replication.logger.state().state.lastLogTick;
-
-    applierConfiguration = applierConfiguration || {};
-    applierConfiguration.endpoint = masterEndpoint;
-    applierConfiguration.username = "root";
-    applierConfiguration.password = "";
-
-    if (!applierConfiguration.hasOwnProperty('chunkSize')) {
-      applierConfiguration.chunkSize = 16384;
-    }
-
-    connectToSlave();
-
-    replication.applier.properties(applierConfiguration);
-    replication.applier.start(syncResult.lastLogTick);
-
-    var printed = false, handled = false;
-
-    while (true) {
-      if (!handled) {
-        var r = slaveFuncOngoing(state);
-        if (r === "wait") {
-          // special return code that tells us to hang on
-          internal.wait(0.5, false);
-          continue;
-        }
-
-        handled = true;
-      }
-
-      var slaveState = replication.applier.state();
-
-      if (slaveState.state.lastError.errorNum > 0) {
-        console.log("slave has errored:", JSON.stringify(slaveState.state.lastError));
-        break;
-      }
-
-      if (!slaveState.state.running) {
-        console.log("slave is not running");
-        break;
-      }
-
-      if (compareTicks(slaveState.state.lastAppliedContinuousTick, state.lastLogTick) >= 0 ||
-          compareTicks(slaveState.state.lastProcessedContinuousTick, state.lastLogTick) >= 0) { // ||
-       //          compareTicks(slaveState.state.lastAvailableContinuousTick, syncResult.lastLogTick) > 0) {
-        console.log("slave has caught up. state.lastLogTick:", state.lastLogTick, "slaveState.lastAppliedContinuousTick:", slaveState.state.lastAppliedContinuousTick, "slaveState.lastProcessedContinuousTick:", slaveState.state.lastProcessedContinuousTick);
-        break;
-      }
-        
-      if (!printed) {
-        console.log("waiting for slave to catch up");
-        printed = true;
-      }
-      internal.wait(0.5, false);
-    }
-
-    db._flushCache();
-    slaveFuncFinal(state);
-  };
 
   return {
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
-
-    setUp: function() {
-      connectToSlave();
-      try {
-        replication.applier.stop();
-        replication.applier.forget();
-      }
-      catch (err) {
-      }
-
-      connectToMaster();
-
-      db._drop(cn);
-      db._drop(cn2);
-      db._drop(cn + "Renamed");
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
-
-    tearDown: function() {
-      connectToMaster();
-
-      db._drop(cn);
-      db._drop(cn2);
-
-      connectToSlave();
-      replication.applier.stop();
-      replication.applier.forget();
-
-      db._drop(cn);
-      db._drop(cn2);
-      db._drop(cn + "Renamed");
-    },
-    
+   
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test collection creation
     ////////////////////////////////////////////////////////////////////////////////
@@ -451,16 +413,13 @@ function ReplicationSuite() {
           replication.applier.stop();
           assertFalse(replication.applier.state().state.running);
 
-          internal.wait(0.5, false);
           replication.applier.start();
-          internal.wait(0.5, false);
           assertTrue(replication.applier.state().state.running);
 
           return true;
         },
 
         function(state) {
-          internal.wait(3, false);
           assertEqual(state.count, collectionCount(cn));
           assertEqual(state.checksum, collectionChecksum(cn));
         }
@@ -636,11 +595,295 @@ function ReplicationSuite() {
   };
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for _system
+////////////////////////////////////////////////////////////////////////////////
+
+function ReplicationSuite() {
+  'use strict';
+  let suite = BaseTestConfig();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief set up
+  ////////////////////////////////////////////////////////////////////////////////
+
+  suite.setUp = function() {
+    connectToSlave();
+    try {
+      replication.applier.stop();
+      replication.applier.forget();
+    }
+    catch (err) {
+    }
+
+    connectToMaster();
+
+    db._drop(cn);
+    db._drop(cn2);
+    db._drop(cn + "Renamed");
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief tear down
+  ////////////////////////////////////////////////////////////////////////////////
+
+  suite.tearDown = function() {
+    connectToMaster();
+
+    db._drop(cn);
+    db._drop(cn2);
+
+    connectToSlave();
+    replication.applier.stop();
+    replication.applier.forget();
+
+    db._drop(cn);
+    db._drop(cn2);
+    db._drop(cn + "Renamed");
+  };
+
+  return suite;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for other database
+////////////////////////////////////////////////////////////////////////////////
+
+function ReplicationOtherDBSuite() {
+  'use strict';
+  let suite = BaseTestConfig();
+  const dbName = "UnitTestDB";
+
+  // Setup documents to be stored on the master.
+
+  let docs = [];
+  for (let i = 0; i < 50; ++i) {
+    docs.push({value: i});
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief set up
+  ////////////////////////////////////////////////////////////////////////////////
+
+  suite.setUp = function() {
+    db._useDatabase("_system");
+    connectToSlave();
+    try {
+      replication.applier.stop();
+      replication.applier.forget();
+    } catch (err) {
+    }
+
+    try {
+      db._dropDatabase(dbName);
+    } catch (e) {
+    }
+    
+    db._createDatabase(dbName);
+
+    connectToMaster();
+
+    try {
+      db._dropDatabase(dbName);
+    } catch (e) {
+    }
+    db._createDatabase(dbName);
+    db._useDatabase(dbName);
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief tear down
+  ////////////////////////////////////////////////////////////////////////////////
+
+  suite.tearDown = function() {
+    db._useDatabase("_system");
+
+    connectToSlave();
+    try {
+      db._useDatabase(dbName);
+
+      replication.applier.stop();
+      replication.applier.forget();
+    } catch (e) {
+    }
+    
+    db._useDatabase("_system");
+    try {
+      db._dropDatabase(dbName);
+    } catch (e) {
+    }
+
+    connectToMaster();
+
+    db._useDatabase("_system");
+    try {
+      db._dropDatabase(dbName);
+    } catch (e) {
+    }
+
+  };
+
+  // Shared function that sets up replication
+  // of the collection and inserts 50 documents.
+  const setupReplication = function() {
+    // Section - Master
+    connectToMaster();
+
+    // Create the collection
+    db._flushCache();
+    db._create(cn);
+
+    // Section - Follower
+    connectToSlave();
+
+    // Setup Replication
+    replication.applier.stop();
+    replication.applier.forget();
+
+    while (replication.applier.state().state.running) {
+      internal.wait(0.1, false);
+    }
+
+    let config = {
+      endpoint: masterEndpoint,
+      username: "root",
+      password: "",
+      verbose: true,
+      includeSystem: false
+    };
+
+    replication.setupReplication(config);
+
+    // Section - Master
+    connectToMaster();
+    // Insert some documents
+    db._collection(cn).save(docs);
+    // Flush wal to trigger replication
+    internal.wal.flush(true, true);
+    internal.wait(6, false);
+    // Use counter as indicator
+    let count = collectionCount(cn);
+    assertEqual(50, count);
+
+    // Section - Slave
+    connectToSlave();
+
+    // Give it some time to sync
+    internal.wait(6, false);
+    // Now we should have the same amount of documents
+    assertEqual(count, collectionCount(cn));
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief test dropping a database on slave while replication is ongoing
+  ////////////////////////////////////////////////////////////////////////////////
+
+  suite.testDropDatabaseOnSlaveDuringReplication = function() {
+    setupReplication();
+
+    // Section - Slave
+    connectToSlave();
+
+    // Now do the evil stuff: drop the database that is replicating right now.
+    db._useDatabase("_system");
+
+    // This shall not fail.
+    db._dropDatabase(dbName);
+
+    // Section - Master
+    connectToMaster();
+
+    // Just write some more
+    db._useDatabase(dbName);
+    db._collection(cn).save(docs);
+    internal.wal.flush(true, true);
+    internal.wait(6, false);
+
+    db._useDatabase("_system");
+
+    // Section - Slave
+    connectToSlave();
+
+    // The DB should be gone and the server should be running.
+    let dbs = db._databases();
+    assertEqual(-1, dbs.indexOf(dbName));
+
+    // We can setup everything here without problems.
+    try {
+      db._createDatabase(dbName);
+    } catch (e) {
+      assertFalse(true, "Could not recreate database on slave: " + e);
+    }
+
+    db._useDatabase(dbName);
+
+    try {
+      db._create(cn);
+    } catch (e) {
+      assertFalse(true, "Could not recreate collection on slave: " + e);
+    }
+
+    // Collection should be empty
+    assertEqual(0, collectionCount(cn));
+
+    // now test if the replication is actually 
+    // switched off
+ 
+    // Section - Master
+    connectToMaster();
+    // Insert some documents
+    db._collection(cn).save(docs);
+    // Flush wal to trigger replication
+    internal.wal.flush(true, true);
+
+    // Section - Slave
+    connectToSlave();
+
+    // Give it some time to sync (eventually, should not do anything...)
+    internal.wait(6, false);
+
+    // Now should still have empty collection
+    assertEqual(0, collectionCount(cn));
+  };
+
+  suite.testDropDatabaseOnMasterDuringReplication = function() {
+    setupReplication();
+
+    // Section - Master
+    // Now do the evil stuff: drop the database that is replicating from right now.
+    connectToMaster();
+    db._useDatabase("_system");
+
+    // This shall not fail.
+    db._dropDatabase(dbName);
+
+    // The DB should be gone and the server should be running.
+    let dbs = db._databases();
+    assertEqual(-1, dbs.indexOf(dbName));
+
+    // Now recreate a new database with this name
+    db._createDatabase(dbName);
+    db._useDatabase(dbName);
+
+    db._create(cn);
+    db._collection(cn).save(docs);
+
+    // Section - Slave
+    connectToSlave();
+
+    // Now test if the Slave did replicate the new database directly...
+    assertEqual(50, collectionCount(cn), 
+    "The slave inserted the new collection data into the old one, it skipped the drop.");
+  };
+
+  return suite;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ReplicationSuite);
+jsunity.run(ReplicationOtherDBSuite);
 
 return jsunity.done();

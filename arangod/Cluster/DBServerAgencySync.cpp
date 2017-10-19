@@ -28,6 +28,7 @@
 #include "Cluster/HeartbeatThread.h"
 #include "Logger/Logger.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Utils/DatabaseGuard.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
@@ -71,7 +72,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
   auto plan = clusterInfo->getPlan();
   auto current = clusterInfo->getCurrent();
   
-  VocbaseGuard guard(vocbase);
+  DatabaseGuard guard(vocbase);
 
   double startTime = TRI_microtime();
   V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true, V8DealerFeature::ANY_CONTEXT_OR_PRIORITY);

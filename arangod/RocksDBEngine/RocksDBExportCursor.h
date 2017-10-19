@@ -29,14 +29,11 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/Cursor.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
 
 namespace arangodb {
-namespace velocypack {
-class Slice;
-}
 namespace transaction {
 class Methods;
 }
@@ -60,10 +57,10 @@ class RocksDBExportCursor final : public Cursor {
 
   size_t count() const override final;
 
-  void dump(VPackBuilder&) override final;
+  void dump(velocypack::Builder&) override final;
 
  private:
-  VocbaseGuard _vocbaseGuard;
+  DatabaseGuard _guard;
   arangodb::CollectionNameResolver _resolver;
   CollectionExport::Restrictions _restrictions;
   std::string const _name;

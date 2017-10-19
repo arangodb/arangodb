@@ -23,10 +23,12 @@
 #ifndef ARANGOD_VOC_BASE_API_INDEXES_H
 #define ARANGOD_VOC_BASE_API_INDEXES_H 1
 
-#include <velocypack/Builder.h>
-#include <velocypack/Slice.h>
 #include "Basics/Result.h"
 #include "VocBase/voc-types.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+
 
 struct TRI_vocbase_t;
 
@@ -38,32 +40,32 @@ namespace methods {
 /// Common code for ensureIndexes and api-index.js
 struct Indexes {
   static arangodb::Result getIndex(
-      arangodb::LogicalCollection const* collection,
-      arangodb::velocypack::Slice const& indexId,
-      arangodb::velocypack::Builder&);
+                LogicalCollection const* collection,
+                velocypack::Slice const& indexId,
+                velocypack::Builder&);
 
-  static arangodb::Result getAll(arangodb::LogicalCollection const* collection,
+  static arangodb::Result getAll(LogicalCollection const* collection,
                                  bool withFigures,
                                  arangodb::velocypack::Builder&);
 
   static arangodb::Result ensureIndex(
-      arangodb::LogicalCollection* collection,
-      arangodb::velocypack::Slice const& definition, bool create,
-      arangodb::velocypack::Builder& output);
+      LogicalCollection* collection,
+      velocypack::Slice const& definition, bool create,
+      velocypack::Builder& output);
 
-  static arangodb::Result drop(arangodb::LogicalCollection const* collection,
-                               arangodb::velocypack::Slice const& indexArg);
+  static arangodb::Result drop(LogicalCollection const* collection,
+                               velocypack::Slice const& indexArg);
 
   static arangodb::Result extractHandle(
-      arangodb::LogicalCollection const* collection,
-      arangodb::CollectionNameResolver const* resolver,
-      arangodb::velocypack::Slice const& val, TRI_idx_iid_t& iid);
+          LogicalCollection const* collection,
+          CollectionNameResolver const* resolver,
+          velocypack::Slice const& val, TRI_idx_iid_t& iid);
 
  private:
   static arangodb::Result ensureIndexCoordinator(
-      arangodb::LogicalCollection const* collection,
-      arangodb::velocypack::Slice const& indexDef, bool create,
-      arangodb::velocypack::Builder& resultBuilder);
+            LogicalCollection const* collection,
+            velocypack::Slice const& indexDef, bool create,
+            velocypack::Builder& resultBuilder);
 
 #ifdef USE_ENTERPRISE
   static arangodb::Result ensureIndexCoordinatorEE(

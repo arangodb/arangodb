@@ -295,12 +295,12 @@ function ReplicationLoggerSuite () {
         var df = ranges[i];
         assertTrue(typeof df === 'object');
         assertTrue(df.hasOwnProperty('datafile'));
-        assertTrue(df.hasOwnProperty('state'));
+        assertTrue(df.hasOwnProperty('status'));
         assertTrue(df.hasOwnProperty('tickMin'));
         assertTrue(df.hasOwnProperty('tickMax'));
 
         assertTrue(typeof df.datafile === 'string');
-        assertTrue(typeof df.state === 'string');
+        assertTrue(typeof df.status === 'string');
         assertTrue(typeof df.tickMin === 'string');
         assertMatch(/^\d+$/, df.tickMin);
         assertTrue(typeof df.tickMax === 'string');
@@ -1638,7 +1638,7 @@ function ReplicationApplierSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      replication.applier.shutdown();
+      replication.applier.stop();
       replication.applier.forget();
     },
 
@@ -1647,7 +1647,7 @@ function ReplicationApplierSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
-      replication.applier.shutdown();
+      replication.applier.stop();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1790,13 +1790,13 @@ function ReplicationApplierSuite () {
       assertTrue(state.state.running);
 
       // stop
-      replication.applier.shutdown();
+      replication.applier.stop();
 
       state = replication.applier.state();
       assertFalse(state.state.running);
 
       // stop again
-      replication.applier.shutdown();
+      replication.applier.stop();
 
       state = replication.applier.state();
       assertFalse(state.state.running);
@@ -1991,7 +1991,7 @@ function ReplicationSyncSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
-      replication.applier.shutdown();
+      replication.applier.stop();
       replication.applier.forget();
     },
 
@@ -2081,8 +2081,7 @@ function ReplicationSyncSuite () {
         fail();
       }
       catch (err) {
-        assertTrue(errors.ERROR_BAD_PARAMETER.code === err.errorNum ||
-                   errors.ERROR_HTTP_BAD_PARAMETER.code === err.errorNum);
+        assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
       }
     },
 
@@ -2099,8 +2098,7 @@ function ReplicationSyncSuite () {
         fail();
       }
       catch (err) {
-        assertTrue(errors.ERROR_BAD_PARAMETER.code === err.errorNum ||
-                   errors.ERROR_HTTP_BAD_PARAMETER.code === err.errorNum);
+        assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
       }
     },
 
@@ -2117,8 +2115,7 @@ function ReplicationSyncSuite () {
         fail();
       }
       catch (err) {
-        assertTrue(errors.ERROR_BAD_PARAMETER.code === err.errorNum ||
-                   errors.ERROR_HTTP_BAD_PARAMETER.code === err.errorNum);
+        assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
       }
     },
 
@@ -2135,8 +2132,7 @@ function ReplicationSyncSuite () {
         fail();
       }
       catch (err) {
-        assertTrue(errors.ERROR_BAD_PARAMETER.code === err.errorNum ||
-                   errors.ERROR_HTTP_BAD_PARAMETER.code === err.errorNum);
+        assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
       }
     },
 
@@ -2154,14 +2150,12 @@ function ReplicationSyncSuite () {
         fail();
       }
       catch (err) {
-        assertTrue(errors.ERROR_BAD_PARAMETER.code === err.errorNum ||
-                   errors.ERROR_HTTP_BAD_PARAMETER.code === err.errorNum);
+        assertEqual(errors.ERROR_REPLICATION_INVALID_APPLIER_CONFIGURATION.code, err.errorNum);
       }
     }
 
   };
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites

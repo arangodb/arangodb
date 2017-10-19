@@ -64,7 +64,7 @@ int UnitTestsFeature::runUnitTests(std::vector<std::string> const& unitTests) {
   DatabaseFeature* database = 
       ApplicationServer::getFeature<DatabaseFeature>("Database");
   V8Context* context =
-      V8DealerFeature::DEALER->enterContext(database->systemDatabase(), true);
+  V8DealerFeature::DEALER->enterContext(database->systemDatabase(), true);
 
   if (context == nullptr) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "cannot acquire V8 context";

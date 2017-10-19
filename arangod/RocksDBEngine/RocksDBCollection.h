@@ -152,7 +152,7 @@ class RocksDBCollection final : public PhysicalCollection {
                 arangodb::velocypack::Slice const newSlice,
                 arangodb::ManagedDocumentResult& result,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock) override;
+                bool lock, TRI_voc_rid_t& revisionId) override;
 
   Result update(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const newSlice,
@@ -160,7 +160,6 @@ class RocksDBCollection final : public PhysicalCollection {
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                 bool lock, TRI_voc_rid_t& prevRev,
                 ManagedDocumentResult& previous,
-                TRI_voc_rid_t const& revisionId,
                 arangodb::velocypack::Slice const key) override;
 
   Result replace(transaction::Methods* trx,
@@ -168,7 +167,6 @@ class RocksDBCollection final : public PhysicalCollection {
                  ManagedDocumentResult& result, OperationOptions& options,
                  TRI_voc_tick_t& resultMarkerTick, bool lock,
                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                 TRI_voc_rid_t const revisionId,
                  arangodb::velocypack::Slice const fromSlice,
                  arangodb::velocypack::Slice const toSlice) override;
 
@@ -176,7 +174,7 @@ class RocksDBCollection final : public PhysicalCollection {
                 arangodb::velocypack::Slice const slice,
                 arangodb::ManagedDocumentResult& previous,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock, TRI_voc_rid_t& prevRev) override;
+                bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId) override;
 
   void deferDropCollection(
       std::function<bool(LogicalCollection*)> callback) override;

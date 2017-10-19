@@ -158,7 +158,8 @@ class PhysicalCollection {
                         arangodb::velocypack::Slice const newSlice,
                         arangodb::ManagedDocumentResult& result,
                         OperationOptions& options,
-                        TRI_voc_tick_t& resultMarkerTick, bool lock) = 0;
+                        TRI_voc_tick_t& resultMarkerTick, bool lock,
+                        TRI_voc_tick_t& revisionId) = 0;
 
   virtual Result update(arangodb::transaction::Methods* trx,
                         arangodb::velocypack::Slice const newSlice,
@@ -166,7 +167,6 @@ class PhysicalCollection {
                         OperationOptions& options,
                         TRI_voc_tick_t& resultMarkerTick, bool lock,
                         TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                        TRI_voc_rid_t const& revisionId,
                         arangodb::velocypack::Slice const key) = 0;
 
   virtual Result replace(transaction::Methods* trx,
@@ -176,7 +176,6 @@ class PhysicalCollection {
                          TRI_voc_tick_t& resultMarkerTick, bool lock,
                          TRI_voc_rid_t& prevRev,
                          ManagedDocumentResult& previous,
-                         TRI_voc_rid_t const revisionId,
                          arangodb::velocypack::Slice const fromSlice,
                          arangodb::velocypack::Slice const toSlice) = 0;
 
@@ -185,7 +184,8 @@ class PhysicalCollection {
                         arangodb::ManagedDocumentResult& previous,
                         OperationOptions& options,
                         TRI_voc_tick_t& resultMarkerTick, bool lock,
-                        TRI_voc_rid_t& prevRev) = 0;
+                        TRI_voc_rid_t& prevRev,
+                        TRI_voc_rid_t& revisionId) = 0;
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop
@@ -208,14 +208,15 @@ class PhysicalCollection {
                          velocypack::Slice const& toSlice,
                          LocalDocumentId const& documentId,
                          bool isEdgeCollection, velocypack::Builder& builder,
-                         bool isRestore) const;
+                         bool isRestore,
+                         TRI_voc_rid_t& revisionId) const;
 
   /// @brief new object for remove, must have _key set
   void newObjectForRemove(transaction::Methods* trx,
                           velocypack::Slice const& oldValue,
                           LocalDocumentId const& documentId,
                           velocypack::Builder& builder,
-                          bool isRestore) const;
+                          bool isRestore, TRI_voc_rid_t& revisionId) const;
 
   /// @brief merge two objects for update
   void mergeObjectsForUpdate(transaction::Methods* trx,
@@ -224,7 +225,7 @@ class PhysicalCollection {
                              bool isEdgeCollection, LocalDocumentId const& documentId,
                              bool mergeObjects, bool keepNull,
                              velocypack::Builder& builder,
-                             bool isRestore) const;
+                             bool isRestore, TRI_voc_rid_t& revisionId) const;
 
   /// @brief new object for replace
   void newObjectForReplace(transaction::Methods* trx,
@@ -234,13 +235,14 @@ class PhysicalCollection {
                            velocypack::Slice const& toSlice,
                            bool isEdgeCollection, LocalDocumentId const& documentId,
                            velocypack::Builder& builder,
-                           bool isRestore) const;
+                           bool isRestore, TRI_voc_rid_t& revisionId) const;
 
   int checkRevision(transaction::Methods* trx, TRI_voc_rid_t expected,
                     TRI_voc_rid_t found) const;
 
  protected:
   LogicalCollection* _logicalCollection;
+  bool const _isDBServer;
 
   mutable basics::ReadWriteLock _indexesLock;
   std::vector<std::shared_ptr<Index>> _indexes;
