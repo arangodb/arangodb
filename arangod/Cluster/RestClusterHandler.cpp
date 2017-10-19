@@ -101,7 +101,7 @@ void RestClusterHandler::handleCommandEndpoints() {
     VPackSlice healthMap = result.slice()[0].get(path);
     
     if (leaderId.empty()) {
-      generateError(Result(TRI_ERROR_INTERNAL, "Leadership challenge is ongoing"));
+      generateError(Result(TRI_ERROR_FAILED, "Leadership challenge is ongoing"));
       return;
     }
       
