@@ -877,15 +877,14 @@ function ReplicationOtherDBSuite() {
 
     // This shall not fail.
     db._dropDatabase(dbName);
+    
+    connectToSlave();
     waitUntil(function() { return (db._databases().indexOf(dbName) === -1); });
 
-    // The DB should be gone and the server should be running.
-    let dbs = db._databases();
-    assertEqual(-1, dbs.indexOf(dbName));
-
     // Now recreate a new database with this name
+    connectToMaster();
+    db._useDatabase("_system");
     db._createDatabase(dbName);
-    waitUntil(function() { return (db._databases().indexOf(dbName) !== -1); });
     
     db._useDatabase(dbName);
     db._createDocumentCollection(cn);
@@ -893,9 +892,12 @@ function ReplicationOtherDBSuite() {
 
     // Section - Slave
     connectToSlave();
+    db._useDatabase("_system");
+    waitUntil(function() { return (db._databases().indexOf(dbName) !== -1); });
     // database now present on slave
 
-    // Now test if the Slave did replicate the new database directly...
+    // Now test if the Slave did replicate the new database...
+    db._useDatabase(dbName);
     assertEqual(50, collectionCount(cn), "The slave inserted the new collection data into the old one, it skipped the drop.");
     
     assertTrue(replication.globalApplier.state().state.running);

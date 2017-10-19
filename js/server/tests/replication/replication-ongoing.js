@@ -699,10 +699,13 @@ function ReplicationOtherDBSuite() {
     db._useDatabase("_system");
 
     connectToSlave();
-    db._useDatabase(dbName);
+    try {
+      db._useDatabase(dbName);
 
-    replication.applier.stop();
-    replication.applier.forget();
+      replication.applier.stop();
+      replication.applier.forget();
+    } catch (e) {
+    }
     
     db._useDatabase("_system");
     try {
