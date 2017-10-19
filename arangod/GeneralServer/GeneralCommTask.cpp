@@ -416,10 +416,14 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
     if (result != rest::ResponseCode::OK) {
       if (path == "/" ||
           StringUtils::isPrefix(path, Open) ||
-          StringUtils::isPrefix(path, AdminAardvark) ||
-          StringUtils::isPrefix(path, ApiUser + username + '/')) {
+          StringUtils::isPrefix(path, AdminAardvark)) {
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
+        result = rest::ResponseCode::OK;
+        vc->upgradeSuperuser();
+      } else if (StringUtils::isPrefix(path, ApiUser + username + '/')) {
+        // simon: unauthorized users should be able to call
+        // `/_api/users/<name>` to check their passwords
         result = rest::ResponseCode::OK;
         vc->upgradeReadOnly();
       }
