@@ -107,8 +107,6 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options->addObsoleteOption("--cluster.arangod-path",
                              "path to the arangod for the cluster",
                              true);
-  
-
                              
   options->addOption("--cluster.agency-endpoint",
                      "agency endpoint to connect to",
@@ -116,12 +114,12 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 
   options->addHiddenOption("--cluster.agency-prefix", "agency prefix",
                      new StringParameter(&_agencyPrefix));
-
+  // FIXME: make obsolete in > 3.3
+  //options->addObsoleteOption("--cluster.my-local-info", "this server's local info", false);
   options->addHiddenOption("--cluster.my-local-info", "this server's local info",
-                     new StringParameter(&_myLocalInfo));
+                           new StringParameter(&_myLocalInfo));
 
-  options->addHiddenOption("--cluster.my-id", "this server's id",
-                     new StringParameter(&_myId));
+  options->addObsoleteOption("--cluster.my-id", "this server's id", false);
 
   options->addOption("--cluster.my-role", "this server's role",
                      new StringParameter(&_myRole));
@@ -143,7 +141,6 @@ void ClusterFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-
   if (options->processingResult().touched("cluster.disable-dispatcher-kickstarter") ||
       options->processingResult().touched("cluster.disable-dispatcher-frontend")) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME)
@@ -204,10 +201,11 @@ void ClusterFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_myRole.empty()) {
     _requestedRole = ServerState::stringToRole(_myRole);
 
-    if (_requestedRole == ServerState::ROLE_SINGLE ||
-        _requestedRole == ServerState::ROLE_AGENT ||
-        _requestedRole == ServerState::ROLE_UNDEFINED
-        ) {
+    std::vector<arangodb::ServerState::RoleEnum> const disallowedRoles= { 
+      /*ServerState::ROLE_SINGLE,*/ ServerState::ROLE_AGENT, ServerState::ROLE_UNDEFINED 
+    };
+
+    if (std::find(disallowedRoles.begin(), disallowedRoles.end(), _requestedRole) != disallowedRoles.end()) {
       LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Invalid role provided. Possible values: PRIMARY, "
                     "SECONDARY, COORDINATOR";
       FATAL_ERROR_EXIT();
@@ -224,7 +222,6 @@ void ClusterFeature::reportRole(arangodb::ServerState::RoleEnum role) {
 }
 
 void ClusterFeature::prepare() {
-
   auto v8Dealer = ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
 
   v8Dealer->defineDouble("SYS_DEFAULT_REPLICATION_FACTOR_SYSTEM",
@@ -256,7 +253,7 @@ void ClusterFeature::prepare() {
     startClusterComm = true;
     auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
     if (authentication->isActive() && !authentication->hasUserdefinedJwt()) {
-      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Cluster authentication enabled but jwt not set via command line. Please"
+      LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "Cluster authentication enabled but JWT not set via command line. Please"
         << " provide --server.jwt-secret which is used throughout the cluster.";
       FATAL_ERROR_EXIT();
     }
@@ -307,9 +304,8 @@ void ClusterFeature::prepare() {
     FATAL_ERROR_EXIT();
   }
 
-  ServerState::instance()->setLocalInfo(_myLocalInfo);
-
-  if (!ServerState::instance()->integrateIntoCluster(_requestedRole, _myAddress, _myId)) {
+  // FIXME: remove mylocalInfo > 3.3
+  if (!ServerState::instance()->integrateIntoCluster(_requestedRole, _myAddress, _myLocalInfo)) {
     LOG_TOPIC(FATAL, Logger::STARTUP) << "Couldn't integrate into cluster.";
     FATAL_ERROR_EXIT();
   }
@@ -317,22 +313,13 @@ void ClusterFeature::prepare() {
   auto role = ServerState::instance()->getRole();
   auto endpoints = AgencyCommManager::MANAGER->endpointsString();
   
+  
   if (role == ServerState::ROLE_UNDEFINED) {
     // no role found
-    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "unable to determine unambiguous role for server '" << _myId
+    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "unable to determine unambiguous role for server '"
+               << ServerState::instance()->getId()
                << "'. No role configured in agency (" << endpoints << ")";
     FATAL_ERROR_EXIT();
-  }
-
-  if (role == ServerState::ROLE_SINGLE) {
-    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "determined single-server role for server '" << _myId
-               << "'. Please check the configurarion in the agency ("
-               << endpoints << ")";
-    FATAL_ERROR_EXIT();
-  }
-
-  if (_myId.empty()) {
-    _myId = ServerState::instance()->getId();  // has been set by getRole!
   }
 
   // check if my-address is set
@@ -366,7 +353,8 @@ void ClusterFeature::prepare() {
   }
 
   if (_myAddress.empty()) {
-    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "unable to determine internal address for server '" << _myId
+    LOG_TOPIC(FATAL, arangodb::Logger::CLUSTER) << "unable to determine internal address for server '"
+               << ServerState::instance()->getId()
                << "'. Please specify --cluster.my-address or configure the "
                   "address for this server in the agency.";
     FATAL_ERROR_EXIT();
@@ -380,10 +368,6 @@ void ClusterFeature::prepare() {
   }
   
 }
-
-// YYY #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-// YYY #warning FRANK split into methods
-// YYY #endif
 
 void ClusterFeature::start() {
   // return if cluster is disabled
@@ -404,11 +388,12 @@ void ClusterFeature::start() {
   std::string const endpoints = AgencyCommManager::MANAGER->endpointsString();
 
   ServerState::RoleEnum role = ServerState::instance()->getRole();
+  std::string myId = ServerState::instance()->getId();
 
   LOG_TOPIC(INFO, arangodb::Logger::CLUSTER) << "Cluster feature is turned on. Agency version: " << version
-            << ", Agency endpoints: " << endpoints << ", server id: '" << _myId
+            << ", Agency endpoints: " << endpoints << ", server id: '" << myId
             << "', internal address: " << _myAddress
-            << ", role: " << ServerState::roleToString(role);
+            << ", role: " << role;
 
   if (!_disableHeartbeat) {
     AgencyCommResult result = comm.getValues("Sync/HeartbeatIntervalMs");
@@ -466,7 +451,7 @@ void ClusterFeature::start() {
       FATAL_ERROR_EXIT();
     }
 
-    result = comm.setValue("Current/ServersRegistered/" + _myId,
+    result = comm.setValue("Current/ServersRegistered/" + myId,
                            builder.slice(), 0.0);
 
     if (!result.successful()) {
@@ -480,13 +465,7 @@ void ClusterFeature::start() {
     sleep(1);
   }
 
-  if (role == ServerState::ROLE_COORDINATOR) {
-    ServerState::instance()->setState(ServerState::STATE_SERVING);
-  } else if (role == ServerState::ROLE_PRIMARY) {
-    ServerState::instance()->setState(ServerState::STATE_SERVINGASYNC);
-  } else if (role == ServerState::ROLE_SECONDARY) {
-    ServerState::instance()->setState(ServerState::STATE_SYNCING);
-  }
+  ServerState::instance()->setState(ServerState::STATE_SERVING);
 }
 
 void ClusterFeature::beginShutdown() {
@@ -557,24 +536,19 @@ void ClusterFeature::unprepare() {
   // Try only once to unregister because maybe the agencycomm
   // is shutting down as well...
 
+
+  // Remove from role list
   ServerState::RoleEnum role = ServerState::instance()->getRole();
-
+  std::string alk = ServerState::roleToAgencyListKey(role);
+  std::string me = ServerState::instance()->getId();
+  
   AgencyWriteTransaction unreg;
-
-  // Remove from role
-  if (role == ServerState::ROLE_PRIMARY) {
-    unreg.operations.push_back(AgencyOperation(
-        "Current/DBServers/" + _myId, AgencySimpleOperationType::DELETE_OP));
-  } else if (role == ServerState::ROLE_COORDINATOR) {
-    unreg.operations.push_back(AgencyOperation(
-        "Current/Coordinators/" + _myId, AgencySimpleOperationType::DELETE_OP));
-  }
-
+  unreg.operations.push_back(AgencyOperation("Current/" + alk + "/" + me,
+                                             AgencySimpleOperationType::DELETE_OP));
   // Unregister
   unreg.operations.push_back(
-      AgencyOperation("Current/ServersRegistered/" + _myId,
+      AgencyOperation("Current/ServersRegistered/" + me,
                       AgencySimpleOperationType::DELETE_OP));
-
   comm.sendTransactionWithFailover(unreg, 120.0);
 
   while (_heartbeatThread->isRunning()) {

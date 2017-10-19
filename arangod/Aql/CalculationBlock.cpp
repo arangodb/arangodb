@@ -43,7 +43,8 @@ CalculationBlock::CalculationBlock(ExecutionEngine* engine,
       _inVars(),
       _inRegs(),
       _outReg(ExecutionNode::MaxRegisterId),
-      _conditionReg(ExecutionNode::MaxRegisterId) {
+      _conditionReg(ExecutionNode::MaxRegisterId),
+      _isRunningInCluster(ServerState::instance()->isRunningInCluster()) {
   std::unordered_set<Variable const*> inVars;
   _expression->variables(inVars);
 
@@ -157,13 +158,11 @@ void CalculationBlock::doEvaluation(AqlItemBlock* result) {
     // an expression that does not require V8
     executeExpression(result);
   } else {
-    bool const isRunningInCluster = transaction()->state()->isRunningInCluster();
-
     // must have a V8 context here to protect Expression::execute()
     arangodb::basics::ScopeGuard guard{
         [&]() -> void { _engine->getQuery()->enterContext(); },
         [&]() -> void {
-          if (isRunningInCluster) {
+          if (_isRunningInCluster) {
             // must invalidate the expression now as we might be called from
             // different threads
             _expression->invalidate();

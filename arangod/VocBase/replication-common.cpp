@@ -58,8 +58,16 @@ bool TRI_ExcludeCollectionReplication(char const* name, bool includeSystem) {
     // name invalid
     return true;
   }
+  return TRI_ExcludeCollectionReplication(std::string(name), includeSystem);
+}
 
-  if (*name != '_') {
+bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSystem) {
+  if (name.empty()) {
+    // should not happen...
+    return true;
+  }
+
+  if (name[0] != '_') {
     // all regular collections are included
     return false;
   }
@@ -69,12 +77,11 @@ bool TRI_ExcludeCollectionReplication(char const* name, bool includeSystem) {
     return true;
   }
 
-  if (TRI_IsPrefixString(name, "_statistics") ||
-      TRI_EqualString(name, "_apps") ||
-      TRI_EqualString(name, "_configuration") ||
-      TRI_EqualString(name, "_cluster_kickstarter_plans") ||
-      TRI_EqualString(name, "_foxxlog") || TRI_EqualString(name, "_jobs") ||
-      TRI_EqualString(name, "_queues") || TRI_EqualString(name, "_sessions")) {
+  if (TRI_IsPrefixString(name.c_str(), "_statistics") ||
+      name == "_apps" || name == "_configuration" ||
+      name == "_cluster_kickstarter_plans" ||
+      name == "_foxxlog" || name == "_jobs" ||
+      name == "_queues" || name == "_sessions") {
     // these system collections will always be excluded
     return true;
   }

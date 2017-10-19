@@ -58,7 +58,7 @@ class Context {
  protected:
 
   /// @brief create the context
-  explicit Context(TRI_vocbase_t* vocbase);
+  explicit Context(TRI_vocbase_t*);
 
  public:
 
@@ -129,10 +129,10 @@ class Context {
  
  protected:
   
-  TRI_vocbase_t* _vocbase; 
+  TRI_vocbase_t* _vocbase;
   
   CollectionNameResolver const* _resolver;
-  
+    
   std::shared_ptr<velocypack::CustomTypeHandler> _customTypeHandler;
   
   SmallVector<arangodb::velocypack::Builder*, 32>::allocator_type::arena_type _arena;

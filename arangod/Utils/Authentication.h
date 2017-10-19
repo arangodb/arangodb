@@ -29,7 +29,7 @@
 
 namespace arangodb {
 
-enum class AuthLevel { NONE, RO, RW };
+enum class AuthLevel { NONE = 0, RO = 1, RW = 2 };
 enum class AuthSource { COLLECTION, LDAP };
 
 AuthLevel convertToAuthLevel(velocypack::Slice grants);
