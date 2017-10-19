@@ -300,11 +300,11 @@ static void JS_APIAgency(std::string const& envelope,
     result._body.clear();
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM)
-      << "Error transforming result. " << e.what();
+      << "Error transforming result: " << e.what();
     result.clear();
   } catch (...) {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM)
-      << "Error transforming result. Out of memory";
+      << "Error transforming result: out of memory";
     result.clear();
   }
   
@@ -431,11 +431,11 @@ static void JS_Agency(v8::FunctionCallbackInfo<v8::Value> const& args) {
     result._body.clear();
   } catch (std::exception const& e) {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM)
-      << "Error transforming result. " << e.what();
+      << "Error transforming result: " << e.what();
     result.clear();
   } catch (...) {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM)
-      << "Error transforming result. Out of memory";
+      << "Error transforming result: out of memory";
     result.clear();
   }
   
