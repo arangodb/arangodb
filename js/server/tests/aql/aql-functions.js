@@ -3718,6 +3718,48 @@ function ahuacatlFunctionsTestSuite () {
           expected: [ true ]
         },
         {
+          doc: {a:1,b:2},
+          examples: {a:1},
+          flag: true,
+          expected: [ 0 ]
+        },
+        {
+          doc: {a:1,b:2},
+          examples: {b:2},
+          flag: true,
+          expected: [ 0 ]
+        },
+        {
+          doc: {a:1,b:2 },
+          examples: { },
+          flag: true,
+          expected: [ 0 ]
+        },
+        {
+          doc: {a:1,b:2 },
+          examples: {a:1,b:2,c:3},
+          flag: true,
+          expected: [ -1 ]
+        },
+        {
+          doc: {a:1,b:2 },
+          examples: {a:1,b:2,c:3},
+          flag: null,
+          expected: [ false ]
+        },
+        {
+          doc: {a:1,b:2 },
+          examples: {c:3},
+          flag: null,
+          expected: [ false ]
+        },
+        {
+          doc: {a:1,b:2 },
+          examples: {c:3},
+          flag: true,
+          expected: [ -1 ]
+        },
+        {
           doc: { test1: 1, test2: 2 },
           examples: [ { test1: 1, test2: 1 } ],
           flag: true,

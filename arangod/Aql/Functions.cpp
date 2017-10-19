@@ -2426,13 +2426,37 @@ AqlValue Functions::Matches(arangodb::aql::Query* query,
   AqlValueMaterializer materializer(trx);
   VPackSlice docSlice = materializer.slice(docToFind, false);
 
+  transaction::BuilderLeaser builder(trx);
+  VPackSlice examples = materializer.slice(exampleDocs, false);
+
+  if (examples.isObject()) {
+    builder->openArray();
+    builder->add(examples);
+    builder->close();
+    examples = builder->slice();
+  }
 
   auto options = trx->transactionContextPtr()->getVPackOptions();
 
+  bool foundMatch;
   int32_t idx = -1;
-  for (auto const& name : VPackArrayIterator(materializer.slice(exampleDocs, false))) {
+
+  for (auto const& example : VPackArrayIterator(examples)) {
     idx++;
-    if (basics::VelocyPackHelper::compare(name, docSlice, true, options) == 0) {
+    foundMatch = true;
+
+    for(auto const& it : VPackObjectIterator(example, true)) {
+      std::string key = it.key.copyString();
+
+      if (!docSlice.hasKey(key) ||
+        // compare inner content
+        basics::VelocyPackHelper::compare(docSlice.get(key), it.value, true, options) != 0) {
+        foundMatch = false;
+        break;
+      }
+    }
+
+    if (foundMatch) {
       if (retIdx) {
         return AqlValue(AqlValueHintInt(idx));
       } else {
