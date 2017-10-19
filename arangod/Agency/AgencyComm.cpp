@@ -893,12 +893,12 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
     result._statusCode = 200;
 
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Error transforming result. "
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Error transforming result: "
                                        << e.what();
     result.clear();
   } catch (...) {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM)
-        << "Error transforming result. Out of memory";
+        << "Error transforming result: out of memory";
     result.clear();
   }
 
@@ -1144,16 +1144,19 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
     result._body.clear();
 
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Error transforming result. "
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Error transforming result: "
                                        << e.what()
-                                       << " status code: "
+                                       << ", status code: "
                                        << result._statusCode
-                                       << " incriminating body: "
-                                       << result.bodyRef();
+                                       << ", incriminating body: "
+                                       << result.bodyRef()
+                                       << ", url: " << url 
+                                       << ", timeout: " << timeout 
+                                       << ", data sent: " << builder.toJson();
     result.clear();
   } catch (...) {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM)
-        << "Error transforming result. Out of memory";
+        << "Error transforming result: out of memory";
     result.clear();
   }
 
