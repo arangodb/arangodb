@@ -30,12 +30,13 @@
 using namespace arangodb;
 using namespace arangodb::rocksutils;
 
-RocksDBLogValue RocksDBLogValue::DatabaseCreate() {
-  return RocksDBLogValue(RocksDBLogType::DatabaseCreate);
+RocksDBLogValue RocksDBLogValue::DatabaseCreate(TRI_voc_tick_t id) {
+  return RocksDBLogValue(RocksDBLogType::DatabaseCreate, id);
 }
 
-RocksDBLogValue RocksDBLogValue::DatabaseDrop(TRI_voc_tick_t dbid) {
-  return RocksDBLogValue(RocksDBLogType::DatabaseDrop, dbid);
+RocksDBLogValue RocksDBLogValue::DatabaseDrop(TRI_voc_tick_t id,
+                                              StringRef const& name) {
+  return RocksDBLogValue(RocksDBLogType::DatabaseDrop, id, name);
 }
 
 RocksDBLogValue RocksDBLogValue::CollectionCreate(TRI_voc_tick_t dbid,
@@ -44,14 +45,15 @@ RocksDBLogValue RocksDBLogValue::CollectionCreate(TRI_voc_tick_t dbid,
 }
 
 RocksDBLogValue RocksDBLogValue::CollectionDrop(TRI_voc_tick_t dbid,
-                                                TRI_voc_cid_t cid) {
-  return RocksDBLogValue(RocksDBLogType::CollectionDrop, dbid, cid);
+                                                TRI_voc_cid_t cid,
+                                                StringRef const& uuid) {
+  return RocksDBLogValue(RocksDBLogType::CollectionDrop, dbid, cid, uuid);
 }
 
 RocksDBLogValue RocksDBLogValue::CollectionRename(TRI_voc_tick_t dbid,
                                                   TRI_voc_cid_t cid,
-                                                  StringRef const& newName) {
-  return RocksDBLogValue(RocksDBLogType::CollectionRename, dbid, cid, newName);
+                                                  StringRef const& oldName) {
+  return RocksDBLogValue(RocksDBLogType::CollectionRename, dbid, cid, oldName);
 }
 
 RocksDBLogValue RocksDBLogValue::CollectionChange(TRI_voc_tick_t dbid,
@@ -104,7 +106,7 @@ RocksDBLogValue RocksDBLogValue::SingleRemove(TRI_voc_tick_t vocbaseId,
                                               arangodb::StringRef const& key) {
   return RocksDBLogValue(RocksDBLogType::SingleRemove, vocbaseId, cid, key);
 }
-
+/*
 RocksDBLogValue::RocksDBLogValue(RocksDBLogType type) : _buffer() {
   switch (type) {
     case RocksDBLogType::DatabaseCreate:
@@ -115,12 +117,12 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type) : _buffer() {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "invalid type for log value");
   }
-}
+}*/
 
 RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t val)
     : _buffer() {
   switch (type) {
-    case RocksDBLogType::DatabaseDrop:
+    case RocksDBLogType::DatabaseCreate:
     case RocksDBLogType::DocumentOperationsPrologue: {
       _buffer.reserve(sizeof(RocksDBLogType) + sizeof(uint64_t));
       _buffer.push_back(static_cast<char>(type));
@@ -150,6 +152,24 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
       break;
     }
 
+    default:
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                     "invalid type for log value");
+  }
+}
+
+RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t val,
+                                 StringRef const& data)
+  : _buffer() {
+  switch (type) {
+    case RocksDBLogType::DatabaseDrop: {
+      _buffer.reserve(sizeof(RocksDBLogType) + sizeof(uint64_t)
+                      + data.length());
+      _buffer.push_back(static_cast<char>(type));
+      uint64ToPersistent(_buffer, val);
+      _buffer.append(data.data(), data.length());
+      break;
+    }
     default:
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                      "invalid type for log value");
@@ -199,13 +219,17 @@ RocksDBLogValue::RocksDBLogValue(RocksDBLogType type, uint64_t dbId,
     : _buffer() {
   switch (type) {
     case RocksDBLogType::SingleRemove:
+    case RocksDBLogType::CollectionDrop: 
     case RocksDBLogType::CollectionRename: {
       _buffer.reserve(sizeof(RocksDBLogType) + sizeof(uint64_t) * 2 +
                       data.length());
       _buffer.push_back(static_cast<char>(type));
       uint64ToPersistent(_buffer, dbId);
       uint64ToPersistent(_buffer, cid);
-      _buffer.append(data.data(), data.length());  // primary key
+      // append primary key for SingleRemove, or
+      // collection name for CollectionRename, or
+      // collection uuid for CollectionDrop
+      _buffer.append(data.data(), data.length());  
       break;
     }
     default:
@@ -252,6 +276,14 @@ TRI_voc_tick_t RocksDBLogValue::databaseId(rocksdb::Slice const& slice) {
              type == RocksDBLogType::SinglePut ||
              type == RocksDBLogType::SingleRemove);
   return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType));
+}
+
+StringRef RocksDBLogValue::databaseName(rocksdb::Slice const& slice) {
+  size_t off = sizeof(RocksDBLogType) + sizeof(uint64_t);
+  TRI_ASSERT(slice.size() > off);
+  RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
+  TRI_ASSERT(type == RocksDBLogType::DatabaseDrop);
+  return StringRef(slice.data() + off, slice.size() - off);
 }
 
 TRI_voc_cid_t RocksDBLogValue::collectionId(rocksdb::Slice const& slice) {
@@ -301,7 +333,21 @@ VPackSlice RocksDBLogValue::indexSlice(rocksdb::Slice const& slice) {
                     sizeof(uint64_t) * 2);
 }
 
-arangodb::StringRef RocksDBLogValue::newCollectionName(
+StringRef RocksDBLogValue::collectionUUID(
+    rocksdb::Slice const& slice) {
+  size_t off = sizeof(RocksDBLogType) + sizeof(uint64_t) * 2;
+  TRI_ASSERT(slice.size() >= off);
+  RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
+  TRI_ASSERT(type == RocksDBLogType::CollectionDrop);
+  if (slice.size() > off) {
+    // have a UUID
+    return StringRef(slice.data() + off, slice.size() - off);
+  }
+  // do not have a UUID
+  return StringRef();
+}
+
+StringRef RocksDBLogValue::oldCollectionName(
     rocksdb::Slice const& slice) {
   size_t off = sizeof(RocksDBLogType) + sizeof(uint64_t) * 2;
   TRI_ASSERT(slice.size() >= off);
@@ -310,11 +356,12 @@ arangodb::StringRef RocksDBLogValue::newCollectionName(
   return StringRef(slice.data() + off, slice.size() - off);
 }
 
-arangodb::StringRef RocksDBLogValue::documentKey(rocksdb::Slice const& slice) {
+StringRef RocksDBLogValue::documentKey(rocksdb::Slice const& slice) {
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   TRI_ASSERT(type == RocksDBLogType::SingleRemove ||
              type == RocksDBLogType::DocumentRemove);
   size_t off = sizeof(RocksDBLogType);
+  // only single remove contains vocbase id and cid
   if (type == RocksDBLogType::SingleRemove) {
     off += sizeof(uint64_t) * 2;
   }

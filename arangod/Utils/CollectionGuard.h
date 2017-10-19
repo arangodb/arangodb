@@ -36,6 +36,15 @@ class CollectionGuard {
   CollectionGuard(CollectionGuard const&) = delete;
   CollectionGuard& operator=(CollectionGuard const&) = delete;
 
+  CollectionGuard(CollectionGuard&& other)
+      : _vocbase(other._vocbase),
+        _collection(other._collection),
+        _originalStatus(other._originalStatus),
+        _restoreOriginalStatus(other._restoreOriginalStatus) {
+    other._collection = nullptr;
+    other._vocbase = nullptr;
+  }
+
   /// @brief create the guard, using a collection id
   CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
                   bool restoreOriginalStatus = false)
@@ -50,7 +59,8 @@ class CollectionGuard {
     }
   }
 
-  CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t id, std::string const& name)
+  CollectionGuard(TRI_vocbase_t* vocbase, TRI_voc_cid_t id,
+                  std::string const& name)
       : _vocbase(vocbase),
         _collection(nullptr),
         _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
@@ -81,6 +91,17 @@ class CollectionGuard {
     }
 
     if (_collection == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    }
+  }
+
+  CollectionGuard(TRI_vocbase_t* vocbase, LogicalCollection* collection)
+      : _vocbase(vocbase),
+        _collection(collection),
+        _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
+        _restoreOriginalStatus(false) {
+    int res = _vocbase->useCollection(collection, _originalStatus);
+    if (res != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     }
   }

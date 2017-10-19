@@ -25,7 +25,7 @@
 #include "Basics/conversions.h"
 #include "Utils/Cursor.h"
 #include "Utils/CursorRepository.h"
-#include "Transaction/StandaloneContext.h"
+#include "Transaction/V8Context.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-vpack.h"
 #include "V8Server/v8-voccursor.h"
@@ -91,7 +91,7 @@ static void JS_CreateCursor(v8::FunctionCallbackInfo<v8::Value> const& args) {
   arangodb::aql::QueryResult result(TRI_ERROR_NO_ERROR);
   result.result = builder;
   result.cached = false;
-  result.context = std::make_shared<arangodb::transaction::StandaloneContext>(vocbase);
+  result.context = transaction::V8Context::Create(vocbase, false);
 
   TRI_ASSERT(builder.get() != nullptr);
 

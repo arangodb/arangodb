@@ -26,10 +26,10 @@
 #define ARANGODB_REST_GENERAL_REQUEST_H 1
 
 #include "Basics/Common.h"
-#include "Utils/ExecContext.h"
 
 #include "Endpoint/ConnectionInfo.h"
 #include "Rest/CommonDefines.h"
+#include "Rest/RequestContext.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
@@ -45,8 +45,6 @@ struct Options;
 namespace basics {
 class StringBuffer;
 }
-
-class RequestContext;
 
 using rest::RequestType;
 using rest::ContentType;
@@ -84,7 +82,6 @@ class GeneralRequest {
         _clientTaskId(0),
         _authorized(false),
         _requestContext(nullptr),
-        _execContext(nullptr),
         _isRequestContextOwner(false),
         _type(RequestType::ILLEGAL),
         _contentType(ContentType::UNSET),
@@ -102,24 +99,29 @@ class GeneralRequest {
   uint64_t clientTaskId() const { return _clientTaskId; }
   void setClientTaskId(uint64_t clientTaskId) { _clientTaskId = clientTaskId; }
 
+  /// Database used for this request, _system by default
   std::string const& databaseName() const { return _databaseName; }
   void setDatabaseName(std::string const& databaseName) {
     _databaseName = databaseName;
   }
 
-  // the authenticated user
+  /// @brief User exists on this server or on external auth system
+  ///  and password was checked. Must not imply any access rights
+  ///  to any specific resource
   bool authorized() const { return _authorized; }
   void setAuthorized(bool a) { _authorized = a; }
+  
+  // @brief User sending this request
   std::string const& user() const { return _user; }
   void setUser(std::string const& user) { _user = user; }
   void setUser(std::string&& user) { _user = std::move(user); }
 
+  /// @brief the request context depends on the application
   RequestContext* requestContext() const { return _requestContext; }
-  void setRequestContext(RequestContext*, bool);
-
-  ExecContext* execContext() const { return _execContext; }
-  void setExecContext(ExecContext*);
-
+  /// @brief set request context and whether this requests is allowed
+  ///        to delete it
+  void setRequestContext(RequestContext*, bool isOwner);
+  
   RequestType requestType() const { return _type; }
   void setRequestType(RequestType type) { _type = type; }
 
@@ -211,9 +213,8 @@ class GeneralRequest {
 
   // request context
   RequestContext* _requestContext;
-  ExecContext* _execContext;
-
   bool _isRequestContextOwner;
+
   rest::AuthenticationMethod _authenticationMethod =
       rest::AuthenticationMethod::NONE;
 

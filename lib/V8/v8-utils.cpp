@@ -2291,7 +2291,7 @@ static void JS_PollStdin(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("pollStdin()");
   }
   
-  bool hasData = false;
+  bool hasData;
 #ifdef _WIN32
   hasData = _kbhit() != 0;
 #else
@@ -2305,8 +2305,8 @@ static void JS_PollStdin(v8::FunctionCallbackInfo<v8::Value> const& args) {
   hasData = FD_ISSET(STDIN_FILENO, &fds);
 #endif
   
-  char c[3] = {0};
   if (hasData) {
+    char c[3] = {0};
     ssize_t n = TRI_READ(STDIN_FILENO, c, 3);
     if (n == 3) {// arrow keys are garbled
       if (c[2] == 'D') {

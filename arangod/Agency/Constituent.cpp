@@ -126,13 +126,10 @@ void Constituent::termNoLock(term_t t) {
         body.add("voted_for", Value(_votedFor)); }
       
       TRI_ASSERT(_vocbase != nullptr);
-      auto transactionContext =
-        std::make_shared<transaction::StandaloneContext>(_vocbase);
-      SingleCollectionTransaction trx(transactionContext, "election",
-                                      AccessMode::Type::WRITE);
+      auto ctx = transaction::StandaloneContext::Create(_vocbase);
+      SingleCollectionTransaction trx(ctx, "election", AccessMode::Type::WRITE);
       
-      auto res = trx.begin();
-      
+      Result res = trx.begin();
       if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
       }

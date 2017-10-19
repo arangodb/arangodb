@@ -100,10 +100,7 @@ function getQueue (key) {
 }
 
 function createQueue (key, maxWorkers) {
-  internal.createQueue({
-    _key: key,
-    maxWorkers: maxWorkers || 1
-  });
+  internal.createQueue(key, maxWorkers || 1);
 
   var databaseName = db._name();
   var cache = queueCache[databaseName];

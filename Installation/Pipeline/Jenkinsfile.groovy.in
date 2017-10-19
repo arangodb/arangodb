@@ -1130,9 +1130,15 @@ def testStep(os, edition, maintainer, mode, engine, stageName) {
         def name = "${os}-${edition}-${maintainer}/03-test/${mode}-${engine}"
 
         if (testCheck(os, edition, maintainer, mode, engine)) {
-            node("linux") { logStartStage(null, name, null) }
-            executeTests(os, edition, maintainer, mode, engine, stageName)
-            node("linux") { logStopStage(null, name) }
+            try {
+                node("linux") { logStartStage(null, name, null) }
+                executeTests(os, edition, maintainer, mode, engine, stageName)
+                node("linux") { logStopStage(null, name) }
+            }
+            catch (exc) {
+                node("linux") { logExceptionStage(null, name, null, exc) }
+                throw exc
+            }
         }
     }
 }

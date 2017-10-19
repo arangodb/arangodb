@@ -572,13 +572,14 @@ void MMFilesPrimaryIndex::handleValNode(transaction::Methods* trx,
     TRI_ASSERT(cid != 0);
     TRI_ASSERT(key != nullptr);
 
-    if (!trx->state()->isRunningInCluster() && cid != _collection->cid()) {
+    bool const isInCluster = trx->state()->isRunningInCluster();
+    if (!isInCluster && cid != _collection->cid()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using local collection id
       return;
     }
 
-    if (trx->state()->isRunningInCluster() && cid != _collection->planId()) {
+    if (isInCluster && cid != _collection->planId()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using cluster collection id
       return;

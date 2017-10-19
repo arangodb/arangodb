@@ -29,8 +29,6 @@
 #include "VocBase/vocbase.h"
 #include "VocBase/voc-types.h"
 
-#include <velocypack/Builder.h>
-
 namespace arangodb {
 namespace aql {
 enum AstNodeType : uint32_t;
@@ -86,12 +84,12 @@ class MMFilesPathBasedIndex : public MMFilesIndex {
                  std::vector<int>& expanding);
 
   /// @brief helper function to create a set of index combinations to insert
-  std::vector<std::pair<VPackSlice, uint32_t>> buildIndexValue(VPackSlice const documentSlice);
+  std::vector<std::pair<velocypack::Slice, uint32_t>> buildIndexValue(velocypack::Slice const documentSlice);
 
   /// @brief helper function to create a set of index combinations to insert
-  void buildIndexValues(VPackSlice const document, size_t level,
-                        std::vector<std::vector<std::pair<VPackSlice, uint32_t>>>& toInsert,
-                        std::vector<std::pair<VPackSlice, uint32_t>>& sliceStack);
+  void buildIndexValues(velocypack::Slice const document, size_t level,
+                        std::vector<std::vector<std::pair<velocypack::Slice, uint32_t>>>& toInsert,
+                        std::vector<std::pair<velocypack::Slice, uint32_t>>& sliceStack);
 
  protected:
   std::unique_ptr<FixedSizeAllocator> _allocator;

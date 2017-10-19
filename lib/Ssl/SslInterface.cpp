@@ -23,14 +23,15 @@
 
 #include "SslInterface.h"
 
+#include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
+#include "Random/UniformCharacter.h"
+
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
-
-#include "Basics/StringUtils.h"
-#include "Random/UniformCharacter.h"
 
 #ifdef OPENSSL_NO_SSL2 // OpenSSL > 1.1.0 deprecates RAND_pseudo_bytes
 #define RAND_BYTES RAND_bytes
@@ -217,7 +218,10 @@ void sslBASE64(char const* inputStr, char*& outputStr, size_t& outputLen) {
 std::string sslPBKDF2HS1(char const* salt, size_t saltLength, char const* pass,
                       size_t passLength, int iter, int keyLength) {
   unsigned char* dk =
-      (unsigned char*)TRI_SystemAllocate(keyLength + 1, false);
+      (unsigned char*)TRI_Allocate(keyLength + 1);
+  if (dk == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   PKCS5_PBKDF2_HMAC_SHA1(pass, (int)passLength, (const unsigned char*)salt,
                          (int)saltLength, iter, keyLength, dk);
@@ -225,7 +229,7 @@ std::string sslPBKDF2HS1(char const* salt, size_t saltLength, char const* pass,
   // return value as hex
   std::string result =
       StringUtils::encodeHex(std::string((char*)dk, keyLength));
-  TRI_SystemFree(dk);
+  TRI_Free(dk);
 
   return result;
 }
@@ -250,7 +254,10 @@ std::string sslPBKDF2(char const* salt, size_t saltLength, char const* pass,
   }
 
   unsigned char* dk =
-      (unsigned char*)TRI_SystemAllocate(keyLength + 1, false);
+      (unsigned char*)TRI_Allocate(keyLength + 1);
+  if (dk == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
 
   PKCS5_PBKDF2_HMAC(pass, (int)passLength, (const unsigned char*)salt,
                          (int)saltLength, iter, evp_md, keyLength, dk);
@@ -258,7 +265,7 @@ std::string sslPBKDF2(char const* salt, size_t saltLength, char const* pass,
   // return value as hex
   std::string result =
       StringUtils::encodeHex(std::string((char*)dk, keyLength));
-  TRI_SystemFree(dk);
+  TRI_Free(dk);
 
   return result;
 }
@@ -283,14 +290,17 @@ std::string sslHMAC(char const* key, size_t keyLength, char const* message,
   }
 
   unsigned char* md =
-      (unsigned char*)TRI_SystemAllocate(EVP_MAX_MD_SIZE + 1, false);
+      (unsigned char*)TRI_Allocate(EVP_MAX_MD_SIZE + 1);
+  if (md == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
   unsigned int md_len;
 
   HMAC(evp_md, key, (int)keyLength, (const unsigned char*)message, messageLen,
        md, &md_len);
 
   std::string result = std::string((char*)md, md_len);
-  TRI_SystemFree(md);
+  TRI_Free(md);
 
   return result;
 }
