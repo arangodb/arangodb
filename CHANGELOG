@@ -1,7 +1,7 @@
-v3.3.milestone1 (2017-10-11)
+v3.3.milestone2 (2017-10-19)
 ----------------------------
 
-* added option `--server.local-authentication`
+* added new replication module
 
 * make AQL `DISTINCT` not change the order of the results it is applied on
 
@@ -15,7 +15,7 @@ v3.3.milestone1 (2017-10-11)
 
 * UI: added word wrapping to query editor
 
-* fixed issue #3395: AQL: cannot instantiate CollectBlock with undetermined 
+* fixed issue #3395: AQL: cannot instantiate CollectBlock with undetermined
   aggregation method
 
 * minimum number of V8 contexts in console mode must be 2, not 1. this is
@@ -31,8 +31,12 @@ v3.3.milestone1 (2017-10-11)
 
   This addresses https://stackoverflow.com/questions/46427126/arangodb-3-2-unique-constraint-violation-id-or-key
 
-* fix potential overflow in CRC marker check when a corrupted CRC marker 
+* fix potential overflow in CRC marker check when a corrupted CRC marker
   is found at the very beginning of an MMFiles datafile
+
+
+v3.3.milestone1 (2017-10-11)
+----------------------------
 
 * added option `--server.local-authentication`
 
