@@ -81,10 +81,10 @@ class MaintenanceHandler : public RestHandler {
 
   // replace tcp:// with http://, and ssl:// with https://
   std::string fixEndpointProtocol(std::string const& endpoint) const {
-    if (endpoint.find("tcp://") == 0) {
+    if (endpoint.find("tcp://", 0, 6) == 0) {
       return "http://" + endpoint.substr(6); // strlen("tcp://")
     }
-    if (endpoint.find("ssl://") == 0) {
+    if (endpoint.find("ssl://", 0, 6) == 0) {
       return "https://" + endpoint.substr(6); // strlen("ssl://")
     }
     return endpoint;
