@@ -110,10 +110,9 @@ if (USE_IRESEARCH)
     set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/v5.7.0.0/third_party/icu")
   else()
     add_library(icu-static STATIC IMPORTED GLOBAL)
-    set_target_properties(icu-static PROPERTIES
-      INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}"
-      IMPORTED_LOCATION "${ICU_LIBS}"
-    )
+    set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION "icui18n")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES "icuuc")
     set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
   endif()
 
