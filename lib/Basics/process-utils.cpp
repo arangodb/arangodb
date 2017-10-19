@@ -839,9 +839,10 @@ void TRI_SetProcessTitle(char const* title) {
 /// @brief starts an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateExternalProcess(char const* executable, char const** arguments,
-                               size_t n, bool usePipes,
-                               ExternalId* pid) {
+void TRI_CreateExternalProcess(char const* executable, 
+                               std::vector<std::string> const& arguments,
+                               bool usePipes, ExternalId* pid) {
+  size_t const n = arguments.size();
   // create the external structure
   auto external = std::make_unique<ExternalProcess>();
   external->_executable = executable;
@@ -859,12 +860,18 @@ void TRI_CreateExternalProcess(char const* executable, char const** arguments,
   memset(external->_arguments, 0, (n + 2) * sizeof(char*));
 
   external->_arguments[0] = TRI_DuplicateString(executable);
+  if (external->_arguments[0] == nullptr) {
+    // OOM
+    pid->_pid = TRI_INVALID_PROCESS_ID;
+    return;
+  }
 
   for (size_t i = 0; i < n; ++i) {
-    if (arguments[i] != nullptr) {
-      external->_arguments[i + 1] = TRI_DuplicateString(arguments[i]);
-    } else {
-      external->_arguments[i + 1] = TRI_DuplicateString("");
+    external->_arguments[i + 1] = TRI_DuplicateString(arguments[i].c_str());
+    if (external->_arguments[i + 1] == nullptr) {
+      // OOM
+      pid->_pid = TRI_INVALID_PROCESS_ID;
+      return;
     }
   }
 
