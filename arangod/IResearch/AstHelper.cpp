@@ -23,6 +23,7 @@
 #include "AstHelper.h"
 
 #include "IResearchDocument.h"
+#include "Aql/Variable.h"
 
 #include <inttypes.h>
 
@@ -59,7 +60,10 @@ template<
 namespace arangodb {
 namespace iresearch {
 
-bool normalizeCmpNode(arangodb::aql::AstNode const& in, NormalizedCmpNode& out) {
+bool normalizeCmpNode(
+    arangodb::aql::AstNode const& in,
+    arangodb::aql::Variable const& ref,
+    NormalizedCmpNode& out) {
   static_assert(checkAdjacency<
     arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE, arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GT,
     arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE, arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LT,
@@ -81,9 +85,9 @@ bool normalizeCmpNode(arangodb::aql::AstNode const& in, NormalizedCmpNode& out) 
   auto const* value = in.getMemberUnchecked(1);
   TRI_ASSERT(value);
 
-  if (!arangodb::iresearch::checkAttributeAccess(attribute)) {
-    if (!arangodb::iresearch::checkAttributeAccess(value)) {
-      // no attribute access node found
+  if (!arangodb::iresearch::checkAttributeAccess(attribute, ref)) {
+    if (!arangodb::iresearch::checkAttributeAccess(value, ref)) {
+      // no suitable attribute access node found
       return false;
     }
 
@@ -256,15 +260,15 @@ std::string nameFromAttributeAccess(arangodb::aql::AstNode const& node) {
     char buf_[21]; // enough to hold all numbers up to 64-bits
   } builder;
 
-  TRI_ASSERT(checkAttributeAccess(&node));
-
   arangodb::aql::AstNode const* head = nullptr;
   visitAttributePath(head, node, builder);
+  TRI_ASSERT(head && arangodb::aql::NODE_TYPE_REFERENCE == head->type);
   return builder.str();
 }
 
 arangodb::aql::AstNode const* checkAttributeAccess(
-    arangodb::aql::AstNode const* node
+    arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const& ref
 ) noexcept {
   struct {
     bool operator()(irs::string_ref const&) {
@@ -285,7 +289,8 @@ arangodb::aql::AstNode const* checkAttributeAccess(
   return node
       && arangodb::aql::NODE_TYPE_REFERENCE != node->type // do not allow root node to be REFERENCE
       && visitAttributePath(head, *node, checker)
-      && head && !head->isConstant()
+      && head && arangodb::aql::NODE_TYPE_REFERENCE == head->type
+      && reinterpret_cast<void const*>(&ref) == head->getData() // same variable
     ? node : nullptr;
 }
 
