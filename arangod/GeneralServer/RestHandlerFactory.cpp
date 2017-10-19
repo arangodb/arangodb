@@ -60,11 +60,8 @@ class MaintenanceHandler : public RestHandler {
         GlobalReplicationApplier* applier = replication->globalReplicationApplier();
         if (applier != nullptr && applier->isRunning()) {
           std::string endpoint = applier->endpoint();
-          std::string const tcp = "tcp://";
-          if (endpoint.find(tcp) == 0) {
-            endpoint = std::string(_request->protocol()) + "://" +
-                       endpoint.substr(tcp.size());
-          }
+          // replace tcp:// with http://, and ssl:// with https://
+          endpoint = fixEndpointProtocol(endpoint);
           
           resetResponse(rest::ResponseCode::TEMPORARY_REDIRECT);
           _response->setHeader("Location", endpoint + _request->requestPath());
@@ -81,6 +78,17 @@ class MaintenanceHandler : public RestHandler {
   void handleError(const Exception& error) override {
     resetResponse(rest::ResponseCode::SERVICE_UNAVAILABLE);
   };
+
+  // replace tcp:// with http://, and ssl:// with https://
+  std::string fixEndpointProtocol(std::string const& endpoint) const {
+    if (endpoint.find("tcp://") == 0) {
+      return "http://" + endpoint.substr(6); // strlen("tcp://")
+    }
+    if (endpoint.find("ssl://") == 0) {
+      return "https://" + endpoint.substr(6); // strlen("ssl://")
+    }
+    return endpoint;
+  }
 };
 }
 
