@@ -1437,7 +1437,7 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
                   StringUtils::itoa(fetchTick) + "' is not present (anymore?) on master at " + _masterInfo._endpoint +
                   ". Last tick available on master is '" + StringUtils::itoa(tick) +
                   "'. It may be required to do a full resync and increase the number " +
-                  "of historic logfiles on the master in logger-follow response");
+                  "of historic logfiles on the master");
   }
   
   TRI_voc_tick_t lastAppliedTick;
