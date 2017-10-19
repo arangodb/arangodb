@@ -50,9 +50,7 @@ RestStatus RestClusterHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (!suffixes.empty() && suffixes[0] == "endpoints") {
     handleCommandEndpoints();
-  } /*else if (!suffixes.empty() && suffixes[0] == "serverInfo") {
-    handleCommandServerInfo();
-  }*/ else {
+  } else {
     generateError(Result(TRI_ERROR_FORBIDDEN,
                          "expecting _api/cluster/endpoints"));
   }

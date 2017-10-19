@@ -142,12 +142,14 @@ RestHandler* RestHandlerFactory::createHandler(
       return new MaintenanceHandler(req.release(), res.release(), false);
     }
   } else if (mode == RestHandlerFactory::Mode::REDIRECT) {
-    if (path.find("/_admin/shutdown") == std::string::npos &&
+    if (
         path.find("/_api/agency/agency-callbacks") == std::string::npos &&
         path.find("/_api/cluster/") == std::string::npos &&
         path.find("/_api/replication") == std::string::npos &&
         path.find("/_api/version") == std::string::npos &&
-        path.find("/_api/wal") == std::string::npos) {
+        path.find("/_api/wal") == std::string::npos &&
+        path.find("/_admin/shutdown") == std::string::npos &&
+        path.find("/_admin/server/role") == std::string::npos) {
       LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
       return new MaintenanceHandler(req.release(), res.release(), true);
     }

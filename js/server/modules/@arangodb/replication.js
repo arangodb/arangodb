@@ -111,6 +111,10 @@ globalApplier.properties = function (config) {
   return GLOBAL_REPLICATION_APPLIER_CONFIGURE(config);
 };
 
+globalApplier.failoverEnabled = function () {
+  return GLOBAL_REPLICATION_APPLIER_FAILOVER_ENABLED();
+};
+
 // / @brief performs a one-time synchronization with a remote endpoint
 function sync (config) { return REPLICATION_SYNCHRONIZE(config); }
 
