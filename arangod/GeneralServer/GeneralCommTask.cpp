@@ -393,7 +393,6 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
     if (ci.endpointType == Endpoint::DomainType::UNIX &&
         !_authentication->authenticationUnixSockets()) {
       // no authentication required for unix domain socket connections
-      //forceOpen = true;
       result = rest::ResponseCode::OK;
     }
 #endif
@@ -422,8 +421,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
-        //forceOpen = true;
-        vc->upgradeSuperuser();
+        vc->upgradeReadOnly();
       }
     }
   }
