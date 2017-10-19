@@ -423,7 +423,7 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
         //forceOpen = true;
-        vc->upgradeReadOnly();
+        vc->upgradeSuperuser();
       }
     }
   }
