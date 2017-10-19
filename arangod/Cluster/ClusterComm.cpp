@@ -223,19 +223,13 @@ ClusterComm::ClusterComm()
     : _backgroundThread(nullptr),
       _logConnectionErrors(false),
       _authenticationEnabled(false),
-      _jwt(""),
       _jwtAuthorization("") {
-  auto authentication = FeatureCacheFeature::instance()->authenticationFeature();
-  TRI_ASSERT(authentication != nullptr);
-  if (authentication->isActive()) {
+  auto auth = FeatureCacheFeature::instance()->authenticationFeature();
+  TRI_ASSERT(auth != nullptr);
+  if (auth->isActive()) {
     _authenticationEnabled = true;
-    VPackBuilder bodyBuilder;
-    {
-      VPackObjectBuilder p(&bodyBuilder);
-      bodyBuilder.add("server_id", VPackValue(ServerState::instance()->getId()));
-    }
-    _jwt = authentication->authInfo()->generateJwt(bodyBuilder);
-    _jwtAuthorization = "bearer " + _jwt;
+    
+    _jwtAuthorization = "bearer " + auth->jwtToken();
   }
 
   _communicator = std::make_shared<communicator::Communicator>();    

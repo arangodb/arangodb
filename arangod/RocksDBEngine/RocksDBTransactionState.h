@@ -105,6 +105,15 @@ class RocksDBTransactionState final : public TransactionState {
 
   RocksDBMethods* rocksdbMethods();
 
+  /// @brief insert a snapshot into a (not yet started) transaction.
+  ///        Only ever valid on a read-only transaction
+  void donateSnapshot(rocksdb::Snapshot const* snap);
+  /// @brief steal snapshot of this transaction. Only ever valid on a
+  ///        read-only transaction
+  rocksdb::Snapshot const* stealSnapshot();
+  
+  /// @brief Rocksdb sequence number of snapshot. Works while trx
+  ///        has either a snapshot or a transaction
   uint64_t sequenceNumber() const;
 
   static RocksDBTransactionState* toState(transaction::Methods* trx) {
@@ -123,12 +132,12 @@ class RocksDBTransactionState final : public TransactionState {
 
   /// @brief make some internal preparations for accessing this state in
   /// parallel from multiple threads. READ-ONLY transactions
-  void prepareForParallelReads();
+  void prepareForParallelReads() { _parallel = true; }
   /// @brief in parallel mode. READ-ONLY transactions
   bool inParallelMode() const { return _parallel; }
-  /// @brief temporarily lease a Builder object
+  /// @brief temporarily lease a Builder object. Not thread safe
   RocksDBKey* leaseRocksDBKey();
-  /// @brief return a temporary RocksDBKey object
+  /// @brief return a temporary RocksDBKey object. Not thread safe
   void returnRocksDBKey(RocksDBKey* key);
 
  private:
@@ -136,17 +145,17 @@ class RocksDBTransactionState final : public TransactionState {
   arangodb::Result internalCommit();
 
  private:
-  /// rocksdb transaction may be null
+  /// @brief rocksdb transaction may be null for read only transactions
   std::unique_ptr<rocksdb::Transaction> _rocksTransaction;
-  /// rocksdb snapshot, may be null
+  /// @brief rocksdb snapshot, is null if _rocksTransaction is set
   rocksdb::Snapshot const* _snapshot;
-  /// write options used
+  /// @brief write options used
   rocksdb::WriteOptions _rocksWriteOptions;
-  /// read options which must be used to guarantee isolation
+  ///@brief read options which must be used to guarantee isolation
   rocksdb::ReadOptions _rocksReadOptions;
-  /// cache transaction to unblock blacklisted keys
+  /// @brief cache transaction to unblock blacklisted keys
   cache::Transaction* _cacheTx;
-  // wrapper to use outside this class to access rocksdb
+  /// @brief wrapper to use outside this class to access rocksdb
   std::unique_ptr<RocksDBMethods> _rocksMethods;
 
   // if a transaction gets bigger than these values then an automatic
@@ -155,7 +164,7 @@ class RocksDBTransactionState final : public TransactionState {
   uint64_t _numUpdates;
   uint64_t _numRemoves;
 
-  /// Last collection used for transaction
+  /// @brief Last collection used for transaction. Used for WAL
   TRI_voc_cid_t _lastUsedCollection;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// store the number of log entries in WAL
@@ -163,6 +172,7 @@ class RocksDBTransactionState final : public TransactionState {
 #endif
   SmallVector<RocksDBKey*, 32>::allocator_type::arena_type _arena;
   SmallVector<RocksDBKey*, 32> _keys;
+  /// @brief if true there key buffers will no longer be shared
   bool _parallel;
 };
 

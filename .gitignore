@@ -74,6 +74,7 @@ etc/arangodb/*.conf
 
 Installation/epm/arangodb.sublist
 Installation/MacOSX/Bundle/Info.plist
+Installation/Pipeline/Jenkinsfile.groovy
 
 nbproject/
 .idea

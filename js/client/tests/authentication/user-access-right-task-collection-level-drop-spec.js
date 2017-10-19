@@ -186,7 +186,7 @@ describe('User Rights Management', () => {
                     expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not drop the document with sufficient rights`);
                     try {
                       col.document('123');
-                      expect(true).to.be(false, `${name} could not drop the document with sufficient rights`);
+                      expect(true).to.equal(false, `${name} could not drop the document with sufficient rights`);
                     } catch (e) {}
                   } else {
                     let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
@@ -244,7 +244,7 @@ describe('User Rights Management', () => {
                     expect(getKey(keySpaceId, `${name}_status`)).to.equal(true, `${name} could not drop the document with sufficient rights`);
                     try {
                       col.document('456');
-                      expect(true).to.be(false, 'Document still in collection after remove');
+                      expect(true).to.equal(false, 'Document still in collection after remove');
                     } catch (e) {}
                   } else {
                     let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&

@@ -31,7 +31,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Pregel/Statistics.h"
-#include "VocBase/vocbase.h"
+#include "Utils/DatabaseGuard.h"
 
 namespace arangodb {
 namespace pregel {
@@ -55,7 +55,7 @@ class Conductor {
   friend class PregelFeature;
 
   ExecutionState _state = ExecutionState::DEFAULT;
-  const VocbaseGuard _vocbaseGuard;
+  const DatabaseGuard _vocbaseGuard;
   const uint64_t _executionNumber;
   VPackBuilder _userParams;
   std::unique_ptr<IAlgorithm> _algorithm;

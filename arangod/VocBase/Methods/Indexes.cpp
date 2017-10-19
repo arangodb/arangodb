@@ -44,6 +44,7 @@
 #include "Transaction/Hints.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/Events.h"
+#include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8Server/v8-collection.h"
 #include "VocBase/AuthInfo.h"
@@ -61,7 +62,7 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::methods;
 
-Result Indexes::getIndex(arangodb::LogicalCollection const* collection,
+Result Indexes::getIndex(LogicalCollection const* collection,
                          VPackSlice const& indexId, VPackBuilder& out) {
   // do some magic to parse the iid
   std::string name;
@@ -96,7 +97,7 @@ Result Indexes::getIndex(arangodb::LogicalCollection const* collection,
   return Result(TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
 }
 
-arangodb::Result Indexes::getAll(arangodb::LogicalCollection const* collection,
+arangodb::Result Indexes::getAll(LogicalCollection const* collection,
                                  bool withFigures, VPackBuilder& result) {
 
   VPackBuilder tmp;
@@ -321,18 +322,17 @@ Result Indexes::ensureIndexCoordinator(
   return Result(res, errorMsg);
 }
 
-Result Indexes::ensureIndex(arangodb::LogicalCollection* collection,
+Result Indexes::ensureIndex(LogicalCollection* collection,
                             VPackSlice const& definition, bool create,
                             VPackBuilder& output) {
   // can read indexes with RO on db and collection. Modifications require RW/RW
   if (ExecContext::CURRENT != nullptr) {
-    AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-    AuthLevel lvl1 = ExecContext::CURRENT->databaseAuthLevel();
-    AuthLevel lvl2 = auth->canUseCollection(ExecContext::CURRENT->user(),
-                                              ExecContext::CURRENT->database(),
-                                              collection->name());
-    if ((create && (lvl1 != AuthLevel::RW || lvl2 != AuthLevel::RW)) ||
-        lvl1 == AuthLevel::NONE || lvl2 == AuthLevel::NONE) {
+    ExecContext const* exec = ExecContext::CURRENT;
+    AuthLevel lvl = exec->databaseAuthLevel();
+    bool canModify = exec->canUseCollection(collection->name(), AuthLevel::RW);
+    bool canRead = exec->canUseCollection(collection->name(), AuthLevel::RO);
+    if ((create && (lvl != AuthLevel::RW || !canModify)) ||
+        (lvl == AuthLevel::NONE || !canRead)) {
       return TRI_ERROR_FORBIDDEN;
     }
   }
@@ -513,15 +513,12 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
   return Result();
 }
 
-arangodb::Result Indexes::drop(arangodb::LogicalCollection const* collection,
+arangodb::Result Indexes::drop(LogicalCollection const* collection,
                                VPackSlice const& indexArg) {
 
-  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
   if (ExecContext::CURRENT != nullptr) {
     if (ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW ||
-        auth->canUseCollection(ExecContext::CURRENT->user(),
-                               ExecContext::CURRENT->database(),
-                               collection->name()) != AuthLevel::RW) {
+        !ExecContext::CURRENT->canUseCollection(collection->name(), AuthLevel::RW)) {
       return TRI_ERROR_FORBIDDEN;
     }
   }

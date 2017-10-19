@@ -29,13 +29,13 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Transaction/Hints.h"
 #include "Transaction/V8Context.h"
+#include "Utils/DatabaseGuard.h"
 #include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -98,7 +98,7 @@ class V8Task : public std::enable_shared_from_this<V8Task> {
 
  private:
   void toVelocyPack(VPackBuilder&) const;
-  void work();
+  void work(ExecContext const*);
   void queue(std::chrono::microseconds offset);
   void unqueue() noexcept;
   std::function<void(boost::system::error_code const&)> callbackFunction();
@@ -113,7 +113,7 @@ class V8Task : public std::enable_shared_from_this<V8Task> {
   std::unique_ptr<boost::asio::steady_timer> _timer;
 
   // guard to make sure the database is not dropped while used by us
-  std::unique_ptr<VocbaseGuard> _vocbaseGuard;
+  std::unique_ptr<DatabaseGuard> _dbGuard;
 
   std::string const _command;
   std::shared_ptr<arangodb::velocypack::Builder> _parameters;
@@ -147,9 +147,8 @@ std::shared_ptr<V8Task> V8Task::createTask(std::string const& id,
     return {nullptr};
   }
 
-  auto itr = _tasks.emplace(
-      id,
-      std::make_shared<V8Task>(id, name, vocbase, command, allowUseDatabase));
+  auto task = std::make_shared<V8Task>(id, name, vocbase, command, allowUseDatabase);
+  auto itr = _tasks.emplace(id, std::move(task));
 
   ec = TRI_ERROR_NO_ERROR;
   return itr.first->second;
@@ -233,7 +232,7 @@ void V8Task::removeTasksForDatabase(std::string const& name) {
 }
   
 bool V8Task::databaseMatches(std::string const& name) const {
-  return (_vocbaseGuard->vocbase()->name() == name);
+  return (_dbGuard->database()->name() == name);
 }
 
 V8Task::V8Task(std::string const& id, std::string const& name,
@@ -242,7 +241,7 @@ V8Task::V8Task(std::string const& id, std::string const& name,
     : _id(id),
       _name(name),
       _created(TRI_microtime()),
-      _vocbaseGuard(new VocbaseGuard(vocbase)),
+      _dbGuard(new DatabaseGuard(vocbase)),
       _command(command),
       _allowUseDatabase(allowUseDatabase),
       _offset(0),
@@ -299,27 +298,25 @@ V8Task::callbackFunction() {
     }
 
     // get the permissions to be used by this task
-    AuthLevel dbLvl = AuthLevel::RW;
+    bool allowContinue = true;
+    
     std::unique_ptr<ExecContext> execContext;
-    TRI_DEFER(ExecContext::CURRENT = nullptr);
     if (!_user.empty()) { // not superuser
-      AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-      std::string const& dbname = _vocbaseGuard->vocbase()->name();
-      dbLvl = auth->canUseDatabase(_user, dbname);
-      execContext.reset(new ExecContext(_user, dbname,
-                                        auth->canUseDatabase(_user, TRI_VOC_SYSTEM_DATABASE),
-                                        dbLvl));
-      ExecContext::CURRENT = execContext.get();
+      std::string const& dbname = _dbGuard->database()->name();
+      execContext.reset(ExecContext::create(_user, dbname));
+      allowContinue = execContext->canUseDatabase(dbname, AuthLevel::RW);
     }
+    ExecContextScope scope(_user.empty() ?
+                           ExecContext::superuser() : execContext.get());
 
     // permissions might have changed since starting this task
-    if (SchedulerFeature::SCHEDULER->isStopping() || dbLvl != AuthLevel::RW) {
+    if (SchedulerFeature::SCHEDULER->isStopping() || !allowContinue) {
       V8Task::unregisterTask(_id, false);
       return;
     }
 
     // now do the work:
-    work();
+    work(execContext.get());
 
     if (_periodic && !SchedulerFeature::SCHEDULER->isStopping()) {
       // requeue the task
@@ -334,6 +331,7 @@ V8Task::callbackFunction() {
 
 void V8Task::start() {
   TRI_ASSERT(ExecContext::CURRENT == nullptr ||
+             ExecContext::CURRENT->isAdminUser() ||
              (!_user.empty() && ExecContext::CURRENT->user() == _user));
   
   auto ioService = SchedulerFeature::SCHEDULER->ioService();
@@ -413,11 +411,11 @@ void V8Task::toVelocyPack(VPackBuilder& builder) const {
   builder.add("offset", VPackValue(_offset.count() / 1000000.0));
 
   builder.add("command", VPackValue(_command));
-  builder.add("database", VPackValue(_vocbaseGuard->vocbase()->name()));
+  builder.add("database", VPackValue(_dbGuard->database()->name()));
 }
 
-void V8Task::work() {
-  auto context = V8DealerFeature::DEALER->enterContext(_vocbaseGuard->vocbase(),
+void V8Task::work(ExecContext const* exec) {
+  auto context = V8DealerFeature::DEALER->enterContext(_dbGuard->database(),
                                                        _allowUseDatabase);
 
   // note: the context might be 0 in case of shut-down
@@ -536,9 +534,11 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 1 || !args[0]->IsObject()) {
     TRI_V8_THROW_EXCEPTION_USAGE("register(<task>)");
   }
+  
+  TRI_GET_GLOBALS();
 
-  if (ExecContext::CURRENT != nullptr &&
-      ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW) {
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr && exec->databaseAuthLevel() != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "registerTask() needs db RW permissions");
   }
@@ -594,11 +594,13 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (obj->HasOwnProperty(TRI_V8_ASCII_STRING(isolate, "runAsUser"))) {
     runAsUser = TRI_ObjectToString(obj->Get(TRI_V8_ASCII_STRING(isolate, "runAsUser")));
   }
+  
   // only the superroot is allowed to run tasks as an arbitrary user
-  if (ExecContext::CURRENT != nullptr) {
-    if (runAsUser.empty()) { // execute task as the same use
-      runAsUser = ExecContext::CURRENT->user();
-    } else if (ExecContext::CURRENT->user() != runAsUser) {
+  TRI_ASSERT(exec == ExecContext::CURRENT);
+  if (exec != nullptr) {
+    if (runAsUser.empty()) { // execute task as the same user
+      runAsUser = exec->user();
+    } else if (exec->user() != runAsUser) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
   }
@@ -632,8 +634,6 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_THROW_EXCEPTION(res);
     }
   }
-
-  TRI_GET_GLOBALS();
 
   command = "(function (params) { " + command + " } )(params);";
 
@@ -682,15 +682,14 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() != 1) {
     TRI_V8_THROW_EXCEPTION_USAGE("unregister(<id>)");
   }
-
-  if (ExecContext::CURRENT != nullptr &&
-      ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW) {
+    
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr && exec->databaseAuthLevel() != AuthLevel::RW) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    "unregisterTask() needs db RW permissions");
   }
 
   int res = V8Task::unregisterTask(GetTaskId(isolate, args[0]), true);
-
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
@@ -810,7 +809,7 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   
   LOG_TOPIC(TRACE, Logger::FIXME) << "Removing queue " << key;
   auto ctx = transaction::V8Context::Create(vocbase, false);
-  SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::EXCLUSIVE);
+  SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();
   if (!res.ok()) {

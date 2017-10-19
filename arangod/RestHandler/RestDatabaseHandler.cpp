@@ -152,7 +152,6 @@ RestStatus RestDatabaseHandler::deleteDatabase() {
   }
 
   std::string const& dbName = suffixes[0];
-
   Result res = methods::Databases::drop(_vocbase, dbName);
   if (res.ok()) {
     generateSuccess(rest::ResponseCode::OK, VPackSlice::trueSlice());

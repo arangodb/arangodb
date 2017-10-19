@@ -66,6 +66,9 @@ typedef enum {
 
   REPLICATION_STOP = 1000,   // not used in ArangoDB 2.2 and higher
   REPLICATION_START = 1001,  // not used in ArangoDB 2.2 and higher
+  
+  REPLICATION_DATABASE_CREATE = 1100,
+  REPLICATION_DATABASE_DROP = 1101,
 
   REPLICATION_COLLECTION_CREATE = 2000,
   REPLICATION_COLLECTION_DROP = 2001,
@@ -106,6 +109,7 @@ void TRI_GetTimeStampReplication(double, char*, size_t);
 /// @brief determine whether a collection should be included in replication
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ExcludeCollectionReplication(char const*, bool);
+bool TRI_ExcludeCollectionReplication(char const* name, bool includeSystem);
+bool TRI_ExcludeCollectionReplication(std::string const& name, bool includeSystem);
 
 #endif

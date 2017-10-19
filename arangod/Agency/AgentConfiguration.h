@@ -107,10 +107,10 @@ struct config_t {
   /// @brief agent id
   std::string id() const;
 
-  /// @brief pool size
+  /// @brief pool completed
   bool poolComplete() const;
 
-  /// @brief pool size
+  /// @brief is supervision enables
   bool supervision() const;
 
   /// @brief pool size

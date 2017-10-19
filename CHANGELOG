@@ -57,6 +57,10 @@ devel
 * Add statistics about the V8 context counts and number of available/active/busy
  threads we expose through the server statistics interface.
 
+* removed `--compat28` parameter from arangodump and replication API
+  
+  old Arango versions will no longer be supported by these tools.
+
 * increase the recommended value for `/proc/sys/vm/max_map_count` to a value
   eight times as high as the previous recommended value. Increasing the
   values helps to prevent an ArangoDB server from running out of memory mappings.
@@ -66,7 +70,6 @@ devel
 
       WARNING {memory} maximum number of memory mappings per process is 65530, which seems too low. it is recommended to set it to at least 512000
       WARNING {memory} execute 'sudo sysctl -w "vm.max_map_count=512000"'
-
 
 
 v3.2.4 (2017-XX-XX)

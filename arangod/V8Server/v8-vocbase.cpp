@@ -65,6 +65,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/UserTransaction.h"
 #include "Transaction/V8Context.h"
+#include "Utils/ExecContext.h"
 #include "V8/JSLoader.h"
 #include "V8/V8LineEditor.h"
 #include "V8/v8-conv.h"
@@ -1774,9 +1775,9 @@ static void JS_CreateDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8ToVPackSimple(isolate, users, user);
     }
   }
-  
+    
   std::string const dbName = TRI_ObjectToString(args[0]);
-  Result res = methods::Databases::create(dbName, users.slice(), options.slice());
+  Result res = methods::Databases::create( dbName, users.slice(), options.slice());
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
@@ -1804,9 +1805,9 @@ static void JS_DropDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (!vocbase->isSystem()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_USE_SYSTEM_DATABASE);
   }
-
-  if (ExecContext::CURRENT != nullptr &&
-      ExecContext::CURRENT->systemAuthLevel() != AuthLevel::RW) {
+  
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr && exec->systemAuthLevel() != AuthLevel::RW) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 

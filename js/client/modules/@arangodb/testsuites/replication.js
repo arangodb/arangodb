@@ -61,7 +61,10 @@ function replicationOngoing (options) {
   let testCases = tu.scanTestPath('js/server/tests/replication/');
 
   options.replication = true;
-  options.test = 'replication-ongoing';
+  if (options.test === undefined) {
+    options.test = 'replication-ongoing';
+  }
+
   let startStopHandlers = {
     postStart: function (options,
                          serverOptions,
@@ -120,7 +123,10 @@ function replicationStatic (options) {
   let testCases = tu.scanTestPath('js/server/tests/replication/');
 
   options.replication = true;
-  options.test = 'replication-static';
+  if (options.test === undefined) {
+    options.test = 'replication-static';
+  }
+
   let startStopHandlers = {
     postStart: function (options,
                          serverOptions,
@@ -203,7 +209,10 @@ function replicationSync (options) {
   let testCases = tu.scanTestPath('js/server/tests/replication/');
 
   options.replication = true;
-  options.test = 'replication-sync';
+  if (options.test === undefined) {
+    options.test = 'replication-sync';
+  }
+
   let startStopHandlers = {
     postStart: function (options,
                          serverOptions,

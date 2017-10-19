@@ -544,13 +544,11 @@ QueryResult Query::execute(QueryRegistry* registry) {
       arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
       if (cacheEntry != nullptr) {
+        ExecContext const* exe = ExecContext::CURRENT;
         // got a result from the query cache
-        if(ExecContext::CURRENT != nullptr) {
-          AuthInfo* info = AuthenticationFeature::INSTANCE->authInfo();
+        if(exe != nullptr) {
           for (std::string const& collectionName : cacheEntry->_collections) {
-            if (info->canUseCollection(ExecContext::CURRENT->user(),
-                                       ExecContext::CURRENT->database(),
-                                       collectionName) == AuthLevel::NONE) {
+            if (!exe->canUseCollection(collectionName, AuthLevel::RO)) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
             }
           }
@@ -559,7 +557,7 @@ QueryResult Query::execute(QueryRegistry* registry) {
         QueryResult res;
         // we don't have yet a transaction when we're here, so let's create
         // a mimimal context to build the result
-        res.context = std::make_shared<transaction::StandaloneContext>(_vocbase);
+        res.context = transaction::StandaloneContext::Create(_vocbase);
 
         res.warnings = warningsToVelocyPack();
         TRI_ASSERT(cacheEntry->_queryResult != nullptr);
@@ -743,13 +741,13 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
       arangodb::aql::QueryCacheResultEntryGuard guard(cacheEntry);
 
       if (cacheEntry != nullptr) {
+        
+        auto ctx = transaction::StandaloneContext::Create(_vocbase);
+        ExecContext const* exe = ExecContext::CURRENT;
         // got a result from the query cache
-        if(ExecContext::CURRENT != nullptr) {
-          AuthInfo* info = AuthenticationFeature::INSTANCE->authInfo();
+        if(exe != nullptr) {
           for (std::string const& collectionName : cacheEntry->_collections) {
-            if (info->canUseCollection(ExecContext::CURRENT->user(),
-                                       ExecContext::CURRENT->database(),
-                                       collectionName) == AuthLevel::NONE) {
+            if (!exe->canUseCollection(collectionName, AuthLevel::RO)) {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_FORBIDDEN);
             }
           }
@@ -758,8 +756,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate, QueryRegistry* registry) {
         QueryResultV8 result;
         // we don't have yet a transaction when we're here, so let's create
         // a mimimal context to build the result
-        result.context = std::make_shared<transaction::StandaloneContext>(_vocbase);
-
+        result.context = ctx;
         v8::Handle<v8::Value> values =
             TRI_VPackToV8(isolate, cacheEntry->_queryResult->slice(),
                           result.context->getVPackOptions());
@@ -1301,10 +1298,10 @@ void Query::cleanupPlanAndEngine(int errorCode, VPackBuilder* statsBuilder) {
 std::shared_ptr<transaction::Context> Query::createTransactionContext() {
   if (_contextOwnedByExterior) {
     // we can use v8
-    return arangodb::transaction::V8Context::Create(_vocbase, true);
+    return transaction::V8Context::Create(_vocbase, true);
   }
 
-  return arangodb::transaction::StandaloneContext::Create(_vocbase);
+  return transaction::StandaloneContext::Create(_vocbase);
 }
 
 /// @brief look up a graph either from our cache list or from the _graphs

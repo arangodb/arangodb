@@ -54,7 +54,7 @@ void TRI_InitStringBuffer(TRI_string_buffer_t*,
 /// @brief initializes the string buffer with a specific size
 ///
 /// @warning You must call initialize before using the string buffer.
-void TRI_InitSizedStringBuffer(TRI_string_buffer_t*,                                size_t const, bool initializeMemory = true);
+void TRI_InitSizedStringBuffer(TRI_string_buffer_t*, size_t const, bool initializeMemory = true);
 
 /// @brief frees the string buffer
 ///
@@ -266,6 +266,8 @@ class StringBuffer {
 
   /// @brief frees the string buffer
   ~StringBuffer() { TRI_DestroyStringBuffer(&_buffer); }
+
+  std::string toString() const { return std::string(c_str(), length()); }
 
   /// @brief frees the string buffer and cleans the buffer
   void annihilate() { TRI_AnnihilateStringBuffer(&_buffer); }
