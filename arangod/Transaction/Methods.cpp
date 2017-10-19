@@ -419,7 +419,6 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
   double bestCost = 0.0;
   bool bestSupportsFilter = false;
   bool bestSupportsSort = false;
-  size_t coveredAttributes = 0;
 
   for (auto const& idx : indexes) {
     double filterCost = 0.0;
@@ -447,6 +446,7 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
     bool const isOnlyAttributeAccess =
         (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess());
 
+    size_t coveredAttributes = 0;
     if (sortCondition->isUnidirectional()) {
       // only go in here if we actually have a sort condition and it can in
       // general be supported by an index. for this, a sort condition must not
@@ -473,6 +473,10 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
         sortCost = 0.0;
       }
     }
+
+    // enable the following line to see index candidates considered with their
+    // abilities and scores
+    // LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", supportsSort: " << supportsSort << ", filterCost: " << filterCost << ", sortCost: " << sortCost << ", totalCost: " << (filterCost + sortCost) << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess << ", isUnidirectional: " << sortCondition->isUnidirectional() << ", isOnlyEqualityMatch: " << node->isOnlyEqualityMatch() << ", itemsInIndex: " << itemsInIndex; 
 
     if (!supportsFilter && !supportsSort) {
       continue;
