@@ -41,7 +41,7 @@ class ExecutionEngine {
   explicit ExecutionEngine(Query* query);
 
   /// @brief destroy the engine, frees all assigned blocks
-  ~ExecutionEngine();
+  TEST_VIRTUAL ~ExecutionEngine();
 
  public:
   // @brief create an execution engine from a plan

@@ -85,7 +85,7 @@ class Query {
         std::shared_ptr<arangodb::velocypack::Builder> const& queryStruct,
         std::shared_ptr<arangodb::velocypack::Builder> const& options, QueryPart);
 
-  ~Query();
+  TEST_VIRTUAL ~Query();
 
   /// @brief clone a query
   /// note: as a side-effect, this will also create and start a transaction for
@@ -200,7 +200,7 @@ class Query {
   RegexCache* regexCache() { return &_regexCache; }
 
   /// @brief return the engine, if prepared
-  ExecutionEngine* engine() const { return _engine.get(); }
+  TEST_VIRTUAL ExecutionEngine* engine() const { return _engine.get(); }
 
   /// @brief inject the engine
   void setEngine(ExecutionEngine* engine);

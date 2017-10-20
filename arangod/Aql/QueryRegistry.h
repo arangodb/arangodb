@@ -38,7 +38,7 @@ class QueryRegistry {
  public:
   QueryRegistry() {}
 
-  ~QueryRegistry();
+  TEST_VIRTUAL ~QueryRegistry();
 
   /// @brief insert, this inserts the query <query> for the vocbase <vocbase>
   /// and the id <id> into the registry. It is in error if there is already
