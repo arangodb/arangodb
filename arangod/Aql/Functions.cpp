@@ -36,6 +36,7 @@
 #include "Basics/fpconv.h"
 #include "Basics/tri-strings.h"
 #include "Indexes/Index.h"
+#include "Logger/Logger.h"
 #include "Random/UniformCharacter.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/CollectionNameResolver.h"
@@ -2416,6 +2417,11 @@ AqlValue Functions::Matches(arangodb::aql::Query* query,
   ValidateParameters(parameters, "MATCHES", 2, 3);
 
   AqlValue docToFind = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  if (!docToFind.isObject()) {
+    return AqlValue(AqlValueHintBool(false));
+  }
+
   AqlValue exampleDocs = ExtractFunctionParameterValue(trx, parameters, 1);
 
   bool retIdx = false;
@@ -2429,7 +2435,7 @@ AqlValue Functions::Matches(arangodb::aql::Query* query,
   transaction::BuilderLeaser builder(trx);
   VPackSlice examples = materializer.slice(exampleDocs, false);
 
-  if (examples.isObject()) {
+  if (!examples.isArray()) {
     builder->openArray();
     builder->add(examples);
     builder->close();
@@ -2443,6 +2449,13 @@ AqlValue Functions::Matches(arangodb::aql::Query* query,
 
   for (auto const& example : VPackArrayIterator(examples)) {
     idx++;
+
+    if (!example.isObject()) {
+      LOG_TOPIC(WARN, arangodb::Logger::QUERIES) << arangodb::basics::Exception::FillFormatExceptionString(
+        TRI_errno_string(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH), "MATCHES");
+      continue;
+    }
+
     foundMatch = true;
 
     for(auto const& it : VPackObjectIterator(example, true)) {
@@ -2450,7 +2463,7 @@ AqlValue Functions::Matches(arangodb::aql::Query* query,
 
       if (!docSlice.hasKey(key) ||
         // compare inner content
-        basics::VelocyPackHelper::compare(docSlice.get(key), it.value, true, options) != 0) {
+        basics::VelocyPackHelper::compare(docSlice.get(key), it.value, false, options, &docSlice, &example) != 0) {
         foundMatch = false;
         break;
       }
