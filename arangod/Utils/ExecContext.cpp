@@ -34,12 +34,6 @@ ExecContext ExecContext::SUPERUSER(true, "", "", AuthLevel::RW, AuthLevel::RW);
 /// @brief an internal superuser context, is
 ///        a singleton instance, deleting is an error
 ExecContext const* ExecContext::superuser() { return &ExecContext::SUPERUSER; }
-/*
-/// @brief a reference to a user with NONE for everything
-ExecContext* ExecContext::createUnauthorized(std::string const& user,
-                                             std::string const& db) {
-  return new ExecContext(false, user, db, AuthLevel::NONE, AuthLevel::NONE);
-}*/
 
 ExecContext* ExecContext::create(std::string const& user,
                                  std::string const& dbname) {
@@ -55,8 +49,9 @@ ExecContext* ExecContext::create(std::string const& user,
 
 bool ExecContext::canUseDatabase(std::string const& db,
                                  AuthLevel requested) const {
-  if (_isSuperuser) {
-    return true;
+  if (_isInternal || _database == db) {
+    // should be RW for superuser, RO for read-only
+    return requested <= _databaseAuthLevel;
   }
   AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
   TRI_ASSERT(auth != nullptr);
@@ -70,8 +65,9 @@ bool ExecContext::canUseDatabase(std::string const& db,
 /// @brief returns auth level for user
 AuthLevel ExecContext::collectionAuthLevel(std::string const& dbname,
                                            std::string const& coll) const {
-  if (_isSuperuser) {
-    return AuthLevel::RW;
+  if (_isInternal) {
+    // should be RW for superuser, RO for read-only
+    return _databaseAuthLevel;
   }
   AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
   TRI_ASSERT(auth != nullptr);

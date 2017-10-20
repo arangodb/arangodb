@@ -402,13 +402,30 @@ void HeartbeatThread::runDBServer() {
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
 }
 
+/// CAS a key in the agency, works only if it does not exist, result should
+/// contain the value of the written key.
+static AgencyCommResult CasWithResult(AgencyComm agency, std::string const& key,
+                                      VPackSlice const& json,
+                                      double ttl, double timeout) {
+  AgencyOperation write(key, AgencyValueOperationType::SET,
+                        json);
+  write._ttl = static_cast<uint32_t>(ttl);
+  // precondition the key must be empty
+  AgencyPrecondition pre(key, AgencyPrecondition::Type::EMPTY, true);
+  VPackBuilder preBuilder;
+  pre.toVelocyPack(preBuilder);
+  
+  AgencyGeneralTransaction trx(write, pre);
+  return agency.sendTransactionWithFailover(trx, timeout);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop, single server version
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::runSingleServer() {
   // convert timeout to seconds
-  double const interval = (double)_interval / 1000.0 / 1000.0;
+  double const interval = static_cast<double>(_interval) / 1000.0 / 1000.0;
   AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
   TRI_ASSERT(auth != nullptr);
   ReplicationFeature* replication = ReplicationFeature::INSTANCE;
@@ -433,7 +450,7 @@ void HeartbeatThread::runSingleServer() {
         usleep(500000);
         remain -= 0.5;
       } else {
-        usleep((TRI_usleep_t)(remain * 1000.0 * 1000.0));
+        usleep(static_cast<TRI_usleep_t>(remain * 1000.0 * 1000.0));
         remain = 0.0;
       }
     }
@@ -487,38 +504,52 @@ void HeartbeatThread::runSingleServer() {
         continue;
       }
       std::string const leaderPath = "/Plan/AsyncReplication/Leader";
+      
       VPackSlice leaderSlice = asyncReplication.get("Leader");
       VPackBuilder myIdBuilder;
       myIdBuilder.add(VPackValue(_myId));
       
-      // Case 1: No leader in agency. Race for leadership
       if (!leaderSlice.isString()) {
+        // Case 1: No leader in agency. Race for leadership
         LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vaccuum detected, "
         << "attempting a takeover";
-        if (applier->isRunning()) {
-          // FIXME: do we keep this running anyway ?
-          applier->stopAndJoin();
-        }
         
-        result = _agency.casValue(leaderPath, myIdBuilder.slice(), false,
-                                  /* ttl */ std::min(30.0, interval * 4),
-                                  /* timeout */ 30.0);
-        if (result.successful()) {
-          // sucessfull leadership takeover
+        // if we stay a slave, the redirect will be turned on again
+        RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::TRYAGAIN);
+        result = CasWithResult(_agency, leaderPath, myIdBuilder.slice(),
+                               /* ttl */ std::min(30.0, interval * 4),
+                               /* timeout */ 30.0);
+        
+        if (result.successful()) { // sucessfull leadership takeover
           LOG_TOPIC(INFO, Logger::HEARTBEAT) << "All your base are belong to us";
-          applier->stop(/* reset error */true); // TODO: should we use join here?
-          RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::DEFAULT);
+          if (applier->isRunning()) {
+            applier->stopAndJoin();
+          }
           ServerState::instance()->setFoxxmaster(_myId);
+          RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::DEFAULT);
+          continue; // nothing more to do here
+          
+        } else if (result.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
+          // we did not become leader, someone else is, response contains
+          // current value in agency
+          VPackSlice const res = result.slice();
+          TRI_ASSERT(res.length() == 1 && res[0].isObject());
+          leaderSlice = res[0].get(AgencyCommManager::slicePath(leaderPath));
+          TRI_ASSERT(leaderSlice.isString() && leaderSlice.compareString(_myId) != 0);
+          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Did not become leader, "
+            << "following " << leaderSlice.copyString();
+          // intentional fallthrough, we need to go to case 3
+          
         } else {
-          LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Takeover attempt failed";
+          LOG_TOPIC(WARN, Logger::HEARTBEAT) << "got an unexpected agency error "
+          << "code: " << result.httpCode() << " msg: " << result.errorMessage();
+          continue; // try again next time
         }
-        continue; // readjust applier endpoint next round
       }
       
       // Case 2: Current server is leader
       if (leaderSlice.compareString(_myId) == 0) {
         LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Currently leader: " << _myId;
-        ServerState::instance()->setFoxxmaster(_myId);
         
         // updating the value to keep our leadership
         result = _agency.casValue(leaderPath, /* old */ myIdBuilder.slice(),
@@ -532,27 +563,29 @@ void HeartbeatThread::runSingleServer() {
           applier->stopAndJoin();
         }
         
-        // allow server access
+        // ensure everyone has server access
+        ServerState::instance()->setFoxxmaster(_myId);
         RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::DEFAULT);
         
         continue; // nothing more to do
       }
       
-      // Case 3: Current server is follower
+      // Case 3: Current server is follower, should not get here otherwise
       std::string const leader = leaderSlice.copyString();
-      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Slave of '" << leader << "'";
-      ServerState::instance()->setFoxxmaster(leader);
+      TRI_ASSERT(!leader.empty());
+      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Following " << leader;
       
+      ServerState::instance()->setFoxxmaster(leader);
       std::string endpoint = ci->getServerEndpoint(leader);
       if (endpoint.empty()) {
-        LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to resolve leader endpoint for '" << leader << "'";
+        LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to resolve leader endpoint";
         continue; // try again next time
       }
+      
       // enable redirections to leader
       RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::REDIRECT);
-      
-      // configure applier for new endpoint if necessary
       if (applier->endpoint() != endpoint) {
+        // configure applier for new endpoint
         if (applier->isRunning()) {
           applier->stopAndJoin();
         }
@@ -576,7 +609,8 @@ void HeartbeatThread::runSingleServer() {
         // but not initially
         Result r = syncer.run(false);
         if (r.fail()) {
-          LOG_TOPIC(ERR, Logger::HEARTBEAT) << "initial sync from leader '" << leader << "' failed: " << r.errorMessage();
+          LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Initial sync from leader "
+          << "failed: " << r.errorMessage();
           continue; // try again next time
         }
         // steal the barrier from the syncer
@@ -585,18 +619,19 @@ void HeartbeatThread::runSingleServer() {
 
         applier->reconfigure(config);
         applier->start(lastLogTick, true, barrierId);
+        
       } else if (!applier->isRunning()) {
         
         // try to restart the applier
         if (applier->hasState()) {
           Result error = applier->lastError();
           if (error.is(TRI_ERROR_REPLICATION_APPLIER_STOPPED)) {
-            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "user stopped applier, please restart";
+            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "User stopped applier, please restart";
             continue;
-          } else if (error.isNot(TRI_ERROR_REPLICATION_NO_START_TICK) &&
+          } else if (error.isNot(TRI_ERROR_REPLICATION_NO_START_TICK) ||
                      error.isNot(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
             // restart applier if possible
-            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "restarting stopped applier...";
+            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Restarting stopped applier...";
             applier->start(0, false, 0);
             continue; // check again next time
           }
@@ -629,7 +664,7 @@ void HeartbeatThread::runCoordinator() {
   uint64_t oldUserVersion = 0;
 
   // convert timeout to seconds
-  double const interval = static_cast<double>(_interval) / 1000.0 / 1000.0;
+  double const interval = (double)_interval / 1000.0 / 1000.0;
   // invalidate coordinators every 2nd call
   bool invalidateCoordinators = true;
 

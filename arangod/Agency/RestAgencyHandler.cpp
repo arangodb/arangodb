@@ -87,11 +87,9 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
 }
 
 RestStatus RestAgencyHandler::handleTransient() {
-
   // Must be a POST request
   if (_request->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
-    return RestStatus::DONE;
+    return reportMethodNotAllowed();
   }
 
   // Convert to velocypack
@@ -182,70 +180,66 @@ RestStatus RestAgencyHandler::handleTransient() {
 }
 
 RestStatus RestAgencyHandler::handleStores() {
-  if (_request->requestType() != rest::RequestType::GET) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
-    return RestStatus::DONE;
-  }
-
-  Builder body;
-  {
-    VPackObjectBuilder b(&body);
+  if (_request->requestType() == rest::RequestType::GET) {
+    Builder body;
     {
-      _agent->executeLocked([&]() {
-        body.add(VPackValue("spearhead"));
-        { 
-          VPackArrayBuilder bb(&body);
-          _agent->spearhead().dumpToBuilder(body);
-        }
-        body.add(VPackValue("read_db"));
-        { 
-          VPackArrayBuilder bb(&body);
-          _agent->readDB().dumpToBuilder(body);
-        }
-        body.add(VPackValue("transient"));
-        { 
-          VPackArrayBuilder bb(&body);
-          _agent->transient().dumpToBuilder(body);
-        }
-      });
+      VPackObjectBuilder b(&body);
+      {
+        _agent->executeLocked([&]() {
+          body.add(VPackValue("spearhead"));
+          { 
+            VPackArrayBuilder bb(&body);
+            _agent->spearhead().dumpToBuilder(body);
+          }
+          body.add(VPackValue("read_db"));
+          { 
+            VPackArrayBuilder bb(&body);
+            _agent->readDB().dumpToBuilder(body);
+          }
+          body.add(VPackValue("transient"));
+          { 
+            VPackArrayBuilder bb(&body);
+            _agent->transient().dumpToBuilder(body);
+          }
+        });
+      }
     }
-  }
-
-  generateResult(rest::ResponseCode::OK, body.slice());
-  return RestStatus::DONE;
+    generateResult(rest::ResponseCode::OK, body.slice());
+    return RestStatus::DONE;
+  } 
+  
+  return reportMethodNotAllowed();
 }
 
 RestStatus RestAgencyHandler::handleStore() {
-  if (_request->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
+
+  if (_request->requestType() == rest::RequestType::POST) {
+
+    auto query = _request->toVelocyPackBuilderPtr();
+    arangodb::consensus::index_t index = 0;
+
+    try {
+      index = query->slice().getUInt();
+    } catch (...) {
+      index = _agent->lastCommitted();
+    }
+    
+    try {
+      query_t builder = _agent->buildDB(index);
+      generateResult(rest::ResponseCode::OK, builder->slice());
+    } catch (...) {
+      generateError(rest::ResponseCode::BAD, 400);
+    }
+    
     return RestStatus::DONE;
-  }
-
-  auto query = _request->toVelocyPackBuilderPtr();
-  arangodb::consensus::index_t index = 0;
-
-  try {
-    index = query->slice().getUInt();
-  } catch (...) {
-    index = _agent->lastCommitted();
-  }
+  } 
   
-  try {
-    query_t builder = _agent->buildDB(index);
-    generateResult(rest::ResponseCode::OK, builder->slice());
-  } catch (...) {
-    generateError(rest::ResponseCode::BAD, 400);
-  }
-  
-  return RestStatus::DONE;
-  
+  return reportMethodNotAllowed();
 }
 
 RestStatus RestAgencyHandler::handleWrite() {
-
   if (_request->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
-    return RestStatus::DONE;
+    return reportMethodNotAllowed();
   }
   
   query_t query;
@@ -342,9 +336,8 @@ RestStatus RestAgencyHandler::handleWrite() {
         try {
           max_index =
             *std::max_element(ret.indices.begin(), ret.indices.end());
-        } catch (std::exception const& e) {
-          LOG_TOPIC(WARN, Logger::AGENCY)
-            << e.what() << " " << __FILE__ << ":" << __LINE__;
+        } catch (std::exception const& ex) {
+          LOG_TOPIC(WARN, Logger::AGENCY) << ex.what();
         }
         
         if (max_index > 0) {
@@ -384,16 +377,11 @@ RestStatus RestAgencyHandler::handleWrite() {
   }
 
   return RestStatus::DONE;
-  
 }
 
-
-
 RestStatus RestAgencyHandler::handleTransact() {
-
   if (_request->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
-    return RestStatus::DONE;
+    return reportMethodNotAllowed();
   }
   
   query_t query;
@@ -487,15 +475,12 @@ RestStatus RestAgencyHandler::handleTransact() {
   }
 
   return RestStatus::DONE;
-  
 }
 
 
-inline RestStatus RestAgencyHandler::handleInquire() {
-
+RestStatus RestAgencyHandler::handleInquire() {
   if (_request->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
-    return RestStatus::DONE;
+    return reportMethodNotAllowed();
   }
   
   query_t query;
@@ -503,9 +488,8 @@ inline RestStatus RestAgencyHandler::handleInquire() {
   // Get query from body
   try {
     query = _request->toVelocyPackBuilderPtr();
-  } catch (std::exception const& e) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << e.what() << " " << __FILE__ << ":" << __LINE__;
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << ex.what();
     generateError(rest::ResponseCode::BAD, 400);
     return RestStatus::DONE;
   }
@@ -549,65 +533,60 @@ inline RestStatus RestAgencyHandler::handleInquire() {
       TRI_ASSERT(ret.redirect != _agent->id());
       redirectRequest(ret.redirect);
     }
-    
-    return RestStatus::DONE;
-     
   }
   
   return RestStatus::DONE;
-  
 }
 
-inline RestStatus RestAgencyHandler::handleRead() {
-  if (_request->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
-    return RestStatus::DONE;
-  }
-
-  query_t query;
-  try {
-    query = _request->toVelocyPackBuilderPtr();
-  } catch (std::exception const& e) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << e.what() << " " << __FILE__ << ":" << __LINE__;
-    generateError(rest::ResponseCode::BAD, 400);
-    return RestStatus::DONE;
-  }
-
-  if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
-    Builder body;
-    body.openObject();
-    body.add("message", VPackValue("No leader"));
-    body.close();
-    generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
-    LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-    return RestStatus::DONE;
-  }
-
-  read_ret_t ret = _agent->read(query);
-
-  if (ret.accepted) {  // I am leading
-    if (ret.success.size() == 1 && !ret.success.at(0)) {
-      generateResult(rest::ResponseCode::I_AM_A_TEAPOT, ret.result->slice());
-    } else {
-      generateResult(rest::ResponseCode::OK, ret.result->slice());
+RestStatus RestAgencyHandler::handleRead() {
+  if (_request->requestType() == rest::RequestType::POST) {
+    query_t query;
+    try {
+      query = _request->toVelocyPackBuilderPtr();
+    } catch (std::exception const& e) {
+      LOG_TOPIC(DEBUG, Logger::AGENCY)
+        << e.what() << " " << __FILE__ << ":" << __LINE__;
+      generateError(rest::ResponseCode::BAD, 400);
+      return RestStatus::DONE;
     }
-  } else {  // Redirect to leader
-    if (_agent->leaderID() == NO_LEADER) {
+
+    if (_agent->size() > 1 && _agent->leaderID() == NO_LEADER) {
       Builder body;
       body.openObject();
       body.add("message", VPackValue("No leader"));
       body.close();
       generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
       LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
-
-    } else {
-      TRI_ASSERT(ret.redirect != _agent->id());
-      redirectRequest(ret.redirect);
+      return RestStatus::DONE;
     }
-  }
 
-  return RestStatus::DONE;
+    read_ret_t ret = _agent->read(query);
+
+    if (ret.accepted) {  // I am leading
+      if (ret.success.size() == 1 && !ret.success.at(0)) {
+        generateResult(rest::ResponseCode::I_AM_A_TEAPOT, ret.result->slice());
+      } else {
+        generateResult(rest::ResponseCode::OK, ret.result->slice());
+      }
+    } else {  // Redirect to leader
+      if (_agent->leaderID() == NO_LEADER) {
+        Builder body;
+        body.openObject();
+        body.add("message", VPackValue("No leader"));
+        body.close();
+        generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
+        LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is";
+        return RestStatus::DONE;
+
+      } else {
+        TRI_ASSERT(ret.redirect != _agent->id());
+        redirectRequest(ret.redirect);
+      }
+    }
+    return RestStatus::DONE;
+  } 
+  
+  return reportMethodNotAllowed();
 }
 
 RestStatus RestAgencyHandler::handleConfig() {
@@ -656,7 +635,7 @@ RestStatus RestAgencyHandler::handleState() {
   return RestStatus::DONE;
 }
 
-inline RestStatus RestAgencyHandler::reportMethodNotAllowed() {
+RestStatus RestAgencyHandler::reportMethodNotAllowed() {
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
   return RestStatus::DONE;
 }

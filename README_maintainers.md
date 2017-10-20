@@ -53,6 +53,10 @@ Debugging the build process
 ---------------------------
 If the compile goes wrong for no particular reason, appending 'verbose=' adds more output. For some reason V8 has VERBOSE=1 for the same effect.
 
+Build with AddressSanitizer (or ASan)
+-------------------------------------
+    -DUSE_JEMALLOC=Off -DBASE_LD_FLAGS="-fsanitize=address" -DBASE_CXX_FLAGS="-fsanitize=address -fno-omit-frame-pointer"
+
 Temporary files and temp directories
 ------------------------------------
 Depending on the native way ArangoDB tries to locate the temporary directory.
