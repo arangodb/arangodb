@@ -280,7 +280,6 @@ bool AgencyTransientTransaction::validate(AgencyCommResult const& result) const 
 // -----------------------------------------------------------------------------
 
 void AgencyGeneralTransaction::toVelocyPack(VPackBuilder& builder) const {
-  //VPackArrayBuilder guard(&builder);
   for (auto const& trx : transactions) {
     auto opers = std::get<0>(trx);
     auto precs = std::get<1>(trx);
