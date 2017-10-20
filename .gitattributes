@@ -10,5 +10,5 @@ Documentation/man/*/* merge=ours
 VERSION merge=ours
 STARTER_REV merge=ours
 lib/V8/v8-json.cpp merge=ours
-arangod/Aql/tockens.cpp merge=ours
+arangod/Aql/tokens.cpp merge=ours
 arangod/Aql/grammar.cpp merge=ours
