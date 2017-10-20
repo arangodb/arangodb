@@ -38,8 +38,9 @@ All newly created collections will immediately be dropped again in the failed ca
 * edgeDefinitions (required) List of relation definition objects, may be empty
 * orphanCollections (required) List of additional vertex collection names, may be empty
 * smartOptions (required) A JSON object having the following keys:
-  * numberOfShards (required)
-  The number of shards that will be created for each collection. To maintain the correct sharding all collections need an identical number of shards. This cannot be modified after creation of the graph.
+  * numberOfShards (optional)
+  The number of shards that will be created for each collection. To maintain the correct sharding all collections need an identical number of shards. This cannot be modified after creation of the graph. Default: 1
+  * replicationFactor (optional) Integer number of replicas that each collection should maintain. Also each collection needs identical replicationFactor, otherwise it can lead to inconsistencies in failover-cases. Default: 1
   * smartGraphAttribute (required)
   The attribute that will be used for sharding. All vertices are required to have this attribute set and it has to be a string. Edges derive the attribute from their connected vertices.
 
@@ -51,7 +52,7 @@ Create an empty graph, edge definitions can be added at runtime:
 
 
     arangosh> var graph_module = require("@arangodb/smart-graph");
-    arangosh> var graph = graph_module._create("myGraph", [], [], {smartGraphAttribute: "region", numberOfShards: 9});
+    arangosh> var graph = graph_module._create("myGraph", [], [], {smartGraphAttribute: "region", numberOfShards: 9, replicationFactor: 2});
     [ SmartGraph myGraph EdgeDefinitions: [ ] VertexCollections: [ ] ]
 
 
@@ -60,7 +61,7 @@ Create a graph using an edge collection `edges` and a single vertex collection `
 
     arangosh> var graph_module = require("@arangodb/smart-graph");
     arangosh> var edgeDefinitions = [ graph_module._relation("edges", "vertices", "vertices") ];
-    arangosh> var graph = graph_module._create("myGraph", edgeDefinitions, [], {smartGraphAttribute: "region", numberOfShards: 9});
+    arangosh> var graph = graph_module._create("myGraph", edgeDefinitions, [], {smartGraphAttribute: "region", numberOfShards: 9, replicationFactor: 2});
     [ SmartGraph myGraph EdgeDefinitions: [ "edges: [vertices] -> [vertices]" ] VertexCollections: [ ] ]
 
 
@@ -69,7 +70,7 @@ Create a graph with edge definitions and orphan collections:
 
     arangosh> var graph_module = require("@arangodb/smart-graph");
     arangosh> var edgeDefinitions = [ graph_module._relation("myRelation", ["male", "female"], ["male", "female"]) ];
-    arangosh> var graph = graph_module._create("myGraph", edgeDefinitions, ["sessions"], {smartGraphAttribute: "region", numberOfShards: 9});
+    arangosh> var graph = graph_module._create("myGraph", edgeDefinitions, ["sessions"], {smartGraphAttribute: "region", numberOfShards: 9, replicationFactor: 2});
     [ Graph myGraph EdgeDefinitions: [ 
       "myRelation: [female, male] -> [female, male]" 
     ] VertexCollections: [ 

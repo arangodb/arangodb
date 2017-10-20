@@ -79,19 +79,12 @@ var isValidCollectionsParameter = function (x) {
 var findOrCreateCollectionByName = function (name, type, noCreate, options) {
   let col = db._collection(name);
   let res = false;
+  options = options || {};
   if (col === null && !noCreate) {
     if (type === ArangoCollection.TYPE_DOCUMENT) {
-      if (options) {
-        col = db._create(name, options);
-      } else {
-        col = db._create(name);
-      }
+      col = db._create(name, _.clone(options));
     } else {
-      if (options) {
-        col = db._createEdgeCollection(name, options);
-      } else {
-        col = db._createEdgeCollection(name);
-      }
+      col = db._createEdgeCollection(name, _.clone(options));
     }
     res = true;
   } else if (!(col instanceof ArangoCollection)) {
@@ -320,6 +313,26 @@ var transformExampleToAQL = function (examples, collections, bindVars, varname) 
 // //////////////////////////////////////////////////////////////////////////////
 
 var sortEdgeDefinition = function (edgeDefinition) {
+  if (typeof edgeDefinition.from === 'string') {
+    edgeDefinition.from = [edgeDefinition.from];
+  }
+  else if (! Array.isArray(edgeDefinition.from)) {
+    throw new ArangoError({
+      errorNum: internal.errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.code,
+      errorMessage: `The attribute "from" has to be an array of collections in this definition: ${JSON.stringify(edgeDefinition)}`
+    });
+  }
+
+  if (typeof edgeDefinition.to === 'string') {
+    edgeDefinition.to = [edgeDefinition.to];
+  }
+  else if (! Array.isArray(edgeDefinition.to)) {
+    throw new ArangoError({
+      errorNum: internal.errors.ERROR_GRAPH_CREATE_MALFORMED_EDGE_DEFINITION.code,
+      errorMessage: `The attribute "to" has to be an array of collections in this definition: ${JSON.stringify(edgeDefinition)}`
+    });
+  }
+ 
   edgeDefinition.from = edgeDefinition.from.sort();
   edgeDefinition.to = edgeDefinition.to.sort();
   return edgeDefinition;
@@ -579,9 +592,7 @@ var checkRWPermission = function (c) {
   let user = users.currentUser();
   if (user) {
     let p = users.permission(user, db._name(), c);
-    //print(`${user}: ${db._name()}/${c} = ${p}`);
     if (p !== 'rw') {
-      //print(`Denied ${user} access to ${db._name()}/${c}`);
       var err = new ArangoError();
       err.errorNum = arangodb.errors.ERROR_FORBIDDEN.code;
       err.errorMessage = arangodb.errors.ERROR_FORBIDDEN.message;
@@ -709,6 +720,25 @@ var checkIfMayBeDropped = function (colName, graphName, graphs) {
   return result;
 };
 
+// //////////////////////////////////////////////////////////////////////////////
+// / @brief Build the basic collection options
+// //////////////////////////////////////////////////////////////////////////////
+
+let baseCollectionOptions = function (options) {
+  options = options || {};
+
+  if (! options.hasOwnProperty("numberOfShards")) {
+    options.numberOfShards = this.__numberOfShards;
+  }
+
+  if (! options.hasOwnProperty("replicationFactor")) {
+    options.replicationFactor = this.__replicationFactor;
+  }
+
+  return options;
+};
+
+
 // @brief Class Graph. Defines a graph in the Database.
 class Graph {
   constructor (info) {
@@ -750,14 +780,13 @@ class Graph {
     createHiddenProperty(this, '__rev', info._rev);
     createHiddenProperty(this, '__orphanCollections', info.orphanCollections || []);
 
-    if (info.numberOfShards) {
-      createHiddenProperty(this, '__numberOfShards', info.numberOfShards);
-    }
+    createHiddenProperty(this, '__numberOfShards', info.numberOfShards || 1);
     createHiddenProperty(this, '__replicationFactor', info.replicationFactor || 1);
 
     // Create Hidden Functions
     createHiddenProperty(this, '__updateBindCollections', updateBindCollections);
     createHiddenProperty(this, '__sortEdgeDefinition', sortEdgeDefinition);
+    createHiddenProperty(this, '__baseCollectionOptions', baseCollectionOptions);
     updateBindCollections(self);
   }
 
@@ -1567,7 +1596,8 @@ class Graph {
       }
     );
 
-    findOrCreateCollectionsByEdgeDefinitions([edgeDefinition]);
+    let options = this.__baseCollectionOptions({});
+    findOrCreateCollectionsByEdgeDefinitions([edgeDefinition], false, options);
 
     this.__edgeDefinitions.push(edgeDefinition);
     db._graphs.update(this.__name, {edgeDefinitions: this.__edgeDefinitions});
@@ -1619,7 +1649,8 @@ class Graph {
       throw err;
     }
 
-    findOrCreateCollectionsByEdgeDefinitions([edgeDefinition]);
+    let options = this.__baseCollectionOptions({});
+    findOrCreateCollectionsByEdgeDefinitions([edgeDefinition], false, options);
 
     // evaluate collections to add to orphanage
     var possibleOrphans = [];
@@ -1719,7 +1750,8 @@ class Graph {
     var err;
     if (ec === null) {
       if (createCollection !== false) {
-        db._create(vertexCollectionName);
+        let options = this.__baseCollectionOptions({});
+        db._create(vertexCollectionName, options);
       } else {
         err = new ArangoError();
         err.errorNum = arangodb.errors.ERROR_GRAPH_VERTEX_COL_DOES_NOT_EXIST.code;
@@ -2062,16 +2094,19 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
   );
   orphanCollections = orphanCollections.sort();
 
-  var data = gdb.save({
+  var toSave = {
     'orphanCollections': orphanCollections,
     'edgeDefinitions': edgeDefinitions,
     '_key': graphName,
     'numberOfShards': options.numberOfShards || 1,
     'replicationFactor': options.replicationFactor || 1
-  }, options);
-  data.orphanCollections = orphanCollections;
-  data.edgeDefinitions = edgeDefinitions;
-  return new Graph(data);
+  };
+
+  var data = gdb.save(toSave, options);
+  toSave._id = data._id;
+  toSave._rev = data._rev;
+
+  return new Graph(toSave);
 };
 
 // //////////////////////////////////////////////////////////////////////////////
