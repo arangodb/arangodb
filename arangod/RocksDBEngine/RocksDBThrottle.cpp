@@ -34,8 +34,10 @@
 
 #include "RocksDBThrottle.h"
 
+#ifndef WIN32
 #include <sys/syscall.h>
 #include <sys/resource.h>
+#endif
 
 #include "Basics/ConditionLocker.h"
 #include "Basics/MutexLocker.h"
