@@ -241,7 +241,7 @@ static void SynchronizeReplication(
     Result r = syncer->run(configuration._incremental);
     
     if (r.fail()) {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "initial sync failed: " << r.errorMessage();
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "initial sync failed for database '" << vocbase->name() << "': " << r.errorMessage();
       TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), "cannot sync from remote endpoint: " + r.errorMessage() +
                                      ". last progress message was '" + syncer->progress() + "'");
     }

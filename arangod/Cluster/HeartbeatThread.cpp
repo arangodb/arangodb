@@ -517,7 +517,7 @@ void HeartbeatThread::runSingleServer() {
       
       // Case 2: Current server is leader
       if (leaderSlice.compareString(_myId) == 0) {
-        LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Currently leader" << _myId;
+        LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Currently leader: " << _myId;
         ServerState::instance()->setFoxxmaster(_myId);
         
         // updating the value to keep our leadership
@@ -540,12 +540,12 @@ void HeartbeatThread::runSingleServer() {
       
       // Case 3: Current server is follower
       std::string const leader = leaderSlice.copyString();
-      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Slave of " << leader;
+      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Slave of '" << leader << "'";
       ServerState::instance()->setFoxxmaster(leader);
       
       std::string endpoint = ci->getServerEndpoint(leader);
       if (endpoint.empty()) {
-        LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to resolve leader endpoint";
+        LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to resolve leader endpoint for '" << leader << "'";
         continue; // try again next time
       }
       // enable redirections to leader
@@ -576,8 +576,7 @@ void HeartbeatThread::runSingleServer() {
         // but not initially
         Result r = syncer.run(false);
         if (r.fail()) {
-          LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Initial sync from leader "
-          << "failed: " << r.errorMessage();
+          LOG_TOPIC(ERR, Logger::HEARTBEAT) << "initial sync from leader '" << leader << "' failed: " << r.errorMessage();
           continue; // try again next time
         }
         // steal the barrier from the syncer
@@ -592,12 +591,12 @@ void HeartbeatThread::runSingleServer() {
         if (applier->hasState()) {
           Result error = applier->lastError();
           if (error.is(TRI_ERROR_REPLICATION_APPLIER_STOPPED)) {
-            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "User stopped applier, please restart";
+            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "user stopped applier, please restart";
             continue;
-          } else if (error.isNot(TRI_ERROR_REPLICATION_NO_START_TICK) ||
+          } else if (error.isNot(TRI_ERROR_REPLICATION_NO_START_TICK) &&
                      error.isNot(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
             // restart applier if possible
-            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Restarting stopped applier...";
+            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "restarting stopped applier...";
             applier->start(0, false, 0);
             continue; // check again next time
           }
@@ -630,7 +629,7 @@ void HeartbeatThread::runCoordinator() {
   uint64_t oldUserVersion = 0;
 
   // convert timeout to seconds
-  double const interval = (double)_interval / 1000.0 / 1000.0;
+  double const interval = static_cast<double>(_interval) / 1000.0 / 1000.0;
   // invalidate coordinators every 2nd call
   bool invalidateCoordinators = true;
 
