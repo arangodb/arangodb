@@ -42,10 +42,11 @@
 #include "Pregel/PregelFeature.h"
 #include "Pregel/Worker.h"
 #include "Ssl/SslInterface.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Context.h"
+#include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "V8Server/v8-collection.h"
@@ -1653,12 +1654,9 @@ AqlValue Functions::Collections(arangodb::aql::Query* query,
   for (size_t i = 0; i < n; ++i) {
     auto& collection = colls[i];
 
-    if (auth->isActive() && ExecContext::CURRENT != nullptr) {
-      AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
-                             vocbase->name(), collection->name());
-      if (level == AuthLevel::NONE) {
-        continue;
-      }
+    if (auth->isActive() && ExecContext::CURRENT != nullptr &&
+    !ExecContext::CURRENT->canUseCollection(vocbase->name(), collection->name(), AuthLevel::RO)) {
+      continue;
     }
 
     builder->openObject();
