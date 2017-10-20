@@ -73,15 +73,7 @@ bool SimpleAttributeEqualityMatcher::matchOne(
         // we can use the index
         // use slightly different cost calculation for IN than for EQ
         calculateIndexCosts(index, op->getMember(0), itemsInIndex, estimatedItems, estimatedCost);
-        size_t values = 1;
-        if (!index->unique() && !index->implicitlyUnique()) {
-          auto m = op->getMember(1);
-          if (m->isArray() && m->numMembers() > 1) {
-            // attr IN [ a, b, c ]  =>  this will produce multiple items, so count
-            // them!
-            values = m->numMembers();
-          }
-        }
+        size_t values = estimateNumberOfArrayMembers(op->getMember(1));
         estimatedItems *= values;
         estimatedCost *= values;
         return true;
@@ -124,15 +116,7 @@ bool SimpleAttributeEqualityMatcher::matchAll(
 
       if (accessFitsIndex(index, op->getMember(0), op->getMember(1), op,
                           reference, nonNullAttributes, false)) {
-        if (!index->unique() && !index->implicitlyUnique()) {
-          auto m = op->getMember(1);
-
-          if (m->isArray() && m->numMembers() > 1) {
-            // attr IN [ a, b, c ]  =>  this will produce multiple items, so count
-            // them!
-            values *= m->numMembers();
-          }
-        }
+        values *= estimateNumberOfArrayMembers(op->getMember(1));
       }
     }
 
@@ -435,4 +419,14 @@ bool SimpleAttributeEqualityMatcher::accessFitsIndex(
   }
 
   return false;
+}
+
+size_t SimpleAttributeEqualityMatcher::estimateNumberOfArrayMembers(aql::AstNode const* value) { 
+  if (value->isArray()) {
+    // attr IN [ a, b, c ]  =>  this will produce multiple items, so count
+    // them!
+    return value->numMembers();
+  }
+   
+  return defaultEstimatedNumberOfArrayMembers; // just an estimate
 }
