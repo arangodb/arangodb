@@ -40,6 +40,7 @@
 #include "Transaction/Hints.h"
 #include "Transaction/V8Context.h"
 #include "Utils/Events.h"
+#include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -88,7 +89,8 @@ static void EnsureIndex(v8::FunctionCallbackInfo<v8::Value> const& args,
   TRI_V8ToVPackSimple(isolate, builder, args[0]);
   
   VPackBuilder output;
-  Result res = methods::Indexes::ensureIndex(collection, builder.slice(), create, output);
+  Result res = methods::Indexes::ensureIndex(collection, builder.slice(),
+                                             create, output);
   if (!res.ok()) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
@@ -149,7 +151,7 @@ static void JS_DropIndexVocbaseCol(
   
   VPackBuilder builder;
   TRI_V8ToVPackSimple(isolate, builder, args[0]);
-  
+    
   Result res = methods::Indexes::drop(collection, builder.slice());
   if (res.ok()) {
     TRI_V8_RETURN_TRUE();
@@ -179,7 +181,7 @@ static void JS_GetIndexesVocbaseCol(
   if (args.Length() > 0) {
     withFigures = TRI_ObjectToBoolean(args[0]);
   }
-
+  
   VPackBuilder output;
   Result res = methods::Indexes::getAll(collection, withFigures, output);
   if (!res.ok()) {
@@ -214,12 +216,9 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   }
   
   AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
-  if (auth->isActive() && ExecContext::CURRENT != nullptr) {
-    AuthLevel level = auth->canUseDatabase(ExecContext::CURRENT->user(),
-                                           vocbase->name());
-    if (level != AuthLevel::RW) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
+  if (ExecContext::CURRENT != nullptr &&
+      !ExecContext::CURRENT->canUseDatabase(vocbase->name(), AuthLevel::RW)) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
   // optional, third parameter can override collection type

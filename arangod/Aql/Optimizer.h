@@ -201,6 +201,8 @@ class Optimizer {
     return res;
   }
 
+  bool runOnlyRequiredRules() const { return _runOnlyRequiredRules; }
+
   /// @brief numberOfPlans, returns the current number of plans in the system
   /// this should be called from rules, it will consider those that the
   /// current rules has already added
@@ -237,9 +239,12 @@ class Optimizer {
 
   /// @brief maximal number of plans to produce
   size_t const _maxNumberOfPlans;
+  
+  /// @brief run only the required optimizer rules
+  bool _runOnlyRequiredRules;
 
   /// @brief default value for maximal number of plans to produce
-  static size_t const DefaultMaxNumberOfPlans = 192;
+  static constexpr size_t defaultMaxNumberOfPlans = 192;
 };
 
 }  // namespace aql

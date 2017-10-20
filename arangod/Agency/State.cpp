@@ -103,10 +103,8 @@ bool State::persist(index_t index, term_t term,
   }
 
   TRI_ASSERT(_vocbase != nullptr);
-  auto transactionContext =
-    std::make_shared<transaction::StandaloneContext>(_vocbase);
-  SingleCollectionTransaction trx(
-    transactionContext, "log", AccessMode::Type::WRITE);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  SingleCollectionTransaction trx(ctx, "log", AccessMode::Type::WRITE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();
@@ -809,10 +807,8 @@ bool State::loadOrPersistConfiguration() {
     TRI_ASSERT(_agent != nullptr);
     _agent->id(to_string(boost::uuids::random_generator()()));
 
-    auto transactionContext =
-        std::make_shared<transaction::StandaloneContext>(_vocbase);
-    SingleCollectionTransaction trx(
-      transactionContext, "configuration", AccessMode::Type::WRITE);
+    auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+    SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);
 
     Result res = trx.begin();
     OperationResult result;
@@ -865,6 +861,9 @@ bool State::loadRemaining() {
     
     TRI_ASSERT(_log.empty());  // was cleared in loadCompacted
     std::string clientId;
+    // We know that _cur has been set in loadCompacted to the index of the
+    // snapshot that was loaded or to 0 if there is no snapshot.
+    index_t lastIndex = _cur;
     for (auto const& i : VPackArrayIterator(result)) {
 
       buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
@@ -876,19 +875,49 @@ bool State::loadRemaining() {
       clientId = req.hasKey("clientId") ?
         req.get("clientId").copyString() : std::string();
 
-      try {
-        _log.push_back(
-          log_t(
-            basics::StringUtils::uint64(
-              ii.get(StaticStrings::KeyString).copyString()),
-            ii.get("term").getNumber<uint64_t>(), tmp, clientId));
-      } catch (std::exception const& e) {
-        LOG_TOPIC(ERR, Logger::AGENCY)
-          << "Failed to convert " +
-          ii.get(StaticStrings::KeyString).copyString() +
-          " to integer."
-          << e.what();
+      // Dummy fill missing entries (Not good at all.)
+      index_t index(basics::StringUtils::uint64(
+                      ii.get(StaticStrings::KeyString).copyString()));
+      term_t term(ii.get("term").getNumber<uint64_t>());
+
+      // Ignore log entries, which are older than lastIndex:
+      if (index >= lastIndex) {
+
+        // Empty patches :
+        if (index > lastIndex + 1) {
+          std::shared_ptr<Buffer<uint8_t>> buf =
+            std::make_shared<Buffer<uint8_t>>();
+          VPackSlice value = arangodb::basics::VelocyPackHelper::EmptyObjectValue();
+          buf->append(value.startAs<char const>(), value.byteSize());
+          for (index_t i = lastIndex+1; i < index; ++i) {
+            LOG_TOPIC(WARN, Logger::AGENCY) << "Missing index " << i << " in RAFT log.";
+            _log.push_back(log_t(i, term, buf, std::string()));
+            lastIndex = i;
+          }
+          // After this loop, index will be lastIndex + 1
+        }
+
+        if (index == lastIndex + 1 ||
+            (index == lastIndex && _log.empty())) {
+          // Real entries
+          try {
+            _log.push_back(
+              log_t(
+                basics::StringUtils::uint64(
+                  ii.get(StaticStrings::KeyString).copyString()),
+                ii.get("term").getNumber<uint64_t>(), tmp, clientId));
+          } catch (std::exception const& e) {
+            LOG_TOPIC(ERR, Logger::AGENCY)
+              << "Failed to convert " +
+              ii.get(StaticStrings::KeyString).copyString() +
+              " to integer."
+              << e.what();
+          }
+        
+          lastIndex = index;
+        }
       }
+
     }
   }
   if (_log.empty()) {
@@ -1054,10 +1083,8 @@ bool State::persistCompactionSnapshot(index_t cind,
       store.add("_key", VPackValue(i_str.str())); }
 
     TRI_ASSERT(_vocbase != nullptr);
-    auto transactionContext =
-        std::make_shared<transaction::StandaloneContext>(_vocbase);
-    SingleCollectionTransaction trx(
-      transactionContext, "compact", AccessMode::Type::WRITE);
+    auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+    SingleCollectionTransaction trx(ctx, "compact", AccessMode::Type::WRITE);
 
     Result res = trx.begin();
 
@@ -1125,10 +1152,8 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
 
   MUTEX_LOCKER(guard, _configurationWriteLock);
 
-  auto transactionContext =
-      std::make_shared<transaction::StandaloneContext>(_vocbase);
-  SingleCollectionTransaction trx(
-    transactionContext, "configuration", AccessMode::Type::WRITE);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);
 
   Result res = trx.begin();
   if (!res.ok()) {

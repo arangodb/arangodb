@@ -45,7 +45,7 @@
 #include "VocBase/modes.h"
 #include "VocBase/ticks.h"
 
-#include <rocksdb/db.h>
+#include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/options.h>
 #include <rocksdb/status.h>
 #include <rocksdb/utilities/optimistic_transaction_db.h>
@@ -101,7 +101,6 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
   }
 
   Result result = useCollections(_nestingLevel);
-
   if (result.ok()) {
     // all valid
     if (_nestingLevel == 0) {
@@ -140,15 +139,21 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
     _rocksReadOptions.prefix_same_as_start = true; // should always be true
 
     if (isReadOnlyTransaction()) {
-      // we must call ReleaseSnapshot at some point
-      _snapshot = db->GetSnapshot();
-      _rocksReadOptions.snapshot = _snapshot;
+      // server wide replication may insert a snapshot
+      if (_snapshot == nullptr) {
+        // we must call ReleaseSnapshot at some point
+        _snapshot = db->GetSnapshot();
+      }
       TRI_ASSERT(_snapshot != nullptr);
+      _rocksReadOptions.snapshot = _snapshot;
       _rocksMethods.reset(new RocksDBReadOnlyMethods(this));
     } else {
+      TRI_ASSERT(_snapshot == nullptr);
       createTransaction();
       bool readWrites = hasHint(transaction::Hints::Hint::READ_OWN_WRITES);
-      if (!readWrites) {
+      if (readWrites) {
+        _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
+      } else {
         TRI_ASSERT(_options.intermediateCommitCount != UINT64_MAX ||
                    _options.intermediateCommitSize != UINT64_MAX);
         // we must call ReleaseSnapshot at some point
@@ -156,6 +161,7 @@ Result RocksDBTransactionState::beginTransaction(transaction::Hints hints) {
         _rocksReadOptions.snapshot = _snapshot;
         TRI_ASSERT(_snapshot != nullptr);
       }
+      TRI_ASSERT(_rocksReadOptions.snapshot != nullptr);
 
       // under some circumstances we can use untracking Put/Delete methods,
       // but we need to be sure this does not cause any lost updates or other
@@ -187,8 +193,6 @@ void RocksDBTransactionState::createTransaction() {
   trxOpts.deadlock_detect = !hasHint(transaction::Hints::Hint::NO_DLD);
   
   _rocksTransaction.reset(db->BeginTransaction(_rocksWriteOptions, trxOpts));
-  _rocksReadOptions.snapshot = _rocksTransaction->GetSnapshot();
-  TRI_ASSERT(_rocksReadOptions.snapshot != nullptr);
   
   // set begin marker
   if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
@@ -212,17 +216,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       _rocksTransaction->SetWriteOptions(_rocksWriteOptions);
     }
 
-    // double t1 = TRI_microtime();
     result = rocksutils::convertStatus(_rocksTransaction->Commit());
-    // double t2 = TRI_microtime();
-    // if (t2 - t1 > 0.25) {
-    //   LOG_TOPIC(ERR, Logger::FIXME)
-    //       << "COMMIT TOOK: " << (t2 - t1)
-    //       << " S. NUMINSERTS: " << _numInserts
-    //       << ", NUMUPDATES: " << _numUpdates
-    //       << ", NUMREMOVES: " << _numRemoves
-    //       << ", TRANSACTIONSIZE: " << _transactionSize;
-    // }
     rocksdb::SequenceNumber latestSeq =
         rocksutils::globalRocksDB()->GetLatestSequenceNumber();
     if (!result.ok()) {
@@ -482,16 +476,35 @@ RocksDBMethods* RocksDBTransactionState::rocksdbMethods() {
   return _rocksMethods.get();
 }
 
+void RocksDBTransactionState::donateSnapshot(rocksdb::Snapshot const* snap) {
+  TRI_ASSERT(_snapshot == nullptr);
+  TRI_ASSERT(isReadOnlyTransaction());
+  TRI_ASSERT(_status == transaction::Status::CREATED);
+  _snapshot = snap;
+}
+
+rocksdb::Snapshot const* RocksDBTransactionState::stealSnapshot() {
+  TRI_ASSERT(_snapshot != nullptr);
+  TRI_ASSERT(isReadOnlyTransaction());
+  if (_status != transaction::Status::COMMITTED && _status != transaction::Status::ABORTED) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "OOOH: " << (int) _status;
+  }
+  TRI_ASSERT(_status == transaction::Status::COMMITTED || _status == transaction::Status::ABORTED);
+  rocksdb::Snapshot const* snap = _snapshot;
+  _snapshot = nullptr;
+  return snap;
+}
+
 uint64_t RocksDBTransactionState::sequenceNumber() const {
   if (_snapshot != nullptr) {
     return static_cast<uint64_t>(_snapshot->GetSequenceNumber());
-  } else {
+  } else if (_rocksTransaction) {
     return static_cast<uint64_t>(
         _rocksTransaction->GetSnapshot()->GetSequenceNumber());
   }
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "No snapshot set");
 }
-
-void RocksDBTransactionState::prepareForParallelReads() { _parallel = true; }
 
 /// @brief temporarily lease a Builder object
 RocksDBKey* RocksDBTransactionState::leaseRocksDBKey() {

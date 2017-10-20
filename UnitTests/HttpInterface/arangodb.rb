@@ -100,14 +100,46 @@ class ArangoDB
   end
   
 ################################################################################
+## create a database
+################################################################################
+
+  def self.create_database (name)
+    body = "{ \"name\" : \"#{name}\" }"
+
+    doc = self.post("/_api/database", :body => body)
+
+    if doc.code != 201
+      return false
+    end
+
+    return true
+  end
+
+################################################################################
+## drop a database
+################################################################################
+
+  def self.drop_database (name)
+    body = ""
+
+    doc = self.delete("/_api/database/#{name}", :body => body)
+
+    if doc.code != 200
+      return false
+    end
+
+    return true
+  end
+
+################################################################################
 ## create a collection
 ################################################################################
 
-  def self.create_collection (name, wait_for_sync = true, type = 2)
+  def self.create_collection (name, wait_for_sync = true, type = 2, dbname = "_system")
     # type 2 means "document collection"
     body = "{ \"name\" : \"#{name}\", \"waitForSync\" : #{wait_for_sync}, \"type\" : #{type} }"
 
-    doc = self.post("/_api/collection", :body => body)
+    doc = self.post("/_db/#{dbname}/_api/collection", :body => body)
 
     if doc.code == 409
       return doc.parsed_response['id']
@@ -124,8 +156,8 @@ class ArangoDB
 ## drop a collection
 ################################################################################
 
-  def self.drop_collection (name)
-    cmd = "/_api/collection/#{name}"
+  def self.drop_collection (name, dbname = "_system")
+    cmd = "/_db/#{dbname}/_api/collection/#{name}"
     self.delete(cmd)
   end
 

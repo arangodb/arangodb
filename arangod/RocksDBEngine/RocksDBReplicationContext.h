@@ -28,6 +28,7 @@
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBReplicationCommon.h"
 #include "Transaction/Methods.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/ManagedDocumentResult.h"
 #include "VocBase/vocbase.h"
 
@@ -48,7 +49,12 @@ class RocksDBReplicationContext {
       LocalDocumentIdCallback;
 
  public:
+  RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
+  RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
+
   RocksDBReplicationContext();
+  explicit RocksDBReplicationContext(double ttl);
+
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const; //batchId
@@ -56,26 +62,26 @@ class RocksDBReplicationContext {
   uint64_t count() const;
 
   TRI_vocbase_t* vocbase() const {
-    if (_trx == nullptr) {
+    if (!_guard) {
       return nullptr;
     }
-    return _trx->vocbase();
+    return _guard->database();
   }
 
   // creates new transaction/snapshot
   void bind(TRI_vocbase_t*);
-  int bindCollection(std::string const& collectionName);
+  int bindCollection(TRI_vocbase_t *,
+                     std::string const& collectionName);
 
   // returns inventory
   std::pair<RocksDBReplicationResult, std::shared_ptr<velocypack::Builder>>
-  getInventory(TRI_vocbase_t* vocbase, bool includeSystem);
+  getInventory(TRI_vocbase_t* vocbase, bool includeSystem, bool global);
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
   RocksDBReplicationResult dump(TRI_vocbase_t* vocbase,
                                 std::string const& collectionName,
-                                basics::StringBuffer&, uint64_t chunkSize,
-                                bool compat28);
+                                basics::StringBuffer&, uint64_t chunkSize);
 
   // iterates over all documents in a collection, previously bound with
   // bindCollection. Generates array of objects with minKey, maxKey and hash
@@ -96,7 +102,6 @@ class RocksDBReplicationContext {
   void deleted();
   bool isUsed() const;
   void use(double ttl);
-  void adjustTtl(double ttl);
   bool more() const;
   /// remove use flag
   void release();
@@ -104,28 +109,27 @@ class RocksDBReplicationContext {
  private:
   void releaseDumpingResources();
 
-  std::unique_ptr<transaction::Methods> createTransaction(
-      TRI_vocbase_t* vocbase);
-
-  static bool filterCollection(arangodb::LogicalCollection* collection,
-                               void* data);
-
-  static bool sortCollections(arangodb::LogicalCollection const* l,
-                              arangodb::LogicalCollection const* r);
-
  private:
   TRI_voc_tick_t _id; // batch id
   uint64_t _lastTick; // the time at which the snapshot was taken
   uint64_t _currentTick; // shows how often dump was called
+  std::unique_ptr<DatabaseGuard> _guard;
   std::unique_ptr<transaction::Methods> _trx;
+  
+  /// @brief Collection used in dump and incremental sync
   LogicalCollection* _collection;
+  
+  /// @brief Iterator on collection
   std::unique_ptr<IndexIterator> _iter;
+  /// @brief offset in the collection used with the incremental sync
+  uint64_t _lastIteratorOffset;
+
+  
+  /// @brief holds last document
   ManagedDocumentResult _mdr;
+  /// @brief type handler used to render documents
   std::shared_ptr<arangodb::velocypack::CustomTypeHandler> _customTypeHandler;
   arangodb::velocypack::Options _vpackOptions;
-
-  uint64_t _lastIteratorOffset;
-  std::unique_ptr<DatabaseGuard> _guard;
 
   double _expires;
   bool _isDeleted;
