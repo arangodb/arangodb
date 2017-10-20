@@ -322,7 +322,8 @@ void AgencyGeneralTransaction::push_back(
 }
 
 bool AgencyGeneralTransaction::validate(AgencyCommResult const& result) const {
-  return (result.slice().isArray() && result.slice().length() == 1);
+  return (result.slice().isArray() &&
+          result.slice().length() >= 1); // >= transactions.size()
 }
 
 // -----------------------------------------------------------------------------
@@ -1209,18 +1210,6 @@ bool AgencyComm::ensureStructureInitialized() {
     sleep(1);
   }
 
-  /*AgencyCommResult secretResult = getValues("Secret");
-  VPackSlice secretValue = secretResult.slice()[0].get(
-      std::vector<std::string>({AgencyCommManager::path(), "Secret"}));
-
-  if (!secretValue.isString()) {
-    LOG_TOPIC(ERR, Logger::CLUSTER) << "Couldn't find secret in agency!";
-    return false;
-  }
-  std::string const secret = secretValue.copyString();
-  if (!secret.empty() && secret != authentication->jwtSecret()) {
-    authentication->setJwtSecret(secretValue.copyString());
-  }*/
   return true;
 }
 
@@ -1670,8 +1659,6 @@ AgencyCommResult AgencyComm::send(
   basics::StringBuffer& sb = response->getBody();
   result._body = std::string(sb.c_str(), sb.length());
   
-  LOG_TOPIC(ERR, Logger::FIXME) << result._body;
-
   LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
       << "request to agency returned status code " << result._statusCode
       << ", message: '" << result._message << "', body: '" << result._body

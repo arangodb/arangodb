@@ -416,7 +416,6 @@ static AgencyCommResult CasWithResult(AgencyComm agency, std::string const& key,
   pre.toVelocyPack(preBuilder);
   
   AgencyGeneralTransaction trx(write, pre);
-  LOG_TOPIC(ERR, Logger::FIXME) << trx.toJson();
   return agency.sendTransactionWithFailover(trx, timeout);
 }
 
