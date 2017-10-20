@@ -599,9 +599,6 @@ void HeartbeatThread::runSingleServer() {
         }
         // TODO: how do we initially configure the applier
         
-        // forget about any existing replication applier configuration
-        applier->forget();
-        
         // start initial synchronization
         TRI_ASSERT(!config._skipCreateDrop);
         GlobalInitialSyncer syncer(config);
@@ -613,10 +610,14 @@ void HeartbeatThread::runSingleServer() {
           << "failed: " << r.errorMessage();
           continue; // try again next time
         }
+        
         // steal the barrier from the syncer
         TRI_voc_tick_t barrierId = syncer.stealBarrier();
         TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
 
+        // forget about any existing replication applier configuration
+        applier->forget();
+        
         applier->reconfigure(config);
         applier->start(lastLogTick, true, barrierId);
         
@@ -626,18 +627,19 @@ void HeartbeatThread::runSingleServer() {
         if (applier->hasState()) {
           Result error = applier->lastError();
           if (error.is(TRI_ERROR_REPLICATION_APPLIER_STOPPED)) {
-            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "User stopped applier, please restart";
+            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "user stopped applier, please restart";
             continue;
           } else if (error.isNot(TRI_ERROR_REPLICATION_NO_START_TICK) ||
                      error.isNot(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
             // restart applier if possible
-            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Restarting stopped applier...";
+            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "restarting stopped applier...";
             applier->start(0, false, 0);
             continue; // check again next time
-          }
+          } 
         }
       
         // complete resync next round
+        LOG_TOPIC(WARN, Logger::HEARTBEAT) << "forgetting previous applier state. Will trigger a full resync now";
         applier->forget();
       }
             
