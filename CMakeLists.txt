@@ -551,6 +551,12 @@ if (USE_MAINTAINER_MODE)
   find_program(AWK_EXECUTABLE awk)
 endif ()
 
+if (USE_CATCH_TESTS)
+  add_definitions("-DTEST_VIRTUAL=virtual")
+else()
+  add_definitions("-DTEST_VIRTUAL=")
+endif()
+
 include(debugInformation)
 find_program(FILE_EXECUTABLE file)
 detect_binary_id_type(CMAKE_DEBUG_FILENAMES_SHA_SUM)
