@@ -54,7 +54,7 @@ class RocksDBReplicationManager {
   /// there are active contexts
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* createContext();
+  RocksDBReplicationContext* createContext(double ttl);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a context by id
@@ -123,19 +123,20 @@ class RocksDBReplicationManager {
 
   std::unordered_map<RocksDBReplicationId, RocksDBReplicationContext*>
       _contexts;
-
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief maximum number of contexts to garbage-collect in one go
-  //////////////////////////////////////////////////////////////////////////////
-
-  static size_t const MaxCollectCount;
 };
 
 class RocksDBReplicationContextGuard {
  public:
-  RocksDBReplicationContextGuard(RocksDBReplicationManager*,
-                                 RocksDBReplicationContext*);
-  ~RocksDBReplicationContextGuard();
+  
+  RocksDBReplicationContextGuard(RocksDBReplicationManager* manager,
+                                 RocksDBReplicationContext* ctx)
+    : _manager(manager), _ctx(ctx) {}
+  
+  ~RocksDBReplicationContextGuard()  {
+    if (_ctx != nullptr) {
+      _manager->release(_ctx);
+    }
+  }
 
  private:
   RocksDBReplicationManager* _manager;

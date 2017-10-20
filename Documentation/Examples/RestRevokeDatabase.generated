@@ -1,6 +1,7 @@
 shell> curl -X DELETE --dump - http://localhost:8529/_api/user/admin@myapp/database/_system
 
-HTTP/1.1 200 OK
-content-type: text/plain; charset=utf-8
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
 x-content-type-options: nosniff
 
+"{\"error\":false,\"code\":202}"

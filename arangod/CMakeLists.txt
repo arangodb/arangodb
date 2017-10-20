@@ -205,6 +205,7 @@ SET(ARANGOD_SOURCES
   Cluster/DBServerAgencySync.cpp
   Cluster/HeartbeatThread.cpp
   Cluster/RestAgencyCallbacksHandler.cpp
+  Cluster/RestClusterHandler.cpp
   Cluster/ServerState.cpp
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
@@ -268,9 +269,20 @@ SET(ARANGOD_SOURCES
   Pregel/Utils.cpp
   Pregel/Worker.cpp
   Pregel/WorkerConfig.cpp
-  Replication/ContinuousSyncer.cpp
+  Replication/DatabaseReplicationApplier.cpp
+  Replication/GlobalReplicationApplier.cpp
+  Replication/GlobalInitialSyncer.cpp
+  Replication/DatabaseInitialSyncer.cpp
+  Replication/DatabaseTailingSyncer.cpp
+  Replication/GlobalInitialSyncer.cpp
+  Replication/GlobalTailingSyncer.cpp
   Replication/InitialSyncer.cpp
+  Replication/ReplicationApplier.cpp
+  Replication/ReplicationApplierConfiguration.cpp
+  Replication/ReplicationApplierState.cpp
+  Replication/ReplicationFeature.cpp
   Replication/Syncer.cpp
+  Replication/TailingSyncer.cpp
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminRoutingHandler.cpp
   RestHandler/RestAqlFunctionsHandler.cpp
@@ -304,6 +316,7 @@ SET(ARANGOD_SOURCES
   RestHandler/RestVersionHandler.cpp
   RestHandler/RestViewHandler.cpp
   RestHandler/RestVocbaseBaseHandler.cpp
+  RestHandler/RestWalAccessHandler.cpp
   RestHandler/WorkMonitorHandler.cpp
   RestServer/AqlFeature.cpp
   RestServer/BootstrapFeature.cpp
@@ -349,6 +362,7 @@ SET(ARANGOD_SOURCES
   StorageEngine/PhysicalCollection.cpp
   StorageEngine/TransactionCollection.cpp
   StorageEngine/TransactionState.cpp
+  StorageEngine/WalAccess.cpp
   Transaction/Context.cpp
   Transaction/Helpers.cpp
   Transaction/Methods.cpp
@@ -362,6 +376,7 @@ SET(ARANGOD_SOURCES
   Utils/CollectionNameResolver.cpp
   Utils/Cursor.cpp
   Utils/CursorRepository.cpp
+  Utils/DatabaseGuard.cpp
   Utils/ExecContext.cpp
   Utils/OperationCursor.cpp
   Utils/SingleCollectionTransaction.cpp
@@ -396,7 +411,6 @@ SET(ARANGOD_SOURCES
   VocBase/LogicalView.cpp
   VocBase/ManagedDocumentResult.cpp
   VocBase/modes.cpp
-  VocBase/replication-applier.cpp
   VocBase/replication-common.cpp
   VocBase/ticks.cpp
   VocBase/vocbase.cpp

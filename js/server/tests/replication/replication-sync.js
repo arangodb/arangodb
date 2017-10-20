@@ -45,79 +45,59 @@ if (db._engine().name === "mmfiles") {
   mmfilesEngine = true;
 }
 
+const cn = "UnitTestsReplication";
+
+const connectToMaster = function() {
+  arango.reconnect(masterEndpoint, db._name(), "root", "");
+  db._flushCache();
+};
+
+const connectToSlave = function() {
+  arango.reconnect(slaveEndpoint, db._name(), "root", "");
+  db._flushCache();
+};
+
+const collectionChecksum = function(name) {
+  var c = db._collection(name).checksum(true, true);
+  return c.checksum;
+};
+
+const collectionCount = function(name) {
+  var res = db._collection(name).count();
+  return res;
+};
+
+const compare = function(masterFunc, slaveInitFunc, slaveCompareFunc, incremental) {
+  var state = {};
+
+  db._flushCache();
+  masterFunc(state);
+  require("internal").wal.flush(true, true);
+
+  db._flushCache();
+  connectToSlave();
+
+  slaveInitFunc(state);
+  internal.wait(1, false);
+
+  var syncResult = replication.syncCollection(cn, {
+    endpoint: masterEndpoint,
+    verbose: true,
+    incremental
+  });
+
+  db._flushCache();
+  slaveCompareFunc(state);
+};
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
+/// @brief Base Test Config. Identitical part for _system and other DB
 ////////////////////////////////////////////////////////////////////////////////
 
-function ReplicationSuite() {
+function BaseTestConfig() {
   'use strict';
-  var cn = "UnitTestsReplication";
-
-  var connectToMaster = function() {
-    arango.reconnect(masterEndpoint, db._name(), "root", "");
-    db._flushCache();
-  };
-
-  var connectToSlave = function() {
-    arango.reconnect(slaveEndpoint, db._name(), "root", "");
-    db._flushCache();
-  };
-
-  var collectionChecksum = function(name) {
-    var c = db._collection(name).checksum(true, true);
-    return c.checksum;
-  };
-
-  var collectionCount = function(name) {
-    var res = db._collection(name).count();
-    return res;
-  };
-
-  var compare = function(masterFunc, slaveInitFunc, slaveCompareFunc, incremental) {
-    var state = {};
-
-    db._flushCache();
-    masterFunc(state);
-    require("internal").wal.flush(true, true);
-
-    db._flushCache();
-    connectToSlave();
-
-    slaveInitFunc(state);
-    internal.wait(1, false);
-
-    var syncResult = replication.syncCollection(cn, {
-      endpoint: masterEndpoint,
-      verbose: true,
-      incremental: incremental
-    });
-
-    db._flushCache();
-    slaveCompareFunc(state);
-  };
 
   return {
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief set up
-    ////////////////////////////////////////////////////////////////////////////////
-
-    setUp: function() {
-      connectToMaster();
-      db._drop(cn);
-    },
-
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief tear down
-    ////////////////////////////////////////////////////////////////////////////////
-
-    tearDown: function() {
-      connectToMaster();
-      db._drop(cn);
-
-      connectToSlave();
-      db._drop(cn);
-    },
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test existing collection
@@ -1092,11 +1072,241 @@ function ReplicationSuite() {
   };
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite on _system
+////////////////////////////////////////////////////////////////////////////////
+
+function ReplicationSuite() {
+  'use strict';
+
+  let suite = BaseTestConfig();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief set up
+  ////////////////////////////////////////////////////////////////////////////////
+
+  suite.setUp = function() {
+    connectToMaster();
+    db._drop(cn);
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief tear down
+  ////////////////////////////////////////////////////////////////////////////////
+
+  suite.tearDown = function() {
+    connectToMaster();
+    db._drop(cn);
+
+    connectToSlave();
+    db._drop(cn);
+  };
+
+  return suite;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite on other database
+////////////////////////////////////////////////////////////////////////////////
+
+function ReplicationOtherDBSuite() {
+  'use strict';
+
+  const dbName = "UnitTestDB";
+
+  let suite = BaseTestConfig();
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief set up
+  ////////////////////////////////////////////////////////////////////////////////
+
+  suite.setUp = function() {
+    connectToMaster();
+    try {
+      db._dropDatabase(dbName);
+    } catch (e) {
+    }
+    db._createDatabase(dbName);
+    connectToSlave();
+    try {
+      db._dropDatabase(dbName);
+    } catch (e) {
+    }
+    db._createDatabase(dbName);
+    db._useDatabase(dbName);
+    connectToMaster();
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief tear down
+  ////////////////////////////////////////////////////////////////////////////////
+
+  suite.tearDown = function() {
+    db._useDatabase("_system");
+    connectToMaster();
+    try {
+      db._dropDatabase(dbName);
+    } catch (e) {
+    }
+
+    connectToSlave();
+    try {
+      db._dropDatabase(dbName);
+    } catch (e) {
+    }
+  };
+
+  return suite;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite for incremental
+////////////////////////////////////////////////////////////////////////////////
+
+function ReplicationIncrementalKeyConflict() {
+  'use strict';
+
+  return {
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief set up
+  ////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function() {
+      connectToMaster();
+
+      db._drop(cn);
+    },
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief tear down
+  ////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function() {
+      connectToMaster();
+      db._drop(cn);
+
+      connectToSlave();
+      db._drop(cn);
+    },
+
+    testKeyConflicts : function() {
+      var c = db._create(cn);
+      c.ensureIndex({ type: "hash", fields: ["value"], unique: true });
+
+      c.insert({ _key: "x", value: 1 });
+      c.insert({ _key: "y", value: 2 });
+      c.insert({ _key: "z", value: 3 });
+  
+      connectToSlave();
+      var syncResult = replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true
+      });
+      db._flushCache();
+      c = db._collection(cn);
+
+      assertEqual(3, c.count());
+      assertEqual(1, c.document("x").value);
+      assertEqual(2, c.document("y").value);
+      assertEqual(3, c.document("z").value);
+
+      assertEqual("hash", c.getIndexes()[1].type);
+      assertTrue(c.getIndexes()[1].unique);
+
+      connectToMaster();
+      db._flushCache();
+      c = db._collection(cn);
+      c.remove("z");
+      c.insert({ _key: "w", value: 3 });
+      
+      assertEqual(3, c.count());
+      assertEqual(3, c.document("w").value);
+      assertEqual(1, c.document("x").value);
+      assertEqual(2, c.document("y").value);
+      
+      connectToSlave();
+      replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      
+      c = db._collection(cn);
+      assertEqual(3, c.count());
+      assertEqual(3, c.document("w").value);
+      assertEqual(1, c.document("x").value);
+      assertEqual(2, c.document("y").value);
+      
+      assertEqual("hash", c.getIndexes()[1].type);
+      assertTrue(c.getIndexes()[1].unique);
+    },
+
+    testKeyConflictsManyDocuments : function() {
+      var c = db._create(cn), i;
+      c.ensureIndex({ type: "hash", fields: ["value"], unique: true });
+
+      for (i = 0; i < 10000; ++i) {
+        c.insert({ _key: "test" + i, value: i });
+      }
+  
+      connectToSlave();
+      replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true
+      });
+      db._flushCache();
+      c = db._collection(cn);
+
+      assertEqual(10000, c.count());
+
+      assertEqual("hash", c.getIndexes()[1].type);
+      assertTrue(c.getIndexes()[1].unique);
+
+      connectToMaster();
+      db._flushCache();
+      c = db._collection(cn);
+
+      c.remove("test0");
+      c.remove("test1");
+      c.remove("test9998");
+      c.remove("test9999");
+
+      c.insert({ _key: "test0", value: 9999 });
+      c.insert({ _key: "test1", value: 9998 });
+      c.insert({ _key: "test9998", value: 1 });
+      c.insert({ _key: "test9999", value: 0 });
+      
+      assertEqual(10000, c.count());
+      
+      connectToSlave();
+      replication.syncCollection(cn, {
+        endpoint: masterEndpoint,
+        verbose: true,
+        incremental: true
+      });
+
+      db._flushCache();
+      
+      c = db._collection(cn);
+      assertEqual(10000, c.count());
+      
+      assertEqual("hash", c.getIndexes()[1].type);
+      assertTrue(c.getIndexes()[1].unique);
+    }
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(ReplicationSuite);
+jsunity.run(ReplicationOtherDBSuite);
+// TODO: activate this test once it works
+// jsunity.run(ReplicationIncrementalKeyConflict);
 
 return jsunity.done();

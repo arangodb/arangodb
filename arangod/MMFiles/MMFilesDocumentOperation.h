@@ -73,7 +73,7 @@ struct MMFilesDocumentOperation {
   void swapped();
 
   void setDocumentIds(MMFilesDocumentDescriptor const& oldRevision,
-                    MMFilesDocumentDescriptor const& newRevision);
+                      MMFilesDocumentDescriptor const& newRevision);
   
   void setVPack(uint8_t const* vpack);
 

@@ -38,7 +38,8 @@ struct CollectOptions {
   enum CollectMethod {
     COLLECT_METHOD_UNDEFINED,
     COLLECT_METHOD_HASH,
-    COLLECT_METHOD_SORTED
+    COLLECT_METHOD_SORTED,
+    COLLECT_METHOD_DISTINCT
   };
 
   /// @brief constructor, using default values

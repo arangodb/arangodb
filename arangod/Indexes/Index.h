@@ -39,6 +39,7 @@ namespace basics {
 class LocalTaskQueue;
 }
 
+class IndexIterator;
 class LogicalCollection;
 class ManagedDocumentResult;
 class StringRef;
@@ -56,11 +57,7 @@ struct Variable;
 
 namespace transaction {
 class Methods;
-};
 }
-
-namespace arangodb {
-class IndexIterator;
 
 class Index {
  public:
@@ -175,7 +172,7 @@ class Index {
   inline bool unique() const { return _unique; }
 
   /// @brief validate fields from slice
-  static void validateFields(VPackSlice const& slice);
+  static void validateFields(velocypack::Slice const& slice);
 
   /// @brief return the name of the index
   char const* oldtypeName() const { return oldtypeName(type()); }
@@ -211,7 +208,8 @@ class Index {
 
   /// @brief index comparator, used by the coordinator to detect if two index
   /// contents are the same
-  static bool Compare(VPackSlice const& lhs, VPackSlice const& rhs);
+  static bool Compare(velocypack::Slice const& lhs,
+                      velocypack::Slice const& rhs);
 
   virtual bool isPersistent() const { return false; }
   virtual bool canBeDropped() const = 0;
@@ -314,7 +312,7 @@ class Index {
 
  private:
   /// @brief set fields from slice
-  void setFields(VPackSlice const& slice, bool allowExpansion);
+  void setFields(velocypack::Slice const& slice, bool allowExpansion);
 
  protected:
   TRI_idx_iid_t const _iid;

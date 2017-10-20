@@ -277,7 +277,7 @@ void TRI_GetBacktrace(std::string& btstr) {
              std::string(" [") + address + std::string("]\n");
   }
 
-  TRI_SystemFree(symbol);
+  TRI_Free(symbol);
 
 #else
   void* stack_frames[50];
@@ -316,12 +316,14 @@ void TRI_GetBacktrace(std::string& btstr) {
             btstr += strings[i] + std::string("() [") + ss.str() +
                      std::string("] ") + demangled_name + '\n';
           } else {
-            btstr += strings[i] + '\n';
+            btstr += strings[i];
+            btstr += '\n';
           }
-          TRI_SystemFree(demangled_name);
+          TRI_Free(demangled_name);
         }
       } else {
-        btstr += strings[i] + '\n';
+        btstr += strings[i];
+        btstr += '\n';
       }
     } else {
       ss << stack_frames[i];
@@ -329,7 +331,7 @@ void TRI_GetBacktrace(std::string& btstr) {
     }
   }
   if (strings != nullptr) {
-    TRI_SystemFree(strings);
+    TRI_Free(strings);
   }
 #endif
 #endif

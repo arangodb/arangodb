@@ -38,7 +38,7 @@ MMFilesExportCursor::MMFilesExportCursor(TRI_vocbase_t* vocbase, CursorId id,
                            arangodb::MMFilesCollectionExport* ex, size_t batchSize,
                            double ttl, bool hasCount)
     : Cursor(id, batchSize, nullptr, ttl, hasCount),
-      _vocbaseGuard(vocbase),
+      _guard(vocbase),
       _ex(ex),
       _size(ex->_vpack.size()) {}
 
@@ -72,13 +72,10 @@ VPackSlice MMFilesExportCursor::next() {
 size_t MMFilesExportCursor::count() const { return _size; }
 
 void MMFilesExportCursor::dump(VPackBuilder& builder) {
-  auto transactionContext =
-      std::make_shared<transaction::StandaloneContext>(_vocbaseGuard.vocbase());
-
+  auto ctx = transaction::StandaloneContext::Create(_guard.database());
   VPackOptions const* oldOptions = builder.options;
 
-  builder.options = transactionContext->getVPackOptions();
-
+  builder.options = ctx->getVPackOptions();
   TRI_ASSERT(_ex != nullptr);
   auto const restrictionType = _ex->_restrictions.type;
 

@@ -82,7 +82,7 @@ static TRI_voc_crc_t Crc28(TRI_voc_crc_t crc, void const* data, size_t length) {
 }
 
 /// @brief check if a marker appears to be created by ArangoDB 2.8
-static bool IsMarker28(void const* marker) {
+static bool IsMarker28(void const* marker, size_t length) {
   struct Marker28 {
     uint32_t       _size; 
     TRI_voc_crc_t        _crc;     
@@ -99,6 +99,10 @@ static bool IsMarker28(void const* marker) {
 
   char const* ptr = static_cast<char const*>(marker);
   Marker28 const* m = static_cast<Marker28 const*>(marker);
+  
+  if (m->_size < o + n || (m->_size - o - n > length)) {
+    return false;
+  }
 
   TRI_voc_crc_t crc = TRI_InitialCrc32();
 
@@ -316,9 +320,10 @@ int MMFilesDatafile::judge(std::string const& filename) {
 }
 
 /// @brief creates either an anonymous or a physical datafile
-MMFilesDatafile* MMFilesDatafile::create(std::string const& filename, TRI_voc_fid_t fid,
-                                   uint32_t maximalSize,
-                                   bool withInitialMarkers) {
+MMFilesDatafile* MMFilesDatafile::create(std::string const& filename, 
+                                         TRI_voc_fid_t fid,
+                                         uint32_t maximalSize,
+                                         bool withInitialMarkers) {
   size_t pageSize = PageSizeFeature::getPageSize();
 
   TRI_ASSERT(pageSize >= 256);
@@ -595,8 +600,17 @@ int MMFilesDatafile::writeElement(void* position, MMFilesMarker const* marker, b
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "logic error. writing out of bounds of datafile '" << getName() << "'";
     return TRI_ERROR_ARANGO_ILLEGAL_STATE;
   }
-
+  
   memcpy(position, marker, static_cast<size_t>(marker->getSize()));
+  
+  TRI_IF_FAILURE("BreakHeaderMarker") {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    if (marker->getType() == TRI_DF_MARKER_HEADER && getName().find("logfile-") == std::string::npos) { 
+      // intentionally corrupt the marker
+      reinterpret_cast<MMFilesMarker*>(position)->breakIt();
+    }
+#endif
+  }
 
   if (forceSync) {
     bool ok = sync(static_cast<char const*>(position), reinterpret_cast<char const*>(position) + marker->getSize());
@@ -666,7 +680,7 @@ int MMFilesDatafile::writeCrcElement(void* position, MMFilesMarker* marker, bool
     crc = TRI_BlockCrc32(crc, (char const*)marker, marker->getSize());
     marker->setCrc(TRI_FinalCrc32(crc));
   }
-
+  
   return writeElement(position, marker, forceSync);
 }
 
@@ -1873,7 +1887,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
   ok = CheckCrcMarker(reinterpret_cast<MMFilesMarker const*>(ptr), end);
 
   if (!ok) {
-    if (IsMarker28(ptr)) {
+    if (IsMarker28(ptr, len)) {
       TRI_TRACKED_CLOSE_FILE(fd);
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "datafile found from older version of ArangoDB. "
                << "Please dump data from that version with arangodump "
