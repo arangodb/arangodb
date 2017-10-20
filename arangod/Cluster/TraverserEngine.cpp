@@ -27,6 +27,7 @@
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
 #include "Basics/Exceptions.h"
+#include "Basics/Result.h"
 #include "Graph/EdgeCursor.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserCache.h"
@@ -111,16 +112,16 @@ BaseEngine::BaseEngine(TRI_vocbase_t* vocbase, VPackSlice info)
     }
     _trx = aql::AqlTransaction::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
-        _collections.collections(), trxOpts, true, inaccessible);
+        _collections.collections(), trxOpts, false, inaccessible);
   } else {
     _trx = aql::AqlTransaction::create(
         arangodb::transaction::StandaloneContext::Create(vocbase),
-        _collections.collections(), trxOpts, true);
+        _collections.collections(), trxOpts, false);
   }
 #else
   _trx = aql::AqlTransaction::create(
        arangodb::transaction::StandaloneContext::Create(vocbase),
-       _collections.collections(), trxOpts, true);
+       _collections.collections(), trxOpts, false);
 #endif
 
   // true here as last argument is crucial: it leads to the fact that the
@@ -176,6 +177,10 @@ bool BaseEngine::lockCollection(std::string const& shard) {
     return false;
   }
   return true;
+}
+
+Result BaseEngine::lockAll() {
+  return _trx->lockCollections();
 }
 
 std::shared_ptr<transaction::Context> BaseEngine::context() const {

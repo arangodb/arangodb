@@ -34,6 +34,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/TraverserEngine.h"
 #include "Cluster/TraverserEngineRegistry.h"
 #include "Logger/Logger.h"
 #include "Rest/HttpRequest.h"
@@ -225,9 +226,10 @@ void RestAqlHandler::setupClusterQuery() {
 
   VPackBuilder answerBuilder;
   answerBuilder.openObject();
+  bool needToLock = true;
   bool res = false;
   res = registerSnippets(snippetsSlice, collectionBuilder.slice(), variablesSlice,
-                         options, ttl, answerBuilder);
+                         options, ttl, needToLock, answerBuilder);
   if (!res) {
     // TODO we need to trigger cleanup here??
     // Registering the snippets failed.
@@ -235,7 +237,9 @@ void RestAqlHandler::setupClusterQuery() {
   }
 
   if (!traverserSlice.isNone()) {
-    res = registerTraverserEngines(traverserSlice, ttl, answerBuilder);
+
+    res = registerTraverserEngines(traverserSlice, needToLock, ttl, answerBuilder);
+
     if (!res) {
       // TODO we need to trigger cleanup here??
       // Registering the traverser engines failed.
@@ -254,6 +258,7 @@ bool RestAqlHandler::registerSnippets(
     VPackSlice const variablesSlice,
     std::shared_ptr<VPackBuilder> options,
     double const ttl,
+    bool& needToLock,
     VPackBuilder& answerBuilder
     ) {
   TRI_ASSERT(answerBuilder.isOpenObject());
@@ -261,7 +266,6 @@ bool RestAqlHandler::registerSnippets(
   answerBuilder.openObject();
   // NOTE: We need to clean up all engines if we bail out during the following
   // loop
-  bool firstSnippet = true;
   for (auto const& it : VPackObjectIterator(snippetsSlice)) {
     auto planBuilder = std::make_shared<VPackBuilder>();
     planBuilder->openObject();
@@ -281,7 +285,7 @@ bool RestAqlHandler::registerSnippets(
     // All snippets know all collections.
     // The first snippet will provide proper locking
     auto query = std::make_unique<Query>(false, _vocbase, planBuilder, options,
-                                         (firstSnippet ? PART_MAIN : PART_DEPENDENT));
+                                         (needToLock ? PART_MAIN : PART_DEPENDENT));
     try {
       query->prepare(_queryRegistry, 0);
     } catch (std::exception const& ex) {
@@ -300,10 +304,10 @@ bool RestAqlHandler::registerSnippets(
     try {
       QueryId qId = TRI_NewTickServer();
 
-      if (firstSnippet) {
+      if (needToLock) {
         // Directly try to lock only the first snippet is required to be locked.
         // For all others locking is pointless
-        firstSnippet = false;
+        needToLock = false;
 
         {
           JobGuard guard(SchedulerFeature::SCHEDULER);
@@ -350,7 +354,7 @@ bool RestAqlHandler::registerSnippets(
   return true;
 }
 
-bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines, double ttl, VPackBuilder& answerBuilder) {
+bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines, bool& needToLock, double ttl, VPackBuilder& answerBuilder) {
   TRI_ASSERT(traverserEngines.isArray());
 
   TRI_ASSERT(answerBuilder.isOpenObject());
@@ -362,6 +366,32 @@ bool RestAqlHandler::registerTraverserEngines(VPackSlice const traverserEngines,
       traverser::TraverserEngineID id =
           _traverserRegistry->createNew(_vocbase, te, ttl);
       TRI_ASSERT(id != 0);
+      if (needToLock) {
+        needToLock = false;
+        try {
+          auto engine = _traverserRegistry->get(id);
+          Result res = engine->lockAll();
+          _traverserRegistry->returnEngine(id);
+          if (!res.ok()) {
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                res.errorNumber(), res.errorMessage());
+            return false;
+          }
+        } catch (basics::Exception  const& e) {
+          generateError(rest::ResponseCode::SERVER_ERROR,
+              e.code(), e.message());
+          return false;
+        } catch (...) {
+          generateError(rest::ResponseCode::SERVER_ERROR,
+                        TRI_ERROR_HTTP_SERVER_ERROR,
+                        "Unable to lock all collections.");
+          return false;
+        }
+        // If we get here we successfully locked the collections.
+        // If we bail out up to this point nothing is kept alive.
+        // No need to cleanup...
+ 
+      }
       answerBuilder.add(VPackValue(id));
     } catch (basics::Exception const& e) {
       LOG_TOPIC(ERR, arangodb::Logger::AQL)

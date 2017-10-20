@@ -41,6 +41,8 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
+static const double SETUP_TIMEOUT = 25.0;
+
 
 EngineInfoContainerDBServer::EngineInfo::EngineInfo(size_t idOfRemoteNode)
     : _idOfRemoteNode(idOfRemoteNode), _otherId(0), _collection(nullptr) {}
@@ -612,9 +614,10 @@ void EngineInfoContainerDBServer::buildEngines(
     CoordTransactionID coordTransactionID = TRI_NewTickServer();
     auto res = cc->syncRequest("", coordTransactionID, "server:" + it.first,
                                RequestType::POST, url, infoBuilder.toJson(),
-                               headers, 90.0);
+                               headers, SETUP_TIMEOUT);
 
     if (res->getErrorCode() != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(DEBUG, Logger::AQL) << it.first << " respended with " << res->getErrorCode() << " -> " << res->stringifyErrorMessage();
       LOG_TOPIC(ERR, Logger::AQL) << infoBuilder.toJson();
       // TODO could not register all engines. Need to cleanup.
       THROW_ARANGO_EXCEPTION_MESSAGE(res->getErrorCode(),

@@ -31,6 +31,8 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
+class Result;
+
 namespace transaction {
 class Methods;
 }
@@ -85,6 +87,8 @@ class BaseEngine {
                      arangodb::velocypack::Builder&);
 
   bool lockCollection(std::string const&);
+
+  Result lockAll();
 
   std::shared_ptr<transaction::Context> context() const;
 

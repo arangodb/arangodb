@@ -137,9 +137,11 @@ class RestAqlHandler : public RestVocbaseBaseHandler {
                         arangodb::velocypack::Slice const variables,
                         std::shared_ptr<arangodb::velocypack::Builder> options,
                         double const ttl,
+                        bool& needToLock,
                         arangodb::velocypack::Builder& answer);
 
   bool registerTraverserEngines(arangodb::velocypack::Slice const traversers,
+                                bool& needToLock,
                                 double const ttl,
                                 arangodb::velocypack::Builder& answer);
 
