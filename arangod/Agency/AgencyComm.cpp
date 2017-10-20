@@ -1513,8 +1513,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
               VPackArrayBuilder guard(bodyBuilder.get());
               bodyBuilder->add(VPackValue(index));
             }
-            result.set(200, "", clientId);
-            result.setVPack(bodyBuilder);
+            result.set(200, bodyBuilder->toJson(), clientId);
             break;
           } else {
             // Nothing known, so do a retry of the original operation:

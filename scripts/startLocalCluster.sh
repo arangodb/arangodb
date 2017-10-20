@@ -41,7 +41,7 @@ else
 fi
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
 ENDPOINT=[::]
-ADDRESS=[::1]
+ADDRESS=${ADDRESS:-[::1]}
 
 rm -rf cluster
 if [ -d cluster-init ];then
