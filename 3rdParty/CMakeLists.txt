@@ -111,9 +111,8 @@ if (USE_IRESEARCH)
   else()
     add_library(icu-static STATIC IMPORTED GLOBAL)
     set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
-    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION "-licui18n")
-    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES "-licuuc")
-    set(LINK_DIRECTORIES "${LINK_DIRECTORIES}" PARENT_SCOPE) # seems to be required for Jenkins build
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.0.0/x64.release/obj.target/third_party/icu/libicui18n.a")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.0.0/x64.release/obj.target/third_party/icu/libicuuc.a")
     set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
   endif()
 
