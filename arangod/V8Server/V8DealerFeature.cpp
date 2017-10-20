@@ -282,7 +282,6 @@ void V8DealerFeature::start() {
     }
   }
 
-
   DatabaseFeature* database =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
 

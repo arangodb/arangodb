@@ -27,6 +27,7 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
+#include "Utils/ExecContext.h"
 
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -49,11 +50,9 @@ using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
-static bool IsSystemUser() {
+static bool IsAdminUser() {
   if (ExecContext::CURRENT != nullptr) {
-    AuthLevel level =
-    ExecContext::CURRENT->systemAuthLevel();
-    return level == AuthLevel::RW;
+    return ExecContext::CURRENT->isAdminUser();
   }
   return true;
 }
@@ -61,9 +60,7 @@ static bool IsSystemUser() {
 /// check ExecContext if system use
 static bool CanAccessUser(std::string const& user) {
   if (ExecContext::CURRENT != nullptr) {
-    AuthLevel level =
-    ExecContext::CURRENT->systemAuthLevel();
-    return level == AuthLevel::RW || user == ExecContext::CURRENT->user();
+    return IsAdminUser()|| user == ExecContext::CURRENT->user();
   }
   return true;
 }
@@ -170,12 +167,8 @@ static void JS_RemoveUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 1 || !args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("remove(username)");
   }
-  if (ExecContext::CURRENT != nullptr) {
-    AuthLevel level =
-        ExecContext::CURRENT->systemAuthLevel();
-    if (level != AuthLevel::RW) {
+  if (!IsAdminUser()) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
   }
 
   std::string username = TRI_ObjectToString(args[0]);
@@ -196,12 +189,8 @@ static void JS_GetUser(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 1 || !args[0]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("document(username)");
   }
-  if (ExecContext::CURRENT != nullptr) {
-    AuthLevel level =
-        ExecContext::CURRENT->systemAuthLevel();
-    if (level != AuthLevel::RW) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
+  if (!IsAdminUser()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
   auto authentication =
@@ -222,12 +211,8 @@ static void JS_ReloadAuthData(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() > 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("reload()");
   }
-  if (ExecContext::CURRENT != nullptr) {
-    AuthLevel level =
-        ExecContext::CURRENT->systemAuthLevel();
-    if (level != AuthLevel::RW) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
+  if (!IsAdminUser()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
   auto authentication =
@@ -247,7 +232,7 @@ static void JS_GrantDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("grantDatabase(username, database, type)");
   }
-  if (!IsSystemUser()) {
+  if (!IsAdminUser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -277,7 +262,7 @@ static void JS_RevokeDatabase(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (args.Length() < 2 || !args[0]->IsString() || !args[1]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("revokeDatabase(username,  database)");
   }
-  if (!IsSystemUser()) {
+  if (!IsAdminUser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -304,7 +289,7 @@ static void JS_GrantCollection(
       !args[2]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("grantCollection(username, db, coll[, type])");
   }
-  if (!IsSystemUser()) {
+  if (!IsAdminUser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 
@@ -338,7 +323,7 @@ static void JS_RevokeCollection(
       !args[2]->IsString()) {
     TRI_V8_THROW_EXCEPTION_USAGE("revokeCollection(username, db, coll)");
   }
-  if (!IsSystemUser()) {
+  if (!IsAdminUser()) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
   }
 

@@ -31,7 +31,7 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 class TransactionState;
-
+  
 namespace transaction {
 
 class V8Context final : public Context {

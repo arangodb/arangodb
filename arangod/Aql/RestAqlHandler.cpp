@@ -56,8 +56,6 @@ RestAqlHandler::RestAqlHandler(GeneralRequest* request,
                                GeneralResponse* response,
                                QueryRegistry* queryRegistry)
     : RestVocbaseBaseHandler(request, response),
-      _context(static_cast<VocbaseContext*>(request->requestContext())),
-      _vocbase(_context->vocbase()),
       _queryRegistry(queryRegistry),
       _qId(0) {
   TRI_ASSERT(_vocbase != nullptr);
@@ -725,6 +723,11 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
 
           try {
             res = query->trx()->lockCollections();
+          } catch (std::exception const& ex) {
+            generateError(rest::ResponseCode::SERVER_ERROR,
+                          TRI_ERROR_HTTP_SERVER_ERROR,
+                          std::string("lock lead to an exception: ") + ex.what());
+            return;
           } catch (...) {
             generateError(rest::ResponseCode::SERVER_ERROR,
                           TRI_ERROR_HTTP_SERVER_ERROR,
@@ -782,6 +785,11 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             }
             skipped = block->skipSomeForShard(atLeast, atMost, shardId);
           }
+        } catch (std::exception const& ex) {
+          generateError(rest::ResponseCode::SERVER_ERROR,
+                        TRI_ERROR_HTTP_SERVER_ERROR,
+                        std::string("skipSome lead to an exception: ") + ex.what());
+          return;
         } catch (...) {
           generateError(rest::ResponseCode::SERVER_ERROR,
                         TRI_ERROR_HTTP_SERVER_ERROR,
@@ -809,6 +817,11 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           }
           answerBuilder.add("exhausted", VPackValue(exhausted));
           answerBuilder.add("error", VPackValue(false));
+        } catch (std::exception const& ex) {
+          generateError(rest::ResponseCode::SERVER_ERROR,
+                        TRI_ERROR_HTTP_SERVER_ERROR,
+                        std::string("skip lead to an exception: ") + ex.what());
+          return;
         } catch (...) {
           generateError(rest::ResponseCode::SERVER_ERROR,
                         TRI_ERROR_HTTP_SERVER_ERROR,
@@ -820,7 +833,10 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
         try {
           res = query->engine()->initialize();
         } catch (arangodb::basics::Exception const& ex) {
-          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), "initialize lead to an exception: " + ex.message());
+          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), std::string("initialize lead to an exception: ") + ex.what());
+          return;
+        } catch (std::exception const& ex) {
+          generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, std::string("initialize lead to an exception: ") + ex.what());
           return;
         } catch (...) {
           generateError(rest::ResponseCode::SERVER_ERROR,
@@ -844,7 +860,10 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
             res = query->engine()->initializeCursor(items.get(), pos);
           }
         } catch (arangodb::basics::Exception const& ex) {
-          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), "initializeCursor lead to an exception: " + ex.message());
+          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), std::string("initializeCursor lead to an exception: ") + ex.what());
+          return;
+        } catch (std::exception const& ex) {
+          generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, std::string("initializeCursor lead to an exception: ") + ex.what());
           return;
         } catch (...) {
           generateError(rest::ResponseCode::SERVER_ERROR,
@@ -876,7 +895,10 @@ void RestAqlHandler::handleUseQuery(std::string const& operation, Query* query,
           _queryRegistry->destroy(_vocbase, _qId, errorCode);
           _qId = 0;
         } catch (arangodb::basics::Exception const& ex) {
-          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), "shutdown lead to an exception: " + ex.message());
+          generateError(rest::ResponseCode::SERVER_ERROR, ex.code(), std::string("shutdown lead to an exception: ") + ex.what());
+          return;
+        } catch (std::exception const& ex) {
+          generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_HTTP_SERVER_ERROR, std::string("shutdown lead to an exception: ") + ex.what());
           return;
         } catch (...) {
           generateError(rest::ResponseCode::SERVER_ERROR,

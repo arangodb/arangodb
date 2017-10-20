@@ -151,7 +151,7 @@ is returned if an error occurred while assembling the response.
 
 @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierSetConfig}
     var re = require("@arangodb/replication");
-    re.applier.shutdown();
+    re.applier.stop();
 
     var url = "/_api/replication/applier-config";
     var body = {

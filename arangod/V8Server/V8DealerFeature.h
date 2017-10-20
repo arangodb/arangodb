@@ -134,7 +134,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
                                   VPackBuilder* builder);
   bool loadJavaScriptFileInContext(TRI_vocbase_t*, std::string const& file, V8Context* context, VPackBuilder* builder);
   void enterContextInternal(TRI_vocbase_t* vocbase, V8Context* context, bool allowUseDatabase);
-  void enterLockedContext(TRI_vocbase_t* vocbase, V8Context* context, bool allowUseDatabase);
+  void enterLockedContext(TRI_vocbase_t*, V8Context*, bool allowUseDatabase);
   void exitContextInternal(V8Context*);
   void exitLockedContext(V8Context*);
   void applyContextUpdate(V8Context* context);

@@ -94,7 +94,7 @@ const waitForTaskStart = () => {
 };
 
 const waitForTaskStop = () => {
-  let i = 50;
+  let i = 100;
   let last = 0;
   while (--i > 0) {
     internal.wait(taskPeriod);
@@ -106,7 +106,7 @@ const waitForTaskStop = () => {
     last = current;
     internal.wait(taskPeriod);
   }
-  expect(i).to.be.above(0,  "The repeatable task was able run with insufficient rights");
+  expect(i).to.be.above(0, "The repeatable task was able continue running with insufficient rights");
 };
 
 describe('User Rights Management', () => {

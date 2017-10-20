@@ -35,6 +35,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class LogicalCollection;
 
 namespace aql {
 class QueryRegistry;
@@ -84,7 +85,7 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
 
  public:
 
-   /// @brief get the ids of all local coordinator databases
+  /// @brief get the ids of all local coordinator databases
   std::vector<TRI_voc_tick_t> getDatabaseIdsCoordinator(bool includeSystem);
   std::vector<TRI_voc_tick_t> getDatabaseIds(bool includeSystem);
   std::vector<std::string> getDatabaseNames();
@@ -96,6 +97,10 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   int dropDatabaseCoordinator(TRI_voc_tick_t id, bool force);
   int dropDatabase(std::string const& name, bool waitForDeletion, bool removeAppsDirectory);
   int dropDatabase(TRI_voc_tick_t id, bool waitForDeletion, bool removeAppsDirectory);
+
+  void inventory(arangodb::velocypack::Builder& result,
+                 TRI_voc_tick_t, 
+                 std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter);
 
   TRI_vocbase_t* useDatabaseCoordinator(std::string const& name);
   TRI_vocbase_t* useDatabaseCoordinator(TRI_voc_tick_t id);
@@ -118,7 +123,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   bool waitForSync() const { return _defaultWaitForSync; }
   uint64_t maximalJournalSize() const { return _maximalJournalSize; }
 
-  void disableReplicationApplier() { _replicationApplier = false; }
   void enableCheckVersion() { _checkVersion = true; }
   void enableUpgrade() { _upgrade = true; }
   bool throwCollectionNotLoadedError() const { return _throwCollectionNotLoadedError.load(std::memory_order_relaxed); }
@@ -151,8 +155,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   /// @brief activates deadlock detection in all existing databases
   void enableDeadlockDetection();
 
-  
-
  private:
   uint64_t _maximalJournalSize;
   bool _defaultWaitForSync;
@@ -161,7 +163,8 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   std::string _check30Revisions;
   std::atomic<bool> _throwCollectionNotLoadedError;
 
-  TRI_vocbase_t* _vocbase;
+
+  TRI_vocbase_t* _vocbase; // _system database
   std::unique_ptr<DatabaseManagerThread> _databaseManager;
 
   std::atomic<DatabasesLists*> _databasesLists; 
@@ -171,7 +174,6 @@ class DatabaseFeature final : public application_features::ApplicationFeature {
   arangodb::Mutex _databasesMutex;
 
   bool _isInitiallyEmpty;
-  bool _replicationApplier;
   bool _checkVersion;
   bool _upgrade;
 

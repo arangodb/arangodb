@@ -24,7 +24,6 @@
 #include "TransactionState.h"
 #include "Aql/QueryCache.h"
 #include "Basics/Exceptions.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/Logger.h"
 #include "RestServer/FeatureCacheFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -102,39 +101,26 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
                                     int nestingLevel, bool force) {
   LOG_TRX(this, nestingLevel) << "adding collection " << cid;
 
-  AuthenticationFeature* auth =
-      FeatureCacheFeature::instance()->authenticationFeature();
-  if (auth->isActive() && ExecContext::CURRENT != nullptr) {
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr && !exec->isSuperuser()) {
+    // no need to lookup name as superuser, cluster_sync breaks otherwise
     std::string const colName = _resolver->getCollectionNameCluster(cid);
+  
+    AuthLevel level = exec->collectionAuthLevel(_vocbase->name(), colName);
 
-    // only valid on coordinator or single server
-    TRI_ASSERT(ServerState::instance()->isCoordinator() ||
-               !ServerState::instance()->isRunningInCluster());
-    // avoid extra lookups of auth context, if we use the same db as stored
-    // in the execution context initialized by RestServer/VocbaseContext
-    AuthLevel level = auth->canUseCollection(ExecContext::CURRENT->user(),
-                                             _vocbase->name(), colName);
-    
     if (level == AuthLevel::NONE) {
-      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << ExecContext::CURRENT->user()
+      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
                                              << " has collection AuthLevel::NONE";
       return TRI_ERROR_FORBIDDEN;
     }
     bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
     if (level == AuthLevel::RO && collectionWillWrite) {
-      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << ExecContext::CURRENT->user()
-                                              << "has no write right for collection " << colName;
+      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
+                                              << " has no write right for collection " << colName;
       return TRI_ERROR_ARANGO_READ_ONLY;
     }
   }
-
-  // LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "cid: " << cid
-  //            << ", accessType: " << accessType
-  //            << ", nestingLevel: " << nestingLevel
-  //            << ", force: " << force
-  //            << ", allowImplicitCollections: " <<
-  //            _options.allowImplicitCollections;
-
+  
   // upgrade transaction type if required
   if (nestingLevel == 0) {
     if (!force) {
