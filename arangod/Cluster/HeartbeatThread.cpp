@@ -402,6 +402,24 @@ void HeartbeatThread::runDBServer() {
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
 }
 
+/// CAS a key in the agency, works only if it does not exist, result should
+/// contain the value of the written key.
+static AgencyCommResult CasWithResult(AgencyComm agency, std::string const& key,
+                                      VPackSlice const& json,
+                                      double ttl, double timeout) {
+  AgencyOperation write(key, AgencyValueOperationType::SET,
+                        json);
+  write._ttl = static_cast<uint32_t>(ttl);
+  // precondition the key must be empty
+  AgencyPrecondition pre(key, AgencyPrecondition::Type::EMPTY, true);
+  VPackBuilder preBuilder;
+  pre.toVelocyPack(preBuilder);
+  
+  AgencyGeneralTransaction trx(write, pre);
+  LOG_TOPIC(ERR, Logger::FIXME) << trx.toJson();
+  return agency.sendTransactionWithFailover(trx, timeout);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop, single server version
 ////////////////////////////////////////////////////////////////////////////////
@@ -487,12 +505,13 @@ void HeartbeatThread::runSingleServer() {
         continue;
       }
       std::string const leaderPath = "/Plan/AsyncReplication/Leader";
+      
       VPackSlice leaderSlice = asyncReplication.get("Leader");
       VPackBuilder myIdBuilder;
       myIdBuilder.add(VPackValue(_myId));
       
-      // Case 1: No leader in agency. Race for leadership
       if (!leaderSlice.isString()) {
+        // Case 1: No leader in agency. Race for leadership
         LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vaccuum detected, "
         << "attempting a takeover";
         if (applier->isRunning()) {
@@ -500,25 +519,40 @@ void HeartbeatThread::runSingleServer() {
           applier->stopAndJoin();
         }
         
-        result = _agency.casValue(leaderPath, myIdBuilder.slice(), false,
-                                  /* ttl */ std::min(30.0, interval * 4),
-                                  /* timeout */ 30.0);
-        if (result.successful()) {
-          // sucessfull leadership takeover
+        result = CasWithResult(_agency, leaderPath, myIdBuilder.slice(),
+                               /* ttl */ std::min(30.0, interval * 4),
+                               /* timeout */ 30.0);
+        
+        if (result.successful()) { // sucessfull leadership takeover
+          
           LOG_TOPIC(INFO, Logger::HEARTBEAT) << "All your base are belong to us";
           applier->stop(/* reset error */true); // TODO: should we use join here?
-          RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::DEFAULT);
           ServerState::instance()->setFoxxmaster(_myId);
+          RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::DEFAULT);
+          continue;
+          
+        } else if (result.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
+          // we did not become leader, someone else is, response contains
+          // current value in agency
+          VPackSlice const res = result.slice();
+          TRI_ASSERT(res.length() == 1 && res[0].isObject());
+          leaderSlice = res[0].get(AgencyCommManager::slicePath(leaderPath));
+          TRI_ASSERT(leaderSlice.isString() && leaderSlice.compareString(_myId) != 0);
+          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Following " << leaderSlice.copyString();
+          // TODO enable redirect later
+          
         } else {
-          LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Takeover attempt failed";
+          LOG_TOPIC(WARN, Logger::HEARTBEAT) << "got an unexpected agency error "
+          << "code: " << result.httpCode() << " msg: " << result.errorMessage();
+          continue; // try again next time
         }
-        continue; // readjust applier endpoint next round
       }
       
+      std::string const leader = leaderSlice.copyString();
+      TRI_ASSERT(!leader.empty());
       // Case 2: Current server is leader
       if (leaderSlice.compareString(_myId) == 0) {
         LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Currently leader" << _myId;
-        ServerState::instance()->setFoxxmaster(_myId);
         
         // updating the value to keep our leadership
         result = _agency.casValue(leaderPath, /* old */ myIdBuilder.slice(),
@@ -532,14 +566,14 @@ void HeartbeatThread::runSingleServer() {
           applier->stopAndJoin();
         }
         
-        // allow server access
+        // ensure everyone has server access
+        ServerState::instance()->setFoxxmaster(_myId);
         RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::DEFAULT);
         
         continue; // nothing more to do
       }
       
-      // Case 3: Current server is follower
-      std::string const leader = leaderSlice.copyString();
+      // Case 3: Current server is follower, should not get here otherwise
       LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Slave of " << leader;
       ServerState::instance()->setFoxxmaster(leader);
       
@@ -548,6 +582,7 @@ void HeartbeatThread::runSingleServer() {
         LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to resolve leader endpoint";
         continue; // try again next time
       }
+      
       // enable redirections to leader
       RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::REDIRECT);
       
