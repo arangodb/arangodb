@@ -39,15 +39,15 @@ class Methods;
 /// context for convencience
 class ExecContext : public RequestContext {
  protected:
-  ExecContext(bool isSuper, std::string const& user,
+  ExecContext(bool isInternal, std::string const& user,
               std::string const& database, AuthLevel systemLevel,
               AuthLevel dbLevel)
-      : _isSuperuser(isSuper),
+      : _isInternal(isInternal),
         _user(user),
         _database(database),
         _systemDbAuthLevel(systemLevel),
         _databaseAuthLevel(dbLevel) {
-    TRI_ASSERT(!_isSuperuser || _user.empty());
+    TRI_ASSERT(!_isInternal || _user.empty());
   }
   ExecContext(ExecContext const&) = delete;
 
@@ -74,11 +74,16 @@ class ExecContext : public RequestContext {
   AuthLevel databaseAuthLevel() const { return _databaseAuthLevel; };
 
   /// @brief any internal operation is a superuser.
-  bool isSuperuser() const { return _isSuperuser; }
+  bool isSuperuser() const { return _isInternal &&
+                                    _systemDbAuthLevel == AuthLevel::RW; }
+  
+  /// @brief is this an internal read-only user
+  bool isReadOnly() const { return _isInternal &&
+                                   _systemDbAuthLevel == AuthLevel::RO; }
 
   /// @brief is allowed to manage users, create databases, ...
   bool isAdminUser() const {
-    TRI_ASSERT(!_isSuperuser || _systemDbAuthLevel == AuthLevel::RW);
+    TRI_ASSERT(!_isInternal || _systemDbAuthLevel == AuthLevel::RW);
     return _systemDbAuthLevel == AuthLevel::RW;
   }
 
@@ -110,7 +115,9 @@ class ExecContext : public RequestContext {
 
  protected:
   
-  bool _isSuperuser;
+  /// Internal superuser or read-only user
+  bool _isInternal;
+  
   std::string const _user;
   std::string const _database;
   AuthLevel _systemDbAuthLevel;
