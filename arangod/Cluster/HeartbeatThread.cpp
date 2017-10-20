@@ -408,7 +408,7 @@ void HeartbeatThread::runDBServer() {
 
 void HeartbeatThread::runSingleServer() {
   // convert timeout to seconds
-  double const interval = (double)_interval / 1000.0 / 1000.0;
+  double const interval = static_cast<double>(_interval) / 1000.0 / 1000.0;
   AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
   TRI_ASSERT(auth != nullptr);
   ReplicationFeature* replication = ReplicationFeature::INSTANCE;
@@ -433,7 +433,7 @@ void HeartbeatThread::runSingleServer() {
         usleep(500000);
         remain -= 0.5;
       } else {
-        usleep((TRI_usleep_t)(remain * 1000.0 * 1000.0));
+        usleep(static_cast<TRI_usleep_t>(remain * 1000.0 * 1000.0));
         remain = 0.0;
       }
     }
@@ -495,22 +495,24 @@ void HeartbeatThread::runSingleServer() {
       if (!leaderSlice.isString()) {
         LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vaccuum detected, "
         << "attempting a takeover";
-        if (applier->isRunning()) {
-          // FIXME: do we keep this running anyway ?
-          applier->stopAndJoin();
-        }
         
+        RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::TRYAGAIN);
+
         result = _agency.casValue(leaderPath, myIdBuilder.slice(), false,
                                   /* ttl */ std::min(30.0, interval * 4),
                                   /* timeout */ 30.0);
         if (result.successful()) {
-          // sucessfull leadership takeover
+          // sucessful leadership takeover
+          if (applier->isRunning()) {
+            applier->stopAndJoin();
+          }
+
           LOG_TOPIC(INFO, Logger::HEARTBEAT) << "All your base are belong to us";
-          applier->stop(/* reset error */true); // TODO: should we use join here?
           RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::DEFAULT);
           ServerState::instance()->setFoxxmaster(_myId);
         } else {
           LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Takeover attempt failed";
+          start = TRI_microtime(); // so we do not sleep that long in next round
         }
         continue; // readjust applier endpoint next round
       }
