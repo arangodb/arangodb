@@ -536,7 +536,9 @@ void HeartbeatThread::runSingleServer() {
           TRI_ASSERT(res.length() == 1 && res[0].isObject());
           leaderSlice = res[0].get(AgencyCommManager::slicePath(leaderPath));
           TRI_ASSERT(leaderSlice.isString() && leaderSlice.compareString(_myId) != 0);
-          // inentional fallthrough, we need to go to case 3
+          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Did not become leader, "
+            << "following " << leaderSlice.copyString();
+          // intentional fallthrough, we need to go to case 3
           
         } else {
           LOG_TOPIC(WARN, Logger::HEARTBEAT) << "got an unexpected agency error "
