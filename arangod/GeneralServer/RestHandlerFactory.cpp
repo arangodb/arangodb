@@ -133,25 +133,34 @@ RestHandler* RestHandlerFactory::createHandler(
   // In the bootstrap phase, we would like that coordinators answer the
   // following endpoints, but not yet others:
   RestHandlerFactory::Mode mode = RestHandlerFactory::serverMode();
-  if (mode == Mode::MAINTENANCE) {
-    if ((!ServerState::instance()->isCoordinator() &&
-         path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
-        (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
-         path.find("/_api/aql") == std::string::npos)) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
-      return new MaintenanceHandler(req.release(), res.release(), false);
+  switch (mode) {
+    case Mode::MAINTENANCE: {
+      if ((!ServerState::instance()->isCoordinator() &&
+          path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
+          (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+          path.find("/_api/aql") == std::string::npos)) {
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
+        return new MaintenanceHandler(req.release(), res.release(), false);
+      }
+      break;
     }
-  } else if (mode == RestHandlerFactory::Mode::REDIRECT) {
-    if (
-        path.find("/_api/agency/agency-callbacks") == std::string::npos &&
-        path.find("/_api/cluster/") == std::string::npos &&
-        path.find("/_api/replication") == std::string::npos &&
-        path.find("/_api/version") == std::string::npos &&
-        path.find("/_api/wal") == std::string::npos &&
-        path.find("/_admin/shutdown") == std::string::npos &&
-        path.find("/_admin/server/role") == std::string::npos) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
-      return new MaintenanceHandler(req.release(), res.release(), true);
+    case Mode::REDIRECT:
+    case Mode::TRYAGAIN: {
+      if (path.find("/_admin/shutdown") == std::string::npos &&
+          path.find("/_admin/server/role") == std::string::npos &&
+          path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+          path.find("/_api/cluster/") == std::string::npos &&
+          path.find("/_api/replication") == std::string::npos &&
+          path.find("/_api/version") == std::string::npos &&
+          path.find("/_api/wal") == std::string::npos) {
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
+        return new MaintenanceHandler(req.release(), res.release(), true);
+      }
+      break;
+    }
+    case Mode::DEFAULT: {
+      // no special handling required
+      break;
     }
   }
 

@@ -60,7 +60,6 @@ RestStatus RestClusterHandler::execute() {
 
 /// @brief returns information about all coordinator endpoints
 void RestClusterHandler::handleCommandEndpoints() {
-  TRI_ASSERT(AgencyCommManager::isEnabled());
   ClusterInfo* ci = ClusterInfo::instance();
   TRI_ASSERT(ci != nullptr);
   std::vector<ServerID> endpoints;
@@ -76,6 +75,8 @@ void RestClusterHandler::handleCommandEndpoints() {
                            "automatic failover is not enabled"));
       return;
     }
+  
+    TRI_ASSERT(AgencyCommManager::isEnabled());
     
     std::string const leaderPath = "Plan/AsyncReplication/Leader";
     std::string const healthPath = "Supervision/Health";

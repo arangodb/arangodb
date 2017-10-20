@@ -426,7 +426,7 @@ static AgencyCommResult CasWithResult(AgencyComm agency, std::string const& key,
 
 void HeartbeatThread::runSingleServer() {
   // convert timeout to seconds
-  double const interval = (double)_interval / 1000.0 / 1000.0;
+  double const interval = static_cast<double>(_interval) / 1000.0 / 1000.0;
   AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
   TRI_ASSERT(auth != nullptr);
   ReplicationFeature* replication = ReplicationFeature::INSTANCE;
@@ -451,7 +451,7 @@ void HeartbeatThread::runSingleServer() {
         usleep(500000);
         remain -= 0.5;
       } else {
-        usleep((TRI_usleep_t)(remain * 1000.0 * 1000.0));
+        usleep(static_cast<TRI_usleep_t>(remain * 1000.0 * 1000.0));
         remain = 0.0;
       }
     }
@@ -514,22 +514,21 @@ void HeartbeatThread::runSingleServer() {
         // Case 1: No leader in agency. Race for leadership
         LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vaccuum detected, "
         << "attempting a takeover";
-        if (applier->isRunning()) {
-          // FIXME: do we keep this running anyway ?
-          applier->stopAndJoin();
-        }
         
+        // if we stay a slave, the redirect will be turned on again
+        RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::TRYAGAIN);
         result = CasWithResult(_agency, leaderPath, myIdBuilder.slice(),
                                /* ttl */ std::min(30.0, interval * 4),
                                /* timeout */ 30.0);
         
         if (result.successful()) { // sucessfull leadership takeover
-          
           LOG_TOPIC(INFO, Logger::HEARTBEAT) << "All your base are belong to us";
-          applier->stop(/* reset error */true); // TODO: should we use join here?
+          if (applier->isRunning()) {
+            applier->stopAndJoin();
+          }
           ServerState::instance()->setFoxxmaster(_myId);
           RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::DEFAULT);
-          continue;
+          continue; // nothing more to do here
           
         } else if (result.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
           // we did not become leader, someone else is, response contains
@@ -538,8 +537,7 @@ void HeartbeatThread::runSingleServer() {
           TRI_ASSERT(res.length() == 1 && res[0].isObject());
           leaderSlice = res[0].get(AgencyCommManager::slicePath(leaderPath));
           TRI_ASSERT(leaderSlice.isString() && leaderSlice.compareString(_myId) != 0);
-          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Following " << leaderSlice.copyString();
-          // TODO enable redirect later
+          // inentional fallthrough, we need to go to case 3
           
         } else {
           LOG_TOPIC(WARN, Logger::HEARTBEAT) << "got an unexpected agency error "
@@ -548,8 +546,6 @@ void HeartbeatThread::runSingleServer() {
         }
       }
       
-      std::string const leader = leaderSlice.copyString();
-      TRI_ASSERT(!leader.empty());
       // Case 2: Current server is leader
       if (leaderSlice.compareString(_myId) == 0) {
         LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Currently leader" << _myId;
@@ -574,9 +570,11 @@ void HeartbeatThread::runSingleServer() {
       }
       
       // Case 3: Current server is follower, should not get here otherwise
-      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Slave of " << leader;
-      ServerState::instance()->setFoxxmaster(leader);
+      std::string const leader = leaderSlice.copyString();
+      TRI_ASSERT(!leader.empty());
+      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Following " << leader;
       
+      ServerState::instance()->setFoxxmaster(leader);
       std::string endpoint = ci->getServerEndpoint(leader);
       if (endpoint.empty()) {
         LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to resolve leader endpoint";
@@ -585,9 +583,8 @@ void HeartbeatThread::runSingleServer() {
       
       // enable redirections to leader
       RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::REDIRECT);
-      
-      // configure applier for new endpoint if necessary
       if (applier->endpoint() != endpoint) {
+        // configure applier for new endpoint
         if (applier->isRunning()) {
           applier->stopAndJoin();
         }
@@ -621,6 +618,7 @@ void HeartbeatThread::runSingleServer() {
 
         applier->reconfigure(config);
         applier->start(lastLogTick, true, barrierId);
+        
       } else if (!applier->isRunning()) {
         
         // try to restart the applier
