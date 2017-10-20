@@ -39,8 +39,8 @@ using namespace arangodb::aql;
 // --SECTION--                                             Coordinator Container
 // -----------------------------------------------------------------------------
 
-EngineInfoContainerCoordinator::EngineInfo::EngineInfo(
-    size_t id, size_t idOfRemoteNode)
+EngineInfoContainerCoordinator::EngineInfo::EngineInfo(size_t id,
+                                                       size_t idOfRemoteNode)
     : _id(id), _idOfRemoteNode(idOfRemoteNode) {
   TRI_ASSERT(_nodes.empty());
 }
@@ -53,8 +53,7 @@ EngineInfoContainerCoordinator::EngineInfo::~EngineInfo() {
 EngineInfoContainerCoordinator::EngineInfo::EngineInfo(EngineInfo const&& other)
     : _id(other._id),
       _nodes(std::move(other._nodes)),
-      _idOfRemoteNode(other._idOfRemoteNode) {
-}
+      _idOfRemoteNode(other._idOfRemoteNode) {}
 
 void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
   _nodes.emplace_back(en);
@@ -75,7 +74,8 @@ void EngineInfoContainerCoordinator::EngineInfo::buildEngine(
   auto engine = query->engine();
 
   {
-    auto cpyLockedShards = std::make_unique<std::unordered_set<std::string>>(*lockedShards);
+    auto cpyLockedShards =
+        std::make_unique<std::unordered_set<std::string>>(*lockedShards);
     engine->setLockedShards(cpyLockedShards.release());
   }
 
@@ -84,7 +84,8 @@ void EngineInfoContainerCoordinator::EngineInfo::buildEngine(
   std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
   RemoteNode* remoteNode = nullptr;
 
-  // We need to traverse the nodes from back to front, the walker collects them in the wrong ordering
+  // We need to traverse the nodes from back to front, the walker collects them
+  // in the wrong ordering
   for (auto it = _nodes.rbegin(); it != _nodes.rend(); ++it) {
     auto en = *it;
     auto const nodeType = en->getType();
@@ -141,8 +142,9 @@ void EngineInfoContainerCoordinator::EngineInfo::buildEngine(
 
         auto it = queryIds.find(theId);
         if (it == queryIds.end()) {
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                         "could not find query id " + theId + " in list");
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL,
+              "could not find query id " + theId + " in list");
         }
 
         auto serverList = clusterInfo->getResponsibleServer(shardId);
@@ -192,7 +194,7 @@ void EngineInfoContainerCoordinator::EngineInfo::buildEngine(
   TRI_ASSERT(engine->root() != nullptr);
 
   LOG_TOPIC(DEBUG, arangodb::Logger::AQL) << "Storing Coordinator engine: "
-                                        << _id;
+                                          << _id;
 
   // For _id == 0 this thread will always maintain the handle to
   // the engine and will clean up. We do not keep track of it seperately
@@ -230,7 +232,7 @@ EngineInfoContainerCoordinator::EngineInfoContainerCoordinator() {
 EngineInfoContainerCoordinator::~EngineInfoContainerCoordinator() {}
 
 void EngineInfoContainerCoordinator::addNode(ExecutionNode* node) {
-#ifdef USE_MAINTAINER_MODE
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   switch (node->getType()) {
     case ExecutionNode::INDEX:
     case ExecutionNode::ENUMERATE_COLLECTION:
@@ -247,7 +249,7 @@ void EngineInfoContainerCoordinator::addNode(ExecutionNode* node) {
 }
 
 void EngineInfoContainerCoordinator::openSnippet(size_t idOfRemoteNode) {
-  _engineStack.emplace(_engines.size()); // Insert next id
+  _engineStack.emplace(_engines.size());  // Insert next id
   QueryId id = TRI_NewTickServer();
   _engines.emplace_back(id, idOfRemoteNode);
 }
@@ -282,7 +284,8 @@ ExecutionEngine* EngineInfoContainerCoordinator::buildEngines(
       }
     }
     try {
-      info.buildEngine(localQuery, registry, restrictToShards, queryIds, lockedShards);
+      info.buildEngine(localQuery, registry, restrictToShards, queryIds,
+                       lockedShards);
     } catch (...) {
       localQuery->releaseEngine();
       if (!first) {
