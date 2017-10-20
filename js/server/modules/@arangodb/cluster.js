@@ -218,7 +218,15 @@ function addShardFollower (endpoint, database, shard, lockJobId) {
   var url = endpointToURL(endpoint) + '/_db/' + database +
     '/_api/replication/addFollower';
   let db = require('internal').db;
-  var body = {followerId: ArangoServerState.id(), shard, checksum: db._collection(shard).count() + '', readLockId: lockJobId};
+  var body;
+  if (lockJobId === undefined) {
+    body = {followerId: ArangoServerState.id(), shard,
+            checksum: db._collection(shard).count() + ''};
+  } else {
+    body = {followerId: ArangoServerState.id(), shard, 
+            checksum: db._collection(shard).count() + '',
+            readLockId: lockJobId};
+  }
   var r = request({url, body: JSON.stringify(body), method: 'PUT'});
   if (r.status !== 200) {
     console.topic('heartbeat=error', "addShardFollower: could not add us to the leader's follower list.", r);
@@ -518,7 +526,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
     }
     console.topic('heartbeat=debug', 'synchronizeOneShard: waiting for leader, %s/%s, %s/%s',
       database, shard, database, planId);
-    wait(1.0);
+    wait(0.2);
   }
 
   // Once we get here, we know that the leader is ready for sync, so
@@ -526,9 +534,25 @@ function synchronizeOneShard (database, shard, planId, leader) {
   var ok = false;
   const rep = require('@arangodb/replication');
 
+  var ep = ArangoClusterInfo.getServerEndpoint(leader);
+
+  if (require("internal").db._collection(shard).count() === 0) {
+    // We try a short cut:
+    console.topic('heartbeat=debug', "synchronizeOneShard: trying short cut to synchronize local shard '%s/%s' for central '%s/%s'", database, shard, database, planId);
+    try {
+      let ok = addShardFollower(ep, database, shard);
+      if (ok) {
+        terminateAndStartOther();
+        let endTime = new Date();
+        console.topic('heartbeat=debug', 'synchronizeOneShard: shortcut worked, done, %s/%s, %s/%s, started: %s, ended: %s',
+          database, shard, database, planId, startTime.toString(), endTime.toString());
+        return;
+      }
+    } catch (dummy) { }
+  }
+
   console.topic('heartbeat=debug', "synchronizeOneShard: trying to synchronize local shard '%s/%s' for central '%s/%s'", database, shard, database, planId);
   try {
-    var ep = ArangoClusterInfo.getServerEndpoint(leader);
     // First once without a read transaction:
     var sy;
     if (isStopping()) {
