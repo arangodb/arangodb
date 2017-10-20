@@ -2104,7 +2104,7 @@ exports._create = function (graphName, edgeDefinitions, orphanCollections, optio
 
   var data = gdb.save(toSave, options);
   toSave._id = data._id;
-  toSave.rev = data._rev;
+  toSave._rev = data._rev;
 
   return new Graph(toSave);
 };
