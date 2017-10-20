@@ -85,7 +85,7 @@ struct Options;
 #ifdef USE_ENTERPRISE
   #define ENTERPRISE_VIRT virtual
 #else
-  #define ENTERPRISE_VIRT
+  #define ENTERPRISE_VIRT TEST_VIRTUAL
 #endif
 
 class Methods {
