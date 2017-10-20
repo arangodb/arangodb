@@ -229,7 +229,11 @@ function addShardFollower (endpoint, database, shard, lockJobId) {
   }
   var r = request({url, body: JSON.stringify(body), method: 'PUT'});
   if (r.status !== 200) {
-    console.topic('heartbeat=error', "addShardFollower: could not add us to the leader's follower list.", r);
+    if (lockJobId !== undefined) {
+      console.topic('heartbeat=error', "addShardFollower: could not add us to the leader's follower list.", r);
+    } else {
+      console.topic('heartbeat=debug', "addShardFollower: could not add us to the leader's follower list with shortcut.", r);
+    }
     return false;
   }
   return true;

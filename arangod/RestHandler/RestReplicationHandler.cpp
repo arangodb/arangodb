@@ -2004,6 +2004,11 @@ void RestReplicationHandler::handleCommandAddFollower() {
         }  
       }
     }
+    // If we get here, we have to report an error:
+    generateError(rest::ResponseCode::FORBIDDEN,
+                  TRI_ERROR_REPLICATION_SHARD_NONEMPTY,
+                  "shard not empty");
+    return;
   }
 
   VPackSlice const checksum = body.get("checksum");
