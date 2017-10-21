@@ -96,10 +96,7 @@ void EngineInfoContainerCoordinator::EngineInfo::buildEngine(
     }
 
     // for all node types but REMOTEs, we create blocks
-    ExecutionBlock* eb =
-        // ExecutionEngine::CreateBlock(engine.get(), en, cache,
-        // _includedShards);
-        ExecutionEngine::CreateBlock(engine, en, cache, {});
+    ExecutionBlock* eb = engine->createBlock(en, cache, {}); // Last _includedShards?
 
     if (eb == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");

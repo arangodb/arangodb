@@ -203,7 +203,7 @@ class Query {
   TEST_VIRTUAL ExecutionEngine* engine() const { return _engine.get(); }
 
   /// @brief inject the engine
-  void setEngine(ExecutionEngine* engine);
+  TEST_VIRTUAL void setEngine(ExecutionEngine* engine);
   
   void releaseEngine();
 

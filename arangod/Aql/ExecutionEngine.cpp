@@ -88,44 +88,44 @@ struct TraverserEngineShardLists {
 typedef std::unordered_map<ServerID, TraverserEngineShardLists> Serv2ColMap;
 
 /// @brief helper function to create a block
-ExecutionBlock* ExecutionEngine::CreateBlock(
-    ExecutionEngine* engine, ExecutionNode const* en,
+ExecutionBlock* ExecutionEngine::createBlock(
+    ExecutionNode const* en,
     std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache,
     std::unordered_set<std::string> const& includedShards) {
   switch (en->getType()) {
     case ExecutionNode::SINGLETON: {
-      return new SingletonBlock(engine, static_cast<SingletonNode const*>(en));
+      return new SingletonBlock(this, static_cast<SingletonNode const*>(en));
     }
     case ExecutionNode::INDEX: {
-      return new IndexBlock(engine, static_cast<IndexNode const*>(en));
+      return new IndexBlock(this, static_cast<IndexNode const*>(en));
     }
     case ExecutionNode::ENUMERATE_COLLECTION: {
       return new EnumerateCollectionBlock(
-          engine, static_cast<EnumerateCollectionNode const*>(en));
+          this, static_cast<EnumerateCollectionNode const*>(en));
     }
     case ExecutionNode::ENUMERATE_LIST: {
-      return new EnumerateListBlock(engine,
+      return new EnumerateListBlock(this,
                                     static_cast<EnumerateListNode const*>(en));
     }
     case ExecutionNode::TRAVERSAL: {
-      return new TraversalBlock(engine, static_cast<TraversalNode const*>(en));
+      return new TraversalBlock(this, static_cast<TraversalNode const*>(en));
     }
     case ExecutionNode::SHORTEST_PATH: {
-      return new ShortestPathBlock(engine,
+      return new ShortestPathBlock(this,
                                    static_cast<ShortestPathNode const*>(en));
     }
     case ExecutionNode::CALCULATION: {
-      return new CalculationBlock(engine,
+      return new CalculationBlock(this,
                                   static_cast<CalculationNode const*>(en));
     }
     case ExecutionNode::FILTER: {
-      return new FilterBlock(engine, static_cast<FilterNode const*>(en));
+      return new FilterBlock(this, static_cast<FilterNode const*>(en));
     }
     case ExecutionNode::LIMIT: {
-      return new LimitBlock(engine, static_cast<LimitNode const*>(en));
+      return new LimitBlock(this, static_cast<LimitNode const*>(en));
     }
     case ExecutionNode::SORT: {
-      return new SortBlock(engine, static_cast<SortNode const*>(en));
+      return new SortBlock(this, static_cast<SortNode const*>(en));
     }
     case ExecutionNode::COLLECT: {
       auto aggregationMethod =
@@ -133,11 +133,11 @@ ExecutionBlock* ExecutionEngine::CreateBlock(
 
       if (aggregationMethod ==
           CollectOptions::CollectMethod::COLLECT_METHOD_HASH) {
-        return new HashedCollectBlock(engine,
+        return new HashedCollectBlock(this,
                                       static_cast<CollectNode const*>(en));
       } else if (aggregationMethod ==
                  CollectOptions::CollectMethod::COLLECT_METHOD_SORTED) {
-        return new SortedCollectBlock(engine,
+        return new SortedCollectBlock(this,
                                       static_cast<CollectNode const*>(en));
       }
 
@@ -151,35 +151,35 @@ ExecutionBlock* ExecutionEngine::CreateBlock(
 
       TRI_ASSERT(it != cache.end());
 
-      return new SubqueryBlock(engine, static_cast<SubqueryNode const*>(en),
+      return new SubqueryBlock(this, static_cast<SubqueryNode const*>(en),
                                it->second);
     }
     case ExecutionNode::RETURN: {
-      return new ReturnBlock(engine, static_cast<ReturnNode const*>(en));
+      return new ReturnBlock(this, static_cast<ReturnNode const*>(en));
     }
     case ExecutionNode::REMOVE: {
-      return new RemoveBlock(engine, static_cast<RemoveNode const*>(en));
+      return new RemoveBlock(this, static_cast<RemoveNode const*>(en));
     }
     case ExecutionNode::INSERT: {
-      return new InsertBlock(engine, static_cast<InsertNode const*>(en));
+      return new InsertBlock(this, static_cast<InsertNode const*>(en));
     }
     case ExecutionNode::UPDATE: {
-      return new UpdateBlock(engine, static_cast<UpdateNode const*>(en));
+      return new UpdateBlock(this, static_cast<UpdateNode const*>(en));
     }
     case ExecutionNode::REPLACE: {
-      return new ReplaceBlock(engine, static_cast<ReplaceNode const*>(en));
+      return new ReplaceBlock(this, static_cast<ReplaceNode const*>(en));
     }
     case ExecutionNode::UPSERT: {
-      return new UpsertBlock(engine, static_cast<UpsertNode const*>(en));
+      return new UpsertBlock(this, static_cast<UpsertNode const*>(en));
     }
     case ExecutionNode::NORESULTS: {
-      return new NoResultsBlock(engine, static_cast<NoResultsNode const*>(en));
+      return new NoResultsBlock(this, static_cast<NoResultsNode const*>(en));
     }
     case ExecutionNode::SCATTER: {
       auto shardIds =
           static_cast<ScatterNode const*>(en)->collection()->shardIds(
               includedShards);
-      return new ScatterBlock(engine, static_cast<ScatterNode const*>(en),
+      return new ScatterBlock(this, static_cast<ScatterNode const*>(en),
                               *shardIds);
     }
     case ExecutionNode::DISTRIBUTE: {
@@ -187,15 +187,15 @@ ExecutionBlock* ExecutionEngine::CreateBlock(
           static_cast<DistributeNode const*>(en)->collection()->shardIds(
               includedShards);
       return new DistributeBlock(
-          engine, static_cast<DistributeNode const*>(en), *shardIds,
+          this, static_cast<DistributeNode const*>(en), *shardIds,
           static_cast<DistributeNode const*>(en)->collection());
     }
     case ExecutionNode::GATHER: {
-      return new GatherBlock(engine, static_cast<GatherNode const*>(en));
+      return new GatherBlock(this, static_cast<GatherNode const*>(en));
     }
     case ExecutionNode::REMOTE: {
       auto remote = static_cast<RemoteNode const*>(en);
-      return new RemoteBlock(engine, remote, remote->server(),
+      return new RemoteBlock(this, remote, remote->server(),
                              remote->ownName(), remote->queryId());
     }
   }
@@ -249,8 +249,8 @@ struct Instanciator final : public WalkerWorker<ExecutionNode> {
         static_cast<GraphNode*>(en)->prepareOptions();
       }
 
-      std::unique_ptr<ExecutionBlock> eb(ExecutionEngine::CreateBlock(
-          engine, en, cache, std::unordered_set<std::string>()));
+      std::unique_ptr<ExecutionBlock> eb(engine->createBlock(
+          en, cache, std::unordered_set<std::string>()));
 
       // do we need to adjust the root node?
       auto const nodeType = en->getType();
@@ -890,8 +890,7 @@ struct CoordinatorInstanciatorOld : public WalkerWorker<ExecutionNode> {
         }
 
         // for all node types but REMOTEs, we create blocks
-        ExecutionBlock* eb = ExecutionEngine::CreateBlock(
-            engine.get(), (*en), cache, _includedShards);
+        ExecutionBlock* eb = engine->createBlock((*en), cache, _includedShards);
 
         try {
           engine.get()->addBlock(eb);

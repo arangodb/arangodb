@@ -48,8 +48,7 @@ class ExecutionEngine {
   static ExecutionEngine* instantiateFromPlan(QueryRegistry*, Query*,
                                               ExecutionPlan*, bool);
 
-  static ExecutionBlock* CreateBlock(
-      ExecutionEngine* engine, ExecutionNode const* en,
+  TEST_VIRTUAL ExecutionBlock* createBlock(ExecutionNode const* en,
       std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache,
       std::unordered_set<std::string> const& includedShards);
 
@@ -109,7 +108,7 @@ class ExecutionEngine {
   inline int64_t remaining() const { return _root->remaining(); }
 
   /// @brief add a block to the engine
-  void addBlock(ExecutionBlock*);
+  TEST_VIRTUAL void addBlock(ExecutionBlock*);
 
   /// @brief set the register the final result of the query is stored in
   void resultRegister(RegisterId resultRegister) {
@@ -120,7 +119,7 @@ class ExecutionEngine {
   RegisterId resultRegister() const { return _resultRegister; }
 
   /// @brief _lockedShards
-  void setLockedShards(std::unordered_set<std::string>* lockedShards) {
+  TEST_VIRTUAL void setLockedShards(std::unordered_set<std::string>* lockedShards) {
     _lockedShards = lockedShards;
   }
 

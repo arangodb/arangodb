@@ -78,25 +78,44 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     ExecutionNode& sNode = singletonMock.get();
     When(Method(singletonMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
 
+    Mock<ExecutionBlock> singletonBlockMock;
+    ExecutionBlock& sBlock = singletonBlockMock.get();
+
     Mock<ExecutionNode> calculationMock;
     ExecutionNode& cNode = calculationMock.get();
     When(Method(calculationMock, getType)).AlwaysReturn(ExecutionNode::CALCULATION);
+
+    Mock<ExecutionBlock> calculationBlockMock;
+    ExecutionBlock& cBlock = calculationBlockMock.get();
 
     Mock<ExecutionNode> returnMock;
     ExecutionNode& rNode = returnMock.get();
     When(Method(returnMock, getType)).AlwaysReturn(ExecutionNode::RETURN);
 
+    Mock<ExecutionBlock> returnBlockMock;
+    ExecutionBlock& rBlock = returnBlockMock.get();
+
     testee.addNode(&rNode);
     testee.addNode(&cNode);
     testee.addNode(&sNode);
 
+    ExecutionEngine* linkedToQuery = nullptr;
     Mock<Query> mockQuery;
     Query& query = mockQuery.get();
+    When(Method(mockQuery, setEngine)).Do([&](ExecutionEngine* eng) -> void {
+      linkedToQuery = eng;
+    });
+    When(Method(mockQuery, engine)).Return(linkedToQuery);
 
     Mock<ExecutionEngine> mockEngine;
     ExecutionEngine& myEngine = mockEngine.get();
+    When(Method(mockEngine, createBlock).Using(&rNode,_,_)).Return(&rBlock);
+    When(Method(mockEngine, createBlock).Using(&cNode,_,_)).Return(&cBlock);
+    When(Method(mockEngine, createBlock).Using(&sNode,_,_)).Return(&sBlock);
+    When(Method(mockEngine, addBlock)).Return().Return().Return();
+    When(Method(mockEngine, setLockedShards)).Return();
 
-    When(Method(mockQuery, engine)).Return(&myEngine);
+    When(Method(mockQuery, engine)).Return(linkedToQuery);
     
     Mock<QueryRegistry> mockRegistry;
     QueryRegistry& registry = mockRegistry.get();
