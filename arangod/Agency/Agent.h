@@ -335,11 +335,7 @@ class Agent : public arangodb::Thread,
   std::unordered_map<std::string, TimePoint> _lastSent;
   std::unordered_map<std::string, TimePoint> _earliestPackage;
 
-// @brief Lock for the above time data about other agents. This
-  // protects _confirmed, _lastAcked and _earliestPackage:
-  mutable arangodb::Mutex _tiLock;
-
-/**< @brief RAFT consistency lock:
+  /**< @brief RAFT consistency lock:
      _spearhead
      _readDB
      _commitIndex (log index)
@@ -350,17 +346,13 @@ class Agent : public arangodb::Thread,
    */
   mutable arangodb::Mutex _ioLock;
 
-  /// Rules for the locks: This covers the following locks:
-  ///    _ioLock (here)
-  ///    _logLock (in State)         _waiForCV (here)
-  ///    _tiLock (here)              _tiLock (here)
-  /// One may never acquire a log in this list whilst holding another one
-  /// that appears further down on this list. This is to prevent deadlock.
-  /// For _logLock: This is local to State and we make sure that the few
-  /// functions in State that call Agent methods only call those that do
-  /// not acquire the _ioLock.
-  /// For _ioLock: We put in assertions to ensure that when this lock is
-  /// acquired we do not have the _tiLock.
+  // lock for _leaderCommitIndex
+  mutable arangodb::Mutex _liLock;
+
+  // note: when both _ioLock and _liLock are acquired,
+  // the locking order must be:
+  // 1) _ioLock
+  // 2) _liLock
 
   // @brief guard _activator 
   mutable arangodb::Mutex _activatorLock;
