@@ -103,10 +103,8 @@ bool State::persist(index_t index, term_t term,
   }
 
   TRI_ASSERT(_vocbase != nullptr);
-  auto transactionContext =
-    std::make_shared<transaction::StandaloneContext>(_vocbase);
-  SingleCollectionTransaction trx(
-    transactionContext, "log", AccessMode::Type::WRITE);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  SingleCollectionTransaction trx(ctx, "log", AccessMode::Type::WRITE);
 
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   Result res = trx.begin();
@@ -809,10 +807,8 @@ bool State::loadOrPersistConfiguration() {
     TRI_ASSERT(_agent != nullptr);
     _agent->id(to_string(boost::uuids::random_generator()()));
 
-    auto transactionContext =
-        std::make_shared<transaction::StandaloneContext>(_vocbase);
-    SingleCollectionTransaction trx(
-      transactionContext, "configuration", AccessMode::Type::WRITE);
+    auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+    SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);
 
     Result res = trx.begin();
     OperationResult result;
@@ -1087,10 +1083,8 @@ bool State::persistCompactionSnapshot(index_t cind,
       store.add("_key", VPackValue(i_str.str())); }
 
     TRI_ASSERT(_vocbase != nullptr);
-    auto transactionContext =
-        std::make_shared<transaction::StandaloneContext>(_vocbase);
-    SingleCollectionTransaction trx(
-      transactionContext, "compact", AccessMode::Type::WRITE);
+    auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+    SingleCollectionTransaction trx(ctx, "compact", AccessMode::Type::WRITE);
 
     Result res = trx.begin();
 
@@ -1158,10 +1152,8 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
 
   MUTEX_LOCKER(guard, _configurationWriteLock);
 
-  auto transactionContext =
-      std::make_shared<transaction::StandaloneContext>(_vocbase);
-  SingleCollectionTransaction trx(
-    transactionContext, "configuration", AccessMode::Type::WRITE);
+  auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);
 
   Result res = trx.begin();
   if (!res.ok()) {
