@@ -1596,11 +1596,14 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
   }
   VPackSlice pslice = slice.get("pool");
 
+  // In the gossip phase, we do not yet think about active:
+#if 0
   if (slice.hasKey("active") && slice.get("active").isArray()) {
     for (auto const& a : VPackArrayIterator(slice.get("active"))) {
       _config.activePushBack(a.copyString());
     }
   }
+#endif
 
   LOG_TOPIC(TRACE, Logger::AGENCY) << "Received gossip " << slice.toJson();
 
@@ -1642,7 +1645,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
       auto pool = _config.pool();
       auto active = _config.active();
 
-      // Wrapped in envelope in RestAgencyPriveHandler
+      // Wrapped in envelope in RestAgencyPrivHandler
       out->add(VPackValue("pool"));
       {
         VPackObjectBuilder bb(out.get());
@@ -1650,6 +1653,8 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
           out->add(i.first, VPackValue(i.second));
         }
       }
+      // In the gossip phase we do not yet think about active:
+#if 0
       out->add(VPackValue("active"));
       {
         VPackArrayBuilder bb(out.get());
@@ -1657,6 +1662,7 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
           out->add(VPackValue(i));
         }
       }
+#endif
     }
   }
   
