@@ -901,8 +901,6 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
 
     Result res;
 
-    READ_LOCKER(readLocker, vocbase()->_inventoryLock);
-
     if (incremental && getSize(col) > 0) {
       res = handleCollectionSync(col, StringUtils::itoa(masterCid), masterName, _masterInfo._lastLogTick);
     } else {

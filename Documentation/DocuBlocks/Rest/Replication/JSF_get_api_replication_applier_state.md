@@ -92,7 +92,7 @@ Fetching the state of an inactive applier:
 
 @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierStateNotRunning}
     var re = require("@arangodb/replication");
-    re.applier.shutdown();
+    re.applier.stop();
 
     var url = "/_api/replication/applier-state";
     var response = logCurlRequest('GET', url);
@@ -105,12 +105,12 @@ Fetching the state of an active applier:
 
 @EXAMPLE_ARANGOSH_RUN{RestReplicationApplierStateRunning}
     var re = require("@arangodb/replication");
-    re.applier.shutdown();
+    re.applier.stop();
     re.applier.start();
 
     var url = "/_api/replication/applier-state";
     var response = logCurlRequest('GET', url);
-    re.applier.shutdown();
+    re.applier.stop();
 
     assert(response.code === 200);
     logJsonResponse(response);
