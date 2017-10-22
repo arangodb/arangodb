@@ -240,7 +240,6 @@ double config_t::supervisionFrequency() const {
 }
 
 bool config_t::activePushBack(std::string const& id) {
-  LOG_TOPIC(WARN, Logger::AGENCY) << "Adding active agent: " << id;
   WRITE_LOCKER(writeLocker, _lock);
   if (_active.size() < _agencySize &&
       std::find(_active.begin(), _active.end(), id) == _active.end()) {
