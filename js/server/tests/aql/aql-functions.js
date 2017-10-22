@@ -3760,6 +3760,18 @@ function ahuacatlFunctionsTestSuite () {
           expected: [ -1 ]
         },
         {
+          doc: {a:1,b:2 },
+          examples: {a:null,b:2 },
+          flag: null,
+          expected: [ false ]
+        },
+        {
+          doc: {b:2 },
+          examples: {a:null,b:2 },
+          flag: null,
+          expected: [ true ]
+        },
+        {
           doc: { test1: 1, test2: 2 },
           examples: [ { test1: 1, test2: 1 } ],
           flag: true,

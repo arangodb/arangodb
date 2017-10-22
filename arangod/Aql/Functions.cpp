@@ -2461,6 +2461,10 @@ AqlValue Functions::Matches(arangodb::aql::Query* query,
     for(auto const& it : VPackObjectIterator(example, true)) {
       std::string key = it.key.copyString();
 
+      if (it.value.isNull() && !docSlice.hasKey(key)) {
+        continue;
+      }
+
       if (!docSlice.hasKey(key) ||
         // compare inner content
         basics::VelocyPackHelper::compare(docSlice.get(key), it.value, false, options, &docSlice, &example) != 0) {
