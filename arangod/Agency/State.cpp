@@ -832,6 +832,8 @@ bool State::loadOrPersistConfiguration() {
 
     res = trx.finish(result.code);
 
+    LOG_TOPIC(WARN, Logger::AGENCY) << "Persisted configuration: " << doc.slice().toJson();
+
     return res.ok();
   }
 

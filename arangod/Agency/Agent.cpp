@@ -141,7 +141,7 @@ priv_rpc_ret_t Agent::requestVote(
     term_t termOfPeer, std::string const& id, index_t lastLogIndex,
     index_t lastLogTerm, query_t const& query, int64_t timeoutMult) {
 
-  if (timeoutMult != -1 && timeoutMult != _config._timeoutMult) {
+  if (timeoutMult != -1 && timeoutMult != _config.timeoutMult()) {
     adjustTimeoutMult(timeoutMult);
     LOG_TOPIC(WARN, Logger::AGENCY) << "Voter: setting timeout multiplier to "
       << timeoutMult << " for next term.";
@@ -251,7 +251,7 @@ void Agent::reportIn(std::string const& peerId, index_t index, size_t toLog) {
     // Update last acknowledged answer
     auto t = system_clock::now();
     std::chrono::duration<double> d = t - _lastAcked[peerId];
-    if (peerId != id() && d.count() > _config._minPing * _config._timeoutMult) {
+    if (peerId != id() && d.count() > _config.minPing() * _config.timeoutMult()) {
       LOG_TOPIC(WARN, Logger::AGENCY) << "Last confirmation from peer "
         << peerId << " was received more than minPing ago: " << d.count();
     }

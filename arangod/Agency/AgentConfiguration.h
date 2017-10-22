@@ -58,6 +58,7 @@ static const std::string versionStr = "version";
 static const std::string startupStr = "startup";
 
 struct config_t {
+ private:
   std::string _id;
   size_t _agencySize;
   size_t _poolSize;
@@ -81,6 +82,7 @@ struct config_t {
 
   mutable arangodb::basics::ReadWriteLock _lock; // guard member variables
 
+ public:
   /// @brief default ctor
   config_t();
 
