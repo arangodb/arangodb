@@ -832,7 +832,7 @@ bool State::loadOrPersistConfiguration() {
 
     res = trx.finish(result.code);
 
-    LOG_TOPIC(WARN, Logger::AGENCY) << "Persisted configuration: " << doc.slice().toJson();
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Persisted configuration: " << doc.slice().toJson();
 
     return res.ok();
   }
@@ -1170,7 +1170,7 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
-  LOG_TOPIC(WARN, Logger::AGENCY) << "Updated persisted agency configuration: "
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Updated persisted agency configuration: "
     << builder.slice().toJson();
 }
 
