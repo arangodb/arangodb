@@ -1170,6 +1170,8 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
+  LOG_TOPIC(WARN, Logger::AGENCY) << "Updated persisted agency configuration: "
+    << builder.slice().toJson();
 }
 
 query_t State::allLogs() const {
