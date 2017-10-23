@@ -194,6 +194,7 @@ Create a graph with edge definitions, orphan collections and options:
       });
     ~ graph_module._drop("myGraph", true);
     @END_EXAMPLE_ARANGOSH_OUTPUT
+    @endDocuBlock generalGraphCreateGraph3
  
 With this example all collections will have `3` shards and an replicationFactor of `2`.
 
