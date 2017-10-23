@@ -40,6 +40,7 @@ if [ -z "${ARANGOSH}" ];  then
 fi
 
 [ "$(uname -s)" != "Darwin" -a -x "${ARANGOSH}" ] && ARANGOSH="$(readlink -m "${ARANGOSH}")"
+[ "$(uname -s)" = "Darwin" -a -x "${ARANGOSH}" ] && ARANGOSH="$(cd -P -- "$(dirname -- "${ARANGOSH}")" && pwd -P)/$(basename -- "${ARANGOSH}")"
 
 ${ARANGOSH} \
     --configuration none \
