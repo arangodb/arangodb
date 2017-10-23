@@ -22,17 +22,27 @@ Define if the created graph should be smart.
 This only has effect in Enterprise version.
 
 @RESTBODYPARAM{options,object,optional,post_api_gharial_create_opts}
-a JSON object which is only useful in Enterprise version and with isSmart set to true.
+a JSON object which defines options that should be used for all collections
+created through this graph api
 It can contain the following attributes:
 
-@RESTSTRUCT{smartGraphAttribute,post_api_gharial_create_opts,string,required,}
+@RESTSTRUCT{smartGraphAttribute,post_api_gharial_create_opts,string,optional,string}
+*(Enterprise-only)* Will only bw used if `isSmart` is `true`.
 The attribute name that is used to smartly shard the vertices of a graph.
 Every vertex in this Graph has to have this attribute.
 Cannot be modified later.
 
-@RESTSTRUCT{numberOfShards,post_api_gharial_create_opts,integer,required,}
+@RESTSTRUCT{numberOfShards,post_api_gharial_create_opts,integer,optional,}
 The number of shards that is used for every collection within this graph.
 Cannot be modified later.
+If not given the default value of `1` shard will be used
+
+@RESTSTRUCT{replicationFactor,post_api_gharial_create_opts,integer,optional,}
+The number of replicas that are stpred for every object within this graph.
+It will set the replicationFactor on every collection created through
+this graph-api.
+Cannot be modified later.
+If not given the default value of `1` will be used (no replication)
 
 @RESTRETURNCODES
 
