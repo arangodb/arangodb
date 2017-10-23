@@ -39,8 +39,14 @@ VocbaseContext* VocbaseContext::create(GeneralRequest* req,
   TRI_ASSERT(vocbase != nullptr);
   // _vocbase has already been refcounted for us
   TRI_ASSERT(!vocbase->isDangling());
-  AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
-  if (auth != nullptr && !auth->isActive()) {
+
+  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+  
+  if (auth == nullptr) {
+    return nullptr;
+  }
+
+  if (!auth->isActive()) {
     return new VocbaseContext(req, vocbase, /*isInternal*/ true,
                               /*sysLevel*/ AuthLevel::RW,
                               /*sysLevel*/ AuthLevel::RW);
@@ -90,8 +96,7 @@ VocbaseContext::~VocbaseContext() {
   _vocbase->release();
 }
 
-
-/// FIXME: workaround to enable foxx aps with superuse rights
+/// FIXME: workaround to enable Foxx apps with superuser rights
 void VocbaseContext::upgradeSuperuser() {
   TRI_ASSERT(!_isInternal);
   TRI_ASSERT(_user.empty());

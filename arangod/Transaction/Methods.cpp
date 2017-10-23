@@ -446,8 +446,8 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
     bool const isOnlyAttributeAccess =
         (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess());
 
-    size_t coveredAttributes = 0;
     if (sortCondition->isUnidirectional()) {
+      size_t coveredAttributes = 0;
       // only go in here if we actually have a sort condition and it can in
       // general be supported by an index. for this, a sort condition must not
       // be empty, must consist only of attribute access, and all attributes
