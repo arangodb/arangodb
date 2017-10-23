@@ -867,23 +867,24 @@ function ReplicationOtherDBSuite() {
     };
 
     setupReplication();
+    
+    db._useDatabase("_system");
+    connectToSlave();
+    // wait until database is present on slave as well
+    waitUntil(function() { return (db._databases().indexOf(dbName) !== -1); });
 
     // Section - Master
     // Now do the evil stuff: drop the database that is replicating from right now.
     connectToMaster();
-    db._useDatabase("_system");
-    
-    waitUntil(function() { return (db._databases().indexOf(dbName) !== -1); });
-
     // This shall not fail.
     db._dropDatabase(dbName);
     
+    db._useDatabase("_system");
     connectToSlave();
     waitUntil(function() { return (db._databases().indexOf(dbName) === -1); });
 
     // Now recreate a new database with this name
     connectToMaster();
-    db._useDatabase("_system");
     db._createDatabase(dbName);
     
     db._useDatabase(dbName);
@@ -891,8 +892,8 @@ function ReplicationOtherDBSuite() {
     db._collection(cn).save(docs);
 
     // Section - Slave
-    connectToSlave();
     db._useDatabase("_system");
+    connectToSlave();
     waitUntil(function() { return (db._databases().indexOf(dbName) !== -1); });
     // database now present on slave
 
