@@ -36,6 +36,7 @@
 #include "Basics/fpconv.h"
 #include "Basics/tri-strings.h"
 #include "Indexes/Index.h"
+#include "Logger/Logger.h"
 #include "Random/UniformCharacter.h"
 #include "Ssl/SslInterface.h"
 #include "Utils/CollectionNameResolver.h"
@@ -2387,7 +2388,7 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
     }
     return AqlValue(builder.get());
   }
-   
+
   if (id.isArray()) {
     transaction::BuilderLeaser builder(trx);
     builder->openArray();
@@ -2407,6 +2408,85 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
 
   // Id has invalid format
   return AqlValue(AqlValueHintNull());
+}
+
+/// @brief function MATCHES
+AqlValue Functions::Matches(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "MATCHES", 2, 3);
+
+  AqlValue docToFind = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  if (!docToFind.isObject()) {
+    return AqlValue(AqlValueHintBool(false));
+  }
+
+  AqlValue exampleDocs = ExtractFunctionParameterValue(trx, parameters, 1);
+
+  bool retIdx = false;
+  if (parameters.size() == 3) {
+    retIdx = ExtractFunctionParameterValue(trx, parameters, 2).toBoolean();
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice docSlice = materializer.slice(docToFind, false);
+
+  transaction::BuilderLeaser builder(trx);
+  VPackSlice examples = materializer.slice(exampleDocs, false);
+
+  if (!examples.isArray()) {
+    builder->openArray();
+    builder->add(examples);
+    builder->close();
+    examples = builder->slice();
+  }
+
+  auto options = trx->transactionContextPtr()->getVPackOptions();
+
+  bool foundMatch;
+  int32_t idx = -1;
+
+  for (auto const& example : VPackArrayIterator(examples)) {
+    idx++;
+
+    if (!example.isObject()) {
+      LOG_TOPIC(WARN, arangodb::Logger::QUERIES) << arangodb::basics::Exception::FillFormatExceptionString(
+        TRI_errno_string(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH), "MATCHES");
+      continue;
+    }
+
+    foundMatch = true;
+
+    for(auto const& it : VPackObjectIterator(example, true)) {
+      std::string key = it.key.copyString();
+
+      if (it.value.isNull() && !docSlice.hasKey(key)) {
+        continue;
+      }
+
+      if (!docSlice.hasKey(key) ||
+        // compare inner content
+        basics::VelocyPackHelper::compare(docSlice.get(key), it.value, false, options, &docSlice, &example) != 0) {
+        foundMatch = false;
+        break;
+      }
+    }
+
+    if (foundMatch) {
+      if (retIdx) {
+        return AqlValue(AqlValueHintInt(idx));
+      } else {
+        return AqlValue(AqlValueHintBool(true));
+      }
+    }
+  }
+
+  if (retIdx) {
+    return AqlValue(AqlValueHintInt(-1));
+  }
+
+  return AqlValue(AqlValueHintBool(false));
 }
 
 /// @brief function ROUND
