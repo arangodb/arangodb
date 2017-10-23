@@ -1759,7 +1759,7 @@ void RestReplicationHandler::handleCommandSync() {
   // wait until all data in current logfile got synced
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
-  engine->waitForSync(5.0);
+  engine->waitForSyncTimeout(5.0);
 
   TRI_ASSERT(!config._skipCreateDrop);
   std::unique_ptr<InitialSyncer> syncer;
@@ -2344,7 +2344,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
   
-  engine->waitForSync(10.0); // only for mmfiles
+  engine->waitForSyncTimeout(10.0); // only for mmfiles
   
   VPackBuilder builder;
   auto res = engine->createLoggerState(_vocbase, builder);
