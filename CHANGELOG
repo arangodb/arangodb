@@ -1,6 +1,8 @@
 devel
 -----
 
+* added C++ implementations for AQL function `SUBSTRING()
+
 * make AQL `DISTINCT` not change the order of the results it is applied on
 
 * show C++ function name of call site in ArangoDB log output
