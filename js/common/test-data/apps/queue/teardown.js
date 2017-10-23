@@ -8,4 +8,4 @@ if (db._collection(name)) {
 }
 
 const queues = require('@arangodb/foxx/queues');
-queues.delete('test_queue');
+queues.delete('test_123');

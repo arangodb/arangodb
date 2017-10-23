@@ -8,4 +8,4 @@ if (!db._collection(name)) {
 }
 
 const queues = require('@arangodb/foxx/queues');
-const queue2 = queues.create('test_queue');
+const queue2 = queues.create('test_123');
