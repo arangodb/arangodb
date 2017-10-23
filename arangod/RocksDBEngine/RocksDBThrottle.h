@@ -55,7 +55,7 @@ using namespace rocksdb;
 #define ROCKSDB_PLATFORM_POSIX 1
 #else
 #define OS_WIN 1
-#include <sys/types>
+#include <sys/types.h>
 #define _SSIZE_T_DEFINED 1
 #endif
 #include <db/db_impl.h>
