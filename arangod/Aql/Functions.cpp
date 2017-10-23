@@ -35,16 +35,22 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fpconv.h"
 #include "Basics/tri-strings.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
 #include "Random/UniformCharacter.h"
+#include "RestServer/FeatureCacheFeature.h"
+#include "Pregel/PregelFeature.h"
+#include "Pregel/Worker.h"
 #include "Ssl/SslInterface.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Context.h"
+#include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "V8Server/v8-collection.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
@@ -1603,6 +1609,66 @@ AqlValue Functions::Sleep(arangodb::aql::Query* query,
     }
   }
   return AqlValue(AqlValueHintNull());
+}
+
+/// @brief function COLLECTIONS
+AqlValue Functions::Collections(arangodb::aql::Query* query,
+                          transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
+
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+
+  TRI_vocbase_t* vocbase = query->vocbase();
+
+  std::vector<LogicalCollection*> colls;
+
+  // clean memory
+  std::function<void()> cleanup;
+
+  // if we are a coordinator, we need to fetch the collection info from the
+  // agency
+  if (ServerState::instance()->isCoordinator()) {
+    cleanup = [&colls]() {
+      for (auto& it : colls) {
+        if (it != nullptr) {
+          delete it;
+        }
+      }
+    };
+    colls = GetCollectionsCluster(vocbase);
+  } else {
+    colls = vocbase->collections(false);
+    cleanup = []() {};
+  }
+
+  // make sure memory is cleaned up
+  TRI_DEFER(cleanup());
+
+  std::sort(colls.begin(), colls.end(), [](LogicalCollection* lhs, LogicalCollection* rhs) -> bool {
+    return basics::StringUtils::tolower(lhs->name()) < basics::StringUtils::tolower(rhs->name());
+  });
+
+  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
+
+  size_t const n = colls.size();
+  for (size_t i = 0; i < n; ++i) {
+    auto& collection = colls[i];
+
+    if (auth->isActive() && ExecContext::CURRENT != nullptr &&
+    !ExecContext::CURRENT->canUseCollection(vocbase->name(), collection->name(), AuthLevel::RO)) {
+      continue;
+    }
+
+    builder->openObject();
+    builder->add("_id", VPackValue(collection->cid_as_string()));
+    builder->add("name", VPackValue(collection->name()));
+    builder->close();
+  }
+
+  builder->close();
+
+  return AqlValue(builder.get());
 }
 
 /// @brief function RANDOM_TOKEN
@@ -3565,9 +3631,6 @@ AqlValue Functions::IsSameCollection(
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return AqlValue(AqlValueHintNull());
 }
-
-#include "Pregel/PregelFeature.h"
-#include "Pregel/Worker.h"
 
 AqlValue Functions::PregelResult(arangodb::aql::Query* query, transaction::Methods* trx,
                                         VPackFunctionParameters const& parameters) {
