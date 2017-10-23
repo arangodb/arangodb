@@ -41,7 +41,7 @@ if [ -z "${ARANGOSH}" ];  then
     elif [ -x usr/bin/arangosh ];  then
         ARANGOSH="usr/bin/arangosh${EXT}"
     else
-        ARANGOSH="$(find "${EXEC_PATH}" -name "arangosh${EXT}" -executable -type f | head -n 1)"
+        ARANGOSH="$(find "${EXEC_PATH}" -name "arangosh${EXT}" -perm -001 -type f | head -n 1)"
         [ -x "${ARANGOSH}" ] || {
           echo "$0: cannot locate arangosh"
           exit 1
