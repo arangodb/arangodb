@@ -1441,7 +1441,7 @@ OperationResult transaction::Methods::insertLocal(
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
-    EngineSelectorFeature::ENGINE->waitForSync(maxTick);
+    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
   if (res.ok() && _state->isDBServer()) {
@@ -1786,7 +1786,7 @@ OperationResult transaction::Methods::modifyLocal(
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
-    EngineSelectorFeature::ENGINE->waitForSync(maxTick);
+    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -2067,7 +2067,7 @@ OperationResult transaction::Methods::removeLocal(
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
-    EngineSelectorFeature::ENGINE->waitForSync(maxTick);
+    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
   // Now see whether or not we have to do synchronous replication:

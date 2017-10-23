@@ -156,10 +156,10 @@ class RocksDBEngine final : public StorageEngine {
   
   // database, collection and index management
   // -----------------------------------------
-
-  void waitForSync(double) override {
-    // intentionally empty, not useful for this type of engine
-  }
+  
+  // intentionally empty, not useful for this type of engine
+  void waitForSyncTick(TRI_voc_tick_t) override {}
+  void waitForSyncTimeout(double) override {}
 
   virtual TRI_vocbase_t* openDatabase(velocypack::Slice const& parameters,
                                       bool isUpgrade, int&) override;
