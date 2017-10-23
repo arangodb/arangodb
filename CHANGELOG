@@ -1,3 +1,9 @@
+v3.2.5-2 (2017-10-29)
+
+* Rocksdb Geoindex bugfixes
+
+* Agency bugfixes
+
 v3.2.5 (2017-10-16)
 -------------------
 * BUGFIX: general-graph module and _api/gharial now accept cluster options
