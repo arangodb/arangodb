@@ -104,7 +104,7 @@ class ExecutionBlock {
   void throwIfKilled();
 
   /// @brief add a dependency
-  void addDependency(ExecutionBlock* ep) { 
+  TEST_VIRTUAL void addDependency(ExecutionBlock* ep) { 
     TRI_ASSERT(ep != nullptr);
     _dependencies.emplace_back(ep); 
   }

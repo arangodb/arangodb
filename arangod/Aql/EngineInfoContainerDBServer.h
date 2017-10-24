@@ -35,7 +35,7 @@
 namespace arangodb {
 namespace aql {
 
-class Collection;
+struct Collection;
 class ExecutionNode;
 class GraphNode;
 class Query;
