@@ -23,3 +23,11 @@
   var e = document.getElementsByTagName('script')[0];
   e.parentNode.insertBefore(js, e);
 })('hs-analytics', '//js.hs-analytics.net/analytics/1508760300000/2482448.js');
+
+window.setTimeout(function () {
+  $('body').on('click', 'a', function () {
+    var _hsq = window._hsq = window._hsq || [];
+    _hsq.push(['setPath', window.location.pathname]);
+    _hsq.push(['trackPageView']);
+  });
+}, 1000);
