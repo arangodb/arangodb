@@ -1009,7 +1009,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
 }
 
 /// @brief return the figures for a collection
-std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
+std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() const {
   if (ServerState::instance()->isCoordinator()) {
     auto builder = std::make_shared<VPackBuilder>();
     builder->openObject();

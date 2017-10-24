@@ -24,6 +24,7 @@
 #include "RestBaseHandler.h"
 
 #include <velocypack/Builder.h>
+#include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Options.h>
 #include <velocypack/velocypack-aliases.h>
@@ -99,21 +100,43 @@ void RestBaseHandler::generateResult(
   writeResult(std::forward<Payload>(payload), *(context->getVPackOptionsForDump()));
 }
 
-void RestBaseHandler::generateSuccess(rest::ResponseCode code, VPackSlice const& payload) {
+void RestBaseHandler::generateOk(rest::ResponseCode code,
+                                 VPackSlice const& payload) {
   resetResponse(code);
   
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer);
   try {
-    builder.add(VPackValue(VPackValueType::Object));
-    builder.add("error", VPackValue(false));
-    builder.add("code", VPackValue(static_cast<int>(code)));
-    builder.add("result", payload);
-    builder.close();
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder tmp(buffer);
+    tmp.add(VPackValue(VPackValueType::Object));
+    tmp.add("error", VPackValue(false));
+    tmp.add("code", VPackValue(static_cast<int>(code)));
+    tmp.add("result", payload);
+    tmp.close();
     
     VPackOptions options(VPackOptions::Defaults);
     options.escapeUnicode = true;
     writeResult(std::move(buffer), options);
+  } catch (...) {
+    // Building the error response failed
+  }
+}
+
+void RestBaseHandler::generateOk(rest::ResponseCode code,
+                                 VPackBuilder const& payload) {
+  resetResponse(code);
+  
+  try {
+    VPackBuilder tmp;
+    tmp.add(VPackValue(VPackValueType::Object));
+    tmp.add("error", VPackValue(false));
+    tmp.add("code", VPackValue(static_cast<int>(code)));
+    tmp.close();
+    
+    tmp = VPackCollection::merge(tmp.slice(), payload.slice(), false);
+    
+    VPackOptions options(VPackOptions::Defaults);
+    options.escapeUnicode = true;
+    writeResult(tmp.slice(), options);
   } catch (...) {
     // Building the error response failed
   }
