@@ -130,6 +130,8 @@ if (USE_IRESEARCH)
   )
   add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}" EXCLUDE_FROM_ALL) # do not build unused targets
   set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH_ORIGINAL}) # restore CMAKE_MODULE_PATH
+  unset(BUILD_SHARED_LIBS) # otherwise ZLib (below) does not build on win32
+  unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
 
   # IResearch on MacOS requires a complete build of ICU for encoding conversion
   if(APPLE)
