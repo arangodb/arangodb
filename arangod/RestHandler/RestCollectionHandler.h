@@ -44,7 +44,7 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
   void handleCommandPut();
   void handleCommandDelete();
   void collectionRepresentation(VPackBuilder& builder,
-                                LogicalCollection const* coll,
+                                LogicalCollection* coll,
                                 bool showProperties, bool showFigures,
                                 bool showCount, bool aggregateCount);
 };

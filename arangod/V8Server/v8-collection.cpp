@@ -925,6 +925,11 @@ static void JS_BinaryDocumentVocbaseCol(
 static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
+  
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+  if (vocbase == nullptr || vocbase->isDangling()) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
 
   arangodb::LogicalCollection* collection =
   TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
@@ -954,7 +959,8 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
     }
   }
   
-  Result res = methods::Collections::drop(collection, allowDropSystem, timeout);
+  Result res = methods::Collections::drop(vocbase, collection,
+                                          allowDropSystem, timeout);
   if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }

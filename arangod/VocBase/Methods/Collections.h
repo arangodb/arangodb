@@ -59,7 +59,8 @@ struct Collections {
   static Result rename(LogicalCollection* coll, std::string const& newName,
                        bool doOverride);
   
-  static Result drop(LogicalCollection* coll, bool allowDropSystem, double timeout);
+  static Result drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
+                     bool allowDropSystem, double timeout);
   
   static Result warmup(TRI_vocbase_t* vocbase,
                        LogicalCollection* coll);

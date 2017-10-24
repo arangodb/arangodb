@@ -138,15 +138,15 @@ void RestCollectionHandler::handleCommandGet() {
           }
         } else if (sub == "figures") {
           // /_api/collection/<identifier>/figures
-          collectionRepresentation(builder, coll, /*showProperties*/ false,
-                                   /*showFigures*/ true, /*showCount*/ false,
+          collectionRepresentation(builder, coll, /*showProperties*/ true,
+                                   /*showFigures*/ true, /*showCount*/ true,
                                    /*aggregateCount*/ false);
         } else if (sub == "count") {
           // /_api/collection/<identifier>/count
           bool details = _request->parsedValue("details", false);
-          collectionRepresentation(builder, coll, /*showProperties*/ false,
-                                   /*showFigures*/ true, /*showCount*/ true,
-                                   /*aggregateCount*/ details);
+          collectionRepresentation(builder, coll, /*showProperties*/ true,
+                                   /*showFigures*/ false, /*showCount*/ true,
+                                   /*aggregateCount*/ !details);
         } else if (sub == "properties") {
           // /_api/collection/<identifier>/count
           bool details = _request->parsedValue("details", false);
@@ -207,25 +207,18 @@ void RestCollectionHandler::handleCommandGet() {
   }
 }
 
+// create a collection
 void RestCollectionHandler::handleCommandPost() {
-  // used for creating a collection
-
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
-  if (!parseSuccess || !parsedBody->slice().isObject()) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+  if (!parseSuccess) {
+    // error message generated in parseVelocyPackBody
     return;
   }
-  // for some "security" we keep the white-list of properties
-  VPackBuilder filtered = VPackCollection::keep(parsedBody->slice(),
-   std::unordered_set<std::string>{"doCompact", "isSystem", "id",
-     "isVolatile", "journalSize", "indexBuckets", "waitForSync", "cacheEnabled",
-     "shardKeys", "numberOfShards", "distributeShardsLike", "avoidServers",
-     "isSmart", "smartGraphAttribute", "replicationFactor", "servers"});
   VPackSlice const body = parsedBody->slice();
-  VPackSlice const parameters = filtered.slice();
-  VPackSlice nameSlice = body.get("name");
-  if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
+  VPackSlice name;
+  if (!body.isObject() || !(name = body.get("name")).isString() ||
+      name.getStringLength() == 0) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return;
   }
@@ -235,17 +228,30 @@ void RestCollectionHandler::handleCommandPost() {
           "Cluster");
   bool waitsForSync = cluster->createWaitsForSyncReplication();
   waitsForSync = VelocyPackHelper::getBooleanValue(body, "body", waitsForSync);
-  
+
   TRI_col_type_e type = TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
   VPackSlice typeSlice = body.get("type");
-  if (typeSlice.isString() &&
-      (typeSlice.compareString("edge") == 0 || typeSlice.compareString("3"))) {
+  if ((typeSlice.isString() && (typeSlice.compareString("edge") == 0 ||
+                                typeSlice.compareString("3") == 0)) ||
+      (typeSlice.isNumber() &&
+       typeSlice.getUInt() == TRI_col_type_e::TRI_COL_TYPE_EDGE)) {
     type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
   }
-  
+
+  // for some "security" have a white-list of allowed parameters
+  VPackBuilder filtered = VPackCollection::keep(
+      parsedBody->slice(),
+      std::unordered_set<std::string>{
+          "doCompact", "isSystem", "id", "isVolatile", "journalSize",
+          "indexBuckets", "keyOptions", "waitForSync", "cacheEnabled",
+          "shardKeys", "numberOfShards", "distributeShardsLike", "avoidServers",
+          "isSmart", "smartGraphAttribute", "replicationFactor", "servers"});
+  VPackSlice const parameters = filtered.slice();
+
+  // now we can create the collection
   VPackBuilder builder;
   Result res = methods::Collections::create(
-      _vocbase, nameSlice.copyString(), type, parameters, waitsForSync,
+      _vocbase, name.copyString(), type, parameters, waitsForSync,
       [&](LogicalCollection* coll) {
         collectionRepresentation(builder, coll, /*showProperties*/ true,
                                  /*showFigures*/ false, /*showCount*/ false,
@@ -268,7 +274,7 @@ void RestCollectionHandler::handleCommandPut() {
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
   if (!parseSuccess) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
+    // error message generated in parseVelocyPackBody
     return;
   }
   VPackSlice body = parsedBody->slice();
@@ -287,7 +293,7 @@ void RestCollectionHandler::handleCommandPut() {
         if (sub == "load") {
           res = methods::Collections::load(_vocbase, coll);
           if (res.ok()) {
-            bool cc = VelocyPackHelper::getBooleanValue(body, "count", false);
+            bool cc = VelocyPackHelper::getBooleanValue(body, "count", true);
             collectionRepresentation(builder, coll, /*showProperties*/ false,
                                      /*showFigures*/ false, /*showCount*/ cc,
                                      /*aggregateCount*/ false);
@@ -393,7 +399,7 @@ void RestCollectionHandler::handleCommandDelete() {
         std::string cid = coll->cid_as_string();
         VPackObjectBuilder obj(&builder, true);
         obj->add("id", VPackValue(cid));
-        res = methods::Collections::drop(coll, allowDropSystem, -1.0);
+        res = methods::Collections::drop(_vocbase, coll, allowDropSystem, -1.0);
       });
   if (!found) {
     generateError(rest::ResponseCode::NOT_FOUND,
@@ -406,19 +412,26 @@ void RestCollectionHandler::handleCommandDelete() {
 }
 
 void RestCollectionHandler::collectionRepresentation(
-    VPackBuilder& builder, LogicalCollection const* coll, bool showProperties,
+    VPackBuilder& builder, LogicalCollection* coll, bool showProperties,
     bool showFigures, bool showCount, bool aggregateCount) {
   bool wasOpen = builder.isOpenObject();
   if (!wasOpen) {
     builder.openObject();
   }
 
+  // `methods::Collections::properties` will filter these out
+  builder.add("id", VPackValue(coll->cid_as_string()));
+  builder.add("name", VPackValue(coll->name()));
+  builder.add("status", VPackValue(coll->status()));
+  builder.add("type", VPackValue(coll->type()));
   if (!showProperties) {
-    builder.add("id", VPackValue(coll->cid_as_string()));
-    builder.add("name", VPackValue(coll->name()));
     builder.add("isSystem", VPackValue(coll->isSystem()));
+    builder.add("globallyUniqueId", VPackValue(coll->globallyUniqueId()));
   } else {
-    coll->toVelocyPack(builder, true);
+    Result res = methods::Collections::properties(coll, builder);
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
   }
 
   if (showFigures) {
@@ -435,7 +448,9 @@ void RestCollectionHandler::collectionRepresentation(
     }
     OperationResult opRes = trx.count(coll->name(), aggregateCount);
     trx.finish(opRes.code);
-    builder.add("count", opRes.slice());
+    if (opRes.successful()) {
+      builder.add("count", opRes.slice());
+    }
   }
 
   if (!wasOpen) {

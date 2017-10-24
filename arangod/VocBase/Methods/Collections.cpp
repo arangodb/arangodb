@@ -110,6 +110,18 @@ Result Collections::create(TRI_vocbase_t* vocbase,
                                     velocypack::Slice const& properties,
                                     bool createWaitsForSyncReplication,
                                     FuncCallback func) {
+  if (name.empty()) {
+    return TRI_ERROR_ARANGO_ILLEGAL_NAME;
+  } else if (collectionType != TRI_col_type_e::TRI_COL_TYPE_DOCUMENT &&
+             collectionType != TRI_col_type_e::TRI_COL_TYPE_EDGE) {
+    return TRI_ERROR_ARANGO_COLLECTION_TYPE_INVALID;
+  }
+  
+  if (ExecContext::CURRENT != nullptr &&
+      !ExecContext::CURRENT->canUseDatabase(vocbase->name(), AuthLevel::RW)) {
+    return TRI_ERROR_FORBIDDEN;
+  }
+  
   TRI_ASSERT(vocbase && !vocbase->isDangling());
   TRI_ASSERT(properties.isObject());
   VPackBuilder builder;
@@ -223,10 +235,7 @@ Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
   }
   std::unordered_set<std::string> const ignoreKeys{
     "allowUserKeys", "cid", "count", "deleted", "id", "indexes", "name",
-    "path", "planId", "shards", "status", "type", "version",
-    /* These are only relevant for cluster */
-    "distributeShardsLike", "isSmart", "numberOfShards", "replicationFactor",
-    "shardKeys"};
+    "path", "planId", "shards", "status", "type", "version"};
   VPackBuilder props = coll->toVelocyPackIgnore(ignoreKeys, true, false);
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackObjectIterator(props.slice()));
@@ -331,7 +340,7 @@ Result Collections::rename(LogicalCollection* coll, std::string const& newName,
   }
   
   // rename collection inside _graphs as well
-  RenameGraphCollections(coll->vocbase(), oldName, newName);
+  return RenameGraphCollections(coll->vocbase(), oldName, newName);
 }
 
 #ifndef USE_ENTERPRISE
@@ -362,14 +371,15 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 }
 #endif
 
-Result Collections::drop(LogicalCollection* coll,
+Result Collections::drop(TRI_vocbase_t* vocbase,
+                         LogicalCollection* coll,
                          bool allowDropSystem, double timeout) {
   ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    if (exec->databaseAuthLevel() != AuthLevel::RW ||
-        !exec->canUseCollection(coll->name(), AuthLevel::RW)) {
-      return Result(TRI_ERROR_FORBIDDEN, "Insufficient rights to drop collection");
-    }
+  if (exec != nullptr &&
+      (!exec->canUseDatabase(vocbase->name(), AuthLevel::RW) ||
+       !exec->canUseCollection(coll->name(), AuthLevel::RW))) {
+        return Result(TRI_ERROR_FORBIDDEN, "Insufficient rights to drop "
+                      "collection " + coll->name());
   }
   
   std::string const dbname = coll->dbName();
