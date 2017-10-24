@@ -485,15 +485,6 @@ bool OrderedViewIterator::next(LocalDocumentIdCallback const& callback, size_t l
       }
 
       score->evaluate(); // compute a score for the current document
-
-      if (!score) {
-        LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
-          << "failed to generate document score while iterating iResearch view, ignoring: reader_id '" << i
-          << "', doc_id '" << itr->value() << "'";
-
-        continue; // if here then there is probably a bug in IResearchView or in the iResearch library
-      }
-
       orderedDocTokens.emplace(scoreValue, tmpToken);
 
       if (orderedDocTokens.size() > maxDocCount) {
