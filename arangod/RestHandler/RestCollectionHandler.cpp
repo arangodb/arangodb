@@ -28,6 +28,8 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
+#include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -228,8 +230,8 @@ void RestCollectionHandler::handleCommandPost() {
   createWaitsForSync = _request->parsedValue("waitForSyncReplication", false);
   TRI_col_type_e type = TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
   VPackSlice typeSlice = body.get("type");
-  if (typeSlice.isString() && (typeSlice.compareString("edge") == 0 ||
-                               typeSlice.compareString("3"))) {
+  if (typeSlice.isString() &&
+      (typeSlice.compareString("edge") == 0 || typeSlice.compareString("3"))) {
     type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
   }
   VPackSlice parameters = body.get("parameters");
@@ -278,13 +280,19 @@ void RestCollectionHandler::handleCommandPut() {
         if (sub == "load") {
           res = methods::Collections::load(_vocbase, coll);
           if (res.ok()) {
-            bool count =
-                VelocyPackHelper::getBooleanValue(body, "count", false);
+            bool cc = VelocyPackHelper::getBooleanValue(body, "count", false);
             collectionRepresentation(builder, coll, /*showProperties*/ false,
-                                     /*showFigures*/ false, /*showCount*/ count,
+                                     /*showFigures*/ false, /*showCount*/ cc,
                                      /*aggregateCount*/ false);
           }
         } else if (sub == "unload") {
+          bool flush = _request->parsedValue("flush", false);
+          if (flush &&
+              coll->status() ==
+                  TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED) {
+            EngineSelectorFeature::ENGINE->flushWal(false, false, false);
+          }
+
           res = methods::Collections::unload(_vocbase, coll);
           if (res.ok()) {
             collectionRepresentation(builder, coll, /*showProperties*/ false,
@@ -423,7 +431,7 @@ void RestCollectionHandler::collectionRepresentation(
     trx.finish(opRes.code);
     builder.add("count", opRes.slice());
   }
-  
+
   if (!wasOpen) {
     builder.close();
   }
