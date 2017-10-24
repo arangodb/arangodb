@@ -125,10 +125,9 @@ class CollectionInfoCurrent {
 
   std::unordered_map<ShardID, int> errorNum() const {
     std::unordered_map<ShardID, int> m;
-    int s;
 
     for (auto const& it: _vpacks) {
-      s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(), "errorNum", 0);
+      int s = arangodb::basics::VelocyPackHelper::getNumericValue<int>(it.second->slice(), "errorNum", 0);
       m.insert(std::make_pair(it.first, s));
     }
     return m;
@@ -515,6 +514,8 @@ class ClusterInfo {
 
   std::vector<std::string> getFailedServers() { MUTEX_LOCKER(guard, _failedServersMutex); return _failedServers; }
   void setFailedServers(std::vector<std::string> const& failedServers) { MUTEX_LOCKER(guard, _failedServersMutex); _failedServers = failedServers; }
+
+  std::unordered_map<ServerID, std::string> getServers();
 
   std::unordered_map<ServerID, std::string> getServerAliases();
   

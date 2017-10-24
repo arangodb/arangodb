@@ -124,7 +124,7 @@ describe('User Rights Management', () => {
                   col.remove('123');
                   try {
                     col.document('123');
-                    expect(true).to.be(false, `${name} could not drop the document with sufficient rights`);
+                    expect(true).to.equal(false, `${name} could not drop the document with sufficient rights`);
                   } catch (e) {}
                 } else {
                   let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&
@@ -135,7 +135,7 @@ describe('User Rights Management', () => {
                       expect(col.document('123')._key).to.equal('123', 'Precondition failed, document does not exist.');
                     }
                     col.remove('123');
-                    expect(true).to.be(false);
+                    expect(true).to.equal(false, "was able to remove document");
                   } catch (e) {
                     if (hasReadAccess) {
                       expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code);
@@ -163,7 +163,7 @@ describe('User Rights Management', () => {
                   expect(res[0]._key).to.equal('456', 'Did not remove the document properly');
                   try {
                     col.document('456');
-                    expect(true).to.be(false, 'Document still in collection after remove');
+                    expect(true).to.equal(false, 'Document still in collection after remove');
                   } catch (e) {}
                 } else {
                   let hasReadAccess = ((dbLevel['rw'].has(name) || dbLevel['ro'].has(name)) &&

@@ -67,7 +67,7 @@ void FlushThread::run() {
       }
 
       TRI_voc_tick_t toRelease = engine->currentTick();
-      engine->waitForSync(toRelease);
+      engine->waitForSyncTick(toRelease);
       TRI_IF_FAILURE("FlushThreadCrashAfterWalSync") {
         TRI_SegfaultDebugging("crashing before flush thread callbacks");
       }

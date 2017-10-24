@@ -228,35 +228,26 @@ void AqlFunctionFeature::addTypeCheckFunctions() {
 
 void AqlFunctionFeature::addTypeCastFunctions() {
   // type cast functions
-  add({"TO_NUMBER", ".", true, false, true, true,
-       &Functions::ToNumber});
-  add({"TO_STRING", ".", true, false, true, true,
-       &Functions::ToString});
-  add({"TO_BOOL", ".", true, false, true, true,
-       &Functions::ToBool});
-  add({"TO_ARRAY", ".", true, false, true, true,
-       &Functions::ToArray});
+  add({"TO_NUMBER", ".", true, false, true, true, &Functions::ToNumber});
+  add({"TO_STRING", ".", true, false, true, true, &Functions::ToString});
+  add({"TO_BOOL", ".", true, false, true, true, &Functions::ToBool});
+  add({"TO_ARRAY", ".", true, false, true, true, &Functions::ToArray});
   // TO_LIST is an alias for TO_ARRAY
   addAlias("TO_LIST", "TO_ARRAY");
 }
 
 void AqlFunctionFeature::addStringFunctions() {
   // string functions
-  add({"CONCAT", ".|+", true, false, true, true,
-       &Functions::Concat});
+  add({"CONCAT", ".|+", true, false, true, true, &Functions::Concat});
   add({"CONCAT_SEPARATOR", ".,.|+", true, false,
        true, true, &Functions::ConcatSeparator});
-  add({"CHAR_LENGTH", ".", true, false, true, true,
-       &Functions::CharLength});
+  add({"CHAR_LENGTH", ".", true, false, true, true, &Functions::CharLength});
   add({"LOWER", ".", true, false, true, true, &Functions::Lower});
   add({"UPPER", ".", true, false, true, true, &Functions::Upper});
-  add({"SUBSTRING", ".,.|.", true, false, true, true});
-  add({"CONTAINS", ".,.|.", true, false, true, true,
-       &Functions::Contains});
-  add({"LIKE", ".,.|.", true, false, true, true,
-       &Functions::Like});
-  add({"REGEX_TEST", ".,.|.", true, false, true, true,
-       &Functions::RegexTest});
+  add({"SUBSTRING", ".,.|.", true, false, true, true, &Functions::Substring});
+  add({"CONTAINS", ".,.|.", true, false, true, true, &Functions::Contains});
+  add({"LIKE", ".,.|.", true, false, true, true, &Functions::Like});
+  add({"REGEX_TEST", ".,.|.", true, false, true, true, &Functions::RegexTest});
   add({"REGEX_REPLACE", ".,.,.|.", true, false, true,
        true, &Functions::RegexReplace});
   add({"LEFT", ".,.", true, false, true, true});
@@ -264,20 +255,14 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"TRIM", ".|.", true, false, true, true});
   add({"LTRIM", ".|.", true, false, true, true});
   add({"RTRIM", ".|.", true, false, true, true});
-  add({"FIND_FIRST", ".,.|.,.", true, false, true,
-       true});
-  add({"FIND_LAST", ".,.|.,.", true, false, true,
-       true});
+  add({"FIND_FIRST", ".,.|.,.", true, false, true, true});
+  add({"FIND_LAST", ".,.|.,.", true, false, true, true});
   add({"SPLIT", ".|.,.", true, false, true, true});
-  add({"SUBSTITUTE", ".,.|.,.", true, false, true,
-       true});
+  add({"SUBSTITUTE", ".,.|.,.", true, false, true, true});
   add({"MD5", ".", true, false, true, true, &Functions::Md5});
-  add({"SHA1", ".", true, false, true, true,
-       &Functions::Sha1});
-  add({"HASH", ".", true, false, true, true,
-       &Functions::Hash});
-  add({"RANDOM_TOKEN", ".", false, true, true, true,
-       &Functions::RandomToken});
+  add({"SHA1", ".", true, false, true, true, &Functions::Sha1});
+  add({"HASH", ".", true, false, true, true, &Functions::Hash});
+  add({"RANDOM_TOKEN", ".", false, true, true, true, &Functions::RandomToken});
 }
 
 void AqlFunctionFeature::addNumericFunctions() {
@@ -408,7 +393,7 @@ void AqlFunctionFeature::addDocumentFunctions() {
   add({"MERGE_RECURSIVE", ".,.|+", true, false,
        true, true, &Functions::MergeRecursive});
   add({"DOCUMENT", "h.|.", false, true, false, true, &Functions::Document});
-  add({"MATCHES", ".,.|.", true, false, true, true});
+  add({"MATCHES", ".,.|.", true, false, true, true, &Functions::Matches});
   add({"UNSET", ".,.|+", true, false, true, true,
        &Functions::Unset});
   add({"UNSET_RECURSIVE", ".,.|+", true, false,
@@ -482,7 +467,7 @@ void AqlFunctionFeature::addMiscFunctions() {
   add({"TEST_INTERNAL", ".,.", false, false, true,
        false});
   add({"SLEEP", ".", false, true, true, true, &Functions::Sleep});
-  add({"COLLECTIONS", "", false, true, false, true});
+  add({"COLLECTIONS", "", false, true, false, true, &Functions::Collections});
   add({"NOT_NULL", ".|+", true, false, true, true,
        &Functions::NotNull});
   add({"FIRST_LIST", ".|+", true, false, true, true,

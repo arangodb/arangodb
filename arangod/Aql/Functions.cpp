@@ -35,15 +35,22 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fpconv.h"
 #include "Basics/tri-strings.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
+#include "Logger/Logger.h"
 #include "Random/UniformCharacter.h"
+#include "RestServer/FeatureCacheFeature.h"
+#include "Pregel/PregelFeature.h"
+#include "Pregel/Worker.h"
 #include "Ssl/SslInterface.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "Transaction/Context.h"
+#include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ManagedDocumentResult.h"
+#include "V8Server/v8-collection.h"
 
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
@@ -1081,6 +1088,40 @@ AqlValue Functions::Upper(arangodb::aql::Query* query,
   return AqlValue(utf8);
 }
 
+/// @brief function SUBSTRING
+AqlValue Functions::Substring(arangodb::aql::Query* query,
+                                    transaction::Methods* trx,
+                                    VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "SUBSTRING", 2, 3);
+  AqlValue value = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  int32_t length = INT32_MAX;
+
+  transaction::StringBufferLeaser buffer(trx);
+  arangodb::basics::VPackStringBufferAdapter adapter(buffer->stringBuffer());
+
+  AppendAsString(trx, adapter, value);
+  UnicodeString s(buffer->c_str(), buffer->length());
+
+  int32_t offset = static_cast<int32_t>(ExtractFunctionParameterValue(trx, parameters, 1).toInt64(trx));
+
+  if (parameters.size() == 3) {
+    length = static_cast<int32_t>(ExtractFunctionParameterValue(trx, parameters, 2).toInt64(trx));
+  }
+
+  if (offset < 0) {
+    offset = s.moveIndex32(s.moveIndex32( s.length(), 0), offset);
+  } else {
+    offset = s.moveIndex32(0, offset);
+  }
+
+  std::string utf8;
+  s.tempSubString(offset, s.moveIndex32(offset, length) - offset)
+  .toUTF8String(utf8);
+
+  return AqlValue(utf8);
+}
+
 /// @brief function LIKE
 AqlValue Functions::Like(arangodb::aql::Query* query,
                          transaction::Methods* trx,
@@ -1602,6 +1643,66 @@ AqlValue Functions::Sleep(arangodb::aql::Query* query,
     }
   }
   return AqlValue(AqlValueHintNull());
+}
+
+/// @brief function COLLECTIONS
+AqlValue Functions::Collections(arangodb::aql::Query* query,
+                          transaction::Methods* trx,
+                          VPackFunctionParameters const& parameters) {
+
+  transaction::BuilderLeaser builder(trx);
+  builder->openArray();
+
+  TRI_vocbase_t* vocbase = query->vocbase();
+
+  std::vector<LogicalCollection*> colls;
+
+  // clean memory
+  std::function<void()> cleanup;
+
+  // if we are a coordinator, we need to fetch the collection info from the
+  // agency
+  if (ServerState::instance()->isCoordinator()) {
+    cleanup = [&colls]() {
+      for (auto& it : colls) {
+        if (it != nullptr) {
+          delete it;
+        }
+      }
+    };
+    colls = GetCollectionsCluster(vocbase);
+  } else {
+    colls = vocbase->collections(false);
+    cleanup = []() {};
+  }
+
+  // make sure memory is cleaned up
+  TRI_DEFER(cleanup());
+
+  std::sort(colls.begin(), colls.end(), [](LogicalCollection* lhs, LogicalCollection* rhs) -> bool {
+    return basics::StringUtils::tolower(lhs->name()) < basics::StringUtils::tolower(rhs->name());
+  });
+
+  AuthenticationFeature* auth = FeatureCacheFeature::instance()->authenticationFeature();
+
+  size_t const n = colls.size();
+  for (size_t i = 0; i < n; ++i) {
+    auto& collection = colls[i];
+
+    if (auth->isActive() && ExecContext::CURRENT != nullptr &&
+    !ExecContext::CURRENT->canUseCollection(vocbase->name(), collection->name(), AuthLevel::RO)) {
+      continue;
+    }
+
+    builder->openObject();
+    builder->add("_id", VPackValue(collection->cid_as_string()));
+    builder->add("name", VPackValue(collection->name()));
+    builder->close();
+  }
+
+  builder->close();
+
+  return AqlValue(builder.get());
 }
 
 /// @brief function RANDOM_TOKEN
@@ -2387,7 +2488,7 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
     }
     return AqlValue(builder.get());
   }
-   
+
   if (id.isArray()) {
     transaction::BuilderLeaser builder(trx);
     builder->openArray();
@@ -2407,6 +2508,85 @@ AqlValue Functions::Document(arangodb::aql::Query* query,
 
   // Id has invalid format
   return AqlValue(AqlValueHintNull());
+}
+
+/// @brief function MATCHES
+AqlValue Functions::Matches(arangodb::aql::Query* query,
+                             transaction::Methods* trx,
+                             VPackFunctionParameters const& parameters) {
+  ValidateParameters(parameters, "MATCHES", 2, 3);
+
+  AqlValue docToFind = ExtractFunctionParameterValue(trx, parameters, 0);
+
+  if (!docToFind.isObject()) {
+    return AqlValue(AqlValueHintBool(false));
+  }
+
+  AqlValue exampleDocs = ExtractFunctionParameterValue(trx, parameters, 1);
+
+  bool retIdx = false;
+  if (parameters.size() == 3) {
+    retIdx = ExtractFunctionParameterValue(trx, parameters, 2).toBoolean();
+  }
+
+  AqlValueMaterializer materializer(trx);
+  VPackSlice docSlice = materializer.slice(docToFind, false);
+
+  transaction::BuilderLeaser builder(trx);
+  VPackSlice examples = materializer.slice(exampleDocs, false);
+
+  if (!examples.isArray()) {
+    builder->openArray();
+    builder->add(examples);
+    builder->close();
+    examples = builder->slice();
+  }
+
+  auto options = trx->transactionContextPtr()->getVPackOptions();
+
+  bool foundMatch;
+  int32_t idx = -1;
+
+  for (auto const& example : VPackArrayIterator(examples)) {
+    idx++;
+
+    if (!example.isObject()) {
+      LOG_TOPIC(WARN, arangodb::Logger::QUERIES) << arangodb::basics::Exception::FillFormatExceptionString(
+        TRI_errno_string(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH), "MATCHES");
+      continue;
+    }
+
+    foundMatch = true;
+
+    for(auto const& it : VPackObjectIterator(example, true)) {
+      std::string key = it.key.copyString();
+
+      if (it.value.isNull() && !docSlice.hasKey(key)) {
+        continue;
+      }
+
+      if (!docSlice.hasKey(key) ||
+        // compare inner content
+        basics::VelocyPackHelper::compare(docSlice.get(key), it.value, false, options, &docSlice, &example) != 0) {
+        foundMatch = false;
+        break;
+      }
+    }
+
+    if (foundMatch) {
+      if (retIdx) {
+        return AqlValue(AqlValueHintInt(idx));
+      } else {
+        return AqlValue(AqlValueHintBool(true));
+      }
+    }
+  }
+
+  if (retIdx) {
+    return AqlValue(AqlValueHintInt(-1));
+  }
+
+  return AqlValue(AqlValueHintBool(false));
 }
 
 /// @brief function ROUND
@@ -3485,9 +3665,6 @@ AqlValue Functions::IsSameCollection(
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return AqlValue(AqlValueHintNull());
 }
-
-#include "Pregel/PregelFeature.h"
-#include "Pregel/Worker.h"
 
 AqlValue Functions::PregelResult(arangodb::aql::Query* query, transaction::Methods* trx,
                                         VPackFunctionParameters const& parameters) {

@@ -1,4 +1,4 @@
-/* global ArangoServerState */
+/* global ArangoServerState, GLOBAL_REPLICATION_APPLIER_START, GLOBAL_REPLICATION_APPLIER_STOP, GLOBAL_REPLICATION_APPLIER_STATE, GLOBAL_REPLICATION_APPLIER_FORGET, GLOBAL_REPLICATION_APPLIER_CONFIGURE, GLOBAL_REPLICATION_SYNCHRONIZE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_STOP, REPLICATION_APPLIER_STATE, REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_CONFIGURE, REPLICATION_SYNCHRONIZE, GLOBAL_REPLICATION_APPLIER_FAILOVER_ENABLED */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -38,93 +38,90 @@ if (ArangoServerState.role() === 'PRIMARY') {
   request = require('@arangodb/request').request;
 }
 
-var logger = { };
-var applier = { };
+let logger = { };
+let applier = { };
+let globalApplier = { };
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief return the replication logger state
-// //////////////////////////////////////////////////////////////////////////////
-
 logger.state = function () {
   return internal.getStateReplicationLogger();
 };
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief return the tick ranges provided by the replication logger
-// //////////////////////////////////////////////////////////////////////////////
-
 logger.tickRanges = function () {
   return internal.tickRangesReplicationLogger();
 };
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief return the first tick that can be provided by the replication logger
-// //////////////////////////////////////////////////////////////////////////////
-
 logger.firstTick = function () {
   return internal.firstTickReplicationLogger();
 };
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief starts the replication applier
-// //////////////////////////////////////////////////////////////////////////////
-
 applier.start = function (initialTick, barrierId) {
   if (initialTick === undefined) {
-    return internal.startReplicationApplier();
+    return REPLICATION_APPLIER_START();
   }
 
-  return internal.startReplicationApplier(initialTick, barrierId);
+  return REPLICATION_APPLIER_START(initialTick, barrierId);
 };
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief shuts down the replication applier
-// //////////////////////////////////////////////////////////////////////////////
+applier.stop = function () { return REPLICATION_APPLIER_STOP(); };
 
-applier.shutdown = applier.stop = function () {
-  return internal.shutdownReplicationApplier();
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief return the replication applier state
-// //////////////////////////////////////////////////////////////////////////////
+applier.state = function () { return REPLICATION_APPLIER_STATE(); };
 
-applier.state = function () {
-  return internal.getStateReplicationApplier();
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief stop the applier and "forget" all configuration
-// //////////////////////////////////////////////////////////////////////////////
+applier.forget = function () { return REPLICATION_APPLIER_FORGET(); };
 
-applier.forget = function () {
-  return internal.forgetStateReplicationApplier();
-};
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief returns the configuration of the replication applier
-// //////////////////////////////////////////////////////////////////////////////
-
 applier.properties = function (config) {
   if (config === undefined) {
-    return internal.configureReplicationApplier();
+    return REPLICATION_APPLIER_CONFIGURE();
   }
 
-  return internal.configureReplicationApplier(config);
+  return REPLICATION_APPLIER_CONFIGURE(config);
 };
 
-// //////////////////////////////////////////////////////////////////////////////
+// / @brief starts the global replication applier
+globalApplier.start = function (initialTick, barrierId) {
+  if (initialTick === undefined) {
+    return GLOBAL_REPLICATION_APPLIER_START();
+  }
+
+  return GLOBAL_REPLICATION_APPLIER_START(initialTick, barrierId);
+};
+
+// / @brief shuts down the global replication applier
+globalApplier.stop = function () { return GLOBAL_REPLICATION_APPLIER_STOP(); };
+
+// / @brief return the global replication applier state
+globalApplier.state = function () { return GLOBAL_REPLICATION_APPLIER_STATE(); };
+
+// / @brief stop the global applier and "forget" all configuration
+globalApplier.forget = function () { return GLOBAL_REPLICATION_APPLIER_FORGET(); };
+
+// / @brief returns the configuration of the global replication applier
+globalApplier.properties = function (config) {
+  if (config === undefined) {
+    return GLOBAL_REPLICATION_APPLIER_CONFIGURE();
+  }
+
+  return GLOBAL_REPLICATION_APPLIER_CONFIGURE(config);
+};
+
+globalApplier.failoverEnabled = function () {
+  return GLOBAL_REPLICATION_APPLIER_FAILOVER_ENABLED();
+};
+
 // / @brief performs a one-time synchronization with a remote endpoint
-// //////////////////////////////////////////////////////////////////////////////
+function sync (config) { return REPLICATION_SYNCHRONIZE(config); }
 
-function sync (config) {
-  return internal.synchronizeReplication(config);
-}
-
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief performs a one-time synchronization with a remote endpoint
-// //////////////////////////////////////////////////////////////////////////////
+function syncGlobal (config) { return GLOBAL_REPLICATION_SYNCHRONIZE(config); }
 
+// / @brief performs a one-time synchronization with a remote endpoint
 function syncCollection (collection, config) {
   config = config || { };
   config.restrictType = 'include';
@@ -134,15 +131,12 @@ function syncCollection (collection, config) {
     config.verbose = false;
   }
 
-  return internal.synchronizeReplication(config);
+  return REPLICATION_SYNCHRONIZE(config);
 }
 
-// //////////////////////////////////////////////////////////////////////////////
 // / @brief sets up the replication (all-in-one function for initial
 // / synchronization and continuous replication)
-// //////////////////////////////////////////////////////////////////////////////
-
-function setupReplication (config) {
+function setup (global, config) {
   config = config || { };
   if (!config.hasOwnProperty('autoStart')) {
     config.autoStart = true;
@@ -155,34 +149,43 @@ function setupReplication (config) {
   }
   config.keepBarrier = true;
 
+  var worker = global ? globalApplier : applier;
   try {
     // stop previous instance
-    applier.stop();
+    worker.stop();
   } catch (err) {}
   // remove existing configuration
-  applier.forget();
+  worker.forget();
 
   // run initial sync
-  var result = internal.synchronizeReplication(config);
+  var result = (global ? syncGlobal : sync)(config);
 
   // store applier configuration
-  applier.properties(config);
+  worker.properties(config);
 
-  applier.start(result.lastLogTick, result.barrierId);
-  return applier.state();
+  worker.start(result.lastLogTick, result.barrierId);
+  return worker.state();
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief returns the server's id
-// //////////////////////////////////////////////////////////////////////////////
+function setupReplication (config) {
+  return setup(false, config);
+}
 
+function setupReplicationGlobal (config) {
+  return setup(true, config);
+}
+
+// / @brief returns the server's id
 function serverId () {
   return internal.serverId();
 }
 
 exports.logger = logger;
 exports.applier = applier;
+exports.globalApplier = globalApplier;
 exports.sync = sync;
+exports.syncGlobal = syncGlobal;
 exports.syncCollection = syncCollection;
 exports.setupReplication = setupReplication;
+exports.setupReplicationGlobal = setupReplicationGlobal;
 exports.serverId = serverId;

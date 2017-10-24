@@ -67,7 +67,7 @@ RestStatus RestEdgesHandler::execute() {
 void RestEdgesHandler::readCursor(
     aql::AstNode* condition, aql::Variable const* var,
     std::string const& collectionName, SingleCollectionTransaction& trx,
-    std::function<void(LocalDocumentId const&)> cb) {
+    std::function<void(LocalDocumentId const&)> const& cb) {
   transaction::Methods::IndexHandle indexId;
   bool foundIdx = trx.getBestIndexHandleForFilterCondition(
       collectionName, condition, var, 1000, indexId);
@@ -95,7 +95,7 @@ void RestEdgesHandler::readCursor(
 bool RestEdgesHandler::getEdgesForVertex(
     std::string const& id, std::string const& collectionName,
     TRI_edge_direction_e direction, SingleCollectionTransaction& trx,
-    std::function<void(LocalDocumentId const&)> cb) {
+    std::function<void(LocalDocumentId const&)> const& cb) {
   trx.pinData(trx.cid());  // will throw when it fails
 
   // Create a conditionBuilder that manages the AstNodes for querying
@@ -223,9 +223,8 @@ bool RestEdgesHandler::readEdges() {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(_vocbase), collectionName,
-      AccessMode::Type::READ);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
 
   // .............................................................................
   // inside read transaction
@@ -367,9 +366,8 @@ bool RestEdgesHandler::readEdgesForMultipleVertices() {
   }
 
   // find and load collection given by name or identifier
-  SingleCollectionTransaction trx(
-      transaction::StandaloneContext::Create(_vocbase), collectionName,
-      AccessMode::Type::READ);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::READ);
 
   // .............................................................................
   // inside read transaction

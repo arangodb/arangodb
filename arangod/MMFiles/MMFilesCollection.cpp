@@ -2758,9 +2758,10 @@ void MMFilesCollection::truncate(transaction::Methods* trx,
       VPackSlice oldDoc(vpack);
 
       LocalDocumentId const documentId = LocalDocumentId::create();
-      newObjectForRemove(trx, oldDoc, documentId, *builder.get(), options.isRestore);
+      TRI_voc_rid_t revisionId;
+      newObjectForRemove(trx, oldDoc, documentId, *builder.get(), options.isRestore, revisionId);
 
-      Result res = removeFastPath(trx, oldDocumentId, VPackSlice(vpack),
+      Result res = removeFastPath(trx, revisionId, oldDocumentId, VPackSlice(vpack),
                                   options, documentId, builder->slice());
 
       if (res.fail()) {
@@ -2777,8 +2778,8 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
                                  VPackSlice const slice,
                                  ManagedDocumentResult& result,
                                  OperationOptions& options,
-                                 TRI_voc_tick_t& resultMarkerTick, bool lock) {
-
+                                 TRI_voc_tick_t& resultMarkerTick, bool lock,
+                                 TRI_voc_tick_t& revisionId) {
   VPackSlice fromSlice;
   VPackSlice toSlice;
 
@@ -2816,7 +2817,7 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
   Result res(TRI_ERROR_NO_ERROR);
   if (options.recoveryData == nullptr) {
     res = newObjectForInsert(trx, slice, fromSlice, toSlice, documentId,
-                             isEdgeCollection, *builder.get(), options.isRestore);
+                             isEdgeCollection, *builder.get(), options.isRestore, revisionId);
     if (res.fail()) {
       return res;
     }
@@ -2833,6 +2834,14 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
       char const* p = keySlice.getString(l);
       TRI_ASSERT(p != nullptr);
       _logicalCollection->keyGenerator()->track(p, l);
+    }
+
+    VPackSlice revSlice = newSlice.get(StaticStrings::RevString);
+    if (revSlice.isString()) {
+      VPackValueLength l;
+      char const* p = revSlice.getString(l);
+      TRI_ASSERT(p != nullptr);
+      revisionId = TRI_StringToRid(p, l, false);
     }
   }
 
@@ -2897,7 +2906,7 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
 
       try {
         // insert into indexes
-        res = insertDocument(trx, documentId, doc, operation, marker,
+        res = insertDocument(trx, documentId, revisionId, doc, operation, marker,
                              options.waitForSync);
       } catch (basics::Exception const& ex) {
         res = Result(ex.code());
@@ -3197,6 +3206,7 @@ Result MMFilesCollection::insertIndexes(arangodb::transaction::Methods* trx,
 /// the caller must make sure the write lock on the collection is held
 Result MMFilesCollection::insertDocument(arangodb::transaction::Methods* trx,
                                          LocalDocumentId const& documentId,
+                                         TRI_voc_rid_t revisionId,
                                          VPackSlice const& doc,
                                          MMFilesDocumentOperation& operation,
                                          MMFilesWalMarker const* marker,
@@ -3214,15 +3224,14 @@ Result MMFilesCollection::insertDocument(arangodb::transaction::Methods* trx,
   }
 
   return Result(static_cast<MMFilesTransactionState*>(trx->state())
-      ->addOperation(documentId, operation, marker, waitForSync));
+      ->addOperation(documentId, revisionId, operation, marker, waitForSync));
 }
 
 Result MMFilesCollection::update(
     arangodb::transaction::Methods* trx, VPackSlice const newSlice,
     ManagedDocumentResult& result, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
-    ManagedDocumentResult& previous, TRI_voc_rid_t const& revisionId,
-    VPackSlice const key) {
+    ManagedDocumentResult& previous, VPackSlice const key) {
   LocalDocumentId const documentId = LocalDocumentId::create();
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
@@ -3265,7 +3274,7 @@ Result MMFilesCollection::update(
     }
     int res = checkRevision(trx, expectedRev, prevRev);
     if (res != TRI_ERROR_NO_ERROR) {
-      return res;
+      return Result(res);
     }
   }
 
@@ -3279,13 +3288,14 @@ Result MMFilesCollection::update(
   }
 
   // merge old and new values
+  TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
   if (options.recoveryData == nullptr) {
     mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
                           documentId, options.mergeObjects,
-                          options.keepNull, *builder.get(), options.isRestore);
+                          options.keepNull, *builder.get(), options.isRestore, revisionId);
 
-    if (trx->state()->isDBServer()) {
+    if (_isDBServer) {
       // Need to check that no sharding keys have changed:
       if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
                                      trx->resolver()->getCollectionNameCluster(
@@ -3294,6 +3304,8 @@ Result MMFilesCollection::update(
         return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
       }
     }
+  } else {
+    revisionId = TRI_ExtractRevisionId(VPackSlice(static_cast<MMFilesMarkerEnvelope*>(options.recoveryData)->vpack()));
   }
 
   // create marker
@@ -3318,14 +3330,14 @@ Result MMFilesCollection::update(
     insertLocalDocumentId(documentId, marker->vpack(), 0, true, true);
 
     operation.setDocumentIds(MMFilesDocumentDescriptor(oldDocumentId, oldDoc.begin()),
-                           MMFilesDocumentDescriptor(documentId, newDoc.begin()));
+                             MMFilesDocumentDescriptor(documentId, newDoc.begin()));
 
     if (oldRevisionId == revisionId) {
       // update with same revision id => can happen if isRestore = true
       result.reset();
     }
 
-    res = updateDocument(trx, oldDocumentId, oldDoc, documentId, newDoc,
+    res = updateDocument(trx, revisionId, oldDocumentId, oldDoc, documentId, newDoc,
                          operation, marker, options.waitForSync);
   } catch (basics::Exception const& ex) {
     res = Result(ex.code());
@@ -3357,7 +3369,7 @@ Result MMFilesCollection::replace(
     transaction::Methods* trx, VPackSlice const newSlice,
     ManagedDocumentResult& result, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
-    ManagedDocumentResult& previous, TRI_voc_rid_t const revisionId,
+    ManagedDocumentResult& previous, 
     VPackSlice const fromSlice, VPackSlice const toSlice) {
 
   LocalDocumentId const documentId = LocalDocumentId::create();
@@ -3414,12 +3426,13 @@ Result MMFilesCollection::replace(
   }
 
   // merge old and new values
+  TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
   newObjectForReplace(trx, oldDoc, newSlice, fromSlice, toSlice,
                       isEdgeCollection, documentId,
-                      *builder.get(), options.isRestore);
+                      *builder.get(), options.isRestore, revisionId);
 
-  if (trx->state()->isDBServer()) {
+  if (_isDBServer) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
                                    trx->resolver()->getCollectionNameCluster(
@@ -3451,14 +3464,14 @@ Result MMFilesCollection::replace(
     insertLocalDocumentId(documentId, marker->vpack(), 0, true, true);
 
     operation.setDocumentIds(MMFilesDocumentDescriptor(oldDocumentId, oldDoc.begin()),
-                           MMFilesDocumentDescriptor(documentId, newDoc.begin()));
+                             MMFilesDocumentDescriptor(documentId, newDoc.begin()));
 
     if (oldDocumentId == documentId) {
       // update with same revision id => can happen if isRestore = true
       result.reset();
     }
 
-    res = updateDocument(trx, oldDocumentId, oldDoc, documentId, newDoc,
+    res = updateDocument(trx, revisionId, oldDocumentId, oldDoc, documentId, newDoc,
                          operation, marker, options.waitForSync);
   } catch (basics::Exception const& ex) {
     res = Result(ex.code());
@@ -3496,12 +3509,13 @@ Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
                                  ManagedDocumentResult& previous,
                                  OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
-                                 TRI_voc_rid_t& prevRev) {
+                                 TRI_voc_rid_t& prevRev,
+                                 TRI_voc_rid_t& revisionId) {
   prevRev = 0;
   LocalDocumentId const documentId = LocalDocumentId::create();
 
   transaction::BuilderLeaser builder(trx);
-  newObjectForRemove(trx, slice, documentId, *builder.get(), options.isRestore);
+  newObjectForRemove(trx, slice, documentId, *builder.get(), options.isRestore, revisionId);
 
   TRI_IF_FAILURE("RemoveDocumentNoMarker") {
     // test what happens when no marker can be created
@@ -3607,7 +3621,7 @@ Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
 
     res =
         static_cast<MMFilesTransactionState*>(trx->state())
-            ->addOperation(documentId, operation, marker, options.waitForSync);
+            ->addOperation(documentId, revisionId, operation, marker, options.waitForSync);
   } catch (basics::Exception const& ex) {
     res = Result(ex.code());
   } catch (std::bad_alloc const&) {
@@ -3697,6 +3711,7 @@ Result MMFilesCollection::rollbackOperation(transaction::Methods* trx,
 
 /// @brief removes a document or edge, fast path function for database documents
 Result MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
+                                         TRI_voc_rid_t revisionId,
                                          LocalDocumentId const& oldDocumentId,
                                          VPackSlice const oldDoc,
                                          OperationOptions& options,
@@ -3733,7 +3748,7 @@ Result MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
                                      TRI_VOC_DOCUMENT_OPERATION_REMOVE);
 
   operation.setDocumentIds(MMFilesDocumentDescriptor(oldDocumentId, oldDoc.begin()),
-                         MMFilesDocumentDescriptor());
+                           MMFilesDocumentDescriptor());
 
   // delete from indexes
   Result res;
@@ -3769,7 +3784,7 @@ Result MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
 
     res =
         static_cast<MMFilesTransactionState*>(trx->state())
-            ->addOperation(documentId, operation, marker, options.waitForSync);
+            ->addOperation(documentId, revisionId, operation, marker, options.waitForSync);
   } catch (basics::Exception const& ex) {
     res = Result(ex.code());
   } catch (std::bad_alloc const&) {
@@ -3814,7 +3829,8 @@ Result MMFilesCollection::lookupDocument(transaction::Methods* trx,
 /// @brief updates an existing document, low level worker
 /// the caller must make sure the write lock on the collection is held
 Result MMFilesCollection::updateDocument(
-    transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
+    transaction::Methods* trx,TRI_voc_rid_t revisionId,
+     LocalDocumentId const& oldDocumentId,
     VPackSlice const& oldDoc, LocalDocumentId const& newDocumentId,
     VPackSlice const& newDoc, MMFilesDocumentOperation& operation,
     MMFilesWalMarker const* marker, bool& waitForSync) {
@@ -3867,5 +3883,5 @@ Result MMFilesCollection::updateDocument(
   }
 
   return Result(static_cast<MMFilesTransactionState*>(trx->state())
-      ->addOperation(newDocumentId, operation, marker, waitForSync));
+      ->addOperation(newDocumentId, revisionId, operation, marker, waitForSync));
 }

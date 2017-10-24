@@ -529,8 +529,6 @@ class ClusterComm {
 
   void addAuthorization(std::unordered_map<std::string, std::string>* headers);
 
-  std::string jwt() { return _jwt; };
-
   //////////////////////////////////////////////////////////////////////////////
   /// @brief abort and disable all communication 
   //////////////////////////////////////////////////////////////////////////////
@@ -655,7 +653,6 @@ class ClusterComm {
 
   std::shared_ptr<communicator::Communicator> _communicator;
   bool _authenticationEnabled;
-  std::string _jwt;
   std::string _jwtAuthorization;
 
 };

@@ -1828,14 +1828,14 @@ function ahuacatlStringFunctionsTestSuite () {
     
     testSubstring1 : function () {
       var expected = [ "the" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return SUBSTRING('the quick brown fox', 0, 3)");
-      assertEqual(expected, actual);
+      assertEqual(expected, getQueryResults("FOR r IN [ 1 ] return SUBSTRING('the quick brown fox', 0, 3)"));
 
-      actual = getQueryResults("FOR r IN [ 1 ] return NOOPT(SUBSTRING('the quick brown fox', 0, 3))");
-      assertEqual(expected, actual);
+      assertEqual(expected, getQueryResults("FOR r IN [ 1 ] return NOOPT(SUBSTRING('the quick brown fox', 0, 3))"));
 
-      actual = getQueryResults("FOR r IN [ 1 ] return NOOPT(V8(SUBSTRING('the quick brown fox', 0, 3)))");
-      assertEqual(expected, actual);
+      assertEqual(expected, getQueryResults("FOR r IN [ 1 ] return NOOPT(V8(SUBSTRING('the quick brown fox', 0, 3)))"));
+
+      assertEqual(['🤡cp'], getQueryResults("FOR r IN [ 1 ] return NOOPT(SUBSTRING('🤡cpp quick brown fox', 0, 3))"));
+      assertEqual(['🤡v8'], getQueryResults("FOR r IN [ 1 ] return NOOPT(V8(SUBSTRING('🤡v8v quick brown fox', 0, 3)))"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1844,14 +1844,11 @@ function ahuacatlStringFunctionsTestSuite () {
     
     testSubstring2 : function () {
       var expected = [ "quick" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return SUBSTRING('the quick brown fox', 4, 5)");
-      assertEqual(expected, actual);
+      assertEqual(expected, getQueryResults("FOR r IN [ 1 ] return SUBSTRING('the quick brown fox', 4, 5)"));
 
-      actual = getQueryResults("FOR r IN [ 1 ] return NOOPT(SUBSTRING('the quick brown fox', 4, 5))");
-      assertEqual(expected, actual);
+      assertEqual(expected, getQueryResults("FOR r IN [ 1 ] return NOOPT(SUBSTRING('the quick brown fox', 4, 5))"));
 
-      actual = getQueryResults("FOR r IN [ 1 ] return NOOPT(V8(SUBSTRING('the quick brown fox', 4, 5)))");
-      assertEqual(expected, actual);
+      assertEqual(expected, getQueryResults("FOR r IN [ 1 ] return NOOPT(V8(SUBSTRING('the quick brown fox', 4, 5)))"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1859,15 +1856,12 @@ function ahuacatlStringFunctionsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testSubstring3 : function () {
-      var expected = [ "fox" ];
-      var actual = getQueryResults("FOR r IN [ 1 ] return SUBSTRING('the quick brown fox', -3)");
-      assertEqual(expected, actual);
+      const expected = [ "fox" ];
+      assertEqual(expected, getQueryResults("return SUBSTRING('the quick brown fox', -3)"));
 
-      actual = getQueryResults("FOR r IN [ 1 ] return NOOPT(SUBSTRING('the quick brown fox', -3))");
-      assertEqual(expected, actual);
+      assertEqual(expected, getQueryResults("return NOOPT(SUBSTRING('the quick brown fox', -3))"));
 
-      actual = getQueryResults("FOR r IN [ 1 ] return NOOPT(V8(SUBSTRING('the quick brown fox', -3)))");
-      assertEqual(expected, actual);
+      assertEqual(expected, getQueryResults("return NOOPT(V8(SUBSTRING('the quick brown fox', -3)))"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1899,15 +1893,15 @@ function ahuacatlStringFunctionsTestSuite () {
         assertEqual([ "[1,2,3]" ], getQueryResults(buildQuery(i, "[ 1, 2, 3 ], 0")));
         assertEqual([ "2,3]" ], getQueryResults(buildQuery(i, "[ 1, 2, 3 ], 3")));
         assertEqual([ "{}" ], getQueryResults(buildQuery(i, "{ }, 0")));
-        assertEqual([ "" ], getQueryResults(buildQuery(i, "\"yes\", null, 0")));
-        assertEqual([ "" ], getQueryResults(buildQuery(i, "\"yes\", true, 0")));
-        assertEqual([ "" ], getQueryResults(buildQuery(i, "\"yes\", \"yes\", 0")));
-        assertEqual([ "" ], getQueryResults(buildQuery(i, "\"yes\", [ ], 0")));
-        assertEqual([ "" ], getQueryResults(buildQuery(i, "\"yes\", { }, 0")));
-        assertEqual([ "" ], getQueryResults(buildQuery(i, "\"yes\", \"yes\", null")));
-        assertEqual([ "y" ], getQueryResults(buildQuery(i, "\"yes\", \"yes\", true")));
-        assertEqual([ "" ], getQueryResults(buildQuery(i, "\"yes\", \"yes\", [ ]")));
-        assertEqual([ "" ], getQueryResults(buildQuery(i, "\"yes\", \"yes\", { }")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "'yes', null, 0")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "'yes', true, 0")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "'yes', 'yes', 0")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "'yes', [ ], 0")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "'yes', { }, 0")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "'yes', 'yes', null")));
+        assertEqual([ "y" ], getQueryResults(buildQuery(i, "'yes', 'yes', true")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "'yes', 'yes', [ ]")));
+        assertEqual([ "" ], getQueryResults(buildQuery(i, "'yes', 'yes', { }")));
       }
     },
 

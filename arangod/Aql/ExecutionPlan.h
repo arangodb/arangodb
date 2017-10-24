@@ -32,8 +32,11 @@
 #include "Basics/SmallVector.h"
 
 namespace arangodb {
+namespace velocypack {
+  class Slice;
+}
+  
 namespace aql {
-
 class Ast;
 struct AstNode;
 class CalculationNode;
@@ -291,7 +294,7 @@ class ExecutionPlan {
   ExecutionNode* fromNode(AstNode const*);
 
   /// @brief create an execution plan from VPack
-  ExecutionNode* fromSlice(VPackSlice const& slice);
+  ExecutionNode* fromSlice(velocypack::Slice const& slice);
 
   /// @brief create an vertex element for graph nodes
   AstNode const* parseTraversalVertexNode(ExecutionNode*&, AstNode const*);

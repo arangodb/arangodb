@@ -101,7 +101,7 @@ struct ExternalId {
 ////////////////////////////////////////////////////////////////////////////////
 
 struct ExternalProcess {
-  char* _executable;
+  std::string _executable;
   size_t _numberArguments;
   char** _arguments;
 
@@ -167,8 +167,8 @@ void TRI_SetProcessTitle(char const* title);
 /// @brief starts an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_CreateExternalProcess(char const* executable, char const** arguments,
-                               size_t n, bool usePipes, ExternalId* pid);
+void TRI_CreateExternalProcess(char const* executable, std::vector<std::string> const& arguments,
+                               bool usePipes, ExternalId* pid);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the status of an external process

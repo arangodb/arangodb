@@ -41,7 +41,7 @@ else
 fi
 NATH=$(( $NRDBSERVERS + $NRCOORDINATORS + $NRAGENTS ))
 ENDPOINT=[::]
-ADDRESS=[::1]
+ADDRESS=${ADDRESS:-[::1]}
 
 rm -rf cluster
 if [ -d cluster-init ];then
@@ -188,39 +188,6 @@ done
 for p in `seq $CO_BASE $PORTTOPCO` ; do
     testServer $p
 done
-
-if [ "$SECONDARIES" == "1" ] ; then
-    let index=1
-    PORTTOPSE=`expr $SE_BASE + $NRDBSERVERS - 1` 
-    for PORT in `seq $SE_BASE $PORTTOPSE` ; do
-        mkdir cluster/data$PORT
-        UUID=SCND-$(uuidgen)
-        zfindex=$(printf "%04d" $index)
-        CLUSTER_ID="Secondary$zfindex"
-        
-        echo Registering secondary $CLUSTER_ID for "DBServer$zfindex"
-        curl -f -X PUT --data "{\"primary\": \"DBServer$zfindex\", \"oldSecondary\": \"none\", \"newSecondary\": \"$CLUSTER_ID\"}" -H "Content-Type: application/json" $ADDRESS:$CO_BASE/_admin/cluster/replaceSecondary
-        echo Starting Secondary $CLUSTER_ID on port $PORT
-        ${BUILD}/bin/arangod \
-            -c none \
-            --database.directory cluster/data$PORT \
-            --cluster.agency-endpoint $TRANSPORT://$ADDRESS:$AG_BASE \
-            --cluster.my-address $TRANSPORT://$ADDRESS:$PORT \
-            --server.endpoint $TRANSPORT://$ENDPOINT:$PORT \
-            --cluster.my-id $CLUSTER_ID \
-            --log.file cluster/$PORT.log \
-            --server.statistics true \
-            --javascript.startup-directory $SRC_DIR/js \
-            --javascript.module-directory $SRC_DIR/enterprise/js \
-            $STORAGE_ENGINE \
-            $AUTHENTICATION \
-            $SSLKEYFILE \
-            --javascript.app-path $SRC_DIR/js/apps \
-            > cluster/$PORT.stdout 2>&1 &
-            
-            let index=$index+1
-    done
-fi
 
 echo Done, your cluster is ready at
 for p in `seq $CO_BASE $PORTTOPCO` ; do

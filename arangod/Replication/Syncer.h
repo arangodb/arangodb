@@ -25,19 +25,16 @@
 #define ARANGOD_REPLICATION_SYNCER_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/replication-applier.h"
+#include "Replication/ReplicationApplierConfiguration.h"
+#include "Utils/DatabaseGuard.h"
+#include "VocBase/replication-common.h"
 #include "VocBase/ticks.h"
 
-class TRI_replication_applier_configuration_t;
 struct TRI_vocbase_t;
 
 namespace arangodb {
 class Endpoint;
 class LogicalCollection;
-
-namespace velocypack {
-class Slice;
-}
 
 namespace httpclient {
 class GeneralClientConnection;
@@ -48,27 +45,41 @@ class SimpleHttpResult;
 namespace transaction {
 class Methods;
 }
-;
+
+namespace velocypack {
+class Slice;
+}
 
 class Syncer {
  public:
+  
+  struct MasterInfo {
+    std::string _endpoint;
+    TRI_server_id_t _serverId;
+    int _majorVersion;
+    int _minorVersion;
+    TRI_voc_tick_t _lastLogTick;
+    bool _active;
+
+    MasterInfo() 
+        : _serverId(0),
+          _majorVersion(0), 
+          _minorVersion(0), 
+          _lastLogTick(0), 
+          _active(false) {}
+  };
+  
   Syncer(Syncer const&) = delete;
   Syncer& operator=(Syncer const&) = delete;
 
-  Syncer(TRI_vocbase_t*, TRI_replication_applier_configuration_t const*);
+  explicit Syncer(ReplicationApplierConfiguration const&);
 
   virtual ~Syncer();
   
-  TRI_vocbase_t* vocbase() { return _vocbase; }
-
   /// @brief sleeps (nanoseconds)
   void sleep(uint64_t time) {
     usleep(static_cast<TRI_usleep_t>(time));
   }
-
-  /// @brief parse a velocypack response
-  int parseResponse(std::shared_ptr<arangodb::velocypack::Builder>,
-                    arangodb::httpclient::SimpleHttpResult const*) const;
 
   /// @brief request location rewriter (injects database name)
   static std::string rewriteLocation(void*, std::string const&);
@@ -79,82 +90,94 @@ class Syncer {
   void setLeaderId(std::string const& leaderId) {
     _leaderId = leaderId;
   }
+  
+  /// @brief send a "remove barrier" command
+  Result sendRemoveBarrier();
 
  protected:
+  /// @brief reload all users
+  void reloadUsers();
+  
+  /// @brief parse a velocypack response
+  Result parseResponse(arangodb::velocypack::Builder&,
+                       arangodb::httpclient::SimpleHttpResult const*) const;
 
   /// @brief send a "create barrier" command
-  int sendCreateBarrier(std::string&, TRI_voc_tick_t);
+  Result sendCreateBarrier(TRI_voc_tick_t);
 
   /// @brief send an "extend barrier" command
-  int sendExtendBarrier(TRI_voc_tick_t = 0);
+  Result sendExtendBarrier(TRI_voc_tick_t = 0);
 
-  /// @brief send a "remove barrier" command
-  int sendRemoveBarrier();
+  /// @brief apply a single marker from the collection dump
+  Result applyCollectionDumpMarker(transaction::Methods&,
+                                   std::string const&,
+                                   TRI_replication_operation_e,
+                                   arangodb::velocypack::Slice const&, 
+                                   arangodb::velocypack::Slice const&);
 
+  /// @brief creates a collection, based on the VelocyPack provided
+  Result createCollection(TRI_vocbase_t* vocbase,
+                          arangodb::velocypack::Slice const&,
+                          arangodb::LogicalCollection**);
+
+  /// @brief drops a collection, based on the VelocyPack provided
+  Result dropCollection(arangodb::velocypack::Slice const&, bool reportError);
+
+  /// @brief creates an index, based on the VelocyPack provided
+  Result createIndex(arangodb::velocypack::Slice const&);
+
+  /// @brief drops an index, based on the VelocyPack provided
+  Result dropIndex(arangodb::velocypack::Slice const&);
+
+  /// @brief get master state
+  Result getMasterState();
+
+  /// @brief handle the state response of the master
+  Result handleStateResponse(arangodb::velocypack::Slice const&);
+  
+  virtual TRI_vocbase_t* resolveVocbase(velocypack::Slice const&);
+   
+  LogicalCollection* resolveCollection(TRI_vocbase_t*, arangodb::velocypack::Slice const& slice);
+
+  std::unordered_map<std::string, DatabaseGuard> const& vocbases() const {
+    return _vocbases;
+  }
+  
+  /// @brief whether or not the HTTP result is valid or not
+  bool hasFailed(arangodb::httpclient::SimpleHttpResult* response) const;
+
+  /// @brief create an error result from a failed HTTP request/response
+  Result buildHttpError(arangodb::httpclient::SimpleHttpResult* response, std::string const& url) const;
+  
+ private:
+  
+  /// @brief extract the collection by either id or name, may return nullptr!
+  LogicalCollection* getCollectionByIdOrName(TRI_vocbase_t*, TRI_voc_cid_t,
+                                             std::string const&);
+  
+  /// @brief apply a single marker from the collection dump
+  Result applyCollectionDumpMarkerInternal(transaction::Methods&,
+                                           std::string const&,
+                                           TRI_replication_operation_e,
+                                           arangodb::velocypack::Slice const&, 
+                                           arangodb::velocypack::Slice const&); 
+  
   /// @brief extract the collection id from VelocyPack
-  TRI_voc_cid_t getCid(arangodb::velocypack::Slice const&) const;
-
+  TRI_voc_cid_t getCid(velocypack::Slice const&) const;
+  
   /// @brief extract the collection name from VelocyPack
   std::string getCName(arangodb::velocypack::Slice const&) const;
 
-  /// @brief extract the collection by either id or name, may return nullptr!
-  arangodb::LogicalCollection* getCollectionByIdOrName(TRI_voc_cid_t cid,
-                                                       std::string const& name);
-
-  /// @brief apply a single marker from the collection dump
-  int applyCollectionDumpMarker(transaction::Methods&,
-                                std::string const&,
-                                TRI_replication_operation_e,
-                                arangodb::velocypack::Slice const&, 
-                                arangodb::velocypack::Slice const&, 
-                                std::string&);
-
-  /// @brief creates a collection, based on the VelocyPack provided
-  int createCollection(arangodb::velocypack::Slice const&,
-                       arangodb::LogicalCollection**);
-
-  /// @brief drops a collection, based on the VelocyPack provided
-  int dropCollection(arangodb::velocypack::Slice const&, bool);
-
-  /// @brief creates an index, based on the VelocyPack provided
-  int createIndex(arangodb::velocypack::Slice const&);
-
-  /// @brief drops an index, based on the VelocyPack provided
-  int dropIndex(arangodb::velocypack::Slice const&);
-
-  /// @brief get master state
-  int getMasterState(std::string&);
-
-  /// @brief handle the state response of the master
-  int handleStateResponse(arangodb::velocypack::Slice const&, std::string&);
-
-  /// @brief set leader ID for synchronous replication in cluster
- private:
-  /// @brief apply a single marker from the collection dump
-  int applyCollectionDumpMarkerInternal(transaction::Methods&,
-                                        std::string const&,
-                                        TRI_replication_operation_e,
-                                        arangodb::velocypack::Slice const&, 
-                                        arangodb::velocypack::Slice const&, 
-                                        std::string&);
-
  protected:
-  /// @brief vocbase base pointer
-  TRI_vocbase_t* _vocbase;
-
+  
+  /// @brief lazy loaded list of vocbases
+  std::unordered_map<std::string, DatabaseGuard> _vocbases;
+  
   /// @brief configuration
-  TRI_replication_applier_configuration_t _configuration;
-
+  ReplicationApplierConfiguration _configuration;
+  
   /// @brief information about the master state
-  struct {
-    std::string _endpoint;
-    TRI_server_id_t _serverId;
-    int _majorVersion;
-    int _minorVersion;
-    TRI_voc_tick_t _lastLogTick;
-    bool _active;
-  }
-  _masterInfo;
+  MasterInfo _masterInfo;
 
   /// @brief the endpoint (master) we're connected to
   Endpoint* _endpoint;
@@ -177,17 +200,14 @@ class Syncer {
   /// @brief WAL barrier id
   uint64_t _barrierId;
 
-  /// @brief WAL barrier last update time
-  double _barrierUpdateTime;
-
   /// @brief ttl for WAL barrier
   int _barrierTtl;
   
-  /// @brief whether or not to use collection ids in replication
-  bool _useCollectionId;
-
-  /// @brief base url of the replication API
-  static std::string const BaseUrl;
+  /// @brief WAL barrier last update time
+  double _barrierUpdateTime;
+  
+  /// Is this syncer allowed to handle its own batch
+  bool _isChildSyncer;
 
   /// @brief leaderId, this is used in the cluster to the unique ID of the
   /// source server (the shard leader in this case). We need this information
@@ -195,7 +215,9 @@ class Syncer {
   /// follower and thus only accepts modifications that are replications
   /// from the leader. Leave empty if there is no concept of a "leader".
   std::string _leaderId;
-
+  
+  /// @brief base url of the replication API
+  static std::string const ReplicationUrl;
 };
 }
 

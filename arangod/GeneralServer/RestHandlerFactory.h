@@ -45,6 +45,16 @@ class RestHandlerFactory {
 
   // context handler
   typedef bool (*context_fptr)(GeneralRequest*, void*);
+  
+  enum class Mode : uint32_t {
+    DEFAULT = 0,
+    /// reject all requests
+    MAINTENANCE = 1,
+    /// redirect to lead server if possible
+    REDIRECT = 2,
+    /// client must try again
+    TRYAGAIN = 3
+  };
 
  public:
   // cppcheck-suppress *
@@ -52,11 +62,15 @@ class RestHandlerFactory {
 
  public:
   // sets maintenance mode
-  static void setMaintenance(bool);
+  static void setServerMode(Mode mode);
+  
+  static Mode serverMode();
 
   // checks maintenance mode
-  static bool isMaintenance();
-
+  static bool isMaintenance() {
+    return serverMode() == Mode::MAINTENANCE;
+  }
+  
  public:
   // set request context, wrapper method
   bool setRequestContext(GeneralRequest*);
@@ -92,7 +106,7 @@ class RestHandlerFactory {
   create_fptr _notFound;
 
  private:
-  static std::atomic<bool> _maintenanceMode;
+  static std::atomic<Mode> _serverMode;
 };
 }
 }

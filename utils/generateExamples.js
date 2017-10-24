@@ -151,7 +151,6 @@ function main(argv) {
     serverArgs["log.file"] = fs.join(tmpDataDir, "log");
     serverArgs["server.authentication"] = "false";
     serverArgs["server.endpoint"] = serverEndpoint;
-    serverArgs["server.threads"] = "3";
 
     print("================================================================================");
     print(ARANGOD);

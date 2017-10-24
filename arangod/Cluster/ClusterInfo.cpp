@@ -934,7 +934,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
           std::string tmpMsg = "";
           bool tmpHaveError = false;
 
-          for (auto const& dbserver : dbs) {
+          for (VPackObjectIterator::ObjectPair dbserver : dbs) {
             VPackSlice slice = dbserver.value;
             if (arangodb::basics::VelocyPackHelper::getBooleanValue(
                   slice, "error", false)) {
@@ -1858,7 +1858,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     // now create a new index
     std::unordered_set<std::string> const ignoreKeys{
         "allowUserKeys", "cid", /* cid really ignore?*/
-        "count",         "planId", "version", "objectId"
+        "count",         "globallyUniqueId", "planId", "version", "objectId"
     };
     c->setStatus(TRI_VOC_COL_STATUS_LOADED);
     collectionBuilder = c->toVelocyPackIgnore(ignoreKeys, false, false);
@@ -2901,6 +2901,14 @@ std::shared_ptr<VPackBuilder> ClusterInfo::getCurrent() {
   return _current;
 }
 
+std::unordered_map<ServerID, std::string> ClusterInfo::getServers() {
+  if (!_serversProt.isValid) {
+    loadServers();
+  }
+  READ_LOCKER(readLocker, _serversProt.lock);
+  std::unordered_map<ServerID, std::string> serv = _servers;
+  return serv;
+}
 
 std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
   READ_LOCKER(readLocker, _serversProt.lock);

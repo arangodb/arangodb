@@ -73,6 +73,8 @@ class SimpleAttributeEqualityMatcher {
   arangodb::aql::AstNode* specializeAll(arangodb::Index const*,
                                         arangodb::aql::AstNode*,
                                         arangodb::aql::Variable const*);
+  
+  static size_t estimateNumberOfArrayMembers(arangodb::aql::AstNode const* value); 
 
  private:
   /// @brief determine the costs of using this index and the number of items
@@ -99,6 +101,8 @@ class SimpleAttributeEqualityMatcher {
   /// @brief an internal map to mark which condition parts were useful and
   /// covered by the index. Also contains the matching Node
   std::unordered_map<size_t, arangodb::aql::AstNode const*> _found;
+
+  static constexpr size_t defaultEstimatedNumberOfArrayMembers = 10;
 };
 }
 

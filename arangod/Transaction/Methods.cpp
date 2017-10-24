@@ -419,7 +419,6 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
   double bestCost = 0.0;
   bool bestSupportsFilter = false;
   bool bestSupportsSort = false;
-  size_t coveredAttributes = 0;
 
   for (auto const& idx : indexes) {
     double filterCost = 0.0;
@@ -448,6 +447,7 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
         (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess());
 
     if (sortCondition->isUnidirectional()) {
+      size_t coveredAttributes = 0;
       // only go in here if we actually have a sort condition and it can in
       // general be supported by an index. for this, a sort condition must not
       // be empty, must consist only of attribute access, and all attributes
@@ -473,6 +473,10 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
         sortCost = 0.0;
       }
     }
+
+    // enable the following line to see index candidates considered with their
+    // abilities and scores
+    // LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", supportsSort: " << supportsSort << ", filterCost: " << filterCost << ", sortCost: " << sortCost << ", totalCost: " << (filterCost + sortCost) << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess << ", isUnidirectional: " << sortCondition->isUnidirectional() << ", isOnlyEqualityMatch: " << node->isOnlyEqualityMatch() << ", itemsInIndex: " << itemsInIndex; 
 
     if (!supportsFilter && !supportsSort) {
       continue;
@@ -1390,10 +1394,11 @@ OperationResult transaction::Methods::insertLocal(
 
     ManagedDocumentResult result;
     TRI_voc_tick_t resultMarkerTick = 0;
+    TRI_voc_rid_t revisionId = 0;
 
     Result res =
         collection->insert(this, value, result, options, resultMarkerTick,
-                           !isLocked(collection, AccessMode::Type::WRITE));
+                           !isLocked(collection, AccessMode::Type::WRITE), revisionId);
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
@@ -1410,9 +1415,7 @@ OperationResult transaction::Methods::insertLocal(
     StringRef keyString(transaction::helpers::extractKeyFromDocument(
         VPackSlice(result.vpack())));
 
-    buildDocumentIdentity(collection, resultBuilder, cid, keyString,
-                          transaction::helpers::extractRevFromDocument(
-                              VPackSlice(result.vpack())),
+    buildDocumentIdentity(collection, resultBuilder, cid, keyString, revisionId,
                           0, nullptr, options.returnNew ? &result : nullptr);
 
     return TRI_ERROR_NO_ERROR;
@@ -1438,7 +1441,7 @@ OperationResult transaction::Methods::insertLocal(
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
-    EngineSelectorFeature::ENGINE->waitForSync(maxTick);
+    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
   if (res.ok() && _state->isDBServer()) {
@@ -1783,7 +1786,7 @@ OperationResult transaction::Methods::modifyLocal(
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
-    EngineSelectorFeature::ENGINE->waitForSync(maxTick);
+    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -2064,7 +2067,7 @@ OperationResult transaction::Methods::removeLocal(
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
-    EngineSelectorFeature::ENGINE->waitForSync(maxTick);
+    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -2099,7 +2102,6 @@ OperationResult transaction::Methods::removeLocal(
           payload.add(StaticStrings::KeyString, s);
           s = result.get(StaticStrings::RevString);
           payload.add(StaticStrings::RevString, s);
-          TRI_SanitizeObject(doc, payload);
         };
 
         VPackSlice ourResult = resultBuilder.slice();
@@ -2979,7 +2981,8 @@ void transaction::Methods::setupEmbedded(TRI_vocbase_t*) {
 }
 
 /// @brief set up a top-level transaction
-void transaction::Methods::setupToplevel(TRI_vocbase_t* vocbase, transaction::Options const& options) {
+void transaction::Methods::setupToplevel(TRI_vocbase_t* vocbase,
+                                         transaction::Options const& options) {
   // we are not embedded. now start our own transaction
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   _state = engine->createTransactionState(vocbase, options);

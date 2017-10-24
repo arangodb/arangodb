@@ -26,9 +26,9 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/RestHandler.h"
 #include "Logger/Logger.h"
+#include "Replication/ReplicationFeature.h"
+#include "Replication/GlobalReplicationApplier.h"
 #include "Rest/GeneralRequest.h"
-#include "Rest/RequestContext.h"
-
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestVersionHandler.h"
 
@@ -37,29 +37,67 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 static std::string const ROOT_PATH = "/";
-std::atomic<bool> RestHandlerFactory::_maintenanceMode(false);
+std::atomic<RestHandlerFactory::Mode> RestHandlerFactory::_serverMode(RestHandlerFactory::Mode::DEFAULT);
 
 namespace {
 class MaintenanceHandler : public RestHandler {
+  bool _redirect;
  public:
   explicit MaintenanceHandler(GeneralRequest* request,
-                              GeneralResponse* response)
-      : RestHandler(request, response){};
+                              GeneralResponse* response,
+                              bool redirect)
+      : RestHandler(request, response), _redirect(redirect) {};
 
   char const* name() const override final { return "MaintenanceHandler"; }
 
   bool isDirect() const override { return true; };
 
   RestStatus execute() override {
+    // use this to redirect requests
+    if (_redirect) {
+      ReplicationFeature* replication = ReplicationFeature::INSTANCE;
+      if (replication != nullptr && replication->isAutomaticFailoverEnabled()) {
+        GlobalReplicationApplier* applier = replication->globalReplicationApplier();
+        if (applier != nullptr && applier->isRunning()) {
+          std::string endpoint = applier->endpoint();
+          // replace tcp:// with http://, and ssl:// with https://
+          endpoint = fixEndpointProtocol(endpoint);
+          
+          resetResponse(rest::ResponseCode::TEMPORARY_REDIRECT);
+          _response->setHeader("Location", endpoint + _request->requestPath());
+          _response->setHeader("x-arango-endpoint", applier->endpoint());
+          return RestStatus::DONE;
+        }
+      }
+    }
+    
     resetResponse(rest::ResponseCode::SERVICE_UNAVAILABLE);
-
     return RestStatus::DONE;
   };
 
   void handleError(const Exception& error) override {
     resetResponse(rest::ResponseCode::SERVICE_UNAVAILABLE);
   };
+
+  // replace tcp:// with http://, and ssl:// with https://
+  std::string fixEndpointProtocol(std::string const& endpoint) const {
+    if (endpoint.find("tcp://", 0, 6) == 0) {
+      return "http://" + endpoint.substr(6); // strlen("tcp://")
+    }
+    if (endpoint.find("ssl://", 0, 6) == 0) {
+      return "https://" + endpoint.substr(6); // strlen("ssl://")
+    }
+    return endpoint;
+  }
 };
+}
+
+void RestHandlerFactory::setServerMode(RestHandlerFactory::Mode value) {
+  _serverMode.store(value, std::memory_order_release);
+}
+
+RestHandlerFactory::Mode RestHandlerFactory::serverMode() {
+  return _serverMode.load(std::memory_order_acquire);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -69,12 +107,6 @@ class MaintenanceHandler : public RestHandler {
 RestHandlerFactory::RestHandlerFactory(context_fptr setContext,
                                        void* contextData)
     : _setContext(setContext), _contextData(contextData), _notFound(nullptr) {}
-
-void RestHandlerFactory::setMaintenance(bool value) {
-  _maintenanceMode.store(value);
-}
-
-bool RestHandlerFactory::isMaintenance() { return _maintenanceMode.load(); }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set request context, wrapper method
@@ -89,24 +121,46 @@ bool RestHandlerFactory::setRequestContext(GeneralRequest* request) {
 ////////////////////////////////////////////////////////////////////////////////
 
 RestHandler* RestHandlerFactory::createHandler(
-    std::unique_ptr<GeneralRequest> request,
-    std::unique_ptr<GeneralResponse> response) const {
-  std::string const& path = request->requestPath();
+    std::unique_ptr<GeneralRequest> req,
+    std::unique_ptr<GeneralResponse> res) const {
+  std::string const& path = req->requestPath();
   
   // In the shutdown phase we simply return 503:
   if (application_features::ApplicationServer::isStopping()) {
-    return new MaintenanceHandler(request.release(), response.release());
+    return new MaintenanceHandler(req.release(), res.release(), false);
   }
 
   // In the bootstrap phase, we would like that coordinators answer the
   // following endpoints, but not yet others:
-  if (_maintenanceMode.load()) {
-    if ((!ServerState::instance()->isCoordinator() &&
-         path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
-        (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
-         path.find("/_api/aql") == std::string::npos)) {
-      LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
-      return new MaintenanceHandler(request.release(), response.release());
+  RestHandlerFactory::Mode mode = RestHandlerFactory::serverMode();
+  switch (mode) {
+    case Mode::MAINTENANCE: {
+      if ((!ServerState::instance()->isCoordinator() &&
+          path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
+          (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+          path.find("/_api/aql") == std::string::npos)) {
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
+        return new MaintenanceHandler(req.release(), res.release(), false);
+      }
+      break;
+    }
+    case Mode::REDIRECT:
+    case Mode::TRYAGAIN: {
+      if (path.find("/_admin/shutdown") == std::string::npos &&
+          path.find("/_admin/server/role") == std::string::npos &&
+          path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+          path.find("/_api/cluster/") == std::string::npos &&
+          path.find("/_api/replication") == std::string::npos &&
+          path.find("/_api/version") == std::string::npos &&
+          path.find("/_api/wal") == std::string::npos) {
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
+        return new MaintenanceHandler(req.release(), res.release(), true);
+      }
+      break;
+    }
+    case Mode::DEFAULT: {
+      // no special handling required
+      break;
     }
   }
 
@@ -146,17 +200,17 @@ RestHandler* RestHandlerFactory::createHandler(
         size_t n = path.find_first_of('/', l);
 
         while (n != std::string::npos) {
-          request->addSuffix(path.substr(l, n - l));
+          req->addSuffix(path.substr(l, n - l));
           l = n + 1;
           n = path.find_first_of('/', l);
         }
 
         if (l < path.size()) {
-          request->addSuffix(path.substr(l));
+          req->addSuffix(path.substr(l));
         }
 
         modifiedPath = &ROOT_PATH;
-        request->setPrefix(ROOT_PATH);
+        req->setPrefix(ROOT_PATH);
       }
     }
 
@@ -167,26 +221,26 @@ RestHandler* RestHandlerFactory::createHandler(
       size_t n = path.find_first_of('/', l);
 
       while (n != std::string::npos) {
-        request->addSuffix(path.substr(l, n - l));
+        req->addSuffix(path.substr(l, n - l));
         l = n + 1;
         n = path.find_first_of('/', l);
       }
 
       if (l < path.size()) {
-        request->addSuffix(path.substr(l));
+        req->addSuffix(path.substr(l));
       }
 
       modifiedPath = &prefix;
 
       i = ii.find(prefix);
-      request->setPrefix(prefix);
+      req->setPrefix(prefix);
     }
   }
 
   // no match
   if (i == ii.end()) {
     if (_notFound != nullptr) {
-      return _notFound(request.release(), response.release(), nullptr);
+      return _notFound(req.release(), res.release(), nullptr);
     }
 
     LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "no not-found handler, giving up";
@@ -194,8 +248,7 @@ RestHandler* RestHandlerFactory::createHandler(
   }
 
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "found handler for path '" << *modifiedPath << "'";
-  return i->second.first(request.release(), response.release(),
-                         i->second.second);
+  return i->second.first(req.release(), res.release(), i->second.second);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

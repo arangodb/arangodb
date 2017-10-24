@@ -90,6 +90,7 @@ function collectionRepresentation(collection, showProperties, showCount, showFig
     }
   }
 
+  result.globallyUniqueId = collection.globallyUniqueId();
   result.status = collection.status();
   result.type = collection.type();
 

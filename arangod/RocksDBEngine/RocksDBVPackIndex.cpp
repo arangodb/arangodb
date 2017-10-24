@@ -29,6 +29,7 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexResult.h"
+#include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -970,11 +971,11 @@ void RocksDBVPackIndex::matchAttributes(
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
         if (accessFitsIndex(op->getMember(0), op->getMember(1), op, reference,
                             found, nonNullAttributes, isExecution)) {
-          auto m = op->getMember(1);
-          if (m->isArray() && m->numMembers() > 1) {
+          size_t av = SimpleAttributeEqualityMatcher::estimateNumberOfArrayMembers(op->getMember(1));
+          if (av > 1) {
             // attr IN [ a, b, c ]  =>  this will produce multiple items, so
             // count them!
-            values += m->numMembers() - 1;
+            values += av - 1;
           }
         }
         break;

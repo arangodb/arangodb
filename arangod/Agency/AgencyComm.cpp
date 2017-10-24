@@ -206,14 +206,20 @@ void AgencyOperation::toGeneralBuilder(VPackBuilder& builder) const {
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            AgencyWriteTransaction
+// --SECTION--                                                 AgencyTransaction
 // -----------------------------------------------------------------------------
 
-std::string AgencyWriteTransaction::toJson() const {
+std::string AgencyTransaction::toJson() const {
   VPackBuilder builder;
+  builder.openArray();
   toVelocyPack(builder);
+  builder.close();
   return builder.toJson();
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            AgencyWriteTransaction
+// -----------------------------------------------------------------------------
 
 void AgencyWriteTransaction::toVelocyPack(VPackBuilder& builder) const {
   VPackArrayBuilder guard(&builder);
@@ -246,12 +252,6 @@ bool AgencyWriteTransaction::validate(AgencyCommResult const& result) const {
 // --SECTION--                                            AgencyTransientTransaction
 // -----------------------------------------------------------------------------
 
-std::string AgencyTransientTransaction::toJson() const {
-  VPackBuilder builder;
-  toVelocyPack(builder);
-  return builder.toJson();
-}
-
 void AgencyTransientTransaction::toVelocyPack(VPackBuilder& builder) const {
   VPackArrayBuilder guard(&builder);
   {
@@ -279,17 +279,11 @@ bool AgencyTransientTransaction::validate(AgencyCommResult const& result) const 
 // --SECTION--                                          AgencyGeneralTransaction
 // -----------------------------------------------------------------------------
 
-std::string AgencyGeneralTransaction::toJson() const {
-  VPackBuilder builder;
-  toVelocyPack(builder);
-  return builder.toJson();
-}
-
 void AgencyGeneralTransaction::toVelocyPack(VPackBuilder& builder) const {
-  //VPackArrayBuilder guard(&builder);
   for (auto const& trx : transactions) {
     auto opers = std::get<0>(trx);
     auto precs = std::get<1>(trx);
+    TRI_ASSERT(!opers.empty());
     if (!opers.empty()) {
       if (opers[0].type().type == AgencyOperationType::Type::READ) {
         for (auto const& op : opers) {
@@ -313,6 +307,12 @@ void AgencyGeneralTransaction::toVelocyPack(VPackBuilder& builder) const {
   }
 }
 
+void AgencyGeneralTransaction::push_back(AgencyOperation const& op) {
+  transactions.emplace_back(
+    TransactionType(std::vector<AgencyOperation>(1, op),
+                    std::vector<AgencyPrecondition>(0)));
+}
+
 void AgencyGeneralTransaction::push_back(
   std::pair<AgencyOperation,AgencyPrecondition> const& oper) {
   transactions.emplace_back(
@@ -321,18 +321,13 @@ void AgencyGeneralTransaction::push_back(
 }
 
 bool AgencyGeneralTransaction::validate(AgencyCommResult const& result) const {
-  return (result.slice().isArray() && result.slice().length() == 1);
+  return (result.slice().isArray() &&
+          result.slice().length() >= 1); // >= transactions.size()
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             AgencyReadTransaction
 // -----------------------------------------------------------------------------
-
-std::string AgencyReadTransaction::toJson() const {
-  VPackBuilder builder;
-  toVelocyPack(builder);
-  return builder.toJson();
-}
 
 void AgencyReadTransaction::toVelocyPack(VPackBuilder& builder) const {
   VPackArrayBuilder guard2(&builder);
@@ -418,6 +413,7 @@ std::string AgencyCommResult::errorMessage() const {
   try {
     std::shared_ptr<VPackBuilder> bodyBuilder =
         VPackParser::fromJson(_body);
+    
 
     VPackSlice body = bodyBuilder->slice();
     if (!body.isObject()) {
@@ -496,6 +492,15 @@ std::string AgencyCommManager::path(std::string const& p1,
 
   return MANAGER->_prefix + "/" + basics::StringUtils::trim(p1, "/") + "/" +
          basics::StringUtils::trim(p2, "/");
+}
+
+std::vector<std::string> AgencyCommManager::slicePath(std::string const& p1) {
+  std::string const p2 = basics::StringUtils::trim(p1, "/");
+  std::vector<std::string> split = basics::StringUtils::split(p2, '/');
+  if (split.size() > 0 && split[0] != AgencyCommManager::path()) {
+    split.insert(split.begin(), AgencyCommManager::path());
+  }
+  return split;
 }
 
 std::string AgencyCommManager::generateStamp() {
@@ -893,12 +898,12 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
     result._statusCode = 200;
 
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Error transforming result. "
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Error transforming result: "
                                        << e.what();
     result.clear();
   } catch (...) {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM)
-        << "Error transforming result. Out of memory";
+        << "Error transforming result: out of memory";
     result.clear();
   }
 
@@ -1052,7 +1057,6 @@ AgencyCommResult AgencyComm::registerCallback(std::string const& key,
     }
   }
   return res;
-
 }
 
 AgencyCommResult AgencyComm::unregisterCallback(std::string const& key,
@@ -1144,16 +1148,19 @@ AgencyCommResult AgencyComm::sendTransactionWithFailover(
     result._body.clear();
 
   } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Error transforming result. "
+    LOG_TOPIC(ERR, Logger::AGENCYCOMM) << "Error transforming result: "
                                        << e.what()
-                                       << " status code: "
+                                       << ", status code: "
                                        << result._statusCode
-                                       << " incriminating body: "
-                                       << result.bodyRef();
+                                       << ", incriminating body: "
+                                       << result.bodyRef()
+                                       << ", url: " << url 
+                                       << ", timeout: " << timeout 
+                                       << ", data sent: " << builder.toJson();
     result.clear();
   } catch (...) {
     LOG_TOPIC(ERR, Logger::AGENCYCOMM)
-        << "Error transforming result. Out of memory";
+        << "Error transforming result: out of memory";
     result.clear();
   }
 
@@ -1170,14 +1177,9 @@ bool AgencyComm::ensureStructureInitialized() {
     while (shouldInitializeStructure()) {
       LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
           << "Agency is fresh. Needs initial structure.";
-      // mop: we initialized it .. great success
-      std::string secret;
+      // mop: we are the chosen one .. great success
 
-      if (authentication->isActive()) {
-        secret = authentication->jwtSecret();
-      }
-
-      if (tryInitializeStructure(secret)) {
+      if (tryInitializeStructure()) {
         LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
             << "Successfully initialized agency";
         break;
@@ -1207,18 +1209,6 @@ bool AgencyComm::ensureStructureInitialized() {
     sleep(1);
   }
 
-  AgencyCommResult secretResult = getValues("Secret");
-  VPackSlice secretValue = secretResult.slice()[0].get(
-      std::vector<std::string>({AgencyCommManager::path(), "Secret"}));
-
-  if (!secretValue.isString()) {
-    LOG_TOPIC(ERR, Logger::CLUSTER) << "Couldn't find secret in agency!";
-    return false;
-  }
-  std::string const secret = secretValue.copyString();
-  if (!secret.empty()) {
-    authentication->setJwtSecret(secretValue.copyString());
-  }
   return true;
 }
 
@@ -1522,8 +1512,7 @@ AgencyCommResult AgencyComm::sendWithFailover(
               VPackArrayBuilder guard(bodyBuilder.get());
               bodyBuilder->add(VPackValue(index));
             }
-            result.set(200, "", clientId);
-            result.setVPack(bodyBuilder);
+            result.set(200, bodyBuilder->toJson(), clientId);
             break;
           } else {
             // Nothing known, so do a retry of the original operation:
@@ -1609,7 +1598,8 @@ AgencyCommResult AgencyComm::send(
       << "': " << body;
 
   arangodb::httpclient::SimpleHttpClientParams params(timeout, false);
-  params.setJwt(ClusterComm::instance()->jwt());
+  TRI_ASSERT(AuthenticationFeature::INSTANCE != nullptr);
+  params.setJwt(AuthenticationFeature::INSTANCE->jwtToken());
   params.keepConnectionOnDestruction(true);
   arangodb::httpclient::SimpleHttpClient client(connection, params);
 
@@ -1666,7 +1656,7 @@ AgencyCommResult AgencyComm::send(
 
   basics::StringBuffer& sb = response->getBody();
   result._body = std::string(sb.c_str(), sb.length());
-
+  
   LOG_TOPIC(TRACE, Logger::AGENCYCOMM)
       << "request to agency returned status code " << result._statusCode
       << ", message: '" << result._message << "', body: '" << result._body
@@ -1675,7 +1665,7 @@ AgencyCommResult AgencyComm::send(
   return result;
 }
 
-bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
+bool AgencyComm::tryInitializeStructure() {
   VPackBuilder builder;
 
   try {
@@ -1694,6 +1684,7 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
     builder.add(VPackValue("Current")); // Current ----------------------------
     {
       VPackObjectBuilder c(&builder);
+      addEmptyVPackObject("AsyncReplication", builder);
       builder.add(VPackValue("Collections"));
       {
         VPackObjectBuilder d(&builder);
@@ -1705,6 +1696,7 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
       addEmptyVPackObject("Coordinators", builder);
       builder.add("Lock", VPackValue("UNLOCKED"));
       addEmptyVPackObject("DBServers", builder);
+      addEmptyVPackObject("Singles", builder);
       builder.add(VPackValue("ServersRegistered"));
       {
         VPackObjectBuilder c(&builder);
@@ -1718,6 +1710,7 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
     builder.add(VPackValue("Plan")); // Plan ----------------------------------
     {
       VPackObjectBuilder c(&builder);
+      addEmptyVPackObject("AsyncReplication", builder);
       addEmptyVPackObject("Coordinators", builder);
       builder.add(VPackValue("Databases"));
       {
@@ -1731,6 +1724,7 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
       }
       builder.add("Lock", VPackValue("UNLOCKED"));
       addEmptyVPackObject("DBServers", builder);
+      addEmptyVPackObject("Singles", builder);
       builder.add("Version", VPackValue(1));
       builder.add(VPackValue("Collections"));
       {
@@ -1738,8 +1732,6 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
         addEmptyVPackObject("_system", builder);
       }
     }
-
-    builder.add("Secret", VPackValue(jwtSecret)); // Secret
 
     builder.add(VPackValue("Sync")); // Sync ----------------------------------
     {
@@ -1763,23 +1755,6 @@ bool AgencyComm::tryInitializeStructure(std::string const& jwtSecret) {
     builder.add(VPackValue("Target")); // Target ------------------------------
     {
       VPackObjectBuilder c(&builder);
-      builder.add(VPackValue("Collections"));
-      {
-        VPackObjectBuilder d(&builder);
-        addEmptyVPackObject("_system", builder);
-      }
-      addEmptyVPackObject("Coordinators", builder);
-      addEmptyVPackObject("DBServers", builder);
-      builder.add(VPackValue("Databases"));
-      {
-        VPackObjectBuilder d(&builder);
-        builder.add(VPackValue("_system"));
-        {
-          VPackObjectBuilder d2(&builder);
-          builder.add("name", VPackValue("_system"));
-          builder.add("id", VPackValue("1"));
-        }
-      }
       builder.add("NumberOfCoordinators", VPackSlice::nullSlice());
       builder.add("NumberOfDBServers", VPackSlice::nullSlice());
       builder.add(VPackValue("CleanedServers"));
