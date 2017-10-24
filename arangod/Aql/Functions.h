@@ -312,6 +312,9 @@ struct Functions {
    static AqlValue IsSameCollection(arangodb::aql::Query*,
                                     transaction::Methods*,
                                     VPackFunctionParameters const&);
+   static AqlValue CurrentUser(arangodb::aql::Query*,
+                                transaction::Methods*,
+                                VPackFunctionParameters const&);
 };
 }
 }

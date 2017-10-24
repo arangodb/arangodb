@@ -478,8 +478,7 @@ void AqlFunctionFeature::addMiscFunctions() {
        true, &Functions::ParseIdentifier});
   add({"IS_SAME_COLLECTION", ".h,.h", true,
        false, true, true, &Functions::IsSameCollection});
-  add({"CURRENT_USER", "", false, false, false,
-       true});
+  add({"CURRENT_USER", "", false, false, false, true, &Functions::CurrentUser});
   add({"CURRENT_DATABASE", "", false, false,
        false, true, &Functions::CurrentDatabase});
   add({"COLLECTION_COUNT", ".h", false, true,
