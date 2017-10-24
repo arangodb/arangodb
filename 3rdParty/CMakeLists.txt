@@ -108,6 +108,12 @@ if (USE_IRESEARCH)
   if(APPLE)
     set(ICU_LIBS icu-static CACHE INTERNAL "ICU: Libraries" FORCE) # use complete ICU build
     set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/v5.7.0.0/third_party/icu")
+  elseif(MSVC)
+    add_library(icu-static STATIC IMPORTED GLOBAL)
+    set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION "${CMAKE_CURRENT_BINARY_DIR}/build/${CMAKE_CFG_INTDIR}/lib/icui18n.lib")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES "${CMAKE_CURRENT_BINARY_DIR}/build/${CMAKE_CFG_INTDIR}/lib/icuuc.lib")
+    set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
   else()
     add_library(icu-static STATIC IMPORTED GLOBAL)
     set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
