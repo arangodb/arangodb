@@ -690,7 +690,7 @@ void transaction::Methods::buildDocumentIdentity(
   builder.add(StaticStrings::KeyString,
               VPackValuePair(key.data(), key.length(), VPackValueType::String));
 
-  TRI_ASSERT(rid != 0);
+  // TRI_ASSERT(rid != 0);
   builder.add(StaticStrings::RevString, VPackValue(TRI_RidToString(rid)));
 
   if (oldRid != 0) {

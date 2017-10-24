@@ -473,9 +473,11 @@ void DatabaseFeature::recoveryDone() {
     engine->recoveryDone(vocbase);
 
     ReplicationFeature* replicationFeature =
-        ApplicationServer::getFeature<ReplicationFeature>("Replication");
+        static_cast<ReplicationFeature*>(ApplicationServer::lookupFeature("Replication"));
 
-    replicationFeature->startApplier(vocbase);
+    if (replicationFeature != nullptr) {
+      replicationFeature->startApplier(vocbase);
+    }
   }
 }
 
@@ -634,9 +636,11 @@ int DatabaseFeature::createDatabase(TRI_voc_tick_t id, std::string const& name,
       engine->recoveryDone(vocbase.get());
     
       ReplicationFeature* replicationFeature =
-          ApplicationServer::getFeature<ReplicationFeature>("Replication");
+        static_cast<ReplicationFeature*>(ApplicationServer::lookupFeature("Replication"));
 
-      replicationFeature->startApplier(vocbase.get());
+      if (replicationFeature != nullptr) {
+        replicationFeature->startApplier(vocbase.get());
+      }
 
       // increase reference counter
       bool result = vocbase->use();
@@ -1179,7 +1183,11 @@ void DatabaseFeature::updateContexts() {
 void DatabaseFeature::closeDatabases() {
   // stop the replication appliers so all replication transactions can end
   ReplicationFeature* replicationFeature =
-      ApplicationServer::getFeature<ReplicationFeature>("Replication");
+      static_cast<ReplicationFeature*>(ApplicationServer::lookupFeature("Replication"));
+
+  if (replicationFeature == nullptr) {
+    return;
+  }
 
   MUTEX_LOCKER(mutexLocker,
                _databasesMutex);  // Only one should do this at a time
