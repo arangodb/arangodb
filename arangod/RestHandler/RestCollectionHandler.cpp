@@ -212,11 +212,18 @@ void RestCollectionHandler::handleCommandPost() {
 
   bool parseSuccess = true;
   std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
-  if (!parseSuccess) {
+  if (!parseSuccess || !parsedBody->slice().isObject()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
+  // for some "security" we keep the white-list of properties
+  VPackBuilder filtered = VPackCollection::keep(parsedBody->slice(),
+   std::unordered_set<std::string>{"doCompact", "isSystem", "id",
+     "isVolatile", "journalSize", "indexBuckets", "waitForSync", "cacheEnabled",
+     "shardKeys", "numberOfShards", "distributeShardsLike", "avoidServers",
+     "isSmart", "smartGraphAttribute", "replicationFactor", "servers"});
   VPackSlice const body = parsedBody->slice();
+  VPackSlice const parameters = filtered.slice();
   VPackSlice nameSlice = body.get("name");
   if (!nameSlice.isString() || nameSlice.getStringLength() == 0) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_ARANGO_ILLEGAL_NAME);
@@ -226,22 +233,19 @@ void RestCollectionHandler::handleCommandPost() {
   auto cluster =
       application_features::ApplicationServer::getFeature<ClusterFeature>(
           "Cluster");
-  bool createWaitsForSync = cluster->createWaitsForSyncReplication();
-  createWaitsForSync = _request->parsedValue("waitForSyncReplication", false);
+  bool waitsForSync = cluster->createWaitsForSyncReplication();
+  waitsForSync = VelocyPackHelper::getBooleanValue(body, "body", waitsForSync);
+  
   TRI_col_type_e type = TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
   VPackSlice typeSlice = body.get("type");
   if (typeSlice.isString() &&
       (typeSlice.compareString("edge") == 0 || typeSlice.compareString("3"))) {
     type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
   }
-  VPackSlice parameters = body.get("parameters");
-  if (!parameters.isObject()) {
-    parameters = VPackSlice::emptyObjectSlice();
-  }
-
+  
   VPackBuilder builder;
   Result res = methods::Collections::create(
-      _vocbase, nameSlice.copyString(), type, parameters, createWaitsForSync,
+      _vocbase, nameSlice.copyString(), type, parameters, waitsForSync,
       [&](LogicalCollection* coll) {
         collectionRepresentation(builder, coll, /*showProperties*/ true,
                                  /*showFigures*/ false, /*showCount*/ false,
@@ -267,7 +271,10 @@ void RestCollectionHandler::handleCommandPut() {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER);
     return;
   }
-  VPackSlice const body = parsedBody->slice();
+  VPackSlice body = parsedBody->slice();
+  if (!body.isObject()) {
+    body = VPackSlice::emptyObjectSlice();
+  }
 
   std::string const name = suffixes[0];
   std::string const sub = suffixes[1];
@@ -330,8 +337,7 @@ void RestCollectionHandler::handleCommandPut() {
         } else if (sub == "rename") {
           VPackSlice const name = body.get("name");
           if (!name.isString()) {
-            res =
-                Result(TRI_ERROR_ARANGO_ILLEGAL_NAME, "name must be non-empty");
+            res = Result(TRI_ERROR_ARANGO_ILLEGAL_NAME, "name is empty");
             return;
           }
 
