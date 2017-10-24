@@ -85,7 +85,7 @@ void RestCollectionHandler::handleCommandGet() {
       }
     });
     builder.close();
-    generateOk(rest::ResponseCode::OK, builder);
+    generateOk(rest::ResponseCode::OK, builder.slice());
     return;
   }
 
@@ -94,7 +94,6 @@ void RestCollectionHandler::handleCommandGet() {
   if (suffixes.size() == 1) {
     bool found = methods::Collections::lookup(
         _vocbase, name, [&](LogicalCollection* coll) {
-          VPackObjectBuilder obj(&builder, true);
           collectionRepresentation(builder, coll, /*showProperties*/ false,
                                    /*showFigures*/ false, /*showCount*/ false,
                                    /*aggregateCount*/ false);
@@ -118,7 +117,6 @@ void RestCollectionHandler::handleCommandGet() {
   bool skipGenerate = false;
   bool found = methods::Collections::lookup(
       _vocbase, name, [&](LogicalCollection* coll) {
-        VPackObjectBuilder obj(&builder, true);
         if (sub == "checksum") {
           // /_api/collection/<identifier>/checksum
           bool withRevisions = _request->parsedValue("withRevisions", false);
@@ -126,6 +124,7 @@ void RestCollectionHandler::handleCommandGet() {
 
           ChecksumResult result = coll->checksum(withRevisions, withData);
           if (result.ok()) {
+            VPackObjectBuilder obj(&builder, true);
             obj->add("checksum", result.slice().get("checksum"));
             obj->add("revision", result.slice().get("revision"));
             collectionRepresentation(builder, coll, /*showProperties*/ false,
@@ -154,6 +153,7 @@ void RestCollectionHandler::handleCommandGet() {
                                    /*aggregateCount*/ details);
         } else if (sub == "revision") {
           // /_api/collection/<identifier>/count
+          VPackObjectBuilder obj(&builder, true);
           collectionRepresentation(builder, coll, /*showProperties*/ true,
                                    /*showFigures*/ false, /*showCount*/ false,
                                    /*aggregateCount*/ false);
@@ -197,7 +197,7 @@ void RestCollectionHandler::handleCommandGet() {
     return;
   }
   if (found) {
-    generateOk(rest::ResponseCode::OK, builder.slice());
+    generateOk(rest::ResponseCode::OK, builder);
     _response->setHeader("location", _request->requestPath());
   } else {
     generateError(rest::ResponseCode::NOT_FOUND,
@@ -228,17 +228,20 @@ void RestCollectionHandler::handleCommandPost() {
   createWaitsForSync = _request->parsedValue("waitForSyncReplication", false);
   TRI_col_type_e type = TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
   VPackSlice typeSlice = body.get("type");
-  if (typeSlice.isString() && typeSlice.compareString("edge") == 0) {
+  if (typeSlice.isString() && (typeSlice.compareString("edge") == 0 ||
+                               typeSlice.compareString("3"))) {
     type = TRI_col_type_e::TRI_COL_TYPE_EDGE;
   }
   VPackSlice parameters = body.get("parameters");
+  if (!parameters.isObject()) {
+    parameters = VPackSlice::emptyObjectSlice();
+  }
 
   VPackBuilder builder;
-
   Result res = methods::Collections::create(
       _vocbase, nameSlice.copyString(), type, parameters, createWaitsForSync,
       [&](LogicalCollection* coll) {
-        collectionRepresentation(builder, coll, /*showProperties*/ false,
+        collectionRepresentation(builder, coll, /*showProperties*/ true,
                                  /*showFigures*/ false, /*showCount*/ false,
                                  /*aggregateCount*/ false);
       });
@@ -336,7 +339,8 @@ void RestCollectionHandler::handleCommandPut() {
 
         } else if (sub == "loadIndexesIntoMemory") {
           res = methods::Collections::warmup(_vocbase, coll);
-
+          VPackObjectBuilder obj(&builder, true);
+          obj->add("result", VPackValue(res.ok()));
         } else {
           res.reset(TRI_ERROR_HTTP_NOT_FOUND,
                     "expecting one of the actions 'load', 'unload', 'truncate',"
@@ -346,7 +350,7 @@ void RestCollectionHandler::handleCommandPut() {
 
   if (found) {
     if (res.ok()) {
-      generateOk(rest::ResponseCode::OK, builder.slice());
+      generateOk(rest::ResponseCode::OK, builder);
       _response->setHeader("location", _request->requestPath());
     } else {
       generateError(res);
@@ -369,30 +373,36 @@ void RestCollectionHandler::handleCommandDelete() {
   bool allowDropSystem = _request->parsedValue("isSystem", false);
 
   VPackBuilder builder;
-  Result res = methods::Collections::lookup(
+  Result res;
+  bool found = methods::Collections::lookup(
       _vocbase, name, [&](LogicalCollection* coll) {
         std::string cid = coll->cid_as_string();
         VPackObjectBuilder obj(&builder, true);
         obj->add("id", VPackValue(cid));
         res = methods::Collections::drop(coll, allowDropSystem, -1.0);
       });
-  if (res.ok()) {
-    generateOk(rest::ResponseCode::OK, builder);
-  } else {
+  if (!found) {
+    generateError(rest::ResponseCode::NOT_FOUND,
+                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  } else if (res.fail()) {
     generateError(res);
+  } else {
+    generateOk(rest::ResponseCode::OK, builder);
   }
 }
 
 void RestCollectionHandler::collectionRepresentation(
     VPackBuilder& builder, LogicalCollection const* coll, bool showProperties,
     bool showFigures, bool showCount, bool aggregateCount) {
-  TRI_ASSERT(builder.isOpenObject());
+  bool wasOpen = builder.isOpenObject();
+  if (!wasOpen) {
+    builder.openObject();
+  }
 
   if (!showProperties) {
-    VPackObjectBuilder obj(&builder, true);
-    obj->add("id", VPackValue(coll->cid_as_string()));
-    obj->add("name", VPackValue(coll->name()));
-    obj->add("isSystem", VPackValue(coll->isSystem()));
+    builder.add("id", VPackValue(coll->cid_as_string()));
+    builder.add("name", VPackValue(coll->name()));
+    builder.add("isSystem", VPackValue(coll->isSystem()));
   } else {
     coll->toVelocyPack(builder, true);
   }
@@ -412,5 +422,9 @@ void RestCollectionHandler::collectionRepresentation(
     OperationResult opRes = trx.count(coll->name(), aggregateCount);
     trx.finish(opRes.code);
     builder.add("count", opRes.slice());
+  }
+  
+  if (!wasOpen) {
+    builder.close();
   }
 }
