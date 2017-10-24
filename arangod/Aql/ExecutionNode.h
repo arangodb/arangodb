@@ -188,7 +188,7 @@ class ExecutionNode {
   }
 
   /// @brief get all dependencies
-  std::vector<ExecutionNode*> getDependencies() const { return _dependencies; }
+  TEST_VIRTUAL std::vector<ExecutionNode*> getDependencies() const { return _dependencies; }
 
   /// @brief returns the first dependency, or a nullptr if none present
   ExecutionNode* getFirstDependency() const {

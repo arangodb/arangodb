@@ -39,7 +39,7 @@ using namespace arangodb::aql;
 // --SECTION--                                             Coordinator Container
 // -----------------------------------------------------------------------------
 
-EngineInfoContainerCoordinator::EngineInfo::EngineInfo(size_t id,
+EngineInfoContainerCoordinator::EngineInfo::EngineInfo(QueryId id,
                                                        size_t idOfRemoteNode)
     : _id(id), _idOfRemoteNode(idOfRemoteNode) {
   TRI_ASSERT(_nodes.empty());

@@ -53,13 +53,13 @@ class ExecutionEngine {
       std::unordered_set<std::string> const& includedShards);
 
   /// @brief get the root block
-  ExecutionBlock* root() const {
+  TEST_VIRTUAL ExecutionBlock* root() const {
     TRI_ASSERT(_root != nullptr);
     return _root;
   }
 
   /// @brief set the root block
-  void root(ExecutionBlock* root) {
+  TEST_VIRTUAL void root(ExecutionBlock* root) {
     TRI_ASSERT(root != nullptr);
     _root = root;
   }
