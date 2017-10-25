@@ -562,9 +562,9 @@ exports.garbageCollector = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 exports.installPeriodicTasks = function () {
-  console.debug('Statistics: dump installPeriodicTasks()');
+  console.debug('Statistics: dummy installPeriodicTasks()');
 };
 
 exports.startup = function () {
-  console.debug('Statistics: dump startup()');
+  console.debug('Statistics: dummy startup()');
 };
