@@ -30,6 +30,7 @@
 #include "Logger/Logger.h"
 
 using namespace arangodb;
+using namespace arangodb::basics;
 
 std::string GeneralRequest::translateVersion(ProtocolVersion version) {
   switch (version) {
@@ -88,7 +89,7 @@ std::string GeneralRequest::translateMethod(RequestType method) {
 
 rest::RequestType GeneralRequest::translateMethod(
     std::string const& method) {
-  std::string const methodString = basics::StringUtils::toupper(method);
+  std::string const methodString = StringUtils::toupper(method);
 
   if (methodString == "DELETE") {
     return RequestType::DELETE_REQ;
@@ -115,8 +116,7 @@ rest::RequestType GeneralRequest::translateMethod(
   return RequestType::ILLEGAL;
 }
 
-void GeneralRequest::appendMethod(RequestType method,
-                                  basics::StringBuffer* buffer) {
+void GeneralRequest::appendMethod(RequestType method, StringBuffer* buffer) {
   // append RequestType as string value to given String buffer
   buffer->appendText(translateMethod(method));
   buffer->appendChar(' ');
@@ -219,7 +219,7 @@ std::vector<std::string> GeneralRequest::decodedSuffixes() const {
   result.reserve(_suffixes.size());
 
   for (auto const& it : _suffixes) {
-    result.emplace_back(basics::StringUtils::urlDecodePath(it));
+    result.emplace_back(StringUtils::urlDecodePath(it));
   }
   return result;
 }
@@ -229,32 +229,37 @@ void GeneralRequest::addSuffix(std::string&& part) {
   _suffixes.emplace_back(std::move(part));
 }
 
-template <>
-bool GeneralRequest::parsedValue(std::string const& key, bool valueNotFound) {
-  bool found = false;
-  std::string const& val = value(key, found);
-  if (found) {
-    return basics::StringUtils::boolean(val);
+// needs to be here because of a gcc bug with templates and namespaces
+// https://stackoverflow.com/a/25594741/1473569
+namespace arangodb {
+  template <>
+  bool GeneralRequest::parsedValue(std::string const& key, bool valueNotFound) {
+    bool found = false;
+    std::string const& val = value(key, found);
+    if (found) {
+      return StringUtils::boolean(val);
+    }
+    return valueNotFound;
   }
-  return valueNotFound;
+  
+  template <>
+  uint64_t GeneralRequest::parsedValue(std::string const& key, uint64_t valueNotFound) {
+    bool found = false;
+    std::string const& val = value(key, found);
+    if (found) {
+      return StringUtils::uint64(val);
+    }
+    return valueNotFound;
+  }
+  
+  template <>
+  double GeneralRequest::parsedValue(std::string const& key, double valueNotFound) {
+    bool found = false;
+    std::string const& val = value(key, found);
+    if (found) {
+      return StringUtils::doubleDecimal(val);
+    }
+    return valueNotFound;
+  }
 }
 
-template <>
-uint64_t GeneralRequest::parsedValue(std::string const& key, uint64_t valueNotFound) {
-  bool found = false;
-  std::string const& val = value(key, found);
-  if (found) {
-    return basics::StringUtils::uint64(val);
-  }
-  return valueNotFound;
-}
-
-template <>
-double GeneralRequest::parsedValue(std::string const& key, double valueNotFound) {
-  bool found = false;
-  std::string const& val = value(key, found);
-  if (found) {
-    return basics::StringUtils::doubleDecimal(val);
-  }
-  return valueNotFound;
-}
