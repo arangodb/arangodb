@@ -186,6 +186,8 @@ exports.run = function () {
       });
       if (!isCluster) {
         queues._updateQueueDelay();
+      } else {
+        global.KEYSPACE_CREATE('queue-control', 1, true);
       }
     } catch (e) {
       // noop
