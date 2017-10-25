@@ -1401,121 +1401,6 @@ static void JS_PropertiesVocbaseCol(
   // return the current parameter set
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice())->ToObject());
   TRI_V8_TRY_CATCH_END
-  /*
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    bool canModify = exec->canUseCollection(collection->name(), AuthLevel::RW);
-    bool canRead = exec->canUseCollection(collection->name(), AuthLevel::RO);
-    if ((isModification && (exec->databaseAuthLevel() != AuthLevel::RW || !canModify)) ||
-        exec->databaseAuthLevel() == AuthLevel::NONE || !canRead) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
-  }
-
-  if (ServerState::instance()->isCoordinator()) {
-    std::string const databaseName(collection->dbName());
-    std::shared_ptr<LogicalCollection> info =
-        ClusterInfo::instance()->getCollection(
-            databaseName, collection->cid_as_string());
-    if (args.Length() > 0) {
-      v8::Handle<v8::Value> par = args[0];
-
-      if (par->IsObject()) {
-        VPackBuilder builder;
-        {
-          int res = TRI_V8ToVPack(isolate, builder, args[0], false);
-
-          if (res != TRI_ERROR_NO_ERROR) {
-            TRI_V8_THROW_EXCEPTION(res);
-          }
-        }
-
-        VPackSlice const slice = builder.slice();
-
-        arangodb::Result res = info->updateProperties(slice, false);
-
-        if (!res.ok()) {
-          TRI_V8_THROW_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
-        }
-      }
-    }
-
-    auto c = ClusterInfo::instance()->getCollection(
-        databaseName, StringUtils::itoa(collection->cid()));
-
-    std::unordered_set<std::string> const ignoreKeys{
-        "allowUserKeys", "cid",  "count",  "deleted", "id",
-        "indexes",       "name", "path",   "planId",  "shards",
-        "status",        "type", "version"};
-    VPackBuilder vpackProperties = c->toVelocyPackIgnore(ignoreKeys, true, false);
-
-    // return the current parameter set
-    v8::Handle<v8::Object> result =
-                  TRI_VPackToV8(isolate, vpackProperties.slice())->ToObject();
-    TRI_V8_RETURN(result);
-  }
-
-  SingleCollectionTransaction trx(
-      transaction::V8Context::Create(collection->vocbase(), true),
-      collection->cid(),
-      isModification ? AccessMode::Type::EXCLUSIVE : AccessMode::Type::READ);
-
-  if (!isModification) {
-    trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
-  }
-
-  Result res = trx.begin();
-
-  if (!res.ok()) {
-    TRI_V8_THROW_EXCEPTION(res);
-  }
-
-  // check if we want to change some parameters
-  if (isModification) {
-    v8::Handle<v8::Value> par = args[0];
-
-    if (par->IsObject()) {
-      VPackBuilder builder;
-      int res = TRI_V8ToVPack(isolate, builder, args[0], false);
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        TRI_V8_THROW_EXCEPTION(res);
-      }
-
-      VPackSlice const slice = builder.slice();
-
-      // try to write new parameter to file
-      bool doSync = application_features::ApplicationServer::getFeature<DatabaseFeature>("Database")->forceSyncProperties();
-      arangodb::Result updateRes = collection->updateProperties(slice, doSync);
-
-      if (!updateRes.ok()) {
-        TRI_V8_THROW_EXCEPTION_MESSAGE(updateRes.errorNumber(), updateRes.errorMessage());
-      }
-
-      auto physical = collection->getPhysical();
-      TRI_ASSERT(physical != nullptr);
-      arangodb::Result res2 = physical->persistProperties();
-      // TODO Review
-      // TODO API compatibility, for now we ignore if persisting fails...
-    }
-  }
-
-  std::unordered_set<std::string> const ignoreKeys{
-      "allowUserKeys", "cid", "count", "deleted", "id", "indexes", "name",
-      "path", "planId", "shards", "status", "type", "version",
-      / These are only relevant for cluster *
-      "distributeShardsLike", "isSmart", "numberOfShards", "replicationFactor",
-      "shardKeys"};
-  VPackBuilder vpackProperties = collection->toVelocyPackIgnore(ignoreKeys, true, false);
-
-  // return the current parameter set
-  v8::Handle<v8::Object> result =
-                TRI_VPackToV8(isolate, vpackProperties.slice())->ToObject();
-
-  trx.finish(res);
-
-  TRI_V8_RETURN(result);
-  TRI_V8_TRY_CATCH_END*/
 }
 
 static void JS_RemoveVocbaseCol(
@@ -2654,14 +2539,14 @@ static void JS_TruncateVocbaseCol(
   }
   
   // Manually check this here, because truncate messes up the return code
-  ExecContext const* exec = ExecContext::CURRENT;
+  /*ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     CollectionNameResolver resolver(collection->vocbase());
     std::string const cName = resolver.getCollectionNameCluster(collection->cid());
     if (!exec->canUseCollection(collection->vocbase()->name(), cName, AuthLevel::RW)) {
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
     }
-  }
+  }*/
 
   SingleCollectionTransaction trx(
       transaction::V8Context::Create(collection->vocbase(), true),

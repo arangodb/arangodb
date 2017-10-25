@@ -316,8 +316,7 @@ void RestCollectionHandler::handleCommandPut() {
         } else if (sub == "truncate") {
           OperationOptions opts;
           opts.waitForSync = _request->parsedValue("waitForSync", false);
-          opts.isSynchronousReplicationFrom =
-              _request->parsedValue("isSynchronousReplication", false);
+          opts.isSynchronousReplicationFrom = _request->value("isSynchronousReplication");
 
           auto ctx = transaction::StandaloneContext::Create(_vocbase);
           SingleCollectionTransaction trx(ctx, coll->cid(),
@@ -325,6 +324,9 @@ void RestCollectionHandler::handleCommandPut() {
           res = trx.begin();
           if (res.ok()) {
             OperationResult result = trx.truncate(coll->name(), opts);
+            if (!result.successful()) {
+              LOG_TOPIC(ERR, Logger::FIXME) << "truncate failed [" << result.code << "] " << result.errorMessage;
+            }
             res = trx.finish(result.code);
           }
           if (res.ok()) {
@@ -334,7 +336,11 @@ void RestCollectionHandler::handleCommandPut() {
           }
 
         } else if (sub == "properties") {
-          res = methods::Collections::updateProperties(coll, body);
+          std::vector<std::string> keep = {"doCompact", "journalSize",
+            "waitForSync", "indexBuckets", "replicationFactor", "cacheEnabled"};
+          VPackBuilder props = VPackCollection::keep(body, keep);
+          
+          res = methods::Collections::updateProperties(coll, props.slice());
           if (res.ok()) {
             collectionRepresentation(builder, coll, /*showProperties*/ true,
                                      /*showFigures*/ false, /*showCount*/ false,
