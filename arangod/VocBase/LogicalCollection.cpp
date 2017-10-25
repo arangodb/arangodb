@@ -983,7 +983,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   WRITE_LOCKER(writeLocker, _infoLock);
   
   VPackSlice rf = slice.get("replicationFactor");
-  if (!_isLocal && !slice.isNone()) {
+  if (!_isLocal && !rf.isNone()) {
     if (!_distributeShardsLike.empty()) {
       LOG_TOPIC(ERR, Logger::FIXME) << "Cannot change replicationFactor, please change " << _distributeShardsLike;
       return Result(TRI_ERROR_FORBIDDEN, "Cannot change replicationFactor, "
@@ -997,7 +997,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
       return Result(TRI_ERROR_FORBIDDEN, "Satellite collection "
                     "cannot have replicationFactor");
     }
-    if (!rf.isNumber() || rf.getInt() == 0 || rf.getInt() > 10) {
+    if (rf.getInt() == 0 || rf.getInt() > 10) {
       LOG_TOPIC(ERR, Logger::FIXME) << "bad value replicationFactor";
       return Result(TRI_ERROR_BAD_PARAMETER, "bad value replicationFactor");
     }
