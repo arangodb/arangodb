@@ -1,5 +1,11 @@
+v3.2.5 (2017-XX-XX)
+-------------------
+
+* UI: reduced cluster dashboard api calls
+
 v3.2.5 (2017-10-16)
 -------------------
+
 * BUGFIX: general-graph module and _api/gharial now accept cluster options
   for collection creation. It is now possible to set replicationFactor and
   numberOfShards for all collections created via this graph object.
