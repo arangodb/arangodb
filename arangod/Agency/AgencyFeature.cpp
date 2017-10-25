@@ -48,6 +48,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _minElectionTimeout(1.0),
       _maxElectionTimeout(5.0),
       _supervision(false),
+      _supervisionTouched(false),
       _waitForSync(true),
       _supervisionFrequency(1.0),
       _compactionStepSize(20000),
@@ -222,6 +223,10 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     auto ss = ServerState::instance();
     ss->findHost(fallback);
   }
+
+  if (result.touched("agency.supervision")) {
+    _supervisionTouched = true;
+  }
 }
 
 void AgencyFeature::prepare() {
@@ -272,9 +277,9 @@ void AgencyFeature::start() {
 
   _agent.reset(new consensus::Agent(consensus::config_t(
       _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
-      _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
-      _compactionStepSize, _compactionKeepSize, _supervisionGracePeriod,
-      _cmdLineTimings, _maxAppendSize)));
+      _agencyEndpoints, _supervision, _supervisionTouched, _waitForSync,
+      _supervisionFrequency, _compactionStepSize, _compactionKeepSize,
+      _supervisionGracePeriod, _cmdLineTimings, _maxAppendSize)));
 
   AGENT = _agent.get();
 

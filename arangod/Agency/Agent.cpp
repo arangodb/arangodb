@@ -559,6 +559,8 @@ void Agent::sendAppendEntriesRPC() {
 
 
 void Agent::resign(term_t otherTerm) {
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Resigning in term "
+    << _constituent.term() << " because of peer's term " << otherTerm;
   _constituent.follow(otherTerm);
   _preparing = false;
 }
@@ -589,6 +591,9 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
 
   // Just check once more:
   if (!leading()) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Not sending empty appendEntriesRPC to follower " << followerId
+      << " because we are no longer leading.";
     return;
   }
 
@@ -1283,6 +1288,10 @@ void Agent::lead() {
     CONDITION_LOCKER(guard, _waitForCV);
     // Note that when we are stopping
     while(!isStopping() && _commitIndex != _state.lastIndex()) {
+      if (!leading()) {
+        // Give up, we were interrupted
+        return;
+      }
       _waitForCV.wait(10000);
     }
   }

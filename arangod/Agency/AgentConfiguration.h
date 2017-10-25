@@ -70,6 +70,7 @@ struct config_t {
   std::vector<std::string> _gossipPeers;
   std::vector<std::string> _active;
   bool _supervision;
+  bool _supervisionTouched;
   bool _waitForSync;
   double _supervisionFrequency;
   uint64_t _compactionStepSize;
@@ -88,7 +89,7 @@ struct config_t {
 
   /// @brief ctor
   config_t(size_t as, size_t ps, double minp, double maxp, std::string const& e,
-           std::vector<std::string> const& g, bool s, bool w, double f,
+           std::vector<std::string> const& g, bool s, bool st, bool w, double f,
            uint64_t c, uint64_t k, double p, bool t, size_t a);
 
   /// @brief copy constructor
