@@ -1698,7 +1698,7 @@ function optimizeInSuite () {
       extra = result.getExtra();
       if (isCluster) {
         // The cluster uses a different index no filtering on _key
-        assertEqual(extra.stats.filtered, 0);
+        assertEqual(extra.stats.filtered, 90);
       } else {
         // We have only 10 valid elements in the array.
         assertEqual(extra.stats.filtered, 0);
@@ -1761,7 +1761,7 @@ function optimizeInSuite () {
 
       if (isCluster) {
         // The cluster uses a different index no filtering on _key
-        assertEqual(extra.stats.filtered, 0);
+        assertEqual(extra.stats.filtered, 90);
       } else {
         // We have only 10 valid elements in the array.
         assertEqual(extra.stats.filtered, 0);
@@ -1773,7 +1773,7 @@ function optimizeInSuite () {
 
       if (isCluster) {
         // The cluster uses a different index no filtering on _key
-        assertEqual(extra.stats.filtered, 0);
+        assertEqual(extra.stats.filtered, 90);
       } else {
         // We have only 10 valid elements in the array.
         assertEqual(extra.stats.filtered, 0);
