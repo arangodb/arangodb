@@ -52,7 +52,7 @@ function CollectionSuite () {
         c.shards();
         fail();
       } catch (err) {
-        assertEqual(ERRORS.ERROR_CLUSTER_ONLY_ON_COORDINATOR.code, err.errorNum);
+        assertEqual(ERRORS.ERROR_INTERNAL.code, err.errorNum);
       }
       db._drop(cn);
     },
