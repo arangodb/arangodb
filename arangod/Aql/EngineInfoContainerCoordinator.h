@@ -53,6 +53,7 @@ class EngineInfoContainerCoordinator {
     void addNode(ExecutionNode* en);
 
     void buildEngine(Query* query, QueryRegistry* queryRegistry,
+                     std::string const& dbname,
                      std::unordered_set<std::string> const& restrictToShards,
                      std::unordered_map<std::string, std::string>& queryIds,
                      std::unordered_set<ShardID> const* lockedShards) const;
@@ -98,7 +99,7 @@ class EngineInfoContainerCoordinator {
   //   * Injects all Parts but the First one into QueryRegistery
   //   Return the first engine which is not added in the Registry
   ExecutionEngine* buildEngines(
-      Query* query, QueryRegistry* registry,
+      Query* query, QueryRegistry* registry, std::string const& dbname,
       std::unordered_set<std::string> const& restrictToShards,
       std::unordered_map<std::string, std::string>& queryIds,
       std::unordered_set<ShardID> const* lockedShards) const;

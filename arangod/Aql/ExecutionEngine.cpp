@@ -456,9 +456,9 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
 
     // The coordinator engines cannot decide on lock issues later on,
     // however every engine gets injected the list of locked shards.
-    return _coordinatorParts.buildEngines(query, registry,
-                                          query->queryOptions().shardIds, queryIds,
-                                          lockedShards);
+    return _coordinatorParts.buildEngines(
+        query, registry, query->vocbase()->name(),
+        query->queryOptions().shardIds, queryIds, lockedShards);
   }
 };
 

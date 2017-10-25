@@ -60,7 +60,7 @@ void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
 }
 
 void EngineInfoContainerCoordinator::EngineInfo::buildEngine(
-    Query* query, QueryRegistry* queryRegistry,
+    Query* query, QueryRegistry* queryRegistry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
     std::unordered_map<std::string, std::string>& queryIds,
     std::unordered_set<ShardID> const* lockedShards) const {
@@ -208,8 +208,8 @@ void EngineInfoContainerCoordinator::EngineInfo::buildEngine(
 
     try {
       std::string queryId = arangodb::basics::StringUtils::itoa(_id);
-      std::string theID = arangodb::basics::StringUtils::itoa(_idOfRemoteNode) +
-                          "/" + engine->getQuery()->vocbase()->name();
+      std::string theID =
+          arangodb::basics::StringUtils::itoa(_idOfRemoteNode) + "/" + dbname;
       queryIds.emplace(theID, queryId);
     } catch (...) {
       queryRegistry->destroy(engine->getQuery()->vocbase(), _id,
@@ -262,7 +262,7 @@ QueryId EngineInfoContainerCoordinator::closeSnippet() {
 }
 
 ExecutionEngine* EngineInfoContainerCoordinator::buildEngines(
-    Query* query, QueryRegistry* registry,
+    Query* query, QueryRegistry* registry, std::string const& dbname,
     std::unordered_set<std::string> const& restrictToShards,
     std::unordered_map<std::string, std::string>& queryIds,
     std::unordered_set<ShardID> const* lockedShards) const {
@@ -281,7 +281,7 @@ ExecutionEngine* EngineInfoContainerCoordinator::buildEngines(
       }
     }
     try {
-      info.buildEngine(localQuery, registry, restrictToShards, queryIds,
+      info.buildEngine(localQuery, registry, dbname, restrictToShards, queryIds,
                        lockedShards);
     } catch (...) {
       localQuery->releaseEngine();

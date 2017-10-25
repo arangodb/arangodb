@@ -45,7 +45,7 @@ class QueryRegistry {
   /// a query for this <vocbase> and <id> combination and an exception will
   /// be thrown in that case. The time to live <ttl> is in seconds and the
   /// query will be deleted if it is not opened for that amount of time.
-  void insert(QueryId id, Query* query, double ttl = 600.0);
+  TEST_VIRTUAL void insert(QueryId id, Query* query, double ttl = 600.0);
 
   /// @brief open, find a query in the registry, if none is found, a nullptr
   /// is returned, otherwise, ownership of the query is transferred to the

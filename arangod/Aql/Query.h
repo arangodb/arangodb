@@ -90,7 +90,7 @@ class Query {
   /// @brief clone a query
   /// note: as a side-effect, this will also create and start a transaction for
   /// the query
-  Query* clone(QueryPart, bool);
+  TEST_VIRTUAL Query* clone(QueryPart, bool);
 
  public:
 
