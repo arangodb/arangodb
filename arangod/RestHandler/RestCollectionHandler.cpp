@@ -173,8 +173,8 @@ void RestCollectionHandler::handleCommandGet() {
         } else if (sub == "shards") {
           // /_api/collection/<identifier>/shards
           if (!ServerState::instance()->isRunningInCluster()) {
-            skipGenerate = true;
-            this->generateError(Result(TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR));
+            skipGenerate = true; // must be internal error for tests
+            this->generateError(Result(TRI_ERROR_INTERNAL));
             return;
           }
 
@@ -359,11 +359,10 @@ void RestCollectionHandler::handleCommandPut() {
           
           auto ctx = transaction::StandaloneContext::Create(_vocbase);
           SingleCollectionTransaction trx(ctx, coll->cid(), AccessMode::Type::READ);
-          Result res = trx.begin();
+          res = trx.begin();
           if (res.ok()) {
-            res = coll->getPhysical()->rotateActiveJournal();
+            res.reset(coll->getPhysical()->rotateActiveJournal());
           }
-          trx.finish(res);
           
         } else if (sub == "loadIndexesIntoMemory") {
           res = methods::Collections::warmup(_vocbase, coll);
