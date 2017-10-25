@@ -97,6 +97,39 @@ describe('Update collection properties', function() {
 
         checkReplicationFactor(cn1, 1);
     });
+
+    it('invalid replication factor', function() {
+        db._create(cn1, {replicationFactor: 2, numberOfShards: 2}, {waitForSyncReplication: true});
+
+        checkReplicationFactor(cn1, 2)
+
+        try {
+            const coll = db._collection(cn1);
+            coll.properties({replicationFactor: -1});
+            expect(false.replicationFactor).to.equal(true, 
+                "Was able to update replicationFactor of follower");
+        } catch(e) {
+            expect(e.errorNum).to.equal(errors.ERROR_BAD_PARAMETER.code);
+        }
+
+        try {
+            const coll = db._collection(cn1);
+            coll.properties({replicationFactor: 100});
+            expect(false.replicationFactor).to.equal(true, 
+                "Was able to update replicationFactor of follower");
+        } catch(e) {
+            expect(e.errorNum).to.equal(errors.ERROR_BAD_PARAMETER.code);
+        }
+
+        try {
+            const coll = db._collection(cn1);
+            coll.properties({replicationFactor: "satellite"});
+            expect(false.replicationFactor).to.equal(true, 
+                "Was able to update replicationFactor of follower");
+        } catch(e) {
+            expect(e.errorNum).to.equal(errors.ERROR_BAD_PARAMETER.code);
+        }
+    });
 });
 
 
