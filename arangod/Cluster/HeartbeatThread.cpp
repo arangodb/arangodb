@@ -464,16 +464,20 @@ void HeartbeatThread::runSingleServer() {
         break;
       }
 
+      double const timeout = 1.0;
+
       AgencyReadTransaction trx(
         std::vector<std::string>({
             AgencyCommManager::path("Shutdown"),
             AgencyCommManager::path("Plan/AsyncReplication"),
             AgencyCommManager::path("Sync/Commands", _myId),
             "/.agency"}));
-      AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
+      AgencyCommResult result = _agency.sendTransactionWithFailover(trx, timeout);
       if (!result.successful()) {
         LOG_TOPIC(WARN, Logger::HEARTBEAT)
-            << "Heartbeat: Could not read from agency!";
+            << "Heartbeat: Could not read from agency! status code: " 
+            << result._statusCode << ", incriminating body: " 
+            << result.bodyRef() << ", timeout: " << timeout;
         
         if (!applier->isRunning()) {
           //FIXME: allow to act as master, assume we are master
@@ -686,6 +690,8 @@ void HeartbeatThread::runCoordinator() {
         break;
       }
 
+      double const timeout = 1.0;
+
       AgencyReadTransaction trx
         (std::vector<std::string>(
           {AgencyCommManager::path("Current/Version"),
@@ -696,11 +702,13 @@ void HeartbeatThread::runCoordinator() {
            AgencyCommManager::path("Sync/Commands", _myId),
            AgencyCommManager::path("Sync/UserVersion"),
            AgencyCommManager::path("Target/FailedServers"), "/.agency"}));
-      AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
+      AgencyCommResult result = _agency.sendTransactionWithFailover(trx, timeout);
 
       if (!result.successful()) {
         LOG_TOPIC(WARN, Logger::HEARTBEAT)
-            << "Heartbeat: Could not read from agency!";
+            << "Heartbeat: Could not read from agency! status code: " 
+            << result._statusCode << ", incriminating body: " 
+            << result.bodyRef() << ", timeout: " << timeout;
       } else {
 
         VPackSlice agentPool =
