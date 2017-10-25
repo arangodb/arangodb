@@ -549,7 +549,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
     let endTime = new Date();
     let longSync = false;
     if (endTime - startTime > 5000) {
-      console.topic('heartbeat=error', 'synchronizeOneShard: long call to syncCollection for shard', shard, JSON.stringify(sy), "start time: ", startTime.toString(), "end time: ", endTime.toString());
+      console.topic('heartbeat=warn', 'synchronizeOneShard: long call to syncCollection for shard', shard, JSON.stringify(sy), "start time: ", startTime.toString(), "end time: ", endTime.toString());
       longSync = true;
     }
     if (sy.error) {

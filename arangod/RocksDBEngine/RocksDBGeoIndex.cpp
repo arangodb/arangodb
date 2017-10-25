@@ -414,13 +414,13 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
     VPackSlice lat = doc.get(_latitude);
     if (!lat.isNumber()) {
       // Invalid, no insert. Index is sparse
-      return IndexResult(TRI_ERROR_NO_ERROR, this);
+      return IndexResult();
     }
 
     VPackSlice lon = doc.get(_longitude);
     if (!lon.isNumber()) {
       // Invalid, no insert. Index is sparse
-      return IndexResult(TRI_ERROR_NO_ERROR, this);
+      return IndexResult();
     }
     latitude = lat.getNumericValue<double>();
     longitude = lon.getNumericValue<double>();
@@ -428,17 +428,17 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
     VPackSlice loc = doc.get(_location);
     if (!loc.isArray() || loc.length() < 2) {
       // Invalid, no insert. Index is sparse
-      return IndexResult(TRI_ERROR_NO_ERROR, this);
+      return IndexResult();
     }
     VPackSlice first = loc.at(0);
     if (!first.isNumber()) {
       // Invalid, no insert. Index is sparse
-      return IndexResult(TRI_ERROR_NO_ERROR, this);
+      return IndexResult();
     }
     VPackSlice second = loc.at(1);
     if (!second.isNumber()) {
       // Invalid, no insert. Index is sparse
-      return IndexResult(TRI_ERROR_NO_ERROR, this);
+      return IndexResult();
     }
     if (_geoJson) {
       longitude = first.getNumericValue<double>();
@@ -459,16 +459,16 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
   if (res == -1) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
         << "found duplicate entry in geo-index, should not happen";
-    return IndexResult(TRI_set_errno(TRI_ERROR_INTERNAL), this);
+    return IndexResult(TRI_ERROR_INTERNAL, this);
   } else if (res == -2) {
-    return IndexResult(TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY), this);
+    return IndexResult(TRI_ERROR_OUT_OF_MEMORY, this);
   } else if (res == -3) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
         << "illegal geo-coordinates, ignoring entry";
   } else if (res < 0) {
-    return IndexResult(TRI_set_errno(TRI_ERROR_INTERNAL), this);
+    return IndexResult(TRI_ERROR_INTERNAL, this);
   }
-  return IndexResult(TRI_ERROR_NO_ERROR, this);
+  return IndexResult();
 }
 
 /// internal remove function, set batch or trx before calling
@@ -528,7 +528,7 @@ Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
     GeoIndex_remove(_geoIndex, RocksDBTransactionState::toMethods(trx), &gc);
   }
 
-  return IndexResult(TRI_ERROR_NO_ERROR, this);
+  return IndexResult();
 }
 
 void RocksDBGeoIndex::truncate(transaction::Methods* trx) {
