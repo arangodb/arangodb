@@ -973,7 +973,6 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
       return Result(TRI_ERROR_FORBIDDEN, "Satellite collection "
                     "cannot have replicationFactor");
     }
-    LOG_TOPIC(ERR, Logger::FIXME) << "Setting replicationFactor "  << rf.toJson();
     if (rf.getInt() == 0 || rf.getInt() > 10) {
       LOG_TOPIC(ERR, Logger::FIXME) << "bad value replicationFactor";
       return Result(TRI_ERROR_BAD_PARAMETER, "bad value replicationFactor");
