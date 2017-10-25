@@ -29,6 +29,7 @@
 #include "Cluster/ServerState.h"
 #include "Rest/HttpRequest.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -355,8 +356,15 @@ void RestCollectionHandler::handleCommandPut() {
           }
 
         } else if (sub == "rotate") {
-          // FIXME: only on mmfiles
-
+          
+          auto ctx = transaction::StandaloneContext::Create(_vocbase);
+          SingleCollectionTransaction trx(ctx, coll->cid(), AccessMode::Type::READ);
+          Result res = trx.begin();
+          if (res.ok()) {
+            res = coll->getPhysical()->rotateActiveJournal();
+          }
+          trx.finish(res);
+          
         } else if (sub == "loadIndexesIntoMemory") {
           res = methods::Collections::warmup(_vocbase, coll);
           VPackObjectBuilder obj(&builder, true);

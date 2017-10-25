@@ -1390,13 +1390,16 @@ static void JS_PropertiesVocbaseCol(
       // TODO API compatibility, for now we ignore if persisting fails...
     }
   }
-  VPackBuilder out;
-  Result res = methods::Collections::properties(collection, out);
-  if (res.fail()) {
-    TRI_V8_THROW_EXCEPTION(res);
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder object(&builder, true);
+    Result res = methods::Collections::properties(collection, builder);
+    if (res.fail()) {
+      TRI_V8_THROW_EXCEPTION(res);
+    }
   }
   // return the current parameter set
-  TRI_V8_RETURN(TRI_VPackToV8(isolate, out.slice())->ToObject());
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice())->ToObject());
   TRI_V8_TRY_CATCH_END
   /*
   ExecContext const* exec = ExecContext::CURRENT;

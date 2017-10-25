@@ -221,6 +221,10 @@ Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
     }
   }
   
+  std::unordered_set<std::string> ignoreKeys{
+    "allowUserKeys", "cid", "count", "deleted", "id", "indexes", "name",
+    "path", "planId", "shards", "status", "type", "version"};
+  
   Result res;
   std::unique_ptr<SingleCollectionTransaction> trx;
   if (!ServerState::instance()->isCoordinator()) {
@@ -228,14 +232,15 @@ Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
     trx.reset(new SingleCollectionTransaction(ctx, coll->cid(), AccessMode::Type::READ));
     trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
     res = trx->begin();
+    // These are only relevant for cluster
+    ignoreKeys.insert({"distributeShardsLike", "isSmart", "numberOfShards", "replicationFactor",
+      "shardKeys"});
   }
   
   if (!res.ok()) {
     return res;
   }
-  std::unordered_set<std::string> const ignoreKeys{
-    "allowUserKeys", "cid", "count", "deleted", "id", "indexes", "name",
-    "path", "planId", "shards", "status", "type", "version"};
+  
   VPackBuilder props = coll->toVelocyPackIgnore(ignoreKeys, true, false);
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackObjectIterator(props.slice()));
