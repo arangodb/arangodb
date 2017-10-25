@@ -158,7 +158,11 @@
                   arangoHelper.arangoError('Collection error: ' + error.responseText);
                 } else {
                   var wfs = $('#change-collection-sync').val();
-                  this.model.changeCollection(wfs, journalSize, indexBuckets, callbackChange);
+                  var replicationFactor;
+                  if (frontendConfig.isCluster) {
+                    replicationFactor = $('#change-replication-factor').val();
+                  }
+                  this.model.changeCollection(wfs, journalSize, indexBuckets, replicationFactor, callbackChange);
                 }
               }.bind(this);
 
@@ -359,6 +363,24 @@
                         {
                           rule: Joi.string().allow('').optional().regex(/^[1-9][0-9]*$/),
                           msg: 'Must be a number greater than 1 and a power of 2.'
+                        }
+                      ]
+                    )
+                  );
+                }
+                if (data.replicationFactor && frontendConfig.isCluster) {
+                  tableContent.push(
+                    window.modalView.createTextEntry(
+                      'change-replication-factor',
+                      'Replication factor',
+                      data.replicationFactor,
+                      'The replicationFactor parameter is the total number of copies being kept, that is, it is one plus the number of followers. Must be a number.',
+                      '',
+                      true,
+                      [
+                        {
+                          rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
+                          msg: 'Must be a number.'
                         }
                       ]
                     )
