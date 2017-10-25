@@ -761,13 +761,13 @@ if(MSVC)
     ${IResearch_TARGET_NAME}-shared-scrt
     ${Boost_SHARED_sharedRT_LIBRARIES}
     icu-shared
-    snowball-shared
+    stemmer-shared
   )
 
   target_link_libraries(${IResearch_TARGET_NAME}-analyzer-text-static-scrt
     ${IResearch_TARGET_NAME}-static-scrt
     icu-static
-    snowball-static
+    stemmer-static
   )
 endif()
 

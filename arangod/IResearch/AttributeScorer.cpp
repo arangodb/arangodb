@@ -526,7 +526,7 @@ irs::sort::prepared::ptr AttributeScorer::prepare() const {
 
     builder.close();
     _storedAttrBuf->emplace_back(std::move(storedAttr));
-    *attr = storedAttrPath;
+    *attr = std::move(storedAttrPath);
   } catch (...) {
     return nullptr; // jSON build failure
   }

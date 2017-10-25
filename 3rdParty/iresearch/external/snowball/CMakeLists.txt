@@ -192,14 +192,14 @@ MACRO(gen_stem IN ENCODING)
 		SET(_input "${CMAKE_CURRENT_SOURCE_DIR}/algorithms/${_it}/stem_${_in_enc}.sbl")
 		IF(${_in_enc} STREQUAL "Unicode" AND NOT EXISTS ${_input})
 			ADD_CUSTOM_COMMAND(OUTPUT ${_source}
-				COMMAND ${CMAKE_BINARY_DIR}/bin/snowball  "${CMAKE_CURRENT_SOURCE_DIR}/algorithms/${_it}/stem_ISO_8859_1.sbl" -o ${_base} -eprefix ${_it}_${ENCODING}_ -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime -u
+				COMMAND ${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/snowball  "${CMAKE_CURRENT_SOURCE_DIR}/algorithms/${_it}/stem_ISO_8859_1.sbl" -o ${_base} -eprefix ${_it}_${ENCODING}_ -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime -u
 				DEPENDS snowball)
 			LIST(APPEND STEMMER_SOURCES ${_source})
 
 		ELSE()
 		IF(EXISTS "${_input}")
 			ADD_CUSTOM_COMMAND(OUTPUT ${_source}
-				COMMAND ${CMAKE_BINARY_DIR}/bin/snowball ${_input} -o ${_base} -eprefix ${_it}_${ENCODING}_ -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime -u
+				COMMAND ${CMAKE_BINARY_DIR}/bin/${CMAKE_CFG_INTDIR}/snowball ${_input} -o ${_base} -eprefix ${_it}_${ENCODING}_ -r ${CMAKE_CURRENT_SOURCE_DIR}/runtime -u
 				DEPENDS snowball)
 			LIST(APPEND STEMMER_SOURCES ${_source})
 		ENDIF()
@@ -237,7 +237,14 @@ INCLUDE_DIRECTORIES(
   ${CMAKE_CURRENT_SOURCE_DIR}/libstemmer
   ${CMAKE_CURRENT_BINARY_DIR}/libstemmer
 )
-ADD_LIBRARY(stemmer-shared SHARED ${SNOWBALL_RUNTIME} ${STEMMER_SOURCES})
+
+# on MSVC Snowball does not export any symbols hence no proxy is ever created
+if (MSVC)
+  ADD_LIBRARY(stemmer-shared STATIC ${SNOWBALL_RUNTIME} ${STEMMER_SOURCES})
+else()
+  ADD_LIBRARY(stemmer-shared SHARED ${SNOWBALL_RUNTIME} ${STEMMER_SOURCES})
+endif()
+
 ADD_LIBRARY(stemmer-static STATIC ${SNOWBALL_RUNTIME} ${STEMMER_SOURCES})
 
 ADD_DEPENDENCIES(stemmer-shared stemmer_deps)
