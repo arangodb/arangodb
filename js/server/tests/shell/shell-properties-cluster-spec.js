@@ -37,8 +37,9 @@ const db = require("@arangodb").db;
 const cn1 = "UnitTestPropertiesLeader";
 const cn2 = "UnitTestPropertiesFollower";
 
+// check whether all shards have the right amount of followers
 function checkReplicationFactor(name, fac) {
-    let current = ArangoAgency.get('Current/Collections/_system');
+    // first we need the plan id of the collection
     let plan = ArangoAgency.get('Plan/Collections/_system');
     let collectionId = Object.values(plan.arango.Plan.Collections['_system']).reduce((result, collectionDef) => {
         if (result) {
@@ -49,9 +50,22 @@ function checkReplicationFactor(name, fac) {
         }
     }, undefined);
 
-    Object.values(current.arango.Current.Collections['_system'][collectionId]).forEach(entry => {
-        expect(entry.servers).to.have.lengthOf(fac);
-    });
+    for (let i = 0; i < 120; i++) {
+        let current = ArangoAgency.get('Current/Collections/_system');
+        let shards = Object.values(current.arango.Current.Collections['_system'][collectionId]);
+        let finished = 0;
+        shards.forEach(entry => {
+            finished += entry.servers.length == fac ? 1 : 0;
+        });
+        if (shards.length > 0 && finished == shards.length) {
+            return;
+        }
+        internal.sleep(0.5);
+    }
+    let current = ArangoAgency.get('Current/Collections/_system');
+    let val = current.arango.Current.Collections['_system'][collectionId];   
+    throw "replicationFactor is not reflected properly in " + 
+          "/Current/Collections/_system/" + collectionId + ": "+ JSON.stringify(val); 
 };
 
 describe('Update collection properties', function() {
@@ -77,9 +91,6 @@ describe('Update collection properties', function() {
         let props = coll.properties({replicationFactor: 2});
         expect(props.replicationFactor).to.equal(2);
 
-        // FIXME: do not wait for a fixed time
-        internal.sleep(8);
-
         checkReplicationFactor(cn1, 2);
     });
     
@@ -92,8 +103,6 @@ describe('Update collection properties', function() {
 
         let props = coll.properties({replicationFactor: 1});
         expect(props.replicationFactor).to.equal(1);
-
-        internal.sleep(8);
 
         checkReplicationFactor(cn1, 1);
     });
@@ -163,9 +172,6 @@ describe('Update collection properties with distributeShardsLike, ', function() 
         let props = leader.properties({replicationFactor: 2});
         expect(props.replicationFactor).to.equal(2);
 
-        // FIXME: do not wait for a fixed time
-        internal.sleep(8);
-
         checkReplicationFactor(cn1, 2);
         checkReplicationFactor(cn2, 2); 
     });
@@ -181,9 +187,6 @@ describe('Update collection properties with distributeShardsLike, ', function() 
 
         let props = leader.properties({replicationFactor: 1});
         expect(props.replicationFactor).to.equal(1);
-
-        // FIXME: do not wait for a fixed time
-        internal.sleep(8);
 
         checkReplicationFactor(cn1, 1);
         checkReplicationFactor(cn2, 1);
