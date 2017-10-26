@@ -38,7 +38,7 @@ location: <span class="hljs-regexp">/_db/</span>_system/_api/collection/products
     }, 
     <span class="hljs-string">"compactionStatus"</span> : { 
       <span class="hljs-string">"message"</span> : <span class="hljs-string">"skipped compaction because collection has no datafiles"</span>, 
-      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-10-23T15:15:49Z"</span>, 
+      <span class="hljs-string">"time"</span> : <span class="hljs-string">"2017-10-26T18:54:04Z"</span>, 
       <span class="hljs-string">"count"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"filesCombined"</span> : <span class="hljs-number">0</span>, 
       <span class="hljs-string">"bytesRead"</span> : <span class="hljs-number">0</span>, 
