@@ -245,18 +245,13 @@ void handleOnStatusCoordinator(
   Agent* agent, Node const& snapshot, HealthRecord& persisted,
   HealthRecord& transisted, std::string const& serverID) {
   
-  if (transisted.status == Supervision::HEALTH_STATUS_GOOD) {
+  if (transisted.status == Supervision::HEALTH_STATUS_FAILED) {
     
-    std::string currentFoxxmaster;
-    if (snapshot.has(foxxmaster)) {
-      currentFoxxmaster = snapshot(foxxmaster).getString();
-    }
-    
-    if (serverID == currentFoxxmaster) {
+    if (snapshot.has(foxxmaster) && snapshot(foxxmaster).getString() == serverID) {
       VPackBuilder create;
       { VPackArrayBuilder tx(&create);
         { VPackObjectBuilder d(&create);
-          create.add(foxxmaster, VPackValue(serverID)); }}
+          create.add(foxxmaster, VPackValue("")); }}
       singleWriteTransaction(agent, create);
     }
     

@@ -119,7 +119,7 @@ void LoggerFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            new BooleanParameter(&_keepLogRotate));
 
   options->addHiddenOption("--log.foreground-tty",
-                           "also log to tty if not backgrounded",
+                           "also log to tty if backgrounded",
                            new BooleanParameter(&_foregroundTty));
 
   options->addHiddenOption("--log.force-direct",

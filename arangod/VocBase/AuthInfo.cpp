@@ -770,8 +770,11 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
 AuthLevel AuthInfo::canUseCollectionInternal(std::string const& username,
                                              std::string const& dbname,
                                              std::string const& coll) {
+  if (coll.empty()) {
+    // no collection name given
+    return AuthLevel::NONE;
+  }
   // we must have got a non-empty collection name when we get here
-  TRI_ASSERT(!coll.empty());
   TRI_ASSERT(coll[0] < '0' || coll[0] > '9');
 
   loadFromDB();

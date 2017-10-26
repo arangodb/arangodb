@@ -36,6 +36,7 @@ config_t::config_t()
       _timeoutMult(1),
       _endpoint(defaultEndpointStr),
       _supervision(false),
+      _supervisionTouched(false),
       _waitForSync(true),
       _supervisionFrequency(5.0),
       _compactionStepSize(2000),
@@ -50,8 +51,8 @@ config_t::config_t()
 
 config_t::config_t(size_t as, size_t ps, double minp, double maxp,
                    std::string const& e, std::vector<std::string> const& g,
-                   bool s, bool w, double f, uint64_t c, uint64_t k, double p,
-                   bool t, size_t a)
+                   bool s, bool st, bool w, double f, uint64_t c, uint64_t k,
+                   double p, bool t, size_t a)
     : _agencySize(as),
       _poolSize(ps),
       _minPing(minp),
@@ -60,6 +61,7 @@ config_t::config_t(size_t as, size_t ps, double minp, double maxp,
       _endpoint(e),
       _gossipPeers(g),
       _supervision(s),
+      _supervisionTouched(st),
       _waitForSync(w),
       _supervisionFrequency(f),
       _compactionStepSize(c),
@@ -86,6 +88,7 @@ config_t::config_t(config_t&& other)
       _gossipPeers(std::move(other._gossipPeers)),
       _active(std::move(other._active)),
       _supervision(std::move(other._supervision)),
+      _supervisionTouched(std::move(other._supervisionTouched)),
       _waitForSync(std::move(other._waitForSync)),
       _supervisionFrequency(std::move(other._supervisionFrequency)),
       _compactionStepSize(std::move(other._compactionStepSize)),
@@ -111,6 +114,7 @@ config_t& config_t::operator=(config_t const& other) {
   _gossipPeers = other._gossipPeers;
   _active = other._active;
   _supervision = other._supervision;
+  _supervisionTouched = other._supervisionTouched;
   _waitForSync = other._waitForSync;
   _supervisionFrequency = other._supervisionFrequency;
   _compactionStepSize = other._compactionStepSize;
@@ -135,6 +139,7 @@ config_t& config_t::operator=(config_t&& other) {
   _gossipPeers = std::move(other._gossipPeers);
   _active = std::move(other._active);
   _supervision = std::move(other._supervision);
+  _supervisionTouched = std::move(other._supervisionTouched);
   _waitForSync = std::move(other._waitForSync);
   _supervisionFrequency = std::move(other._supervisionFrequency);
   _compactionStepSize = std::move(other._compactionStepSize);
@@ -606,6 +611,9 @@ std::string config_t::startup() const {
 bool config_t::merge(VPackSlice const& conf) {
   WRITE_LOCKER(writeLocker, _lock); // All must happen under the lock or else ...
 
+  // FIXME: All these "command line beats persistence" are wrong, since
+  // the given default values never happen. Only fixed _supervision with
+  // _supervisionTouched as an emergency measure.
   _id = conf.get(idStr).copyString();  // I get my id
   _startup = "persistence";
 
@@ -708,12 +716,11 @@ bool config_t::merge(VPackSlice const& conf) {
   ss.str("");
   ss.clear();
   ss << "Supervision: ";
-  if (_supervision == false) {  // Command line beats persistence
+  if (!_supervisionTouched) {  // Command line beats persistence
     if (conf.hasKey(supervisionStr)) {
       _supervision = conf.get(supervisionStr).getBoolean();
       ss << _supervision << " (persisted)";
     } else {
-      _supervision = true;
       ss << _supervision << " (default)";
     }
   } else {

@@ -58,6 +58,7 @@ static const std::string versionStr = "version";
 static const std::string startupStr = "startup";
 
 struct config_t {
+ private:
   std::string _id;
   size_t _agencySize;
   size_t _poolSize;
@@ -69,6 +70,7 @@ struct config_t {
   std::vector<std::string> _gossipPeers;
   std::vector<std::string> _active;
   bool _supervision;
+  bool _supervisionTouched;
   bool _waitForSync;
   double _supervisionFrequency;
   uint64_t _compactionStepSize;
@@ -81,12 +83,13 @@ struct config_t {
 
   mutable arangodb::basics::ReadWriteLock _lock; // guard member variables
 
+ public:
   /// @brief default ctor
   config_t();
 
   /// @brief ctor
   config_t(size_t as, size_t ps, double minp, double maxp, std::string const& e,
-           std::vector<std::string> const& g, bool s, bool w, double f,
+           std::vector<std::string> const& g, bool s, bool st, bool w, double f,
            uint64_t c, uint64_t k, double p, bool t, size_t a);
 
   /// @brief copy constructor
@@ -107,10 +110,10 @@ struct config_t {
   /// @brief agent id
   std::string id() const;
 
-  /// @brief pool size
+  /// @brief pool completed
   bool poolComplete() const;
 
-  /// @brief pool size
+  /// @brief is supervision enables
   bool supervision() const;
 
   /// @brief pool size
