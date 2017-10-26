@@ -220,7 +220,7 @@
       });
     },
 
-    changeCollection: function (wfs, journalSize, indexBuckets, callback) {
+    changeCollection: function (wfs, journalSize, indexBuckets, replicationFactor, callback) {
       var result = false;
       if (wfs === 'true') {
         wfs = true;
@@ -232,6 +232,10 @@
         journalSize: parseInt(journalSize, 10),
         indexBuckets: parseInt(indexBuckets, 10)
       };
+
+      if (replicationFactor) {
+        data.replicationFactor = parseInt(replicationFactor, 10);
+      }
 
       $.ajax({
         cache: false,
