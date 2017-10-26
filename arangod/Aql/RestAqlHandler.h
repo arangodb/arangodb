@@ -25,7 +25,6 @@
 #define ARANGOD_AQL_REST_AQL_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "Aql/QueryRegistry.h"
 #include "Aql/types.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "RestServer/VocbaseContext.h"
@@ -39,6 +38,7 @@ class TraverserEngineRegistry;
 }
 
 namespace aql {
+class QueryRegistry;
 
 /// @brief shard control request handler
 class RestAqlHandler : public RestVocbaseBaseHandler {

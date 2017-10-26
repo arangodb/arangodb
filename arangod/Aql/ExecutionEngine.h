@@ -29,11 +29,11 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExecutionStats.h"
-#include "Aql/QueryRegistry.h"
 
 namespace arangodb {
 namespace aql {
 class AqlItemBlock;
+class QueryRegistry;
 
 class ExecutionEngine {
  public:

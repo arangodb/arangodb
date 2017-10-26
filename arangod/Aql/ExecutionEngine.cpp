@@ -38,6 +38,7 @@
 #include "Aql/IndexBlock.h"
 #include "Aql/ModificationBlocks.h"
 #include "Aql/Query.h"
+#include "Aql/QueryRegistry.h"
 #include "Aql/ShortestPathBlock.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortBlock.h"

@@ -392,6 +392,11 @@ VPackBuilder AuthInfo::allUsers() {
   return result;
 }
 
+void AuthInfo::setQueryRegistry(aql::QueryRegistry* registry) {
+  TRI_ASSERT(registry != nullptr);
+  _queryRegistry = registry;
+}
+
 /// Trigger eventual reload, user facing API call
 void AuthInfo::reloadAllUsers() {
   if (!ServerState::instance()->isCoordinator()) {

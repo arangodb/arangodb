@@ -73,10 +73,7 @@ class AuthInfo {
   ~AuthInfo();
 
  public:
-  void setQueryRegistry(aql::QueryRegistry* registry) {
-    TRI_ASSERT(registry != nullptr);
-    _queryRegistry = registry;
-  }
+  void setQueryRegistry(aql::QueryRegistry* registry);
 
   /// Tells coordinator to reload his data. Only call in HearBeat thread
   void outdate() { _outdated = true; }
