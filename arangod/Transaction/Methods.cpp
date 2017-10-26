@@ -410,7 +410,7 @@ bool transaction::Methods::sortOrs(
 }
 
 std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
-    std::vector<std::shared_ptr<Index>> indexes, arangodb::aql::AstNode* node,
+    std::vector<std::shared_ptr<Index>> const& indexes, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
     std::vector<transaction::Methods::IndexHandle>& usedIndexes,
@@ -504,33 +504,37 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
 }
 
 bool transaction::Methods::findIndexHandleForAndNode(
-    std::vector<std::shared_ptr<Index>> indexes, arangodb::aql::AstNode*& node,
+    std::vector<std::shared_ptr<Index>> const& indexes, arangodb::aql::AstNode*& node,
     arangodb::aql::Variable const* reference, size_t itemsInCollection,
     transaction::Methods::IndexHandle& usedIndex) const {
   std::shared_ptr<Index> bestIndex;
   double bestCost = 0.0;
 
   for (auto const& idx : indexes) {
-    double filterCost = 0.0;
-    double sortCost = 0.0;
     size_t itemsInIndex = itemsInCollection;
 
     // check if the index supports the filter expression
     double estimatedCost;
     size_t estimatedItems;
-    if (!idx->supportsFilterCondition(node, reference, itemsInIndex,
-                                      estimatedItems, estimatedCost)) {
+    bool supportsFilter = idx->supportsFilterCondition(node, reference, itemsInIndex,
+                                                       estimatedItems, estimatedCost);
+    
+    // enable the following line to see index candidates considered with their
+    // abilities and scores
+    // LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", estimatedCost: " << estimatedCost << ", estimatedItems: " << estimatedItems << ", itemsInIndex: " << itemsInIndex << ", selectivity: " << (idx->hasSelectivityEstimate() ? idx->selectivityEstimate() : -1.0) << ", node: " << node; 
+
+    if (!supportsFilter) {
       continue;
     }
+
     // index supports the filter condition
-    filterCost = estimatedCost;
+    
     // this reduces the number of items left
     itemsInIndex = estimatedItems;
 
-    double const totalCost = filterCost + sortCost;
-    if (bestIndex == nullptr || totalCost < bestCost) {
+    if (bestIndex == nullptr || estimatedCost < bestCost) {
       bestIndex = idx;
-      bestCost = totalCost;
+      bestCost = estimatedCost;
     }
   }
 
