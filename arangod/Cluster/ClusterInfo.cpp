@@ -1576,6 +1576,7 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
   VPackBuilder temp;
   temp.openObject();
   temp.add("waitForSync", VPackValue(info->waitForSync()));
+  temp.add("replicationFactor", VPackValue(info->replicationFactor()));
   info->getPhysical()->getPropertiesVPackCoordinator(temp);
   temp.close();
 
