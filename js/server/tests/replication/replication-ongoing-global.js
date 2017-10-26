@@ -858,7 +858,7 @@ function ReplicationOtherDBSuite() {
     var waitUntil = function(cb) {
       var tries = 0;
       while (tries++ < 60 * 2) {
-        if (cb) {
+        if (cb()) {
           return;
         }
         internal.wait(0.5, false);
