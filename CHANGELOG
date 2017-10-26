@@ -8,7 +8,7 @@ devel
 
 * UI: reduced cluster dashboard api calls
 
-* added C++ implementations for AQL function `SUBSTRING()
+* added C++ implementations for AQL function `SUBSTRING()`, `LEFT()`, `RIGHT()` and `TRIM()`
 
 * make AQL `DISTINCT` not change the order of the results it is applied on
 
