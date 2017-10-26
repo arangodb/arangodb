@@ -986,21 +986,23 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
         }
       }
     }
-#ifdef USE_ENTERPRISE
     else if (rfSl.isString()) {
       if (rfSl.compareString("satellite") != 0) {
         // only the string "satellite" is allowed here
         return Result(TRI_ERROR_BAD_PARAMETER, "bad value for satellite");
       }
       // we got the string "satellite"...
+#ifdef USE_ENTERPRISE
       if (!isSatellite()) {
         // but the collection is not a satellite collection!
         return Result(TRI_ERROR_FORBIDDEN, "cannot change satellite collection status");
       }
+#else
+      return Result(TRI_ERROR_FORBIDDEN, "cannot use satellite collection status");
+#endif
       // fallthrough here if we set the string "satellite" for a satellite collection
       TRI_ASSERT(isSatellite() && _replicationFactor == 0 && rf == 0);
     }
-#endif
     else {
       return Result(TRI_ERROR_BAD_PARAMETER, "bad value for replicationFactor");
     }
