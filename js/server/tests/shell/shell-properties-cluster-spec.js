@@ -1,4 +1,4 @@
-/*global describe, it, ArangoAgency, afterEach */
+/*global describe, it, ArangoAgency, beforeEach, afterEach */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster collection creation tests
@@ -70,7 +70,7 @@ describe('Update collection properties', function() {
     it('increase replication factor ', function() {
         db._create(cn1, {replicationFactor: 1, numberOfShards: 2}, {waitForSyncReplication: true});
 
-        checkReplicationFactor(cn1, 1)
+        checkReplicationFactor(cn1, 1);
 
         const coll = db._collection(cn1);
         
@@ -86,7 +86,7 @@ describe('Update collection properties', function() {
     it('decrease replication factor ', function() {
         db._create(cn1, {replicationFactor: 2, numberOfShards: 2}, {waitForSyncReplication: true});
 
-        checkReplicationFactor(cn1, 2)
+        checkReplicationFactor(cn1, 2);
 
         const coll = db._collection(cn1);
 
@@ -101,7 +101,7 @@ describe('Update collection properties', function() {
     it('invalid replication factor', function() {
         db._create(cn1, {replicationFactor: 2, numberOfShards: 2}, {waitForSyncReplication: true});
 
-        checkReplicationFactor(cn1, 2)
+        checkReplicationFactor(cn1, 2);
 
         try {
             const coll = db._collection(cn1);
