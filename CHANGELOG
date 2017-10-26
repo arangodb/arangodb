@@ -1,6 +1,9 @@
 devel
 -----
 
+* UI: replicationFactor of a collection is now changeable in a cluster
+  environment
+
 * UI: reduced cluster dashboard api calls
 
 * added C++ implementations for AQL function `SUBSTRING()
