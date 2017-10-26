@@ -526,7 +526,7 @@ class Methods {
 
   /// @brief findIndexHandleForAndNode
   std::pair<bool, bool> findIndexHandleForAndNode(
-      std::vector<std::shared_ptr<Index>> indexes, arangodb::aql::AstNode* node,
+      std::vector<std::shared_ptr<Index>> const& indexes, arangodb::aql::AstNode* node,
       arangodb::aql::Variable const* reference,
       arangodb::aql::SortCondition const* sortCondition,
       size_t itemsInCollection,
@@ -535,7 +535,7 @@ class Methods {
       bool& isSparse) const;
 
   /// @brief findIndexHandleForAndNode, Shorthand which does not support Sort
-  bool findIndexHandleForAndNode(std::vector<std::shared_ptr<Index>> indexes,
+  bool findIndexHandleForAndNode(std::vector<std::shared_ptr<Index>> const& indexes,
                                  arangodb::aql::AstNode*& node,
                                  arangodb::aql::Variable const* reference,
                                  size_t itemsInCollection,
