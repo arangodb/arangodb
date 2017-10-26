@@ -975,14 +975,24 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
           return Result(TRI_ERROR_NOT_IMPLEMENTED, "Changing replicationFactor "
                         "not supported for smart edge collections");
         } else if (isSatellite()) {
-          return Result(TRI_ERROR_FORBIDDEN, "Satellite collection "
+          return Result(TRI_ERROR_FORBIDDEN, "Satellite collection, "
                         "cannot change replicationFactor");
         }
       }
     }
 #ifdef USE_ENTERPRISE
-     else if (rfSl.isString() && rfSl.compareString("satellite") != 0) {
-      return Result(TRI_ERROR_BAD_PARAMETER, "bad value for satellite");
+    else if (rfSl.isString()) {
+      if (rfSl.compareString("satellite") != 0) {
+        // only the string "satellite" is allowed here
+        return Result(TRI_ERROR_BAD_PARAMETER, "bad value for satellite");
+      }
+      // we got the string "satellite"...
+      if (!isSatellite()) {
+        // but the collection is not a satellite collection!
+        return Result(TRI_ERROR_FORBIDDEN, "cannot change satellite collection status");
+      }
+      // fallthrough here if we set the string "satellite" for a satellite collection
+      TRI_ASSERT(isSatellite() && _replicationFactor == 0 && rf == 0);
     }
 #endif
     else {
