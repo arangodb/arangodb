@@ -55,9 +55,9 @@ function checkReplicationFactor(name, fac) {
         let shards = Object.values(current.arango.Current.Collections['_system'][collectionId]);
         let finished = 0;
         shards.forEach(entry => {
-            finished += entry.servers.length == fac ? 1 : 0;
+            finished += entry.servers.length === fac ? 1 : 0;
         });
-        if (shards.length > 0 && finished == shards.length) {
+        if (shards.length > 0 && finished === shards.length) {
             return;
         }
         internal.sleep(0.5);
