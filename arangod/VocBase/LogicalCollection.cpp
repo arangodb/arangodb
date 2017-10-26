@@ -982,38 +982,36 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
 
   WRITE_LOCKER(writeLocker, _infoLock);
   
-  VPackSlice rf = slice.get("replicationFactor");
-  if (!_isLocal && !rf.isNone()) {
-    if (!_distributeShardsLike.empty()) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "Cannot change replicationFactor, please change " << _distributeShardsLike;
-      return Result(TRI_ERROR_FORBIDDEN, "Cannot change replicationFactor, "
-                    "please change " + _distributeShardsLike);
-    } else if (_type == TRI_COL_TYPE_EDGE && _isSmart) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "Changing replicationFactor not supported for smart edge collections";
-      return Result(TRI_ERROR_NOT_IMPLEMENTED, "Changing replicationFactor "
-                    "not supported for smart edge collections");
-    } else if (isSatellite()) {
-      LOG_TOPIC(ERR, Logger::FIXME) << "Satellite collection cannot have replicationFactor";
-      return Result(TRI_ERROR_FORBIDDEN, "Satellite collection "
-                    "cannot have replicationFactor");
-    }
-    if (!rf.isInteger() || rf.getInt() <= 0 || rf.getUInt() > 10) {
+  size_t rf = _replicationFactor;
+  VPackSlice rfSl = slice.get("replicationFactor");
+  if (!rfSl.isNone()) {
+    if (!rfSl.isInteger() || rfSl.getInt() <= 0 || rfSl.getUInt() > 10) {
       return Result(TRI_ERROR_BAD_PARAMETER, "bad value replicationFactor");
+    }
+    rf = rfSl.getNumber<size_t>();
+    if (!_isLocal && rf != _replicationFactor) { // sanity checks
+      if (!_distributeShardsLike.empty()) {
+        return Result(TRI_ERROR_FORBIDDEN, "Cannot change replicationFactor, "
+                      "please change " + _distributeShardsLike);
+      } else if (_type == TRI_COL_TYPE_EDGE && _isSmart) {
+        return Result(TRI_ERROR_NOT_IMPLEMENTED, "Changing replicationFactor "
+                      "not supported for smart edge collections");
+      } else if (isSatellite()) {
+        return Result(TRI_ERROR_FORBIDDEN, "Satellite collection "
+                      "cannot have replicationFactor");
+      }
     }
   }
 
   // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
   Result res = getPhysical()->updateProperties(slice, doSync);
-
   if (!res.ok()) {
     return res;
   }
 
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
-  if (rf.isNumber()) {
-    _replicationFactor = rf.getNumber<size_t>();
-  }
+  _replicationFactor = rf;
 
   if (!_isLocal) {
     // We need to inform the cluster as well
