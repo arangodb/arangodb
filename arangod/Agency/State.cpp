@@ -1289,7 +1289,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(
     buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
     store = ii.get("readDB");
     index = arangodb::basics::StringUtils::uint64(ii.get("_key").copyString());
-    term = arangodb::basics::StringUtils::uint64(ii.get("term").copyString());
+    term = ii.get("term").getNumber<uint64_t>();
     LOG_TOPIC(INFO, Logger::AGENCY) << "Read snapshot at index "
       << index << " with term " << term;
   }
