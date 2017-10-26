@@ -93,30 +93,27 @@ typedef struct {
 typedef void GeoIdx;    /* to keep the structure private  */
 typedef void GeoCursor; /* to keep the structure private  */
 
-GeoIdx* GeoIndex_new(uint64_t objectId, int slo, int);
-void GeoIndex_reset(GeoIdx* gi);
+GeoIdx* GeoIndex_new(RocksDBMethods* rocksMethods, uint64_t objectId, int slo, int);
+void GeoIndex_reset(GeoIdx* gi, RocksDBMethods* rocksMethods);
 void GeoIndex_free(GeoIdx* gi);
 double GeoIndex_distance(GeoCoordinate* c1, GeoCoordinate* c2);
-int GeoIndex_insert(GeoIdx* gi, GeoCoordinate* c);
-int GeoIndex_remove(GeoIdx* gi, GeoCoordinate* c);
+int GeoIndex_insert(GeoIdx* gi, RocksDBMethods* rocksMethods, GeoCoordinate* c);
+int GeoIndex_remove(GeoIdx* gi, RocksDBMethods* rocksMethods, GeoCoordinate* c);
 int GeoIndex_hint(GeoIdx* gi, int hint);
-GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, GeoCoordinate* c,
+GeoCoordinates* GeoIndex_PointsWithinRadius(GeoIdx* gi, RocksDBMethods* rocksMethods, GeoCoordinate* c,
                                             double d);
-GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, GeoCoordinate* c,
+GeoCoordinates* GeoIndex_NearestCountPoints(GeoIdx* gi, RocksDBMethods* rocksMethods, GeoCoordinate* c,
                                             int count);
-GeoCursor* GeoIndex_NewCursor(GeoIdx* gi, GeoCoordinate* c);
+GeoCursor* GeoIndex_NewCursor(GeoIdx* gi, RocksDBMethods* rocksMethods, GeoCoordinate* c);
 GeoCoordinates* GeoIndex_ReadCursor(GeoCursor* gc, int count,
                                     bool returnDistances = true,
                                     double maxDistance = -1.0);
 void GeoIndex_CursorFree(GeoCursor* gc);
 void GeoIndex_CoordinatesFree(GeoCoordinates* clist);
 #ifdef TRI_GEO_DEBUG
-void GeoIndex_INDEXDUMP(GeoIdx* gi, FILE* f);
-int GeoIndex_INDEXVALID(GeoIdx* gi);
+void GeoIndex_INDEXDUMP(GeoIdx* gi, RocksDBMethods* rocksMethods, FILE* f);
+int GeoIndex_INDEXVALID(GeoIdx* gi, RocksDBMethods* rocksMethods);
 #endif
-
-void GeoIndex_setRocksMethods(GeoIdx* gi, RocksDBMethods*);
-void GeoIndex_clearRocks(GeoIdx* gi);
 }
 }
 #endif

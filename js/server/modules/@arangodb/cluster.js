@@ -800,6 +800,10 @@ function executePlanForCollections(plannedCollections) {
                 let save = {id: collectionInfo.id, name: collectionInfo.name};
                 delete collectionInfo.id;     // must not
                 delete collectionInfo.name;
+                if (collectionInfo.hasOwnProperty('objectId')) {
+                  console.warn('unexpected objectId in %s', JSON.stringify(collectionInfo));
+                }
+                delete collectionInfo.objectId;
                 try {
                   if (collectionInfo.type === ArangoCollection.TYPE_EDGE) {
                     db._createEdgeCollection(shardName, collectionInfo);

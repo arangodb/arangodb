@@ -71,7 +71,9 @@ class RocksDBCollection final : public PhysicalCollection {
 
   virtual PhysicalCollection* clone(LogicalCollection*) override;
 
+  /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
+  /// @brief used for updating properties
   void getPropertiesVPackCoordinator(velocypack::Builder&) const override;
 
   /// @brief closes an open collection
