@@ -1189,6 +1189,7 @@ bool MMFilesCollection::closeDatafiles(
   return result;
 }
 
+/// @brief export properties
 void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
   result.add("count", VPackValue(_initialCount));
@@ -1201,6 +1202,7 @@ void MMFilesCollection::getPropertiesVPack(velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());
 }
 
+/// @brief used for updating properties
 void MMFilesCollection::getPropertiesVPackCoordinator(
     velocypack::Builder& result) const {
   TRI_ASSERT(result.isOpenObject());

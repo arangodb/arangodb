@@ -833,6 +833,10 @@ function executePlanForCollections(plannedCollections) {
                     JSON.stringify(collectionInfo));
                 }
                 delete collectionInfo.globallyUniqueId;
+                if (collectionInfo.hasOwnProperty('objectId')) {
+                  console.warn('unexpected objectId in %s', JSON.stringify(collectionInfo));
+                }
+                delete collectionInfo.objectId;
                 try {
                   if (collectionInfo.type === ArangoCollection.TYPE_EDGE) {
                     db._createEdgeCollection(shardName, collectionInfo);
