@@ -740,8 +740,21 @@ void HeartbeatThread::runCoordinator() {
             result.slice()[0].get(std::vector<std::string>(
                 {AgencyCommManager::path(), "Current", "Foxxmaster"}));
 
-        if (foxxmasterSlice.isString()) {
+        if (foxxmasterSlice.isString() && foxxmasterSlice.getStringLength() != 0) {
           ServerState::instance()->setFoxxmaster(foxxmasterSlice.copyString());
+        } else {
+          auto state = ServerState::instance();
+          VPackBuilder myIdBuilder;
+          myIdBuilder.add(VPackValue(state->getId()));
+
+          auto updateMaster =
+              _agency.casValue("/Current/Foxxmaster", foxxmasterSlice,
+                               myIdBuilder.slice(), 0, 1.0);
+          if (updateMaster.successful()) {
+            // We won the race we are the master
+            ServerState::instance()->setFoxxmaster(state->getId());
+          }
+
         }
 
         VPackSlice versionSlice =
