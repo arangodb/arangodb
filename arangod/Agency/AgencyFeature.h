@@ -53,6 +53,7 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   double _minElectionTimeout;  // min election timeout
   double _maxElectionTimeout;  // max election timeout
   bool _supervision;
+  bool _supervisionTouched;
   bool _waitForSync;
   double _supervisionFrequency;
   uint64_t _compactionStepSize;

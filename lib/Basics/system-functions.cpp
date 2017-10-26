@@ -23,6 +23,7 @@
 
 #include "Basics/Common.h"
 
+#include <chrono>
 #include <thread>
 
 using namespace arangodb;
@@ -149,11 +150,8 @@ time_t TRI_timegm(struct tm* tm) {
 }
 
 double TRI_microtime() {
-  struct timeval t;
-
-  gettimeofday(&t, 0);
-
-  return (t.tv_sec) + (t.tv_usec / 1000000.0);
+  return std::chrono::duration<double>( // time since epoch in seconds
+    std::chrono::system_clock::now().time_since_epoch()).count();
 }
 
 size_t TRI_numberProcessors() {
