@@ -78,7 +78,7 @@ describe('Update collection properties', function() {
         expect(props.replicationFactor).to.equal(2);
 
         // FIXME: do not wait for a fixed time
-        internal.sleep(5);
+        internal.sleep(8);
 
         checkReplicationFactor(cn1, 2);
     });
@@ -93,7 +93,7 @@ describe('Update collection properties', function() {
         let props = coll.properties({replicationFactor: 1});
         expect(props.replicationFactor).to.equal(1);
 
-        internal.sleep(5);
+        internal.sleep(8);
 
         checkReplicationFactor(cn1, 1);
     });
@@ -164,7 +164,7 @@ describe('Update collection properties with distributeShardsLike, ', function() 
         expect(props.replicationFactor).to.equal(2);
 
         // FIXME: do not wait for a fixed time
-        internal.sleep(5);
+        internal.sleep(8);
 
         checkReplicationFactor(cn1, 2);
         checkReplicationFactor(cn2, 2); 
@@ -183,7 +183,7 @@ describe('Update collection properties with distributeShardsLike, ', function() 
         expect(props.replicationFactor).to.equal(1);
 
         // FIXME: do not wait for a fixed time
-        internal.sleep(5);
+        internal.sleep(8);
 
         checkReplicationFactor(cn1, 1);
         checkReplicationFactor(cn2, 1);
