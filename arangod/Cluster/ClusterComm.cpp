@@ -982,7 +982,7 @@ size_t ClusterComm::performRequests(std::vector<ClusterCommRequest>& requests,
         nrDone++;
         LOG_TOPIC(ERR, Logger::CLUSTER) << "ClusterComm::performRequests: "
             << "got no answer from " << requests[index].destination << ":"
-            << requests[index].path << " with error " << res.status;
+            << requests[index].path << " with status " << res.stringifyStatus(res.status);
       }
     }
   } catch (...) {

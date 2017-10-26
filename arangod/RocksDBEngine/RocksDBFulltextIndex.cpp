@@ -202,7 +202,7 @@ Result RocksDBFulltextIndex::removeInternal(transaction::Methods* trx,
                                             VPackSlice const& doc) {
   std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
-    return IndexResult(TRI_ERROR_NO_ERROR);
+    return IndexResult();
   }
 
   // now we are going to construct the value to insert into rocksdb

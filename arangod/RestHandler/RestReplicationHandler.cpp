@@ -1977,6 +1977,40 @@ void RestReplicationHandler::handleCommandAddFollower() {
     return;
   }
 
+  if (readLockId.isNone()) {
+    // Short cut for the case that the collection is empty
+    auto ctx = transaction::StandaloneContext::Create(_vocbase);
+    SingleCollectionTransaction trx(ctx, col->cid(),
+                                    AccessMode::Type::EXCLUSIVE);
+
+    auto res = trx.begin();
+    if (res.ok()) {
+      auto countRes = trx.count(col->name(), false);
+      if (countRes.successful()) {
+        VPackSlice nrSlice = countRes.slice();
+        uint64_t nr = nrSlice.getNumber<uint64_t>();
+        if (nr == 0) {
+          col->followers()->add(followerId.copyString());
+
+          VPackBuilder b;
+          {
+            VPackObjectBuilder bb(&b);
+            b.add("error", VPackValue(false));
+          }
+
+          generateResult(rest::ResponseCode::OK, b.slice());
+
+          return;
+        }  
+      }
+    }
+    // If we get here, we have to report an error:
+    generateError(rest::ResponseCode::FORBIDDEN,
+                  TRI_ERROR_REPLICATION_SHARD_NONEMPTY,
+                  "shard not empty");
+    return;
+  }
+
   VPackSlice const checksum = body.get("checksum");
   // optional while introducing this bugfix. should definitely be required with
   // 3.4

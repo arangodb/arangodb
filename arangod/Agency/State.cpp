@@ -832,6 +832,8 @@ bool State::loadOrPersistConfiguration() {
 
     res = trx.finish(result.code);
 
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Persisted configuration: " << doc.slice().toJson();
+
     return res.ok();
   }
 
@@ -1168,6 +1170,8 @@ void State::persistActiveAgents(query_t const& active, query_t const& pool) {
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), res.errorMessage());
   }
+  LOG_TOPIC(DEBUG, Logger::AGENCY) << "Updated persisted agency configuration: "
+    << builder.slice().toJson();
 }
 
 query_t State::allLogs() const {
@@ -1285,7 +1289,7 @@ std::shared_ptr<VPackBuilder> State::latestAgencyState(
     buffer_t tmp = std::make_shared<arangodb::velocypack::Buffer<uint8_t>>();
     store = ii.get("readDB");
     index = arangodb::basics::StringUtils::uint64(ii.get("_key").copyString());
-    term = arangodb::basics::StringUtils::uint64(ii.get("term").copyString());
+    term = ii.get("term").getNumber<uint64_t>();
     LOG_TOPIC(INFO, Logger::AGENCY) << "Read snapshot at index "
       << index << " with term " << term;
   }
