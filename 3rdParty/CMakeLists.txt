@@ -111,7 +111,7 @@ if (USE_IRESEARCH)
   elseif(MSVC)
     set(ICU_LIB_SUBPATH "Debug")
 
-    if (NOT "${CMAKE_CFG_INTDIR}" STREQUAL "Debug")
+    if (NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
       set(ICU_LIB_SUBPATH "Release")
     endif()
 
