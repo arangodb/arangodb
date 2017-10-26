@@ -1,5 +1,7 @@
-v3.2.5 (2017-XX-XX)
+v3.2.6 (2017-XX-XX)
 -------------------
+
+* UI: fixed event cleanup in cluster shards view
 
 * UI: reduced cluster dashboard api calls
 
