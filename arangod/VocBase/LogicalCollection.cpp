@@ -986,6 +986,12 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   VPackSlice rfSl = slice.get("replicationFactor");
   if (!rfSl.isNone()) {
     if (rfSl.isInteger()) {
+      int64_t rfTest = rfSl.getNumber<int64_t>();
+      if (rfTest < 0) {
+        // negative value for replication factor... not good
+        return Result(TRI_ERROR_BAD_PARAMETER, "bad value replicationFactor");
+      }
+
       rf = rfSl.getNumber<size_t>();
       if ((!isSatellite() && rf == 0) || rf > 10) {
         return Result(TRI_ERROR_BAD_PARAMETER, "bad value replicationFactor");
