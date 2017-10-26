@@ -985,21 +985,32 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   size_t rf = _replicationFactor;
   VPackSlice rfSl = slice.get("replicationFactor");
   if (!rfSl.isNone()) {
-    if (!rfSl.isInteger() || rfSl.getInt() <= 0 || rfSl.getUInt() > 10) {
-      return Result(TRI_ERROR_BAD_PARAMETER, "bad value replicationFactor");
-    }
-    rf = rfSl.getNumber<size_t>();
-    if (!_isLocal && rf != _replicationFactor) { // sanity checks
-      if (!_distributeShardsLike.empty()) {
-        return Result(TRI_ERROR_FORBIDDEN, "Cannot change replicationFactor, "
-                      "please change " + _distributeShardsLike);
-      } else if (_type == TRI_COL_TYPE_EDGE && _isSmart) {
-        return Result(TRI_ERROR_NOT_IMPLEMENTED, "Changing replicationFactor "
-                      "not supported for smart edge collections");
-      } else if (isSatellite()) {
-        return Result(TRI_ERROR_FORBIDDEN, "Satellite collection "
-                      "cannot have replicationFactor");
+    if (rfSl.isInteger()) {
+      rf = rfSl.getNumber<size_t>();
+      if ((!isSatellite() && rf == 0) || rf > 10) {
+        return Result(TRI_ERROR_BAD_PARAMETER, "bad value replicationFactor");
       }
+      
+      if (!_isLocal && rf != _replicationFactor) { // sanity checks
+        if (!_distributeShardsLike.empty()) {
+          return Result(TRI_ERROR_FORBIDDEN, "Cannot change replicationFactor, "
+                        "please change " + _distributeShardsLike);
+        } else if (_type == TRI_COL_TYPE_EDGE && _isSmart) {
+          return Result(TRI_ERROR_NOT_IMPLEMENTED, "Changing replicationFactor "
+                        "not supported for smart edge collections");
+        } else if (isSatellite()) {
+          return Result(TRI_ERROR_FORBIDDEN, "Satellite collection "
+                        "cannot change replicationFactor");
+        }
+      }
+    }
+#ifdef USE_ENTERPRISE
+     else if (rfSl.isString() && rfSl.compareString("satellite") != 0) {
+      return Result(TRI_ERROR_BAD_PARAMETER, "bad value for satellite");
+    }
+#endif
+    else {
+      return Result(TRI_ERROR_BAD_PARAMETER, "bad value for replicationFactor");
     }
   }
 
@@ -1010,6 +1021,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
     return res;
   }
 
+  TRI_ASSERT(!isSatellite() || rf == 0);
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
   _replicationFactor = rf;
 
