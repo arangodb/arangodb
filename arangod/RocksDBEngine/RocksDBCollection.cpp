@@ -145,7 +145,7 @@ void RocksDBCollection::setPath(std::string const&) {
 arangodb::Result RocksDBCollection::updateProperties(VPackSlice const& slice,
                                                      bool doSync) {
   _cacheEnabled = basics::VelocyPackHelper::readBooleanValue(
-      slice, "cacheEnabled", !_logicalCollection->isSystem());
+      slice, "cacheEnabled", _cacheEnabled);
   primaryIndex()->setCacheEnabled(_cacheEnabled);
   if (_cacheEnabled) {
     createCache();
@@ -169,17 +169,21 @@ PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical) {
   return new RocksDBCollection(logical, this);
 }
 
+/// @brief export properties
 void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
-  // objectId might be undefined on the coordinator
   TRI_ASSERT(result.isOpenObject());
   result.add("objectId", VPackValue(std::to_string(_objectId)));
   result.add("cacheEnabled", VPackValue(_cacheEnabled));
   TRI_ASSERT(result.isOpenObject());
 }
 
+/// @brief used for updating properties
 void RocksDBCollection::getPropertiesVPackCoordinator(
     velocypack::Builder& result) const {
-  getPropertiesVPack(result);
+  // objectId might be undefined on the coordinator
+  TRI_ASSERT(result.isOpenObject());
+  result.add("cacheEnabled", VPackValue(_cacheEnabled));
+  TRI_ASSERT(result.isOpenObject());
 }
 
 /// @brief closes an open collection
