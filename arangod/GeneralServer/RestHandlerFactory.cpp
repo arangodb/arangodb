@@ -92,8 +92,10 @@ class MaintenanceHandler : public RestHandler {
 };
 }
 
-void RestHandlerFactory::setServerMode(RestHandlerFactory::Mode value) {
-  _serverMode.store(value, std::memory_order_release);
+RestHandlerFactory::Mode
+  RestHandlerFactory::setServerMode(RestHandlerFactory::Mode value) {
+  //_serverMode.store(value, std::memory_order_release);
+    return _serverMode.exchange(value, std::memory_order_release);
 }
 
 RestHandlerFactory::Mode RestHandlerFactory::serverMode() {

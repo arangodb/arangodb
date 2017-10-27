@@ -61,9 +61,12 @@ class RestHandlerFactory {
   RestHandlerFactory(context_fptr, void*);
 
  public:
-  // sets maintenance mode
-  static void setServerMode(Mode mode);
   
+  /// @brief sets server mode, returns previously held
+  /// value (performs atomic read-modify-write operation)
+  static Mode setServerMode(Mode mode);
+  
+  /// @brief atomically load current server mode
   static Mode serverMode();
 
   // checks maintenance mode

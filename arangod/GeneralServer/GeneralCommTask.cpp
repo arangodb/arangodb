@@ -406,9 +406,8 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
         // or path begins with /
         if (path[0] != '/' || (path.size() > 1 && path[1] != '_')) {
           // simon: upgrade rights for Foxx apps. FIXME
-          //forceOpen = true;
           result = rest::ResponseCode::OK;
-          vc->upgradeSuperuser();
+          vc->forceSuperuser();
         }
       }
     }
@@ -420,12 +419,12 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
-        vc->upgradeSuperuser();
+        vc->forceSuperuser();
       } else if (StringUtils::isPrefix(path, ApiUser + username + '/')) {
         // simon: unauthorized users should be able to call
         // `/_api/users/<name>` to check their passwords
         result = rest::ResponseCode::OK;
-        vc->upgradeReadOnly();
+        vc->forceReadOnly();
       }
     }
   }

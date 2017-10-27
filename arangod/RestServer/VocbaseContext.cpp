@@ -96,19 +96,18 @@ VocbaseContext::~VocbaseContext() {
   _vocbase->release();
 }
 
-/// FIXME: workaround to enable Foxx apps with superuser rights
-void VocbaseContext::upgradeSuperuser() {
-  TRI_ASSERT(!_isInternal);
+void VocbaseContext::forceSuperuser() {
+  TRI_ASSERT(!_internal);
   TRI_ASSERT(_user.empty());
-  _isInternal = true;
+  _internal = true;
   _systemDbAuthLevel = AuthLevel::RW;
   _databaseAuthLevel = AuthLevel::RW;
 }
 
-void VocbaseContext::upgradeReadOnly() {
-  TRI_ASSERT(!_isInternal);
+void VocbaseContext::forceReadOnly() {
+  TRI_ASSERT(!_internal);
   TRI_ASSERT(_user.empty());
-  _isInternal = true;
+  _internal = true;
   _systemDbAuthLevel = AuthLevel::RO;
   _databaseAuthLevel = AuthLevel::RO;
 }

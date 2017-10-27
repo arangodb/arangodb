@@ -405,18 +405,22 @@ void HeartbeatThread::runDBServer() {
 /// CAS a key in the agency, works only if it does not exist, result should
 /// contain the value of the written key.
 static AgencyCommResult CasWithResult(AgencyComm agency, std::string const& key,
-                                      VPackSlice const& json,
-                                      double ttl, double timeout) {
-  AgencyOperation write(key, AgencyValueOperationType::SET,
-                        json);
-  write._ttl = static_cast<uint32_t>(ttl);
-  // precondition the key must be empty
-  AgencyPrecondition pre(key, AgencyPrecondition::Type::EMPTY, true);
-  VPackBuilder preBuilder;
-  pre.toVelocyPack(preBuilder);
+                                      VPackSlice const& oldValue,
+                                      VPackSlice const& newJson, double timeout) {
+  AgencyOperation write(key, AgencyValueOperationType::SET, newJson);
+  write._ttl = 0; // no ttl
   
-  AgencyGeneralTransaction trx(write, pre);
-  return agency.sendTransactionWithFailover(trx, timeout);
+  if (oldValue.isNone()) { // for some reason this doesn't work
+    // precondition: the key must equal old value
+    AgencyPrecondition pre(key, AgencyPrecondition::Type::EMPTY, true);
+    AgencyGeneralTransaction trx(write, pre);
+    return agency.sendTransactionWithFailover(trx, timeout);
+  } else {
+    // precondition: the key must equal old value
+    AgencyPrecondition pre(key, AgencyPrecondition::Type::VALUE, oldValue);
+    AgencyGeneralTransaction trx(write, pre);
+    return agency.sendTransactionWithFailover(trx, timeout);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -476,7 +480,8 @@ void HeartbeatThread::runSingleServer() {
             << "Heartbeat: Could not read from agency!";
         
         if (!applier->isRunning()) {
-          //FIXME: allow to act as master, assume we are master
+          ServerState::instance()->setFoxxmaster(_myId);
+          RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::DEFAULT);
         }
         continue;
       }
@@ -509,16 +514,15 @@ void HeartbeatThread::runSingleServer() {
       VPackBuilder myIdBuilder;
       myIdBuilder.add(VPackValue(_myId));
       
-      if (!leaderSlice.isString()) {
+      if (!leaderSlice.isString() || leaderSlice.getStringLength() == 0) {
         // Case 1: No leader in agency. Race for leadership
         LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vaccuum detected, "
         << "attempting a takeover";
         
         // if we stay a slave, the redirect will be turned on again
         RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::TRYAGAIN);
-        result = CasWithResult(_agency, leaderPath, myIdBuilder.slice(),
-                               /* ttl */ std::min(30.0, interval * 4),
-                               /* timeout */ 30.0);
+        result = CasWithResult(_agency, leaderPath, /*oldJson*/leaderSlice,
+                               /*newJson*/myIdBuilder.slice(), /*timeout*/5.0);
         
         if (result.successful()) { // sucessfull leadership takeover
           LOG_TOPIC(INFO, Logger::HEARTBEAT) << "All your base are belong to us";
@@ -535,9 +539,9 @@ void HeartbeatThread::runSingleServer() {
           VPackSlice const res = result.slice();
           TRI_ASSERT(res.length() == 1 && res[0].isObject());
           leaderSlice = res[0].get(AgencyCommManager::slicePath(leaderPath));
-          TRI_ASSERT(leaderSlice.isString() && leaderSlice.compareString(_myId) != 0);
           LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Did not become leader, "
-            << "following " << leaderSlice.copyString();
+          << "following " << leaderSlice.copyString();
+          TRI_ASSERT(leaderSlice.isString() && leaderSlice.compareString(_myId) != 0);
           // intentional fallthrough, we need to go to case 3
           
         } else {
@@ -551,14 +555,6 @@ void HeartbeatThread::runSingleServer() {
       if (leaderSlice.compareString(_myId) == 0) {
         LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Currently leader: " << _myId;
         
-        // updating the value to keep our leadership
-        result = _agency.casValue(leaderPath, /* old */ myIdBuilder.slice(),
-                                  /* new */ myIdBuilder.slice(),
-                                  /* ttl */ std::min(30.0, interval * 4),
-                                  /* timeout */ 30.0);
-        if (!result.successful()) {
-          LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Cannot update leadership value";
-        }
         if (applier->isRunning()) {
           applier->stopAndJoin();
         }
@@ -566,7 +562,6 @@ void HeartbeatThread::runSingleServer() {
         // ensure everyone has server access
         ServerState::instance()->setFoxxmaster(_myId);
         RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::DEFAULT);
-        
         continue; // nothing more to do
       }
       
@@ -583,7 +578,11 @@ void HeartbeatThread::runSingleServer() {
       }
       
       // enable redirections to leader
-      RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::REDIRECT);
+      auto prv = RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::REDIRECT);
+      if (prv == RestHandlerFactory::Mode::DEFAULT) {
+        // FIXME wait for all operations to stop locally before following
+      }
+      
       if (applier->endpoint() != endpoint) {
         // configure applier for new endpoint
         if (applier->isRunning()) {
