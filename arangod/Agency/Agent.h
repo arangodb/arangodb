@@ -261,13 +261,22 @@ class Agent : public arangodb::Thread,
   Inception const* inception() const;
 
   /// @brief State reads persisted state and prepares the agent
-  friend class State;
   friend class Compactor;
-
- private:
 
   /// @brief persist agency configuration in RAFT
   void persistConfiguration(term_t t);
+
+  /// @brief Assignment of persisted state, only used at startup, one needs
+  /// to hold the _ioLock to call this
+  void setPersistedState(VPackSlice const&);
+
+  /// @brief Get our own id
+  bool id(std::string const&);
+
+  /// @brief Merge configuration with a persisted state
+  bool mergeConfiguration(VPackSlice const&);
+
+ private:
 
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
@@ -278,10 +287,6 @@ class Agent : public arangodb::Thread,
   /// @brief Activate this agent in single agent mode.
   bool activateAgency();
 
-  /// @brief Assignment of persisted state, only used at startup, one needs
-  /// to hold the _ioLock to call this
-  void setPersistedState(VPackSlice const&);
-
   /// @brief Wakeup main loop of the agent
   void wakeupMainLoop() {
     {
@@ -290,12 +295,6 @@ class Agent : public arangodb::Thread,
     }
     _appendCV.broadcast();
   }
-
-  /// @brief Get current term
-  bool id(std::string const&);
-
-  /// @brief Get current term
-  bool mergeConfiguration(VPackSlice const&);
 
   /// @brief Leader election delegate
   Constituent _constituent;
