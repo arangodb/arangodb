@@ -1562,7 +1562,6 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
   res = ac.getValues("Plan/Collections/" + databaseName + "/" + collectionID);
 
   if (!res.successful()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << collectionID << " not in plan";
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
@@ -1571,7 +1570,6 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
                                 "Collections", databaseName, collectionID}));
 
   if (!collection.isObject()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << collectionID << " invalid in agency";
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
@@ -1620,7 +1618,6 @@ int ClusterInfo::setCollectionStatusCoordinator(
   res = ac.getValues("Plan/Collections/" + databaseName + "/" + collectionID);
 
   if (!res.successful()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << collectionID << " not in plan";
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
