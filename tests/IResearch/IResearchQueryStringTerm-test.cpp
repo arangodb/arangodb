@@ -68,6 +68,8 @@
 
 #include <velocypack/Iterator.h>
 
+extern const char* ARGV0; // defined in main.cpp
+
 NS_LOCAL
 
 struct TestTermAttribute: public irs::term_attribute {
@@ -150,13 +152,9 @@ arangodb::aql::QueryResult executeQuery(
   return query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
 }
 
-NS_END
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
-
-extern const char* ARGV0; // defined in main.cpp
 
 struct IResearchQuerySetup {
   StorageEngineMock engine;
@@ -166,6 +164,7 @@ struct IResearchQuerySetup {
 
   IResearchQuerySetup(): server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
+    arangodb::aql::AqlFunctionFeature* functions = nullptr;
 
     arangodb::tests::init();
     IcuInitializer::setup(ARGV0); // initialize ICU, required for Utf8Helper which is using by optimizer
@@ -183,7 +182,7 @@ struct IResearchQuerySetup {
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
     features.emplace_back(new arangodb::AqlFeature(&server), true);
     features.emplace_back(new arangodb::aql::OptimizerRulesFeature(&server), true);
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
@@ -201,6 +200,19 @@ struct IResearchQuerySetup {
         f.first->start();
       }
     }
+
+    // register fake non-deterministic function in order to suppress optimizations
+    functions->add(arangodb::aql::Function{
+      "_REFERENCE_",
+      ".",
+      false, // fake non-deterministic
+      false, // fake can throw
+      true,
+      false,
+      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
+        TRI_ASSERT(!params.empty());
+        return params[0];
+    }});
 
     auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
@@ -236,6 +248,8 @@ struct IResearchQuerySetup {
   }
 }; // IResearchQuerySetup
 
+NS_END
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
@@ -248,7 +262,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
   IResearchQuerySetup s;
   UNUSED(s);
 
-// ==, !=, <, <=, >, >=, range
+  // ==, !=, <, <=, >, >=, range
   static std::vector<std::string> const EMPTY;
 
   auto createJson = arangodb::velocypack::Parser::fromJson("{ \
@@ -639,6 +653,170 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
     CHECK(expectedDoc == expectedDocs.rend());
   }
 
+  // expression  (invalid value)
+  {
+    auto queryResult = executeQuery(
+      vocbase,
+      "LET x = RAND() "
+      "FOR d IN VIEW testView FILTER d.name == (x + (RAND() + 1)) RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(0 == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      UNUSED(actualDoc);
+      CHECK(false);
+    }
+  }
+
+  // expression, d.duplicated == 'abcd', unordered
+  {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
+      { "A", &insertedDocs[0] },
+      { "E", &insertedDocs[4] },
+      { "K", &insertedDocs[10] },
+      { "U", &insertedDocs[20] },
+      { "~", &insertedDocs[26] },
+      { "$", &insertedDocs[30] }
+    };
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "LET x = _REFERENCE_('abcd') "
+      "FOR d IN VIEW testView FILTER d.duplicated == x RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // expression+variable, d.duplicated == 'abcd', unordered
+  {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
+      { "A", &insertedDocs[0] },
+      { "E", &insertedDocs[4] },
+      { "K", &insertedDocs[10] },
+      { "U", &insertedDocs[20] },
+      { "~", &insertedDocs[26] },
+      { "$", &insertedDocs[30] }
+    };
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "LET x = _REFERENCE_('abc') "
+      "FOR d IN VIEW testView FILTER d.duplicated == CONCAT(x, 'd') RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // expression+variable, d.duplicated == 'abcd', unordered, LIMIT 2
+  {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
+      { "A", &insertedDocs[0] },
+      { "E", &insertedDocs[4] }
+    };
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "LET x = _REFERENCE_('abc') "
+      "FOR d IN VIEW testView FILTER d.duplicated == CONCAT(x, 'd') LIMIT 2 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // expression, d.duplicated == 'abcd', unordered
+  {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs {
+      { "A", &insertedDocs[0] },
+      { "E", &insertedDocs[4] },
+      { "K", &insertedDocs[10] },
+      { "U", &insertedDocs[20] },
+      { "~", &insertedDocs[26] },
+      { "$", &insertedDocs[30] }
+    };
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.duplicated == CONCAT(_REFERENCE_('abc'), 'd') RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
   // -----------------------------------------------------------------------------
   // --SECTION--                                                                !=
   // -----------------------------------------------------------------------------
@@ -930,6 +1108,89 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
       ++expectedDoc;
     }
+    CHECK(expectedDoc == expectedDocs.rend());
+  }
+
+  // expression: invalid type, unordered
+  {
+    std::map<irs::string_ref, arangodb::ManagedDocumentResult const*> expectedDocs;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice(doc.vpack());
+      auto const keySlice = docSlice.get("name");
+      expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "LET x = _REFERENCE_(0) "
+      "FOR d IN VIEW testView FILTER d.name != x RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      auto const keySlice = resolved.get("name");
+      auto const key = arangodb::iresearch::getStringRef(keySlice);
+
+      auto expectedDoc = expectedDocs.find(key);
+      REQUIRE(expectedDoc != expectedDocs.end());
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
+      expectedDocs.erase(expectedDoc);
+    }
+    CHECK(expectedDocs.empty());
+  }
+
+  // expression: existing duplicated term, TFIDF() ASC, BM25() ASC, seq DESC LIMIT 10
+  {
+    std::map<size_t, arangodb::ManagedDocumentResult const*> expectedDocs;
+    size_t limit = 5;
+    for (auto const& doc : insertedDocs) {
+      arangodb::velocypack::Slice docSlice(doc.vpack());
+      auto const fieldSlice = docSlice.get("duplicated");
+
+      if (!fieldSlice.isNone() && "abcd" == arangodb::iresearch::getStringRef(fieldSlice)) {
+        continue;
+      }
+
+      auto const keySlice = docSlice.get("seq");
+      expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
+    }
+
+    // limit results
+    while (expectedDocs.size() > limit) {
+      expectedDocs.erase(expectedDocs.begin());
+    }
+
+    auto queryResult = executeQuery(
+      vocbase,
+      "LET x = _REFERENCE_('abc') "
+      "FOR d IN VIEW testView FILTER d.duplicated != CONCAT(x,'d') SORT TFIDF(d) ASC, BM25(d) ASC, d.seq DESC LIMIT 5 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(resultIt.size() == expectedDocs.size());
+
+    auto expectedDoc = expectedDocs.rbegin();
+    for (auto const actualDoc : resultIt) {
+      auto const resolved = actualDoc.resolveExternals();
+      CHECK(0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(expectedDoc->second->vpack()), resolved, true));
+      ++expectedDoc;
+
+      if (!limit--) {
+        break;
+      }
+    }
+
     CHECK(expectedDoc == expectedDocs.rend());
   }
 

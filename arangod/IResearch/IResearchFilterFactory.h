@@ -39,10 +39,27 @@ NS_BEGIN(aql)
 
 struct AstNode; // forward declaration
 struct Variable; // forward declaration
+class ExecutionPlan; // forward declaration
+class ExpressionContext; // forward declaration
+class Ast; // forward declaration
 
 NS_END // aql
 
+NS_BEGIN(transaction)
+
+class Methods; // forward declaration
+
+NS_END // transaction
+
 NS_BEGIN(iresearch)
+
+struct QueryContext {
+  arangodb::transaction::Methods* trx;
+  arangodb::aql::ExecutionPlan* plan;
+  arangodb::aql::Ast* ast;
+  arangodb::aql::ExpressionContext* ctx;
+  arangodb::aql::Variable const* ref;
+}; // QueryContext
 
 struct FilterFactory {
   static irs::filter::ptr filter(TRI_voc_cid_t cid);
@@ -54,8 +71,8 @@ struct FilterFactory {
   ////////////////////////////////////////////////////////////////////////////////
   static bool filter(
     irs::boolean_filter* filter,
-    arangodb::aql::AstNode const& node,
-    arangodb::aql::Variable const& ref
+    QueryContext const& ctx,
+    arangodb::aql::AstNode const& node
   );
 }; // FilterFactory
 

@@ -37,6 +37,7 @@
 #include "Aql/TraversalNode.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/WalkerWorker.h"
+#include "Views/ViewIterator.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -1395,6 +1396,18 @@ double EnumerateViewNode::estimateCost(size_t& nrItems) const {
 
   nrItems = length * incoming;
   return depCost + static_cast<double>(length) * incoming;
+}
+
+std::unique_ptr<arangodb::ViewIterator> EnumerateViewNode::iterator(
+    transaction::Methods& trx, ExpressionContext& ctx) const {
+  return std::unique_ptr<arangodb::ViewIterator>(_view->iteratorForCondition(
+    &trx,
+    const_cast<ExecutionPlan*>(plan()), // FIXME `Expression` requires non-const pointer
+    &ctx,
+    _condition ? _condition->root() : nullptr,  // no filter means 'RETURN *'
+    _outVariable,
+    _sortCondition.get()
+  ));
 }
 
 LimitNode::LimitNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)

@@ -43,6 +43,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/SortCondition.h"
 #include "Basics/Result.h"
 #include "Basics/files.h"
@@ -1961,8 +1962,10 @@ int IResearchView::insert(
 }
 
 arangodb::ViewIterator* IResearchView::iteratorForCondition(
-    transaction::Methods* trx,
-    arangodb::aql::AstNode const* node,
+    arangodb::transaction::Methods* trx,
+    arangodb::aql::ExecutionPlan* plan,
+    arangodb::aql::ExpressionContext* exprCtx,
+    arangodb::aql::AstNode const* filterCondition,
     arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition
 ) {
@@ -1980,20 +1983,24 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
     return nullptr;
   }
 
-  if (!node) {
+  if (!filterCondition) {
     // in case if filter is not specified
     // seet it to surrogate 'RETURN ALL' node
-    node = &ALL;
+    filterCondition= &ALL;
   }
 
-  TRI_ASSERT(node);
+  TRI_ASSERT(filterCondition);
 
   irs::Or filter;
 
-  if (!FilterFactory::filter(&filter, *node, *reference)) {
+  arangodb::iresearch::QueryContext const ctx = {
+    trx, plan, (plan ? plan->getAst() : nullptr), exprCtx, reference
+  };
+
+  if (!FilterFactory::filter(&filter, ctx, *filterCondition)) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
       << "failed to build filter while querying iResearch view '" << id()
-      << "', query" << node->toVelocyPack(true)->toJson();
+      << "', query" << filterCondition->toVelocyPack(true)->toJson();
 
     return nullptr;
   }
@@ -2006,7 +2013,7 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
   if (sortCondition && !OrderFactory::order(&orderCtx, *sortCondition, _meta)) {
     LOG_TOPIC(WARN, iresearch::IResearchFeature::IRESEARCH)
       << "failed to build order while querying iResearch view '" << id()
-      << "', query" << node->toVelocyPack(true)->toJson();
+      << "', query" << filterCondition->toVelocyPack(true)->toJson();
 
     return nullptr;
   }
@@ -2304,8 +2311,12 @@ bool IResearchView::supportsFilterCondition(
   size_t& /*estimatedItems*/,
   double& /*estimatedCost*/
 ) const {
+  arangodb::iresearch::QueryContext const ctx = {
+    nullptr, nullptr, nullptr, nullptr, reference
+  };
+
   // no way to estimate items/cost before preparing the query
-  return !node || (reference && FilterFactory::filter(nullptr, *node, *reference));
+  return !node || (reference && FilterFactory::filter(nullptr, ctx, *node));
 }
 
 bool IResearchView::supportsSortCondition(

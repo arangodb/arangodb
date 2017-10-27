@@ -27,51 +27,98 @@
 #include "Aql/Ast.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExpressionContext.h"
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
+namespace {
+
+template<typename T>
+inline T const& getPlanNode(arangodb::aql::ExecutionBlock const& block) noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  return dynamic_cast<T const&>(*block.getPlanNode());
+#else
+  return static_cast<T const&>(*block.getPlanNode());
+#endif
+}
+
+class ViewExpressionContext final : public arangodb::aql::ExpressionContext {
+ public:
+  ViewExpressionContext(
+      arangodb::aql::ExecutionBlock* block,
+      arangodb::aql::AqlItemBlock const* data,
+      size_t pos) noexcept
+    : _data(data), _block(block), _pos(pos) {
+    TRI_ASSERT(block && data);
+  }
+
+  virtual size_t numRegisters() const override {
+    return _data->getNrRegs();
+  }
+
+  virtual arangodb::aql::AqlValue const& getRegisterValue(size_t i) const {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  virtual arangodb::aql::Variable const* getVariable(size_t i) const {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  virtual arangodb::aql::AqlValue getVariableValue(
+      arangodb::aql::Variable const* variable,
+      bool doCopy,
+      bool& mustDestroy) const {
+    mustDestroy = false;
+    auto const reg = _block->getRegister(variable);
+
+    if (reg == arangodb::aql::ExecutionNode::MaxRegisterId) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Internal error"); // FIXME
+      return arangodb::aql::AqlValue();
+    }
+
+    auto& value = _data->getValueReference(_pos, reg);
+
+    if (doCopy) {
+      mustDestroy = true;
+      return value.clone();
+    }
+
+    return value;
+  }
+
+  arangodb::aql::AqlItemBlock const* _data;
+  arangodb::aql::ExecutionBlock* _block;
+  size_t _pos{};
+}; // ViewExecutionContext
+
+}
+
+// FIXME:
+//  - LRU for prepared queries
+//  - detect cases whithout dependecies
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
-EnumerateViewBlock::EnumerateViewBlock(ExecutionEngine* engine,
-                                       EnumerateViewNode const* en)
-    : ExecutionBlock(engine, en),
-      _view(en->view()),
-      _outVariable(en->_outVariable),
-      _iter(nullptr),
-      _mmdr(new ManagedDocumentResult), // TODO
-      _hasMore(true) // has more data initially
-{
-  TRI_ASSERT(_view != nullptr);
-
-  // no filter means 'RETURN *'
-  AstNode* filter = nullptr;
-
-  if (en->condition()) {
-    filter = en->condition()->root();
-  }
-
-  _iter.reset(_view->iteratorForCondition(transaction(), filter, _outVariable,
-                                          en->sortCondition().get()));
-  TRI_ASSERT(_iter != nullptr);
+EnumerateViewBlock::EnumerateViewBlock(
+    ExecutionEngine* engine,
+    EnumerateViewNode const* en)
+  : ExecutionBlock(engine, en),
+    _iter(nullptr),
+    _mmdr(new ManagedDocumentResult), // TODO
+    _hasMore(true) { // has more data initially
 }
 
 EnumerateViewBlock::~EnumerateViewBlock() {}
 
 int EnumerateViewBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
-  int res = ExecutionBlock::initializeCursor(items, pos);
+  const int res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
-
-  DEBUG_BEGIN_BLOCK();
-  if (_iter.get() != nullptr) {
-    _iter->reset();
-  }
-  DEBUG_END_BLOCK();
 
   _hasMore = true; // has more data initially
 
@@ -79,10 +126,20 @@ int EnumerateViewBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_END_BLOCK();
 }
 
+void EnumerateViewBlock::refreshIterator() {
+  TRI_ASSERT(!_buffer.empty());
+
+  ViewExpressionContext ctx(this, _buffer.front(), _pos);
+  _iter = ::getPlanNode<EnumerateViewNode>(*this).iterator(*_trx, ctx);
+
+  if (!_iter) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL); // FIXME runtime error
+  }
+}
+
 AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin();
-  TRI_ASSERT(_iter != nullptr);
 
   if (_done) {
     traceGetSomeEnd(nullptr);
@@ -93,18 +150,20 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
   AqlItemBlock* cur = nullptr;
   size_t send = 0;
   std::unique_ptr<AqlItemBlock> res;
+  auto& planNode = ::getPlanNode<EnumerateViewNode>(*this);
+
   do {
     do {
       needMore = false;
 
       if (_buffer.empty()) {
-        size_t toFetch = (std::min)(DefaultBatchSize(), atMost);
+        size_t const toFetch = (std::min)(DefaultBatchSize(), atMost);
         if (!ExecutionBlock::getBlock(toFetch, toFetch)) {
           _done = true;
           return nullptr;
         }
         _pos = 0;  // this is in the first block
-        _iter->reset();
+        refreshIterator();
       }
 
       // If we get here, we do have _buffer.front()
@@ -113,9 +172,11 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
       if (!_hasMore) {
         needMore = true;
         _hasMore = true;
+
         // we have exhausted this cursor
         // re-initialize fetching of documents
-        _iter->reset();
+        refreshIterator();
+
         if (++_pos >= cur->size()) {
           _buffer.pop_front();  // does not throw
           returnBlock(cur);
@@ -126,10 +187,8 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
 
     TRI_ASSERT(cur != nullptr);
 
-    size_t curRegs = cur->getNrRegs();
-
-    RegisterId nrRegs =
-        getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
+    size_t const curRegs = cur->getNrRegs();
+    RegisterId const nrRegs = planNode.getRegisterPlan()->nrRegs[planNode.getDepth()];
 
     res.reset(requestBlock(atMost, nrRegs));
     // automatically freed if we throw
@@ -171,8 +230,9 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
 
     // If the collection is actually empty we cannot forward an empty block
   } while (send == 0);
-  // _engine->_stats.scannedFull += static_cast<int64_t>(send);
+
   // TODO stats?
+  // _engine->_stats.scannedFull += static_cast<int64_t>(send);
   TRI_ASSERT(res != nullptr);
 
   if (send < atMost) {

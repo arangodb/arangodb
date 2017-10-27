@@ -69,6 +69,8 @@
 
 #include <velocypack/Iterator.h>
 
+extern const char* ARGV0; // defined in main.cpp
+
 NS_LOCAL
 
 struct TestTermAttribute: public irs::term_attribute {
@@ -140,7 +142,10 @@ arangodb::aql::QueryResult executeQuery(
     const std::string& queryString
 ) {
   std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-  auto options = std::make_shared<arangodb::velocypack::Builder>();
+
+  auto options = arangodb::velocypack::Parser::fromJson(
+    "{ \"tracing\" : 1 }"
+  );
 
   arangodb::aql::Query query(
     false, &vocbase, arangodb::aql::QueryString(queryString),
@@ -151,13 +156,9 @@ arangodb::aql::QueryResult executeQuery(
   return query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
 }
 
-NS_END
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
-
-extern const char* ARGV0; // defined in main.cpp
 
 struct IResearchQuerySetup {
   StorageEngineMock engine;
@@ -236,6 +237,8 @@ struct IResearchQuerySetup {
     arangodb::FeatureCacheFeature::reset();
   }
 }; // IResearchQuerySetup
+
+NS_END
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -390,7 +393,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 //
 //    auto queryResult = executeQuery(
 //      vocbase,
-//      "FOR x IN collection_3 FOR d IN VIEW testView FILTER d.seq == x.seq RETURN d"
+//      "FOR x IN collection_3 FOR d IN VIEW testView FILTER x.seq == 2 RETURN { \"col\": x.seq, \"view\": d }"
 //    );
 //    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
 //

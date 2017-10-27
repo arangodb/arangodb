@@ -329,12 +329,13 @@ arangodb::aql::AstNode* LogicalView::specializeCondition(
 }
 
 ViewIterator* LogicalView::iteratorForCondition(
-    transaction::Methods* trx, arangodb::aql::AstNode const* node,
+    transaction::Methods* trx,
+    arangodb::aql::ExecutionPlan* plan,
+    arangodb::aql::ExpressionContext* ctx,
+    arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition) {
-  if (_implementation.get() == nullptr) {
-    return nullptr;
-  }
-  return _implementation->iteratorForCondition(trx, node, reference,
-                                               sortCondition);
+  return _implementation
+    ? _implementation->iteratorForCondition(trx, plan, ctx, node, reference, sortCondition)
+    : nullptr;
 }

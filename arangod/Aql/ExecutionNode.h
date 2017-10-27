@@ -884,6 +884,11 @@ class EnumerateViewNode : public ExecutionNode {
     return _sortCondition;
   }
 
+  std::unique_ptr<ViewIterator> iterator(
+    transaction::Methods& trx,
+    ExpressionContext& ctx
+  ) const;
+
  private:
   /// @brief the database
   TRI_vocbase_t* _vocbase;

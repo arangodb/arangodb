@@ -52,11 +52,11 @@ class EnumerateViewBlock : public ExecutionBlock {
   size_t skipSome(size_t atLeast, size_t atMost) override final;
 
  private:
-   std::shared_ptr<LogicalView> _view;
-   Variable const* _outVariable;
-   std::unique_ptr<ViewIterator> _iter;
-   std::unique_ptr<ManagedDocumentResult> _mmdr;
-   bool _hasMore;
+  void refreshIterator();
+
+  std::unique_ptr<ViewIterator> _iter;
+  std::unique_ptr<ManagedDocumentResult> _mmdr;
+  bool _hasMore;
 };
 
 }

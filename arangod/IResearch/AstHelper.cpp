@@ -87,17 +87,13 @@ bool normalizeCmpNode(
 
   if (!arangodb::iresearch::checkAttributeAccess(attribute, ref)) {
     if (!arangodb::iresearch::checkAttributeAccess(value, ref)) {
+      // FIXME check if value is NODE_TYPE_REFERENCE same as 'ref'
       // no suitable attribute access node found
-      return false;
+      return false;     
     }
 
     std::swap(attribute, value);
     cmp = CmpMap[cmp - arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ];
-  }
-
-  if (value->type != arangodb::aql::NODE_TYPE_VALUE || !value->isConstant()) {
-    // can't handle non-constant values
-    return false;
   }
 
   out.attribute = attribute;

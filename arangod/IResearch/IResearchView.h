@@ -45,6 +45,7 @@ class Ast; // forward declaration
 struct AstNode; // forward declaration
 class SortCondition; // forward declaration
 struct Variable; // forward declaration
+struct ExpressionContext; // forward declaration
 
 NS_END // aql
 
@@ -156,7 +157,9 @@ class IResearchView final: public arangodb::ViewImplementation,
   ///         results from the view
   ////////////////////////////////////////////////////////////////////////////////
   virtual arangodb::ViewIterator* iteratorForCondition(
-    transaction::Methods* trx,
+    arangodb::transaction::Methods* trx,
+    arangodb::aql::ExecutionPlan* plan,
+    arangodb::aql::ExpressionContext* ctx,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition

@@ -29,6 +29,8 @@
 #include "Aql/Ast.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Query.h"
+#include "Aql/ExpressionContext.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/SortCondition.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "IResearch/ApplicationServerHelper.h"
@@ -58,6 +60,41 @@
 #include "velocypack/Parser.h"
 
 NS_LOCAL
+
+struct TestExpressionContext : arangodb::aql::ExpressionContext {
+  static TestExpressionContext EMPTY;
+
+  virtual size_t numRegisters() const {
+    TRI_ASSERT(false);
+    return 0;
+  }
+
+  virtual arangodb::aql::AqlValue const& getRegisterValue(size_t) const {
+    TRI_ASSERT(false);
+    static arangodb::aql::AqlValue EMPTY;
+    return EMPTY;
+  }
+
+  virtual arangodb::aql::Variable const* getVariable(size_t i) const {
+    TRI_ASSERT(false);
+    return nullptr;
+  }
+
+  virtual arangodb::aql::AqlValue getVariableValue(
+      arangodb::aql::Variable const* variable,
+      bool doCopy,
+      bool& mustDestroy) const {
+    auto it = vars.find(variable->name);
+    if (vars.end() == it) {
+      return {};
+    }
+    return it->second;
+  }
+
+  std::unordered_map<std::string, arangodb::aql::AqlValue> vars;
+}; // TestExpressionContext
+
+TestExpressionContext TestExpressionContext::EMPTY;
 
 void assertOrderFail(
     arangodb::LogicalView& view,
@@ -150,6 +187,11 @@ void assertOrderSuccess(
   REQUIRE(orderNode);
   auto* sortNode = orderNode->getMember(0);
   REQUIRE(sortNode);
+  auto* allVars  = query.ast()->variables();
+  REQUIRE(allVars);
+  CHECK(1 == allVars->variables(true).size()); // expect that we have exactly 1 variable here
+  auto* var = allVars->getVariable(0);
+  REQUIRE(var);
 
   std::vector<std::vector<arangodb::basics::AttributeName>> attrs;
   std::vector<std::pair<arangodb::aql::Variable const*, bool>> sorts;
@@ -165,11 +207,13 @@ void assertOrderSuccess(
   }
   REQUIRE(!variables.empty());
 
+
   static std::vector<std::string> const EMPTY;
   arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
   arangodb::aql::SortCondition order(nullptr, sorts, attrs, variableNodes);
   CHECK((trx.begin().ok()));
-  std::shared_ptr<arangodb::ViewIterator> itr(view.iteratorForCondition(&trx, filterNode, &variables[0], &order));
+  arangodb::aql::ExecutionPlan plan(query.ast());
+  std::shared_ptr<arangodb::ViewIterator> itr(view.iteratorForCondition(&trx, &plan, &TestExpressionContext::EMPTY, filterNode, var, &order));
   CHECK((false == !itr));
 
   size_t next = 0;

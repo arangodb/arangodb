@@ -38,6 +38,11 @@ namespace velocypack {
 class Slice;
 }
 
+namespace aql {
+class ExecutionPlan;
+struct ExecutionContext;
+}
+
 class PhysicalView;
 
 class LogicalView {
@@ -182,7 +187,10 @@ class LogicalView {
   /// engine will use for fetching results from the view.
   //////////////////////////////////////////////////////////////////////////////
   ViewIterator* iteratorForCondition(
-      transaction::Methods* trx, arangodb::aql::AstNode const* node,
+      transaction::Methods* trx,
+      arangodb::aql::ExecutionPlan* plan,
+      arangodb::aql::ExpressionContext* ctx,
+      arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const* reference,
       arangodb::aql::SortCondition const* sortCondition);
 

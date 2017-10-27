@@ -37,14 +37,20 @@ class Result;
 class ViewIterator;
 
 namespace aql {
-  class Ast;
-  class AstNode;
-  class SortCondition;
-  struct Variable;
+
+class Ast;
+struct AstNode;
+class SortCondition;
+class ExecutionPlan;
+class ExpressionContext;
+struct Variable;
+
 };
 
 namespace transaction {
-  class Methods;
+
+class Methods;
+
 };
 
 /// @brief interface for view implementation
@@ -155,7 +161,10 @@ class ViewImplementation {
   /// engine will use for fetching results from the view.
   //////////////////////////////////////////////////////////////////////////////
   virtual ViewIterator* iteratorForCondition(
-      transaction::Methods* trx, arangodb::aql::AstNode const* node,
+      arangodb::transaction::Methods* trx,
+      arangodb::aql::ExecutionPlan* plan,
+      arangodb::aql::ExpressionContext* ctx,
+      arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const* reference,
       arangodb::aql::SortCondition const* sortCondition) = 0;
 
