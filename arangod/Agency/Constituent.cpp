@@ -223,18 +223,6 @@ void Constituent::followNoLock(term_t t) {
 
 /// Become leader
 void Constituent::lead(term_t term) {
-
-  // we need to rebuild spear_head and read_db
-
-  _agent->beginPrepareLeadership();
-  TRI_DEFER(_agent->endPrepareLeadership());
-
-  if (!_agent->prepareLead()) {
-    MUTEX_LOCKER(guard, _castLock);
-    followNoLock(term);
-    return;
-  }
-
   {
     MUTEX_LOCKER(guard, _castLock);
 
@@ -261,9 +249,9 @@ void Constituent::lead(term_t term) {
     _recentElections.push_back(readSystemClock());
   }
 
-  // we need to start work as leader
-  _agent->lead();
-  
+  // we need to rebuild spear_head and read_db, but this is done in the
+  // main Agent thread:
+  _agent->beginPrepareLeadership();
 }
 
 /// Become candidate

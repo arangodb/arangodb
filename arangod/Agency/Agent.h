@@ -252,8 +252,10 @@ class Agent : public arangodb::Thread,
   query_t buildDB(index_t);
 
   /// @brief Guarding taking over leadership
-  void beginPrepareLeadership() { _preparing = true; }
-  void endPrepareLeadership()  { _preparing = false; }
+  void beginPrepareLeadership() { _preparing = 1; }
+  void donePrepareLeadership() { _preparing = 2; }
+  void endPrepareLeadership()  { _preparing = 0; }
+  int getPrepareLeadership() { return _preparing; }
 
   // #brief access Inception thread
   Inception const* inception() const;
@@ -406,7 +408,10 @@ class Agent : public arangodb::Thread,
 
   /// @brief Agent is ready for RAFT
   std::atomic<bool> _ready;
-  std::atomic<bool> _preparing;
+  std::atomic<int> _preparing;  // 0 means not preparing, 1 means preparations
+                                // scheduled, 2 means preparations done, only
+                                // waiting until _commitIndex is at end of
+                                // our log
 
   /// @brief Keep track of when I last took on leadership
   TimePoint _leaderSince;
