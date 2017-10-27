@@ -60,7 +60,7 @@ using StringBuffer = arangodb::basics::StringBuffer;
 GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
     : ExecutionBlock(engine, en),
       _sortRegisters(),
-      _isSimple(en->getElements().empty()) {
+      _isSimple(en->getElements().empty()){
 
   if (!_isSimple) {
     for (auto const& p : en->getElements()) {
@@ -241,9 +241,10 @@ bool GatherBlock::hasMore() {
 
 /// @brief getSome
 AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
+  std::size_t shardRequiredForHeapSort = 4;
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin();
-     
+
   if (_dependencies.empty()) {
     _done = true;
   }
@@ -307,21 +308,36 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
 
   // comparison function
   OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters);
+  auto ourGreater = [&ourLessThan](std::pair<std::size_t, std::size_t>& a
+                      ,std::pair<std::size_t, std::size_t>& b){
+    return ourLessThan(b,a);
+  };
+
   AqlItemBlock* example = _gatherBlockBuffer.at(index).front();
   size_t nrRegs = example->getNrRegs();
 
   // automatically deleted if things go wrong
   std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, static_cast<arangodb::aql::RegisterId>(nrRegs)));
 
+  if (!_heap && _dependencies.size() > shardRequiredForHeapSort){
+    _heap.reset(new Heap);
+    auto& heap = *_heap;
+    std::copy(_gatherBlockPos.begin(),_gatherBlockPos.end(),std::back_inserter(heap));
+    std::make_heap(heap.begin(), heap.end(),ourGreater);
+  }
+
   for (size_t i = 0; i < toSend; i++) {
     // get the next smallest row from the buffer . . .
-    std::pair<size_t, size_t> val = *(std::min_element(
-        _gatherBlockPos.begin(), _gatherBlockPos.end(), ourLessThan));
+    std::pair<size_t, size_t> val;
+    if(_heap){
+      val = _heap->front();
+    } else {
+      val = *(std::min_element( _gatherBlockPos.begin(), _gatherBlockPos.end(), ourLessThan));
+    }
 
     // copy the row in to the outgoing block . . .
     for (RegisterId col = 0; col < nrRegs; col++) {
-      AqlValue const& x(
-          _gatherBlockBuffer.at(val.first).front()->getValueReference(val.second, col));
+      AqlValue const& x( _gatherBlockBuffer.at(val.first).front()->getValueReference(val.second, col));
       if (!x.isEmpty()) {
         auto it = cache.find(x);
 
@@ -340,14 +356,23 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
       }
     }
 
-    // renew the _gatherBlockPos and clean up the buffer if necessary
     _gatherBlockPos.at(val.first).second++;
-    if (_gatherBlockPos.at(val.first).second ==
-        _gatherBlockBuffer.at(val.first).front()->size()) {
+    if(_heap){
+      auto& heap = *_heap;
+      std::pop_heap(heap.begin(), heap.end(),ourGreater);
+      heap.back().second++;
+    }
+
+    // renew the _gatherBlockPos and clean up the buffer if necessary
+    if ( _gatherBlockPos.at(val.first).second == _gatherBlockBuffer.at(val.first).front()->size() ) {
       AqlItemBlock* cur = _gatherBlockBuffer.at(val.first).front();
       returnBlock(cur);
       _gatherBlockBuffer.at(val.first).pop_front();
-      _gatherBlockPos.at(val.first) = std::make_pair(val.first, 0);
+      _gatherBlockPos.at(val.first) = {val.first, 0};
+
+      if( _heap) {
+        _heap->back().second = 0;
+      }
 
       if (_gatherBlockBuffer.at(val.first).empty()) {
         // if we pulled everything from the buffer, we need to fetch
@@ -358,6 +383,10 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
         // a problem, because the sort function used takes care of
         // this
       }
+    }
+
+    if(_heap) {
+      std::push_heap(_heap->begin(), _heap->end(),ourGreater);
     }
   }
 
