@@ -11,6 +11,7 @@
     events: {
     },
 
+    coordshortSuccess: undefined,
     statsEnabled: false,
     historyInit: false,
     initDone: false,
@@ -524,14 +525,22 @@
     },
 
     getCoordStatHistory: function (callback) {
-      $.ajax({
-        url: 'statistics/coordshort',
-        json: true
-      })
+      if (this.coordshortSuccess || this.coordshortSuccess === undefined || (Date.now() - this.coordshortTimestamp) / 1000 > 60) {
+        this.coordshortSuccess = false;
+        $.ajax({
+          url: 'statistics/coordshort',
+          json: true
+        })
         .success(function (data) {
+          this.coordshortTimestamp = Date.now();
+          this.coordshortSuccess = true;
           this.statsEnabled = data.enabled;
           callback(data.data);
+        }.bind(this)).error(function (data) {
+          this.coordshortTimestamp = Date.now();
+          this.coordshortSuccess = false;
         }.bind(this));
+      }
     }
 
   });

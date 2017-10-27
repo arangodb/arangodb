@@ -250,7 +250,7 @@ static int V8ToVPackNoKeyRevId (v8::Isolate* isolate,
 /// @brief get all cluster collections
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::vector<LogicalCollection*> GetCollectionsCluster(
+std::vector<LogicalCollection*> GetCollectionsCluster(
     TRI_vocbase_t* vocbase) {
   std::vector<LogicalCollection*> result;
 
@@ -1639,14 +1639,6 @@ static void JS_RenameVocbaseCol(
   }
 
   std::string const name = TRI_ObjectToString(args[0]);
-  
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    if (!exec->canUseDatabase(AuthLevel::RW) ||
-        !exec->canUseCollection(name, AuthLevel::RW)) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
-  }
 
   // second parameter "override" is to override renaming restrictions, e.g.
   // renaming from a system collection name to a non-system collection name and
@@ -1665,6 +1657,14 @@ static void JS_RenameVocbaseCol(
 
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
+  }
+  
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr) {
+    if (!exec->canUseDatabase(AuthLevel::RW) ||
+        !exec->canUseCollection(collection->name(), AuthLevel::RW)) {
+      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
+    }
   }
 
   PREVENT_EMBEDDED_TRANSACTION();
@@ -3006,7 +3006,7 @@ static void JS_CollectionVocbase(
   
   // check authentication after ensuring the collection exists
   if (ExecContext::CURRENT != nullptr &&
-      !ExecContext::CURRENT->canUseCollection(name, AuthLevel::RO)) {
+      !ExecContext::CURRENT->canUseCollection(collection->name(), AuthLevel::RO)) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                    std::string("No access to collection '") + name + "'");
   }
@@ -3075,7 +3075,7 @@ static void JS_CollectionsVocbase(
 
     if (ExecContext::CURRENT != nullptr &&
         !ExecContext::CURRENT->canUseCollection(vocbase->name(),
-                                               collection->name(), AuthLevel::RO)) {
+                                                collection->name(), AuthLevel::RO)) {
       continue;
     }
 

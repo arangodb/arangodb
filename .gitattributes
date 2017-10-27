@@ -3,3 +3,9 @@ VERSION eolf=lf
 scripts/unittest eol=lf
 *.csv binary
 *.json eol=lf
+Documentation/Examples/*.generated merge=ours
+VERSION merge=ours
+STARTER_REV merge=ours
+lib/V8/v8-json.cpp merge=ours
+arangod/Aql/tokens.cpp merge=ours
+arangod/Aql/grammar.cpp merge=ours

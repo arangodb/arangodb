@@ -1417,8 +1417,7 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
     // the master has a tick value which is not contained in this result
     // but it claims it does not have any more data
     // so it's probably a tick from an invisible operation (such as
-    // closing
-    // a WAL file)
+    // closing a WAL file)
     bumpTick = true;
   }
   
@@ -1427,17 +1426,12 @@ Result TailingSyncer::followMasterLog(TRI_voc_tick_t& fetchTick,
     _applier->_state._lastAvailableContinuousTick = tick;
   }
   
-  if (!found) {
-    return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") +
-                  _masterInfo._endpoint + ": required header is missing in logger-follow response");
-  }
-  
   if (!fromIncluded && _requireFromPresent && fetchTick > 0) {
     return Result(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT, std::string("required follow tick value '") +
                   StringUtils::itoa(fetchTick) + "' is not present (anymore?) on master at " + _masterInfo._endpoint +
                   ". Last tick available on master is '" + StringUtils::itoa(tick) +
                   "'. It may be required to do a full resync and increase the number " +
-                  "of historic logfiles on the master in logger-follow response");
+                  "of historic logfiles on the master");
   }
   
   TRI_voc_tick_t lastAppliedTick;

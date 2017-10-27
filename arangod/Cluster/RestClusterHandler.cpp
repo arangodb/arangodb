@@ -50,9 +50,7 @@ RestStatus RestClusterHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (!suffixes.empty() && suffixes[0] == "endpoints") {
     handleCommandEndpoints();
-  } /*else if (!suffixes.empty() && suffixes[0] == "serverInfo") {
-    handleCommandServerInfo();
-  }*/ else {
+  } else {
     generateError(Result(TRI_ERROR_FORBIDDEN,
                          "expecting _api/cluster/endpoints"));
   }
@@ -62,7 +60,6 @@ RestStatus RestClusterHandler::execute() {
 
 /// @brief returns information about all coordinator endpoints
 void RestClusterHandler::handleCommandEndpoints() {
-  TRI_ASSERT(AgencyCommManager::isEnabled());
   ClusterInfo* ci = ClusterInfo::instance();
   TRI_ASSERT(ci != nullptr);
   std::vector<ServerID> endpoints;
@@ -78,6 +75,8 @@ void RestClusterHandler::handleCommandEndpoints() {
                            "automatic failover is not enabled"));
       return;
     }
+  
+    TRI_ASSERT(AgencyCommManager::isEnabled());
     
     std::string const leaderPath = "Plan/AsyncReplication/Leader";
     std::string const healthPath = "Supervision/Health";
@@ -101,7 +100,7 @@ void RestClusterHandler::handleCommandEndpoints() {
     VPackSlice healthMap = result.slice()[0].get(path);
     
     if (leaderId.empty()) {
-      generateError(Result(TRI_ERROR_INTERNAL, "Leadership challenge is ongoing"));
+      generateError(Result(TRI_ERROR_FAILED, "Leadership challenge is ongoing"));
       return;
     }
       

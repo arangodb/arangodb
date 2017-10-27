@@ -60,11 +60,8 @@ class MaintenanceHandler : public RestHandler {
         GlobalReplicationApplier* applier = replication->globalReplicationApplier();
         if (applier != nullptr && applier->isRunning()) {
           std::string endpoint = applier->endpoint();
-          std::string const tcp = "tcp://";
-          if (endpoint.find(tcp) == 0) {
-            endpoint = std::string(_request->protocol()) + "://" +
-                       endpoint.substr(tcp.size());
-          }
+          // replace tcp:// with http://, and ssl:// with https://
+          endpoint = fixEndpointProtocol(endpoint);
           
           resetResponse(rest::ResponseCode::TEMPORARY_REDIRECT);
           _response->setHeader("Location", endpoint + _request->requestPath());
@@ -81,6 +78,17 @@ class MaintenanceHandler : public RestHandler {
   void handleError(const Exception& error) override {
     resetResponse(rest::ResponseCode::SERVICE_UNAVAILABLE);
   };
+
+  // replace tcp:// with http://, and ssl:// with https://
+  std::string fixEndpointProtocol(std::string const& endpoint) const {
+    if (endpoint.find("tcp://", 0, 6) == 0) {
+      return "http://" + endpoint.substr(6); // strlen("tcp://")
+    }
+    if (endpoint.find("ssl://", 0, 6) == 0) {
+      return "https://" + endpoint.substr(6); // strlen("ssl://")
+    }
+    return endpoint;
+  }
 };
 }
 
@@ -125,23 +133,34 @@ RestHandler* RestHandlerFactory::createHandler(
   // In the bootstrap phase, we would like that coordinators answer the
   // following endpoints, but not yet others:
   RestHandlerFactory::Mode mode = RestHandlerFactory::serverMode();
-  if (mode == Mode::MAINTENANCE) {
-    if ((!ServerState::instance()->isCoordinator() &&
-         path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
-        (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
-         path.find("/_api/aql") == std::string::npos)) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
-      return new MaintenanceHandler(req.release(), res.release(), false);
+  switch (mode) {
+    case Mode::MAINTENANCE: {
+      if ((!ServerState::instance()->isCoordinator() &&
+          path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
+          (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+          path.find("/_api/aql") == std::string::npos)) {
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
+        return new MaintenanceHandler(req.release(), res.release(), false);
+      }
+      break;
     }
-  } else if (mode == RestHandlerFactory::Mode::REDIRECT) {
-    if (path.find("/_admin/shutdown") == std::string::npos &&
-        path.find("/_api/agency/agency-callbacks") == std::string::npos &&
-        path.find("/_api/cluster/") == std::string::npos &&
-        path.find("/_api/replication") == std::string::npos &&
-        path.find("/_api/version") == std::string::npos &&
-        path.find("/_api/wal") == std::string::npos) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
-      return new MaintenanceHandler(req.release(), res.release(), true);
+    case Mode::REDIRECT:
+    case Mode::TRYAGAIN: {
+      if (path.find("/_admin/shutdown") == std::string::npos &&
+          path.find("/_admin/server/role") == std::string::npos &&
+          path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+          path.find("/_api/cluster/") == std::string::npos &&
+          path.find("/_api/replication") == std::string::npos &&
+          path.find("/_api/version") == std::string::npos &&
+          path.find("/_api/wal") == std::string::npos) {
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
+        return new MaintenanceHandler(req.release(), res.release(), true);
+      }
+      break;
+    }
+    case Mode::DEFAULT: {
+      // no special handling required
+      break;
     }
   }
 

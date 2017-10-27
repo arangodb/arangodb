@@ -68,6 +68,7 @@ class PhysicalCollection {
 
   /// @brief export properties
   virtual void getPropertiesVPack(velocypack::Builder&) const = 0;
+  /// @brief used for updating properties
   virtual void getPropertiesVPackCoordinator(velocypack::Builder&) const = 0;
 
   /// @brief return the figures for a collection

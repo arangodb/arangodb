@@ -41,14 +41,17 @@ configure_file (
   "${PROJECT_SOURCE_DIR}/Installation/debian/prerm.in"
   "${PROJECT_BINARY_DIR}/Installation/debian/prerm"
   NEWLINE_STYLE UNIX)
-  
+
 list(APPEND CPACK_DEBIAN_PACKAGE_CONTROL_EXTRA
   "${PROJECT_BINARY_DIR}/Installation/debian/templates"
   "${PROJECT_BINARY_DIR}/Installation/debian/config"
-  "${PROJECT_BINARY_DIR}/Installation/debian/postinst"
-  
+
   "${PROJECT_SOURCE_DIR}/Installation/debian/preinst"
-  "${PROJECT_SOURCE_DIR}/Installation/debian/postrm")
+  "${PROJECT_BINARY_DIR}/Installation/debian/postinst"
+
+  "${PROJECT_SOURCE_DIR}/Installation/debian/postrm"
+  "${PROJECT_BINARY_DIR}/Installation/debian/prerm"
+)
 
 ################################################################################
 # specify which target archcitecture the package is going to be:
