@@ -260,9 +260,6 @@ class Agent : public arangodb::Thread,
   // #brief access Inception thread
   Inception const* inception() const;
 
-  /// @brief State reads persisted state and prepares the agent
-  friend class Compactor;
-
   /// @brief persist agency configuration in RAFT
   void persistConfiguration(term_t t);
 
