@@ -37,6 +37,8 @@
 #include "Cluster/DBServerAgencySync.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "GeneralServer/AsyncJobManager.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Replication/GlobalInitialSyncer.h"
@@ -542,7 +544,7 @@ void HeartbeatThread::runSingleServer() {
           LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Did not become leader, "
           << "following " << leaderSlice.copyString();
           TRI_ASSERT(leaderSlice.isString() && leaderSlice.compareString(_myId) != 0);
-          // intentional fallthrough, we need to go to case 3
+          // intentional fallthrough to case 3
           
         } else {
           LOG_TOPIC(WARN, Logger::HEARTBEAT) << "got an unexpected agency error "
@@ -580,7 +582,15 @@ void HeartbeatThread::runSingleServer() {
       // enable redirections to leader
       auto prv = RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::REDIRECT);
       if (prv == RestHandlerFactory::Mode::DEFAULT) {
-        // FIXME wait for all operations to stop locally before following
+        // wait for all operations to stop locally before following
+        Result res = GeneralServerFeature::JOB_MANAGER->clearAllJobs();
+        if (res.fail()) {
+          LOG_TOPIC(WARN, Logger::HEARTBEAT) << "could not cancel all async jobs "
+            << res.errorMessage();
+        }
+        // wait for already scheduled jobs to disappear
+        SchedulerFeature::SCHEDULER->cancelQueued(5.0); // wait
+        // FIXME: is there more ?
       }
       
       if (applier->endpoint() != endpoint) {

@@ -74,7 +74,7 @@ RestStatus RestCursorHandler::execute() {
 }
 
 bool RestCursorHandler::cancel() {
-  RestHandler::cancel();
+  RestVocbaseBaseHandler::cancel();
   return cancelQuery();
 }
 

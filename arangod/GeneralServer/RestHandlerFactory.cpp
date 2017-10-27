@@ -51,6 +51,9 @@ class MaintenanceHandler : public RestHandler {
   char const* name() const override final { return "MaintenanceHandler"; }
 
   bool isDirect() const override { return true; };
+  
+  // returns the queue name, should trigger processing without job
+  size_t queue() const override { return JobQueue::AQL_QUEUE; }
 
   RestStatus execute() override {
     // use this to redirect requests

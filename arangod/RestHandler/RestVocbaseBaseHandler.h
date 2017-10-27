@@ -331,6 +331,11 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   //////////////////////////////////////////////////////////////////////////////
 
   virtual void finalizeExecute() override;
+  
+  virtual bool cancel() override {
+    _context->cancel();
+    return RestBaseHandler::cancel();
+  }
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief _nolockHeaderSet
