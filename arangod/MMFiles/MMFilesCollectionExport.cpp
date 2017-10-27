@@ -29,6 +29,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "Utils/CollectionGuard.h"
+#include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Hints.h"
@@ -92,9 +93,8 @@ void MMFilesCollectionExport::run(uint64_t maxWaitTime, size_t limit) {
   }
 
   {
-    SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(_collection->vocbase()), _name,
-        AccessMode::Type::READ);
+    auto ctx = transaction::StandaloneContext::Create(_collection->vocbase());
+    SingleCollectionTransaction trx(ctx, _name, AccessMode::Type::READ);
 
     // already locked by guard above
     trx.addHint(transaction::Hints::Hint::NO_USAGE_LOCK);

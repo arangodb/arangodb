@@ -42,6 +42,7 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/Socket.h"
+#include "RestServer/VocbaseContext.h"
 #include "Utils/Events.h"
 
 using namespace arangodb;
@@ -337,7 +338,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 
   if (store) {
     auto self = shared_from_this();
-    handler->initEngine(_loop, [this, self](RestHandler* handler) {
+    handler->initEngine(_loop, [self](RestHandler* handler) {
       GeneralServerFeature::JOB_MANAGER->finishAsyncJob(handler);
     });
   } else {
@@ -349,7 +350,7 @@ bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 
   auto job = std::make_unique<Job>(
       _server, std::move(handler),
-      [self, this](std::shared_ptr<RestHandler> h) { h->asyncRunEngine(); });
+      [self](std::shared_ptr<RestHandler> h) { h->asyncRunEngine(); });
 
   return SchedulerFeature::SCHEDULER->queue(std::move(job));
 }
@@ -365,30 +366,23 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
   }
   
   std::string const& path = request->requestPath();
-  std::string const& dbname = request->databaseName();
   std::string const& username = request->user();
   rest::ResponseCode result = request->authorized() ? rest::ResponseCode::OK :
     rest::ResponseCode::UNAUTHORIZED;
   
-  AuthLevel dbLevel = AuthLevel::NONE;
-
-  // mop: inside authenticateRequest() request->user will be populated
-  bool forceOpen = false;  
-  if (request->authorized() && !username.empty()) {
-    AuthLevel sysLevel = _authentication->canUseDatabase(username, StaticStrings::SystemDatabase);
-    if (dbname == StaticStrings::SystemDatabase) {
-      // the request is made in the system database, and we have already queried our
-      // privileges for it. simply reuse the already queried privileges now
-      dbLevel = sysLevel;
-    } else {
-      // we have to query again but for a different database
-      dbLevel = _authentication->canUseDatabase(username, dbname);
-    }
-
-    request->setExecContext(new ExecContext(username, dbname,
-                                            sysLevel, dbLevel));
+  VocbaseContext* vc = static_cast<VocbaseContext*>(request->requestContext());
+  TRI_ASSERT(vc != nullptr);
+  if (vc->databaseAuthLevel() == AuthLevel::NONE &&
+      !StringUtils::isPrefix(path, ApiUser)) {
+    events::NotAuthorized(request);
+    result = rest::ResponseCode::UNAUTHORIZED;
   }
   
+  // mop: inside the authenticateRequest() request->user will be populated
+  //bool forceOpen = false;
+  
+  // we need to check for some special cases, where users may be allowed
+  // to proceed even unauthorized
   if (!request->authorized()) {
     
 #ifdef ARANGODB_HAVE_DOMAIN_SOCKETS
@@ -399,7 +393,6 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
     if (ci.endpointType == Endpoint::DomainType::UNIX &&
         !_authentication->authenticationUnixSockets()) {
       // no authentication required for unix domain socket connections
-      forceOpen = true;
       result = rest::ResponseCode::OK;
     }
 #endif
@@ -412,8 +405,10 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
         // check if path starts with /_
         // or path begins with /
         if (path[0] != '/' || (path.size() > 1 && path[1] != '_')) {
-          forceOpen = true;
+          // simon: upgrade rights for Foxx apps. FIXME
+          //forceOpen = true;
           result = rest::ResponseCode::OK;
+          vc->upgradeSuperuser();
         }
       }
     }
@@ -425,39 +420,13 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
-        forceOpen = true;
+        vc->upgradeSuperuser();
+      } else if (StringUtils::isPrefix(path, ApiUser + username + '/')) {
+        // simon: unauthorized users should be able to call
+        // `/_api/users/<name>` to check their passwords
+        result = rest::ResponseCode::OK;
+        vc->upgradeReadOnly();
       }
-    }
-  }
-  
-  
-  if (result != rest::ResponseCode::OK) {
-    return result;
-  }
-  
-  // mop: internal request => no username present
-  if (username.empty()) {
-    // mop: set user to root so that the foxx stuff
-    // knows about us
-    return rest::ResponseCode::OK;
-  }
-  
-  // check that we are allowed to see the database
-  if (!forceOpen) {
-    if (!request->authorized()) {
-      if (request->requestType() == RequestType::GET &&
-          (StringUtils::isPrefix(path, ApiUser + username + '/') ||
-           StringUtils::isPrefix(path, AdminAardvark))) {
-        // check for GET /_db/_system/_api/user/USERNAME/database
-        request->setExecContext(nullptr);
-        return rest::ResponseCode::OK;
-      }
-    }
-    
-    if (dbLevel == AuthLevel::NONE &&
-        !StringUtils::isPrefix(path, ApiUser)) {
-      events::NotAuthorized(request);
-      result = rest::ResponseCode::UNAUTHORIZED;
     }
   }
   

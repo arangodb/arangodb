@@ -1,7 +1,7 @@
 Launching an ArangoDB cluster for testing
 -----------------------------------------
 
-An ArangoDB cluster consists of several running tasks which form the cluster. ArangoDB itself won't start or monitor any of these tasks. So it will need some kind of supervisor which is monitoring and starting these tasks. For production usage we recommend using Apache Mesos as the cluster supervisor.
+An ArangoDB cluster consists of several running tasks (or server processes) which form the cluster. ArangoDB itself won't start or monitor any of these tasks. So it will need some kind of supervisor which is monitoring and starting these tasks. For production usage we recommend using Apache Mesos as the cluster supervisor.
 
 However starting a cluster manually is possible and is a very easy method to get a first impression of what an ArangoDB cluster looks like.
 
@@ -39,19 +39,18 @@ Furthermore, in the following sections when `--cluster.agency-address` is used m
 
 ### Coordinators and DBServers
 
-These two roles share a common set of relevant options. First you should specify the role using `--cluster.my-role`. This can either be `PRIMARY` (a database server) or `COORDINATOR`. Both need some unique information with which they will register in the agency, too. This could for example be some combination of host name and port or whatever you have at hand. However it must be unique for each instance and be provided as value for `--cluster.my-local-info`. Furthermore provide the external endpoint (IP and port) of the task via `--cluster.my-address`.
+These two roles share a common set of relevant options. First you should specify the role using `--cluster.my-role`. This can either be `PRIMARY` (a database server) or `COORDINATOR`. Furthermore provide the external endpoint (IP and port) of the task via `--cluster.my-address`.
 
 The following is a full-example of what it might look like:
 
 ```
-arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8529 --cluster.my-address tcp://127.0.0.1:8529 --cluster.my-local-info db1 --cluster.my-role PRIMARY --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 --database.directory primary1 &
-arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8530 --cluster.my-address tcp://127.0.0.1:8530 --cluster.my-local-info db2 --cluster.my-role PRIMARY --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 --database.directory primary2 &
-arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8531 --cluster.my-address tcp://127.0.0.1:8531 --cluster.my-local-info coord1 --cluster.my-role COORDINATOR --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 --database.directory coordinator &
+arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8529 --cluster.my-address tcp://127.0.0.1:8529 --cluster.my-role PRIMARY --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 --database.directory primary1 &
+arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8530 --cluster.my-address tcp://127.0.0.1:8530 --cluster.my-role PRIMARY --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 --database.directory primary2 &
+arangod --server.authentication=false --server.endpoint tcp://0.0.0.0:8531 --cluster.my-address tcp://127.0.0.1:8531 --cluster.my-role COORDINATOR --cluster.agency-endpoint tcp://127.0.0.1:5001 --cluster.agency-endpoint tcp://127.0.0.1:5002 --cluster.agency-endpoint tcp://127.0.0.1:5003 --database.directory coordinator &
 ```
 
 Note in particular that the endpoint descriptions given under `--cluster.my-address` and `--cluster.agency-endpoint` must not use the IP address `0.0.0.0` because they must contain an actual address that can be routed to the corresponding server. The `0.0.0.0` in `--server.endpoint` simply means that the server binds itself to all available network devices with all available IP addresses.
 
-Upon registering with the agency during startup the cluster will assign an ID to every task. The generated ID will be printed out to the log or can be accessed via the http API by calling `http://server-address/_admin/server/id`.
-Should you ever have to restart a task, simply reuse the same value for `--cluster.my-local-info` and the same ID will be picked.
+Upon registering with the agency during startup the cluster will assign an ID to every server. The generated ID will be printed out to the log or can be accessed via the http API by calling `http://server-address/_admin/server/id`.
 
 You have now launched a complete ArangoDB cluster and can contact its coordinator at the endpoint `tcp://127.0.0.1:8531`, which means that you can reach the web UI under `http://127.0.0.1:8531`.

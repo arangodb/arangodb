@@ -103,7 +103,37 @@ if (USE_IRESEARCH)
   )
 
   set(Boost_INCLUDE_DIRS "${CMAKE_CURRENT_SOURCE_DIR}/boost/1.62.0") # explicitly set since suppressing Boost search
-  set(ICU_STATIC_LIBS ${ICU_LIBS})
+
+  # IResearch on MacOS requires a complete build of ICU for encoding conversion
+  if(APPLE)
+    set(ICU_LIBS icu-static CACHE INTERNAL "ICU: Libraries" FORCE) # use complete ICU build
+    set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/v5.7.0.0/third_party/icu")
+  elseif(MSVC)
+    add_library(icu-static STATIC IMPORTED GLOBAL)
+    set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/build/Debug/lib/icui18n.lib")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icui18n.lib")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icui18n.lib")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icui18n.lib")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/build/Debug/lib/icuuc.lib")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icuuc.lib")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icuuc.lib")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}/build/Release/lib/icuuc.lib")
+    set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
+  else()
+    add_library(icu-static STATIC IMPORTED GLOBAL)
+    set_property(TARGET icu-static PROPERTY INTERFACE_INCLUDE_DIRECTORIES "${ICU_INCLUDE_DIR}")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.0.0/x64.debug/obj.target/third_party/icu/libicui18n.a")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.0.0/x64.release/obj.target/third_party/icu/libicui18n.a")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.0.0/x64.release/obj.target/third_party/icu/libicui18n.a")
+    set_property(TARGET icu-static PROPERTY IMPORTED_LOCATION_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.0.0/x64.release/obj.target/third_party/icu/libicui18n.a")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_DEBUG "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.0.0/x64.debug/obj.target/third_party/icu/libicuuc.a")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELEASE "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.0.0/x64.release/obj.target/third_party/icu/libicuuc.a")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_RELWITHDEBINFO "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.0.0/x64.release/obj.target/third_party/icu/libicuuc.a")
+    set_property(TARGET icu-static PROPERTY INTERFACE_LINK_LIBRARIES_MINSIZEREL "${CMAKE_CURRENT_BINARY_DIR}/V8/v5.7.0.0/x64.release/obj.target/third_party/icu/libicuuc.a")
+    set(ICU_FOUND TRUE) # ICU built from source in 3rdParty directory
+  endif()
+
   set(LZ4_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/lz4")
   set(SNOWBALL_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/snowball")
   set(UNWIND_ROOT "invalid")
@@ -118,6 +148,14 @@ if (USE_IRESEARCH)
   )
   add_subdirectory("${IRESEARCH_ROOT}" "${IRESEARCH_BUILD_DIR}" EXCLUDE_FROM_ALL) # do not build unused targets
   set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH_ORIGINAL}) # restore CMAKE_MODULE_PATH
+  unset(BUILD_SHARED_LIBS) # otherwise ZLib (below) does not build on win32
+  unset(BUILD_SHARED_LIBS CACHE) # otherwise ZLib (below) does not build on win32
+
+  # IResearch on MacOS requires a complete build of ICU for encoding conversion
+  if(APPLE)
+    # cmake does not build ICU without this (cmake does not inherit dependencies)
+    add_dependencies(v8_build icu-build icudata-static icui18n-static icuuc-static)
+  endif()
 endif()
 
 ################################################################################

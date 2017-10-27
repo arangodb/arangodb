@@ -114,8 +114,8 @@ if (ICU_INCLUDE_DIR AND ICU_SRC_DIR_UCONV AND ICU_SRC_DIR_CONFIGURE)
   file(MAKE_DIRECTORY "${ICU_WORK_PATH}")
 
   add_custom_target(icu-build
-    COMMAND "${ICU_SRC_DIR_CONFIGURE}" "--disable-samples" "--disable-tests" "--enable-static" "--srcdir=${ICU_SRC_DIR_PARENT}" "--prefix=${ICU_WORK_PATH}/build" "--exec-prefix=${ICU_WORK_PATH}/ebuild"
-    COMMAND make -j 8 install
+    COMMAND test -d "${ICU_LIBRARY_PATH}" || "${ICU_SRC_DIR_CONFIGURE}" "--disable-samples" "--disable-tests" "--enable-static" "--srcdir=${ICU_SRC_DIR_PARENT}" "--prefix=${ICU_WORK_PATH}/build" "--exec-prefix=${ICU_WORK_PATH}/ebuild"
+    COMMAND test -d "${ICU_LIBRARY_PATH}" || make -j 8 install
     WORKING_DIRECTORY "${ICU_WORK_PATH}"
     VERBATIM
   )

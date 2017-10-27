@@ -35,29 +35,6 @@
 /// why so much memory is needed
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#define MALLOC_WARNING_THRESHOLD (1024 * 1024 * 1024)
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief macros for producing stderr output
-///
-/// these will include the location of the problematic if we are in zone debug
-/// mode, and will not include it if in non debug mode
-////////////////////////////////////////////////////////////////////////////////
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
-#define ZONE_DEBUG_LOCATION " in %s:%d"
-#define ZONE_DEBUG_PARAMS , file, line
-
-#else
-
-#define ZONE_DEBUG_LOCATION
-#define ZONE_DEBUG_PARAMS
-
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wrapper for malloc calls
 ////////////////////////////////////////////////////////////////////////////////
@@ -85,16 +62,6 @@ static thread_local int AllowMemoryFailures = -1;
 /// @brief checks the size of the memory that is requested
 /// prints a warning if size is above a threshold
 ////////////////////////////////////////////////////////////////////////////////
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-static inline void CheckSize(uint64_t n, char const* file, int line) {
-  // warn in the case of big malloc operations
-  if (n >= MALLOC_WARNING_THRESHOLD) {
-    fprintf(stderr, "big malloc action: %llu bytes" ZONE_DEBUG_LOCATION "\n",
-            (unsigned long long)n ZONE_DEBUG_PARAMS);
-  }
-}
-#endif
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
 /// @brief timestamp for failing malloc
@@ -272,39 +239,9 @@ void operator delete[](void* pointer, std::nothrow_t const&) noexcept {
 }
 #endif
 
-/// @brief system memory allocation
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void* TRI_SystemAllocateZ(uint64_t n, bool set, char const* file, int line) {
-#else
-void* TRI_SystemAllocate(uint64_t n, bool set) {
-#endif
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  CheckSize(n, file, line);
-#endif
-
-  char* m = static_cast<char*>(BuiltInMalloc((size_t)n));
-
-  if (m != nullptr) {
-    if (set) {
-      memset(m, 0, (size_t)n);
-    }
-  }
-
-  return m;
-}
-
 /// @brief basic memory management for allocate
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void* TRI_AllocateZ(uint64_t n,
-                    char const* file, int line) {
-#else
-void* TRI_Allocate(uint64_t n) {
-#endif
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  CheckSize(n, file, line);
-#endif
-
-  char* m = static_cast<char*>(MALLOC_WRAPPER((size_t)n));
+void* TRI_Allocate(size_t n) {
+  void* m = static_cast<char*>(MALLOC_WRAPPER(n));
 
   if (m == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -313,35 +250,19 @@ void* TRI_Allocate(uint64_t n) {
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // prefill with 0xA5 (magic value, same as Valgrind will use)
-  memset(m, 0xA5, (size_t)n);
+  memset(m, 0xA5, n);
 #endif
 
   return m;
 }
 
 /// @brief basic memory management for reallocate
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void* TRI_ReallocateZ(void* m, uint64_t n,
-                      char const* file, int line) {
-#else
-void* TRI_Reallocate(void* m, uint64_t n) {
-#endif
-
+void* TRI_Reallocate(void* m, size_t n) {
   if (m == nullptr) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    return TRI_AllocateZ(n, file, line);
-#else
     return TRI_Allocate(n);
-#endif
   }
 
-  char* p = (char*)m;
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  CheckSize(n, file, line);
-#endif
-
-  p = static_cast<char*>(REALLOC_WRAPPER(p, (size_t)n));
+  void* p = REALLOC_WRAPPER(m, n);
 
   if (p == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -352,41 +273,16 @@ void* TRI_Reallocate(void* m, uint64_t n) {
 }
 
 /// @brief basic memory management for deallocate
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void TRI_FreeZ(void* m, char const* file, int line) {
-#else
 void TRI_Free(void* m) {
-#endif
-
-  char* p = (char*)m;
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (p == nullptr) {
-    fprintf(stderr, "freeing nil ptr " ZONE_DEBUG_LOCATION ZONE_DEBUG_PARAMS);
+  if (m == nullptr) {
+    fprintf(stderr, "freeing nil ptr\n");
     // crash intentionally
     TRI_ASSERT(false);
   }
 #endif
 
-  free(p);
-}
-
-/// @brief free memory allocated by some low-level functions
-///
-/// this can be used to free memory that was not allocated by TRI_Allocate, but
-/// by malloc et al
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-void TRI_SystemFreeZ(void* p, char const* file, int line) {
-#else
-void TRI_SystemFree(void* p) {
-#endif
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  if (p == nullptr) {
-    fprintf(stderr, "freeing nil ptr in %s:%d\n", file, line);
-  }
-#endif
-  free(p);
+  free(m);
 }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS

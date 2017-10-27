@@ -460,6 +460,14 @@ bool OrderedViewIterator::next(LocalDocumentIdCallback const& callback, size_t l
     auto itr = segmentReader.mask(_filter->execute(segmentReader, _order));
     const irs::score* score = itr->attributes().get<irs::score>();
 
+    if (!score) {
+      LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "failed to retrieve document score attribute while iterating iResearch view, ignoring: reader_id '" << i << "'";
+      IR_STACK_TRACE();
+
+      continue; // if here then there is probably a bug in IResearchView while querying
+    }
+
 #if defined(__GNUC__) && !defined(_GLIBCXX_USE_CXX11_ABI)
     // workaround for std::basic_string's COW with old compilers
     const irs::bytes_ref scoreValue = score->value();
@@ -472,20 +480,12 @@ bool OrderedViewIterator::next(LocalDocumentIdCallback const& callback, size_t l
         LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
           << "failed to generate document identifier token while iterating iResearch view, ignoring: reader_id '" << i
           << "', doc_id '" << itr->value() << "'";
+        IR_STACK_TRACE();
 
         continue; // if here then there is probably a bug in IResearchView while indexing
       }
 
       score->evaluate(); // compute a score for the current document
-
-      if (!score) {
-        LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)
-          << "failed to generate document score while iterating iResearch view, ignoring: reader_id '" << i
-          << "', doc_id '" << itr->value() << "'";
-
-        continue; // if here then there is probably a bug in IResearchView or in the iResearch library
-      }
-
       orderedDocTokens.emplace(scoreValue, tmpToken);
 
       if (orderedDocTokens.size() > maxDocCount) {

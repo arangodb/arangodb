@@ -333,7 +333,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       resource/=irs::string_ref("simple_sequential.json");
 
       auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
-      auto root = builder->slice();
+      auto root = builder.slice();
       REQUIRE(root.isArray());
 
       size_t i = 0;
@@ -359,7 +359,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       resource/=irs::string_ref("simple_sequential_order.json");
 
       auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
-      auto root = builder->slice();
+      auto root = builder.slice();
       REQUIRE(root.isArray());
 
       for (auto doc : arangodb::velocypack::ArrayIterator(root)) {

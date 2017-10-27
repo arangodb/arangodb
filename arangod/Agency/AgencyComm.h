@@ -284,7 +284,7 @@ public:
 
   static const std::vector<std::string> TypeUrl;
 
-  virtual std::string toJson() const = 0;
+  std::string toJson() const;
   virtual void toVelocyPack(arangodb::velocypack::Builder&) const = 0;
   virtual std::string const& path() const = 0;
   virtual std::string getClientId() const = 0;
@@ -301,12 +301,12 @@ struct AgencyGeneralTransaction : public AgencyTransaction {
 
   typedef std::pair<std::vector<AgencyOperation>,std::vector<AgencyPrecondition>> TransactionType;
 
-  explicit AgencyGeneralTransaction(
-    std::pair<AgencyOperation,AgencyPrecondition> const& trx) :
+  explicit AgencyGeneralTransaction(AgencyOperation const& op,
+                                    AgencyPrecondition const& pre) :
     clientId(to_string(boost::uuids::random_generator()())) {
     transactions.emplace_back(
-      TransactionType(std::vector<AgencyOperation>(1,trx.first),
-                      std::vector<AgencyPrecondition>(1,trx.second)));
+    TransactionType(std::vector<AgencyOperation>(1, op),
+                    std::vector<AgencyPrecondition>(1, pre)));
   }
   
   explicit AgencyGeneralTransaction(
@@ -327,9 +327,8 @@ struct AgencyGeneralTransaction : public AgencyTransaction {
   void toVelocyPack(
     arangodb::velocypack::Builder& builder) const override final;
 
-  std::string toJson() const override final;
-
-  void push_back(std::pair<AgencyOperation,AgencyPrecondition> const&);
+  void push_back(AgencyOperation const& op);
+  void push_back(std::pair<AgencyOperation, AgencyPrecondition> const&);
 
   inline virtual std::string const& path() const override final {
     return AgencyTransaction::TypeUrl[2];
@@ -393,8 +392,6 @@ public:
   void toVelocyPack(
       arangodb::velocypack::Builder& builder) const override final;
 
-  std::string toJson() const override final;
-
   inline virtual std::string const& path() const override final {
     return AgencyTransaction::TypeUrl[1];
   }
@@ -455,8 +452,6 @@ public:
   void toVelocyPack(
       arangodb::velocypack::Builder& builder) const override final;
 
-  std::string toJson() const override final;
-
   inline std::string const& path() const override final {
     return AgencyTransaction::TypeUrl[3];
   }
@@ -490,8 +485,6 @@ public:
   void toVelocyPack(
       arangodb::velocypack::Builder& builder) const override final;
 
-  std::string toJson() const override final;
-
   inline virtual std::string const& path() const override final {
     return AgencyTransaction::TypeUrl[0];
   }
@@ -524,7 +517,8 @@ class AgencyCommManager {
   static std::string path();
   static std::string path(std::string const&);
   static std::string path(std::string const&, std::string const&);
-
+  static std::vector<std::string> slicePath(std::string const&);
+  
   static std::string generateStamp();
 
  public:
@@ -654,16 +648,14 @@ class AgencyComm {
 
   AgencyCommResult increment(std::string const&);
 
-  // compares and swaps a single value in the backend the CAS condition is
-  // whether or not a previous value existed for the key
-
+  /// compares and swaps a single value in the backend the CAS condition is
+  /// whether or not a previous value existed for the key
   AgencyCommResult casValue(std::string const&,
                             arangodb::velocypack::Slice const&, bool, double,
                             double);
 
-  // compares and swaps a single value in the back end the CAS condition is
-  // whether or not the previous value for the key was identical to `oldValue`
-
+  /// compares and swaps a single value in the back end the CAS condition is
+  /// whether or not the previous value for the key was identical to `oldValue`
   AgencyCommResult casValue(std::string const&,
                             arangodb::velocypack::Slice const&,
                             arangodb::velocypack::Slice const&, double, double);
@@ -705,7 +697,7 @@ class AgencyComm {
                         double, std::string const&, std::string const&,
                         std::string const& clientId = std::string());
 
-  bool tryInitializeStructure(std::string const& jwtSecret);
+  bool tryInitializeStructure();
 
   bool shouldInitializeStructure();
 };

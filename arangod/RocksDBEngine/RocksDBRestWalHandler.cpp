@@ -30,6 +30,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/TransactionManager.h"
+#include "Utils/ExecContext.h"
 
 #include <rocksdb/utilities/transaction_db.h>
 
@@ -38,22 +39,25 @@ using namespace arangodb::rest;
 
 RocksDBRestWalHandler::RocksDBRestWalHandler(GeneralRequest* request,
                                              GeneralResponse* response)
-    : RestVocbaseBaseHandler(request, response) {}
+    : RestBaseHandler(request, response) {}
 
 RestStatus RocksDBRestWalHandler::execute() {
+  if (ExecContext::CURRENT == nullptr ||
+      !ExecContext::CURRENT->isAdminUser()) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_FORBIDDEN);
+    return RestStatus::DONE;
+  }
+  
   std::vector<std::string> const& suffixes = _request->suffixes();
-
   if (suffixes.size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting /_admin/wal/<operation>");
     return RestStatus::DONE;
   }
-
-  std::string const& operation = suffixes[0];
-
+  
   // extract the sub-request type
   auto const type = _request->requestType();
-
+  std::string const& operation = suffixes[0];
   if (operation == "transactions") {
     if (type == rest::RequestType::GET) {
       transactions();

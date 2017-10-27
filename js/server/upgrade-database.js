@@ -318,8 +318,8 @@
     function upgradeDatabase () {
       // cluster
       let cluster;
-
-      if (global.ArangoAgency.prefix() === '') {
+      if (global.ArangoAgency.prefix() === '' ||
+          global.ArangoServerState.role() === 'SINGLE') {
         cluster = CLUSTER_NONE;
       } else {
         if (args.isCluster) {

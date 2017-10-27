@@ -87,8 +87,8 @@ class LogicalView {
   void drop();
 
   // SECTION: Serialization
-  VPackBuilder toVelocyPack(bool includeProperties = false,
-                            bool includeSystem = false) const;
+  velocypack::Builder toVelocyPack(bool includeProperties = false,
+                                   bool includeSystem = false) const;
 
   void toVelocyPack(velocypack::Builder&, bool includeProperties = false,
                     bool includeSystem = false) const;

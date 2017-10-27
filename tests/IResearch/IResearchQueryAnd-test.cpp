@@ -296,7 +296,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
     resource/=irs::string_ref("simple_sequential.json");
 
     auto builder = arangodb::basics::VelocyPackHelper::velocyPackFromFile(resource.utf8());
-    auto slice = builder->slice();
+    auto slice = builder.slice();
     REQUIRE(slice.isArray());
 
     arangodb::OperationOptions options;

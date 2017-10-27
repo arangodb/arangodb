@@ -31,7 +31,7 @@ if [ -z "${ARANGOSH}" ];  then
   elif [ -x bin/arangosh ];  then
     ARANGOSH=bin/arangosh
   else
-      ARANGOSH="$(find "${EXEC_PATH}" -name "arangosh" -executable -type f | head -n 1)"
+    ARANGOSH="$(find "${EXEC_PATH}" -name "arangosh" -perm -001 -type f | head -n 1)"
       [ -x "${ARANGOSH}" ] || {
         echo "$0: cannot locate arangosh"
         exit 1
@@ -40,6 +40,7 @@ if [ -z "${ARANGOSH}" ];  then
 fi
 
 [ "$(uname -s)" != "Darwin" -a -x "${ARANGOSH}" ] && ARANGOSH="$(readlink -m "${ARANGOSH}")"
+[ "$(uname -s)" = "Darwin" -a -x "${ARANGOSH}" ] && ARANGOSH="$(cd -P -- "$(dirname -- "${ARANGOSH}")" && pwd -P)/$(basename -- "${ARANGOSH}")"
 
 ${ARANGOSH} \
     --configuration none \

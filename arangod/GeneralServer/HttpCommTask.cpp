@@ -26,6 +26,7 @@
 
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/tri-strings.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServer.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/RestHandler.h"
@@ -35,6 +36,7 @@
 #include "Rest/HttpRequest.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Utils/Events.h"
+#include "VocBase/AuthInfo.h"
 #include "VocBase/ticks.h"
 
 using namespace arangodb;
@@ -321,9 +323,8 @@ bool HttpCommTask::processRead(double startTime) {
       // request context for that request
       _incompleteRequest.reset(
           new HttpRequest(_connectionInfo, sptr, slen, _allowMethodOverride));
-
-      GeneralServerFeature::HANDLER_FACTORY->setRequestContext(
-          _incompleteRequest.get());
+      //GeneralServerFeature::HANDLER_FACTORY->setRequestContext(
+      //    _incompleteRequest.get());
       _incompleteRequest->setClientTaskId(_taskId);
 
       // check HTTP protocol version
@@ -793,7 +794,8 @@ void HttpCommTask::resetState() {
 }
 
 rest::ResponseCode HttpCommTask::authenticateRequest(HttpRequest* request) {
-  // first scape the auth headers and try to authenticate the user
+  // first scape the auth headers and try to determine
+  // and authenticate the user
   ResponseCode code = handleAuthHeader(request);
   if (code != ResponseCode::SERVER_ERROR) {
     // now populate the VocbaseContext
@@ -808,7 +810,6 @@ rest::ResponseCode HttpCommTask::authenticateRequest(HttpRequest* request) {
       }
     }
     
-    
     // will determine if the user can access this path
     // checks db permissions and contains exceptions for the
     // users API to allow logins
@@ -820,7 +821,7 @@ rest::ResponseCode HttpCommTask::authenticateRequest(HttpRequest* request) {
 ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
   bool found;
   std::string const& authStr =
-  request->header(StaticStrings::Authorization, found);
+    request->header(StaticStrings::Authorization, found);
   
   if (!found) {
     events::CredentialsMissing(request);
@@ -847,13 +848,17 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
       }
       
       if (authMethod != AuthenticationMethod::NONE) {
-        AuthResult result = _authentication->authInfo()->
-        checkAuthentication(authMethod, auth);
-        
-        request->setAuthorized(result._authorized);
-        if (result._authorized) {
+        request->setAuthenticationMethod(authMethod);
+        if (_authentication->isActive()) {
+          AuthResult result = _authentication->authInfo()->
+            checkAuthentication(authMethod, auth);
+          request->setAuthorized(result._authorized);
           request->setUser(std::move(result._username));
-          
+        } else {
+          request->setAuthorized(true);
+        }
+        
+        if (request->authorized()) {
           events::Authenticated(request, authMethod);
           return rest::ResponseCode::OK;
         }
