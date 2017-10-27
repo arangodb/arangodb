@@ -655,7 +655,7 @@ SECTION("BinaryIn") {
   assertFilterFail("FOR d IN VIEW myView FILTER 4 in d.a RETURN d");
 
   // invalid range (supported by AQL)
-  assertFilterFail("FOR d IN VIEW myView FILTER d.a in 1..4..5 RETURN d");
+  assertFilterExecutionFail("FOR d IN VIEW myView FILTER d.a in 1..4..5 RETURN d", &TestExpressionContext::EMPTY);
 }
 
 SECTION("BinaryNotIn") {
@@ -920,7 +920,7 @@ SECTION("BinaryNotIn") {
   assertFilterFail("FOR d IN VIEW myView FILTER d.a not in false..5.5 RETURN d");
 
   // invalid range (supported by AQL)
-  assertFilterFail("FOR d IN VIEW myView FILTER d.a not in 1..4..5 RETURN d");
+  assertFilterExecutionFail("FOR d IN VIEW myView FILTER d.a not in 1..4..5 RETURN d", &TestExpressionContext::EMPTY);
 }
 
 SECTION("BinaryEq") {

@@ -145,7 +145,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
       return false;
     }
 
-    TRI_ASSERT(ctx.ctx);
+    TRI_ASSERT(ctx.ctx); //FIXME remove, uncomment condition
 
     // don't really understand why we need `ExecutionPlan` and `Ast` here
     arangodb::aql::Expression expr(
@@ -748,20 +748,16 @@ bool fromIn(
       return false; // wrong range
     }
 
-    auto const* minValueNode = arangodb::iresearch::getNode(
-      *valueNode, 0, arangodb::aql::NODE_TYPE_VALUE
-    );
+    auto const* minValueNode = valueNode->getMemberUnchecked(0);
 
-    if (!minValueNode || !minValueNode->isConstant()) {
+    if (!minValueNode) {
       LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Unable to parse left bound of the RANGE node";
       return false; // wrong left node
     }
 
-    auto const* maxValueNode = arangodb::iresearch::getNode(
-      *valueNode, 1, arangodb::aql::NODE_TYPE_VALUE
-    );
+    auto const* maxValueNode = valueNode->getMemberUnchecked(1);
 
-    if (!maxValueNode || !maxValueNode->isConstant()) {
+    if (!maxValueNode) {
       LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Unable to parse right bound of the RANGE node";
       return false; // wrong right node
     }
