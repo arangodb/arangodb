@@ -5,10 +5,31 @@ v3.2.6 (2017-10-26)
 
 * UI: reduced cluster dashboard api calls
 
+* fixed a permission problem that prevented collection contents to be displayed
+  in the web interface
+
+* removed posix_fadvise call from RocksDB's PosixSequentialFile::Read(). This is 
+  consistent with Facebook PR 2573 (#3505)
+
+  this fix should improve the performance of the replication with the RocksDB
+  storage engine
+
+* allow changing of collection replication factor for existing collections
+
+* several fixes for the cluster agency
+
+* fixed undefined behavior in the RocksDB-based geo index
+
+* fixed Foxxmaster failover
+
+* purging or removing the Debian/Ubuntu arangodb3 packages now properly stops
+  the arangod instance before actuallying purging or removing
+
+
 v3.2.5 (2017-10-16)
 -------------------
 
-* BUGFIX: general-graph module and _api/gharial now accept cluster options
+* general-graph module and _api/gharial now accept cluster options
   for collection creation. It is now possible to set replicationFactor and
   numberOfShards for all collections created via this graph object.
   So adding a new collection will not result in a singleShard and
