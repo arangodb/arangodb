@@ -39,7 +39,7 @@ Furthermore, in the following sections when `--cluster.agency-address` is used m
 
 ### Coordinators and DBServers
 
-These two roles share a common set of relevant options. First you should specify the role using `--cluster.my-role`. This can either be `PRIMARY` (a database server) or `COORDINATOR`. Both need some unique information with which they will register in the agency, too. This could for example be some combination of host name and port or whatever you have at hand. However it must be unique for each instance and be provided as value for `--cluster.my-local-info`. Furthermore provide the external endpoint (IP and port) of the task via `--cluster.my-address`.
+These two roles share a common set of relevant options. First you should specify the role using `--cluster.my-role`. This can either be `PRIMARY` (a database server) or `COORDINATOR`. Furthermore provide the external endpoint (IP and port) of the task via `--cluster.my-address`.
 
 The following is a full-example of what it might look like:
 

@@ -79,11 +79,12 @@ class RocksDBEngine final : public StorageEngine {
   // validate the storage engine's specific options
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
-  void start() override;
-  void stop() override;
   // preparation phase for storage engine. can be used for internal setup.
   // the storage engine must not start any threads here or write any files
   void prepare() override;
+  void start() override;
+  void beginShutdown() override;
+  void stop() override;
   void unprepare() override;
 
   bool supportsDfdb() const override { return false; }
@@ -155,10 +156,10 @@ class RocksDBEngine final : public StorageEngine {
   
   // database, collection and index management
   // -----------------------------------------
-
-  void waitForSync(double) override {
-    // intentionally empty, not useful for this type of engine
-  }
+  
+  // intentionally empty, not useful for this type of engine
+  void waitForSyncTick(TRI_voc_tick_t) override {}
+  void waitForSyncTimeout(double) override {}
 
   virtual TRI_vocbase_t* openDatabase(velocypack::Slice const& parameters,
                                       bool isUpgrade, int&) override;

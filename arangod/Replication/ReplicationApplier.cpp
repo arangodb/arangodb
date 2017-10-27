@@ -49,7 +49,8 @@ class ApplyThread : public Thread {
 
  public:
   void run() {
-    TRI_ASSERT(_syncer);
+    TRI_ASSERT(_syncer != nullptr);
+    TRI_ASSERT(_applier != nullptr);
 
     try {
       Result res = _syncer->run();
@@ -58,7 +59,7 @@ class ApplyThread : public Thread {
           << res.errorMessage();
       }
     } catch (std::exception const& ex) {
-      LOG_TOPIC(WARN, Logger::REPLICATION) << "caught exception in ApplyThread for " << _applier->databaseName() << " : " << ex.what();
+      LOG_TOPIC(WARN, Logger::REPLICATION) << "caught exception in ApplyThread for " << _applier->databaseName() << ": " << ex.what();
     } catch (...) {
       LOG_TOPIC(WARN, Logger::REPLICATION) << "caught unknown exception in ApplyThread for " << _applier->databaseName();
     }
@@ -81,8 +82,6 @@ ReplicationApplier::ReplicationApplier(ReplicationApplierConfiguration const& co
         _databaseName(std::move(databaseName)) {
     setProgress(std::string("applier initially created for ") + _databaseName);
 }
-
-ReplicationApplier::~ReplicationApplier() {}
 
 /// @brief test if the replication applier is running
 bool ReplicationApplier::isRunning() const {

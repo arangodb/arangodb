@@ -3718,6 +3718,60 @@ function ahuacatlFunctionsTestSuite () {
           expected: [ true ]
         },
         {
+          doc: {a:1,b:2},
+          examples: {a:1},
+          flag: true,
+          expected: [ 0 ]
+        },
+        {
+          doc: {a:1,b:2},
+          examples: {b:2},
+          flag: true,
+          expected: [ 0 ]
+        },
+        {
+          doc: {a:1,b:2 },
+          examples: { },
+          flag: true,
+          expected: [ 0 ]
+        },
+        {
+          doc: {a:1,b:2 },
+          examples: {a:1,b:2,c:3},
+          flag: true,
+          expected: [ -1 ]
+        },
+        {
+          doc: {a:1,b:2 },
+          examples: {a:1,b:2,c:3},
+          flag: null,
+          expected: [ false ]
+        },
+        {
+          doc: {a:1,b:2 },
+          examples: {c:3},
+          flag: null,
+          expected: [ false ]
+        },
+        {
+          doc: {a:1,b:2 },
+          examples: {c:3},
+          flag: true,
+          expected: [ -1 ]
+        },
+        {
+          doc: {a:1,b:2 },
+          examples: {a:null,b:2 },
+          flag: null,
+          expected: [ false ]
+        },
+        {
+          doc: {b:2 },
+          examples: {a:null,b:2 },
+          flag: null,
+          expected: [ true ]
+        },
+        {
           doc: { test1: 1, test2: 2 },
           examples: [ { test1: 1, test2: 1 } ],
           flag: true,
@@ -3786,14 +3840,25 @@ function ahuacatlFunctionsTestSuite () {
       ];
 
       tests.forEach(function (data) {
-        var query = "RETURN MATCHES(" + JSON.stringify(data.doc) + ", " + JSON.stringify(data.examples);
+        let query = "RETURN NOOPT(MATCHES(" + JSON.stringify(data.doc) + ", " + JSON.stringify(data.examples);
         if (data.flag !== null) {
-          query += ", " + JSON.stringify(data.flag) + ")";
+          query += ", " + JSON.stringify(data.flag) + "))";
         }
         else {
-          query += ")";
+          query += "))";
         }
-        var actual = getQueryResults(query);
+        let actual = getQueryResults(query);
+        assertEqual(data.expected, actual);
+
+
+        query = "RETURN NOOPT(V8(MATCHES(" + JSON.stringify(data.doc) + ", " + JSON.stringify(data.examples);
+        if (data.flag !== null) {
+          query += `, ${JSON.stringify(data.flag)})))`;
+        }
+        else {
+          query += ')))';
+        }
+        actual = getQueryResults(query);
         assertEqual(data.expected, actual);
       });
     },

@@ -51,7 +51,9 @@ class RestHandlerFactory {
     /// reject all requests
     MAINTENANCE = 1,
     /// redirect to lead server if possible
-    REDIRECT = 2
+    REDIRECT = 2,
+    /// client must try again
+    TRYAGAIN = 3
   };
 
  public:

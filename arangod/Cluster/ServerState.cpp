@@ -298,19 +298,15 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
                                        std::string const& myLocalInfo) {
 
   AgencyComm comm;
-  AgencyCommResult result;
   
   if (!myLocalInfo.empty()) {
     LOG_TOPIC(WARN, Logger::STARTUP) << "--cluster.my-local-info is deprecated and will be deleted.";
     std::string myId, description;
     int res = LookupLocalInfoToId(myLocalInfo, myId, description);
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not lookup ID with information"
-      << " provided in --cluster.my-local-info";
-      FATAL_ERROR_EXIT();
+    if (res == TRI_ERROR_NO_ERROR) {
+      writePersistedId(myId);
+      setId(myId);
     }
-    writePersistedId(myId);
-    setId(myId);
   }
 
   std::string id;
