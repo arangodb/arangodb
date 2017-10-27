@@ -835,7 +835,7 @@ void TRI_vocbase_t::inventory(
     if (!nameFilter(collection)) {
       continue;
     }
-    
+        
     StorageEngine* engine = EngineSelectorFeature::ENGINE;
     engine->getCollectionInfo(collection->vocbase(), collection->cid(),
                               result, true, maxTick);

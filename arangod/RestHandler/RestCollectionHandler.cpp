@@ -461,9 +461,10 @@ void RestCollectionHandler::collectionRepresentation(
     }
     OperationResult opRes = trx.count(coll->name(), aggregateCount);
     trx.finish(opRes.code);
-    if (opRes.successful()) {
-      builder.add("count", opRes.slice());
+    if (!opRes.successful()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(opRes.code, opRes.errorMessage);
     }
+    builder.add("count", opRes.slice());
   }
 
   if (!wasOpen) {

@@ -517,8 +517,8 @@ void HeartbeatThread::runSingleServer() {
         // if we stay a slave, the redirect will be turned on again
         RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::TRYAGAIN);
         result = CasWithResult(_agency, leaderPath, myIdBuilder.slice(),
-                               /* ttl */ std::max(30.0, interval * 4),
-                               /* timeout */ 30.0);
+                               /* ttl */ std::max(25.0, interval * 4),
+                               /* timeout */ 20.0);
         
         if (result.successful()) { // sucessfull leadership takeover
           LOG_TOPIC(INFO, Logger::HEARTBEAT) << "All your base are belong to us";
@@ -554,8 +554,8 @@ void HeartbeatThread::runSingleServer() {
         // updating the value to keep our leadership
         result = _agency.casValue(leaderPath, /* old */ myIdBuilder.slice(),
                                   /* new */ myIdBuilder.slice(),
-                                  /* ttl */ std::min(30.0, interval * 4),
-                                  /* timeout */ 30.0);
+                                  /* ttl */ std::max(25.0, interval * 4),
+                                  /* timeout */ 20.0);
         if (!result.successful()) {
           LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Cannot update leadership value";
         }

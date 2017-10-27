@@ -221,11 +221,12 @@ Result Collections::unload(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
 }
 
 Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
+  TRI_ASSERT(coll != nullptr);
   ExecContext const* exec = ExecContext::CURRENT;
   if (exec != nullptr) {
     bool canRead = exec->canUseCollection(coll->name(), AuthLevel::RO);
     if (exec->databaseAuthLevel() == AuthLevel::NONE || !canRead) {
-      return TRI_ERROR_FORBIDDEN;
+      return Result(TRI_ERROR_FORBIDDEN, "cannot access " + coll->name());
     }
   }
 
@@ -246,7 +247,7 @@ Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
                        "replicationFactor", "shardKeys"});
   }
 
-  if (!res.ok()) {
+  if (res.fail()) {
     return res;
   }
 
@@ -254,10 +255,6 @@ Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackObjectIterator(props.slice()));
 
-  if (trx) {
-    // return the current parameter set
-    res = trx->finish(res.errorNumber());
-  }
   return res;
 }
 
