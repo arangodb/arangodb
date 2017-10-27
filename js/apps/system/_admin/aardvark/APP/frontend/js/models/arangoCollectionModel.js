@@ -248,7 +248,7 @@
           callback(false);
         },
         error: function (data) {
-          callback(false, data);
+          callback(true, data);
         }
       });
       return result;
