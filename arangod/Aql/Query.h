@@ -106,7 +106,7 @@ class Query {
     return _profile.get();
   }
 
-  QueryOptions const& queryOptions() const { return _queryOptions; }
+  TEST_VIRTUAL QueryOptions const& queryOptions() const { return _queryOptions; }
 
   void increaseMemoryUsage(size_t value) { _resourceMonitor.increaseMemoryUsage(value); }
   void decreaseMemoryUsage(size_t value) { _resourceMonitor.decreaseMemoryUsage(value); }
@@ -208,7 +208,7 @@ class Query {
   void releaseEngine();
 
   /// @brief return the transaction, if prepared
-  inline transaction::Methods* trx() { return _trx; }
+  TEST_VIRTUAL inline transaction::Methods* trx() { return _trx; }
 
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan.get(); }

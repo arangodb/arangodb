@@ -25,7 +25,6 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-
 #include "catch.hpp"
 #include "fakeit.hpp"
 
@@ -80,14 +79,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
   //   2. query->setEngine(e)
   //   3. query->engine() -> e
   //   4. engine->setLockedShards()
-  //   5. For every node (n) in Snippet:
-  //     1. If remote save as (r)
-  //     2. Else: engine->createBlock(n, _, _) -> ExecutionBlock (eb)
-  //     3. engine->addBlock(eb)
-  //     4. n->getDependencies() -> []
-  //     5. If gather node:
-  //       1. // Skipped
-  //     6. engine->root(eb)
+  //   5. engine->createBlocks()
   //   6. Assert (engine->root() != nullptr)
   //   7. For all but the first:
   //     1. queryRegistry->insert(_id, query, 600.0);
@@ -99,8 +91,6 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     std::unordered_set<std::string> const restrictToShards;
     std::unordered_map<std::string, std::string> queryIds;
     auto lockedShards = std::make_unique<std::unordered_set<ShardID> const>();
-    std::vector<ExecutionNode*> noDependencies;
-    ExecutionBlock* lastRoot = nullptr;
     std::string const dbname = "TestDB";
 
     // ------------------------------
@@ -112,8 +102,8 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     Mock<ExecutionEngine> mockEngine;
     ExecutionEngine& myEngine = mockEngine.get();
 
-    Mock<ExecutionBlock> singletonBlockMock;
-    ExecutionBlock& sBlock = singletonBlockMock.get();
+    Mock<ExecutionBlock> rootBlockMock;
+    ExecutionBlock& rootBlock = rootBlockMock.get();
 
     Mock<Query> mockQuery;
     Query& query = mockQuery.get();
@@ -122,25 +112,10 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     QueryRegistry& registry = mockRegistry.get();
 
     // ------------------------------
-    // Section: Faked Function bodies
-    // ------------------------------
-
-    auto createBlock =
-        [&](ExecutionNode const* n,
-            std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-            std::unordered_set<std::string> const&) -> ExecutionBlock* {
-      REQUIRE(n->getType() == ExecutionNode::SINGLETON);
-      return &sBlock;
-    };
-
-    auto setRoot = [&] (ExecutionBlock* newRoot) -> void {
-      REQUIRE(newRoot != nullptr);
-      lastRoot = newRoot;
-    };
-
-    // ------------------------------
     // Section: Mock Functions
     // ------------------------------
+
+    When(Method(singletonMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
 
     When(Method(mockQuery, setEngine)).Do([&](ExecutionEngine* eng) -> void {
       // We expect that the snippet injects a new engine into our
@@ -150,23 +125,12 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
       // Throw it away
       delete eng;
     });
+
     When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
     When(Method(mockEngine, setLockedShards)).Return();
-
-    // For nodes in snippet:
-
-    // Singleton
-    When(Method(singletonMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
-    When(Method(mockEngine, createBlock)).AlwaysDo(createBlock);
-    When(Method(mockEngine, addBlock).Using(&sBlock)).Return();
-    When(Method(singletonMock, getDependencies)).Return(noDependencies);
-    When(OverloadedMethod(mockEngine, root, void(ExecutionBlock*))).AlwaysDo(setRoot);
-
-    When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock*())).Do([&] () -> ExecutionBlock* {
-      // We expect that set root had been called before
-      REQUIRE(lastRoot != nullptr);
-      return lastRoot;
-    });
+    When(Method(mockEngine, createBlocks)).Return();
+    When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock* ()))
+        .AlwaysReturn(&rootBlock);
 
     // ------------------------------
     // Section: Run the test
@@ -182,159 +146,22 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     REQUIRE(engine != nullptr);
     REQUIRE(engine == &myEngine);
 
-    // We need our block as root
-    REQUIRE(lastRoot == &sBlock);
     // The last engine should not be stored
     // It is not added to the registry
     REQUIRE(queryIds.empty());
-  }
 
-  SECTION("it should wire the dependencies on the blocks") {
-
-    std::unordered_set<std::string> const restrictToShards;
-    std::unordered_map<std::string, std::string> queryIds;
-    auto lockedShards = std::make_unique<std::unordered_set<ShardID> const>();
-    std::vector<ExecutionNode*> noDependencies;
-    ExecutionBlock* lastRoot = nullptr;
-    std::string const dbname = "TestDB";
-
-    // Simulate Query: RETURN 1
-    // Singleton <- Calc <- Return
-    //
-    // ------------------------------
-    // Section: Create Mock Instances
-    // ------------------------------
-    Mock<ExecutionNode> singletonMock;
-    ExecutionNode& sNode = singletonMock.get();
-
-    Mock<ExecutionEngine> mockEngine;
-    ExecutionEngine& myEngine = mockEngine.get();
-
-    Mock<ExecutionBlock> singletonBlockMock;
-    ExecutionBlock& sBlock = singletonBlockMock.get();
-
-    Mock<ExecutionNode> calculationMock;
-    ExecutionNode& cNode = calculationMock.get();
-
-    Mock<ExecutionBlock> calculationBlockMock;
-    ExecutionBlock& cBlock = calculationBlockMock.get();
-
-    Mock<ExecutionNode> returnMock;
-    ExecutionNode& rNode = returnMock.get();
-
-    Mock<ExecutionBlock> returnBlockMock;
-    ExecutionBlock& rBlock = returnBlockMock.get();
-
-    Mock<Query> mockQuery;
-    Query& query = mockQuery.get();
-
-    Mock<QueryRegistry> mockRegistry;
-    QueryRegistry& registry = mockRegistry.get();
-
-    // ------------------------------
-    // Section: Faked Function bodies
-    // ------------------------------
-
-    auto createBlock =
-        [&](ExecutionNode const* n,
-            std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-            std::unordered_set<std::string> const&) -> ExecutionBlock* {
-      auto type = n->getType();
-      switch (type) {
-        case ExecutionNode::SINGLETON:
-          return &sBlock;
-        case ExecutionNode::CALCULATION:
-          return &cBlock;
-        case ExecutionNode::RETURN:
-          return &rBlock;
-        default:
-          REQUIRE(false == true);
-      }
-      return nullptr;
-    };
-
-    auto setRoot = [&] (ExecutionBlock* newRoot) -> void {
-      REQUIRE(newRoot != nullptr);
-      lastRoot = newRoot;
-    };
-
-    // ------------------------------
-    // Section: Mock Functions
-    // ------------------------------
-
-    When(Method(mockQuery, setEngine)).Do([&](ExecutionEngine* eng) -> void {
-      // We expect that the snippet injects a new engine into our
-      // query.
-      // However we have to return a mocked engine later
-      REQUIRE(eng != nullptr);
-      // Throw it away
-      delete eng;
-    });
-    When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
-    When(Method(mockEngine, setLockedShards)).Return();
-
-    // For nodes in snippet:
-
-    // Singleton
-    When(Method(singletonMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
-    When(Method(mockEngine, createBlock)).AlwaysDo(createBlock);
-
-    When(Method(mockEngine, addBlock).Using(&sBlock)).Return();
-    When(Method(singletonMock, getDependencies)).Return(noDependencies);
-    When(OverloadedMethod(mockEngine, root, void(ExecutionBlock*))).AlwaysDo(setRoot);
-    // Calculation
-    When(Method(calculationMock, getType)).AlwaysReturn(ExecutionNode::CALCULATION);
-    When(Method(mockEngine, addBlock).Using(&cBlock)).Return();
-    When(Method(calculationMock, getDependencies)).Return({&sNode});
-    When(Method(calculationBlockMock, addDependency)).Do([&] (ExecutionBlock const* block) -> void {
-        REQUIRE(block == &sBlock);
-    });
-
-    // Return
-    When(Method(returnMock, getType)).AlwaysReturn(ExecutionNode::RETURN);
-    When(Method(mockEngine, addBlock).Using(&rBlock)).Return();
-    When(Method(returnMock, getDependencies)).Return({&cNode});
-    When(Method(returnBlockMock, addDependency)).Do([&] (ExecutionBlock const* block) -> void {
-        REQUIRE(block == &cBlock);
-    });
-
-    When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock*())).Do([&] () -> ExecutionBlock* {
-      // We expect that set root had been called before
-      REQUIRE(lastRoot != nullptr);
-      return lastRoot;
-    });
-
-    // ------------------------------
-    // Section: Run the test
-    // ------------------------------
-
-    EngineInfoContainerCoordinator testee;
-    testee.addNode(&rNode);
-    testee.addNode(&cNode);
-    testee.addNode(&sNode);
-
-    ExecutionEngine* engine = testee.buildEngines(
-      &query, &registry, dbname, restrictToShards, queryIds, lockedShards.get() 
-    );
-
-    REQUIRE(engine != nullptr);
-    REQUIRE(engine == &myEngine);
-
-    // We need the first block added as root
-    REQUIRE(lastRoot == &rBlock);
-
-    // The fast engine should not be stored
-    // It is not added to the registry
-    REQUIRE(queryIds.empty());
+    // Validate that the query is wired up with the engine
+    Verify(Method(mockQuery, setEngine)).Exactly(1);
+    // Validate that lockedShards and createBlocks have been called!
+    Verify(Method(mockEngine, setLockedShards)).Exactly(1);
+    Verify(Method(mockEngine, createBlocks)).Exactly(1);
   }
 
   SECTION("it should create an new engine and register it for second snippet") {
     std::unordered_set<std::string> const restrictToShards;
     std::unordered_map<std::string, std::string> queryIds;
     auto lockedShards = std::make_unique<std::unordered_set<ShardID> const>();
-    std::vector<ExecutionNode*> noDependencies;
-    ExecutionBlock* lastRoot = nullptr;
-    ExecutionBlock* lastRootSecond = nullptr;
+
     size_t remoteId = 1337;
     QueryId secondId = 0;
     std::string dbname = "TestDB";
@@ -342,21 +169,21 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     // ------------------------------
     // Section: Create Mock Instances
     // ------------------------------
-    Mock<ExecutionNode> singletonMock;
-    ExecutionNode& sNode = singletonMock.get();
+    Mock<ExecutionNode> firstNodeMock;
+    ExecutionNode& fNode = firstNodeMock.get();
 
-    Mock<ExecutionBlock> singletonBlockMock;
-    ExecutionBlock& sBlock = singletonBlockMock.get();
+    Mock<ExecutionNode> secondNodeMock;
+    ExecutionNode& sNode = secondNodeMock.get();
 
+    // We need a block only for assertion
+    Mock<ExecutionBlock> blockMock;
+    ExecutionBlock& block = blockMock.get();
+
+    // Mock engine for first snippet
     Mock<ExecutionEngine> mockEngine;
     ExecutionEngine& myEngine = mockEngine.get();
 
-    Mock<ExecutionNode> calculationMock;
-    ExecutionNode& cNode = calculationMock.get();
-
-    Mock<ExecutionBlock> calculationBlockMock;
-    ExecutionBlock& cBlock = calculationBlockMock.get();
-
+    // Mock engine for second snippet
     Mock<ExecutionEngine> mockSecondEngine;
     ExecutionEngine& mySecondEngine = mockSecondEngine.get();
 
@@ -370,41 +197,14 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     QueryRegistry& registry = mockRegistry.get();
 
     // ------------------------------
-    // Section: Faked Function bodies
-    // ------------------------------
-
-    auto createBlock =
-        [&](ExecutionNode const* n,
-            std::unordered_map<ExecutionNode*, ExecutionBlock*> const&,
-            std::unordered_set<std::string> const&) -> ExecutionBlock* {
-      auto type = n->getType();
-      switch (type) {
-        case ExecutionNode::SINGLETON:
-          return &sBlock;
-        case ExecutionNode::CALCULATION:
-          return &cBlock;
-        default:
-          REQUIRE(false == true);
-      }
-      return nullptr;
-    };
-
-    auto setRoot = [&] (ExecutionBlock* newRoot) -> void {
-      REQUIRE(newRoot != nullptr);
-      lastRoot = newRoot;
-    };
-
-    auto setSecondRoot = [&] (ExecutionBlock* newRoot) -> void {
-      REQUIRE(newRoot != nullptr);
-      lastRootSecond = newRoot;
-    };
-
-
-    // ------------------------------
     // Section: Mock Functions
     // ------------------------------
 
+    When(Method(firstNodeMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
+    When(Method(secondNodeMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
+
     When(Method(mockQuery, setEngine)).Do([&](ExecutionEngine* eng) -> void {
+
       // We expect that the snippet injects a new engine into our
       // query.
       // However we have to return a mocked engine later
@@ -414,6 +214,16 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     });
     When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
     When(Method(mockEngine, setLockedShards)).Return();
+    When(Method(mockEngine, createBlocks)).Do([&](
+      std::vector<ExecutionNode*> const& nodes,
+      std::unordered_set<std::string> const&,
+      std::unordered_set<std::string> const&,
+      std::unordered_map<std::string, std::string> const&) {
+        REQUIRE(nodes.size() == 1);
+        REQUIRE(nodes[0] == &fNode);
+    });
+    When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock* ()))
+        .AlwaysReturn(&block);
 
     // Mock query clone
     When(Method(mockQuery, clone)).Do([&](QueryPart part, bool withPlan) -> Query* {
@@ -430,39 +240,21 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
       // Throw it away
       delete eng;
     });
+
     When(Method(mockQueryClone, engine)).Return(&mySecondEngine);
     When(Method(mockSecondEngine, setLockedShards)).Return();
-
-
-
-    // For nodes in snippet:
-
-    // Singleton
-    When(Method(singletonMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
-    When(Method(mockEngine, createBlock)).AlwaysDo(createBlock);
-    When(Method(mockSecondEngine, createBlock)).AlwaysDo(createBlock);
-
-    When(Method(mockEngine, addBlock).Using(&sBlock)).Return();
-    When(Method(singletonMock, getDependencies)).Return(noDependencies);
-    When(OverloadedMethod(mockEngine, root, void(ExecutionBlock*))).AlwaysDo(setRoot);
-    // Calculation
-    When(Method(calculationMock, getType)).AlwaysReturn(ExecutionNode::CALCULATION);
-    When(Method(mockSecondEngine, addBlock).Using(&cBlock)).Return();
-    When(Method(calculationMock, getDependencies)).Return(noDependencies);
-    When(OverloadedMethod(mockSecondEngine, root, void(ExecutionBlock*))).AlwaysDo(setSecondRoot);
-
-    When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock*())).Do([&] () -> ExecutionBlock* {
-      // We expect that set root had been called before
-      REQUIRE(lastRoot != nullptr);
-      return lastRoot;
+    When(Method(mockSecondEngine, createBlocks)).Do([&](
+      std::vector<ExecutionNode*> const& nodes,
+      std::unordered_set<std::string> const&,
+      std::unordered_set<std::string> const&,
+      std::unordered_map<std::string, std::string> const&) {
+        REQUIRE(nodes.size() == 1);
+        REQUIRE(nodes[0] == &sNode);
     });
+    When(ConstOverloadedMethod(mockSecondEngine, root, ExecutionBlock* ()))
+        .AlwaysReturn(&block);
 
-    When(ConstOverloadedMethod(mockSecondEngine, root, ExecutionBlock*())).Do([&] () -> ExecutionBlock* {
-      // We expect that set root had been called before
-      REQUIRE(lastRootSecond != nullptr);
-      return lastRootSecond;
-    });
-
+    // Mock the Registry
     When(Method(mockRegistry, insert)).Do([&] (QueryId id, Query* query, double timeout) {
       REQUIRE(id != 0);
       REQUIRE(query != nullptr);
@@ -477,12 +269,12 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     // ------------------------------
 
     EngineInfoContainerCoordinator testee;
-    testee.addNode(&sNode);
+    testee.addNode(&fNode);
 
     // Open the Second Snippet
     testee.openSnippet(remoteId);
     // Inject a node
-    testee.addNode(&cNode);
+    testee.addNode(&sNode);
     // Close the second snippet
     testee.closeSnippet();
 
@@ -493,14 +285,9 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     REQUIRE(engine != nullptr);
     REQUIRE(engine == &myEngine);
 
-    // We need the first block added as root
-    REQUIRE(lastRoot == &sBlock);
-
-    // The second snippet needs the second root
-    REQUIRE(lastRootSecond == &cBlock);
-
-    // The fast engine should not be stored
+    // The first engine should not be stored
     // It is not added to the registry
+    // The second should be
     REQUIRE(!queryIds.empty());
     // The second engine needs a generated id
     REQUIRE(secondId != 0);
@@ -510,6 +297,19 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     std::string remIdString = arangodb::basics::StringUtils::itoa(remoteId) + "/" + dbname;
     REQUIRE(queryIds.find(remIdString) != queryIds.end());
     REQUIRE(queryIds[remIdString] == secIdString);
+
+    // Validate that the query is wired up with the engine
+    Verify(Method(mockQuery, setEngine)).Exactly(1);
+    // Validate that lockedShards and createBlocks have been called!
+    Verify(Method(mockEngine, setLockedShards)).Exactly(1);
+    Verify(Method(mockEngine, createBlocks)).Exactly(1);
+
+    // Validate that the second query is wired up with the second engine
+    Verify(Method(mockQueryClone, setEngine)).Exactly(1);
+    // Validate that lockedShards and createBlocks have been called!
+    Verify(Method(mockSecondEngine, setLockedShards)).Exactly(1);
+    Verify(Method(mockSecondEngine, createBlocks)).Exactly(1);
+    Verify(Method(mockRegistry, insert)).Exactly(1);
   }
 }
 } // test

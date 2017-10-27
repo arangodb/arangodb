@@ -88,6 +88,118 @@ struct TraverserEngineShardLists {
 /// Typedef for a complicated mapping used in TraverserEngines.
 typedef std::unordered_map<ServerID, TraverserEngineShardLists> Serv2ColMap;
 
+void ExecutionEngine::createBlocks(
+    std::vector<ExecutionNode*> const& nodes,
+    std::unordered_set<std::string> const& includedShards,
+    std::unordered_set<std::string> const& restrictToShards,
+    std::unordered_map<std::string, std::string> const& queryIds) {
+  if (arangodb::ServerState::instance()->isCoordinator()) {
+    auto clusterInfo = arangodb::ClusterInfo::instance();
+
+    std::unordered_map<ExecutionNode*, ExecutionBlock*> cache;
+    RemoteNode const* remoteNode = nullptr;
+
+    // We need to traverse the nodes from back to front, the walker collects them
+    // in the wrong ordering
+    for (auto it = nodes.rbegin(); it != nodes.rend(); ++it) {
+      auto en = *it;
+      auto const nodeType = en->getType();
+
+      if (nodeType == ExecutionNode::REMOTE) {
+        remoteNode = static_cast<RemoteNode const*>(en);
+        continue;
+      }
+
+      // for all node types but REMOTEs, we create blocks
+      std::unique_ptr<ExecutionBlock> uptrEb(createBlock(en, cache, includedShards));
+
+      if (uptrEb == nullptr) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "illegal node type");
+      }
+
+      auto eb = uptrEb.get();
+
+      // Transfers ownership
+      addBlock(eb);
+      uptrEb.release();
+
+      for (auto const& dep : en->getDependencies()) {
+        auto d = cache.find(dep);
+
+        if (d != cache.end()) {
+          // add regular dependencies
+          TRI_ASSERT((*d).second != nullptr);
+          eb->addDependency((*d).second);
+        }
+      }
+
+      if (nodeType == ExecutionNode::GATHER) {
+        // we found a gather node
+        if (remoteNode == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "expecting a remoteNode");
+        }
+
+        // now we'll create a remote node for each shard and add it to the
+        // gather node
+        auto gatherNode = static_cast<GatherNode const*>(en);
+        Collection const* collection = gatherNode->collection();
+
+        auto shardIds = collection->shardIds(restrictToShards);
+        for (auto const& shardId : *shardIds) {
+          std::string theId =
+              arangodb::basics::StringUtils::itoa(remoteNode->id()) + ":" +
+              shardId;
+
+          auto it = queryIds.find(theId);
+          if (it == queryIds.end()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                TRI_ERROR_INTERNAL,
+                "could not find query id " + theId + " in list");
+          }
+
+          auto serverList = clusterInfo->getResponsibleServer(shardId);
+          if (serverList->empty()) {
+            THROW_ARANGO_EXCEPTION_MESSAGE(
+                TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE,
+                "Could not find responsible server for shard " + shardId);
+          }
+
+          // use "server:" instead of "shard:" to send query fragments to
+          // the correct servers, even after failover or when a follower drops
+          // the problem with using the previous shard-based approach was that
+          // responsibilities for shards may change at runtime.
+          // however, an AQL query must send all requests for the query to the
+          // initially used servers.
+          // if there is a failover while the query is executing, we must still
+          // send all following requests to the same servers, and not the newly
+          // responsible servers.
+          // otherwise we potentially would try to get data from a query from
+          // server B while the query was only instanciated on server A.
+          TRI_ASSERT(!serverList->empty());
+          auto& leader = (*serverList)[0];
+          auto r = std::make_unique<RemoteBlock>(this, remoteNode,
+                                                 "server:" + leader,  // server
+                                                 "",                  // ownName
+                                                 it->second);         // queryId
+
+          TRI_ASSERT(r != nullptr);
+
+          eb->addDependency(r.get());
+          addBlock(r.get());
+          r.release();
+        }
+      }
+
+      // the last block is always the root
+      root(eb);
+
+      // put it into our cache:
+      cache.emplace(en, eb);
+    }
+  }
+}
+
 /// @brief helper function to create a block
 ExecutionBlock* ExecutionEngine::createBlock(
     ExecutionNode const* en,
