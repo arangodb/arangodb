@@ -144,9 +144,12 @@
                   return 0;
                 }
               }
-              var callbackChange = function (error) {
+              var self = this;
+
+              var callbackChange = function (error, data) {
                 if (error) {
-                  arangoHelper.arangoError('Collection error: ' + error.responseText);
+                  self.render();
+                  arangoHelper.arangoError('Collection error: ' + data.responseJSON.errorMessage);
                 } else {
                   arangoHelper.arangoNotification('Collection: ' + 'Successfully changed.');
                   window.App.navigate('#cSettings/' + newname, {trigger: true});
