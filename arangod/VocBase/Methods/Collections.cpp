@@ -78,7 +78,7 @@ void Collections::enumerate(
   }
 }
 
-bool methods::Collections::lookup(TRI_vocbase_t* vocbase,
+Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
                                   std::string const& collection,
                                   FuncCallback func) {
   if (!collection.empty()) {
@@ -88,19 +88,24 @@ bool methods::Collections::lookup(TRI_vocbase_t* vocbase,
             ClusterInfo::instance()->getCollection(vocbase->name(), collection);
         if (coll) {
           func(coll.get());
-          return true;
+          return TRI_ERROR_NO_ERROR;
         }
+      } catch (basics::Exception const& ex) {
+        return Result(ex.code(), ex.what());
+      } catch (std::exception const& ex) {
+        return Result(TRI_ERROR_INTERNAL, ex.what());
       } catch (...) {
+        return TRI_ERROR_INTERNAL;
       }
     } else {
       LogicalCollection* coll = vocbase->lookupCollection(collection);
       if (coll != nullptr) {
         func(coll);
-        return true;
+        return TRI_ERROR_NO_ERROR;
       }
     }
   }
-  return false;
+  return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
 }
 
 Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,

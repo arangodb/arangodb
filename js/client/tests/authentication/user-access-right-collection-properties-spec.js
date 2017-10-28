@@ -63,8 +63,6 @@ describe('User Rights Management', () => {
   before(helper.generateAllUsers);
   after(helper.removeAllUsers);
 
-  require('internal').sleep(10);
-
   it('should check if all users are created', () => {
     switchUser('root', '_system');
     expect(userSet.size).to.equal(helper.userCount);
@@ -146,7 +144,6 @@ describe('User Rights Management', () => {
                     let wfs = col.properties().waitForSync;
                     col.properties({waitForSync: !wfs});
                   } catch (e) {
-                    print("ASASAS: " + name + ", " + JSON.stringify(e));
                     expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code);
                   }
                   if (hasReadAccess) {

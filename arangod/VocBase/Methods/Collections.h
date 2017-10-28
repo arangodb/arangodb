@@ -40,7 +40,7 @@ struct Collections {
   typedef std::function<void(LogicalCollection*)> const& FuncCallback;
 
   static void enumerate(TRI_vocbase_t* vocbase, FuncCallback);
-  static bool lookup(TRI_vocbase_t* vocbase, std::string const& collection,
+  static Result lookup(TRI_vocbase_t* vocbase, std::string const& collection,
                      FuncCallback);
   /// Create collection, ownership of collection in callback is
   /// transferred to callee

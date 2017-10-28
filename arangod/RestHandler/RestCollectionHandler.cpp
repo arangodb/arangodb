@@ -95,17 +95,16 @@ void RestCollectionHandler::handleCommandGet() {
   std::string const name = suffixes[0];
   // /_api/collection/<name>
   if (suffixes.size() == 1) {
-    bool found = methods::Collections::lookup(
+    Result found = methods::Collections::lookup(
         _vocbase, name, [&](LogicalCollection* coll) {
           collectionRepresentation(builder, coll, /*showProperties*/ false,
                                    /*showFigures*/ false, /*showCount*/ false,
                                    /*aggregateCount*/ false);
         });
-    if (found) {
+    if (found.ok()) {
       generateOk(rest::ResponseCode::OK, builder);
     } else {
-      generateError(rest::ResponseCode::NOT_FOUND,
-                    TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      generateError(found);
     }
     return;
   }
@@ -118,7 +117,7 @@ void RestCollectionHandler::handleCommandGet() {
 
   std::string const sub = suffixes[1];
   bool skipGenerate = false;
-  bool found = methods::Collections::lookup(
+  Result found = methods::Collections::lookup(
       _vocbase, name, [&](LogicalCollection* coll) {
         if (sub == "checksum") {
           // /_api/collection/<identifier>/checksum
@@ -199,12 +198,11 @@ void RestCollectionHandler::handleCommandGet() {
   if (skipGenerate) {
     return;
   }
-  if (found) {
+  if (found.ok()) {
     generateOk(rest::ResponseCode::OK, builder);
     _response->setHeader("location", _request->requestPath());
   } else {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    generateError(found);
   }
 }
 
@@ -287,7 +285,7 @@ void RestCollectionHandler::handleCommandPut() {
   std::string const sub = suffixes[1];
   Result res;
   VPackBuilder builder;
-  bool found = methods::Collections::lookup(
+  Result found = methods::Collections::lookup(
       _vocbase, name, [&](LogicalCollection* coll) {
         VPackObjectBuilder obj(&builder, true);
 
@@ -381,16 +379,13 @@ void RestCollectionHandler::handleCommandPut() {
         }
       });
 
-  if (found) {
-    if (res.ok()) {
-      generateOk(rest::ResponseCode::OK, builder);
-      _response->setHeader("location", _request->requestPath());
-    } else {
-      generateError(res);
-    }
+  if (found.fail()) {
+    generateError(found);
+  } else if (res.ok()) {
+    generateOk(rest::ResponseCode::OK, builder);
+    _response->setHeader("location", _request->requestPath());
   } else {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    generateError(res);
   }
 }
 
@@ -407,16 +402,15 @@ void RestCollectionHandler::handleCommandDelete() {
 
   VPackBuilder builder;
   Result res;
-  bool found = methods::Collections::lookup(
+  Result found = methods::Collections::lookup(
       _vocbase, name, [&](LogicalCollection* coll) {
         std::string cid = coll->cid_as_string();
         VPackObjectBuilder obj(&builder, true);
         obj->add("id", VPackValue(cid));
         res = methods::Collections::drop(_vocbase, coll, allowDropSystem, -1.0);
       });
-  if (!found) {
-    generateError(rest::ResponseCode::NOT_FOUND,
-                  TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  if (found.fail()) {
+    generateError(found);
   } else if (res.fail()) {
     generateError(res);
   } else {
