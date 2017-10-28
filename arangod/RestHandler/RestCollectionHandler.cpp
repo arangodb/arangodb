@@ -177,10 +177,11 @@ void RestCollectionHandler::handleCommandGet() {
             return;
           }
 
+          VPackObjectBuilder obj(&builder, true); // need to open object
           collectionRepresentation(builder, coll, /*showProperties*/ true,
                                    /*showFigures*/ false, /*showCount*/ false,
                                    /*aggregateCount*/ false);
-          auto shards = ClusterInfo::instance()->getShardList(coll->name());
+          auto shards = ClusterInfo::instance()->getShardList(coll->planId_as_string());
           VPackArrayBuilder arr(&builder, "shards", true);
           for (ShardID const& shard : *shards) {
             arr->add(VPackValue(shard));
