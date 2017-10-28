@@ -96,6 +96,14 @@ set(ENABLE_THREADED_RESOLVER ON CACHE type BOOL)
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/curl/curl-7.50.3)
 
 ################################################################################
+## Google S2
+################################################################################
+
+set(CMAKE_USE_LIBSSH2 OFF CACHE type BOOL)
+set(CMAKE_USE_OPENSSL ON CACHE type BOOL)
+add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/s2)
+
+################################################################################
 ## SNAPPY
 ################################################################################
 

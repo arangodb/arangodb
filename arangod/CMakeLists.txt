@@ -131,6 +131,8 @@ SET(ARANGOD_SOURCES
   Aql/FixedVarExpressionContext.cpp
   Aql/Function.cpp
   Aql/Functions.cpp
+  Aql/Geo.cpp
+  Aql/GeoParser.cpp
   Aql/Graphs.cpp
   Aql/GraphNode.cpp
   Aql/IndexBlock.cpp
@@ -434,6 +436,7 @@ target_link_libraries(arangoserver
   ${MSVC_LIBS}
   ${V8_LIBS}
   ${ROCKSDB_LIBS}
+  s2geo
   boost_boost
   boost_system
   ${SYSTEM_LIBRARIES}
