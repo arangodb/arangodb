@@ -79,31 +79,44 @@ void Collections::enumerate(
 }
 
 Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
-                                  std::string const& collection,
+                                  std::string const& name,
                                   FuncCallback func) {
-  if (!collection.empty()) {
-    if (ServerState::instance()->isCoordinator()) {
-      try {
-        std::shared_ptr<LogicalCollection> coll =
-            ClusterInfo::instance()->getCollection(vocbase->name(), collection);
-        if (coll) {
-          func(coll.get());
-          return TRI_ERROR_NO_ERROR;
+  if (name.empty()) {
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (ServerState::instance()->isCoordinator()) {
+    try {
+      auto coll = ClusterInfo::instance()->getCollection(vocbase->name(), name);
+      if (coll) {
+        // check authentication after ensuring the collection exists
+        if (exec != nullptr &&
+            !exec->canUseCollection(vocbase->name(), coll->name(), AuthLevel::RO)) {
+          return Result(TRI_ERROR_FORBIDDEN, "No access to collection '" + name + "'");
         }
-      } catch (basics::Exception const& ex) {
-        return Result(ex.code(), ex.what());
-      } catch (std::exception const& ex) {
-        return Result(TRI_ERROR_INTERNAL, ex.what());
-      } catch (...) {
-        return TRI_ERROR_INTERNAL;
-      }
-    } else {
-      LogicalCollection* coll = vocbase->lookupCollection(collection);
-      if (coll != nullptr) {
-        func(coll);
+        func(coll.get());
         return TRI_ERROR_NO_ERROR;
       }
+    } catch (basics::Exception const& ex) {
+      return Result(ex.code(), ex.what());
+    } catch (std::exception const& ex) {
+      return Result(TRI_ERROR_INTERNAL, ex.what());
+    } catch (...) {
+      return TRI_ERROR_INTERNAL;
     }
+    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  }
+  
+  LogicalCollection* coll = vocbase->lookupCollection(name);
+  if (coll != nullptr) {
+    // check authentication after ensuring the collection exists
+    if (exec != nullptr &&
+        !exec->canUseCollection(vocbase->name(), coll->name(), AuthLevel::RO)) {
+      return Result(TRI_ERROR_FORBIDDEN, "No access to collection '" + name + "'");
+    }
+    func(coll);
+    return TRI_ERROR_NO_ERROR;
   }
   return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
 }
@@ -214,12 +227,12 @@ Result Collections::load(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
 Result Collections::unload(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
   if (ServerState::instance()->isCoordinator()) {
 #ifdef USE_ENTERPRISE
-    return ULColCoordinatorEnterprise(coll->dbName(), coll->cid_as_string(),
+    return ULColCoordinatorEnterprise(vocbase->name(), coll->cid_as_string(),
                                       TRI_VOC_COL_STATUS_UNLOADED);
 #else
     auto ci = ClusterInfo::instance();
     return ci->setCollectionStatusCoordinator(
-        coll->dbName(), coll->cid_as_string(), TRI_VOC_COL_STATUS_UNLOADED);
+        vocbase->name(), coll->cid_as_string(), TRI_VOC_COL_STATUS_UNLOADED);
 #endif
   }
   return vocbase->unloadCollection(coll, false);
@@ -455,3 +468,27 @@ Result Collections::warmup(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
 
   return res;
 }
+
+Result Collections::revisionId(TRI_vocbase_t* vocbase,
+                               LogicalCollection* coll,
+                               TRI_voc_rid_t& rid) {
+  
+  TRI_ASSERT(coll != nullptr);
+  std::string const databaseName(coll->dbName());
+  std::string const cid = coll->cid_as_string();
+  
+  if (ServerState::instance()->isCoordinator()) {
+    return revisionOnCoordinator(databaseName, cid, rid);
+  } else {
+    auto ctx = transaction::StandaloneContext::Create(vocbase);
+    SingleCollectionTransaction trx(ctx, coll->cid(),
+                                    AccessMode::Type::READ);
+    Result res = trx.begin();
+    if (res.fail()) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
+    rid = coll->revision(&trx);
+    return TRI_ERROR_NO_ERROR;
+  }
+}
+

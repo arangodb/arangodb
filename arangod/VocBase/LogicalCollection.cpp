@@ -598,6 +598,7 @@ std::string LogicalCollection::statusString() const {
 // SECTION: Properties
 TRI_voc_rid_t LogicalCollection::revision(transaction::Methods* trx) const {
   // TODO CoordinatorCase
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   return _physical->revision(trx);
 }
 

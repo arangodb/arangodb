@@ -40,6 +40,8 @@ struct Collections {
   typedef std::function<void(LogicalCollection*)> const& FuncCallback;
 
   static void enumerate(TRI_vocbase_t* vocbase, FuncCallback);
+  
+  /// @brief lookup a collection in vocbase or clusterinfo.
   static Result lookup(TRI_vocbase_t* vocbase, std::string const& collection,
                      FuncCallback);
   /// Create collection, ownership of collection in callback is
@@ -64,6 +66,9 @@ struct Collections {
   
   static Result warmup(TRI_vocbase_t* vocbase,
                        LogicalCollection* coll);
+  
+  static Result revisionId(TRI_vocbase_t* vocbase, LogicalCollection* coll,
+                           TRI_voc_rid_t& rid);
 };
 #ifdef USE_ENTERPRISE
   Result ULColCoordinatorEnterprise(std::string const& databaseName,

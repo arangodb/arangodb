@@ -2095,43 +2095,6 @@ static void JS_PregelAQLResult(v8::FunctionCallbackInfo<v8::Value> const& args) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch the revision for a local collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int GetRevision(arangodb::LogicalCollection* collection, TRI_voc_rid_t& rid) {
-  TRI_ASSERT(collection != nullptr);
-
-  SingleCollectionTransaction trx(
-      transaction::V8Context::Create(collection->vocbase(), true),
-      collection->cid(), AccessMode::Type::READ);
-
-  Result res = trx.begin();
-
-  if (!res.ok()) {
-    return res.errorNumber();
-  }
-
-  rid = collection->revision(&trx);
-  trx.finish(res);
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief fetch the revision for a sharded collection
-////////////////////////////////////////////////////////////////////////////////
-
-static int GetRevisionCoordinator(arangodb::LogicalCollection* collection,
-                                  TRI_voc_rid_t& rid) {
-  TRI_ASSERT(collection != nullptr);
-
-  std::string const databaseName(collection->dbName());
-  std::string const cid = collection->cid_as_string();
-
-  return revisionOnCoordinator(databaseName, cid, rid);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionRevision
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2140,23 +2103,17 @@ static void JS_RevisionVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  arangodb::LogicalCollection* collection =
-      TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  LogicalCollection* collection =
+      TRI_UnwrapClass<LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
 
   TRI_voc_rid_t revisionId;
-  int res;
-
-  if (ServerState::instance()->isCoordinator()) {
-    res = GetRevisionCoordinator(collection, revisionId);
-  } else {
-    res = GetRevision(collection, revisionId);
-  }
-
-  if (res != TRI_ERROR_NO_ERROR) {
+  Result res = methods::Collections::revisionId(collection->vocbase(),
+                                                collection, revisionId);
+  if (res.fail()) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
