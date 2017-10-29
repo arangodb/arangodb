@@ -98,6 +98,7 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     // ------------------------------
     Mock<ExecutionNode> singletonMock;
     ExecutionNode& sNode = singletonMock.get();
+    When(Method(singletonMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
 
     Mock<ExecutionEngine> mockEngine;
     ExecutionEngine& myEngine = mockEngine.get();
@@ -115,7 +116,6 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     // Section: Mock Functions
     // ------------------------------
 
-    When(Method(singletonMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
 
     When(Method(mockQuery, setEngine)).Do([&](ExecutionEngine* eng) -> void {
       // We expect that the snippet injects a new engine into our
@@ -171,9 +171,11 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     // ------------------------------
     Mock<ExecutionNode> firstNodeMock;
     ExecutionNode& fNode = firstNodeMock.get();
+    When(Method(firstNodeMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
 
     Mock<ExecutionNode> secondNodeMock;
     ExecutionNode& sNode = secondNodeMock.get();
+    When(Method(secondNodeMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
 
     // We need a block only for assertion
     Mock<ExecutionBlock> blockMock;
@@ -200,8 +202,6 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     // Section: Mock Functions
     // ------------------------------
 
-    When(Method(firstNodeMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
-    When(Method(secondNodeMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
 
     When(Method(mockQuery, setEngine)).Do([&](ExecutionEngine* eng) -> void {
 
@@ -311,6 +311,237 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     Verify(Method(mockSecondEngine, createBlocks)).Exactly(1);
     Verify(Method(mockRegistry, insert)).Exactly(1);
   }
+
+  SECTION("snipets are a stack, insert node always into top snippet") {
+    std::unordered_set<std::string> const restrictToShards;
+    std::unordered_map<std::string, std::string> queryIds;
+    auto lockedShards = std::make_unique<std::unordered_set<ShardID> const>();
+
+    size_t remoteId = 1337;
+    size_t secondRemoteId = 42;
+    QueryId secondId = 0;
+    QueryId thirdId = 0;
+    std::string dbname = "TestDB";
+
+    auto setEngineCallback = [] (ExecutionEngine* eng) -> void {
+      // We expect that the snippet injects a new engine into our
+      // query.
+      // However we have to return a mocked engine later
+      REQUIRE(eng != nullptr);
+      // Throw it away
+      delete eng;
+    };
+
+    // We test the following:
+    // Base Snippet insert node
+    // New Snippet (A)
+    // Insert Node -> (A)
+    // Close (A)
+    // Insert Node -> Base
+    // New Snippet (B)
+    // Insert Node -> (B)
+    // Close (B)
+    // Insert Node -> Base
+    // Verfiy on Engines
+
+    // ------------------------------
+    // Section: Create Mock Instances
+    // ------------------------------
+
+    Mock<ExecutionNode> firstBaseNodeMock;
+    ExecutionNode& fbNode = firstBaseNodeMock.get();
+    When(Method(firstBaseNodeMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
+
+    Mock<ExecutionNode> snipANodeMock;
+    ExecutionNode& aNode = snipANodeMock.get();
+    When(Method(snipANodeMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
+
+    Mock<ExecutionNode> secondBaseNodeMock;
+    ExecutionNode& sbNode = secondBaseNodeMock.get();
+    When(Method(secondBaseNodeMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
+
+    Mock<ExecutionNode> snipBNodeMock;
+    ExecutionNode& bNode = snipBNodeMock.get();
+    When(Method(snipBNodeMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
+
+    Mock<ExecutionNode> thirdBaseNodeMock;
+    ExecutionNode& tbNode = thirdBaseNodeMock.get();
+    When(Method(thirdBaseNodeMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
+
+    // We need a block only for assertion
+    Mock<ExecutionBlock> blockMock;
+    ExecutionBlock& block = blockMock.get();
+
+    // Mock engine for first snippet
+    Mock<ExecutionEngine> mockEngine;
+    ExecutionEngine& myEngine = mockEngine.get();
+
+    // Mock engine for second snippet
+    Mock<ExecutionEngine> mockSecondEngine;
+    ExecutionEngine& mySecondEngine = mockSecondEngine.get();
+
+    // Mock engine for second snippet
+    Mock<ExecutionEngine> mockThirdEngine;
+    ExecutionEngine& myThirdEngine = mockThirdEngine.get();
+
+    Mock<Query> mockQuery;
+    Query& query = mockQuery.get();
+
+    // We need two query clones
+    Mock<Query> mockQueryClone;
+    Query& queryClone = mockQueryClone.get();
+
+    Mock<Query> mockQuerySecondClone;
+    Query& querySecondClone = mockQuerySecondClone.get();
+
+    Mock<QueryRegistry> mockRegistry;
+    QueryRegistry& registry = mockRegistry.get();
+
+    // ------------------------------
+    // Section: Mock Functions
+    // ------------------------------
+
+    When(Method(mockQuery, setEngine)).Do(setEngineCallback);
+    When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
+    When(Method(mockEngine, setLockedShards)).Return();
+    When(Method(mockEngine, createBlocks)).Do([&](
+      std::vector<ExecutionNode*> const& nodes,
+      std::unordered_set<std::string> const&,
+      std::unordered_set<std::string> const&,
+      std::unordered_map<std::string, std::string> const&) {
+        REQUIRE(nodes.size() == 3);
+        REQUIRE(nodes[0] == &fbNode);
+        REQUIRE(nodes[1] == &sbNode);
+        REQUIRE(nodes[2] == &tbNode);
+    });
+    When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock* ()))
+        .AlwaysReturn(&block);
+
+    When(Method(mockQuery, clone)).Do([&](QueryPart part, bool withPlan) -> Query* {
+      REQUIRE(part == PART_DEPENDENT);
+      REQUIRE(withPlan == false);
+      return &queryClone;
+    }).Do([&](QueryPart part, bool withPlan) -> Query* {
+      REQUIRE(part == PART_DEPENDENT);
+      REQUIRE(withPlan == false);
+      return &querySecondClone;
+    });
+
+
+    // Mock first clone
+    When(Method(mockQueryClone, setEngine)).Do(setEngineCallback);
+    When(Method(mockQueryClone, engine)).Return(&mySecondEngine);
+    When(Method(mockSecondEngine, setLockedShards)).Return();
+    When(Method(mockSecondEngine, createBlocks)).Do([&](
+      std::vector<ExecutionNode*> const& nodes,
+      std::unordered_set<std::string> const&,
+      std::unordered_set<std::string> const&,
+      std::unordered_map<std::string, std::string> const&) {
+        REQUIRE(nodes.size() == 1);
+        REQUIRE(nodes[0] == &aNode);
+    });
+    When(ConstOverloadedMethod(mockSecondEngine, root, ExecutionBlock* ()))
+        .AlwaysReturn(&block);
+
+    // Mock second clone
+    When(Method(mockQuerySecondClone, setEngine)).Do(setEngineCallback);
+    When(Method(mockQuerySecondClone, engine)).Return(&myThirdEngine);
+    When(Method(mockThirdEngine, setLockedShards)).Return();
+    When(Method(mockThirdEngine, createBlocks)).Do([&](
+      std::vector<ExecutionNode*> const& nodes,
+      std::unordered_set<std::string> const&,
+      std::unordered_set<std::string> const&,
+      std::unordered_map<std::string, std::string> const&) {
+        REQUIRE(nodes.size() == 1);
+        REQUIRE(nodes[0] == &bNode);
+    });
+    When(ConstOverloadedMethod(mockThirdEngine, root, ExecutionBlock* ()))
+        .AlwaysReturn(&block);
+
+    // Mock the Registry
+    // NOTE: This expects an ordering of the engines first of the stack will be handled
+    // first. With same fakeit magic we could make this ordering independent which is
+    // is fine as well for the production code.
+    When(Method(mockRegistry, insert)).Do([&] (QueryId id, Query* query, double timeout) {
+      REQUIRE(id != 0);
+      REQUIRE(query != nullptr);
+      REQUIRE(timeout == 600.0);
+      REQUIRE(query == &queryClone);
+      secondId = id;
+    }).Do([&] (QueryId id, Query* query, double timeout) {
+      REQUIRE(id != 0);
+      REQUIRE(query != nullptr);
+      REQUIRE(timeout == 600.0);
+      REQUIRE(query == &querySecondClone);
+      thirdId = id;
+    });
+
+
+    // ------------------------------
+    // Section: Run the test
+    // ------------------------------
+    EngineInfoContainerCoordinator testee;
+
+    testee.addNode(&fbNode);
+
+    testee.openSnippet(remoteId);
+    testee.addNode(&aNode);
+    testee.closeSnippet();
+
+    testee.addNode(&sbNode);
+
+    testee.openSnippet(secondRemoteId);
+    testee.addNode(&bNode);
+    testee.closeSnippet();
+
+    testee.addNode(&tbNode);
+
+    ExecutionEngine* engine = testee.buildEngines(
+      &query, &registry, dbname, restrictToShards, queryIds, lockedShards.get() 
+    );
+
+    REQUIRE(engine != nullptr);
+    REQUIRE(engine == &myEngine);
+
+    // The first engine should not be stored
+    // It is not added to the registry
+    // The other two should be
+    REQUIRE(queryIds.size() == 2);
+
+    // First (A) is stored in the mapping
+    std::string secIdString = arangodb::basics::StringUtils::itoa(secondId);
+    std::string remIdString = arangodb::basics::StringUtils::itoa(remoteId) + "/" + dbname;
+    REQUIRE(queryIds.find(remIdString) != queryIds.end());
+    REQUIRE(queryIds[remIdString] == secIdString);
+
+    // Second (B) is stored in the mapping
+    std::string thirdIdString = arangodb::basics::StringUtils::itoa(thirdId);
+    std::string secRemIdString = arangodb::basics::StringUtils::itoa(secondRemoteId) + "/" + dbname;
+    REQUIRE(queryIds.find(secRemIdString) != queryIds.end());
+    REQUIRE(queryIds[secRemIdString] == thirdIdString);
+
+    // Validate that the query is wired up with the engine
+    Verify(Method(mockQuery, setEngine)).Exactly(1);
+    // Validate that lockedShards and createBlocks have been called!
+    Verify(Method(mockEngine, setLockedShards)).Exactly(1);
+    Verify(Method(mockEngine, createBlocks)).Exactly(1);
+
+    // Validate that the second query is wired up with the second engine
+    Verify(Method(mockQueryClone, setEngine)).Exactly(1);
+    // Validate that lockedShards and createBlocks have been called!
+    Verify(Method(mockSecondEngine, setLockedShards)).Exactly(1);
+    Verify(Method(mockSecondEngine, createBlocks)).Exactly(1);
+
+    // Validate that the second query is wired up with the second engine
+    Verify(Method(mockQuerySecondClone, setEngine)).Exactly(1);
+    // Validate that lockedShards and createBlocks have been called!
+    Verify(Method(mockThirdEngine, setLockedShards)).Exactly(1);
+    Verify(Method(mockThirdEngine, createBlocks)).Exactly(1);
+
+    // Validate two queries are registered correctly
+    Verify(Method(mockRegistry, insert)).Exactly(2);
+  }
+
 }
 } // test
 } // aql
