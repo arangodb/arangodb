@@ -818,6 +818,63 @@ SECTION("BinaryNotIn") {
     assertFilterSuccess("FOR d IN collection FILTER d.quick.brown.fox not in [] RETURN d", expected);
   }
 
+  // reference in array
+  {
+    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
+    arangodb::aql::AqlValueGuard guard(value, true);
+
+    irs::numeric_token_stream stream;
+    stream.reset(2.);
+    CHECK(stream.next());
+    auto& term = stream.attributes().get<irs::term_attribute>();
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace(var.name, value);
+
+    irs::Or expected;
+    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
+    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("3");
+
+    // not a constant in array
+    assertFilterSuccess(
+      "LET c=2 FOR d IN collection FILTER d.a.b.c.e.f not in ['1', c, '3'] RETURN d",
+      expected,
+      &ctx // expression context
+    );
+  }
+
+  // heterogeneous references and expression in array
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("strVal", arangodb::aql::AqlValue("str"));
+    ctx.vars.emplace("boolVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(false)));
+    ctx.vars.emplace("numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace("nullVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
+
+    irs::numeric_token_stream stream;
+    stream.reset(3.);
+    CHECK(stream.next());
+    auto& term = stream.attributes().get<irs::term_attribute>();
+
+    irs::Or expected;
+    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e.f")).term("str");
+    root.add<irs::by_term>().field(mangleBool("a.b.c.e.f")).term(irs::boolean_token_stream::value_false());
+    root.add<irs::by_term>().field(mangleNumeric("a.b.c.e.f")).term(term->value());
+    root.add<irs::by_term>().field(mangleNull("a.b.c.e.f")).term(irs::null_token_stream::value_null());
+
+    // not a constant in array
+    assertFilterSuccess(
+      "LET strVal='str' LET boolVal=false LET numVal=2 LET nullVal=null FOR d IN collection FILTER d.a.b.c.e.f not in ['1', strVal, boolVal, numVal+1, nullVal] RETURN d",
+      expected,
+      &ctx // expression context
+    );
+  }
+
   // invalid attribute access
   assertFilterFail("for d in view myview filter d[*] not in [1,2,3] return d");
   assertFilterFail("for d in view myview filter d.a[*] not in [1,2,3] return d");
@@ -912,6 +969,29 @@ SECTION("BinaryNotIn") {
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c['e'].f not in 4..5.0 RETURN d", expected);
   }
 
+  // numeric expression in range
+  {
+    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
+    arangodb::aql::AqlValueGuard guard(value, true);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace(var.name, value);
+
+    irs::numeric_token_stream minTerm; minTerm.reset(2.0);
+    irs::numeric_token_stream maxTerm; maxTerm.reset(102.0);
+
+    irs::Or expected;
+    auto& range = expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
+    range.field(mangleNumeric("a[100].b.c[1].e.f"));
+    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
+    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
+
+    assertFilterSuccess("LET c=2 FOR d IN collection FILTER d.a[100].b.c[1].e.f not in c..c+100 RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=2 FOR d IN collection FILTER d.a[100].b.c[1].e.f not in c..c+100 LIMIT 100 RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=2 FOR d IN collection FILTER d.a[100]['b'].c[1].e.f not in c..c+100 RETURN d", expected, &ctx);
+  }
+
   // string range
   {
     irs::Or expected;
@@ -934,6 +1014,25 @@ SECTION("BinaryNotIn") {
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b[3].c.e.f not in '4'..'5' RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d.a['b'][3].c.e.f not in '4'..'5' RETURN d", expected);
+  }
+
+  // string expression in range
+  {
+    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
+    arangodb::aql::AqlValueGuard guard(value, true);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace(var.name, value);
+
+    irs::Or expected;
+    auto& range = expected.add<irs::Not>().filter<irs::Or>().add<irs::by_range>();
+    range.field(mangleStringIdentity("a[100].b.c[1].e.f"));
+    range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("2");
+    range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("4");
+
+    assertFilterSuccess("LET c=2 FOR d IN collection FILTER d.a[100].b.c[1].e.f not in TO_STRING(c)..TO_STRING(c+2) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=2 FOR d IN collection FILTER d.a[100].b.c[1]['e'].f not in TO_STRING(c)..TO_STRING(c+2) RETURN d", expected, &ctx);
   }
 
   // boolean range
@@ -960,6 +1059,25 @@ SECTION("BinaryNotIn") {
     assertFilterSuccess("FOR d IN collection FILTER d['a'].b.c.e.f[1] not in false..true RETURN d", expected);
   }
 
+  // boolean expression in range
+  {
+    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt(2));
+    arangodb::aql::AqlValueGuard guard(value, true);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace(var.name, value);
+
+    irs::Or expected;
+    auto& range = expected.add<irs::Not>().filter<irs::Or>().add<irs::by_range>();
+    range.field(mangleStringIdentity("a[100].b.c[1].e.f"));
+    range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("2");
+    range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("4");
+
+    assertFilterSuccess("LET c=2 FOR d IN collection FILTER d.a[100].b.c[1].e.f not in TO_STRING(c)..TO_STRING(c+2) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=2 FOR d IN collection FILTER d.a[100].b.c[1]['e'].f not in TO_STRING(c)..TO_STRING(c+2) RETURN d", expected, &ctx);
+  }
+
   // null range
   {
     irs::Or expected;
@@ -982,6 +1100,25 @@ SECTION("BinaryNotIn") {
 
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c.e[3].f not in null..null RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d.a.b.c['e'][3].f not in null..null RETURN d", expected);
+  }
+
+  // null expression in range
+  {
+    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
+    arangodb::aql::AqlValueGuard guard(value, true);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace(var.name, value);
+
+    irs::Or expected;
+    auto& range = expected.add<irs::Not>().filter<irs::Or>().add<irs::by_range>();
+    range.field(mangleNull("a[100].b.c[1].e.f"));
+    range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::null_token_stream::value_null());
+    range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("LET c=null FOR d IN collection FILTER d.a[100].b.c[1].e.f not in c..null RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=null FOR d IN collection FILTER d.a[100].b.c[1]['e'].f not in c..null RETURN d", expected, &ctx);
   }
 
   // invalid attribute access
@@ -1052,6 +1189,26 @@ SECTION("BinaryEq") {
     assertFilterSuccess("FOR d IN collection FILTER '1' == d['a']['b'][23]['c'] RETURN d", expected);
   }
 
+  // string expression
+  {
+    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
+    arangodb::aql::AqlValueGuard guard(value, true);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace(var.name, value);
+
+    irs::Or expected;
+    expected.add<irs::by_term>().field(mangleStringIdentity("a.b[23].c")).term("42");
+
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a.b[23].c == TO_STRING(c+1) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a['b'][23].c == TO_STRING(c+1) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d['a']['b'][23].c == TO_STRING(c+1) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_STRING(c+1) == d.a.b[23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_STRING(c+1) == d.a['b'][23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_STRING(c+1) == d['a']['b'][23]['c'] RETURN d", expected, &ctx);
+  }
+
   // complex attribute, true
   {
     irs::Or expected;
@@ -1081,6 +1238,26 @@ SECTION("BinaryEq") {
     assertFilterSuccess("FOR d IN collection FILTER false == d['a'].b['c'].bool RETURN d", expected);
   }
 
+  // boolean expression
+  {
+    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
+    arangodb::aql::AqlValueGuard guard(value, true);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace(var.name, value);
+
+    irs::Or expected;
+    expected.add<irs::by_term>().field(mangleBool("a.b[23].c")).term(irs::boolean_token_stream::value_false());
+
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a.b[23].c == TO_BOOL(c-41) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a['b'][23].c == TO_BOOL(c-41) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d['a']['b'][23].c == TO_BOOL(c-41) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) == d.a.b[23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) == d.a['b'][23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) == d['a']['b'][23]['c'] RETURN d", expected, &ctx);
+  }
+
   // complex attribute, null
   {
     irs::Or expected;
@@ -1105,6 +1282,26 @@ SECTION("BinaryEq") {
     assertFilterSuccess("FOR d IN collection FILTER null == d.a[1].b[2].c[3].bool RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER null == d['a[1].b[2].c[3].bool'] RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER null == d.a[1].b[2].c[3]['bool'] RETURN d", expected);
+  }
+
+  // null expression
+  {
+    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
+    arangodb::aql::AqlValueGuard guard(value, true);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace(var.name, value);
+
+    irs::Or expected;
+    expected.add<irs::by_term>().field(mangleNull("a.b[23].c")).term(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("LET c=null FOR d IN collection FILTER d.a.b[23].c == (c && true) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=null FOR d IN collection FILTER d.a['b'][23].c == (c && false) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=null FOR d IN collection FILTER d['a']['b'][23].c == (c && true) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) == d.a.b[23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) == d.a['b'][23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) == d['a']['b'][23]['c'] RETURN d", expected, &ctx);
   }
 
   // complex attribute, numeric
@@ -1147,6 +1344,42 @@ SECTION("BinaryEq") {
     assertFilterSuccess("FOR d IN collection FILTER 3.0 == d.a['b[3].c.numeric'] RETURN d", expected);
   }
 
+  // numeric expression
+  {
+    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
+    arangodb::aql::AqlValueGuard guard(value, true);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace(var.name, value);
+
+    irs::numeric_token_stream stream;
+    stream.reset(42.5);
+    CHECK(stream.next());
+    auto& term = stream.attributes().get<irs::term_attribute>();
+
+    irs::Or expected;
+    expected.add<irs::by_term>().field(mangleNumeric("a.b[23].c")).term(term->value());
+
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a.b[23].c == (c + 1.5) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a['b'][23].c == (c + 1.5) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d['a']['b'][23].c == (c + 1.5) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c + 1.5) == d.a.b[23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c + 1.5) == d.a['b'][23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c + 1.5) == d['a']['b'][23]['c'] RETURN d", expected, &ctx);
+  }
+
+  // complex range expression
+  {
+    irs::Or expected;
+    expected.add<irs::by_term>().field(mangleBool("a.b.c")).term(irs::boolean_token_stream::value_false());
+
+    assertFilterSuccess("FOR d IN collection FILTER 3 == 2 == d.a.b.c RETURN d", expected, &ExpressionContextMock::EMPTY);
+  }
+
+  // unsupported expression (d referenced inside)
+  /*assertFilterExecutionFail*/assertFilterFail("FOR d IN collection FILTER 3 == (2 == d.a.b.c) RETURN d", &ExpressionContextMock::EMPTY);
+
   // invalid attribute access
   assertFilterFail("FOR d IN collection FILTER k.a == '1' RETURN d");
   assertFilterFail("FOR d IN collection FILTER d == '1' RETURN d");
@@ -1165,7 +1398,6 @@ SECTION("BinaryEq") {
   // invalid equality (supported by AQL)
   assertFilterFail("FOR d IN collection FILTER 2 == d.a.b.c.numeric == 3 RETURN d");
   assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric == 2 == 3 RETURN d");
-  //assertFilterFail("FOR d IN collection FILTER 3 == 2 == d.a.b.c.numeric RETURN d", &ExpressionContextMock::EMPTY); // FIXME check on execution
 }
 
 SECTION("BinaryNotEq") {
@@ -1217,6 +1449,26 @@ SECTION("BinaryNotEq") {
     assertFilterSuccess("FOR d IN collection FILTER '1' != d['a'].b[23].c RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' != d['a']['b'][23].c RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER '1' != d['a']['b'][23]['c'] RETURN d", expected);
+  }
+
+  // string expression
+  {
+    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
+    arangodb::aql::AqlValueGuard guard(value, true);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace(var.name, value);
+
+    irs::Or expected;
+    expected.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("a.b[23].c")).term("42");
+
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a.b[23].c != TO_STRING(c+1) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a['b'][23].c != TO_STRING(c+1) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d['a']['b'][23].c != TO_STRING(c+1) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_STRING(c+1) != d.a.b[23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_STRING(c+1) != d.a['b'][23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_STRING(c+1) != d['a']['b'][23]['c'] RETURN d", expected, &ctx);
   }
 
   // complex boolean attribute, true
@@ -1274,6 +1526,46 @@ SECTION("BinaryNotEq") {
     assertFilterSuccess("FOR d IN collection FILTER null != d['a']['b'].c[3].bool RETURN d", expected);
   }
 
+  // boolean expression
+  {
+    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
+    arangodb::aql::AqlValueGuard guard(value, true);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace(var.name, value);
+
+    irs::Or expected;
+    expected.add<irs::Not>().filter<irs::by_term>().field(mangleBool("a.b[23].c")).term(irs::boolean_token_stream::value_false());
+
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a.b[23].c != TO_BOOL(c-41) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a['b'][23].c != TO_BOOL(c-41) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d['a']['b'][23].c != TO_BOOL(c-41) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) != d.a.b[23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) != d.a['b'][23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) != d['a']['b'][23]['c'] RETURN d", expected, &ctx);
+  }
+
+  // null expression
+  {
+    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
+    arangodb::aql::AqlValueGuard guard(value, true);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace(var.name, value);
+
+    irs::Or expected;
+    expected.add<irs::Not>().filter<irs::by_term>().field(mangleNull("a.b[23].c")).term(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("LET c=null FOR d IN collection FILTER d.a.b[23].c != (c && true) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=null FOR d IN collection FILTER d.a['b'][23].c != (c && false) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=null FOR d IN collection FILTER d['a']['b'][23].c != (c && true) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) != d.a.b[23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) != d.a['b'][23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) != d['a']['b'][23]['c'] RETURN d", expected, &ctx);
+  }
+
   // complex boolean attribute, numeric
   {
     irs::numeric_token_stream stream;
@@ -1310,6 +1602,42 @@ SECTION("BinaryNotEq") {
     assertFilterSuccess("FOR d IN collection FILTER 3.0 != d.a['b']['c'].numeric[1] RETURN d", expected);
   }
 
+  // numeric expression
+  {
+    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
+    arangodb::aql::AqlValueGuard guard(value, true);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace(var.name, value);
+
+    irs::numeric_token_stream stream;
+    stream.reset(42.5);
+    CHECK(stream.next());
+    auto& term = stream.attributes().get<irs::term_attribute>();
+
+    irs::Or expected;
+    expected.add<irs::Not>().filter<irs::by_term>().field(mangleNumeric("a.b[23].c")).term(term->value());
+
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a.b[23].c != (c + 1.5) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a['b'][23].c != (c + 1.5) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d['a']['b'][23].c != (c + 1.5) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c + 1.5) != d.a.b[23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c + 1.5) != d.a['b'][23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c + 1.5) != d['a']['b'][23]['c'] RETURN d", expected, &ctx);
+  }
+
+  // complex range expression
+  {
+    irs::Or expected;
+    expected.add<irs::Not>().filter<irs::by_term>().field(mangleBool("a.b.c")).term(irs::boolean_token_stream::value_true());
+
+    assertFilterSuccess("FOR d IN collection FILTER 3 != 2 != d.a.b.c RETURN d", expected, &ExpressionContextMock::EMPTY);
+  }
+
+  // unsupported expression (d referenced inside)
+  /*assertFilterExecutionFail*/assertFilterFail("FOR d IN collection FILTER 3 != (2 != d.a.b.c) RETURN d", &ExpressionContextMock::EMPTY);
+
   // invalid attribute access
   assertFilterFail("FOR d IN collection FILTER ['d'] != '1' RETURN d");
   assertFilterFail("FOR d IN collection FILTER [] != '1' RETURN d");
@@ -1332,7 +1660,6 @@ SECTION("BinaryNotEq") {
   assertFilterFail("FOR d IN collection FILTER 2 == d.a.b.c.numeric != 3 RETURN d");
   assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric != 2 != 3 RETURN d");
   assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric != 2 == 3 RETURN d");
-  // assertFilterFail("FOR d IN collection FILTER 3 != 2 != d.a.b.c.numeric RETURN d", &ExpressionContextMock::EMPTY); FIXME check on execution
 }
 
 SECTION("BinaryGE") {
@@ -1386,6 +1713,26 @@ SECTION("BinaryGE") {
     assertFilterSuccess("FOR d IN collection FILTER '1' <= d['a']['b'][23].c RETURN d", expected);
   }
 
+  // string expression
+  {
+    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
+    arangodb::aql::AqlValueGuard guard(value, true);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace(var.name, value);
+
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleStringIdentity("a.b[23].c"))
+            .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("42");
+
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a.b[23].c >= TO_STRING(c+1) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a['b'][23]['c'] >= TO_STRING(c+1) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_STRING(c+1) <= d.a.b[23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_STRING(c+1) <= d['a']['b'][23].c RETURN d", expected, &ctx);
+  }
+
   // complex boolean attribute, true
   {
     irs::Or expected;
@@ -1425,6 +1772,26 @@ SECTION("BinaryGE") {
     assertFilterSuccess("FOR d IN collection FILTER false <= d.a['b']['c'].bool RETURN d", expected);
   }
 
+  // boolean expression
+  {
+    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
+    arangodb::aql::AqlValueGuard guard(value, true);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace(var.name, value);
+
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleBool("a.b[23].c"))
+            .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
+
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a.b[23].c >= TO_BOOL(c-41) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a['b'][23]['c'] >= TO_BOOL(c-41) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) <= d.a.b[23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) <= d['a']['b'][23].c RETURN d", expected, &ctx);
+  }
+
   // complex boolean attribute, null
   {
     irs::Or expected;
@@ -1451,7 +1818,27 @@ SECTION("BinaryGE") {
     assertFilterSuccess("FOR d IN collection FILTER null <= d['a']['b'][23].c.nil RETURN d", expected);
   }
 
-  // complex boolean attribute, numeric
+  // null expression
+  {
+    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintNull{});
+    arangodb::aql::AqlValueGuard guard(value, true);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace(var.name, value);
+
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleNull("a.b[23].c"))
+            .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("LET c=null FOR d IN collection FILTER d.a.b[23].c >= (c && false) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=null FOR d IN collection FILTER d.a['b'][23]['c'] >= (c && true) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) <= d.a.b[23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) <= d['a']['b'][23].c RETURN d", expected, &ctx);
+  }
+
+  // complex numeric attribute
   {
     irs::numeric_token_stream stream;
     stream.reset(13.);
@@ -1469,7 +1856,7 @@ SECTION("BinaryGE") {
     assertFilterSuccess("FOR d IN collection FILTER 13.0 <= d['a']['b']['c'].numeric RETURN d", expected);
   }
 
-  // complex boolean attribute, numeric
+  // complex numeric attribute, numeric
   {
     irs::numeric_token_stream stream;
     stream.reset(13.);
@@ -1486,6 +1873,42 @@ SECTION("BinaryGE") {
     assertFilterSuccess("FOR d IN collection FILTER 13.0 <= d.a.b.c[223].numeric RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER 13.0 <= d['a']['b']['c'][223].numeric RETURN d", expected);
   }
+
+  // numeric expression
+  {
+    arangodb::aql::Variable var("c", 0);
+    arangodb::aql::AqlValue value(arangodb::aql::AqlValueHintInt{41});
+    arangodb::aql::AqlValueGuard guard(value, true);
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace(var.name, value);
+
+    irs::numeric_token_stream stream;
+    stream.reset(42.5);
+
+    irs::Or expected;
+    expected.add<irs::by_granular_range>()
+            .field(mangleNumeric("a.b[23].c"))
+            .include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(stream);
+
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a.b[23].c >= (c+1.5) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a['b'][23]['c'] >= (c+1.5) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c+1.5) <= d.a.b[23].c RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c+1.5) <= d['a']['b'][23].c RETURN d", expected, &ctx);
+  }
+
+  // complex expression
+  {
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleBool("a.b.c"))
+            .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::boolean_token_stream::value_true());
+
+    assertFilterSuccess("FOR d IN collection FILTER 3 >= 2 >= d.a.b.c RETURN d", expected, &ExpressionContextMock::EMPTY);
+  }
+
+  // unsupported expression (d referenced inside)
+  /*assertFilterExecutionFail*/assertFilterFail("FOR d IN collection FILTER 3 >= (2 >= d.a.b.c) RETURN d", &ExpressionContextMock::EMPTY);
 
   // invalid attribute access
   assertFilterFail("FOR d IN collection FILTER [] >= '1' RETURN d");
@@ -1506,7 +1929,6 @@ SECTION("BinaryGE") {
   assertFilterFail("FOR d IN collection FILTER 2 >= d.a.b.c.numeric >= 3 RETURN d");
   assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric >= 2 >= 3 RETURN d");
   assertFilterFail("FOR d IN collection FILTER d.a.b.c.numeric >= 2 >= 3 RETURN d");
-  // assertFilterFail("FOR d IN collection FILTER 3 >= 2 >= d.a.b.c.numeric RETURN d"); FIXME check on execution
 }
 
 SECTION("BinaryGT") {
