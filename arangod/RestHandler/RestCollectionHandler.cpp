@@ -295,6 +295,9 @@ void RestCollectionHandler::handleCommandPut() {
           res = methods::Collections::load(_vocbase, coll);
           if (res.ok()) {
             bool cc = VelocyPackHelper::getBooleanValue(body, "count", true);
+            if (!coll->isLocal()) { // ClusterInfo::loadPlan eventually updates status
+              coll->setStatus(TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED);
+            }
             collectionRepresentation(builder, coll, /*showProperties*/ false,
                                      /*showFigures*/ false, /*showCount*/ cc,
                                      /*aggregateCount*/ true);
@@ -330,6 +333,9 @@ void RestCollectionHandler::handleCommandPut() {
             res = trx.finish(result.code);
           }
           if (res.ok()) {
+            if (!coll->isLocal()) { // ClusterInfo::loadPlan eventually updates status
+              coll->setStatus(TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED);
+            }
             collectionRepresentation(builder, coll, /*showProperties*/ false,
                                      /*showFigures*/ false, /*showCount*/ false,
                                      /*aggregateCount*/ false);

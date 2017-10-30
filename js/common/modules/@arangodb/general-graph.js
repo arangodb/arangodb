@@ -607,7 +607,7 @@ var checkROPermission = function(c) {
       throw err;
     }
   }
-}
+};
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief internal function for editing edge definitions
