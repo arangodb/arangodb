@@ -76,9 +76,11 @@ int TRI_FlushMMFile(int fileDescriptor, void* startingAddress,
 
   int res = msync(startingAddress, numOfBytesToFlush, flags);
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res != 0) {
     // handle errors
-    if (errno == ENOMEM) {
+    res = errno;
+
+    if (res == ENOMEM) {
       // ENOMEM: The indicated memory (or part of it) was not mapped.
 
       // we have synced a region that was not mapped
@@ -88,10 +90,17 @@ int TRI_FlushMMFile(int fileDescriptor, void* startingAddress,
       return TRI_ERROR_ARANGO_MSYNC_FAILED;
     }
 
-    if (errno == EINVAL) {
+    if (res == EINVAL) {
       // EINVAL: addr is not a multiple of PAGESIZE; or any bit other than 
       //         MS_ASYNC | MS_INVALIDATE | MS_SYNC is set in flags; or both
       LOG_TOPIC(ERR, Logger::MMAP) << "msync failed for range " << Logger::RANGE(startingAddress, numOfBytesToFlush) << ", file-descriptor " << fileDescriptor << ": memory address or flags are invalid";
+
+      return TRI_ERROR_ARANGO_MSYNC_FAILED;
+    }
+    
+    if (res == EBUSY) {
+      // EBUSY:  MS_INVALIDATE was specified in flags, and a memory lock exists for the specified address range.
+      LOG_TOPIC(ERR, Logger::MMAP) << "msync failed for range " << Logger::RANGE(startingAddress, numOfBytesToFlush) << ", file-descriptor " << fileDescriptor << ": memory lock exists";
 
       return TRI_ERROR_ARANGO_MSYNC_FAILED;
     }
