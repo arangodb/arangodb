@@ -63,29 +63,23 @@ RestStatus RestPregelHandler::execute() {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_NOT_IMPLEMENTED, "you are missing a prefix");
     } else if (suffix[0] == Utils::conductorPrefix) {
-      VPackBuilder response;
+      VPackBuffer<uint8_t> buffer;
+      VPackBuilder response(buffer);
       PregelFeature::handleConductorRequest(suffix[1], body, response);
-      if (response.isEmpty()) {
-        resetResponse(rest::ResponseCode::OK);
-      } else {
-        generateResult(rest::ResponseCode::OK, response.slice());
-      }
+      generateResult(rest::ResponseCode::OK, std::move(buffer));
     } else if (suffix[0] == Utils::workerPrefix) {
+      VPackBuffer<uint8_t> buffer;
       VPackBuilder response;
       PregelFeature::handleWorkerRequest(_vocbase, suffix[1], body, response);
-      if (response.isEmpty()) {
-        resetResponse(rest::ResponseCode::OK);
-      } else {
-        generateResult(rest::ResponseCode::OK, response.slice());
-      }
+      generateResult(rest::ResponseCode::OK, std::move(buffer));
     } else {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_NOT_IMPLEMENTED, "the prefix is incorrect");
     }
-  } catch (std::exception const &e) {
-    LOG_TOPIC(ERR, Logger::PREGEL) << e.what();
   } catch(...) {
     LOG_TOPIC(ERR, Logger::PREGEL) << "Exception in pregel REST handler";
+    generateError(rest::ResponseCode::BAD,
+                  TRI_ERROR_INTERNAL, "error in pregel handler");
   }
     
   return RestStatus::DONE;
