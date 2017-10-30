@@ -32,7 +32,7 @@
   },
   "pluginsConfig": {
     "addcssjs": {
-      "js": ["styles/header.js"],
+      "js": ["styles/header.js", "styles/hs.js"],
       "css": ["styles/header.css"]
     },
     "sitemap-general": {
