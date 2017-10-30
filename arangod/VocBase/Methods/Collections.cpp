@@ -142,6 +142,19 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
 
   TRI_ASSERT(vocbase && !vocbase->isDangling());
   TRI_ASSERT(properties.isObject());
+  
+  /*VPackBuilder defaultProps;
+  defaultProps.openObject();
+  defaultProps.add("shardKeys", VPackSlice::emptyObjectSlice());
+  defaultProps.add("numberOfShards", VPackValue(0));
+  defaultProps.add("distributeShardsLike", VPackValue(""));
+  defaultProps.add("avoidServers", VPackSlice::emptyArraySlice());
+  defaultProps.add("shardKeysisSmart", VPackValue(""));
+  defaultProps.add("smartGraphAttribute", VPackValue(""));
+  defaultProps.add("replicationFactor", VPackValue(0));
+  defaultProps.add("servers", VPackValue(""));
+  defaultProps.close();*/
+    
   VPackBuilder builder;
   builder.openObject();
   builder.add("type", VPackValue(static_cast<int>(collectionType)));
@@ -172,6 +185,8 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
               entry.grantCollection(vocbase->name(), name, AuthLevel::RW);
             });
       }
+      
+      // reload otherwise collection might not be in yet
       func(col.release());
     } else {
       arangodb::LogicalCollection* col = vocbase->createCollection(infoSlice);
@@ -252,28 +267,27 @@ Result Collections::properties(LogicalCollection* coll, VPackBuilder& builder) {
       "allowUserKeys", "cid",    "count",  "deleted", "id",   "indexes", "name",
       "path",          "planId", "shards", "status",  "type", "version"};
 
-  Result res;
   std::unique_ptr<SingleCollectionTransaction> trx;
   if (!ServerState::instance()->isCoordinator()) {
     auto ctx = transaction::StandaloneContext::Create(coll->vocbase());
     trx.reset(new SingleCollectionTransaction(ctx, coll->cid(),
                                               AccessMode::Type::READ));
     trx->addHint(transaction::Hints::Hint::NO_USAGE_LOCK);
-    res = trx->begin();
+    Result res = trx->begin();
     // These are only relevant for cluster
     ignoreKeys.insert({"distributeShardsLike", "isSmart", "numberOfShards",
                        "replicationFactor", "shardKeys"});
-  }
-
-  if (res.fail()) {
-    return res;
+    
+    if (res.fail()) {
+      return res;
+    }
   }
 
   VPackBuilder props = coll->toVelocyPackIgnore(ignoreKeys, true, false);
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackObjectIterator(props.slice()));
 
-  return res;
+  return TRI_ERROR_NO_ERROR;
 }
 
 Result Collections::updateProperties(LogicalCollection* coll,

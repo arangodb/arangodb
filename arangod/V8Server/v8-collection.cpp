@@ -1367,11 +1367,12 @@ static void JS_PropertiesVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  LogicalCollection* collection =
-  TRI_UnwrapClass<arangodb::LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
-  if (collection == nullptr) {
+  LogicalCollection* consoleColl =
+  TRI_UnwrapClass<LogicalCollection>(args.Holder(), WRP_VOCBASE_COL_TYPE);
+  if (consoleColl == nullptr) {
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
+  TRI_vocbase_t* vocbase = consoleColl->vocbase();
 
   bool const isModification = (args.Length() != 0);
   if (isModification) {
@@ -1385,19 +1386,25 @@ static void JS_PropertiesVocbaseCol(
           TRI_V8_THROW_EXCEPTION(res);
         }
       }
-      methods::Collections::updateProperties(collection, builder.slice());
+      Result res = methods::Collections::updateProperties(consoleColl, builder.slice());
+      if (res.fail() && ServerState::instance()->isCoordinator()) {
+        TRI_V8_THROW_EXCEPTION(res);
+      }
       // TODO Review
       // TODO API compatibility, for now we ignore if persisting fails...
     }
   }
+  // in the cluster the collection object might contain outdated
+  // properties, which will break tests. We need an extra lookup
   VPackBuilder builder;
-  {
+  methods::Collections::lookup(vocbase, consoleColl->name(),
+                               [&](LogicalCollection* coll) {
     VPackObjectBuilder object(&builder, true);
-    Result res = methods::Collections::properties(collection, builder);
+    Result res = methods::Collections::properties(coll, builder);
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION(res);
     }
-  }
+  });
   // return the current parameter set
   TRI_V8_RETURN(TRI_VPackToV8(isolate, builder.slice())->ToObject());
   TRI_V8_TRY_CATCH_END

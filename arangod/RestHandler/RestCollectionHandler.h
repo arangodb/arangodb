@@ -43,8 +43,10 @@ class RestCollectionHandler : public arangodb::RestVocbaseBaseHandler {
   void handleCommandPost();
   void handleCommandPut();
   void handleCommandDelete();
-  void collectionRepresentation(VPackBuilder& builder,
-                                LogicalCollection* coll,
+  void collectionRepresentation(VPackBuilder& builder, std::string const& name,
+                                bool showProperties, bool showFigures,
+                                bool showCount, bool aggregateCount);
+  void collectionRepresentation(VPackBuilder& builder, LogicalCollection* coll,
                                 bool showProperties, bool showFigures,
                                 bool showCount, bool aggregateCount);
 };
