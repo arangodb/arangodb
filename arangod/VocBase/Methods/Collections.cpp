@@ -83,7 +83,7 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
                                   FuncCallback func) {
   if (name.empty()) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-  }
+  } 
   
   ExecContext const* exec = ExecContext::CURRENT;
   if (ServerState::instance()->isCoordinator()) {
