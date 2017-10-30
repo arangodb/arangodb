@@ -329,7 +329,10 @@ void RestCollectionHandler::handleCommandPut() {
             res = trx.finish(result.code);
           }
           if (res.ok()) {
-            collectionRepresentation(builder, name, /*showProperties*/ false,
+            if (!coll->isLocal()) { // ClusterInfo::loadPlan eventually updates status
+              coll->setStatus(TRI_vocbase_col_status_e::TRI_VOC_COL_STATUS_LOADED);
+            }
+            collectionRepresentation(builder, coll, /*showProperties*/ false,
                                      /*showFigures*/ false, /*showCount*/ false,
                                      /*aggregateCount*/ false);
           }
