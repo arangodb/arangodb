@@ -78,7 +78,7 @@ class AsyncJobManager {
   GeneralResponse* getJobResult(AsyncJobResult::IdType, AsyncJobResult::Status&,
                                 bool removeFromList);
   bool deleteJobResult(AsyncJobResult::IdType);
-  void deleteJobResults();
+  void deleteJobs();
   void deleteExpiredJobResults(double stamp);
   
   /// @brief cancel and delete a specific job

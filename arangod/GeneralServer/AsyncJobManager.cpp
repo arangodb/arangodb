@@ -56,7 +56,7 @@ AsyncJobManager::AsyncJobManager()
 
 AsyncJobManager::~AsyncJobManager() {
   // remove all results that haven't been fetched
-  deleteJobResults();
+  deleteJobs();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -119,7 +119,7 @@ bool AsyncJobManager::deleteJobResult(AsyncJobResult::IdType jobId) {
 /// @brief deletes all results
 ////////////////////////////////////////////////////////////////////////////////
 
-void AsyncJobManager::deleteJobResults() {
+void AsyncJobManager::deleteJobs() {
   WRITE_LOCKER(writeLocker, _lock);
 
   auto it = _jobs.begin();
@@ -134,7 +134,6 @@ void AsyncJobManager::deleteJobResults() {
     ++it;
   }
 
-#warning this does not seem right, what about pending jobs ?
   _jobs.clear();
 }
 
