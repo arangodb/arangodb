@@ -644,9 +644,9 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
     }
     httpResponse->body().swap(&(res->result->getBody()));
   } else {
-    // TODO copy all payloads
-    VPackSlice slice = res->result->getBodyVelocyPack()->slice();
-    _response->setPayload(slice, true);  // do we need to generate the body?!
+    std::shared_ptr<VPackBuilder> builder = res->result->getBodyVelocyPack();
+    std::shared_ptr<VPackBuffer<uint8_t>> buf = builder->steal();
+    _response->setPayload(std::move(*buf), true);// do we need to generate the body?!
   }
 
   auto const& resultHeaders = res->result->getHeaderFields();
