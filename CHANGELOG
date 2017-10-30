@@ -1,6 +1,8 @@
 devel
 -----
 
+* UI: fixed error notifications for collection modifications
+
 * UI: fixed event cleanup in cluster shards view
 
 * UI: replicationFactor of a collection is now changeable in a cluster
