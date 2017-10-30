@@ -31,6 +31,9 @@ v3.2.6 (2017-10-26)
 
 * allow changing of collection replication factor for existing collections
 
+* UI: replicationFactor of a collection is now changeable in a cluster
+  environment
+
 * several fixes for the cluster agency
 
 * fixed undefined behavior in the RocksDB-based geo index
