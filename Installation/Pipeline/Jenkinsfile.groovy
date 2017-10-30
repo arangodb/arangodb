@@ -687,6 +687,7 @@ def setBuildsAndTests() {
 <tr><td>BUILD TYPE</td><td>${buildType} / ${params.Type}</td></tr>
 <tr></tr>
 <tr><td>Building Docker</td><td>${useDocker}<td></tr>
+<tr><td>Run Resilience</td><td>${runResilience}<td></tr>
 <tr></tr>
 """
 
@@ -817,12 +818,10 @@ def unstashBinaries(os, edition, maintainer) {
 def jslint(os, edition, maintainer) {
     def archDir  = "${os}-${edition}-${maintainer}"
     def arch     = "${archDir}/02-jslint"
-    def archFail = "${archDir}/02-jslint-FAIL"
 
     fileOperations([
         fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
         folderDeleteOperation(arch),
-        folderDeleteOperation(archFail),
         folderCreateOperation(arch)
     ])
 
@@ -837,15 +836,13 @@ def jslint(os, edition, maintainer) {
         logStopStage(os, logFile)
     }
     catch (exc) {
-        logExceptionStage(os, logFile, "${archFail}/jslint.log", exc)
-
-        renameFolder(arch, archFail)
+        logExceptionStage(os, logFile, "${arch}/jslint.log", exc)
         fileOperations([fileCreateOperation(fileContent: 'JSLINT FAILED', fileName: "${archDir}-FAIL.txt")])
         throw exc
     }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-            artifacts: "${archDir}-FAIL.txt, ${arch}/**, ${archFail}/**",
+            artifacts: "${archDir}-FAIL.txt, ${arch}/**",
             defaultExcludes: false
     }
 }
@@ -948,13 +945,10 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
           stage("${stageName}-${name}") {
               def archDir  = "${os}-${edition}-${maintainer}"
               def arch     = "${archDir}/03-test/${mode}-${engine}"
-              def archFail = "${arch}-FAIL"
               def archRun  = "${arch}-RUN"
 
               def logFile          = pwd() + "/" + "${arch}/${name}.log"
               def logFileRel       = "${arch}/${name}.log"
-              def logFileFailed    = pwd() + "/" + "${arch}-FAIL/${name}.log"
-              def logFileFailedRel = "${arch}-FAIL/${name}.log"
 
               def runDir = "run.${testIndex}"
               def concurrencyIndex = testIndex % concurrency
@@ -1011,11 +1005,11 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
                       logStopStage(os, logFileRel)
                   }
                   catch (exc) {
-                      logExceptionStage(os, logFileRel, logFileFailedRel, exc)
+                      logExceptionStage(os, logFileRel, logFileRel, exc)
 
                       def msg = exc.toString()
 
-                      echo "caught error, copying log to ${logFileFailed}: ${msg}"
+                      echo "caught error, copying log to ${logFile}: ${msg}"
 
                       fileOperations([
                           fileCreateOperation(fileContent: "TEST FAILED: ${msg}", fileName: "${archDir}-FAIL.txt")
@@ -1028,14 +1022,13 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
                           powershell "echo \"${msg}\" | Out-File -filepath ${logFile} -append"
                       }
 
-                      copyFile(os, logFile, logFileFailed)
                       throw exc
                   }
                   finally {
                       saveCores(os, runDir, name, archRun)
 
                       archiveArtifacts allowEmptyArchive: true,
-                          artifacts: "${archDir}-FAIL.txt, ${archRun}/**, ${logFileRel}, ${logFileFailedRel}",
+                          artifacts: "${archDir}-FAIL.txt, ${archRun}/**, ${logFileRel}",
                           defaultExcludes: false
                   }
               }
@@ -1046,7 +1039,6 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
 def executeTests(os, edition, maintainer, mode, engine, stageName) {
     def archDir  = "${os}-${edition}-${maintainer}"
     def arch     = "${archDir}/03-test/${mode}-${engine}"
-    def archFail = "${arch}-FAIL"
     def archRun  = "${arch}-RUN"
 
     def testIndex = 0
@@ -1067,7 +1059,6 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
         fileOperations([
             fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
             folderCreateOperation(arch),
-            folderCreateOperation(archFail),
             folderCreateOperation(archRun)
         ])
 
@@ -1185,125 +1176,117 @@ def testStepParallel(os, edition, maintainer, modeList) {
 // --SECTION--                                                SCRIPTS RESILIENCE
 // -----------------------------------------------------------------------------
 
-// def testResilience(os, engine, foxx) {
-//     withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace']) {
-//         if (os == 'linux') {
-//             sh "./Installation/Pipeline/linux/test_resilience_${foxx}_${engine}_${os}.sh"
-//         }
-//         else if (os == 'mac') {
-//             sh "./Installation/Pipeline/mac/test_resilience_${foxx}_${engine}_${os}.sh"
-//         }
-//         else if (os == 'windows') {
-//             powershell ".\\Installation\\Pipeline\\test_resilience_${foxx}_${engine}_${os}.ps1"
-//         }
-//     }
-// }
+def testResilience(os, engine, foxx) {
+    withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace']) {
+        if (os == 'linux') {
+            sh "./Installation/Pipeline/linux/test_resilience_${foxx}_${engine}_${os}.sh"
+        }
+        else if (os == 'mac') {
+            sh "./Installation/Pipeline/mac/test_resilience_${foxx}_${engine}_${os}.sh"
+        }
+        else if (os == 'windows') {
+            powershell ".\\Installation\\Pipeline\\test_resilience_${foxx}_${engine}_${os}.ps1"
+        }
+    }
+}
 
-// def testResilienceCheck(os, engine, foxx) {
-//     if (! runResilience) {
-//         return false
-//     }
+def testResilienceCheck(os, engine, foxx) {
+    if (! runResilience) {
+        return false
+    }
 
-//     if (os == 'linux' && ! useLinux) {
-//         return false
-//     }
+    if (! checkEnabledOS(os, 'testing')) {
+       return false
+    }
 
-//     if (os == 'mac' && ! useMac) {
-//         return false
-//     }
+    if (! checkEnabledEdition(edition, 'testing')) {
+       return false
+    }
 
-//     if (os == 'windows' && ! useWindows) {
-//         return false
-//     }
+    if (! checkEnabledMaintainer(maintainer, os, 'building')) {
+       return false
+    }
 
-//     if (! useCommunity) {
-//         return false
-//     }
+    return true
+}
 
-//     if (restrictions && !restrictions["test-resilience-${foxx}-${engine}-${os}"]) {
-//         return false
-//     }
+def testResilienceStep(os, engine, foxx) {
+    return {
+        node(testJenkins[os]) {
+            def edition = "community"
+            def buildName = "${edition}-${os}"
 
-//     return true
-// }
+            def name = "${os}-${engine}-${foxx}"
+            def arch = "LOG_resilience_${foxx}_${engine}_${os}"
 
-// def testResilienceStep(os, engine, foxx) {
-//     return {
-//         node(testJenkins[os]) {
-//             def edition = "community"
-//             def buildName = "${edition}-${os}"
+            stage("resilience-${name}") {
+                if (os == 'linux' || os == 'mac') {
+                    sh "rm -rf ${arch}"
+                    sh "mkdir -p ${arch}"
+                }
+                else if (os == 'windows') {
+                    bat "del /F /Q ${arch}"
+                    powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+                }
 
-//             def name = "${os}-${engine}-${foxx}"
-//             def arch = "LOG_resilience_${foxx}_${engine}_${os}"
+                try {
+                    try {
+                        timeout(120) {
+                            unstashBinaries(edition, os)
+                            testResilience(os, engine, foxx)
+                        }
 
-//             stage("resilience-${name}") {
-//                 if (os == 'linux' || os == 'mac') {
-//                     sh "rm -rf ${arch}"
-//                     sh "mkdir -p ${arch}"
-//                 }
-//                 else if (os == 'windows') {
-//                     bat "del /F /Q ${arch}"
-//                     powershell "New-Item -ItemType Directory -Force -Path ${arch}"
-//                 }
+                        if (findFiles(glob: 'resilience/core*').length > 0) {
+                            error("found core file")
+                        }
+                    }
+                    catch (exc) {
+                        if (os == 'linux' || os == 'mac') {
+                            sh "for i in build resilience/core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
+                        }
+                        throw exc
+                    }
+                    finally {
+                        if (os == 'linux' || os == 'mac') {
+                            sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch}; done"
+                        }
+                        else if (os == 'windows') {
+                            bat "move log-output ${arch}"
+                        }
+                    }
+                }
+                finally {
+                    archiveArtifacts allowEmptyArchive: true,
+                                        artifacts: "${arch}/**",
+                                        defaultExcludes: false
+                }
+            }
+        }
+    }
+}
 
-//                 try {
-//                     try {
-//                         timeout(120) {
-//                             unstashBinaries(edition, os)
-//                             testResilience(os, engine, foxx)
-//                         }
+def testResilienceParallel(osList) {
+    def branches = [:]
 
-//                         if (findFiles(glob: 'resilience/core*').length > 0) {
-//                             error("found core file")
-//                         }
-//                     }
-//                     catch (exc) {
-//                         if (os == 'linux' || os == 'mac') {
-//                             sh "for i in build resilience/core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
-//                         }
-//                         throw exc
-//                     }
-//                     finally {
-//                         if (os == 'linux' || os == 'mac') {
-//                             sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch}; done"
-//                         }
-//                         else if (os == 'windows') {
-//                             bat "move log-output ${arch}"
-//                         }
-//                     }
-//                 }
-//                 finally {
-//                     archiveArtifacts allowEmptyArchive: true,
-//                                         artifacts: "${arch}/**",
-//                                         defaultExcludes: false
-//                 }
-//             }
-//         }
-//     }
-// }
+    for (foxx in ['foxx', 'nofoxx']) {
+        for (os in osList) {
+            for (engine in ['mmfiles', 'rocksdb']) {
+                if (testResilienceCheck(os, engine, foxx)) {
+                    def name = "test-resilience-${foxx}-${engine}-${os}"
 
-// def testResilienceParallel(osList) {
-//     def branches = [:]
+                    branches[name] = testResilienceStep(os, engine, foxx)
+                }
+            }
+        }
+    }
 
-//     for (foxx in ['foxx', 'nofoxx']) {
-//         for (os in osList) {
-//             for (engine in ['mmfiles', 'rocksdb']) {
-//                 if (testResilienceCheck(os, engine, foxx)) {
-//                     def name = "test-resilience-${foxx}-${engine}-${os}"
-
-//                     branches[name] = testResilienceStep(os, engine, foxx)
-//                 }
-//             }
-//         }
-//     }
-
-//     if (branches.size() > 1) {
-//         parallel branches
-//     }
-//     else if (branches.size() == 1) {
-//         branches.values()[0]()
-//     }
-// }
+    if (branches.size() > 1) {
+        parallel branches
+    }
+    else if (branches.size() == 1) {
+        branches.values()[0]()
+    }
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     SCRIPTS BUILD
@@ -1312,12 +1295,10 @@ def testStepParallel(os, edition, maintainer, modeList) {
 def buildEdition(os, edition, maintainer) {
     def archDir  = "${os}-${edition}-${maintainer}"
     def arch     = "${archDir}/01-build"
-    def archFail = "${archDir}/01-build-FAIL"
 
     fileOperations([
         fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
         folderDeleteOperation(arch),
-        folderDeleteOperation(archFail),
         folderCreateOperation(arch)
     ])
 
@@ -1349,7 +1330,7 @@ def buildEdition(os, edition, maintainer) {
         logStopStage(os, logFile)
     }
     catch (exc) {
-        logExceptionStage(os, logFile, "${archFail}/build.log", exc)
+        logExceptionStage(os, logFile, logFile, exc)
 
         def msg = exc.toString()
         
@@ -1364,7 +1345,6 @@ def buildEdition(os, edition, maintainer) {
             powershell "echo \"${msg}\" | Out-File -filepath ${logFile} -append"
         }
 
-        renameFolder(arch, archFail)
         throw exc
     }
     finally {
@@ -1373,7 +1353,7 @@ def buildEdition(os, edition, maintainer) {
         }
 
         archiveArtifacts allowEmptyArchive: true,
-            artifacts: "${archDir}-FAIL.txt, ${arch}/**, ${archFail}/**",
+            artifacts: "${archDir}-FAIL.txt, ${arch}/**",
             defaultExcludes: false
     }
 }
@@ -1423,12 +1403,10 @@ def createDockerImage(edition, maintainer, stageName) {
 
                     def archDir  = "${os}-${edition}-${maintainer}"
                     def arch     = "${archDir}/04-docker"
-                    def archFail = "${archDir}/04-docker-FAIL"
 
                     fileOperations([
                         fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
                         folderDeleteOperation(arch),
-                        folderDeleteOperation(archFail),
                         folderCreateOperation(arch)
                     ])
 
@@ -1448,15 +1426,13 @@ def createDockerImage(edition, maintainer, stageName) {
                             logStopStage(os, logFile)
                         }
                         catch (exc) {
-                            logExceptionStage(os, logFile, "${archFail}/build.log", exc)
-
-                            renameFolder(arch, archFail)
+                            logExceptionStage(os, logFile, logFile, exc)
                             fileOperations([fileCreateOperation(fileContent: 'DOCKER FAILED', fileName: "${archDir}-FAIL.txt")])
                             throw exc
                         }
                         finally {
                             archiveArtifacts allowEmptyArchive: true,
-                                artifacts: "${archDir}-FAIL.txt, ${arch}/**, ${archFail}/**",
+                                artifacts: "${archDir}-FAIL.txt, ${arch}/**",
                                 defaultExcludes: false
                         }
                     }
@@ -1522,6 +1498,8 @@ def runEdition(os, edition, maintainer, stageName) {
                 }
 
                 testStepParallel(os, edition, maintainer, ['cluster', 'singleserver'])
+                testResilienceParallel([os])
+
                 node("linux") { logStopStage(null, name) }
             }
             catch (exc) {
