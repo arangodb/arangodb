@@ -25,11 +25,12 @@
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Dr. Frank Celler
-// / @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
+// / @author Copyright 2014-2017, ArangoDB GmbH, Cologne, Germany
 // / @author Copyright 2012-2014, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var actions = require('@arangodb/actions');
+const actions = require('@arangodb/actions');
+const replication = require('@arangodb/replication');
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief was docuBlock JSF_get_admin_server_role
@@ -40,7 +41,10 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
-    actions.resultOk(req, res, actions.HTTP_OK, { role: ArangoServerState.role() });
+    actions.resultOk(req, res, actions.HTTP_OK, { 
+      role: ArangoServerState.role(),
+      mode: replication.globalApplier.failoverEnabled() ? "resilient" : "default"
+     });
   }
 });
 

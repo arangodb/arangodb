@@ -128,7 +128,8 @@ RocksDBPrimaryIndex::RocksDBPrimaryIndex(
                            StaticStrings::KeyString, false)}}),
                    true, false, RocksDBColumnFamily::primary(),
                    basics::VelocyPackHelper::stringUInt64(info, "objectId"),
-                   static_cast<RocksDBCollection*>(collection->getPhysical())->cacheEnabled()) {
+                   static_cast<RocksDBCollection*>(collection->getPhysical())->cacheEnabled()),
+                   _isRunningInCluster(ServerState::instance()->isRunningInCluster()) {
   TRI_ASSERT(_cf == RocksDBColumnFamily::primary());
   TRI_ASSERT(_objectId != 0);
 }
@@ -417,13 +418,13 @@ void RocksDBPrimaryIndex::handleValNode(transaction::Methods* trx,
     TRI_ASSERT(cid != 0);
     TRI_ASSERT(key != nullptr);
 
-    if (!trx->state()->isRunningInCluster() && cid != _collection->cid()) {
+    if (!_isRunningInCluster && cid != _collection->cid()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using local collection id
       return;
     }
 
-    if (trx->state()->isRunningInCluster() && cid != _collection->planId()) {
+    if (_isRunningInCluster && cid != _collection->planId()) {
       // only continue lookup if the id value is syntactically correct and
       // refers to "our" collection, using cluster collection id
       return;

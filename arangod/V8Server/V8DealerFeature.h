@@ -104,10 +104,8 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
       TRI_vocbase_t*);
 
   void setMinimumContexts(size_t nr) { 
-    _nrMinContexts = nr; 
-    // max contexts must not be lower than min contexts
-    if (_nrMinContexts > _nrMaxContexts) {
-      _nrMaxContexts = nr;
+    if (nr > _nrMinContexts) {
+      _nrMinContexts = nr; 
     }
   }
 
@@ -136,7 +134,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
                                   VPackBuilder* builder);
   bool loadJavaScriptFileInContext(TRI_vocbase_t*, std::string const& file, V8Context* context, VPackBuilder* builder);
   void enterContextInternal(TRI_vocbase_t* vocbase, V8Context* context, bool allowUseDatabase);
-  void enterLockedContext(TRI_vocbase_t* vocbase, V8Context* context, bool allowUseDatabase);
+  void enterLockedContext(TRI_vocbase_t*, V8Context*, bool allowUseDatabase);
   void exitContextInternal(V8Context*);
   void exitLockedContext(V8Context*);
   void applyContextUpdate(V8Context* context);

@@ -55,8 +55,9 @@ AqlTransaction* AqlTransaction::create(
 /// distributed AQL query running on the coordinator
 transaction::Methods* AqlTransaction::clone(
     transaction::Options const& options) const {
-  return new AqlTransaction(transaction::StandaloneContext::Create(vocbase()),
-                            &_collections, options, false);
+  
+  auto ctx = transaction::StandaloneContext::Create(vocbase());
+  return new AqlTransaction(ctx, &_collections, options, false);
 }
 
 /// @brief add a collection to the transaction

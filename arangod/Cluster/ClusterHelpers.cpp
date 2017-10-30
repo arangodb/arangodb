@@ -21,14 +21,14 @@
 /// @author Andreas Streichardt
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Cluster/ClusterHelpers.h"
+#include "ClusterHelpers.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 
-bool ClusterHelpers::compareServerLists(Slice plan, Slice current) {
+bool ClusterHelpers::compareServerLists(VPackSlice plan, VPackSlice current) {
   if (!plan.isArray() || !current.isArray()) {
     return false;
   }

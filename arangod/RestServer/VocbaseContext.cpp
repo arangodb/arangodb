@@ -22,6 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "VocbaseContext.h"
+#include "GeneralServer/AuthenticationFeature.h"
+#include "Logger/Logger.h"
+#include "VocBase/AuthInfo.h"
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
@@ -31,15 +34,81 @@ using namespace arangodb::rest;
 double VocbaseContext::ServerSessionTtl =
     60.0 * 60.0 * 24 * 60;  // 2 month session timeout
 
-VocbaseContext::VocbaseContext(GeneralRequest* request, TRI_vocbase_t* vocbase)
-    : RequestContext(request),
-    _vocbase(vocbase) {
+VocbaseContext* VocbaseContext::create(GeneralRequest* req,
+                                       TRI_vocbase_t* vocbase) {
+  TRI_ASSERT(vocbase != nullptr);
+  // _vocbase has already been refcounted for us
+  TRI_ASSERT(!vocbase->isDangling());
+
+  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+  
+  if (auth == nullptr) {
+    return nullptr;
+  }
+
+  if (!auth->isActive()) {
+    return new VocbaseContext(req, vocbase, /*isInternal*/ true,
+                              /*sysLevel*/ AuthLevel::RW,
+                              /*sysLevel*/ AuthLevel::RW);
+  }
+
+  if (req->authorized()) {
+    // superusers will have an empty username. This MUST be invalid
+    // for users authenticating with name / password
+    if (req->user().empty()) {
+      if (req->authenticationMethod() != AuthenticationMethod::JWT) {
+        std::string msg = "only jwt can be used to authenticate as superuser";
+        LOG_TOPIC(WARN, Logger::AUTHORIZATION) << msg;
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
+      }
+      return new VocbaseContext(req, vocbase, /*isInternal*/ true,
+                                /*sysLevel*/ AuthLevel::RW,
+                                /*dbLevel*/ AuthLevel::RW);
+    }
+    AuthInfo* ai = auth->authInfo();
+    TRI_ASSERT(ai != nullptr);
+    AuthLevel dbLvl = ai->canUseDatabase(req->user(), req->databaseName());
+    AuthLevel sysLvl = dbLvl;
+    if (req->databaseName() != TRI_VOC_SYSTEM_DATABASE) {
+      sysLvl = ai->canUseDatabase(req->user(), TRI_VOC_SYSTEM_DATABASE);
+    }
+    return new VocbaseContext(req, vocbase, /*isInternal*/ false,
+                              /*sysLevel*/ sysLvl,
+                              /*dbLevel*/ dbLvl);
+  }
+  return new VocbaseContext(req, vocbase, /*isInternal*/ false,
+                            /*sysLevel*/ AuthLevel::NONE,
+                            /*dbLevel*/ AuthLevel::NONE);
+}
+
+VocbaseContext::VocbaseContext(GeneralRequest* req, TRI_vocbase_t* vocbase,
+                               bool isInternal, AuthLevel sys,
+                               AuthLevel dbl)
+    : ExecContext(isInternal, req->user(), req->databaseName(), sys, dbl),
+      _vocbase(vocbase) {
   TRI_ASSERT(_vocbase != nullptr);
   // _vocbase has already been refcounted for us
   TRI_ASSERT(!_vocbase->isDangling());
 }
 
-VocbaseContext::~VocbaseContext() { 
+VocbaseContext::~VocbaseContext() {
   TRI_ASSERT(!_vocbase->isDangling());
-  _vocbase->release(); 
+  _vocbase->release();
+}
+
+/// FIXME: workaround to enable Foxx apps with superuser rights
+void VocbaseContext::upgradeSuperuser() {
+  TRI_ASSERT(!_isInternal);
+  TRI_ASSERT(_user.empty());
+  _isInternal = true;
+  _systemDbAuthLevel = AuthLevel::RW;
+  _databaseAuthLevel = AuthLevel::RW;
+}
+
+void VocbaseContext::upgradeReadOnly() {
+  TRI_ASSERT(!_isInternal);
+  TRI_ASSERT(_user.empty());
+  _isInternal = true;
+  _systemDbAuthLevel = AuthLevel::RO;
+  _databaseAuthLevel = AuthLevel::RO;
 }

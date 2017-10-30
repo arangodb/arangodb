@@ -433,18 +433,18 @@ Result MMFilesGeoIndex::insert(transaction::Methods*, LocalDocumentId const& doc
   if (res == -1) {
     LOG_TOPIC(WARN, arangodb::Logger::FIXME)
         << "found duplicate entry in geo-index, should not happen";
-    return IndexResult(TRI_set_errno(TRI_ERROR_INTERNAL), this);
+    return IndexResult(TRI_ERROR_INTERNAL, this);
   } else if (res == -2) {
-    return IndexResult(TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY), this);
+    return IndexResult(TRI_ERROR_OUT_OF_MEMORY, this);
   } else if (res == -3) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
         << "illegal geo-coordinates, ignoring entry";
     return Result(TRI_ERROR_NO_ERROR);
   } else if (res < 0) {
-    return IndexResult(TRI_set_errno(TRI_ERROR_INTERNAL), this);
+    return IndexResult(TRI_ERROR_INTERNAL, this);
   }
 
-  return Result(TRI_ERROR_NO_ERROR);
+  return IndexResult();
 }
 
 Result MMFilesGeoIndex::remove(transaction::Methods*, LocalDocumentId const& documentId,

@@ -126,13 +126,10 @@ void Constituent::termNoLock(term_t t) {
         body.add("voted_for", Value(_votedFor)); }
       
       TRI_ASSERT(_vocbase != nullptr);
-      auto transactionContext =
-        std::make_shared<transaction::StandaloneContext>(_vocbase);
-      SingleCollectionTransaction trx(transactionContext, "election",
-                                      AccessMode::Type::WRITE);
+      auto ctx = transaction::StandaloneContext::Create(_vocbase);
+      SingleCollectionTransaction trx(ctx, "election", AccessMode::Type::WRITE);
       
-      auto res = trx.begin();
-      
+      Result res = trx.begin();
       if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -343,6 +340,7 @@ bool Constituent::checkLeader(
   
   if (term > _term) {
     termNoLock(term);
+    _agent->endPrepareLeadership();
     if (_role != FOLLOWER) {
       followNoLock(term);
     }
@@ -395,6 +393,7 @@ bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
 
   if (termOfPeer > _term) {
     termNoLock(termOfPeer);
+    _agent->endPrepareLeadership();
 
     if (_role != FOLLOWER) {
       followNoLock(_term);
@@ -457,6 +456,7 @@ void Constituent::callElection() {
   {
     MUTEX_LOCKER(locker, _castLock);
     this->termNoLock(_term + 1);  // raise my term
+    _agent->endPrepareLeadership();
     _cast     = true;
     _votedFor = _id;
     savedTerm = _term;
@@ -737,7 +737,7 @@ void Constituent::run() {
         if (isTimeout) {
           LOG_TOPIC(TRACE, Logger::AGENCY) << "timeout, calling an election";
           candidate();
-          _agent->unprepareLead();
+          _agent->endPrepareLeadership();
         }
 
       } else if (role == CANDIDATE) {

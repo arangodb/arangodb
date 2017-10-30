@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,37 +29,34 @@
 
 #include "Basics/Common.h"
 
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
-#include "Rest/RequestContext.h"
-#include "GeneralServer/AuthenticationFeature.h"
-
 #include "Rest/GeneralRequest.h"
-#include "Rest/GeneralResponse.h"
+#include "Utils/ExecContext.h"
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
-class VocbaseContext final : public arangodb::RequestContext {
- public:
-  static double ServerSessionTtl;
-
- public:
+/// @brief just also stores the context
+class VocbaseContext final : public arangodb::ExecContext {
+ private:
   VocbaseContext(VocbaseContext const&) = delete;
   VocbaseContext& operator=(VocbaseContext const&) = delete;
+  VocbaseContext(GeneralRequest*, TRI_vocbase_t*, bool isSuper,
+                 AuthLevel systemLevel, AuthLevel dbLevel);
 
-  VocbaseContext(GeneralRequest*, TRI_vocbase_t*);
+ public:
+  static double ServerSessionTtl;
   ~VocbaseContext();
 
  public:
+  
+  static VocbaseContext* create(GeneralRequest*, TRI_vocbase_t*);
+  
   TRI_vocbase_t* vocbase() const { return _vocbase; }
-
- private: 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief checks the authentication header and sets user if successful
-  //////////////////////////////////////////////////////////////////////////////
-
-  rest::ResponseCode authenticateRequest();
+  
+  /// @brief upgrade to internal superuser
+  void upgradeSuperuser();
+  /// @brief upgrade to internal read-only user
+  void upgradeReadOnly();
 
  private:
   TRI_vocbase_t* _vocbase;

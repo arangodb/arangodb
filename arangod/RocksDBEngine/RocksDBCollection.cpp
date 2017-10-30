@@ -64,8 +64,8 @@
 #include "VocBase/ticks.h"
 #include "VocBase/voc-types.h"
 
-#include <rocksdb/db.h>
 #include <rocksdb/utilities/transaction.h>
+#include <rocksdb/utilities/transaction_db.h>
 #include <rocksdb/utilities/write_batch_with_index.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
@@ -145,7 +145,7 @@ void RocksDBCollection::setPath(std::string const&) {
 arangodb::Result RocksDBCollection::updateProperties(VPackSlice const& slice,
                                                      bool doSync) {
   _cacheEnabled = basics::VelocyPackHelper::readBooleanValue(
-      slice, "cacheEnabled", !_logicalCollection->isSystem());
+      slice, "cacheEnabled", _cacheEnabled);
   primaryIndex()->setCacheEnabled(_cacheEnabled);
   if (_cacheEnabled) {
     createCache();
@@ -169,17 +169,21 @@ PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical) {
   return new RocksDBCollection(logical, this);
 }
 
+/// @brief export properties
 void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
-  // objectId might be undefined on the coordinator
   TRI_ASSERT(result.isOpenObject());
   result.add("objectId", VPackValue(std::to_string(_objectId)));
   result.add("cacheEnabled", VPackValue(_cacheEnabled));
   TRI_ASSERT(result.isOpenObject());
 }
 
+/// @brief used for updating properties
 void RocksDBCollection::getPropertiesVPackCoordinator(
     velocypack::Builder& result) const {
-  getPropertiesVPack(result);
+  // objectId might be undefined on the coordinator
+  TRI_ASSERT(result.isOpenObject());
+  result.add("cacheEnabled", VPackValue(_cacheEnabled));
+  TRI_ASSERT(result.isOpenObject());
 }
 
 /// @brief closes an open collection
@@ -486,8 +490,8 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(
   arangodb::aql::PlanCache::instance()->invalidate(
       _logicalCollection->vocbase());
 #endif
-  // Until here no harm is done if sth fails. The shared ptr will clean up. if
-  // left before
+  // Until here no harm is done if something fails. The shared_ptr will
+  // clean up, if left before
   {
     WRITE_LOCKER(guard, _indexesLock);
     addIndex(idx);
@@ -808,7 +812,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
                                  arangodb::ManagedDocumentResult& mdr,
                                  OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick,
-                                 bool /*lock*/) {
+                                 bool /*lock*/, TRI_voc_rid_t& revisionId) {
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
@@ -848,14 +852,11 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   transaction::BuilderLeaser builder(trx);
   RocksDBOperationResult res(
       newObjectForInsert(trx, slice, fromSlice, toSlice, documentId,
-                         isEdgeCollection, *builder.get(), options.isRestore));
+                         isEdgeCollection, *builder.get(), options.isRestore, revisionId));
   if (res.fail()) {
     return res;
   }
   VPackSlice newSlice = builder->slice();
-
-  TRI_voc_rid_t revisionId =
-      transaction::helpers::extractRevFromDocument(newSlice);
 
   auto state = RocksDBTransactionState::toState(trx);
   auto mthds = RocksDBTransactionState::toMethods(trx);
@@ -896,7 +897,6 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
                                  TRI_voc_tick_t& resultMarkerTick,
                                  bool /*lock*/, TRI_voc_rid_t& prevRev,
                                  ManagedDocumentResult& previous,
-                                 TRI_voc_rid_t const& revisionId,
                                  arangodb::velocypack::Slice const key) {
   resultMarkerTick = 0;
   LocalDocumentId const documentId = LocalDocumentId::create();
@@ -945,12 +945,12 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   }
 
   // merge old and new values
+  TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
   mergeObjectsForUpdate(trx, oldDoc, newSlice, isEdgeCollection,
                         documentId, options.mergeObjects,
-                        options.keepNull, *builder.get(), options.isRestore);
-  auto state = RocksDBTransactionState::toState(trx);
-  if (state->isDBServer()) {
+                        options.keepNull, *builder.get(), options.isRestore, revisionId);
+  if (_isDBServer) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
                                    trx->resolver()->getCollectionNameCluster(
@@ -962,6 +962,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
 
   VPackSlice const newDoc(builder->slice());
 
+  auto state = RocksDBTransactionState::toState(trx);
   RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),
                          trx->isSingleOperationTransaction(),
                          [&state]() { state->resetLogState(); });
@@ -996,8 +997,7 @@ Result RocksDBCollection::replace(
     transaction::Methods* trx, arangodb::velocypack::Slice const newSlice,
     ManagedDocumentResult& mdr, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool /*lock*/, TRI_voc_rid_t& prevRev,
-    ManagedDocumentResult& previous, TRI_voc_rid_t const revisionId,
-    arangodb::velocypack::Slice const fromSlice,
+    ManagedDocumentResult& previous, arangodb::velocypack::Slice const fromSlice,
     arangodb::velocypack::Slice const toSlice) {
   resultMarkerTick = 0;
   LocalDocumentId const documentId = LocalDocumentId::create();
@@ -1040,13 +1040,13 @@ Result RocksDBCollection::replace(
   }
 
   // merge old and new values
+  TRI_voc_rid_t revisionId;
   transaction::BuilderLeaser builder(trx);
   newObjectForReplace(trx, oldDoc, newSlice, fromSlice, toSlice,
                       isEdgeCollection, documentId,
-                      *builder.get(), options.isRestore);
+                      *builder.get(), options.isRestore, revisionId);
 
-  auto state = RocksDBTransactionState::toState(trx);
-  if (state->isDBServer()) {
+  if (_isDBServer) {
     // Need to check that no sharding keys have changed:
     if (arangodb::shardKeysChanged(_logicalCollection->dbName(),
                                    trx->resolver()->getCollectionNameCluster(
@@ -1056,6 +1056,7 @@ Result RocksDBCollection::replace(
     }
   }
 
+  auto state = RocksDBTransactionState::toState(trx);
   RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),
                          trx->isSingleOperationTransaction(),
                          [&state]() { state->resetLogState(); });
@@ -1095,7 +1096,8 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
                                  OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick,
                                  bool /*lock*/, 
-                                 TRI_voc_rid_t& prevRev) {
+                                 TRI_voc_rid_t& prevRev,
+                                 TRI_voc_rid_t& revisionId) {
   // store the tick that was used for writing the document
   // note that we don't need it for this engine
   resultMarkerTick = 0;
@@ -1103,7 +1105,7 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
   prevRev = 0;
 
   transaction::BuilderLeaser builder(trx);
-  newObjectForRemove(trx, slice, documentId, *builder.get(), options.isRestore);
+  newObjectForRemove(trx, slice, documentId, *builder.get(), options.isRestore, revisionId);
 
   VPackSlice key;
   if (slice.isString()) {
@@ -1798,10 +1800,9 @@ int RocksDBCollection::unlockRead() {
 // rescans the collection to update document count
 uint64_t RocksDBCollection::recalculateCounts() {
   // start transaction to get a collection lock
-  arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(
-          _logicalCollection->vocbase()),
-      _logicalCollection->cid(), AccessMode::Type::EXCLUSIVE);
+  auto ctx = transaction::StandaloneContext::Create(_logicalCollection->vocbase());
+  SingleCollectionTransaction trx(ctx, _logicalCollection->cid(),
+                                  AccessMode::Type::EXCLUSIVE);
   auto res = trx.begin();
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);
@@ -1922,10 +1923,9 @@ void RocksDBCollection::recalculateIndexEstimates() {
 void RocksDBCollection::recalculateIndexEstimates(
     std::vector<std::shared_ptr<Index>> const& indexes) {
   // start transaction to get a collection lock
-  arangodb::SingleCollectionTransaction trx(
-      arangodb::transaction::StandaloneContext::Create(
-          _logicalCollection->vocbase()),
-      _logicalCollection->cid(), AccessMode::Type::EXCLUSIVE);
+  auto ctx = transaction::StandaloneContext::Create(_logicalCollection->vocbase());
+  arangodb::SingleCollectionTransaction trx(ctx, _logicalCollection->cid(),
+                                            AccessMode::Type::EXCLUSIVE);
   auto res = trx.begin();
   if (res.fail()) {
     THROW_ARANGO_EXCEPTION(res);

@@ -31,6 +31,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Utils/CollectionGuard.h"
+#include "Utils/ExecContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
@@ -93,12 +94,10 @@ void MMFilesCollectionKeys::create(TRI_voc_tick_t maxTick) {
 
   // copy all document tokens into the result under the read-lock
   {
-    SingleCollectionTransaction trx(
-        transaction::StandaloneContext::Create(_collection->vocbase()), _name,
-        AccessMode::Type::READ);
+    auto ctx = transaction::StandaloneContext::Create(_collection->vocbase());
+    SingleCollectionTransaction trx(ctx, _name, AccessMode::Type::READ);
 
     Result res = trx.begin();
-
     if (!res.ok()) {
       THROW_ARANGO_EXCEPTION(res);
     }

@@ -34,6 +34,7 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 class CollectionGuard;
+class ExecContext;
 class MMFilesDocumentDitch;
 
 class MMFilesCollectionExport {

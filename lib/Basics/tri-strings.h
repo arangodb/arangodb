@@ -118,21 +118,16 @@ char* TRI_Concatenate3String(char const*, char const*,
 /// @brief frees a string
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#define TRI_FreeString(a) TRI_FreeStringZ((a), __FILE__, __LINE__)
-void TRI_FreeStringZ(char*, char const* file, int line);
-#else
 void TRI_FreeString(char*);
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts into hex reqpresentation
+/// @brief converts into hex representation
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_EncodeHexString(char const* source, size_t sourceLen, size_t* dstLen);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts from hex reqpresentation
+/// @brief converts from hex representation
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_DecodeHexString(char const* source, size_t sourceLen, size_t* dstLen);

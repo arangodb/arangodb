@@ -99,10 +99,11 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   struct LogfileBarrier {
     LogfileBarrier() = delete;
 
-    LogfileBarrier(TRI_voc_tick_t id, double expires, TRI_voc_tick_t minTick)
-        : id(id), expires(expires), minTick(minTick) {}
+    LogfileBarrier(TRI_voc_tick_t id, TRI_voc_tick_t databaseId, double expires, TRI_voc_tick_t minTick)
+        : id(id), databaseId(databaseId), expires(expires), minTick(minTick) {}
 
     TRI_voc_tick_t const id;
+    TRI_voc_tick_t const databaseId;
     double expires;
     TRI_voc_tick_t minTick;
   };
@@ -321,6 +322,9 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
 
   // garbage collect expires logfile barriers
   void collectLogfileBarriers();
+  
+  // drop barriers for a specific database
+  void dropLogfileBarriers(TRI_voc_tick_t databaseId);
 
   // returns a list of all logfile barrier ids
   std::vector<TRI_voc_tick_t> getLogfileBarriers();
@@ -329,7 +333,7 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   bool removeLogfileBarrier(TRI_voc_tick_t);
 
   // adds a barrier that prevents removal of logfiles
-  TRI_voc_tick_t addLogfileBarrier(TRI_voc_tick_t, double);
+  TRI_voc_tick_t addLogfileBarrier(TRI_voc_tick_t databaseId, TRI_voc_tick_t minTick, double ttl);
 
   // extend the lifetime of a logfile barrier
   bool extendLogfileBarrier(TRI_voc_tick_t, double, TRI_voc_tick_t);

@@ -2291,7 +2291,7 @@ static void JS_PollStdin(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("pollStdin()");
   }
   
-  bool hasData = false;
+  bool hasData;
 #ifdef _WIN32
   hasData = _kbhit() != 0;
 #else
@@ -2305,8 +2305,8 @@ static void JS_PollStdin(v8::FunctionCallbackInfo<v8::Value> const& args) {
   hasData = FD_ISSET(STDIN_FILENO, &fds);
 #endif
   
-  char c[3] = {0};
   if (hasData) {
+    char c[3] = {0};
     ssize_t n = TRI_READ(STDIN_FILENO, c, 3);
     if (n == 3) {// arrow keys are garbled
       if (c[2] == 'D') {
@@ -3554,8 +3554,7 @@ static void JS_ExecuteExternal(
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
   }
 
-  char** arguments = nullptr;
-  uint32_t n = 0;
+  std::vector<std::string> arguments;
 
   if (2 <= args.Length()) {
     v8::Handle<v8::Value> a = args[1];
@@ -3563,38 +3562,24 @@ static void JS_ExecuteExternal(
     if (a->IsArray()) {
       v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(a);
 
-      n = arr->Length();
-      arguments = static_cast<char**>(
-          TRI_Allocate(n * sizeof(char*)));
-
-      if (arguments == nullptr) {
-        TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-      }
+      uint32_t n = arr->Length();
 
       for (uint32_t i = 0; i < n; ++i) {
         TRI_Utf8ValueNFC arg(arr->Get(i));
 
         if (*arg == nullptr) {
-          arguments[i] = TRI_DuplicateString("");
+          arguments.push_back("");
         } else {
-          arguments[i] = TRI_DuplicateString(*arg);
+          arguments.push_back(*arg);
         }
       }
     } else {
-      n = 1;
-      arguments = static_cast<char**>(
-          TRI_Allocate(n * sizeof(char*)));
-      
-      if (arguments == nullptr) {
-        TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-      }
-
       TRI_Utf8ValueNFC arg(a);
-
+        
       if (*arg == nullptr) {
-        arguments[0] = TRI_DuplicateString("");
+        arguments.push_back("");
       } else {
-        arguments[0] = TRI_DuplicateString(*arg);
+        arguments.push_back(*arg);
       }
     }
   }
@@ -3604,17 +3589,8 @@ static void JS_ExecuteExternal(
   }
 
   ExternalId external;
-  TRI_CreateExternalProcess(*name, const_cast<char const**>(arguments),
-                            (size_t)n, usePipes, &external);
-  if (arguments != nullptr) {
-    for (uint32_t i = 0; i < n; ++i) {
-      if (arguments[i] != nullptr) {
-        TRI_FreeString(arguments[i]);
-      }
-    }
-
-    TRI_Free(arguments);
-  }
+  TRI_CreateExternalProcess(*name, arguments, usePipes, &external);
+  
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");
   }
@@ -3697,8 +3673,7 @@ static void JS_ExecuteAndWaitExternal(
     TRI_V8_THROW_TYPE_ERROR("<filename> must be a string");
   }
 
-  char** arguments = nullptr;
-  uint32_t n = 0;
+  std::vector<std::string> arguments;
 
   if (2 <= args.Length()) {
     v8::Handle<v8::Value> a = args[1];
@@ -3706,34 +3681,24 @@ static void JS_ExecuteAndWaitExternal(
     if (a->IsArray()) {
       v8::Handle<v8::Array> arr = v8::Handle<v8::Array>::Cast(a);
 
-      n = arr->Length();
-      arguments = static_cast<char**>(
-          TRI_Allocate(n * sizeof(char*)));
-      
-      if (arguments == nullptr) {
-        TRI_V8_THROW_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-      }
+      uint32_t const n = arr->Length();
 
       for (uint32_t i = 0; i < n; ++i) {
         TRI_Utf8ValueNFC arg(arr->Get(i));
 
         if (*arg == nullptr) {
-          arguments[i] = TRI_DuplicateString("");
-        } else {
-          arguments[i] = TRI_DuplicateString(*arg);
+          arguments.push_back("");
+        } else{
+          arguments.push_back(*arg);
         }
       }
     } else {
-      n = 1;
-      arguments = static_cast<char**>(
-          TRI_Allocate(n * sizeof(char*)));
-
       TRI_Utf8ValueNFC arg(a);
 
       if (*arg == nullptr) {
-        arguments[0] = TRI_DuplicateString("");
+        arguments.push_back("");
       } else {
-        arguments[0] = TRI_DuplicateString(*arg);
+        arguments.push_back(*arg);
       }
     }
   }
@@ -3743,24 +3708,14 @@ static void JS_ExecuteAndWaitExternal(
   }
 
   ExternalId external;
-  TRI_CreateExternalProcess(*name, const_cast<char const**>(arguments),
-                            static_cast<size_t>(n), usePipes, &external);
-  if (arguments != nullptr) {
-    for (uint32_t i = 0; i < n; ++i) {
-      if (arguments[i] != nullptr) {
-        TRI_FreeString(arguments[i]);
-      }
-    }
-
-    TRI_Free(arguments);
-  }
+  TRI_CreateExternalProcess(*name, arguments, usePipes, &external);
+  
   if (external._pid == TRI_INVALID_PROCESS_ID) {
     TRI_V8_THROW_ERROR("Process could not be started");
   }
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   ExternalId pid;
-
   pid._pid = external._pid;
 
   auto external_status = TRI_CheckExternalProcess(pid, true);

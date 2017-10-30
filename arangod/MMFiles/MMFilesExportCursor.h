@@ -26,14 +26,10 @@
 
 #include "Basics/Common.h"
 #include "Utils/Cursor.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
 
 namespace arangodb {
-namespace velocypack {
-class Slice;
-}
-
 class MMFilesCollectionExport;
 
 class MMFilesExportCursor final : public Cursor {
@@ -52,10 +48,10 @@ class MMFilesExportCursor final : public Cursor {
 
   size_t count() const override final;
 
-  void dump(VPackBuilder&) override final;
+  void dump(velocypack::Builder&) override final;
 
  private:
-  VocbaseGuard _vocbaseGuard;
+  DatabaseGuard _guard;
   arangodb::MMFilesCollectionExport* _ex;
   size_t const _size;
 };

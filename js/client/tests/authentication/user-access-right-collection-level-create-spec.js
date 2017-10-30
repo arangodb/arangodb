@@ -143,7 +143,7 @@ describe('User Rights Management', () => {
                       _key: '123',
                       foo: 'bar'
                     });
-                    expect(true).to.be(false, `${name} created a document with insufficient rights.`);
+                    expect(true).to.equal(false, `${name} created a document with insufficient rights.`);
                   } catch (e) {
                     if (hasReadAccess) {
                       expect(e.errorNum).to.equal(errors.ERROR_ARANGO_READ_ONLY.code);

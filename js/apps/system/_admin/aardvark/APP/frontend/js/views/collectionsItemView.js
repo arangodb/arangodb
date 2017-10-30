@@ -196,7 +196,12 @@
                 arangoHelper.arangoError('Collection error: ' + error.responseText);
               } else {
                 var wfs = $('#change-collection-sync').val();
-                this.model.changeCollection(wfs, journalSize, indexBuckets, callbackChange);
+                var replicationFactor;
+                if (frontendConfig.isCluster) {
+                  replicationFactor = $('#change-replication-factor').val();
+                }
+
+                this.model.changeCollection(wfs, journalSize, indexBuckets, replicationFactor, callbackChange);
               }
             }.bind(this);
 

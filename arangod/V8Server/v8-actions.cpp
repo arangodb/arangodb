@@ -99,9 +99,9 @@ class v8_action_t final : public TRI_action_t {
     }
   }
 
-  TRI_action_result_t execute(TRI_vocbase_t* vocbase, GeneralRequest* request,
-                              GeneralResponse* response, Mutex* dataLock,
-                              void** data) override {
+  TRI_action_result_t execute(TRI_vocbase_t* vocbase,
+                              GeneralRequest* request, GeneralResponse* response,
+                              Mutex* dataLock, void** data) override {
     TRI_action_result_t result;
 
     // allow use datase execution in rest calls
@@ -123,8 +123,8 @@ class v8_action_t final : public TRI_action_t {
     }
 
     // get a V8 context
-    V8Context* context = V8DealerFeature::DEALER->enterContext(
-        vocbase, allowUseDatabaseInRestActions, forceContext);
+    V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase,
+                            allowUseDatabaseInRestActions, forceContext);
 
     // note: the context might be nullptr in case of shut-down
     if (context == nullptr) {

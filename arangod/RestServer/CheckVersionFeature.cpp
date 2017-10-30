@@ -26,6 +26,7 @@
 #include "Logger/LoggerFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
@@ -74,10 +75,13 @@ void CheckVersionFeature::validateOptions(
   LoggerFeature* logger =
       ApplicationServer::getFeature<LoggerFeature>("Logger");
   logger->disableThreaded();
+  
+  ReplicationFeature* replicationFeature =
+      ApplicationServer::getFeature<ReplicationFeature>("Replication");
+  replicationFeature->disableReplicationApplier();
 
   DatabaseFeature* databaseFeature =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
-  databaseFeature->disableReplicationApplier();
   databaseFeature->enableCheckVersion();
 
   V8DealerFeature* v8dealer =
@@ -114,8 +118,7 @@ void CheckVersionFeature::checkVersion() {
 
   // enter context and isolate
   {
-    V8Context* context =
-        V8DealerFeature::DEALER->enterContext(vocbase, true, 0);
+    V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase, true, 0);
 
     if (context == nullptr) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not enter context #0";

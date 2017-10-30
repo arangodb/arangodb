@@ -228,7 +228,7 @@ class SimpleHttpClient {
   //////////////////////////////////////////////////////////////////////////////
 
   void close();
-
+  
   //////////////////////////////////////////////////////////////////////////////
   /// @brief make an http request, creating a new HttpResult object
   /// the caller has to delete the result object
@@ -287,7 +287,7 @@ class SimpleHttpClient {
     _errorMessage = message;
 
     if (_params._warn || forceWarn) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "" << _errorMessage;
+      LOG_TOPIC(WARN, arangodb::Logger::HTTPCLIENT) << "" << _errorMessage;
     }
   }
 

@@ -60,8 +60,7 @@ SimpleHttpClient::SimpleHttpClient(GeneralClientConnection* connection,
       _errorMessage(""),
       _nextChunkedSize(0),
       _method(rest::RequestType::GET),
-      _result(nullptr)
- {
+      _result(nullptr) {
   TRI_ASSERT(connection != nullptr);
 
   if (_connection->isConnected()) {
@@ -170,7 +169,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(
     }
 
     if (!_params._retryMessage.empty() && (_params._maxRetries - tries) > 0) {
-      LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "" << _params._retryMessage
+      LOG_TOPIC(WARN, arangodb::Logger::HTTPCLIENT) << "" << _params._retryMessage
                 << " - retries left: " << (_params._maxRetries - tries);
     }
 
@@ -479,7 +478,7 @@ void SimpleHttpClient::setRequest(
     rest::RequestType method, std::string const& location, char const* body,
     size_t bodyLength,
     std::unordered_map<std::string, std::string> const& headers) {
-  // clear read-buffer (no pipeling!)
+  // clear read-buffer (no pipelining!)
   _readBufferOffset = 0;
   _readBuffer.reset();
 
@@ -497,7 +496,8 @@ void SimpleHttpClient::setRequest(
 
   std::string appended;
   if (location.empty() || location[0] != '/') {
-    appended = "/" + location;
+    appended.reserve(1 + location.size());
+    appended = '/' + location;
     l = &appended;
   }
 
@@ -508,7 +508,9 @@ void SimpleHttpClient::setRequest(
 
   // append hostname
   std::string hostname = _connection->getEndpoint()->host();
-
+  
+  LOG_TOPIC(DEBUG, Logger::HTTPCLIENT) << "request to " << hostname << ": " << GeneralRequest::translateMethod(method) << ' ' << *l;
+  
   _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("Host: "));
   _writeBuffer.appendText(hostname);
   _writeBuffer.appendText(TRI_CHAR_LENGTH_PAIR("\r\n"));
@@ -562,8 +564,7 @@ void SimpleHttpClient::setRequest(
 
   _writeBuffer.ensureNullTerminated();
 
-  LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Request: "
-             << std::string(_writeBuffer.c_str(), _writeBuffer.length());
+  LOG_TOPIC(TRACE, arangodb::Logger::HTTPCLIENT) << "request: " << _writeBuffer;
 
   if (_state == DEAD) {
     _connection->resetNumConnectRetries();

@@ -64,7 +64,7 @@ ModificationBlock::ModificationBlock(ExecutionEngine* engine,
   }
 
   // check if we're a DB server in a cluster
-  _isDBServer = transaction()->state()->isDBServer();
+  _isDBServer = ServerState::instance()->isDBServer();
 
   if (_isDBServer) {
     _usesDefaultSharding = _collection->usesDefaultSharding();
