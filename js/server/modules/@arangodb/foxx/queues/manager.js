@@ -179,12 +179,16 @@ exports.run = function () {
   db._databases().forEach(function (name) {
     try {
       db._useDatabase(name);
-      db._jobs.updateByExample({
-        status: 'progress'
-      }, {
-        status: 'pending'
+      db._jobs.toArray().filter(function(job) {
+        return job.stats === 'progress';
+      }).forEach(function(job) {
+        db._jobs.update(job._id, { status: 'pending' });
       });
-      queues._updateQueueDelay();
+      if (!isCluster) {
+        queues._updateQueueDelay();
+      } else {
+        global.KEYSPACE_CREATE('queue-control', 1, true);
+      }
     } catch (e) {
       // noop
     }

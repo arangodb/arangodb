@@ -250,9 +250,9 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"REGEX_TEST", ".,.|.", true, false, true, true, &Functions::RegexTest});
   add({"REGEX_REPLACE", ".,.,.|.", true, false, true,
        true, &Functions::RegexReplace});
-  add({"LEFT", ".,.", true, false, true, true});
-  add({"RIGHT", ".,.", true, false, true, true});
-  add({"TRIM", ".|.", true, false, true, true});
+  add({"LEFT", ".,.", true, false, true, true, &Functions::Left});
+  add({"RIGHT", ".,.", true, false, true, true, &Functions::Right});
+  add({"TRIM", ".|.", true, false, true, true, &Functions::Trim});
   add({"LTRIM", ".|.", true, false, true, true});
   add({"RTRIM", ".|.", true, false, true, true});
   add({"FIND_FIRST", ".,.|.,.", true, false, true, true});
@@ -261,6 +261,7 @@ void AqlFunctionFeature::addStringFunctions() {
   add({"SUBSTITUTE", ".,.|.,.", true, false, true, true});
   add({"MD5", ".", true, false, true, true, &Functions::Md5});
   add({"SHA1", ".", true, false, true, true, &Functions::Sha1});
+  add({"SHA512", ".", true, false, true, true});
   add({"HASH", ".", true, false, true, true, &Functions::Hash});
   add({"RANDOM_TOKEN", ".", false, true, true, true, &Functions::RandomToken});
 }

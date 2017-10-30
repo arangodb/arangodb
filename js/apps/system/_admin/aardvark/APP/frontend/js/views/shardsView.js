@@ -35,6 +35,7 @@
     },
 
     remove: function () {
+      clearInterval(this.intervalFunction);
       this.$el.empty().off(); /* off to unbind the events */
       this.stopListening();
       this.unbind();
