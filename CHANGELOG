@@ -8,6 +8,11 @@ v3.2.7 (XXXX-XX-XX)
 v3.2.6 (2017-10-26)
 -------------------
 
+* UI: fixed error notifications for collection modifications
+
+v3.2.6 (2017-10-26)
+-------------------
+
 * UI: fixed event cleanup in cluster shards view
 
 * UI: reduced cluster dashboard api calls
