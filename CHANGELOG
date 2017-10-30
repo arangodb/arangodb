@@ -1,3 +1,10 @@
+v3.2.7 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #3549: server reading ENGINE config file fails on common standard 
+  newline character
+
+
 v3.2.6 (2017-10-26)
 -------------------
 
