@@ -33,6 +33,11 @@ properties([
         ),
         booleanParam(
             defaultValue: false,
+            description: 'run resilience',
+            name: 'RunResilience'
+        ),
+        booleanParam(
+            defaultValue: false,
             description: 'OS: Linux',
             name: 'Linux'
         ),
@@ -79,6 +84,7 @@ cleanBuild = params.CleanBuild
 restrictions = [:]
 
 runTests = false
+runResilience = false
 
 // OS
 useLinux = false
@@ -109,11 +115,14 @@ resultsDuration = [:]
 // --SECTION--                                             CONSTANTS AND HELPERS
 // -----------------------------------------------------------------------------
 
-// github proxy repositiory
-proxyRepo = 'http://c1:8088/github.com/arangodb/arangodb'
+// github proxy repository
+arangodbRepo = 'http://c1:8088/github.com/arangodb/arangodb'
 
-// github repositiory for enterprise version
+// github repository for enterprise version
 enterpriseRepo = 'http://c1:8088/github.com/arangodb/enterprise'
+
+// github repository for the resilience tests
+resilienceRepo = 'http://c1:8088/github.com/arangodb/resilience-tests'
 
 // Jenkins credentials for enterprise repositiory
 credentials = '8d893d23-6714-4f35-a239-c847c798e080'
@@ -460,7 +469,7 @@ def checkoutCommunity(os) {
                     doGenerateSubmoduleConfigurations: false,
                     extensions: [],
                     submoduleCfg: [],
-                    userRemoteConfigs: [[url: proxyRepo]]])
+                    userRemoteConfigs: [[url: arangodbRepo]]])
         }
         catch (exc) {
             echo "GITHUB checkout failed, retrying in 1min"
@@ -500,22 +509,20 @@ def checkoutEnterprise() {
                 submoduleCfg: [],
                 userRemoteConfigs: [[credentialsId: credentials, url: enterpriseRepo]]])
     }
-
 }
 
-// def checkoutResilience() {
-//     checkout(
-//         changelog: false,
-//         poll: false,
-//         scm: [
-//             $class: 'GitSCM',
-//             branches: [[name: "*/master"]],
-//             doGenerateSubmoduleConfigurations: false,
-//             extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'resilience']],
-//             submoduleCfg: [],
-//             userRemoteConfigs: [[credentialsId: credentials, url: resilienceRepo]]])
-
-// }
+def checkoutResilience() {
+    checkout(
+        changelog: false,
+        poll: false,
+        scm: [
+            $class: 'GitSCM',
+            branches: [[name: "*/master"]],
+            doGenerateSubmoduleConfigurations: false,
+            extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: 'resilience']],
+            submoduleCfg: [],
+            userRemoteConfigs: [[credentialsId: credentials, url: resilienceRepo]]])
+}
 
 def checkCommitMessages() {
     def causes = currentBuild.rawBuild.getCauses()
@@ -611,6 +618,7 @@ def setBuildsAndTests() {
         useUser = params.User
 
         runTests = params.RunTests
+        runResilience = params.RunResilience
     }
     else if (buildType == "Quick Test") {
         restrictions = [
@@ -621,6 +629,8 @@ def setBuildsAndTests() {
             "test-linux-enterprise-maintainer-singleserver-rocksdb" : true,
             "test-linux-enterprise-maintainer-cluster-mmfiles" : true,
         ]
+
+        runResilience = params.RunResilience
     }
     else if (buildType == "PR Test") {
         restrictions = [
@@ -634,6 +644,8 @@ def setBuildsAndTests() {
             "test-linux-enterprise-maintainer-cluster-rocksdb" : true,
             "test-linux-community-maintainer-singleserver-mmfiles" : true,
         ]
+
+        runResilience = params.RunResilience
     }
     else if (buildType == "Nightly Test") {
         useDocker = true
@@ -659,6 +671,8 @@ def setBuildsAndTests() {
             "test-windows-community-user-singleserver-rocksdb" : true,
             "test-windows-mac-enterprise-user-cluster-rocksdb" : true,
         ]
+
+        runResilience = params.RunResilience
     }
 
     overview = """<html><body><table>
@@ -687,7 +701,6 @@ def setBuildsAndTests() {
         useMaintainer = true
         useUser = true
 
-        // runResilience = true
         runTests = true
 
         overview += "<tr><td>Restrictions</td></tr>\n"
@@ -1393,7 +1406,9 @@ def checkoutSource(os, edition) {
             checkoutEnterprise()
         }
 
-        // checkoutResilience()
+        if (runResilience) {
+            checkoutResilience()
+        }
     }
 }
 
