@@ -1270,7 +1270,7 @@ def testResilienceStep(os, engine, foxx) {
                   saveCores(os, runDir, name, archRun)
 
                   archiveArtifacts allowEmptyArchive: true,
-                      artifacts: "${arch}, "${archDir}-FAIL.txt, ${runDir}/**, ${logFileRel}",
+                      artifacts: "${arch}, ${archDir}-FAIL.txt, ${runDir}/**, ${logFileRel}",
                       defaultExcludes: false
             }
         }
