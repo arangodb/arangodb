@@ -1127,7 +1127,7 @@ def testCheck(os, edition, maintainer, mode, engine) {
        return false
     }
 
-    if (! checkEnabledMaintainer(maintainer, os, 'building')) {
+    if (! checkEnabledMaintainer(maintainer, os, 'testing')) {
        return false
     }
 
@@ -1204,15 +1204,15 @@ def testResilienceCheck(os, edition, maintainer, engine, foxx) {
         return false
     }
 
-    if (! checkEnabledOS(os, 'testing')) {
+    if (! checkEnabledOS(os, 'resilience')) {
        return false
     }
 
-    if (! checkEnabledEdition(edition, 'testing')) {
+    if (! checkEnabledEdition(edition, 'resilience')) {
        return false
     }
 
-    if (! checkEnabledMaintainer(maintainer, os, 'building')) {
+    if (! checkEnabledMaintainer(maintainer, os, 'resilience')) {
        return false
     }
 
@@ -1277,19 +1277,17 @@ def testResilienceStep(os, engine, foxx) {
     }
 }
 
-def testResilienceParallel(osList) {
+def testResilienceParallel(os, edition, maintainer) {
     def branches = [:]
     def edition = 'community'
     def maintainer = 'maintainer'
 
     for (foxx in ['foxx', 'nofoxx']) {
-        for (os in osList) {
-            for (engine in ['mmfiles', 'rocksdb']) {
-                if (testResilienceCheck(os, edition, maintainer, engine, foxx)) {
-                    def name = "resilience-${os}-${engine}-${foxx}"
+        for (engine in ['mmfiles', 'rocksdb']) {
+            if (testResilienceCheck(os, edition, maintainer, engine, foxx)) {
+                def name = "resilience-${os}-${engine}-${foxx}"
 
-                    branches[name] = testResilienceStep(os, engine, foxx)
-                }
+                branches[name] = testResilienceStep(os, engine, foxx)
             }
         }
     }
@@ -1512,7 +1510,7 @@ def runEdition(os, edition, maintainer, stageName) {
                 }
 
                 testStepParallel(os, edition, maintainer, ['cluster', 'singleserver'])
-                testResilienceParallel([os])
+                testResilienceParallel(os, edition, maintainer)
 
                 node("linux") { logStopStage(null, name) }
             }
