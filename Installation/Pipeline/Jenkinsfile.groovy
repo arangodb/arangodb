@@ -778,7 +778,7 @@ def unstashBuild(os, edition, maintainer) {
 }
 
 def stashBinaries(os, edition, maintainer) {
-    def paths = ["build/etc", "etc", "Installation/Pipeline", "js", "scripts", "UnitTests"]
+    def paths = ["build/etc", "etc", "Installation/Pipeline", "js", "scripts", "UnitTests", "resilience"]
 
     if (edition == "enterprise") {
        paths << "enterprise/js"
@@ -1257,7 +1257,7 @@ def testResilienceStep(os, edition, maintainer, engine, foxx) {
                 throw exc
             }
             finally {
-                  saveCores(os, runDir, name, archRun)
+                  saveCores(os, runDir, 'resilience', archRun)
 
                   archiveArtifacts allowEmptyArchive: true,
                       artifacts: "${arch}/**, ${archRun}/**, ${logFileRel}",
