@@ -559,6 +559,12 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
                   "invalid 'type' value");
     return;
   }
+  
+  size_t offsetInChunk = 0;
+  std::string const& value4 = _request->value("offset", found);
+  if (found) {
+    offsetInChunk = static_cast<size_t>(StringUtils::uint64(value4));
+  }
 
   std::string const& id = suffixes[1];
 
@@ -597,8 +603,8 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
       generateResult(rest::ResponseCode::BAD, VPackSlice());
       return;
     }
-    Result rv = ctx->dumpDocuments(builder, chunk, static_cast<size_t>(chunkSize), lowKey, parsedIds->slice());
-    if (rv.fail()){
+    Result rv = ctx->dumpDocuments(builder, chunk, static_cast<size_t>(chunkSize), offsetInChunk, lowKey, parsedIds->slice());
+    if (rv.fail()) {
       generateError(rv);
       return;
     }

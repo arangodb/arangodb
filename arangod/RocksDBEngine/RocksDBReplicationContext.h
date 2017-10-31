@@ -94,8 +94,8 @@ class RocksDBReplicationContext {
                             size_t chunkSize, std::string const& lowKey);
   /// dump keys and document
   arangodb::Result dumpDocuments(velocypack::Builder& b, size_t chunk,
-                                 size_t chunkSize, std::string const& lowKey,
-                                 velocypack::Slice const& ids);
+                                 size_t chunkSize, size_t offsetInChunk, 
+                                 std::string const& lowKey, velocypack::Slice const& ids);
 
   double expires() const;
   bool isDeleted() const;
