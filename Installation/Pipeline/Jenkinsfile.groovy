@@ -1219,11 +1219,8 @@ def testResilienceCheck(os, edition, maintainer, engine, foxx) {
     return true
 }
 
-def testResilienceStep(os, engine, foxx) {
+def testResilienceStep(os, edition, maintainer, engine, foxx) {
     return {
-        def edition    = "community"
-        def maintainer = "maintainer"
-
         def archDir  = "${os}-${edition}-${maintainer}"
         def arch     = "${archDir}/03-resilience/${engine}-${foxx}"
 
@@ -1279,15 +1276,12 @@ def testResilienceStep(os, engine, foxx) {
 
 def testResilienceParallel(os, edition, maintainer) {
     def branches = [:]
-    def edition = 'community'
-    def maintainer = 'maintainer'
 
     for (foxx in ['foxx', 'nofoxx']) {
         for (engine in ['mmfiles', 'rocksdb']) {
             if (testResilienceCheck(os, edition, maintainer, engine, foxx)) {
-                def name = "resilience-${os}-${engine}-${foxx}"
-
-                branches[name] = testResilienceStep(os, engine, foxx)
+                def name = "resilience-${os}-${edition}-${maintainer}-${engine}-${foxx}"
+                branches[name] = testResilienceStep(os, edition, maintainer, engine, foxx)
             }
         }
     }
