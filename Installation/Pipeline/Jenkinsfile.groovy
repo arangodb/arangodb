@@ -20,7 +20,7 @@ def setBuildStatus(String message, String state, String context, String sha) {
     ]);
 }
 
-setBuildStatus("In Progress", "PENDING", jobContext, "${gitCommit}")
+setBuildStatus("In Progress", "PENDING", "job-context", "${gitCommit}")
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             SELECTABLE PARAMETERS
