@@ -58,25 +58,31 @@ RestStatus RestPregelHandler::execute() {
       return RestStatus::DONE;
 
     }
+    
+    VPackBuffer<uint8_t> buffer;
+    VPackBuilder response(buffer);
     std::vector<std::string> const& suffix = _request->suffixes();
     if (suffix.size() != 2) {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_NOT_IMPLEMENTED, "you are missing a prefix");
     } else if (suffix[0] == Utils::conductorPrefix) {
-      VPackBuffer<uint8_t> buffer;
-      VPackBuilder response(buffer);
       PregelFeature::handleConductorRequest(suffix[1], body, response);
       generateResult(rest::ResponseCode::OK, std::move(buffer));
     } else if (suffix[0] == Utils::workerPrefix) {
-      VPackBuffer<uint8_t> buffer;
-      VPackBuilder response;
       PregelFeature::handleWorkerRequest(_vocbase, suffix[1], body, response);
       generateResult(rest::ResponseCode::OK, std::move(buffer));
     } else {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_NOT_IMPLEMENTED, "the prefix is incorrect");
     }
-  } catch(...) {
+  } catch (basics::Exception const& ex) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Exception in pregel REST handler: " << ex.what();
+    generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "Exception in pregel REST handler: " << ex.what();
+    generateError(rest::ResponseCode::SERVER_ERROR,
+                  TRI_ERROR_INTERNAL, ex.what());
+  } catch (...) {
     LOG_TOPIC(ERR, Logger::PREGEL) << "Exception in pregel REST handler";
     generateError(rest::ResponseCode::BAD,
                   TRI_ERROR_INTERNAL, "error in pregel handler");
