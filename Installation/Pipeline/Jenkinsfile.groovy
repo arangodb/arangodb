@@ -454,7 +454,7 @@ def getCommitSha() {
 def setBuildStatus(String message, String state) {
     step([
         $class: "GitHubCommitStatusSetter",
-        reposSource: [$class: "ManuallyEnteredRepositorySource", url: "https://github.com/arangodb/arangodb"],
+        reposSource: [[$class: "ManuallyEnteredRepositorySource", url: "https://github.com/arangodb/arangodb"]],
         contextSource: [$class: "ManuallyEnteredCommitContextSource", context: "ci/jenkins/build-status"],
         errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
         commitShaSource: [$class: "ManuallyEnteredShaSource", sha: getCommitSha()],
