@@ -474,7 +474,7 @@ def checkoutCommunity(os) {
 
     retry(3) {
         try {
-            checkout(
+            def commitHash = checkout(
                 changelog: false,
                 poll: false,
                 scm: [
@@ -483,7 +483,9 @@ def checkoutCommunity(os) {
                     doGenerateSubmoduleConfigurations: false,
                     extensions: [],
                     submoduleCfg: [],
-                    userRemoteConfigs: [[url: arangodbRepo]]])
+                    userRemoteConfigs: [[url: arangodbRepo]]]).GIT_COMMIT
+
+            echo "GIT COMMIT: ${commitHash}"
         }
         catch (exc) {
             echo "GITHUB checkout failed, retrying in 1min"
@@ -492,8 +494,6 @@ def checkoutCommunity(os) {
             throw exc
         }
     }
-
-    setBuildStatus("In Progress", "PENDING")
 }
 
 def checkoutEnterprise() {
