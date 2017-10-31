@@ -139,7 +139,7 @@ module.exports = function graphql (cfg) {
           schema,
           documentAST,
           options.rootValue,
-          options.context,
+          options.context === undefined ? req : options.context,
           variables,
           operationName
         );
