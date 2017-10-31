@@ -1181,8 +1181,14 @@ def testStepParallel(os, edition, maintainer, modeList) {
 // -----------------------------------------------------------------------------
 
 def testResilience(os, engine, foxx, logFile) {
-    withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace']) {
+    def tmpDir = pwd() + "/" + runDir + "/tmp"
+
+    withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace', "TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
         if (os == 'linux' || os == 'mac') {
+            shellAndPipe("echo \"Host: `hostname`\"", logFile)
+            shellAndPipe("echo \"PWD:  `pwd`\"", logFile)
+            shellAndPipe("echo \"Date: `date`\"", logFile)
+
             shellAndPipe("./Installation/Pipeline/resilience_OS_ENGINE_FOXX.sh ${os} ${engine} ${foxx}", logFile)
         }
         else if (os == 'windows') {
