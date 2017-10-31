@@ -162,7 +162,7 @@ int MMFilesSynchronizerThread::doSync(bool& checkMore) {
   TRI_ASSERT(fd >= 0);
 
   double startTime = TRI_microtime();
-  bool result = TRI_MSync(fd, region.mem, region.mem + region.size);
+  int result = TRI_MSync(fd, region.mem, region.mem + region.size);
   if (TRI_microtime() - startTime > 1.0) {
     LOG_TOPIC(DEBUG, arangodb::Logger::FIXME) << "Long sync logfile " << id << ", region "
       << (void*) region.mem << ", size " << region.size;
@@ -172,7 +172,7 @@ int MMFilesSynchronizerThread::doSync(bool& checkMore) {
              << (void*)(region.mem + region.size) << ", length: " << region.size
              << ", wfs: " << (region.waitForSync ? "true" : "false");
 
-  if (!result) {
+  if (result != TRI_ERROR_NO_ERROR) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "unable to sync wal logfile region";
 
     return TRI_ERROR_ARANGO_MSYNC_FAILED;
