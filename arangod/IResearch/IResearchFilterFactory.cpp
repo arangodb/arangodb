@@ -137,7 +137,7 @@ class ScopedAqlValue : private irs::util::noncopyable {
   bool execute(arangodb::iresearch::QueryContext const& ctx) {
     if (_node->isConstant()) {
       // constant expression, nothing to do
-      return false;
+      return true;
     }
 
     if (!ctx.ast) { // || !ctx.ctx) {
@@ -152,7 +152,17 @@ class ScopedAqlValue : private irs::util::noncopyable {
       ctx.plan, ctx.ast, const_cast<arangodb::aql::AstNode*>(_node)
     );
 
-    _value = expr.execute(ctx.trx, ctx.ctx, _destroy);
+    try {
+      _value = expr.execute(ctx.trx, ctx.ctx, _destroy);
+    } catch (arangodb::basics::Exception const& e) {
+      // can't execute expression
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << e.message();
+      return false;
+    } catch (...) {
+      // can't execute expression
+      return false;
+    }
+
     _type = AqlValueTraits::type(_value);
     return true;
   }
@@ -248,7 +258,10 @@ bool byTerm(
       return true;
     }
 
-    value.execute(ctx);
+    if (!value.execute(ctx)) {
+      // failed to execute expression
+      return false;
+    }
   }
 
   switch (value.type()) {
@@ -374,7 +387,10 @@ bool byRange(
       return true;
     }
 
-    min.execute(ctx);
+    if (!min.execute(ctx)) {
+      // failed to execute expression
+      return false;
+    }
   }
 
   ScopedAqlValue max(maxValueNode);
@@ -385,7 +401,10 @@ bool byRange(
       return true;
     }
 
-    max.execute(ctx);
+    if (!max.execute(ctx)) {
+      // failed to execute expression
+      return false;
+    }
   }
 
   if (min.type() != max.type()) {
@@ -507,7 +526,10 @@ bool byRange(
       return true;
     }
 
-    value.execute(ctx);
+    if (!value.execute(ctx)) {
+      // con't execute expression
+      return false;
+    }
   }
 
   switch (value.type()) {
@@ -782,20 +804,31 @@ bool fromIn(
   return false;
 }
 
-bool fromValue(
+bool fromExpression(
     irs::boolean_filter* filter,
     arangodb::iresearch::QueryContext const& ctx,
     arangodb::aql::AstNode const& node
 ) {
-  TRI_ASSERT(
-    arangodb::aql::NODE_TYPE_VALUE == node.type
-    || arangodb::aql::NODE_TYPE_ARRAY == node.type
-    || arangodb::aql::NODE_TYPE_OBJECT == node.type
-  );
-
   if (!filter) {
-    return true; // nothing more to validate
-  } else if (node.isTrue()) {
+    return true;
+  }
+
+  bool result;
+
+  if (node.isConstant()) {
+    result = node.isTrue();
+  } else {
+    ScopedAqlValue value(node);
+
+    if (!value.execute(ctx)) {
+      // can't execute expression
+      return false;
+    }
+
+    result = value.getBoolean();
+  }
+
+  if (result) {
     filter->add<irs::all>();
   } else {
     filter->add<irs::empty>();
@@ -1322,18 +1355,17 @@ bool fromFCall(
     return false; // no function
   }
 
+  auto const entry = FCallSystemConvertionHandlers.find(fn->name);
+
+  if (entry == FCallSystemConvertionHandlers.end()) {
+    return fromExpression(filter, ctx, node);
+  }
+
   auto const* args = arangodb::iresearch::getNode(node, 0, arangodb::aql::NODE_TYPE_ARRAY);
 
   if (!args) {
     LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Unable to parse system function arguments as an array'";
     return false; // invalid args
-  }
-
-  auto const entry = FCallSystemConvertionHandlers.find(fn->name);
-
-  if (entry == FCallSystemConvertionHandlers.end()) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Unable to find system function '" << fn->name << "'";
-    return false;
   }
 
   return entry->second(filter, ctx, *args);
@@ -1424,7 +1456,7 @@ NS_BEGIN(iresearch)
     case arangodb::aql::NODE_TYPE_VALUE : // value
     case arangodb::aql::NODE_TYPE_ARRAY:  // array
     case arangodb::aql::NODE_TYPE_OBJECT: // object
-      return fromValue(filter, ctx, node);
+      return fromExpression(filter, ctx, node);
     case arangodb::aql::NODE_TYPE_FCALL: // function call
       return fromFCall(filter, ctx, node);
     case arangodb::aql::NODE_TYPE_FCALL_USER: // user function call
@@ -1436,7 +1468,7 @@ NS_BEGIN(iresearch)
     case arangodb::aql::NODE_TYPE_OPERATOR_NARY_OR: // n-ary or
       return fromGroup<irs::Or>(filter, ctx, node);
     default:
-      break;
+      return fromExpression(filter, ctx, node);
   }
 
   auto const* typeName = arangodb::iresearch::getNodeTypeName(node.type);

@@ -21,6 +21,9 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT
+#define ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT 1
+
 #include "Aql/FixedVarExpressionContext.h"
 
 #include <unordered_map>
@@ -60,3 +63,5 @@ struct ExpressionContextMock final : arangodb::aql::ExpressionContext {
 
   std::unordered_map<std::string, arangodb::aql::AqlValue> vars;
 }; // ExpressionContextMock
+
+#endif // ARANGODB_IRESEARCH__IRESEARCH_EXPRESSION_CONTEXT

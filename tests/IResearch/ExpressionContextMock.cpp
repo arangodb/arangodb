@@ -33,7 +33,8 @@ arangodb::aql::AqlValue ExpressionContextMock::getVariableValue(
     bool& mustDestroy) const {
   auto it = vars.find(variable->name);
   if (vars.end() == it) {
-    return {};
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Can't find variable " + variable->name);
+//    return {};
   }
   return it->second;
 }
