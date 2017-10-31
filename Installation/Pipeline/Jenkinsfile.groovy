@@ -174,12 +174,6 @@ def copyFile(os, src, dst) {
     }
 }
 
-def renameFolder(src, dst) {
-    fileOperations([
-        folderRenameOperation(destination: dst, source: src)
-    ])
-}
-
 def checkEnabledOS(os, text) {
     if (os == 'linux' && ! useLinux) {
         echo "Not ${text} ${os} because ${os} is not enabled"
@@ -827,11 +821,10 @@ def unstashBinaries(os, edition, maintainer) {
 // -----------------------------------------------------------------------------
 
 def jslint(os, edition, maintainer) {
-    def archDir  = "${os}-${edition}-${maintainer}"
-    def arch     = "${archDir}/02-jslint"
+    def archDir = "${os}-${edition}-${maintainer}"
+    def arch    = "${archDir}/02-jslint"
 
     fileOperations([
-        fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
         folderDeleteOperation(arch),
         folderCreateOperation(arch)
     ])
@@ -1062,7 +1055,6 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
 
         // create directories for the artifacts
         fileOperations([
-            fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
             folderCreateOperation(arch),
             folderCreateOperation(archRun)
         ])
@@ -1180,7 +1172,7 @@ def testStepParallel(os, edition, maintainer, modeList) {
 // --SECTION--                                                SCRIPTS RESILIENCE
 // -----------------------------------------------------------------------------
 
-def testResilience(os, engine, foxx, logFile) {
+def testResilience(os, engine, foxx, logFile, runDir) {
     def tmpDir = pwd() + "/" + runDir + "/tmp"
 
     withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace', "TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
@@ -1230,7 +1222,6 @@ def testResilienceStep(os, edition, maintainer, engine, foxx) {
 
             // create directories for the artifacts
             fileOperations([
-                fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
                 folderCreateOperation(arch),
                 folderCreateOperation(archRun)
             ])
@@ -1240,7 +1231,7 @@ def testResilienceStep(os, edition, maintainer, engine, foxx) {
 
                 timeout(120) {
                     unstashBinaries(os, edition, maintainer)
-                    testResilience(os, engine, foxx, logFile)
+                    testResilience(os, engine, foxx, logFile, runDir)
                 }
 
                 checkCores(os, runDir)
@@ -1309,7 +1300,6 @@ def buildEdition(os, edition, maintainer) {
     def arch     = "${archDir}/01-build"
 
     fileOperations([
-        fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
         folderDeleteOperation(arch),
         folderCreateOperation(arch)
     ])
@@ -1413,7 +1403,6 @@ def createDockerImage(edition, maintainer, stageName) {
                     def arch     = "${archDir}/04-docker"
 
                     fileOperations([
-                        fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
                         folderDeleteOperation(arch),
                         folderCreateOperation(arch)
                     ])
