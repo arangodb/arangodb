@@ -8,19 +8,18 @@ node {
         numToKeepStr: '5'))])
 }
 
-def setBuildStatus(String message, String state, String context, String sha) {
+def setBuildStatus(String message, String state) {
     step([
         $class: "GitHubCommitStatusSetter",
         reposSource: [$class: "ManuallyEnteredRepositorySource", url: "https://github.com/arangodb/arangodb"],
-        contextSource: [$class: "ManuallyEnteredCommitContextSource", context: context],
+        contextSource: [$class: "ManuallyEnteredCommitContextSource", context: "jenkins/githubnotify"],
         errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
-        commitShaSource: [$class: "ManuallyEnteredShaSource", sha: sha ],
         statusBackrefSource: [$class: "ManuallyEnteredBackrefSource", backref: "${BUILD_URL}flowGraphTable/"],
         statusResultSource: [$class: "ConditionalStatusResultSource", results: [[$class: "AnyBuildResult", message: message, state: state]] ]
     ]);
 }
 
-setBuildStatus("In Progress", "PENDING", "job-context", "${gitCommit}")
+setBuildStatus("In Progress", "PENDING")
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             SELECTABLE PARAMETERS
