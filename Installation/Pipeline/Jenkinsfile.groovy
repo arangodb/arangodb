@@ -1175,6 +1175,10 @@ def testStepParallel(os, edition, maintainer, modeList) {
 def testResilience(os, engine, foxx, logFile, runDir) {
     def tmpDir = pwd() + "/" + runDir + "/tmp"
 
+    fileOperations([
+        folderCreateOperation("${runDir}/tmp"),
+    ])
+
     withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace', "TMPDIR=${tmpDir}", "TEMPDIR=${tmpDir}", "TMP=${tmpDir}"]) {
         if (os == 'linux' || os == 'mac') {
             shellAndPipe("echo \"Host: `hostname`\"", logFile)
