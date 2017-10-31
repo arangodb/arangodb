@@ -1290,11 +1290,18 @@ def testResilienceParallel(os, edition, maintainer) {
         }
     }
 
-    if (branches.size() > 1) {
-        parallel branches
-    }
-    else if (branches.size() == 1) {
-        branches.values()[0]()
+    def name = "${os}-${edition}-${maintainer}/03-resilience"
+
+    if (branches) {
+        try {
+            node("linux") { logStartStage(null, name, null) }
+            parallel branches
+            node("linux") { logStopStage(null, name) }
+        }
+        catch (exc) {
+            node("linux") { logExceptionStage(null, name, null, exc) }
+            throw exc
+        }
     }
 }
 
