@@ -1106,7 +1106,6 @@ def executeTests(os, edition, maintainer, mode, engine, stageName) {
 
 def testCheck(os, edition, maintainer, mode, engine) {
     if (! runTests) {
-        echo "Not testing ${os} ${mode} because testing is not enabled"
         return false
     }
 
@@ -1190,7 +1189,7 @@ def testResilience(os, engine, foxx) {
     }
 }
 
-def testResilienceCheck(os, engine, foxx) {
+def testResilienceCheck(os, edition, maintainer, engine, foxx) {
     if (! runResilience) {
         return false
     }
@@ -1267,11 +1266,13 @@ def testResilienceStep(os, engine, foxx) {
 
 def testResilienceParallel(osList) {
     def branches = [:]
+    def edition = 'community'
+    def maintainer = 'maintainer'
 
     for (foxx in ['foxx', 'nofoxx']) {
         for (os in osList) {
             for (engine in ['mmfiles', 'rocksdb']) {
-                if (testResilienceCheck(os, engine, foxx)) {
+                if (testResilienceCheck(os, edition, maintainer, engine, foxx)) {
                     def name = "test-resilience-${foxx}-${engine}-${os}"
 
                     branches[name] = testResilienceStep(os, engine, foxx)
