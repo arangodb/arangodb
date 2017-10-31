@@ -3,14 +3,6 @@
 #ifndef UTIL_GEOMETRY_S2_H_
 #define UTIL_GEOMETRY_S2_H_
 
-#include <algorithm>
-using std::min;
-using std::max;
-using std::swap;
-using std::reverse;
-
-#include <unordered_map>
-using std::unordered_map;
 // To have template struct hash<T> defined
 #include "base/basictypes.h"
 #include "base/logging.h"
@@ -27,6 +19,8 @@ using std::unordered_map;
 typedef Vector3_d S2Point;
 
 #include <unordered_set>
+#include <algorithm>
+#include <unordered_map>
 
 namespace std {
 

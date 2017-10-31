@@ -1,20 +1,13 @@
 // Copyright 2005 Google Inc. All Rights Reserved.
 
 #include "s2cellid.h"
-
-#include <pthread.h>
-
 #include <algorithm>
 using std::min;
 using std::max;
-using std::swap;
-using std::reverse;
 
-#include <iomanip>
-using std::setprecision;
-
+#include <atomic>
+#include <thread>
 #include <vector>
-using std::vector;
 
 
 #include "base/integral_types.h"
@@ -90,9 +83,29 @@ static void Init() {
   InitLookupCell(0, 0, 0, kSwapMask|kInvertMask, 0, kSwapMask|kInvertMask);
 }
 
-static pthread_once_t init_once = PTHREAD_ONCE_INIT;
+static std::atomic<int> s2_cellid_init(0);
 inline static void MaybeInit() {
-  pthread_once(&init_once, Init);
+  int state = s2_cellid_init;
+  if (state < 2) {
+    // Try to set from 0 to 1:
+    while (state == 0) {
+      if (s2_cellid_init.compare_exchange_weak(state, 1)) {
+        break;
+      }
+    }
+    // Now state is either 0 (in which case we have changed s2_cellid_init
+    // to 1, or is 1, in which case somebody else has set it to 1 and is working
+    // to initialize the singleton, or is 2, in which case somebody else has
+    // done all the work and we are done:
+    if (state == 0) { // we must initialize
+      Init();
+      s2_cellid_init = 2;
+    } else if (state == 1) { // wait until other thread finishes
+      while (s2_cellid_init < 2) {
+        std::this_thread::yield();
+      }
+    }
+  }
 }
 
 int S2CellId::level() const {
@@ -424,7 +437,7 @@ void S2CellId::GetEdgeNeighbors(S2CellId neighbors[4]) const {
 }
 
 void S2CellId::AppendVertexNeighbors(int level,
-                                     vector<S2CellId>* output) const {
+                                     std::vector<S2CellId>* output) const {
   // "level" must be strictly less than this cell's level so that we can
   // determine which vertex this cell is closest to.
   DCHECK_LT(level, this->level());
@@ -465,7 +478,7 @@ void S2CellId::AppendVertexNeighbors(int level,
 }
 
 void S2CellId::AppendAllNeighbors(int nbr_level,
-                                  vector<S2CellId>* output) const {
+                                  std::vector<S2CellId>* output) const {
   int i, j;
   int face = ToFaceIJOrientation(&i, &j, NULL);
 

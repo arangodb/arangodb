@@ -8,19 +8,10 @@
 #ifndef UTIL_ENDIAN_ENDIAN_H_
 #define UTIL_ENDIAN_ENDIAN_H_
 
-#ifdef __APPLE__
-#include "byteswap.h"
-#else
-#include <bits/byteswap.h>
-#endif
-
-
-#include <byteswap.h>
 #include "base/integral_types.h"
 #include "base/logging.h"
 #include "base/port.h"
 #include "base/int128.h"
-
 
 inline uint64 gbswap_64(uint64 host_int) {
 #if defined(COMPILER_GCC3) && defined(__x86_64__)
@@ -28,15 +19,15 @@ inline uint64 gbswap_64(uint64 host_int) {
   if (__builtin_constant_p(host_int)) {
     return __bswap_constant_64(host_int);
   } else {
-    uint64 result;
+    register uint64 result;
     __asm__ ("bswap %0" : "=r" (result) : "0" (host_int));
     return result;
   }
-#elif defined(__bswap_64)
-  return __bswap_64(host_int);
+#elif defined(bswap_64)
+  return bswap_64(host_int);
 #else
-  return static_cast<uint64>(__bswap_32(static_cast<uint32>(host_int >> 32))) |
-    (static_cast<uint64>(__bswap_32(static_cast<uint32>(host_int))) << 32);
+  return static_cast<uint64>(bswap_32(static_cast<uint32>(host_int >> 32))) |
+    (static_cast<uint64>(bswap_32(static_cast<uint32>(host_int))) << 32);
 #endif  // bswap_64
 }
 
@@ -188,13 +179,13 @@ class LittleEndian {
 
 
 // This one is safe to take as it's an extension
-#define htonll(x) ghtonll(x)
+// #define htonll(x) ghtonll(x)     // XXX Conflicts on OS X Yosemite
 
 // ntoh* and hton* are the same thing for any size and bytesex,
 // since the function is an involution, i.e., its own inverse.
 #define gntohl(x) ghtonl(x)
 #define gntohs(x) ghtons(x)
 #define gntohll(x) ghtonll(x)
-#define ntohll(x) htonll(x)
+// #define ntohll(x) htonll(x)      // XXX Conflicts on OS X Yosemite
 
 #endif  // UTIL_ENDIAN_ENDIAN_H_

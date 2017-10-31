@@ -4,15 +4,8 @@
 #define UTIL_GEOMETRY_S2CELLID_H_
 
 #include <iostream>
-using std::ostream;
-using std::cout;
-using std::endl;
-
 #include <string>
-using std::string;
-
 #include <vector>
-using std::vector;
 
 #include "base/basictypes.h"
 #include "base/logging.h"
@@ -233,12 +226,12 @@ class S2CellId {
   // These methods guarantee that FromToken(ToToken(x)) == x even when
   // "x" is an invalid cell id.  All tokens are alphanumeric strings.
   // FromToken() returns S2CellId::None() for malformed inputs.
-  string ToToken() const;
-  static S2CellId FromToken(string const& token);
+  std::string ToToken() const;
+  static S2CellId FromToken(std::string const& token);
 
   // Creates a debug human readable string. Used for << and available for direct
   // usage as well.
-  string ToString() const;
+  std::string ToString() const;
 
   // Return the four cells that are adjacent across the cell's four edges.
   // Neighbors are returned in the order defined by S2Cell::GetEdge.  All
@@ -252,7 +245,7 @@ class S2CellId {
   //
   // Requires: level < this->level(), so that we can determine which vertex is
   // closest (in particular, level == kMaxLevel is not allowed).
-  void AppendVertexNeighbors(int level, vector<S2CellId>* output) const;
+  void AppendVertexNeighbors(int level, std::vector<S2CellId>* output) const;
 
   // Append all neighbors of this cell at the given level to "output".  Two
   // cells X and Y are neighbors if their boundaries intersect but their
@@ -261,7 +254,7 @@ class S2CellId {
   //
   // Requires: nbr_level >= this->level().  Note that for cells adjacent to a
   // face vertex, the same neighbor may be appended more than once.
-  void AppendAllNeighbors(int nbr_level, vector<S2CellId>* output) const;
+  void AppendAllNeighbors(int nbr_level, std::vector<S2CellId>* output) const;
 
   /////////////////////////////////////////////////////////////////////
   // Low-level methods.

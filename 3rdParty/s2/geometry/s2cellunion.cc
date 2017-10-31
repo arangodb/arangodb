@@ -23,7 +23,7 @@ using std::vector;
 // Returns true if the vector of cell_ids is sorted.  Used only in
 // DCHECKs.
 extern bool IsSorted(vector<S2CellId> const& cell_ids) {
-  for (int i = 0; i + 1 < cell_ids.size(); ++i) {
+  for (size_t i = 0; i + 1 < cell_ids.size(); ++i) {
     if (cell_ids[i + 1] < cell_ids[i]) {
       return false;
     }
@@ -62,13 +62,18 @@ void S2CellUnion::InitRawSwap(vector<S2CellId>* cell_ids) {
   cell_ids->clear();
 }
 
+void S2CellUnion::Add(const vector<S2CellId>& cell_ids) {
+    cell_ids_.insert(cell_ids_.end(), cell_ids.begin(), cell_ids.end());
+    Normalize();
+}
+
 void S2CellUnion::Detach(vector<S2CellId>* cell_ids) {
   cell_ids_.swap(*cell_ids);
   cell_ids_.clear();
 }
 
 void S2CellUnion::Pack(int excess) {
-  if (cell_ids_.capacity() - cell_ids_.size() > excess) {
+  if (cell_ids_.capacity() - cell_ids_.size() > (size_t)excess) {
     vector<S2CellId> packed = cell_ids_;
     cell_ids_.swap(packed);
   }
@@ -127,7 +132,7 @@ bool S2CellUnion::Normalize() {
     }
     output.push_back(id);
   }
-  if (output.size() < num_cells()) {
+  if (output.size() < (size_t)num_cells()) {
     InitRawSwap(&output);
     return true;
   }

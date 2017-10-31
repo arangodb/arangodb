@@ -8,6 +8,8 @@
 #ifndef BASE_PORT_H_
 #define BASE_PORT_H_
 
+#include "base/definer.h"
+
 #include <limits.h>         // So we can set the bounds of our types
 #include <string.h>         // for memcpy()
 #include <stdlib.h>         // for free()
@@ -18,7 +20,7 @@
 #include <malloc.h>         // for memalign()
 #endif
 
-#include "base/integral_types.h"
+#include "integral_types.h"
 
 // Must happens before inttypes.h inclusion */
 #if defined(OS_MACOSX)
@@ -100,22 +102,43 @@ typedef uint16_t u_int16_t;
 
 #endif
 
+#if defined __sun || defined __FreeBSD__ || defined __OpenBSD__
+#ifdef _LITTLE_ENDIAN
+#define IS_LITTLE_ENDIAN
+#elif defined _BIG_ENDIAN
+#define IS_BIG_ENDIAN
+#endif
+#endif
+
 // The following guarenty declaration of the byte swap functions, and
 // define __BYTE_ORDER for MSVC
-#ifdef COMPILER_MSVC
+#ifdef OS_WINDOWS
 #include <stdlib.h>
 #define __BYTE_ORDER __LITTLE_ENDIAN
 #define bswap_16(x) _byteswap_ushort(x)
 #define bswap_32(x) _byteswap_ulong(x)
 #define bswap_64(x) _byteswap_uint64(x)
-
 #elif defined(OS_MACOSX)
 // Mac OS X / Darwin features
 #include <libkern/OSByteOrder.h>
 #define bswap_16(x) OSSwapInt16(x)
 #define bswap_32(x) OSSwapInt32(x)
 #define bswap_64(x) OSSwapInt64(x)
-
+#elif defined __sun
+#include <sys/byteorder.h>
+#define bswap_16(x) BSWAP_16(x)
+#define bswap_32(x) BSWAP_32(x)
+#define bswap_64(x) BSWAP_64(x)
+#elif defined __FreeBSD__
+#include <sys/endian.h>
+#define bswap_16(x) bswap16(x)
+#define bswap_32(x) bswap32(x)
+#define bswap_64(x) bswap64(x)
+#elif defined __OpenBSD__
+#include <sys/endian.h>
+#define bswap_16(x) swap16(x)
+#define bswap_32(x) swap32(x)
+#define bswap_64(x) swap64(x)
 #else
 #include <byteswap.h>
 #endif
@@ -150,7 +173,7 @@ typedef uint16_t u_int16_t;
 // Some headers provide a macro for this (GCC's system.h), remove it so that we
 // can use our own.
 #undef PATH_SEPARATOR
-#if OS_WINDOWS
+#ifdef OS_WINDOWS
 const char PATH_SEPARATOR = '\\';
 #else
 const char PATH_SEPARATOR = '/';
@@ -489,7 +512,7 @@ inline void* memrchr(const void* bytes, int find_char, size_t len) {
 #endif
 
 
-#if (defined(COMPILER_ICC) || defined(COMPILER_GCC3))
+#if (defined(COMPILER_ICC) || defined(COMPILER_GCC3) || defined(__llvm__))
 // Defined behavior on some of the uarchs:
 // PREFETCH_HINT_T0:
 //   prefetch to all levels of the hierarchy (except on p4: prefetch to L2)
@@ -662,6 +685,36 @@ extern inline void prefetch(const char *x) {}
 
 #endif  // !HAVE_ATTRIBUTE_SECTION
 
+// MongoDB modification: All of our target platforms define the C99 remainder function.
+#if 0
+inline double remainder(double x, double y) {
+    double quot = x/y;
+    int iquot;
+    // If quot is slightly less than 0.5, we round down explicitly.  We have to
+    // do this explicitly because (0.5 + quot) when quot=(0.5-epsilon) gives you 1
+    // and that's rounding the wrong way.  Oh, floating point!
+    if (quot < 0.5 && quot > -0.5) {
+        iquot = 0;
+    } else if (quot > 0) {
+        iquot = quot + 0.5;
+    } else {
+        iquot = quot - 0.5;
+    }
+    double ret = x - iquot * y;
+    return ret;
+}
+#endif
+
+// HK's fun windows fixer-upper defines go here!  Woo.
+#ifdef _WIN32
+#define strtoll  _strtoi64
+#define strtoull _strtoui64
+#define safe_vsnprintf _vsnprintf
+#if _MSC_VER < 1900
+#define snprintf _snprintf
+#endif
+
+#endif
 
 #ifdef COMPILER_MSVC     /* if Visual C++ */
 
@@ -696,7 +749,6 @@ extern inline void prefetch(const char *x) {}
 #include <assert.h>
 #include <windows.h>
 #undef ERROR
-#include "base/stl_decl.h"
 
 #include <float.h>  // for nextafter functionality on windows
 #include <math.h>  // for HUGE_VAL
@@ -846,13 +898,13 @@ typedef void (*sig_t)(int);
 // on WinNT. They (and a ton more) are also found in Winsock2.h, but
 // if'd out under NT. We need this subset at minimum.
 #define EXFULL      ENOMEM  // not really that great a translation...
-#define EWOULDBLOCK WSAEWOULDBLOCK
-#ifndef PTHREADS_REDHAT_WIN32
-#define ETIMEDOUT   WSAETIMEDOUT
-#endif
-#define ENOTSOCK    WSAENOTSOCK
-#define EINPROGRESS WSAEINPROGRESS
-#define ECONNRESET  WSAECONNRESET
+//#define EWOULDBLOCK WSAEWOULDBLOCK
+//#ifndef PTHREADS_REDHAT_WIN32
+//#define ETIMEDOUT   WSAETIMEDOUT
+//#endif
+//#define ENOTSOCK    WSAENOTSOCK
+//#define EINPROGRESS WSAEINPROGRESS
+//#define ECONNRESET  WSAECONNRESET
 
 
 #include <utility>
@@ -947,7 +999,7 @@ struct PortableHashBase { };
 
 // Portable handling of unaligned loads and stores
 
-#if defined(X86_64) || defined(ARCH_PIII) || defined(ARCH_ATHLON) || defined(ARCH_K8) || defined(_ARCH_PPC)
+#if defined(ARCH_PIII) || defined(ARCH_ATHLON) || defined(ARCH_K8) || defined(_ARCH_PPC)
 
 // x86 and x86-64 can perform unaligned loads/stores directly;
 // modern PowerPC hardware can also do unaligned integer loads and stores;

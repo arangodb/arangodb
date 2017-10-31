@@ -2,26 +2,15 @@
 
 #include "s2regioncoverer.h"
 
-#include <pthread.h>
-
 #include <algorithm>
 using std::min;
 using std::max;
-using std::swap;
-using std::reverse;
 
+#include <atomic>
 #include <functional>
-using std::less;
-
+#include <thread>
 #include <unordered_set>
-using std::unordered_set;
-
-#include <queue>
-using std::priority_queue;
-
 #include <vector>
-using std::vector;
-
 
 #include "base/logging.h"
 #include "s2.h"
@@ -36,23 +25,44 @@ int const S2RegionCoverer::kDefaultMaxCells;
 // entries of equal priority would be sorted according to the memory address
 // of the candidate.
 
-struct S2RegionCoverer::CompareQueueEntries : public less<QueueEntry> {
+struct S2RegionCoverer::CompareQueueEntries : public std::less<QueueEntry> {
   bool operator()(QueueEntry const& x, QueueEntry const& y) {
     return x.first < y.first;
   }
 };
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief the following atomic int is 0 in the beginning, is set to 1
+/// if some thread initializes the singleton and is 2 once _theInstance
+/// is set.
+//////////////////////////////////////////////////////////////////////////////
+
+static std::atomic<int> s2_regioncoverer_init(0);
 static S2Cell face_cells[6];
-
-void Init() {
-  for (int face = 0; face < 6; ++face) {
-    face_cells[face] = S2Cell::FromFacePosLevel(face, 0, 0);
-  }
-}
-
-static pthread_once_t init_once = PTHREAD_ONCE_INIT;
 inline static void MaybeInit() {
-  pthread_once(&init_once, Init);
+  int state = s2_regioncoverer_init;
+  if (state < 2) {
+    // Try to set from 0 to 1:
+    while (state == 0) {
+      if (s2_regioncoverer_init.compare_exchange_weak(state, 1)) {
+        break;
+      }
+    }
+    // Now state is either 0 (in which case we have changed s2_regioncoverer_init
+    // to 1, or is 1, in which case somebody else has set it to 1 and is working
+    // to initialize the singleton, or is 2, in which case somebody else has
+    // done all the work and we are done:
+    if (state == 0) { // we must initialize
+      for (int face = 0; face < 6; ++face) {
+        face_cells[face] = S2Cell::FromFacePosLevel(face, 0, 0);
+      }
+      s2_regioncoverer_init = 2;
+    } else if (state == 1) { // wait until other thread finishes
+      while (s2_regioncoverer_init < 2) {
+        std::this_thread::yield();
+      }
+    }
+  }
 }
 
 S2RegionCoverer::S2RegionCoverer() :
@@ -61,7 +71,7 @@ S2RegionCoverer::S2RegionCoverer() :
   level_mod_(1),
   max_cells_(kDefaultMaxCells),
   region_(NULL),
-  result_(new vector<S2CellId>),
+  result_(new std::vector<S2CellId>),
   pq_(new CandidateQueue) {
   // Initialize the constants
   MaybeInit();
@@ -114,8 +124,9 @@ S2RegionCoverer::Candidate* S2RegionCoverer::NewCandidate(S2Cell const& cell) {
   if (!is_terminal) {
     size += sizeof(Candidate*) << max_children_shift();
   }
-  Candidate* candidate = static_cast<Candidate*>(malloc(size));
-  memset(candidate, 0, size);
+  void* candidateStorage = malloc(size);
+  memset(candidateStorage, 0, size);
+  Candidate* candidate = new(candidateStorage) Candidate;
   candidate->cell = cell;
   candidate->is_terminal = is_terminal;
   ++candidates_created_counter_;
@@ -215,11 +226,11 @@ void S2RegionCoverer::GetInitialCandidates() {
     if (level > 0) {
       // Find the leaf cell containing the cap axis, and determine which
       // subcell of the parent cell contains it.
-      vector<S2CellId> base;
+      std::vector<S2CellId> base;
       base.reserve(4);
       S2CellId id = S2CellId::FromPoint(cap.axis());
       id.AppendVertexNeighbors(level, &base);
-      for (int i = 0; i < base.size(); ++i) {
+      for (size_t i = 0; i < base.size(); ++i) {
         AddCandidate(NewCandidate(S2Cell(base[i])));
       }
       return;
@@ -253,14 +264,14 @@ void S2RegionCoverer::GetCoveringInternal(S2Region const& region) {
 
   GetInitialCandidates();
   while (!pq_->empty() &&
-         (!interior_covering_ || result_->size() < max_cells_)) {
+         (!interior_covering_ || result_->size() < (size_t)max_cells_)) {
     Candidate* candidate = pq_->top().second;
     pq_->pop();
     VLOG(2) << "Pop: " << candidate->cell.id();
     if (candidate->cell.level() < min_level_ ||
         candidate->num_children == 1 ||
-        result_->size() + (interior_covering_ ? 0 : pq_->size()) +
-            candidate->num_children <= max_cells_) {
+        (int)result_->size() + (int)(interior_covering_ ? 0 : (int)pq_->size()) +
+        candidate->num_children <= max_cells_) {
       // Expand this candidate into its children.
       for (int i = 0; i < candidate->num_children; ++i) {
         AddCandidate(candidate->children[i]);
@@ -284,7 +295,7 @@ void S2RegionCoverer::GetCoveringInternal(S2Region const& region) {
 }
 
 void S2RegionCoverer::GetCovering(S2Region const& region,
-                                  vector<S2CellId>* covering) {
+                                  std::vector<S2CellId>* covering) {
 
   // Rather than just returning the raw list of cell ids generated by
   // GetCoveringInternal(), we construct a cell union and then denormalize it.
@@ -300,7 +311,7 @@ void S2RegionCoverer::GetCovering(S2Region const& region,
 }
 
 void S2RegionCoverer::GetInteriorCovering(S2Region const& region,
-                                          vector<S2CellId>* interior) {
+                                          std::vector<S2CellId>* interior) {
   S2CellUnion tmp;
   GetInteriorCellUnion(region, &tmp);
   tmp.Denormalize(min_level(), level_mod(), interior);
@@ -321,9 +332,9 @@ void S2RegionCoverer::GetInteriorCellUnion(S2Region const& region,
 }
 
 void S2RegionCoverer::FloodFill(
-    S2Region const& region, S2CellId const& start, vector<S2CellId>* output) {
-  unordered_set<S2CellId> all;
-  vector<S2CellId> frontier;
+ S2Region const& region, S2CellId const& start, std::vector<S2CellId>* output) {
+  std::unordered_set<S2CellId> all;
+  std::vector<S2CellId> frontier;
   output->clear();
   all.insert(start);
   frontier.push_back(start);
@@ -346,6 +357,6 @@ void S2RegionCoverer::FloodFill(
 
 void S2RegionCoverer::GetSimpleCovering(
     S2Region const& region, S2Point const& start,
-    int level, vector<S2CellId>* output) {
+    int level, std::vector<S2CellId>* output) {
   return FloodFill(region, S2CellId::FromPoint(start).parent(level), output);
 }

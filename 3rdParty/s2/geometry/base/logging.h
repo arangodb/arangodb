@@ -16,9 +16,6 @@
 
 #include <stdlib.h>
 #include <iostream>
-using std::ostream;
-using std::cout;
-using std::endl;
 
 #include "base/macros.h"
 

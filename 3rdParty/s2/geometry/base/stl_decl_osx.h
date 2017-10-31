@@ -61,7 +61,6 @@ using std::priority_queue;
 #include <ext/hashtable.h>
 #include <ios>
 #include <string>
-using std::string;
 
 #include <ext/hash_set>
 #include <ext/hash_map>

@@ -5,8 +5,8 @@
 #include <vector>
 using std::vector;
 
-#include "base/stringprintf.h"
-#include "base/logging.h"
+#include "stringprintf.h"
+#include "logging.h"
 
 void StringAppendV(string* dst, const char* format, va_list ap) {
   // First try with a small fixed size buffer
@@ -20,14 +20,14 @@ void StringAppendV(string* dst, const char* format, va_list ap) {
   int result = vsnprintf(space, sizeof(space), format, backup_ap);
   va_end(backup_ap);
 
-  if ((result >= 0) && (result < sizeof(space))) {
+  if ((result >= 0) && ((size_t)result < sizeof(space))) {
     // It fit
     dst->append(space, result);
     return;
   }
 
   // Repeatedly increase buffer size until it fits
-  int length = sizeof(space);
+  size_t length = sizeof(space);
   while (true) {
     if (result < 0) {
       // Older behavior: just try doubling the buffer size
@@ -43,7 +43,7 @@ void StringAppendV(string* dst, const char* format, va_list ap) {
     result = vsnprintf(buf, length, format, backup_ap);
     va_end(backup_ap);
 
-    if ((result >= 0) && (result < length)) {
+    if ((result >= 0) && ((size_t)result < length)) {
       // It fit
       dst->append(buf, result);
       delete[] buf;

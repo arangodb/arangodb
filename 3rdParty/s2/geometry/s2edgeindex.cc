@@ -203,8 +203,6 @@ static bool LenientCrossing(S2Point const& a, S2Point const& b,
 
 bool S2EdgeIndex::EdgeIntersectsCellBoundary(
     S2Point const& a, S2Point const& b, const S2Cell& cell) {
-  S2Point start_vertex = cell.GetVertex(0);
-
   S2Point vertices[4];
   for (int i = 0; i < 4; ++i) {
     vertices[i] = cell.GetVertex(i);

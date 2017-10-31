@@ -4,9 +4,8 @@
 #define UTIL_GEOMETRY_S1ANGLE_H_
 
 #include <iosfwd>
-using std::ostream;
-   // to forward declare ostream
 #include <math.h>
+
 #include "base/basictypes.h"
 #include "util/math/mathutil.h"
 #include "s2.h"
@@ -201,6 +200,6 @@ inline S1Angle S1Angle::UnsignedE7(uint32 e7) {
 
 // Writes the angle in degrees with 7 digits of precision after the
 // decimal point, e.g. "17.3745904".
-ostream& operator<<(ostream& os, S1Angle const& a);
+std::ostream& operator<<(std::ostream& os, S1Angle const& a);
 
 #endif  // UTIL_GEOMETRY_S1ANGLE_H_

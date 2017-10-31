@@ -8,7 +8,6 @@
 #include <errno.h>
 #include <float.h>          // for DBL_DIG and FLT_DIG
 #include <math.h>           // for HUGE_VAL
-#include <pthread.h>        // for gmtime_r (on Windows)
 #include <stdarg.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -44,14 +43,9 @@ using std::vector;
 
 #include "base/logging.h"
 #include "base/scoped_ptr.h"
-//#include "strutil-inl.h"
-//#include "third_party/utf/utf.h"  // for runetochar
-//#include "util/gtl/stl_util-inl.h"  // for string_as_array
-//#include "util/hash/hash.h"
 #include "split.h"
 
 #ifdef OS_WINDOWS
-#include <pthread.h>        // for gmtime_r
 #ifdef min  // windows.h defines this to something silly
 #undef min
 #endif
@@ -130,6 +124,13 @@ string UInt64ToString(uint64 ui64) {
 //    for FastTimeToBuffer(), we guarantee that it is.)
 // ----------------------------------------------------------------------
 
+char *FastInt64ToBuffer(int64 i, char* buffer) {
+  FastInt64ToBufferLeft(i, buffer);
+  return buffer;
+}
+
+// Sigh, also not actually defined here, copied from:
+// https://github.com/splitfeed/android-market-api-php/blob/master/proto/protoc-gen-php/strutil.cc
 
 static const char two_ASCII_digits[100][2] = {
   {'0','0'}, {'0','1'}, {'0','2'}, {'0','3'}, {'0','4'},
@@ -235,16 +236,6 @@ done:
   *buffer++ = '0' + digits;
   goto sublt100_000_000;
 }
-
-char* FastInt32ToBufferLeft(int32 i, char* buffer) {
-  uint32 u = i;
-  if (i < 0) {
-    *buffer++ = '-';
-    u = -i;
-  }
-  return FastUInt32ToBufferLeft(u, buffer);
-}
-
 char* FastUInt64ToBufferLeft(uint64 u64, char* buffer) {
   int digits;
   const char *ASCII_digits = NULL;
@@ -296,19 +287,48 @@ char* FastInt64ToBufferLeft(int64 i, char* buffer) {
   return FastUInt64ToBufferLeft(u, buffer);
 }
 
-
-char *FastInt64ToBuffer(int64 i, char* buffer) {
-  FastInt64ToBufferLeft(i, buffer);
-  return buffer;
-}
-
 // Offset into buffer where FastInt32ToBuffer places the end of string
 // null character.  Also used by FastInt32ToBufferLeft
 static const int kFastInt32ToBufferOffset = 11;
 
+// This used to call out to FastInt32ToBufferLeft but that wasn't defined.
+// Copied from http://gears.googlecode.com/svn-history/r395/trunk/gears/base/common/string16.cc
 char *FastInt32ToBuffer(int32 i, char* buffer) {
-  FastInt32ToBufferLeft(i, buffer);
-  return buffer;
+  // We could collapse the positive and negative sections, but that
+  // would be slightly slower for positive numbers...
+  // 12 bytes is enough to store -2**32, -4294967296.
+  char* p = buffer + kFastInt32ToBufferOffset;
+  *p-- = '\0';
+  if (i >= 0) {
+    do {
+      *p-- = '0' + i % 10;
+      i /= 10;
+    } while (i > 0);
+    return p + 1;
+  } else {
+    // On different platforms, % and / have different behaviors for
+    // negative numbers, so we need to jump through hoops to make sure
+    // we don't divide negative numbers.
+    if (i > -10) {
+      i = -i;
+      *p-- = '0' + i;
+      *p = '-';
+      return p;
+    } else {
+      // Make sure we aren't at MIN_INT, in which case we can't say i = -i
+      i = i + 10;
+      i = -i;
+      *p-- = '0' + i % 10;
+      // Undo what we did a moment ago
+      i = i / 10 + 1;
+      do {
+        *p-- = '0' + i % 10;
+        i /= 10;
+      } while (i > 0);
+      *p = '-';
+      return p;
+    }
+  }
 }
 
 char *FastHexToBuffer(int i, char* buffer) {
@@ -342,8 +362,6 @@ char *FastHex32ToBuffer(uint32 value, char* buffer) {
   return InternalFastHexToBuffer(value, buffer, 8);
 }
 
-// Several converters use this table to reduce
-// division and modulo operations.
 static inline void PutTwoDigits(int i, char* p) {
   DCHECK_GE(i, 0);
   DCHECK_LT(i, 100);
@@ -479,7 +497,7 @@ bool DictionaryParse(const string& encoded_str,
                       vector<pair<string, string> >* items) {
   vector<string> entries;
   SplitStringUsing(encoded_str, ",", &entries);
-  for (int i = 0; i < entries.size(); ++i) {
+  for (size_t i = 0; i < entries.size(); ++i) {
     vector<string> fields;
     SplitStringAllowEmpty(entries[i], ":", &fields);
     if (fields.size() != 2) // parsing error
