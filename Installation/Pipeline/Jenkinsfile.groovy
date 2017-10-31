@@ -446,18 +446,13 @@ def generateResult() {
     archiveArtifacts(allowEmptyArchive: true, artifacts: "results.html")
 }
 
-def getCommitSha() {
-  sh "git rev-parse HEAD > .git/current-commit"
-  return readFile(".git/current-commit").trim()
-}
-
-def setBuildStatus(String message, String state) {
+def setBuildStatus(String message, String state, String commitSha) {
     step([
         $class: "GitHubCommitStatusSetter",
         reposSource: [$class: "ManuallyEnteredRepositorySource", url: "https://github.com/arangodb/arangodb.git"],
         contextSource: [$class: "ManuallyEnteredCommitContextSource", context: "ci/jenkins/build-status"],
         errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
-        commitShaSource: [$class: "ManuallyEnteredShaSource", sha: getCommitSha()],
+        commitShaSource: [$class: "ManuallyEnteredShaSource", sha: commitSha],
         statusBackrefSource: [$class: "ManuallyEnteredBackrefSource", backref: "${BUILD_URL}flowGraphTable/"],
         statusResultSource: [$class: "ConditionalStatusResultSource", results: [[$class: "AnyBuildResult", message: message, state: state]] ]
     ]);
