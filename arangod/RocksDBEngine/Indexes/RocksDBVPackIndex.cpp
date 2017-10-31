@@ -37,7 +37,6 @@
 #include "RocksDBEngine/RocksDBCounterManager.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBMethods.h"
-#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBTransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"

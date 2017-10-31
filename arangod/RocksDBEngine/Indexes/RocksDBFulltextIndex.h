@@ -23,9 +23,8 @@
 #ifndef ARANGOD_ROCKSDB_ENGINE_FULLTEXT_INDEX_H
 #define ARANGOD_ROCKSDB_ENGINE_FULLTEXT_INDEX_H 1
 
-#include "Basics/Common.h"
 #include "Indexes/Index.h"
-#include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/Indexes/RocksDBIndex.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 

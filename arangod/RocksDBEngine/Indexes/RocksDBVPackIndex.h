@@ -27,15 +27,13 @@
 #define ARANGOD_ROCKSDB_ROCKSDB_VPACK_INDEX_H 1
 
 #include "Aql/AstNode.h"
-#include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
+#include "RocksDBEngine/Indexes/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
-#include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "VocBase/voc-types.h"
-#include "VocBase/vocbase.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
