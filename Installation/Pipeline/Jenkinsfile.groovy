@@ -1185,13 +1185,13 @@ def testStepParallel(os, edition, maintainer, modeList) {
 // --SECTION--                                                SCRIPTS RESILIENCE
 // -----------------------------------------------------------------------------
 
-def testResilience(os, engine, foxx) {
+def testResilience(os, engine, foxx, logFile) {
     withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace']) {
         if (os == 'linux') {
-            sh "./Installation/Pipeline/linux/test_resilience_${foxx}_${engine}_${os}.sh"
+            shellAndPipe("./Installation/Pipeline/linux/test_resilience_${foxx}_${engine}_${os}.sh", logFile)
         }
         else if (os == 'mac') {
-            sh "./Installation/Pipeline/mac/test_resilience_${foxx}_${engine}_${os}.sh"
+            shellAndPipe("./Installation/Pipeline/mac/test_resilience_${foxx}_${engine}_${os}.sh", logFile)
         }
         else if (os == 'windows') {
             powershell ".\\Installation\\Pipeline\\test_resilience_${foxx}_${engine}_${os}.ps1"
@@ -1225,7 +1225,7 @@ def testResilienceStep(os, edition, maintainer, engine, foxx) {
         def arch     = "${archDir}/03-resilience/${engine}-${foxx}"
 
         def runDir = "resilience"
-        def logFileRel = "${arch}/${name}.log"
+        def logFile = "${arch}/${name}.log"
 
         node(testJenkins[os]) {
 
@@ -1237,15 +1237,19 @@ def testResilienceStep(os, edition, maintainer, engine, foxx) {
             ])
 
             try {
+               logStartStage(os, logFile, logFile)
+
                 timeout(120) {
                     unstashBinaries(os, edition, maintainer)
-                    testResilience(os, engine, foxx)
+                    testResilience(os, engine, foxx, logFile)
                 }
 
                 checkCores(os, runDir)
+
+                logStopStage(os, logFile)
             }
             catch (exc) {
-                logExceptionStage(os, logFileRel, logFileRel, exc)
+                logExceptionStage(os, logFile, logFile, exc)
 
                 def msg = exc.toString()
                 echo "caught error, copying log to ${logFile}: ${msg}"
