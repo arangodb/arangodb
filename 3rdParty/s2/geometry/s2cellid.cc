@@ -83,6 +83,11 @@ static void Init() {
   InitLookupCell(0, 0, 0, kSwapMask|kInvertMask, 0, kSwapMask|kInvertMask);
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief the following atomic int is 0 in the beginning, is set to 1
+/// if some thread initializes the singleton and is 2 once _theInstance
+/// is set.
+//////////////////////////////////////////////////////////////////////////////
 static std::atomic<int> s2_cellid_init(0);
 inline static void MaybeInit() {
   int state = s2_cellid_init;

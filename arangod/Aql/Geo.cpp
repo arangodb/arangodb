@@ -36,8 +36,7 @@
 #include "MMFiles/MMFilesAqlFunctions.h"
 #include "MMFiles/MMFilesGeoIndex.h"
 #include "RocksDBEngine/RocksDBAqlFunctions.h"
-#include "RocksDBEngine/RocksDBFulltextIndex.h"
-#include "RocksDBEngine/RocksDBGeoIndex.h"
+#include "RocksDBEngine/Indexes/RocksDBGeoIndex.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>

@@ -2,29 +2,31 @@
 
 # add sources for rocksdb engine
 set(ROCKSDB_SOURCES
+  RocksDBEngine/Indexes/RocksDBEdgeIndex.cpp
+  RocksDBEngine/Indexes/RocksDBFulltextIndex.cpp
+  RocksDBEngine/Indexes/RocksDBGeoIndex.cpp
+  RocksDBEngine/Indexes/RocksDBGeoIndexImpl.cpp
+  RocksDBEngine/Indexes/RocksDBHashIndex.cpp
+  RocksDBEngine/Indexes/RocksDBIndex.cpp
+  RocksDBEngine/Indexes/RocksDBIndexFactory.cpp
+  RocksDBEngine/Indexes/RocksDBPrimaryIndex.cpp
+  RocksDBEngine/Indexes/RocksDBS2GeoIndex.cpp
+  RocksDBEngine/Indexes/RocksDBVPackIndex.cpp
   RocksDBEngine/RocksDBAqlFunctions.cpp
   RocksDBEngine/RocksDBBackgroundThread.cpp
   RocksDBEngine/RocksDBCollection.cpp
   RocksDBEngine/RocksDBCommon.cpp
   RocksDBEngine/RocksDBComparator.cpp
   RocksDBEngine/RocksDBCounterManager.cpp
-  RocksDBEngine/RocksDBEdgeIndex.cpp
   RocksDBEngine/RocksDBEngine.cpp
   RocksDBEngine/RocksDBExportCursor.cpp
-  RocksDBEngine/RocksDBFulltextIndex.cpp
-  RocksDBEngine/RocksDBGeoIndex.cpp
-  RocksDBEngine/RocksDBGeoIndexImpl.cpp
-  RocksDBEngine/RocksDBHashIndex.cpp
   RocksDBEngine/RocksDBIncrementalSync.cpp
-  RocksDBEngine/RocksDBIndex.cpp
-  RocksDBEngine/RocksDBIndexFactory.cpp
   RocksDBEngine/RocksDBIterators.cpp
   RocksDBEngine/RocksDBKey.cpp
   RocksDBEngine/RocksDBKeyBounds.cpp
   RocksDBEngine/RocksDBLogValue.cpp
   RocksDBEngine/RocksDBMethods.cpp
   RocksDBEngine/RocksDBOptimizerRules.cpp
-  RocksDBEngine/RocksDBPrimaryIndex.cpp
   RocksDBEngine/RocksDBReplicationCommon.cpp
   RocksDBEngine/RocksDBReplicationContext.cpp
   RocksDBEngine/RocksDBReplicationManager.cpp
@@ -37,7 +39,6 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBTransactionState.cpp
   RocksDBEngine/RocksDBTypes.cpp
   RocksDBEngine/RocksDBV8Functions.cpp
-  RocksDBEngine/RocksDBVPackIndex.cpp
   RocksDBEngine/RocksDBValue.cpp
   RocksDBEngine/RocksDBView.cpp
   RocksDBEngine/RocksDBWalAccess.cpp
