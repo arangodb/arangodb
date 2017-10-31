@@ -1182,11 +1182,8 @@ def testStepParallel(os, edition, maintainer, modeList) {
 
 def testResilience(os, engine, foxx, logFile) {
     withEnv(['LOG_COMMUNICATION=debug', 'LOG_REQUESTS=trace', 'LOG_AGENCY=trace']) {
-        if (os == 'linux') {
-            shellAndPipe("./Installation/Pipeline/linux/test_resilience_${foxx}_${engine}_${os}.sh", logFile)
-        }
-        else if (os == 'mac') {
-            shellAndPipe("./Installation/Pipeline/mac/test_resilience_${foxx}_${engine}_${os}.sh", logFile)
+        if (os == 'linux' || os == 'mac') {
+            shellAndPipe("./Installation/Pipeline/resilience_OS_ENGINE_FOXX.sh ${os} ${engine} ${foxx}", logFile)
         }
         else if (os == 'windows') {
             powershell ".\\Installation\\Pipeline\\test_resilience_${foxx}_${engine}_${os}.ps1"
