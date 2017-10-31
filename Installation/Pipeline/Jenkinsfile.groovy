@@ -399,7 +399,6 @@ def logExceptionStage(os, logFile, link, exc) {
 }
 
 def generateResult() {
-    def results = ""
     def html = "<html><body><table>\n"
     html += "<tr><th>Name</th><th>Start</th><th>Stop</th><th>Duration</th><th>Total Time</th><th>Message</th></tr>\n"
 
@@ -437,16 +436,14 @@ def generateResult() {
 
         def total = resultsDuration[key] ?: ""
 
-        results += "${key}: ${startf} - ${stopf} (${diff}) ${msg}\n"
         html += "<tr ${color}><td>${la}${key}${lb}</td><td>${startf}</td><td>${stopf}</td><td align=\"right\">${diff}</td><td align=\"right\">${total}</td><td align=\"right\">${msg}</td></tr>\n"
     }
 
     html += "</table></body></html>\n"
 
-    fileOperations([fileCreateOperation(fileContent: results, fileName: "results.txt")])
     fileOperations([fileCreateOperation(fileContent: html, fileName: "results.html")])
 
-    archiveArtifacts(allowEmptyArchive: true, artifacts: "results.*")
+    archiveArtifacts(allowEmptyArchive: true, artifacts: "results.html")
 }
 
 def setBuildStatus(String message, String state, String commitSha) {
@@ -496,9 +493,7 @@ def checkoutCommunity(os) {
         }
     }
 
-    node("master") {
-        setBuildStatus("In Progress", "PENDING", getCommitSha())
-    }
+    setBuildStatus("In Progress", "PENDING", getCommitSha())
 }
 
 def checkoutEnterprise() {
