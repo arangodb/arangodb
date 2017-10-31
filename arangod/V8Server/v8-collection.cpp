@@ -2111,7 +2111,6 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8_THROW_EXCEPTION_USAGE("Only call on coordinator or in single server mode");
   }
 
-
   // check the arguments
   uint32_t const argLength = args.Length();
   if (argLength < 3 || !args[0]->IsString()) {

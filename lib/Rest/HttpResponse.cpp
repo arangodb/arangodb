@@ -335,8 +335,10 @@ void HttpResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
     _contentType = rest::ContentType::VPACK;
   }
 
-  addPayloadInternal(VPackSlice(buffer.data()), buffer.length(),
-                     options, resolveExternals);
+  if (buffer.size() > 0) {
+    addPayloadInternal(VPackSlice(buffer.data()), buffer.length(),
+                       options, resolveExternals);
+  }
 }
 
 void HttpResponse::addPayloadInternal(VPackSlice output, size_t inputLength,

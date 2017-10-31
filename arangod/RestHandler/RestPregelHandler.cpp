@@ -59,18 +59,30 @@ RestStatus RestPregelHandler::execute() {
 
     }
     
-    VPackBuffer<uint8_t> buffer;
-    VPackBuilder response(buffer);
+    VPackBuilder response;
     std::vector<std::string> const& suffix = _request->suffixes();
     if (suffix.size() != 2) {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_NOT_IMPLEMENTED, "you are missing a prefix");
     } else if (suffix[0] == Utils::conductorPrefix) {
       PregelFeature::handleConductorRequest(suffix[1], body, response);
-      generateResult(rest::ResponseCode::OK, std::move(buffer));
+      generateResult(rest::ResponseCode::OK, response.slice());
+      /*
+       if (buffer.empty()) {
+         resetResponse(rest::ResponseCode::OK);
+       } else {
+         generateResult(rest::ResponseCode::OK, std::move(buffer));
+       }
+       */
     } else if (suffix[0] == Utils::workerPrefix) {
       PregelFeature::handleWorkerRequest(_vocbase, suffix[1], body, response);
-      generateResult(rest::ResponseCode::OK, std::move(buffer));
+      generateResult(rest::ResponseCode::OK, response.slice());
+      /* if (buffer.empty()) {
+         resetResponse(rest::ResponseCode::OK);
+       } else {
+         generateResult(rest::ResponseCode::OK, std::move(buffer));
+       }
+       */
     } else {
       generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_NOT_IMPLEMENTED, "the prefix is incorrect");
