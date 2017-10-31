@@ -451,7 +451,7 @@ def getCommitSha() {
   return readFile(".git/current-commit").trim()
 }
 
-def setBuildStatus(String message, String state, String commitSha) {
+def setBuildStatus(String message, String state) {
     step([
         $class: "GitHubCommitStatusSetter",
         reposSource: [$class: "ManuallyEnteredRepositorySource", url: "https://github.com/arangodb/arangodb"],
