@@ -1225,7 +1225,7 @@ def testResilienceStep(os, edition, maintainer, engine, foxx) {
         def arch     = "${archDir}/03-resilience/${engine}-${foxx}"
 
         def runDir = "resilience"
-        def logFile = "${arch}/${name}.log"
+        def logFile = "${arch}/resilience.log"
 
         node(testJenkins[os]) {
 
