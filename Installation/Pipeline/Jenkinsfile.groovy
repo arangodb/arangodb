@@ -1019,7 +1019,6 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
                       logExceptionStage(os, logFileRel, logFileRel, exc)
 
                       def msg = exc.toString()
-
                       echo "caught error, copying log to ${logFile}: ${msg}"
 
                       fileOperations([
@@ -1222,54 +1221,57 @@ def testResilienceCheck(os, edition, maintainer, engine, foxx) {
 
 def testResilienceStep(os, engine, foxx) {
     return {
+        def edition    = "community"
+        def maintainer = "maintainer"
+
+        def archDir  = "${os}-${edition}-${maintainer}"
+        def arch     = "${archDir}/03-resilience/${engine}-${foxx}"
+
+        def runDir = "resilience"
+        def logFileRel = "${arch}/${name}.log"
+
         node(testJenkins[os]) {
-            def edition = "community"
-            def buildName = "${edition}-${os}"
 
-            def name = "${os}-${engine}-${foxx}"
-            def arch = "LOG_resilience_${foxx}_${engine}_${os}"
+            // create directories for the artifacts
+            fileOperations([
+                fileDeleteOperation(excludes: '', includes: "${archDir}-*"),
+                folderCreateOperation(arch),
+                folderCreateOperation(archRun)
+            ])
 
-            stage("resilience-${name}") {
+            try {
+                timeout(120) {
+                    unstashBinaries(os, edition, maintainer)
+                    testResilience(os, engine, foxx)
+                }
+
+                checkCores(os, runDir)
+            }
+            catch (exc) {
+                logExceptionStage(os, logFileRel, logFileRel, exc)
+
+                def msg = exc.toString()
+                echo "caught error, copying log to ${logFile}: ${msg}"
+
+                fileOperations([
+                    fileCreateOperation(fileContent: "TEST FAILED: ${msg}", fileName: "${archDir}-FAIL.txt")
+                ])
+
                 if (os == 'linux' || os == 'mac') {
-                    sh "rm -rf ${arch}"
-                    sh "mkdir -p ${arch}"
+                    sh "echo \"${msg}\" >> ${logFile}"
                 }
-                else if (os == 'windows') {
-                    bat "del /F /Q ${arch}"
-                    powershell "New-Item -ItemType Directory -Force -Path ${arch}"
+                else {
+                    powershell "echo \"${msg}\" | Out-File -filepath ${logFile} -append"
                 }
 
-                try {
-                    try {
-                        timeout(120) {
-                            unstashBinaries(edition, os)
-                            testResilience(os, engine, foxx)
-                        }
+                throw exc
+            }
+            finally {
+                  saveCores(os, runDir, name, archRun)
 
-                        if (findFiles(glob: 'resilience/core*').length > 0) {
-                            error("found core file")
-                        }
-                    }
-                    catch (exc) {
-                        if (os == 'linux' || os == 'mac') {
-                            sh "for i in build resilience/core* tmp; do test -e \"\$i\" && mv \"\$i\" ${arch} || true; done"
-                        }
-                        throw exc
-                    }
-                    finally {
-                        if (os == 'linux' || os == 'mac') {
-                            sh "for i in log-output; do test -e \"\$i\" && mv \"\$i\" ${arch}; done"
-                        }
-                        else if (os == 'windows') {
-                            bat "move log-output ${arch}"
-                        }
-                    }
-                }
-                finally {
-                    archiveArtifacts allowEmptyArchive: true,
-                                        artifacts: "${arch}/**",
-                                        defaultExcludes: false
-                }
+                  archiveArtifacts allowEmptyArchive: true,
+                      artifacts: "${arch}, "${archDir}-FAIL.txt, ${runDir}/**, ${logFileRel}",
+                      defaultExcludes: false
             }
         }
     }
@@ -1284,7 +1286,7 @@ def testResilienceParallel(osList) {
         for (os in osList) {
             for (engine in ['mmfiles', 'rocksdb']) {
                 if (testResilienceCheck(os, edition, maintainer, engine, foxx)) {
-                    def name = "test-resilience-${foxx}-${engine}-${os}"
+                    def name = "resilience-${os}-${engine}-${foxx}"
 
                     branches[name] = testResilienceStep(os, engine, foxx)
                 }
