@@ -1,6 +1,6 @@
 //  -*- mode: groovy-mode
 
-node {
+node("master") {
     properties([buildDiscarder(logRotator(
         artifactDaysToKeepStr: '3',
         artifactNumToKeepStr: '5',
@@ -19,7 +19,9 @@ def setBuildStatus(String message, String state) {
     ]);
 }
 
-setBuildStatus("In Progress", "PENDING")
+node("master") {
+    setBuildStatus("In Progress", "PENDING")
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             SELECTABLE PARAMETERS
