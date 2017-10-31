@@ -8,19 +8,25 @@ node("master") {
         numToKeepStr: '5'))])
 }
 
-def setBuildStatus(String message, String state) {
+def setBuildStatus(String message, String state, String commitSha) {
     step([
         $class: "GitHubCommitStatusSetter",
         reposSource: [$class: "ManuallyEnteredRepositorySource", url: "https://github.com/arangodb/arangodb"],
         contextSource: [$class: "ManuallyEnteredCommitContextSource", context: "jenkins/githubnotify"],
         errorHandlers: [[$class: "ChangingBuildStatusErrorHandler", result: "UNSTABLE"]],
+        commitShaSource: [$class: "ManuallyEnteredShaSource", sha: commitSha],
         statusBackrefSource: [$class: "ManuallyEnteredBackrefSource", backref: "${BUILD_URL}flowGraphTable/"],
         statusResultSource: [$class: "ConditionalStatusResultSource", results: [[$class: "AnyBuildResult", message: message, state: state]] ]
     ]);
 }
 
+def getCommitSha() {
+  sh "git rev-parse HEAD > .git/current-commit"
+  return readFile(".git/current-commit").trim()
+}
+
 node("master") {
-    setBuildStatus("In Progress", "PENDING")
+    setBuildStatus("In Progress", "PENDING", getCommitSha())
 }
 
 // -----------------------------------------------------------------------------
