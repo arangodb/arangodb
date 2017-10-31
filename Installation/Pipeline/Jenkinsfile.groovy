@@ -848,12 +848,11 @@ def jslint(os, edition, maintainer) {
     }
     catch (exc) {
         logExceptionStage(os, logFile, "${arch}/jslint.log", exc)
-        fileOperations([fileCreateOperation(fileContent: 'JSLINT FAILED', fileName: "${archDir}-FAIL.txt")])
         throw exc
     }
     finally {
         archiveArtifacts allowEmptyArchive: true,
-            artifacts: "${archDir}-FAIL.txt, ${arch}/**",
+            artifacts: "${arch}/**",
             defaultExcludes: false
     }
 }
@@ -958,8 +957,8 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
               def arch     = "${archDir}/03-test/${mode}-${engine}"
               def archRun  = "${arch}-RUN"
 
-              def logFile          = pwd() + "/" + "${arch}/${name}.log"
-              def logFileRel       = "${arch}/${name}.log"
+              def logFile    = pwd() + "/" + "${arch}/${name}.log"
+              def logFileRel = "${arch}/${name}.log"
 
               def runDir = "run.${testIndex}"
               def concurrencyIndex = testIndex % concurrency
@@ -1021,10 +1020,6 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
                       def msg = exc.toString()
                       echo "caught error, copying log to ${logFile}: ${msg}"
 
-                      fileOperations([
-                          fileCreateOperation(fileContent: "TEST FAILED: ${msg}", fileName: "${archDir}-FAIL.txt")
-                      ])
-
                       if (os == 'linux' || os == 'mac') {
                           sh "echo \"${msg}\" >> ${logFile}"
                       }
@@ -1038,7 +1033,7 @@ def singleTest(os, edition, maintainer, mode, engine, test, testArgs, testIndex,
                       saveCores(os, runDir, name, archRun)
 
                       archiveArtifacts allowEmptyArchive: true,
-                          artifacts: "${archDir}-FAIL.txt, ${archRun}/**, ${logFileRel}",
+                          artifacts: "${archRun}/**, ${logFileRel}",
                           defaultExcludes: false
                   }
               }
@@ -1223,6 +1218,7 @@ def testResilienceStep(os, edition, maintainer, engine, foxx) {
     return {
         def archDir  = "${os}-${edition}-${maintainer}"
         def arch     = "${archDir}/03-resilience/${engine}-${foxx}"
+        def archRun  = "${arch}-RUN"
 
         def runDir = "resilience"
         def logFile = "${arch}/resilience.log"
@@ -1254,10 +1250,6 @@ def testResilienceStep(os, edition, maintainer, engine, foxx) {
                 def msg = exc.toString()
                 echo "caught error, copying log to ${logFile}: ${msg}"
 
-                fileOperations([
-                    fileCreateOperation(fileContent: "TEST FAILED: ${msg}", fileName: "${archDir}-FAIL.txt")
-                ])
-
                 if (os == 'linux' || os == 'mac') {
                     sh "echo \"${msg}\" >> ${logFile}"
                 }
@@ -1271,7 +1263,7 @@ def testResilienceStep(os, edition, maintainer, engine, foxx) {
                   saveCores(os, runDir, name, archRun)
 
                   archiveArtifacts allowEmptyArchive: true,
-                      artifacts: "${arch}, ${archDir}-FAIL.txt, ${runDir}/**, ${logFileRel}",
+                      artifacts: "${arch}/**, ${archRun}/**, ${logFileRel}",
                       defaultExcludes: false
             }
         }
@@ -1351,10 +1343,6 @@ def buildEdition(os, edition, maintainer) {
 
         def msg = exc.toString()
         
-        fileOperations([
-            fileCreateOperation(fileContent: "BUILD FAILED: ${msg}", fileName: "${archDir}-FAIL.txt")
-        ])
-
         if (os == 'linux' || os == 'mac') {
             sh "echo \"${msg}\" >> ${logFile}"
         }
@@ -1370,7 +1358,7 @@ def buildEdition(os, edition, maintainer) {
         }
 
         archiveArtifacts allowEmptyArchive: true,
-            artifacts: "${archDir}-FAIL.txt, ${arch}/**",
+            artifacts: "${arch}/**",
             defaultExcludes: false
     }
 }
@@ -1444,12 +1432,11 @@ def createDockerImage(edition, maintainer, stageName) {
                         }
                         catch (exc) {
                             logExceptionStage(os, logFile, logFile, exc)
-                            fileOperations([fileCreateOperation(fileContent: 'DOCKER FAILED', fileName: "${archDir}-FAIL.txt")])
                             throw exc
                         }
                         finally {
                             archiveArtifacts allowEmptyArchive: true,
-                                artifacts: "${archDir}-FAIL.txt, ${arch}/**",
+                                artifacts: "${arch}/**",
                                 defaultExcludes: false
                         }
                     }
