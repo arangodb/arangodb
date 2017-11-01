@@ -981,19 +981,30 @@ bool fromFuncExists(
 
   if (argc > 1) {
     // 2nd argument defines a type (if present)
-    auto const typeArg = arangodb::iresearch::getNode(
-      args, 1, arangodb::aql::NODE_TYPE_VALUE
-    );
+    auto const typeArgNode = args.getMemberUnchecked(1);
 
-    if (!typeArg) {
+    if (!typeArgNode) {
       LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'EXISTS' AQL function: 2nd argument is invalid";
+    }
+
+    ScopedAqlValue type(*typeArgNode);
+
+    if (!type.execute(ctx)) {
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'EXISTS' AQL function: Failed to evaluate 2nd argument";
+      return false;
+    }
+
+    if (arangodb::aql::VALUE_TYPE_STRING != type.type()) {
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "'EXISTS' AQL function: 2nd argument has invalid type '" << type.type()
+        << "' (string expected)";
       return false;
     }
 
     irs::string_ref arg;
 
-    if (!arangodb::iresearch::parseValue(arg, *typeArg)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'EXISTS' AQL function: Unable to parse 2nd argument as string";
+    if (!type.getString(arg)) {
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'EXISTS' AQL function: Failed to parse 2nd argument as string";
       return false;
     }
 
@@ -1012,16 +1023,20 @@ bool fromFuncExists(
     if (argc > 2) {
 
       // 3rd argument defines a value (if present)
-      auto const valueArg = arangodb::iresearch::getNode(
-        args, 2, arangodb::aql::NODE_TYPE_VALUE
-      );
+      auto const analyzerArgNode = args.getMemberUnchecked(2);
 
-      if (!valueArg) {
+      if (!analyzerArgNode) {
         LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'EXISTS' AQL function: 3rd argument is invalid";
+      }
+
+      ScopedAqlValue analyzerId(*analyzerArgNode);
+
+      if (!analyzerId.execute(ctx)) {
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'EXISTS' AQL function: Failed to evaluate 3rd argument";
         return false;
       }
 
-      if (!arangodb::iresearch::parseValue(arg, *valueArg)) {
+      if (!analyzerId.getString(arg)) {
         LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'EXISTS' AQL function: Unable to parse 3rd argument as string";
         return false;
       }
