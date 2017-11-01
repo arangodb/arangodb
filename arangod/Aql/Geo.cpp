@@ -22,9 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Geo.h"
-#include "GeoParser.h"
 
 #include "Basics/VelocyPackHelper.h"
+#include "Geo/GeoParser.h"
 #include "Logger/Logger.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -60,9 +60,10 @@ using namespace arangodb::basics;
 class S2Polygon;
 
 bool Geo::contains(const AqlValue geoJSONA, const AqlValue geoJSONB) {
-  GeoParser gp;
+  geo::GeoParser gp;
   // verify if object is in geojson format
-  if (!gp.parseGeoJSONType(geoJSONA) || !gp.parseGeoJSONType(geoJSONB)) {
+  if (!gp.parseGeoJSONType(geoJSONA.slice()) ||
+      !gp.parseGeoJSONType(geoJSONB.slice())) {
     // TODO: add invalid geo json error
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_GRAPH, "Invalid GeoJSON format.");
   }
@@ -77,12 +78,12 @@ bool Geo::contains(const AqlValue geoJSONA, const AqlValue geoJSONB) {
 
 /// @brief function polygon contained in polygon
 bool Geo::polygonContainsPolygon(const AqlValue geoJSONA, const AqlValue geoJSONB) {
-  GeoParser gp;
+  geo::GeoParser gp;
   bool result;
   
   //  polygon
-  S2Polygon* polyA = gp.parseGeoJSONPolygon(geoJSONA);
-  S2Polygon* polyB = gp.parseGeoJSONPolygon(geoJSONB);
+  S2Polygon* polyA = gp.parseGeoJSONPolygon(geoJSONA.slice());
+  S2Polygon* polyB = gp.parseGeoJSONPolygon(geoJSONB.slice());
 
   result = polyA->Contains(polyB);
   return result;
@@ -90,11 +91,11 @@ bool Geo::polygonContainsPolygon(const AqlValue geoJSONA, const AqlValue geoJSON
 
 /// @brief function point contained in polygon
 bool Geo::polygonContainsPoint(const AqlValue geoJSONA, const AqlValue geoJSONB) {
-  GeoParser gp;
+  geo::GeoParser gp;
   bool result;
   
-  S2Polygon* poly = gp.parseGeoJSONPolygon(geoJSONA);
-  S2Point point = gp.parseGeoJSONPoint(geoJSONB);
+  S2Polygon* poly = gp.parseGeoJSONPolygon(geoJSONA.slice());
+  S2Point point = gp.parseGeoJSONPoint(geoJSONB.slice());
 
   result = poly->Contains(point);
   return result;
@@ -102,14 +103,16 @@ bool Geo::polygonContainsPoint(const AqlValue geoJSONA, const AqlValue geoJSONB)
 
 /// @brief function main equals function which detects types and moves forward with specific function
 bool Geo::equals(const AqlValue geoJSONA, const AqlValue geoJSONB, transaction::Methods* trx) {
-  GeoParser gp;
+  geo::GeoParser gp;
   // verify if object is in geojson format
-  if (!gp.parseGeoJSONType(geoJSONA) || !gp.parseGeoJSONType(geoJSONB)) {
+  if (!gp.parseGeoJSONType(geoJSONA.slice()) ||
+      !gp.parseGeoJSONType(geoJSONB.slice())) {
     // TODO: add invalid geo json error
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_GRAPH_INVALID_GRAPH, "Invalid GeoJSON type.");
   }
 
-  if (gp.parseGeoJSONTypePolygon(geoJSONA) && gp.parseGeoJSONTypePolygon(geoJSONB)) {
+  if (gp.parseGeoJSONTypePolygon(geoJSONA.slice()) &&
+      gp.parseGeoJSONTypePolygon(geoJSONB.slice())) {
     return polygonEqualsPolygon(geoJSONA, geoJSONB);
   } else if (gp.parseGeoJSONTypePoint(geoJSONA) && gp.parseGeoJSONTypePoint(geoJSONB)) {
     return pointEqualsPoint(geoJSONA, geoJSONB, trx);

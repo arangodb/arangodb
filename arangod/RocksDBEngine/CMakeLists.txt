@@ -10,8 +10,8 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/Indexes/RocksDBIndex.cpp
   RocksDBEngine/Indexes/RocksDBIndexFactory.cpp
   RocksDBEngine/Indexes/RocksDBPrimaryIndex.cpp
-  RocksDBEngine/Indexes/RocksDBS2GeoIndex.cpp
   RocksDBEngine/Indexes/RocksDBVPackIndex.cpp
+  RocksDBEngine/Indexes/S2GeoIndex.cpp
   RocksDBEngine/RocksDBAqlFunctions.cpp
   RocksDBEngine/RocksDBBackgroundThread.cpp
   RocksDBEngine/RocksDBCollection.cpp

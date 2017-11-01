@@ -131,8 +131,6 @@ SET(ARANGOD_SOURCES
   Aql/FixedVarExpressionContext.cpp
   Aql/Function.cpp
   Aql/Functions.cpp
-  Aql/Geo.cpp
-  Aql/GeoParser.cpp
   Aql/Graphs.cpp
   Aql/GraphNode.cpp
   Aql/IndexBlock.cpp
@@ -224,6 +222,9 @@ SET(ARANGOD_SOURCES
   GeneralServer/RestHandlerFactory.cpp
   GeneralServer/RestStatus.cpp
   GeneralServer/VstCommTask.cpp
+  Geo/GeoHelper.cpp
+  Geo/GeoJsonParser.cpp
+  Geo/GeoParams.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
   Graph/BaseOptions.cpp
   Graph/BreadthFirstEnumerator.cpp

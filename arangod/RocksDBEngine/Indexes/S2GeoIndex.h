@@ -18,16 +18,15 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Christoph Uhde
+/// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_GEO_INDEX_H
-#define ARANGOD_ROCKSDB_GEO_INDEX_H 1
+#ifndef ARANGOD_ROCKSDB_S2_GEO_INDEX_H
+#define ARANGOD_ROCKSDB_S2_GEO_INDEX_H 1
 
 #include "Basics/Common.h"
 #include "Indexes/IndexIterator.h"
-#include "RocksDBEngine/RocksDBGeoIndexImpl.h"
-#include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/Indexes/RocksDBIndex.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 
@@ -36,85 +35,53 @@
 #include <type_traits>
 
 namespace arangodb {
+namespace rocksdbengine {
 
-// GeoCoordinate.data must be capable of storing revision ids
-static_assert(sizeof(arangodb::rocksdbengine::GeoCoordinate::data) >=
-                  sizeof(LocalDocumentId),
-              "invalid size of GeoCoordinate.data");
-
-class RocksDBGeoIndex;
-class RocksDBGeoIndexIterator final : public IndexIterator {
- public:
-  /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
-  RocksDBGeoIndexIterator(LogicalCollection* collection,
-                          transaction::Methods* trx,
-                          ManagedDocumentResult* mmdr,
-                          RocksDBGeoIndex const* index,
-                          arangodb::aql::AstNode const*,
-                          arangodb::aql::Variable const*);
-
-  ~RocksDBGeoIndexIterator() { replaceCursor(nullptr); }
-
-  char const* typeName() const override { return "geo-index-iterator"; }
-
-  bool next(LocalDocumentIdCallback const& cb, size_t limit) override;
-
-  void reset() override;
-
- private:
-  size_t findLastIndex(arangodb::rocksdbengine::GeoCoordinates* coords) const;
-  void replaceCursor(arangodb::rocksdbengine::GeoCursor* c);
-  void createCursor(double lat, double lon);
-  void evaluateCondition();  // called in constructor
-
-  RocksDBGeoIndex const* _index;
-  arangodb::rocksdbengine::GeoCursor* _cursor;
-  arangodb::rocksdbengine::GeoCoordinate _coor;
-  arangodb::aql::AstNode const* _condition;
-  double _lat;
-  double _lon;
-  bool _near;
-  bool _inclusive;
-  bool _done;
-  double _radius;
-};
-
-class RocksDBGeoIndex final : public RocksDBIndex {
-  friend class RocksDBGeoIndexIterator;
+class S2GeoIndex final : public arangodb::RocksDBIndex {
+  friend class S2GeoIndexIterator;
 
  public:
-  RocksDBGeoIndex() = delete;
+  S2GeoIndex() = delete;
 
-  RocksDBGeoIndex(TRI_idx_iid_t, LogicalCollection*,
-                  arangodb::velocypack::Slice const&);
+  S2GeoIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
+             velocypack::Slice const&);
 
-  ~RocksDBGeoIndex();
+  ~S2GeoIndex() override;
 
  public:
   /// @brief geo index variants
-  enum IndexVariant {
-    INDEX_GEO_NONE = 0,
-    INDEX_GEO_INDIVIDUAL_LAT_LON,
-    INDEX_GEO_COMBINED_LAT_LON,
-    INDEX_GEO_COMBINED_LON_LAT
+  enum class IndexVariant : uint8_t {
+    NONE = 0,
+    /// two distinct fields representing GeoJSON Point
+    INDIVIDUAL_LAT_LON,
+    /// pair [<latitude>, <longitude>] eqvivalent to GeoJSON Point
+    COMBINED_LAT_LON,
+    // geojson object or legacy coordinate
+    // pair [<longitude>, <latitude>]. Should also support
+    // other geojson object types.
+    COMBINED_GEOJSON
+  };
+  
+  enum class IteratorType : uint8_t {
+    // Specifiy a location for which a geospatial query returns the documents
+    // from nearest to farthest.
+    NEAR,
+    // Select documents with geospatial data that are located entirely within a shape.
+    // When determining inclusion, we consider the border of a shape to be part of the shape,
+    // subject to the precision of floating point numbers.
+    WITHIN,
+    // Select documents whose geospatial data intersects with a specified GeoJSON object.
+    INTERSECT
   };
 
  public:
+  
   IndexType type() const override {
-    if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
-        _variant == INDEX_GEO_COMBINED_LON_LAT) {
-      return TRI_IDX_TYPE_GEO1_INDEX;
-    }
-
-    return TRI_IDX_TYPE_GEO2_INDEX;
+    return TRI_IDX_TYPE_GEOSPATIAL_INDEX;
   }
 
   char const* typeName() const override {
-    if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
-        _variant == INDEX_GEO_COMBINED_LON_LAT) {
-      return "geo1";
-    }
-    return "geo2";
+    return "geospatial";
   }
 
   IndexIterator* iteratorForCondition(transaction::Methods*,
@@ -141,16 +108,16 @@ class RocksDBGeoIndex final : public RocksDBIndex {
   void truncate(transaction::Methods*) override;
 
   /// @brief looks up all points within a given radius
-  arangodb::rocksdbengine::GeoCoordinates* withinQuery(transaction::Methods*,
+  /*arangodb::rocksdbengine::GeoCoordinates* withinQuery(transaction::Methods*,
                                                        double, double,
                                                        double) const;
 
   /// @brief looks up the nearest points
   arangodb::rocksdbengine::GeoCoordinates* nearQuery(transaction::Methods*,
                                                      double, double,
-                                                     size_t) const;
+                                                     size_t) const;*/
 
-  bool isSame(std::vector<std::string> const& location, bool geoJson) const {
+  /*bool isSame(std::vector<std::string> const& location, bool geoJson) const {
     return (!_location.empty() && _location == location && _geoJson == geoJson);
   }
 
@@ -158,7 +125,7 @@ class RocksDBGeoIndex final : public RocksDBIndex {
               std::vector<std::string> const& longitude) const {
     return (!_latitude.empty() && !_longitude.empty() &&
             _latitude == latitude && _longitude == longitude);
-  }
+  }*/
 
   /// insert index elements into the specified write batch.
   Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
@@ -187,22 +154,10 @@ class RocksDBGeoIndex final : public RocksDBIndex {
   /// @brief whether the index is a geoJson index (latitude / longitude
   /// reversed)
   bool _geoJson;
-
-  /// @brief the actual geo index
-  arangodb::rocksdbengine::GeoIdx* _geoIndex;
+;
 };
+}  // namespace rocksdbengine
 }  // namespace arangodb
 
-namespace std {
-template <>
-class default_delete<arangodb::rocksdbengine::GeoCoordinates> {
- public:
-  void operator()(arangodb::rocksdbengine::GeoCoordinates* result) {
-    if (result != nullptr) {
-      GeoIndex_CoordinatesFree(result);
-    }
-  }
-};
-}  // namespace std
 
 #endif
