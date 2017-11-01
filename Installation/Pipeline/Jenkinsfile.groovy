@@ -772,7 +772,11 @@ def unstashBuild(os, edition, maintainer) {
 }
 
 def stashBinaries(os, edition, maintainer) {
-    def paths = ["build/etc", "etc", "Installation/Pipeline", "js", "scripts", "UnitTests", "resilience"]
+    def paths = ["build/etc", "etc", "Installation/Pipeline", "js", "scripts", "UnitTests"]
+
+    if (runResilience) {
+       paths << "resilience"
+    }
 
     if (edition == "enterprise") {
        paths << "enterprise/js"
@@ -1223,6 +1227,9 @@ def testResilienceStep(os, edition, maintainer, engine, foxx) {
         def logFile = "${arch}/resilience.log"
 
         node(testJenkins[os]) {
+
+            // clean the current workspace completely
+            deleteDirDocker(os)
 
             // create directories for the artifacts
             fileOperations([
