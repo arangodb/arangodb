@@ -185,6 +185,12 @@ class ScopedAqlValue : private irs::util::noncopyable {
     return !failed;
   }
 
+  int64_t getInt64() const {
+    return _node->isConstant()
+      ? _node->getIntValue()
+      : _value.toInt64(nullptr);
+  }
+
   bool getString(irs::string_ref& value) const {
     if (_node->isConstant()) {
       return arangodb::iresearch::parseValue(value, *_node);
@@ -285,7 +291,7 @@ bool byTerm(
         double_t dblValue;
 
         if (!value.getDouble(dblValue)) {
-          // something gone wrong
+          // something went wrong
           return false;
         }
 
@@ -306,7 +312,7 @@ bool byTerm(
         irs::string_ref strValue;
 
         if (!value.getString(strValue)) {
-          // something gone wrong
+          // something went wrong
           return false;
         }
 
@@ -322,51 +328,6 @@ bool byTerm(
   }
 
   // unsupported value type
-  return false;
-}
-
-bool byPrefix(
-    irs::boolean_filter* filter,
-    arangodb::iresearch::NormalizedCmpNode const& node,
-    arangodb::iresearch::QueryContext const& ctx,
-    arangodb::aql::AstNode const* scoringLimitNode) {
-  size_t scoringLimit = 128; // FIXME make configurable
-
-  if (scoringLimitNode && !arangodb::iresearch::parseValue(scoringLimit, *scoringLimitNode)) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'STARTS_WITH' AQL function: Unable to parse scoring limit, default value "
-                                             << scoringLimit << " is going to be used";
-    return false;
-  }
-
-  TRI_ASSERT(node.value);
-  auto const& valueNode = *node.value;
-
-  switch (valueNode.value.type) {
-    case arangodb::aql::VALUE_TYPE_NULL:
-    case arangodb::aql::VALUE_TYPE_BOOL:
-    case arangodb::aql::VALUE_TYPE_INT:
-    case arangodb::aql::VALUE_TYPE_DOUBLE:
-      break;
-    case arangodb::aql::VALUE_TYPE_STRING: {
-      if (filter) {
-        auto& prefixFilter = filter->add<irs::by_prefix>();
-        prefixFilter.scored_terms_limit(scoringLimit);
-        return byTerm(&prefixFilter, node, ctx);
-      }
-      return true;
-    }
-  }
-
-  try {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-        << "'STARTS_WITH' AQL function: Unable to parse specified value '" << valueNode.toString()
-        << "' as string";
-  } catch (...) {
-    // valueNode.toString() may throw
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-        << "'STARTS_WITH' AQL function: Unable to parse specified value as string";
-  }
-
   return false;
 }
 
@@ -632,9 +593,11 @@ bool fromInterval(
     auto const* typeName = arangodb::iresearch::getNodeTypeName(node.type);
 
     if (typeName) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Unable to normalize operator " << *typeName;
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "Unable to normalize operator " << *typeName;
     } else {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Unable to normalize operator " << node.type;
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "Unable to normalize operator " << node.type;
     }
 
     return false; // unable to normalize node
@@ -665,7 +628,8 @@ bool fromBinaryEq(
   if (!arangodb::iresearch::normalizeCmpNode(node, *ctx.ref, normalized)) {
     // FIXME no reference to IResearch variable here -> wrap expression
 
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Unable to normalize operator '=='";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "Unable to normalize operator '=='";
     return false; // unable to normalize node
   }
 
@@ -720,7 +684,8 @@ bool fromIn(
   );
 
   if (!attributeNode) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Unable to extract attribute name from 'IN' operator";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "Unable to extract attribute name from 'IN' operator";
     return false; // wrong attriubte node type
   }
 
@@ -773,14 +738,16 @@ bool fromIn(
     auto const* minValueNode = valueNode->getMemberUnchecked(0);
 
     if (!minValueNode) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Unable to parse left bound of the RANGE node";
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "Unable to parse left bound of the RANGE node";
       return false; // wrong left node
     }
 
     auto const* maxValueNode = valueNode->getMemberUnchecked(1);
 
     if (!maxValueNode) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Unable to parse right bound of the RANGE node";
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "Unable to parse right bound of the RANGE node";
       return false; // wrong right node
     }
 
@@ -795,9 +762,11 @@ bool fromIn(
   auto const* typeName = arangodb::iresearch::getNodeTypeName(valueNode->type);
 
   if (typeName) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Wrong Ast node of type '" << *typeName << "' detected in 'IN' operator";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "Wrong Ast node of type '" << *typeName << "' detected in 'IN' operator";
   } else {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Wrong Ast node of type '" << valueNode->type << "' detected in 'IN' operator";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "Wrong Ast node of type '" << valueNode->type << "' detected in 'IN' operator";
   }
 
   // wrong value node type
@@ -958,7 +927,8 @@ bool fromFuncExists(
   auto const argc = args.numMembers();
 
   if (argc < 1 || argc > 3) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'EXISTS' AQL function: Invalid number of arguments passed (must be >= 1 and <= 3)";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "'EXISTS' AQL function: Invalid number of arguments passed (must be >= 1 and <= 3)";
     return false;
   }
 
@@ -968,7 +938,8 @@ bool fromFuncExists(
   );
 
   if (!fieldArg) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'PHRASE' AQL function: 1st argument is invalid";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "'PHRASE' AQL function: 1st argument is invalid";
     return false;
   }
 
@@ -984,40 +955,45 @@ bool fromFuncExists(
     auto const typeArgNode = args.getMemberUnchecked(1);
 
     if (!typeArgNode) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'EXISTS' AQL function: 2nd argument is invalid";
-    }
-
-    ScopedAqlValue type(*typeArgNode);
-
-    if (!type.execute(ctx)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'EXISTS' AQL function: Failed to evaluate 2nd argument";
-      return false;
-    }
-
-    if (arangodb::aql::VALUE_TYPE_STRING != type.type()) {
       LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-        << "'EXISTS' AQL function: 2nd argument has invalid type '" << type.type()
-        << "' (string expected)";
-      return false;
+        << "'EXISTS' AQL function: 2nd argument is invalid";
     }
 
     irs::string_ref arg;
+    bool bAnalyzer;
+    ScopedAqlValue type(*typeArgNode);
 
-    if (!type.getString(arg)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'EXISTS' AQL function: Failed to parse 2nd argument as string";
-      return false;
-    }
+    if (filter || type.isConstant()) {
+      if (!type.execute(ctx)) {
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+            << "'EXISTS' AQL function: Failed to evaluate 2nd argument";
+        return false;
+      }
 
-    static irs::string_ref const TYPE = "type";
-    static irs::string_ref const ANALYZER = "analyzer";
+      if (arangodb::aql::VALUE_TYPE_STRING != type.type()) {
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+            << "'EXISTS' AQL function: 2nd argument has invalid type '" << type.type()
+            << "' (string expected)";
+        return false;
+      }
 
-    bool const bAnalyzer = (ANALYZER == arg);
+      if (!type.getString(arg)) {
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+            << "'EXISTS' AQL function: Failed to parse 2nd argument as string";
+        return false;
+      }
 
-    if (!bAnalyzer && TYPE != arg) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-          << "'EXISTS' AQL function: 2nd argument must be equal to '" << TYPE
-          << "' or '" << ANALYZER << "', got '" << arg << "'";
-      return false;
+      static irs::string_ref const TYPE = "type";
+      static irs::string_ref const ANALYZER = "analyzer";
+
+      bAnalyzer = (ANALYZER == arg);
+
+      if (!bAnalyzer && TYPE != arg) {
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+            << "'EXISTS' AQL function: 2nd argument must be equal to '" << TYPE
+            << "' or '" << ANALYZER << "', got '" << arg << "'";
+        return false;
+      }
     }
 
     if (argc > 2) {
@@ -1026,101 +1002,110 @@ bool fromFuncExists(
       auto const analyzerArgNode = args.getMemberUnchecked(2);
 
       if (!analyzerArgNode) {
-        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'EXISTS' AQL function: 3rd argument is invalid";
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "'EXISTS' AQL function: 3rd argument is invalid";
       }
 
       ScopedAqlValue analyzerId(*analyzerArgNode);
 
-      if (!analyzerId.execute(ctx)) {
-        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'EXISTS' AQL function: Failed to evaluate 3rd argument";
-        return false;
-      }
+      if (filter || analyzerId.isConstant()) {
 
-      if (!analyzerId.getString(arg)) {
-        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'EXISTS' AQL function: Unable to parse 3rd argument as string";
-        return false;
-      }
-
-      if (bAnalyzer) {
-
-        auto* analyzerFeature = arangodb::iresearch::getFeature<
-          arangodb::iresearch::IResearchAnalyzerFeature
-        >();
-
-        if (!analyzerFeature) {
-          LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'" << arangodb::iresearch::IResearchAnalyzerFeature::name()
-                                                   << "' feature is not registered, unable to evaluate 'EXISTS' function";
-          return false;
-        }
-
-        auto analyzer = analyzerFeature->get(arg);
-
-        if (!analyzer) {
-          LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'EXISTS' AQL function: Unable to lookup analyzer '" << arg << "'";
-          return false;
-        }
-
-        if (filter) {
-          arangodb::iresearch::kludge::mangleStringField(fieldName, analyzer);
-        }
-      } else {
-
-        typedef void(*TypeHandler)(std::string&);
-
-        static std::unordered_map<irs::hashed_string_ref, TypeHandler> const TypeHandlers {
-          {
-            irs::make_hashed_ref(irs::string_ref("string"), std::hash<irs::string_ref>()),
-            [] (std::string& name) {
-              arangodb::iresearch::kludge::mangleStringField(
-                name,
-                arangodb::iresearch::IResearchAnalyzerFeature::identity()
-              );
-            }
-          },
-          {
-            irs::make_hashed_ref(irs::string_ref("numeric"), std::hash<irs::string_ref>()),
-            [] (std::string& name) {
-              arangodb::iresearch::kludge::mangleNumeric(name);
-            }
-          },
-          {
-            irs::make_hashed_ref(irs::string_ref("bool"), std::hash<irs::string_ref>()),
-            [] (std::string& name) {
-              arangodb::iresearch::kludge::mangleBool(name);
-            }
-          },
-          {
-            irs::make_hashed_ref(irs::string_ref("boolean"), std::hash<irs::string_ref>()),
-            [] (std::string& name) {
-              arangodb::iresearch::kludge::mangleBool(name);
-            }
-          },
-          {
-            irs::make_hashed_ref(irs::string_ref("null"), std::hash<irs::string_ref>()),
-            [] (std::string& name) {
-              arangodb::iresearch::kludge::mangleNull(name);
-            }
-          }
-        };
-
-        const auto it = TypeHandlers.find(
-          irs::make_hashed_ref(arg, std::hash<irs::string_ref>())
-        );
-
-        if (TypeHandlers.end() == it) {
+        if (!analyzerId.execute(ctx)) {
           LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
-            << "'EXISTS' AQL function: 3rd argument must be equal to one of the following 'string', 'numeric', 'bool', 'null', got '"
-            << arg << "'";
-
+            << "'EXISTS' AQL function: Failed to evaluate 3rd argument";
           return false;
         }
 
-        if (filter) {
-          it->second(fieldName);
+        if (!analyzerId.getString(arg)) {
+          LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+            << "'EXISTS' AQL function: Unable to parse 3rd argument as string";
+          return false;
         }
-      }
 
+        if (bAnalyzer) {
+
+          auto* analyzerFeature = arangodb::iresearch::getFeature<
+            arangodb::iresearch::IResearchAnalyzerFeature
+          >();
+
+          if (!analyzerFeature) {
+            LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+              << "'" << arangodb::iresearch::IResearchAnalyzerFeature::name()
+              << "' feature is not registered, unable to evaluate 'EXISTS' function";
+            return false;
+          }
+
+          auto analyzer = analyzerFeature->get(arg);
+
+          if (!analyzer) {
+            LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+              << "'EXISTS' AQL function: Unable to lookup analyzer '" << arg << "'";
+            return false;
+          }
+
+          if (filter) {
+            arangodb::iresearch::kludge::mangleStringField(fieldName, analyzer);
+          }
+        } else {
+
+          typedef void(*TypeHandler)(std::string&);
+
+          static std::unordered_map<irs::hashed_string_ref, TypeHandler> const TypeHandlers {
+            {
+              irs::make_hashed_ref(irs::string_ref("string"), std::hash<irs::string_ref>()),
+              [] (std::string& name) {
+                arangodb::iresearch::kludge::mangleStringField(
+                  name,
+                  arangodb::iresearch::IResearchAnalyzerFeature::identity()
+                );
+              }
+            },
+            {
+              irs::make_hashed_ref(irs::string_ref("numeric"), std::hash<irs::string_ref>()),
+              [] (std::string& name) {
+                arangodb::iresearch::kludge::mangleNumeric(name);
+              }
+            },
+            {
+              irs::make_hashed_ref(irs::string_ref("bool"), std::hash<irs::string_ref>()),
+              [] (std::string& name) {
+                arangodb::iresearch::kludge::mangleBool(name);
+              }
+            },
+            {
+              irs::make_hashed_ref(irs::string_ref("boolean"), std::hash<irs::string_ref>()),
+              [] (std::string& name) {
+                arangodb::iresearch::kludge::mangleBool(name);
+              }
+            },
+            {
+              irs::make_hashed_ref(irs::string_ref("null"), std::hash<irs::string_ref>()),
+              [] (std::string& name) {
+                arangodb::iresearch::kludge::mangleNull(name);
+              }
+            }
+          };
+
+          const auto it = TypeHandlers.find(
+            irs::make_hashed_ref(arg, std::hash<irs::string_ref>())
+          );
+
+          if (TypeHandlers.end() == it) {
+            LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+              << "'EXISTS' AQL function: 3rd argument must be equal to one of the following 'string', 'numeric', 'bool', 'null', got '"
+              << arg << "'";
+
+            return false;
+          }
+
+          if (filter) {
+            it->second(fieldName);
+          }
+        }
+
+      }
       prefix_match = false;
+
     } else if (filter) {
 
       bAnalyzer
@@ -1150,20 +1135,23 @@ bool fromFuncPhrase(
   >();
 
   if (!analyzerFeature) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'" << arangodb::iresearch::IResearchAnalyzerFeature::name()
-                                   << "' feature is not registered, unable to evaluate 'PHRASE' function";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "'" << arangodb::iresearch::IResearchAnalyzerFeature::name()
+      << "' feature is not registered, unable to evaluate 'PHRASE' function";
     return false;
   }
 
   auto const argc = args.numMembers();
 
   if (argc < 2) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'PHRASE' AQL function: Invalid number of arguments passed (must be >= 2)";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "'PHRASE' AQL function: Invalid number of arguments passed (must be >= 2)";
     return false;
   }
 
   if (!(argc & 1)) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'PHRASE' AQL function: Invalid number of arguments passed (must be an odd number)";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "'PHRASE' AQL function: Invalid number of arguments passed (must be an odd number)";
     return false;
   }
 
@@ -1173,7 +1161,8 @@ bool fromFuncPhrase(
   );
 
   if (!fieldArg) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'PHRASE' AQL function: 1st argument is invalid";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "'PHRASE' AQL function: 1st argument is invalid";
     return false;
   }
 
@@ -1183,14 +1172,16 @@ bool fromFuncPhrase(
   );
 
   if (!valueArg) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'PHRASE' AQL function: 2nd argument is invalid";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "'PHRASE' AQL function: 2nd argument is invalid";
     return false;
   }
 
   irs::string_ref value;
 
   if (!arangodb::iresearch::parseValue(value, *valueArg)) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'PHRASE' AQL function: Unable to parse 2nd argument as string";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "'PHRASE' AQL function: Unable to parse 2nd argument as string";
     return false;
   }
 
@@ -1200,21 +1191,24 @@ bool fromFuncPhrase(
   );
 
   if (!analyzerArg || !arangodb::iresearch::parseValue(analyzerName, *analyzerArg)) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'PHRASE' AQL function: Unable to parse analyzer value";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "'PHRASE' AQL function: Unable to parse analyzer value";
     return false;
   }
 
   auto pool = analyzerFeature->get(analyzerName);
 
   if (!pool) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'PHRASE' AQL function: Unable to load requested analyzer '" << analyzerName << "'";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "'PHRASE' AQL function: Unable to load requested analyzer '" << analyzerName << "'";
     return false;
   }
 
   auto analyzer = pool->get(); // get analyzer from pool
 
   if (!analyzer) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'PHRASE' AQL function: Unable to instantiate analyzer '" << pool->name() << "'";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "'PHRASE' AQL function: Unable to instantiate analyzer '" << pool->name() << "'";
     return false;
   }
 
@@ -1239,7 +1233,8 @@ bool fromFuncPhrase(
     );
 
     if (!offsetArg || !arangodb::iresearch::parseValue(offset, *offsetArg)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'PHRASE' AQL function: Unable to parse argument on position " << idx << " as an offset";
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "'PHRASE' AQL function: Unable to parse argument on position " << idx << " as an offset";
       return false;
     }
 
@@ -1248,7 +1243,8 @@ bool fromFuncPhrase(
     );
 
     if (!valueArg || !arangodb::iresearch::parseValue(value, *valueArg)) {
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'PHRASE' AQL function: Unable to parse argument on position " << idx + 1 << " as a value";
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "'PHRASE' AQL function: Unable to parse argument on position " << idx + 1 << " as a value";
       return false;
     }
 
@@ -1269,7 +1265,8 @@ bool fromFuncStartsWith(
   auto const argc = args.numMembers();
 
   if (argc < 2 || argc > 3) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'STARTS_WITH' AQL function: Invalid number of arguments passed (should be >= 2 and <= 3)";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "'STARTS_WITH' AQL function: Invalid number of arguments passed (should be >= 2 and <= 3)";
     return false;
   }
 
@@ -1279,34 +1276,90 @@ bool fromFuncStartsWith(
   );
 
   if (!field) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'STARTS_WITH' AQL function: Unable to parse 1st argument as an attribute identifier";
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "'STARTS_WITH' AQL function: Unable to parse 1st argument as an attribute identifier";
     return false;
   }
 
   // 2nd argument defines a value
-  auto const* prefix = arangodb::iresearch::getNode(
-    args, 1, arangodb::aql::NODE_TYPE_VALUE
-  );
+  auto const* prefixNode = args.getMemberUnchecked(1);
 
-  if (!prefix) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "'STARTS_WITH' AQL function: Unable to parse 2nd argument as a prefix";
+  if (!prefixNode) {
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "'STARTS_WITH' AQL function: 2nd argument is invalid";
     return false;
   }
 
-  // 3rd (optional) argument defines a number of scored terms
-  decltype(prefix) scoringLimit = nullptr;
+  irs::string_ref prefix;
+  size_t scoringLimit = 128; // FIXME make configurable
 
-  if (argc > 2) {
-    scoringLimit = arangodb::iresearch::getNode(
-      args, 2, arangodb::aql::NODE_TYPE_VALUE
-    );
+  ScopedAqlValue prefixValue(*prefixNode);
+
+  if (filter || prefixValue.isConstant()) {
+    if (!prefixValue.execute(ctx)) {
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "'STARTS_WITH' AQL function: Failed to evaluate 2nd argument";
+      return false;
+    }
+
+    if (arangodb::aql::VALUE_TYPE_STRING != prefixValue.type()) {
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "'STARTS_WITH' AQL function: 2nd argument has invalid type '" << prefixValue.type()
+          << "' (string expected)";
+      return false;
+    }
+
+    if (!prefixValue.getString(prefix)) {
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+          << "'STARTS_WITH' AQL function: Unable to parse 2nd argument as string";
+      return false;
+    }
   }
 
-  arangodb::iresearch::NormalizedCmpNode const node {
-    field, prefix, arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ
-  };
+  if (argc > 2) {
+    // 3rd (optional) argument defines a number of scored terms
+    auto const* scoringLimitNode = args.getMemberUnchecked(2);
 
-  return byPrefix(filter, node, ctx, scoringLimit);
+    if (!scoringLimitNode) {
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "'STARTS_WITH' AQL function: 3rd argument is invalid";
+      return false;
+    }
+
+    ScopedAqlValue scoringLimitValue(*scoringLimitNode);
+
+    if (filter || scoringLimitValue.isConstant()) {
+      if (!scoringLimitValue.execute(ctx)) {
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+            << "'STARTS_WITH' AQL function: Failed to evaluate 3rd argument";
+        return false;
+      }
+
+      if (arangodb::aql::VALUE_TYPE_DOUBLE != scoringLimitValue.type()) {
+        LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+            << "'STARTS_WITH' AQL function: 3rd argument has invalid type '" << scoringLimitValue.type()
+            << "' (numeric expected)";
+        return false;
+      }
+
+      scoringLimit = static_cast<size_t>(scoringLimitValue.getInt64());
+    }
+  }
+
+  if (filter) {
+    auto name = arangodb::iresearch::nameFromAttributeAccess(*field);
+    arangodb::iresearch::kludge::mangleStringField(
+      name,
+      arangodb::iresearch::IResearchAnalyzerFeature::identity()
+    );
+
+    auto& prefixFilter = filter->add<irs::by_prefix>();
+    prefixFilter.scored_terms_limit(scoringLimit);
+    prefixFilter.field(std::move(name));
+    prefixFilter.term(prefix);
+  }
+
+  return true;
 }
 
 std::map<irs::string_ref, ConvertionHandler> const FCallUserConvertionHandlers;
@@ -1342,8 +1395,7 @@ bool fromFCallUser(
   auto const entry = FCallUserConvertionHandlers.find(name);
 
   if (entry == FCallUserConvertionHandlers.end()) {
-    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << "Unable to find user function '" << name << "'";
-    return false;
+    return fromExpression(filter, ctx, node);
   }
 
   return entry->second(filter, ctx, *args);

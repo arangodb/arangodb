@@ -4119,9 +4119,10 @@ SECTION("Value") {
 }
 
 SECTION("UnsupportedUserFunctions") {
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::unknownFunction() RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::unknownFunction1(d) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER ir::unknownFunction2(d, 'quick') RETURN d");
+//  FIXME need V8 context up and running to execute user functions
+//  assertFilterFail("FOR d IN VIEW myView FILTER ir::unknownFunction() RETURN d", &ExpressionContextMock::EMPTY);
+//  assertFilterFail("FOR d IN VIEW myView FILTER ir::unknownFunction1(d) RETURN d", &ExpressionContextMock::EMPTY);
+//  assertFilterFail("FOR d IN VIEW myView FILTER ir::unknownFunction2(d, 'quick') RETURN d", &ExpressionContextMock::EMPTY);
 }
 
 SECTION("Exists") {
@@ -4194,7 +4195,7 @@ SECTION("Exists") {
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'Type') RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'TYPE') RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'invalid') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, d) RETURN d", &ExpressionContextMock::EMPTY);
+    assertFilterExecutionFail("FOR d IN VIEW myView FILTER exists(d.name, d) RETURN d", &ExpressionContextMock::EMPTY);
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, null) RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 123) RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 123.5) RETURN d");
@@ -4216,7 +4217,7 @@ SECTION("Exists") {
   assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'Analyzer') RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'ANALYZER') RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'foo') RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, d) RETURN d", &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail("FOR d IN VIEW myView FILTER exists(d.name, d) RETURN d", &ExpressionContextMock::EMPTY);
   assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, null) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 123) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 123.5) RETURN d");
@@ -4234,6 +4235,15 @@ SECTION("Exists") {
 
     assertFilterSuccess("LET anl='analyz' FOR d IN VIEW myView FILTER exists(d.name, CONCAT(anl,'er')) RETURN d", expected, &ctx);
     assertFilterSuccess("LET anl='analyz' FOR d IN VIEW myView FILTER eXists(d.name, CONCAT(anl,'er')) RETURN d", expected, &ctx);
+  }
+
+  // field + analyzer as invalid expression
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("anl", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
+
+    assertFilterExecutionFail("LET anl='analyz' FOR d IN VIEW myView FILTER exists(d.name, anl) RETURN d", &ctx);
+    assertFilterExecutionFail("LET anl='analyz' FOR d IN VIEW myView FILTER eXists(d.name, anl) RETURN d", &ctx);
   }
 
   // field + type + string
@@ -4367,8 +4377,18 @@ SECTION("Exists") {
     assertFilterSuccess("LET anl='ty' LET type='nu' FOR d IN VIEW myView FILTER eXists(d.name, CONCAT(anl,'pe'), CONCAT(type,'ll')) RETURN d", expected, &ctx);
   }
 
+  // field + type + invalid expression
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("anl", arangodb::aql::AqlValue("ty"));
+    ctx.vars.emplace("type", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{}));
+
+    assertFilterExecutionFail("LET anl='ty' LET type='boo' FOR d IN VIEW myView FILTER exists(d.name, CONCAT(anl,'pe'), type) RETURN d", &ctx);
+    assertFilterExecutionFail("LET anl='ty' LET type='boo' FOR d IN VIEW myView FILTER eXists(d.name, CONCAT(anl,'pe'), type) RETURN d", &ctx);
+  }
+
   // invalid 3rd argument
-  assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', d) RETURN d", &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', d) RETURN d", &ExpressionContextMock::EMPTY);
   assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', null) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 123) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'type', 123.5) RETURN d");
@@ -4388,7 +4408,7 @@ SECTION("Exists") {
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', 'foo') RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', 'invalid') RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', '') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', d) RETURN d", &ExpressionContextMock::EMPTY);
+    assertFilterExecutionFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', d) RETURN d", &ExpressionContextMock::EMPTY);
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', null) RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', 123) RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d.name, 'analyzer', 123.5) RETURN d");
@@ -4423,7 +4443,7 @@ SECTION("Exists") {
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', 'foo') RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', 'invalid') RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', '') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', d) RETURN d", &ExpressionContextMock::EMPTY);
+    assertFilterExecutionFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', d) RETURN d", &ExpressionContextMock::EMPTY);
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', null) RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', 123) RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER exists(d['name'], 'analyzer', 123.5) RETURN d");
@@ -4691,6 +4711,33 @@ SECTION("StartsWith") {
     assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.obj[400].properties[3].name, 'abc') RETURN d", expected);
   }
 
+  // without scoring limit, complex name with offset, prefix as an expression
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("prefix", arangodb::aql::AqlValue("ab"));
+
+    irs::Or expected;
+    auto& prefix = expected.add<irs::by_prefix>();
+    prefix.field(mangleStringIdentity("obj[400].properties[3].name")).term("abc");
+    prefix.scored_terms_limit(128);
+
+    assertFilterSuccess("LET prefix='ab' FOR d IN VIEW myView FILTER starts_with(d['obj'][400]['properties'][3]['name'], CONCAT(prefix, 'c')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET prefix='ab' FOR d IN VIEW myView FILTER starts_with(d.obj[400]['properties[3]']['name'], CONCAT(prefix, 'c')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET prefix='ab' FOR d IN VIEW myView FILTER starts_with(d.obj[400]['properties[3]'].name, CONCAT(prefix, 'c')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET prefix='ab' FOR d IN VIEW myView FILTER starts_with(d.obj[400].properties[3].name, CONCAT(prefix, 'c')) RETURN d", expected, &ctx);
+  }
+
+  // without scoring limit, complex name with offset, prefix as an expression of invalid type
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("prefix", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool(false)));
+
+    assertFilterExecutionFail("LET prefix=false FOR d IN VIEW myView FILTER starts_with(d['obj'][400]['properties'][3]['name'], prefix) RETURN d", &ctx);
+    assertFilterExecutionFail("LET prefix=false FOR d IN VIEW myView FILTER starts_with(d.obj[400]['properties[3]']['name'], prefix) RETURN d", &ctx);
+    assertFilterExecutionFail("LET prefix=false FOR d IN VIEW myView FILTER starts_with(d.obj[400]['properties[3]'].name, prefix) RETURN d", &ctx);
+    assertFilterExecutionFail("LET prefix=false FOR d IN VIEW myView FILTER starts_with(d.obj[400].properties[3].name, prefix) RETURN d", &ctx);
+  }
+
   // with scoring limit (int)
   {
     irs::Or expected;
@@ -4711,6 +4758,52 @@ SECTION("StartsWith") {
 
     assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d['name'], 'abc', 100.5) RETURN d", expected);
     assertFilterSuccess("FOR d IN VIEW myView FILTER starts_with(d.name, 'abc', 100.5) RETURN d", expected);
+  }
+
+  // without scoring limit, complex name with offset, scoringLimit as an expression
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("prefix", arangodb::aql::AqlValue("ab"));
+    ctx.vars.emplace("scoringLimit", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(5)));
+
+    irs::Or expected;
+    auto& prefix = expected.add<irs::by_prefix>();
+    prefix.field(mangleStringIdentity("obj[400].properties[3].name")).term("abc");
+    prefix.scored_terms_limit(6);
+
+    assertFilterSuccess("LET scoringLimit=5 LET prefix='ab' FOR d IN VIEW myView FILTER starts_with(d['obj'][400]['properties'][3]['name'], CONCAT(prefix, 'c'), (scoringLimit + 1)) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET scoringLimit=5 LET prefix='ab' FOR d IN VIEW myView FILTER starts_with(d.obj[400]['properties[3]']['name'], CONCAT(prefix, 'c'), (scoringLimit + 1)) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET scoringLimit=5 LET prefix='ab' FOR d IN VIEW myView FILTER starts_with(d.obj[400]['properties[3]'].name, CONCAT(prefix, 'c'), (scoringLimit + 1)) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET scoringLimit=5 LET prefix='ab' FOR d IN VIEW myView FILTER starts_with(d.obj[400].properties[3].name, CONCAT(prefix, 'c'), (scoringLimit + 1)) RETURN d", expected, &ctx);
+  }
+
+  // without scoring limit, complex name with offset, scoringLimit as an expression
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("prefix", arangodb::aql::AqlValue("ab"));
+    ctx.vars.emplace("scoringLimit", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(5)));
+
+    irs::Or expected;
+    auto& prefix = expected.add<irs::by_prefix>();
+    prefix.field(mangleStringIdentity("obj[400].properties[3].name")).term("abc");
+    prefix.scored_terms_limit(6);
+
+    assertFilterSuccess("LET scoringLimit=5 LET prefix='ab' FOR d IN VIEW myView FILTER starts_with(d['obj'][400]['properties'][3]['name'], CONCAT(prefix, 'c'), (scoringLimit + 1.5)) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET scoringLimit=5 LET prefix='ab' FOR d IN VIEW myView FILTER starts_with(d.obj[400]['properties[3]']['name'], CONCAT(prefix, 'c'), (scoringLimit + 1.5)) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET scoringLimit=5 LET prefix='ab' FOR d IN VIEW myView FILTER starts_with(d.obj[400]['properties[3]'].name, CONCAT(prefix, 'c'), (scoringLimit + 1.5)) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET scoringLimit=5 LET prefix='ab' FOR d IN VIEW myView FILTER starts_with(d.obj[400].properties[3].name, CONCAT(prefix, 'c'), (scoringLimit + 1.5)) RETURN d", expected, &ctx);
+  }
+
+  // without scoring limit, complex name with offset, scoringLimit as an expression of invalid type
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("prefix", arangodb::aql::AqlValue("ab"));
+    ctx.vars.emplace("scoringLimit", arangodb::aql::AqlValue("ab"));
+
+    assertFilterExecutionFail("LET scoringLimit='ab' LET prefix=false FOR d IN VIEW myView FILTER starts_with(d['obj'][400]['properties'][3]['name'], prefix, scoringLimit) RETURN d", &ctx);
+    assertFilterExecutionFail("LET scoringLimit='ab' LET prefix=false FOR d IN VIEW myView FILTER starts_with(d.obj[400]['properties[3]']['name'], prefix, scoringLimit) RETURN d", &ctx);
+    assertFilterExecutionFail("LET scoringLimit='ab' LET prefix=false FOR d IN VIEW myView FILTER starts_with(d.obj[400]['properties[3]'].name, prefix, scoringLimit) RETURN d", &ctx);
+    assertFilterExecutionFail("LET scoringLimit='ab' LET prefix=false FOR d IN VIEW myView FILTER starts_with(d.obj[400].properties[3].name, prefix, scoringLimit) RETURN d", &ctx);
   }
 
   // wrong number of arguments
@@ -4736,12 +4829,14 @@ SECTION("StartsWith") {
   assertFilterFail("FOR d IN VIEW myView FILTER starts_with(d.name, true) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER starts_with(d.name, false) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER starts_with(d.name, null) RETURN d");
+  assertFilterExecutionFail("FOR d IN VIEW myView FILTER starts_with(d.name, d) RETURN d", &ExpressionContextMock::EMPTY);
 
   // invalid scoring limit
   assertFilterFail("FOR d IN VIEW myView FILTER starts_with(d.name, 'abc', '1024') RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER starts_with(d.name, 'abc', true) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER starts_with(d.name, 'abc', false) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER starts_with(d.name, 'abc', null) RETURN d");
+  assertFilterExecutionFail("FOR d IN VIEW myView FILTER starts_with(d.name, 'abc', d) RETURN d", &ExpressionContextMock::EMPTY);
 }
 
 }
