@@ -26,7 +26,7 @@ PORTTRAP="./Installation/Pipeline/port.sh --clean $PORT01 ;"
 
 trap "$PORTTRAP" EXIT
 
-test -d resilinece || exit 1
+test -d resilience || exit 1
 
 (
     cd resilience
