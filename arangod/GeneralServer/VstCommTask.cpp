@@ -98,11 +98,18 @@ VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
       ->vstMaxSize();
 }
 
-void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
-  _lock.assertLockedByCurrentThread();
+void VstCommTask::addResponse(GeneralResponse* baseResponse,
+                              RequestStatistics* stat) {
+    _lock.assertLockedByCurrentThread();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    VstResponse* response = dynamic_cast<VstResponse*>(baseResponse);
+    TRI_ASSERT(response != nullptr);
+#else
+    VstResponse* response = static_cast<VstResponse*>(baseResponse);
+#endif
 
   VPackMessageNoOwnBuffer response_message = response->prepareForNetwork();
-  uint64_t const id = response_message._id;
+  uint64_t const mid = response_message._id;
 
   std::vector<VPackSlice> slices;
 
@@ -112,7 +119,7 @@ void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
 
     for (auto& payload : response_message._payloads) {
       LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-result\",\""
-                                         << (void*)this << "/" << id << "\","
+                                         << (void*)this << "/" << mid << "\","
                                          << payload.toJson() << "\"";
 
       slices.push_back(payload);
@@ -123,7 +130,7 @@ void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
   }
 
   // set some sensible maxchunk size and compression
-  auto buffers = createChunkForNetwork(slices, id, _maxChunkSize,
+  auto buffers = createChunkForNetwork(slices, mid, _maxChunkSize,
                                        _protocolVersion);
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
 
@@ -146,11 +153,9 @@ void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
 
     for (auto&& buffer : buffers) {
       if (c == n) {
-        WriteBuffer b(buffer.release(), stat);
-        addWriteBuffer(b);
+        addWriteBuffer(WriteBuffer(buffer.release(), stat));
       } else {
-        WriteBuffer b(buffer.release(), nullptr);
-        addWriteBuffer(b);
+        addWriteBuffer(WriteBuffer(buffer.release(), nullptr));
       }
 
       ++c;
@@ -159,7 +164,7 @@ void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
 
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
-      << "\"vst-request-end\",\"" << (void*)this << "/" << id << "\",\""
+      << "\"vst-request-end\",\"" << (void*)this << "/" << mid << "\",\""
       << _connectionInfo.clientAddress << "\",\""
       << VstRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response->responseCode()) << ","
@@ -450,10 +455,11 @@ void VstCommTask::handleSimpleError(rest::ResponseCode responseCode,
                                     int errorNum,
                                     std::string const& errorMessage,
                                     uint64_t messageId) {
-  VstResponse response(responseCode, messageId);
-  response.setContentType(req.contentTypeResponse());
+  VstResponse resp(responseCode, messageId);
+  resp.setContentType(req.contentTypeResponse());
 
-  VPackBuilder builder;
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
   builder.openObject();
   builder.add(StaticStrings::Error, VPackValue(true));
   builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
@@ -462,8 +468,8 @@ void VstCommTask::handleSimpleError(rest::ResponseCode responseCode,
   builder.close();
 
   try {
-    response.setPayload(builder.slice(), true, VPackOptions::Defaults);
-    processResponse(&response);
+    resp.setPayload(std::move(buffer), true, VPackOptions::Defaults);
+    addResponse(&resp, nullptr);
   } catch (...) {
     closeStream();
   }

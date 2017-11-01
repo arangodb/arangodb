@@ -61,7 +61,12 @@ class Syncer {
     TRI_voc_tick_t _lastLogTick;
     bool _active;
 
-    MasterInfo() : _majorVersion(0), _minorVersion(0), _lastLogTick(0), _active(false) {}
+    MasterInfo() 
+        : _serverId(0),
+          _majorVersion(0), 
+          _minorVersion(0), 
+          _lastLogTick(0), 
+          _active(false) {}
   };
   
   Syncer(Syncer const&) = delete;

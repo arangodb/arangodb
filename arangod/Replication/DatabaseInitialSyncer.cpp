@@ -166,8 +166,8 @@ bool DatabaseInitialSyncer::checkAborted() {
   if (application_features::ApplicationServer::isStopping() ||
       (vocbase()->replicationApplier() != nullptr &&
        vocbase()->replicationApplier()->stopInitialSynchronization())) {
-        return true;
-      }
+    return true;
+  }
   return false;
 }
 
@@ -214,7 +214,7 @@ Result DatabaseInitialSyncer::applyCollectionDump(transaction::Methods& trx,
                                                   SimpleHttpResult* response,
                                                   uint64_t& markersProcessed) {
   std::string const invalidMsg =
-      "received invalid JSON data for collection " + collectionName;
+      "received invalid dump data for collection '" + collectionName + "'";
 
   StringBuffer& data = response->getBody();
   char const* p = data.begin();
@@ -244,7 +244,6 @@ Result DatabaseInitialSyncer::applyCollectionDump(transaction::Methods& trx,
       VPackParser parser(builder);
       parser.parse(p, static_cast<size_t>(q - p));
     } catch (velocypack::Exception const& e) {
-      // TODO: improve error reporting
       LOG_TOPIC(ERR, Logger::REPLICATION) << "while parsing collection dump: " << e.what();
       return Result(e.errorCode(), e.what());
     }
@@ -900,8 +899,6 @@ Result DatabaseInitialSyncer::handleCollection(VPackSlice const& parameters,
     }
 
     Result res;
-
-    READ_LOCKER(readLocker, vocbase()->_inventoryLock);
 
     if (incremental && getSize(col) > 0) {
       res = handleCollectionSync(col, StringUtils::itoa(masterCid), masterName, _masterInfo._lastLogTick);

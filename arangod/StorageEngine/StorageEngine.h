@@ -150,9 +150,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   // if not stated other wise functions may throw and the caller has to take care of error handling
   // the return values will be the usual  TRI_ERROR_* codes.
 
-  // TODO add pre / post conditions for functions
-
-  virtual void waitForSync(double maxWait) = 0;
+  virtual void waitForSyncTick(TRI_voc_tick_t tick) = 0;
+  
+  virtual void waitForSyncTimeout(double maxWait) = 0;
 
   //// operations on databasea
 

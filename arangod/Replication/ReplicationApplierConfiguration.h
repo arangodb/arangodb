@@ -34,7 +34,6 @@ class Slice;
 
 /// @brief struct containing a replication apply configuration
 class ReplicationApplierConfiguration {
-  // leftover from struct
  public:
   std::string _endpoint;
   std::string _database;
@@ -48,8 +47,8 @@ class ReplicationApplierConfiguration {
   uint64_t _lockTimeoutRetries;
   uint64_t _chunkSize;
   uint64_t _connectionRetryWaitTime;
-  uint64_t _idleMinWaitTime;  // 500 * 1000
-  uint64_t _idleMaxWaitTime;  // 5 * 500 * 1000
+  uint64_t _idleMinWaitTime; 
+  uint64_t _idleMaxWaitTime;
   uint64_t _initialSyncMaxWaitTime;
   uint64_t _autoResyncRetries;
   uint32_t _sslProtocol;
@@ -66,10 +65,13 @@ class ReplicationApplierConfiguration {
 
  public:
   ReplicationApplierConfiguration();
-  ~ReplicationApplierConfiguration() {}
+  ~ReplicationApplierConfiguration() = default;
 
   ReplicationApplierConfiguration(ReplicationApplierConfiguration const&) = default;
   ReplicationApplierConfiguration& operator=(ReplicationApplierConfiguration const&) = default;
+  
+  ReplicationApplierConfiguration(ReplicationApplierConfiguration&&) = default;
+  ReplicationApplierConfiguration& operator=(ReplicationApplierConfiguration&&) = default;
 
   /// @brief reset the configuration to defaults
   void reset();

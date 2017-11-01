@@ -54,8 +54,8 @@ int TRI_FlushMMFile(int fileDescriptor, void* startingAddress,
   // now - this may change.
   // ...........................................................................
 
-  if (fileDescriptor <
-      0) {  // an invalid file descriptor of course means an invalid handle
+  if (fileDescriptor < 0) {
+    // an invalid file descriptor of course means an invalid handle
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -83,7 +83,7 @@ int TRI_FlushMMFile(int fileDescriptor, void* startingAddress,
     return TRI_ERROR_NO_ERROR;
   }
 
-  return TRI_ERROR_SYS_ERROR;
+  return TRI_ERROR_ARANGO_MSYNC_FAILED;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

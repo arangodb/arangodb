@@ -169,7 +169,7 @@ void GeneralCommTask::executeRequest(
         response->setHeaderNC(StaticStrings::AsyncId, StringUtils::itoa(jobId));
       }
 
-      processResponse(response.get());
+      addResponse(response.get(), nullptr);
       return;
     } else {
       handleSimpleError(rest::ResponseCode::SERVER_ERROR, *request, TRI_ERROR_QUEUE_FULL,
@@ -180,23 +180,11 @@ void GeneralCommTask::executeRequest(
   // synchronous request
   else {
     transferStatisticsTo(messageId, handler.get());
-    ok = handleRequest(std::move(handler));
+    ok = handleRequestSync(std::move(handler));
   }
 
   if (!ok) {
     handleSimpleError(rest::ResponseCode::SERVER_ERROR, *request, messageId);
-  }
-}
-
-void GeneralCommTask::processResponse(GeneralResponse* response) {
-  _lock.assertLockedByCurrentThread();
-  
-  if (response == nullptr) {
-    LOG_TOPIC(WARN, Logger::COMMUNICATION)
-        << "processResponse received a nullptr, closing connection";
-    closeStreamNoLock();
-  } else {
-    addResponse(response, nullptr);
   }
 }
 
@@ -242,7 +230,7 @@ void GeneralCommTask::transferStatisticsTo(uint64_t id, RestHandler* handler) {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
+bool GeneralCommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
   bool isDirect = false;
   bool isPrio = false;
 
@@ -286,14 +274,15 @@ bool GeneralCommTask::handleRequest(std::shared_ptr<RestHandler> handler) {
   std::unique_ptr<Job> job(
       new Job(_server, std::move(handler),
               [self, this](std::shared_ptr<RestHandler> h) {
-                handleRequestDirectly(basics::ConditionalLocking::DoLock, h);
+                handleRequestDirectly(basics::ConditionalLocking::DoLock, std::move(h));
               }));
 
   bool ok = SchedulerFeature::SCHEDULER->queue(std::move(job));
 
   if (!ok) {
     
-    handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE, *(handler->request()), TRI_ERROR_QUEUE_FULL,
+    handleSimpleError(rest::ResponseCode::SERVICE_UNAVAILABLE,
+                      *(handler->request()), TRI_ERROR_QUEUE_FULL,
                       TRI_errno_string(TRI_ERROR_QUEUE_FULL), messageId);
   }
 
@@ -393,7 +382,6 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
     if (ci.endpointType == Endpoint::DomainType::UNIX &&
         !_authentication->authenticationUnixSockets()) {
       // no authentication required for unix domain socket connections
-      //forceOpen = true;
       result = rest::ResponseCode::OK;
     }
 #endif
@@ -417,13 +405,16 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
     if (result != rest::ResponseCode::OK) {
       if (path == "/" ||
           StringUtils::isPrefix(path, Open) ||
-          StringUtils::isPrefix(path, AdminAardvark) ||
-          StringUtils::isPrefix(path, ApiUser + username + '/')) {
+          StringUtils::isPrefix(path, AdminAardvark)) {
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
-        //forceOpen = true;
         vc->upgradeSuperuser();
+      } else if (StringUtils::isPrefix(path, ApiUser + username + '/')) {
+        // simon: unauthorized users should be able to call
+        // `/_api/users/<name>` to check their passwords
+        result = rest::ResponseCode::OK;
+        vc->upgradeReadOnly();
       }
     }
   }

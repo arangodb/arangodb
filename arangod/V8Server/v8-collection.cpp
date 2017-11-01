@@ -250,7 +250,7 @@ static int V8ToVPackNoKeyRevId (v8::Isolate* isolate,
 /// @brief get all cluster collections
 ////////////////////////////////////////////////////////////////////////////////
 
-static std::vector<LogicalCollection*> GetCollectionsCluster(
+std::vector<LogicalCollection*> GetCollectionsCluster(
     TRI_vocbase_t* vocbase) {
   std::vector<LogicalCollection*> result;
 
@@ -2110,7 +2110,6 @@ static void JS_PregelStart(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (ss->isRunningInCluster() && !ss->isCoordinator()) {
     TRI_V8_THROW_EXCEPTION_USAGE("Only call on coordinator or in single server mode");
   }
-
 
   // check the arguments
   uint32_t const argLength = args.Length();
