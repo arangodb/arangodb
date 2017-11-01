@@ -1347,7 +1347,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
                      arangodb::rest::RequestType::PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/collection/" + p.first + "/truncate",
-                     std::shared_ptr<std::string>(), headers, nullptr, 60.0);
+                     std::shared_ptr<std::string>(), headers, nullptr, 600.0);
   }
   // Now listen to the results:
   unsigned int count;
@@ -2604,8 +2604,8 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   col->setShardMap(shards);
 
   std::unordered_set<std::string> const ignoreKeys{
-      "allowUserKeys", "cid", /* cid really ignore?*/
-      "count",         "planId", "version", "objectId",
+      "allowUserKeys", "cid", "globallyUniqueId",
+      "count", "planId", "version", "objectId"
   };
   col->setStatus(TRI_VOC_COL_STATUS_LOADED);
   VPackBuilder velocy = col->toVelocyPackIgnore(ignoreKeys, false, false);

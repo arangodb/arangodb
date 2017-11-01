@@ -1,8 +1,37 @@
 devel
 -----
 
-* fix potential overflow in CRC marker check when a corrupted CRC marker 
-  is found at the very beginning of an MMFiles datafile
+* enable JEMalloc background thread for purging and returning unused memory
+  back to the operating system (Linux only)
+
+* incremental transfer of initial collection data now can handle partial 
+  responses for a chunk, allowing the leader/master to send smaller chunks 
+  (in terms of HTTP response size) and limit memory usage
+
+* initial creation of shards for cluster collections is now faster with
+  replicationFactor values bigger than 1. this is achieved by an optimization
+  for the case when the collection on the leader is still empty
+
+* potential fix for issue #3517: several "filesystem full" errors in logs 
+  while there's a lot of disk space
+
+* added C++ implementations for AQL function `SUBSTRING()`, `LEFT()`, `RIGHT()` and `TRIM()`
+
+* make AQL `DISTINCT` not change the order of the results it is applied on
+
+* show C++ function name of call site in ArangoDB log output
+
+  This requires option `--log.line-number` to be set to *true*
+
+* UI: added word wrapping to query editor
+
+* UI: fixed wrong user attribute name validation, issue #3228
+
+* make AQL return a proper error message in case of a unique key constraint
+  violation. previously it only returned the generic "unique constraint violated"
+  error message but omitted the details about which index caused the problem.
+
+  This addresses https://stackoverflow.com/questions/46427126/arangodb-3-2-unique-constraint-violation-id-or-key
 
 * added option `--server.local-authentication`
 
@@ -26,15 +55,98 @@ devel
 
 * added `--rocksdb.encryption-key-generator` for enterprise
 
-* Add statistics about the V8 context counts and number of available/active/busy
- threads we expose through the server statistics interface.
+* removed `--compat28` parameter from arangodump and replication API
+  
+  old Arango versions will no longer be supported by these tools.
 
 * increase the recommended value for `/proc/sys/vm/max_map_count` to a value
   eight times as high as the previous recommended value. Increasing the
   values helps to prevent an ArangoDB server from running out of memory mappings.
 
+  The raised minimum recommended value may lead to ArangoDB showing some startup
+  warnings as follows:
 
-v3.2.4 (2017-XX-XX)
+      WARNING {memory} maximum number of memory mappings per process is 65530, which seems too low. it is recommended to set it to at least 512000
+      WARNING {memory} execute 'sudo sysctl -w "vm.max_map_count=512000"'
+
+
+v3.2.7 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #3549: server reading ENGINE config file fails on common standard 
+  newline character
+
+* upgraded bundled V8 engine to bugfix version v5.7.492.77
+
+  the upgrade fixes a memory leak in upstream V8 described in 
+  https://bugs.chromium.org/p/v8/issues/detail?id=5945 that will result in memory
+  chunks only getting uncommitted but not unmapped
+
+* UI: fixed error notifications for collection modifications
+
+
+v3.2.6 (2017-10-26)
+-------------------
+
+* UI: fixed event cleanup in cluster shards view
+
+* UI: reduced cluster dashboard api calls
+
+* fixed a permission problem that prevented collection contents to be displayed
+  in the web interface
+
+* removed posix_fadvise call from RocksDB's PosixSequentialFile::Read(). This is 
+  consistent with Facebook PR 2573 (#3505)
+
+  this fix should improve the performance of the replication with the RocksDB
+  storage engine
+
+* allow changing of collection replication factor for existing collections
+
+* UI: replicationFactor of a collection is now changeable in a cluster
+  environment
+
+* several fixes for the cluster agency
+
+* fixed undefined behavior in the RocksDB-based geo index
+
+* fixed Foxxmaster failover
+
+* purging or removing the Debian/Ubuntu arangodb3 packages now properly stops
+  the arangod instance before actuallying purging or removing
+
+
+v3.2.5 (2017-10-16)
+-------------------
+
+* general-graph module and _api/gharial now accept cluster options
+  for collection creation. It is now possible to set replicationFactor and
+  numberOfShards for all collections created via this graph object.
+  So adding a new collection will not result in a singleShard and
+  no replication anymore.
+
+* fixed issue #3408: Hard crash in query for pagination
+
+* minimum number of V8 contexts in console mode must be 2, not 1. this is
+  required to ensure the console gets one dedicated V8 context and all other
+  operations have at least one extra context. This requirement was not enforced
+  anymore.
+
+* fixed issue #3395: AQL: cannot instantiate CollectBlock with undetermined 
+  aggregation method
+
+* UI: fixed wrong user attribute name validation, issue #3228
+
+* fix potential overflow in CRC marker check when a corrupted CRC marker 
+  is found at the very beginning of an MMFiles datafile
+
+* UI: fixed unresponsive events in cluster shards view
+
+* Add statistics about the V8 context counts and number of available/active/busy
+  threads we expose through the server statistics interface.
+
+
+v3.2.4 (2017-09-26)
 -------------------
 
 * UI: no default index selected during index creation

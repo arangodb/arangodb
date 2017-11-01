@@ -54,7 +54,7 @@ class RocksDBReplicationManager {
   /// there are active contexts
   //////////////////////////////////////////////////////////////////////////////
 
-  RocksDBReplicationContext* createContext();
+  RocksDBReplicationContext* createContext(double ttl);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a context by id
@@ -109,6 +109,13 @@ class RocksDBReplicationManager {
   //////////////////////////////////////////////////////////////////////////////
 
   bool garbageCollect(bool);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief tell the replication manager that a shutdown is in progress
+  /// effectively this will block the creation of new contexts
+  //////////////////////////////////////////////////////////////////////////////
+    
+  void beginShutdown();
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -123,19 +130,26 @@ class RocksDBReplicationManager {
 
   std::unordered_map<RocksDBReplicationId, RocksDBReplicationContext*>
       _contexts;
-
+  
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief maximum number of contexts to garbage-collect in one go
+  /// @brief whether or not a shutdown is in progress
   //////////////////////////////////////////////////////////////////////////////
 
-  static size_t const MaxCollectCount;
+  bool _isShuttingDown;
 };
 
 class RocksDBReplicationContextGuard {
  public:
-  RocksDBReplicationContextGuard(RocksDBReplicationManager*,
-                                 RocksDBReplicationContext*);
-  ~RocksDBReplicationContextGuard();
+  
+  RocksDBReplicationContextGuard(RocksDBReplicationManager* manager,
+                                 RocksDBReplicationContext* ctx)
+    : _manager(manager), _ctx(ctx) {}
+  
+  ~RocksDBReplicationContextGuard()  {
+    if (_ctx != nullptr) {
+      _manager->release(_ctx);
+    }
+  }
 
  private:
   RocksDBReplicationManager* _manager;

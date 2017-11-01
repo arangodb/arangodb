@@ -99,9 +99,9 @@ class v8_action_t final : public TRI_action_t {
     }
   }
 
-  TRI_action_result_t execute(TRI_vocbase_t* vocbase, GeneralRequest* request,
-                              GeneralResponse* response, Mutex* dataLock,
-                              void** data) override {
+  TRI_action_result_t execute(TRI_vocbase_t* vocbase,
+                              GeneralRequest* request, GeneralResponse* response,
+                              Mutex* dataLock, void** data) override {
     TRI_action_result_t result;
 
     // allow use datase execution in rest calls
@@ -123,8 +123,8 @@ class v8_action_t final : public TRI_action_t {
     }
 
     // get a V8 context
-    V8Context* context = V8DealerFeature::DEALER->enterContext(
-        vocbase, allowUseDatabaseInRestActions, forceContext);
+    V8Context* context = V8DealerFeature::DEALER->enterContext(vocbase,
+                            allowUseDatabaseInRestActions, forceContext);
 
     // note: the context might be nullptr in case of shut-down
     if (context == nullptr) {
@@ -663,9 +663,13 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
                      request->contentTypeResponse() == rest::ContentType::VPACK) {
             // use velocypack
             try {
-              std::shared_ptr<VPackBuilder> builder = VPackParser::fromJson(TRI_ObjectToString(res->Get(BodyKey))); 
+              std::string json = TRI_ObjectToString(res->Get(BodyKey));
+              VPackBuffer<uint8_t> buffer;
+              VPackBuilder builder(buffer);
+              VPackParser parser(builder);
+              parser.parse(json);
               httpResponse->setContentType(rest::ContentType::VPACK);
-              httpResponse->setPayload(builder->slice(), true);
+              httpResponse->setPayload(std::move(buffer), true);
             } catch (...) {
               httpResponse->body().appendText(
                   TRI_ObjectToString(res->Get(BodyKey)));
@@ -679,7 +683,8 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
       } break;
 
       case Endpoint::TransportType::VST: {
-        VPackBuilder builder;
+        VPackBuffer<uint8_t> buffer;
+        VPackBuilder builder(buffer);
 
         v8::Handle<v8::Value> v8Body = res->Get(BodyKey);
         std::string out;
@@ -750,7 +755,7 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
         }
 
         response->setContentType(rest::ContentType::VPACK);
-        response->setPayload(builder.slice(), true);
+        response->setPayload(std::move(buffer), true);
         break;
       }
 
@@ -782,14 +787,15 @@ static void ResponseV8ToCpp(v8::Isolate* isolate, TRI_v8_global_t const* v8g,
       } break;
 
       case Endpoint::TransportType::VST: {
-        VPackBuilder builder;
+        VPackBuffer<uint8_t> buffer;
+        VPackBuilder builder(buffer);
         builder.add(
             VPackValuePair(reinterpret_cast<uint8_t const*>(content), length));
         TRI_FreeString(content);
 
         // create vpack from file
         response->setContentType(rest::ContentType::VPACK);
-        response->setPayload(builder.slice(), true);
+        response->setPayload(std::move(buffer), true);
       } break;
 
       default:

@@ -37,7 +37,7 @@
 #include <velocypack/Slice.h>
 
 namespace arangodb {
-
+class DatabaseInitialSyncer;
 class LogicalCollection;
 class LogicalView;
 class PhysicalCollection;
@@ -46,7 +46,7 @@ class Result;
 class TransactionCollection;
 class TransactionManager;
 class TransactionState;
-class InitialSyncer;
+class WalAccess;
 
 namespace rest {
 class RestHandlerFactory;
@@ -81,7 +81,7 @@ class StorageEngine : public application_features::ApplicationFeature {
     startsAfter("FileDescriptors");
     startsAfter("Temp");
     startsAfter("TransactionManager");
-
+    
     startsBefore("StorageEngine"); // this is the StorageEngineFeature
   }
 
@@ -90,7 +90,8 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual TransactionManager* createTransactionManager() = 0;
   virtual transaction::ContextData* createTransactionContextData() = 0;
   virtual TransactionState* createTransactionState(TRI_vocbase_t*, transaction::Options const&) = 0;
-  virtual TransactionCollection* createTransactionCollection(TransactionState*, TRI_voc_cid_t, AccessMode::Type, int nestingLevel) = 0;
+  virtual TransactionCollection* createTransactionCollection(TransactionState*, TRI_voc_cid_t,
+                                                             AccessMode::Type, int nestingLevel) = 0;
 
   // when a new collection is created, this method is called to augment the collection
   // creation data with engine-specific information
@@ -149,11 +150,9 @@ class StorageEngine : public application_features::ApplicationFeature {
   // if not stated other wise functions may throw and the caller has to take care of error handling
   // the return values will be the usual  TRI_ERROR_* codes.
 
-  // TODO add pre / post conditions for functions
-
-  using CollectionView = LogicalCollection;
-    
-  virtual void waitForSync(TRI_voc_tick_t tick) = 0;
+  virtual void waitForSyncTick(TRI_voc_tick_t tick) = 0;
+  
+  virtual void waitForSyncTimeout(double maxWait) = 0;
 
   //// operations on databasea
 
@@ -349,36 +348,45 @@ class StorageEngine : public application_features::ApplicationFeature {
   virtual void addRestHandlers(rest::RestHandlerFactory*) {}
 
   // replication
-  virtual std::shared_ptr<arangodb::velocypack::Builder> getReplicationApplierConfiguration(TRI_vocbase_t*, int& status) = 0;
-  virtual int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) = 0;
-  virtual int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase, arangodb::velocypack::Slice slice, bool doSync) = 0; 
+  virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t*, int&) = 0;
+  virtual arangodb::velocypack::Builder getReplicationApplierConfiguration(int&) = 0;
 
-  virtual int handleSyncKeys(arangodb::InitialSyncer& syncer,
-                          arangodb::LogicalCollection* col,
-                          std::string const& keysId,
-                          std::string const& cid,
-                          std::string const& collectionName,
-                          TRI_voc_tick_t maxTick,
-                          std::string& errorMsg) = 0;
-  virtual Result createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder) = 0;
-  virtual Result createTickRanges(VPackBuilder& builder) = 0;
+  virtual int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) = 0;
+  virtual int removeReplicationApplierConfiguration() = 0;
+
+  virtual int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
+                                                  velocypack::Slice slice,
+                                                  bool doSync) = 0;
+  virtual int saveReplicationApplierConfiguration(velocypack::Slice slice,
+                                                  bool doSync) = 0;
+
+  virtual Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
+                                arangodb::LogicalCollection* col,
+                                std::string const& keysId,
+                                std::string const& cid,
+                                std::string const& collectionName,
+                                TRI_voc_tick_t maxTick) = 0;
+  virtual Result createLoggerState(TRI_vocbase_t* vocbase,
+                                   velocypack::Builder& builder) = 0;
+  virtual Result createTickRanges(velocypack::Builder& builder) = 0;
   virtual Result firstTick(uint64_t& tick) = 0;
   virtual Result lastLogger(TRI_vocbase_t* vocbase
                            ,std::shared_ptr<transaction::Context>
                            ,uint64_t tickStart, uint64_t tickEnd
-                           ,std::shared_ptr<VPackBuilder>& builderSPtr) = 0;
+                           ,std::shared_ptr<velocypack::Builder>& builderSPtr) = 0;
+  virtual WalAccess const* walAccess() const = 0;
 
   virtual bool useRawDocumentPointers() = 0;
 
-  void getCapabilities(VPackBuilder& builder) const {
+  void getCapabilities(velocypack::Builder& builder) const {
     builder.openObject();
-    builder.add("name", VPackValue(typeName()));
-    builder.add("supports", VPackValue(VPackValueType::Object));
-    builder.add("dfdb", VPackValue(supportsDfdb()));
-    builder.add("indexes", VPackValue(VPackValueType::Array));
+    builder.add("name", velocypack::Value(typeName()));
+    builder.add("supports", velocypack::Value(VPackValueType::Object));
+    builder.add("dfdb", velocypack::Value(supportsDfdb()));
+    builder.add("indexes", velocypack::Value(VPackValueType::Array));
 
     for (auto const& it : indexFactory()->supportedIndexes()) {
-      builder.add(VPackValue(it));
+      builder.add(velocypack::Value(it));
     }
 
     builder.close(); // indexes

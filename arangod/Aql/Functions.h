@@ -137,6 +137,18 @@ struct Functions {
    static AqlValue Upper(arangodb::aql::Query*,
                               transaction::Methods*,
                               VPackFunctionParameters const&);
+   static AqlValue Substring(arangodb::aql::Query*,
+                              transaction::Methods*,
+                              VPackFunctionParameters const&);
+   static AqlValue Left(arangodb::aql::Query*,
+                         transaction::Methods*,
+                         VPackFunctionParameters const&);
+   static AqlValue Right(arangodb::aql::Query*,
+                         transaction::Methods*,
+                         VPackFunctionParameters const&);
+   static AqlValue Trim(arangodb::aql::Query*,
+                        transaction::Methods*,
+                        VPackFunctionParameters const&);
    static AqlValue Like(arangodb::aql::Query*, transaction::Methods*,
                         VPackFunctionParameters const&);
    static AqlValue RegexTest(arangodb::aql::Query*, transaction::Methods*,
@@ -169,8 +181,10 @@ struct Functions {
                        VPackFunctionParameters const&);
    static AqlValue Average(arangodb::aql::Query*, transaction::Methods*,
                            VPackFunctionParameters const&);
-    static AqlValue Sleep(arangodb::aql::Query*, transaction::Methods*,
+   static AqlValue Sleep(arangodb::aql::Query*, transaction::Methods*,
                           VPackFunctionParameters const&);
+   static AqlValue Collections(arangodb::aql::Query*, transaction::Methods*,
+                               VPackFunctionParameters const&);
    static AqlValue RandomToken(arangodb::aql::Query*, transaction::Methods*,
                                VPackFunctionParameters const&);
    static AqlValue Md5(arangodb::aql::Query*, transaction::Methods*,
@@ -210,6 +224,8 @@ struct Functions {
                          VPackFunctionParameters const&);
    static AqlValue Document(arangodb::aql::Query*, transaction::Methods*,
                             VPackFunctionParameters const&);
+   static AqlValue Matches(arangodb::aql::Query*, transaction::Methods*,
+                           VPackFunctionParameters const&);
    static AqlValue Round(arangodb::aql::Query*, transaction::Methods*,
                          VPackFunctionParameters const&);
    static AqlValue Abs(arangodb::aql::Query*, transaction::Methods*,

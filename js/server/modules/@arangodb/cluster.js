@@ -218,10 +218,22 @@ function addShardFollower (endpoint, database, shard, lockJobId) {
   var url = endpointToURL(endpoint) + '/_db/' + database +
     '/_api/replication/addFollower';
   let db = require('internal').db;
-  var body = {followerId: ArangoServerState.id(), shard, checksum: db._collection(shard).count() + '', readLockId: lockJobId};
+  var body;
+  if (lockJobId === undefined) {
+    body = {followerId: ArangoServerState.id(), shard,
+            checksum: db._collection(shard).count() + ''};
+  } else {
+    body = {followerId: ArangoServerState.id(), shard, 
+            checksum: db._collection(shard).count() + '',
+            readLockId: lockJobId};
+  }
   var r = request({url, body: JSON.stringify(body), method: 'PUT'});
   if (r.status !== 200) {
-    console.topic('heartbeat=error', "addShardFollower: could not add us to the leader's follower list.", r);
+    if (lockJobId !== undefined) {
+      console.topic('heartbeat=error', "addShardFollower: could not add us to the leader's follower list.", r);
+    } else {
+      console.topic('heartbeat=debug', "addShardFollower: could not add us to the leader's follower list with shortcut.", r);
+    }
     return false;
   }
   return true;
@@ -518,7 +530,7 @@ function synchronizeOneShard (database, shard, planId, leader) {
     }
     console.topic('heartbeat=debug', 'synchronizeOneShard: waiting for leader, %s/%s, %s/%s',
       database, shard, database, planId);
-    wait(1.0);
+    wait(0.2);
   }
 
   // Once we get here, we know that the leader is ready for sync, so
@@ -526,9 +538,25 @@ function synchronizeOneShard (database, shard, planId, leader) {
   var ok = false;
   const rep = require('@arangodb/replication');
 
+  var ep = ArangoClusterInfo.getServerEndpoint(leader);
+
+  if (require("internal").db._collection(shard).count() === 0) {
+    // We try a short cut:
+    console.topic('heartbeat=debug', "synchronizeOneShard: trying short cut to synchronize local shard '%s/%s' for central '%s/%s'", database, shard, database, planId);
+    try {
+      let ok = addShardFollower(ep, database, shard);
+      if (ok) {
+        terminateAndStartOther();
+        let endTime = new Date();
+        console.topic('heartbeat=debug', 'synchronizeOneShard: shortcut worked, done, %s/%s, %s/%s, started: %s, ended: %s',
+          database, shard, database, planId, startTime.toString(), endTime.toString());
+        return;
+      }
+    } catch (dummy) { }
+  }
+
   console.topic('heartbeat=debug', "synchronizeOneShard: trying to synchronize local shard '%s/%s' for central '%s/%s'", database, shard, database, planId);
   try {
-    var ep = ArangoClusterInfo.getServerEndpoint(leader);
     // First once without a read transaction:
     var sy;
     if (isStopping()) {
@@ -545,11 +573,11 @@ function synchronizeOneShard (database, shard, planId, leader) {
     let startTime = new Date();
     sy = rep.syncCollection(shard,
       { endpoint: ep, incremental: true, keepBarrier: true,
-        useCollectionId: false, leaderId: leader, skipCreateDrop: true });
+        leaderId: leader, skipCreateDrop: true });
     let endTime = new Date();
     let longSync = false;
     if (endTime - startTime > 5000) {
-      console.topic('heartbeat=error', 'synchronizeOneShard: long call to syncCollection for shard', shard, JSON.stringify(sy), "start time: ", startTime.toString(), "end time: ", endTime.toString());
+      console.topic('heartbeat=warn', 'synchronizeOneShard: long call to syncCollection for shard', shard, JSON.stringify(sy), "start time: ", startTime.toString(), "end time: ", endTime.toString());
       longSync = true;
     }
     if (sy.error) {
@@ -800,6 +828,15 @@ function executePlanForCollections(plannedCollections) {
                 let save = {id: collectionInfo.id, name: collectionInfo.name};
                 delete collectionInfo.id;     // must not
                 delete collectionInfo.name;
+                if (collectionInfo.hasOwnProperty('globallyUniqueId')) {
+                  console.warn('unexpected globallyUniqueId in %s',
+                    JSON.stringify(collectionInfo));
+                }
+                delete collectionInfo.globallyUniqueId;
+                if (collectionInfo.hasOwnProperty('objectId')) {
+                  console.warn('unexpected objectId in %s', JSON.stringify(collectionInfo));
+                }
+                delete collectionInfo.objectId;
                 try {
                   if (collectionInfo.type === ArangoCollection.TYPE_EDGE) {
                     db._createEdgeCollection(shardName, collectionInfo);
@@ -1167,7 +1204,7 @@ function updateCurrentForCollections(localErrors, plannedCollections,
                 if (currentCollections[database][collection].hasOwnProperty(shard)) {
                   let cur = currentCollections[database][collection][shard];
                   if (!localCollections.hasOwnProperty(shard) &&
-                      cur.servers[0] === ourselves &&
+                      cur.servers && cur.servers[0] === ourselves &&
                       !shardMap.hasOwnProperty(shard)) {
                     Object.assign(trx, makeDropCurrentEntryCollection(database, collection, shard));
                   }
@@ -1371,6 +1408,7 @@ function executePlanForDatabases(plannedDatabases) {
       console.topic('heartbeat=debug', "dropping local database '%s'", name);
 
       // Do we have to stop a replication applier first?
+      // Note that the secondary role no longer exists outside the schmutz -Simon 
       if (ArangoServerState.role() === 'SECONDARY') {
         try {
           db._useDatabase(name);
@@ -1492,8 +1530,7 @@ function migrateAnyServer(plan, current) {
 // /////////////////////////////////////////////////////////////////////////////
 // / @brief make sure that replication is set up for all databases
 // /////////////////////////////////////////////////////////////////////////////
-
-function setupReplication () {
+function setupReplication () {// simon: is not used currently
   console.topic('heartbeat=debug', 'Setting up replication...');
 
   var db = require('internal').db;
@@ -1533,6 +1570,7 @@ function setupReplication () {
 
 // /////////////////////////////////////////////////////////////////////////////
 // / @brief role change from secondary to primary
+// / Note that the secondary role no longer exists outside the schmutz -Simon 
 // /////////////////////////////////////////////////////////////////////////////
 
 function secondaryToPrimary () {
@@ -1568,6 +1606,7 @@ function secondaryToPrimary () {
 // /////////////////////////////////////////////////////////////////////////////
 
 function primaryToSecondary () {
+  // Note that the secondary role no longer exists outside the schmutz -Simon 
   console.topic('heartbeat=info', 'Switching role from primary to secondary...');
 }
 
@@ -1587,7 +1626,8 @@ function handleChanges (plan, current) {
       // Ooops! We do not seem to be a primary any more!
       changed = ArangoServerState.redetermineRole();
     }
-  } else { // role === "SECONDARY"
+  } /*else { // role === "SECONDARY"
+    // Note that the secondary role no longer exists outside the schmutz -Simon 
     if (plan.DBServers[myId]) {
       changed = ArangoServerState.redetermineRole();
       if (!changed) {
@@ -1603,16 +1643,17 @@ function handleChanges (plan, current) {
           break;
         }
       }
-      if (found !== ArangoServerState.idOfPrimary()) {
+      if (found !== ArangoServerState.idOfPrimary()) { // this is always "" now
         // Note this includes the case that we are not found at all!
         changed = ArangoServerState.redetermineRole();
       }
     }
-  }
+  }*/
   var oldRole = role;
   if (changed) {
     role = ArangoServerState.role();
     console.topic('heartbeat=info', 'Our role has changed to ' + role);
+    // Note that the secondary role no longer exists outside the schmutz -Simon 
     if (oldRole === 'SECONDARY' && role === 'PRIMARY') {
       secondaryToPrimary();
     } else if (oldRole === 'PRIMARY' && role === 'SECONDARY') {

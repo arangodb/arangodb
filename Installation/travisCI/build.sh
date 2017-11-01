@@ -19,7 +19,7 @@ echo "CXX: $CXX"
 echo
 echo "$0: compiling ArangoDB"
 
-(cd build && make -j6)
+(cd build && make -j8)
 
 echo
 echo "$0: done"

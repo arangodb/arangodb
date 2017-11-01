@@ -45,7 +45,7 @@ bool AgentCallback::operator()(arangodb::ClusterCommResult* res) {
       term_t otherTerm = 0;
       try {
         otherTerm = body->slice().get("term").getNumber<term_t>();
-      } catch (std::exception const& e) {
+      } catch (std::exception const&) {
         LOG_TOPIC(WARN, Logger::AGENCY) <<
           "Received agent call back without or with invalid term";
       }

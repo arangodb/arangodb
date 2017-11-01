@@ -97,11 +97,6 @@ class Agent : public arangodb::Thread,
   /// @brief Prepare leadership
   bool prepareLead();
 
-  /// @brief Unprepare for leadership, needed when we resign during preparation
-  void unprepareLead() {
-    _preparing = false;
-  }
-
   /// @brief Load persistent state
   void load();
 
@@ -390,8 +385,8 @@ class Agent : public arangodb::Thread,
 
   /// Rules for the locks: This covers the following locks:
   ///    _ioLock (here)
-  ///    _logLock (in State)
-  ///    _tiLock (here)
+  ///    _logLock (in State)         _waiForCV (here)
+  ///    _tiLock (here)              _tiLock (here)
   /// One may never acquire a log in this list whilst holding another one
   /// that appears further down on this list. This is to prevent deadlock.
   /// For _logLock: This is local to State and we make sure that the few

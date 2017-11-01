@@ -25,15 +25,20 @@
 #define ARANGOD_MMFILES_MMFILES_REST_WAL_HANDLER_H 1
 
 #include "Basics/Common.h"
-#include "RestHandler/RestVocbaseBaseHandler.h"
+#include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
 
-class RocksDBRestWalHandler : public RestVocbaseBaseHandler {
+class RocksDBRestWalHandler : public RestBaseHandler {
  public:
   RocksDBRestWalHandler(GeneralRequest*, GeneralResponse*);
 
  public:
+  
+  bool isDirect() const override {
+    return false;
+  }
+  
   RestStatus execute() override final;
   char const* name() const override final { return "RocksDBRestWalHandler"; }
 

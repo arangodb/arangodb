@@ -34,6 +34,15 @@
       }
     },
 
+    remove: function () {
+      clearInterval(this.intervalFunction);
+      this.$el.empty().off(); /* off to unbind the events */
+      this.stopListening();
+      this.unbind();
+      delete this.el;
+      return this;
+    },
+
     render: function (navi) {
       if (window.location.hash === '#shards') {
         var self = this;

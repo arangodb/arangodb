@@ -158,7 +158,9 @@ class MMFilesCollection final : public PhysicalCollection {
   TRI_voc_tick_t maxTick() const { return _maxTick; }
   void maxTick(TRI_voc_tick_t value) { _maxTick = value; }
 
+  /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
+  /// @brief used for updating properties
   void getPropertiesVPackCoordinator(velocypack::Builder&) const override;
 
   // datafile management
@@ -357,7 +359,8 @@ class MMFilesCollection final : public PhysicalCollection {
                 arangodb::velocypack::Slice const newSlice,
                 arangodb::ManagedDocumentResult& result,
                 OperationOptions& options,
-                TRI_voc_tick_t& resultMarkerTick, bool lock) override;
+                TRI_voc_tick_t& resultMarkerTick, bool lock,
+                TRI_voc_tick_t& revisionId) override;
 
   Result update(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const newSlice,
@@ -365,7 +368,6 @@ class MMFilesCollection final : public PhysicalCollection {
                 OperationOptions& options,
                 TRI_voc_tick_t& resultMarkerTick, bool lock,
                 TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                TRI_voc_rid_t const& revisionId,
                 arangodb::velocypack::Slice const key) override;
 
   Result replace(transaction::Methods* trx,
@@ -373,7 +375,6 @@ class MMFilesCollection final : public PhysicalCollection {
                  ManagedDocumentResult& result, OperationOptions& options,
                  TRI_voc_tick_t& resultMarkerTick, bool lock,
                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                 TRI_voc_rid_t const revisionId,
                  arangodb::velocypack::Slice const fromSlice,
                  arangodb::velocypack::Slice const toSlice) override;
 
@@ -381,7 +382,7 @@ class MMFilesCollection final : public PhysicalCollection {
                 arangodb::velocypack::Slice const slice,
                 arangodb::ManagedDocumentResult& previous,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock, TRI_voc_rid_t& prevRev) override;
+                bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId) override;
 
   /// @brief Defer a callback to be executed when the collection
   ///        can be dropped. The callback is supposed to drop
@@ -432,6 +433,7 @@ class MMFilesCollection final : public PhysicalCollection {
   int openWorker(bool ignoreErrors);
 
   Result removeFastPath(arangodb::transaction::Methods* trx,
+                        TRI_voc_rid_t revisionId,
                         LocalDocumentId const& oldDocumentId,
                         arangodb::velocypack::Slice const oldDoc,
                         OperationOptions& options,
@@ -477,6 +479,7 @@ class MMFilesCollection final : public PhysicalCollection {
 
   Result insertDocument(arangodb::transaction::Methods* trx,
                         LocalDocumentId const& documentId,
+                        TRI_voc_rid_t revisionId,
                         arangodb::velocypack::Slice const& doc,
                         MMFilesDocumentOperation& operation,
                         MMFilesWalMarker const* marker, bool& waitForSync);
@@ -524,7 +527,8 @@ class MMFilesCollection final : public PhysicalCollection {
   Result lookupDocument(transaction::Methods*, velocypack::Slice,
                         ManagedDocumentResult& result);
 
-  Result updateDocument(transaction::Methods*, LocalDocumentId const& oldDocumentId,
+  Result updateDocument(transaction::Methods*, TRI_voc_rid_t revisionId,
+                        LocalDocumentId const& oldDocumentId,
                         velocypack::Slice const& oldDoc,
                         LocalDocumentId const& newDocumentId,
                         velocypack::Slice const& newDoc,

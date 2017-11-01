@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,21 +24,19 @@
 #ifndef ARANGOD_UTILS_vocbase_GUARD_H
 #define ARANGOD_UTILS_vocbase_GUARD_H 1
 
-#include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Exceptions.h"
-#include "RestServer/DatabaseFeature.h"
-#include "RestServer/FeatureCacheFeature.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {
 
+/// @brief Scope guard for a database, ensures that it is not
+///        dropped while still using it.
 class DatabaseGuard {
  public:
   DatabaseGuard(DatabaseGuard const&) = delete;
   DatabaseGuard& operator=(DatabaseGuard const&) = delete;
-  
-  explicit DatabaseGuard(TRI_vocbase_t* vocbase) 
-      : _vocbase(vocbase) {
+
+  /// @brief create guard on existing db
+  explicit DatabaseGuard(TRI_vocbase_t* vocbase) : _vocbase(vocbase) {
     TRI_ASSERT(vocbase != nullptr);
     if (!_vocbase->use()) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
@@ -46,46 +44,26 @@ class DatabaseGuard {
   }
 
   /// @brief create the guard, using a database id
-  explicit DatabaseGuard(TRI_voc_tick_t id)
-      : _vocbase(nullptr) {
-    
-    auto databaseFeature = FeatureCacheFeature::instance()->databaseFeature();
-    _vocbase = databaseFeature->useDatabase(id);
-
-    if (_vocbase == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-    }
-    
-    TRI_ASSERT(!_vocbase->isDangling());
-  }
+  explicit DatabaseGuard(TRI_voc_tick_t id);
 
   /// @brief create the guard, using a database name
-  explicit DatabaseGuard(std::string const& name)
-      : _vocbase(nullptr) {
-      
-    auto databaseFeature = FeatureCacheFeature::instance()->databaseFeature();
-    _vocbase = databaseFeature->useDatabase(name);
-
-    if (_vocbase == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-    }
-    
-    TRI_ASSERT(!_vocbase->isDangling());
-  }
+  explicit DatabaseGuard(std::string const& name);
 
   /// @brief destroy the guard
   ~DatabaseGuard() {
-    TRI_ASSERT(_vocbase != nullptr);
-    TRI_ASSERT(!_vocbase->isDangling());
-    _vocbase->release();
+    if (_vocbase != nullptr) {
+      TRI_ASSERT(!_vocbase->isDangling());
+      _vocbase->release();
+    }
   }
+
+  DatabaseGuard(DatabaseGuard&&);
 
  public:
   /// @brief return the database pointer
   inline TRI_vocbase_t* database() const { return _vocbase; }
 
  private:
-
   /// @brief pointer to database
   TRI_vocbase_t* _vocbase;
 };

@@ -69,6 +69,7 @@ describe('Foxx service', () => {
   it('should support queue registration', () => {
     const queuesBefore = db._query(aql`
       FOR queue IN _queues
+      FILTER queue._key != 'default'
       RETURN queue
     `).toArray();
     const res = download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
@@ -77,16 +78,14 @@ describe('Foxx service', () => {
     expect(res.code).to.equal(204);
     const queuesAfter = db._query(aql`
       FOR queue IN _queues
+      FILTER queue._key != 'default'
       RETURN queue
     `).toArray();
     expect(queuesAfter.length - queuesBefore.length).to.equal(1, 'Could not register foxx queue');
   });
 
   it('should not register a queue two times', () => {
-    const queuesBefore = db._query(aql`
-      FOR queue IN _queues
-      RETURN queue
-    `).toArray();
+    const queuesBefore = db._queues.all().toArray();
     let res = download(`${arango.getEndpoint().replace('tcp://', 'http://')}/${mount}`, '', {
       method: 'post'
     });
@@ -96,10 +95,7 @@ describe('Foxx service', () => {
       method: 'post'
     });
     expect(res.code).to.equal(204);
-    const queuesAfter = db._query(aql`
-      FOR queue IN _queues
-      RETURN queue
-    `).toArray();
+    const queuesAfter = db._queues.all().toArray();
     expect(queuesAfter.length - queuesBefore.length).to.equal(1);
   });
 
