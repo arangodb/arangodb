@@ -337,44 +337,63 @@ VPackBuilder StatisticsWorker::_compute15Minute(double start, std::string const&
   for (auto const& vs : VPackArrayIterator(result)) {
     VPackSlice const& values = vs.resolveExternals();
 
-    serverV8available += values.get("server").get("v8Context").get("availablePerSecond").getNumber<float>();
-    serverV8busy += values.get("server").get("v8Context").get("busyPerSecond").getNumber<float>();
-    serverV8dirty += values.get("server").get("v8Context").get("dirtyPerSecond").getNumber<float>();
-    serverV8free += values.get("server").get("v8Context").get("freePerSecond").getNumber<float>();
-    serverV8max += values.get("server").get("v8Context").get("maxPerSecond").getNumber<float>();
+    VPackSlice http = values.get("http");
+    VPackSlice client = values.get("client");
+    VPackSlice system = values.get("system");
 
-    serverThreadsRunning += values.get("server").get("threads").get("runningPerSecond").getNumber<float>();
-    serverThreadsWorking += values.get("server").get("threads").get("workingPerSecond").getNumber<float>();
-    serverThreadsBlocked += values.get("server").get("threads").get("blockedPerSecond").getNumber<float>();
-    serverThreadsQueued += values.get("server").get("threads").get("queuedPerSecond").getNumber<float>();
+    VPackSlice server = values.get("server");
+    VPackSlice threads = server.get("threads");
+    VPackSlice v8Context = server.get("v8Context");
 
-    systemMinorPageFaultsPerSecond += values.get("system").get("minorPageFaultsPerSecond").getNumber<float>();
-    systemMajorPageFaultsPerSecond += values.get("system").get("majorPageFaultsPerSecond").getNumber<float>();
-    systemUserTimePerSecond += values.get("system").get("userTimePerSecond").getNumber<float>();
-    systemSystemTimePerSecond += values.get("system").get("systemTimePerSecond").getNumber<float>();
-    systemResidentSize += values.get("system").get("residentSize").getNumber<float>();
-    systemVirtualSize += values.get("system").get("virtualSize").getNumber<float>();
-    systemNumberOfThreads += values.get("system").get("numberOfThreads").getNumber<float>();
+    serverV8available += v8Context.get("availablePerSecond").getNumber<float>();
+    serverV8busy += v8Context.get("busyPerSecond").getNumber<float>();
+    serverV8dirty += v8Context.get("dirtyPerSecond").getNumber<float>();
+    serverV8free += v8Context.get("freePerSecond").getNumber<float>();
+    serverV8max += v8Context.get("maxPerSecond").getNumber<float>();
 
-    httpRequestsTotalPerSecond += values.get("http").get("requestsTotalPerSecond").getNumber<float>();
-    httpRequestsAsyncPerSecond += values.get("http").get("requestsAsyncPerSecond").getNumber<float>();
-    httpRequestsGetPerSecond += values.get("http").get("requestsGetPerSecond").getNumber<float>();
-    httpRequestsHeadPerSecond += values.get("http").get("requestsHeadPerSecond").getNumber<float>();
-    httpRequestsPostPerSecond += values.get("http").get("requestsPostPerSecond").getNumber<float>();
-    httpRequestsPutPerSecond += values.get("http").get("requestsPutPerSecond").getNumber<float>();
-    httpRequestsPatchPerSecond += values.get("http").get("requestsPatchPerSecond").getNumber<float>();
-    httpRequestsDeletePerSecond += values.get("http").get("requestsDeletePerSecond").getNumber<float>();
-    httpRequestsOptionsPerSecond += values.get("http").get("requestsOptionsPerSecond").getNumber<float>();
-    httpRequestsOtherPerSecond += values.get("http").get("requestsOtherPerSecond").getNumber<float>();
+    serverThreadsRunning += threads.get("runningPerSecond").getNumber<float>();
+    serverThreadsWorking += threads.get("workingPerSecond").getNumber<float>();
+    serverThreadsBlocked += threads.get("blockedPerSecond").getNumber<float>();
+    serverThreadsQueued += threads.get("queuedPerSecond").getNumber<float>();
 
-    clientHttpConnections += values.get("client").get("httpConnections").getNumber<float>();
-    clientBytesSentPerSecond += values.get("client").get("bytesSentPerSecond").getNumber<float>();
-    clientBytesReceivedPerSecond += values.get("client").get("bytesReceivedPerSecond").getNumber<float>();
-    clientAvgTotalTime += values.get("client").get("avgTotalTime").getNumber<float>();
-    clientAvgRequestTime += values.get("client").get("avgRequestTime").getNumber<float>();
-    clientAvgQueueTime += values.get("client").get("avgQueueTime").getNumber<float>();
-    clientAvgIoTime += values.get("client").get("avgIoTime").getNumber<float>();
+    systemMinorPageFaultsPerSecond += system.get("minorPageFaultsPerSecond").getNumber<float>();
+    systemMajorPageFaultsPerSecond += system.get("majorPageFaultsPerSecond").getNumber<float>();
+    systemUserTimePerSecond += system.get("userTimePerSecond").getNumber<float>();
+    systemSystemTimePerSecond += system.get("systemTimePerSecond").getNumber<float>();
+    systemResidentSize += system.get("residentSize").getNumber<float>();
+    systemVirtualSize += system.get("virtualSize").getNumber<float>();
+    systemNumberOfThreads += system.get("numberOfThreads").getNumber<float>();
+
+    httpRequestsTotalPerSecond += http.get("requestsTotalPerSecond").getNumber<float>();
+    httpRequestsAsyncPerSecond += http.get("requestsAsyncPerSecond").getNumber<float>();
+    httpRequestsGetPerSecond += http.get("requestsGetPerSecond").getNumber<float>();
+    httpRequestsHeadPerSecond += http.get("requestsHeadPerSecond").getNumber<float>();
+    httpRequestsPostPerSecond += http.get("requestsPostPerSecond").getNumber<float>();
+    httpRequestsPutPerSecond += http.get("requestsPutPerSecond").getNumber<float>();
+    httpRequestsPatchPerSecond += http.get("requestsPatchPerSecond").getNumber<float>();
+    httpRequestsDeletePerSecond += http.get("requestsDeletePerSecond").getNumber<float>();
+    httpRequestsOptionsPerSecond += http.get("requestsOptionsPerSecond").getNumber<float>();
+    httpRequestsOtherPerSecond += http.get("requestsOtherPerSecond").getNumber<float>();
+
+    clientHttpConnections += client.get("httpConnections").getNumber<float>();
+    clientBytesSentPerSecond += client.get("bytesSentPerSecond").getNumber<float>();
+    clientBytesReceivedPerSecond += client.get("bytesReceivedPerSecond").getNumber<float>();
+    clientAvgTotalTime += client.get("avgTotalTime").getNumber<float>();
+    clientAvgRequestTime += client.get("avgRequestTime").getNumber<float>();
+    clientAvgQueueTime += client.get("avgQueueTime").getNumber<float>();
+    clientAvgIoTime += client.get("avgIoTime").getNumber<float>();
   }
+
+  serverV8available /= count;
+  serverV8busy /= count;
+  serverV8dirty /= count;
+  serverV8free /= count;
+  serverV8max /= count;
+
+  serverThreadsRunning /= count;
+  serverThreadsWorking /= count;
+  serverThreadsBlocked /= count;
+  serverThreadsQueued /= count;
 
   systemMinorPageFaultsPerSecond /= count;
   systemMajorPageFaultsPerSecond /= count;
@@ -396,6 +415,12 @@ VPackBuilder StatisticsWorker::_compute15Minute(double start, std::string const&
   httpRequestsOtherPerSecond /= count;
 
   clientHttpConnections /= count;
+  clientBytesSentPerSecond /= count;
+  clientBytesReceivedPerSecond /= count;
+  clientAvgTotalTime /= count;
+  clientAvgRequestTime /= count;
+  clientAvgQueueTime /= count;
+  clientAvgIoTime /= count;
 
   VPackBuilder builder;
   builder.openObject();
@@ -489,130 +514,139 @@ VPackBuilder StatisticsWorker::_computePerSeconds(
 
   result.add("time", current.get("time"));
 
+  VPackSlice currentSystem = current.get("system");
+  VPackSlice prevSystem = prev.get("system");
   result.add("system", VPackValue(VPackValueType::Object));
-  result.add("minorPageFaultsPerSecond", VPackValue((current.get("system").get("minorPageFaults").getNumber<float>() -
-                                                        prev.get("system").get("minorPageFaults").getNumber<float>()) / dt));
-  result.add("majorPageFaultsPerSecond", VPackValue((current.get("system").get("majorPageFaults").getNumber<float>() -
-                                                        prev.get("system").get("majorPageFaults").getNumber<float>()) / dt));
-  result.add("userTimePerSecond", VPackValue((current.get("system").get("userTime").getNumber<float>() -
-                                                 prev.get("system").get("userTime").getNumber<float>()) / dt));
-  result.add("systemTimePerSecond", VPackValue((current.get("system").get("systemTime").getNumber<float>() -
-                                                   prev.get("system").get("systemTime").getNumber<float>()) / dt));
-  result.add("residentSize", current.get("system").get("residentSize"));
-  result.add("residentSizePercent", current.get("system").get("residentSizePercent"));
-  result.add("virtualSize", current.get("system").get("virtualSize"));
-  result.add("numberOfThreads", current.get("system").get("numberOfThreads"));
+  result.add("minorPageFaultsPerSecond", VPackValue((currentSystem.get("minorPageFaults").getNumber<float>() -
+                                                        prevSystem.get("minorPageFaults").getNumber<float>()) / dt));
+  result.add("majorPageFaultsPerSecond", VPackValue((currentSystem.get("majorPageFaults").getNumber<float>() -
+                                                        prevSystem.get("majorPageFaults").getNumber<float>()) / dt));
+  result.add("userTimePerSecond", VPackValue((currentSystem.get("userTime").getNumber<float>() -
+                                                 prevSystem.get("userTime").getNumber<float>()) / dt));
+  result.add("systemTimePerSecond", VPackValue((currentSystem.get("systemTime").getNumber<float>() -
+                                                   prevSystem.get("systemTime").getNumber<float>()) / dt));
+  result.add("residentSize", currentSystem.get("residentSize"));
+  result.add("residentSizePercent", currentSystem.get("residentSizePercent"));
+  result.add("virtualSize", currentSystem.get("virtualSize"));
+  result.add("numberOfThreads", currentSystem.get("numberOfThreads"));
   result.close();
 
   // _serverStatistics()
+  VPackSlice currentServer = current.get("server");
   result.add("server", VPackValue(VPackValueType::Object));
-  result.add("physicalMemory", current.get("server").get("physicalMemory"));
-  result.add("uptime", current.get("server").get("uptime"));
+  result.add("physicalMemory", currentServer.get("physicalMemory"));
+  result.add("uptime", currentServer.get("uptime"));
+  VPackSlice currentV8Context = currentServer.get("v8Context");
   result.add("v8Context", VPackValue(VPackValueType::Object));
-  result.add("availablePerSecond", current.get("server").get("v8Context").get("available"));
-  result.add("busyPerSecond", current.get("server").get("v8Context").get("busy"));
-  result.add("dirtyPerSecond", current.get("server").get("v8Context").get("dirty"));
-  result.add("freePerSecond", current.get("server").get("v8Context").get("free"));
-  result.add("maxPerSecond", current.get("server").get("v8Context").get("max"));
+  result.add("availablePerSecond", currentV8Context.get("available"));
+  result.add("busyPerSecond", currentV8Context.get("busy"));
+  result.add("dirtyPerSecond", currentV8Context.get("dirty"));
+  result.add("freePerSecond", currentV8Context.get("free"));
+  result.add("maxPerSecond", currentV8Context.get("max"));
   result.close();
 
+  VPackSlice currentThreads = currentServer.get("threads");
   result.add("threads", VPackValue(VPackValueType::Object));
-  result.add("runningPerSecond", current.get("server").get("threads").get("running"));
-  result.add("workingPerSecond", current.get("server").get("threads").get("working"));
-  result.add("blockedPerSecond", current.get("server").get("threads").get("blocked"));
-  result.add("queuedPerSecond", current.get("server").get("threads").get("queued"));
+  result.add("runningPerSecond", currentThreads.get("running"));
+  result.add("workingPerSecond", currentThreads.get("working"));
+  result.add("blockedPerSecond", currentThreads.get("blocked"));
+  result.add("queuedPerSecond", currentThreads.get("queued"));
   result.close();
   result.close();
 
+  VPackSlice currentHttp = current.get("http");
+  VPackSlice prevHttp = prev.get("http");
   result.add("http", VPackValue(VPackValueType::Object));
-  result.add("requestsTotalPerSecond", VPackValue((current.get("http").get("requestsTotal").getNumber<float>() -
-                                                      prev.get("http").get("requestsTotal").getNumber<float>()) / dt));
-  result.add("requestsAsyncPerSecond", VPackValue((current.get("http").get("requestsAsync").getNumber<float>() -
-                                                      prev.get("http").get("requestsAsync").getNumber<float>()) / dt));
-  result.add("requestsGetPerSecond", VPackValue((current.get("http").get("requestsGet").getNumber<float>() -
-                                                    prev.get("http").get("requestsGet").getNumber<float>()) / dt));
-  result.add("requestsHeadPerSecond", VPackValue((current.get("http").get("requestsHead").getNumber<float>() -
-                                                     prev.get("http").get("requestsHead").getNumber<float>()) / dt));
-  result.add("requestsPostPerSecond", VPackValue((current.get("http").get("requestsPost").getNumber<float>() -
-                                                     prev.get("http").get("requestsPost").getNumber<float>()) / dt));
-  result.add("requestsPutPerSecond", VPackValue((current.get("http").get("requestsPut").getNumber<float>() -
-                                                    prev.get("http").get("requestsPut").getNumber<float>()) / dt));
-  result.add("requestsPatchPerSecond", VPackValue((current.get("http").get("requestsPatch").getNumber<float>() -
-                                                      prev.get("http").get("requestsPatch").getNumber<float>()) / dt));
-  result.add("requestsDeletePerSecond", VPackValue((current.get("http").get("requestsDelete").getNumber<float>() -
-                                                       prev.get("http").get("requestsDelete").getNumber<float>()) / dt));
-  result.add("requestsOptionsPerSecond", VPackValue((current.get("http").get("requestsOptions").getNumber<float>() -
-                                                        prev.get("http").get("requestsOptions").getNumber<float>()) / dt));
-  result.add("requestsOtherPerSecond", VPackValue((current.get("http").get("requestsOther").getNumber<float>() -
-                                                      prev.get("http").get("requestsOther").getNumber<float>()) / dt));
+  result.add("requestsTotalPerSecond", VPackValue((currentHttp.get("requestsTotal").getNumber<float>() -
+                                                      prevHttp.get("requestsTotal").getNumber<float>()) / dt));
+  result.add("requestsAsyncPerSecond", VPackValue((currentHttp.get("requestsAsync").getNumber<float>() -
+                                                      prevHttp.get("requestsAsync").getNumber<float>()) / dt));
+  result.add("requestsGetPerSecond", VPackValue((currentHttp.get("requestsGet").getNumber<float>() -
+                                                    prevHttp.get("requestsGet").getNumber<float>()) / dt));
+  result.add("requestsHeadPerSecond", VPackValue((currentHttp.get("requestsHead").getNumber<float>() -
+                                                     prevHttp.get("requestsHead").getNumber<float>()) / dt));
+  result.add("requestsPostPerSecond", VPackValue((currentHttp.get("requestsPost").getNumber<float>() -
+                                                     prevHttp.get("requestsPost").getNumber<float>()) / dt));
+  result.add("requestsPutPerSecond", VPackValue((currentHttp.get("requestsPut").getNumber<float>() -
+                                                    prevHttp.get("requestsPut").getNumber<float>()) / dt));
+  result.add("requestsPatchPerSecond", VPackValue((currentHttp.get("requestsPatch").getNumber<float>() -
+                                                      prevHttp.get("requestsPatch").getNumber<float>()) / dt));
+  result.add("requestsDeletePerSecond", VPackValue((currentHttp.get("requestsDelete").getNumber<float>() -
+                                                       prevHttp.get("requestsDelete").getNumber<float>()) / dt));
+  result.add("requestsOptionsPerSecond", VPackValue((currentHttp.get("requestsOptions").getNumber<float>() -
+                                                        prevHttp.get("requestsOptions").getNumber<float>()) / dt));
+  result.add("requestsOtherPerSecond", VPackValue((currentHttp.get("requestsOther").getNumber<float>() -
+                                                      prevHttp.get("requestsOther").getNumber<float>()) / dt));
   result.close();
 
+  VPackSlice currentClient = current.get("client");
+  VPackSlice prevClient = prev.get("client");
   result.add("client", VPackValue(VPackValueType::Object));
-  result.add("httpConnections", current.get("client").get("httpConnections"));
+  result.add("httpConnections", currentClient.get("httpConnections"));
 
   // bytes sent
-  result.add("bytesSentPerSecond", VPackValue((current.get("client").get("bytesSent").get("sum").getNumber<float>() -
-                                                  prev.get("client").get("bytesSent").get("sum").getNumber<float>()) / dt));
+  result.add("bytesSentPerSecond", VPackValue((currentClient.get("bytesSent").get("sum").getNumber<float>() -
+                                                  prevClient.get("bytesSent").get("sum").getNumber<float>()) / dt));
 
-    VPackBuilder tmp = _avgPercentDistributon(current.get("client").get("bytesSent"), prev.get("client").get("bytesSent"), _bytesSentDistribution);
+    VPackBuilder tmp = _avgPercentDistributon(currentClient.get("bytesSent"), prevClient.get("bytesSent"), _bytesSentDistribution);
     result.add("bytesSentPercent", tmp.slice());
 
     // bytes received
-    result.add("bytesReceivedPerSecond", VPackValue((current.get("client").get("bytesReceived").get("sum").getNumber<float>() -
-                                                        prev.get("client").get("bytesReceived").get("sum").getNumber<float>()) / dt));
+    result.add("bytesReceivedPerSecond", VPackValue((currentClient.get("bytesReceived").get("sum").getNumber<float>() -
+                                                        prevClient.get("bytesReceived").get("sum").getNumber<float>()) / dt));
 
-    tmp = _avgPercentDistributon(current.get("client").get("bytesReceived"), prev.get("client").get("bytesReceived"), _bytesReceivedDistribution);
+    tmp = _avgPercentDistributon(currentClient.get("bytesReceived"), prevClient.get("bytesReceived"), _bytesReceivedDistribution);
     result.add("bytesReceivedPercent", tmp.slice());
 
     // total time
-    auto d1 = current.get("client").get("totalTime").get("count").getNumber<float>() - prev.get("client").get("totalTime").get("count").getNumber<float>();
+    auto d1 = currentClient.get("totalTime").get("count").getNumber<float>() - prevClient.get("totalTime").get("count").getNumber<float>();
 
     if (d1 == 0) {
       result.add("avgTotalTime", VPackValue(0));
     } else {
-      result.add("avgTotalTime", VPackValue((current.get("client").get("totalTime").get("sum").getNumber<float>() -
-                                                prev.get("client").get("totalTime").get("sum").getNumber<float>()) / d1));
+      result.add("avgTotalTime", VPackValue((currentClient.get("totalTime").get("sum").getNumber<float>() -
+                                                prevClient.get("totalTime").get("sum").getNumber<float>()) / d1));
     }
 
-    tmp = _avgPercentDistributon(current.get("client").get("totalTime"), prev.get("client").get("totalTime"), _requestTimeDistribution);
+    tmp = _avgPercentDistributon(currentClient.get("totalTime"), prevClient.get("totalTime"), _requestTimeDistribution);
     result.add("totalTimePercent", tmp.slice());
 
   // request time
-  d1 = current.get("client").get("requestTime").get("count").getNumber<float>() - prev.get("client").get("requestTime").get("count").getNumber<float>();
+  d1 = currentClient.get("requestTime").get("count").getNumber<float>() - prevClient.get("requestTime").get("count").getNumber<float>();
 
   if (d1 == 0) {
     result.add("avgRequestTime", VPackValue(0));
   } else {
-    result.add("avgRequestTime", VPackValue((current.get("client").get("requestTime").get("sum").getNumber<float>() -
-                                                prev.get("client").get("requestTime").get("sum").getNumber<float>()) / d1));
+    result.add("avgRequestTime", VPackValue((currentClient.get("requestTime").get("sum").getNumber<float>() -
+                                                prevClient.get("requestTime").get("sum").getNumber<float>()) / d1));
   }
-  tmp = _avgPercentDistributon(current.get("client").get("requestTime"), prev.get("client").get("requestTime"), _requestTimeDistribution);
+  tmp = _avgPercentDistributon(currentClient.get("requestTime"), prevClient.get("requestTime"), _requestTimeDistribution);
   result.add("requestTimePercent", tmp.slice());
 
   // queue time
-  d1 = current.get("client").get("queueTime").get("count").getNumber<float>() - prev.get("client").get("queueTime").get("count").getNumber<float>();
+  d1 = currentClient.get("queueTime").get("count").getNumber<float>() - prevClient.get("queueTime").get("count").getNumber<float>();
 
   if (d1 == 0) {
     result.add("avgQueueTime", VPackValue(0));
   } else {
-    result.add("avgQueueTime", VPackValue((current.get("client").get("queueTime").get("sum").getNumber<float>() -
-                                              prev.get("client").get("queueTime").get("sum").getNumber<float>()) / d1));
+    result.add("avgQueueTime", VPackValue((currentClient.get("queueTime").get("sum").getNumber<float>() -
+                                              prevClient.get("queueTime").get("sum").getNumber<float>()) / d1));
   }
 
-  tmp = _avgPercentDistributon(current.get("client").get("queueTime"), prev.get("client").get("queueTime"), _requestTimeDistribution);
+  tmp = _avgPercentDistributon(currentClient.get("queueTime"), prevClient.get("queueTime"), _requestTimeDistribution);
   result.add("queueTimePercent", tmp.slice());
 
   // io time
-  d1 = current.get("client").get("ioTime").get("count").getNumber<float>() - prev.get("client").get("ioTime").get("count").getNumber<float>();
+  d1 = currentClient.get("ioTime").get("count").getNumber<float>() - prevClient.get("ioTime").get("count").getNumber<float>();
 
   if (d1 == 0) {
     result.add("avgIoTime", VPackValue(0));
   } else {
-    result.add("avgIoTime", VPackValue((current.get("client").get("ioTime").get("sum").getNumber<float>() -
-                                           prev.get("client").get("ioTime").get("sum").getNumber<float>()) / d1));
+    result.add("avgIoTime", VPackValue((currentClient.get("ioTime").get("sum").getNumber<float>() -
+                                           prevClient.get("ioTime").get("sum").getNumber<float>()) / d1));
   }
 
-  tmp = _avgPercentDistributon(current.get("client").get("ioTime"), prev.get("client").get("ioTime"), _requestTimeDistribution);
+  tmp = _avgPercentDistributon(currentClient.get("ioTime"), prevClient.get("ioTime"), _requestTimeDistribution);
   result.add("ioTimePercent", tmp.slice());
 
   result.close();
