@@ -1,6 +1,9 @@
 devel
 -----
 
+* enable JEMalloc background thread for purging and returning unused memory
+  back to the operating system (Linux only)
+
 * incremental transfer of initial collection data now can handle partial 
   responses for a chunk, allowing the leader/master to send smaller chunks 
   (in terms of HTTP response size) and limit memory usage
