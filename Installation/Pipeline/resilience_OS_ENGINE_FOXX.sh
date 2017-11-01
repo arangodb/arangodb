@@ -36,7 +36,7 @@ test -d resilience || exit 1
     ln -s ../etc .
     ln -s ../js .
 
-    npm install > ../log-output/npm-install.log 2>&1
+    npm install
 
     if [ "$foxx" == "foxx" ]; then
         TESTS=$(find test/* -name "*foxx*")
@@ -53,5 +53,5 @@ test -d resilience || exit 1
     PORT_OFFSET=10 \
     RESILIENCE_ARANGO_BASEPATH=. \
     ARANGO_STORAGE_ENGINE=$engine \
-            npm run test-jenkins -- $TESTS
+    npm run test-jenkins -- $TESTS
 )
