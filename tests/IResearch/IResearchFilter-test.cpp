@@ -4520,6 +4520,37 @@ SECTION("Phrase") {
     assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d[42], 'quick', 'test_analyzer') RETURN d", expected);
   }
 
+  // without offset, custom analyzer, expressions
+  // quick
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("value", arangodb::aql::AqlValue("qui"));
+    ctx.vars.emplace("analyzer", arangodb::aql::AqlValue("test_"));
+
+    irs::Or expected;
+    auto& phrase = expected.add<irs::by_phrase>();
+    phrase.field(mangleString("name", "test_analyzer"));
+    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
+
+    assertFilterSuccess("LET value='qui' LET analyzer='test_' FOR d IN VIEW myView FILTER phrase(d.name, CONCAT(value,'ck'), CONCAT(analyzer, 'analyzer')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET value='qui' LET analyzer='test_' FOR d IN VIEW myView FILTER phrase(d['name'], CONCAT(value, 'ck'), CONCAT(analyzer, 'analyzer')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET value='qui' LET analyzer='test_' FOR d IN VIEW myView FILTER phRase(d.name, CONCAT(value, 'ck'), CONCAT(analyzer, 'analyzer')) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET value='qui' LET analyzer='test_' FOR d IN VIEW myView FILTER phRase(d['name'], CONCAT(value, 'ck'), CONCAT(analyzer, 'analyzer')) RETURN d", expected, &ctx);
+  }
+
+  // without offset, custom analyzer, invalid expressions
+  // quick
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("value", arangodb::aql::AqlValue("qui"));
+    ctx.vars.emplace("analyzer", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false}));
+
+    assertFilterExecutionFail("LET value='qui' LET analyzer='test_' FOR d IN VIEW myView FILTER phrase(d.name, CONCAT(value,'ck'), analyzer) RETURN d", &ctx);
+    assertFilterExecutionFail("LET value='qui' LET analyzer='test_' FOR d IN VIEW myView FILTER phrase(d['name'], CONCAT(value, 'ck'), analyzer) RETURN d", &ctx);
+    assertFilterExecutionFail("LET value='qui' LET analyzer='test_' FOR d IN VIEW myView FILTER phRase(d.name, CONCAT(value, 'ck'), analyzer) RETURN d", &ctx);
+    assertFilterExecutionFail("LET value='qui' LET analyzer='test_' FOR d IN VIEW myView FILTER phRase(d['name'], CONCAT(value, 'ck'), analyzer) RETURN d", &ctx);
+  }
+
   // with offset, custom analyzer
   // quick brown
   {
@@ -4538,7 +4569,7 @@ SECTION("Phrase") {
     assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', null, 'brown', 'test_analyzer') RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', true, 'brown', 'test_analyzer') RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', false, 'brown', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', d.name, 'brown', 'test_analyzer') RETURN d");
+    assertFilterExecutionFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', d.name, 'brown', 'test_analyzer') RETURN d", &ExpressionContextMock::EMPTY);
   }
 
   // with offset, complex name, custom analyzer
@@ -4614,19 +4645,55 @@ SECTION("Phrase") {
     assertFilterSuccess("FOR d IN VIEW myView FILTER phrase(d['obj']['properties']['id']['name'], 'quick', 3.2, 'brown', 2.0, 'fox', 0.0, 'jumps', 'test_analyzer') RETURN d", expected);
 
     // wrong value
-    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, d.brown, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+    assertFilterExecutionFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, d.brown, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", &ExpressionContextMock::EMPTY);
     assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 2, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 2.5, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, null, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, true, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, false, 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
-    assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2, 'fox', 0, d, 'test_analyzer') RETURN d");
+    assertFilterExecutionFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', 2, 'fox', 0, d, 'test_analyzer') RETURN d", &ExpressionContextMock::EMPTY);
 
     // wrong offset argument
     assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', '2', 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', null, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', true, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
     assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', false, 'fox', 0, 'jumps', 'test_analyzer') RETURN d");
+  }
+
+  // multiple offsets, complex name, custom analyzer, expressions
+  // quick <...> <...> <...> brown <...> <...> fox jumps
+  {
+    irs::Or expected;
+    auto& phrase = expected.add<irs::by_phrase>();
+    phrase.field(mangleString("obj.properties.id.name", "test_analyzer"));
+    phrase.push_back("q").push_back("u").push_back("i").push_back("c").push_back("k");
+    phrase.push_back("b", 3).push_back("r").push_back("o").push_back("w").push_back("n");
+    phrase.push_back("f", 2).push_back("o").push_back("x");
+    phrase.push_back("j").push_back("u").push_back("m").push_back("p").push_back("s");
+
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace("input", arangodb::aql::AqlValue("bro"));
+
+    assertFilterSuccess("LET offset=2 LET input='bro' FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', offset+1, CONCAT(input, 'wn'), offset, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected, &ctx);
+    assertFilterSuccess("LET offset=2 LET input='bro' FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', offset + 1.5, 'brown', 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected, &ctx);
+    assertFilterSuccess("LET offset=2 LET input='bro' FOR d IN VIEW myView FILTER phrase(d.obj.properties.id['name'], 'quick', 3.0, 'brown', offset, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected, &ctx);
+    assertFilterSuccess("LET offset=2 LET input='bro' FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3.6, 'brown', 2, 'fox', offset-2, 'jumps', 'test_analyzer') RETURN d", expected, &ctx);
+    assertFilterSuccess("LET offset=2 LET input='bro' FOR d IN VIEW myView FILTER phrase(d.obj['properties'].id.name, 'quick', 3.6, CONCAT(input, 'wn'), 2, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", expected, &ctx);
+    assertFilterSuccess("LET offset=2 LET input='bro' FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', 3, 'brown', offset+0.5, 'fox', 0.0, 'jumps', 'test_analyzer') RETURN d", expected, &ctx);
+  }
+
+  // multiple offsets, complex name, custom analyzer, invalid expressions
+  // quick <...> <...> <...> brown <...> <...> fox jumps
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("offset", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+    ctx.vars.emplace("input", arangodb::aql::AqlValue("bro"));
+
+    assertFilterExecutionFail("LET offset=2 LET input='bro' FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', TO_BOOL(offset+1), CONCAT(input, 'wn'), offset, 'fox', 0, 'jumps', 'test_analyzer') RETURN d", &ctx);
+    assertFilterExecutionFail("LET offset=2 LET input='bro' FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', offset + 1.5, 'brown', TO_STRING(2), 'fox', 0, 'jumps', 'test_analyzer') RETURN d", &ctx);
+    assertFilterExecutionFail("LET offset=2 LET input='bro' FOR d IN VIEW myView FILTER phrase(d.obj.properties.id['name'], 'quick', 3.0, 'brown', offset, 'fox', 0, 'jumps', TO_BOOL('test_analyzer')) RETURN d", &ctx);
+    assertFilterExecutionFail("LET offset=2 LET input='bro' FOR d IN VIEW myView FILTER phrase(d.obj.properties.id.name, 'quick', TO_BOOL(3.6), 'brown', 2, 'fox', offset-2, 'jumps', 'test_analyzer') RETURN d", &ctx);
   }
 
   // invalid analyzer
@@ -4645,15 +4712,15 @@ SECTION("Phrase") {
 
   // wrong analylzer
   assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', ['d']) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', [d]) RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', d) RETURN d");
+  assertFilterExecutionFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', [d]) RETURN d", &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', d) RETURN d", &ExpressionContextMock::EMPTY);
   assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 3) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 3.0) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', true) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', false) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', null) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 'invalidAnalyzer') RETURN d");
-  assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 3, 'brown', d) RETURN d");
+  assertFilterExecutionFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 3, 'brown', d) RETURN d", &ExpressionContextMock::EMPTY);
   assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 3, 'brown', 3) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 3, 'brown', 3.0) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER phrase(d.name, 'quick', 3, 'brown', true) RETURN d");
