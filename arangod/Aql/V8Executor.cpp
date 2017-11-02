@@ -290,6 +290,8 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
                              bool duringCompile) {
   ISOLATE;
 
+  bool failed = false;
+
   if (tryCatch.HasCaught()) {
     // caught a V8 exception
     if (!tryCatch.CanContinue()) {
@@ -337,8 +339,8 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
       std::string details(TRI_ObjectToString(tryCatch.Exception()));
 
       if (buffer) {
-        std::string script(buffer->c_str(), buffer->length());
-        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << details << " " << script;
+        //std::string script(buffer->c_str(), buffer->length());
+        LOG_TOPIC(ERR, arangodb::Logger::FIXME) << details << " " << *buffer;
         details += "\nSee log for more details";
       }
       if (*stacktrace && stacktrace.length() > 0) {
@@ -349,33 +351,27 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, details);
     }
 
+    failed = true;
+  }
+
+  if (result.IsEmpty()) {
+    failed = true;
+  }
+
+  if (failed) {
     std::string msg("unknown error in scripting");
     if (duringCompile) {
       msg += " (during compilation)";
     }
     if (buffer) {
-      std::string script(buffer->c_str(), buffer->length());
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg << " " << script;
+      //std::string script(buffer->c_str(), buffer->length());
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg << " " << *buffer;
       msg += " See log for details";
     }
     // we can't figure out what kind of error occurred and throw a generic error
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, msg);
   }
-
-  if (result.IsEmpty()) {
-    std::string msg("unknown error in scripting");
-    if (duringCompile) {
-      msg += " (during compilation)";
-    }
-    if (buffer) {
-      std::string script(buffer->c_str(), buffer->length());
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg << " " << script;
-      msg += " See log for details";
-    }
-
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_SCRIPT, msg);
-  }
-
+  
   // if we get here, no exception has been raised
 }
 
