@@ -224,8 +224,11 @@ void RestCollectionHandler::handleCommandPost() {
   auto cluster =
       application_features::ApplicationServer::getFeature<ClusterFeature>(
           "Cluster");
-  bool waitsForSync = cluster->createWaitsForSyncReplication();
-  waitsForSync = VelocyPackHelper::getBooleanValue(body, "body", waitsForSync);
+  bool waitForSyncReplication = _request->parsedValue("waitForSyncReplication", 
+    cluster->createWaitsForSyncReplication());
+
+  bool enforceReplicationFactor = _request->parsedValue("enforceReplicationFactor",
+    true);
 
   TRI_col_type_e type = TRI_col_type_e::TRI_COL_TYPE_DOCUMENT;
   VPackSlice typeSlice = body.get("type");
@@ -250,7 +253,7 @@ void RestCollectionHandler::handleCommandPost() {
   std::string const& name = nameSlice.copyString();
   VPackBuilder builder;
   Result res = methods::Collections::create(
-      _vocbase, name, type, parameters, waitsForSync,
+      _vocbase, name, type, parameters, waitForSyncReplication, enforceReplicationFactor,
       [&](LogicalCollection* coll) {
         collectionRepresentation(builder, coll->name(), /*showProperties*/ true,
                                  /*showFigures*/ false, /*showCount*/ false,

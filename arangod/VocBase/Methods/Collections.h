@@ -49,7 +49,8 @@ struct Collections {
   static Result create(TRI_vocbase_t* vocbase, std::string const& name,
                        TRI_col_type_e collectionType,
                        velocypack::Slice const& properties,
-                       bool createWaitsForSyncReplication, FuncCallback);
+                       bool createWaitsForSyncReplication,
+                       bool enforceReplicationFactor, FuncCallback);
   
   static Result load(TRI_vocbase_t* vocbase, LogicalCollection* coll);
   static Result unload(TRI_vocbase_t* vocbase, LogicalCollection* coll);

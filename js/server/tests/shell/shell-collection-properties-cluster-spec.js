@@ -209,3 +209,30 @@ describe('Update collection properties with distributeShardsLike, ', function() 
         }
     });
 });
+
+describe('Replication factor constraints', function() {
+    beforeEach(function() {
+        db._useDatabase("_system");
+    });
+
+    afterEach(function() {
+        db._useDatabase("_system");
+
+        try {
+            db._drop(cn1);            
+        } catch (e) {}
+    });
+    
+    it('should not allow to create a collection with more replicas than dbservers available', function() {
+        try {
+            db._create(cn1, {replicationFactor: 5});
+            throw new Error('Should not reach this');
+        } catch (e) {
+            expect(e.errorNum).to.equal(errors.ERROR_CLUSTER_INSUFFICIENT_DBSERVERS.code);
+        }
+    });
+
+    it('should allow to create a collection with more replicas than dbservers when explicitly requested', function() {
+        db._create(cn1, {replicationFactor: 5}, {enforceReplicationFactor: false});
+    });
+});
