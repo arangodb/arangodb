@@ -48,8 +48,7 @@ RestStatus RestPregelHandler::execute() {
     
     if (!parseSuccess || !body.isObject()) {
       LOG_TOPIC(ERR, Logger::PREGEL) << "Bad request body\n";
-      generateError(rest::ResponseCode::BAD,
-                    TRI_ERROR_NOT_IMPLEMENTED, "illegal request for /_api/pregel");
+      // error message generated in parseVelocyPackBody
       return RestStatus::DONE;
     }
     if (_request->requestType() != rest::RequestType::POST) {

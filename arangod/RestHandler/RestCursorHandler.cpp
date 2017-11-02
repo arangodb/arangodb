@@ -416,6 +416,7 @@ void RestCursorHandler::createCursor() {
         parseVelocyPackBody(parseSuccess);
 
     if (!parseSuccess) {
+      // error message generated in parseVelocyPackBody
       return;
     }
     VPackSlice body = parsedBody.get()->slice();
