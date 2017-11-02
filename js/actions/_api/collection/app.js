@@ -233,7 +233,7 @@ function post_api_collection (req, res) {
     if (waitForSyncReplication !== undefined) {
       options.waitForSyncReplication = waitForSyncReplication;
     }
-    enforceReplicationFactor = getBooleanProperty(req.parameters, 'enforceReplicationFactor', undefined);
+    let enforceReplicationFactor = getBooleanProperty(req.parameters, 'enforceReplicationFactor', undefined);
     if (enforceReplicationFactor !== undefined) {
       options.enforceReplicationFactor = enforceReplicationFactor;
     }
