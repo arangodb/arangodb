@@ -73,6 +73,9 @@ devel
 v3.2.7 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #3403: How to kill long running AQL queries with the browser console's
+  AQL (display issue)
+
 * fixed issue #3549: server reading ENGINE config file fails on common standard 
   newline character
 
