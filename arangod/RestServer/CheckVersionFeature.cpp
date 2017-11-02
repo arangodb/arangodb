@@ -86,7 +86,7 @@ void CheckVersionFeature::validateOptions(
 
   V8DealerFeature* v8dealer =
       ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
-  v8dealer->setNumberContexts(1);
+  v8dealer->setMaximumContexts(1);
 }
 
 void CheckVersionFeature::start() {
