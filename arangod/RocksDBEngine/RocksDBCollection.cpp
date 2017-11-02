@@ -142,17 +142,17 @@ void RocksDBCollection::setPath(std::string const&) {
   // we do not have any path
 }
 
-arangodb::Result RocksDBCollection::updateProperties(VPackSlice const& slice,
-                                                     bool doSync) {
-  _cacheEnabled = basics::VelocyPackHelper::readBooleanValue(
-      slice, "cacheEnabled", _cacheEnabled);
+Result RocksDBCollection::updateProperties(VPackSlice const& slice, bool doSync) {
+  bool isSys = _logicalCollection != nullptr && _logicalCollection->isSystem();
+  _cacheEnabled = !isSys && basics::VelocyPackHelper::readBooleanValue(slice,
+                                                   "cacheEnabled", _cacheEnabled);
   primaryIndex()->setCacheEnabled(_cacheEnabled);
   if (_cacheEnabled) {
     createCache();
     primaryIndex()->createCache();
   } else if (useCache()) {
     destroyCache();
-    primaryIndex()->destroyCache();
+    primaryIndex()->destroyCache(); 
   }
 
   // nothing else to do
