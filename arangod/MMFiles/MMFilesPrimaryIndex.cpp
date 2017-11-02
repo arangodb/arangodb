@@ -363,28 +363,49 @@ MMFilesSimpleIndexElement MMFilesPrimaryIndex::lookupSequentialReverse(
 /// returns a status code, and *found will contain a found element (if any)
 Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
                                       LocalDocumentId const& documentId,
-                                      VPackSlice const& doc) {
+                                      VPackSlice const& doc,
+                                      OperationMode mode) {
   ManagedDocumentResult result;
   IndexLookupContext context(trx, _collection, &result, 1);
   MMFilesSimpleIndexElement element(buildKeyElement(documentId, doc));
 
-  return IndexResult(_primaryIndex->insert(&context, element), this);
+  int res = _primaryIndex->insert(&context, element);
+
+  if (mode == OperationMode::internal &&
+      res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+    // TODO retrieve existing id
+    std::string existingId;
+    return IndexResult(res, existingId);
+  }
+
+  return IndexResult(res, this);
 }
 
 Result MMFilesPrimaryIndex::insertKey(transaction::Methods* trx,
                                       LocalDocumentId const& documentId,
                                       VPackSlice const& doc,
-                                      ManagedDocumentResult& mmdr) {
+                                      ManagedDocumentResult& mmdr,
+                                      OperationMode mode) {
   IndexLookupContext context(trx, _collection, &mmdr, 1);
   MMFilesSimpleIndexElement element(buildKeyElement(documentId, doc));
 
-  return IndexResult(_primaryIndex->insert(&context, element), this);
+  int res = _primaryIndex->insert(&context, element);
+
+  if (mode == OperationMode::internal &&
+      res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+    // TODO retrieve existing id
+    std::string existingId;
+    return IndexResult(res, existingId);
+  }
+
+  return IndexResult(res, this);
 }
 
 /// @brief removes an key/element from the index
 Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
                                       LocalDocumentId const&,
-                                      VPackSlice const& doc) {
+                                      VPackSlice const& doc,
+                                      OperationMode mode) {
   ManagedDocumentResult result;
   IndexLookupContext context(trx, _collection, &result, 1);
 
@@ -402,7 +423,8 @@ Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
 Result MMFilesPrimaryIndex::removeKey(transaction::Methods* trx,
                                       LocalDocumentId const&,
                                       VPackSlice const& doc,
-                                      ManagedDocumentResult& mmdr) {
+                                      ManagedDocumentResult& mmdr,
+                                      OperationMode mode) {
   IndexLookupContext context(trx, _collection, &mmdr, 1);
 
   VPackSlice keySlice(transaction::helpers::extractKeyFromDocument(doc));

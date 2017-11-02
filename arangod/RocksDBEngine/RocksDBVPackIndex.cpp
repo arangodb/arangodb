@@ -614,6 +614,13 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
     }
   }
 
+  if (mode == OperationMode::internal &&
+      res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+    // TODO retrieve existing id
+    std::string existingId;
+    return IndexResult(res, existingId);
+  }
+
   return IndexResult(res, this);
 }
 
