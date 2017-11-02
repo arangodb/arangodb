@@ -213,7 +213,9 @@ class LogicalCollection {
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
 
-  void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence) const;
+  void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence,
+                       std::function<bool(arangodb::Index const*)> const& filter =
+                         [](arangodb::Index const*) -> bool { return true; }) const;
 
   // SECTION: Replication
   int replicationFactor() const;
@@ -248,6 +250,10 @@ class LogicalCollection {
   // SECTION: Serialisation
   void toVelocyPack(velocypack::Builder&, bool translateCids,
                     bool forPersistence = false) const;
+  
+  void toVelocyPackIgnore(velocypack::Builder& result,
+      std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
+      bool forPersistence) const;
 
   velocypack::Builder toVelocyPackIgnore(
       std::unordered_set<std::string> const& ignoreKeys, bool translateCids,

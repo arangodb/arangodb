@@ -107,9 +107,9 @@ class PhysicalCollection {
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
-
-  void getIndexesVPack(velocypack::Builder&, bool,
-                       bool forPersistence = false) const;
+                       
+  void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence,
+                       std::function<bool(arangodb::Index const*)> const& filter) const;
 
   virtual std::shared_ptr<Index> createIndex(
       transaction::Methods* trx, arangodb::velocypack::Slice const& info,

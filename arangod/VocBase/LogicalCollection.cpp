@@ -659,8 +659,8 @@ LogicalCollection::getIndexes() const {
 }
 
 void LogicalCollection::getIndexesVPack(VPackBuilder& result, bool withFigures,
-                                        bool forPersistence) const {
-  getPhysical()->getIndexesVPack(result, withFigures, forPersistence);
+                                        bool forPersistence, std::function<bool(arangodb::Index const*)> const& filter) const {
+  getPhysical()->getIndexesVPack(result, withFigures, forPersistence, filter);
 }
 
 // SECTION: Replication
@@ -951,6 +951,14 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool translateCids,
   TRI_ASSERT(result.isOpenObject());
   // We leave the object open
 }
+
+void LogicalCollection::toVelocyPackIgnore(VPackBuilder& result,
+    std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
+    bool forPersistence) const {
+  TRI_ASSERT(result.isOpenObject());
+  VPackBuilder b = toVelocyPackIgnore(ignoreKeys, translateCids, forPersistence);
+  result.add(VPackObjectIterator(b.slice())); 
+} 
 
 VPackBuilder LogicalCollection::toVelocyPackIgnore(
     std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
