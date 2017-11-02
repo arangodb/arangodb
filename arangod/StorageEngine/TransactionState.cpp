@@ -145,12 +145,6 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
     return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
   }
   
-  // cancel all operations if we are in this mode
-  if (!ServerState::allowOperations() &&
-      accessType > AccessMode::Type::READ) {
-    return TRI_ERROR_ARANGO_READ_ONLY;
-  }
-  
   // now check the permissions
   int res = checkCollectionPermission(cid, accessType);
   if (res != TRI_ERROR_NO_ERROR) {
@@ -291,6 +285,10 @@ int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
   ExecContext const* exec = ExecContext::CURRENT;
   // no need to check for superuser, cluster_sync tests break otherwise
   if (exec != nullptr && !exec->isSuperuser()) {
+    // server is in read-only mode
+    if (accessType > AccessMode::Type::READ && !ServerState::enableWriteOps()) {
+      return TRI_ERROR_REQUEST_CANCELED;
+    }
     std::string const colName = _resolver->getCollectionNameCluster(cid);
     
     AuthLevel level = exec->collectionAuthLevel(_vocbase->name(), colName);

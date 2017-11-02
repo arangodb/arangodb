@@ -53,14 +53,16 @@ class ServerState {
     STATE_SHUTDOWN        // used by all roles
   };
   
-  enum class Mode : uint32_t {
+  enum class Mode : uint8_t {
     DEFAULT = 0,
     /// reject all requests
     MAINTENANCE = 1,
-    /// redirect to lead server if possible
-    REDIRECT = 2,
     /// status unclear, client must try again
-    TRYAGAIN = 3
+    TRYAGAIN = 2,
+    /// redirect to lead server if possible
+    REDIRECT = 3,
+    /// redirect to lead server if possible
+    READ_ONLY = 3,
   };
 
  public:
@@ -104,10 +106,10 @@ class ServerState {
     return serverMode() == Mode::MAINTENANCE;
   }
   
-  /// @brief should allow DDL operations / transactions
-  static bool allowOperations() {
+  /// @brief should not allow DDL operations / transactions
+  static bool enableWriteOps() {
     Mode mode = serverMode();
-    return mode == Mode::DEFAULT || mode == Mode::MAINTENANCE;
+    return mode == Mode::DEFAULT && mode == Mode::MAINTENANCE;
   }
 
  public:

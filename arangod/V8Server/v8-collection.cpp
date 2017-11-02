@@ -68,7 +68,6 @@
 #include "V8Server/v8-vocindex.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/modes.h"
 #include "VocBase/Methods/Collections.h"
 
 #include <velocypack/Builder.h>
@@ -2616,57 +2615,6 @@ static void JS_VersionVocbaseCol(
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_ChangeOperationModeVocbase(
-    v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-  TRI_GET_GLOBALS();
-
-  bool allowModeChange = false;
-  TRI_GET_GLOBAL(_currentRequest, v8::Value);
-  if (_currentRequest.IsEmpty() || _currentRequest->IsUndefined()) {
-    // console mode
-    allowModeChange = true;
-  } else if (_currentRequest->IsObject()) {
-    v8::Handle<v8::Object> obj = v8::Handle<v8::Object>::Cast(_currentRequest);
-
-    TRI_GET_GLOBAL_STRING(PortTypeKey);
-    if (obj->Has(PortTypeKey)) {
-      std::string const portType = TRI_ObjectToString(obj->Get(PortTypeKey));
-      if (portType == "unix") {
-        allowModeChange = true;
-      }
-    }
-  }
-
-  if (!allowModeChange) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-  }
-
-  // expecting one argument
-  if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "_changeMode(<mode>), with modes: 'Normal', 'NoCreate'");
-  }
-
-  std::string const newModeStr = TRI_ObjectToString(args[0]);
-
-  TRI_vocbase_operationmode_e newMode = TRI_VOCBASE_MODE_NORMAL;
-
-  if (newModeStr == "NoCreate") {
-    newMode = TRI_VOCBASE_MODE_NO_CREATE;
-  } else if (newModeStr != "Normal") {
-    TRI_V8_THROW_EXCEPTION_USAGE(
-        "illegal mode, allowed modes are: 'Normal' and 'NoCreate'");
-  }
-
-  TRI_ChangeOperationModeServer(newMode);
-
-  TRI_V8_RETURN_TRUE();
-  TRI_V8_TRY_CATCH_END
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief was docuBlock collectionDatabaseName
 ////////////////////////////////////////////////////////////////////////////////
@@ -3004,8 +2952,6 @@ void TRI_InitV8Collections(v8::Handle<v8::Context> context,
                            TRI_vocbase_t* vocbase, TRI_v8_global_t* v8g,
                            v8::Isolate* isolate,
                            v8::Handle<v8::ObjectTemplate> ArangoDBNS) {
-  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING(isolate, "_changeMode"),
-                       JS_ChangeOperationModeVocbase);
   TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING(isolate, "_collection"),
                        JS_CollectionVocbase);
   TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING(isolate, "_collections"),

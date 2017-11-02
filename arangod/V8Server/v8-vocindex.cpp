@@ -53,7 +53,6 @@
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/modes.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -208,8 +207,6 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   } else if (args.Length() < 1 || args.Length() > 4) {
     TRI_V8_THROW_EXCEPTION_USAGE("_create(<name>, <properties>, <type>, <options>)");
-  } else if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
   }
   
   if (ExecContext::CURRENT != nullptr &&
