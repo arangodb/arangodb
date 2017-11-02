@@ -208,7 +208,7 @@ class Query {
   void releaseEngine();
 
   /// @brief return the transaction, if prepared
-  virtual inline transaction::Methods* trx() { return _trx; }
+  virtual transaction::Methods* trx() { return _trx; }
 
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan.get(); }
