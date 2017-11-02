@@ -585,15 +585,18 @@ void HeartbeatThread::runSingleServer() {
       // enable redirections to leader
       auto prv = ServerState::setServerMode(ServerState::Mode::REDIRECT);
       if (prv == ServerState::Mode::DEFAULT) {
-        // wait for all operations to stop locally before following
+        // we were leader previously, now we need to ensure no ongoing operations
+        // on this server may prevent us from beeing a proper follower. We wait for
+        // all ongoing ops to stop, and make sure nothing is committet:
+        // setting server mode to REDIRECT stops DDL ops and write transactions
         Result res = GeneralServerFeature::JOB_MANAGER->clearAllJobs();
         if (res.fail()) {
           LOG_TOPIC(WARN, Logger::HEARTBEAT) << "could not cancel all async jobs "
             << res.errorMessage();
         }
         // wait for already scheduled jobs to disappear
-        SchedulerFeature::SCHEDULER->cancelQueued(5.0); // wait
-        // FIXME: is there more ?
+        SchedulerFeature::SCHEDULER->cancelQueued(10.0); // wait max 10 secs
+        sleep(5); // wait for everything to calm down for good measure
       }
       
       if (applier->endpoint() != endpoint) {

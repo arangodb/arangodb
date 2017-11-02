@@ -305,6 +305,7 @@ V8Task::callbackFunction() {
       std::string const& dbname = _dbGuard->database()->name();
       execContext.reset(ExecContext::create(_user, dbname));
       allowContinue = execContext->canUseDatabase(dbname, AuthLevel::RW);
+      allowContinue = allowContinue && ServerState::writeOpsEnabled();
     }
     ExecContextScope scope(_user.empty() ?
                            ExecContext::superuser() : execContext.get());
