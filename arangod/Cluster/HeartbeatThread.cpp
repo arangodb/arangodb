@@ -521,7 +521,7 @@ void HeartbeatThread::runSingleServer() {
         // if we stay a slave, the redirect will be turned on again
         RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::TRYAGAIN);
         result = CasWithResult(_agency, leaderPath, myIdBuilder.slice(),
-                               /* ttl */ std::min(30.0, interval * 4),
+                               /* ttl */ std::max(30.0, interval * 4),
                                /* timeout */ 30.0);
         
         if (result.successful()) { // sucessfull leadership takeover

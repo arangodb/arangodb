@@ -51,6 +51,15 @@ struct WalAccessResult : public Result {
         _fromTickIncluded(other._fromTickIncluded),
         _lastIncludedTick(other._lastIncludedTick),
         _latestTick(other._latestTick) {}
+  
+  WalAccessResult& operator=(WalAccessResult const& other) {
+    _errorNumber = other._errorNumber;
+    _errorMessage = other._errorMessage;
+    _fromTickIncluded = other._fromTickIncluded;
+    _lastIncludedTick = other._lastIncludedTick;
+    _latestTick = other._latestTick;
+    return *this;
+  }
 
   bool fromTickIncluded() const { return _fromTickIncluded; }
   TRI_voc_tick_t lastIncludedTick() const { return _lastIncludedTick; }
