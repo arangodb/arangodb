@@ -268,19 +268,21 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   if (ServerState::instance()->isCoordinator()) {
     bool createWaitsForSyncReplication =
       application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster")->createWaitsForSyncReplication();
-
+    
+    bool enforceReplicationFactor = true;
     if (args.Length() >= 3 && args[args.Length()-1]->IsObject()) {
       v8::Handle<v8::Object> obj = args[args.Length()-1]->ToObject();
-      auto v8WaitForSyncReplication = obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSyncReplication"));
-      if (!v8WaitForSyncReplication->IsUndefined()) {
-        createWaitsForSyncReplication = TRI_ObjectToBoolean(v8WaitForSyncReplication);
-      }
+      createWaitsForSyncReplication = TRI_GetOptionalBooleanProperty(isolate,
+        obj, "waitForSyncReplication", createWaitsForSyncReplication);
+
+      enforceReplicationFactor = TRI_GetOptionalBooleanProperty(isolate,
+        obj, "enforceReplicationFactor", enforceReplicationFactor);
     }
 
     std::unique_ptr<LogicalCollection> col =
         ClusterMethods::createCollectionOnCoordinator(
           collectionType, vocbase, infoSlice, false,
-          createWaitsForSyncReplication);
+          createWaitsForSyncReplication, enforceReplicationFactor);
     
     result = WrapCollection(isolate, col.release());
   } else {
