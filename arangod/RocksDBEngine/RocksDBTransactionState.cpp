@@ -210,9 +210,9 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
   
   ExecContext const* exe = ExecContext::CURRENT;
   if (!isReadOnlyTransaction() && exe != nullptr) {
-    bool cancelRW = !ServerState::enableWriteOps() && !exe->isSuperuser();
+    bool cancelRW = !ServerState::writeOpsEnabled() && !exe->isSuperuser();
     if (exe->isCanceled() || cancelRW) {
-      return TRI_ERROR_REQUEST_CANCELED;
+      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
 

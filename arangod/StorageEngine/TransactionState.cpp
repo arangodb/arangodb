@@ -286,8 +286,9 @@ int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
   // no need to check for superuser, cluster_sync tests break otherwise
   if (exec != nullptr && !exec->isSuperuser()) {
     // server is in read-only mode
-    if (accessType > AccessMode::Type::READ && !ServerState::enableWriteOps()) {
-      return TRI_ERROR_REQUEST_CANCELED;
+    if (accessType > AccessMode::Type::READ && !ServerState::writeOpsEnabled()) {
+      LOG_TOPIC(WARN, Logger::TRANSACTIONS) << "server is in read-only mode";
+      return TRI_ERROR_ARANGO_READ_ONLY;
     }
     std::string const colName = _resolver->getCollectionNameCluster(cid);
     

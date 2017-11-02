@@ -62,7 +62,7 @@ class ServerState {
     /// redirect to lead server if possible
     REDIRECT = 3,
     /// redirect to lead server if possible
-    READ_ONLY = 3,
+    READ_ONLY = 4,
   };
 
  public:
@@ -107,9 +107,9 @@ class ServerState {
   }
   
   /// @brief should not allow DDL operations / transactions
-  static bool enableWriteOps() {
+  static bool writeOpsEnabled() {
     Mode mode = serverMode();
-    return mode == Mode::DEFAULT && mode == Mode::MAINTENANCE;
+    return mode == Mode::DEFAULT || mode == Mode::MAINTENANCE;
   }
 
  public:

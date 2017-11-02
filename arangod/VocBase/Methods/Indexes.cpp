@@ -333,7 +333,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
         (lvl == AuthLevel::NONE || !canRead)) {
       return TRI_ERROR_FORBIDDEN;
     }
-    if (create && !exec->isSuperuser() && !ServerState::enableWriteOps()) {
+    if (create && !exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
                                      "server is in read-only mode");
     }
