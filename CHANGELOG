@@ -1,6 +1,16 @@
 devel
 -----
 
+* make the ArangoShell refill its collection cache when a yet-unknown collection
+  is first accessed. This fixes the following problem:
+
+      arangosh1> db._collections();  // shell1 lists all collections
+      arangosh2> db._create("test"); // shell2 now creates a new collection 'test'
+      arangosh1> db.test.insert({}); // shell1 is not aware of the collection created
+                                     // in shell2, so the insert will fail
+
+* make AQL `DISTINCT` not change the order of the results it is applied on
+
 * enable JEMalloc background thread for purging and returning unused memory
   back to the operating system (Linux only)
 
