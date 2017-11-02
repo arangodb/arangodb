@@ -716,6 +716,12 @@ void MMFilesEngine::waitForSyncTimeout(double maxWait) {
   MMFilesLogfileManager::instance()->waitForSync(maxWait);
 }
 
+Result MMFilesEngine::flushWal(bool waitForSync, bool waitForCollector,
+                             bool writeShutdownFile) {
+  return MMFilesLogfileManager::instance()->flush(
+                        waitForSync, waitForCollector, writeShutdownFile);
+}
+
 TRI_vocbase_t* MMFilesEngine::openDatabase(
     arangodb::velocypack::Slice const& args, bool isUpgrade, int& status) {
   VPackSlice idSlice = args.get("id");
