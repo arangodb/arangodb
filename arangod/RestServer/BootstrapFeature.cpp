@@ -53,6 +53,7 @@ BootstrapFeature::BootstrapFeature(
   startsAfter("FoxxQueues");
   startsAfter("GeneralServer");
   startsAfter("Cluster");
+  startsAfter("V8Dealer");
 }
 
 void BootstrapFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
@@ -203,10 +204,9 @@ void BootstrapFeature::start() {
         }
       }
     } else if (ServerState::isDBServer(role)) {
-      LOG_TOPIC(DEBUG, Logger::STARTUP)
-      << "Running server/bootstrap/db-server.js";
-      V8DealerFeature::DEALER->loadJavaScriptFileInAllContexts(vocbase,
-                                                               "server/bootstrap/db-server.js", nullptr);
+      LOG_TOPIC(DEBUG, Logger::STARTUP) << "Running server/bootstrap/db-server.js";
+      // only run the JavaScript in V8 context #0.
+      V8DealerFeature::DEALER->loadJavaScriptFileInDefaultContext(vocbase, "server/bootstrap/db-server.js", nullptr);
     } else {
       TRI_ASSERT(false);
     }
