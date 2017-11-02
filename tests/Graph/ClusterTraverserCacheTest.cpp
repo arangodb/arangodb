@@ -24,6 +24,7 @@
 #include "fakeit.hpp"
 
 #include "Aql/AqlValue.h"
+#include "Aql/Query.h"
 #include "Cluster/ServerState.h"
 #include "Graph/ClusterTraverserCache.h"
 #include "Transaction/Methods.h"
@@ -49,32 +50,54 @@ TEST_CASE("ClusterTraverserCache", "[aql][cluster]") {
   SECTION("it should return a NULL AQLValue if vertex not cached") {
     std::unordered_map<ServerID, traverser::TraverserEngineID> engines;
     std::string vertexId = "UnitTest/Vertex";
+    std::string expectedMessage = "vertex '" + vertexId + "' not found";
 
     Mock<transaction::Methods> trxMock;
     transaction::Methods& trx = trxMock.get();
 
-    ClusterTraverserCache testee(&trx, &engines);
+    Mock<Query> queryMock;
+    Query& query = queryMock.get();
+    When(Method(queryMock, trx)).AlwaysReturn(&trx);
+    When(Method(queryMock, registerWarning)).Do([&] (int code, char const* message) {
+      REQUIRE(code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      REQUIRE(strcmp(message, expectedMessage.c_str()) == 0);
+    });
+
+    ClusterTraverserCache testee(&query, &engines);
 
     // NOTE: we do not put anything into the cache, so we get null for any vertex
     AqlValue val = testee.fetchVertexAqlResult(StringRef(vertexId));
     REQUIRE(val.isNull(false));
+    Verify(Method(queryMock, registerWarning)).Exactly(1);
   }
 
   SECTION("it should insert a NULL VPack if vertex not cached") {
     std::unordered_map<ServerID, traverser::TraverserEngineID> engines;
     std::string vertexId = "UnitTest/Vertex";
+    std::string expectedMessage = "vertex '" + vertexId + "' not found";
 
     Mock<transaction::Methods> trxMock;
     transaction::Methods& trx = trxMock.get();
+
+    Mock<Query> queryMock;
+    Query& query = queryMock.get();
+    When(Method(queryMock, trx)).AlwaysReturn(&trx);
+    When(Method(queryMock, registerWarning)).Do([&] (int code, char const* message) {
+      REQUIRE(code == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
+      REQUIRE(strcmp(message, expectedMessage.c_str()) == 0);
+    });
+
     VPackBuilder result;
 
-    ClusterTraverserCache testee(&trx, &engines);
+    ClusterTraverserCache testee(&query, &engines);
 
     // NOTE: we do not put anything into the cache, so we get null for any vertex
     testee.insertVertexIntoResult(StringRef(vertexId), result);
 
     VPackSlice sl = result.slice();
     REQUIRE(sl.isNull());
+
+    Verify(Method(queryMock, registerWarning)).Exactly(1);
   }
 
 }

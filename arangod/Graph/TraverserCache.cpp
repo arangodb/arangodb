@@ -27,6 +27,7 @@
 #include "Basics/VelocyPackHelper.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/Query.h"
 #include "Cluster/ServerState.h"
 #include "Graph/EdgeDocumentToken.h"
 #include "Logger/Logger.h"
@@ -41,9 +42,10 @@
 using namespace arangodb;
 using namespace arangodb::graph;
 
-TraverserCache::TraverserCache(transaction::Methods* trx)
+TraverserCache::TraverserCache(aql::Query* query)
     : _mmdr(new ManagedDocumentResult{}),
-      _trx(trx), _insertedDocuments(0),
+      _query(query),
+      _trx(query->trx()), _insertedDocuments(0),
       _filteredDocuments(0),
       _stringHeap(new StringHeap{4096}) /* arbitrary block-size may be adjusted for performance */ {
 }

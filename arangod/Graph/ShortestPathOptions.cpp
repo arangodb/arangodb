@@ -39,17 +39,17 @@ using namespace arangodb::basics;
 using namespace arangodb::graph;
 using namespace arangodb::traverser;
 
-ShortestPathOptions::ShortestPathOptions(transaction::Methods* trx)
-    : BaseOptions(trx),
+ShortestPathOptions::ShortestPathOptions(aql::Query* query)
+    : BaseOptions(query),
       direction("outbound"),
       weightAttribute(""),
       defaultWeight(1),
       bidirectional(true),
       multiThreaded(true) {}
 
-ShortestPathOptions::ShortestPathOptions(transaction::Methods* trx,
+ShortestPathOptions::ShortestPathOptions(aql::Query* query,
                                          VPackSlice const& info)
-    : BaseOptions(trx),
+    : BaseOptions(query),
       direction("outbound"),
       weightAttribute(""),
       defaultWeight(1),
