@@ -109,6 +109,7 @@ bool MMFilesEdgeIndexIterator::next(LocalDocumentIdCallback const& cb, size_t li
     } else {
       _lastElement = _buffer.back();
       // found something
+      TRI_ASSERT(_posInBuffer < _buffer.size());
       cb(LocalDocumentId{_buffer[_posInBuffer++].localDocumentId()});
       limit--;
     }

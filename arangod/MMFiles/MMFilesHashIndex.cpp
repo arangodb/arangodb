@@ -240,6 +240,7 @@ bool MMFilesHashIndexIterator::next(LocalDocumentIdCallback const& cb, size_t li
 
     if (!_buffer.empty()) {
       // found something
+      TRI_ASSERT(_posInBuffer < _buffer.size());
       cb(LocalDocumentId{_buffer[_posInBuffer++]->localDocumentId()});
       --limit;
     }
@@ -298,6 +299,7 @@ bool MMFilesHashIndexIteratorVPack::next(LocalDocumentIdCallback const& cb,
 
     if (!_buffer.empty()) {
       // found something
+      TRI_ASSERT(_posInBuffer < _buffer.size());
       cb(_buffer[_posInBuffer++]->localDocumentId());
       --limit;
     }
