@@ -223,7 +223,7 @@ void PregelFeature::handleWorkerRequest(TRI_vocbase_t* vocbase,
   }
 
   if (path == Utils::prepareGSSPath) {
-    outBuilder = w->prepareGlobalStep(body);
+    w->prepareGlobalStep(body, outBuilder);
   } else if (path == Utils::startGSSPath) {
     w->startGlobalStep(body);
   } else if (path == Utils::messagesPath) {

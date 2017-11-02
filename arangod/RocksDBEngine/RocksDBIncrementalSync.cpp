@@ -200,28 +200,35 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
     }
     ++nextStart;
   }
+  
+  if (toFetch.empty()) {
+    // nothing to do
+    return Result();
+  }
 
   LOG_TOPIC(TRACE, Logger::REPLICATION) << "will refetch " << toFetch.size()
                                         << " documents for this chunk";
 
-  if (!toFetch.empty()) {
-    VPackBuilder keysBuilder;
-    keysBuilder.openArray();
-    for (auto& it : toFetch) {
-      keysBuilder.add(VPackValue(it));
-    }
-    keysBuilder.close();
+  VPackBuilder keysBuilder;
+  keysBuilder.openArray();
+  for (auto const& it : toFetch) {
+    keysBuilder.add(VPackValue(it));
+  }
+  keysBuilder.close();
+  
+  std::string const keyJsonString(keysBuilder.slice().toJson());
+  
+  size_t offsetInChunk = 0;
 
+  while (true) {
     std::string url = baseUrl + "/" + keysId + "?type=docs&chunk=" +
                       std::to_string(chunkId) + "&chunkSize=" +
-                      std::to_string(chunkSize) + "&low=" + lowString;
+                      std::to_string(chunkSize) + "&low=" + lowString + 
+                      "&offset=" + std::to_string(offsetInChunk);
 
     progress = "fetching documents chunk " + std::to_string(chunkId) +
                " for collection '" + collectionName + "' from " + url;
     syncer.setProgress(progress);
-
-    std::string const keyJsonString(keysBuilder.slice().toJson());
-
     
     std::unique_ptr<httpclient::SimpleHttpResult> response(
         syncer._client->retryRequest(rest::RequestType::PUT, url,
@@ -250,7 +257,13 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
       return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
     }
 
+    size_t foundLength = slice.length();
+
     for (auto const& it : VPackArrayIterator(slice)) {
+      if (it.isNull()) {
+        continue;
+      }
+
       if (!it.isObject()) {
         return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": document is no object");
       }
@@ -289,7 +302,15 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
         }
       }
     }
+
+    if (foundLength >= toFetch.size()) {
+      break;
+    }
+
+    // try again in next round
+    offsetInChunk = foundLength;
   }
+  
   return Result();
 }
 

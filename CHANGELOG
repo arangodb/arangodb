@@ -9,10 +9,19 @@ devel
 
 * UI: fixed event cleanup in cluster shards view
 
-* UI: replicationFactor of a collection is now changeable in a cluster
-  environment
+* enable JEMalloc background thread for purging and returning unused memory
+  back to the operating system (Linux only)
 
-* UI: reduced cluster dashboard api calls
+* incremental transfer of initial collection data now can handle partial 
+  responses for a chunk, allowing the leader/master to send smaller chunks 
+  (in terms of HTTP response size) and limit memory usage
+
+* initial creation of shards for cluster collections is now faster with
+  replicationFactor values bigger than 1. this is achieved by an optimization
+  for the case when the collection on the leader is still empty
+
+* potential fix for issue #3517: several "filesystem full" errors in logs 
+  while there's a lot of disk space
 
 * added C++ implementations for AQL function `SUBSTRING()`, `LEFT()`, `RIGHT()` and `TRIM()`
 
@@ -69,6 +78,21 @@ devel
       WARNING {memory} execute 'sudo sysctl -w "vm.max_map_count=512000"'
 
 
+v3.2.7 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #3549: server reading ENGINE config file fails on common standard 
+  newline character
+
+* upgraded bundled V8 engine to bugfix version v5.7.492.77
+
+  the upgrade fixes a memory leak in upstream V8 described in 
+  https://bugs.chromium.org/p/v8/issues/detail?id=5945 that will result in memory
+  chunks only getting uncommitted but not unmapped
+
+* UI: fixed error notifications for collection modifications
+
+
 v3.2.6 (2017-10-26)
 -------------------
 
@@ -86,6 +110,9 @@ v3.2.6 (2017-10-26)
   storage engine
 
 * allow changing of collection replication factor for existing collections
+
+* UI: replicationFactor of a collection is now changeable in a cluster
+  environment
 
 * several fixes for the cluster agency
 
