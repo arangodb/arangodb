@@ -219,7 +219,8 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
                                            RocksDBMethods* mthd,
                                            LocalDocumentId const& documentId,
-                                           VPackSlice const& slice) {
+                                           VPackSlice const& slice,
+                                           OperationMode mode) {
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
@@ -240,7 +241,8 @@ Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
                                            LocalDocumentId const& oldDocumentId,
                                            arangodb::velocypack::Slice const& oldDoc,
                                            LocalDocumentId const& newDocumentId,
-                                           velocypack::Slice const& newDoc) {
+                                           velocypack::Slice const& newDoc,
+                                           OperationMode mode) {
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
   RocksDBKeyLeaser key(trx);
@@ -257,7 +259,8 @@ Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
 Result RocksDBPrimaryIndex::removeInternal(transaction::Methods* trx,
                                            RocksDBMethods* mthd,
                                            LocalDocumentId const& documentId,
-                                           VPackSlice const& slice) {
+                                           VPackSlice const& slice,
+                                           OperationMode mode) {
   // TODO: deal with matching revisions?
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(

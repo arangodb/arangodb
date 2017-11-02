@@ -137,10 +137,11 @@ class MMFilesGeoIndex final : public MMFilesIndex {
   bool matchesDefinition(VPackSlice const& info) const override;
 
   Result insert(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&, bool isRollback) override;
+                arangodb::velocypack::Slice const&, OperationMode mode) override;
 
   Result remove(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&, bool isRollback) override;
+                arangodb::velocypack::Slice const&,
+                OperationMode mode) override;
 
   void load() override {}
   void unload() override;

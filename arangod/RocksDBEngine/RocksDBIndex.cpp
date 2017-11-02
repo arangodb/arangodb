@@ -198,7 +198,7 @@ int RocksDBIndex::drop() {
   bool prefix_same_as_start = this->type() != Index::TRI_IDX_TYPE_EDGE_INDEX;
   arangodb::Result r = rocksutils::removeLargeRange(
     rocksutils::globalRocksDB(), this->getBounds(), prefix_same_as_start);
-  
+
   // Try to drop the cache as well.
   if (_cachePresent) {
     try {
@@ -210,32 +210,34 @@ int RocksDBIndex::drop() {
     } catch (...) {
     }
   }
-  
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   //check if documents have been deleted
   size_t numDocs = rocksutils::countKeyRange(rocksutils::globalRocksDB(),
                                              this->getBounds(), prefix_same_as_start);
   if (numDocs > 0) {
-    
+
     std::string errorMsg("deletion check in index drop failed - not all documents in the index have been deleted. remaining: ");
     errorMsg.append(std::to_string(numDocs));
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, errorMsg);
   }
 #endif
-  
+
   return r.errorNumber();
 }
 
-Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* mthd,
+Result RocksDBIndex::updateInternal(transaction::Methods* trx,
+                                    RocksDBMethods* mthd,
                                     LocalDocumentId const& oldDocumentId,
                                     arangodb::velocypack::Slice const& oldDoc,
                                     LocalDocumentId const& newDocumentId,
-                                    arangodb::velocypack::Slice const& newDoc) {
-  Result res = removeInternal(trx, mthd, oldDocumentId, oldDoc);
+                                    arangodb::velocypack::Slice const& newDoc,
+                                    OperationMode mode) {
+  Result res = removeInternal(trx, mthd, oldDocumentId, oldDoc, mode);
   if (!res.ok()) {
     return res;
   }
-  return insertInternal(trx, mthd, newDocumentId, newDoc);
+  return insertInternal(trx, mthd, newDocumentId, newDoc, mode);
 }
 
 void RocksDBIndex::truncate(transaction::Methods* trx) {
@@ -271,7 +273,7 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
 
     iter->Next();
   }
-  
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   //check if index entries have been deleted
   if (type() != TRI_IDX_TYPE_GEO1_INDEX && type() != TRI_IDX_TYPE_GEO2_INDEX) {

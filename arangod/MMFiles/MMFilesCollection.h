@@ -130,7 +130,7 @@ class MMFilesCollection final : public PhysicalCollection {
                              PhysicalCollection*);  // use in cluster only!!!!!
 
   ~MMFilesCollection();
-  
+
   static constexpr uint32_t defaultIndexBuckets = 8;
 
   static constexpr double defaultLockTimeout = 10.0 * 60.0;
@@ -334,18 +334,18 @@ class MMFilesCollection final : public PhysicalCollection {
 
   Result read(transaction::Methods*, arangodb::StringRef const& key,
               ManagedDocumentResult& result, bool) override;
-  
+
   Result read(transaction::Methods*, arangodb::velocypack::Slice const& key,
               ManagedDocumentResult& result, bool) override;
 
   bool readDocument(transaction::Methods* trx,
                     LocalDocumentId const& documentId,
                     ManagedDocumentResult& result) override;
-  
+
   bool readDocumentWithCallback(transaction::Methods* trx,
                                 LocalDocumentId const& documentId,
                                 IndexIterator::DocumentCallback const& cb) override;
-  
+
   size_t readDocumentWithCallback(transaction::Methods* trx,
                                   std::vector<std::pair<LocalDocumentId, uint8_t const*>>& documentIds,
                                   IndexIterator::DocumentCallback const& cb);
@@ -518,11 +518,15 @@ class MMFilesCollection final : public PhysicalCollection {
   Result deletePrimaryIndex(transaction::Methods*, LocalDocumentId const& documentId,
                             velocypack::Slice const&);
 
-  Result insertSecondaryIndexes(transaction::Methods*, LocalDocumentId const& documentId,
-                                velocypack::Slice const&, bool isRollback);
+  Result insertSecondaryIndexes(transaction::Methods*,
+                                LocalDocumentId const& documentId,
+                                velocypack::Slice const&,
+                                Index::OperationMode mode);
 
-  Result deleteSecondaryIndexes(transaction::Methods*, LocalDocumentId const& documentId,
-                                velocypack::Slice const&, bool isRollback);
+  Result deleteSecondaryIndexes(transaction::Methods*,
+                                LocalDocumentId const& documentId,
+                                velocypack::Slice const&,
+                                Index::OperationMode mode);
 
   Result lookupDocument(transaction::Methods*, velocypack::Slice,
                         ManagedDocumentResult& result);

@@ -240,8 +240,9 @@ void MMFilesPrimaryIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   _primaryIndex->appendToVelocyPack(builder);
 }
 
-Result MMFilesPrimaryIndex::insert(transaction::Methods*, LocalDocumentId const&,
-                                   VPackSlice const&, bool) {
+Result MMFilesPrimaryIndex::insert(transaction::Methods*,
+                                   LocalDocumentId const&,
+                                   VPackSlice const&, OperationMode) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC(WARN, arangodb::Logger::FIXME)
       << "insert() called for primary index";
@@ -250,8 +251,9 @@ Result MMFilesPrimaryIndex::insert(transaction::Methods*, LocalDocumentId const&
                                  "insert() called for primary index");
 }
 
-Result MMFilesPrimaryIndex::remove(transaction::Methods*, LocalDocumentId const&,
-                                   VPackSlice const&, bool) {
+Result MMFilesPrimaryIndex::remove(transaction::Methods*,
+                                   LocalDocumentId const&,
+                                   VPackSlice const&, OperationMode) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   LOG_TOPIC(WARN, arangodb::Logger::FIXME)
       << "remove() called for primary index";

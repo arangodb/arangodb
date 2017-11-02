@@ -219,7 +219,8 @@ size_t MMFilesPersistentIndex::memory() const {
 /// @brief inserts a document into the index
 Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
                                       LocalDocumentId const& documentId,
-                                      VPackSlice const& doc, bool isRollback) {
+                                      VPackSlice const& doc,
+                                      OperationMode mode) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
@@ -384,7 +385,8 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
 /// @brief removes a document from the index
 Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
                                       LocalDocumentId const& documentId,
-                                      VPackSlice const& doc, bool isRollback) {
+                                      VPackSlice const& doc,
+                                      OperationMode mode) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;

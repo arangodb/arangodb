@@ -710,7 +710,7 @@ void MMFilesSkiplistIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 /// @brief inserts a document into a skiplist index
 Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
                                     LocalDocumentId const& documentId,
-                                    VPackSlice const& doc, bool isRollback) {
+                                    VPackSlice const& doc, OperationMode mode) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
@@ -766,7 +766,7 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
 /// @brief removes a document from a skiplist index
 Result MMFilesSkiplistIndex::remove(transaction::Methods* trx,
                                     LocalDocumentId const& documentId,
-                                    VPackSlice const& doc, bool isRollback) {
+                                    VPackSlice const& doc, OperationMode mode) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;

@@ -152,7 +152,7 @@ Result RocksDBCollection::updateProperties(VPackSlice const& slice, bool doSync)
     primaryIndex()->createCache();
   } else if (useCache()) {
     destroyCache();
-    primaryIndex()->destroyCache(); 
+    primaryIndex()->destroyCache();
   }
 
   // nothing else to do
@@ -756,7 +756,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     rindex->truncate(trx);
   }
   _needToPersistIndexEstimates = true;
-  
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // check if documents have been deleted
   if (mthd->countInBounds(documentBounds, true)) {
@@ -1095,7 +1095,7 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
                                  arangodb::ManagedDocumentResult& previous,
                                  OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick,
-                                 bool /*lock*/, 
+                                 bool /*lock*/,
                                  TRI_voc_rid_t& prevRev,
                                  TRI_voc_rid_t& revisionId) {
   // store the tick that was used for writing the document
@@ -1308,7 +1308,8 @@ arangodb::Result RocksDBCollection::fillIndexes(
   arangodb::Result res;
   auto cb = [&](LocalDocumentId const& documentId, VPackSlice slice) {
     if (res.ok()) {
-      res = ridx->insertInternal(trx, &batched, documentId, slice);
+      res = ridx->insertInternal(trx, &batched, documentId, slice,
+                                 Index::OperationMode::normal);
       if (res.ok()) {
         numDocsWritten++;
       }
@@ -1345,7 +1346,8 @@ arangodb::Result RocksDBCollection::fillIndexes(
           this->readDocument(trx, token, mmdr)) {
         // we need to remove already inserted documents up to numDocsWritten
         res2 = ridx->removeInternal(trx, &batched, mmdr.localDocumentId(),
-                                    VPackSlice(mmdr.vpack()));
+                                    VPackSlice(mmdr.vpack()),
+                                    Index::OperationMode::rollback);
         if (res2.ok()) {
           numDocsWritten--;
         }
@@ -1392,7 +1394,8 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-    Result tmpres = rIdx->insertInternal(trx, mthd, documentId, doc);
+    Result tmpres = rIdx->insertInternal(trx, mthd, documentId, doc,
+                                         Index::OperationMode::normal);
     if (!tmpres.ok()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
         // in case of OOM return immediately
@@ -1453,7 +1456,8 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   RocksDBOperationResult resInner;
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
-    Result tmpres = idx->remove(trx, documentId, doc, false);
+    Result tmpres = idx->remove(trx, documentId, doc,
+                                Index::OperationMode::normal);
     if (!tmpres.ok()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
         // in case of OOM return immediately
@@ -1537,7 +1541,8 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
     Result tmpres = rIdx->updateInternal(trx, mthd, oldDocumentId, oldDoc,
-                                         newDocumentId, newDoc);
+                                         newDocumentId, newDoc,
+                                         Index::OperationMode::normal);
     if (!tmpres.ok()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
         // in case of OOM return immediately
