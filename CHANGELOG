@@ -16,6 +16,17 @@ devel
     
   The time a command takes can be displayed easily by starting arangosh with `--console.prompt "%p> "`.
 
+* enable JEMalloc background thread for purging and returning unused memory
+  back to the operating system (Linux only)
+
+* incremental transfer of initial collection data now can handle partial 
+  responses for a chunk, allowing the leader/master to send smaller chunks 
+  (in terms of HTTP response size) and limit memory usage
+
+* initial creation of shards for cluster collections is now faster with
+  replicationFactor values bigger than 1. this is achieved by an optimization
+  for the case when the collection on the leader is still empty
+
 * potential fix for issue #3517: several "filesystem full" errors in logs 
   while there's a lot of disk space
 
