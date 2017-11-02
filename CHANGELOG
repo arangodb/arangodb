@@ -1,6 +1,21 @@
 devel
 -----
 
+* fixed issue #3516: Show execution time in arangosh
+    
+  this change adds more dynamic prompt components for arangosh
+  The following components are now available for dynamic prompts, 
+  settable via the `--console.prompt` option in arangosh:
+    
+  - '%t': current time as timestamp
+  - '%p': duration of last command in seconds
+  - '%d': name of current database
+  - '%e': current endpoint
+  - '%E': current endpoint without protocol
+  - '%u': current user
+    
+  The time a command takes can be displayed easily by starting arangosh with `--console.prompt "%p> "`.
+
 * make the ArangoShell refill its collection cache when a yet-unknown collection
   is first accessed. This fixes the following problem:
 
