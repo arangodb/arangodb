@@ -257,11 +257,6 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
     return res;
   }
 
-  // disallow index creation in read-only mode
-  if (!collection->isSystem() && create) {
-    return Result(TRI_ERROR_ARANGO_READ_ONLY);
-  }
-
   bool created = false;
   std::shared_ptr<arangodb::Index> idx;
   if (create) {

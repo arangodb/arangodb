@@ -719,13 +719,13 @@ Result transaction::Methods::begin() {
                                    "invalid transaction state");
   }
   
-  ExecContext const* exe = ExecContext::CURRENT;
+  /*ExecContext const* exe = ExecContext::CURRENT;
   if (exe != nullptr && !_state->isReadOnlyTransaction()) {
-    bool cancelRW = !ServerState::writeOpsEnabled() && !exe->isSuperuser();
+    bool cancelRW = !exe->isSuperuser() && !ServerState::writeOpsEnabled();
     if (exe->isCanceled() || cancelRW) {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
-  }
+  }*/
 
   if (_state->isCoordinator()) {
     if (_state->isTopLevelTransaction()) {

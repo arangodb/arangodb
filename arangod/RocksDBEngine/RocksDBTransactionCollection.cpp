@@ -192,11 +192,6 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
     }
 
-    if (AccessMode::isWriteOrExclusive(_accessType) &&
-        !LogicalCollection::IsSystemName(_collection->name())) {
-      return TRI_ERROR_ARANGO_READ_ONLY;
-    }
-
     doSetup = true;
   }
 
