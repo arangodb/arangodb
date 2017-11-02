@@ -92,6 +92,11 @@ VPackSlice TraverserCache::lookupInCollection(StringRef id) {
     return VPackSlice(_mmdr->vpack());
   } else if (res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND)) {
     ++_insertedDocuments;
+
+    // Register a warning. It is okay though but helps the user
+    std::string msg = "vertex '" + id.toString() + "' not found";
+    _query->registerWarning(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND, msg.c_str());
+
     // This is expected, we may have dangling edges. Interpret as NULL
     return basics::VelocyPackHelper::NullValue();
   } else {
