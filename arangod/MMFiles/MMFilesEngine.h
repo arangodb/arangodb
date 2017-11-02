@@ -170,6 +170,9 @@ class MMFilesEngine final : public StorageEngine {
   void waitForSyncTick(TRI_voc_tick_t tick) override;
   
   void waitForSyncTimeout(double maxWait) override;
+  
+  Result flushWal(bool waitForSync, bool waitForCollector,
+                  bool writeShutdownFile) override;
 
   virtual TRI_vocbase_t* openDatabase(
       arangodb::velocypack::Slice const& parameters, bool isUpgrade,

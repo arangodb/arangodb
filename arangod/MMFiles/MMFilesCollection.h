@@ -180,7 +180,7 @@ class MMFilesCollection final : public PhysicalCollection {
                        std::vector<MMFilesDatafile*>&& compactors);
 
   /// @brief rotate the active journal - will do nothing if there is no journal
-  int rotateActiveJournal();
+  int rotateActiveJournal() override;
 
   /// @brief sync the active journal - will do nothing if there is no journal
   /// or if the journal is volatile

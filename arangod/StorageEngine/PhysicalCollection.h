@@ -79,6 +79,9 @@ class PhysicalCollection {
   virtual int close() = 0;
   virtual void load() = 0;
   virtual void unload() = 0;
+  
+  /// @brief rotate the active journal - will do nothing if there is no journal
+  virtual int rotateActiveJournal() { return TRI_ERROR_NO_ERROR; }
 
   // @brief Return the number of documents in this collection
   virtual uint64_t numberDocuments(transaction::Methods* trx) const = 0;
@@ -90,7 +93,7 @@ class PhysicalCollection {
   virtual void open(bool ignoreErrors) = 0;
 
   void drop();
-
+  
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
@@ -194,7 +197,7 @@ class PhysicalCollection {
   ///        it at that moment.
   virtual void deferDropCollection(
       std::function<bool(LogicalCollection*)> callback) = 0;
-
+  
  protected:
   /// @brief Inject figures that are specific to StorageEngine
   virtual void figuresSpecific(

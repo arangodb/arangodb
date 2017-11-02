@@ -148,7 +148,7 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
   // If we do not have an index yet we cannot do anything.
   // Should NOT be the case
   TRI_ASSERT(!idxHandles.empty());
-  auto idx = idxHandles[0].getIndex();
+  std::shared_ptr<Index> idx = idxHandles[0].getIndex();
   if (idx->hasSelectivityEstimate()) {
     double expected = 1 / idx->selectivityEstimate();
     nrItems += static_cast<size_t>(expected);

@@ -90,7 +90,17 @@ exports.ArangoView = require('@arangodb/arango-view').ArangoView;
 if (typeof internal.arango !== 'undefined') {
   try {
     exports.arango = internal.arango;
-    exports.db = new exports.ArangoDatabase(internal.arango);
+    let db = new exports.ArangoDatabase(internal.arango);
+    // proxy the db object, so we can track access to non-existing collections
+    exports.db = new Proxy(db, {
+      get(target, name) {
+        if (!target.hasOwnProperty(name) && target[name] === undefined && typeof name === 'string') {
+          // unknown collection, try re-populating the cache
+          db._collections();
+        }
+        return target[name];
+      },
+    });
     internal.db = exports.db; // TODO remove
   } catch (err) {
     internal.print('cannot connect to server: ' + String(err));
