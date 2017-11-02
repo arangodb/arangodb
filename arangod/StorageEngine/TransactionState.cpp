@@ -120,8 +120,10 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   TransactionCollection* trxCollection = findCollection(cid, position);
 
   if (trxCollection != nullptr) {
-    static_assert(AccessMode::Type::READ < AccessMode::Type::WRITE, "ro<rw");
-    static_assert(AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE, "rw<ex");
+    static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
+                  AccessMode::Type::READ < AccessMode::Type::WRITE &&
+                  AccessMode::Type::READ < AccessMode::Type::EXCLUSIVE,
+                  "AccessMode::Type total order fail");
     // we may need to recheck permissions here
     if (trxCollection->accessType() < accessType) {
       int res = checkCollectionPermission(cid, accessType);
