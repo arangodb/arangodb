@@ -357,15 +357,27 @@ ArangoDatabase.prototype._create = function (name, properties, type, options) {
     });
   }
   
-  let urlAddon = '';
+  let urlAddons = [];
   if (typeof options === "object" && options !== null) {
     if (options.hasOwnProperty('waitForSyncReplication')) {
       if (options.waitForSyncReplication) {
-        urlAddon = '?waitForSyncReplication=1';
+        urlAddons.push('waitForSyncReplication=1');
       } else {
-        urlAddon = '?waitForSyncReplication=0';
+        urlAddons.push('waitForSyncReplication=0');
       }
     }
+    if (options.hasOwnProperty('enforceReplicationFactor')) {
+      if (options.enforceReplicationFactor) {
+        urlAddons.push('enforceReplicationFactor=1');
+      } else {
+        urlAddons.push('enforceReplicationFactor=0');
+      }
+    }
+  }
+
+  let urlAddon = '';
+  if (urlAddons.length > 0) {
+    urlAddon += '?' + urlAddons.join('&');
   }
 
   if (type !== undefined) {

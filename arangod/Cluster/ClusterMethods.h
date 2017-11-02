@@ -269,7 +269,9 @@ class ClusterMethods {
       TRI_col_type_e collectionType, TRI_vocbase_t* vocbase,
       arangodb::velocypack::Slice parameters,
       bool ignoreDistributeShardsLikeErrors,
-      bool waitForSyncReplication);
+      bool waitForSyncReplication,
+      bool enforceReplicationFactor
+    );
 
  private:
 
@@ -279,7 +281,8 @@ class ClusterMethods {
 
   static std::unique_ptr<LogicalCollection> persistCollectionInAgency(
     LogicalCollection* col, bool ignoreDistributeShardsLikeErrors,
-    bool waitForSyncReplication, arangodb::velocypack::Slice parameters);
+    bool waitForSyncReplication, bool enforceReplicationFactor,
+    arangodb::velocypack::Slice parameters);
 };
 
 }  // namespace arangodb

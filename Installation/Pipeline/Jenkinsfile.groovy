@@ -742,12 +742,14 @@ def unstashBuild(os, edition, maintainer) {
         try {
             if (os == "windows") {
                 def name = "build.zip"
+
                 powershell "echo 'y' | pscp -i C:\\Users\\Jenkins\\.ssh\\putty-jenkins.ppk jenkins@c1:/vol/cache/build-${branchLabel}-${os}-${edition}-${maintainer}.zip ${name}"
                 powershell "Expand-Archive -Path ${name} -Force -DestinationPath ."
                 bat "del /F /Q ${name}"
             }
             else {
                 def name = "build.tar.gz"
+
                 sh "scp c1:/vol/cache/build-${branchLabel}-${os}-${edition}-${maintainer}.tar.gz ${name}"
                 sh "tar xpzf ${name}"
                 sh "rm -f ${name}"

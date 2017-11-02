@@ -248,19 +248,23 @@ static void CreateVocBase(v8::FunctionCallbackInfo<v8::Value> const& args,
   // waitForSync can be 3. or 4. parameter
   auto cluster = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
   bool createWaitsForSyncReplication = cluster->createWaitsForSyncReplication();
+  bool enforceReplicationFactor = true;
+
   if (args.Length() >= 3 && args[args.Length()-1]->IsObject()) {
     v8::Handle<v8::Object> obj = args[args.Length()-1]->ToObject();
-    auto v8WaitForSyncReplication = obj->Get(TRI_V8_ASCII_STRING(isolate, "waitForSyncReplication"));
-    if (!v8WaitForSyncReplication->IsUndefined()) {
-      createWaitsForSyncReplication = TRI_ObjectToBoolean(v8WaitForSyncReplication);
-    }
+    createWaitsForSyncReplication = TRI_GetOptionalBooleanProperty(isolate,
+      obj, "waitForSyncReplication", createWaitsForSyncReplication);
+
+    enforceReplicationFactor = TRI_GetOptionalBooleanProperty(isolate,
+      obj, "enforceReplicationFactor", enforceReplicationFactor);
   }
   
   v8::Handle<v8::Value> result;
   Result res = methods::Collections::create(vocbase, name, collectionType,
                                             propSlice,
                                             createWaitsForSyncReplication,
-                                            [&](LogicalCollection* collection) {
+                                            enforceReplicationFactor,
+                                            [&isolate, &result](LogicalCollection* collection) {
                                               result = WrapCollection(isolate, collection);
                                             });
   if (res.fail()) {
