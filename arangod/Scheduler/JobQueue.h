@@ -40,6 +40,7 @@ class Scheduler;
 class JobQueueThread;
 
 class JobQueue {
+  friend class JobQueueThread;
  public:
   // ordered by priority (highst prio first)
   static size_t const AQL_QUEUE = 1;
@@ -76,6 +77,11 @@ class JobQueue {
     wakeup();
     return true;
   }
+  
+  /// @brief blocks until queue is empty
+  void clear(double timeout);
+  
+private:
 
   bool pop(Job*& job) {
     bool ok = _queue.pop(job) && job != nullptr;
@@ -86,10 +92,10 @@ class JobQueue {
 
     return ok;
   }
-
+  
   void wakeup();
   void waitForWork();
-
+  
  private:
   int64_t const _maxQueueSize;
   boost::lockfree::queue<Job*> _queue;

@@ -49,6 +49,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Options.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 #include "Utils/Events.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
@@ -717,6 +718,14 @@ Result transaction::Methods::begin() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid transaction state");
   }
+  
+  ExecContext const* exe = ExecContext::CURRENT;
+  if (!_state->isReadOnlyTransaction() && exe != nullptr) {
+    bool cancelRW = !ServerState::enableWriteOps() && !exe->isSuperuser();
+    if (exe->isCanceled() || cancelRW) {
+      return TRI_ERROR_REQUEST_CANCELED;
+    }
+  }
 
   if (_state->isCoordinator()) {
     if (_state->isTopLevelTransaction()) {
@@ -734,9 +743,17 @@ Result transaction::Methods::commit() {
     // transaction not created or not running
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
+  
+  ExecContext const* exe = ExecContext::CURRENT;
+  if (!_state->isReadOnlyTransaction() && exe != nullptr) {
+    bool cancelRW = !ServerState::enableWriteOps() && !exe->isSuperuser();
+    if (exe->isCanceled() || cancelRW) {
+      return TRI_ERROR_REQUEST_CANCELED;
+    }
+  }
 
   CallbackInvoker invoker(this);
-
+  
   if (_state->isCoordinator()) {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::COMMITTED);

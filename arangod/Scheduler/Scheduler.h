@@ -93,7 +93,13 @@ class Scheduler {
   bool shouldQueueMore() const;
   bool hasQueueCapacity() const;
 
+  /// queue processing of an async rest job
   bool queue(std::unique_ptr<Job> job);
+  
+  /// @brief cancel all currently queued jobs, ideally server is in
+  void cancelQueued(double timeout);
+  
+  std::string infoStatus();
 
   uint64_t minimum() const { return _nrMinimum; }
   inline uint64_t numQueued() const noexcept { return  _nrQueued; };
@@ -101,8 +107,6 @@ class Scheduler {
   static inline uint64_t numRunning(uint64_t value) noexcept { return value & 0xFFFFULL; }
   static inline uint64_t numWorking(uint64_t value) noexcept { return (value >> 16) & 0xFFFFULL; }
   static inline uint64_t numBlocked(uint64_t value) noexcept { return (value >> 32) & 0xFFFFULL; }
-
-  std::string infoStatus();
 
   inline void queueJob() noexcept { ++_nrQueued; } 
   inline void unqueueJob() noexcept { 

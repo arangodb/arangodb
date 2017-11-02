@@ -29,6 +29,7 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
@@ -49,7 +50,6 @@
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
-using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -538,9 +538,14 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
 
   ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr && exec->databaseAuthLevel() != AuthLevel::RW) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "registerTask() needs db RW permissions");
+  if (exec != nullptr) {
+    if (exec->databaseAuthLevel() != AuthLevel::RW) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                     "registerTask() needs db RW permissions");
+    } else if (!exec->isSuperuser() && !ServerState::enableWriteOps()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
+                                     "server is in read-only mode");
+    }
   }
 
   v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
@@ -684,9 +689,14 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
     
   ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr && exec->databaseAuthLevel() != AuthLevel::RW) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "unregisterTask() needs db RW permissions");
+  if (exec != nullptr) {
+    if (exec->databaseAuthLevel() != AuthLevel::RW) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                     "registerTask() needs db RW permissions");
+    } else if (!exec->isSuperuser() && !ServerState::enableWriteOps()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
+                                     "server is in read-only mode");
+    }
   }
 
   int res = V8Task::unregisterTask(GetTaskId(isolate, args[0]), true);

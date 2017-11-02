@@ -49,10 +49,11 @@ ExecContext* ExecContext::create(std::string const& user,
 
 bool ExecContext::canUseDatabase(std::string const& db,
                                  AuthLevel requested) const {
-  if (_isInternal || _database == db) {
+  if (_internal || _database == db) {
     // should be RW for superuser, RO for read-only
     return requested <= _databaseAuthLevel;
   }
+  
   AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
   TRI_ASSERT(auth != nullptr);
   if (auth->isActive()) {
@@ -65,10 +66,11 @@ bool ExecContext::canUseDatabase(std::string const& db,
 /// @brief returns auth level for user
 AuthLevel ExecContext::collectionAuthLevel(std::string const& dbname,
                                            std::string const& coll) const {
-  if (_isInternal) {
+  if (_internal) {
     // should be RW for superuser, RO for read-only
     return _databaseAuthLevel;
   }
+  
   AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
   TRI_ASSERT(auth != nullptr);
   if (auth->isActive()) {

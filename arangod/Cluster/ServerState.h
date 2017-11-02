@@ -52,6 +52,18 @@ class ServerState {
     STATE_STOPPED,        // primary only
     STATE_SHUTDOWN        // used by all roles
   };
+  
+  enum class Mode : uint8_t {
+    DEFAULT = 0,
+    /// reject all requests
+    MAINTENANCE = 1,
+    /// status unclear, client must try again
+    TRYAGAIN = 2,
+    /// redirect to lead server if possible
+    REDIRECT = 3,
+    /// redirect to lead server if possible
+    READ_ONLY = 3,
+  };
 
  public:
   ServerState();
@@ -81,6 +93,24 @@ class ServerState {
 
   /// @brief convert a string representation to a state
   static StateEnum stringToState(std::string const&);
+  
+  /// @brief sets server mode, returns previously held
+  /// value (performs atomic read-modify-write operation)
+  static Mode setServerMode(Mode mode);
+  
+  /// @brief atomically load current server mode
+  static Mode serverMode();
+  
+  /// @brief checks maintenance mode
+  static bool isMaintenance() {
+    return serverMode() == Mode::MAINTENANCE;
+  }
+  
+  /// @brief should not allow DDL operations / transactions
+  static bool enableWriteOps() {
+    Mode mode = serverMode();
+    return mode == Mode::DEFAULT && mode == Mode::MAINTENANCE;
+  }
 
  public:
   /// @brief sets the initialized flag

@@ -68,7 +68,6 @@ class JobQueueThread final
         LOG_TOPIC(TRACE, Logger::THREADS) << "starting next queued job";
 
         idleTries = 0;
-
         std::shared_ptr<Job> job(jobPtr);
 
         _scheduler->post([this, self, job]() {
@@ -137,3 +136,27 @@ void JobQueue::waitForWork() {
   CONDITION_LOCKER(guard, _queueCondition);
   guard.wait(WAIT_TIME);
 }
+
+void JobQueue::clear(double timeout) {
+  TRI_ASSERT(timeout > 0);
+  double end = TRI_microtime() + timeout;
+  
+  // block thread from waking up
+  CONDITION_LOCKER(guard, _queueCondition);
+  while (_queueThread->isRunning() && _queueSize > 0 &&
+         end > TRI_microtime()) {
+    // clear all non-processed jobs
+    Job* job = nullptr;
+    int limit = 32; // don't call TRI_microtime() everytime
+    while (this->pop(job) && --limit > 0) {
+      std::shared_ptr<rest::RestHandler> handler = job->_handler;
+      if (handler && !handler->cancel()) {
+        LOG_TOPIC(WARN, Logger::THREADS)
+          << "could not cancel job from handler " << handler->name();
+      }
+      delete job;
+    }
+  }
+  guard.signal(); // wakup thread
+}
+

@@ -239,7 +239,7 @@ static bool SetRequestContext(GeneralRequest* request, void* data) {
 }
 
 void GeneralServerFeature::prepare() {
-  RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::MAINTENANCE);
+  ServerState::setServerMode(ServerState::Mode::MAINTENANCE);
   GENERAL_SERVER = this;
 }
 

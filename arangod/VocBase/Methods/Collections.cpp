@@ -43,7 +43,6 @@
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/AuthInfo.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/modes.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -134,11 +133,16 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
   }
 
   ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr &&
-      !exec->canUseDatabase(vocbase->name(), AuthLevel::RW)) {
-    return Result(TRI_ERROR_FORBIDDEN,
-                  "cannot create collection in " + vocbase->name());
+  if (exec != nullptr) {
+    if (!exec->canUseDatabase(vocbase->name(), AuthLevel::RW)) {
+      return Result(TRI_ERROR_FORBIDDEN,
+                    "cannot create collection in " + vocbase->name());
+    } else if (!exec->isSuperuser() && !ServerState::enableWriteOps()) {
+      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
+    }
   }
+  
+  
 
   TRI_ASSERT(vocbase && !vocbase->isDangling());
   TRI_ASSERT(properties.isObject());
@@ -297,6 +301,9 @@ Result Collections::updateProperties(LogicalCollection* coll,
     bool canModify = exec->canUseCollection(coll->name(), AuthLevel::RW);
     if ((exec->databaseAuthLevel() != AuthLevel::RW || !canModify)) {
       return TRI_ERROR_FORBIDDEN;
+    } else if (!exec->isSuperuser() && !ServerState::enableWriteOps()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
+                                     "server is in read-only mode");
     }
   }
 
@@ -417,14 +424,19 @@ static Result DropVocbaseColCoordinator(arangodb::LogicalCollection* collection,
 
 Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
                          bool allowDropSystem, double timeout) {
+  
   ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr &&
-      (!exec->canUseDatabase(vocbase->name(), AuthLevel::RW) ||
-       !exec->canUseCollection(coll->name(), AuthLevel::RW))) {
-    return Result(TRI_ERROR_FORBIDDEN,
-                  "Insufficient rights to drop "
-                  "collection " +
-                      coll->name());
+  if (exec != nullptr) {
+    if  (!exec->canUseDatabase(vocbase->name(), AuthLevel::RW) ||
+         !exec->canUseCollection(coll->name(), AuthLevel::RW)) {
+      return Result(TRI_ERROR_FORBIDDEN,
+                    "Insufficient rights to drop "
+                    "collection " +
+                    coll->name());
+    } else if (!exec->isSuperuser() && !ServerState::enableWriteOps()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
+                                     "server is in read-only mode");
+    }
   }
 
   std::string const dbname = coll->dbName();
@@ -455,6 +467,11 @@ Result Collections::drop(TRI_vocbase_t* vocbase, LogicalCollection* coll,
 }
 
 Result Collections::warmup(TRI_vocbase_t* vocbase, LogicalCollection* coll) {
+  ExecContext const* exec = ExecContext::CURRENT; // disallow expensive ops
+  if (!exec->isSuperuser() && !ServerState::enableWriteOps()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
+                                   "server is in read-only mode");
+  }
   if (ServerState::instance()->isCoordinator()) {
     std::string const cid = coll->cid_as_string();
     return warmupOnCoordinator(vocbase->name(), cid);
