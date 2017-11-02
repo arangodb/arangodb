@@ -196,6 +196,9 @@ void RocksDBTransactionState::createTransaction() {
   
   // set begin marker
   if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_numLogdata == 0);
+#endif
     RocksDBLogValue header =
         RocksDBLogValue::BeginTransaction(_vocbase->id(), _id);
     _rocksTransaction->PutLogData(header.slice());
