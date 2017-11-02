@@ -58,7 +58,7 @@ RocksDBIndex::RocksDBIndex(
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(useCache && !collection->isSystem()) {
+      _cacheEnabled(useCache && !collection->isAStub() && !collection->isSystem()) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
   if (_cacheEnabled) {
     createCache();
@@ -73,7 +73,7 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(useCache && !collection->isSystem()) {
+      _cacheEnabled(useCache && !collection->isAStub() && !collection->isSystem()) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
 
   if (_objectId == 0) {

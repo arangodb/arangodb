@@ -57,8 +57,7 @@ class RocksDBCollection final : public PhysicalCollection {
  public:
  public:
   explicit RocksDBCollection(LogicalCollection*, VPackSlice const& info);
-  explicit RocksDBCollection(LogicalCollection*,
-                             PhysicalCollection*);  // use in cluster only!!!!!
+  RocksDBCollection(LogicalCollection*, PhysicalCollection const*);  // use in cluster only!!!!!
 
   ~RocksDBCollection();
 
@@ -69,7 +68,7 @@ class RocksDBCollection final : public PhysicalCollection {
                                     bool doSync) override;
   virtual arangodb::Result persistProperties() override;
 
-  virtual PhysicalCollection* clone(LogicalCollection*) override;
+  virtual PhysicalCollection* clone(LogicalCollection*) const override;
 
   /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;

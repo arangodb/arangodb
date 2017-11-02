@@ -325,8 +325,7 @@ void RocksDBEngine::start() {
 
   rocksdb::BlockBasedTableOptions table_options;
   if (opts->_blockCacheSize > 0) {
-    table_options.block_cache = rocksdb::NewLRUCache(opts->_blockCacheSize,
-                                      static_cast<int>(opts->_blockCacheShardBits));
+    table_options.block_cache = rocksdb::NewLRUCache(opts->_blockCacheSize, static_cast<int>(opts->_blockCacheShardBits));
     //table_options.cache_index_and_filter_blocks = opts->_compactionReadaheadSize > 0;
   } else {
     table_options.no_block_cache = true;
@@ -1545,7 +1544,7 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
       auto uniqCol =
-          std::make_unique<arangodb::LogicalCollection>(vocbase.get(), it);
+          std::make_unique<arangodb::LogicalCollection>(vocbase.get(), it, false);
       auto collection = uniqCol.get();
       TRI_ASSERT(collection != nullptr);
       StorageEngine::registerCollection(vocbase.get(), uniqCol.get());

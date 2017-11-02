@@ -355,7 +355,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
   // Try to create a new collection. This is not registered yet
 
   std::unique_ptr<arangodb::LogicalCollection> collection =
-      std::make_unique<arangodb::LogicalCollection>(this, parameters);
+      std::make_unique<arangodb::LogicalCollection>(this, parameters, false);
   TRI_ASSERT(collection != nullptr);
 
   WRITE_LOCKER(writeLocker, _collectionsLock);

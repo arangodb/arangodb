@@ -74,9 +74,7 @@ using namespace arangodb;
 using namespace arangodb::rocksutils;
 
 namespace {
-
 static std::string const Empty;
-
 }  // namespace
 
 RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
@@ -90,7 +88,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _primaryIndex(nullptr),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(!collection->isSystem() &&
+      _cacheEnabled(!collection->isAStub() && !collection->isSystem() &&
                     basics::VelocyPackHelper::readBooleanValue(
                         info, "cacheEnabled", false)) {
   VPackSlice s = info.get("isVolatile");
@@ -99,6 +97,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
         TRI_ERROR_BAD_PARAMETER,
         "volatile collections are unsupported in the RocksDB engine");
   }
+  
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
   if (_cacheEnabled) {
@@ -107,9 +106,9 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
 }
 
 RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
-                                     PhysicalCollection* physical)
+                                     PhysicalCollection const* physical)
     : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
-      _objectId(static_cast<RocksDBCollection*>(physical)->_objectId),
+      _objectId(static_cast<RocksDBCollection const*>(physical)->_objectId),
       _numberDocuments(0),
       _revisionId(0),
       _needToPersistIndexEstimates(false),
@@ -117,7 +116,8 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _primaryIndex(nullptr),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(static_cast<RocksDBCollection*>(physical)->_cacheEnabled) {
+      _cacheEnabled(static_cast<RocksDBCollection const*>(physical)->_cacheEnabled) {
+  
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
   if (_cacheEnabled) {
@@ -162,10 +162,10 @@ arangodb::Result RocksDBCollection::updateProperties(VPackSlice const& slice,
 arangodb::Result RocksDBCollection::persistProperties() {
   // only code path calling this causes these properties to be
   // already written in RocksDBEngine::changeCollection()
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
-PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical) {
+PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical) const {
   return new RocksDBCollection(logical, this);
 }
 
