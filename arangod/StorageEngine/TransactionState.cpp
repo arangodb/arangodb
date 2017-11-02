@@ -100,26 +100,6 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
                                     AccessMode::Type accessType,
                                     int nestingLevel, bool force) {
   LOG_TRX(this, nestingLevel) << "adding collection " << cid;
-
-  ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr && !exec->isSuperuser()) {
-    // no need to lookup name as superuser, cluster_sync breaks otherwise
-    std::string const colName = _resolver->getCollectionNameCluster(cid);
-  
-    AuthLevel level = exec->collectionAuthLevel(_vocbase->name(), colName);
-
-    if (level == AuthLevel::NONE) {
-      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
-                                             << " has collection AuthLevel::NONE";
-      return TRI_ERROR_FORBIDDEN;
-    }
-    bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
-    if (level == AuthLevel::RO && collectionWillWrite) {
-      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
-                                              << " has no write right for collection " << colName;
-      return TRI_ERROR_ARANGO_READ_ONLY;
-    }
-  }
   
   // upgrade transaction type if required
   if (nestingLevel == 0) {
@@ -135,11 +115,20 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
     }
   }
 
-  // check if we already have got this collection in the _collections vector
+  // check if we already got this collection in the _collections vector
   size_t position = 0;
   TransactionCollection* trxCollection = findCollection(cid, position);
 
   if (trxCollection != nullptr) {
+    static_assert(AccessMode::Type::READ < AccessMode::Type::WRITE, "ro<rw");
+    static_assert(AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE, "rw<ex");
+    // we may need to recheck permissions here
+    if (trxCollection->accessType() < accessType) {
+      int res = checkCollectionPermission(cid, accessType);
+      if (res != TRI_ERROR_NO_ERROR) {
+        return res;
+      }
+    }
     // collection is already contained in vector
     return trxCollection->updateUsage(accessType, nestingLevel);
   }
@@ -155,7 +144,19 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
       (isRunning() && !_options.allowImplicitCollections)) {
     return TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION;
   }
-
+  
+  // cancel all operations if we are in this mode
+  if (!ServerState::allowOperations() &&
+      accessType > AccessMode::Type::READ) {
+    return TRI_ERROR_ARANGO_READ_ONLY;
+  }
+  
+  // now check the permissions
+  int res = checkCollectionPermission(cid, accessType);
+  if (res != TRI_ERROR_NO_ERROR) {
+    return res;
+  }
+  
   // collection was not contained. now create and insert it
   TRI_ASSERT(trxCollection == nullptr);
 
@@ -283,6 +284,31 @@ void TransactionState::setType(AccessMode::Type type) {
    
 bool TransactionState::isExclusiveTransactionOnSingleCollection() const {
   return ((numCollections() == 1) && (_collections[0]->accessType() == AccessMode::Type::EXCLUSIVE));
+}
+
+int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
+                                                AccessMode::Type accessType) const {
+  ExecContext const* exec = ExecContext::CURRENT;
+  // no need to check for superuser, cluster_sync tests break otherwise
+  if (exec != nullptr && !exec->isSuperuser()) {
+    std::string const colName = _resolver->getCollectionNameCluster(cid);
+    
+    AuthLevel level = exec->collectionAuthLevel(_vocbase->name(), colName);
+    
+    if (level == AuthLevel::NONE) {
+      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
+      << " has collection AuthLevel::NONE";
+      return TRI_ERROR_FORBIDDEN;
+    }
+    bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
+    if (level == AuthLevel::RO && collectionWillWrite) {
+      LOG_TOPIC(TRACE, Logger::AUTHORIZATION) << "User " << exec->user()
+      << " has no write right for collection " << colName;
+      return TRI_ERROR_ARANGO_READ_ONLY;
+    }
+  }
+  
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// @brief release collection locks for a transaction

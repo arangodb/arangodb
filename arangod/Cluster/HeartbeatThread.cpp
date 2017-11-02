@@ -39,7 +39,6 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/AsyncJobManager.h"
 #include "GeneralServer/GeneralServerFeature.h"
-#include "GeneralServer/RestHandlerFactory.h"
 #include "Logger/Logger.h"
 #include "Replication/GlobalInitialSyncer.h"
 #include "Replication/GlobalReplicationApplier.h"
@@ -191,7 +190,7 @@ void HeartbeatThread::run() {
   // ohhh the dbserver is online...pump some documents into it
   // which fails when it is still in maintenance mode
   if (!ServerState::instance()->isCoordinator(role)) {
-    while (RestHandlerFactory::isMaintenance()) {
+    while (ServerState::isMaintenance()) {
       if (isStopping()) {
         // startup aborted
         return;
@@ -487,7 +486,7 @@ void HeartbeatThread::runSingleServer() {
         
         if (!applier->isRunning()) {
           ServerState::instance()->setFoxxmaster(_myId);
-          RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::DEFAULT);
+          ServerState::setServerMode(ServerState::Mode::DEFAULT);
         }
         continue;
       }
@@ -526,7 +525,7 @@ void HeartbeatThread::runSingleServer() {
         << "attempting a takeover";
         
         // if we stay a slave, the redirect will be turned on again
-        RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::TRYAGAIN);
+        ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
         result = CasWithResult(_agency, leaderPath, /*oldJson*/leaderSlice,
                                /*newJson*/myIdBuilder.slice(), /*timeout*/5.0);
         
@@ -536,7 +535,7 @@ void HeartbeatThread::runSingleServer() {
             applier->stopAndJoin();
           }
           ServerState::instance()->setFoxxmaster(_myId);
-          RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::DEFAULT);
+          ServerState::setServerMode(ServerState::Mode::DEFAULT);
           continue; // nothing more to do here
           
         } else if (result.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
@@ -567,7 +566,7 @@ void HeartbeatThread::runSingleServer() {
         
         // ensure everyone has server access
         ServerState::instance()->setFoxxmaster(_myId);
-        RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::DEFAULT);
+        ServerState::setServerMode(ServerState::Mode::DEFAULT);
         continue; // nothing more to do
       }
       
@@ -584,8 +583,8 @@ void HeartbeatThread::runSingleServer() {
       }
       
       // enable redirections to leader
-      auto prv = RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::REDIRECT);
-      if (prv == RestHandlerFactory::Mode::DEFAULT) {
+      auto prv = ServerState::setServerMode(ServerState::Mode::REDIRECT);
+      if (prv == ServerState::Mode::DEFAULT) {
         // wait for all operations to stop locally before following
         Result res = GeneralServerFeature::JOB_MANAGER->clearAllJobs();
         if (res.fail()) {
