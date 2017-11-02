@@ -228,3 +228,38 @@ void GeneralRequest::addSuffix(std::string&& part) {
   // part will not be URL-decoded here!
   _suffixes.emplace_back(std::move(part));
 }
+
+// needs to be here because of a gcc bug with templates and namespaces
+// https://stackoverflow.com/a/25594741/1473569
+namespace arangodb {
+  template <>
+  bool GeneralRequest::parsedValue(std::string const& key, bool valueNotFound) {
+    bool found = false;
+    std::string const& val = value(key, found);
+    if (found) {
+      return StringUtils::boolean(val);
+    }
+    return valueNotFound;
+  }
+  
+  template <>
+  uint64_t GeneralRequest::parsedValue(std::string const& key, uint64_t valueNotFound) {
+    bool found = false;
+    std::string const& val = value(key, found);
+    if (found) {
+      return StringUtils::uint64(val);
+    }
+    return valueNotFound;
+  }
+  
+  template <>
+  double GeneralRequest::parsedValue(std::string const& key, double valueNotFound) {
+    bool found = false;
+    std::string const& val = value(key, found);
+    if (found) {
+      return StringUtils::doubleDecimal(val);
+    }
+    return valueNotFound;
+  }
+}
+
