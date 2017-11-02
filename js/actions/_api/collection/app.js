@@ -213,16 +213,31 @@ function post_api_collection (req, res) {
     return;
   }
 
-  try {
-    var options = {};
-    if (req.parameters.hasOwnProperty('waitForSyncReplication')) {
-      var value = req.parameters.waitForSyncReplication.toLowerCase();
-      if (value === 'true' || value === 'yes' || value === 'on' || value === 'y' || value === '1') {
-        options.waitForSyncReplication = true;
+  let getBooleanProperty = function(obj, property, defaultValue) {
+    let value = defaultValue;
+    if (req.parameters.hasOwnProperty(property)) {
+      var valueStr = req.parameters[property].toLowerCase();
+      if (valueStr === 'true' || valueStr === 'yes' || valueStr === 'on' || valueStr === 'y' || valueStr === '1') {
+        value = true;
       } else {
-        options.waitForSyncReplication = false;
+        value = false;
       }
     }
+    return value;
+  };
+
+  try {
+    var options = {
+    };
+    let waitForSyncReplication = getBooleanProperty(req.parameters, 'waitForSyncReplication', undefined);
+    if (waitForSyncReplication !== undefined) {
+      options.waitForSyncReplication = waitForSyncReplication;
+    }
+    enforceReplicationFactor = getBooleanProperty(req.parameters, 'enforceReplicationFactor', undefined);
+    if (enforceReplicationFactor !== undefined) {
+      options.enforceReplicationFactor = enforceReplicationFactor;
+    }
+
     var collection;
     if (typeof (r.type) === 'string') {
       if (r.type.toLowerCase() === 'edge' || r.type === '3') {
