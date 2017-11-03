@@ -211,6 +211,50 @@ ServerState::StateEnum ServerState::stringToState(std::string const& value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a mode to string
+////////////////////////////////////////////////////////////////////////////////
+
+std::string ServerState::modeToString(Mode mode) {
+  switch (mode) {
+    case Mode::DEFAULT:
+      return "default";
+    case Mode::MAINTENANCE:
+      return "maintenance";
+    case Mode::TRYAGAIN:
+      return "tryagain";
+    case Mode::REDIRECT:
+      return "redirect";
+    case Mode::READ_ONLY:
+      return "readonly";
+    case Mode::INVALID:
+      return "invalid";
+  }
+
+  TRI_ASSERT(false);
+  return "";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert string to mode
+////////////////////////////////////////////////////////////////////////////////
+
+ServerState::Mode ServerState::stringToMode(std::string const& value) {
+  if (value == "default") {
+    return Mode::DEFAULT;
+  } else if (value == "maintenance") {
+    return Mode::MAINTENANCE;
+  } else if (value == "tryagain") {
+    return Mode::TRYAGAIN;
+  } else if (value == "redirect") {
+    return Mode::REDIRECT;
+  } else if (value == "readonly") {
+    return Mode::READ_ONLY;
+  } else {
+    return Mode::INVALID;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief current server mode
 ////////////////////////////////////////////////////////////////////////////////
 static std::atomic<ServerState::Mode> _serverstate_mode(ServerState::Mode::DEFAULT);
@@ -798,4 +842,28 @@ void ServerState::setFoxxmasterQueueupdate(bool value) {
 std::ostream& operator<<(std::ostream& stream, arangodb::ServerState::RoleEnum role) {
   stream << arangodb::ServerState::roleToString(role);
   return stream;
+}
+
+Result ServerState::propagateClusterServerMode(Mode mode) {
+  if (isCoordinator()) {
+    if (mode == Mode::DEFAULT || mode == Mode::READ_ONLY) {
+      std::vector<AgencyOperation> operations;
+      VPackBuilder builder;
+      if (mode == Mode::DEFAULT) {
+        builder.add(VPackValue(false));
+      } else {
+        builder.add(VPackValue(true));
+      }
+      operations.push_back(AgencyOperation("Readonly", AgencyValueOperationType::SET, builder.slice()));
+    
+      AgencyWriteTransaction readonlyMode(operations);
+      AgencyComm comm;
+      AgencyCommResult r = comm.sendTransactionWithFailover(readonlyMode);
+      if (!r.successful()) {
+        return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, r.errorMessage());
+      }
+    }
+  }
+  setServerMode(mode);
+  return Result();
 }

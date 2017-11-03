@@ -153,6 +153,8 @@ RestHandler* RestHandlerFactory::createHandler(
       break;
     }
     case ServerState::Mode::DEFAULT:
+    case ServerState::Mode::READ_ONLY:
+    case ServerState::Mode::INVALID:    
       // no special handling required
       break;
   }

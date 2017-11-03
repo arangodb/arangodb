@@ -198,7 +198,7 @@ void HeartbeatThread::run() {
       usleep(100000);
     }
   }
-  
+
   LOG_TOPIC(TRACE, Logger::HEARTBEAT)
       << "starting heartbeat thread (" << role << ")";
 
@@ -349,6 +349,10 @@ void HeartbeatThread::runDBServer() {
               syncDBServerStatusQuo();
             }
           }
+
+          auto readOnlySlice = result.slice()[0].get(std::vector<std::string>(
+            {AgencyCommManager::path(), "Readonly"}));
+          updateServerMode(readOnlySlice);
         }
       }
 
@@ -665,6 +669,21 @@ void HeartbeatThread::runSingleServer() {
   }
 }
 
+void HeartbeatThread::updateServerMode(VPackSlice const& readOnlySlice) {
+  bool readOnly = false;
+  if (readOnlySlice.isBoolean()) {
+    readOnly = readOnlySlice.getBool();
+  }
+  
+  auto currentMode = ServerState::serverMode();
+  // do not switch from maintenance or any other non expected mode
+  if (currentMode == ServerState::Mode::DEFAULT && readOnly == true) {
+    ServerState::setServerMode(ServerState::Mode::READ_ONLY);
+  } else if (currentMode == ServerState::Mode::READ_ONLY && readOnly == false) {
+    ServerState::setServerMode(ServerState::Mode::DEFAULT);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop, coordinator version
 ////////////////////////////////////////////////////////////////////////////////
@@ -706,6 +725,7 @@ void HeartbeatThread::runCoordinator() {
            AgencyCommManager::path("Current/Foxxmaster"),
            AgencyCommManager::path("Current/FoxxmasterQueueupdate"),
            AgencyCommManager::path("Plan/Version"),
+           AgencyCommManager::path("Readonly"),
            AgencyCommManager::path("Shutdown"),
            AgencyCommManager::path("Sync/Commands", _myId),
            AgencyCommManager::path("Sync/UserVersion"),
@@ -867,6 +887,10 @@ void HeartbeatThread::runCoordinator() {
           LOG_TOPIC(WARN, Logger::HEARTBEAT)
               << "FailedServers is not an object. ignoring for now";
         }
+
+        auto readOnlySlice = result.slice()[0].get(std::vector<std::string>(
+          {AgencyCommManager::path(), "Readonly"}));
+        updateServerMode(readOnlySlice);
       }
 
       // the foxx stuff needs an updated list of coordinators
