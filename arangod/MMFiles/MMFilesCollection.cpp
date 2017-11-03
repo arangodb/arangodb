@@ -2763,6 +2763,15 @@ void MMFilesCollection::truncate(transaction::Methods* trx,
     return true;
   };
   primaryIdx->invokeOnAllElementsForRemoval(callback);
+  
+  auto indexes = _indexes;
+  size_t const n = indexes.size();
+
+  for (size_t i = 1; i < n; ++i) {
+    auto idx = indexes[i];
+    TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+    idx->afterTruncate();
+  }
 }
 
 Result MMFilesCollection::insert(transaction::Methods* trx,

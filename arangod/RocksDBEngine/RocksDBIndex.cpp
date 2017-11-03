@@ -226,6 +226,16 @@ int RocksDBIndex::drop() {
   return r.errorNumber();
 }
 
+int RocksDBIndex::afterTruncate() {
+  // simply drop the cache and re-create it
+  if (_cacheEnabled) {
+    destroyCache();
+    createCache();
+    TRI_ASSERT(_cachePresent);
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
 Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* mthd,
                                     LocalDocumentId const& oldDocumentId,
                                     arangodb::velocypack::Slice const& oldDoc,

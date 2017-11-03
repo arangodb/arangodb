@@ -2356,6 +2356,9 @@ OperationResult transaction::Methods::truncateLocal(
                                 path, body);
         }
         size_t nrDone = 0;
+        // TODO: is TRX_FOLLOWER_TIMEOUT actually appropriate here? truncate
+        // can be a much more expensive operation than a single document
+        // insert/update/remove...
         size_t nrGood = cc->performRequests(requests, TRX_FOLLOWER_TIMEOUT,
                                             nrDone, Logger::REPLICATION, false);
         if (nrGood < followers->size()) {
