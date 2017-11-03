@@ -3065,7 +3065,7 @@ Result MMFilesCollection::deletePrimaryIndex(
 /// @brief creates a new entry in the secondary indexes
 Result MMFilesCollection::insertSecondaryIndexes(
     arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-    VPackSlice const& doc, Index::Index::OperationMode mode) {
+    VPackSlice const& doc, Index::OperationMode mode) {
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_IF_FAILURE("InsertSecondaryIndexes") { return Result(TRI_ERROR_DEBUG); }
@@ -3109,7 +3109,7 @@ Result MMFilesCollection::insertSecondaryIndexes(
 /// @brief deletes an entry from the secondary indexes
 Result MMFilesCollection::deleteSecondaryIndexes(
     arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-    VPackSlice const& doc, Index::Index::OperationMode mode) {
+    VPackSlice const& doc, Index::OperationMode mode) {
   // Coordintor doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
@@ -3185,11 +3185,11 @@ Result MMFilesCollection::insertIndexes(arangodb::transaction::Methods* trx,
 
   // insert into secondary indexes
   res = insertSecondaryIndexes(trx, documentId, doc,
-                               Index::Index::OperationMode::normal);
+                               Index::OperationMode::normal);
 
   if (res.fail()) {
     deleteSecondaryIndexes(trx, documentId, doc,
-                           Index::Index::OperationMode::rollback);
+                           Index::OperationMode::rollback);
     deletePrimaryIndex(trx, documentId, doc);
   }
   return res;
@@ -3584,11 +3584,11 @@ Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
 
     // delete from indexes
     res = deleteSecondaryIndexes(trx, oldDocumentId, oldDoc,
-                                 Index::Index::OperationMode::normal);
+                                 Index::OperationMode::normal);
 
     if (res.fail()) {
       insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
-                             Index::Index::OperationMode::rollback);
+                             Index::OperationMode::rollback);
       THROW_ARANGO_EXCEPTION(res);
     }
 
@@ -3596,7 +3596,7 @@ Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
 
     if (res.fail()) {
       insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
-                             Index::Index::OperationMode::rollback);
+                             Index::OperationMode::rollback);
       THROW_ARANGO_EXCEPTION(res);
     }
 
@@ -3664,7 +3664,7 @@ Result MMFilesCollection::rollbackOperation(transaction::Methods* trx,
     // ignore any errors we're getting from this
     deletePrimaryIndex(trx, newDocumentId, newDoc);
     deleteSecondaryIndexes(trx, newDocumentId, newDoc,
-                           Index::Index::OperationMode::rollback);
+                           Index::OperationMode::rollback);
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -3677,10 +3677,10 @@ Result MMFilesCollection::rollbackOperation(transaction::Methods* trx,
 
     // remove the current values from the indexes
     deleteSecondaryIndexes(trx, newDocumentId, newDoc,
-                           Index::Index::OperationMode::rollback);
+                           Index::OperationMode::rollback);
     // re-insert old state
     return insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
-                                  Index::Index::OperationMode::rollback);
+                                  Index::OperationMode::rollback);
   }
 
   if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
@@ -3694,7 +3694,7 @@ Result MMFilesCollection::rollbackOperation(transaction::Methods* trx,
 
     if (res.ok()) {
       res = insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
-                                   Index::Index::OperationMode::rollback);
+                                   Index::OperationMode::rollback);
     } else {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
           << "error rolling back remove operation";
@@ -3754,11 +3754,11 @@ Result MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
   Result res;
   try {
     res = deleteSecondaryIndexes(trx, oldDocumentId, oldDoc,
-                                 Index::Index::OperationMode::normal);
+                                 Index::OperationMode::normal);
 
     if (res.fail()) {
       insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
-                             Index::Index::OperationMode::rollback);
+                             Index::OperationMode::rollback);
       THROW_ARANGO_EXCEPTION(res.errorNumber());
     }
 
@@ -3766,7 +3766,7 @@ Result MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
 
     if (res.fail()) {
       insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
-                             Index::Index::OperationMode::rollback);
+                             Index::OperationMode::rollback);
       THROW_ARANGO_EXCEPTION(res.errorNumber());
     }
 
@@ -3840,25 +3840,25 @@ Result MMFilesCollection::updateDocument(
   // remove old document from secondary indexes
   // (it will stay in the primary index as the key won't change)
   Result res = deleteSecondaryIndexes(trx, oldDocumentId, oldDoc,
-                                      Index::Index::OperationMode::normal);
+                                      Index::OperationMode::normal);
 
   if (res.fail()) {
     // re-enter the document in case of failure, ignore errors during rollback
     insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
-                           Index::Index::OperationMode::rollback);
+                           Index::OperationMode::rollback);
     return res;
   }
 
   // insert new document into secondary indexes
   res = insertSecondaryIndexes(trx, newDocumentId, newDoc,
-                               Index::Index::OperationMode::normal);
+                               Index::OperationMode::normal);
 
   if (res.fail()) {
     // rollback
     deleteSecondaryIndexes(trx, newDocumentId, newDoc,
-                           Index::Index::OperationMode::rollback);
+                           Index::OperationMode::rollback);
     insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
-                           Index::Index::OperationMode::rollback);
+                           Index::OperationMode::rollback);
     return res;
   }
 

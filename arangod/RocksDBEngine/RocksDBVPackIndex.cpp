@@ -574,13 +574,15 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
                                : RocksDBValue::VPackIndexValue();
 
   size_t const count = elements.size();
+  RocksDBValue existing =
+    RocksDBValue::Empty(RocksDBEntryType::UniqueVPackIndexValue);
   for (size_t i = 0; i < count; ++i) {
     RocksDBKey& key = elements[i];
     if (_unique) {
-      RocksDBValue existing =
-          RocksDBValue::Empty(RocksDBEntryType::UniqueVPackIndexValue);
       if (mthds->Exists(_cf, key)) {
         res = TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
+        auto found = mthds->Get(_cf, key, existing.buffer());
+        TRI_ASSERT(found.ok());
       }
     }
 
@@ -614,11 +616,16 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
     }
   }
 
-  if (mode == OperationMode::internal &&
-      res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-    // TODO retrieve existing id
-    std::string existingId;
-    return IndexResult(res, existingId);
+  if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+    LocalDocumentId rev(RocksDBValue::revisionId(existing));
+    ManagedDocumentResult mmdr;
+    _collection->getPhysical()->readDocument(trx, rev, mmdr);
+    std::string existingId(
+      VPackSlice(mmdr.vpack()).get(StaticStrings::KeyString).copyString());
+    if (mode == OperationMode::internal) {
+      return IndexResult(res, existingId);
+    }
+    return IndexResult(res, this, existingId);
   }
 
   return IndexResult(res, this);

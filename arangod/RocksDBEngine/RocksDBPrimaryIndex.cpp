@@ -227,13 +227,13 @@ Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
   auto value = RocksDBValue::PrimaryIndexValue(documentId.id());
 
   if (mthd->Exists(_cf, key.ref())) {
-    if (mode != OperationMode::internal) {
-      return IndexResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, this);
-    }
+    std::string existingId(slice.get(StaticStrings::KeyString).copyString());
 
-    // TODO: retrieve existing id
-    std::string existingId;
-    return IndexResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,
+    if (mode == OperationMode::internal) {
+      return IndexResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,
+                         existingId);
+    }
+    return IndexResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, this,
                        existingId);
   }
 

@@ -323,6 +323,7 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
   rocksdb::ReadOptions readOptions;
 
   size_t const count = elements.size();
+  std::string existingId;
   for (size_t i = 0; i < count; ++i) {
     if (_unique) {
       bool uniqueConstraintViolated = false;
@@ -339,6 +340,10 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
 
           if (res <= 0) {
             uniqueConstraintViolated = true;
+            VPackSlice slice(comparator->extractKeySlice(iterator->key()));
+            uint64_t length = slice.length();
+            TRI_ASSERT(length > 0);
+            existingId = slice.at(length - 1).copyString();
           }
         }
 
@@ -379,11 +384,11 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
     }
   }
 
-  if (mode == OperationMode::internal &&
-      res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-    // TODO retrieve existing id
-    std::string existingId;
-    return IndexResult(res, existingId);
+  if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+    if (mode == OperationMode::internal) {
+      return IndexResult(res, existingId);
+    }
+    return IndexResult(res, this, existingId);
   }
 
   return IndexResult(res, this);

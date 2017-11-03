@@ -28,6 +28,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FixedSizeAllocator.h"
 #include "Basics/LocalTaskQueue.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/IndexResult.h"
@@ -469,14 +470,7 @@ Result MMFilesHashIndex::insert(transaction::Methods* trx,
                                 VPackSlice const& doc,
                                 OperationMode mode) {
   if (_unique) {
-    int res = insertUnique(trx, documentId, doc, mode);
-    if (mode == OperationMode::internal &&
-        res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-      // TODO retrieve existing id
-      std::string existingId;
-      return IndexResult(res, existingId);
-    }
-    return IndexResult(res, this);
+    return insertUnique(trx, documentId, doc, mode);
   }
 
   return IndexResult(insertMulti(trx, documentId, doc, mode), this);
@@ -591,9 +585,10 @@ int MMFilesHashIndex::lookup(
   return TRI_ERROR_NO_ERROR;
 }
 
-int MMFilesHashIndex::insertUnique(transaction::Methods* trx,
-                                   LocalDocumentId const& documentId,
-                                   VPackSlice const& doc, OperationMode mode) {
+Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
+                                      LocalDocumentId const& documentId,
+                                      VPackSlice const& doc,
+                                      OperationMode mode) {
   std::vector<MMFilesHashIndexElement*> elements;
   int res = fillElement<MMFilesHashIndexElement>(elements, documentId, doc);
 
@@ -603,7 +598,7 @@ int MMFilesHashIndex::insertUnique(transaction::Methods* trx,
       _allocator->deallocate(it);
     }
 
-    return res;
+    return IndexResult(res, this);
   }
 
   ManagedDocumentResult result;
@@ -622,16 +617,29 @@ int MMFilesHashIndex::insertUnique(transaction::Methods* trx,
     res = work(hashElement, mode);
 
     if (res != TRI_ERROR_NO_ERROR) {
+      IndexResult error(res, this);
+      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+        LocalDocumentId rev(_uniqueArray->_hashArray->find(&context, hashElement)->localDocumentId());
+        ManagedDocumentResult mmdr;
+        _collection->getPhysical()->readDocument(trx, rev, mmdr);
+        std::string existingId(
+          VPackSlice(mmdr.vpack()).get(StaticStrings::KeyString).copyString());
+        if (mode == OperationMode::internal) {
+          error = IndexResult(res, existingId);
+        }
+        error = IndexResult(res, this, existingId);
+      }
+
       for (size_t j = i; j < n; ++j) {
         // Free all elements that are not yet in the index
         _allocator->deallocate(elements[j]);
       }
       // Already indexed elements will be removed by the rollback
-      break;
+      return error;
     }
   }
 
-  return res;
+  return IndexResult(res, this);
 }
 
 void MMFilesHashIndex::batchInsertUnique(

@@ -323,8 +323,8 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
   int lookup(transaction::Methods*, arangodb::velocypack::Slice,
              std::vector<MMFilesHashIndexElement*>&) const;
 
-  int insertUnique(transaction::Methods*, LocalDocumentId const& documentId,
-                   arangodb::velocypack::Slice const&, OperationMode mode);
+  Result insertUnique(transaction::Methods*, LocalDocumentId const& documentId,
+                      arangodb::velocypack::Slice const&, OperationMode mode);
 
   void batchInsertUnique(
       transaction::Methods*,
