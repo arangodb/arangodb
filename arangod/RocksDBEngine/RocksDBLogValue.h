@@ -44,8 +44,7 @@ class RocksDBLogValue {
   //----------------------------------------------------------------------------
 
   static RocksDBLogValue DatabaseCreate(TRI_voc_tick_t id);
-  static RocksDBLogValue DatabaseDrop(TRI_voc_tick_t id,
-                                      StringRef const& name);
+  static RocksDBLogValue DatabaseDrop(TRI_voc_tick_t id);
   static RocksDBLogValue CollectionCreate(TRI_voc_tick_t vocbaseId,
                                           TRI_voc_cid_t cid);
   static RocksDBLogValue CollectionDrop(TRI_voc_tick_t vocbaseId,

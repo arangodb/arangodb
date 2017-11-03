@@ -34,9 +34,8 @@ RocksDBLogValue RocksDBLogValue::DatabaseCreate(TRI_voc_tick_t id) {
   return RocksDBLogValue(RocksDBLogType::DatabaseCreate, id);
 }
 
-RocksDBLogValue RocksDBLogValue::DatabaseDrop(TRI_voc_tick_t id,
-                                              StringRef const& name) {
-  return RocksDBLogValue(RocksDBLogType::DatabaseDrop, id, name);
+RocksDBLogValue RocksDBLogValue::DatabaseDrop(TRI_voc_tick_t id) {
+  return RocksDBLogValue(RocksDBLogType::DatabaseDrop, id);
 }
 
 RocksDBLogValue RocksDBLogValue::CollectionCreate(TRI_voc_tick_t dbid,
