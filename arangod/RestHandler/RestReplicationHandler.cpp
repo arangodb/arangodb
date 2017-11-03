@@ -1146,9 +1146,11 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
         application_features::ApplicationServer::getFeature<ClusterFeature>(
             "Cluster")
             ->createWaitsForSyncReplication();
+    // in the replication case enforcing the replication factor is absolutely
+    // not desired, so it is hardcoded to false
     auto col = ClusterMethods::createCollectionOnCoordinator(
         collectionType, _vocbase, merged, ignoreDistributeShardsLikeErrors,
-        createWaitsForSyncReplication);
+        createWaitsForSyncReplication, false);
     TRI_ASSERT(col != nullptr);
     
     ExecContext const* exe = ExecContext::CURRENT;

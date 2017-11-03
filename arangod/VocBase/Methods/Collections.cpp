@@ -124,6 +124,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
                            TRI_col_type_e collectionType,
                            velocypack::Slice const& properties,
                            bool createWaitsForSyncReplication,
+                           bool enforceReplicationFactor,
                            FuncCallback func) {
   if (name.empty()) {
     return TRI_ERROR_ARANGO_ILLEGAL_NAME;
@@ -175,7 +176,7 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
       std::unique_ptr<LogicalCollection> col =
           ClusterMethods::createCollectionOnCoordinator(
               collectionType, vocbase, infoSlice, false,
-              createWaitsForSyncReplication);
+              createWaitsForSyncReplication, enforceReplicationFactor);
       if (!col) {
         return Result(TRI_ERROR_INTERNAL, "createCollectionOnCoordinator");
       }
