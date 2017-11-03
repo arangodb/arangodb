@@ -41,15 +41,14 @@ VocbaseContext* VocbaseContext::create(GeneralRequest* req,
   TRI_ASSERT(!vocbase->isDangling());
 
   AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
-  
   if (auth == nullptr) {
     return nullptr;
   }
 
   if (!auth->isActive()) {
-    return new VocbaseContext(req, vocbase, /*isInternal*/ true,
+    return new VocbaseContext(req, vocbase, /*isInternal*/ false,
                               /*sysLevel*/ AuthLevel::RW,
-                              /*sysLevel*/ AuthLevel::RW);
+                              /*dbLevel*/ AuthLevel::RW);
   }
 
   if (req->authorized()) {
