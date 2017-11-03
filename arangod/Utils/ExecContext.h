@@ -55,6 +55,9 @@ class ExecContext : public RequestContext {
  public:
   virtual ~ExecContext() {}
 
+  /// shortcut helper to check the AuthenticationFeature
+  static bool isAuthEnabled();
+  
   /// @brief an internal superuser context, is
   ///        a singleton instance, deleting is an error
   static ExecContext const* superuser();

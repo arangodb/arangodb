@@ -286,7 +286,7 @@ int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
                                                 AccessMode::Type accessType) const {
   ExecContext const* exec = ExecContext::CURRENT;
   // no need to check for superuser, cluster_sync tests break otherwise
-  if (exec != nullptr && !exec->isSuperuser()) {
+  if (exec != nullptr && !exec->isSuperuser() && ExecContext::isAuthEnabled()) {
     // server is in read-only mode
     if (accessType > AccessMode::Type::READ && !ServerState::writeOpsEnabled()) {
       LOG_TOPIC(WARN, Logger::TRANSACTIONS) << "server is in read-only mode";
