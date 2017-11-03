@@ -217,11 +217,6 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
       return res;
     }
 
-    if (AccessMode::AccessMode::isWriteOrExclusive(_accessType) &&
-        !LogicalCollection::IsSystemName(_collection->name())) {
-      return TRI_ERROR_ARANGO_READ_ONLY;
-    }
-
     // store the waitForSync property
     _waitForSync = _collection->waitForSync();
   }

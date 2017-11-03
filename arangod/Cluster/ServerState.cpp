@@ -264,7 +264,10 @@ static std::atomic<ServerState::Mode> _serverstate_mode(ServerState::Mode::DEFAU
 ////////////////////////////////////////////////////////////////////////////////
 ServerState::Mode ServerState::setServerMode(ServerState::Mode value) {
   //_serverMode.store(value, std::memory_order_release);
-  return _serverstate_mode.exchange(value, std::memory_order_release);
+  if (_serverstate_mode.load(std::memory_order_acquire) != value) {
+    return _serverstate_mode.exchange(value, std::memory_order_release);
+  }
+  return value;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

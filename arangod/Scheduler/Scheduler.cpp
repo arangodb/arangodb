@@ -350,11 +350,6 @@ bool Scheduler::queue(std::unique_ptr<Job> job) {
   return _jobQueue->queue(std::move(job));
 }
 
-void Scheduler::cancelQueued(double timeout) {
-  TRI_ASSERT(_jobQueue);
-  _jobQueue->clear(timeout);
-}
-
 std::string Scheduler::infoStatus() {
   auto jobQueue = _jobQueue.get();
   auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();

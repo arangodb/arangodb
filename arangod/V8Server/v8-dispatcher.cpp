@@ -305,6 +305,7 @@ V8Task::callbackFunction() {
       std::string const& dbname = _dbGuard->database()->name();
       execContext.reset(ExecContext::create(_user, dbname));
       allowContinue = execContext->canUseDatabase(dbname, AuthLevel::RW);
+      allowContinue = allowContinue && ServerState::writeOpsEnabled();
     }
     ExecContextScope scope(_user.empty() ?
                            ExecContext::superuser() : execContext.get());
@@ -542,7 +543,7 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (exec->databaseAuthLevel() != AuthLevel::RW) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "registerTask() needs db RW permissions");
-    } else if (!exec->isSuperuser() && !ServerState::enableWriteOps()) {
+    } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
                                      "server is in read-only mode");
     }
@@ -693,7 +694,7 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
     if (exec->databaseAuthLevel() != AuthLevel::RW) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
                                      "registerTask() needs db RW permissions");
-    } else if (!exec->isSuperuser() && !ServerState::enableWriteOps()) {
+    } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
                                      "server is in read-only mode");
     }

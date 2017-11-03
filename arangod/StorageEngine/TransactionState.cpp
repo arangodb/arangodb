@@ -120,8 +120,10 @@ int TransactionState::addCollection(TRI_voc_cid_t cid,
   TransactionCollection* trxCollection = findCollection(cid, position);
 
   if (trxCollection != nullptr) {
-    static_assert(AccessMode::Type::READ < AccessMode::Type::WRITE, "ro<rw");
-    static_assert(AccessMode::Type::WRITE < AccessMode::Type::EXCLUSIVE, "rw<ex");
+    static_assert(AccessMode::Type::NONE < AccessMode::Type::READ &&
+                  AccessMode::Type::READ < AccessMode::Type::WRITE &&
+                  AccessMode::Type::READ < AccessMode::Type::EXCLUSIVE,
+                  "AccessMode::Type total order fail");
     // we may need to recheck permissions here
     if (trxCollection->accessType() < accessType) {
       int res = checkCollectionPermission(cid, accessType);
@@ -286,8 +288,9 @@ int TransactionState::checkCollectionPermission(TRI_voc_cid_t cid,
   // no need to check for superuser, cluster_sync tests break otherwise
   if (exec != nullptr && !exec->isSuperuser()) {
     // server is in read-only mode
-    if (accessType > AccessMode::Type::READ && !ServerState::enableWriteOps()) {
-      return TRI_ERROR_REQUEST_CANCELED;
+    if (accessType > AccessMode::Type::READ && !ServerState::writeOpsEnabled()) {
+      LOG_TOPIC(WARN, Logger::TRANSACTIONS) << "server is in read-only mode";
+      return TRI_ERROR_ARANGO_READ_ONLY;
     }
     std::string const colName = _resolver->getCollectionNameCluster(cid);
     

@@ -2500,19 +2500,8 @@ static void JS_TruncateVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
   
-  // Manually check this here, because truncate messes up the return code
-  /*ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr) {
-    CollectionNameResolver resolver(collection->vocbase());
-    std::string const cName = resolver.getCollectionNameCluster(collection->cid());
-    if (!exec->canUseCollection(collection->vocbase()->name(), cName, AuthLevel::RW)) {
-      TRI_V8_THROW_EXCEPTION(TRI_ERROR_FORBIDDEN);
-    }
-  }*/
-
-  SingleCollectionTransaction trx(
-      transaction::V8Context::Create(collection->vocbase(), true),
-                                  collection->cid(), AccessMode::Type::EXCLUSIVE);
+  auto ctx = transaction::V8Context::Create(collection->vocbase(), true);
+  SingleCollectionTransaction trx(ctx, collection->cid(), AccessMode::Type::EXCLUSIVE);
 
   Result res = trx.begin();
   if (!res.ok()) {

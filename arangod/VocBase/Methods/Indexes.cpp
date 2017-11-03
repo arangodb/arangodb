@@ -257,11 +257,6 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
     return res;
   }
 
-  // disallow index creation in read-only mode
-  if (!collection->isSystem() && create) {
-    return Result(TRI_ERROR_ARANGO_READ_ONLY);
-  }
-
   bool created = false;
   std::shared_ptr<arangodb::Index> idx;
   if (create) {
@@ -333,7 +328,7 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
         (lvl == AuthLevel::NONE || !canRead)) {
       return TRI_ERROR_FORBIDDEN;
     }
-    if (create && !exec->isSuperuser() && !ServerState::enableWriteOps()) {
+    if (create && !exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
                                      "server is in read-only mode");
     }

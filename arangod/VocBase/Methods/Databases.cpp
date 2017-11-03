@@ -144,7 +144,7 @@ arangodb::Result Databases::create(std::string const& dbName,
   if (exec != nullptr) {
     if (!exec->isAdminUser()) {
       return TRI_ERROR_FORBIDDEN;
-    } else if (!exec->isSuperuser() && !ServerState::enableWriteOps()) {
+    } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }
@@ -176,7 +176,7 @@ arangodb::Result Databases::create(std::string const& dbName,
     } else if (user.hasKey("user")) {
       name = user.get("user");
     }
-    if (!name.isString()) {
+    if (!name.isString()) { // empty names are silently ignored later
       return Result(TRI_ERROR_HTTP_BAD_PARAMETER);
     }
     sanitizedUsers.add("username", name);
@@ -384,7 +384,7 @@ arangodb::Result Databases::drop(TRI_vocbase_t* systemVocbase,
   if (exec != nullptr) {
     if (exec->systemAuthLevel() != AuthLevel::RW) {
       return TRI_ERROR_FORBIDDEN;
-    } else if (!exec->isSuperuser() && !ServerState::enableWriteOps()) {
+    } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
       return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
     }
   }

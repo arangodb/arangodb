@@ -878,7 +878,8 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
 #endif
   
   static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
-  if (level > AuthLevel::RO && !ServerState::enableWriteOps()) {
+  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "downgrading user rights";
     return AuthLevel::RO;
   }
   return level;
@@ -926,6 +927,7 @@ AuthLevel AuthInfo::canUseCollectionInternal(std::string const& username,
   auto const& entry = it->second;
   AuthLevel level = entry.collectionAuthLevel(dbname, coll);
 
+#ifdef USE_ENTERPRISE
   for (auto const& role : entry.roles()) {
     if (level == AuthLevel::RW) {
       return level;
@@ -937,9 +939,11 @@ AuthLevel AuthInfo::canUseCollectionInternal(std::string const& username,
       level = roleLevel;
     }
   }
+#endif
 
   static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
-  if (level > AuthLevel::RO && !ServerState::enableWriteOps()) {
+  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "downgrading user rights";
     return AuthLevel::RO;
   }
   return level;
