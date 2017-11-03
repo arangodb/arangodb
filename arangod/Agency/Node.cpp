@@ -26,6 +26,7 @@
 
 #include "Basics/StringUtils.h"
 
+#include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -252,11 +253,21 @@ Node& Node::operator=(Node const& rhs) {
 
 /// Comparison with slice
 bool Node::operator==(VPackSlice const& rhs) const {
+  bool old;
+  bool n;
   if (rhs.isObject()) {
-    return rhs.toJson() == toJson();
+    old = (rhs.toJson() == toJson());
+    n = VPackNormalizedCompare::equals(toBuilder().slice(), rhs);
   } else {
-    return rhs.equals(slice());
+    old = rhs.equals(slice());
+    n = VPackNormalizedCompare::equals(slice(), rhs);
   }
+ 
+  if (old != n) { 
+    LOG_TOPIC(ERR, Logger::FIXME) << "DIFFERENT PRECONDITION RESULT. US: " << slice().toJson() << ", THEM: " << rhs.toJson() << "; OLD: " << old << ", NEW: " << n;
+  }
+
+  return n; //VPackNormalizedCompare::equals(slice(), rhs);
 }
 
 // Comparison with slice
