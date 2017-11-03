@@ -58,6 +58,25 @@
 #define THROW_ARANGO_EXCEPTION_MESSAGE(code, message) \
   throw arangodb::basics::Exception(code, message, __FILE__, __LINE__)
 
+/// @brief throws an arango result if the result fails
+#define THROW_ARANGO_EXCEPTION_IF_FAIL(reSUlt) \
+  do { \
+    if ((reSUlt).fail()) { \
+      throw arangodb::basics::Exception((reSUlt), __FILE__, __LINE__); \
+    } \
+  } while(0);
+
+#define CATCH_TO_RESULT_WITH_CODE(result, errorCode) \
+  catch (arangodb::basics::Exception const& e) { \
+    (result).reset(e.code(),e.message()); \
+  } catch (std::exception const& e) { \
+    (result).reset((errorCode),e.what()); \
+  } catch (...) { \
+    (result).reset((errorCode)); \
+  }
+
+#define CATCH_TO_RESULT(result) CATCH_TO_RESULT_WITH_CODE((result),TRI_ERROR_INTERNAL)
+
 namespace arangodb {
 namespace basics {
 
