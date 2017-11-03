@@ -137,6 +137,8 @@ from the database access level in the `_system` database, it is
 *Administrate*. Note that this means that database access level
 *Access* does not grant a user server access level *Administrate*.
 
+### Initial Access Levels
+
 When a user creates a database the access level of the user for that database is set to *Administrate*. The same is true for creating a collection, in this case the user get *Read/Write* access to the collection.
 
 ### Wildcard Database Access Level
