@@ -398,8 +398,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
     if (!shouldHandleMarker(column_family_id, key)) {
       return rocksdb::Status();
     }
-    LOG_TOPIC(ERR, Logger::ROCKSDB) << "[Delete] cf: " << column_family_id <<
-     " key:" << key.ToString();
+    //LOG_TOPIC(ERR, Logger::ROCKSDB) << "[Delete] cf: " << column_family_id <<
+    // " key:" << key.ToString();
 
     if (column_family_id == _definitionsCF) {
       if (RocksDBKey::type(key) == RocksDBEntryType::Database) {

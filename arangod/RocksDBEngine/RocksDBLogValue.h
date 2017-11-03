@@ -84,7 +84,6 @@ class RocksDBLogValue {
 
   static RocksDBLogType type(rocksdb::Slice const&);
   static TRI_voc_tick_t databaseId(rocksdb::Slice const&);
-  static StringRef databaseName(rocksdb::Slice const&);
   static TRI_voc_tid_t transactionId(rocksdb::Slice const&);
   static TRI_voc_cid_t collectionId(rocksdb::Slice const&);
   static TRI_idx_iid_t indexId(rocksdb::Slice const&);
@@ -110,7 +109,6 @@ class RocksDBLogValue {
  private:
   RocksDBLogValue(RocksDBLogType, uint64_t);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t);
-  RocksDBLogValue(RocksDBLogType, uint64_t, StringRef const&);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, uint64_t);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, VPackSlice const&);
   RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, StringRef const& data);
