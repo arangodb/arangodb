@@ -848,8 +848,9 @@ std::ostream& operator<<(std::ostream& stream, arangodb::ServerState::RoleEnum r
 }
 
 Result ServerState::propagateClusterServerMode(Mode mode) {
-  if (isCoordinator()) {
-    if (mode == Mode::DEFAULT || mode == Mode::READ_ONLY) {
+  if (mode == Mode::DEFAULT || mode == Mode::READ_ONLY) {
+    // Agency enabled will work for single server replication as well as cluster
+    if (AgencyCommManager::isEnabled()) {
       std::vector<AgencyOperation> operations;
       VPackBuilder builder;
       if (mode == Mode::DEFAULT) {
@@ -866,7 +867,8 @@ Result ServerState::propagateClusterServerMode(Mode mode) {
         return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, r.errorMessage());
       }
     }
+    setServerMode(mode);
   }
-  setServerMode(mode);
+
   return Result();
 }
