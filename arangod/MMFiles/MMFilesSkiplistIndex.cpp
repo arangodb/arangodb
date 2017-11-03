@@ -32,6 +32,7 @@
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/IndexResult.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -739,10 +740,13 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
   // by the index
   size_t const count = elements.size();
 
+  int badIndex = 0;
   for (size_t i = 0; i < count; ++i) {
     res = _skiplistIndex->insert(&context, elements[i]);
 
     if (res != TRI_ERROR_NO_ERROR) {
+      badIndex = i;
+
       // Note: this element is freed already
       for (size_t j = i; j < count; ++j) {
         _allocator->deallocate(elements[j]);
@@ -753,18 +757,54 @@ Result MMFilesSkiplistIndex::insert(transaction::Methods* trx,
       }
 
       if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && !_unique) {
-        // We ignore unique_constraint violated if we are not unique
-        res = TRI_ERROR_NO_ERROR;
+          // We ignore unique_constraint violated if we are not unique
+          res = TRI_ERROR_NO_ERROR;
       }
+
       break;
     }
   }
 
-  if (mode == OperationMode::internal &&
-      res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-    // TODO retrieve existing id
-    std::string existingId;
-    return IndexResult(res, existingId);
+  if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+    elements.clear();
+
+    // need to rebuild elements, find conflicting key to return error,
+    // and then free elements again
+    int innerRes = TRI_ERROR_NO_ERROR;
+    try {
+      innerRes = fillElement<MMFilesSkiplistIndexElement>(elements, documentId, doc);
+    } catch (basics::Exception const& ex) {
+      innerRes = ex.code();
+    } catch (std::bad_alloc const&) {
+      innerRes = TRI_ERROR_OUT_OF_MEMORY;
+    } catch (...) {
+      innerRes = TRI_ERROR_INTERNAL;
+    }
+
+    auto cleanup = [this, &elements] {
+      for (auto& element : elements) {
+        // free all elements to prevent leak
+        _allocator->deallocate(element);
+      }
+    };
+    TRI_DEFER(cleanup());
+
+    if (innerRes != TRI_ERROR_NO_ERROR) {
+      return IndexResult(innerRes, this);
+    }
+
+    auto found = _skiplistIndex->rightLookup(&context, elements[badIndex]);
+    TRI_ASSERT(found);
+    LocalDocumentId rev(found->document()->localDocumentId());
+    ManagedDocumentResult mmdr;
+    _collection->getPhysical()->readDocument(trx, rev, mmdr);
+    std::string existingId(VPackSlice(mmdr.vpack())
+                            .get(StaticStrings::KeyString)
+                            .copyString());
+    if (mode == OperationMode::internal) {
+      return IndexResult(res, existingId);
+    }
+    return IndexResult(res, this, existingId);
   }
 
   return IndexResult(res, this);
