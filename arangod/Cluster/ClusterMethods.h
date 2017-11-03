@@ -242,6 +242,13 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
 int flushWalOnAllDBServers(bool, bool);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief rotate the active journals for the collection on all DBservers
+////////////////////////////////////////////////////////////////////////////////
+
+int rotateActiveJournalOnAllDBServers(std::string const& dbname,
+                                      std::string const& collname);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief compute a shard distribution for a new collection, the list
 /// dbServers must be a list of DBserver ids to distribute across. 
 /// If this list is empty, the complete current list of DBservers is

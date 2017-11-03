@@ -370,10 +370,11 @@ void RestCollectionHandler::handleCommandPut() {
         } else if (sub == "rotate") {
           auto ctx = transaction::StandaloneContext::Create(_vocbase);
           SingleCollectionTransaction trx(ctx, coll->cid(),
-                                          AccessMode::Type::READ);
+                                          AccessMode::Type::WRITE);
           res = trx.begin();
           if (res.ok()) {
-            res.reset(coll->getPhysical()->rotateActiveJournal());
+            OperationResult result = trx.rotateActiveJournal(coll->name(), OperationOptions());
+            res = trx.finish(result.code);
           }
 
         } else if (sub == "loadIndexesIntoMemory") {
