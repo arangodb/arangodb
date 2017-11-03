@@ -1,4 +1,4 @@
-////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
 /// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
@@ -1357,7 +1357,12 @@ bool AstNode::isFalse() const {
 bool AstNode::isAttributeAccessForVariable(
     std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>&
         result, bool allowIndexedAccess) const {
-  if (type != NODE_TYPE_ATTRIBUTE_ACCESS && type != NODE_TYPE_EXPANSION) {
+
+  if ( !( type == NODE_TYPE_ATTRIBUTE_ACCESS
+       || type == NODE_TYPE_EXPANSION
+       || (allowIndexedAccess && type == NODE_TYPE_INDEXED_ACCESS)
+       )
+     ){
     return false;
   }
 
