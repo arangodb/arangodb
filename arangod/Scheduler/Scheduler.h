@@ -96,9 +96,6 @@ class Scheduler {
   /// queue processing of an async rest job
   bool queue(std::unique_ptr<Job> job);
   
-  /// @brief cancel all currently queued jobs, ideally server is in
-  void cancelQueued(double timeout);
-  
   std::string infoStatus();
 
   uint64_t minimum() const { return _nrMinimum; }

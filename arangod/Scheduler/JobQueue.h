@@ -78,9 +78,6 @@ class JobQueue {
     return true;
   }
   
-  /// @brief blocks until queue is empty
-  void clear(double timeout);
-  
 private:
 
   bool pop(Job*& job) {
