@@ -310,33 +310,22 @@ void GeneralCommTask::handleRequestDirectly(bool doLock, std::shared_ptr<RestHan
 
 bool GeneralCommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
                                          uint64_t* jobId) {
-  // extract the coordinator flag
-  bool found;
-  std::string const& hdrStr =
-      handler->request()->header(StaticStrings::Coordinator, found);
-  char const* hdr = found ? hdrStr.c_str() : nullptr;
 
-  // use the handler id as identifier
-  bool store = false;
-
+  auto self = shared_from_this();
   if (jobId != nullptr) {
-    store = true;
+    // use the handler id as identifier
     *jobId = handler->handlerId();
-    GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler.get(), hdr);
-  }
-
-  if (store) {
-    auto self = shared_from_this();
+    GeneralServerFeature::JOB_MANAGER->initAsyncJob(handler.get());
+    // callback will persist the response with the AsyncJobManager
     handler->initEngine(_loop, [self](RestHandler* handler) {
       GeneralServerFeature::JOB_MANAGER->finishAsyncJob(handler);
     });
   } else {
+    // here the response will just be ignored
     handler->initEngine(_loop, [](RestHandler* handler) {});
   }
 
-  // queue this job
-  auto self = shared_from_this();
-
+  // queue this job, asyncRunEngine will later call above lambdas
   auto job = std::make_unique<Job>(
       _server, std::move(handler),
       [self](std::shared_ptr<RestHandler> h) { h->asyncRunEngine(); });
@@ -395,9 +384,8 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
         // or path begins with /
         if (path[0] != '/' || (path.size() > 1 && path[1] != '_')) {
           // simon: upgrade rights for Foxx apps. FIXME
-          //forceOpen = true;
           result = rest::ResponseCode::OK;
-          vc->upgradeSuperuser();
+          vc->forceSuperuser();
         }
       }
     }
@@ -409,12 +397,12 @@ rest::ResponseCode GeneralCommTask::canAccessPath(GeneralRequest* request) const
         // mop: these paths are always callable...they will be able to check
         // req.user when it could be validated
         result = rest::ResponseCode::OK;
-        vc->upgradeSuperuser();
+        vc->forceSuperuser();
       } else if (StringUtils::isPrefix(path, ApiUser + username + '/')) {
         // simon: unauthorized users should be able to call
         // `/_api/users/<name>` to check their passwords
         result = rest::ResponseCode::OK;
-        vc->upgradeReadOnly();
+        vc->forceReadOnly();
       }
     }
   }

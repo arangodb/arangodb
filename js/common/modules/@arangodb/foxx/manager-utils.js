@@ -55,6 +55,8 @@ function getReadableName (name) {
 function getStorage () {
   let c = db._collection('_apps');
   if (c === null) {
+    console.warn("_apps collection did not exist, "+
+                 "should have been created already");
     try {
       c = db._create('_apps', {
         isSystem: true,
@@ -80,6 +82,8 @@ function getStorage () {
 function getBundleStorage () {
   let c = db._collection('_appbundles');
   if (c === null) {
+    console.warn("_appbundles collection did not exist, "+
+                 "should have been created already");
     try {
       c = db._create('_appbundles', {
         isSystem: true,
