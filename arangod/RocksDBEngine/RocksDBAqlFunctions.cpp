@@ -24,8 +24,8 @@
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Function.h"
-#include "RocksDBEngine/Indexes/RocksDBFulltextIndex.h"
-#include "RocksDBEngine/Indexes/RocksDBGeoIndex.h"
+#include "RocksDBEngine/RocksDBFulltextIndex.h"
+#include "RocksDBEngine/RocksDBGeoIndex.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"

@@ -26,7 +26,7 @@
 
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
-#include "RocksDBEngine/Indexes/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "VocBase/voc-types.h"
 

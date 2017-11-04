@@ -21,7 +21,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "S2GeoIndex.h"
+#include "RocksDBSphericalIndex.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
@@ -42,34 +42,27 @@ using namespace arangodb;
 using namespace arangodb::rocksdbengine;
 
 // Handle near queries, possibly with a radius forming an upper bound
-class S2GeoIndexNearIterator final : public IndexIterator {
+class RocksDBSphericalIndexNearIterator final : public IndexIterator {
 public:
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
-  S2GeoIndexNearIterator(LogicalCollection* collection,
+  RocksDBSphericalIndexNearIterator(LogicalCollection* collection,
                          transaction::Methods* trx,
                          ManagedDocumentResult* mmdr,
-                         S2GeoIndex const* index,
-                         arangodb::aql::AstNode const* cond,
-                         arangodb::aql::Variable const*)
+                         RocksDBSphericalIndex const* index,
+                         geo::NearQueryParams params)
   : IndexIterator(collection, trx, mmdr, index),
-  _index(index),
-  _condition(cond),
-  _lat(0.0),
-  _lon(0.0),
-  _inclusive(false),
-  _done(false),
-  _radius(0.0) {
-    evaluateCondition();
-  }
+    _index(index),
+    _params(params),
+    _done(false) {}
   
-  ~S2GeoIndexNearIterator() {}
+  ~RocksDBSphericalIndexNearIterator() {}
   
   char const* typeName() const override { return "geospatial-index-iterator"; }
   
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
-    
     if (_done) {
       // we already know that no further results will be returned by the index
+      TRI_ASSERT(_queue.empty());
       return false;
     }
     
@@ -118,7 +111,7 @@ public:
 private:
   //size_t findLastIndex(arangodb::rocksdbengine::GeoCoordinates* coords) const;
   void createCursor(double lat, double lon);
-  void evaluateCondition() {
+  /*void evaluateCondition() {
     if (_condition) {
       auto numMembers = _condition->numMembers();
       
@@ -148,21 +141,23 @@ private:
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
       << "No condition passed to RocksDBGeoIndexIterator constructor";
     }
-  }
+  }*/
   
+  struct GeoDocument {
+    TRI_voc_rid_t _documentId;
+    double distance;
+  };
   
-  S2GeoIndex const* _index;
-  arangodb::aql::AstNode const* _condition;
-  double _lat;
-  double _lon;
-  bool _near;
-  bool _inclusive;
-  bool _done;
-  double _radius;
+  RocksDBSphericalIndex const* _index;
+  geo::NearQueryParams _params;
+  /// priority queue of found documents
+  std::priority_queue<GeoDocument, std::vector<GeoDocument>,
+                      std::greater<GeoDocument>> _queue;
+  bool _done = false;
 };
 
 
-/*size_t S2GeoIndexIterator::findLastIndex(GeoCoordinates* coords) const {
+/*size_t RocksDBSphericalIndexIterator::findLastIndex(GeoCoordinates* coords) const {
   TRI_ASSERT(coords != nullptr);
 
   // determine which documents to return...
@@ -221,7 +216,7 @@ private:
 }*/
 
 /// @brief creates an IndexIterator for the given Condition
-IndexIterator* S2GeoIndex::iteratorForCondition(
+IndexIterator* RocksDBSphericalIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) {
@@ -229,12 +224,12 @@ IndexIterator* S2GeoIndex::iteratorForCondition(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
   return nullptr;
-  //return new S2GeoIndexIterator(_collection, trx, mmdr, this, node,
+  //return new RocksDBSphericalIndexIterator(_collection, trx, mmdr, this, node,
   //                                   reference);
 }
 
 
-S2GeoIndex::S2GeoIndex(TRI_idx_iid_t iid,
+RocksDBSphericalIndex::RocksDBSphericalIndex(TRI_idx_iid_t iid,
                        LogicalCollection* collection,
                        VPackSlice const& info)
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::geo(), false),
@@ -242,7 +237,8 @@ S2GeoIndex::S2GeoIndex(TRI_idx_iid_t iid,
   TRI_ASSERT(iid != 0);
   _unique = false;
   _sparse = true;
-
+      
+  _coverParams.fromVelocyPack(info);
   if (_fields.size() == 1) {
     bool geoJson = basics::VelocyPackHelper::getBooleanValue(
                             info, "geoJson", true);
@@ -275,11 +271,11 @@ S2GeoIndex::S2GeoIndex(TRI_idx_iid_t iid,
   }
 }
 
-S2GeoIndex::~S2GeoIndex() {
+RocksDBSphericalIndex::~RocksDBSphericalIndex() {
 }
 
 /// @brief return a JSON representation of the index
-void S2GeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
+void RocksDBSphericalIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
                                    bool forPersistence) const {
   builder.openObject();
   // Basic index
@@ -303,7 +299,7 @@ void S2GeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 }
 
 /// @brief Test if this index matches the definition
-bool S2GeoIndex::matchesDefinition(VPackSlice const& info) const {
+bool RocksDBSphericalIndex::matchesDefinition(VPackSlice const& info) const {
   TRI_ASSERT(info.isObject());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   VPackSlice typeSlice = info.get("type");
@@ -323,11 +319,11 @@ bool S2GeoIndex::matchesDefinition(VPackSlice const& info) const {
     return idRef == std::to_string(_iid);
   }
   
-  if (_unique != arangodb::basics::VelocyPackHelper::getBooleanValue(
+  if (_unique != basics::VelocyPackHelper::getBooleanValue(
                      info, "unique", false)) {
     return false;
   }
-  if (_sparse != arangodb::basics::VelocyPackHelper::getBooleanValue(
+  if (_sparse != basics::VelocyPackHelper::getBooleanValue(
                      info, "sparse", true)) {
     return false;
   }
@@ -369,13 +365,12 @@ bool S2GeoIndex::matchesDefinition(VPackSlice const& info) const {
 }
 
 /// internal insert function, set batch or trx before calling
-Result S2GeoIndex::insertInternal(transaction::Methods* trx,
-                                       RocksDBMethods* mthd,
-                                       LocalDocumentId const& documentId,
-                                       velocypack::Slice const& doc) {
-  // GeoIndex is always exclusively write-locked with rocksdb
-  
+Result RocksDBSphericalIndex::insertInternal(transaction::Methods* trx,
+                                         RocksDBMethods* mthd,
+                                         LocalDocumentId const& documentId,
+                                         velocypack::Slice const& doc) {
   S2RegionCoverer coverer;
+  _coverParams.configureS2RegionCoverer(&coverer);
   std::vector<S2CellId> cells;
 
   Result res;
@@ -384,14 +379,9 @@ Result S2GeoIndex::insertInternal(transaction::Methods* trx,
     VPackSlice loc = doc.get(_location);
     res = geo::GeoHelper::generateS2CellIds(&coverer, loc, isGeoJson, cells);
   } else if (_variant == IndexVariant::INDIVIDUAL_LAT_LON) {
-    VPackSlice lat = doc.get(_latitude);
-    if (!lat.isNumber()) {
-      // Invalid, no insert. Index is sparse
-      return IndexResult();
-    }
-    
     VPackSlice lon = doc.get(_longitude);
-    if (!lon.isNumber()) {
+    VPackSlice lat = doc.get(_latitude);
+    if (!lon.isNumber() || !lat.isNumber()) {
       // Invalid, no insert. Index is sparse
       return IndexResult();
     }
@@ -408,91 +398,69 @@ Result S2GeoIndex::insertInternal(transaction::Methods* trx,
     return res;
   }
 
+  // FIXME: can we rely on the region coverer to return
+  // the same cells everytime for the same parameters ?
+  for (S2CellId cell : cells) {
+    RocksDBKeyLeaser key(trx);
+    key->constructSphericalIndexValue(_objectId, cell.id(), documentId.id());
+    Result r = mthd->Put(RocksDBColumnFamily::geo(), key.ref(), rocksdb::Slice());
+    if (r.fail()) {
+      return r;
+    }
+  }
   
-
-  // and insert into index
-  /*GeoCoordinate gc;
-  gc.latitude = latitude;
-  gc.longitude = longitude;
-  gc.data = static_cast<uint64_t>(documentId.id());
-
-  int res = GeoIndex_insert(_geoIndex, mthd, &gc);
-  if (res == -1) {
-    LOG_TOPIC(WARN, arangodb::Logger::FIXME)
-        << "found duplicate entry in geo-index, should not happen";
-    return IndexResult(TRI_ERROR_INTERNAL, this);
-  } else if (res == -2) {
-    return IndexResult(TRI_ERROR_OUT_OF_MEMORY, this);
-  } else if (res == -3) {
-    LOG_TOPIC(DEBUG, arangodb::Logger::FIXME)
-        << "illegal geo-coordinates, ignoring entry";
-  } else if (res < 0) {
-    return IndexResult(TRI_ERROR_INTERNAL, this);
-  }*/
   return IndexResult();
 }
 
 /// internal remove function, set batch or trx before calling
-Result S2GeoIndex::removeInternal(transaction::Methods* trx,
-                                       RocksDBMethods* mthd,
-                                       LocalDocumentId const& documentId,
-                                       arangodb::velocypack::Slice const& doc) {
-  // GeoIndex is always exclusively write-locked with rocksdb
-  /*double latitude = 0.0;
-  double longitude = 0.0;
-  bool ok = true;
-
-  if (_variant == INDEX_GEO_INDIVIDUAL_LAT_LON) {
-    VPackSlice lat = doc.get(_latitude);
-    VPackSlice lon = doc.get(_longitude);
-    if (!lat.isNumber()) {
-      ok = false;
-    } else {
-      latitude = lat.getNumericValue<double>();
-    }
-    if (!lon.isNumber()) {
-      ok = false;
-    } else {
-      longitude = lon.getNumericValue<double>();
-    }
-  } else {
+Result RocksDBSphericalIndex::removeInternal(transaction::Methods* trx,
+                                         RocksDBMethods* mthd,
+                                         LocalDocumentId const& documentId,
+                                         VPackSlice const& doc) {
+  S2RegionCoverer coverer;
+  _coverParams.configureS2RegionCoverer(&coverer);
+  std::vector<S2CellId> cells;
+  
+  Result res;
+  bool isGeoJson = _variant == IndexVariant::COMBINED_GEOJSON;
+  if (isGeoJson || _variant == IndexVariant::COMBINED_LAT_LON) {
     VPackSlice loc = doc.get(_location);
-    if (!loc.isArray() || loc.length() < 2) {
-      ok = false;
-    } else {
-      VPackSlice first = loc.at(0);
-      if (!first.isNumber()) {
-        ok = false;
-      }
-      VPackSlice second = loc.at(1);
-      if (!second.isNumber()) {
-        ok = false;
-      }
-      if (ok) {
-        if (_geoJson) {
-          longitude = first.getNumericValue<double>();
-          latitude = second.getNumericValue<double>();
-        } else {
-          latitude = first.getNumericValue<double>();
-          longitude = second.getNumericValue<double>();
-        }
-      }
+    res = geo::GeoHelper::generateS2CellIds(&coverer, loc, isGeoJson, cells);
+  } else if (_variant == IndexVariant::INDIVIDUAL_LAT_LON) {
+    VPackSlice lon = doc.get(_longitude);
+    VPackSlice lat = doc.get(_latitude);
+    if (!lon.isNumber() || !lat.isNumber()) {
+      // Invalid, no insert. Index is sparse
+      return IndexResult();
+    }
+    double latitude = lat.getNumericValue<double>();
+    double longitude = lon.getNumericValue<double>();
+    
+    res = geo::GeoHelper::generateS2CellIdFromLatLng(latitude, longitude, cells);
+  }
+  
+  if (res.is(TRI_ERROR_BAD_PARAMETER)) {
+    // Invalid, no insert. Index is sparse
+    return IndexResult();
+  } else if (res.fail()) {
+    return res;
+  }
+  
+  // FIXME: can we rely on the region coverer to return
+  // the same cells everytime for the same parameters ?
+  for (S2CellId cell : cells) {
+    RocksDBKeyLeaser key(trx);
+    key->constructSphericalIndexValue(_objectId, cell.id(), documentId.id());
+    Result r = mthd->Delete(RocksDBColumnFamily::geo(), key.ref());
+    if (r.fail()) {
+      return r;
     }
   }
-
-  if (ok) {
-    GeoCoordinate gc;
-    gc.latitude = latitude;
-    gc.longitude = longitude;
-    gc.data = static_cast<uint64_t>(documentId.id());
-    // ignore non-existing elements in geo-index
-    GeoIndex_remove(_geoIndex, RocksDBTransactionState::toMethods(trx), &gc);
-  }*/
-
+  
   return IndexResult();
 }
 
-void S2GeoIndex::truncate(transaction::Methods* trx) {
+void RocksDBSphericalIndex::truncate(transaction::Methods* trx) {
   RocksDBIndex::truncate(trx);
   //GeoIndex_reset(_geoIndex, RocksDBTransactionState::toMethods(trx));
 }

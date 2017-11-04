@@ -127,6 +127,12 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   void constructGeoIndexValue(uint64_t indexId, int32_t offset,
                               bool isSlot);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Create a fully-specified key for an S2CellId
+  //////////////////////////////////////////////////////////////////////////////
+  void constructSphericalIndexValue(uint64_t indexId, uint64_t value,
+                                    TRI_voc_rid_t revisionId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Create a fully-specified key for a view
@@ -253,7 +259,15 @@ class RocksDBKey {
   /// May be called only on GeoIndexValues
   //////////////////////////////////////////////////////////////////////////////
   static std::pair<bool, int32_t> geoValues(rocksdb::Slice const& slice);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Extracts the geospatial cell id
+  ///
+  /// May be called only on S2IndexValues
+  //////////////////////////////////////////////////////////////////////////////
+  static uint64_t S2GeoIndexValue(rocksdb::Slice const& slice);
 
+  /// size of internal objectID
   static constexpr size_t objectIdSize() { return sizeof(uint64_t); }
 
  public:

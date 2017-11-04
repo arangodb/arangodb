@@ -98,6 +98,15 @@ RocksDBKeyBounds RocksDBKeyBounds::GeoIndex(uint64_t indexId, bool isSlot) {
   return b;
 }
 
+RocksDBKeyBounds RocksDBKeyBounds::SphericalIndex(uint64_t indexId) {
+  return RocksDBKeyBounds(RocksDBEntryType::SphericalIndexValue, indexId);
+}
+
+RocksDBKeyBounds RocksDBKeyBounds::SphericalIndex(uint64_t indexId, uint64_t minCell,
+                                                  uint64_t maxCell) {
+  return RocksDBKeyBounds(RocksDBEntryType::SphericalIndexValue, indexId, minCell, maxCell);
+}
+
 RocksDBKeyBounds RocksDBKeyBounds::VPackIndex(uint64_t indexId,
                                               VPackSlice const& left,
                                               VPackSlice const& right) {
@@ -195,6 +204,7 @@ uint64_t RocksDBKeyBounds::objectId() const {
     case RocksDBEntryType::VPackIndexValue:
     case RocksDBEntryType::UniqueVPackIndexValue:
     case RocksDBEntryType::GeoIndexValue:
+    case RocksDBEntryType::SphericalIndexValue:
     case RocksDBEntryType::FulltextIndexValue: {
       TRI_ASSERT(_internals.buffer().size() > sizeof(uint64_t));
       return uint64FromPersistent(_internals.buffer().data());
@@ -222,6 +232,7 @@ rocksdb::ColumnFamilyHandle* RocksDBKeyBounds::columnFamily() const {
     case RocksDBEntryType::FulltextIndexValue:
       return RocksDBColumnFamily::fulltext();
     case RocksDBEntryType::GeoIndexValue:
+    case RocksDBEntryType::SphericalIndexValue:
       return RocksDBColumnFamily::geo();
     case RocksDBEntryType::Database:
     case RocksDBEntryType::Collection:
@@ -312,7 +323,8 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       break;
     }
     case RocksDBEntryType::Document:
-    case RocksDBEntryType::GeoIndexValue: {
+    case RocksDBEntryType::GeoIndexValue:
+    case RocksDBEntryType::SphericalIndexValue:{
       // Documents are stored as follows:
       // Key: 8-byte object ID of collection + 8-byte document revision ID
       _internals.reserve(3 * sizeof(uint64_t));
@@ -320,6 +332,7 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
       _internals.separate();
       uint64ToPersistent(_internals.buffer(), first);
       uint64ToPersistent(_internals.buffer(), UINT64_MAX);
+      // 0 - 0xFFFF... no matter the endianess
       break;
     }
 
@@ -333,11 +346,9 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first)
         _internals.push_back('\0');
         _internals.push_back(_stringSeparator);
       }
-
       _internals.separate();
-
       uint64ToPersistent(_internals.buffer(), first);
-      _internals.push_back(0xFFU);
+      _internals.push_back(0xFFU); // higher than any ascci char
       if (type == RocksDBEntryType::EdgeIndexValue) {
         _internals.push_back(_stringSeparator);
       }
@@ -429,6 +440,26 @@ RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
       break;
     }
 
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+}
+
+RocksDBKeyBounds::RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
+                                   uint64_t second, uint64_t third) : _type(type) {
+  switch (_type) {
+    case RocksDBEntryType::SphericalIndexValue: {
+      size_t ll = sizeof(uint64_t) * 3;
+      _internals.reserve(ll * 2);
+      uint64ToPersistent(_internals.buffer(), first);
+      uint64ToBigEndianPersistent(_internals.buffer(), second);
+      _internals.separate();
+      uint64ToPersistent(_internals.buffer(), first);
+      uint64ToBigEndianPersistent(_internals.buffer(), third);
+      uint64ToPersistent(_internals.buffer(), UINT64_MAX);
+      break;
+    }
+      
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }

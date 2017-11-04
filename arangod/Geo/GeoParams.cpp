@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2017 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -22,17 +21,52 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "GeoParams.h"
+#include "Basics/Common.h"
 
-#include <velocypack/velocypack-aliases.h>
 #include <geometry/s2regioncoverer.h>
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
+#include <velocypack/velocypack-aliases.h>
 
 using namespace arangodb;
 using namespace arangodb::geo;
 
-void GeoIndexParams::configureS2RegionCoverer(S2RegionCoverer* coverer) const {
-  // This is a soft limit, only levels are strict
-  coverer->set_max_cells(maxCoverCells);
-  coverer->set_min_level(minIndexedLevel);
-  coverer->set_max_level(maxIndexedLevel);
+RegionCoverParams::RegionCoverParams()
+    : maxNumCoverCells(16),
+      worstIndexedLevel(
+          S2::kAvgEdge.GetClosestLevel(2000 * 1000.0 / kEarthRadiusInMeters)),
+      bestIndexedLevel(
+          S2::kAvgEdge.GetClosestLevel(105.0 / kEarthRadiusInMeters)) {
+  // optimize levels for buildings, points are converted without S2RegionCoverer
 }
 
+/// @brief read the options from a vpack slice
+void RegionCoverParams::fromVelocyPack(VPackSlice const& params) {
+  TRI_ASSERT(params.isObject());
+  VPackSlice v;
+  if ((v = params.get("maxNumCoverCells")).isInteger()) {
+    maxNumCoverCells = v.getNumber<int>();
+  }
+  if ((v = params.get("worstIndexedLevel")).isInteger()) {
+    worstIndexedLevel = v.getNumber<int>();
+  }
+  if ((v = params.get("bestIndexedLevel")).isInteger()) {
+    bestIndexedLevel = v.getNumber<int>();
+  }
+}
+
+/// @brief add the options to an opened vpack builder
+void RegionCoverParams::toVelocyPack(VPackBuilder& builder) const {
+  TRI_ASSERT(builder.isOpenObject());
+  builder.add("maxNumCoverCells", VPackValue(maxNumCoverCells));
+  builder.add("worstIndexedLevel", VPackValue(worstIndexedLevel));
+  builder.add("bestIndexedLevel", VPackValue(bestIndexedLevel));
+}
+
+void RegionCoverParams::configureS2RegionCoverer(
+    S2RegionCoverer* coverer) const {
+  // This is a soft limit, only levels are strict
+  coverer->set_max_cells(maxNumCoverCells);
+  coverer->set_min_level(worstIndexedLevel);
+  coverer->set_max_level(bestIndexedLevel);
+}

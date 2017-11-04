@@ -170,6 +170,7 @@ inline uint16_t uint16FromPersistent(char const* p) {
   return uintFromPersistent<uint16_t>(p); 
 }
 
+/// @brief encodes number little endian
 template<typename T>
 inline void uintToPersistent(char* p, T value) {
 #ifdef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
@@ -197,11 +198,15 @@ inline void uint16ToPersistent(char* p, uint16_t value) {
 
 template<typename T>
 inline void uintToPersistent(std::string& p, T value) {
+#ifdef TRI_USE_FAST_UNALIGNED_DATA_ACCESS
+  p.append(reinterpret_cast<const char*>(&value), sizeof(T));
+#else
   size_t len = 0;
   do {
     p.push_back(static_cast<char>(value & 0xffU));
     value >>= 8;
   } while (++len < sizeof(T));
+#endif
 }
 
 inline void uint64ToPersistent(std::string& out, uint64_t value) {
@@ -216,7 +221,16 @@ inline void uint16ToPersistent(std::string& out, uint16_t value) {
   return uintToPersistent<uint16_t>(out, value);
 }
 
+// big endian string encoding to preserver proper ordering under
+// a memcmp based comparison function
+inline void uint64ToBigEndianPersistent(std::string& out, uint64_t value) {
+  uintToPersistent<uint64_t>(out, basics::hostToBig(value));
+}
+inline uint64_t uint64FromBigEndianPersistent(char const* p) {
+  return basics::bigToHost(uintFromPersistent<uint64_t>(p));
+}
 
+/// shorthand for rocksdb
 rocksdb::TransactionDB* globalRocksDB();
 RocksDBEngine* globalRocksEngine();
 arangodb::Result globalRocksDBPut(

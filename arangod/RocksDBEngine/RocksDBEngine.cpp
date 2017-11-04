@@ -45,8 +45,8 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/ServerIdFeature.h"
 #include "RestServer/ViewTypesFeature.h"
-#include "RocksDBEngine/Indexes/RocksDBIndex.h"
-#include "RocksDBEngine/Indexes/RocksDBIndexFactory.h"
+#include "RocksDBEngine/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBIndexFactory.h"
 #include "RocksDBEngine/RocksDBAqlFunctions.h"
 #include "RocksDBEngine/RocksDBBackgroundThread.h"
 #include "RocksDBEngine/RocksDBCollection.h"
@@ -355,17 +355,20 @@ void RocksDBEngine::start() {
   rocksdb::ColumnFamilyOptions definitionsCF(_options);
   
   // cf options with fixed 8 byte object id prefix for documents
-  rocksdb::ColumnFamilyOptions fixedPrefCF(_options);
-  fixedPrefCF.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
+  rocksdb::ColumnFamilyOptions fixedPrefCF(_options); // do not use `.reset(...)`
+  fixedPrefCF.prefix_extractor = std::shared_ptr<rocksdb::SliceTransform const>(
+                    rocksdb::NewFixedPrefixTransform(RocksDBKey::objectIdSize()));
   
   // construct column family options with prefix containing indexed value
-  rocksdb::ColumnFamilyOptions dynamicPrefCF(_options);
+  rocksdb::ColumnFamilyOptions dynamicPrefCF(_options); // do not use `.reset(...)`
   dynamicPrefCF.prefix_extractor = std::make_shared<RocksDBPrefixExtractor>();
   // also use hash-search based SST file format
   rocksdb::BlockBasedTableOptions tblo(table_options);
   tblo.index_type = rocksdb::BlockBasedTableOptions::IndexType::kHashSearch;
   dynamicPrefCF.table_factory = std::shared_ptr<rocksdb::TableFactory>(
       rocksdb::NewBlockBasedTableFactory(tblo));
+  // this is currently just used for the edge index, because VPackIndex
+  // can have different binary represntations for the same values
   
   // velocypack based index variants with custom comparator
   rocksdb::ColumnFamilyOptions vpackFixedPrefCF(fixedPrefCF);

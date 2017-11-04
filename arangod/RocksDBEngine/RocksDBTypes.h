@@ -32,8 +32,8 @@
 namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
-/// If these values change, make sure to reflect the changes in
-/// RocksDBPrefixExtractor as well.
+/// Used to keep track of current key type in RocksDBKey and RocksDBKeyBounds
+/// Should not be written to disk from 3.2 milestone 1 onwards
 ////////////////////////////////////////////////////////////////////////////////
 enum class RocksDBEntryType : char {
   Database = '0',
@@ -50,11 +50,15 @@ enum class RocksDBEntryType : char {
   GeoIndexValue = ';',
   IndexEstimateValue = '<',
   KeyGeneratorValue = '=',
-  View = '>'
+  View = '>',
+  SphericalIndexValue = '?'
 };
 
 char const* rocksDBEntryTypeName(RocksDBEntryType);
 
+////////////////////////////////////////////////////////////////////////////////
+/// Used to for various metadata in the write-ahead-log
+////////////////////////////////////////////////////////////////////////////////
 enum class RocksDBLogType : char {
   Invalid = 0,
   DatabaseCreate = '1',

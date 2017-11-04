@@ -99,10 +99,20 @@ class RocksDBKeyBounds {
   static RocksDBKeyBounds FulltextIndex(uint64_t indexId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Bounds for all entries belonging to a specified unique index
+  /// @brief Bounds for all entries belonging to specified geo index
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds GeoIndex(uint64_t indexId);
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all slot entries in specified geo index
+  //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds GeoIndex(uint64_t indexId, bool isSlot);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all entries in spherical index
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds SphericalIndex(uint64_t indexId);
+  static RocksDBKeyBounds SphericalIndex(uint64_t indexId, uint64_t minCell,
+                                         uint64_t maxCell);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all index-entries within a value range belonging to a
@@ -209,6 +219,8 @@ class RocksDBKeyBounds {
                    VPackSlice const& second);
   RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
                    VPackSlice const& second, VPackSlice const& third);
+  RocksDBKeyBounds(RocksDBEntryType type, uint64_t first,
+                   uint64_t second, uint64_t third);
 
  private:
   // private class that will hold both bounds in a single buffer (with only one

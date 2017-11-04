@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,30 +21,28 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_ROCKSDB_HASH_INDEX_H
-#define ARANGOD_ROCKSDB_ROCKSDB_HASH_INDEX_H 1
+#ifndef ARANGOD_ROCKSDB_ROCKSDB_PERSISTENT_INDEX_H
+#define ARANGOD_ROCKSDB_ROCKSDB_PERSISTENT_INDEX_H 1
 
-#include "Basics/VelocyPackHelper.h"
-#include "RocksDBEngine/Indexes/RocksDBVPackIndex.h"
-
+#include "RocksDBEngine/RocksDBVPackIndex.h"
 namespace arangodb {
 
-class RocksDBHashIndex final : public RocksDBVPackIndex {
+class RocksDBPersistentIndex final : public RocksDBVPackIndex {
  public:
-  RocksDBHashIndex() = delete;
+  RocksDBPersistentIndex() = delete;
 
-  RocksDBHashIndex(TRI_idx_iid_t iid, LogicalCollection* coll,
-                   arangodb::velocypack::Slice const& info)
+  RocksDBPersistentIndex(TRI_idx_iid_t iid, LogicalCollection* coll,
+                         arangodb::velocypack::Slice const& info)
       : RocksDBVPackIndex(iid, coll, info) {}
 
  public:
-  IndexType type() const override { return Index::TRI_IDX_TYPE_HASH_INDEX; }
+  IndexType type() const override {
+    return Index::TRI_IDX_TYPE_PERSISTENT_INDEX;
+  }
 
-  char const* typeName() const override { return "rocksdb-hash"; }
+  char const* typeName() const override { return "rocksdb-persistent"; }
 
   bool isSorted() const override { return true; }
-
-  bool matchesDefinition(VPackSlice const& info) const override;
 };
 }
 

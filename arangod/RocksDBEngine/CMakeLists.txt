@@ -35,6 +35,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBRestHandlers.cpp
   RocksDBEngine/RocksDBRestReplicationHandler.cpp
   RocksDBEngine/RocksDBRestWalHandler.cpp
+  RocksDBEngine/RocksDBSphericalIndex.cpp
   RocksDBEngine/RocksDBTransactionCollection.cpp
   RocksDBEngine/RocksDBTransactionState.cpp
   RocksDBEngine/RocksDBTypes.cpp

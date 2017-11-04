@@ -23,7 +23,7 @@
 #include "RocksDBIterators.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
-#include "RocksDBEngine/Indexes/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBCollection.h"
 #include "RocksDBEngine/RocksDBColumnFamily.h"
 #include "RocksDBEngine/RocksDBMethods.h"

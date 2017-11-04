@@ -237,6 +237,33 @@ std::memcpy(&in,&tmp,8);
 return in;
 }
 
+// hostToBig
+inline uint64_t hostToBig(uint64_t in){
+#ifdef __APPLE__
+  return OSSwapHostToBigInt64(in);
+#elif __linux__
+  return htobe64(in);
+#elif _WIN32
+  if(isLittleEndian()){
+    ByteSwap(&in,8);
+  }
+#endif
+  return in;
+}
+  
+// bigToHost
+inline uint64_t bigToHost(uint64_t in){
+#ifdef __APPLE__
+  return OSSwapBigToHostInt64(in);
+#elif __linux__
+  return be64toh(in);
+#elif _WIN32
+  if(isLittleEndian()){
+    ByteSwap(&in,8);
+  }
+#endif
+  return in;
+}
 
 }}
 

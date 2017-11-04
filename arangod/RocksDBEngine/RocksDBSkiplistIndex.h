@@ -24,7 +24,7 @@
 #ifndef ARANGOD_ROCKSDB_ROCKSDB_SKIPLIST_INDEX_H
 #define ARANGOD_ROCKSDB_ROCKSDB_SKIPLIST_INDEX_H 1
 
-#include "RocksDBEngine/Indexes/RocksDBVPackIndex.h"
+#include "RocksDBEngine/RocksDBVPackIndex.h"
 
 namespace arangodb {
 

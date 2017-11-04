@@ -215,6 +215,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return "geo1";
     case TRI_IDX_TYPE_GEO2_INDEX:
       return "geo2";
+    case TRI_IDX_TYPE_GEOSPATIAL_INDEX:
+      return "geospatial";
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
       return "noaccess";
     case TRI_IDX_TYPE_UNKNOWN: {

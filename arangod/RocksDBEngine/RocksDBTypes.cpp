@@ -85,6 +85,12 @@ static rocksdb::Slice GeoIndexValue(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
         &geoIndexValue),
     1);
+  
+static RocksDBEntryType sphericalIndexValue = RocksDBEntryType::SphericalIndexValue;
+static rocksdb::Slice SphericalIndexValue(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &sphericalIndexValue),
+    1);
 
 static RocksDBEntryType view = RocksDBEntryType::View;
 static rocksdb::Slice View(
@@ -145,6 +151,8 @@ char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
       return "FulltextIndexValue";
     case arangodb::RocksDBEntryType::GeoIndexValue:
       return "GeoIndexValue";
+    case arangodb::RocksDBEntryType::SphericalIndexValue:
+      return "SphericalIndexValue";
     case arangodb::RocksDBEntryType::IndexEstimateValue:
       return "IndexEstimateValue";
     case arangodb::RocksDBEntryType::KeyGeneratorValue:
@@ -215,6 +223,8 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return FulltextIndexValue;
     case RocksDBEntryType::GeoIndexValue:
       return GeoIndexValue;
+    case RocksDBEntryType::SphericalIndexValue:
+      return SphericalIndexValue;
     case RocksDBEntryType::View:
       return View;
     case RocksDBEntryType::SettingsValue:

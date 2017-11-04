@@ -262,7 +262,7 @@ typedef struct {
 #include <RocksDBEngine/RocksDBCommon.h>
 #include <RocksDBEngine/RocksDBCounterManager.h>
 #include <RocksDBEngine/RocksDBEngine.h>
-#include <RocksDBEngine/Indexes/RocksDBGeoIndexImpl.h>
+#include <RocksDBEngine/RocksDBGeoIndexImpl.h>
 #include <RocksDBEngine/RocksDBKey.h>
 #include <StorageEngine/EngineSelectorFeature.h>
 

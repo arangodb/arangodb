@@ -28,7 +28,7 @@
 #include "Basics/LocalTaskQueue.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
-#include "RocksDBEngine/Indexes/RocksDBIndex.h"
+#include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBKey.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"

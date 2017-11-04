@@ -161,6 +161,22 @@ void RocksDBKey::constructGeoIndexValue(uint64_t indexId, int32_t offset,
   _slice = rocksdb::Slice(_buffer.data(), keyLength);
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Create a fully-specified key for an S2CellId
+//////////////////////////////////////////////////////////////////////////////
+void RocksDBKey::constructSphericalIndexValue(uint64_t indexId, uint64_t value,
+                                              TRI_voc_rid_t revisionId) {
+  _type = RocksDBEntryType::SphericalIndexValue;
+  size_t keyLength = 3 * sizeof(uint64_t);
+  _buffer.clear();
+  _buffer.reserve(keyLength);
+  uint64ToPersistent(_buffer, indexId);
+  uint64ToBigEndianPersistent(_buffer, value);
+  uint64ToPersistent(_buffer, revisionId);
+  TRI_ASSERT(_buffer.size() == keyLength);
+  _slice = rocksdb::Slice(_buffer.data(), keyLength);
+}
+
 void RocksDBKey::constructView(TRI_voc_tick_t databaseId, TRI_voc_cid_t viewId) {
   _type = RocksDBEntryType::View;
   size_t keyLength = sizeof(char) + 2 * sizeof(uint64_t);
@@ -311,6 +327,12 @@ std::pair<bool, int32_t> RocksDBKey::geoValues(rocksdb::Slice const& slice) {
   return std::pair<bool, int32_t>(isSlot, static_cast<int32_t>(val >> 32));
 }
 
+uint64_t RocksDBKey::S2GeoIndexValue(rocksdb::Slice const& slice) {
+  TRI_ASSERT(slice.size() == sizeof(uint64_t) * 3);
+  return uint64FromBigEndianPersistent(slice.data() + sizeof(uint64_t));
+}
+
+
 // ====================== Private Methods ==========================
 
 TRI_voc_tick_t RocksDBKey::databaseId(char const* data, size_t size) {
@@ -375,7 +397,8 @@ TRI_voc_rid_t RocksDBKey::revisionId(RocksDBEntryType type, char const* data,
   switch (type) {
     case RocksDBEntryType::Document:
     case RocksDBEntryType::VPackIndexValue:
-    case RocksDBEntryType::FulltextIndexValue: {
+    case RocksDBEntryType::FulltextIndexValue:
+    case RocksDBEntryType::SphericalIndexValue: {
       TRI_ASSERT(size >= (2 * sizeof(uint64_t)));
       // last 8 bytes should be the revision
       return uint64FromPersistent(data + size - sizeof(uint64_t));
