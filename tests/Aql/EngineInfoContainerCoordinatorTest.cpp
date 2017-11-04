@@ -542,6 +542,154 @@ TEST_CASE("EngineInfoContainerCoordinator", "[aql][cluster][coordinator]") {
     Verify(Method(mockRegistry, insert)).Exactly(2);
   }
 
+  SECTION("it should unregister all engines on error in query clone") {
+    std::unordered_set<std::string> const restrictToShards;
+    std::unordered_map<std::string, std::string> queryIds;
+    auto lockedShards = std::make_unique<std::unordered_set<ShardID> const>();
+
+    size_t remoteId = 1337;
+    QueryId secondId = 0;
+    std::string dbname = "TestDB";
+
+    // ------------------------------
+    // Section: Create Mock Instances
+    // ------------------------------
+    Mock<ExecutionNode> firstNodeMock;
+    ExecutionNode& fNode = firstNodeMock.get();
+    When(Method(firstNodeMock, getType)).AlwaysReturn(ExecutionNode::SINGLETON);
+
+    // We need a block only for assertion
+    Mock<ExecutionBlock> blockMock;
+    ExecutionBlock& block = blockMock.get();
+
+    // Mock engine for first snippet
+    Mock<ExecutionEngine> mockEngine;
+    ExecutionEngine& myEngine = mockEngine.get();
+
+    // Mock engine for second snippet
+    Mock<ExecutionEngine> mockSecondEngine;
+    ExecutionEngine& mySecondEngine = mockSecondEngine.get();
+
+    Mock<Query> mockQuery;
+    Query& query = mockQuery.get();
+
+    Mock<Query> mockQueryClone;
+    Query& queryClone = mockQueryClone.get();
+
+    Mock<QueryRegistry> mockRegistry;
+    QueryRegistry& registry = mockRegistry.get();
+
+    // ------------------------------
+    // Section: Mock Functions
+    // ------------------------------
+
+
+    When(Method(mockQuery, setEngine)).Do([&](ExecutionEngine* eng) -> void {
+
+      // We expect that the snippet injects a new engine into our
+      // query.
+      // However we have to return a mocked engine later
+      REQUIRE(eng != nullptr);
+      // Throw it away
+      delete eng;
+    });
+    When(Method(mockQuery, engine)).Return(&myEngine).Return(&myEngine);
+    When(Method(mockEngine, setLockedShards)).Return();
+    When(Method(mockEngine, createBlocks)).AlwaysReturn();
+    When(ConstOverloadedMethod(mockEngine, root, ExecutionBlock* ()))
+        .AlwaysReturn(&block);
+
+    // Mock query clone
+    When(Method(mockQuery, clone)).Do([&](QueryPart part, bool withPlan) -> Query* {
+      REQUIRE(part == PART_DEPENDENT);
+      REQUIRE(withPlan == false);
+      return &queryClone;
+    }).Throw(arangodb::basics::Exception(TRI_ERROR_DEBUG, __FILE__, __LINE__));
+
+    When(Method(mockQueryClone, setEngine)).Do([&](ExecutionEngine* eng) -> void {
+      // We expect that the snippet injects a new engine into our
+      // query.
+      // However we have to return a mocked engine later
+      REQUIRE(eng != nullptr);
+      // Throw it away
+      delete eng;
+    });
+
+    When(Method(mockQueryClone, engine)).Return(&mySecondEngine);
+    When(Method(mockSecondEngine, setLockedShards)).Return();
+    When(Method(mockSecondEngine, createBlocks)).AlwaysReturn();
+    When(ConstOverloadedMethod(mockSecondEngine, root, ExecutionBlock* ()))
+        .AlwaysReturn(&block);
+
+    // Mock the Registry
+    When(Method(mockRegistry, insert)).Do([&] (QueryId id, Query* query, double timeout) {
+      REQUIRE(id != 0);
+      REQUIRE(query != nullptr);
+      REQUIRE(timeout == 600.0);
+      REQUIRE(query == &queryClone);
+      secondId = id;
+    });
+    When(OverloadedMethod(mockRegistry, destroy, void(std::string const&, QueryId, int))).Do([&]
+          (std::string const& vocbase, QueryId id, int errorCode) {
+      REQUIRE(vocbase == dbname);
+      REQUIRE(id == secondId);
+      REQUIRE(errorCode == TRI_ERROR_DEBUG);
+    });
+
+
+    // ------------------------------
+    // Section: Run the test
+    // ------------------------------
+
+    EngineInfoContainerCoordinator testee;
+    testee.addNode(&fNode);
+
+    // Open the Second Snippet
+    testee.openSnippet(remoteId);
+    // Inject a node
+    testee.addNode(&fNode);
+
+    testee.openSnippet(remoteId);
+    // Inject a node
+    testee.addNode(&fNode);
+
+    // Close the third snippet
+    testee.closeSnippet();
+
+    // Close the second snippet
+    testee.closeSnippet();
+
+
+    try {
+      ExecutionEngine* engine = testee.buildEngines(
+        &query, &registry, dbname, restrictToShards, queryIds, lockedShards.get() 
+      );
+      // We should never get here, above needs to yield errors
+      REQUIRE(true == false);
+    } catch (basics::Exception& ex) {
+      // Make sure we check the right thing here
+      REQUIRE(ex.code() == TRI_ERROR_DEBUG);
+
+      // Validate that the path up to intended error was taken
+
+      // Validate that the query is wired up with the engine
+      Verify(Method(mockQuery, setEngine)).Exactly(1);
+      // Validate that lockedShards and createBlocks have been called!
+      Verify(Method(mockEngine, setLockedShards)).Exactly(1);
+      Verify(Method(mockEngine, createBlocks)).Exactly(1);
+
+      // Validate that the second query is wired up with the second engine
+      Verify(Method(mockQueryClone, setEngine)).Exactly(1);
+      // Validate that lockedShards and createBlocks have been called!
+      Verify(Method(mockSecondEngine, setLockedShards)).Exactly(1);
+      Verify(Method(mockSecondEngine, createBlocks)).Exactly(1);
+      Verify(Method(mockRegistry, insert)).Exactly(1);
+
+      // Assert unregister of second engine.
+      Verify(OverloadedMethod(mockRegistry, destroy, void(std::string const&, QueryId, int))).Exactly(1);
+    }
+  }
+
 }
 } // test
 } // aql

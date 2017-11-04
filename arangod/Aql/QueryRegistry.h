@@ -69,7 +69,7 @@ class QueryRegistry {
   /// from the same thread that has opened it! Note that if the query is
   /// "open", then this will set the "killed" flag in the query and do not
   /// more.
-  void destroy(std::string const& vocbase, QueryId id, int errorCode);
+  TEST_VIRTUAL void destroy(std::string const& vocbase, QueryId id, int errorCode);
 
   void destroy(TRI_vocbase_t* vocbase, QueryId id, int errorCode);
 

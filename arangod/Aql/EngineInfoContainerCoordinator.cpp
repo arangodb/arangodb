@@ -105,8 +105,7 @@ void EngineInfoContainerCoordinator::EngineInfo::buildEngine(
           arangodb::basics::StringUtils::itoa(_idOfRemoteNode) + "/" + dbname;
       queryIds.emplace(theID, queryId);
     } catch (...) {
-      queryRegistry->destroy(engine->getQuery()->vocbase(), _id,
-                             TRI_ERROR_INTERNAL);
+      queryRegistry->destroy(dbname, _id, TRI_ERROR_INTERNAL);
       // This deletes query, engine and entry in QueryRegistry
       throw;
     }
@@ -164,28 +163,44 @@ ExecutionEngine* EngineInfoContainerCoordinator::buildEngines(
 
   bool first = true;
   Query* localQuery = query;
-  for (auto const& info : _engines) {
-    if (!first) {
-      // need a new query instance on the coordinator
-      localQuery = query->clone(PART_DEPENDENT, false);
-      if (localQuery == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "cannot clone query");
-      }
-    }
-    try {
-      info.buildEngine(localQuery, registry, dbname, restrictToShards, queryIds,
-                       lockedShards);
-    } catch (...) {
-      localQuery->releaseEngine();
+  try {
+    for (auto const& info : _engines) {
       if (!first) {
-        delete localQuery;
+        // need a new query instance on the coordinator
+        localQuery = query->clone(PART_DEPENDENT, false);
+        if (localQuery == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                         "cannot clone query");
+        }
       }
-      throw;
+      try {
+        info.buildEngine(localQuery, registry, dbname, restrictToShards, queryIds,
+                         lockedShards);
+      } catch (...) {
+        // ?? Double free?
+        localQuery->releaseEngine();
+        if (!first) {
+          delete localQuery;
+        }
+        throw;
+      }
+      first = false;
     }
-
-    first = false;
+  } catch (basics::Exception const& ex) {
+    for (auto const& it : queryIds) {
+      QueryId id = basics::StringUtils::uint64(it.second);
+      registry->destroy(dbname, id, ex.code());
+    }
+    throw;
+  } catch (...) {
+    for (auto const& it : queryIds) {
+      QueryId id = basics::StringUtils::uint64(it.second);
+      registry->destroy(dbname, id, TRI_ERROR_INTERNAL);
+    }
+    throw;
   }
+
+
 
   // Why return?
   return query->engine();
