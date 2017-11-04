@@ -141,7 +141,8 @@ describe('User Rights Management', () => {
                     col.truncate();
                     success = true;
                   } catch (e) {
-                    expect(e.errorNum).to.equal(errors.ERROR_FORBIDDEN.code, `${name} getting an unexpected error code`);
+                    const err = colLevel['ro'].has(name) ? errors.ERROR_ARANGO_READ_ONLY : errors.ERROR_FORBIDDEN;
+                    expect(e.errorNum).to.equal(err.code, `${name} getting an unexpected error code`);
                   }
                   expect(success).to.equal(false, `${name} succeeded with truncate without getting an error (insufficent rights)`);
                   expect(rootCount()).to.equal(6, `${name} could not truncate the collection with sufficient rights`);

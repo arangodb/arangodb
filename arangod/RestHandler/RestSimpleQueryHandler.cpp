@@ -75,6 +75,7 @@ void RestSimpleQueryHandler::allDocuments() {
       parseVelocyPackBody(parseSuccess);
 
   if (!parseSuccess) {
+    // error message generated in parseVelocyPackBody
     return;
   }
   
@@ -166,6 +167,7 @@ void RestSimpleQueryHandler::allDocumentKeys() {
       parseVelocyPackBody(parseSuccess);
 
   if (!parseSuccess) {
+    // error message generated in parseVelocyPackBody
     return;
   }
 
