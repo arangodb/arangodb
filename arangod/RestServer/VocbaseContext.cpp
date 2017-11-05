@@ -96,16 +96,14 @@ VocbaseContext::~VocbaseContext() {
 }
 
 void VocbaseContext::forceSuperuser() {
-  TRI_ASSERT(!_internal);
-  TRI_ASSERT(_user.empty());
+  TRI_ASSERT(!_internal || _user.empty());
   _internal = true;
   _systemDbAuthLevel = AuthLevel::RW;
   _databaseAuthLevel = AuthLevel::RW;
 }
 
 void VocbaseContext::forceReadOnly() {
-  TRI_ASSERT(!_internal);
-  TRI_ASSERT(_user.empty());
+  TRI_ASSERT(!_internal || _user.empty());
   _internal = true;
   _systemDbAuthLevel = AuthLevel::RO;
   _databaseAuthLevel = AuthLevel::RO;

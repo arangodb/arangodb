@@ -83,7 +83,7 @@ class ExecContext : public RequestContext {
   
   /// @brief is allowed to manage users, create databases, ...
   bool isAdminUser() const {
-    TRI_ASSERT(!_internal || _systemDbAuthLevel == AuthLevel::RW);
+    // conflicts with read-only: TRI_ASSERT(!_internal || _systemDbAuthLevel == AuthLevel::RW);
     return _systemDbAuthLevel == AuthLevel::RW;
   }
   
