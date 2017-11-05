@@ -64,7 +64,7 @@ Result RocksDBWalAccess::tickRange(
 ///  }}
 ///
 TRI_voc_tick_t RocksDBWalAccess::lastTick() const {
-  rocksutils::globalRocksEngine()->syncWal();
+  rocksutils::globalRocksEngine()->flushWal(false, false, false);
   return rocksutils::globalRocksDB()->GetLatestSequenceNumber();
 }
 
@@ -122,10 +122,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
         }
         _currentDbId = RocksDBLogValue::databaseId(blob);
         _currentCid = RocksDBLogValue::collectionId(blob);
-        if (type == RocksDBLogType::CollectionDrop) {
-          _dropCollectionUUID =
-              RocksDBLogValue::collectionUUID(blob).toString();
-        }
         break;
       }
       case RocksDBLogType::CollectionDrop: {
@@ -453,7 +449,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
     _currentDbId = 0;
     _currentTrxId = 0;
     _currentCid = 0;
-    _dropCollectionUUID.clear();
     //_removeDocumentKey.clear(); can not remove here
     _indexSlice = VPackSlice::illegalSlice();
   }
@@ -548,7 +543,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
   TRI_voc_tick_t _currentDbId = 0;
   TRI_voc_tick_t _currentTrxId = 0;
   TRI_voc_cid_t _currentCid = 0;
-  std::string _dropCollectionUUID;
   std::string _removeDocumentKey;
   VPackSlice _indexSlice;
 };

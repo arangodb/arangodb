@@ -1347,7 +1347,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
                      arangodb::rest::RequestType::PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/collection/" + p.first + "/truncate",
-                     std::shared_ptr<std::string>(), headers, nullptr, 60.0);
+                     std::shared_ptr<std::string>(), headers, nullptr, 600.0);
   }
   // Now listen to the results:
   unsigned int count;
@@ -2444,13 +2444,15 @@ std::unordered_map<std::string, std::vector<std::string>> distributeShards(
 #ifndef USE_ENTERPRISE
 std::unique_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator(
   TRI_col_type_e collectionType, TRI_vocbase_t* vocbase, VPackSlice parameters,
-  bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication) {
+  bool ignoreDistributeShardsLikeErrors, bool waitForSyncReplication,
+  bool enforceReplicationFactor) {
   auto col = std::make_unique<LogicalCollection>(vocbase, parameters);  
     // Collection is a temporary collection object that undergoes sanity checks etc.
     // It is not used anywhere and will be cleaned up after this call.
     // Persist collection will return the real object.
   return persistCollectionInAgency(
-    col.get(), ignoreDistributeShardsLikeErrors, waitForSyncReplication, parameters);
+    col.get(), ignoreDistributeShardsLikeErrors, waitForSyncReplication,
+    enforceReplicationFactor, parameters);
 }
 #endif
 
@@ -2460,7 +2462,8 @@ std::unique_ptr<LogicalCollection> ClusterMethods::createCollectionOnCoordinator
 
 std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   LogicalCollection* col, bool ignoreDistributeShardsLikeErrors,
-  bool waitForSyncReplication, VPackSlice parameters) {
+  bool waitForSyncReplication, bool enforceReplicationFactor,
+  VPackSlice parameters) {
   
   std::string distributeShardsLike = col->distributeShardsLike();
   std::vector<std::string> avoid = col->avoidServers();
@@ -2581,12 +2584,15 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
     dbServers = ci->getCurrentDBServers();
   }
 
-  // cluster system replicationFactor is 1...allow startup with 1 DBServer.
-  // an addFollower job will be spawned right away and ensure proper
-  // resilience as soon as another DBServer is available :S
+  // system collections should never enforce replicationfactor
+  // to allow them to come up with 1 dbserver
+  if (enforceReplicationFactor && col->isSystem()) {
+    enforceReplicationFactor = false;
+  }
+
   // the default behaviour however is to bail out and inform the user
   // that the requested replicationFactor is not possible right now
-  if (dbServers.size() < replicationFactor && !col->isSystem()) {
+  if (enforceReplicationFactor && dbServers.size() < replicationFactor) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_INSUFFICIENT_DBSERVERS);
   }
 

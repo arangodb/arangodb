@@ -18,7 +18,7 @@ To start the cluster via Docker is basically the same as starting [locally](Loca
 Please note that there are some flags that specify how ArangoDB can reach a task from the outside. These are very important and built for this exact usecase. An example configuration might look like this:
 
 ```
-docker run -e ARANGO_NO_AUTH=1 -p 192.168.1.1:10000:8529 arangodb/arangodb arangod --server.endpoint tcp://0.0.0.0:8529 --cluster.my-address tcp://192.168.1.1:10000 --cluster.my-local-info db1 --cluster.my-role PRIMARY --cluster.agency-endpoint tcp://192.168.1.1:5001 --cluster.agency-endpoint tcp://192.168.1.2:5002 --cluster.agency-endpoint tcp://192.168.1.3:5003
+docker run -e ARANGO_NO_AUTH=1 -p 192.168.1.1:10000:8529 arangodb/arangodb arangod --server.endpoint tcp://0.0.0.0:8529 --cluster.my-address tcp://192.168.1.1:10000 --cluster.my-role PRIMARY --cluster.agency-endpoint tcp://192.168.1.1:5001 --cluster.agency-endpoint tcp://192.168.1.2:5002 --cluster.agency-endpoint tcp://192.168.1.3:5003
 ```
 
 This will start a primary DB server within a Docker container with an isolated network. Within the Docker container it will bind to all interfaces (this will be 127.0.0.1:8529 and some internal Docker ip on port 8529). By supplying `-p 192.168.1.1:10000:8529` we are establishing a port forwarding from our local IP (192.168.1.1 port 10000 in this example) to port 8529 inside the container. Within the command we are telling arangod how it can be reached from the outside `--cluster.my-address tcp://192.168.1.1:10000`. This information will be forwarded to the agency so that the other tasks in your cluster can see how this particular DBServer may be reached.

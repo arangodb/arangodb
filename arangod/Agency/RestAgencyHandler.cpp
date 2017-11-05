@@ -87,10 +87,9 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
 }
 
 RestStatus RestAgencyHandler::handleTransient() {
-
   // Must be a POST request
   if (_request->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
+    return reportMethodNotAllowed();
   }
 
   // Convert to velocypack
@@ -206,10 +205,10 @@ RestStatus RestAgencyHandler::handleStores() {
       }
     }
     generateResult(rest::ResponseCode::OK, body.slice());
-  } else {
-    generateError(rest::ResponseCode::BAD, 400);
-  }
-  return RestStatus::DONE;
+    return RestStatus::DONE;
+  } 
+  
+  return reportMethodNotAllowed();
 }
 
 RestStatus RestAgencyHandler::handleStore() {
@@ -232,18 +231,15 @@ RestStatus RestAgencyHandler::handleStore() {
       generateError(rest::ResponseCode::BAD, 400);
     }
     
-  } else {
-    generateError(rest::ResponseCode::BAD, 400);
-  }
+    return RestStatus::DONE;
+  } 
   
-  return RestStatus::DONE;
-  
+  return reportMethodNotAllowed();
 }
 
 RestStatus RestAgencyHandler::handleWrite() {
-
   if (_request->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
+    return reportMethodNotAllowed();
   }
   
   query_t query;
@@ -340,9 +336,8 @@ RestStatus RestAgencyHandler::handleWrite() {
         try {
           max_index =
             *std::max_element(ret.indices.begin(), ret.indices.end());
-        } catch (std::exception const& e) {
-          LOG_TOPIC(WARN, Logger::AGENCY)
-            << e.what() << " " << __FILE__ << ":" << __LINE__;
+        } catch (std::exception const& ex) {
+          LOG_TOPIC(WARN, Logger::AGENCY) << ex.what();
         }
         
         if (max_index > 0) {
@@ -382,15 +377,11 @@ RestStatus RestAgencyHandler::handleWrite() {
   }
 
   return RestStatus::DONE;
-  
 }
 
-
-
 RestStatus RestAgencyHandler::handleTransact() {
-
   if (_request->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
+    return reportMethodNotAllowed();
   }
   
   query_t query;
@@ -484,14 +475,12 @@ RestStatus RestAgencyHandler::handleTransact() {
   }
 
   return RestStatus::DONE;
-  
 }
 
 
-inline RestStatus RestAgencyHandler::handleInquire() {
-
+RestStatus RestAgencyHandler::handleInquire() {
   if (_request->requestType() != rest::RequestType::POST) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
+    return reportMethodNotAllowed();
   }
   
   query_t query;
@@ -499,9 +488,8 @@ inline RestStatus RestAgencyHandler::handleInquire() {
   // Get query from body
   try {
     query = _request->toVelocyPackBuilderPtr();
-  } catch (std::exception const& e) {
-    LOG_TOPIC(DEBUG, Logger::AGENCY)
-      << e.what() << " " << __FILE__ << ":" << __LINE__;
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << ex.what();
     generateError(rest::ResponseCode::BAD, 400);
     return RestStatus::DONE;
   }
@@ -545,16 +533,12 @@ inline RestStatus RestAgencyHandler::handleInquire() {
       TRI_ASSERT(ret.redirect != _agent->id());
       redirectRequest(ret.redirect);
     }
-    
-    return RestStatus::DONE;
-     
   }
   
   return RestStatus::DONE;
-  
 }
 
-inline RestStatus RestAgencyHandler::handleRead() {
+RestStatus RestAgencyHandler::handleRead() {
   if (_request->requestType() == rest::RequestType::POST) {
     query_t query;
     try {
@@ -598,13 +582,11 @@ inline RestStatus RestAgencyHandler::handleRead() {
         TRI_ASSERT(ret.redirect != _agent->id());
         redirectRequest(ret.redirect);
       }
-      return RestStatus::DONE;
     }
-  } else {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
     return RestStatus::DONE;
-  }
-  return RestStatus::DONE;
+  } 
+  
+  return reportMethodNotAllowed();
 }
 
 RestStatus RestAgencyHandler::handleConfig() {
@@ -653,7 +635,7 @@ RestStatus RestAgencyHandler::handleState() {
   return RestStatus::DONE;
 }
 
-inline RestStatus RestAgencyHandler::reportMethodNotAllowed() {
+RestStatus RestAgencyHandler::reportMethodNotAllowed() {
   generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, 405);
   return RestStatus::DONE;
 }

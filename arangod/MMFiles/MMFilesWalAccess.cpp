@@ -378,10 +378,9 @@ struct MMFilesWalAccessContext : WalAccessContext {
   }
 
   WalAccessResult tail(uint64_t tickStart, uint64_t tickEnd, size_t chunkSize) {
-    
     MMFilesLogfileManagerState const state =
-    MMFilesLogfileManager::instance()->state();
-    
+        MMFilesLogfileManager::instance()->state();
+
     // ask the logfile manager which datafiles qualify
     bool fromTickIncluded = false;
     std::vector<arangodb::MMFilesWalLogfile*> logfiles =

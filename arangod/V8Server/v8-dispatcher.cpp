@@ -29,6 +29,7 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ServerState.h"
 #include "Logger/Logger.h"
 #include "Scheduler/JobGuard.h"
 #include "Scheduler/Scheduler.h"
@@ -49,7 +50,6 @@
 #include "VocBase/vocbase.h"
 
 using namespace arangodb;
-using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
 
@@ -305,6 +305,7 @@ V8Task::callbackFunction() {
       std::string const& dbname = _dbGuard->database()->name();
       execContext.reset(ExecContext::create(_user, dbname));
       allowContinue = execContext->canUseDatabase(dbname, AuthLevel::RW);
+      allowContinue = allowContinue && ServerState::writeOpsEnabled();
     }
     ExecContextScope scope(_user.empty() ?
                            ExecContext::superuser() : execContext.get());
@@ -538,9 +539,14 @@ static void JS_RegisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
 
   ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr && exec->databaseAuthLevel() != AuthLevel::RW) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "registerTask() needs db RW permissions");
+  if (exec != nullptr) {
+    if (exec->databaseAuthLevel() != AuthLevel::RW) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                     "registerTask() needs db RW permissions");
+    } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
+                                     "server is in read-only mode");
+    }
   }
 
   v8::Handle<v8::Object> obj = args[0].As<v8::Object>();
@@ -684,9 +690,14 @@ static void JS_UnregisterTask(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
     
   ExecContext const* exec = ExecContext::CURRENT;
-  if (exec != nullptr && exec->databaseAuthLevel() != AuthLevel::RW) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
-                                   "unregisterTask() needs db RW permissions");
+  if (exec != nullptr) {
+    if (exec->databaseAuthLevel() != AuthLevel::RW) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FORBIDDEN,
+                                     "registerTask() needs db RW permissions");
+    } else if (!exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
+                                     "server is in read-only mode");
+    }
   }
 
   int res = V8Task::unregisterTask(GetTaskId(isolate, args[0]), true);
@@ -752,7 +763,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   
   std::string key = TRI_ObjectToString(args[0]);
-  uint64_t maxWorkers = TRI_ObjectToUInt64(args[1], false);
+  uint64_t maxWorkers = std::min(TRI_ObjectToUInt64(args[1], false), (uint64_t)64);
   
   VPackBuilder doc;
   doc.openObject();
@@ -762,6 +773,7 @@ static void JS_CreateQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   doc.close();
   
   LOG_TOPIC(TRACE, Logger::FIXME) << "Adding queue " << key;
+  ExecContextScope exscope(ExecContext::superuser());
   auto ctx = transaction::V8Context::Create(vocbase, false);
   SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::EXCLUSIVE);
   Result res = trx.begin();
@@ -808,6 +820,7 @@ static void JS_DeleteQueue(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
   
   LOG_TOPIC(TRACE, Logger::FIXME) << "Removing queue " << key;
+  ExecContextScope exscope(ExecContext::superuser());
   auto ctx = transaction::V8Context::Create(vocbase, false);
   SingleCollectionTransaction trx(ctx, "_queues", AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);

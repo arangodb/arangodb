@@ -173,19 +173,6 @@ ServerState::RoleEnum ServerState::stringToRole(std::string const& value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert a string representation to a state
-////////////////////////////////////////////////////////////////////////////////
-
-ServerState::StateEnum ServerState::stringToState(std::string const& value) {
-  if (value == "SHUTDOWN") {
-    return STATE_SHUTDOWN;
-  }
-  // TODO MAX: do we need to understand other states, too?
-
-  return STATE_UNDEFINED;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief get the string representation of a state
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -208,6 +195,42 @@ std::string ServerState::stateToString(StateEnum state) {
 
   TRI_ASSERT(false);
   return "";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a string representation to a state
+////////////////////////////////////////////////////////////////////////////////
+
+ServerState::StateEnum ServerState::stringToState(std::string const& value) {
+  if (value == "SHUTDOWN") {
+    return STATE_SHUTDOWN;
+  }
+  // TODO MAX: do we need to understand other states, too?
+  
+  return STATE_UNDEFINED;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief current server mode
+////////////////////////////////////////////////////////////////////////////////
+static std::atomic<ServerState::Mode> _serverstate_mode(ServerState::Mode::DEFAULT);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief change server mode, returns previously set mode
+////////////////////////////////////////////////////////////////////////////////
+ServerState::Mode ServerState::setServerMode(ServerState::Mode value) {
+  //_serverMode.store(value, std::memory_order_release);
+  if (_serverstate_mode.load(std::memory_order_acquire) != value) {
+    return _serverstate_mode.exchange(value, std::memory_order_release);
+  }
+  return value;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the current server mode
+////////////////////////////////////////////////////////////////////////////////
+ServerState::Mode ServerState::serverMode() {
+  return _serverstate_mode.load(std::memory_order_acquire);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -298,19 +321,15 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
                                        std::string const& myLocalInfo) {
 
   AgencyComm comm;
-  AgencyCommResult result;
   
   if (!myLocalInfo.empty()) {
     LOG_TOPIC(WARN, Logger::STARTUP) << "--cluster.my-local-info is deprecated and will be deleted.";
     std::string myId, description;
     int res = LookupLocalInfoToId(myLocalInfo, myId, description);
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_TOPIC(ERR, Logger::CLUSTER) << "Could not lookup ID with information"
-      << " provided in --cluster.my-local-info";
-      FATAL_ERROR_EXIT();
+    if (res == TRI_ERROR_NO_ERROR) {
+      writePersistedId(myId);
+      setId(myId);
     }
-    writePersistedId(myId);
-    setId(myId);
   }
 
   std::string id;

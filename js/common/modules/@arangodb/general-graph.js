@@ -105,6 +105,7 @@ var findOrCreateCollectionByName = function (name, type, noCreate, options) {
     err2.errorMessage = name + ' cannot be used as relation. It is not an edge collection';
     throw err2;
   }
+  checkROPermission(name);
   return res;
 };
 
@@ -583,6 +584,24 @@ var checkRWPermission = function (c) {
     if (p !== 'rw') {
       //print(`Denied ${user} access to ${db._name()}/${c}`);
       var err = new ArangoError();
+      err.errorNum = arangodb.errors.ERROR_FORBIDDEN.code;
+      err.errorMessage = arangodb.errors.ERROR_FORBIDDEN.message;
+      throw err;
+    }
+  }
+};
+
+var checkROPermission = function(c) {
+  if (!users.isAuthActive()) {
+    return;
+  }
+
+  let user = users.currentUser();
+  if (user) {
+    let p = users.permission(user, db._name(), c);
+    var err = new ArangoError();    
+    if (p === 'none') {
+      //print(`Denied ${user} access to ${db._name()}/${c}`);
       err.errorNum = arangodb.errors.ERROR_FORBIDDEN.code;
       err.errorMessage = arangodb.errors.ERROR_FORBIDDEN.message;
       throw err;

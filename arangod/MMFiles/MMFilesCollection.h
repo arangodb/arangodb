@@ -158,7 +158,9 @@ class MMFilesCollection final : public PhysicalCollection {
   TRI_voc_tick_t maxTick() const { return _maxTick; }
   void maxTick(TRI_voc_tick_t value) { _maxTick = value; }
 
+  /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
+  /// @brief used for updating properties
   void getPropertiesVPackCoordinator(velocypack::Builder&) const override;
 
   // datafile management
@@ -178,7 +180,7 @@ class MMFilesCollection final : public PhysicalCollection {
                        std::vector<MMFilesDatafile*>&& compactors);
 
   /// @brief rotate the active journal - will do nothing if there is no journal
-  int rotateActiveJournal();
+  int rotateActiveJournal() override;
 
   /// @brief sync the active journal - will do nothing if there is no journal
   /// or if the journal is volatile

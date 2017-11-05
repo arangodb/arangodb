@@ -598,6 +598,7 @@ std::string LogicalCollection::statusString() const {
 // SECTION: Properties
 TRI_voc_rid_t LogicalCollection::revision(transaction::Methods* trx) const {
   // TODO CoordinatorCase
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   return _physical->revision(trx);
 }
 
@@ -981,16 +982,67 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
   // ... probably a few others missing here ...
 
   WRITE_LOCKER(writeLocker, _infoLock);
+  
+  size_t rf = _replicationFactor;
+  VPackSlice rfSl = slice.get("replicationFactor");
+  if (!rfSl.isNone()) {
+    if (rfSl.isInteger()) {
+      int64_t rfTest = rfSl.getNumber<int64_t>();
+      if (rfTest < 0) {
+        // negative value for replication factor... not good
+        return Result(TRI_ERROR_BAD_PARAMETER, "bad value replicationFactor");
+      }
+
+      rf = rfSl.getNumber<size_t>();
+      if ((!isSatellite() && rf == 0) || rf > 10) {
+        return Result(TRI_ERROR_BAD_PARAMETER, "bad value replicationFactor");
+      }
+      
+      if (!_isLocal && rf != _replicationFactor) { // sanity checks
+        if (!_distributeShardsLike.empty()) {
+          return Result(TRI_ERROR_FORBIDDEN, "Cannot change replicationFactor, "
+                        "please change " + _distributeShardsLike);
+        } else if (_type == TRI_COL_TYPE_EDGE && _isSmart) {
+          return Result(TRI_ERROR_NOT_IMPLEMENTED, "Changing replicationFactor "
+                        "not supported for smart edge collections");
+        } else if (isSatellite()) {
+          return Result(TRI_ERROR_FORBIDDEN, "Satellite collection, "
+                        "cannot change replicationFactor");
+        }
+      }
+    }
+    else if (rfSl.isString()) {
+      if (rfSl.compareString("satellite") != 0) {
+        // only the string "satellite" is allowed here
+        return Result(TRI_ERROR_BAD_PARAMETER, "bad value for satellite");
+      }
+      // we got the string "satellite"...
+#ifdef USE_ENTERPRISE
+      if (!isSatellite()) {
+        // but the collection is not a satellite collection!
+        return Result(TRI_ERROR_FORBIDDEN, "cannot change satellite collection status");
+      }
+#else
+      return Result(TRI_ERROR_FORBIDDEN, "cannot use satellite collection status");
+#endif
+      // fallthrough here if we set the string "satellite" for a satellite collection
+      TRI_ASSERT(isSatellite() && _replicationFactor == 0 && rf == 0);
+    }
+    else {
+      return Result(TRI_ERROR_BAD_PARAMETER, "bad value for replicationFactor");
+    }
+  }
 
   // The physical may first reject illegal properties.
   // After this call it either has thrown or the properties are stored
   Result res = getPhysical()->updateProperties(slice, doSync);
-
   if (!res.ok()) {
     return res;
   }
 
+  TRI_ASSERT(!isSatellite() || rf == 0);
   _waitForSync = Helper::getBooleanValue(slice, "waitForSync", _waitForSync);
+  _replicationFactor = rf;
 
   if (!_isLocal) {
     // We need to inform the cluster as well
@@ -1009,7 +1061,7 @@ arangodb::Result LogicalCollection::updateProperties(VPackSlice const& slice,
 }
 
 /// @brief return the figures for a collection
-std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() {
+std::shared_ptr<arangodb::velocypack::Builder> LogicalCollection::figures() const {
   if (ServerState::instance()->isCoordinator()) {
     auto builder = std::make_shared<VPackBuilder>();
     builder->openObject();

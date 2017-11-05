@@ -142,17 +142,17 @@ void RocksDBCollection::setPath(std::string const&) {
   // we do not have any path
 }
 
-arangodb::Result RocksDBCollection::updateProperties(VPackSlice const& slice,
-                                                     bool doSync) {
-  _cacheEnabled = basics::VelocyPackHelper::readBooleanValue(
-      slice, "cacheEnabled", !_logicalCollection->isSystem());
+Result RocksDBCollection::updateProperties(VPackSlice const& slice, bool doSync) {
+  bool isSys = _logicalCollection != nullptr && _logicalCollection->isSystem();
+  _cacheEnabled = !isSys && basics::VelocyPackHelper::readBooleanValue(slice,
+                                                   "cacheEnabled", _cacheEnabled);
   primaryIndex()->setCacheEnabled(_cacheEnabled);
   if (_cacheEnabled) {
     createCache();
     primaryIndex()->createCache();
   } else if (useCache()) {
     destroyCache();
-    primaryIndex()->destroyCache();
+    primaryIndex()->destroyCache(); 
   }
 
   // nothing else to do
@@ -169,17 +169,21 @@ PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical) {
   return new RocksDBCollection(logical, this);
 }
 
+/// @brief export properties
 void RocksDBCollection::getPropertiesVPack(velocypack::Builder& result) const {
-  // objectId might be undefined on the coordinator
   TRI_ASSERT(result.isOpenObject());
   result.add("objectId", VPackValue(std::to_string(_objectId)));
   result.add("cacheEnabled", VPackValue(_cacheEnabled));
   TRI_ASSERT(result.isOpenObject());
 }
 
+/// @brief used for updating properties
 void RocksDBCollection::getPropertiesVPackCoordinator(
     velocypack::Builder& result) const {
-  getPropertiesVPack(result);
+  // objectId might be undefined on the coordinator
+  TRI_ASSERT(result.isOpenObject());
+  result.add("cacheEnabled", VPackValue(_cacheEnabled));
+  TRI_ASSERT(result.isOpenObject());
 }
 
 /// @brief closes an open collection

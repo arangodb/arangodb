@@ -37,7 +37,6 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 static std::string const ROOT_PATH = "/";
-std::atomic<RestHandlerFactory::Mode> RestHandlerFactory::_serverMode(RestHandlerFactory::Mode::DEFAULT);
 
 namespace {
 class MaintenanceHandler : public RestHandler {
@@ -51,6 +50,9 @@ class MaintenanceHandler : public RestHandler {
   char const* name() const override final { return "MaintenanceHandler"; }
 
   bool isDirect() const override { return true; };
+  
+  // returns the queue name, should trigger processing without job
+  size_t queue() const override { return JobQueue::AQL_QUEUE; }
 
   RestStatus execute() override {
     // use this to redirect requests
@@ -81,23 +83,15 @@ class MaintenanceHandler : public RestHandler {
 
   // replace tcp:// with http://, and ssl:// with https://
   std::string fixEndpointProtocol(std::string const& endpoint) const {
-    if (endpoint.find("tcp://") == 0) {
+    if (endpoint.find("tcp://", 0, 6) == 0) {
       return "http://" + endpoint.substr(6); // strlen("tcp://")
     }
-    if (endpoint.find("ssl://") == 0) {
+    if (endpoint.find("ssl://", 0, 6) == 0) {
       return "https://" + endpoint.substr(6); // strlen("ssl://")
     }
     return endpoint;
   }
 };
-}
-
-void RestHandlerFactory::setServerMode(RestHandlerFactory::Mode value) {
-  _serverMode.store(value, std::memory_order_release);
-}
-
-RestHandlerFactory::Mode RestHandlerFactory::serverMode() {
-  return _serverMode.load(std::memory_order_acquire);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,25 +126,36 @@ RestHandler* RestHandlerFactory::createHandler(
 
   // In the bootstrap phase, we would like that coordinators answer the
   // following endpoints, but not yet others:
-  RestHandlerFactory::Mode mode = RestHandlerFactory::serverMode();
-  if (mode == Mode::MAINTENANCE) {
-    if ((!ServerState::instance()->isCoordinator() &&
-         path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
-        (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
-         path.find("/_api/aql") == std::string::npos)) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
-      return new MaintenanceHandler(req.release(), res.release(), false);
+  ServerState::Mode mode = ServerState::serverMode();
+  switch (mode) {
+    case ServerState::Mode::MAINTENANCE: {
+      if ((!ServerState::instance()->isCoordinator() &&
+          path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
+          (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+          path.find("/_api/aql") == std::string::npos)) {
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
+        return new MaintenanceHandler(req.release(), res.release(), false);
+      }
+      break;
     }
-  } else if (mode == RestHandlerFactory::Mode::REDIRECT) {
-    if (path.find("/_admin/shutdown") == std::string::npos &&
-        path.find("/_api/agency/agency-callbacks") == std::string::npos &&
-        path.find("/_api/cluster/") == std::string::npos &&
-        path.find("/_api/replication") == std::string::npos &&
-        path.find("/_api/version") == std::string::npos &&
-        path.find("/_api/wal") == std::string::npos) {
-      LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
-      return new MaintenanceHandler(req.release(), res.release(), true);
+    case ServerState::Mode::REDIRECT:
+    case ServerState::Mode::TRYAGAIN: {
+      if (path.find("/_admin/shutdown") == std::string::npos &&
+          path.find("/_admin/server/role") == std::string::npos &&
+          path.find("/_api/agency/agency-callbacks") == std::string::npos &&
+          path.find("/_api/cluster/") == std::string::npos &&
+          path.find("/_api/replication") == std::string::npos &&
+          path.find("/_api/version") == std::string::npos &&
+          path.find("/_api/wal") == std::string::npos) {
+        LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "Maintenance mode: refused path: " << path;
+        return new MaintenanceHandler(req.release(), res.release(), true);
+      }
+      break;
     }
+    case ServerState::Mode::DEFAULT:
+    case ServerState::Mode::READ_ONLY:
+      // no special handling required
+      break;
   }
 
   auto const& ii = _constructors;

@@ -35,6 +35,7 @@
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
@@ -644,9 +645,9 @@ void RestReplicationHandler::handleTrampolineCoordinator() {
     }
     httpResponse->body().swap(&(res->result->getBody()));
   } else {
-    // TODO copy all payloads
-    VPackSlice slice = res->result->getBodyVelocyPack()->slice();
-    _response->setPayload(slice, true);  // do we need to generate the body?!
+    std::shared_ptr<VPackBuilder> builder = res->result->getBodyVelocyPack();
+    std::shared_ptr<VPackBuffer<uint8_t>> buf = builder->steal();
+    _response->setPayload(std::move(*buf), true);// do we need to generate the body?!
   }
 
   auto const& resultHeaders = res->result->getHeaderFields();
@@ -1027,7 +1028,6 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
   if (name.empty()) {
     errorMsg = "collection name is missing";
-
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
@@ -1146,10 +1146,21 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
         application_features::ApplicationServer::getFeature<ClusterFeature>(
             "Cluster")
             ->createWaitsForSyncReplication();
+    // in the replication case enforcing the replication factor is absolutely
+    // not desired, so it is hardcoded to false
     auto col = ClusterMethods::createCollectionOnCoordinator(
         collectionType, _vocbase, merged, ignoreDistributeShardsLikeErrors,
-        createWaitsForSyncReplication);
+        createWaitsForSyncReplication, false);
     TRI_ASSERT(col != nullptr);
+    
+    ExecContext const* exe = ExecContext::CURRENT;
+    if (exe != nullptr && !exe->isSuperuser()) {
+      AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
+      auth->authInfo()->updateUser(ExecContext::CURRENT->user(),
+                     [&](AuthUserEntry& entry) {
+                       entry.grantCollection(dbName, col->name(), AuthLevel::RW);
+                     });
+    }
   } catch (basics::Exception const& e) {
     // Error, report it.
     errorMsg = e.message();
@@ -1759,7 +1770,7 @@ void RestReplicationHandler::handleCommandSync() {
   // wait until all data in current logfile got synced
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
-  engine->waitForSync(5.0);
+  engine->waitForSyncTimeout(5.0);
 
   TRI_ASSERT(!config._skipCreateDrop);
   std::unique_ptr<InitialSyncer> syncer;
@@ -1974,6 +1985,40 @@ void RestReplicationHandler::handleCommandAddFollower() {
     generateError(rest::ResponseCode::SERVER_ERROR,
                   TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
                   "did not find collection");
+    return;
+  }
+
+  if (readLockId.isNone()) {
+    // Short cut for the case that the collection is empty
+    auto ctx = transaction::StandaloneContext::Create(_vocbase);
+    SingleCollectionTransaction trx(ctx, col->cid(),
+                                    AccessMode::Type::EXCLUSIVE);
+
+    auto res = trx.begin();
+    if (res.ok()) {
+      auto countRes = trx.count(col->name(), false);
+      if (countRes.successful()) {
+        VPackSlice nrSlice = countRes.slice();
+        uint64_t nr = nrSlice.getNumber<uint64_t>();
+        if (nr == 0) {
+          col->followers()->add(followerId.copyString());
+
+          VPackBuilder b;
+          {
+            VPackObjectBuilder bb(&b);
+            b.add("error", VPackValue(false));
+          }
+
+          generateResult(rest::ResponseCode::OK, b.slice());
+
+          return;
+        }  
+      }
+    }
+    // If we get here, we have to report an error:
+    generateError(rest::ResponseCode::FORBIDDEN,
+                  TRI_ERROR_REPLICATION_SHARD_NONEMPTY,
+                  "shard not empty");
     return;
   }
 
@@ -2344,7 +2389,7 @@ void RestReplicationHandler::handleCommandLoggerState() {
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine);
   
-  engine->waitForSync(10.0); // only for mmfiles
+  engine->waitForSyncTimeout(10.0); // only for mmfiles
   
   VPackBuilder builder;
   auto res = engine->createLoggerState(_vocbase, builder);
@@ -2410,7 +2455,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   if (dst != nullptr) {
     *dst = nullptr;
   }
-
+  
   if (!slice.isObject()) {
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
@@ -2470,7 +2515,14 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
     return TRI_ERROR_INTERNAL;
   }
 
-  TRI_ASSERT(col != nullptr);
+  ExecContext const* exe = ExecContext::CURRENT;
+  if (exe != nullptr && !exe->isSuperuser() &&
+      ServerState::instance()->isSingleServer()) {
+    AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
+    auth->authInfo()->updateUser(exe->user(), [&](AuthUserEntry& entry) {
+               entry.grantCollection(_vocbase->name(), col->name(), AuthLevel::RW);
+             });
+  }
 
   /* Temporary ASSERTS to prove correctness of new constructor */
   TRI_ASSERT(col->isSystem() == (name[0] == '_'));

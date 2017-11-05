@@ -46,9 +46,13 @@ class HttpResponse : public GeneralResponse {
   static bool HIDE_PRODUCT_HEADER;
 
  public:
-  explicit HttpResponse(ResponseCode code);
+  explicit HttpResponse(ResponseCode);
+  explicit HttpResponse(ResponseCode code,
+                        basics::StringBuffer* leased);
+  ~HttpResponse();
 
  public:
+  
   bool isHeadResponse() const { return _isHeadResponse; }
 
  public:
@@ -65,29 +69,33 @@ class HttpResponse : public GeneralResponse {
   // information to the string buffer. Note that adding data to the body
   // invalidates any previously returned header. You must call header
   // again.
-  basics::StringBuffer& body() { return _body; }
+  basics::StringBuffer& body() {
+    TRI_ASSERT(_body);
+    return *_body;
+  }
   size_t bodySize() const;
 
   // you should call writeHeader only after the body has been created
   void writeHeader(basics::StringBuffer*);  // override;
 
  public:
+  
   void reset(ResponseCode code) override final;
-
-  void addPayloadPreHook(bool inputIsBuffer, bool& resolveExternals,
-                         bool& skipBody) override {
-    if (_contentType == ContentType::JSON) {
-      skipBody = true;
-    }
-  }
-
+  
+  void addPayload(VPackSlice const&,
+                  arangodb::velocypack::Options const* = nullptr,
+                  bool resolve_externals = true) override;
+  void addPayload(VPackBuffer<uint8_t>&&,
+                  arangodb::velocypack::Options const* = nullptr,
+                  bool resolve_externals = true) override;
+  
+  /// used for head-responses
   bool setGenerateBody(bool generateBody) override final {
     return _generateBody = generateBody;
-  }  // used for head-responses
-  int reservePayload(std::size_t size) override { return _body.reserve(size); }
-  void addPayloadPostHook(VPackSlice const&, VPackOptions const* options,
-                          bool resolveExternals, bool bodySkipped) override;
-
+  }
+  
+  int reservePayload(std::size_t size) override { return _body->reserve(size); }
+  
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::HTTP;
   }
@@ -96,11 +104,20 @@ class HttpResponse : public GeneralResponse {
   // the body must already be set. deflate is then run on the existing body
   int deflate(size_t = 16384);
 
+  std::unique_ptr<basics::StringBuffer> stealBody() {
+    std::unique_ptr<basics::StringBuffer> bb(_body);
+    _body = nullptr;
+    return bb;
+  }
+  
  private:
   bool _isHeadResponse;
   std::vector<std::string> _cookies;
-  basics::StringBuffer _body;
+  basics::StringBuffer *_body;
   size_t _bodySize;
+    
+  void addPayloadInternal(velocypack::Slice, size_t,
+                          velocypack::Options const*, bool);
 };
 }
 

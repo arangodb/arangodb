@@ -35,13 +35,11 @@ class IndexResult : public Result {
  public:
   IndexResult() : Result() {}
 
-  IndexResult(int errorNumber) : Result(errorNumber) {}
-
   IndexResult(int errorNumber, std::string const& errorMessage)
       : Result(errorNumber, errorMessage) {}
 
   IndexResult(int errorNumber, std::string&& errorMessage)
-      : Result(errorNumber, errorMessage) {}
+      : Result(errorNumber, std::move(errorMessage)) {}
 
   IndexResult(int errorNumber, Index const* index) : Result(errorNumber) {
     if (_errorNumber != TRI_ERROR_NO_ERROR && index != nullptr) {

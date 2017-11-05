@@ -63,7 +63,7 @@ void ReplicationFeature::collectOptions(std::shared_ptr<ProgramOptions> options)
                         "replication.auto-start");
   
   options->addHiddenOption("--replication.automatic-failover",
-                           "Allow failover",
+                           "Enable auto-failover during asynchronous replication",
                            new BooleanParameter(&_enableReplicationFailover));
 }
 
