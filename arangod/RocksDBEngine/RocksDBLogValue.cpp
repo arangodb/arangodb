@@ -273,6 +273,7 @@ TRI_voc_tid_t RocksDBLogValue::transactionId(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + sizeof(uint64_t));
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
   TRI_ASSERT(type == RocksDBLogType::BeginTransaction);
+  // <type> + 8-byte <dbId> + 8-byte <trxId>
   return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType) +
                               sizeof(TRI_voc_tick_t));
 }

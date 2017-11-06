@@ -1055,6 +1055,8 @@ Result RocksDBCollection::replace(
       return Result(TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES);
     }
   }
+  
+  VPackSlice const newDoc(builder->slice());
 
   auto state = RocksDBTransactionState::toState(trx);
   RocksDBSavePoint guard(RocksDBTransactionState::toMethods(trx),
@@ -1064,8 +1066,6 @@ Result RocksDBCollection::replace(
   // add possible log statement under guard
   state->prepareOperation(_logicalCollection->cid(), revisionId, StringRef(),
                           TRI_VOC_DOCUMENT_OPERATION_REPLACE);
-
-  VPackSlice const newDoc(builder->slice());
 
   RocksDBOperationResult opResult = updateDocument(
       trx, oldDocumentId, oldDoc, documentId, newDoc, options.waitForSync);
@@ -1507,29 +1507,31 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
   TRI_ASSERT(_objectId != 0);
 
   RocksDBMethods* mthd = RocksDBTransactionState::toMethods(trx);
-  RocksDBKeyLeaser oldKey(trx);
-  oldKey->constructDocument(_objectId, oldDocumentId.id());
-  blackListKey(oldKey->string().data(),
-               static_cast<uint32_t>(oldKey->string().size()));
-
-  RocksDBOperationResult res =
-      mthd->Delete(RocksDBColumnFamily::documents(), oldKey.ref());
-  if (!res.ok()) {
-    return res;
-  }
-
+  
+  // We NEED to do the PUT first, otherwise WAL tailing breaks
   RocksDBKeyLeaser newKey(trx);
   newKey->constructDocument(_objectId, newDocumentId.id());
   // TODO: given that this should have a unique revision ID, do
   // we really need to blacklist the new key?
   blackListKey(newKey->string().data(),
                static_cast<uint32_t>(newKey->string().size()));
-  res = mthd->Put(RocksDBColumnFamily::documents(), newKey.ref(),
-                  rocksdb::Slice(reinterpret_cast<char const*>(newDoc.begin()),
-                                 static_cast<size_t>(newDoc.byteSize())));
+  rocksdb::Slice docSlice(reinterpret_cast<char const*>(newDoc.begin()),
+                          static_cast<size_t>(newDoc.byteSize()));
+  RocksDBOperationResult res = mthd->Put(RocksDBColumnFamily::documents(),
+                                         newKey.ref(), docSlice);
   if (!res.ok()) {
     // set keysize that is passed up to the crud operations
     res.keySize(newKey->size());
+    return res;
+  }
+  
+  RocksDBKeyLeaser oldKey(trx);
+  oldKey->constructDocument(_objectId, oldDocumentId.id());
+  blackListKey(oldKey->string().data(),
+               static_cast<uint32_t>(oldKey->string().size()));
+
+   res = mthd->Delete(RocksDBColumnFamily::documents(), oldKey.ref());
+  if (!res.ok()) {
     return res;
   }
 
