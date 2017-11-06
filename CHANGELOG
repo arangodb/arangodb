@@ -1,6 +1,8 @@
 devel
 -----
 
+* fix agency precondition check for complex objects
+
 * introduce `enforceReplicationFactor`: An optional parameter controlling
   if the server should bail out during collection creation if there are not
   enough DBServers available for the desired `replicationFactor`.
