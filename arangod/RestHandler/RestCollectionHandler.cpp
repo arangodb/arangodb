@@ -380,6 +380,9 @@ void RestCollectionHandler::handleCommandPut() {
             res.reset(coll->getPhysical()->rotateActiveJournal());
           }
 
+          builder.openObject();
+          builder.add("result", VPackValue(true));
+          builder.close();
         } else if (sub == "loadIndexesIntoMemory") {
           res = methods::Collections::warmup(_vocbase, coll);
           VPackObjectBuilder obj(&builder, true);
