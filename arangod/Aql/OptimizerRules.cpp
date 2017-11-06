@@ -4455,7 +4455,6 @@ struct GeoIndexInfo {
         within(false),
         lessgreaterequal(false),
         valid(true),
-        indexedAttributeAccess(false),
         constantPair{nullptr, nullptr}
         {}
   EnumerateCollectionNode*
@@ -4474,7 +4473,6 @@ struct GeoIndexInfo {
   bool within;            // is this a within lookup
   bool lessgreaterequal;  // is this a check for le/ge (true) or lt/gt (false)
   bool valid;             // contains this node a valid condition
-  bool indexedAttributeAccess;         // geo1 index with indexed attribute access
   std::vector<std::string> longitude;  // access path to longitude
   std::vector<std::string> latitude;   // access path to latitude
   std::pair<AstNode*, AstNode*> constantPair;
@@ -4664,10 +4662,19 @@ GeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode const*, AstNode const
       } else if (isGeo1){
         std::vector<basics::AttributeName> fields1 = index.fields()[0];
         std::vector<basics::AttributeName> fields2 = index.fields()[0];
-        fields1.back().name += "[0]";
-        fields2.back().name += "[1]";
+
+        VPackBuilder builder;
+        indexShardPtr->toVelocyPack(builder,true,false);
+        bool geoJson = builder.slice().get("geoJson").getBool();
+        if(geoJson) {
+          fields1.back().name += "[1]";
+          fields2.back().name += "[0]";
+        } else {
+          fields1.back().name += "[0]";
+          fields2.back().name += "[1]";
+        }
+
         if (fields1 == attributeAccess1.second && fields2 == attributeAccess2.second) {
-          info.indexedAttributeAccess = true;
           info.collectionNode = collNode;
           info.index = indexShardPtr;
           TRI_AttributeNamesJoinNested(attributeAccess1.second, info.longitude, true);
