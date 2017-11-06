@@ -95,7 +95,7 @@ class ServerState {
 
   /// @brief convert a string representation to a state
   static StateEnum stringToState(std::string const&);
-
+  
   /// @brief get the string representation of a mode
   static std::string modeToString(Mode);
     

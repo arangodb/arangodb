@@ -55,6 +55,9 @@ class ExecContext : public RequestContext {
  public:
   virtual ~ExecContext() {}
 
+  /// shortcut helper to check the AuthenticationFeature
+  static bool isAuthEnabled();
+  
   /// @brief an internal superuser context, is
   ///        a singleton instance, deleting is an error
   static ExecContext const* superuser();
@@ -80,7 +83,7 @@ class ExecContext : public RequestContext {
   
   /// @brief is allowed to manage users, create databases, ...
   bool isAdminUser() const {
-    TRI_ASSERT(!_internal || _systemDbAuthLevel == AuthLevel::RW);
+    // conflicts with read-only: TRI_ASSERT(!_internal || _systemDbAuthLevel == AuthLevel::RW);
     return _systemDbAuthLevel == AuthLevel::RW;
   }
   

@@ -143,8 +143,6 @@ Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,
     }
   }
   
-  
-
   TRI_ASSERT(vocbase && !vocbase->isDangling());
   TRI_ASSERT(properties.isObject());
   

@@ -31,6 +31,12 @@ thread_local ExecContext const* ExecContext::CURRENT = nullptr;
 
 ExecContext ExecContext::SUPERUSER(true, "", "", AuthLevel::RW, AuthLevel::RW);
 
+bool ExecContext::isAuthEnabled() {
+  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
+  TRI_ASSERT(auth != nullptr);
+  return auth->isActive();
+}
+
 /// @brief an internal superuser context, is
 ///        a singleton instance, deleting is an error
 ExecContext const* ExecContext::superuser() { return &ExecContext::SUPERUSER; }
