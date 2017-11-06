@@ -1,6 +1,9 @@
 devel
 -----
 
+* fixed issue #3447: ArangoError 1202: AQL: NotFound: (while executing) when 
+  updating collection
+
 * introduce `enforceReplicationFactor`: An optional parameter controlling
   if the server should bail out during collection creation if there are not
   enough DBServers available for the desired `replicationFactor`.
