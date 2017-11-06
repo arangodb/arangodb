@@ -30,7 +30,6 @@
 #include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/modes.h"
 
 using namespace arangodb;
 
@@ -191,12 +190,6 @@ int RocksDBTransactionCollection::use(int nestingLevel) {
         return res;
       }
       return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
-    }
-
-    if (AccessMode::isWriteOrExclusive(_accessType) &&
-        TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE &&
-        !LogicalCollection::IsSystemName(_collection->name())) {
-      return TRI_ERROR_ARANGO_READ_ONLY;
     }
 
     doSetup = true;

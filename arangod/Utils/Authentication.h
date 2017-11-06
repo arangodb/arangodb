@@ -30,6 +30,8 @@
 namespace arangodb {
 
 enum class AuthLevel { NONE = 0, RO = 1, RW = 2 };
+static_assert(AuthLevel::NONE < AuthLevel::RO, "none < ro");
+  static_assert(AuthLevel::RO < AuthLevel::RW, "none < ro");
 enum class AuthSource { COLLECTION, LDAP };
 
 AuthLevel convertToAuthLevel(velocypack::Slice grants);

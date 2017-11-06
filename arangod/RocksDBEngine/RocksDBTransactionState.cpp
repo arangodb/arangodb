@@ -41,8 +41,8 @@
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionManager.h"
 #include "Transaction/Methods.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/modes.h"
 #include "VocBase/ticks.h"
 
 #include <rocksdb/utilities/transaction_db.h>
@@ -210,8 +210,16 @@ void RocksDBTransactionState::createTransaction() {
 
 arangodb::Result RocksDBTransactionState::internalCommit() {
   TRI_ASSERT(_rocksTransaction != nullptr);
+  
+  ExecContext const* exe = ExecContext::CURRENT;
+  if (!isReadOnlyTransaction() && exe != nullptr) {
+    bool cancelRW = !ServerState::writeOpsEnabled() && !exe->isSuperuser();
+    if (exe->isCanceled() || cancelRW) {
+      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
+    }
+  }
 
-  arangodb::Result result;
+  Result result;
   if (_rocksTransaction->GetNumKeys() > 0) {
     // set wait for sync flag if required
     if (waitForSync()) {
@@ -266,7 +274,7 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       _cacheTx = nullptr;
     }
   }
-
+  
   _rocksTransaction.reset();
   return result;
 }

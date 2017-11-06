@@ -99,10 +99,14 @@ void RestCollectionHandler::handleCommandGet() {
   std::string const& name = suffixes[0];
   // /_api/collection/<name>
   if (suffixes.size() == 1) {
-    collectionRepresentation(builder, name, /*showProperties*/ false,
-                             /*showFigures*/ false, /*showCount*/ false,
-                             /*aggregateCount*/ false);
-    generateOk(rest::ResponseCode::OK, builder);
+    try {
+      collectionRepresentation(builder, name, /*showProperties*/ false,
+                               /*showFigures*/ false, /*showCount*/ false,
+                               /*aggregateCount*/ false);
+      generateOk(rest::ResponseCode::OK, builder);
+    } catch (basics::Exception const& ex) { // do not log not found exceptions
+      generateError(GeneralResponse::responseCode(ex.code()), ex.code(), ex.what());
+    }
     return;
   }
 
@@ -377,6 +381,9 @@ void RestCollectionHandler::handleCommandPut() {
             res = trx.finish(result.code);
           }
 
+          builder.openObject();
+          builder.add("result", VPackValue(true));
+          builder.close();
         } else if (sub == "loadIndexesIntoMemory") {
           res = methods::Collections::warmup(_vocbase, coll);
           VPackObjectBuilder obj(&builder, true);

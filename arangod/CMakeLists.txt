@@ -412,7 +412,6 @@ SET(ARANGOD_SOURCES
   VocBase/LogicalCollection.cpp
   VocBase/LogicalView.cpp
   VocBase/ManagedDocumentResult.cpp
-  VocBase/modes.cpp
   VocBase/replication-common.cpp
   VocBase/ticks.cpp
   VocBase/vocbase.cpp
