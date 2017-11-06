@@ -23,6 +23,9 @@
 
 #include "RestAdminServerHandler.h"
 
+#include "Actions/RestActionHandler.h"
+#include "Replication/ReplicationFeature.h"
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
@@ -33,28 +36,84 @@ RestAdminServerHandler::RestAdminServerHandler(GeneralRequest* request,
 
 RestStatus RestAdminServerHandler::execute() {
   std::vector<std::string> const& suffixes = _request->suffixes();
-  if (!suffixes.empty() && suffixes[0] == "mode") {
+  if (suffixes.size() == 1 && suffixes[0] == "mode") {
     handleMode();
+  } else if (suffixes.size() == 1 && suffixes[0] == "id") {
+    handleId();
+  } else if (suffixes.size() == 1 && suffixes[0] == "role") {
+    handleRole();
   } else {
-    generateError(rest::ResponseCode::NOT_FOUND,
-        TRI_ERROR_HTTP_NOT_FOUND, "not found");
+    generateError(rest::ResponseCode::NOT_FOUND, 404);
   }
-
   return RestStatus::DONE;
 }
 
-void RestAdminServerHandler::writeResult(ServerState::Mode const& mode) {
-    VPackBuilder builder;
+void RestAdminServerHandler::writeModeResult(ServerState::Mode const& mode) {
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder b(&builder);
     builder.add(
-        VPackValue(ServerState::modeToString(mode))
+        "mode", VPackValue(ServerState::modeToString(mode))
     );
-    generateOk(rest::ResponseCode::OK, builder.slice());
+  }
+  generateOk(rest::ResponseCode::OK, builder);
+}
+
+void RestAdminServerHandler::handleId() {
+  if (_request->requestType() != rest::RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+      TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return;
+  }
+
+  auto instance = ServerState::instance();
+  if (!instance->isRunningInCluster()) {
+    // old behaviour...klingt komisch, is aber so
+    generateError(rest::ResponseCode::SERVER_ERROR,
+      TRI_ERROR_HTTP_SERVER_ERROR);
+    return;
+  }
+
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder b(&builder);
+    builder.add(
+        "id", VPackValue(instance->getId())
+    );
+  }
+  generateOk(rest::ResponseCode::OK, builder);
+}
+
+void RestAdminServerHandler::handleRole() {
+  if (_request->requestType() != rest::RequestType::GET) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+      TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return;
+  }
+  auto state = ServerState::instance();
+  bool hasFailover = false;
+  auto replicationFeature = ReplicationFeature::INSTANCE;
+  if (replicationFeature != nullptr &&
+      replicationFeature->isAutomaticFailoverEnabled()) {
+    hasFailover = true;
+  } 
+  VPackBuilder builder;
+  {
+    VPackObjectBuilder b(&builder);
+    builder.add(
+       "role", VPackValue(state->roleToString(state->getRole()))
+    );
+    builder.add(
+      "mode", hasFailover ? VPackValue("resilient") : VPackValue("default")
+    );
+  }
+  generateOk(rest::ResponseCode::OK, builder);
 }
 
 void RestAdminServerHandler::handleMode() {
     auto const requestType = _request->requestType();
     if (requestType == rest::RequestType::GET) {
-        writeResult(ServerState::serverMode());
+        writeModeResult(ServerState::serverMode());
     } else if (requestType == rest::RequestType::PUT) {
         bool parseSuccess;
         std::shared_ptr<VPackBuilder> parsedBody =
@@ -100,7 +159,7 @@ void RestAdminServerHandler::handleMode() {
                 generateError(rest::ResponseCode::BAD,
                     TRI_ERROR_HTTP_BAD_PARAMETER, "cannot set requested mode");
             }
-            writeResult(newMode);
+            writeModeResult(newMode);
         } else {
             generateError(rest::ResponseCode::BAD,
                 TRI_ERROR_HTTP_BAD_PARAMETER, "cannot set requested mode");

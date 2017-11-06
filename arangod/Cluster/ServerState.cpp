@@ -850,7 +850,7 @@ std::ostream& operator<<(std::ostream& stream, arangodb::ServerState::RoleEnum r
 Result ServerState::propagateClusterServerMode(Mode mode) {
   if (mode == Mode::DEFAULT || mode == Mode::READ_ONLY) {
     // Agency enabled will work for single server replication as well as cluster
-    if (AgencyCommManager::isEnabled()) {
+    if (isCoordinator()) {
       std::vector<AgencyOperation> operations;
       VPackBuilder builder;
       if (mode == Mode::DEFAULT) {
