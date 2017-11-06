@@ -750,6 +750,8 @@
         });
       }
     });
+
+    // setup jobs index
     addTask({
       name: 'createJobsIndex',
       description: 'create index on attributes in _jobs collection',
@@ -778,6 +780,68 @@
           sparse: false
         });
         return true;
+      }
+    });
+
+    // setupApps
+    addTask({
+      name: 'setupApps',
+      description: 'setup _apps collection',
+
+      system: DATABASE_ALL,
+      cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
+      database: [DATABASE_INIT, DATABASE_UPGRADE, DATABASE_EXISTING],
+
+      task: function () {
+        return createSystemCollection('_apps', {
+          journalSize: 2 * 1024 * 1024,
+          replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
+          distributeShardsLike: '_graphs'
+        });
+      }
+    });
+
+    // setup apps index
+    addTask({
+      name: 'createAppsIndex',
+      description: 'create index on attributes in _apps collection',
+
+      system: DATABASE_SYSTEM,
+      cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
+      database: [DATABASE_INIT, DATABASE_UPGRADE],
+
+      task: function () {
+        const apps = getCollection('_apps');
+
+        if (!apps) {
+          return false;
+        }
+
+        apps.ensureIndex({
+          type: 'hash',
+          fields: ['mount'],
+          unique: true,
+          sparse: false
+        });
+        return true;
+      }
+    });
+
+    // setupAppBundles
+    addTask({
+      name: 'setupAppBundles',
+      description: 'setup _appbundles collection',
+
+      system: DATABASE_ALL,
+      cluster: [CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL],
+      database: [DATABASE_INIT, DATABASE_UPGRADE, DATABASE_EXISTING],
+
+      task: function () {
+        return createSystemCollection('_appbundles', {
+          journalSize: 2 * 1024 * 1024,
+          replicationFactor: DEFAULT_REPLICATION_FACTOR_SYSTEM,
+          distributeShardsLike: '_graphs'
+        });
       }
     });
 

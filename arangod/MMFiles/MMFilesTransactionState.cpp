@@ -35,7 +35,6 @@
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/modes.h"
 #include "VocBase/ticks.h"
 
 #include <rocksdb/db.h>
