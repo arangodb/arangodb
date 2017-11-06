@@ -125,13 +125,20 @@ void RestAdminServerHandler::handleMode() {
         }
 
         auto slice = parsedBody->slice();
-        if (!slice.isString()) {
+        if (!slice.isObject()) {
+          generateError(rest::ResponseCode::BAD,
+            TRI_ERROR_HTTP_BAD_PARAMETER, "body must be an object");
+          return;
+        }
+
+        auto modeSlice = slice.get("mode");
+        if (!modeSlice.isString()) {
             generateError(rest::ResponseCode::BAD,
-                TRI_ERROR_HTTP_BAD_PARAMETER, "body must be a json encoded string");
+                TRI_ERROR_HTTP_BAD_PARAMETER, "mode must be a string");
             return;
         }
 
-        auto newMode = ServerState::stringToMode(slice.copyString());
+        auto newMode = ServerState::stringToMode(modeSlice.copyString());
         if (newMode == ServerState::Mode::INVALID) {
             generateError(rest::ResponseCode::BAD,
                 TRI_ERROR_HTTP_BAD_PARAMETER, "mode invalid");

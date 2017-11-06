@@ -49,7 +49,7 @@ if (isCluster) {
 // this only tests the http api...there is a separate readonly test
 describe('Readonly mode api', function() {
   afterEach(function() {
-    let resp = download(endpoint.url + '/_admin/server/mode', JSON.stringify('default'), {
+    let resp = download(endpoint.url + '/_admin/server/mode', JSON.stringify({'mode': 'default'}), {
       method: 'put',
     });
   });
@@ -62,7 +62,7 @@ describe('Readonly mode api', function() {
   });
 
   it('can switch to readonly', function() {
-    let resp = download(endpoint.url + '/_admin/server/mode', JSON.stringify('readonly'), {
+    let resp = download(endpoint.url + '/_admin/server/mode', JSON.stringify({'mode': 'readonly'}), {
       method: 'put',
     });
     expect(resp.code).to.equal(200);
@@ -70,7 +70,7 @@ describe('Readonly mode api', function() {
     expect(body).to.have.property('mode', 'readonly');
   });
 
-  it('throws an error when passing an unknown mode', function() {
+  it('throws an error when not passing an object', function() {
     let set = download(endpoint.url + '/_admin/server/mode', JSON.stringify('testi'), {
       method: 'put',
     });
@@ -81,8 +81,19 @@ describe('Readonly mode api', function() {
     expect(body).to.have.property('mode', 'default');
   });
 
+  it('throws an error when passing an unknown mode', function() {
+    let set = download(endpoint.url + '/_admin/server/mode', JSON.stringify({'mode': 'testi'}), {
+      method: 'put',
+    });
+    expect(set.code).to.equal(400);
+
+    let resp = download(endpoint.url + '/_admin/server/mode');
+    let body = JSON.parse(resp.body);
+    expect(body).to.have.property('mode', 'default');
+  });
+
   it('the heartbeat should set readonly mode for all cluster nodes', function() {
-    let resp = download(endpoint.url + '/_admin/server/mode', JSON.stringify('readonly'), {
+    let resp = download(endpoint.url + '/_admin/server/mode', JSON.stringify({'mode': 'readonly'}), {
       method: 'put',
     });
     expect(resp.code).to.equal(200);
