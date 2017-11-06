@@ -1,5 +1,5 @@
 #!/bin/bash
-
+params=("$@")
 . `dirname $0`/cluster-run-common.sh
 
 if [ "$POOLSZ" == "" ] ; then
@@ -14,7 +14,7 @@ fi
 DEFAULT_REPLICATION=""
 
 
-printf "Starting agency ... \n"
+printf "== Starting agency ... \n"
 printf "  # agents: %s," "$NRAGENTS"
 printf " # db servers: %s," "$NRDBSERVERS"
 printf " # coordinators: %s," "$NRCOORDINATORS"
@@ -45,9 +45,14 @@ ADDRESS=${ADDRESS:-[::1]}
 
 rm -rf cluster
 if [ -d cluster-init ];then
+  echo "== creating cluster directory from existing cluster-init directory"
   cp -a cluster-init cluster
+else
+  echo "== creating fresh directory"
+  mkdir -p cluster || { echo "failed to create cluster directory"; exit 1; }
+  #if we want to restart we should probably store the parameters line wise
+  echo "${params[@]}" > cluster/startup_parameters 
 fi
-mkdir -p cluster
 
 if [ -z "$JWT_SECRET" ];then
   AUTHENTICATION="--server.authentication false"
@@ -80,7 +85,7 @@ else
     CO_ARANGOD=$ARANGOD
 fi
 
-echo Starting agency ... 
+echo == Starting agency ... 
 for aid in `seq 0 $(( $NRAGENTS - 1 ))`; do
     port=$(( $AG_BASE + $aid ))
     AGENCY_ENDPOINTS+="--cluster.agency-endpoint $TRANSPORT://$ADDRESS:$port "
@@ -131,7 +136,7 @@ start() {
     TYPE=$1
     PORT=$2
     mkdir cluster/data$PORT cluster/apps$PORT 
-    echo Starting $TYPE on port $PORT
+    echo == Starting $TYPE on port $PORT
     $CMD \
         -c none \
         --database.directory cluster/data$PORT \
@@ -189,7 +194,7 @@ for p in `seq $CO_BASE $PORTTOPCO` ; do
     testServer $p
 done
 
-echo Done, your cluster is ready at
+echo == Done, your cluster is ready at
 for p in `seq $CO_BASE $PORTTOPCO` ; do
     echo "   ${BUILD}/bin/arangosh --server.endpoint $TRANSPORT://[::1]:$p"
 done
