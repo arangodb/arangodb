@@ -37,7 +37,8 @@
 #include "Cluster/DBServerAgencySync.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
-#include "GeneralServer/RestHandlerFactory.h"
+#include "GeneralServer/AsyncJobManager.h"
+#include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Replication/GlobalInitialSyncer.h"
 #include "Replication/GlobalReplicationApplier.h"
@@ -189,7 +190,7 @@ void HeartbeatThread::run() {
   // ohhh the dbserver is online...pump some documents into it
   // which fails when it is still in maintenance mode
   if (!ServerState::instance()->isCoordinator(role)) {
-    while (RestHandlerFactory::isMaintenance()) {
+    while (ServerState::isMaintenance()) {
       if (isStopping()) {
         // startup aborted
         return;
@@ -402,13 +403,34 @@ void HeartbeatThread::runDBServer() {
   _agencyCallbackRegistry->unregisterCallback(planAgencyCallback);
 }
 
+/// CAS a key in the agency, works only if it does not exist, result should
+/// contain the value of the written key.
+static AgencyCommResult CasWithResult(AgencyComm agency, std::string const& key,
+                                      VPackSlice const& oldValue,
+                                      VPackSlice const& newJson, double timeout) {
+  AgencyOperation write(key, AgencyValueOperationType::SET, newJson);
+  write._ttl = 0; // no ttl
+  
+  if (oldValue.isNone()) { // for some reason this doesn't work
+    // precondition: the key must equal old value
+    AgencyPrecondition pre(key, AgencyPrecondition::Type::EMPTY, true);
+    AgencyGeneralTransaction trx(write, pre);
+    return agency.sendTransactionWithFailover(trx, timeout);
+  } else {
+    // precondition: the key must equal old value
+    AgencyPrecondition pre(key, AgencyPrecondition::Type::VALUE, oldValue);
+    AgencyGeneralTransaction trx(write, pre);
+    return agency.sendTransactionWithFailover(trx, timeout);
+  }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief heartbeat main loop, single server version
 ////////////////////////////////////////////////////////////////////////////////
 
 void HeartbeatThread::runSingleServer() {
   // convert timeout to seconds
-  double const interval = (double)_interval / 1000.0 / 1000.0;
+  double const interval = static_cast<double>(_interval) / 1000.0 / 1000.0;
   AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
   TRI_ASSERT(auth != nullptr);
   ReplicationFeature* replication = ReplicationFeature::INSTANCE;
@@ -433,7 +455,7 @@ void HeartbeatThread::runSingleServer() {
         usleep(500000);
         remain -= 0.5;
       } else {
-        usleep((TRI_usleep_t)(remain * 1000.0 * 1000.0));
+        usleep(static_cast<TRI_usleep_t>(remain * 1000.0 * 1000.0));
         remain = 0.0;
       }
     }
@@ -447,19 +469,24 @@ void HeartbeatThread::runSingleServer() {
         break;
       }
 
+      double const timeout = 1.0;
+
       AgencyReadTransaction trx(
         std::vector<std::string>({
             AgencyCommManager::path("Shutdown"),
             AgencyCommManager::path("Plan/AsyncReplication"),
             AgencyCommManager::path("Sync/Commands", _myId),
             "/.agency"}));
-      AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
+      AgencyCommResult result = _agency.sendTransactionWithFailover(trx, timeout);
       if (!result.successful()) {
         LOG_TOPIC(WARN, Logger::HEARTBEAT)
-            << "Heartbeat: Could not read from agency!";
+            << "Heartbeat: Could not read from agency! status code: " 
+            << result._statusCode << ", incriminating body: " 
+            << result.bodyRef() << ", timeout: " << timeout;
         
         if (!applier->isRunning()) {
-          //FIXME: allow to act as master, assume we are master
+          ServerState::instance()->setFoxxmaster(_myId);
+          ServerState::setServerMode(ServerState::Mode::DEFAULT);
         }
         continue;
       }
@@ -487,72 +514,94 @@ void HeartbeatThread::runSingleServer() {
         continue;
       }
       std::string const leaderPath = "/Plan/AsyncReplication/Leader";
+      
       VPackSlice leaderSlice = asyncReplication.get("Leader");
       VPackBuilder myIdBuilder;
       myIdBuilder.add(VPackValue(_myId));
       
-      // Case 1: No leader in agency. Race for leadership
-      if (!leaderSlice.isString()) {
+      if (!leaderSlice.isString() || leaderSlice.getStringLength() == 0) {
+        // Case 1: No leader in agency. Race for leadership
         LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Leadership vaccuum detected, "
         << "attempting a takeover";
-        if (applier->isRunning()) {
-          // FIXME: do we keep this running anyway ?
-          applier->stopAndJoin();
-        }
         
-        result = _agency.casValue(leaderPath, myIdBuilder.slice(), false,
-                                  /* ttl */ std::min(30.0, interval * 4),
-                                  /* timeout */ 30.0);
-        if (result.successful()) {
-          // sucessfull leadership takeover
+        // if we stay a slave, the redirect will be turned on again
+        ServerState::setServerMode(ServerState::Mode::TRYAGAIN);
+        result = CasWithResult(_agency, leaderPath, /*oldJson*/leaderSlice,
+                               /*newJson*/myIdBuilder.slice(), /*timeout*/5.0);
+        
+        if (result.successful()) { // sucessfull leadership takeover
           LOG_TOPIC(INFO, Logger::HEARTBEAT) << "All your base are belong to us";
-          applier->stop(/* reset error */true); // TODO: should we use join here?
-          RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::DEFAULT);
+          if (applier->isRunning()) {
+            applier->stopAndJoin();
+          }
           ServerState::instance()->setFoxxmaster(_myId);
+          ServerState::setServerMode(ServerState::Mode::DEFAULT);
+          continue; // nothing more to do here
+          
+        } else if (result.httpCode() == TRI_ERROR_HTTP_PRECONDITION_FAILED) {
+          // we did not become leader, someone else is, response contains
+          // current value in agency
+          VPackSlice const res = result.slice();
+          TRI_ASSERT(res.length() == 1 && res[0].isObject());
+          leaderSlice = res[0].get(AgencyCommManager::slicePath(leaderPath));
+          LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Did not become leader, "
+          << "following " << leaderSlice.copyString();
+          TRI_ASSERT(leaderSlice.isString() && leaderSlice.compareString(_myId) != 0);
+          // intentional fallthrough to case 3
+          
         } else {
-          LOG_TOPIC(DEBUG, Logger::HEARTBEAT) << "Takeover attempt failed";
+          LOG_TOPIC(WARN, Logger::HEARTBEAT) << "got an unexpected agency error "
+          << "code: " << result.httpCode() << " msg: " << result.errorMessage();
+          continue; // try again next time
         }
-        continue; // readjust applier endpoint next round
       }
       
       // Case 2: Current server is leader
       if (leaderSlice.compareString(_myId) == 0) {
-        LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Currently leader" << _myId;
-        ServerState::instance()->setFoxxmaster(_myId);
+        LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Currently leader: " << _myId;
         
-        // updating the value to keep our leadership
-        result = _agency.casValue(leaderPath, /* old */ myIdBuilder.slice(),
-                                  /* new */ myIdBuilder.slice(),
-                                  /* ttl */ std::min(30.0, interval * 4),
-                                  /* timeout */ 30.0);
-        if (!result.successful()) {
-          LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Cannot update leadership value";
-        }
         if (applier->isRunning()) {
           applier->stopAndJoin();
         }
         
-        // allow server access
-        RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::DEFAULT);
-        
+        // ensure everyone has server access
+        ServerState::instance()->setFoxxmaster(_myId);
+        ServerState::setServerMode(ServerState::Mode::DEFAULT);
         continue; // nothing more to do
       }
       
-      // Case 3: Current server is follower
+      // Case 3: Current server is follower, should not get here otherwise
       std::string const leader = leaderSlice.copyString();
-      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Slave of " << leader;
-      ServerState::instance()->setFoxxmaster(leader);
+      TRI_ASSERT(!leader.empty());
+      LOG_TOPIC(TRACE, Logger::HEARTBEAT) << "Following " << leader;
       
+      ServerState::instance()->setFoxxmaster(leader);
       std::string endpoint = ci->getServerEndpoint(leader);
       if (endpoint.empty()) {
         LOG_TOPIC(ERR, Logger::HEARTBEAT) << "Failed to resolve leader endpoint";
         continue; // try again next time
       }
-      // enable redirections to leader
-      RestHandlerFactory::setServerMode(RestHandlerFactory::Mode::REDIRECT);
       
-      // configure applier for new endpoint if necessary
+      // enable redirections to leader
+      auto prv = ServerState::setServerMode(ServerState::Mode::REDIRECT);
+      if (prv == ServerState::Mode::DEFAULT) {
+        // we were leader previously, now we need to ensure no ongoing operations
+        // on this server may prevent us from beeing a proper follower. We wait for
+        // all ongoing ops to stop, and make sure nothing is committet:
+        // setting server mode to REDIRECT stops DDL ops and write transactions
+        LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Detected leader to secondary change"
+                                           << " this might take a few seconds";
+        Result res = GeneralServerFeature::JOB_MANAGER->clearAllJobs();
+        if (res.fail()) {
+          LOG_TOPIC(WARN, Logger::HEARTBEAT) << "could not cancel all async jobs "
+            << res.errorMessage();
+        }
+        // wait for everything to calm down for good measure
+        sleep(10);
+      }
+      
       if (applier->endpoint() != endpoint) {
+        // configure applier for new endpoint
         if (applier->isRunning()) {
           applier->stopAndJoin();
         }
@@ -566,9 +615,6 @@ void HeartbeatThread::runSingleServer() {
         }
         // TODO: how do we initially configure the applier
         
-        // forget about any existing replication applier configuration
-        applier->forget();
-        
         // start initial synchronization
         TRI_ASSERT(!config._skipCreateDrop);
         GlobalInitialSyncer syncer(config);
@@ -580,30 +626,36 @@ void HeartbeatThread::runSingleServer() {
           << "failed: " << r.errorMessage();
           continue; // try again next time
         }
+        
         // steal the barrier from the syncer
         TRI_voc_tick_t barrierId = syncer.stealBarrier();
         TRI_voc_tick_t lastLogTick = syncer.getLastLogTick();
 
+        // forget about any existing replication applier configuration
+        applier->forget();
+        
         applier->reconfigure(config);
         applier->start(lastLogTick, true, barrierId);
+        
       } else if (!applier->isRunning()) {
         
         // try to restart the applier
         if (applier->hasState()) {
           Result error = applier->lastError();
           if (error.is(TRI_ERROR_REPLICATION_APPLIER_STOPPED)) {
-            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "User stopped applier, please restart";
+            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "user stopped applier, please restart";
             continue;
           } else if (error.isNot(TRI_ERROR_REPLICATION_NO_START_TICK) ||
                      error.isNot(TRI_ERROR_REPLICATION_START_TICK_NOT_PRESENT)) {
             // restart applier if possible
-            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "Restarting stopped applier...";
+            LOG_TOPIC(WARN, Logger::HEARTBEAT) << "restarting stopped applier...";
             applier->start(0, false, 0);
             continue; // check again next time
-          }
+          } 
         }
       
         // complete resync next round
+        LOG_TOPIC(WARN, Logger::HEARTBEAT) << "forgetting previous applier state. Will trigger a full resync now";
         applier->forget();
       }
             
@@ -650,6 +702,8 @@ void HeartbeatThread::runCoordinator() {
         break;
       }
 
+      double const timeout = 1.0;
+
       AgencyReadTransaction trx
         (std::vector<std::string>(
           {AgencyCommManager::path("Current/Version"),
@@ -660,11 +714,13 @@ void HeartbeatThread::runCoordinator() {
            AgencyCommManager::path("Sync/Commands", _myId),
            AgencyCommManager::path("Sync/UserVersion"),
            AgencyCommManager::path("Target/FailedServers"), "/.agency"}));
-      AgencyCommResult result = _agency.sendTransactionWithFailover(trx, 1.0);
+      AgencyCommResult result = _agency.sendTransactionWithFailover(trx, timeout);
 
       if (!result.successful()) {
         LOG_TOPIC(WARN, Logger::HEARTBEAT)
-            << "Heartbeat: Could not read from agency!";
+            << "Heartbeat: Could not read from agency! status code: " 
+            << result._statusCode << ", incriminating body: " 
+            << result.bodyRef() << ", timeout: " << timeout;
       } else {
 
         VPackSlice agentPool =
@@ -704,8 +760,21 @@ void HeartbeatThread::runCoordinator() {
             result.slice()[0].get(std::vector<std::string>(
                 {AgencyCommManager::path(), "Current", "Foxxmaster"}));
 
-        if (foxxmasterSlice.isString()) {
+        if (foxxmasterSlice.isString() && foxxmasterSlice.getStringLength() != 0) {
           ServerState::instance()->setFoxxmaster(foxxmasterSlice.copyString());
+        } else {
+          auto state = ServerState::instance();
+          VPackBuilder myIdBuilder;
+          myIdBuilder.add(VPackValue(state->getId()));
+
+          auto updateMaster =
+              _agency.casValue("/Current/Foxxmaster", foxxmasterSlice,
+                               myIdBuilder.slice(), 0, 1.0);
+          if (updateMaster.successful()) {
+            // We won the race we are the master
+            ServerState::instance()->setFoxxmaster(state->getId());
+          }
+
         }
 
         VPackSlice versionSlice =

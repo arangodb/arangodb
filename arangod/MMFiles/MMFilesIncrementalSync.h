@@ -89,7 +89,6 @@ static bool BinarySearch(std::vector<uint8_t const*> const& markers,
   }
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief finds a key range in the markers vector
 ////////////////////////////////////////////////////////////////////////////////
@@ -591,85 +590,103 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
       if (!toFetch.empty()) {
         VPackBuilder keysBuilder;
         keysBuilder.openArray();
-        for (auto& it : toFetch) {
+        for (auto const& it : toFetch) {
           keysBuilder.add(VPackValue(it));
         }
         keysBuilder.close();
-
-        std::string url = baseUrl + "/" + keysId +
-                          "?type=docs&chunk=" + std::to_string(currentChunkId) +
-                          "&chunkSize=" + std::to_string(chunkSize);
-        progress = "fetching documents chunk " +
-                   std::to_string(currentChunkId) + " for collection '" +
-                   collectionName + "' from " + url;
-        syncer.setProgress(progress);
-
+        
         std::string const keyJsonString(keysBuilder.slice().toJson());
 
-        std::unique_ptr<httpclient::SimpleHttpResult> response(
-            syncer._client->retryRequest(rest::RequestType::PUT, url,
-                                  keyJsonString.c_str(), keyJsonString.size()));
+        size_t offsetInChunk = 0;
+        
+        while (true) {
+          std::string url = baseUrl + "/" + keysId +
+                            "?type=docs&chunk=" + std::to_string(currentChunkId) +
+                            "&chunkSize=" + std::to_string(chunkSize) + "&offset=" + std::to_string(offsetInChunk);
+          progress = "fetching documents chunk " +
+                     std::to_string(currentChunkId) + " for collection '" +
+                     collectionName + "' from " + url;
 
-        if (response == nullptr || !response->isComplete()) {
-          return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + syncer._masterInfo._endpoint + ": " + syncer._client->getErrorMessage());
-        }
+          syncer.setProgress(progress);
 
-        TRI_ASSERT(response != nullptr);
+          std::unique_ptr<httpclient::SimpleHttpResult> response(
+              syncer._client->retryRequest(rest::RequestType::PUT, url,
+                                    keyJsonString.c_str(), keyJsonString.size()));
 
-        if (response->wasHttpError()) {
-          return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": HTTP " + basics::StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
-        }
-
-        VPackBuilder builder;
-        Result r = syncer.parseResponse(builder, response.get());
-
-        if (r.fail()) {
-          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
-        }
-
-        VPackSlice const slice = builder.slice();
-        if (!slice.isArray()) {
-          return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
-        }
-
-        for (auto const& it : VPackArrayIterator(slice)) {
-          if (!it.isObject()) {
-            return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": document is no object");
+          if (response == nullptr || !response->isComplete()) {
+            return Result(TRI_ERROR_REPLICATION_NO_RESPONSE, std::string("could not connect to master at ") + syncer._masterInfo._endpoint + ": " + syncer._client->getErrorMessage());
           }
 
-          VPackSlice const keySlice = it.get(StaticStrings::KeyString);
+          TRI_ASSERT(response != nullptr);
 
-          if (!keySlice.isString()) {
-            return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": document key is invalid");
+          if (response->wasHttpError()) {
+            return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": HTTP " + basics::StringUtils::itoa(response->getHttpReturnCode()) + ": " + response->getHttpReturnMessage());
           }
 
-          VPackSlice const revSlice = it.get(StaticStrings::RevString);
+          VPackBuilder builder;
+          Result r = syncer.parseResponse(builder, response.get());
 
-          if (!revSlice.isString()) {
-            return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": document revision is invalid");
+          if (r.fail()) {
+            return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
           }
 
-          MMFilesSimpleIndexElement element = idx->lookupKey(&trx, keySlice);
+          VPackSlice const slice = builder.slice();
+          if (!slice.isArray()) {
+            return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": response is no array");
+          }
 
-          if (!element) {
-            // INSERT
-            OperationResult opRes = trx.insert(collectionName, it, options);
-            if (opRes.code != TRI_ERROR_NO_ERROR) {
-              if (opRes.errorMessage.empty()) {
-                return Result(opRes.code);
-              } 
-              return Result(opRes.code, opRes.errorMessage);
+          size_t foundLength = slice.length();
+
+          for (auto const& it : VPackArrayIterator(slice)) {
+            if (it.isNull()) {
+              continue;
             }
-          } else {
-            // UPDATE
-            OperationResult opRes = trx.replace(collectionName, it, options);
-            if (opRes.code != TRI_ERROR_NO_ERROR) {
-              if (opRes.errorMessage.empty()) {
-                return Result(opRes.code);
+
+            if (!it.isObject()) {
+              return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": document is no object");
+            }
+
+            VPackSlice const keySlice = it.get(StaticStrings::KeyString);
+
+            if (!keySlice.isString()) {
+              return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": document key is invalid");
+            }
+
+            VPackSlice const revSlice = it.get(StaticStrings::RevString);
+
+            if (!revSlice.isString()) {
+              return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, std::string("got invalid response from master at ") + syncer._masterInfo._endpoint + ": document revision is invalid");
+            }
+
+            MMFilesSimpleIndexElement element = idx->lookupKey(&trx, keySlice);
+
+            if (!element) {
+              // INSERT
+              OperationResult opRes = trx.insert(collectionName, it, options);
+              if (opRes.code != TRI_ERROR_NO_ERROR) {
+                if (opRes.errorMessage.empty()) {
+                  return Result(opRes.code);
+                } 
+                return Result(opRes.code, opRes.errorMessage);
               }
-              return Result(opRes.code, opRes.errorMessage);
+            } else {
+              // UPDATE
+              OperationResult opRes = trx.replace(collectionName, it, options);
+              if (opRes.code != TRI_ERROR_NO_ERROR) {
+                if (opRes.errorMessage.empty()) {
+                  return Result(opRes.code);
+                }
+                return Result(opRes.code, opRes.errorMessage);
+              }
             }
           }
+
+          if (foundLength >= toFetch.size()) {
+            break;
+          }
+
+          // try again in next round
+          offsetInChunk = foundLength;
         }
       }
     }

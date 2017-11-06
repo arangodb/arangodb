@@ -516,14 +516,12 @@ double Index::selectivityEstimate(StringRef const* extra) const {
   }
 
   double estimate = 0.1; //default
-  if(!ServerState::instance()->isCoordinator()){
+  if (!ServerState::instance()->isCoordinator()) {
     estimate = selectivityEstimateLocal(extra);
   } else {
     // getClusterEstimate can not be called from within the index
     // as _collection is not always vaild
-
-    //estimate = getClusterEstimate(estimate /*as default*/).second;
-    estimate=_clusterSelectivity;
+    estimate = _clusterSelectivity;
   }
 
   TRI_ASSERT(estimate >= 0.0 &&

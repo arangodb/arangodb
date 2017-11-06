@@ -701,12 +701,25 @@ int MMFilesEngine::getViews(TRI_vocbase_t* vocbase,
   return TRI_ERROR_NO_ERROR;
 }
 
-void MMFilesEngine::waitForSync(double maxWait) {
+void MMFilesEngine::waitForSyncTick(TRI_voc_tick_t tick) {
   if (application_features::ApplicationServer::isStopping()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
   }
+  
+  MMFilesLogfileManager::instance()->slots()->waitForTick(tick);
+}
 
+void MMFilesEngine::waitForSyncTimeout(double maxWait) {
+  if (application_features::ApplicationServer::isStopping()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+  }
   MMFilesLogfileManager::instance()->waitForSync(maxWait);
+}
+
+Result MMFilesEngine::flushWal(bool waitForSync, bool waitForCollector,
+                             bool writeShutdownFile) {
+  return MMFilesLogfileManager::instance()->flush(
+                        waitForSync, waitForCollector, writeShutdownFile);
 }
 
 TRI_vocbase_t* MMFilesEngine::openDatabase(

@@ -49,6 +49,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Options.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 #include "Utils/Events.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
@@ -410,7 +411,7 @@ bool transaction::Methods::sortOrs(
 }
 
 std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
-    std::vector<std::shared_ptr<Index>> indexes, arangodb::aql::AstNode* node,
+    std::vector<std::shared_ptr<Index>> const& indexes, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
     std::vector<transaction::Methods::IndexHandle>& usedIndexes,
@@ -446,8 +447,8 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
     bool const isOnlyAttributeAccess =
         (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess());
 
-    size_t coveredAttributes = 0;
     if (sortCondition->isUnidirectional()) {
+      size_t coveredAttributes = 0;
       // only go in here if we actually have a sort condition and it can in
       // general be supported by an index. for this, a sort condition must not
       // be empty, must consist only of attribute access, and all attributes
@@ -504,33 +505,37 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
 }
 
 bool transaction::Methods::findIndexHandleForAndNode(
-    std::vector<std::shared_ptr<Index>> indexes, arangodb::aql::AstNode*& node,
+    std::vector<std::shared_ptr<Index>> const& indexes, arangodb::aql::AstNode*& node,
     arangodb::aql::Variable const* reference, size_t itemsInCollection,
     transaction::Methods::IndexHandle& usedIndex) const {
   std::shared_ptr<Index> bestIndex;
   double bestCost = 0.0;
 
   for (auto const& idx : indexes) {
-    double filterCost = 0.0;
-    double sortCost = 0.0;
     size_t itemsInIndex = itemsInCollection;
 
     // check if the index supports the filter expression
     double estimatedCost;
     size_t estimatedItems;
-    if (!idx->supportsFilterCondition(node, reference, itemsInIndex,
-                                      estimatedItems, estimatedCost)) {
+    bool supportsFilter = idx->supportsFilterCondition(node, reference, itemsInIndex,
+                                                       estimatedItems, estimatedCost);
+    
+    // enable the following line to see index candidates considered with their
+    // abilities and scores
+    // LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", estimatedCost: " << estimatedCost << ", estimatedItems: " << estimatedItems << ", itemsInIndex: " << itemsInIndex << ", selectivity: " << (idx->hasSelectivityEstimate() ? idx->selectivityEstimate() : -1.0) << ", node: " << node; 
+
+    if (!supportsFilter) {
       continue;
     }
+
     // index supports the filter condition
-    filterCost = estimatedCost;
+    
     // this reduces the number of items left
     itemsInIndex = estimatedItems;
 
-    double const totalCost = filterCost + sortCost;
-    if (bestIndex == nullptr || totalCost < bestCost) {
+    if (bestIndex == nullptr || estimatedCost < bestCost) {
       bestIndex = idx;
-      bestCost = totalCost;
+      bestCost = estimatedCost;
     }
   }
 
@@ -713,7 +718,7 @@ Result transaction::Methods::begin() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid transaction state");
   }
-
+  
   if (_state->isCoordinator()) {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::RUNNING);
@@ -730,9 +735,17 @@ Result transaction::Methods::commit() {
     // transaction not created or not running
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
+  
+  ExecContext const* exe = ExecContext::CURRENT;
+  if (exe != nullptr && !_state->isReadOnlyTransaction()) {
+    bool cancelRW = !ServerState::writeOpsEnabled() && !exe->isSuperuser();
+    if (exe->isCanceled() || cancelRW) {
+      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
+    }
+  }
 
   CallbackInvoker invoker(this);
-
+  
   if (_state->isCoordinator()) {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::COMMITTED);
@@ -1441,7 +1454,7 @@ OperationResult transaction::Methods::insertLocal(
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
-    EngineSelectorFeature::ENGINE->waitForSync(maxTick);
+    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
   if (res.ok() && _state->isDBServer()) {
@@ -1786,7 +1799,7 @@ OperationResult transaction::Methods::modifyLocal(
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
-    EngineSelectorFeature::ENGINE->waitForSync(maxTick);
+    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -2067,7 +2080,7 @@ OperationResult transaction::Methods::removeLocal(
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
-    EngineSelectorFeature::ENGINE->waitForSync(maxTick);
+    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
   // Now see whether or not we have to do synchronous replication:

@@ -146,7 +146,7 @@ void RocksDBRestWalHandler::flush() {
     res = flushWalOnAllDBServers(waitForSync, waitForCollector);
   } else {
     if (waitForSync) {
-      static_cast<RocksDBEngine*>(EngineSelectorFeature::ENGINE)->syncWal();
+      EngineSelectorFeature::ENGINE->flushWal();
     }
   }
 

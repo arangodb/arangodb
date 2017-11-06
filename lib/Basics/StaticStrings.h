@@ -89,7 +89,6 @@ class StaticStrings {
   static std::string const ContentEncoding;
   static std::string const ContentLength;
   static std::string const ContentTypeHeader;
-  static std::string const Coordinator;
   static std::string const CorsMethods;
   static std::string const Error;
   static std::string const ErrorMessage;

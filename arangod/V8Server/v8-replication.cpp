@@ -241,7 +241,7 @@ static void SynchronizeReplication(
     Result r = syncer->run(configuration._incremental);
     
     if (r.fail()) {
-      LOG_TOPIC(ERR, Logger::REPLICATION) << "Initial sync failed: " << r.errorMessage();
+      LOG_TOPIC(ERR, Logger::REPLICATION) << "initial sync failed for database '" << vocbase->name() << "': " << r.errorMessage();
       TRI_V8_THROW_EXCEPTION_MESSAGE(r.errorNumber(), "cannot sync from remote endpoint: " + r.errorMessage() +
                                      ". last progress message was '" + syncer->progress() + "'");
     }
@@ -641,6 +641,20 @@ static void JS_ForgetGlobalApplierReplication(
   ForgetApplierReplication(args, APPLIER_GLOBAL);
 }
 
+static void JS_FailoverEnabledGlobalApplierReplication(
+    v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  v8::HandleScope scope(isolate);
+  
+  auto replicationFeature = ReplicationFeature::INSTANCE;
+  if (replicationFeature != nullptr &&
+      replicationFeature->isAutomaticFailoverEnabled()) {
+    TRI_V8_RETURN_TRUE();
+  }
+  TRI_V8_RETURN_FALSE();
+  TRI_V8_TRY_CATCH_END
+}
+
 void TRI_InitV8Replication(v8::Isolate* isolate,
                            v8::Handle<v8::Context> context,
                            TRI_vocbase_t* vocbase,
@@ -692,6 +706,9 @@ void TRI_InitV8Replication(v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "GLOBAL_REPLICATION_APPLIER_FORGET"),
       JS_ForgetGlobalApplierReplication, true);
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "GLOBAL_REPLICATION_APPLIER_FAILOVER_ENABLED"),
+      JS_FailoverEnabledGlobalApplierReplication, true);
   
   // other functions
   TRI_AddGlobalFunctionVocbase(isolate,

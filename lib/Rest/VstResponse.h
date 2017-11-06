@@ -49,20 +49,29 @@ class VstResponse : public GeneralResponse {
   static bool HIDE_PRODUCT_HEADER;
 
   // required by base
-  virtual uint64_t messageId() const override { return _messageId; }
-  void reset(ResponseCode code) final;
+  uint64_t messageId() const override { return _messageId; }
   virtual arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::VST;
   };
 
   VPackMessageNoOwnBuffer prepareForNetwork();
+  
+  void reset(ResponseCode code) final;
+  void addPayload(VPackSlice const&,
+                  arangodb::velocypack::Options const* = nullptr,
+                  bool resolveExternals = true) override;
+  void addPayload(VPackBuffer<uint8_t>&&,
+                  arangodb::velocypack::Options const* = nullptr,
+                  bool resolveExternals = true) override;
 
  private:
   //_responseCode   - from Base
   //_headers        - from Base
-  std::shared_ptr<VPackBuffer<uint8_t>>
-      _header;  // generated form _headers when prepared for network
   uint64_t _messageId;
+  /// generated form _headers when prepared for network
+  std::shared_ptr<VPackBuffer<uint8_t>> _header;
+  /// actual payloads
+  std::vector<VPackBuffer<uint8_t>> _vpackPayloads;
 };
 }
 

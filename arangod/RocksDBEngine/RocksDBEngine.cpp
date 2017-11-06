@@ -546,10 +546,26 @@ void RocksDBEngine::start() {
   }
 }
 
+void RocksDBEngine::beginShutdown() {
+  if (!isEnabled()) {
+    return;
+  }
+
+  // block the creation of new replication contexts
+  if (_replicationManager != nullptr) {
+    _replicationManager->beginShutdown();
+  }
+}
+
 void RocksDBEngine::stop() {
   if (!isEnabled()) {
     return;
   }
+
+
+  // in case we missed the beginShutdown somehow, call it again
+  replicationManager()->beginShutdown();
+
   replicationManager()->dropAll();
 
   if (_backgroundThread) {
@@ -1246,14 +1262,12 @@ std::pair<TRI_voc_tick_t, TRI_voc_cid_t> RocksDBEngine::mapObjectToCollection(
   return it->second;
 }
 
-arangodb::Result RocksDBEngine::syncWal(bool waitForSync,
-                                        bool waitForCollector,
-                                        bool /*writeShutdownFile*/) {
+Result RocksDBEngine::flushWal(bool waitForSync, bool waitForCollector,
+                             bool /*writeShutdownFile*/) {
   rocksdb::Status status;
 #ifndef _WIN32
   // SyncWAL always reports "not implemented" on Windows
   status = _db->GetBaseDB()->SyncWAL();
-
   if (!status.ok()) {
     return rocksutils::convertStatus(status);
   }
@@ -1269,7 +1283,7 @@ arangodb::Result RocksDBEngine::syncWal(bool waitForSync,
       }
     }
   }
-  return arangodb::Result();
+  return TRI_ERROR_NO_ERROR;
 }
 
 std::vector<std::string> RocksDBEngine::currentWalFiles() {
@@ -1698,7 +1712,7 @@ Result RocksDBEngine::handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
 
 Result RocksDBEngine::createLoggerState(TRI_vocbase_t* vocbase,
                                         VPackBuilder& builder) {
-  syncWal();
+  flushWal(false, false, false);
 
   builder.openObject();  // Base
   rocksdb::SequenceNumber lastTick = _db->GetLatestSequenceNumber();

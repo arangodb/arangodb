@@ -49,6 +49,8 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Utils/CollectionNameResolver.h"
+#include "Utils/Events.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
 #include "V8Server/V8DealerFeature.h"
@@ -1055,7 +1057,9 @@ std::string DatabaseFeature::translateCollectionName(std::string const& dbName, 
     TRI_vocbase_t* vocbase = (*it).second;
     TRI_ASSERT(vocbase != nullptr);
     TRI_ASSERT(vocbase->type() == TRI_VOCBASE_TYPE_COORDINATOR);
-    return vocbase->collectionName(StringUtils::uint64(collectionName));
+
+    CollectionNameResolver resolver(vocbase);
+    return resolver.getCollectionNameCluster(StringUtils::uint64(collectionName));
   } else {
     auto unuser(_databasesProtector.use());
     auto theLists = _databasesLists.load();
