@@ -9,7 +9,7 @@ x-content-type-options: nosniff
 
 { 
   <span class="hljs-string">"error"</span> : <span class="hljs-literal">true</span>, 
+  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"no journal"</span>, 
   <span class="hljs-string">"code"</span> : <span class="hljs-number">400</span>, 
-  <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1105</span>, 
-  <span class="hljs-string">"errorMessage"</span> : <span class="hljs-string">"could not rotate journal: no journal"</span> 
+  <span class="hljs-string">"errorNum"</span> : <span class="hljs-number">1105</span> 
 }

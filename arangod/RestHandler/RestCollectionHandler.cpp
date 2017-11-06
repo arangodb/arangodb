@@ -376,6 +376,7 @@ void RestCollectionHandler::handleCommandPut() {
           SingleCollectionTransaction trx(ctx, coll->cid(),
                                           AccessMode::Type::READ);
           res = trx.begin();
+
           if (res.ok()) {
             res.reset(coll->getPhysical()->rotateActiveJournal());
           }
