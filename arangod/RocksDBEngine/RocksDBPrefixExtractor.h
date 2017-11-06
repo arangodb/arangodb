@@ -39,7 +39,7 @@ namespace arangodb {
 class RocksDBPrefixExtractor final : public rocksdb::SliceTransform {
  public:
   RocksDBPrefixExtractor() {}
-  ~RocksDBPrefixExtractor(){};
+  ~RocksDBPrefixExtractor() {}
 
   const char* Name() const { return "RocksDBPrefixExtractor"; }
 
