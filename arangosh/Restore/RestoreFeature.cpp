@@ -462,16 +462,9 @@ int RestoreFeature::processInputDirectory(std::string& errorMsg) {
         }
 
         if (overwriteName) {
-          // TODO MAX
-          // Situation:
-          // Ich habe ein Json-Object von Datei (teile des Inhalts im Zweifel
-          // unbekannt)
-          // Es gibt ein Sub-Json-Object "parameters" mit einem Attribute "name"
-          // der gesetzt ist.
-          // Ich muss nur diesen namen überschreiben, der Rest soll identisch
-          // bleiben.
+          // TODO: we have a JSON object with sub-object "parameters" with
+          // attribute "name". we only want to replace this. how?
         } else {
-          //std::shared_ptr<VPackBuffer<uint8_t>> buff = fileContentBuilder.steal();
           collections.emplace_back(std::move(fileContentBuilder));
         }
       }
