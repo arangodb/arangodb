@@ -69,10 +69,7 @@ static bool equalsStrings(Slice lhs, Slice rhs) {
   return (nl == nr && (memcmp(left, right, nl) == 0));
 }
 
-static bool equals(Slice lhs, Slice rhs,
-                   Options const* options = &Options::Defaults,
-                   Slice const* lhsBase = nullptr,
-                   Slice const* rhsBase = nullptr) {
+static bool equals(Slice lhs, Slice rhs) {
   lhs = lhs.resolveExternals();
   rhs = rhs.resolveExternals();
   ValueType lhsType = valueTypeGroup(lhs.type());
@@ -115,7 +112,7 @@ static bool equals(Slice lhs, Slice rhs,
       }
       for (ValueLength i = 0; i < n; ++i) {
         // recurse
-        if (!equals(lhsValue.value(), rhsValue.value(), options, &lhs, &rhs)) {
+        if (!equals(lhsValue.value(), rhsValue.value())) {
           return false;
         }
         lhsValue.next();
@@ -130,7 +127,7 @@ static bool equals(Slice lhs, Slice rhs,
       Collection::unorderedKeys(rhs, keys);
       for (auto const& key : keys) {
         // recurse
-        if (!equals(lhs.get(key), rhs.get(key), options, &lhs, &rhs)) {
+        if (!equals(lhs.get(key), rhs.get(key))) {
           return false;
         }
       }
