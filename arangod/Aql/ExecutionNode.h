@@ -889,6 +889,14 @@ class EnumerateViewNode : public ExecutionNode {
     ExpressionContext& ctx
   ) const;
 
+  /// @brief getVariablesUsedHere, returning a vector
+  std::vector<Variable const*> getVariablesUsedHere() const override final;
+
+  /// @brief getVariablesUsedHere, modifying the set in-place
+  void getVariablesUsedHere(
+    std::unordered_set<Variable const*>& vars
+  ) const override final;
+
  private:
   /// @brief the database
   TRI_vocbase_t* _vocbase;

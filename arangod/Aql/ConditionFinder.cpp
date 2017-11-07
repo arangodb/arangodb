@@ -172,8 +172,8 @@ bool ConditionFinder::before(ExecutionNode* en) {
       }
 
       auto condition = std::make_unique<Condition>(_plan->getAst());
-      bool ok = handleFilterCondition(en, condition);
-      if (!ok) {
+
+      if (!handleFilterCondition(en, condition)) {
         break;
       }
 
@@ -185,9 +185,9 @@ bool ConditionFinder::before(ExecutionNode* en) {
         break;
       }
 
-      const auto canUseView = condition->checkView(node, sortCondition.get());
+      auto const canUseView = condition->checkView(node, sortCondition.get());
 
-      if (canUseView.first) {
+      if (canUseView.first && canUseView.second) {
         auto newNode = std::make_unique<EnumerateViewNode>(
           _plan,
           _plan->nextId(),

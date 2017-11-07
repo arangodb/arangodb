@@ -1410,6 +1410,23 @@ std::unique_ptr<arangodb::ViewIterator> EnumerateViewNode::iterator(
   ));
 }
 
+std::vector<Variable const*> EnumerateViewNode::getVariablesUsedHere() const {
+  std::unordered_set<Variable const*> vars;
+  if (_condition) {
+    Ast::getReferencedVariables(_condition->root(), vars);
+  }
+  return { vars.begin(), vars.end() };
+}
+
+/// @brief getVariablesUsedHere, modifying the set in-place
+void EnumerateViewNode::getVariablesUsedHere(
+    std::unordered_set<Variable const*>& vars
+) const {
+  if (_condition) {
+    Ast::getReferencedVariables(_condition->root(), vars);
+  }
+}
+
 LimitNode::LimitNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base),
       _offset(base.get("offset").getNumericValue<decltype(_offset)>()),

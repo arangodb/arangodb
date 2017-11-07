@@ -31,6 +31,7 @@
 #include "Aql/Query.h"
 #include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
+#include <iostream>
 
 namespace {
 
@@ -173,14 +174,14 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
         needMore = true;
         _hasMore = true;
 
-        // we have exhausted this cursor
-        // re-initialize fetching of documents
-        refreshIterator();
-
         if (++_pos >= cur->size()) {
           _buffer.pop_front();  // does not throw
           returnBlock(cur);
           _pos = 0;
+        } else {
+          // we have exhausted this cursor
+          // re-initialize fetching of documents
+          refreshIterator();
         }
       }
     } while (needMore);
@@ -204,6 +205,7 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
         // getPlanNode()->_registerPlan->varInfo,
         // but can just take cur->getNrRegs() as registerId:
         uint8_t const* vpack = _mmdr->vpack();
+
         if (_mmdr->canUseInExternal()) {
           res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs),
                         AqlValue(AqlValueHintDocumentNoCopy(vpack)));

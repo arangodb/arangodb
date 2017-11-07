@@ -2126,8 +2126,15 @@ void arangodb::aql::removeFiltersAndSortsCoveredByViewRule(
         auto const* loop = setter->getLoop();
 
         if (loop && loop->getType() == EN::ENUMERATE_VIEW) {
-          toUnlink.emplace(node);
-          toUnlink.emplace(setter);
+          if (!loop->isInInnerLoop()) {
+            toUnlink.emplace(node);
+            toUnlink.emplace(setter);
+          }
+//FIXME uncomment when EnumerateViewNode can create variables
+//          toUnlink.emplace(setter);
+//          if (!loop->isInInnerLoop()) {
+//            toUnlink.emplace(node);
+//          }
           static_cast<CalculationNode*>(setter)->canRemoveIfThrows(true);
         }
       }

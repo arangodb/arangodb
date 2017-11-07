@@ -146,9 +146,6 @@ struct OptimizerRule {
     // try to remove filters covered by index ranges
     removeFiltersCoveredByIndexRule_pass6,
 
-    // try to remove filters and sorts covered by view
-    removeFiltersAndSortsCoveredByViewRule_pass6,
-
     removeUnnecessaryFiltersRule_pass6,
 
     // try to find sort blocks which are superseeded by indexes
@@ -165,6 +162,10 @@ struct OptimizerRule {
     // remove calculations that are redundant
     // needs to run after filter removal
     removeUnnecessaryCalculationsRule_pass6,
+
+    // try to remove filters and sorts covered by view
+    removeFiltersAndSortsCoveredByViewRule_pass6,
+
     // remove now obsolete path variables
     removeTraversalPathVariable_pass6,
     prepareTraversalsRule_pass6,
