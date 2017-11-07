@@ -626,8 +626,9 @@ Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
           VPackSlice(mmdr.vpack()).get(StaticStrings::KeyString).copyString());
         if (mode == OperationMode::internal) {
           error = IndexResult(res, existingId);
+        } else {
+          error = IndexResult(res, this, existingId);
         }
-        error = IndexResult(res, this, existingId);
       }
 
       for (size_t j = i; j < n; ++j) {

@@ -61,28 +61,11 @@ class IndexResult : public Result {
   }
 
   IndexResult(int errorNumber, Index const* index, std::string key) :
-      Result(errorNumber) {
-    if (_errorNumber != TRI_ERROR_NO_ERROR && index != nullptr) {
-      // now provide more context based on index
-      _errorMessage.append(" - in index ");
-      _errorMessage.append(std::to_string(index->id()));
-      _errorMessage.append(" of type ");
-      _errorMessage.append(index->typeName());
-
-      // build fields string
-      VPackBuilder builder;
-      index->toVelocyPack(builder, false, false);
-      VPackSlice fields = builder.slice().get("fields");
-      if (!fields.isNone()) {
-        _errorMessage.append(" over ");
-        _errorMessage.append(fields.toJson());
-      }
-
-      // provide conflicting key
-      if (key.length() > 0) {
-        _errorMessage.append("; conflicting key: ");
-        _errorMessage.append(key);
-      }
+      IndexResult(errorNumber, index) {
+    // provide conflicting key
+    if (key.length() > 0) {
+      _errorMessage.append("; conflicting key: ");
+      _errorMessage.append(key);
     }
   }
 };

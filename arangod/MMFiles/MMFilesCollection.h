@@ -482,7 +482,8 @@ class MMFilesCollection final : public PhysicalCollection {
                         TRI_voc_rid_t revisionId,
                         arangodb::velocypack::Slice const& doc,
                         MMFilesDocumentOperation& operation,
-                        MMFilesWalMarker const* marker, bool& waitForSync);
+                        MMFilesWalMarker const* marker,
+                        OperationOptions& options, bool& waitForSync);
 
  private:
   uint8_t const* lookupDocumentVPack(LocalDocumentId const& documentId) const;
@@ -509,14 +510,11 @@ class MMFilesCollection final : public PhysicalCollection {
   /// @brief Detect all indexes form file
   int detectIndexes(transaction::Methods* trx);
 
-  Result insertIndexes(transaction::Methods* trx, LocalDocumentId const& documentId,
-                       velocypack::Slice const& doc);
+  Result insertIndexes(transaction::Methods* trx, LocalDocumentId const& documentId, velocypack::Slice const& doc, OperationOptions& options);
 
-  Result insertPrimaryIndex(transaction::Methods*, LocalDocumentId const& documentId,
-                            velocypack::Slice const&);
+  Result insertPrimaryIndex(transaction::Methods*, LocalDocumentId const& documentId, velocypack::Slice const&, OperationOptions& options);
 
-  Result deletePrimaryIndex(transaction::Methods*, LocalDocumentId const& documentId,
-                            velocypack::Slice const&);
+  Result deletePrimaryIndex(transaction::Methods*, LocalDocumentId const& documentId, velocypack::Slice const&, OperationOptions& options);
 
   Result insertSecondaryIndexes(transaction::Methods*,
                                 LocalDocumentId const& documentId,
@@ -537,7 +535,8 @@ class MMFilesCollection final : public PhysicalCollection {
                         LocalDocumentId const& newDocumentId,
                         velocypack::Slice const& newDoc,
                         MMFilesDocumentOperation&,
-                        MMFilesWalMarker const*, bool& waitForSync);
+                        MMFilesWalMarker const*, OperationOptions& options,
+                        bool& waitForSync);
 
  private:
   mutable arangodb::MMFilesDitches _ditches;

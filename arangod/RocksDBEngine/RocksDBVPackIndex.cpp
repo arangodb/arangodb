@@ -619,13 +619,14 @@ Result RocksDBVPackIndex::insertInternal(transaction::Methods* trx,
   if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
     LocalDocumentId rev(RocksDBValue::revisionId(existing));
     ManagedDocumentResult mmdr;
-    _collection->getPhysical()->readDocument(trx, rev, mmdr);
-    std::string existingId(
+    bool success = _collection->getPhysical()->readDocument(trx, rev, mmdr);
+    TRI_ASSERT(success);
+    std::string existingKey(
       VPackSlice(mmdr.vpack()).get(StaticStrings::KeyString).copyString());
     if (mode == OperationMode::internal) {
-      return IndexResult(res, existingId);
+      return IndexResult(res, existingKey);
     }
-    return IndexResult(res, this, existingId);
+    return IndexResult(res, this, existingKey);
   }
 
   return IndexResult(res, this);
