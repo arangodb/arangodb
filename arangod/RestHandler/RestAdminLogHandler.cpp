@@ -295,6 +295,7 @@ void RestAdminLogHandler::setLogLevel() {
     bool parseSuccess = true;
     std::shared_ptr<VPackBuilder> parsedBody = parseVelocyPackBody(parseSuccess);
     if (!parseSuccess) {
+      // error message generated in parseVelocyPackBody
       return;
     }
     

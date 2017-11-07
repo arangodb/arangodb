@@ -73,6 +73,14 @@ char const* arangodb::velocypack::valueTypeName(ValueType type) {
   return "unknown";
 }
 
+ValueType arangodb::velocypack::valueTypeGroup(ValueType type) {
+  // numbers are all the same, upcast them to double
+  if (type == ValueType::Double || type == ValueType::Int || type == ValueType::UInt || type == ValueType::SmallInt) {
+    return ValueType::Double; 
+  }
+  return type;
+} 
+
 std::ostream& operator<<(std::ostream& stream, ValueType type) {
   stream << valueTypeName(type);
   return stream;

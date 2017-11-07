@@ -172,7 +172,7 @@ class AgencyPrecondition {
  public:
   AgencyPrecondition();
   AgencyPrecondition(std::string const& key, Type, bool e);
-  AgencyPrecondition(std::string const& key, Type, VPackSlice const);
+  AgencyPrecondition(std::string const& key, Type, VPackSlice const&);
 
  public:
   void toVelocyPack(arangodb::velocypack::Builder& builder) const;

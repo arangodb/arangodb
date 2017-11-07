@@ -34,6 +34,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VPackStringBufferAdapter.h"
 #include "Basics/VelocyPackDumper.h"
+#include "Basics/VelocyPackHelper.h"
 #include "Basics/tri-strings.h"
 #include "Meta/conversion.h"
 #include "Rest/GeneralRequest.h"
@@ -44,17 +45,26 @@ using namespace arangodb::basics;
 bool HttpResponse::HIDE_PRODUCT_HEADER = false;
 
 HttpResponse::HttpResponse(ResponseCode code)
+  : HttpResponse(code, new StringBuffer(false)) {}
+
+HttpResponse::HttpResponse(ResponseCode code,
+                           basics::StringBuffer* buffer)
     : GeneralResponse(code),
       _isHeadResponse(false),
-      _body(false),
+      _body(buffer),
       _bodySize(0) {
+  TRI_ASSERT(buffer);
   _generateBody = false;
   _contentType = ContentType::TEXT;
   _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
-  if (_body.c_str() == nullptr) {
+  if (_body->c_str() == nullptr) {
     // no buffer could be reserved. out of memory!
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
+}
+
+HttpResponse::~HttpResponse() {
+  delete _body;
 }
 
 void HttpResponse::reset(ResponseCode code) {
@@ -63,7 +73,7 @@ void HttpResponse::reset(ResponseCode code) {
   _connectionType = rest::ConnectionType::C_KEEP_ALIVE;
   _contentType = ContentType::TEXT;
   _isHeadResponse = false;
-  _body.clear();
+  _body->clear();
   _bodySize = 0;
 }
 
@@ -124,7 +134,7 @@ void HttpResponse::setCookie(std::string const& name, std::string const& value,
 }
 
 void HttpResponse::headResponse(size_t size) {
-  _body.clear();
+  _body->clear();
   _isHeadResponse = true;
   _bodySize = size;
 }
@@ -133,7 +143,7 @@ size_t HttpResponse::bodySize() const {
   if (_isHeadResponse) {
     return _bodySize;
   }
-  return _body.length();
+  return _body->length();
 }
 
 void HttpResponse::writeHeader(StringBuffer* output) {
@@ -292,7 +302,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
       // been a GET.
       output->appendInteger(_bodySize);
     } else {
-      output->appendInteger(_body.length());
+      output->appendInteger(_body->length());
     }
 
     output->appendText("\r\n\r\n", 4);
@@ -300,20 +310,23 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   // end of header, body to follow
 }
 
-void HttpResponse::addPayloadPostHook(
-    VPackSlice const& slice,
-    VPackOptions const* options = &VPackOptions::Options::Defaults,
-    bool resolveExternals = true, bool bodySkipped = false) {
-  VPackSlice const* slicePtr;
-  VPackSlice tmpSlice;
-  if (!bodySkipped) {
-    // we have Probably resolved externals
-    TRI_ASSERT(!_vpackPayloads.empty());
-    tmpSlice = VPackSlice(_vpackPayloads.front().data());
-    slicePtr = &tmpSlice;
-  } else {
-    slicePtr = &slice;
+void HttpResponse::addPayload(VPackSlice const& slice,
+                              velocypack::Options const* options,
+                              bool resolveExternals) {
+  
+  if (_contentType == rest::ContentType::JSON &&
+      _contentTypeRequested == rest::ContentType::VPACK) {
+    // content type was set by a handler to Json but the client wants VPACK
+    // as we have a slice at had we are able to reply with VPACK
+    _contentType = rest::ContentType::VPACK;
   }
+  
+  addPayloadInternal(slice, slice.byteSize(), options, resolveExternals);
+}
+
+void HttpResponse::addPayload(VPackBuffer<uint8_t>&& buffer,
+                              velocypack::Options const* options,
+                              bool resolveExternals) {
 
   if (_contentType == rest::ContentType::JSON &&
       _contentTypeRequested == rest::ContentType::VPACK) {
@@ -322,11 +335,38 @@ void HttpResponse::addPayloadPostHook(
     _contentType = rest::ContentType::VPACK;
   }
 
+  if (buffer.size() > 0) {
+    addPayloadInternal(VPackSlice(buffer.data()), buffer.length(),
+                       options, resolveExternals);
+  }
+}
+
+void HttpResponse::addPayloadInternal(VPackSlice output, size_t inputLength,
+                                      VPackOptions const* options,
+                                      bool resolveExternals) {
+  if (!options) {
+    options = &velocypack::Options::Defaults;
+  }
+  
   switch (_contentType) {
     case rest::ContentType::VPACK: {
-      size_t length = static_cast<size_t>(slicePtr->byteSize());
+      
+      // will contain sanitized data
+      VPackBuffer<uint8_t> tmpBuffer;
+      if (resolveExternals) {
+        bool resolveExt = VelocyPackHelper::hasNonClientTypes(output, true, true);
+        if (resolveExt) {  // resolve
+          tmpBuffer.reserve(inputLength); // reserve space already
+          VPackBuilder builder(tmpBuffer, options);
+          VelocyPackHelper::sanitizeNonClientTypes(output, VPackSlice::noneSlice(),
+                                                   builder, options, true, true);
+          output = VPackSlice(tmpBuffer.data());
+        }
+      }
+      
+      VPackValueLength length = output.byteSize();
       if (_generateBody) {
-        _body.appendText(slicePtr->startAs<const char>(), length);
+        _body->appendText(output.startAs<const char>(), length);
       } else {
         headResponse(length);
       }
@@ -335,22 +375,23 @@ void HttpResponse::addPayloadPostHook(
     default: {
       setContentType(rest::ContentType::JSON);
       if (_generateBody) {
-        arangodb::basics::VelocyPackDumper dumper(&_body, options);
-        dumper.dumpValue(*slicePtr);
+        arangodb::basics::VelocyPackDumper dumper(_body, options);
+        dumper.dumpValue(output);
       } else {
         // TODO can we optimize this?
         // Just dump some where else to find real length
         StringBuffer tmp(false);
-
+        
         // convert object to string
         VPackStringBufferAdapter buffer(tmp.stringBuffer());
-
+        
         // usual dumping -  but not to the response body
         VPackDumper dumper(&buffer, options);
-        dumper.dump(*slicePtr);
-
+        dumper.dump(output);
+        
         headResponse(tmp.length());
       }
     }
   }
 }
+

@@ -68,7 +68,6 @@ class JobQueueThread final
         LOG_TOPIC(TRACE, Logger::THREADS) << "starting next queued job";
 
         idleTries = 0;
-
         std::shared_ptr<Job> job(jobPtr);
 
         _scheduler->post([this, self, job]() {
@@ -137,3 +136,4 @@ void JobQueue::waitForWork() {
   CONDITION_LOCKER(guard, _queueCondition);
   guard.wait(WAIT_TIME);
 }
+

@@ -1809,18 +1809,6 @@ var status = function () {
 };
 
 // /////////////////////////////////////////////////////////////////////////////
-// / @brief isCoordinatorRequest
-// /////////////////////////////////////////////////////////////////////////////
-
-var isCoordinatorRequest = function (req) {
-  if (!req || !req.hasOwnProperty('headers')) {
-    return false;
-  }
-
-  return req.headers.hasOwnProperty('x-arango-coordinator');
-};
-
-// /////////////////////////////////////////////////////////////////////////////
 // / @brief handlePlanChange
 // /////////////////////////////////////////////////////////////////////////////
 
@@ -2178,7 +2166,6 @@ exports.coordinatorId = coordinatorId;
 exports.handlePlanChange = handlePlanChange;
 exports.isCluster = isCluster;
 exports.isCoordinator = isCoordinator;
-exports.isCoordinatorRequest = isCoordinatorRequest;
 exports.role = role;
 exports.shardList = shardList;
 exports.status = status;

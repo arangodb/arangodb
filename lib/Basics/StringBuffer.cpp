@@ -132,7 +132,9 @@ void TRI_InitSizedStringBuffer(TRI_string_buffer_t* self,
   self->_len = 0;
   self->_initializeMemory = initializeMemory;
 
-  if (length > 0) { 
+  if (length == 0) { // 0 does not work as allocation size
+    Reserve(self, 4);
+  } else {
     Reserve(self, length);
   }
 }

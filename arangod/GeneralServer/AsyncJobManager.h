@@ -32,8 +32,6 @@ namespace arangodb {
 class GeneralResponse;
 
 namespace rest {
-class AsyncCallbackContext;
-class GeneralServerJob;
 class RestHandler;
 
 // -----------------------------------------------------------------------------
@@ -48,8 +46,7 @@ struct AsyncJobResult {
  public:
   AsyncJobResult();
 
-  AsyncJobResult(IdType jobId, Status status, AsyncCallbackContext* ctx,
-                 RestHandler* handler);
+  AsyncJobResult(IdType jobId, Status status, RestHandler* handler);
 
   ~AsyncJobResult();
 
@@ -58,7 +55,6 @@ struct AsyncJobResult {
   GeneralResponse* _response;
   double _stamp;
   Status _status;
-  AsyncCallbackContext* _ctx;
   RestHandler* _handler;
 };
 
@@ -66,6 +62,7 @@ struct AsyncJobResult {
 // --SECTION--                                                   AsyncJobManager
 // -----------------------------------------------------------------------------
 
+/// @brief Manages responses which will be fetched later by clients.
 class AsyncJobManager {
   AsyncJobManager(AsyncJobManager const&) = delete;
   AsyncJobManager& operator=(AsyncJobManager const&) = delete;
@@ -81,15 +78,20 @@ class AsyncJobManager {
   GeneralResponse* getJobResult(AsyncJobResult::IdType, AsyncJobResult::Status&,
                                 bool removeFromList);
   bool deleteJobResult(AsyncJobResult::IdType);
-  void deleteJobResults();
+  void deleteJobs();
   void deleteExpiredJobResults(double stamp);
+  
+  /// @brief cancel and delete a specific job
   Result cancelJob(AsyncJobResult::IdType);
+  
+  /// @brief cancel and delete all pending / done jobs
+  Result clearAllJobs();
 
   std::vector<AsyncJobResult::IdType> pending(size_t maxCount);
   std::vector<AsyncJobResult::IdType> done(size_t maxCount);
   std::vector<AsyncJobResult::IdType> byStatus(AsyncJobResult::Status,
                                                size_t maxCount);
-  void initAsyncJob(RestHandler*, char const*);
+  void initAsyncJob(RestHandler*);
   void finishAsyncJob(RestHandler*);
 
  private:

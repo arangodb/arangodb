@@ -160,6 +160,8 @@ class RocksDBEngine final : public StorageEngine {
   // intentionally empty, not useful for this type of engine
   void waitForSyncTick(TRI_voc_tick_t) override {}
   void waitForSyncTimeout(double) override {}
+  Result flushWal(bool waitForSync, bool waitForCollector,
+                  bool writeShutdownFile) override;
 
   virtual TRI_vocbase_t* openDatabase(velocypack::Slice const& parameters,
                                       bool isUpgrade, int&) override;
@@ -286,10 +288,6 @@ class RocksDBEngine final : public StorageEngine {
     TRI_ASSERT(_replicationManager);
     return _replicationManager.get();
   }
-  
-  arangodb::Result syncWal(bool waitForSync = false,
-                           bool waitForCollector = false,
-                           bool writeShutdownFile = false);
 
  private:
   /// single rocksdb database used in this storage engine
