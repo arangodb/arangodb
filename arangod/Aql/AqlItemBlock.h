@@ -178,6 +178,7 @@ class AqlItemBlock {
   void copyColValuesFromFirstRow(size_t currentRow, RegisterId col) {
     TRI_ASSERT(currentRow > 0);
 
+    TRI_ASSERT(_data.size() > currentRow * _nrRegs + col);
     if (_data[currentRow * _nrRegs + col].isEmpty()) {
       // First update the reference count, if this fails, the value is empty
       if (_data[col].requiresDestruction()) {
@@ -190,6 +191,10 @@ class AqlItemBlock {
   void copyValuesFromFirstRow(size_t currentRow, RegisterId curRegs) {
     TRI_ASSERT(currentRow > 0);
 
+    if (curRegs == 0) {
+      return;
+    }
+    TRI_ASSERT(_data.size() > currentRow * _nrRegs + curRegs);
     for (RegisterId i = 0; i < curRegs; i++) {
       if (_data[currentRow * _nrRegs + i].isEmpty()) {
         // First update the reference count, if this fails, the value is empty

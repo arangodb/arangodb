@@ -257,6 +257,7 @@ int SortedCollectBlock::initialize() {
 
   // reserve space for the current row
   _currentGroup.initialize(_groupRegisters.size());
+  _pos = 0;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -326,10 +327,10 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
         // we already had a group, check if the group has changed
         size_t i = 0;
         
-        if (_pos > 0 && !skipping) {
+        if (skipped > 0 && !skipping) {
           // re-use already copied AQLValues
           for (auto& it : _groupRegisters) {
-            res->copyColValuesFromFirstRow(_pos, it.second);
+            res->copyColValuesFromFirstRow(skipped, it.second);
           }
         }
     
