@@ -29,6 +29,7 @@ const internal = require('internal');
 const download = require('internal').download;
 const colName = "UnitTestDistributionTest";
 const _ = require("lodash");
+const request = require('@arangodb/request');
 
 let coordinator = instanceInfo.arangods.filter(arangod => {
   return arangod.role === 'coordinator';
@@ -50,7 +51,7 @@ describe('Shard distribution', function () {
 
   it('should properly distribute a collection', function() {
     internal.db._create(colName, {replicationFactor: 2, numberOfShards: 16});
-    var d = download(coordinator.url + '/_admin/cluster/shardDistribution');
+    var d = request.get(coordinator.url + '/_admin/cluster/shardDistribution');
     let distribution = JSON.parse(d.body).results;
     
     let leaders = Object.keys(distribution[colName].Current).reduce((current, shardKey) => {
@@ -70,7 +71,7 @@ describe('Shard distribution', function () {
 
     before(function () {
       internal.db._create(colName, {replicationFactor: dbServerCount, numberOfShards: nrShards});
-      var d = download(coordinator.url + '/_admin/cluster/shardDistribution');
+      var d = request.get(coordinator.url + '/_admin/cluster/shardDistribution');
       distribution = JSON.parse(d.body).results[colName];
       assert.isObject(distribution, 'The distribution for each collection has to be an object');
     });
