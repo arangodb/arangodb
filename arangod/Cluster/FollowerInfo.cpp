@@ -147,12 +147,18 @@ void FollowerInfo::add(ServerID const& sid) {
         auto newValue = newShardEntry(currentEntry, sid, true);
         std::string key = "Current/Collections/" + _docColl->vocbase()->name() +
                           "/" + std::to_string(_docColl->planId()) + "/" +
-                          _docColl->name();
+                          _docColl->name() + "/servers";
         AgencyWriteTransaction trx;
-        trx.preconditions.push_back(AgencyPrecondition(
-            key, AgencyPrecondition::Type::VALUE, currentEntry));
+        VPackSlice oldServers = currentEntry.get("servers");
+        if (oldServers.isNone()) {
+          trx.preconditions.push_back(AgencyPrecondition(
+              key, AgencyPrecondition::Type::EMPTY, true));
+        } else {
+          trx.preconditions.push_back(AgencyPrecondition(
+              key, AgencyPrecondition::Type::VALUE, oldServers));
+        }
         trx.operations.push_back(AgencyOperation(
-            key, AgencyValueOperationType::SET, newValue.slice()));
+            key, AgencyValueOperationType::SET, newValue.slice().get("servers")));
         trx.operations.push_back(AgencyOperation(
             "Current/Version", AgencySimpleOperationType::INCREMENT_OP));
         AgencyCommResult res2 = ac.sendTransactionWithFailover(trx);
