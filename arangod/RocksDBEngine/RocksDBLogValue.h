@@ -72,8 +72,7 @@ class RocksDBLogValue {
 
   static RocksDBLogValue SinglePut(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid);
   static RocksDBLogValue SingleRemove(TRI_voc_tick_t vocbaseId,
-                                      TRI_voc_cid_t cid,
-                                      arangodb::StringRef const&);
+                                      TRI_voc_cid_t cid, StringRef const&);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
