@@ -385,7 +385,7 @@ static int DumpCollection(MMFilesReplicationDumpContext* dump,
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    // TODO if vstcase find out slice lenght of _slices.back()
+    // TODO if vstcase find out slice length of _slices.back()
     if (static_cast<uint64_t>(TRI_LengthStringBuffer(dump->_buffer)) >
         dump->_chunkSize) {
       // abort the iteration
