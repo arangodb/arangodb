@@ -4,6 +4,11 @@ devel
 * fixed issue #3447: ArangoError 1202: AQL: NotFound: (while executing) when 
   updating collection
 
+* potential fix for issue #3581: Unexpected "rocksdb unique constraint 
+  violated" with unique hash index
+
+* fix agency precondition check for complex objects
+
 * introduce `enforceReplicationFactor`: An optional parameter controlling
   if the server should bail out during collection creation if there are not
   enough DBServers available for the desired `replicationFactor`.
@@ -104,6 +109,13 @@ devel
 
 v3.2.7 (XXXX-XX-XX)
 -------------------
+
+* enable JEMalloc background thread for purging and returning unused memory
+  back to the operating system (Linux only)
+
+* fix agency precondition check for complex objects
+
+  this fixes issues with several CAS operations in the agency
 
 * fixed issue #3403: How to kill long running AQL queries with the browser console's
   AQL (display issue)

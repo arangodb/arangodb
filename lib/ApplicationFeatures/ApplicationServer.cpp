@@ -707,8 +707,7 @@ void ApplicationServer::raisePrivilegesTemporarily() {
   }
 
   LOG_TOPIC(TRACE, Logger::STARTUP) << "raising privileges";
-
-  // TODO
+  // TODO: raising privileges not implemented
 }
 
 // temporarily drop privileges
@@ -720,8 +719,7 @@ void ApplicationServer::dropPrivilegesTemporarily() {
   }
 
   LOG_TOPIC(TRACE, Logger::STARTUP) << "dropping privileges";
-
-  // TODO
+  // TODO: dropping privileges not implemented
 }
 
 // permanently dropped privileges
