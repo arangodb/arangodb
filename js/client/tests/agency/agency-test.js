@@ -360,8 +360,8 @@ function agencyTestSuite () {
       for (var j in localKeys) {
         permuted = {};      
         shuffle(localKeys);
-        for (var i in localKeys) {
-          permuted[localKeys[i]] = localObj.baz[localKeys[i]];
+        for (var k in localKeys) {
+          permuted[localKeys[k]] = localObj.baz[localKeys[k]];
         }
         res = writeAndCheck(
           [[localObj, {"baz":permuted,"foo":localObj.foo,"qux":localObj.qux}]]);
@@ -375,6 +375,7 @@ function agencyTestSuite () {
       writeAndCheck([[{"a":[{"b":12,"c":13}]}]]);
       writeAndCheck([[{"a":[{"b":12,"c":13}]},{"a":[{"b":12,"c":13}]}]]);
       writeAndCheck([[{"a":[{"b":12,"c":13}]},{"a":[{"c":13,"b":12}]}]]);
+
       
     },
 
