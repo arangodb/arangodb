@@ -47,7 +47,7 @@ private:  // variables
     hrcStrVec _timePoints;
     std::function<void(intStrVec)> _callback;
     bool _enabled;
-    bool _add_dtor_entry;
+    bool _addDtorEntry;
 
 public:  // functions
     ScopedTimer(ScopedTimer const&) = delete;
@@ -56,7 +56,7 @@ public:  // functions
     ScopedTimer( std::function<void(intStrVec)> callback = &ScopedTimer::print)
         : _callback(callback)
         , _enabled(true)
-        , _add_dtor_entry(true) {
+        , _addDtorEntry(true) {
         _timePoints.reserve(10);  //if you want time more than 10 - add template param?
         _timePoints.emplace_back(hclock::time_point(),"");
         _timePoints.back().first=hclock::now(); //defeats the purpose of emplace a bit :/
@@ -66,7 +66,7 @@ public:  // functions
         , std::function<void(intStrVec)> callback = &ScopedTimer::print)
         : _callback(callback)
         , _enabled(true)
-        , _add_dtor_entry(true) {
+        , _addDtorEntry(true) {
         _timePoints.reserve(10);
         _timePoints.emplace_back(hclock::time_point(), description);
         _timePoints.back().first=hclock::now();
@@ -76,14 +76,14 @@ public:  // functions
         , std::function<void(intStrVec)> callback = &ScopedTimer::print)
         : _callback(callback)
         , _enabled(true)
-        , _add_dtor_entry(true) {
+        , _addDtorEntry(true) {
         _timePoints.reserve(10);
         _timePoints.emplace_back(hclock::time_point(), std::move(description));
         _timePoints.back().first=hclock::now();
     }
 
     ~ScopedTimer(void) {
-        if(_add_dtor_entry) {
+        if(_addDtorEntry) {
             _timePoints.emplace_back(hclock::now(),"dtor");
         }
         if(_enabled) {
@@ -99,7 +99,7 @@ public:  // functions
     }
 
     void disableDtorEntry() {
-        _add_dtor_entry = false;
+        _addDtorEntry = false;
     }
 
     void runCallback(bool disable = true) {

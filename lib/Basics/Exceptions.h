@@ -66,7 +66,7 @@
     } \
   } while(0);
 
-#define CATCH_TO_RESULT_WITH_CODE(result, errorCode) \
+#define CATCH_TO_RESULT(result, errorCode) \
   catch (arangodb::basics::Exception const& e) { \
     (result).reset(e.code(),e.message()); \
   } catch (std::exception const& e) { \
@@ -74,8 +74,6 @@
   } catch (...) { \
     (result).reset((errorCode)); \
   }
-
-#define CATCH_TO_RESULT(result) CATCH_TO_RESULT_WITH_CODE((result),TRI_ERROR_INTERNAL)
 
 namespace arangodb {
 namespace basics {
