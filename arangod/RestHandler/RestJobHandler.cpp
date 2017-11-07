@@ -211,7 +211,7 @@ void RestJobHandler::deleteJob() {
   std::string const& value = suffixes[0];
 
   if (value == "all") {
-    _jobManager->deleteJobResults();
+    _jobManager->deleteJobs();
   } else if (value == "expired") {
     bool found;
     std::string const& value = _request->value("stamp", found);
