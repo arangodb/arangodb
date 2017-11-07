@@ -259,7 +259,8 @@ int rotateActiveJournalOnAllDBServers(std::string const& dbname,
 std::unordered_map<std::string, std::vector<std::string>> distributeShards(
     uint64_t numberOfShards,
     uint64_t replicationFactor,
-    std::vector<std::string>& dbServers);
+    std::vector<std::string>& dbServers,
+    bool warnAboutReplicationFactor);
 
 class ClusterMethods {
  public:

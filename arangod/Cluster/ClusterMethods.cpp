@@ -2443,7 +2443,8 @@ int flushWalOnAllDBServers(bool waitForSync, bool waitForCollector) {
 std::unordered_map<std::string, std::vector<std::string>> distributeShards(
     uint64_t numberOfShards,
     uint64_t replicationFactor,
-    std::vector<std::string>& dbServers) {
+    std::vector<std::string>& dbServers,
+    bool warnAboutReplicationFactor) {
 
   std::unordered_map<std::string, std::vector<std::string>> shards;
 
@@ -2472,9 +2473,11 @@ std::unordered_map<std::string, std::vector<std::string>> distributeShards(
     std::vector<std::string> serverIds;
     for (uint64_t j = 0; j < replicationFactor; ++j) {
       if (j >= dbServers.size()) {
-        LOG_TOPIC(WARN, Logger::CLUSTER)
-          << "createCollectionCoordinator: replicationFactor is "
-          << "too large for the number of DBservers";
+        if (warnAboutReplicationFactor) {
+          LOG_TOPIC(WARN, Logger::CLUSTER)
+            << "createCollectionCoordinator: replicationFactor is "
+            << "too large for the number of DBservers";
+        }
         break;
       }
       std::string candidate;
@@ -2663,9 +2666,10 @@ std::unique_ptr<LogicalCollection> ClusterMethods::persistCollectionInAgency(
   // distributeShards below.
 
   // Now create the shards:
+  bool warnAboutReplicationFactor = (!col->isSystem()); 
   auto shards = std::make_shared<
       std::unordered_map<std::string, std::vector<std::string>>>(
-      arangodb::distributeShards(numberOfShards, replicationFactor, dbServers));
+      arangodb::distributeShards(numberOfShards, replicationFactor, dbServers, warnAboutReplicationFactor));
   if (shards->empty() && !col->isSmart()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "no database servers found in cluster");
