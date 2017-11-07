@@ -74,7 +74,7 @@ RestStatus RestCursorHandler::execute() {
 }
 
 bool RestCursorHandler::cancel() {
-  RestHandler::cancel();
+  RestVocbaseBaseHandler::cancel();
   return cancelQuery();
 }
 
@@ -416,6 +416,7 @@ void RestCursorHandler::createCursor() {
         parseVelocyPackBody(parseSuccess);
 
     if (!parseSuccess) {
+      // error message generated in parseVelocyPackBody
       return;
     }
     VPackSlice body = parsedBody.get()->slice();

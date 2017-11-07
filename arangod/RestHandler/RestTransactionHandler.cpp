@@ -87,9 +87,9 @@ RestStatus RestTransactionHandler::execute() {
     if (res.ok()){
       VPackSlice slice = result.slice();
       if (slice.isNone()) {
-        generateSuccess(rest::ResponseCode::OK, VPackSlice::nullSlice());
+        generateOk(rest::ResponseCode::OK, VPackSlice::nullSlice());
       } else {
-        generateSuccess(rest::ResponseCode::OK, slice);
+        generateOk(rest::ResponseCode::OK, slice);
       }
     } else {
       generateError(res);

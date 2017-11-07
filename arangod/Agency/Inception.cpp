@@ -27,10 +27,10 @@
 #include "Agency/GossipCallback.h"
 #include "Basics/ConditionLocker.h"
 #include "Cluster/ClusterComm.h"
+#include "Cluster/ServerState.h"
 #include "GeneralServer/RestHandlerFactory.h"
 
 #include <chrono>
-#include <iomanip>
 #include <numeric>
 #include <thread>
 
@@ -400,7 +400,7 @@ void Inception::reportVersionForEp(std::string const& endpoint, size_t version) 
 
 // @brief Thread main
 void Inception::run() {
-  while (arangodb::rest::RestHandlerFactory::isMaintenance() &&
+  while (ServerState::isMaintenance() &&
          !this->isStopping() && !_agent->isStopping()) {
     usleep(1000000);
     LOG_TOPIC(DEBUG, Logger::AGENCY)
