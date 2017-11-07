@@ -357,6 +357,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
 
       TRI_vocbase_t* vocbase = loadVocbase(_currentDbId);
       LogicalCollection* col = loadCollection(_currentDbId, _currentCid);
+      // db or collection may be deleted already
       if (vocbase != nullptr && col != nullptr) {
         {
           VPackObjectBuilder marker(&_builder, true);
@@ -369,9 +370,10 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
         }
         _callback(loadVocbase(_currentDbId), _builder.slice());
         _builder.clear();
-        if (_singleOp) { // reset state immediately
-          resetTransientState();
-        }
+      }
+      // reset whether or not marker was printed
+      if (_singleOp) {
+        resetTransientState();
       }
     }
     return rocksdb::Status();
@@ -429,9 +431,10 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
 
       TRI_vocbase_t* vocbase = loadVocbase(_currentDbId);
       LogicalCollection* col = loadCollection(_currentDbId, _currentCid);
+      // db or collection may be deleted already
       if (vocbase != nullptr && col != nullptr) {
-        uint64_t revId = // FIXME: this revision is entirely meaningless
-            RocksDBKey::revisionId(RocksDBEntryType::Document, key);
+        // FIXME: this revision is entirely meaningless
+        uint64_t rid = RocksDBKey::revisionId(RocksDBEntryType::Document, key);
         {
           VPackObjectBuilder marker(&_builder, true);
           marker->add("tick", VPackValue(std::to_string(_currentSequence)));
@@ -441,15 +444,15 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
           marker->add("tid", VPackValue(std::to_string(_currentTrxId)));
           VPackObjectBuilder data(&_builder, "data", true);
           data->add(StaticStrings::KeyString, VPackValue(_removeDocumentKey));
-          data->add(StaticStrings::RevString,
-                    VPackValue(std::to_string(revId)));
+          data->add(StaticStrings::RevString, VPackValue(std::to_string(rid)));
         }
         _callback(loadVocbase(_currentDbId), _builder.slice());
         _builder.clear();
-        _removeDocumentKey.clear();
-        if (_singleOp) { // reset state immediately
-          resetTransientState();
-        }
+      }
+      // reset whether or not marker was printed
+      _removeDocumentKey.clear();
+      if (_singleOp) {
+        resetTransientState();
       }
     }
     return rocksdb::Status();
