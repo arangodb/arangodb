@@ -780,10 +780,7 @@ void Node::toBuilder(Builder& builder, bool showHidden) const {
 // Print internals to ostream
 std::ostream& Node::print(std::ostream& o) const {
   Builder builder;
-  {
-    VPackArrayBuilder b(&builder);
-    toBuilder(builder);
-  }
+  toBuilder(builder);
   o << builder.toJson();
   return o;
 }
@@ -799,12 +796,7 @@ Builder Node::toBuilder() const {
 }
 
 std::string Node::toJson() const {
-  Builder builder;
-  { VPackArrayBuilder b(&builder);
-    toBuilder(builder); }
-  std::string strval = builder.slice()[0].isString() ?
-    builder.slice()[0].copyString() : builder.slice()[0].toJson();
-  return strval;
+  return toBuilder().toJson();
 }
 
 Node const* Node::parent() const { return _parent; }
