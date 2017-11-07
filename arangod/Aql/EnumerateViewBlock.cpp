@@ -107,11 +107,58 @@ EnumerateViewBlock::EnumerateViewBlock(
     EnumerateViewNode const* en)
   : ExecutionBlock(engine, en),
     _iter(nullptr),
-    _mmdr(new ManagedDocumentResult), // TODO
-    _hasMore(true) { // has more data initially
-}
+    _hasMore(true), // has more data initially
+    _volatileState(false) {
+  // FIXME move the following evaluation to optimizer rule
 
-EnumerateViewBlock::~EnumerateViewBlock() {}
+  auto const* condition = en->condition();
+
+  if (condition && en->isInInnerLoop()) {
+    auto const* conditionRoot = condition->root();
+
+    if (!conditionRoot->isDeterministic()) {
+      _volatileState = true;
+      return;
+    }
+
+    std::unordered_set<arangodb::aql::Variable const*> vars;
+    Ast::getReferencedVariables(conditionRoot, vars);
+    vars.erase(en->outVariable()); // remove "our" variable
+
+    auto const* plan = en->plan();
+
+    for (auto const* var : vars) {
+      auto* setter = plan->getVarSetBy(var->id);
+
+      if (!setter) {
+        // unable to find setter
+        continue;
+      }
+
+      if (!setter->isDeterministic()) {
+        // found nondeterministic setter
+        _volatileState = true;
+        return;
+      }
+
+      switch (setter->getType()) {
+        case arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION:
+        case arangodb::aql::ExecutionNode::ENUMERATE_LIST:
+        case arangodb::aql::ExecutionNode::SUBQUERY:
+        case arangodb::aql::ExecutionNode::COLLECT:
+        case arangodb::aql::ExecutionNode::TRAVERSAL:
+        case arangodb::aql::ExecutionNode::INDEX:
+        case arangodb::aql::ExecutionNode::SHORTEST_PATH:
+        case arangodb::aql::ExecutionNode::ENUMERATE_VIEW:
+          // we're in the loop with dependent context
+          _volatileState = true;
+          return;
+        default:
+          break;
+      }
+    }
+  }
+}
 
 int EnumerateViewBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
   DEBUG_BEGIN_BLOCK();
@@ -130,12 +177,18 @@ int EnumerateViewBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 void EnumerateViewBlock::refreshIterator() {
   TRI_ASSERT(!_buffer.empty());
 
-  ViewExpressionContext ctx(this, _buffer.front(), _pos);
-  _iter = ::getPlanNode<EnumerateViewNode>(*this).iterator(*_trx, ctx);
+  auto& node = ::getPlanNode<EnumerateViewNode>(*this);
+
+  if (!_iter || _volatileState) {
+    ViewExpressionContext ctx(this, _buffer.front(), _pos);
+    _iter = node.iterator(*_trx, ctx);
+  }
 
   if (!_iter) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL); // FIXME runtime error
   }
+
+  _iter->reset();
 }
 
 AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
@@ -151,7 +204,6 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
   AqlItemBlock* cur = nullptr;
   size_t send = 0;
   std::unique_ptr<AqlItemBlock> res;
-  auto& planNode = ::getPlanNode<EnumerateViewNode>(*this);
 
   do {
     do {
@@ -186,9 +238,11 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
       }
     } while (needMore);
 
-    TRI_ASSERT(cur != nullptr);
+    TRI_ASSERT(_iter);
+    TRI_ASSERT(cur);
 
     size_t const curRegs = cur->getNrRegs();
+    auto const& planNode = ::getPlanNode<EnumerateViewNode>(*this);
     RegisterId const nrRegs = planNode.getRegisterPlan()->nrRegs[planNode.getDepth()];
 
     res.reset(requestBlock(atMost, nrRegs));
@@ -198,15 +252,15 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
     // only copy 1st row of registers inherited from previous frame(s)
     inheritRegisters(cur, res.get(), _pos);
 
-    auto cb = [&](LocalDocumentId const& tkn) {
-      if (_iter->readDocument(tkn, *_mmdr)) {
+    auto cb = [this, &res, &send, curRegs](LocalDocumentId const& tkn) {
+      if (_iter->readDocument(tkn, _mmdr)) {
         // The result is in the first variable of this depth,
         // we do not need to do a lookup in
         // getPlanNode()->_registerPlan->varInfo,
         // but can just take cur->getNrRegs() as registerId:
-        uint8_t const* vpack = _mmdr->vpack();
+        uint8_t const* vpack = _mmdr.vpack();
 
-        if (_mmdr->canUseInExternal()) {
+        if (_mmdr.canUseInExternal()) {
           res->setValue(send, static_cast<arangodb::aql::RegisterId>(curRegs),
                         AqlValue(AqlValueHintDocumentNoCopy(vpack)));
         } else {
@@ -233,9 +287,10 @@ AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {
     // If the collection is actually empty we cannot forward an empty block
   } while (send == 0);
 
-  // TODO stats?
-  // _engine->_stats.scannedFull += static_cast<int64_t>(send);
   TRI_ASSERT(res != nullptr);
+
+  // aggregate stats
+   _engine->_stats.scannedIndex += static_cast<int64_t>(send);
 
   if (send < atMost) {
     // The collection did not have enough results
@@ -269,7 +324,7 @@ size_t EnumerateViewBlock::skipSome(size_t atLeast, size_t atMost) {
         return skipped;
       }
       _pos = 0;  // this is in the first block
-      _iter->reset();
+      refreshIterator();
     }
 
     // if we get here, then _buffer.front() exists
@@ -282,17 +337,21 @@ size_t EnumerateViewBlock::skipSome(size_t atLeast, size_t atMost) {
 
     if (skipped < atLeast) {
       // not skipped enough re-initialize fetching of documents
-      _iter->reset();
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
         returnBlock(cur);
         _pos = 0;
+      } else {
+        // we have exhausted this cursor
+        // re-initialize fetching of documents
+        refreshIterator();
       }
     }
   }
 
-  // _engine->_stats.scannedFull += static_cast<int64_t>(skipped);
-  // TODO stats?
+  // aggregate stats
+  _engine->_stats.scannedIndex += static_cast<int64_t>(skipped);
+
   // We skipped atLeast documents
   return skipped;
 

@@ -39,7 +39,6 @@ class ExecutionEngine;
 class EnumerateViewBlock : public ExecutionBlock {
  public:
   EnumerateViewBlock(ExecutionEngine*, EnumerateViewNode const*);
-  ~EnumerateViewBlock();
 
   // here we release our docs from this collection
   int initializeCursor(AqlItemBlock* items, size_t pos) override;
@@ -55,8 +54,9 @@ class EnumerateViewBlock : public ExecutionBlock {
   void refreshIterator();
 
   std::unique_ptr<ViewIterator> _iter;
-  std::unique_ptr<ManagedDocumentResult> _mmdr;
+  ManagedDocumentResult _mmdr;
   bool _hasMore;
+  bool _volatileState; // we have to recreate cached iterator when `reset` requested
 };
 
 }

@@ -1412,9 +1412,7 @@ std::unique_ptr<arangodb::ViewIterator> EnumerateViewNode::iterator(
 
 std::vector<Variable const*> EnumerateViewNode::getVariablesUsedHere() const {
   std::unordered_set<Variable const*> vars;
-  if (_condition) {
-    Ast::getReferencedVariables(_condition->root(), vars);
-  }
+  getVariablesUsedHere(vars);
   return { vars.begin(), vars.end() };
 }
 

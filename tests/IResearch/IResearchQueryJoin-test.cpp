@@ -150,6 +150,7 @@ struct IResearchQuerySetup {
 
   IResearchQuerySetup(): server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
+    arangodb::aql::AqlFunctionFeature* functions = nullptr;
 
     arangodb::tests::init();
     IcuInitializer::setup(ARGV0); // initialize ICU, required for Utf8Helper which is using by optimizer
@@ -167,7 +168,7 @@ struct IResearchQuerySetup {
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
     features.emplace_back(new arangodb::AqlFeature(&server), true);
     features.emplace_back(new arangodb::aql::OptimizerRulesFeature(&server), true);
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
@@ -185,6 +186,19 @@ struct IResearchQuerySetup {
         f.first->start();
       }
     }
+
+    // register fake non-deterministic function in order to suppress optimizations
+    functions->add(arangodb::aql::Function{
+      "_REFERENCE_",
+      ".",
+      false, // fake non-deterministic
+      false, // fake can throw
+      true,
+      false,
+      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
+        TRI_ASSERT(!params.empty());
+        return params[0];
+    }});
 
     auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
@@ -229,6 +243,20 @@ NS_END
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setup
 ////////////////////////////////////////////////////////////////////////////////
+
+TEST_CASE("IResearchQueryTestJoinVolatileBlock", "[iresearch][iresearch-query]") {
+  // should not recreate iterator each loop iteration in case of deterministic/independent inner loop scope
+}
+
+TEST_CASE("IResearchQueryTestJoinIsolation", "[iresearch][iresearch-query]") {
+  // populate view
+  // start query
+  // get EnumerateViewBlock
+  // EnumerateViewBlock::getSome
+  // add data to a view
+  // EnumerateViewBlock::getSome
+  // block should not return data added after query has started
+}
 
 TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   IResearchQuerySetup s;
@@ -353,6 +381,202 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
 
     CHECK((trx.commit().ok()));
     view->sync();
+  }
+
+  // deterministic filter condition in a loop
+  // (should not recreate view iterator each loop iteration, `reset` instead)
+  //
+  // LET c=5
+  // FOR x IN 1..7
+  //   FOR d IN VIEW testView
+  //   FILTER c == x.seq
+  // RETURN d;
+  {
+    std::string const query = "LET c=5 FOR x IN 1..7 FOR d IN VIEW testView FILTER c == d.seq RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query,
+      {
+        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::removeFiltersAndSortsCoveredByViewRule_pass6
+      }
+    ));
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // non deterministic filter condition in a loop
+  // (must recreate view iterator each loop iteration)
+  //
+  // FOR x IN 1..7
+  //   FOR d IN VIEW testView
+  //   FILTER _REFERENCE_(5) == x.seq
+  // RETURN d;
+  {
+    std::string const query = "FOR x IN 1..7 FOR d IN VIEW testView FILTER _REFERENCE_(5) == d.seq RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query,
+      {
+        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::removeFiltersAndSortsCoveredByViewRule_pass6
+      }
+    ));
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // nondeterministic filter condition in a loop
+  // (must recreate view iterator each loop iteration)
+  //
+  // LET c=_REFERENCE_(4)
+  // FOR x IN 1..7
+  //   FOR d IN VIEW testView
+  //   FILTER c == x.seq
+  // RETURN d;
+  {
+    std::string const query = "LET c=_REFERENCE_(4) FOR x IN 1..7 FOR d IN VIEW testView FILTER c == d.seq RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query,
+      {
+        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::removeFiltersAndSortsCoveredByViewRule_pass6
+      }
+    ));
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
+  // nondeterministic range
+  // (must recreate view iterator each loop iteration)
+  //
+  // LET range=_REFERENCE_(0).._REFERENCE_(7)
+  // FOR x IN range
+  //   FOR d IN VIEW testView
+  //   FILTER d.seq == x.seq
+  // RETURN d;
+  {
+    std::string const query = " FOR x IN _REFERENCE_(0).._REFERENCE_(7) FOR d IN VIEW testView FILTER x == d.seq RETURN d";
+
+    CHECK(arangodb::tests::assertRules(
+      vocbase, query,
+      {
+        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
+        arangodb::aql::OptimizerRule::removeFiltersAndSortsCoveredByViewRule_pass6
+      }
+    ));
+
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      arangodb::velocypack::Slice(insertedDocsView[0].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[1].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[2].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[3].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[4].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[5].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[6].vpack()),
+      arangodb::velocypack::Slice(insertedDocsView[7].vpack())
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(vocbase, query);
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    REQUIRE(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
   }
 
   // FIXME: add checks for proper execution plan!!!
