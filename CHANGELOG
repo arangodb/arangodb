@@ -1,6 +1,10 @@
 v3.2.7 (XXXX-XX-XX)
 -------------------
 
+* fix agency precondition check for complex objects
+
+  this fixes issues with several CAS operations in the agency
+
 * fixed issue #3403: How to kill long running AQL queries with the browser console's
   AQL (display issue)
 
