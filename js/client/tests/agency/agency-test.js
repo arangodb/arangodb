@@ -328,6 +328,8 @@ function agencyTestSuite () {
       res = accessAgency("write",[[{"/b":3},{"/a/b/c":{"in":3},"/a/e":{"in":2}}]]);
       assertEqual(res.statusCode, 200);
       assertEqual(readAndCheck([["/b"]]), [{b:3}]);
+
+      // Permute order of keys and objects within precondition
       var localObj =
           {"foo" : "bar",
            "baz" : {
@@ -371,11 +373,33 @@ function agencyTestSuite () {
           [[localObj, {"qux":localObj.qux,"baz":permuted,"foo":localObj.foo}]]);
       }
 
-      // Permute order of keys and objects within arrays
+      // Permute order of keys and objects within arrays in preconditions
       writeAndCheck([[{"a":[{"b":12,"c":13}]}]]);
       writeAndCheck([[{"a":[{"b":12,"c":13}]},{"a":[{"b":12,"c":13}]}]]);
       writeAndCheck([[{"a":[{"b":12,"c":13}]},{"a":[{"c":13,"b":12}]}]]);
 
+      localObj = {"b":"Hello world!", "c":3.14159265359, "d":314159265359, "e": -3};
+      var localObk = {"b":1, "c":1.0, "d": 100000000001, "e": -1};
+      localKeys  = [];
+      for (var l in localObj) {
+        localKeys.push(l);
+      }
+      permuted = {};
+      var per2 = {};
+      writeAndCheck([[ { "a" : [localObj,localObk] } ]]);
+      writeAndCheck([[ { "a" : [localObj,localObk] }, {"a" : [localObj,localObk] }]]);
+      for (var m = 0; m < 7; m++) {
+        permuted = {};
+        shuffle(localKeys);
+        for (k in localKeys) {
+          permuted[localKeys[k]] = localObj[localKeys[k]];
+          per2 [localKeys[k]] = localObk[localKeys[k]];
+        }
+        writeAndCheck([[ { "a" : [localObj,localObk] }, {"a" : [permuted,per2] }]]);
+        res = accessAgency("write",
+                           [[ { "a" : [localObj,localObk] }, {"a" : [per2,permuted] }]]);
+        assertEqual(res.statusCode, 412);        
+      }
       
     },
 
