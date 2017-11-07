@@ -411,6 +411,30 @@ TEST_CASE("IResearchQueryTestIn", "[iresearch][iresearch-query]") {
     CHECK((i == expected.size()));
   }
 
+  // test numeric, limit 2
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[8].slice(),
+      insertedDocs[11].slice(),
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.value IN [ 123, 1234 ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq LIMIT 2 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      CHECK((i < expected.size()));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
   // test numeric via []
   {
     std::vector<arangodb::velocypack::Slice> expected = {

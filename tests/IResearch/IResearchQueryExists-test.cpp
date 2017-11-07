@@ -980,6 +980,33 @@ TEST_CASE("IResearchQueryTestExists", "[iresearch][iresearch-query]") {
     CHECK((i == expected.size()));
   }
 
+  // test existent (numeric) via [], limit  5
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[3].slice(),
+      insertedDocs[6].slice(),
+      insertedDocs[7].slice(),
+      insertedDocs[8].slice(),
+      insertedDocs[9].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER EXISTS(d['value'], 'type', 'numeric') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq LIMIT 5 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      CHECK((i < expected.size()));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
   // test existent (null)
   {
     std::vector<arangodb::velocypack::Slice> expected = {

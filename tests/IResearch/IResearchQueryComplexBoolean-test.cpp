@@ -443,6 +443,34 @@ TEST_CASE("IResearchQueryTestComplexBoolean", "[iresearch][iresearch-query]") {
     CHECK((i == expected.size()));
   }
 
+  // (A && B) || (C && D)
+  // (field && prefix) || (phrase && exists)
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[7].slice(), // PHRASE matches
+      insertedDocs[8].slice(), // PHRASE matches
+      insertedDocs[13].slice(), // PHRASE matches
+      insertedDocs[19].slice(), // PHRASE matches
+      insertedDocs[22].slice(), // PHRASE matches
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER (d['same'] == 'xyz' && STARTS_WITH(d.prefix, 'abc')) || (PHRASE(d['duplicated'], 'z', 'test_analyzer') && EXISTS(d.value)) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq limit 5 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      CHECK((i < expected.size()));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
   // (A || B) && (C || D || E)
   // (field || exists) && (starts_with || phrase || range)
   {

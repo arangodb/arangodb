@@ -674,6 +674,30 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
     CHECK((i == expected.size()));
   }
 
+  // prefix and not exists and field with limit
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[37].slice(),
+      insertedDocs[9].slice()
+    };
+    auto result = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER STARTS_WITH(d['prefix'], 'abc') AND NOT EXISTS(d.duplicated) AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq LIMIT 2 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == result.code);
+    auto slice = result.result->slice();
+    CHECK(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      CHECK((i < expected.size()));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+    }
+
+    CHECK((i == expected.size()));
+  }
+
   // exists and not prefix and phrase and not field and range
   {
     std::vector<arangodb::velocypack::Slice> expected = {

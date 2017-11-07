@@ -608,6 +608,39 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
     CHECK(expectedDoc == expectedDocs.end());
   }
 
+  // d.name == 'D' OR STARTS_WITH(d.prefix, 'abc'), BM25(d) DESC, d.seq DESC, LIMIT 3
+  {
+    std::vector<arangodb::velocypack::Slice> expectedDocs {
+      // The most relevant document (satisfied both search conditions)
+      arangodb::velocypack::Slice(insertedDocs[3].vpack()),  // {"name":"D","seq":3,"same":"xyz", "value":12, "prefix":"abcde"}
+
+      // Less relevant documents (satisfied STARTS_WITH condition only, has unqiue term in 'prefix' field)
+      arangodb::velocypack::Slice(insertedDocs[25].vpack()), // {"name":"Z","seq":25,"same":"xyz", "prefix":"abcdrer" }
+      arangodb::velocypack::Slice(insertedDocs[20].vpack()), // {"name":"U","seq":20,"same":"xyz", "prefix":"abc", "duplicated":"abcd"}
+    };
+
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER d.name == 'D' OR STARTS_WITH(d.prefix, 'abc') SORT BM25(d) DESC, d.seq DESC LIMIT 3 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+
+    auto result = queryResult.result->slice();
+    CHECK(result.isArray());
+
+    arangodb::velocypack::ArrayIterator resultIt(result);
+    CHECK(expectedDocs.size() == resultIt.size());
+
+    // Check documents
+    auto expectedDoc = expectedDocs.begin();
+    for (;resultIt.valid(); resultIt.next(), ++expectedDoc) {
+      auto const actualDoc = resultIt.value();
+      auto const resolved = actualDoc.resolveExternals();
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(arangodb::velocypack::Slice(*expectedDoc), resolved, true)));
+    }
+    CHECK(expectedDoc == expectedDocs.end());
+  }
+
   // STARTS_WITH(d['prefix'], 'abc') OR EXISTS(d.duplicated) OR d.value < 100 OR d.name >= 'Z', BM25(d) DESC, TFIDF(d) DESC, d.seq DESC
   {
     std::vector<arangodb::velocypack::Slice> expected = {

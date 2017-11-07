@@ -889,6 +889,33 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
 
     CHECK((i == expected.size()));
   }
+
+  // test non-empty string (true), LIMIT 5
+  {
+    std::vector<arangodb::velocypack::Slice> expected = {
+      insertedDocs[0].slice(),
+      insertedDocs[1].slice(),
+      insertedDocs[2].slice(),
+      insertedDocs[3].slice(),
+      insertedDocs[4].slice(),
+    };
+    auto queryResult = arangodb::tests::executeQuery(
+      vocbase,
+      "FOR d IN VIEW testView FILTER 'abc' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq LIMIT 5 RETURN d"
+    );
+    REQUIRE(TRI_ERROR_NO_ERROR == queryResult.code);
+    auto slice = queryResult.result->slice();
+    CHECK(slice.isArray());
+    size_t i = 0;
+
+    for (arangodb::velocypack::ArrayIterator itr(slice); itr.valid(); ++itr) {
+      auto const resolved = itr.value().resolveExternals();
+      CHECK((i < expected.size()));
+      CHECK((0 == arangodb::basics::VelocyPackHelper::compare(expected[i++], resolved, true)));
+    }
+
+    CHECK((i == expected.size()));
+  }
 }
 
 // -----------------------------------------------------------------------------
