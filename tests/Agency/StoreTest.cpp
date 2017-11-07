@@ -69,9 +69,6 @@ TEST_CASE("Store", "[agency]") {
       other.add("baz",VPackValue(13));
     }
 
-    std::cout << node << std::endl;
-    std::cout << other.toJson() << std::endl;
-
     REQUIRE(node == other.slice());
 
   }
