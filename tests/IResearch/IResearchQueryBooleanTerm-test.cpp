@@ -136,22 +136,6 @@ class TestDelimAnalyzer: public irs::analysis::analyzer {
 DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
 REGISTER_ANALYZER(TestDelimAnalyzer);
 
-arangodb::aql::QueryResult executeQuery(
-    TRI_vocbase_t& vocbase,
-    const std::string& queryString
-) {
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-  auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-  arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString(queryString),
-    bindVars, options,
-    arangodb::aql::PART_MAIN
-  );
-
-  return query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -351,7 +335,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value == 'true' RETURN d"
     );
@@ -371,7 +355,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value == 'false' RETURN d"
     );
@@ -391,7 +375,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value == 0 RETURN d"
     );
@@ -411,7 +395,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value == 1 RETURN d"
     );
@@ -431,7 +415,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value == null RETURN d"
     );
@@ -464,7 +448,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value == true RETURN d"
     );
@@ -502,7 +486,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value == false RETURN d"
     );
@@ -540,7 +524,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value == false SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
@@ -581,7 +565,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value != 'true' RETURN d"
     );
@@ -622,7 +606,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value != 'false' RETURN d"
     );
@@ -663,7 +647,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value != 0 RETURN d"
     );
@@ -703,7 +687,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value != 1 RETURN d"
     );
@@ -743,7 +727,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value != null RETURN d"
     );
@@ -783,7 +767,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value != true RETURN d"
     );
@@ -823,7 +807,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value != false RETURN d"
     );
@@ -863,7 +847,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value != false SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
@@ -890,7 +874,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value < 'true' RETURN d"
     );
@@ -910,7 +894,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value < 'false' RETURN d"
     );
@@ -930,7 +914,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value < 0 RETURN d"
     );
@@ -950,7 +934,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value < 1 RETURN d"
     );
@@ -970,7 +954,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value < null RETURN d"
     );
@@ -1001,7 +985,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value < true RETURN d"
     );
@@ -1028,7 +1012,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // d.value < false, unordered
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value < false RETURN d"
     );
@@ -1059,7 +1043,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value < true SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
@@ -1086,7 +1070,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value <= 'true' RETURN d"
     );
@@ -1106,7 +1090,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value <= 'false' RETURN d"
     );
@@ -1126,7 +1110,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value <= 0 RETURN d"
     );
@@ -1146,7 +1130,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value <= 1 RETURN d"
     );
@@ -1166,7 +1150,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value <= null RETURN d"
     );
@@ -1197,7 +1181,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value <= true RETURN d"
     );
@@ -1235,7 +1219,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value <= false RETURN d"
     );
@@ -1273,7 +1257,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value <= true SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
@@ -1300,7 +1284,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > 'true' RETURN d"
     );
@@ -1320,7 +1304,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > 'false' RETURN d"
     );
@@ -1340,7 +1324,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > 0 RETURN d"
     );
@@ -1360,7 +1344,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > 1 RETURN d"
     );
@@ -1380,7 +1364,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > null RETURN d"
     );
@@ -1400,7 +1384,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // d.value > true, unordered
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > true RETURN d"
     );
@@ -1431,7 +1415,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > false RETURN d"
     );
@@ -1469,7 +1453,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > false SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
@@ -1496,7 +1480,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= 'true' RETURN d"
     );
@@ -1516,7 +1500,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= 'false' RETURN d"
     );
@@ -1536,7 +1520,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= 0 RETURN d"
     );
@@ -1556,7 +1540,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= 1 RETURN d"
     );
@@ -1576,7 +1560,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= null RETURN d"
     );
@@ -1607,7 +1591,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= true RETURN d"
     );
@@ -1645,7 +1629,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= false RETURN d"
     );
@@ -1683,7 +1667,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= false SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
@@ -1710,7 +1694,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > 'false' and d.value < true RETURN d"
     );
@@ -1730,7 +1714,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > 0 and d.value < true RETURN d"
     );
@@ -1750,7 +1734,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > null and d.value < true RETURN d"
     );
@@ -1770,7 +1754,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // empty range
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > true and d.value < false RETURN d"
     );
@@ -1790,7 +1774,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // d.value > false AND d.value < true
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > false and d.value < true RETURN d"
     );
@@ -1810,7 +1794,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // d.value > true AND d.value < true
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > true and d.value < true RETURN d"
     );
@@ -1834,7 +1818,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= 'false' and d.value < true RETURN d"
     );
@@ -1854,7 +1838,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= 0 and d.value < true RETURN d"
     );
@@ -1874,7 +1858,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= null and d.value < true RETURN d"
     );
@@ -1894,7 +1878,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // empty range
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= true and d.value < false RETURN d"
     );
@@ -1914,7 +1898,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // d.value >= true AND d.value < true
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= true and d.value < true RETURN d"
     );
@@ -1945,7 +1929,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= false AND d.value < true SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
@@ -1972,7 +1956,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > 'false' and d.value <= true RETURN d"
     );
@@ -1992,7 +1976,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > 0 and d.value <= true RETURN d"
     );
@@ -2012,7 +1996,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > null and d.value <= true RETURN d"
     );
@@ -2032,7 +2016,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // d.value > false AND d.value <= false
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > false and d.value <= false RETURN d"
     );
@@ -2052,7 +2036,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // empty range
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > true and d.value <= false RETURN d"
     );
@@ -2072,7 +2056,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // d.value > true AND d.value <= true
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > true and d.value <= true RETURN d"
     );
@@ -2103,7 +2087,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value > false AND d.value <= true SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
@@ -2130,7 +2114,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= 'false' and d.value <= true RETURN d"
     );
@@ -2150,7 +2134,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= 0 and d.value <= true RETURN d"
     );
@@ -2170,7 +2154,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= null and d.value <= true RETURN d"
     );
@@ -2190,7 +2174,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // empty range
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= true and d.value <= false RETURN d"
     );
@@ -2221,7 +2205,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= false and d.value <= false RETURN d"
     );
@@ -2259,7 +2243,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= true AND d.value <= true SORT d.seq DESC RETURN d"
     );
@@ -2293,7 +2277,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value >= false AND d.value <= true SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
@@ -2320,7 +2304,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
 
   // empty range
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value IN true..false RETURN d"
     );
@@ -2351,7 +2335,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value IN false..false RETURN d"
     );
@@ -2389,7 +2373,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value IN true..true SORT d.seq DESC RETURN d"
     );
@@ -2423,7 +2407,7 @@ TEST_CASE("IResearchQueryTestBooleanTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), docSlice);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.value IN false..true SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );

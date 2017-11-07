@@ -24,17 +24,35 @@
 #ifndef TESTS_IRESEARCH__COMMON_H
 #define TESTS_IRESEARCH__COMMON_H 1
 
+#include "Aql/Query.h"
+
+#include <string>
+#include <vector>
+
+struct TRI_vocbase_t;
+
 namespace v8 {
 
-  class Isolate; // forward declaration
+class Isolate; // forward declaration
 
 }
 
 namespace arangodb {
 namespace tests {
 
-  void init();
-  v8::Isolate* v8Isolate();
+void init();
+v8::Isolate* v8Isolate();
+
+bool assertRules(
+  TRI_vocbase_t& vocbase,
+  const std::string& queryString,
+  std::vector<int> expectedRulesIds
+);
+
+arangodb::aql::QueryResult executeQuery(
+  TRI_vocbase_t& vocbase,
+  const std::string& queryString
+);
 
 }
 }

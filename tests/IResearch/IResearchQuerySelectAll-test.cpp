@@ -136,22 +136,6 @@ class TestDelimAnalyzer: public irs::analysis::analyzer {
 DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
 REGISTER_ANALYZER(TestDelimAnalyzer);
 
-arangodb::aql::QueryResult executeQuery(
-    TRI_vocbase_t& vocbase,
-    const std::string& queryString
-) {
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-  auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-  arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString(queryString),
-    bindVars, options,
-    arangodb::aql::PART_MAIN
-  );
-
-  return query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -343,7 +327,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView RETURN d"
     );
@@ -369,7 +353,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
   {
     auto const& expectedDocs = insertedDocs;
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView SORT d.key ASC RETURN d"
     );
@@ -391,7 +375,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
   {
     auto const& expectedDocs = insertedDocs;
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView SORT d.key DESC RETURN d"
     );
@@ -418,7 +402,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView SORT TFIDF(d) RETURN d"
     );
@@ -449,7 +433,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView SORT TFIDF(d) DESC RETURN d"
     );
@@ -480,7 +464,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView SORT BM25(d) RETURN d"
     );
@@ -511,7 +495,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView SORT BM25(d) DESC RETURN d"
     );
@@ -537,7 +521,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
   {
     auto const& expectedDocs = insertedDocs;
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView SORT TFIDF(d), d.key ASC RETURN d"
     );
@@ -559,7 +543,7 @@ TEST_CASE("IResearchQueryTestSelectAll", "[iresearch][iresearch-query]") {
   {
     auto const& expectedDocs = insertedDocs;
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView SORT TFIDF(d), d.key DESC RETURN d"
     );

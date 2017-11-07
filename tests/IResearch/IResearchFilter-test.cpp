@@ -4171,6 +4171,22 @@ SECTION("Exists") {
     assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d['obj'].prop[3].name) RETURN d", expected);
   }
 
+  //FIXME expression in attribute access
+  // complex field with offset
+//  {
+//    ExpressionContextMock ctx;
+//    ctx.vars.emplace("index", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+//
+//    irs::Or expected;
+//    auto& exists = expected.add<irs::by_column_existence>();
+//    exists.field("obj.prop[3].name").prefix_match(true);
+//
+//    assertFilterSuccess("LET index=2 FOR d IN VIEW myView FILTER exists(d.obj.prop[index+1].name) RETURN d", expected);
+//    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d['obj']['prop'][3]['name']) RETURN d", expected);
+//    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.obj.prop[3].name) RETURN d", expected);
+//    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d['obj'].prop[3].name) RETURN d", expected);
+//  }
+
   // invalid attribute access
   assertFilterFail("FOR d IN VIEW myView FILTER exists(d) RETURN d");
   assertFilterFail("FOR d IN VIEW myView FILTER exists(d[*]) RETURN d");

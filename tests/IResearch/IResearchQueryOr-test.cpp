@@ -136,22 +136,6 @@ class TestDelimAnalyzer: public irs::analysis::analyzer {
 DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
 REGISTER_ANALYZER(TestDelimAnalyzer);
 
-arangodb::aql::QueryResult executeQuery(
-    TRI_vocbase_t& vocbase,
-    const std::string& queryString
-) {
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-  auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-  arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString(queryString),
-    bindVars, options,
-    arangodb::aql::PART_MAIN
-  );
-
-  return query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -358,7 +342,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(docSlice.get("seq").getNumber<ptrdiff_t>(), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name == 'A' OR d.name == 'Q' SORT d.seq DESC RETURN d"
     );
@@ -387,7 +371,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(docSlice.get("seq").getNumber<ptrdiff_t>(), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name == 'X' OR d.same == 'xyz' SORT BM25(d) DESC, TFIDF(d) DESC, d.seq DESC RETURN d"
     );
@@ -440,7 +424,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       arangodb::velocypack::Slice(insertedDocs[3].vpack()),  // {"name":"D","seq":3,"same":"xyz","value":12,"prefix":"abcde"}
     };
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name == 'K' OR d.value <= 100 OR d.duplicated == 'abcd' SORT TFIDF(d) DESC, d.seq DESC RETURN d"
     );
@@ -479,7 +463,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(docSlice.get("seq").getNumber<ptrdiff_t>(), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name == 'A' OR d.name == 'Q' OR d.same != 'xyz' SORT d.seq DESC RETURN d"
     );
@@ -516,7 +500,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(docSlice.get("seq").getNumber<ptrdiff_t>(), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name == 'F' OR EXISTS(d.duplicated) SORT BM25(d) DESC, d.seq DESC RETURN d"
     );
@@ -564,7 +548,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       arangodb::velocypack::Slice(insertedDocs[30].vpack()), // {"name":"$","seq":30,"same":"xyz", "duplicated":"abcd", "prefix":"abcy" }
     };
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name == 'D' OR STARTS_WITH(d.prefix, 'abc') SORT TFIDF(d) DESC, d.seq DESC RETURN d"
     );
@@ -602,7 +586,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       arangodb::velocypack::Slice(insertedDocs[30].vpack()), // {"name":"$","seq":30,"same":"xyz", "duplicated":"abcd", "prefix":"abcy" }
     };
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name == 'D' OR STARTS_WITH(d.prefix, 'abc') SORT BM25(d) DESC, d.seq DESC RETURN d"
     );
@@ -649,7 +633,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       arangodb::velocypack::Slice(insertedDocs[1].vpack()),  // {"name":"B","seq":1,"same":"xyz", "value":101, "duplicated":"vczc"}
     };
 
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER STARTS_WITH(d['prefix'], 'abc') OR EXISTS(d.duplicated) OR d.value < 100 OR d.name >= 'Z' SORT TFIDF(d) DESC, d.seq DESC RETURN d"
     );
@@ -691,7 +675,7 @@ TEST_CASE("IResearchQueryTestOr", "[iresearch][iresearch-query]") {
       arangodb::velocypack::Slice(insertedDocs[10].vpack()), // {"name":"K","seq":10,"same":"xyz","value":12, "duplicated":"abcd"}
     };
 
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'v', 1, 'z', 'test_analyzer') OR STARTS_WITH(d['prefix'], 'abc') OR d.value < 100 OR d.name >= 'Z' SORT TFIDF(d) DESC, d.seq DESC RETURN d"
     );

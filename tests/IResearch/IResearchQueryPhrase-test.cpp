@@ -136,22 +136,6 @@ class TestDelimAnalyzer: public irs::analysis::analyzer {
 DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
 REGISTER_ANALYZER(TestDelimAnalyzer);
 
-arangodb::aql::QueryResult executeQuery(
-    TRI_vocbase_t& vocbase,
-    const std::string& queryString
-) {
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-  auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-  arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString(queryString),
-    bindVars, options,
-    arangodb::aql::PART_MAIN
-  );
-
-  return query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -342,7 +326,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     std::vector<arangodb::velocypack::Slice> expected = {
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.missing, 'abc', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -364,7 +348,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     std::vector<arangodb::velocypack::Slice> expected = {
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d['missing'], 'abc', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -386,7 +370,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     std::vector<arangodb::velocypack::Slice> expected = {
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.seq, '0', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -408,7 +392,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     std::vector<arangodb::velocypack::Slice> expected = {
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d['seq'], '0', 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -428,7 +412,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid input type (array)
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.value, [ 1, \"abc\" ], 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -437,7 +421,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid input type (array) via []
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d['value'], [ 1, \"abc\" ], 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -446,7 +430,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid input type (boolean)
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.value, true, 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -455,7 +439,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid input type (boolean) via []
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d['value'], false, 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -464,7 +448,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid input type (null)
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.value, null, 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -473,7 +457,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid input type (null) via []
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d['value'], null, 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -482,7 +466,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid input type (numeric)
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.value, 3.14, 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -491,7 +475,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid input type (numeric) via []
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d['value'], 1234, 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -500,7 +484,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid input type (object)
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.value, { \"a\": 7, \"b\": \"c\" }, 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -509,7 +493,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid input type (object) via []
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d['value'], { \"a\": 7, \"b\": \"c\" }, 'identity') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -518,7 +502,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test missing analyzer
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.value, 'abc') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -527,7 +511,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test missing analyzer via []
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d['value'], 'abc') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -536,7 +520,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid analyzer type (array)
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'z', [ 1, \"abc\" ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -545,7 +529,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid analyzer type (array) via []
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'z', [ 1, \"abc\" ]) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -554,7 +538,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid analyzer type (boolean)
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'z', true) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -563,7 +547,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid analyzer type (boolean) via []
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'z', false) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -572,7 +556,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid analyzer type (null)
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'z', null) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -581,7 +565,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid analyzer type (null) via []
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'z', null) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -590,7 +574,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid analyzer type (numeric)
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'z', 3.14) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -599,7 +583,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid analyzer type (numeric) via []
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'z', 1234) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -608,7 +592,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid analyzer type (object)
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'z', { \"a\": 7, \"b\": \"c\" }) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -617,7 +601,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test invalid analyzer type (object) via []
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'z', { \"a\": 7, \"b\": \"c\" }) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -626,7 +610,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test undefined analyzer
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'z', 'invalid_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -635,7 +619,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
 
   // test undefined analyzer via []
   {
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'z', 'invalid_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -653,7 +637,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       insertedDocs[24].slice(),
       insertedDocs[29].slice(),
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'z', 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -682,7 +666,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       insertedDocs[24].slice(),
       insertedDocs[29].slice(),
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'z', 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -711,7 +695,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       insertedDocs[24].slice(),
       insertedDocs[29].slice(),
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'v', 1, 'z', 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -740,7 +724,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
       insertedDocs[24].slice(),
       insertedDocs[29].slice(),
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'v', 2, 'c', 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -762,7 +746,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     std::vector<arangodb::velocypack::Slice> expected = {
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d.duplicated, 'v', 0, 'z', 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -784,7 +768,7 @@ TEST_CASE("IResearchQueryTestPhrase", "[iresearch][iresearch-query]") {
   {
     std::vector<arangodb::velocypack::Slice> expected = {
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'v', 1, 'c', 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );

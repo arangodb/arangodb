@@ -136,22 +136,6 @@ class TestDelimAnalyzer: public irs::analysis::analyzer {
 DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
 REGISTER_ANALYZER(TestDelimAnalyzer);
 
-arangodb::aql::QueryResult executeQuery(
-    TRI_vocbase_t& vocbase,
-    const std::string& queryString
-) {
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-  auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-  arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString(queryString),
-    bindVars, options,
-    arangodb::aql::PART_MAIN
-  );
-
-  return query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -363,7 +347,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // missing term
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name == 'invalid_value' RETURN d"
     );
@@ -383,7 +367,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name == 0 RETURN d"
     );
@@ -403,7 +387,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name == null RETURN d"
     );
@@ -423,7 +407,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name == false RETURN d"
     );
@@ -443,7 +427,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name == true RETURN d"
     );
@@ -467,7 +451,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       { "A", &insertedDocs[0] }
     };
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name == 'A' RETURN d"
     );
@@ -501,7 +485,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.same == 'xyz' RETURN d"
     );
@@ -537,7 +521,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       { "$", &insertedDocs[30] }
     };
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.duplicated == 'abcd' RETURN d"
     );
@@ -573,7 +557,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       { "$", &insertedDocs[30] }
     };
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.duplicated == 'abcd' SORT d.name DESC RETURN d"
     );
@@ -606,7 +590,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       { "$", &insertedDocs[30] }
     };
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.duplicated == 'abcd' SORT TFIDF(d) ASC, d.name DESC RETURN d"
     );
@@ -632,7 +616,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
   {
     auto const& expectedDocs = insertedDocs;
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq DESC RETURN d"
     );
@@ -655,7 +639,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // expression  (invalid value)
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "LET x = RAND() "
       "FOR d IN VIEW testView FILTER d.name == (x + (RAND() + 1)) RETURN d"
@@ -685,7 +669,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       { "$", &insertedDocs[30] }
     };
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "LET x = _REFERENCE_('abcd') "
       "FOR d IN VIEW testView FILTER d.duplicated == x RETURN d"
@@ -722,7 +706,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       { "$", &insertedDocs[30] }
     };
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "LET x = _REFERENCE_('abc') "
       "FOR d IN VIEW testView FILTER d.duplicated == CONCAT(x, 'd') RETURN d"
@@ -755,7 +739,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       { "E", &insertedDocs[4] }
     };
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "LET x = _REFERENCE_('abc') "
       "FOR d IN VIEW testView FILTER d.duplicated == CONCAT(x, 'd') LIMIT 2 RETURN d"
@@ -792,7 +776,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       { "$", &insertedDocs[30] }
     };
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.duplicated == CONCAT(_REFERENCE_('abc'), 'd') RETURN d"
     );
@@ -830,7 +814,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name != 0 RETURN d"
     );
@@ -864,7 +848,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name != false RETURN d"
     );
@@ -898,7 +882,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<ptrdiff_t>(), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name != null SORT d.seq DESC RETURN d"
     );
@@ -929,7 +913,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name != 'invalid_term' RETURN d"
     );
@@ -956,7 +940,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // existing duplicated term, unordered
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.same != 'xyz' RETURN d"
     );
@@ -985,7 +969,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
     expectedDocs.erase("C");
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name != 'C' RETURN d"
     );
@@ -1026,7 +1010,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.duplicated != 'vczc' RETURN d"
     );
@@ -1054,7 +1038,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
   {
     auto& expectedDocs = insertedDocs;
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name != 'invalid_term' SORT d.seq DESC RETURN d"
     );
@@ -1090,7 +1074,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.duplicated != 'abcd' SORT TFIDF(d) ASC, BM25(d) ASC, d.seq DESC RETURN d"
     );
@@ -1120,7 +1104,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(arangodb::iresearch::getStringRef(keySlice), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "LET x = _REFERENCE_(0) "
       "FOR d IN VIEW testView FILTER d.name != x RETURN d"
@@ -1167,7 +1151,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.erase(expectedDocs.begin());
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "LET x = _REFERENCE_('abc') "
       "FOR d IN VIEW testView FILTER d.duplicated != CONCAT(x,'d') SORT TFIDF(d) ASC, BM25(d) ASC, d.seq DESC LIMIT 5 RETURN d"
@@ -1200,7 +1184,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name < null RETURN d"
     );
@@ -1220,7 +1204,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name < true RETURN d"
     );
@@ -1240,7 +1224,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name < 0 RETURN d"
     );
@@ -1271,7 +1255,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(key, &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name < 'H' RETURN d"
     );
@@ -1298,7 +1282,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // d.name < '!' (less than min term), unordered
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name < '!' RETURN d"
     );
@@ -1329,7 +1313,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name < '~' SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
@@ -1356,7 +1340,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name <= null RETURN d"
     );
@@ -1376,7 +1360,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name <= true RETURN d"
     );
@@ -1396,7 +1380,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name <= 0 RETURN d"
     );
@@ -1427,7 +1411,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(key, &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name <= 'H' RETURN d"
     );
@@ -1454,7 +1438,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // d.name <= '!' (less than min term), unordered
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name <= '!' RETURN d"
     );
@@ -1478,7 +1462,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
   {
     auto& expectedDocs = insertedDocs;
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name <= '~' SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
@@ -1505,7 +1489,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > null RETURN d"
     );
@@ -1525,7 +1509,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > true RETURN d"
     );
@@ -1545,7 +1529,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > 0 RETURN d"
     );
@@ -1576,7 +1560,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(key, &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > 'H' RETURN d"
     );
@@ -1603,7 +1587,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // d.name > '~' (greater than max term), unordered
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > '~' RETURN d"
     );
@@ -1630,7 +1614,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(keySlice.getNumber<size_t>(), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > '!' SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
@@ -1657,7 +1641,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= null RETURN d"
     );
@@ -1677,7 +1661,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= true RETURN d"
     );
@@ -1697,7 +1681,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= 0 RETURN d"
     );
@@ -1728,7 +1712,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(key, &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= 'H' RETURN d"
     );
@@ -1755,7 +1739,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // d.name >= '~' (greater or equal than max term), unordered
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= '~' RETURN d"
     );
@@ -1779,7 +1763,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
   {
     auto& expectedDocs = insertedDocs;
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= '!' SORT BM25(d), TFIDF(d), d.seq DESC RETURN d"
     );
@@ -1806,7 +1790,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > null AND d.name < 'Z' RETURN d"
     );
@@ -1826,7 +1810,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > true AND d.name < 'Z' RETURN d"
     );
@@ -1846,7 +1830,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > 0 AND d.name < 'Z' RETURN d"
     );
@@ -1877,7 +1861,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(key, &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > 'H' AND d.name < 'S' RETURN d"
     );
@@ -1904,7 +1888,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // d.name > 'S' AND d.name < 'N' , unordered
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > 'S' AND d.name < 'N' RETURN d"
     );
@@ -1920,7 +1904,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // d.name > 'H' AND d.name < 'H' , unordered
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > 'H' AND d.name < 'H' RETURN d"
     );
@@ -1949,7 +1933,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(key, &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > '!' AND d.name < '~' SORT tfidf(d), BM25(d), d.seq DESC RETURN d"
     );
@@ -1976,7 +1960,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= null AND d.name < 'Z' RETURN d"
     );
@@ -1996,7 +1980,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= true AND d.name < 'Z' RETURN d"
     );
@@ -2016,7 +2000,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= 0 AND d.name < 'Z' RETURN d"
     );
@@ -2047,7 +2031,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(key, &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= 'H' AND d.name < 'S' RETURN d"
     );
@@ -2074,7 +2058,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // d.name >= 'S' AND d.name < 'N' , unordered
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= 'S' AND d.name < 'N' RETURN d"
     );
@@ -2090,7 +2074,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // d.name >= 'H' AND d.name < 'H' , unordered
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= 'H' AND d.name < 'H' RETURN d"
     );
@@ -2119,7 +2103,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(key, &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= '!' AND d.name < '~' SORT tfidf(d), BM25(d), d.seq DESC RETURN d"
     );
@@ -2146,7 +2130,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > null AND d.name <= 'Z' RETURN d"
     );
@@ -2166,7 +2150,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > true AND d.name <= 'Z' RETURN d"
     );
@@ -2186,7 +2170,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > 0 AND d.name <= 'Z' RETURN d"
     );
@@ -2217,7 +2201,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(key, &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > 'H' AND d.name <= 'S' RETURN d"
     );
@@ -2244,7 +2228,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // d.name > 'S' AND d.name <= 'N' , unordered
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > 'S' AND d.name <= 'N' RETURN d"
     );
@@ -2260,7 +2244,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // d.name > 'H' AND d.name <= 'H' , unordered
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > 'H' AND d.name <= 'H' RETURN d"
     );
@@ -2289,7 +2273,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(key, &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name > '!' AND d.name <= '~' SORT tfidf(d), BM25(d), d.seq DESC RETURN d"
     );
@@ -2316,7 +2300,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= null AND d.name <= 'Z' RETURN d"
     );
@@ -2336,7 +2320,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= true AND d.name <= 'Z' RETURN d"
     );
@@ -2356,7 +2340,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= 0 AND d.name <= 'Z' RETURN d"
     );
@@ -2387,7 +2371,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(key, &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= 'H' AND d.name <= 'S' RETURN d"
     );
@@ -2414,7 +2398,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // d.name >= 'S' AND d.name <= 'N' , unordered
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= 'S' AND d.name <= 'N' RETURN d"
     );
@@ -2430,7 +2414,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // d.name >= 'H' AND d.name <= 'H' , unordered
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= 'H' AND d.name <= 'H' RETURN d"
     );
@@ -2465,7 +2449,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(key, &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name >= '!' AND d.name <= '~' SORT tfidf(d), BM25(d), d.seq DESC RETURN d"
     );
@@ -2503,7 +2487,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(key, &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name IN 'H'..'S' RETURN d"
     );
@@ -2530,7 +2514,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // d.name >= 'S' AND d.name <= 'N' , unordered
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name IN 'S'..'N' RETURN d"
     );
@@ -2546,7 +2530,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
 
   // d.name >= 'H' AND d.name <= 'H' , unordered
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name IN 'H'..'H' RETURN d"
     );
@@ -2581,7 +2565,7 @@ TEST_CASE("IResearchQueryTestStringTerm", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(key, &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.name IN '!'..'~' SORT tfidf(d), BM25(d), d.seq DESC RETURN d"
     );

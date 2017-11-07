@@ -136,22 +136,6 @@ class TestDelimAnalyzer: public irs::analysis::analyzer {
 DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
 REGISTER_ANALYZER(TestDelimAnalyzer);
 
-arangodb::aql::QueryResult executeQuery(
-    TRI_vocbase_t& vocbase,
-    const std::string& queryString
-) {
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-  auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-  arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString(queryString),
-    bindVars, options,
-    arangodb::aql::PART_MAIN
-  );
-
-  return query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -344,7 +328,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
 
   // invalid field
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER STARTS_WITH(d.invalid_field, 'abc') RETURN d"
     );
@@ -360,7 +344,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
 
   // invalid type
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER STARTS_WITH(d.seq, '0') RETURN d"
     );
@@ -380,7 +364,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
       { "A", &insertedDocs[0] }
     };
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER starts_with(d.name, 'A') RETURN d"
     );
@@ -417,7 +401,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(docSlice.get("seq").getNumber<ptrdiff_t>(), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER starts_with(d.prefix, 'abc') SORT d.seq DESC RETURN d"
     );
@@ -450,7 +434,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
       expectedDocs.emplace(docSlice.get("seq").getNumber<ptrdiff_t>(), &doc);
     }
 
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER starts_with(d.prefix, '') SORT TFIDF(d), BM25(d), d.seq DESC RETURN d"
     );
@@ -473,7 +457,7 @@ TEST_CASE("IResearchQueryTestStartsWith", "[iresearch][iresearch-query]") {
 
   // invalid prefix
   {
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER STARTS_WITH(d.prefix, 'abc_invalid_prefix') RETURN d"
     );

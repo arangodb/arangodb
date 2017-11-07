@@ -136,22 +136,6 @@ class TestDelimAnalyzer: public irs::analysis::analyzer {
 DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
 REGISTER_ANALYZER(TestDelimAnalyzer);
 
-arangodb::aql::QueryResult executeQuery(
-    TRI_vocbase_t& vocbase,
-    const std::string& queryString
-) {
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-  auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-  arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString(queryString),
-    bindVars, options,
-    arangodb::aql::PART_MAIN
-  );
-
-  return query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -380,7 +364,7 @@ TEST_CASE("IResearchQueryTestComplexBoolean", "[iresearch][iresearch-query]") {
       insertedDocs[26].slice(), // STARTS_WITH matches (unique term), PHRASE does not match
       insertedDocs[31].slice(), // STARTS_WITH matches (unique term), PHRASE does not match
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER STARTS_WITH(d.prefix, 'abc') || PHRASE(d['duplicated'], 'z', 'test_analyzer') || EXISTS(d.same) || d['value'] != 3.14 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -407,7 +391,7 @@ TEST_CASE("IResearchQueryTestComplexBoolean", "[iresearch][iresearch-query]") {
       insertedDocs[26].slice(), // STARTS_WITH matches (unique term short)
       insertedDocs[31].slice(), // STARTS_WITH matches (unique term long)
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.same == 'xyz' && STARTS_WITH(d['prefix'], 'abc') && NOT EXISTS(d.value) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -441,7 +425,7 @@ TEST_CASE("IResearchQueryTestComplexBoolean", "[iresearch][iresearch-query]") {
       insertedDocs[26].slice(), // STARTS_WITH matches (unique term 3char)
       insertedDocs[31].slice(), // STARTS_WITH matches (unique term 7char)
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER (d['same'] == 'xyz' && STARTS_WITH(d.prefix, 'abc')) || (PHRASE(d['duplicated'], 'z', 'test_analyzer') && EXISTS(d.value)) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -499,7 +483,7 @@ TEST_CASE("IResearchQueryTestComplexBoolean", "[iresearch][iresearch-query]") {
       insertedDocs[6].slice(), // STARTS_WITH matches (unique term), PHRASE does not match, EXISTS matches
       insertedDocs[9].slice(), // STARTS_WITH matches (unique term), PHRASE does not match, EXISTS matches
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER (d.same == 'xyz' || EXISTS(d['value'])) && (STARTS_WITH(d.prefix, 'abc') || PHRASE(d['duplicated'], 'z', 'test_analyzer') || d.seq >= -3) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );

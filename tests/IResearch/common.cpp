@@ -21,8 +21,17 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "common.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
+#include "Aql/OptimizerRulesFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "Basics/ArangoGlobalContext.h"
+#include "IResearch/VelocyPackHelper.h"
+
+#include <velocypack/Iterator.h>
+#include <velocypack/Parser.h>
+
+#include <unordered_set>
 
 extern char* ARGV0; // defined in main.cpp
 
@@ -54,14 +63,74 @@ static singleton_t* SINGLETON = nullptr;
 namespace arangodb {
 namespace tests {
 
-  void init() {
-    static singleton_t singleton;
-    SINGLETON = &singleton;
+void init() {
+  static singleton_t singleton;
+  SINGLETON = &singleton;
+}
+
+v8::Isolate* v8Isolate() {
+  return SINGLETON ? SINGLETON->v8PlatformFeature.createIsolate() : nullptr;
+}
+
+bool assertRules(
+    TRI_vocbase_t& vocbase,
+    const std::string& queryString,
+    std::vector<int> expectedRulesIds
+) {
+  std::unordered_set<std::string> expectedRules;
+  for (auto ruleId : expectedRulesIds) {
+    expectedRules.emplace(arangodb::aql::OptimizerRulesFeature::translateRule(ruleId));
   }
 
-  v8::Isolate* v8Isolate() {
-    return SINGLETON ? SINGLETON->v8PlatformFeature.createIsolate() : nullptr;
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars;
+
+  auto options = arangodb::velocypack::Parser::fromJson(
+//    "{ \"tracing\" : 1 }"
+    "{ }"
+  );
+
+  arangodb::aql::Query query(
+    false, &vocbase, arangodb::aql::QueryString(queryString),
+    bindVars, options,
+    arangodb::aql::PART_MAIN
+  );
+
+  auto const res = query.explain();
+  auto const explanation = res.result->slice();
+
+  arangodb::velocypack::ArrayIterator rules(explanation.get("rules"));
+
+//  if (expectedRules.size() != rules.size()) {
+//    return false;
+//  }
+
+  for (auto const rule : rules) {
+    auto const strRule = arangodb::iresearch::getStringRef(rule);
+    expectedRules.erase(strRule);
   }
+
+  return expectedRules.empty();
+}
+
+arangodb::aql::QueryResult executeQuery(
+    TRI_vocbase_t& vocbase,
+    const std::string& queryString
+) {
+  std::shared_ptr<arangodb::velocypack::Builder> bindVars;
+
+  auto options = arangodb::velocypack::Parser::fromJson(
+//    "{ \"tracing\" : 1 }"
+    "{ }"
+  );
+
+  arangodb::aql::Query query(
+    false, &vocbase, arangodb::aql::QueryString(queryString),
+    bindVars, options,
+    arangodb::aql::PART_MAIN
+  );
+
+  return query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+}
 
 }
 }

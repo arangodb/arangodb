@@ -136,22 +136,6 @@ class TestDelimAnalyzer: public irs::analysis::analyzer {
 DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
 REGISTER_ANALYZER(TestDelimAnalyzer);
 
-arangodb::aql::QueryResult executeQuery(
-    TRI_vocbase_t& vocbase,
-    const std::string& queryString
-) {
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-  auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-  arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString(queryString),
-    bindVars, options,
-    arangodb::aql::PART_MAIN
-  );
-
-  return query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -380,7 +364,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       insertedDocs[36].slice(),
       insertedDocs[37].slice(),
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER [ ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -440,7 +424,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       insertedDocs[36].slice(),
       insertedDocs[37].slice(),
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER [ 'abc', 'def' ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -500,7 +484,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       insertedDocs[36].slice(),
       insertedDocs[37].slice(),
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER [ 1 .. 42 ] SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -522,7 +506,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
   {
     std::vector<arangodb::velocypack::Slice> expected = {
     };
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER false SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -582,7 +566,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       insertedDocs[36].slice(),
       insertedDocs[37].slice(),
     };
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER true SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -604,7 +588,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
   {
     std::vector<arangodb::velocypack::Slice> expected = {
     };
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER 0 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -664,7 +648,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       insertedDocs[36].slice(),
       insertedDocs[37].slice(),
     };
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER 3.14 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -686,7 +670,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
   {
     std::vector<arangodb::velocypack::Slice> expected = {
     };
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER null SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -746,7 +730,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       insertedDocs[36].slice(),
       insertedDocs[37].slice(),
     };
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER { } SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -806,7 +790,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       insertedDocs[36].slice(),
       insertedDocs[37].slice(),
     };
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER { 'a': 123, 'b': 'cde' } SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -828,7 +812,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
   {
     std::vector<arangodb::velocypack::Slice> expected = {
     };
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER '' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -888,7 +872,7 @@ TEST_CASE("IResearchQueryTestValue", "[iresearch][iresearch-query]") {
       insertedDocs[36].slice(),
       insertedDocs[37].slice(),
     };
-    auto queryResult = executeQuery(
+    auto queryResult = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER 'abc' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );

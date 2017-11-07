@@ -136,22 +136,6 @@ class TestDelimAnalyzer: public irs::analysis::analyzer {
 DEFINE_ANALYZER_TYPE_NAMED(TestDelimAnalyzer, "TestDelimAnalyzer");
 REGISTER_ANALYZER(TestDelimAnalyzer);
 
-arangodb::aql::QueryResult executeQuery(
-    TRI_vocbase_t& vocbase,
-    const std::string& queryString
-) {
-  std::shared_ptr<arangodb::velocypack::Builder> bindVars;
-  auto options = std::make_shared<arangodb::velocypack::Builder>();
-
-  arangodb::aql::Query query(
-    false, &vocbase, arangodb::aql::QueryString(queryString),
-    bindVars, options,
-    arangodb::aql::PART_MAIN
-  );
-
-  return query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -342,7 +326,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
   {
     std::vector<arangodb::velocypack::Slice> expected = {
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d['same'] == 'xyz' AND d.invalid == 2 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -369,7 +353,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       insertedDocs[14].slice(),
       insertedDocs[15].slice(),
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d['same'] == 'xyz' AND d.value == 100 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -396,7 +380,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       insertedDocs[14].slice(),
       insertedDocs[15].slice(),
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER NOT (d['same'] == 'abc') AND d.value == 100 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -425,7 +409,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       insertedDocs[24].slice(),
       insertedDocs[29].slice(),
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.same == 'xyz' AND PHRASE(d['duplicated'], 'z', 'test_analyzer') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -472,7 +456,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       insertedDocs[36].slice(),
       insertedDocs[37].slice(),
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER NOT PHRASE(d['duplicated'], 'z', 'test_analyzer') AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -500,7 +484,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       insertedDocs[26].slice(),
       insertedDocs[31].slice(),
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.same == 'xyz' AND STARTS_WITH(d['prefix'], 'abc') SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -548,7 +532,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       insertedDocs[34].slice(),
       insertedDocs[35].slice(),
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER NOT STARTS_WITH(d['prefix'], 'abc') AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -580,7 +564,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       insertedDocs[36].slice(),
       insertedDocs[37].slice(),
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER d.same == 'xyz' AND EXISTS(d['prefix']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -624,7 +608,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       insertedDocs[33].slice(),
       insertedDocs[35].slice(),
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER NOT EXISTS(d['prefix']) AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -647,7 +631,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
     std::vector<arangodb::velocypack::Slice> expected = {
       insertedDocs[29].slice(),
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER PHRASE(d['duplicated'], 'z', 'test_analyzer') AND NOT (d.same == 'abc') AND EXISTS(d['prefix']) SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -672,7 +656,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
       insertedDocs[9].slice(),
       insertedDocs[31].slice(),
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER STARTS_WITH(d['prefix'], 'abc') AND NOT EXISTS(d.duplicated) AND d.same == 'xyz' SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
@@ -695,7 +679,7 @@ TEST_CASE("IResearchQueryTestAnd", "[iresearch][iresearch-query]") {
     std::vector<arangodb::velocypack::Slice> expected = {
       insertedDocs[29].slice(),
     };
-    auto result = executeQuery(
+    auto result = arangodb::tests::executeQuery(
       vocbase,
       "FOR d IN VIEW testView FILTER EXISTS(d.name) AND NOT STARTS_WITH(d['prefix'], 'abc') AND PHRASE(d['duplicated'], 'z', 'test_analyzer') AND NOT (d.same == 'abc') AND d.seq >= 23 SORT BM25(d) ASC, TFIDF(d) DESC, d.seq RETURN d"
     );
