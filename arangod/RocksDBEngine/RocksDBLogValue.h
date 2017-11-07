@@ -92,6 +92,9 @@ class RocksDBLogValue {
   static arangodb::StringRef oldCollectionName(rocksdb::Slice const&);
   static arangodb::StringRef documentKey(rocksdb::Slice const&);
 
+  static bool containsDatabaseId(RocksDBLogType type);
+  static bool containsCollectionId(RocksDBLogType type);
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a reference to the underlying string buffer.

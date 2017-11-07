@@ -95,7 +95,21 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
     // rocksdb does not count LogData towards sequence-number
     RocksDBLogType type = RocksDBLogValue::type(blob);
     TRI_DEFER(_lastLogType = type);
-
+    
+    // skip ignored databases and collections
+    if (RocksDBLogValue::containsDatabaseId(type)) {
+      TRI_voc_tick_t dbId = RocksDBLogValue::databaseId(blob);
+      if (!shouldHandleDB(dbId)) {
+        return;
+      }
+      if (RocksDBLogValue::containsCollectionId(type)) {
+        TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
+        if (!shouldHandleCollection(dbId, cid)) {
+          return;
+        }
+      }
+    }
+    
     //LOG_TOPIC(ERR, Logger::FIXME) << "[LOG] " << _currentSequence
     //  << " " << rocksDBLogTypeName(type);
     switch (type) {
@@ -220,8 +234,10 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
       }
       case RocksDBLogType::DocumentOperationsPrologue: {
         // part of an ongoing transaction
-        TRI_ASSERT(_seenBeginTransaction && !_singleOp);
-        _currentCid = RocksDBLogValue::collectionId(blob);
+        if (_currentDbId != 0 && _currentTrxId != 0) {
+          TRI_ASSERT(_seenBeginTransaction && !_singleOp);
+          _currentCid = RocksDBLogValue::collectionId(blob);
+        }
         break;
       }
       case RocksDBLogType::DocumentRemove: {
@@ -506,6 +522,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
   size_t responseSize() const { return _responseSize; }
 
  private:
+  
   // tick function that is called before each new WAL entry
   void tick() {
     if (_startOfBatch) {

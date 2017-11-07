@@ -27,6 +27,11 @@
 
 using namespace arangodb;
 
+bool WalAccessContext::shouldHandleDB(TRI_voc_tick_t dbid) {
+  TRI_ASSERT(dbid != 0);
+  return _filter.vocbase == 0 || _filter.vocbase == dbid;
+}
+
 /// @brief Check if collection is in filter
 bool WalAccessContext::shouldHandleCollection(TRI_voc_tick_t dbid,
                                               TRI_voc_cid_t cid) {

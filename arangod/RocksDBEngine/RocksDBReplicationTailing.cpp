@@ -95,6 +95,20 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     RocksDBLogType type = RocksDBLogValue::type(blob);
     TRI_DEFER(_lastLogType = type);
 
+    // skip ignored databases and collections
+    if (RocksDBLogValue::containsDatabaseId(type)) {
+      TRI_voc_tick_t dbId = RocksDBLogValue::databaseId(blob);
+      if (!shouldHandleDB(dbId)) {
+        return;
+      }
+      if (RocksDBLogValue::containsCollectionId(type)) {
+        TRI_voc_cid_t cid = RocksDBLogValue::collectionId(blob);
+        if (!shouldHandleCollection(dbId, cid)) {
+          return;
+        }
+      }
+    }
+    
     LOG_TOPIC(_LOG, Logger::ROCKSDB) << "[LOG] " << rocksDBLogTypeName(type);
     switch (type) {
       case RocksDBLogType::DatabaseCreate:
@@ -447,6 +461,19 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       // we are inside a batch already. now increase sequence number
       ++_currentSequence;
     }
+  }
+  
+  bool shouldHandleDB(TRI_voc_tick_t dbid) {
+    TRI_ASSERT(dbid != 0);
+    return _vocbase->id() == dbid;
+  }
+  
+  /// @brief Check if collection is in filter
+  bool shouldHandleCollection(TRI_voc_tick_t dbid,
+                              TRI_voc_cid_t cid) {
+    TRI_ASSERT(dbid != 0 && cid != 0);
+    return _vocbase->id() == dbid &&
+           (_onlyCollectionId == 0 || _onlyCollectionId == cid);
   }
 
   bool shouldHandleKey(uint32_t column_family_id,
