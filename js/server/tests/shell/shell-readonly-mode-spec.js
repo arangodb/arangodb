@@ -1,4 +1,4 @@
-/*global describe, it, ArangoAgency, afterEach */
+/*global describe, it, ArangoAgency, afterEach, instanceInfo */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster collection creation tests
@@ -36,7 +36,7 @@ const db = internal.db;
 
 let isCluster = instanceInfo.arangods.length > 1;
 let endpoint = instanceInfo.arangods.filter(arangod => {
-  return arangod.role === 'coordinator' || arangod.role == 'single';
+  return arangod.role === 'coordinator' || arangod.role === 'single';
 })[0];
 
 let download;
@@ -100,7 +100,7 @@ describe('Readonly mode api', function() {
     // heartbeat thread will take some time
     internal.wait(0.5);
     
-    let res = instanceInfo.arangods.filter(arangod => arangod.role == 'single' || arangod.role == 'coordinator' || arangod.role == 'primary')
+    let res = instanceInfo.arangods.filter(arangod => arangod.role === 'single' || arangod.role === 'coordinator' || arangod.role === 'primary')
     .every(arangod => {
       let resp = download(endpoint.url + '/_admin/server/mode');
       let body = JSON.parse(resp.body);
