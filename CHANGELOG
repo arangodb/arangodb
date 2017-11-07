@@ -1,6 +1,8 @@
 v3.1.28 (XXXX-XX-XX)
 --------------------
 
+* fixed issue #3473: Engine restart unexpectedly multiple times a day
+
 * fixed issue #2690: LogBuffer in case of too many messages 
 
 * fixed issue #3408

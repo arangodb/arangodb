@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertEqual, assertNotEqual, assertTrue, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ COUNT
@@ -373,8 +373,35 @@ function optimizerCollectMethodsTestSuite () {
 
       assertEqual([ 1, 2, 3, 4 ], result[0]);
       assertEqual([ 2, 3, 4, 5, 6 ], result[1]);
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test collect with offset
+////////////////////////////////////////////////////////////////////////////////
+
+    testCollectWithOffset : function () {
+      // create a skiplist index so the optimizer can use the sorted collect
+      c.ensureIndex({ type: "skiplist", fields: [ "value" ] });
+      var query = "FOR doc IN " + c.name() + " COLLECT v = doc.value OPTIONS { method: 'sorted' } LIMIT 1001, 2 RETURN v";
+        
+      var plan = AQL_EXPLAIN(query).plan;
+
+      // we want a sorted collect!
+      var aggregateNodes = 0;
+      plan.nodes.map(function(node) {
+        assertNotEqual("SortNode", node.type);
+        if (node.type === "CollectNode") {
+          ++aggregateNodes;
+          assertEqual("sorted", node.collectOptions.method);
+        }
+      });
+        
+      assertEqual(1, aggregateNodes);
+      
+      var result = AQL_EXECUTE(query).json;
+      assertEqual([ 1001, 1002 ], result);
+    }
+  
   };
 }
 
