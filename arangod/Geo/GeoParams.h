@@ -23,6 +23,8 @@
 #ifndef ARANGOD_GEO_GEO_PARAMS_H
 #define ARANGOD_GEO_GEO_PARAMS_H 1
 
+#include "VocBase/voc-types.h"
+
 class S2RegionCoverer;
 
 namespace arangodb {
@@ -88,8 +90,21 @@ struct RegionCoverParams {
   // Most detailed level used. Value between [0, 30]
   int bestIndexedLevel = 28;
 };
+  
+/// @brief result of a geospatial index query.
+///        distance may or may not be set
+struct GeoDocument {
+  TRI_voc_rid_t _documentId;
+  double distance;
+};
+  
+struct GeoDocumentCompare {
+  bool operator() (GeoDocument const& a, GeoDocument const& b) {
+    return a.distance < b.distance;
+  }
+};
 
-}  // namespace gep
+}  // namespace geo
 }  // namespace arangodb
 
 #endif

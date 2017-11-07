@@ -61,7 +61,7 @@ class GeoJsonParser {
     std::vector<S2Point> parseMultiPoint(velocypack::Slice const& geoJSON);
 };
 
-}  // namespace gep
+}  // namespace geo
 }  // namespace arangodb
 
 #endif

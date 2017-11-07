@@ -26,8 +26,9 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/SortCondition.h"
-#include "Geo/GeoHelper.h"
+#include "Geo/GeoCover.h"
 #include "Geo/GeoJsonParser.h"
+#include "Geo/NearQuery.h"
 #include "Basics/StringRef.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexResult.h"
@@ -52,7 +53,7 @@ public:
                          geo::NearQueryParams params)
   : IndexIterator(collection, trx, mmdr, index),
     _index(index),
-    _params(params),
+    _nearQuery(params),
     _done(false) {}
   
   ~RocksDBSphericalIndexNearIterator() {}
@@ -60,11 +61,11 @@ public:
   char const* typeName() const override { return "geospatial-index-iterator"; }
   
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
-    if (_done) {
+    /*if (_done) {
       // we already know that no further results will be returned by the index
-      TRI_ASSERT(_queue.empty());
+      TRI_ASSERT(_nearQuery. _queue.empty());
       return false;
-    }
+    }*/
     
     /*TRI_ASSERT(limit > 0);
     if (limit > 0) {
@@ -143,16 +144,8 @@ private:
     }
   }*/
   
-  struct GeoDocument {
-    TRI_voc_rid_t _documentId;
-    double distance;
-  };
-  
   RocksDBSphericalIndex const* _index;
-  geo::NearQueryParams _params;
-  /// priority queue of found documents
-  std::priority_queue<GeoDocument, std::vector<GeoDocument>,
-                      std::greater<GeoDocument>> _queue;
+  geo::NearQueryUtils _nearQuery;
   bool _done = false;
 };
 
@@ -377,7 +370,7 @@ Result RocksDBSphericalIndex::insertInternal(transaction::Methods* trx,
   bool isGeoJson = _variant == IndexVariant::COMBINED_GEOJSON;
   if (isGeoJson || _variant == IndexVariant::COMBINED_LAT_LON) {
     VPackSlice loc = doc.get(_location);
-    res = geo::GeoHelper::generateS2CellIds(&coverer, loc, isGeoJson, cells);
+    res = geo::GeoCover::generateCover(&coverer, loc, isGeoJson, cells);
   } else if (_variant == IndexVariant::INDIVIDUAL_LAT_LON) {
     VPackSlice lon = doc.get(_longitude);
     VPackSlice lat = doc.get(_latitude);
@@ -388,7 +381,7 @@ Result RocksDBSphericalIndex::insertInternal(transaction::Methods* trx,
     double latitude = lat.getNumericValue<double>();
     double longitude = lon.getNumericValue<double>();
     
-    res = geo::GeoHelper::generateS2CellIdFromLatLng(latitude, longitude, cells);
+    res = geo::GeoCover::generateCover(latitude, longitude, cells);
   }
   
   if (res.is(TRI_ERROR_BAD_PARAMETER)) {
@@ -425,7 +418,7 @@ Result RocksDBSphericalIndex::removeInternal(transaction::Methods* trx,
   bool isGeoJson = _variant == IndexVariant::COMBINED_GEOJSON;
   if (isGeoJson || _variant == IndexVariant::COMBINED_LAT_LON) {
     VPackSlice loc = doc.get(_location);
-    res = geo::GeoHelper::generateS2CellIds(&coverer, loc, isGeoJson, cells);
+    res = geo::GeoCover::generateCover(&coverer, loc, isGeoJson, cells);
   } else if (_variant == IndexVariant::INDIVIDUAL_LAT_LON) {
     VPackSlice lon = doc.get(_longitude);
     VPackSlice lat = doc.get(_latitude);
@@ -436,7 +429,7 @@ Result RocksDBSphericalIndex::removeInternal(transaction::Methods* trx,
     double latitude = lat.getNumericValue<double>();
     double longitude = lon.getNumericValue<double>();
     
-    res = geo::GeoHelper::generateS2CellIdFromLatLng(latitude, longitude, cells);
+    res = geo::GeoCover::generateCover(latitude, longitude, cells);
   }
   
   if (res.is(TRI_ERROR_BAD_PARAMETER)) {
