@@ -58,7 +58,7 @@ RocksDBIndex::RocksDBIndex(
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(useCache && !collection->isAStub() && !collection->isSystem()) {
+      _cacheEnabled(useCache && !collection->isSystem()) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
   if (_cacheEnabled) {
     createCache();
@@ -73,7 +73,7 @@ RocksDBIndex::RocksDBIndex(TRI_idx_iid_t id, LogicalCollection* collection,
       _cf(cf),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(useCache && !collection->isAStub() && !collection->isSystem()) {
+      _cacheEnabled(useCache && !collection->isSystem()) {
   TRI_ASSERT(cf != nullptr && cf != RocksDBColumnFamily::definitions());
 
   if (_objectId == 0) {
@@ -120,7 +120,6 @@ void RocksDBIndex::toVelocyPackFigures(VPackBuilder& builder) const {
 void RocksDBIndex::load() {
   if (_cacheEnabled) {
     createCache();
-    TRI_ASSERT(_cachePresent);
   }
 }
 
@@ -145,6 +144,7 @@ void RocksDBIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 
 void RocksDBIndex::createCache() {
   if (!_cacheEnabled || _cachePresent ||
+      _collection->isAStub() ||
       ServerState::instance()->isCoordinator()) {
     // we leave this if we do not need the cache
     // or if cache already created

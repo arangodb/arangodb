@@ -88,7 +88,7 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _primaryIndex(nullptr),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(!collection->isAStub() && !collection->isSystem() &&
+      _cacheEnabled(!collection->isSystem() &&
                     basics::VelocyPackHelper::readBooleanValue(
                         info, "cacheEnabled", false)) {
   VPackSlice s = info.get("isVolatile");
@@ -1972,6 +1972,7 @@ void RocksDBCollection::deserializeKeyGenerator(RocksDBCounterManager* mgr) {
 
 void RocksDBCollection::createCache() const {
   if (!_cacheEnabled || _cachePresent ||
+      _logicalCollection->isAStub() ||
       ServerState::instance()->isCoordinator()) {
     // we leave this if we do not need the cache
     // or if cache already created
