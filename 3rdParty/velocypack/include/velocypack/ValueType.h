@@ -57,6 +57,8 @@ enum class ValueType {
 
 char const* valueTypeName(ValueType);
 
+ValueType valueTypeGroup(ValueType type);
+
 }  // namespace arangodb::velocypack
 }  // namespace arangodb
 

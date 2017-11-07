@@ -74,4 +74,3 @@ TEST_CASE("tst_pregel1", "[pregel][mmap]") {
   REQUIRE(mapped.data() == nullptr);
 }
 
-/* end of georeg.cpp  */

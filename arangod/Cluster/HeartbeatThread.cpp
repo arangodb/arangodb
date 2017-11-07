@@ -586,8 +586,8 @@ void HeartbeatThread::runSingleServer() {
       auto prv = ServerState::setServerMode(ServerState::Mode::REDIRECT);
       if (prv == ServerState::Mode::DEFAULT) {
         // we were leader previously, now we need to ensure no ongoing operations
-        // on this server may prevent us from beeing a proper follower. We wait for
-        // all ongoing ops to stop, and make sure nothing is committet:
+        // on this server may prevent us from being a proper follower. We wait for
+        // all ongoing ops to stop, and make sure nothing is committed:
         // setting server mode to REDIRECT stops DDL ops and write transactions
         LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Detected leader to secondary change"
                                            << " this might take a few seconds";

@@ -1190,10 +1190,6 @@ bool MMFilesWalRecoverState::ReplayMarker(MMFilesMarker const* marker,
         MMFilesPersistentIndexFeature::dropDatabase(databaseId);
 
         vocbase = nullptr;
-        /* TODO: check what TRI_ERROR_ARANGO_DATABASE_NOT_FOUND means here
-        WaitForDeletion(state->server, databaseId,
-                        TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
-        */
         int res = state->databaseFeature->createDatabase(databaseId, nameString,
                                                          vocbase);
 
