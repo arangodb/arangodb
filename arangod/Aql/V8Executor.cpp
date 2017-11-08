@@ -364,7 +364,7 @@ void V8Executor::HandleV8Error(v8::TryCatch& tryCatch,
     }
     if (buffer) {
       //std::string script(buffer->c_str(), buffer->length());
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg << " " << *buffer;
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << msg << " " << Logger::CHARS(buffer->c_str(), buffer->length());
       msg += " See log for details";
     }
     // we can't figure out what kind of error occurred and throw a generic error
