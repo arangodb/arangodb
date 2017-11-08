@@ -246,7 +246,7 @@ class ClusterInfo {
   /// @brief shuts down library
   //////////////////////////////////////////////////////////////////////////////
 
-  ~ClusterInfo();
+  virtual ~ClusterInfo();
 
  public:
   static void createInstance(AgencyCallbackRegistry*);
@@ -315,7 +315,7 @@ class ClusterInfo {
   /// @brief ask about all collections
   //////////////////////////////////////////////////////////////////////////////
 
-  std::vector<std::shared_ptr<LogicalCollection>> const getCollections(
+  virtual std::vector<std::shared_ptr<LogicalCollection>> const getCollections(
       DatabaseID const&);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -517,7 +517,7 @@ class ClusterInfo {
 
   std::unordered_map<ServerID, std::string> getServers();
 
-  std::unordered_map<ServerID, std::string> getServerAliases();
+  virtual std::unordered_map<ServerID, std::string> getServerAliases();
   
  private:
 

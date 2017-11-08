@@ -129,7 +129,7 @@ class LogicalCollection {
 
   TRI_col_type_e type() const;
 
-  std::string name() const;
+  virtual std::string name() const;
   std::string dbName() const;
 
   std::string globallyUniqueId() const;
@@ -226,7 +226,9 @@ class LogicalCollection {
   bool allowUserKeys() const;
   virtual bool usesDefaultShardKeys() const;
   std::vector<std::string> const& shardKeys() const;
-  std::shared_ptr<ShardMap> shardIds() const;
+
+  virtual std::shared_ptr<ShardMap> shardIds() const;
+
   // return a filtered list of the collection's shards
   std::shared_ptr<ShardMap> shardIds(
       std::unordered_set<std::string> const& includedShards) const;
