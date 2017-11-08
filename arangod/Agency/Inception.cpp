@@ -321,7 +321,7 @@ bool Inception::restartingActiveAgent() {
 
             if (i != active.end()) { // Member in my active list
               TRI_ASSERT(theirActive.isArray());
-              if (theirActive.length() == myActive.length()) {
+              if (theirActive.length() == 0 || theirActive.length() == myActive.length()) {
                 std::vector<std::string> theirActVec, myActVec;
                 for (auto const i : VPackArrayIterator(theirActive)) {
                   theirActVec.push_back(i.copyString());
@@ -331,7 +331,7 @@ bool Inception::restartingActiveAgent() {
                 }
                 std::sort(myActVec.begin(),myActVec.end());
                 std::sort(theirActVec.begin(),theirActVec.end());
-                if (theirActVec != myActVec) {
+                if (theirActVec.size() > 1 && theirActVec != myActVec) {
                   if (!this->isStopping()) {
                     LOG_TOPIC(FATAL, Logger::AGENCY)
                       << "Assumed active RAFT peer and I disagree on active membership:";
