@@ -37,6 +37,7 @@
 #include "Aql/TraversalNode.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/WalkerWorker.h"
+#include "Transaction/Methods.h"
 #include "Views/ViewIterator.h"
 
 #include <velocypack/Iterator.h>
