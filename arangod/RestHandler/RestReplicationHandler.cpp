@@ -784,7 +784,7 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, errorMsg);
   }
 
   VPackBuilder result;
@@ -1075,8 +1075,10 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
       return res;
     }
-  } catch (...) {
-  }
+  } catch (basics::Exception const& e) {
+    LOG_TOPIC(DEBUG, Logger::FIXME) << "processRestoreCollectionCoordinator "
+      << "could not drop collection: " << e.message();
+  } catch (...) {}
 
   // now re-create the collection
 
@@ -1154,7 +1156,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
     TRI_ASSERT(col != nullptr);
     
     ExecContext const* exe = ExecContext::CURRENT;
-    if (exe != nullptr && !exe->isSuperuser()) {
+    if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
       AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
       auth->authInfo()->updateUser(ExecContext::CURRENT->user(),
                      [&](AuthUserEntry& entry) {
@@ -2516,7 +2518,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   }
 
   ExecContext const* exe = ExecContext::CURRENT;
-  if (exe != nullptr && !exe->isSuperuser() &&
+  if (name[0] != '_' && exe != nullptr && !exe->isSuperuser() &&
       ServerState::instance()->isSingleServer()) {
     AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
     auth->authInfo()->updateUser(exe->user(), [&](AuthUserEntry& entry) {
