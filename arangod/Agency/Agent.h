@@ -273,6 +273,15 @@ class Agent : public arangodb::Thread,
   /// @brief Merge configuration with a persisted state
   bool mergeConfiguration(VPackSlice const&);
 
+  /// @brief Wakeup main loop of the agent (needed from Constituent)
+  void wakeupMainLoop() {
+    {
+      CONDITION_LOCKER(guard, _appendCV);
+      _agentNeedsWakeup = true;
+    }
+    _appendCV.broadcast();
+  }
+
  private:
 
   /// @brief Find out, if we've had acknowledged RPCs recent enough
@@ -283,15 +292,6 @@ class Agent : public arangodb::Thread,
 
   /// @brief Activate this agent in single agent mode.
   bool activateAgency();
-
-  /// @brief Wakeup main loop of the agent
-  void wakeupMainLoop() {
-    {
-      CONDITION_LOCKER(guard, _appendCV);
-      _agentNeedsWakeup = true;
-    }
-    _appendCV.broadcast();
-  }
 
   /// @brief Leader election delegate
   Constituent _constituent;
