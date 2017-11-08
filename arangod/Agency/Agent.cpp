@@ -1202,6 +1202,15 @@ void Agent::run() {
 
     // Leader working only
     if (leading()) {
+      if (1 == getPrepareLeadership()) {
+        // Skip the usual work and the waiting such that above preparation
+        // code runs immediately. We will return with value 2 such that
+        // replication and confirmation of it can happen. Service will 
+        // continue once _commitIndex has reached the end of the log and then
+        // getPrepareLeadership() will finally return 0.
+        continue;
+      }
+
       // Append entries to followers
       sendAppendEntriesRPC();
 
