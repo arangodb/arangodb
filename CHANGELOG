@@ -1,6 +1,9 @@
 v3.2.7 (XXXX-XX-XX)
 -------------------
 
+* only users with read/write rights on the "_system" collection can now execute
+  "_admin/shutdown" as well as modify properties of the write-ahead log
+
 * enable JEMalloc background thread for purging and returning unused memory
   back to the operating system (Linux only)
 
