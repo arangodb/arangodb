@@ -427,7 +427,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
     
     if (column_family_id != _documentsCF ||
         !shouldHandleMarker(column_family_id, false, key)) {
-      TRI_ASSERT(!_singleOp || _removeDocumentKey.empty());
       _removeDocumentKey.clear();
       return rocksdb::Status();
     }

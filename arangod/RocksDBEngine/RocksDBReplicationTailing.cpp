@@ -206,8 +206,11 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       }
       case RocksDBLogType::DocumentRemove: {
         // part of an ongoing transaction
-        TRI_ASSERT(_seenBeginTransaction && !_singleOp);
-        _removeDocumentKey = RocksDBLogValue::documentKey(blob).toString();
+        if (_currentDbId != 0 && _currentTrxId != 0 && _currentCid != 0) {
+          // collection may be ignored
+          TRI_ASSERT(_seenBeginTransaction && !_singleOp);
+          _removeDocumentKey = RocksDBLogValue::documentKey(blob).toString();
+        }
         break;
       }
       case RocksDBLogType::SingleRemove: {
@@ -332,6 +335,10 @@ class WALParser : public rocksdb::WriteBatch::Handler {
                                  rocksdb::Slice const& key) {
     tick();
     if (!shouldHandleKey(column_family_id, key)) {
+      if (column_family_id == _documentsCF) {
+        _removeDocumentKey.clear();
+        return rocksdb::Status();
+      }
       return rocksdb::Status();
     }
 
@@ -447,6 +454,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   }
 
   uint64_t endBatch() {
+    TRI_ASSERT(_removeDocumentKey.empty());
     resetTransientState();
     return _currentSequence;
   }
