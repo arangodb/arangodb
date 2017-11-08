@@ -41,6 +41,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/ServerState.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
@@ -785,10 +786,22 @@ bool State::loadOrPersistConfiguration() {
   if (result.isArray() &&
       result.length()) {  // We already have a persisted conf
 
+    auto resolved = result[0].resolveExternals();
+
+    TRI_ASSERT(resolved.hasKey("id"));
+    auto id = resolved.get("id");
+
+    TRI_ASSERT(id.isString());
+    if (ServerState::instance()->hasPersistedId()) {
+      TRI_ASSERT(id.copyString() == ServerState::instance()->getPersistedId());
+    } else {
+      ServerState::instance()->writePersistedId(id.copyString());
+    }
+
     try {
       LOG_TOPIC(DEBUG, Logger::AGENCY)
-        << "Merging configuration " << result[0].resolveExternals().toJson();
-      _agent->mergeConfiguration(result[0].resolveExternals());
+        << "Merging configuration " << resolved.toJson();
+      _agent->mergeConfiguration(resolved);
       
     } catch (std::exception const& e) {
       LOG_TOPIC(ERR, Logger::AGENCY)
@@ -805,7 +818,12 @@ bool State::loadOrPersistConfiguration() {
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "New agency!";
 
     TRI_ASSERT(_agent != nullptr);
-    _agent->id(to_string(boost::uuids::random_generator()()));
+
+    std::string uuid = (ServerState::instance()->hasPersistedId()) ?
+      ServerState::instance()->getPersistedId() :
+      ServerState::instance()->generatePersistedId(ServerState::ROLE_AGENT);
+
+    _agent->id(uuid);
 
     auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
     SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);
