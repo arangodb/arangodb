@@ -47,7 +47,8 @@ JWT_SECRET=""
 PORT_OFFSET=0
 SRC_DIR="."
 
-while [[ ${1} ]]; do
+parse_args(){
+while [[ -n "$1" ]]; do
     case "${1}" in
     -a|--agency-size)
       NRAGENTS=${2}
@@ -125,3 +126,4 @@ while [[ ${1} ]]; do
     return 1
   fi
 done
+}

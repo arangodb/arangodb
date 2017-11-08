@@ -256,7 +256,16 @@ int TRI_UNMMFile(void* memoryAddress, size_t numOfBytesToUnMap,
   // UnmapViewOfFile: If the function succeeds, the return value is nonzero.
   bool ok = (UnmapViewOfFile(memoryAddress) != 0);
 
-  ok = (CloseHandle(*mmHandle) && ok);
+  if (!ok) {
+    DWORD errorCode = GetLastError();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "UnmapViewOfFile returned an error: " << errorCode;
+  }
+
+  if (CloseHandle(*mmHandle) == 0) {
+    DWORD errorCode = GetLastError();
+    LOG_TOPIC(WARN, arangodb::Logger::FIXME) << "CloseHandle returned an error: " << errorCode;
+    ok = false;
+  }
 
   if (!ok) {
     return TRI_ERROR_SYS_ERROR;
