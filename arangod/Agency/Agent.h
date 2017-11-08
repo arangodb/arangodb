@@ -275,10 +275,8 @@ class Agent : public arangodb::Thread,
 
   /// @brief Wakeup main loop of the agent (needed from Constituent)
   void wakeupMainLoop() {
-    {
-      CONDITION_LOCKER(guard, _appendCV);
-      _agentNeedsWakeup = true;
-    }
+    CONDITION_LOCKER(guard, _appendCV);
+    _agentNeedsWakeup = true;
     _appendCV.broadcast();
   }
 
