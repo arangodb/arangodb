@@ -92,11 +92,10 @@ bool Traverser::UniqueVertexGetter::getVertex(VPackSlice edge, std::vector<Strin
     _traverser->traverserCache()->increaseFilterCounter();
     return false;
   } else {
+    if (!_traverser->vertexMatchesConditions(toAddStr, result.size())) {
+      return false;
+    }
     _returnedVertices.emplace(toAddStr);
-  }
-
-  if (!_traverser->vertexMatchesConditions(toAddStr, result.size())) {
-    return false;
   }
 
   result.emplace_back(toAddStr);
@@ -120,10 +119,14 @@ bool Traverser::UniqueVertexGetter::getSingleVertex(arangodb::velocypack::Slice 
     // This vertex is not unique.
     _traverser->traverserCache()->increaseFilterCounter();
     return false;
-  } else {
-    _returnedVertices.emplace(result);
   }
-  return _traverser->vertexMatchesConditions(result, depth);
+
+  if (!_traverser->vertexMatchesConditions(result, depth)) {
+    return false;
+  }
+
+  _returnedVertices.emplace(result);
+  return true;
 }
 
 void Traverser::UniqueVertexGetter::reset(arangodb::StringRef const& startVertex) {
