@@ -674,64 +674,6 @@ bool Agent::active() const {
 }
 
 
-// Activate with everything I need to know
-query_t Agent::activate(query_t const& everything) {
-
-  auto ret = std::make_shared<Builder>();
-  ret->openObject();
-
-  Slice slice = everything->slice();
-
-  if (slice.isObject()) {
-    
-    if (active()) {
-      ret->add("success", VPackValue(false));
-    } else {
-
-      Slice compact = slice.get("compact");
-      Slice    logs = slice.get("logs");
-
-      
-      VPackBuilder batch;
-      batch.openArray();
-      for (auto const& q : VPackArrayIterator(logs)) {
-        batch.add(q.get("request"));
-      }
-      batch.close();
-
-      index_t commitIndex = 0;
-      {
-        _tiLock.assertNotLockedByCurrentThread();
-        term_t t = _constituent.term();
-        MUTEX_LOCKER(ioLocker, _ioLock); // Atomicity 
-        if (!compact.isEmptyArray()) {
-          _readDB = compact.get("readDB");
-        }
-        {
-          CONDITION_LOCKER(guard, _waitForCV);
-          commitIndex = _commitIndex;  // take a local copy
-        }
-        /* do not perform callbacks */
-        _readDB.applyLogEntries(batch, commitIndex, t, false);
-        _spearhead = _readDB;
-      }
-
-      ret->add("success", VPackValue(true));
-      ret->add("commitId", VPackValue(commitIndex));
-    }
-
-  } else {
-
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << "Activation failed. \"Everything\" must be an object, is however "
-      << slice.typeName();
-
-  }
-  ret->close();
-  return ret;
-
-}
-
 /// @brief Activate agency (Inception thread for multi-host, main thread else)
 bool Agent::activateAgency() {
   if (_config.activeEmpty()) {

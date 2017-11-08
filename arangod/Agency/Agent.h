@@ -227,9 +227,6 @@ class Agent : public arangodb::Thread,
   /// @brief Am I active agent
   bool active() const;
 
-  /// @brief Become active agent
-  query_t activate(query_t const&);
-
   /// @brief Are we ready for RAFT?
   bool ready() const;
 
