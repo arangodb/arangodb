@@ -1,6 +1,8 @@
 v3.2.7 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #3618: Inconsistent behavior of OR statement with object bind parameters
+
 * enable JEMalloc background thread for purging and returning unused memory
   back to the operating system (Linux only)
 
