@@ -177,8 +177,8 @@
             }
           });
         },
-        error: function () {
-          arangoHelper.arangoError('Collection error.');
+        error: function (err) {
+          arangoHelper.arangoError('Collection error: ' + err.responseJSON.errorMessage);
         }
       });
     },
@@ -189,10 +189,10 @@
         type: 'PUT',
         url: arangoHelper.databaseUrl('/_api/collection/' + this.get('id') + '/loadIndexesIntoMemory'),
         success: function () {
-          arangoHelper.arangoNotification('Loading indexes into Memory.');
+          arangoHelper.arangoNotification('Loading indexes into memory.');
         },
-        error: function () {
-          arangoHelper.arangoError('Collection error.');
+        error: function (err) {
+          arangoHelper.arangoError('Collection error: ' + err.responseJSON.errorMessage);
         }
       });
     },
