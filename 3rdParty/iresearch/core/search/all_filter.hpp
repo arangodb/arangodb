@@ -39,6 +39,8 @@ class IRESEARCH_API all: public filter {
 
   all() NOEXCEPT;
 
+  using filter::prepare;
+
   virtual filter::prepared::ptr prepare(
     const index_reader& reader,
     const order::prepared& order,

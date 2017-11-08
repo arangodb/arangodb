@@ -162,9 +162,9 @@ class IRESEARCH_API filter {
   const type_id* type_;
 }; // filter
 
-#define DECLARE_FILTER_TYPE() DECLARE_TYPE_ID(iresearch::type_id)
-#define DEFINE_FILTER_TYPE(class_name) DEFINE_TYPE_ID(class_name,iresearch::type_id) { \
-  static iresearch::type_id type; \
+#define DECLARE_FILTER_TYPE() DECLARE_TYPE_ID(::iresearch::type_id)
+#define DEFINE_FILTER_TYPE(class_name) DEFINE_TYPE_ID(class_name,::iresearch::type_id) { \
+  static ::iresearch::type_id type; \
   return type; }
 
 ////////////////////////////////////////////////////////////////////////////////
