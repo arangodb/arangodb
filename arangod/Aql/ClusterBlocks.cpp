@@ -60,7 +60,8 @@ using StringBuffer = arangodb::basics::StringBuffer;
 GatherBlock::GatherBlock(ExecutionEngine* engine, GatherNode const* en)
     : ExecutionBlock(engine, en),
       _sortRegisters(),
-      _isSimple(en->getElements().empty()){
+      _isSimple(en->getElements().empty()),
+      _heap(en->_sortmode == 'h' ? new Heap : nullptr ) {
 
   if (!_isSimple) {
     for (auto const& p : en->getElements()) {
@@ -241,7 +242,6 @@ bool GatherBlock::hasMore() {
 
 /// @brief getSome
 AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
-  std::size_t shardRequiredForHeapSort = 4;
   DEBUG_BEGIN_BLOCK();
   traceGetSomeBegin();
 
@@ -319,8 +319,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   // automatically deleted if things go wrong
   std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, static_cast<arangodb::aql::RegisterId>(nrRegs)));
 
-  if (!_heap && _dependencies.size() > shardRequiredForHeapSort){
-    _heap.reset(new Heap);
+  if (_heap && _heap->size() !=_dependencies.size() ){
     auto& heap = *_heap;
     std::copy(_gatherBlockPos.begin(),_gatherBlockPos.end(),std::back_inserter(heap));
     std::make_heap(heap.begin(), heap.end(),ourGreater);
@@ -359,8 +358,8 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
     _gatherBlockPos.at(val.first).second++;
     if(_heap){
       auto& heap = *_heap;
-      std::pop_heap(heap.begin(), heap.end(),ourGreater);
-      heap.back().second++;
+      std::pop_heap(heap.begin(), heap.end(),ourGreater); // remove element from heap but not from vector
+      heap.back().second++; //advance position in itemblock of removed element before it is re-inserted later
     }
 
     // renew the _gatherBlockPos and clean up the buffer if necessary
@@ -368,7 +367,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
       AqlItemBlock* cur = _gatherBlockBuffer.at(val.first).front();
       returnBlock(cur);
       _gatherBlockBuffer.at(val.first).pop_front();
-      _gatherBlockPos.at(val.first) = {val.first, 0};
+      _gatherBlockPos.at(val.first) = {val.first, 0}; // .second = 0 ?
 
       if( _heap) {
         _heap->back().second = 0;
@@ -386,7 +385,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
     }
 
     if(_heap) {
-      std::push_heap(_heap->begin(), _heap->end(),ourGreater);
+      std::push_heap(_heap->begin(), _heap->end(),ourGreater); //re-insert element
     }
   }
 
