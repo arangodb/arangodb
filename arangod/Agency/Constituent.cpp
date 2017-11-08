@@ -247,11 +247,13 @@ void Constituent::lead(term_t term) {
     // Keep track of this election time:
     MUTEX_LOCKER(locker, _recentElectionsMutex);
     _recentElections.push_back(readSystemClock());
+
+    // we need to rebuild spear_head and read_db, but this is done in the
+    // main Agent thread:
+    _agent->beginPrepareLeadership();
   }
 
-  // we need to rebuild spear_head and read_db, but this is done in the
-  // main Agent thread:
-  _agent->beginPrepareLeadership();
+  _agent->wakeupMainLoop();
 }
 
 /// Become candidate
