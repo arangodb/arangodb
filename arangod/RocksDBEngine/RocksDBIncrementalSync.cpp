@@ -60,7 +60,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
     options.isSynchronousReplicationFrom = syncer._leaderId;
   }
 
-  LOG_TOPIC(TRACE, Logger::REPLICATION) << "synching chunk. low: '" << lowString
+  LOG_TOPIC(TRACE, Logger::REPLICATION) << "syncing chunk. low: '" << lowString
                                         << "', high: '" << highString << "'";
 
   // no match

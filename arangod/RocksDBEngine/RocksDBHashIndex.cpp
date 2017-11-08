@@ -22,9 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBHashIndex.h"
+#include "Basics/VelocyPackHelper.h"
+
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
-#include "Basics/VelocyPackHelper.h"
 
 using namespace arangodb;
 

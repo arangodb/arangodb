@@ -71,9 +71,6 @@ class Index {
 
   Index(TRI_idx_iid_t, LogicalCollection*, arangodb::velocypack::Slice const&);
 
-  /// TODO: can we remove this?
-  explicit Index(arangodb::velocypack::Slice const&);
-
   virtual ~Index();
 
  public:

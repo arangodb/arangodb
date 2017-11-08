@@ -37,7 +37,6 @@ using namespace arangodb::basics;
 using namespace arangodb::rest;
 
 static std::string const ROOT_PATH = "/";
-std::atomic<RestHandlerFactory::Mode> RestHandlerFactory::_serverMode(RestHandlerFactory::Mode::DEFAULT);
 
 namespace {
 class MaintenanceHandler : public RestHandler {
@@ -51,6 +50,9 @@ class MaintenanceHandler : public RestHandler {
   char const* name() const override final { return "MaintenanceHandler"; }
 
   bool isDirect() const override { return true; };
+  
+  // returns the queue name, should trigger processing without job
+  size_t queue() const override { return JobQueue::AQL_QUEUE; }
 
   RestStatus execute() override {
     // use this to redirect requests
@@ -92,14 +94,6 @@ class MaintenanceHandler : public RestHandler {
 };
 }
 
-void RestHandlerFactory::setServerMode(RestHandlerFactory::Mode value) {
-  _serverMode.store(value, std::memory_order_release);
-}
-
-RestHandlerFactory::Mode RestHandlerFactory::serverMode() {
-  return _serverMode.load(std::memory_order_acquire);
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a new handler factory
 ////////////////////////////////////////////////////////////////////////////////
@@ -132,9 +126,9 @@ RestHandler* RestHandlerFactory::createHandler(
 
   // In the bootstrap phase, we would like that coordinators answer the
   // following endpoints, but not yet others:
-  RestHandlerFactory::Mode mode = RestHandlerFactory::serverMode();
+  ServerState::Mode mode = ServerState::serverMode();
   switch (mode) {
-    case Mode::MAINTENANCE: {
+    case ServerState::Mode::MAINTENANCE: {
       if ((!ServerState::instance()->isCoordinator() &&
           path.find("/_api/agency/agency-callbacks") == std::string::npos) ||
           (path.find("/_api/agency/agency-callbacks") == std::string::npos &&
@@ -144,8 +138,8 @@ RestHandler* RestHandlerFactory::createHandler(
       }
       break;
     }
-    case Mode::REDIRECT:
-    case Mode::TRYAGAIN: {
+    case ServerState::Mode::REDIRECT:
+    case ServerState::Mode::TRYAGAIN: {
       if (path.find("/_admin/shutdown") == std::string::npos &&
           path.find("/_admin/server/role") == std::string::npos &&
           path.find("/_api/agency/agency-callbacks") == std::string::npos &&
@@ -158,10 +152,10 @@ RestHandler* RestHandlerFactory::createHandler(
       }
       break;
     }
-    case Mode::DEFAULT: {
+    case ServerState::Mode::DEFAULT:
+    case ServerState::Mode::READ_ONLY:
       // no special handling required
       break;
-    }
   }
 
   auto const& ii = _constructors;

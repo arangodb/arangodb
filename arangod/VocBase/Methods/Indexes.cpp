@@ -49,7 +49,6 @@
 #include "V8Server/v8-collection.h"
 #include "VocBase/AuthInfo.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/modes.h"
 #include "VocBase/vocbase.h"
 
 #include <velocypack/Builder.h>
@@ -258,12 +257,6 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
     return res;
   }
 
-  // disallow index creation in read-only mode
-  if (!collection->isSystem() && create &&
-      TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
-    return Result(TRI_ERROR_ARANGO_READ_ONLY);
-  }
-
   bool created = false;
   std::shared_ptr<arangodb::Index> idx;
   if (create) {
@@ -326,14 +319,18 @@ Result Indexes::ensureIndex(LogicalCollection* collection,
                             VPackSlice const& definition, bool create,
                             VPackBuilder& output) {
   // can read indexes with RO on db and collection. Modifications require RW/RW
-  if (ExecContext::CURRENT != nullptr) {
-    ExecContext const* exec = ExecContext::CURRENT;
+  ExecContext const* exec = ExecContext::CURRENT;
+  if (exec != nullptr) {
     AuthLevel lvl = exec->databaseAuthLevel();
     bool canModify = exec->canUseCollection(collection->name(), AuthLevel::RW);
     bool canRead = exec->canUseCollection(collection->name(), AuthLevel::RO);
     if ((create && (lvl != AuthLevel::RW || !canModify)) ||
         (lvl == AuthLevel::NONE || !canRead)) {
       return TRI_ERROR_FORBIDDEN;
+    }
+    if (create && !exec->isSuperuser() && !ServerState::writeOpsEnabled()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_READ_ONLY,
+                                     "server is in read-only mode");
     }
   }
 
@@ -515,7 +512,6 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const* collection,
 
 arangodb::Result Indexes::drop(LogicalCollection const* collection,
                                VPackSlice const& indexArg) {
-
   if (ExecContext::CURRENT != nullptr) {
     if (ExecContext::CURRENT->databaseAuthLevel() != AuthLevel::RW ||
         !ExecContext::CURRENT->canUseCollection(collection->name(), AuthLevel::RW)) {
