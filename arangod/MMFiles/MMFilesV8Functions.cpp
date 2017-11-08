@@ -172,9 +172,6 @@ static void JS_DatafileScanVocbaseCol(
 
   v8::Handle<v8::Object> result;
   {
-    // TODO Check with JAN Okay to just remove the lock?
-    // READ_LOCKER(readLocker, collection->_lock);
-
     TRI_vocbase_col_status_e status = collection->getStatusLocked();
     if (status != TRI_VOC_COL_STATUS_UNLOADED &&
         status != TRI_VOC_COL_STATUS_CORRUPTED) {
