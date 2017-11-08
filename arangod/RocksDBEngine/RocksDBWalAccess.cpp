@@ -110,8 +110,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
       }
     }
     
-    LOG_TOPIC(ERR, Logger::FIXME) << "[LOG] " << _currentSequence
-      << " " << rocksDBLogTypeName(type);
+    //LOG_TOPIC(ERR, Logger::FIXME) << "[LOG] " << _currentSequence
+    //  << " " << rocksDBLogTypeName(type);
     switch (type) {
       case RocksDBLogType::DatabaseCreate:
       case RocksDBLogType::DatabaseDrop: {
@@ -281,8 +281,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
     if (!shouldHandleMarker(column_family_id, true, key)) {
       return rocksdb::Status();
     }
-     LOG_TOPIC(ERR, Logger::ROCKSDB) << "[PUT] cf: " << column_family_id
-      << ", key:" << key.ToString() << "  value: " << value.ToString();
+    //LOG_TOPIC(ERR, Logger::ROCKSDB) << "[PUT] cf: " << column_family_id
+    // << ", key:" << key.ToString() << "  value: " << value.ToString();
 
     if (column_family_id == _definitionsCF) {
       
@@ -431,8 +431,8 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
       return rocksdb::Status();
     }
     
-    LOG_TOPIC(ERR, Logger::ROCKSDB) << "[Delete] cf: " << column_family_id
-    << " key:" << key.ToString();
+    //LOG_TOPIC(ERR, Logger::ROCKSDB) << "[Delete] cf: " << column_family_id
+    //<< " key:" << key.ToString();
     
     // document removes, because of a db / collection drop is not transactional
     //  and should not appear in the WAL.
@@ -549,8 +549,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
     if (column_family_id == _definitionsCF) {
       // only a PUT should be handled here anyway
       if (RocksDBKey::type(key) == RocksDBEntryType::Database) {
-        TRI_ASSERT(!isPut || _currentDbId != 0); // only handle PUT
-        return isPut && shouldHandleDB(_currentDbId);
+        return isPut && shouldHandleDB(RocksDBKey::databaseId(key));
       } else if (RocksDBKey::type(key) == RocksDBEntryType::Collection) {
         //  || RocksDBKey::type(key) == RocksDBEntryType::View
         dbId = RocksDBKey::databaseId(key);
