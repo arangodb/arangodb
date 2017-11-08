@@ -35,6 +35,7 @@
 #include "Cluster/ClusterHelpers.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Indexes/Index.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/DatabaseReplicationApplier.h"
@@ -1027,7 +1028,6 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
   if (name.empty()) {
     errorMsg = "collection name is missing";
-
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
 
@@ -1146,10 +1146,21 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
         application_features::ApplicationServer::getFeature<ClusterFeature>(
             "Cluster")
             ->createWaitsForSyncReplication();
+    // in the replication case enforcing the replication factor is absolutely
+    // not desired, so it is hardcoded to false
     auto col = ClusterMethods::createCollectionOnCoordinator(
         collectionType, _vocbase, merged, ignoreDistributeShardsLikeErrors,
-        createWaitsForSyncReplication);
+        createWaitsForSyncReplication, false);
     TRI_ASSERT(col != nullptr);
+    
+    ExecContext const* exe = ExecContext::CURRENT;
+    if (exe != nullptr && !exe->isSuperuser()) {
+      AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
+      auth->authInfo()->updateUser(ExecContext::CURRENT->user(),
+                     [&](AuthUserEntry& entry) {
+                       entry.grantCollection(dbName, col->name(), AuthLevel::RW);
+                     });
+    }
   } catch (basics::Exception const& e) {
     // Error, report it.
     errorMsg = e.message();
@@ -2444,7 +2455,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   if (dst != nullptr) {
     *dst = nullptr;
   }
-
+  
   if (!slice.isObject()) {
     return TRI_ERROR_HTTP_BAD_PARAMETER;
   }
@@ -2504,7 +2515,14 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
     return TRI_ERROR_INTERNAL;
   }
 
-  TRI_ASSERT(col != nullptr);
+  ExecContext const* exe = ExecContext::CURRENT;
+  if (exe != nullptr && !exe->isSuperuser() &&
+      ServerState::instance()->isSingleServer()) {
+    AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
+    auth->authInfo()->updateUser(exe->user(), [&](AuthUserEntry& entry) {
+               entry.grantCollection(_vocbase->name(), col->name(), AuthLevel::RW);
+             });
+  }
 
   /* Temporary ASSERTS to prove correctness of new constructor */
   TRI_ASSERT(col->isSystem() == (name[0] == '_'));

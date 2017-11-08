@@ -31,7 +31,6 @@
 #include "Transaction/Methods.h"
 #include "Transaction/Hints.h"
 #include "VocBase/LogicalCollection.h"
-#include "VocBase/modes.h"
 
 using namespace arangodb;
 
@@ -216,12 +215,6 @@ int MMFilesTransactionCollection::use(int nestingLevel) {
         res = TRI_ERROR_INTERNAL;
       }
       return res;
-    }
-
-    if (AccessMode::AccessMode::isWriteOrExclusive(_accessType) &&
-        TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE &&
-        !LogicalCollection::IsSystemName(_collection->name())) {
-      return TRI_ERROR_ARANGO_READ_ONLY;
     }
 
     // store the waitForSync property

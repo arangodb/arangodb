@@ -54,5 +54,5 @@ void RestAdminRoutingHandler::reloadRouting() {
     return;
   }
 
-  generateOk();
+  resetResponse(rest::ResponseCode::NO_CONTENT);
 }

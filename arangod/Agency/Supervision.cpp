@@ -148,7 +148,7 @@ static std::string const targetShortID = "/Target/MapUniqueToShortID/";
 static std::string const currentServersRegisteredPrefix =
   "/Current/ServersRegistered";
 static std::string const foxxmaster = "/Current/Foxxmaster";
-
+static std::string const asyncReplLeader = "/Plan/AsyncReplication/Leader";
 
 void Supervision::upgradeOne(Builder& builder) {
   _lock.assertLockedByCurrentThread();
@@ -253,7 +253,7 @@ void handleOnStatusCoordinator(
   HealthRecord& transisted, std::string const& serverID) {
   
   if (transisted.status == Supervision::HEALTH_STATUS_FAILED) {
-    
+    // if the current foxxmaster server failed => reset the value to ""
     if (snapshot.has(foxxmaster) && snapshot(foxxmaster).getString() == serverID) {
       VPackBuilder create;
       { VPackArrayBuilder tx(&create);
@@ -268,7 +268,18 @@ void handleOnStatusCoordinator(
 void handleOnStatusSingle(
    Agent* agent, Node const& snapshot, HealthRecord& persisted,
    HealthRecord& transisted, std::string const& serverID) {
-  // We should be fine without anything
+  // if the current leader server failed => reset the value to ""
+  if (transisted.status == Supervision::HEALTH_STATUS_FAILED) {
+    
+    if (snapshot.has(asyncReplLeader) && snapshot(asyncReplLeader).getString() == serverID) {
+      VPackBuilder create;
+      { VPackArrayBuilder tx(&create);
+        { VPackObjectBuilder d(&create);
+          create.add(asyncReplLeader, VPackValue("")); }}
+      singleWriteTransaction(agent, create);
+    }
+    
+  }
 }
   
 void handleOnStatus(

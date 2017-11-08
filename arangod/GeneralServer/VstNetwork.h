@@ -127,7 +127,7 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
   chunk <<= 1;
   chunk |= isFirstChunk ? 0x1 : 0x0;
 
-  // get the lenght of VPack data
+  // get the length of VPack data
   uint32_t dataLength = static_cast<uint32_t>(end - begin);
 
   // calculate length of current chunk

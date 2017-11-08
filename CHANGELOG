@@ -1,6 +1,40 @@
 devel
 -----
 
+* potential fix for issue #3581: Unexpected "rocksdb unique constraint 
+  violated" with unique hash index
+
+* fix agency precondition check for complex objects
+
+* introduce `enforceReplicationFactor`: An optional parameter controlling
+  if the server should bail out during collection creation if there are not
+  enough DBServers available for the desired `replicationFactor`.
+
+* fixed issue #3516: Show execution time in arangosh
+    
+  this change adds more dynamic prompt components for arangosh
+  The following components are now available for dynamic prompts, 
+  settable via the `--console.prompt` option in arangosh:
+    
+  - '%t': current time as timestamp
+  - '%p': duration of last command in seconds
+  - '%d': name of current database
+  - '%e': current endpoint
+  - '%E': current endpoint without protocol
+  - '%u': current user
+    
+  The time a command takes can be displayed easily by starting arangosh with `--console.prompt "%p> "`.
+
+* make the ArangoShell refill its collection cache when a yet-unknown collection
+  is first accessed. This fixes the following problem:
+
+      arangosh1> db._collections();  // shell1 lists all collections
+      arangosh2> db._create("test"); // shell2 now creates a new collection 'test'
+      arangosh1> db.test.insert({}); // shell1 is not aware of the collection created
+                                     // in shell2, so the insert will fail
+
+* make AQL `DISTINCT` not change the order of the results it is applied on
+
 * enable JEMalloc background thread for purging and returning unused memory
   back to the operating system (Linux only)
 
@@ -72,6 +106,16 @@ devel
 
 v3.2.7 (XXXX-XX-XX)
 -------------------
+
+* enable JEMalloc background thread for purging and returning unused memory
+  back to the operating system (Linux only)
+
+* fix agency precondition check for complex objects
+
+  this fixes issues with several CAS operations in the agency
+
+* fixed issue #3403: How to kill long running AQL queries with the browser console's
+  AQL (display issue)
 
 * fixed issue #3549: server reading ENGINE config file fails on common standard 
   newline character
