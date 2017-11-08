@@ -700,7 +700,6 @@ void RocksDBCollection::invokeOnAllElements(
 
 void RocksDBCollection::truncate(transaction::Methods* trx,
                                  OperationOptions& options) {
-  // TODO FIXME -- improve transaction size
   TRI_ASSERT(_objectId != 0);
   TRI_voc_cid_t cid = _logicalCollection->cid();
   auto state = RocksDBTransactionState::toState(trx);
@@ -719,7 +718,9 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       mthd->NewIterator(ro, documentBounds.columnFamily());
   iter->Seek(documentBounds.start());
 
+  uint64_t found = 0;
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
+    ++found;
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
 
     TRI_voc_rid_t revId =
@@ -766,6 +767,12 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
                                    "deleted");
   }
 #endif
+
+  if (found > 64 * 1024) {
+    // also compact the ranges in order to speed up all further accesses
+    // to the collection
+    compact();
+  }
 }
 
 LocalDocumentId RocksDBCollection::lookupKey(transaction::Methods* trx,
