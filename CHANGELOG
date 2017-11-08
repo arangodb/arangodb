@@ -1,6 +1,8 @@
 devel
 -----
 
+* fixed issue #3618: Inconsistent behavior of OR statement with object bind parameters
+
 * potential fix for issue #3581: Unexpected "rocksdb unique constraint 
   violated" with unique hash index
 
