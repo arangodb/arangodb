@@ -899,7 +899,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
 
   {
     CONDITION_LOCKER(guard, _waitForCV);
-    while (_preparing != 0) {
+    while (getPrepareLeadership() != 0) {
       _waitForCV.wait(100);
     }
   }
