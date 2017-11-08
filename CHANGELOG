@@ -1,8 +1,11 @@
 v3.2.7 (XXXX-XX-XX)
 -------------------
 
-* only users with read/write rights on the "_system" collection can now execute
+* only users with read/write rights on the "_system" database can now execute
   "_admin/shutdown" as well as modify properties of the write-ahead log
+
+* potential fix for issue #3581: Unexpected "rocksdb unique constraint 
+  violated" with unique hash index
 
 * enable JEMalloc background thread for purging and returning unused memory
   back to the operating system (Linux only)
