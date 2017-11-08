@@ -240,6 +240,7 @@ Result RocksDBIndex::updateInternal(transaction::Methods* trx, RocksDBMethods* m
 
 void RocksDBIndex::truncate(transaction::Methods* trx) {
   auto* mthds = RocksDBTransactionState::toMethods(trx);
+  auto state = RocksDBTransactionState::toState(trx);
   RocksDBKeyBounds indexBounds = getBounds(type(), _objectId, _unique);
 
   rocksdb::ReadOptions options = mthds->readOptions();
@@ -258,6 +259,15 @@ void RocksDBIndex::truncate(transaction::Methods* trx) {
 
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
+    
+    // report size of key
+    RocksDBOperationResult result = state->addInternalOperation(
+        0, iter->key().size());
+
+    // transaction size limit reached -- fail
+    if (result.fail()) {
+      THROW_ARANGO_EXCEPTION(result);
+    }
 
     Result r = mthds->Delete(_cf, RocksDBKey(iter->key()));
     if (!r.ok()) {
@@ -312,7 +322,7 @@ void RocksDBIndex::cleanup() {
 Result RocksDBIndex::postprocessRemove(transaction::Methods* trx,
                                        rocksdb::Slice const& key,
                                        rocksdb::Slice const& value) {
-  return {TRI_ERROR_NO_ERROR};
+  return Result();
 }
 
 // blacklist given key from transactional cache

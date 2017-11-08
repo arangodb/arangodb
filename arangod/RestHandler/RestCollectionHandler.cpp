@@ -330,7 +330,13 @@ void RestCollectionHandler::handleCommandPut() {
           auto ctx = transaction::StandaloneContext::Create(_vocbase);
           SingleCollectionTransaction trx(ctx, coll->cid(),
                                           AccessMode::Type::EXCLUSIVE);
+
+          // we must read our own writes in this transaction for the deletion
+          // checks that are executed at the end of truncate in maintainer mode
+          trx.addHint(transaction::Hints::Hint::READ_OWN_WRITES);
+
           res = trx.begin();
+
           if (res.ok()) {
             OperationResult result = trx.truncate(coll->name(), opts);
             res = trx.finish(result.code);
