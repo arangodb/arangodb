@@ -75,16 +75,17 @@ RestStatus MMFilesRestWalHandler::execute() {
 }
 
 void MMFilesRestWalHandler::properties() {
-  if (ExecContext::CURRENT != nullptr &&
-      !ExecContext::CURRENT->isAdminUser()) {
-    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "you need admin rights to modify WAL properties");
-    return;
-  }
   
   auto l = MMFilesLogfileManager::instance();
 
   if (_request->requestType() == rest::RequestType::PUT) {
+    if (ExecContext::CURRENT != nullptr &&
+        !ExecContext::CURRENT->isAdminUser()) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights to modify WAL properties");
+      return;
+    }
+    
     std::shared_ptr<VPackBuilder> parsedRequest;
     VPackSlice slice;
     try {
