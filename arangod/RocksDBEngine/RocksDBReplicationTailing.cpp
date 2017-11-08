@@ -118,12 +118,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         // FIXME: do we have to print something?
         break;
       }
-      case RocksDBLogType::CollectionRename: {
-        resetTransientState(); // finish ongoing trx
-        _oldCollectionName =
-            RocksDBLogValue::oldCollectionName(blob).toString();
-        // intentional fallthrough
-      }
+      case RocksDBLogType::CollectionRename:
       case RocksDBLogType::CollectionCreate:
       case RocksDBLogType::CollectionChange:
       case RocksDBLogType::CollectionDrop: {
@@ -136,6 +131,8 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         _currentCid = RocksDBLogValue::collectionId(blob);
         if (type == RocksDBLogType::CollectionDrop) {
           _dropCollectionUUID = RocksDBLogValue::collectionUUID(blob).toString();
+        } else if (type == RocksDBLogType::CollectionRename) {
+          _oldCollectionName = RocksDBLogValue::oldCollectionName(blob).toString();
         }
         break;
       }
@@ -271,7 +268,6 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         VPackSlice cname = data.get("name");
         if (cname.isString()) {
           _builder.add("cname", cname);
-          
           // set name in cache
           _collectionNames[_currentCid] = cname.copyString();
         }
@@ -590,6 +586,9 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
   TRI_ASSERT(tickStart <= tickEnd);
   uint64_t lastTick = tickStart;// generally contains begin of last wb
   uint64_t lastWrittenTick = tickStart;// contains end tick of last wb
+  
+  //LOG_TOPIC(WARN, Logger::FIXME) << "1. Starting tailing: tickStart " <<
+  //tickStart << " tickEnd " << tickEnd << " chunkSize " << chunkSize;//*/
 
   std::unique_ptr<WALParser> handler(
       new WALParser(vocbase, includeSystem, collectionId, builder));
@@ -659,5 +658,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
   if (minTickIncluded) {
     result.includeMinTick();
   }
+  
+  // LOG_TOPIC(WARN, Logger::FIXME) << "2.  lastWrittenTick: " << lastWrittenTick;
   return result;
 }

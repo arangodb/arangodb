@@ -308,6 +308,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       for (auto marker : arangodb::velocypack::ArrayIterator(data)) {
         dumper.dump(marker);
         httpResponse->body().appendChar('\n');
+        //LOG_TOPIC(INFO, Logger::FIXME) << marker.toJson(trxContext->getVPackOptions());
       }
     }
     // add client

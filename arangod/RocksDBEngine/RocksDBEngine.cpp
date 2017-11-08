@@ -1153,7 +1153,7 @@ arangodb::Result RocksDBEngine::renameCollection(
   int res = writeCreateCollectionMarker(
       vocbase->id(), collection->cid(), builder.slice(),
       RocksDBLogValue::CollectionRename(vocbase->id(), collection->cid(),
-                                        StringRef(collection->name())));
+                                        StringRef(oldName)));
   return arangodb::Result(res);
 }
 
