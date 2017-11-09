@@ -214,18 +214,19 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
 
         break;
       }
-      case RocksDBLogType::DocumentOperationsPrologue: {
+
+      case RocksDBLogType::DocumentOperationsPrologue: 
         _currentCid = RocksDBLogValue::collectionId(blob);
         break;
-      }
-      case RocksDBLogType::DocumentRemove: {
+
+      case RocksDBLogType::DocumentRemove: 
         _removeDocumentKey = RocksDBLogValue::documentKey(blob).toString();
         break;
-      }
-      case RocksDBLogType::SingleRemove: {
+      
+      case RocksDBLogType::SingleRemove: 
         _removeDocumentKey = RocksDBLogValue::documentKey(blob).toString();
-        // intentional fall through
-      }
+        // intentionally falls through
+      
       case RocksDBLogType::SinglePut: {
         writeCommitMarker();
         _singleOp = true;

@@ -99,21 +99,21 @@ class WALParser : public rocksdb::WriteBatch::Handler {
                                      << rocksDBLogTypeName(type);
     tick();
     switch (type) {
-      case RocksDBLogType::DatabaseCreate: {
+      case RocksDBLogType::DatabaseCreate: 
         _currentDbId = RocksDBLogValue::databaseId(blob);
         // FIXME: do we have to print something?
         break;
-      }
-      case RocksDBLogType::DatabaseDrop: {
+      
+      case RocksDBLogType::DatabaseDrop: 
         _currentDbId = RocksDBLogValue::databaseId(blob);
         // FIXME: do we have to print something?
         break;
-      }
-      case RocksDBLogType::CollectionRename: {
+      
+      case RocksDBLogType::CollectionRename:
         _oldCollectionName =
             RocksDBLogValue::oldCollectionName(blob).toString();
         // intentionally falls through
-      }
+      
       case RocksDBLogType::CollectionCreate:
       case RocksDBLogType::CollectionChange:
       case RocksDBLogType::CollectionDrop: {
@@ -195,14 +195,15 @@ class WALParser : public rocksdb::WriteBatch::Handler {
                                          << _currentCollectionId;
         break;
       }
-      case RocksDBLogType::DocumentRemove: {
+      
+      case RocksDBLogType::DocumentRemove:
         _removeDocumentKey = RocksDBLogValue::documentKey(blob).toString();
         break;
-      }
-      case RocksDBLogType::SingleRemove: {
+      
+      case RocksDBLogType::SingleRemove:
         _removeDocumentKey = RocksDBLogValue::documentKey(blob).toString();
-        // intentional fall through
-      }
+        // intentionally falls through
+      
       case RocksDBLogType::SinglePut: {
         writeCommitMarker();
         _singleOp = true;
