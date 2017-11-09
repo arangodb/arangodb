@@ -32,6 +32,8 @@ user.
 
 - **drop database**: allows to delete an existing database.
 
+- **shutdown server**: remove server from cluster and shutdown
+
 The **database actions** are tied to a given database, and access
 levels must be set
 for each database individually. For a given database the actions are
@@ -75,6 +77,7 @@ access levels. The access levels are *Administrate* and
 | update a user             | Administrate |
 | update user access level  | Administrate |
 | drop a user               | Administrate |
+| shutdown server       | Administrate |
 
 To perform actions in a specific database (like creating or dropping collections),
 a user needs at least the following access level.
