@@ -104,6 +104,9 @@ devel
 v3.2.7 (XXXX-XX-XX)
 -------------------
 
+* improved the speed of shardDistribution in cluster, by moving it to c++. It is now guaranteed
+  return after ~2 seconds even if the entire cluster is unresponsive.
+
 * fixed issue #3403: How to kill long running AQL queries with the browser console's
   AQL (display issue)
 
