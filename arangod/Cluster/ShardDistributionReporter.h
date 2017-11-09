@@ -34,6 +34,8 @@ namespace velocypack {
 class Builder;
 }
 
+class LogicalCollection;
+
 namespace cluster {
 
 class ShardDistributionReporter {
@@ -60,6 +62,18 @@ class ShardDistributionReporter {
   void getDistributionForCollection(std::string const& dbName,
                                     std::string const& colName,
                                     arangodb::velocypack::Builder& result);
+
+ private:
+  bool testAllShardsInSync(
+      std::string const& dbName, LogicalCollection const* col,
+      std::unordered_map<std::string, std::vector<std::string>> const*
+          allShards);
+
+  void reportOffSync(
+      std::string const& dbName, LogicalCollection const* col,
+      std::unordered_map<std::string, std::vector<std::string>> const* shardIds,
+      std::unordered_map<std::string, std::string> const& aliases,
+      arangodb::velocypack::Builder& result) const;
 
  private:
   std::shared_ptr<ClusterComm> _cc;

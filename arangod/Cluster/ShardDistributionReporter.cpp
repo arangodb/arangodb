@@ -28,6 +28,8 @@
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <queue>
+
 using namespace arangodb;
 using namespace arangodb::cluster;
 
@@ -37,6 +39,151 @@ using namespace arangodb::cluster;
 
 std::shared_ptr<ShardDistributionReporter>
     arangodb::cluster::ShardDistributionReporter::_theInstance;
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Static helper functions
+//////////////////////////////////////////////////////////////////////////////
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Test if one shard is in sync by comparing plan and current
+//////////////////////////////////////////////////////////////////////////////
+
+static inline bool TestIsShardInSync(
+    std::vector<ServerID> const& plannedServers,
+    std::vector<ServerID> const& realServers) {
+  // TODO We need to verify that lists are identical despite ordering?
+  return plannedServers.at(0) == realServers.at(0) &&
+         plannedServers.size() == realServers.size();
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Report a single shard without progress
+//////////////////////////////////////////////////////////////////////////////
+
+static void ReportShardNoProgress(
+    std::string const& shardId, std::vector<ServerID> const& respServers,
+    std::unordered_map<ServerID, std::string> const& aliases,
+    VPackBuilder& result) {
+  TRI_ASSERT(result.isOpenObject());
+  result.add(VPackValue(shardId));
+  result.openObject();
+  // We always have at least the leader
+  TRI_ASSERT(!respServers.empty());
+  auto respServerIt = respServers.begin();
+  auto al = aliases.find(*respServerIt);
+  if (al != aliases.end()) {
+    result.add("leader", VPackValue(al->second));
+  } else {
+    result.add("leader", VPackValue(*respServerIt));
+  }
+  ++respServerIt;
+
+  result.add(VPackValue("followers"));
+  result.openArray();
+  while (respServerIt != respServers.end()) {
+    auto al = aliases.find(*respServerIt);
+    if (al != aliases.end()) {
+      result.add(VPackValue(al->second));
+    } else {
+      result.add(VPackValue(*respServerIt));
+    }
+    ++respServerIt;
+  }
+  result.close();  // followers
+
+  result.close();  // shard
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Report a single shard with progress
+//////////////////////////////////////////////////////////////////////////////
+
+static void ReportShardProgress(
+    std::string const& shardId, std::vector<ServerID> const& respServers,
+    std::unordered_map<ServerID, std::string> const& aliases, uint64_t total,
+    uint64_t current, VPackBuilder& result) {
+  TRI_ASSERT(result.isOpenObject());
+  result.add(VPackValue(shardId));
+  result.openObject();
+  // We always have at least the leader
+  TRI_ASSERT(!respServers.empty());
+  auto respServerIt = respServers.begin();
+  auto al = aliases.find(*respServerIt);
+  if (al != aliases.end()) {
+    result.add("leader", VPackValue(al->second));
+  } else {
+    result.add("leader", VPackValue(*respServerIt));
+  }
+  ++respServerIt;
+
+  result.add(VPackValue("followers"));
+  result.openArray();
+  while (respServerIt != respServers.end()) {
+    auto al = aliases.find(*respServerIt);
+    if (al != aliases.end()) {
+      result.add(VPackValue(al->second));
+    } else {
+      result.add(VPackValue(*respServerIt));
+    }
+    ++respServerIt;
+  }
+  result.close();  // followers
+
+  result.add(VPackValue("progress"));
+
+  result.openObject();
+  result.add("total", VPackValue(total));
+  result.add("current", VPackValue(current));
+  result.close();  // progress
+
+  result.close();  // shard
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Report a list of leader and follower based on shardMap
+//////////////////////////////////////////////////////////////////////////////
+
+static void ReportPartialNoProgress(
+    ShardMap const* shardIds,
+    std::unordered_map<ServerID, std::string> const& aliases,
+    VPackBuilder& result) {
+  TRI_ASSERT(result.isOpenObject());
+  for (auto const& s : *shardIds) {
+    ReportShardNoProgress(s.first, s.second, aliases, result);
+  }
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Report a complete collection an the insync format
+//////////////////////////////////////////////////////////////////////////////
+
+static void ReportInSync(
+    LogicalCollection const* col, ShardMap const* shardIds,
+    std::unordered_map<ServerID, std::string> const& aliases,
+    VPackBuilder& result) {
+  TRI_ASSERT(result.isOpenObject());
+
+  result.add(VPackValue(col->name()));
+
+  // In this report Plan and Current are identical
+  result.openObject();
+  {
+    // Add Plan
+    result.add(VPackValue("Plan"));
+    result.openObject();
+    ReportPartialNoProgress(shardIds, aliases, result);
+    result.close();
+  }
+
+  {
+    // Add Current
+    result.add(VPackValue("Current"));
+    result.openObject();
+    ReportPartialNoProgress(shardIds, aliases, result);
+    result.close();
+  }
+  result.close();
+}
 
 ShardDistributionReporter::ShardDistributionReporter(
     std::shared_ptr<ClusterComm> cc, ClusterInfo* ci)
@@ -62,54 +209,85 @@ void ShardDistributionReporter::getDistributionForDatabase(
 
   auto aliases = _ci->getServerAliases();
   auto cols = _ci->getCollections(dbName);
-  for (auto const& it : cols) {
-    auto allShards = it->shardIds();
-    result.add(VPackValue(it->name()));
 
-    result.openObject();
-    {
-      // Add Plan
-      result.add(VPackValue("Plan"));
-      result.openObject();
-      for (auto const& s : *(allShards.get())) {
-        result.add(VPackValue(s.first));
-        result.openObject();
-        // We always have at least the leader
-        TRI_ASSERT(!s.second.empty());
-        auto respServerIt = s.second.begin();
-        auto al = aliases.find(*respServerIt);
-        if (al != aliases.end()) {
-          result.add("leader", VPackValue(al->second));
-        } else {
-          result.add("leader", VPackValue(*respServerIt));
-        }
-        ++respServerIt;
-
-        result.add(VPackValue("followers"));
-        result.openArray();
-        while (respServerIt != s.second.end()) {
-          auto al = aliases.find(*respServerIt);
-          if (al != aliases.end()) {
-            result.add(VPackValue(al->second));
-          } else {
-            result.add(VPackValue(*respServerIt));
-          }
-          ++respServerIt;
-        }
-        result.close(); // followers
-        result.close(); // shard
-      }
-      result.close();
+  std::queue<std::shared_ptr<LogicalCollection>> todoSyncStateCheck;
+  for (auto col : cols) {
+    auto allShards = col->shardIds();
+    if (testAllShardsInSync(dbName, col.get(), allShards.get())) {
+      ReportInSync(col.get(), allShards.get(), aliases, result);
+    } else {
+      todoSyncStateCheck.push(col);
     }
+  }
 
-    {
-      // Add Current
-      result.add(VPackValue("Current"));
-      result.openObject();
-      result.close();
+  while (!todoSyncStateCheck.empty()) {
+    auto const col = todoSyncStateCheck.front();
+    // TODO try to collect counts
+
+    auto allShards = col->shardIds();
+    reportOffSync(dbName, col.get(), allShards.get(), aliases, result);
+    todoSyncStateCheck.pop();
+  }
+  result.close();
+}
+
+bool ShardDistributionReporter::testAllShardsInSync(
+    std::string const& dbName, LogicalCollection const* col,
+    ShardMap const* shardIds) {
+  TRI_ASSERT(col != nullptr);
+  TRI_ASSERT(shardIds != nullptr);
+
+  auto cic = _ci->getCollectionCurrent(dbName, col->cid_as_string());
+  for (auto const& s : *shardIds) {
+    auto curServers = cic->servers(s.first);
+    if (!TestIsShardInSync(s.second, curServers)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Report a complete collection in the offsync format, counts unknown
+//////////////////////////////////////////////////////////////////////////////
+
+void ShardDistributionReporter::reportOffSync(
+    std::string const& dbName, LogicalCollection const* col,
+    ShardMap const* shardIds,
+    std::unordered_map<ServerID, std::string> const& aliases,
+    VPackBuilder& result) const {
+  TRI_ASSERT(result.isOpenObject());
+  auto cic = _ci->getCollectionCurrent(dbName, col->cid_as_string());
+
+  result.add(VPackValue(col->name()));
+
+  // In this report Plan and Current are identical
+  result.openObject();
+  {
+    // Add Plan
+    result.add(VPackValue("Plan"));
+    result.openObject();
+    for (auto const& s : *shardIds) {
+      auto curServers = cic->servers(s.first);
+      if (TestIsShardInSync(s.second, curServers)) {
+        ReportShardNoProgress(s.first, s.second, aliases, result);
+      } else {
+        // TODO we use default values here
+        ReportShardProgress(s.first, s.second, aliases, 1, 0, result);
+      }
     }
     result.close();
   }
 
+  {
+    // Add Current
+    result.add(VPackValue("Current"));
+    result.openObject();
+    for (auto const& s : *shardIds) {
+      auto curServers = cic->servers(s.first);
+      ReportShardNoProgress(s.first, curServers, aliases, result);
+    }
+    result.close();
+  }
   result.close();
 }

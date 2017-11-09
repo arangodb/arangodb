@@ -122,7 +122,7 @@ class LogicalCollection {
 
   inline TRI_voc_cid_t cid() const { return _cid; }
 
-  std::string cid_as_string() const;
+  virtual std::string cid_as_string() const;
 
   TRI_voc_cid_t planId() const;
   std::string planId_as_string() const;

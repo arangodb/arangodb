@@ -48,6 +48,12 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
     Mock<ClusterInfo> infoMock;
     ClusterInfo& ci = infoMock.get();
 
+    Mock<CollectionInfoCurrent> infoCurrentMock;
+    CollectionInfoCurrent& cicInst = infoCurrentMock.get();
+
+    std::shared_ptr<CollectionInfoCurrent> cic(&cicInst,
+                                               [](CollectionInfoCurrent*) {});
+
     Mock<LogicalCollection> colMock;
     LogicalCollection& col = colMock.get();
 
@@ -57,6 +63,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
     WHEN("Asked with a database name") {
       std::string dbname = "UnitTestDB";
       std::string colName = "UnitTestCollection";
+      std::string cidString = "1337";
 
       std::string s1 = "s1234";
       std::string s2 = "s2345";
@@ -69,6 +76,13 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       std::string dbserver1short = "DBServer1";
       std::string dbserver2short = "DBServer2";
       std::string dbserver3short = "DBServer3";
+      uint64_t shard2LeaderCount = 1337;
+      uint64_t shard2LowFollowerCount = 456;
+      uint64_t shard2HighFollowerCount = 1111;
+
+      uint64_t shard3LeaderCount = 4651;
+      uint64_t shard3FollowerCount = 912;
+
 
       // Simlated situation:
       // s1 is in-sync: DBServer1 <- DBServer2, DBServer3
@@ -85,6 +99,10 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                       std::vector<ServerID>{dbserver2, dbserver1, dbserver3});
       shards->emplace(s3,
                       std::vector<ServerID>{dbserver3, dbserver1, dbserver2});
+
+      std::vector<ServerID> s1Current{dbserver1, dbserver2, dbserver3};
+      std::vector<ServerID> s2Current{dbserver2};
+      std::vector<ServerID> s3Current{dbserver3, dbserver2};
 
       // Fake the aliases
       auto aliases = std::unordered_map<ServerID, std::string>{
@@ -104,11 +122,33 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
             return allCollections;
           });
       When(Method(infoMock, getServerAliases)).AlwaysReturn(aliases);
+      When(Method(infoMock, getCollectionCurrent))
+          .AlwaysDo([&](DatabaseID const& dbId, CollectionID const& cId) {
+            REQUIRE(dbId == dbname);
+            REQUIRE(cId == cidString);
+            return cic;
+          });
 
       When(Method(colMock, name)).AlwaysReturn(colName);
       When(
           ConstOverloadedMethod(colMock, shardIds, std::shared_ptr<ShardMap>()))
           .AlwaysReturn(shards);
+      When(Method(colMock, cid_as_string)).AlwaysReturn(cidString);
+
+      When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
+        if (sid == s1) {
+          return s1Current;
+        }
+        if (sid == s2) {
+          return s2Current;
+        }
+        if (sid == s3) {
+          return s3Current;
+        }
+        // Illegal!
+        REQUIRE(false);
+        return s1Current;
+      });
 
       VPackBuilder resultBuilder;
       testee.getDistributionForDatabase(dbname, resultBuilder);
@@ -120,160 +160,233 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       THEN("It should return one entry for every collection") {
         VPackSlice col = result.get(colName);
         REQUIRE(col.isObject());
+    }
+
+    WHEN("Checking one of those collections") {
+      result = result.get(colName);
+      REQUIRE(result.isObject());
+
+      WHEN("validating the plan") {
+        VPackSlice plan = result.get("Plan");
+        REQUIRE(plan.isObject());
+
+        // One entry per shard
+        REQUIRE(plan.length() == shards->size());
+
+        WHEN("Testing the in-sync shard") {
+          VPackSlice shard = plan.get(s1);
+
+          REQUIRE(shard.isObject());
+
+          THEN("It should have the correct leader shortname") {
+            VPackSlice leader = shard.get("leader");
+
+            REQUIRE(leader.isString());
+            REQUIRE(leader.copyString() == dbserver1short);
+          }
+
+          THEN("It should have the correct followers shortnames") {
+            VPackSlice followers = shard.get("followers");
+            REQUIRE(followers.isArray());
+            REQUIRE(followers.length() == 2);
+
+            VPackSlice firstFollower = followers.at(0);
+            REQUIRE(firstFollower.isString());
+
+            VPackSlice secondFollower = followers.at(1);
+            REQUIRE(secondFollower.isString());
+
+            // We do not guarentee any ordering here
+            if (StringRef(firstFollower) == dbserver2short) {
+              REQUIRE(secondFollower.copyString() == dbserver3short);
+            } else {
+              REQUIRE(firstFollower.copyString() == dbserver3short);
+              REQUIRE(secondFollower.copyString() == dbserver2short);
+            }
+          }
+
+          THEN("It should not display progress") {
+            VPackSlice progress = shard.get("progress");
+            REQUIRE(progress.isNone());
+          }
+        }
+
+        WHEN("Testing the off-sync shard") {
+          VPackSlice shard = plan.get(s2);
+
+          REQUIRE(shard.isObject());
+
+          THEN("It should have the correct leader shortname") {
+            VPackSlice leader = shard.get("leader");
+
+            REQUIRE(leader.isString());
+            REQUIRE(leader.copyString() == dbserver2short);
+          }
+
+          THEN("It should have the correct followers shortnames") {
+            VPackSlice followers = shard.get("followers");
+            REQUIRE(followers.isArray());
+            REQUIRE(followers.length() == 2);
+
+            VPackSlice firstFollower = followers.at(0);
+            REQUIRE(firstFollower.isString());
+
+            VPackSlice secondFollower = followers.at(1);
+            REQUIRE(secondFollower.isString());
+
+            // We do not guarentee any ordering here
+            if (StringRef(firstFollower) == dbserver1short) {
+              REQUIRE(secondFollower.copyString() == dbserver3short);
+            } else {
+              REQUIRE(firstFollower.copyString() == dbserver3short);
+              REQUIRE(secondFollower.copyString() == dbserver1short);
+            }
+          }
+
+          THEN("It should display the progress") {
+            VPackSlice progress = shard.get("progress");
+            REQUIRE(progress.isObject());
+
+            VPackSlice total = progress.get("total");
+            REQUIRE(total.isNumber());
+            REQUIRE(total.getNumber<uint64_t>() == shard2LeaderCount);
+
+            VPackSlice current = progress.get("current");
+            REQUIRE(current.isNumber());
+            REQUIRE(current.getNumber<uint64_t>() == shard2LowFollowerCount);
+          }
+        }
+
+        WHEN("Testing the partial in-sync shard") {
+          VPackSlice shard = plan.get(s3);
+
+          REQUIRE(shard.isObject());
+
+          THEN("It should have the correct leader shortname") {
+            VPackSlice leader = shard.get("leader");
+
+            REQUIRE(leader.isString());
+            REQUIRE(leader.copyString() == dbserver3short);
+          }
+
+          THEN("It should have the correct followers shortnames") {
+            VPackSlice followers = shard.get("followers");
+            REQUIRE(followers.isArray());
+            REQUIRE(followers.length() == 2);
+
+            VPackSlice firstFollower = followers.at(0);
+            REQUIRE(firstFollower.isString());
+
+            VPackSlice secondFollower = followers.at(1);
+            REQUIRE(secondFollower.isString());
+
+            // We do not guarentee any ordering here
+            if (StringRef(firstFollower) == dbserver1short) {
+              REQUIRE(secondFollower.copyString() == dbserver2short);
+            } else {
+              REQUIRE(firstFollower.copyString() == dbserver2short);
+              REQUIRE(secondFollower.copyString() == dbserver1short);
+            }
+          }
+
+          THEN("It should display the progress") {
+            VPackSlice progress = shard.get("progress");
+            REQUIRE(progress.isObject());
+
+            VPackSlice total = progress.get("total");
+            REQUIRE(total.isNumber());
+            REQUIRE(total.getNumber<uint64_t>() == shard3LeaderCount);
+
+            VPackSlice current = progress.get("current");
+            REQUIRE(current.isNumber());
+            REQUIRE(current.getNumber<uint64_t>() == shard3FollowerCount);
+          }
+        }
       }
 
-      WHEN("Checking one of those collections") {
-        result = result.get(colName);
-        REQUIRE(result.isObject());
+      WHEN("validating current") {
+        VPackSlice current = result.get("Current");
+        REQUIRE(current.isObject());
 
-        WHEN("validating the plan") {
-          VPackSlice plan = result.get("Plan");
-          REQUIRE(plan.isObject());
+        // One entry per shard
+        REQUIRE(current.length() == shards->size());
 
-          // One entry per shard
-          REQUIRE(plan.length() == shards->size());
+        WHEN("Testing the in-sync shard") {
+          VPackSlice shard = current.get(s1);
 
-          WHEN("Testing the in-sync shard") {
-            VPackSlice shard = plan.get(s1);
+          REQUIRE(shard.isObject());
 
-            REQUIRE(shard.isObject());
+          THEN("It should have the correct leader shortname") {
+            VPackSlice leader = shard.get("leader");
 
-            THEN("It should have the correct leader shortname") {
-              VPackSlice leader = shard.get("leader");
-
-              REQUIRE(leader.isString());
-              REQUIRE(leader.copyString() == dbserver1short);
-            }
-
-            THEN("It should have the correct followers shortnames") {
-              VPackSlice followers = shard.get("followers");
-              REQUIRE(followers.isArray());
-              REQUIRE(followers.length() == 2);
-
-              VPackSlice firstFollower = followers.at(0);
-              REQUIRE(firstFollower.isString());
-
-              VPackSlice secondFollower = followers.at(1);
-              REQUIRE(secondFollower.isString());
-
-              // We do not guarentee any ordering here
-              if (StringRef(firstFollower) == dbserver2short) {
-                REQUIRE(secondFollower.copyString() == dbserver3short);
-              } else {
-                REQUIRE(firstFollower.copyString() == dbserver3short);
-                REQUIRE(secondFollower.copyString() == dbserver2short);
-              }
-            }
-
-            THEN("It should not display progress") {
-              VPackSlice progress = shard.get("progress");
-              REQUIRE(progress.isNone());
-            }
+            REQUIRE(leader.isString());
+            REQUIRE(leader.copyString() == dbserver1short);
           }
 
-          WHEN("Testing the off-sync shard") {
-            VPackSlice shard = plan.get(s2);
+          THEN("It should have the correct followers shortnames") {
+            VPackSlice followers = shard.get("followers");
+            REQUIRE(followers.isArray());
+            REQUIRE(followers.length() == 2);
 
-            REQUIRE(shard.isObject());
+            VPackSlice firstFollower = followers.at(0);
+            REQUIRE(firstFollower.isString());
 
-            THEN("It should have the correct leader shortname") {
-              VPackSlice leader = shard.get("leader");
+            VPackSlice secondFollower = followers.at(1);
+            REQUIRE(secondFollower.isString());
 
-              REQUIRE(leader.isString());
-              REQUIRE(leader.copyString() == dbserver2short);
-            }
-
-            THEN("It should have the correct followers shortnames") {
-              VPackSlice followers = shard.get("followers");
-              REQUIRE(followers.isArray());
-              REQUIRE(followers.length() == 2);
-
-              VPackSlice firstFollower = followers.at(0);
-              REQUIRE(firstFollower.isString());
-
-              VPackSlice secondFollower = followers.at(1);
-              REQUIRE(secondFollower.isString());
-
-              // We do not guarentee any ordering here
-              if (StringRef(firstFollower) == dbserver1short) {
-                REQUIRE(secondFollower.copyString() == dbserver3short);
-              } else {
-                REQUIRE(firstFollower.copyString() == dbserver3short);
-                REQUIRE(secondFollower.copyString() == dbserver1short);
-              }
-            }
-
-            THEN("It should display the progress") {
-              VPackSlice progress = shard.get("progress");
-              REQUIRE(progress.isObject());
-
-              VPackSlice total = progress.get("total");
-              REQUIRE(total.isNumber());
-
-              VPackSlice current = progress.get("current");
-              REQUIRE(current.isNumber());
-
-              // TODO
-              REQUIRE(false);
-            }
-          }
-
-          WHEN("Testing the partial in-sync shard") {
-            VPackSlice shard = plan.get(s3);
-
-            REQUIRE(shard.isObject());
-
-            THEN("It should have the correct leader shortname") {
-              VPackSlice leader = shard.get("leader");
-
-              REQUIRE(leader.isString());
-              REQUIRE(leader.copyString() == dbserver3short);
-            }
-
-            THEN("It should have the correct followers shortnames") {
-              VPackSlice followers = shard.get("followers");
-              REQUIRE(followers.isArray());
-              REQUIRE(followers.length() == 2);
-
-              VPackSlice firstFollower = followers.at(0);
-              REQUIRE(firstFollower.isString());
-
-              VPackSlice secondFollower = followers.at(1);
-              REQUIRE(secondFollower.isString());
-
-              // We do not guarentee any ordering here
-              if (StringRef(firstFollower) == dbserver1short) {
-                REQUIRE(secondFollower.copyString() == dbserver2short);
-              } else {
-                REQUIRE(firstFollower.copyString() == dbserver2short);
-                REQUIRE(secondFollower.copyString() == dbserver1short);
-              }
-            }
-
-            THEN("It should display the progress") {
-              VPackSlice progress = shard.get("progress");
-              REQUIRE(progress.isObject());
-
-              VPackSlice total = progress.get("total");
-              REQUIRE(total.isNumber());
-
-              VPackSlice current = progress.get("current");
-              REQUIRE(current.isNumber());
-
-              // TODO
-              REQUIRE(false);
+            // We do not guarentee any ordering here
+            if (StringRef(firstFollower) == dbserver2short) {
+              REQUIRE(secondFollower.copyString() == dbserver3short);
+            } else {
+              REQUIRE(firstFollower.copyString() == dbserver3short);
+              REQUIRE(secondFollower.copyString() == dbserver2short);
             }
           }
         }
 
-        WHEN("validating current") {
-          VPackSlice current = result.get("Current");
-          REQUIRE(current.isObject());
+        WHEN("Testing the off-sync shard") {
+          VPackSlice shard = current.get(s2);
 
-          // One entry per shard
-          REQUIRE(current.length() == shards->size());
+          REQUIRE(shard.isObject());
+
+          THEN("It should have the correct leader shortname") {
+            VPackSlice leader = shard.get("leader");
+
+            REQUIRE(leader.isString());
+            REQUIRE(leader.copyString() == dbserver2short);
+          }
+
+          THEN("It should not have any followers") {
+            VPackSlice followers = shard.get("followers");
+            REQUIRE(followers.isArray());
+            REQUIRE(followers.length() == 0);
+          }
+        }
+
+        WHEN("Testing the partial in-sync shard") {
+          VPackSlice shard = current.get(s3);
+
+          REQUIRE(shard.isObject());
+
+          THEN("It should have the correct leader shortname") {
+            VPackSlice leader = shard.get("leader");
+
+            REQUIRE(leader.isString());
+            REQUIRE(leader.copyString() == dbserver3short);
+          }
+
+          THEN("It should have the correct followers shortnames") {
+            VPackSlice followers = shard.get("followers");
+            REQUIRE(followers.isArray());
+            REQUIRE(followers.length() == 1);
+
+            VPackSlice firstFollower = followers.at(0);
+            REQUIRE(firstFollower.isString());
+            REQUIRE(firstFollower.copyString() == dbserver2short);
+          }
         }
       }
     }
   }
+}
 }
