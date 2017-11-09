@@ -237,7 +237,7 @@ MMFilesGeoIndex::MMFilesGeoIndex(TRI_idx_iid_t iid,
                                  arangodb::LogicalCollection* collection,
                                  VPackSlice const& info)
     : MMFilesIndex(iid, collection, info),
-      _variant(INDEX_GEO_INDIVIDUAL_LAT_LON),
+      _variant(INDEX_GEO_INDIVIDUAL),
       _geoJson(false),
       _geoIndex(nullptr) {
   TRI_ASSERT(iid != 0);
@@ -252,10 +252,9 @@ MMFilesGeoIndex::MMFilesGeoIndex(TRI_idx_iid_t iid,
     for (auto const& it : loc) {
       _location.emplace_back(it.name);
     }
-    _variant =
-        _geoJson ? INDEX_GEO_COMBINED_LAT_LON : INDEX_GEO_COMBINED_LON_LAT;
+    _variant = INDEX_GEO_COMBINED;
   } else if (_fields.size() == 2) {
-    _variant = INDEX_GEO_INDIVIDUAL_LAT_LON;
+    _variant = INDEX_GEO_INDIVIDUAL;
     auto& lat = _fields[0];
     _latitude.reserve(lat.size());
     for (auto const& it : lat) {
@@ -296,8 +295,7 @@ void MMFilesGeoIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
   // Basic index
   Index::toVelocyPack(builder, withFigures, forPersistence);
 
-  if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
-      _variant == INDEX_GEO_COMBINED_LON_LAT) {
+  if (_variant == INDEX_GEO_COMBINED) {
     builder.add("geoJson", VPackValue(_geoJson));
   }
 
@@ -383,7 +381,7 @@ Result MMFilesGeoIndex::insert(transaction::Methods*, LocalDocumentId const& doc
   double latitude;
   double longitude;
 
-  if (_variant == INDEX_GEO_INDIVIDUAL_LAT_LON) {
+  if (_variant == INDEX_GEO_INDIVIDUAL) {
     VPackSlice lat = doc.get(_latitude);
     if (!lat.isNumber()) {
       // Invalid, no insert. Index is sparse
@@ -453,7 +451,7 @@ Result MMFilesGeoIndex::remove(transaction::Methods*, LocalDocumentId const& doc
   double longitude = 0.0;
   bool ok = true;
 
-  if (_variant == INDEX_GEO_INDIVIDUAL_LAT_LON) {
+  if (_variant == INDEX_GEO_INDIVIDUAL) {
     VPackSlice lat = doc.get(_latitude);
     VPackSlice lon = doc.get(_longitude);
     if (!lat.isNumber()) {

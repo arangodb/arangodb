@@ -355,7 +355,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
   // Try to create a new collection. This is not registered yet
 
   std::unique_ptr<arangodb::LogicalCollection> collection =
-      std::make_unique<arangodb::LogicalCollection>(this, parameters);
+      std::make_unique<arangodb::LogicalCollection>(this, parameters, false);
   TRI_ASSERT(collection != nullptr);
 
   WRITE_LOCKER(writeLocker, _collectionsLock);
@@ -786,6 +786,7 @@ std::vector<std::string> TRI_vocbase_t::collectionNames() {
 /// that there will be consistent view of collections & their properties
 /// The list of collections will be sorted if sort function is given
 ////////////////////////////////////////////////////////////////////////////////
+
 void TRI_vocbase_t::inventory(
     VPackBuilder& result,
     TRI_voc_tick_t maxTick, std::function<bool(arangodb::LogicalCollection const*)> const& nameFilter) {
@@ -835,11 +836,25 @@ void TRI_vocbase_t::inventory(
     if (!nameFilter(collection)) {
       continue;
     }
-        
-    StorageEngine* engine = EngineSelectorFeature::ENGINE;
-    engine->getCollectionInfo(collection->vocbase(), collection->cid(),
-                              result, true, maxTick);
+   
+    if (collection->cid() <= maxTick) { 
+      result.openObject();
+      
+      result.add(VPackValue("indexes"));
+      collection->getIndexesVPack(result, false, false, [](arangodb::Index const* idx) {
+        // we have to exclude the primary and the edge index here, because otherwise
+        // at least the MMFiles engine will try to create it
+        return (idx->type() != arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX && 
+                idx->type() != arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX);
+      });
+      result.add("parameters", VPackValue(VPackValueType::Object));
+      collection->toVelocyPackIgnore(result, { "objectId", "path", "statusString" }, true, false);
+      result.close();
+      
+      result.close();
+    }
   }
+
   result.close();
 }
 

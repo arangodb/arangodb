@@ -396,15 +396,6 @@ void ApplicationServer::setupDependencies(bool failOnMissing) {
         }
         continue;
       }
-/*
-      if (failOnMissing &&
-          it.second->isEnabled() && 
-          !this->feature(other)->isEnabled()) {
-        fail("enabled feature '" + it.second->name() +
-             "' depends on other feature '" + other +
-             "', which is disabled");
-      }
-*/
       this->feature(other)->startsAfter(it.second->name());
     }
   }
@@ -716,8 +707,7 @@ void ApplicationServer::raisePrivilegesTemporarily() {
   }
 
   LOG_TOPIC(TRACE, Logger::STARTUP) << "raising privileges";
-
-  // TODO
+  // TODO: raising privileges not implemented
 }
 
 // temporarily drop privileges
@@ -729,8 +719,7 @@ void ApplicationServer::dropPrivilegesTemporarily() {
   }
 
   LOG_TOPIC(TRACE, Logger::STARTUP) << "dropping privileges";
-
-  // TODO
+  // TODO: dropping privileges not implemented
 }
 
 // permanently dropped privileges
@@ -738,13 +727,14 @@ void ApplicationServer::dropPrivilegesPermanently() {
   if (_privilegesDropped) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        "must not try to drop privileges after dropping them");
+        "must not try to drop privileges after having dropped them");
   }
 
-  auto privilege = dynamic_cast<PrivilegeFeature*>(lookupFeature("Privilege"));
-
-  if (privilege != nullptr) {
-    privilege->dropPrivilegesPermanently();
+  if (exists("Privilege")) {
+    auto privilege = dynamic_cast<PrivilegeFeature*>(lookupFeature("Privilege"));
+    if (privilege != nullptr) {
+      privilege->dropPrivilegesPermanently();
+    }
   }
 
   _privilegesDropped = true;

@@ -71,9 +71,6 @@ class Index {
 
   Index(TRI_idx_iid_t, LogicalCollection*, arangodb::velocypack::Slice const&);
 
-  /// TODO: can we remove this?
-  explicit Index(arangodb::velocypack::Slice const&);
-
   virtual ~Index();
 
  public:
@@ -262,6 +259,9 @@ class Index {
 
   // called when the index is dropped
   virtual int drop();
+
+  // called after the collection was truncated
+  virtual int afterTruncate(); 
 
   // give index a hint about the expected size
   virtual int sizeHint(transaction::Methods*, size_t);

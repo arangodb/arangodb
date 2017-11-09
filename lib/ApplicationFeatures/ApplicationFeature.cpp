@@ -113,6 +113,11 @@ void ApplicationFeature::determineAncestors() {
 
   std::function<void(std::string const&)> build = [this, &build, &path](std::string const& name) {
     // lookup the feature first. it may not exist
+    if (!this->server()->exists(name)) {
+      // feature not found. no worries
+      return;
+    }
+
     ApplicationFeature* other = this->server()->lookupFeature(name);
 
     if (other != nullptr) {

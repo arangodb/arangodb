@@ -33,7 +33,6 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
       ServerStateTempl(),
       ClusterCommTempl(),
       ArangoErrorTempl(),
-      VPackTempl(),
       VocbaseColTempl(),
       VocbaseViewTempl(),
       VocbaseTempl(),
@@ -59,11 +58,9 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
       ClientKey(),
       ClientTransactionIDKey(),
       CodeKey(),
-      CompatibilityKey(),
       ContentTypeKey(),
       CoordTransactionIDKey(),
       DatabaseKey(),
-      DoCompactKey(),
       DomainKey(),
       EndpointKey(),
       ErrorKey(),
@@ -75,8 +72,6 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
       InitTimeoutKey(),
       IsRestoreKey(),
       IsSystemKey(),
-      IsVolatileKey(),
-      JournalSizeKey(),
       KeepNullKey(),
       KeyOptionsKey(),
       LengthKey(),
@@ -149,13 +144,11 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
   ClientTransactionIDKey.Reset(isolate,
                                TRI_V8_ASCII_STRING(isolate, "clientTransactionID"));
   CodeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "code"));
-  CompatibilityKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "compatibility"));
   ContentTypeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "contentType"));
   CookiesKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "cookies"));
   CoordTransactionIDKey.Reset(isolate,
                               TRI_V8_ASCII_STRING(isolate, "coordTransactionID"));
   DatabaseKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "database"));
-  DoCompactKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "doCompact"));
   DomainKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "domain"));
   EndpointKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "endpoint"));
   ErrorKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "error"));
@@ -169,8 +162,6 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
   IsSynchronousReplicationKey.Reset(isolate,
       TRI_V8_ASCII_STRING(isolate, "isSynchronousReplication"));
   IsSystemKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "isSystem"));
-  IsVolatileKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "isVolatile"));
-  JournalSizeKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "journalSize"));
   KeepNullKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "keepNull"));
   KeyOptionsKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "keyOptions"));
   LengthKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "length"));
@@ -215,6 +206,8 @@ TRI_v8_global_t::TRI_v8_global_t(v8::Isolate* isolate)
   _FromKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "_from"));
   _ToKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "_to"));
 }
+      
+TRI_v8_global_t::~TRI_v8_global_t() {}
 
 /// @brief creates a global context
 TRI_v8_global_t* TRI_CreateV8Globals(v8::Isolate* isolate) {

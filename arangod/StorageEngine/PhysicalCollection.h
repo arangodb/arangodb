@@ -62,7 +62,7 @@ class PhysicalCollection {
       arangodb::velocypack::Slice const& slice, bool doSync) = 0;
   virtual arangodb::Result persistProperties() = 0;
 
-  virtual PhysicalCollection* clone(LogicalCollection*) = 0;
+  virtual PhysicalCollection* clone(LogicalCollection*) const = 0;
 
   virtual TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const = 0;
 
@@ -110,9 +110,9 @@ class PhysicalCollection {
   std::shared_ptr<Index> lookupIndex(TRI_idx_iid_t) const;
 
   std::vector<std::shared_ptr<Index>> getIndexes() const;
-
-  void getIndexesVPack(velocypack::Builder&, bool,
-                       bool forPersistence = false) const;
+                       
+  void getIndexesVPack(velocypack::Builder&, bool withFigures, bool forPersistence,
+                       std::function<bool(arangodb::Index const*)> const& filter) const;
 
   virtual std::shared_ptr<Index> createIndex(
       transaction::Methods* trx, arangodb::velocypack::Slice const& info,

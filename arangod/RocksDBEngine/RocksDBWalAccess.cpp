@@ -426,6 +426,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
     _startSequence = startSequence;
     _currentSequence = startSequence;
     _startOfBatch = true;
+    TRI_ASSERT(!_singleOp);
   }
 
   void writeCommitMarker() {

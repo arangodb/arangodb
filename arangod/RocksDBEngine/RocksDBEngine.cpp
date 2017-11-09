@@ -323,19 +323,19 @@ void RocksDBEngine::start() {
     // _options.stats_dump_period_sec = 1;
   }
 
-  rocksdb::BlockBasedTableOptions table_options;
+  rocksdb::BlockBasedTableOptions tableOptions;
   if (opts->_blockCacheSize > 0) {
-    table_options.block_cache = rocksdb::NewLRUCache(opts->_blockCacheSize,
-                                      static_cast<int>(opts->_blockCacheShardBits));
-    //table_options.cache_index_and_filter_blocks = opts->_compactionReadaheadSize > 0;
+    tableOptions.block_cache = rocksdb::NewLRUCache(opts->_blockCacheSize,
+                                        static_cast<int>(opts->_blockCacheShardBits));
+    //tableOptions.cache_index_and_filter_blocks = opts->_compactionReadaheadSize > 0;
   } else {
-    table_options.no_block_cache = true;
+    tableOptions.no_block_cache = true;
   }
-  table_options.block_size = opts->_tableBlockSize;
-  table_options.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, true));
+  tableOptions.block_size = opts->_tableBlockSize;
+  tableOptions.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, true));
   
   _options.table_factory.reset(
-      rocksdb::NewBlockBasedTableFactory(table_options));
+      rocksdb::NewBlockBasedTableFactory(tableOptions));
   
   _options.create_if_missing = true;
   _options.create_missing_column_families = true;
@@ -362,13 +362,17 @@ void RocksDBEngine::start() {
   rocksdb::ColumnFamilyOptions dynamicPrefCF(_options);
   dynamicPrefCF.prefix_extractor = std::make_shared<RocksDBPrefixExtractor>();
   // also use hash-search based SST file format
-  rocksdb::BlockBasedTableOptions tblo(table_options);
+  rocksdb::BlockBasedTableOptions tblo(tableOptions);
   tblo.index_type = rocksdb::BlockBasedTableOptions::IndexType::kHashSearch;
   dynamicPrefCF.table_factory = std::shared_ptr<rocksdb::TableFactory>(
       rocksdb::NewBlockBasedTableFactory(tblo));
   
   // velocypack based index variants with custom comparator
   rocksdb::ColumnFamilyOptions vpackFixedPrefCF(fixedPrefCF);
+  rocksdb::BlockBasedTableOptions tblo2(tableOptions);
+  tblo2.filter_policy.reset(); // intentionally no bloom filter here
+  vpackFixedPrefCF.table_factory = std::shared_ptr<rocksdb::TableFactory>(
+      rocksdb::NewBlockBasedTableFactory(tblo2));
   vpackFixedPrefCF.comparator = _vpackCmp.get();
 
   // create column families
@@ -1543,7 +1547,7 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
       auto uniqCol =
-          std::make_unique<arangodb::LogicalCollection>(vocbase.get(), it);
+          std::make_unique<arangodb::LogicalCollection>(vocbase.get(), it, false);
       auto collection = uniqCol.get();
       TRI_ASSERT(collection != nullptr);
       StorageEngine::registerCollection(vocbase.get(), uniqCol.get());
