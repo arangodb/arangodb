@@ -129,10 +129,29 @@ class WALParser : public rocksdb::WriteBatch::Handler {
         }
         _currentDbId = RocksDBLogValue::databaseId(blob);
         _currentCid = RocksDBLogValue::collectionId(blob);
-        if (type == RocksDBLogType::CollectionDrop) {
-          _dropCollectionUUID = RocksDBLogValue::collectionUUID(blob).toString();
-        } else if (type == RocksDBLogType::CollectionRename) {
+        if (type == RocksDBLogType::CollectionRename) {
           _oldCollectionName = RocksDBLogValue::oldCollectionName(blob).toString();
+        } else if (type == RocksDBLogType::CollectionDrop) {
+          std::string UUID = RocksDBLogValue::collectionUUID(blob).toString();
+          TRI_ASSERT(_currentDbId != 0 && _currentCid != 0);
+          LOG_TOPIC(_LOG, Logger::ROCKSDB) << "CID: " << _currentCid;
+          
+          // reset name in collection name cache
+          _collectionNames.erase(_currentCid);
+          
+          _builder.openObject();
+          _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
+          _builder.add("type", VPackValue(REPLICATION_COLLECTION_DROP));
+          _builder.add("database", VPackValue(std::to_string(_currentDbId)));
+          if (!UUID.empty()) {
+            _builder.add("cuid", VPackValue(UUID));
+          }
+          _builder.add("cid", VPackValue(std::to_string(_currentCid)));
+          _builder.add("data", VPackValue(VPackValueType::Object));
+          _builder.add("id", VPackValue(std::to_string(_currentCid)));
+          _builder.add("name", VPackValue(""));  // not used at all
+          _builder.close();
+          _builder.close();
         }
         break;
       }
@@ -338,31 +357,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       return rocksdb::Status();
     }
 
-    if (column_family_id == _definitionsCF &&
-        RocksDBKey::type(key) == RocksDBEntryType::Collection) {
-      // a database DROP will not set this flag
-      if (_lastLogType == RocksDBLogType::CollectionDrop) {
-        TRI_ASSERT(_currentDbId != 0 && _currentCid != 0);
-        LOG_TOPIC(_LOG, Logger::ROCKSDB) << "CID: " << _currentCid;
-
-        // reset name in collection name cache        
-        _collectionNames.erase(_currentCid);
-
-        _builder.openObject();
-        _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
-        _builder.add("type", VPackValue(REPLICATION_COLLECTION_DROP));
-        _builder.add("database", VPackValue(std::to_string(_currentDbId)));
-        if (!_dropCollectionUUID.empty()) {
-          _builder.add("cuid", VPackValue(_dropCollectionUUID));
-        }
-        _builder.add("cid", VPackValue(std::to_string(_currentCid)));
-        _builder.add("data", VPackValue(VPackValueType::Object));
-        _builder.add("id", VPackValue(std::to_string(_currentCid)));
-        _builder.add("name", VPackValue(""));  // not used at all
-        _builder.close();
-        _builder.close();
-      }
-    } else if (column_family_id == _documentsCF) {
+    if (column_family_id == _documentsCF) {
       // document removes, because of a collection drop is not transactional and
       // should not appear in the WAL.
       if (!(_seenBeginTransaction || _singleOp)) {
@@ -444,7 +439,6 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     _currentDbId = 0;
     _currentCid = 0;
     _removeDocumentKey.clear();
-    _dropCollectionUUID.clear();
     _oldCollectionName.clear();
     _indexSlice = VPackSlice::illegalSlice();
   }
@@ -569,7 +563,6 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   TRI_voc_tick_t _currentTrxId = 0;
   TRI_voc_tick_t _currentDbId = 0;
   TRI_voc_cid_t _currentCid = 0;
-  std::string _dropCollectionUUID;
   std::string _oldCollectionName;
   std::string _removeDocumentKey;
   VPackSlice _indexSlice;
