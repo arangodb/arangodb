@@ -143,7 +143,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     TRI_vocbase_t* vocbase, std::string const& collectionName,
     basics::StringBuffer& buff, uint64_t chunkSize, bool compat28) {
   TRI_ASSERT(vocbase != nullptr);
-  if (_trx.get() == nullptr) {
+  if (_trx.get() == nullptr || !_trx->state()->isRunning()) {
     return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
   }
   int res = bindCollection(collectionName);
@@ -460,12 +460,12 @@ void RocksDBReplicationContext::release() {
 }
 
 void RocksDBReplicationContext::releaseDumpingResources() {
+  if (_iter.get() != nullptr) {
+    _iter.reset();
+  }
   if (_trx.get() != nullptr) {
     _trx->abort();
     _trx.reset();
-  }
-  if (_iter.get() != nullptr) {
-    _iter.reset();
   }
   _collection = nullptr;
   _guard.reset();
