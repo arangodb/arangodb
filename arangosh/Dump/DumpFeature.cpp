@@ -90,7 +90,7 @@ void DumpFeature::collectOptions(
                      new UInt64Parameter(&_chunkSize));
 
   options->addOption("--batch-size",
-                     "initial size for individual data batches (in bytes)",
+                     "maximum size for individual data batches (in bytes)",
                      new UInt64Parameter(&_maxChunkSize));
 
   options->addOption("--dump-data", "dump collection data",
