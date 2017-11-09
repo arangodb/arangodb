@@ -123,7 +123,8 @@ const compare = function(masterFunc, slaveFunc, applierConfiguration) {
     verbose: true,
     includeSystem: includeSystem,
     restrictType: restrictType,
-    restrictCollections: restrictCollections
+    restrictCollections: restrictCollections,
+    waitForSyncTimeout: 120
   });
   
   db._flushCache();

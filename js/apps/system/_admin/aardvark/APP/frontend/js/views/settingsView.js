@@ -282,12 +282,14 @@
                 this.truncateCollection.bind(this)
               )
             );
-            buttons.push(
-              window.modalView.createNotificationButton(
-                'Load Indexes in Memory',
-                this.warmupCollection.bind(this)
-              )
-            );
+            if (frontendConfig.engine === 'rocksdb') {
+              buttons.push(
+                window.modalView.createNotificationButton(
+                  'Load Indexes into Memory',
+                  this.warmupCollection.bind(this)
+                )
+              );
+            }
             if (collectionIsLoaded) {
               buttons.push(
                 window.modalView.createNotificationButton(
