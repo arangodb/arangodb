@@ -88,9 +88,10 @@ struct config_t {
   config_t();
 
   /// @brief ctor
-  config_t(size_t as, size_t ps, double minp, double maxp, std::string const& e,
-           std::vector<std::string> const& g, bool s, bool st, bool w, double f,
-           uint64_t c, uint64_t k, double p, bool t, size_t a);
+  config_t(std::string const& id, size_t as, size_t ps, double minp, double maxp,
+           std::string const& e, std::vector<std::string> const& g, bool s,
+           bool st, bool w, double f, uint64_t c, uint64_t k, double p, bool t,
+           size_t a);
 
   /// @brief copy constructor
   config_t(config_t const&);

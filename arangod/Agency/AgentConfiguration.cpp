@@ -49,11 +49,12 @@ config_t::config_t()
       _lock()
       {}
 
-config_t::config_t(size_t as, size_t ps, double minp, double maxp,
-                   std::string const& e, std::vector<std::string> const& g,
-                   bool s, bool st, bool w, double f, uint64_t c, uint64_t k,
-                   double p, bool t, size_t a)
-    : _agencySize(as),
+config_t::config_t(
+  std::string const& id, size_t as, size_t ps, double minp, double maxp,
+  std::string const& e, std::vector<std::string> const& g, bool s, bool st,
+  bool w, double f, uint64_t c, uint64_t k, double p, bool t, size_t a)
+    : _id(id),
+      _agencySize(as),
       _poolSize(ps),
       _minPing(minp),
       _maxPing(maxp),

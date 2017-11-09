@@ -98,7 +98,8 @@ void Inception::gossip() {
       if (p != config.endpoint()) {
         {
           MUTEX_LOCKER(ackedLocker,_vLock);
-          if (_acked[p] >= version) {
+          auto const& ackedPeer = _acked.find(p);
+          if (ackedPeer != _acked.end() && ackedPeer->second >= version) {
             continue;
           }
         }

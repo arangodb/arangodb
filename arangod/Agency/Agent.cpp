@@ -295,12 +295,16 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(
   term_t term, std::string const& leaderId, index_t prevIndex, term_t prevTerm,
   index_t leaderCommitIndex, query_t const& queries) {
 
+  term_t t(this->term());
+  if (!ready()) { // We have not been able to put together our configuration
+    return priv_rpc_ret_t(false,t);
+  }
+
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Got AppendEntriesRPC from "
     << leaderId << " with term " << term;
 
   VPackSlice payload = queries->slice();
 
-  term_t t(this->term());
   // Update commit index
   if (payload.type() != VPackValueType::Array) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)

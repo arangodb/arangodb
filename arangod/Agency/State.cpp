@@ -811,7 +811,7 @@ bool State::loadOrPersistConfiguration() {
       FATAL_ERROR_EXIT();
     }
 
-  } else {  // Fresh start
+  } else {  // Fresh start or disaster recovery
 
     MUTEX_LOCKER(guard, _configurationWriteLock);
 
@@ -819,11 +819,24 @@ bool State::loadOrPersistConfiguration() {
 
     TRI_ASSERT(_agent != nullptr);
 
-    std::string uuid = (ServerState::instance()->hasPersistedId()) ?
-      ServerState::instance()->getPersistedId() :
-      ServerState::instance()->generatePersistedId(ServerState::ROLE_AGENT);
-
-    _agent->id(uuid);
+    // If we have persisted id, we use that. Otherwise we check, if we were
+    // given a disaster recovery id that wins then before a new one is generated
+    // and that choice persisted.
+    std::string uuid;
+    if (ServerState::instance()->hasPersistedId()) {
+      uuid = ServerState::instance()->getPersistedId();
+      _agent->id(uuid);
+    } else {
+      std::string id = _agent->id();
+      if (id.empty()) { 
+        uuid =
+          ServerState::instance()->generatePersistedId(ServerState::ROLE_AGENT);
+        _agent->id(uuid);
+      } else {
+        uuid = id;
+        ServerState::instance()->writePersistedId(id);
+      }
+    }
 
     auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
     SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);
