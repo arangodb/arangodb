@@ -68,7 +68,7 @@ if (USE_IRESEARCH)
     IResearch/SystemDatabaseFeature.cpp IResearch/SystemDatabaseFeature.h
     IResearch/VelocyPackHelper.cpp IResearch/VelocyPackHelper.h
     IResearch/ExpressionFilter.cpp IResearch/ExpressionFilter.h
-    IResearch/AstHelper.cpp IResearch/AstHelper.h
+    IResearch/AqlHelper.cpp IResearch/AqlHelper.h
   )
 
   target_include_directories(${LIB_ARANGO_IRESEARCH}

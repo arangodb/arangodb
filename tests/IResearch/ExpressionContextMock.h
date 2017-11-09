@@ -39,6 +39,8 @@ class Variable; // forward decl
 struct ExpressionContextMock final : arangodb::aql::ExpressionContext {
   static ExpressionContextMock EMPTY;
 
+  virtual ~ExpressionContextMock();
+
   virtual size_t numRegisters() const{
     TRI_ASSERT(false);
     return 0;

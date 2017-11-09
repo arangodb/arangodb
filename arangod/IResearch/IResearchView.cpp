@@ -40,6 +40,7 @@
 #include "IResearchFilterFactory.h"
 #include "IResearchFeature.h"
 #include "IResearchLink.h"
+#include "AqlHelper.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"

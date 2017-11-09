@@ -27,6 +27,12 @@
 
 ExpressionContextMock ExpressionContextMock::EMPTY;
 
+ExpressionContextMock::~ExpressionContextMock() {
+  for (auto& entry : vars) {
+    entry.second.destroy();
+  }
+}
+
 arangodb::aql::AqlValue ExpressionContextMock::getVariableValue(
     arangodb::aql::Variable const* variable,
     bool doCopy,
@@ -36,5 +42,12 @@ arangodb::aql::AqlValue ExpressionContextMock::getVariableValue(
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Can't find variable " + variable->name);
 //    return {};
   }
+
+  if (doCopy) {
+    mustDestroy = true;
+    return it->second.clone();
+  }
+
+  mustDestroy = false;
   return it->second;
 }

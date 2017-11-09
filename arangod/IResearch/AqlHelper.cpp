@@ -20,10 +20,16 @@
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "AstHelper.h"
+#include "AqlHelper.h"
 
-#include "IResearchDocument.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/Expression.h"
+#include "Aql/ExpressionContext.h"
 #include "Aql/Variable.h"
+#include "IResearchDocument.h"
+#include "IResearchFeature.h"
+#include "Logger/Logger.h"
+#include "Logger/LogMacros.h"
 
 #include <inttypes.h>
 
@@ -59,6 +65,59 @@ template<
 
 namespace arangodb {
 namespace iresearch {
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                    AqlValueTraits implementation
+// ----------------------------------------------------------------------------
+
+arangodb::aql::AstNodeValueType const AqlValueTraits::TYPE_MAP[] {
+  AqlValueTraits::invalid_type(),
+  arangodb::aql::VALUE_TYPE_NULL,
+  arangodb::aql::VALUE_TYPE_BOOL,
+  arangodb::aql::VALUE_TYPE_DOUBLE,
+  arangodb::aql::VALUE_TYPE_STRING
+};
+
+arangodb::aql::AstNode const ScopedAqlValue::INVALID_NODE(arangodb::aql::NODE_TYPE_ROOT);
+
+// ----------------------------------------------------------------------------
+// --SECTION--                                    ScopedAqlValue implementation
+// ----------------------------------------------------------------------------
+
+bool ScopedAqlValue::execute(arangodb::iresearch::QueryContext const& ctx) {
+  if (_node->isConstant()) {
+    // constant expression, nothing to do
+    return true;
+  }
+
+  if (!ctx.ast) { // || !ctx.ctx) {
+    // can't execute expression without `AST` and `ExpressionContext`
+    return false;
+  }
+
+  TRI_ASSERT(ctx.ctx); //FIXME remove, uncomment condition
+
+  // don't really understand why we need `ExecutionPlan` and `Ast` here
+  arangodb::aql::Expression expr(
+    ctx.plan, ctx.ast, const_cast<arangodb::aql::AstNode*>(_node)
+  );
+
+  destroy();
+
+  try {
+    _value = expr.execute(ctx.trx, ctx.ctx, _destroy);
+  } catch (arangodb::basics::Exception const& e) {
+    // can't execute expression
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << e.message();
+    return false;
+  } catch (...) {
+    // can't execute expression
+    return false;
+  }
+
+  _type = AqlValueTraits::type(_value);
+  return true;
+}
 
 bool normalizeCmpNode(
     arangodb::aql::AstNode const& in,
@@ -224,42 +283,85 @@ bool attributeAccessEqual(
    && rhsValue == lhsValue;
 }
 
-std::string nameFromAttributeAccess(arangodb::aql::AstNode const& node) {
-  class {
-   public:
-    bool operator()(irs::string_ref const& value) {
-      if (!str_.empty()) {
-        str_ += NESTING_LEVEL_DELIMITER;
+bool nameFromAttributeAccess(
+    std::string& name,
+    arangodb::aql::AstNode const& node,
+    QueryContext const& ctx
+) {
+  struct {
+    bool attributeAccess(arangodb::aql::AstNode const& node) {
+      irs::string_ref strValue;
+
+      if (!parseValue(strValue, node)) {
+        // wrong type
+        return false;
       }
-      str_.append(value.c_str(), value.size());
+
+      append(strValue);
       return true;
     }
 
-    bool operator()() const {
+    bool expansion(arangodb::aql::AstNode const&) const {
       return false; // do not support [*]
     }
 
-    bool operator()(uint64_t i) {
-      str_ += NESTING_LIST_OFFSET_PREFIX;
-      auto const written = sprintf(buf_, "%" PRIu64, i);
-      str_.append(buf_, written);
-      str_ += NESTING_LIST_OFFSET_SUFFIX;
-      return true;
+    bool indexAccess(arangodb::aql::AstNode const& node) {
+      value_.reset(node);
+
+      if (!value_.execute(*ctx_)) {
+        // failed to evalue value
+        return false;
+      }
+
+      switch (value_.type()) {
+        case arangodb::aql::VALUE_TYPE_INT:
+        case arangodb::aql::VALUE_TYPE_DOUBLE:
+          append(value_.getInt64());
+          return true;
+        case arangodb::aql::VALUE_TYPE_STRING: {
+          irs::string_ref strValue;
+
+          if (!value_.getString(strValue)) {
+            // unable to parse value as string
+            return false;
+          }
+
+          append(strValue);
+          return true;
+        }
+        default:
+          return false;
+      }
     }
 
-    std::string&& str() noexcept {
-      return std::move(str_);
+    void append(irs::string_ref const& value) {
+      if (!str_->empty()) {
+        (*str_) += NESTING_LEVEL_DELIMITER;
+      }
+      str_->append(value.c_str(), value.size());
     }
 
-   private:
-    std::string str_;
+    void append(int64_t value) {
+      (*str_) += NESTING_LIST_OFFSET_PREFIX;
+      auto const written = sprintf(buf_, "%" PRIu64, value);
+      str_->append(buf_, written);
+      (*str_) += NESTING_LIST_OFFSET_SUFFIX;
+    }
+
+    ScopedAqlValue value_;
+    std::string* str_;
+    QueryContext const* ctx_;
     char buf_[21]; // enough to hold all numbers up to 64-bits
   } builder;
 
+  name.clear();
+  builder.str_ = &name;
+  builder.ctx_ = &ctx;
+
   arangodb::aql::AstNode const* head = nullptr;
-  visitAttributePath(head, node, builder);
-  TRI_ASSERT(head && arangodb::aql::NODE_TYPE_REFERENCE == head->type);
-  return builder.str();
+  return visitAttributeAccess(head, &node, builder)
+    && head
+    && arangodb::aql::NODE_TYPE_REFERENCE == head->type;
 }
 
 arangodb::aql::AstNode const* checkAttributeAccess(
@@ -267,16 +369,16 @@ arangodb::aql::AstNode const* checkAttributeAccess(
     arangodb::aql::Variable const& ref
 ) noexcept {
   struct {
-    bool operator()(irs::string_ref const&) {
+    bool attributeAccess(arangodb::aql::AstNode const&) const {
       return true;
     }
 
-    bool operator()() const {
+    bool indexAccess(arangodb::aql::AstNode const&) const {
+      return true;
+    }
+
+    bool expansion(arangodb::aql::AstNode const&) const {
       return false; // do not support [*]
-    }
-
-    bool operator()(int64_t) const {
-      return true;
     }
   } checker;
 
@@ -284,7 +386,7 @@ arangodb::aql::AstNode const* checkAttributeAccess(
 
   return node
       && arangodb::aql::NODE_TYPE_REFERENCE != node->type // do not allow root node to be REFERENCE
-      && visitAttributePath(head, *node, checker)
+      && visitAttributeAccess(head, node, checker)
       && head && arangodb::aql::NODE_TYPE_REFERENCE == head->type
       && reinterpret_cast<void const*>(&ref) == head->getData() // same variable
     ? node : nullptr;

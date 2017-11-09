@@ -23,7 +23,7 @@
 
 #include "IResearchOrderFactory.h"
 
-#include "AstHelper.h"
+#include "AqlHelper.h"
 #include "AttributeScorer.h"
 #include "IResearchAttributes.h"
 #include "VelocyPackHelper.h"

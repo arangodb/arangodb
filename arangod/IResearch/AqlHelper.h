@@ -22,14 +22,34 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/AstNode.h"
+#include "Aql/AqlValue.h"
+#include "VelocyPackHelper.h"
 
 #include "utils/string.hpp"
+#include "utils/noncopyable.hpp"
 
-#ifndef ARANGOD_IRESEARCH__AST_HELPER_H
-#define ARANGOD_IRESEARCH__AST_HELPER_H 1
+#ifndef ARANGOD_IRESEARCH__AQL_HELPER_H
+#define ARANGOD_IRESEARCH__AQL_HELPER_H 1
 
-namespace arangodb {
-namespace iresearch {
+
+NS_BEGIN(arangodb)
+
+NS_BEGIN(aql)
+
+struct Variable; // forward declaration
+class ExecutionPlan; // forward declaration
+class ExpressionContext; // forward declaration
+class Ast; // forward declaration
+
+NS_END // aql
+
+NS_BEGIN(transaction)
+
+class Methods; // forward declaration
+
+NS_END // transaction
+
+NS_BEGIN(iresearch)
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief extracts string_ref from an AstNode, note that provided 'node'
@@ -64,7 +84,7 @@ inline bool parseValue(size_t& value, arangodb::aql::AstNode const& node) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tries to extract 'irs::basic_string_ref<Char>' value from the
-//         specified AstNode 'node'
+///         specified AstNode 'node'
 /// @returns true on success, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
 template<typename String>
@@ -117,6 +137,213 @@ bool visit(arangodb::aql::AstNode const& root, Visitor visitor) {
   }
 
   return true;
+}
+
+typedef typename std::underlying_type<
+  arangodb::aql::AstNodeValueType
+>::type AstNodeValueTypeUnderlyingType;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct AqlValueTraits
+////////////////////////////////////////////////////////////////////////////////
+struct AqlValueTraits {
+  constexpr static arangodb::aql::AstNodeValueType invalid_type() noexcept {
+    typedef typename std::underlying_type<
+      arangodb::aql::AstNodeValueType
+    >::type underlying_t;
+
+    return arangodb::aql::AstNodeValueType(
+      irs::integer_traits<underlying_t>::const_max
+    );
+  }
+
+  static arangodb::aql::AstNodeValueType type(
+      arangodb::aql::AqlValue const& value
+  ) noexcept {
+    auto const typeIndex = value.isNull(false)
+      + 2*value.isBoolean()
+      + 3*value.isNumber()
+      + 4*value.isString();
+
+    return TYPE_MAP[typeIndex];
+  }
+
+  static arangodb::aql::AstNodeValueType type(
+      arangodb::aql::AstNode const& node
+  ) noexcept {
+    if (arangodb::aql::NODE_TYPE_VALUE != node.type
+        && arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS != node.type
+        && arangodb::aql::NODE_TYPE_INDEXED_ACCESS != node.type) {
+      return invalid_type();
+    }
+
+    return node.isNumericValue()
+      ? arangodb::aql::VALUE_TYPE_DOUBLE // all numerics are doubles here
+      : node.value.type;
+  }
+
+  static arangodb::aql::AstNodeValueType const TYPE_MAP[];
+}; // AqlValueTraits
+
+static_assert(
+  AqlValueTraits::invalid_type() > arangodb::aql::VALUE_TYPE_STRING,
+  "Invalid enum value"
+);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @struct QueryContext
+////////////////////////////////////////////////////////////////////////////////
+struct QueryContext {
+  arangodb::transaction::Methods* trx;
+  arangodb::aql::ExecutionPlan* plan;
+  arangodb::aql::Ast* ast;
+  arangodb::aql::ExpressionContext* ctx;
+  arangodb::aql::Variable const* ref;
+}; // QueryContext
+
+////////////////////////////////////////////////////////////////////////////////
+/// @class ScopedAqlValue
+/// @brief convenient wrapper around `AqlValue` and `AstNode`
+////////////////////////////////////////////////////////////////////////////////
+class ScopedAqlValue : private irs::util::noncopyable {
+ public:
+  static arangodb::aql::AstNode const INVALID_NODE;
+
+  explicit ScopedAqlValue(
+      arangodb::aql::AstNode const& node = INVALID_NODE
+  ) noexcept {
+    reset(node);
+  }
+
+  void reset(arangodb::aql::AstNode const& node = INVALID_NODE) noexcept {
+    _node = &node;
+    _type = AqlValueTraits::type(node);
+  }
+
+  ~ScopedAqlValue() noexcept {
+    destroy();
+  }
+
+  bool isConstant() const noexcept {
+    return _node->isConstant();
+  }
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief executes expression specified in the given `node`
+  /// @returns true if expression has been executed, false otherwise
+  ////////////////////////////////////////////////////////////////////////////////
+  bool execute(QueryContext const& ctx);
+
+  arangodb::aql::AstNodeValueType type() const noexcept {
+    return _type;
+  }
+
+  bool getBoolean() const {
+    return _node->isConstant()
+      ? _node->getBoolValue()
+      : _value.toBoolean();
+  }
+
+  bool getDouble(double_t& value) const {
+    bool failed = false;
+    value = _node->isConstant()
+      ? _node->getDoubleValue()
+      : _value.toDouble(nullptr, failed);
+    return !failed;
+  }
+
+  int64_t getInt64() const {
+    return _node->isConstant()
+      ? _node->getIntValue()
+      : _value.toInt64(nullptr);
+  }
+
+  bool getString(irs::string_ref& value) const {
+    if (_node->isConstant()) {
+      return parseValue(value, *_node);
+    } else {
+      value = getStringRef(_value.slice());
+    }
+    return true;
+  }
+
+ private:
+  FORCE_INLINE void destroy() noexcept {
+    if (_destroy) {
+      _value.destroy();
+    }
+  }
+
+  arangodb::aql::AqlValue _value;
+  arangodb::aql::AstNode const* _node;
+  arangodb::aql::AstNodeValueType _type;
+  bool _destroy{ false };
+}; // ScopedAqlValue
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief interprets the specified node as an attribute path description and
+///        visits the members in attribute path order calling the provided
+///        'visitor' on each path sub-index, expecting the following signatures:
+///          bool attributeAccess(AstNode const&) - attribute access
+///          bool indexAccess(AstNode const&)     - index access
+///          bool expansion(AstNode const&)       - expansion
+/// @return success and set head the the starting node of path (reference)
+////////////////////////////////////////////////////////////////////////////////
+template<typename T>
+bool visitAttributeAccess(
+    arangodb::aql::AstNode const*& head,
+    arangodb::aql::AstNode const* node,
+    T& visitor
+) {
+  if (!node) {
+    return false;
+  }
+
+  switch (node->type) {
+    case arangodb::aql::NODE_TYPE_ATTRIBUTE_ACCESS: // .
+      return node->numMembers() >= 1
+        && visitAttributeAccess(head, node->getMemberUnchecked(0), visitor)
+        && visitor.attributeAccess(*node);
+    case arangodb::aql::NODE_TYPE_INDEXED_ACCESS: { // [<something>]
+      if (node->numMembers() < 2) {
+        // malformed node
+        return false;
+      }
+
+      auto* offset = node->getMemberUnchecked(1);
+
+      return offset
+        && visitAttributeAccess(head, node->getMemberUnchecked(0), visitor)
+        && visitor.indexAccess(*offset);
+    }
+    case arangodb::aql::NODE_TYPE_EXPANSION: { // [*]
+      if (node->numMembers() < 2) {
+        // malformed node
+        return false;
+      }
+
+      auto* itr = node->getMemberUnchecked(0);
+      auto* ref = node->getMemberUnchecked(1);
+
+      if (itr && itr->numMembers() >= 2) {
+        auto* root = itr->getMemberUnchecked(1);
+        auto* var = itr->getMemberUnchecked(0);
+
+        return ref
+            && arangodb::aql::NODE_TYPE_ITERATOR == itr->type
+            && arangodb::aql::NODE_TYPE_REFERENCE == ref->type
+            && var && arangodb::aql::NODE_TYPE_VARIABLE == var->type
+            && visitAttributeAccess(head, root, visitor) // 1st visit root
+            && visitor.expansion(*node); // 2nd visit current node
+      }
+    }
+    case arangodb::aql::NODE_TYPE_REFERENCE: {
+      head = node;
+      return true;
+    }
+    default:
+      return false;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,9 +475,13 @@ bool attributeAccessEqual(
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief generates field name from the specified 'node'
-/// @returns generated name
+/// @returns true on success, false otherwise
 ////////////////////////////////////////////////////////////////////////////////
-std::string nameFromAttributeAccess(arangodb::aql::AstNode const& node);
+bool nameFromAttributeAccess(
+  std::string& name,
+  arangodb::aql::AstNode const& node,
+  QueryContext const& ctx
+);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether the specified node is correct attribute access node,
@@ -262,8 +493,8 @@ arangodb::aql::AstNode const* checkAttributeAccess(
   arangodb::aql::Variable const& ref
 ) noexcept;
 
-} // iresearch
-} // arangodb
+NS_END // iresearch
+NS_END // arangodb
 
-#endif // ARANGOD_IRESEARCH__AST_HELPER_H
+#endif // ARANGOD_IRESEARCH__AQL_HELPER_H
 

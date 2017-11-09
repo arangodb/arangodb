@@ -35,6 +35,7 @@
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/IResearchKludge.h"
 #include "IResearch/SystemDatabaseFeature.h"
+#include "IResearch/AqlHelper.h"
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -271,6 +272,7 @@ struct IResearchFilterSetup {
 
   IResearchFilterSetup(): server(nullptr, nullptr) {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
+    arangodb::aql::AqlFunctionFeature* functions = nullptr;
 
     arangodb::tests::init();
 
@@ -283,7 +285,7 @@ struct IResearchFilterSetup {
     system = irs::memory::make_unique<TRI_vocbase_t>(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 0, TRI_VOC_SYSTEM_DATABASE);
     features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
     features.emplace_back(new arangodb::AqlFeature(&server), true);
-    features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
+    features.emplace_back(functions = new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::SystemDatabaseFeature(&server, system.get()), false); // required for IResearchAnalyzerFeature
@@ -301,6 +303,19 @@ struct IResearchFilterSetup {
         f.first->start();
       }
     }
+
+    // register fake non-deterministic function in order to suppress optimizations
+    functions->add(arangodb::aql::Function{
+      "_REFERENCE_",
+      ".",
+      false, // fake non-deterministic
+      false, // fake can throw
+      true,
+      false,
+      [](arangodb::aql::Query*, arangodb::transaction::Methods*, arangodb::aql::VPackFunctionParameters const& params) {
+        TRI_ASSERT(!params.empty());
+        return params[0];
+    }});
 
     auto* analyzers = arangodb::iresearch::getFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
 
@@ -432,6 +447,55 @@ SECTION("BinaryIn") {
 
     assertFilterSuccess("FOR d IN collection FILTER d.quick.brown.fox in [] RETURN d", expected);
     assertFilterSuccess("FOR d IN collection FILTER d['quick'].brown.fox in [] RETURN d", expected);
+  }
+
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    auto& root = expected.add<irs::Or>();
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a")).term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a")).term("2");
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a")).term("3");
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in ['1','2','3'] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in ['1','2','3'] RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in ['1','2','3'] RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in ['1','2','3'] RETURN d", &ctx);
   }
 
   // reference in array
@@ -577,6 +641,58 @@ SECTION("BinaryIn") {
     assertFilterSuccess("LET c=2 FOR d IN collection FILTER d.a[100]['b'].c[1].e.f in c..c+100 RETURN d", expected, &ctx);
   }
 
+  // dynamic complex attribute name in range
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::numeric_token_stream minTerm; minTerm.reset(2.0);
+    irs::numeric_token_stream maxTerm; maxTerm.reset(102.0);
+
+    irs::Or expected;
+    auto& range = expected.add<irs::by_granular_range>();
+    range.field(mangleNumeric("a.b.c.e[4].f[5].g[3].g.a"));
+    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
+    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in 2..102 RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in 2..102 RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in 2..102 RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in 2..102 RETURN d", &ctx);
+  }
+
   // string range
   {
     irs::Or expected;
@@ -620,6 +736,55 @@ SECTION("BinaryIn") {
 
     assertFilterSuccess("LET c=2 FOR d IN collection FILTER d.a[100].b.c[1].e.f in TO_STRING(c)..TO_STRING(c+2) RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=2 FOR d IN collection FILTER d.a[100].b.c[1]['e'].f in TO_STRING(c)..TO_STRING(c+2) RETURN d", expected, &ctx);
+  }
+
+  // dynamic complex attribute name in range
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    auto& range = expected.add<irs::by_range>();
+    range.field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"));
+    range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("2");
+    range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("4");
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in '2'..'4' RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name in range
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in '2'..'4' RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name in range (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in '2'..'4' RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name in range (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in '2'..'4' RETURN d", &ctx);
   }
 
   // boolean range
@@ -667,6 +832,55 @@ SECTION("BinaryIn") {
     assertFilterSuccess("LET c=2 FOR d IN collection FILTER d.a[100].b.c[1]['e'].f in TO_BOOL(c)..TO_BOOL(c-2) RETURN d", expected, &ctx);
   }
 
+  // dynamic complex attribute name in range
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    auto& range = expected.add<irs::by_range>();
+    range.field(mangleBool("a.b.c.e[4].f[5].g[3].g.a"));
+    range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::boolean_token_stream::value_true());
+    range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::boolean_token_stream::value_false());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in true..false RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name in range
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in true..false RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name in range (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in true..false RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name in range (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in false..true RETURN d", &ctx);
+  }
+
   // null range
   {
     irs::Or expected;
@@ -708,6 +922,55 @@ SECTION("BinaryIn") {
 
     assertFilterSuccess("LET c=null FOR d IN collection FILTER d.a[100].b.c[1].e.f in c..null RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=null FOR d IN collection FILTER d.a[100].b.c[1]['e'].f in c..null RETURN d", expected, &ctx);
+  }
+
+  // dynamic complex attribute name in range
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    auto& range = expected.add<irs::by_range>();
+    range.field(mangleNull("a.b.c.e[4].f[5].g[3].g.a"));
+    range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::null_token_stream::value_null());
+    range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in null..null RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name in range
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in null..null RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name in range (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in null..null RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name in range (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] in null..null RETURN d", &ctx);
   }
 
   // invalid attribute access
@@ -816,6 +1079,55 @@ SECTION("BinaryNotIn") {
     auto& root = expected.add<irs::all>();
 
     assertFilterSuccess("FOR d IN collection FILTER d.quick.brown.fox not in [] RETURN d", expected);
+  }
+
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    auto& root = expected.add<irs::Not>().filter<irs::And>();
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a")).term("1");
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a")).term("2");
+    root.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a")).term("3");
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in ['1','2','3'] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in ['1','2','3'] RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in ['1','2','3'] RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in ['1','2','3'] RETURN d", &ctx);
   }
 
   // reference in array
@@ -992,6 +1304,58 @@ SECTION("BinaryNotIn") {
     assertFilterSuccess("LET c=2 FOR d IN collection FILTER d.a[100]['b'].c[1].e.f not in c..c+100 RETURN d", expected, &ctx);
   }
 
+  // dynamic complex attribute name in range
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::numeric_token_stream minTerm; minTerm.reset(2.0);
+    irs::numeric_token_stream maxTerm; maxTerm.reset(102.0);
+
+    irs::Or expected;
+    auto& range = expected.add<irs::Not>().filter<irs::Or>().add<irs::by_granular_range>();
+    range.field(mangleNumeric("a.b.c.e[4].f[5].g[3].g.a"));
+    range.include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(minTerm);
+    range.include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(maxTerm);
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in 2..102 RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in 2..102 RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in 2..102 RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in 2..102 RETURN d", &ctx);
+  }
+
   // string range
   {
     irs::Or expected;
@@ -1035,6 +1399,55 @@ SECTION("BinaryNotIn") {
     assertFilterSuccess("LET c=2 FOR d IN collection FILTER d.a[100].b.c[1]['e'].f not in TO_STRING(c)..TO_STRING(c+2) RETURN d", expected, &ctx);
   }
 
+  // dynamic complex attribute name in range
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    auto& range = expected.add<irs::Not>().filter<irs::Or>().add<irs::by_range>();
+    range.field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"));
+    range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("2");
+    range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("4");
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in '2'..'4' RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name in range
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in '2'..'4' RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name in range (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in '2'..'4' RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name in range (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in '2'..'4' RETURN d", &ctx);
+  }
+
   // boolean range
   {
     irs::Or expected;
@@ -1070,12 +1483,61 @@ SECTION("BinaryNotIn") {
 
     irs::Or expected;
     auto& range = expected.add<irs::Not>().filter<irs::Or>().add<irs::by_range>();
-    range.field(mangleStringIdentity("a[100].b.c[1].e.f"));
-    range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("2");
-    range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("4");
+    range.field(mangleBool("a[100].b.c[1].e.f"));
+    range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::boolean_token_stream::value_true());
+    range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::boolean_token_stream::value_false());
 
-    assertFilterSuccess("LET c=2 FOR d IN collection FILTER d.a[100].b.c[1].e.f not in TO_STRING(c)..TO_STRING(c+2) RETURN d", expected, &ctx);
-    assertFilterSuccess("LET c=2 FOR d IN collection FILTER d.a[100].b.c[1]['e'].f not in TO_STRING(c)..TO_STRING(c+2) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=2 FOR d IN collection FILTER d.a[100].b.c[1].e.f not in TO_BOOL(c)..IS_NULL(TO_BOOL(c-2)) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET c=2 FOR d IN collection FILTER d.a[100].b.c[1]['e'].f not in TO_BOOL(c)..TO_BOOL(c-2) RETURN d", expected, &ctx);
+  }
+
+  // dynamic complex attribute name in range
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    auto& range = expected.add<irs::Not>().filter<irs::Or>().add<irs::by_range>();
+    range.field(mangleBool("a.b.c.e[4].f[5].g[3].g.a"));
+    range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::boolean_token_stream::value_true());
+    range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::boolean_token_stream::value_false());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in true..false RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name in range
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in true..false RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name in range (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in true..false RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name in range (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in false..true RETURN d", &ctx);
   }
 
   // null range
@@ -1119,6 +1581,55 @@ SECTION("BinaryNotIn") {
 
     assertFilterSuccess("LET c=null FOR d IN collection FILTER d.a[100].b.c[1].e.f not in c..null RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=null FOR d IN collection FILTER d.a[100].b.c[1]['e'].f not in c..null RETURN d", expected, &ctx);
+  }
+
+  // dynamic complex attribute name in range
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    auto& range = expected.add<irs::Not>().filter<irs::Or>().add<irs::by_range>();
+    range.field(mangleNull("a.b.c.e[4].f[5].g[3].g.a"));
+    range.include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::null_token_stream::value_null());
+    range.include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in null..null RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name in range
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in null..null RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name in range (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in null..null RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name in range (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] not in null..null RETURN d", &ctx);
   }
 
   // invalid attribute access
@@ -1209,6 +1720,53 @@ SECTION("BinaryEq") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_STRING(c+1) == d['a']['b'][23]['c'] RETURN d", expected, &ctx);
   }
 
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::by_term>().field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a")).term("1");
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == '1' RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER '1' == d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == '1' RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == '1' RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == '1' RETURN d", &ctx);
+  }
+
   // complex attribute, true
   {
     irs::Or expected;
@@ -1258,6 +1816,53 @@ SECTION("BinaryEq") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) == d['a']['b'][23]['c'] RETURN d", expected, &ctx);
   }
 
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::by_term>().field(mangleBool("a.b.c.e[4].f[5].g[3].g.a")).term(irs::boolean_token_stream::value_true());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == true RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER true == d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == true RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == true RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == true RETURN d", &ctx);
+  }
+
   // complex attribute, null
   {
     irs::Or expected;
@@ -1302,6 +1907,53 @@ SECTION("BinaryEq") {
     assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) == d.a.b[23].c RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) == d.a['b'][23].c RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) == d['a']['b'][23]['c'] RETURN d", expected, &ctx);
+  }
+
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::by_term>().field(mangleNull("a.b.c.e[4].f[5].g[3].g.a")).term(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == null RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER null == d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == null RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == null RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == null RETURN d", &ctx);
   }
 
   // complex attribute, numeric
@@ -1369,6 +2021,58 @@ SECTION("BinaryEq") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c + 1.5) == d['a']['b'][23]['c'] RETURN d", expected, &ctx);
   }
 
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::numeric_token_stream stream;
+    stream.reset(42.5);
+    CHECK(stream.next());
+    auto& term = stream.attributes().get<irs::term_attribute>();
+
+    irs::Or expected;
+    expected.add<irs::by_term>().field(mangleNumeric("a.b.c.e[4].f[5].g[3].g.a")).term(term->value());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == 42.5 RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER 42.5 == d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == 42.5 RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == 42.5 RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == 42.5 RETURN d", &ctx);
+  }
+
   // complex range expression
   {
     irs::Or expected;
@@ -1381,6 +2085,8 @@ SECTION("BinaryEq") {
   /*assertFilterExecutionFail*/assertFilterFail("FOR d IN collection FILTER 3 == (2 == d.a.b.c) RETURN d", &ExpressionContextMock::EMPTY);
 
   // invalid attribute access
+  assertFilterExecutionFail("FOR d IN collection FILTER d.a.b.c RETURN d", &ExpressionContextMock::EMPTY);
+  assertFilterExecutionFail("FOR d IN collection FILTER d.a.b[_REFERENCE_('c')] RETURN d", &ExpressionContextMock::EMPTY);
   assertFilterFail("FOR d IN collection FILTER k.a == '1' RETURN d");
   assertFilterFail("FOR d IN collection FILTER d == '1' RETURN d");
   assertFilterFail("FOR d IN collection FILTER d[*] == '1' RETURN d");
@@ -1471,6 +2177,53 @@ SECTION("BinaryNotEq") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_STRING(c+1) != d['a']['b'][23]['c'] RETURN d", expected, &ctx);
   }
 
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::Not>().filter<irs::by_term>().field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a")).term("1");
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] != '1' RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER '1' != d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] != '1' RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] != '1' RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] != '1' RETURN d", &ctx);
+  }
+
   // complex boolean attribute, true
   {
     irs::Or expected;
@@ -1546,6 +2299,53 @@ SECTION("BinaryNotEq") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) != d['a']['b'][23]['c'] RETURN d", expected, &ctx);
   }
 
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::Not>().filter<irs::by_term>().field(mangleBool("a.b.c.e[4].f[5].g[3].g.a")).term(irs::boolean_token_stream::value_true());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] != true RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER true != d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] != true RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] != true RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] != true RETURN d", &ctx);
+  }
+
   // null expression
   {
     arangodb::aql::Variable var("c", 0);
@@ -1564,6 +2364,53 @@ SECTION("BinaryNotEq") {
     assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) != d.a.b[23].c RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) != d.a['b'][23].c RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) != d['a']['b'][23]['c'] RETURN d", expected, &ctx);
+  }
+
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::Not>().filter<irs::by_term>().field(mangleNull("a.b.c.e[4].f[5].g[3].g.a")).term(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] != null RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER null != d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] != null RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] != null RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] != null RETURN d", &ctx);
   }
 
   // complex boolean attribute, numeric
@@ -1625,6 +2472,58 @@ SECTION("BinaryNotEq") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c + 1.5) != d.a.b[23].c RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c + 1.5) != d.a['b'][23].c RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c + 1.5) != d['a']['b'][23]['c'] RETURN d", expected, &ctx);
+  }
+
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::numeric_token_stream stream;
+    stream.reset(42.5);
+    CHECK(stream.next());
+    auto& term = stream.attributes().get<irs::term_attribute>();
+
+    irs::Or expected;
+    expected.add<irs::Not>().filter<irs::by_term>().field(mangleNumeric("a.b.c.e[4].f[5].g[3].g.a")).term(term->value());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] != 42.5 RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER 42.5 != d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] != 42.5 RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] != 42.5 RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] != 42.5 RETURN d", &ctx);
   }
 
   // complex range expression
@@ -1733,6 +2632,55 @@ SECTION("BinaryGE") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_STRING(c+1) <= d['a']['b'][23].c RETURN d", expected, &ctx);
   }
 
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
+            .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>("42");
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] >= '42' RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER '42' <= d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] >= '42' RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] >= '42' RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] >= '42' RETURN d", &ctx);
+  }
+
   // complex boolean attribute, true
   {
     irs::Or expected;
@@ -1792,6 +2740,55 @@ SECTION("BinaryGE") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) <= d['a']['b'][23].c RETURN d", expected, &ctx);
   }
 
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleBool("a.b.c.e[4].f[5].g[3].g.a"))
+            .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] >= false RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER false <= d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] >= false RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] >= false RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] >= false RETURN d", &ctx);
+  }
+
   // complex boolean attribute, null
   {
     irs::Or expected;
@@ -1836,6 +2833,55 @@ SECTION("BinaryGE") {
     assertFilterSuccess("LET c=null FOR d IN collection FILTER d.a['b'][23]['c'] >= (c && true) RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) <= d.a.b[23].c RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) <= d['a']['b'][23].c RETURN d", expected, &ctx);
+  }
+
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleNull("a.b.c.e[4].f[5].g[3].g.a"))
+            .include<irs::Bound::MIN>(true).term<irs::Bound::MIN>(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] >= null RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER null <= d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] >= null RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] >= null RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] >= null RETURN d", &ctx);
   }
 
   // complex numeric attribute
@@ -1895,6 +2941,58 @@ SECTION("BinaryGE") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a['b'][23]['c'] >= (c+1.5) RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c+1.5) <= d.a.b[23].c RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c+1.5) <= d['a']['b'][23].c RETURN d", expected, &ctx);
+  }
+
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::numeric_token_stream stream;
+    stream.reset(42.5);
+
+    irs::Or expected;
+    expected.add<irs::by_granular_range>()
+            .field(mangleNumeric("a.b.c.e[4].f[5].g[3].g.a"))
+            .include<irs::Bound::MIN>(true).insert<irs::Bound::MIN>(stream);
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] >= 42.5 RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER 42.5 <= d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] >= 42.5 RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] >= 42.5 RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] >= 42.5 RETURN d", &ctx);
   }
 
   // complex expression
@@ -2002,6 +3100,55 @@ SECTION("BinaryGT") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_STRING(c+1) < d['a']['b'][23].c RETURN d", expected, &ctx);
   }
 
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
+            .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>("42");
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] > '42' RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER '42' < d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] > '42' RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] > '42' RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] > '42' RETURN d", &ctx);
+  }
+
   // complex boolean attribute, true
   {
     irs::Or expected;
@@ -2061,6 +3208,55 @@ SECTION("BinaryGT") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) < d['a']['b'][23].c RETURN d", expected, &ctx);
   }
 
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleBool("a.b.c.e[4].f[5].g[3].g.a"))
+            .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>(irs::boolean_token_stream::value_false());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] > false RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER false < d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] > false RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] > false RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] > false RETURN d", &ctx);
+  }
+
   // complex null attribute
   {
     irs::Or expected;
@@ -2092,6 +3288,55 @@ SECTION("BinaryGT") {
     assertFilterSuccess("LET c=null FOR d IN collection FILTER d.a['b'][23]['c'] > (c && true) RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) < d.a.b[23].c RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) < d['a']['b'][23].c RETURN d", expected, &ctx);
+  }
+
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleNull("a.b.c.e[4].f[5].g[3].g.a"))
+            .include<irs::Bound::MIN>(false).term<irs::Bound::MIN>(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] > null RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER null < d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] > null RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] > null RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] > null RETURN d", &ctx);
   }
 
   // complex null attribute with offset
@@ -2180,6 +3425,58 @@ SECTION("BinaryGT") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a['b'][23]['c'] > (c+1.5) RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c+1.5) < d.a.b[23].c RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c+1.5) < d['a']['b'][23].c RETURN d", expected, &ctx);
+  }
+
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::numeric_token_stream stream;
+    stream.reset(42.5);
+
+    irs::Or expected;
+    expected.add<irs::by_granular_range>()
+            .field(mangleNumeric("a.b.c.e[4].f[5].g[3].g.a"))
+            .include<irs::Bound::MIN>(false).insert<irs::Bound::MIN>(stream);
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] > 42.5 RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER 42.5 < d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] > 42.5 RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] > 42.5 RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] > 42.5 RETURN d", &ctx);
   }
 
   // complex expression
@@ -2287,6 +3584,55 @@ SECTION("BinaryLE") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_STRING(c+1) >= d['a']['b'][23].c RETURN d", expected, &ctx);
   }
 
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
+            .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>("42");
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] <= '42' RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER '42' >= d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] <= '42' RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] <= '42' RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] <= '42' RETURN d", &ctx);
+  }
+
   // complex boolean attribute, true
   {
     irs::Or expected;
@@ -2346,6 +3692,55 @@ SECTION("BinaryLE") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) >= d['a']['b'][23].c RETURN d", expected, &ctx);
   }
 
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleBool("a.b.c.e[4].f[5].g[3].g.a"))
+            .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::boolean_token_stream::value_false());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] <= false RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER false >= d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] <= false RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] <= false RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] <= false RETURN d", &ctx);
+  }
+
   // complex null attribute
   {
     irs::Or expected;
@@ -2390,6 +3785,55 @@ SECTION("BinaryLE") {
     assertFilterSuccess("LET c=null FOR d IN collection FILTER d.a['b'][23]['c'] <= (c && true) RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) >= d.a.b[23].c RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) >= d['a']['b'][23].c RETURN d", expected, &ctx);
+  }
+
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleNull("a.b.c.e[4].f[5].g[3].g.a"))
+            .include<irs::Bound::MAX>(true).term<irs::Bound::MAX>(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] <= null RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER null >= d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] <= null RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] <= null RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] <= null RETURN d", &ctx);
   }
 
   // complex numeric attribute
@@ -2449,6 +3893,58 @@ SECTION("BinaryLE") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a['b'][23]['c'] <= (c+1.5) RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c+1.5) >= d.a.b[23].c RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c+1.5) >= d['a']['b'][23].c RETURN d", expected, &ctx);
+  }
+
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::numeric_token_stream stream;
+    stream.reset(42.5);
+
+    irs::Or expected;
+    expected.add<irs::by_granular_range>()
+            .field(mangleNumeric("a.b.c.e[4].f[5].g[3].g.a"))
+            .include<irs::Bound::MAX>(true).insert<irs::Bound::MAX>(stream);
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] <= 42.5 RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER 42.5 >= d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] <= 42.5 RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] <= 42.5 RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] <= 42.5 RETURN d", &ctx);
   }
 
   // complex expression
@@ -2556,6 +4052,55 @@ SECTION("BinaryLT") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_STRING(c+1) > d['a']['b'][23].c RETURN d", expected, &ctx);
   }
 
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a"))
+            .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>("42");
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] < '42' RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER '42' > d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] <= '42' RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] <= '42' RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] <= '42' RETURN d", &ctx);
+  }
+
   // complex boolean attribute, true
   {
     irs::Or expected;
@@ -2615,6 +4160,55 @@ SECTION("BinaryLT") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER TO_BOOL(c-41) > d['a']['b'][23].c RETURN d", expected, &ctx);
   }
 
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleBool("a.b.c.e[4].f[5].g[3].g.a"))
+            .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>(irs::boolean_token_stream::value_false());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] < false RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER false > d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] < false RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] < false RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] < false RETURN d", &ctx);
+  }
+
   // complex null attribute
   {
     irs::Or expected;
@@ -2659,6 +4253,55 @@ SECTION("BinaryLT") {
     assertFilterSuccess("LET c=null FOR d IN collection FILTER d.a['b'][23]['c'] < (c && true) RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) > d.a.b[23].c RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=null FOR d IN collection FILTER (c && false) > d['a']['b'][23].c RETURN d", expected, &ctx);
+  }
+
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::by_range>()
+            .field(mangleNull("a.b.c.e[4].f[5].g[3].g.a"))
+            .include<irs::Bound::MAX>(false).term<irs::Bound::MAX>(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] < null RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER null > d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] < null RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] < null RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] < null RETURN d", &ctx);
   }
 
   // complex boolean attribute, numeric
@@ -2718,6 +4361,58 @@ SECTION("BinaryLT") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER d.a['b'][23]['c'] < (c+1.5) RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c+1.5) > d.a.b[23].c RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER (c+1.5) > d['a']['b'][23].c RETURN d", expected, &ctx);
+  }
+
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::numeric_token_stream stream;
+    stream.reset(42.5);
+
+    irs::Or expected;
+    expected.add<irs::by_granular_range>()
+            .field(mangleNumeric("a.b.c.e[4].f[5].g[3].g.a"))
+            .include<irs::Bound::MAX>(false).insert<irs::Bound::MAX>(stream);
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] < 42.5 RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER 42.5 > d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] < 42.5 RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] < 42.5 RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] < 42.5 RETURN d", &ctx);
   }
 
   // complex expression
@@ -2827,6 +4522,53 @@ SECTION("UnaryNot") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER not (TO_STRING(c+1) == d['a']['b'][23]['c']) RETURN d", expected, &ctx);
   }
 
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::Not>().filter<irs::And>().add<irs::by_term>().field(mangleStringIdentity("a.b.c.e[4].f[5].g[3].g.a")).term("1");
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == '1') RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not ('1' == d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')]) RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == '1') RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == '1') RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == '1') RETURN d", &ctx);
+  }
+
   // complex attribute, true
   {
     irs::Or expected;
@@ -2888,6 +4630,55 @@ SECTION("UnaryNot") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER not (TO_BOOL(c-41) == d['a']['b'][23]['c']) RETURN d", expected, &ctx);
   }
 
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::Not>()
+            .filter<irs::And>()
+            .add<irs::by_term>().field(mangleBool("a.b.c.e[4].f[5].g[3].g.a")).term(irs::boolean_token_stream::value_true());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == true) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (true == d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')]) RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == true) RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == true) RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == true) RETURN d", &ctx);
+  }
+
   // complex attribute, null
   {
     irs::Or expected;
@@ -2934,6 +4725,54 @@ SECTION("UnaryNot") {
     assertFilterSuccess("LET c=null FOR d IN collection FILTER not ((c && false) == d.a.b[23].c) RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=null FOR d IN collection FILTER not ((c && false) == d.a['b'][23].c) RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=null FOR d IN collection FILTER not ((c && false) == d['a']['b'][23]['c']) RETURN d", expected, &ctx);
+  }
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::Or expected;
+    expected.add<irs::Not>()
+            .filter<irs::And>()
+            .add<irs::by_term>().field(mangleNull("a.b.c.e[4].f[5].g[3].g.a")).term(irs::null_token_stream::value_null());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == null) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (null == d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')]) RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == null) RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == null) RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == null) RETURN d", &ctx);
   }
 
   // complex attribute, numeric
@@ -3011,6 +4850,60 @@ SECTION("UnaryNot") {
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER not ((c + 1.5) == d.a.b[23].c) RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER not ((c + 1.5) == d.a['b'][23].c) RETURN d", expected, &ctx);
     assertFilterSuccess("LET c=41 FOR d IN collection FILTER not ((c + 1.5) == d['a']['b'][23]['c']) RETURN d", expected, &ctx);
+  }
+
+  // dynamic complex attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    irs::numeric_token_stream stream;
+    stream.reset(42.5);
+    CHECK(stream.next());
+    auto& term = stream.attributes().get<irs::term_attribute>();
+
+    irs::Or expected;
+    expected.add<irs::Not>()
+            .filter<irs::And>()
+            .add<irs::by_term>().field(mangleNumeric("a.b.c.e[4].f[5].g[3].g.a")).term(term->value());
+
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == 42.5) RETURN d", expected, &ctx);
+    assertFilterSuccess("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (42.5 == d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')]) RETURN d", expected, &ctx);
+  }
+
+  // invalid dynamic attribute name
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"a"}));
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a='a' LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == 42.5) RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (null value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintNull{})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=null LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == 42.5) RETURN d", &ctx);
+  }
+
+  // invalid dynamic attribute name (bool value)
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("a", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintBool{false})); // invalid value type
+    ctx.vars.emplace("c", arangodb::aql::AqlValue(arangodb::aql::AqlValue{"c"}));
+    ctx.vars.emplace("offsetInt", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt{4})));
+    ctx.vars.emplace("offsetDbl", arangodb::aql::AqlValue(arangodb::aql::AqlValue(arangodb::aql::AqlValueHintDouble{5.6})));
+
+    assertFilterExecutionFail("LET a=false LET c='c' LET offsetInt=4 LET offsetDbl=5.6 FOR d IN collection FILTER not (d[a].b[c].e[offsetInt].f[offsetDbl].g[_REFERENCE_(3)].g[_REFERENCE_('a')] == 42.5) RETURN d", &ctx);
   }
 
   // invalid unary not usage
@@ -4171,21 +6064,20 @@ SECTION("Exists") {
     assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d['obj'].prop[3].name) RETURN d", expected);
   }
 
-  //FIXME expression in attribute access
   // complex field with offset
-//  {
-//    ExpressionContextMock ctx;
-//    ctx.vars.emplace("index", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
-//
-//    irs::Or expected;
-//    auto& exists = expected.add<irs::by_column_existence>();
-//    exists.field("obj.prop[3].name").prefix_match(true);
-//
-//    assertFilterSuccess("LET index=2 FOR d IN VIEW myView FILTER exists(d.obj.prop[index+1].name) RETURN d", expected);
-//    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d['obj']['prop'][3]['name']) RETURN d", expected);
-//    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.obj.prop[3].name) RETURN d", expected);
-//    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d['obj'].prop[3].name) RETURN d", expected);
-//  }
+  {
+    ExpressionContextMock ctx;
+    ctx.vars.emplace("index", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
+
+    irs::Or expected;
+    auto& exists = expected.add<irs::by_column_existence>();
+    exists.field("obj.prop[3].name").prefix_match(true);
+
+    assertFilterSuccess("LET index=2 FOR d IN VIEW myView FILTER exists(d.obj.prop[index+1].name) RETURN d", expected, &ctx);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER exists(d['obj']['prop'][3]['name']) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d.obj.prop[3].name) RETURN d", expected);
+    assertFilterSuccess("FOR d IN VIEW myView FILTER eXists(d['obj'].prop[3].name) RETURN d", expected);
+  }
 
   // invalid attribute access
   assertFilterFail("FOR d IN VIEW myView FILTER exists(d) RETURN d");

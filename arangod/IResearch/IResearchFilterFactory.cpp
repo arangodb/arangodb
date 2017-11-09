@@ -27,13 +27,9 @@
 #include "IResearchFeature.h"
 #include "IResearchKludge.h"
 #include "ApplicationServerHelper.h"
-#include "AstHelper.h"
+#include "AqlHelper.h"
 
 #include "Aql/Function.h"
-#include "Aql/Expression.h"
-#include "Aql/FixedVarExpressionContext.h"
-#include "Aql/ExecutionPlan.h"
-#include "Aql/ExpressionContext.h"
 
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
@@ -55,157 +51,6 @@ NS_LOCAL
 typedef std::function<
   bool(irs::boolean_filter*, arangodb::iresearch::QueryContext const&, arangodb::aql::AstNode const&)
 > ConvertionHandler;
-
-typedef typename std::underlying_type<
-  arangodb::aql::AstNodeValueType
->::type AstNodeValueTypeUnderlyingType;
-
-struct AqlValueTraits {
-  constexpr static arangodb::aql::AstNodeValueType invalid_type() noexcept {
-    typedef typename std::underlying_type<
-      arangodb::aql::AstNodeValueType
-    >::type underlying_t;
-
-    return arangodb::aql::AstNodeValueType(
-      irs::integer_traits<underlying_t>::const_max
-    );
-  }
-
-  static arangodb::aql::AstNodeValueType type(
-      arangodb::aql::AqlValue const& value
-  ) noexcept {
-    auto const typeIndex = value.isNull(false)
-      + 2*value.isBoolean()
-      + 3*value.isNumber()
-      + 4*value.isString();
-
-    return TYPE_MAP[typeIndex];
-  }
-
-  static arangodb::aql::AstNodeValueType type(
-    arangodb::aql::AstNode const& node
-  ) noexcept {
-    if (arangodb::aql::NODE_TYPE_VALUE != node.type) {
-      return invalid_type();
-    }
-
-    return node.isNumericValue()
-      ? arangodb::aql::VALUE_TYPE_DOUBLE // all numerics are doubles here
-      : node.value.type;
-  }
-
-  static arangodb::aql::AstNodeValueType const TYPE_MAP[];
-}; // AqlValueTraits
-
-arangodb::aql::AstNodeValueType const AqlValueTraits::TYPE_MAP[] {
-  AqlValueTraits::invalid_type(),
-  arangodb::aql::VALUE_TYPE_NULL,
-  arangodb::aql::VALUE_TYPE_BOOL,
-  arangodb::aql::VALUE_TYPE_DOUBLE,
-  arangodb::aql::VALUE_TYPE_STRING
-};
-
-static_assert(
-  AqlValueTraits::invalid_type() > arangodb::aql::VALUE_TYPE_STRING,
-  "Invalid enum value"
-);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @class ScopedAqlValue
-/// @brief convenient wrapper around `AqlValue` and `AstNode`
-////////////////////////////////////////////////////////////////////////////////
-class ScopedAqlValue : private irs::util::noncopyable {
- public:
-  explicit ScopedAqlValue(arangodb::aql::AstNode const& node) noexcept
-    : _node(&node), _type(AqlValueTraits::type(node)) {
-  }
-
-  ~ScopedAqlValue() noexcept {
-    if (_destroy) {
-      _value.destroy();
-    }
-  }
-
-  bool isConstant() const noexcept {
-    return _node->isConstant();
-  }
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief executes expression specified in the given `node`
-  /// @returns true if expression has been executed, false otherwise
-  ////////////////////////////////////////////////////////////////////////////////
-  bool execute(arangodb::iresearch::QueryContext const& ctx) {
-    if (_node->isConstant()) {
-      // constant expression, nothing to do
-      return true;
-    }
-
-    if (!ctx.ast) { // || !ctx.ctx) {
-      // can't execute expression without `AST` and `ExpressionContext`
-      return false;
-    }
-
-    TRI_ASSERT(ctx.ctx); //FIXME remove, uncomment condition
-
-    // don't really understand why we need `ExecutionPlan` and `Ast` here
-    arangodb::aql::Expression expr(
-      ctx.plan, ctx.ast, const_cast<arangodb::aql::AstNode*>(_node)
-    );
-
-    try {
-      _value = expr.execute(ctx.trx, ctx.ctx, _destroy);
-    } catch (arangodb::basics::Exception const& e) {
-      // can't execute expression
-      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH) << e.message();
-      return false;
-    } catch (...) {
-      // can't execute expression
-      return false;
-    }
-
-    _type = AqlValueTraits::type(_value);
-    return true;
-  }
-
-  arangodb::aql::AstNodeValueType type() const noexcept {
-    return _type;
-  }
-
-  bool getBoolean() const {
-    return _node->isConstant()
-      ? _node->getBoolValue()
-      : _value.toBoolean();
-  }
-
-  bool getDouble(double_t& value) const {
-    bool failed = false;
-    value = _node->isConstant()
-      ? _node->getDoubleValue()
-      : _value.toDouble(nullptr, failed);
-    return !failed;
-  }
-
-  int64_t getInt64() const {
-    return _node->isConstant()
-      ? _node->getIntValue()
-      : _value.toInt64(nullptr);
-  }
-
-  bool getString(irs::string_ref& value) const {
-    if (_node->isConstant()) {
-      return arangodb::iresearch::parseValue(value, *_node);
-    } else {
-      value = arangodb::iresearch::getStringRef(_value.slice());
-    }
-    return true;
-  }
-
- private:
-  arangodb::aql::AqlValue _value;
-  arangodb::aql::AstNode const* _node;
-  arangodb::aql::AstNodeValueType _type;
-  bool _destroy{ false };
-}; // ScopedAqlValue
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs message about malformed AstNode with the specified type
@@ -256,7 +101,7 @@ bool byTerm(
 ) {
   TRI_ASSERT(node.value && node.attribute);
 
-  ScopedAqlValue value(*node.value);
+  arangodb::iresearch::ScopedAqlValue value(*node.value);
 
   if (!value.isConstant()) {
     if (!filter) {
@@ -270,17 +115,23 @@ bool byTerm(
     }
   }
 
+  std::string name;
+
+  if (filter && !arangodb::iresearch::nameFromAttributeAccess(name, *node.attribute, ctx)) {
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "Failed to generate field name from node " << arangodb::aql::AstNode::toString(node.attribute);
+    return false;
+  }
+
   switch (value.type()) {
     case arangodb::aql::VALUE_TYPE_NULL:
       if (filter) {
-        auto name = arangodb::iresearch::nameFromAttributeAccess(*node.attribute);
         arangodb::iresearch::kludge::mangleNull(name);
         filter->field(std::move(name));
         filter->term(irs::null_token_stream::value_null());
       } return true;
     case arangodb::aql::VALUE_TYPE_BOOL:
       if (filter) {
-        auto name = arangodb::iresearch::nameFromAttributeAccess(*node.attribute);
         arangodb::iresearch::kludge::mangleBool(name);
         filter->field(std::move(name));
         filter->term(irs::boolean_token_stream::value(value.getBoolean()));
@@ -295,7 +146,6 @@ bool byTerm(
           return false;
         }
 
-        auto name = arangodb::iresearch::nameFromAttributeAccess(*node.attribute);
         arangodb::iresearch::kludge::mangleNumeric(name);
 
         irs::numeric_token_stream stream;
@@ -316,7 +166,6 @@ bool byTerm(
           return false;
         }
 
-        auto name = arangodb::iresearch::nameFromAttributeAccess(*node.attribute);
         arangodb::iresearch::kludge::mangleStringField(
            name,
            arangodb::iresearch::IResearchAnalyzerFeature::identity()
@@ -340,7 +189,7 @@ bool byRange(
     bool const maxInclude,
     arangodb::iresearch::QueryContext const& ctx
 ) {
-  ScopedAqlValue min(minValueNode);
+  arangodb::iresearch::ScopedAqlValue min(minValueNode);
 
   if (!min.isConstant()) {
     if (!filter) {
@@ -354,7 +203,7 @@ bool byRange(
     }
   }
 
-  ScopedAqlValue max(maxValueNode);
+  arangodb::iresearch::ScopedAqlValue max(maxValueNode);
 
   if (!max.isConstant()) {
     if (!filter) {
@@ -373,10 +222,17 @@ bool byRange(
     return false;
   }
 
+  std::string name;
+
+  if (filter && !arangodb::iresearch::nameFromAttributeAccess(name, attributeNode, ctx)) {
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "Failed to generate field name from node " << arangodb::aql::AstNode::toString(&attributeNode);
+    return false;
+  }
+
   switch (min.type()) {
     case arangodb::aql::VALUE_TYPE_NULL: {
       if (filter) {
-        auto name = arangodb::iresearch::nameFromAttributeAccess(attributeNode);
         arangodb::iresearch::kludge::mangleNull(name);
 
         auto& range = filter->add<irs::by_range>();
@@ -391,7 +247,6 @@ bool byRange(
     }
     case arangodb::aql::VALUE_TYPE_BOOL: {
       if (filter) {
-        auto name = arangodb::iresearch::nameFromAttributeAccess(attributeNode);
         arangodb::iresearch::kludge::mangleBool(name);
 
         auto& range = filter->add<irs::by_range>();
@@ -420,7 +275,6 @@ bool byRange(
 
         auto& range = filter->add<irs::by_granular_range>();
 
-        auto name = arangodb::iresearch::nameFromAttributeAccess(attributeNode);
         arangodb::iresearch::kludge::mangleNumeric(name);
         range.field(std::move(name));
 
@@ -450,7 +304,6 @@ bool byRange(
 
         auto& range = filter->add<irs::by_range>();
 
-        auto name = arangodb::iresearch::nameFromAttributeAccess(attributeNode);
         arangodb::iresearch::kludge::mangleStringField(
           name,
           arangodb::iresearch::IResearchAnalyzerFeature::identity()
@@ -479,7 +332,7 @@ bool byRange(
 ) {
   TRI_ASSERT(node.attribute && node.value);
 
-  ScopedAqlValue value(*node.value);
+  arangodb::iresearch::ScopedAqlValue value(*node.value);
 
   if (!value.isConstant()) {
     if (!filter) {
@@ -493,12 +346,19 @@ bool byRange(
     }
   }
 
+  std::string name;
+
+  if (filter && !arangodb::iresearch::nameFromAttributeAccess(name, *node.attribute, ctx)) {
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "Failed to generate field name from node " << arangodb::aql::AstNode::toString(node.attribute);
+    return false;
+  }
+
   switch (value.type()) {
     case arangodb::aql::VALUE_TYPE_NULL: {
       if (filter) {
         auto& range = filter->add<irs::by_range>();
 
-        auto name = arangodb::iresearch::nameFromAttributeAccess(*node.attribute);
         arangodb::iresearch::kludge::mangleNull(name);
         range.field(std::move(name));
         range.term<Bound>(irs::null_token_stream::value_null());
@@ -511,7 +371,6 @@ bool byRange(
       if (filter) {
         auto& range = filter->add<irs::by_range>();
 
-        auto name = arangodb::iresearch::nameFromAttributeAccess(*node.attribute);
         arangodb::iresearch::kludge::mangleBool(name);
         range.field(std::move(name));
         range.term<Bound>(
@@ -535,7 +394,6 @@ bool byRange(
         auto& range = filter->add<irs::by_granular_range>();
         irs::numeric_token_stream stream;
 
-        auto name = arangodb::iresearch::nameFromAttributeAccess(*node.attribute);
         arangodb::iresearch::kludge::mangleNumeric(name);
         range.field(std::move(name));
 
@@ -557,7 +415,6 @@ bool byRange(
 
         auto& range = filter->add<irs::by_range>();
 
-        auto name = arangodb::iresearch::nameFromAttributeAccess(*node.attribute);
         arangodb::iresearch::kludge::mangleStringField(
           name,
           arangodb::iresearch::IResearchAnalyzerFeature::identity()
@@ -787,7 +644,7 @@ bool fromExpression(
   if (node.isConstant()) {
     result = node.isTrue();
   } else {
-    ScopedAqlValue value(node);
+    arangodb::iresearch::ScopedAqlValue value(node);
 
     if (!value.execute(ctx)) {
       // can't execute expression
@@ -946,8 +803,10 @@ bool fromFuncExists(
   bool prefix_match = true;
   std::string fieldName;
 
-  if (filter) {
-    fieldName = arangodb::iresearch::nameFromAttributeAccess(*fieldArg);
+  if (filter && !arangodb::iresearch::nameFromAttributeAccess(fieldName, *fieldArg, ctx)) {
+    LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+      << "'PHRASE' AQL function: Failed to generate field name from the 1st argument";
+    return false;
   }
 
   if (argc > 1) {
@@ -961,7 +820,7 @@ bool fromFuncExists(
 
     irs::string_ref arg;
     bool bAnalyzer;
-    ScopedAqlValue type(*typeArg);
+    arangodb::iresearch::ScopedAqlValue type(*typeArg);
 
     if (filter || type.isConstant()) {
       if (!type.execute(ctx)) {
@@ -1006,7 +865,7 @@ bool fromFuncExists(
           << "'EXISTS' AQL function: 3rd argument is invalid";
       }
 
-      ScopedAqlValue analyzerId(*analyzerArg);
+      arangodb::iresearch::ScopedAqlValue analyzerId(*analyzerArg);
 
       if (filter || analyzerId.isConstant()) {
 
@@ -1176,7 +1035,7 @@ bool fromFuncPhrase(
   }
 
   irs::string_ref value;
-  ScopedAqlValue inputValue(*valueArg);
+  arangodb::iresearch::ScopedAqlValue inputValue(*valueArg);
 
   if (filter || inputValue.isConstant()) {
     if (!inputValue.execute(ctx)) {
@@ -1210,7 +1069,7 @@ bool fromFuncPhrase(
   arangodb::iresearch::IResearchAnalyzerFeature::AnalyzerPool::ptr pool;
   irs::analysis::analyzer::ptr analyzer;
 
-  ScopedAqlValue analyzerValue(*analyzerArg);
+  arangodb::iresearch::ScopedAqlValue analyzerValue(*analyzerArg);
 
   if (filter || analyzerValue.isConstant()) {
     if (!analyzerValue.execute(ctx)) {
@@ -1254,10 +1113,17 @@ bool fromFuncPhrase(
   irs::by_phrase* phrase = nullptr;
 
   if (filter) {
-    phrase = &filter->add<irs::by_phrase>();
+    std::string name;
 
-    auto name = arangodb::iresearch::nameFromAttributeAccess(*fieldArg);
+    if (!arangodb::iresearch::nameFromAttributeAccess(name, *fieldArg, ctx)) {
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "'PHRASE' AQL function: Failed to generate field name from the 1st argument";
+      return false;
+    }
+
     arangodb::iresearch::kludge::mangleStringField(name, pool);
+
+    phrase = &filter->add<irs::by_phrase>();
     phrase->field(std::move(name));
 
     TRI_ASSERT(analyzer);
@@ -1284,7 +1150,7 @@ bool fromFuncPhrase(
       return false;
     }
 
-    ScopedAqlValue offsetValue(*offsetArg);
+    arangodb::iresearch::ScopedAqlValue offsetValue(*offsetArg);
 
     if (filter || offsetValue.isConstant()) {
       if (!offsetValue.execute(ctx) || arangodb::aql::VALUE_TYPE_DOUBLE != offsetValue.type()) {
@@ -1296,7 +1162,7 @@ bool fromFuncPhrase(
       offset = static_cast<uint64_t>(offsetValue.getInt64());
     }
 
-    ScopedAqlValue inputValue(*valueArg);
+    arangodb::iresearch::ScopedAqlValue inputValue(*valueArg);
 
     if (filter || inputValue.isConstant()) {
       if (!inputValue.execute(ctx)
@@ -1353,7 +1219,7 @@ bool fromFuncStartsWith(
   irs::string_ref prefix;
   size_t scoringLimit = 128; // FIXME make configurable
 
-  ScopedAqlValue prefixValue(*prefixArg);
+  arangodb::iresearch::ScopedAqlValue prefixValue(*prefixArg);
 
   if (filter || prefixValue.isConstant()) {
     if (!prefixValue.execute(ctx)) {
@@ -1386,7 +1252,7 @@ bool fromFuncStartsWith(
       return false;
     }
 
-    ScopedAqlValue scoringLimitValue(*scoringLimitArg);
+    arangodb::iresearch::ScopedAqlValue scoringLimitValue(*scoringLimitArg);
 
     if (filter || scoringLimitValue.isConstant()) {
       if (!scoringLimitValue.execute(ctx)) {
@@ -1407,7 +1273,14 @@ bool fromFuncStartsWith(
   }
 
   if (filter) {
-    auto name = arangodb::iresearch::nameFromAttributeAccess(*field);
+    std::string name;
+
+    if (!arangodb::iresearch::nameFromAttributeAccess(name, *field, ctx)) {
+      LOG_TOPIC(WARN, arangodb::iresearch::IResearchFeature::IRESEARCH)
+        << "'STARTS_WITH' AQL function: Failed to generate field name from the 1st argument";
+      return false;
+    }
+
     arangodb::iresearch::kludge::mangleStringField(
       name,
       arangodb::iresearch::IResearchAnalyzerFeature::identity()
