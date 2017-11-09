@@ -53,7 +53,7 @@ Agent::Agent(config_t const& config)
     _agentNeedsWakeup(false),
     _compactor(this),
     _ready(false),
-    _preparing(false) {
+    _preparing(0) {
   _state.configure(this);
   _constituent.configure(this);
   if (size() > 1) {
@@ -173,12 +173,15 @@ std::string Agent::leaderID() const {
 
 /// Are we leading?
 bool Agent::leading() const {
-  // When we become leader, we first are officially still a follower, but
-  // prepare for the leading. This is indicated by the _preparing flag in the
-  // Agent, the Constituent stays with role FOLLOWER for now. The agent has
-  // to send out AppendEntriesRPC calls immediately, but only when we are
-  // properly leading (with initialized stores etc.) can we execute requests.
-  return (_preparing && _constituent.following()) || _constituent.leading();
+  // When we become leader, we are first entering a preparation phase.
+  // Note that this method returns true regardless of whether we
+  // are still preparing or not. The preparation phases 1 and 2 are
+  // indicated by the _preparing member in the Agent, the Constituent is
+  // already LEADER.
+  // The Constituent has to send out AppendEntriesRPC calls immediately, but
+  // only when we are properly leading (with initialized stores etc.)
+  // can we execute requests.
+  return _constituent.leading();
 }
 
 /// Start constituent personality
@@ -566,7 +569,7 @@ void Agent::resign(term_t otherTerm) {
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Resigning in term "
     << _constituent.term() << " because of peer's term " << otherTerm;
   _constituent.follow(otherTerm);
-  _preparing = false;
+  endPrepareLeadership();
 }
 
 
@@ -580,6 +583,9 @@ void Agent::sendEmptyAppendEntriesRPC(std::string followerId) {
   }
 
   if (!leading()) {
+    LOG_TOPIC(DEBUG, Logger::AGENCY)
+      << "Not sending empty appendEntriesRPC to follower " << followerId
+      << " because we are no longer leading.";
     return;
   }
 
@@ -828,6 +834,10 @@ trans_ret_t Agent::transact(query_t const& queries) {
 
   arangodb::consensus::index_t maxind = 0; // maximum write index
 
+  // Note that we are leading (_constituent.leading()) if and only
+  // if _constituent.leaderId == our own ID. Therefore, we do not have
+  // to use leading() or _constituent.leading() here, but can simply
+  // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (leader != id()) {
     return trans_ret_t(false, leader);
@@ -835,7 +845,7 @@ trans_ret_t Agent::transact(query_t const& queries) {
 
   {
     CONDITION_LOCKER(guard, _waitForCV);
-    while (_preparing) {
+    while (getPrepareLeadership() != 0) {
       _waitForCV.wait(100);
     }
   }
@@ -892,7 +902,10 @@ trans_ret_t Agent::transact(query_t const& queries) {
 // Non-persistent write to non-persisted key-value store
 trans_ret_t Agent::transient(query_t const& queries) {
 
-  auto ret = std::make_shared<arangodb::velocypack::Builder>();
+  // Note that we are leading (_constituent.leading()) if and only
+  // if _constituent.leaderId == our own ID. Therefore, we do not have
+  // to use leading() or _constituent.leading() here, but can simply
+  // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (leader != id()) {
     return trans_ret_t(false, leader);
@@ -900,11 +913,13 @@ trans_ret_t Agent::transient(query_t const& queries) {
 
   {
     CONDITION_LOCKER(guard, _waitForCV);
-    while (_preparing) {
+    while (getPrepareLeadership() != 0) {
       _waitForCV.wait(100);
     }
   }
   
+  auto ret = std::make_shared<arangodb::velocypack::Builder>();
+
   // Apply to spearhead and get indices for log entries
   {
     VPackArrayBuilder b(ret.get());
@@ -937,6 +952,10 @@ trans_ret_t Agent::transient(query_t const& queries) {
 inquire_ret_t Agent::inquire(query_t const& query) {
   inquire_ret_t ret;
 
+  // Note that we are leading (_constituent.leading()) if and only
+  // if _constituent.leaderId == our own ID. Therefore, we do not have
+  // to use leading() or _constituent.leading() here, but can simply
+  // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (leader != id()) {
     return inquire_ret_t(false, leader);
@@ -989,6 +1008,10 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
   std::vector<index_t> indices;
   auto multihost = size()>1;
 
+  // Note that we are leading (_constituent.leading()) if and only
+  // if _constituent.leaderId == our own ID. Therefore, we do not have
+  // to use leading() or _constituent.leading() here, but can simply
+  // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (multihost && leader != id()) {
     return write_ret_t(false, leader);
@@ -996,7 +1019,7 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
 
   if (!discardStartup) {
     CONDITION_LOCKER(guard, _waitForCV);
-    while (_preparing) {
+    while (getPrepareLeadership() != 0) {
       _waitForCV.wait(100);
     }
   }
@@ -1057,6 +1080,10 @@ write_ret_t Agent::write(query_t const& query, bool discardStartup) {
 /// Read from store
 read_ret_t Agent::read(query_t const& query) {
 
+  // Note that we are leading (_constituent.leading()) if and only
+  // if _constituent.leaderId == our own ID. Therefore, we do not have
+  // to use leading() or _constituent.leading() here, but can simply
+  // look at the leaderID.
   auto leader = _constituent.leaderID();
   if (leader != id()) {
     return read_ret_t(false, leader);
@@ -1064,7 +1091,7 @@ read_ret_t Agent::read(query_t const& query) {
 
   {
     CONDITION_LOCKER(guard, _waitForCV);
-    while (_preparing) {
+    while (getPrepareLeadership() != 0) {
       _waitForCV.wait(100);
     }
   }
@@ -1101,8 +1128,34 @@ void Agent::run() {
       _agentNeedsWakeup = false;
     }
 
+    if (leading() && getPrepareLeadership() == 1) {
+      // If we are officially leading but the _preparing flag is set, we
+      // are in the process of preparing for leadership. This flag is
+      // set when the Constituent celebrates an election victory. Here,
+      // in the main thread, we do the actual preparations:
+
+      if (!prepareLead()) {
+        _constituent.follow(0);  // do not change term
+      } else {
+        // we need to start work as leader
+        lead();
+      }
+
+      donePrepareLeadership();   // we are ready to roll, except that we
+                                 // have to wait for the _commitIndex to
+                                 // reach the end of our log
+    }
+
     // Leader working only
     if (leading()) {
+      if (1 == getPrepareLeadership()) {
+        // Skip the usual work and the waiting such that above preparation
+        // code runs immediately. We will return with value 2 such that
+        // replication and confirmation of it can happen. Service will 
+        // continue once _commitIndex has reached the end of the log and then
+        // getPrepareLeadership() will finally return 0.
+        continue;
+      }
 
       // Append entries to followers
       sendAppendEntriesRPC();
@@ -1110,6 +1163,23 @@ void Agent::run() {
       // Check whether we can advance _commitIndex
       advanceCommitIndex();
 
+      bool commenceService = false;
+      {
+        CONDITION_LOCKER(guard2, _waitForCV);
+        if (leading() && getPrepareLeadership() == 2 &&
+            _commitIndex == _state.lastIndex()) {
+          commenceService = true;
+        }
+      }
+
+      if (commenceService) {
+        _tiLock.assertNotLockedByCurrentThread();
+        MUTEX_LOCKER(ioLocker, _ioLock);
+        _spearhead = _readDB;
+        endPrepareLeadership();  // finally service can commence
+      }
+
+      // Go to sleep some:
       {
         CONDITION_LOCKER(guard, _appendCV);
         if (!_agentNeedsWakeup) {
@@ -1221,33 +1291,15 @@ void Agent::lead() {
     }
   }
   
-  // Wake up run
-  wakeupMainLoop();
-
   // Agency configuration
   term_t myterm;
   myterm = _constituent.term();
 
   persistConfiguration(myterm);
 
-  {
-    CONDITION_LOCKER(guard, _waitForCV);
-    // Note that when we are stopping
-    while(!isStopping() && _commitIndex != _state.lastIndex()) {
-      if (!leading()) {
-        // Give up, we were interrupted
-        return;
-      }
-      _waitForCV.wait(10000);
-    }
-  }
-
-  {
-    _tiLock.assertNotLockedByCurrentThread();
-    MUTEX_LOCKER(ioLocker, _ioLock);
-    _spearhead = _readDB;
-  }
-  
+  // This is all right now, in the main loop we will wait until a
+  // majority of all servers have replicated this configuration.
+  // Then we will copy the _readDB to the _spearhead and start service.
 }
 
 // When did we take on leader ship?

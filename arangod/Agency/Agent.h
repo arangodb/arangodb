@@ -249,20 +249,35 @@ class Agent : public arangodb::Thread,
   query_t buildDB(index_t);
 
   /// @brief Guarding taking over leadership
-  void beginPrepareLeadership() { _preparing = true; }
-  void endPrepareLeadership()  { _preparing = false; }
+  void beginPrepareLeadership() { _preparing = 1; }
+  void donePrepareLeadership() { _preparing = 2; }
+  void endPrepareLeadership()  { _preparing = 0; }
+  int getPrepareLeadership() { return _preparing; }
 
   // #brief access Inception thread
   Inception const* inception() const;
 
-  /// @brief State reads persisted state and prepares the agent
-  friend class State;
-  friend class Compactor;
-
- private:
-
   /// @brief persist agency configuration in RAFT
   void persistConfiguration(term_t t);
+
+  /// @brief Assignment of persisted state, only used at startup, one needs
+  /// to hold the _ioLock to call this
+  void setPersistedState(VPackSlice const&);
+
+  /// @brief Get our own id
+  bool id(std::string const&);
+
+  /// @brief Merge configuration with a persisted state
+  bool mergeConfiguration(VPackSlice const&);
+
+  /// @brief Wakeup main loop of the agent (needed from Constituent)
+  void wakeupMainLoop() {
+    CONDITION_LOCKER(guard, _appendCV);
+    _agentNeedsWakeup = true;
+    _appendCV.broadcast();
+  }
+
+ private:
 
   /// @brief Find out, if we've had acknowledged RPCs recent enough
   bool challengeLeadership();
@@ -272,25 +287,6 @@ class Agent : public arangodb::Thread,
 
   /// @brief Activate this agent in single agent mode.
   bool activateAgency();
-
-  /// @brief Assignment of persisted state, only used at startup, one needs
-  /// to hold the _ioLock to call this
-  void setPersistedState(VPackSlice const&);
-
-  /// @brief Wakeup main loop of the agent
-  void wakeupMainLoop() {
-    {
-      CONDITION_LOCKER(guard, _appendCV);
-      _agentNeedsWakeup = true;
-    }
-    _appendCV.broadcast();
-  }
-
-  /// @brief Get current term
-  bool id(std::string const&);
-
-  /// @brief Get current term
-  bool mergeConfiguration(VPackSlice const&);
 
   /// @brief Leader election delegate
   Constituent _constituent;
@@ -403,7 +399,10 @@ class Agent : public arangodb::Thread,
 
   /// @brief Agent is ready for RAFT
   std::atomic<bool> _ready;
-  std::atomic<bool> _preparing;
+  std::atomic<int> _preparing;  // 0 means not preparing, 1 means preparations
+                                // scheduled, 2 means preparations done, only
+                                // waiting until _commitIndex is at end of
+                                // our log
 
   /// @brief Keep track of when I last took on leadership
   TimePoint _leaderSince;
