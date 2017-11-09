@@ -277,10 +277,8 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
         LOG_TOPIC(ERR, Logger::REPLICATION) << res.errorMessage();
       }
       return res;
-    } else {
-      return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
-    
+    return TRI_ERROR_NO_ERROR; // ignoring because it's idempotent
   }
   TRI_ASSERT(false);
   return Result(TRI_ERROR_INTERNAL); // unreachable
