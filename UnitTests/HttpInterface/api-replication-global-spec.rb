@@ -311,7 +311,7 @@ describe ArangoDB do
           doc.code.should eq(200)
           fromTick = doc.parsed_response["tick"]
 
-          cmd = api + "/tail?from=" + fromTick
+          cmd = api + "/tail?global=true&from=" + fromTick
           doc = ArangoDB.log_get("#{prefix}-tail", cmd, :body => "", :format => :plain)
 
           if doc.code != 204
@@ -349,7 +349,7 @@ describe ArangoDB do
 
         sleep 5
 
-        cmd = api + "/tail?from=" + fromTick
+        cmd = api + "/tail?global=true&from=" + fromTick
         doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)
         doc.code.should eq(200)
 
@@ -414,28 +414,29 @@ describe ArangoDB do
         doc.code.should eq(201)
         rev = doc.parsed_response["_rev"]
 
+        # update document
+        cmd = "/_api/document/UnitTestsReplication/test"
+        body = "{ \"updated\" : true }"
+        doc = ArangoDB.log_patch("#{prefix}-follow-collection", cmd, :body => body)
+        doc.code.should eq(201)
+        rev2 = doc.parsed_response["_rev"]
+
         # delete document
         cmd = "/_api/document/UnitTestsReplication/test"
         doc = ArangoDB.log_delete("#{prefix}-follow-collection", cmd)
         doc.code.should eq(200)
 
-        # drop collection
-        cmd = "/_api/collection/UnitTestsReplication"
-        doc = ArangoDB.log_delete("#{prefix}-follow-collection", cmd)
-        doc.code.should eq(200)
-
         sleep 5
 
-        cmd = api + "/tail?from=" + fromTick
+        cmd = api + "/tail?global=true&from=" + fromTick
         doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)
         doc.code.should eq(200)
+        body = doc.response.body
 
         doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
         doc.headers["x-arango-replication-lastincluded"].should_not eq("0")
         doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
 
-
-        body = doc.response.body
         i = 0
         while 1
           position = body.index("\n")
@@ -461,14 +462,14 @@ describe ArangoDB do
               c = document["data"]
               c.should have_key("version")
               c["type"].should eq(2)
-              c["cuid"].should eq(cuid)
+              c["cid"].should eq(cid)
+              c["globallyUniqueId"].should eq(cuid)              
               c["deleted"].should eq(false)
               c["name"].should eq("UnitTestsReplication")
               c["waitForSync"].should eq(true)
 
               i = i + 1
             end
-
           elsif i == 1 and document["type"] == 2300 and document["cuid"] == cuid
             # create document
             document.should have_key("tick")
@@ -481,11 +482,27 @@ describe ArangoDB do
             document["cuid"].should eq(cuid)
             document["data"]["_key"].should eq("test")
             document["data"]["_rev"].should match(/^[a-zA-Z0-9_\-]+$/)
-            document["data"]["_rev"].should_not eq("0")
+            document["data"]["_rev"].should eq(rev)
             document["data"]["test"].should eq(false)
 
             i = i + 1
-          elsif i == 2 and document["type"] == 2302 and document["cuid"] == cuid
+          elsif i == 2 and document["cuid"] == cuid
+            # update document, there must only be 2300 no 2302
+            document.should have_key("tick")
+            document.should have_key("type")
+            document.should have_key("cuid")
+
+            document["tick"].should match(/^\d+$/)
+            document["tick"].to_i.should >= fromTick.to_i
+            document["type"].should eq(2300)
+            document["cuid"].should eq(cuid)
+            document["data"]["_key"].should eq("test")
+            document["data"]["_rev"].should match(/^[a-zA-Z0-9_\-]+$/)
+            document["data"]["_rev"].should eq(rev2)
+            document["data"]["test"].should eq(false)
+
+            i = i + 1
+          elsif i == 3 and document["type"] == 2302 and document["cuid"] == cuid
             # delete document
             document.should have_key("tick")
             document.should have_key("type")
@@ -500,7 +517,40 @@ describe ArangoDB do
             document["data"]["_rev"].should_not eq(rev)
 
             i = i + 1
-          elsif i == 3 and document["type"] == 2001 and document["cuid"] == cuid
+          end
+
+          body = body.slice(position + 1, body.length)
+        end
+
+        i.should eq(4)
+
+        # tail you later
+        cmd = api + "/lastTick"
+        doc = ArangoDB.log_get("#{prefix}-follow-collection", cmd, :body => "")
+        doc.code.should eq(200)
+        fromTick = doc.parsed_response["tick"]
+
+        # drop collection
+        cmd = "/_api/collection/UnitTestsReplication"
+        doc = ArangoDB.log_delete("#{prefix}-follow-collection", cmd)
+        doc.code.should eq(200)
+
+        sleep 3
+
+        cmd = api + "/tail?global=true&from=" + fromTick
+        doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)
+        doc.code.should eq(200)
+        body = doc.response.body
+
+        while 1
+          position = body.index("\n")
+
+          break if position == nil
+
+          part = body.slice(0, position)
+          document = JSON.parse(part)
+
+          if document["type"] == 2001 and document["cuid"] == cuid
             # drop collection
             document.should have_key("tick")
             document.should have_key("type")
@@ -517,8 +567,96 @@ describe ArangoDB do
           body = body.slice(position + 1, body.length)
         end
 
+        i.should eq(5)        
+
       end
 
+      it "fetches some more single document operations from the log" do
+        ArangoDB.drop_collection("UnitTestsReplication")
+
+        sleep 5
+
+        cmd = api + "/lastTick"
+        doc = ArangoDB.log_get("#{prefix}-follow-collection", cmd, :body => "")
+        doc.code.should eq(200)
+        fromTick = doc.parsed_response["tick"]
+
+        # create collection
+        cid = ArangoDB.create_collection("UnitTestsReplication")
+        cuid = ArangoDB.properties_collection(cid)["globallyUniqueId"]        
+
+        # create document
+        cmd = "/_api/document?collection=UnitTestsReplication"
+        body = "{ \"_key\" : \"test\", \"test\" : false }"
+        doc = ArangoDB.log_post("#{prefix}-follow-collection", cmd, :body => body)
+        doc.code.should eq(201)
+        rev = doc.parsed_response["_rev"]
+
+        # update document
+        cmd = "/_api/document/UnitTestsReplication/test"
+        body = "{ \"updated\" : true }"
+        doc = ArangoDB.log_patch("#{prefix}-follow-collection", cmd, :body => body)
+        doc.code.should eq(201)
+        rev2 = doc.parsed_response["_rev"]
+
+        # delete document
+        cmd = "/_api/document/UnitTestsReplication/test"
+        doc = ArangoDB.log_delete("#{prefix}-follow-collection", cmd)
+        doc.code.should eq(200)
+
+        sleep 5
+
+        cmd = api + "/tail?global=true&from=" + fromTick
+        doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)
+        doc.code.should eq(200)
+
+        doc.headers["x-arango-replication-lastincluded"].should match(/^\d+$/)
+        doc.headers["x-arango-replication-lastincluded"].should_not eq("0")
+        doc.headers["content-type"].should eq("application/x-arango-dump; charset=utf-8")
+
+        tickTypes = { 2000 => 0, 2001 => 0, 2300 => 0, 2302 => 0 }
+
+        body = doc.response.body
+
+        cmd = api + "/lastTick"
+        doc = ArangoDB.log_get("#{prefix}-follow-collection", cmd, :body => "")
+        doc.code.should eq(200)
+
+        i = 0
+        while 1
+          position = body.index("\n")
+
+          break if position == nil
+
+          part = body.slice(0, position)
+          marker = JSON.parse(part)
+
+          if marker["type"] >= 2000 and marker["cuid"] == cuid
+            # create collection
+            marker.should have_key("tick")
+            marker.should have_key("type")
+            marker.should have_key("cuid")
+
+            if marker["type"] == 2300
+              marker.should have_key("data")
+            end
+
+            cc = tickTypes[marker["type"]]
+            tickTypes[marker["type"]] = cc + 1
+          end
+          body = body.slice(position + 1, body.length)
+        end
+
+        tickTypes[2000].should eq(1) # collection create
+        tickTypes[2001].should eq(0) # collection drop
+        tickTypes[2300].should eq(2) # document insert / update
+        tickTypes[2302].should eq(1) # document drop
+
+        # drop collection
+        cmd = "/_api/collection/UnitTestsReplication"
+        doc = ArangoDB.log_delete("#{prefix}-follow-collection", cmd)
+        doc.code.should eq(200)
+      end
     end
 
 ################################################################################
