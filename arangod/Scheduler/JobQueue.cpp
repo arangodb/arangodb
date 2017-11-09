@@ -122,7 +122,11 @@ JobQueue::JobQueue(size_t maxQueueSize, rest::Scheduler* scheduler)
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-void JobQueue::start() { _queueThread->start(); }
+void JobQueue::start() { 
+  if (!_queueThread->start()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "unable to start jobqueue thread");
+  }
+}
 
 void JobQueue::beginShutdown() { _queueThread->beginShutdown(); }
 

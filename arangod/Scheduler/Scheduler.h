@@ -39,9 +39,6 @@ namespace arangodb {
 class JobQueue;
 class JobGuard;
 
-namespace basics {
-class ConditionVariable;
-}
 namespace velocypack {
 class Builder;
 }
@@ -73,7 +70,7 @@ class Scheduler {
 
   void post(std::function<void()> callback);
 
-  bool start(basics::ConditionVariable*);
+  bool start();
   bool isRunning() const { return numRunning(_counters) > 0; }
 
   void beginShutdown();
