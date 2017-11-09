@@ -1,6 +1,8 @@
 v3.2.7 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #3618: Inconsistent behavior of OR statement with object bind parameters
+
 * only users with read/write rights on the "_system" database can now execute
   "_admin/shutdown" as well as modify properties of the write-ahead log
 
