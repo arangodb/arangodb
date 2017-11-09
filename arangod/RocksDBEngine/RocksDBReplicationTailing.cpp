@@ -112,7 +112,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       case RocksDBLogType::CollectionRename: {
         _oldCollectionName =
             RocksDBLogValue::oldCollectionName(blob).toString();
-        // intentional fallthrough
+        // intentionally falls through
       }
       case RocksDBLogType::CollectionCreate:
       case RocksDBLogType::CollectionChange:

@@ -65,8 +65,6 @@ namespace basics {
 ///       instantiation for all values of Nr used in the executable.
 ////////////////////////////////////////////////////////////////////////////////
 
-// TODO: Make this a template again once everybody has gcc >= 4.9.2
-// template<int Nr>
 class DataProtector {
   static constexpr int DATA_PROTECTOR_MULTIPLICITY = 64;
 

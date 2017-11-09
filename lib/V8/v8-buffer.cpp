@@ -1569,7 +1569,7 @@ static void MapGetIndexedBuffer(
         TRI_V8_RETURN(v8::Handle<v8::Value>());
       }
       self = parent->ToObject();
-      // fallthrough intentional
+      // intentionally falls through
     }
   }
 
@@ -1603,7 +1603,7 @@ static void MapSetIndexedBuffer(
         TRI_V8_RETURN(v8::Handle<v8::Value>());
       }
       self = parent->ToObject();
-      // fallthrough intentional
+      // intentionally falls through
     }
   }
 
