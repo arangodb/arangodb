@@ -215,7 +215,7 @@ struct MMFilesDatafile {
   int close();
 
   /// @brief sync the data of a datafile
-  bool sync(char const* begin, char const* end); 
+  int sync(char const* begin, char const* end); 
 
   /// @brief seals a datafile, writes a footer, sets it to read-only
   int seal();

@@ -803,6 +803,12 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
     return;
   }
 
+  size_t offsetInChunk = 0;
+  std::string const& value4 = _request->value("offset", found);
+  if (found) {
+    offsetInChunk = static_cast<size_t>(StringUtils::uint64(value4));
+  }
+
   std::string const& id = suffixes[1];
 
   auto keysRepository = _vocbase->collectionKeys();
@@ -836,7 +842,7 @@ void MMFilesRestReplicationHandler::handleCommandFetchKeys() {
         return;
       }
       collectionKeys->dumpDocs(resultBuilder, chunk,
-                               static_cast<size_t>(chunkSize),
+                               static_cast<size_t>(chunkSize), offsetInChunk,
                                parsedIds->slice());
     }
 

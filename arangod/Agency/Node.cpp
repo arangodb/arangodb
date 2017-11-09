@@ -26,6 +26,7 @@
 
 #include "Basics/StringUtils.h"
 
+#include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -253,9 +254,10 @@ Node& Node::operator=(Node const& rhs) {
 /// Comparison with slice
 bool Node::operator==(VPackSlice const& rhs) const {
   if (rhs.isObject()) {
-    return rhs.toJson() == toJson();
+    // build object recursively, take ttl into account
+    return VPackNormalizedCompare::equals(toBuilder().slice(), rhs);
   } else {
-    return rhs.equals(slice());
+    return VPackNormalizedCompare::equals(slice(), rhs);
   }
 }
 

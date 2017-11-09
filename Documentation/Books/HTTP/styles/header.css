@@ -253,3 +253,40 @@ body {
     display: none;
   }
 }
+
+/*Hubspot Cookie notice */
+
+body div#hs-eu-cookie-confirmation {
+    bottom: 0;
+    top: auto;
+    position: fixed;
+    text-align: center !important;
+}
+
+body div#hs-eu-cookie-confirmation.can-use-gradients {
+    background-image: linear-gradient(to bottom, rgba(255,255,255,0.9),rgba(255,255,255,0.75));
+}
+
+body div#hs-eu-cookie-confirmation div#hs-eu-cookie-confirmation-inner {
+    display: inline-block;
+    padding: 15px 18px 0;
+}
+
+body div#hs-eu-cookie-confirmation div#hs-eu-cookie-confirmation-inner #hs-en-cookie-confirmation-buttons-area {
+    float: left;
+}
+
+body div#hs-eu-cookie-confirmation div#hs-eu-cookie-confirmation-inner a#hs-eu-confirmation-button {
+    background-color: #577138 !important;
+    border: none !important;
+    text-shadow: none !important;
+    box-shadow: none;
+    padding: 5px 15px !important;
+    margin-left: 10px;
+}
+
+body div#hs-eu-cookie-confirmation div#hs-eu-cookie-confirmation-inner > p {
+    float: left;
+    color: #000 !important;
+    text-shadow: none;
+}

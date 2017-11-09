@@ -60,6 +60,13 @@ using VPackBuilderContainer = arangodb::velocypack::BuilderContainer;
 #endif
 #endif
 
+#ifdef VELOCYPACK_COMPARE_H
+#ifndef VELOCYPACK_ALIAS_COMPARE
+#define VELOCYPACK_ALIAS_COMPARE
+using VPackNormalizedCompare = arangodb::velocypack::NormalizedCompare;
+#endif
+#endif
+
 #ifdef VELOCYPACK_BUFFER_H
 #ifndef VELOCYPACK_ALIAS_BUFFER
 #define VELOCYPACK_ALIAS_BUFFER

@@ -213,7 +213,7 @@ void RestViewHandler::deleteView() {
   int res = _vocbase->dropView(name);
 
   if (res == TRI_ERROR_NO_ERROR) {
-    generateOk();
+    resetResponse(rest::ResponseCode::NO_CONTENT);
   } else if (res == TRI_ERROR_ARANGO_VIEW_NOT_FOUND) {
     generateError(rest::ResponseCode::NOT_FOUND,
                   TRI_ERROR_ARANGO_VIEW_NOT_FOUND);

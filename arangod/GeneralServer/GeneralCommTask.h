@@ -112,8 +112,6 @@ class GeneralCommTask : public SocketTask {
   void executeRequest(std::unique_ptr<GeneralRequest>&&,
                       std::unique_ptr<GeneralResponse>&&);
 
-  void processResponse(GeneralResponse*);
-
   RequestStatistics* acquireStatistics(uint64_t);
   RequestStatistics* statistics(uint64_t);
   RequestStatistics* stealStatistics(uint64_t);
@@ -137,7 +135,7 @@ class GeneralCommTask : public SocketTask {
   rest::ResponseCode canAccessPath(GeneralRequest*) const;
 
  private:
-  bool handleRequest(std::shared_ptr<RestHandler>);
+  bool handleRequestSync(std::shared_ptr<RestHandler>);
   void handleRequestDirectly(bool doLock, std::shared_ptr<RestHandler>);
   bool handleRequestAsync(std::shared_ptr<RestHandler>,
                           uint64_t* jobId = nullptr);
