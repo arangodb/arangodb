@@ -251,6 +251,7 @@ int SortedCollectBlock::initialize() {
 
   // reserve space for the current row
   _currentGroup.initialize(_groupRegisters.size());
+  _pos = 0;
 
   return TRI_ERROR_NO_ERROR;
 }

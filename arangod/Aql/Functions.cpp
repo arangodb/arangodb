@@ -2677,8 +2677,8 @@ AqlValue Functions::Matches(arangodb::aql::Query* query,
     idx++;
 
     if (!example.isObject()) {
-      LOG_TOPIC(WARN, arangodb::Logger::QUERIES) << arangodb::basics::Exception::FillFormatExceptionString(
-        TRI_errno_string(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH), "MATCHES");
+      RegisterWarning(query, "MATCHES",
+                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       continue;
     }
 

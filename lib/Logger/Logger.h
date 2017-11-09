@@ -167,18 +167,25 @@ class Logger {
     double _value;
     int _precision;
   };
+  
+  struct CHARS {
+    CHARS(char const* data, size_t size)
+        : data(data), size(size) {}
+    char const* data;
+    size_t size;
+  };
 
   struct BINARY {
     BINARY(void const* baseAddress, size_t size)
-        : baseAddress(baseAddress), size(size){}
-    explicit BINARY(std::string const& data) : BINARY(data.c_str(), data.size()) {}
+        : baseAddress(baseAddress), size(size) {}
+    explicit BINARY(std::string const& data) : BINARY(data.data(), data.size()) {}
     void const* baseAddress;
     size_t size;
   };
 
   struct RANGE {
     RANGE(void const* baseAddress, size_t size)
-        : baseAddress(baseAddress), size(size){}
+        : baseAddress(baseAddress), size(size) {}
     void const* baseAddress;
     size_t size;
   };

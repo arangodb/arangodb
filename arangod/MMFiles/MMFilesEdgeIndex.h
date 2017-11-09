@@ -229,9 +229,6 @@ class MMFilesEdgeIndex final : public MMFilesIndex {
 
   /// @brief the hash table for _to
   std::unique_ptr<TRI_MMFilesEdgeIndexHash_t> _edgesTo;
-
-  /// @brief number of buckets effectively used by the index
-  size_t _numBuckets;
 };
 }
 
