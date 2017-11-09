@@ -61,11 +61,31 @@ public:
   char const* typeName() const override { return "geospatial-index-iterator"; }
   
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
-    /*if (_done) {
+    if (_nearQuery.done()) {
       // we already know that no further results will be returned by the index
-      TRI_ASSERT(_nearQuery. _queue.empty());
+      TRI_ASSERT(!_nearQuery.hasNearest());
       return false;
-    }*/
+    }
+    
+    while (limit > 0 && !_nearQuery.done()) {
+      
+      while(limit > 0 && _nearQuery.hasNearest()) {
+        
+        
+        
+        limit--;
+      }
+      if (!_nearQuery.done()) {
+        std::vector<geo::GeoCover::Interval> scan = _nearQuery.intervals();
+        for (geo::GeoCover::Interval const& it : scan) {
+          
+          if (it.min == it.max) { // may happen frequently
+#error TODO
+          }
+          
+        }
+      }
+    }
     
     /*TRI_ASSERT(limit > 0);
     if (limit > 0) {
@@ -111,7 +131,7 @@ public:
   
 private:
   //size_t findLastIndex(arangodb::rocksdbengine::GeoCoordinates* coords) const;
-  void createCursor(double lat, double lon);
+  void query(double lat, double lon);
   /*void evaluateCondition() {
     if (_condition) {
       auto numMembers = _condition->numMembers();

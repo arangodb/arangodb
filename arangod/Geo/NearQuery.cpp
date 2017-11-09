@@ -59,7 +59,7 @@ NearQuery::NearQuery(NearQueryParams const& params)
 
 /// Call only once current intervals contain
 /// no more results
-void NearQuery::calulateIntervals() {
+std::vector<GeoCover::Interval> NearQuery::intervals() {
   if (_scannedCells.num_cells() > 0) {
     if (_numFoundLastInterval < 256) {
       _boundDelta *= 2;
@@ -69,7 +69,6 @@ void NearQuery::calulateIntervals() {
     _numFoundLastInterval = 0;
   }
   
-  _intervals.clear();
   std::vector<S2CellId> cover;
   if (0.0 < _innerBound && _outerBound < _maxBounds) {
     std::vector<S2Region*> regions;
@@ -89,7 +88,7 @@ void NearQuery::calulateIntervals() {
     _coverer.GetCovering(ib, &cover);
   } else { // done or invalid bounds
     TRI_ASSERT(_innerBound == _outerBound == _maxBounds);
-    return;
+    return {};
   }
   
   TRI_ASSERT(!cover.empty());
@@ -98,9 +97,10 @@ void NearQuery::calulateIntervals() {
   S2CellUnion lookup;
   lookup.GetDifference(&coverUnion, &_scannedCells);
   
+  std::vector<GeoCover::Interval> intervals;
   if (lookup.num_cells() > 0) {
     GeoCover::scanIntervals(_params.cover.worstIndexedLevel,
-                            lookup.cell_ids(), _intervals);
+                            lookup.cell_ids(), intervals);
     TRI_ASSERT(!_intervals.empty());
   } else {
     LOG_TOPIC(WARN, Logger::ENGINES) << "empty lookup cellunion";
@@ -115,17 +115,34 @@ void NearQuery::calulateIntervals() {
   
   _innerBound = _outerBound;
   _outerBound = std::min(_outerBound + _boundDelta, _maxBounds);
+  
+  auto it = _seen.begin();
+  while (it != _seen.end()) {
+    if(it->second < _innerBound) {
+      it = _seen.erase(it);
+    } else {
+      it++;
+    }
+  }
+  
+  return intervals;
 }
 
 void NearQuery::reportFound(GeoDocument&& doc) {
+  if (doc.distance / kEarthRadiusInMeters < _innerBound) {
+    return;
+  }
   auto const& it = _seen.find(doc.rid);
   if (it == _seen.end()) {
     _buffer.push(doc);
     _seen.emplace(doc.rid, doc.distance);
-  } else {
+    _numFoundLastInterval++; // we have to estimate scan bounds
+  } else { // deduplication
     TRI_ASSERT(it->second == doc.distance);
+    /*if (doc.distance / kEarthRadiusInMeters < _innerBound) {
+      _seen.erase(it); // no need to store
+    }*/
   }
-  _numFoundLastInterval++; // we need this to estimate scan bounds
 }
 
 bool NearQuery::NearQuery::done() const {

@@ -53,19 +53,13 @@ public:
   
 public:
   
-  /// get current intervals, scan and report back
-  std::vector<GeoCover::Interval> scanIntervals() const {
-    TRI_ASSERT(!_intervals.empty());
-    return _intervals;
-  }
-  
+  bool hasNearest() const { return !_buffer.empty(); }
   GeoDocument const& nearest() const { return _buffer.top(); }
-  
   void popNearest() { _buffer.pop(); }
   
   /// Call only once current intervals contain
   /// no more results
-  void calulateIntervals();
+  std::vector<GeoCover::Interval> intervals();
   
   void reportFound(GeoDocument&& doc);
   
@@ -90,8 +84,6 @@ private:
   double _maxBounds;
   
   size_t _numFoundLastInterval;
-  std::vector<GeoCover::Interval> _intervals;
-  
   /// Track the already scanned region
   S2CellUnion _scannedCells;
   /// full area to scan
