@@ -52,9 +52,6 @@ double const RocksDBReplicationContext::DefaultTTL = 300.0; // seconds
 
 static constexpr size_t maxChunkSize = 8 * 1024 * 1024; // 8 MB maximum size per documents transfer
 
-RocksDBReplicationContext::RocksDBReplicationContext()
-    : RocksDBReplicationContext(DefaultTTL) {}
-
 RocksDBReplicationContext::RocksDBReplicationContext(double ttl)
     : _id(TRI_NewTickServer()),
       _lastTick(0),

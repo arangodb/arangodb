@@ -52,9 +52,7 @@ class RocksDBReplicationContext {
   RocksDBReplicationContext(RocksDBReplicationContext const&) = delete;
   RocksDBReplicationContext& operator=(RocksDBReplicationContext const&) = delete;
 
-  RocksDBReplicationContext();
   explicit RocksDBReplicationContext(double ttl);
-
   ~RocksDBReplicationContext();
 
   TRI_voc_tick_t id() const; //batchId
