@@ -120,7 +120,7 @@ Result GeoCover::scanIntervals(S2RegionCoverer* coverer, VPackSlice const& data,
 }
 
 /// generate intervalls of list of intervals to scan
-Result GeoCover::scanIntervals(S2RegionCoverer* coverer, S2Region const& region,
+void GeoCover::scanIntervals(S2RegionCoverer* coverer, S2Region const& region,
                                std::vector<Interval>& sortedIntervals) {
   
   std::vector<S2CellId> cover;

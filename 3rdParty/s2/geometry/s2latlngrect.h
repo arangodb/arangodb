@@ -4,10 +4,6 @@
 #define UTIL_GEOMETRY_S2LATLNGRECT_H_
 
 #include <iostream>
-using std::ostream;
-using std::cout;
-using std::endl;
-
 
 #include "base/basictypes.h"
 #include "base/logging.h"
@@ -315,6 +311,6 @@ inline bool S2LatLngRect::operator!=(S2LatLngRect const& other) const {
   return !operator==(other);
 }
 
-ostream& operator<<(ostream& os, S2LatLngRect const& r);
+std::ostream& operator<<(std::ostream& os, S2LatLngRect const& r);
 
 #endif  // UTIL_GEOMETRY_S2LATLNGRECT_H_

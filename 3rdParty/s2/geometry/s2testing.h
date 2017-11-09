@@ -4,10 +4,7 @@
 #define UTIL_GEOMETRY_S2TESTING_H__
 
 #include <string>
-using std::string;
-
 #include <vector>
-using std::vector;
 
 #include "s2.h"
 #include "s2cellid.h"
@@ -66,11 +63,11 @@ class S2Testing {
 
   // Parse a string in the same format as MakeLatLngRect, and return the
   // corresponding vector of S2LatLng points.
-  static void ParseLatLngs(string const& str, vector<S2LatLng>* latlngs);
+  static void ParseLatLngs(string const& str, std::vector<S2LatLng>* latlngs);
 
   // Parse a string in the same format as MakeLatLngRect, and return the
   // corresponding vector of S2Point values.
-  static void ParsePoints(string const& str, vector<S2Point>* vertices);
+  static void ParsePoints(string const& str, std::vector<S2Point>* vertices);
 
   // Convert a point, lat-lng rect, loop, polyline, or polygon to the string
   // format above.

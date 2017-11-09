@@ -145,7 +145,7 @@ private:
   }*/
   
   RocksDBSphericalIndex const* _index;
-  geo::NearQueryUtils _nearQuery;
+  geo::NearQuery _nearQuery;
   bool _done = false;
 };
 
@@ -213,9 +213,30 @@ IndexIterator* RocksDBSphericalIndex::iteratorForCondition(
     transaction::Methods* trx, ManagedDocumentResult* mmdr,
     arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, bool reverse) {
-  TRI_IF_FAILURE("GeoIndex::noIterator") {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  TRI_ASSERT(node != nullptr);
+  
+  double latitude, longitude;
+  size_t numMembers = node->numMembers();
+  
+  TRI_ASSERT(numMembers == 1);  // should only be an FCALL
+  auto fcall = node->getMember(0);
+  TRI_ASSERT(fcall->type == arangodb::aql::NODE_TYPE_FCALL);
+  TRI_ASSERT(fcall->numMembers() == 1);
+  auto args = fcall->getMember(0);
+  
+  numMembers = args->numMembers();
+  TRI_ASSERT(numMembers >= 3);
+  
+  latitude = args->getMember(1)->getDoubleValue();
+  longitude = args->getMember(2)->getDoubleValue();
+  
+  geo::NearQueryParams params(latitude, longitude);
+  if (numMembers == 5) {
+    // WITHIN
+    params.maxDistance = args->getMember(3)->getDoubleValue();
+    params.maxInclusive = args->getMember(4)->getBoolValue();
   }
+  
   return nullptr;
   //return new RocksDBSphericalIndexIterator(_collection, trx, mmdr, this, node,
   //                                   reference);

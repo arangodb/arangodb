@@ -24,12 +24,14 @@
 #define ARANGOD_GEO_NEAR_QUERY_H 1
 
 #include "Geo/GeoParams.h"
+#include "Geo/GeoCover.h"
 
 #include <queue>
 #include <vector>
 #include <geometry/s2cellid.h>
 #include <geometry/s2cellunion.h>
 #include <geometry/s2cap.h>
+#include <geometry/s2regioncoverer.h>
 
 namespace arangodb {
 namespace velocypack {
@@ -40,46 +42,61 @@ namespace geo {
 
 /// @brief helper class to build a simple near query iterator.
 /// Main design goal is to be modular and storage engine agnostic
-class NearQueryUtils {
+class NearQuery {
   
 public:
   
   typedef std::priority_queue<GeoDocument, std::vector<GeoDocument>,
                               GeoDocumentCompare> GeoDocumentsQueue;
   
-  NearQueryUtils(NearQueryParams const& params);
+  NearQuery(NearQueryParams const& params);
   
 public:
   
-  bool isDone() const;
-  
-  std::vector<S2CellId> scanIntervalls() const;
-  
-  void reportFound(GeoDocument&& doc) {
-    _documents.push(doc);
+  /// get current intervals, scan and report back
+  std::vector<GeoCover::Interval> scanIntervals() const {
+    TRI_ASSERT(!_intervals.empty());
+    return _intervals;
   }
   
-  GeoDocument const& nearest() const { return _documents.top(); }
+  GeoDocument const& nearest() const { return _buffer.top(); }
   
-  void popNearest() { _documents.pop(); }
-
+  void popNearest() { _buffer.pop(); }
+  
+  /// Call only once current intervals contain
+  /// no more results
+  void calulateIntervals();
+  
+  void reportFound(GeoDocument&& doc);
+  
+  bool done() const;
 
 private:
   geo::NearQueryParams const _params;
-  /// priority queue of found documents
-  GeoDocumentsQueue _documents;
+  S2Point const _centroid;
   
-  // Amount to increment the next bounds by
-  double _boundsIncrement;
-  double _currentInnerBound;
-  double _currentOuterBound;
+  /// buffer of found documents
+  GeoDocumentsQueue _buffer;
+  // for deduplication
+  std::unordered_map<TRI_voc_rid_t, double> _seen;
+  
+  // Amount to increment by (in length on unit sphere)
+  double _boundDelta;
+  //double _currentInnerBound;
+  // inner limit (in length on unit sphere)
+  double _innerBound;
+  // outer limit (in length on unit sphere)
+  double _outerBound;
+  double _maxBounds;
+  
+  size_t _numFoundLastInterval;
+  std::vector<GeoCover::Interval> _intervals;
   
   /// Track the already scanned region
   S2CellUnion _scannedCells;
   /// full area to scan
-  S2Cap _fullScanBounds;
-  /// area scanned atm
-  //S2RegionUnion _currentBounds;
+  //S2Cap _fullScanBounds;
+  S2RegionCoverer _coverer;
 };
 
 }  // namespace geo

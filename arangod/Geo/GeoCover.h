@@ -71,7 +71,7 @@ class GeoCover {
                               std::vector<Interval>& sortedIntervals);
   
   /// generate intervalls of list of intervals to scan
-  static Result scanIntervals(S2RegionCoverer* coverer, S2Region const& region,
+  static void scanIntervals(S2RegionCoverer* coverer, S2Region const& region,
                               std::vector<Interval>& sortedIntervals);
   
   /// will return all the intervals including the cells containing them

@@ -32,7 +32,7 @@ using namespace arangodb;
 using namespace arangodb::geo;
 
 RegionCoverParams::RegionCoverParams()
-    : maxNumCoverCells(16),
+    : maxNumCoverCells(20),
       worstIndexedLevel(
           S2::kAvgEdge.GetClosestLevel(2000 * 1000.0 / kEarthRadiusInMeters)),
       bestIndexedLevel(

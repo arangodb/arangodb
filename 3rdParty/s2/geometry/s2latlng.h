@@ -4,8 +4,6 @@
 #define UTIL_GEOMETRY_S2LATLNG_H__
 
 #include <string>
-using std::string;
-
 #include <ostream>
 #include "base/basictypes.h"
 #include "s1angle.h"
@@ -101,8 +99,8 @@ class S2LatLng {
 
   // Export the latitude and longitude in degrees, separated by a comma.
   // e.g. "94.518000,150.300000"
-  string ToStringInDegrees() const;
-  void ToStringInDegrees(string* s) const;
+  std::string ToStringInDegrees() const;
+  void ToStringInDegrees(std::string* s) const;
 
  private:
   // Internal constructor.
@@ -185,6 +183,6 @@ inline S2LatLng operator*(S2LatLng const& a, double m) {
   return S2LatLng(m * a.coords_);
 }
 
-ostream& operator<<(ostream& os, S2LatLng const& ll);
+std::ostream& operator<<(std::ostream& os, S2LatLng const& ll);
 
 #endif  // UTIL_GEOMETRY_S2LATLNG_H__

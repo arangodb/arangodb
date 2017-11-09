@@ -3,11 +3,6 @@
 #ifndef UTIL_GEOMETRY_S1INTERVAL_H_
 #define UTIL_GEOMETRY_S1INTERVAL_H_
 
-#include <iostream>
-using std::ostream;
-using std::cout;
-using std::endl;
-
 #include <math.h>
 #include "base/basictypes.h"
 #include "base/logging.h"
@@ -216,7 +211,7 @@ inline bool S1Interval::operator==(S1Interval const& y) const {
   return lo() == y.lo() && hi() == y.hi();
 }
 
-inline ostream& operator<<(ostream& os, S1Interval const& x) {
+inline std::ostream& operator<<(std::ostream& os, S1Interval const& x) {
   return os << "[" << x.lo() << ", " << x.hi() << "]";
 }
 
