@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBReplicationManager.h"
+#include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -39,7 +40,10 @@ size_t const RocksDBReplicationManager::MaxCollectCount = 32;
 /// @brief create a context repository
 ////////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationManager::RocksDBReplicationManager() : _lock(), _contexts() {
+RocksDBReplicationManager::RocksDBReplicationManager() 
+    : _lock(), 
+      _contexts(),
+      _isShuttingDown(false) {
   _contexts.reserve(64);
 }
 
@@ -99,6 +103,12 @@ RocksDBReplicationContext* RocksDBReplicationManager::createContext() {
 
   {
     MUTEX_LOCKER(mutexLocker, _lock);
+
+    if (_isShuttingDown) {
+      // do not accept any further contexts when we are already shutting down
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
     _contexts.emplace(id, context.get());
   }
   return context.release();
@@ -281,15 +291,16 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
     for (auto it = _contexts.begin(); it != _contexts.end();
          /* no hoisting */) {
       auto context = it->second;
-
-      if (context->isUsed()) {
-        // must not destroy used contexts
-        ++it;
-        continue;
+      
+      if (force || context->expires() < now) {
+        // expire contexts
+        context->deleted();
       }
 
-      if (force || context->expires() < now) {
-        context->deleted();
+      if (context->isUsed()) {
+        // must not physically destroy contexts that are currently used
+        ++it;
+        continue;
       }
 
       if (context->isDeleted()) {
@@ -328,4 +339,14 @@ RocksDBReplicationContextGuard::~RocksDBReplicationContextGuard() {
   if (_ctx != nullptr) {
     _manager->release(_ctx);
   }
+}
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief tell the replication manager that a shutdown is in progress
+/// effectively this will block the creation of new contexts
+//////////////////////////////////////////////////////////////////////////////
+    
+void RocksDBReplicationManager::beginShutdown() {
+  MUTEX_LOCKER(mutexLocker, _lock);
+  _isShuttingDown = true;
 }
