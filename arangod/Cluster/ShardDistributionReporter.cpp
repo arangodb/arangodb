@@ -24,6 +24,7 @@
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/velocypack-aliases.h>
@@ -32,6 +33,16 @@
 
 using namespace arangodb;
 using namespace arangodb::cluster;
+
+struct SyncCountInfo {
+  bool insync;
+  uint64_t total;
+  uint64_t current;
+  std::vector<ServerID> followers;
+
+  SyncCountInfo() : insync(false), total(1), current(0) {}
+  ~SyncCountInfo() {}
+};
 
 //////////////////////////////////////////////////////////////////////////////
 /// @brief the pointer to the singleton instance
@@ -185,6 +196,59 @@ static void ReportInSync(
   result.close();
 }
 
+//////////////////////////////////////////////////////////////////////////////
+/// @brief Report a complete collection in the offsync format, with eventually
+/// known counts
+//////////////////////////////////////////////////////////////////////////////
+
+static void ReportOffSync(
+    LogicalCollection const* col, ShardMap const* shardIds,
+    std::unordered_map<ShardID, SyncCountInfo> const& counters,
+    std::unordered_map<ServerID, std::string> const& aliases,
+    VPackBuilder& result) {
+  TRI_ASSERT(result.isOpenObject());
+
+  result.add(VPackValue(col->name()));
+
+  // In this report Plan and Current are identical
+  result.openObject();
+  {
+    // Add Plan
+    result.add(VPackValue("Plan"));
+    result.openObject();
+    for (auto const& s : *shardIds) {
+      auto cIt = counters.find(s.first);
+      if (cIt == counters.end()) {
+        ReportShardProgress(s.first, s.second, aliases, 1, 0, result);
+      } else {
+        if (cIt->second.insync) {
+          ReportShardNoProgress(s.first, s.second, aliases, result);
+        } else {
+          ReportShardProgress(s.first, s.second, aliases, cIt->second.total,
+                              cIt->second.current, result);
+        }
+      }
+    }
+    result.close();
+  }
+
+  {
+    // Add Current
+    result.add(VPackValue("Current"));
+    result.openObject();
+    for (auto const& s : *shardIds) {
+      auto cIt = counters.find(s.first);
+      if (cIt == counters.end() || cIt->second.insync) {
+        ReportShardNoProgress(s.first, s.second, aliases, result);
+      } else {
+        ReportShardNoProgress(s.first, cIt->second.followers, aliases, result);
+      }
+    }
+    result.close();
+  }
+  result.close();
+}
+
 ShardDistributionReporter::ShardDistributionReporter(
     std::shared_ptr<ClusterComm> cc, ClusterInfo* ci)
     : _cc(cc), _ci(ci) {
@@ -220,13 +284,142 @@ void ShardDistributionReporter::getDistributionForDatabase(
     }
   }
 
-  while (!todoSyncStateCheck.empty()) {
-    auto const col = todoSyncStateCheck.front();
-    // TODO try to collect counts
+  if (!todoSyncStateCheck.empty()) {
+    double timeleft = 2.0;
+    CoordTransactionID coordId = TRI_NewTickServer();
+    std::unordered_map<ShardID, SyncCountInfo> counters;
+    std::vector<ServerID> serversToAsk;
+    while (!todoSyncStateCheck.empty()) {
+      serversToAsk.clear();
+      counters.clear();
+      auto const col = todoSyncStateCheck.front();
 
-    auto allShards = col->shardIds();
-    reportOffSync(dbName, col.get(), allShards.get(), aliases, result);
-    todoSyncStateCheck.pop();
+      auto allShards = col->shardIds();
+      auto cic = _ci->getCollectionCurrent(dbName, col->cid_as_string());
+      // Send requests
+      for (auto const& s : *(allShards.get())) {
+        uint64_t requestsInFlight = 0;
+        OperationID leaderOpId = 0;
+        auto curServers = cic->servers(s.first);
+        auto& entry = counters[s.first];  // Emplaces a new SyncCountInfo
+        if (TestIsShardInSync(s.second, curServers)) {
+          entry.insync = true;
+        } else {
+          std::string path = "/_api/collection/" + s.first + "/count";
+          auto body = std::make_shared<std::string const>();
+          entry.followers = curServers;
+
+          {
+            // First Ask the leader
+            auto headers = std::make_unique<
+                std::unordered_map<std::string, std::string>>();
+            leaderOpId = _cc->asyncRequest(
+                "", coordId, "server:" + s.second.at(0), rest::RequestType::GET,
+                path, body, headers, nullptr, timeleft);
+          }
+
+          // Now figure out which servers need to be asked
+          for (auto const& planned : s.second) {
+            bool found = false;
+            for (auto const& current : entry.followers) {
+              if (current == planned) {
+                found = true;
+                break;
+              }
+            }
+            if (!found) {
+              serversToAsk.emplace_back(planned);
+            }
+          }
+
+          // Ask them
+          for (auto const& server : serversToAsk) {
+            auto headers = std::make_unique<
+                std::unordered_map<std::string, std::string>>();
+            _cc->asyncRequest("", coordId, "server:" + server,
+                              rest::RequestType::GET, path, body, headers,
+                              nullptr, timeleft);
+            requestsInFlight++;
+          }
+
+          // Wait for responses
+          // First wait for Leader
+          {
+            auto result = _cc->wait("", coordId, leaderOpId, "");
+            if (result.status != CL_COMM_RECEIVED) {
+              // We did not even get count for leader, use defaults
+              counters.erase(s.first);
+              _cc->drop("", coordId, 0, "");
+              // Just in case, to get a new state
+              coordId = TRI_NewTickServer();
+              continue;
+            }
+            auto body = result.result->getBodyVelocyPack();
+            VPackSlice response = body->slice();
+            if (!response.isObject()) {
+              LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+                  << "Recieved invalid response for count. Shard distribution "
+                     "inaccurate";
+              continue;
+            }
+            response = response.get("count");
+            if (!response.isNumber()) {
+              LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+                  << "Recieved invalid response for count. Shard distribution "
+                     "inaccurate";
+              continue;
+            }
+            entry.total = response.getNumber<uint64_t>();
+            entry.current =
+                entry.total;  // << We use this to flip around min/max test
+          }
+
+          // Now wait for others
+          while (requestsInFlight > 0) {
+            auto result = _cc->wait("", coordId, 0, "");
+            requestsInFlight--;
+            if (result.status != CL_COMM_RECEIVED) {
+              // We do not care for errors of any kind.
+              // We can continue here because all other requests will be handled
+              // by the accumulated timeout
+              continue;
+            } else {
+              auto body = result.result->getBodyVelocyPack();
+              VPackSlice response = body->slice();
+              if (!response.isObject()) {
+                LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+                    << "Recieved invalid response for count. Shard "
+                       "distribution inaccurate";
+                continue;
+              }
+              response = response.get("count");
+              if (!response.isNumber()) {
+                LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+                    << "Recieved invalid response for count. Shard "
+                       "distribution inaccurate";
+                continue;
+              }
+              uint64_t other = response.getNumber<uint64_t>();
+              if (other < entry.total) {
+                // If we have more in total we need the minimum of other counts
+                if (other < entry.current) {
+                  entry.current = other;
+                }
+              } else {
+                // If we only have more in total we take the maximum of other
+                // counts
+                if (entry.total <= entry.current && other > entry.current) {
+                  entry.current = other;
+                }
+              }
+            }
+          }
+        }
+      }
+
+      ReportOffSync(col.get(), allShards.get(), counters, aliases, result);
+      todoSyncStateCheck.pop();
+    }
   }
   result.close();
 }
@@ -245,49 +438,4 @@ bool ShardDistributionReporter::testAllShardsInSync(
     }
   }
   return true;
-}
-
-//////////////////////////////////////////////////////////////////////////////
-/// @brief Report a complete collection in the offsync format, counts unknown
-//////////////////////////////////////////////////////////////////////////////
-
-void ShardDistributionReporter::reportOffSync(
-    std::string const& dbName, LogicalCollection const* col,
-    ShardMap const* shardIds,
-    std::unordered_map<ServerID, std::string> const& aliases,
-    VPackBuilder& result) const {
-  TRI_ASSERT(result.isOpenObject());
-  auto cic = _ci->getCollectionCurrent(dbName, col->cid_as_string());
-
-  result.add(VPackValue(col->name()));
-
-  // In this report Plan and Current are identical
-  result.openObject();
-  {
-    // Add Plan
-    result.add(VPackValue("Plan"));
-    result.openObject();
-    for (auto const& s : *shardIds) {
-      auto curServers = cic->servers(s.first);
-      if (TestIsShardInSync(s.second, curServers)) {
-        ReportShardNoProgress(s.first, s.second, aliases, result);
-      } else {
-        // TODO we use default values here
-        ReportShardProgress(s.first, s.second, aliases, 1, 0, result);
-      }
-    }
-    result.close();
-  }
-
-  {
-    // Add Current
-    result.add(VPackValue("Current"));
-    result.openObject();
-    for (auto const& s : *shardIds) {
-      auto curServers = cic->servers(s.first);
-      ReportShardNoProgress(s.first, curServers, aliases, result);
-    }
-    result.close();
-  }
-  result.close();
 }

@@ -30,15 +30,28 @@
 
 #include "Cluster/ClusterComm.h"
 #include "Cluster/ShardDistributionReporter.h"
+#include "SimpleHttpClient/SimpleHttpResult.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/ticks.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <queue>
+
 using namespace arangodb;
 using namespace fakeit;
 using namespace arangodb::cluster;
+using namespace arangodb::httpclient;
+
+static std::shared_ptr<VPackBuilder> buildCountBody(uint64_t count) {
+  auto res = std::make_shared<VPackBuilder>();
+  res->openObject();
+  res->add("count", VPackValue(count));
+  res->close();
+  return res;
+}
 
 SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
   GIVEN("An instance of the Reporter") {
@@ -56,6 +69,23 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
 
     Mock<LogicalCollection> colMock;
     LogicalCollection& col = colMock.get();
+
+
+    // Moking HttpResults
+    Mock<SimpleHttpResult> db1s2CountMock;
+    SimpleHttpResult& httpdb1s2Count = db1s2CountMock.get();
+
+    Mock<SimpleHttpResult> db1s3CountMock;
+    SimpleHttpResult& httpdb1s3Count = db1s3CountMock.get();
+
+    Mock<SimpleHttpResult> db2s2CountMock;
+    SimpleHttpResult& httpdb2s2Count = db2s2CountMock.get();
+
+    Mock<SimpleHttpResult> db3s2CountMock;
+    SimpleHttpResult& httpdb3s2Count = db3s2CountMock.get();
+
+    Mock<SimpleHttpResult> db3s3CountMock;
+    SimpleHttpResult& httpdb3s3Count = db3s3CountMock.get();
 
     ShardDistributionReporter testee(
         std::shared_ptr<ClusterComm>(&cc, [](ClusterComm*) {}), &ci);
@@ -83,6 +113,18 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       uint64_t shard3LeaderCount = 4651;
       uint64_t shard3FollowerCount = 912;
 
+      bool gotFirstRequest = false;
+      CoordTransactionID cordTrxId = 0;
+      uint64_t requestsInFlight = 0;
+
+      std::queue<ClusterCommResult> responses;
+      ClusterCommResult leaderS2Response;
+      OperationID leaderS2Id;
+      bool leaderS2Delivered = true;
+
+      ClusterCommResult leaderS3Response;
+      OperationID leaderS3Id;
+      bool leaderS3Delivered = true;
 
       // Simlated situation:
       // s1 is in-sync: DBServer1 <- DBServer2, DBServer3
@@ -149,6 +191,136 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         REQUIRE(false);
         return s1Current;
       });
+
+      // Mocking HTTP Response
+      When(ConstOverloadedMethod(db1s2CountMock, getBodyVelocyPack, std::shared_ptr<VPackBuilder> ())).AlwaysDo([&] () {
+          return buildCountBody(shard2LowFollowerCount);
+      });
+
+      When(ConstOverloadedMethod(db1s3CountMock, getBodyVelocyPack, std::shared_ptr<VPackBuilder> ())).AlwaysDo([&] () {
+          return buildCountBody(shard3FollowerCount);
+      });
+
+      When(ConstOverloadedMethod(db2s2CountMock, getBodyVelocyPack, std::shared_ptr<VPackBuilder> ())).AlwaysDo([&] () {
+          return buildCountBody(shard2LeaderCount);
+      });
+
+      When(ConstOverloadedMethod(db3s2CountMock, getBodyVelocyPack, std::shared_ptr<VPackBuilder> ())).AlwaysDo([&] () {
+          return buildCountBody(shard2HighFollowerCount);
+      });
+
+      When(ConstOverloadedMethod(db3s3CountMock, getBodyVelocyPack, std::shared_ptr<VPackBuilder> ())).AlwaysDo([&] () {
+          return buildCountBody(shard3LeaderCount);
+      });
+
+      // Mocking the ClusterComm for count calls
+      When(Method(commMock, asyncRequest))
+          .AlwaysDo([&](
+              ClientTransactionID const&,
+              CoordTransactionID const coordTransactionID,
+              std::string const& destination, rest::RequestType reqtype,
+              std::string const& path, std::shared_ptr<std::string const> body,
+              std::unique_ptr<std::unordered_map<std::string, std::string>>&
+                  headerFields,
+              std::shared_ptr<ClusterCommCallback> callback,
+              ClusterCommTimeout timeout, bool singleRequest,
+              ClusterCommTimeout initTimeout) -> OperationID {
+            REQUIRE(initTimeout == -1.0);  // Default
+            REQUIRE(!singleRequest);       // we want to use keep-alive
+            REQUIRE(callback == nullptr);  // We actively wait
+            REQUIRE(reqtype == rest::RequestType::GET);  // count is only get!
+            REQUIRE(headerFields->empty());              // Nono headers
+
+            // This feature has at most 2s to do its job
+            // otherwise default values will be returned
+            REQUIRE(timeout <= 2.0);
+
+            if (!gotFirstRequest) {
+              gotFirstRequest = true;
+              cordTrxId = coordTransactionID;
+            } else {
+              // We always use the same id
+              REQUIRE(cordTrxId == coordTransactionID);
+            }
+
+            OperationID opId = TRI_NewTickServer();
+
+            ClusterCommResult response;
+            response.coordTransactionID = cordTrxId;
+            response.operationID = opId;
+            response.answer_code = rest::ResponseCode::OK;
+            response.status = CL_COMM_RECEIVED;
+
+            // '/_api/collection/' + shard.shard + '/count'
+            if (destination == "server:" + dbserver1) {
+              // off-sync follows s2,s3
+              if (path == "/_api/collection/" + s2 + "/count") {
+                response.result = std::shared_ptr<SimpleHttpResult>(&httpdb1s2Count, [](SimpleHttpResult*) {});
+              } else {
+                REQUIRE(path == "/_api/collection/" + s3 + "/count");
+                response.result = std::shared_ptr<SimpleHttpResult>(&httpdb1s3Count, [](SimpleHttpResult*) {});
+              } 
+            } else if (destination == "server:" + dbserver2) {
+              // Leads s2
+              REQUIRE(path == "/_api/collection/" + s2 + "/count");
+              response.result = std::shared_ptr<SimpleHttpResult>(&httpdb2s2Count, [](SimpleHttpResult*) {});
+              leaderS2Response = response;
+              leaderS2Id = opId;
+              leaderS2Delivered = false;
+              return opId;
+            } else if (destination == "server:" + dbserver3) {
+              // Leads s3
+              // off-sync follows s2
+              if (path == "/_api/collection/" + s2 + "/count") {
+                response.result = std::shared_ptr<SimpleHttpResult>(&httpdb3s2Count, [](SimpleHttpResult*) {});
+              } else {
+                REQUIRE(path == "/_api/collection/" + s3 + "/count");
+                response.result = std::shared_ptr<SimpleHttpResult>(&httpdb3s3Count, [](SimpleHttpResult*) {});
+                leaderS3Response = response;
+                leaderS3Id = opId;
+                leaderS3Delivered = false;
+                return opId;
+              }
+            } else {
+              // Unknown Server!!
+              REQUIRE(false);
+            }
+
+            responses.push(response);
+            return opId;
+          });
+
+      When(Method(commMock, wait))
+          .AlwaysDo([&](ClientTransactionID const&,
+                        CoordTransactionID const coordTransactionID,
+                        OperationID const operationID, ShardID const& shardID,
+                        ClusterCommTimeout timeout) {
+            REQUIRE(coordTransactionID == cordTrxId);
+            REQUIRE(shardID == "");     // Superfluous
+            REQUIRE(timeout ==
+                    0.0);  // Default, the requests has timeout already
+
+            if (operationID == leaderS2Id && !leaderS2Delivered) {
+              REQUIRE(leaderS2Id != 0);
+              REQUIRE(!leaderS2Delivered);
+              leaderS2Delivered = true;
+              return leaderS2Response;
+            }
+
+            if (operationID == leaderS3Id && !leaderS3Delivered) {
+              REQUIRE(leaderS3Id != 0);
+              REQUIRE(!leaderS3Delivered);
+              leaderS3Delivered = true;
+              return leaderS3Response;
+            }
+
+            REQUIRE(operationID == 0);  // We do not wait for a specific one
+
+            REQUIRE(!responses.empty());
+            ClusterCommResult last = responses.front();
+            responses.pop();
+            return last;
+          });
 
       VPackBuilder resultBuilder;
       testee.getDistributionForDatabase(dbname, resultBuilder);
@@ -390,3 +562,12 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
   }
 }
 }
+
+SCENARIO("Validating count reporting on distribute shards", "[cluster][shards]") {
+}
+
+
+// TEST TO ADD
+// We need to verify the following count reports:
+// if (min(followCount) < leaderCount) => current == min(followCount)
+// if (min(followCount) >= leaderCount) => current == max(followCount)

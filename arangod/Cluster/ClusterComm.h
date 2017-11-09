@@ -443,7 +443,7 @@ class ClusterComm {
   /// @brief submit an HTTP request to a shard asynchronously.
   //////////////////////////////////////////////////////////////////////////////
 
-  OperationID asyncRequest(
+  virtual OperationID asyncRequest(
       ClientTransactionID const& clientTransactionID,
       CoordTransactionID const coordTransactionID,
       std::string const& destination, rest::RequestType reqtype,
@@ -475,11 +475,11 @@ class ClusterComm {
   /// @brief wait for one answer matching the criteria
   //////////////////////////////////////////////////////////////////////////////
 
-  ClusterCommResult const wait(ClientTransactionID const& clientTransactionID,
-                               CoordTransactionID const coordTransactionID,
-                               OperationID const operationID,
-                               ShardID const& shardID,
-                               ClusterCommTimeout timeout = 0.0);
+  virtual ClusterCommResult const wait(ClientTransactionID const& clientTransactionID,
+                                       CoordTransactionID const coordTransactionID,
+                                       OperationID const operationID,
+                                       ShardID const& shardID,
+                                       ClusterCommTimeout timeout = 0.0);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ignore and drop current and future answers matching
