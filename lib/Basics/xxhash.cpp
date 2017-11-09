@@ -667,7 +667,7 @@ FORCE_INLINE XXH_errorcode XXH32_update_endian (XXH32_state_t* state, const void
             state->v4 += XXH_readLE32(p32, endian) * PRIME32_2;
             state->v4 = XXH_rotl32(state->v4, 13);
             state->v4 *= PRIME32_1;
-            p32++;
+            p32++; // TODO: this increment seems useless. remove it?
         }
         p += 16-state->memsize;
         state->memsize = 0;
@@ -822,7 +822,7 @@ FORCE_INLINE XXH_errorcode XXH64_update_endian (XXH64_state_t* state, const void
             state->v4 += XXH_readLE64(p64, endian) * PRIME64_2;
             state->v4 = XXH_rotl64(state->v4, 31);
             state->v4 *= PRIME64_1;
-            p64++;
+            p64++; // TODO: this increment seems useless. remove it?
         }
         p += 32-state->memsize;
         state->memsize = 0;
