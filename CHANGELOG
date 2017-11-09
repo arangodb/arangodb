@@ -1,6 +1,8 @@
 devel
 -----
 
+* allow compilation of ArangoDB with g++7
+
 * increase default maximum number of V8 contexts to at least 16 if not 
   explicitly configured otherwise. the mode for determining the actual maximum
   value of V8 contexts is unchanged and works as follows:
