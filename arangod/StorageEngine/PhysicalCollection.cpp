@@ -411,11 +411,14 @@ PhysicalCollection::getIndexes() const {
   return _indexes;
 }
 
-void PhysicalCollection::getIndexesVPack(VPackBuilder& result, bool withFigures,
-                                         bool forPersistence) const {
+void PhysicalCollection::getIndexesVPack(VPackBuilder& result, bool withFigures, bool forPersistence, 
+                                         std::function<bool(arangodb::Index const*)> const& filter) const {
   READ_LOCKER(guard, _indexesLock);
   result.openArray();
   for (auto const& idx : _indexes) {
+    if (!filter(idx.get())) {
+      continue;
+    }
     idx->toVelocyPack(result, withFigures, forPersistence);
   }
   result.close();

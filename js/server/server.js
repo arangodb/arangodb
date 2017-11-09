@@ -64,19 +64,21 @@
 
   // This script is also used by agents. Coords use a different script.
   // Make sure we only run these commands in single-server mode.
-  if (internal.threadNumber === 0 && global.ArangoServerState.role() === 'SINGLE') {
-    if (restServer) {
-      // startup the foxx manager once
-      require('@arangodb/foxx/manager')._startup();
+  if (internal.threadNumber === 0) {
+    if (global.ArangoServerState.role() === 'SINGLE') {
+      if (restServer) {
+        // startup the foxx manager once
+        require('@arangodb/foxx/manager')._startup();
+      }
+
+      // start the queue manager once
+      require('@arangodb/foxx/queues/manager').run();
     }
 
-    // start the queue manager once
-    require('@arangodb/foxx/queues/manager').run();
-  }
-
-  // check available versions
-  if (internal.threadNumber === 0 && internal.quiet !== true) {
-    require('@arangodb').checkAvailableVersions();
+    // check available versions
+    if (internal.quiet !== true) {
+      require('@arangodb').checkAvailableVersions();
+    }
   }
 
   return true;

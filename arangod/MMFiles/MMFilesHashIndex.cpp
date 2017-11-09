@@ -240,6 +240,7 @@ bool MMFilesHashIndexIterator::next(LocalDocumentIdCallback const& cb, size_t li
 
     if (!_buffer.empty()) {
       // found something
+      TRI_ASSERT(_posInBuffer < _buffer.size());
       cb(LocalDocumentId{_buffer[_posInBuffer++]->localDocumentId()});
       --limit;
     }
@@ -298,6 +299,7 @@ bool MMFilesHashIndexIteratorVPack::next(LocalDocumentIdCallback const& cb,
 
     if (!_buffer.empty()) {
       // found something
+      TRI_ASSERT(_posInBuffer < _buffer.size());
       cb(_buffer[_posInBuffer++]->localDocumentId());
       --limit;
     }
@@ -339,6 +341,11 @@ MMFilesHashIndex::MMFilesHashIndex(TRI_idx_iid_t iid,
     auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
     TRI_ASSERT(physical != nullptr);
     indexBuckets = static_cast<size_t>(physical->indexBuckets());
+    
+    if (collection->isAStub()) {
+      // in order to reduce memory usage
+      indexBuckets = 1;
+    }
   }
 
   if (_unique) {
