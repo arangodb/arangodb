@@ -27,8 +27,8 @@ const internal = require('internal');
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief creates a new pregel execution
 // //////////////////////////////////////////////////////////////////////////////
-var startExecution = function(algo, graph, params) {
-  if (typeof algo !== 'string' || !graph) {
+var startExecution = function(algo, data, params) {
+  if (typeof algo !== 'string' || !data) {
     throw "Invalid parameters: pregel(algorithm, graph, params)" +
           "<graph> can be either {vertexCollections:['',..], edgeCollection: ''}" +
           " or {graphName:'<graph>'} or graph name";
@@ -38,23 +38,23 @@ var startExecution = function(algo, graph, params) {
   // check start vertex
   // -----------------------------------------
   if (!algo || typeof algo !== 'string') {
-    throw "Invalid parameters: pregel(<algorithm>, <graph>, <params>)"
+    throw "Invalid parameters: pregel(<algorithm>, <graph>, <params>)";
   }
   params = params || {};
 
   let db = internal.db;  
-  if (typeof graph === 'object' && !graph.graphName) {
+  if (typeof data === 'object' && !data.graphName) {
     let vcs;
-    if (graph.vertexCollection && typeof graph.vertexCollection === 'string') {
-      vcs = [graph.vertexCollection];
-    } else if (graph.vertexCollections && graph.vertexCollections instanceof Array) {
-      vcs = graph.vertexCollections;
+    if (data.vertexCollection && typeof data.vertexCollection === 'string') {
+      vcs = [data.vertexCollection];
+    } else if (data.vertexCollections && data.vertexCollections instanceof Array) {
+      vcs = data.vertexCollections;
     }
     let edges;
-    if (typeof graph.edgeCollection === 'string') {
-      edges = [graph.edgeCollection]
-    } else if (graph.edgeCollections && graph.edgeCollections instanceof Array) {
-      edges = graph.edgeCollections;
+    if (typeof data.edgeCollection === 'string') {
+      edges = [data.edgeCollection];
+    } else if (data.edgeCollections && data.edgeCollections instanceof Array) {
+      edges = data.edgeCollections;
     }
     if (!edges || !vcs) {
       throw "no vertex or edge collections specified";
@@ -63,10 +63,10 @@ var startExecution = function(algo, graph, params) {
   }
 
   let name;// name of graph
-  if (typeof graph === 'string') {
-    name = graph
-  } else if (graph.graphName &&  typeof graph.graphName === 'string') {
-    name = graph.graphName;
+  if (typeof data === 'string') {
+    name = data;
+  } else if (data.graphName &&  typeof data.graphName === 'string') {
+    name = data.graphName;
   }
 
   var graph_module;
@@ -75,7 +75,7 @@ var startExecution = function(algo, graph, params) {
   } else {
     graph_module = require('@arangodb/general-graph');
   }
-  var graph = graph_module._graph(name);
+  let graph = graph_module._graph(name);
   if (graph) {
     let vertexCollections = [];
     let vcs = graph._vertexCollections(true);
