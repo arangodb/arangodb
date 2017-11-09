@@ -94,8 +94,8 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 /// there are active contexts
 //////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationContext* RocksDBReplicationManager::createContext() {
-  auto context = std::make_unique<RocksDBReplicationContext>();
+RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl) {
+  auto context = std::make_unique<RocksDBReplicationContext>(ttl);
   TRI_ASSERT(context.get() != nullptr);
   TRI_ASSERT(context->isUsed());
 
@@ -256,7 +256,7 @@ void RocksDBReplicationManager::drop(TRI_vocbase_t* vocbase) {
     }
   }
 
-  garbageCollect(true);
+  garbageCollect(false);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
