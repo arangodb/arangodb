@@ -485,9 +485,9 @@ class ClusterComm {
   /// @brief ignore and drop current and future answers matching
   //////////////////////////////////////////////////////////////////////////////
 
-  void drop(ClientTransactionID const& clientTransactionID,
-            CoordTransactionID const coordTransactionID,
-            OperationID const operationID, ShardID const& shardID);
+  virtual void drop(ClientTransactionID const& clientTransactionID,
+                    CoordTransactionID const coordTransactionID,
+                    OperationID const operationID, ShardID const& shardID);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief send an answer HTTP request to a coordinator

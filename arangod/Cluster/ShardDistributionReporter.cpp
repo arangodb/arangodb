@@ -142,6 +142,11 @@ static void ReportShardProgress(
 
   result.add(VPackValue("progress"));
 
+  // We have somehow invalid, mostlikely no shard has responded in time
+  if (total == current) {
+    // Reset current
+    current = 0;
+  }
   result.openObject();
   result.add("total", VPackValue(total));
   result.add("current", VPackValue(current));
@@ -203,7 +208,7 @@ static void ReportInSync(
 
 static void ReportOffSync(
     LogicalCollection const* col, ShardMap const* shardIds,
-    std::unordered_map<ShardID, SyncCountInfo> const& counters,
+    std::unordered_map<ShardID, SyncCountInfo>& counters,
     std::unordered_map<ServerID, std::string> const& aliases,
     VPackBuilder& result) {
   TRI_ASSERT(result.isOpenObject());
@@ -217,16 +222,13 @@ static void ReportOffSync(
     result.add(VPackValue("Plan"));
     result.openObject();
     for (auto const& s : *shardIds) {
-      auto cIt = counters.find(s.first);
-      if (cIt == counters.end()) {
-        ReportShardProgress(s.first, s.second, aliases, 1, 0, result);
+      TRI_ASSERT(counters.find(s.first) != counters.end());
+      auto const& c = counters[s.first];
+      if (c.insync) {
+        ReportShardNoProgress(s.first, s.second, aliases, result);
       } else {
-        if (cIt->second.insync) {
-          ReportShardNoProgress(s.first, s.second, aliases, result);
-        } else {
-          ReportShardProgress(s.first, s.second, aliases, cIt->second.total,
-                              cIt->second.current, result);
-        }
+        ReportShardProgress(s.first, s.second, aliases, c.total,
+                              c.current, result);
       }
     }
     result.close();
@@ -237,11 +239,12 @@ static void ReportOffSync(
     result.add(VPackValue("Current"));
     result.openObject();
     for (auto const& s : *shardIds) {
-      auto cIt = counters.find(s.first);
-      if (cIt == counters.end() || cIt->second.insync) {
+      TRI_ASSERT(counters.find(s.first) != counters.end());
+      auto const& c = counters[s.first];
+      if (c.insync) {
         ReportShardNoProgress(s.first, s.second, aliases, result);
       } else {
-        ReportShardNoProgress(s.first, cIt->second.followers, aliases, result);
+        ReportShardNoProgress(s.first, c.followers, aliases, result);
       }
     }
     result.close();
@@ -269,6 +272,9 @@ ShardDistributionReporter::instance() {
 
 void ShardDistributionReporter::getDistributionForDatabase(
     std::string const& dbName, VPackBuilder& result) {
+
+  double endtime = TRI_microtime() + 2.0; // We add two seconds
+
   result.openObject();
 
   auto aliases = _ci->getServerAliases();
@@ -285,11 +291,11 @@ void ShardDistributionReporter::getDistributionForDatabase(
   }
 
   if (!todoSyncStateCheck.empty()) {
-    double timeleft = 2.0;
     CoordTransactionID coordId = TRI_NewTickServer();
     std::unordered_map<ShardID, SyncCountInfo> counters;
     std::vector<ServerID> serversToAsk;
     while (!todoSyncStateCheck.empty()) {
+      double timeleft = endtime - TRI_microtime();
       serversToAsk.clear();
       counters.clear();
       auto const col = todoSyncStateCheck.front();
@@ -305,111 +311,112 @@ void ShardDistributionReporter::getDistributionForDatabase(
         if (TestIsShardInSync(s.second, curServers)) {
           entry.insync = true;
         } else {
-          std::string path = "/_api/collection/" + s.first + "/count";
-          auto body = std::make_shared<std::string const>();
           entry.followers = curServers;
+          if (timeleft > 0.0)  {
+            std::string path = "/_api/collection/" + s.first + "/count";
+            auto body = std::make_shared<std::string const>();
 
-          {
-            // First Ask the leader
-            auto headers = std::make_unique<
-                std::unordered_map<std::string, std::string>>();
-            leaderOpId = _cc->asyncRequest(
-                "", coordId, "server:" + s.second.at(0), rest::RequestType::GET,
-                path, body, headers, nullptr, timeleft);
-          }
+            {
+              // First Ask the leader
+              auto headers = std::make_unique<
+                  std::unordered_map<std::string, std::string>>();
+              leaderOpId = _cc->asyncRequest(
+                  "", coordId, "server:" + s.second.at(0), rest::RequestType::GET,
+                  path, body, headers, nullptr, timeleft);
+            }
 
-          // Now figure out which servers need to be asked
-          for (auto const& planned : s.second) {
-            bool found = false;
-            for (auto const& current : entry.followers) {
-              if (current == planned) {
-                found = true;
-                break;
+            // Now figure out which servers need to be asked
+            for (auto const& planned : s.second) {
+              bool found = false;
+              for (auto const& current : entry.followers) {
+                if (current == planned) {
+                  found = true;
+                  break;
+                }
+              }
+              if (!found) {
+                serversToAsk.emplace_back(planned);
               }
             }
-            if (!found) {
-              serversToAsk.emplace_back(planned);
-            }
-          }
 
-          // Ask them
-          for (auto const& server : serversToAsk) {
-            auto headers = std::make_unique<
-                std::unordered_map<std::string, std::string>>();
-            _cc->asyncRequest("", coordId, "server:" + server,
-                              rest::RequestType::GET, path, body, headers,
-                              nullptr, timeleft);
-            requestsInFlight++;
-          }
+            // Ask them
+            for (auto const& server : serversToAsk) {
+              auto headers = std::make_unique<
+                  std::unordered_map<std::string, std::string>>();
+              _cc->asyncRequest("", coordId, "server:" + server,
+                                rest::RequestType::GET, path, body, headers,
+                                nullptr, timeleft);
+              requestsInFlight++;
+            }
 
-          // Wait for responses
-          // First wait for Leader
-          {
-            auto result = _cc->wait("", coordId, leaderOpId, "");
-            if (result.status != CL_COMM_RECEIVED) {
-              // We did not even get count for leader, use defaults
-              counters.erase(s.first);
-              _cc->drop("", coordId, 0, "");
-              // Just in case, to get a new state
-              coordId = TRI_NewTickServer();
-              continue;
-            }
-            auto body = result.result->getBodyVelocyPack();
-            VPackSlice response = body->slice();
-            if (!response.isObject()) {
-              LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-                  << "Recieved invalid response for count. Shard distribution "
-                     "inaccurate";
-              continue;
-            }
-            response = response.get("count");
-            if (!response.isNumber()) {
-              LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-                  << "Recieved invalid response for count. Shard distribution "
-                     "inaccurate";
-              continue;
-            }
-            entry.total = response.getNumber<uint64_t>();
-            entry.current =
-                entry.total;  // << We use this to flip around min/max test
-          }
-
-          // Now wait for others
-          while (requestsInFlight > 0) {
-            auto result = _cc->wait("", coordId, 0, "");
-            requestsInFlight--;
-            if (result.status != CL_COMM_RECEIVED) {
-              // We do not care for errors of any kind.
-              // We can continue here because all other requests will be handled
-              // by the accumulated timeout
-              continue;
-            } else {
+            // Wait for responses
+            // First wait for Leader
+            {
+              auto result = _cc->wait("", coordId, leaderOpId, "");
+              if (result.status != CL_COMM_RECEIVED) {
+                // We did not even get count for leader, use defaults
+                _cc->drop("", coordId, 0, "");
+                // Just in case, to get a new state
+                coordId = TRI_NewTickServer();
+                continue;
+              }
               auto body = result.result->getBodyVelocyPack();
               VPackSlice response = body->slice();
               if (!response.isObject()) {
                 LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-                    << "Recieved invalid response for count. Shard "
-                       "distribution inaccurate";
+                    << "Recieved invalid response for count. Shard distribution "
+                       "inaccurate";
                 continue;
               }
               response = response.get("count");
               if (!response.isNumber()) {
                 LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-                    << "Recieved invalid response for count. Shard "
-                       "distribution inaccurate";
+                    << "Recieved invalid response for count. Shard distribution "
+                       "inaccurate";
                 continue;
               }
-              uint64_t other = response.getNumber<uint64_t>();
-              if (other < entry.total) {
-                // If we have more in total we need the minimum of other counts
-                if (other < entry.current) {
-                  entry.current = other;
-                }
+              entry.total = response.getNumber<uint64_t>();
+              entry.current =
+                  entry.total;  // << We use this to flip around min/max test
+            }
+
+            // Now wait for others
+            while (requestsInFlight > 0) {
+              auto result = _cc->wait("", coordId, 0, "");
+              requestsInFlight--;
+              if (result.status != CL_COMM_RECEIVED) {
+                // We do not care for errors of any kind.
+                // We can continue here because all other requests will be handled
+                // by the accumulated timeout
+                continue;
               } else {
-                // If we only have more in total we take the maximum of other
-                // counts
-                if (entry.total <= entry.current && other > entry.current) {
-                  entry.current = other;
+                auto body = result.result->getBodyVelocyPack();
+                VPackSlice response = body->slice();
+                if (!response.isObject()) {
+                  LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+                      << "Recieved invalid response for count. Shard "
+                         "distribution inaccurate";
+                  continue;
+                }
+                response = response.get("count");
+                if (!response.isNumber()) {
+                  LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
+                      << "Recieved invalid response for count. Shard "
+                         "distribution inaccurate";
+                  continue;
+                }
+                uint64_t other = response.getNumber<uint64_t>();
+                if (other < entry.total) {
+                  // If we have more in total we need the minimum of other counts
+                  if (other < entry.current) {
+                    entry.current = other;
+                  }
+                } else {
+                  // If we only have more in total we take the maximum of other
+                  // counts
+                  if (entry.total <= entry.current && other > entry.current) {
+                    entry.current = other;
+                  }
                 }
               }
             }
