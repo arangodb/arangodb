@@ -84,7 +84,7 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   void loadJavaScriptFileInAllContexts(TRI_vocbase_t*, std::string const& file,
                                        VPackBuilder* builder);
   void loadJavaScriptFileInDefaultContext(TRI_vocbase_t*, std::string const& file,
-                                       VPackBuilder* builder);
+                                          VPackBuilder* builder);
   void startGarbageCollection();
 
   /// @brief forceContext == -1 means that any free context may be
@@ -109,9 +109,11 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
     }
   }
 
-  V8DealerFeature::stats getCurrentContextNumbers();
+  void setMaximumContexts(size_t nr) {
+    _nrMaxContexts = nr;
+  }
 
-  void setNumberContexts(size_t nr) { _forceNrContexts = nr; }
+  V8DealerFeature::stats getCurrentContextNumbers();
 
   void defineBoolean(std::string const& name, bool value) {
     _definedBooleans[name] = value;
@@ -153,7 +155,6 @@ class V8DealerFeature final : public application_features::ApplicationFeature {
   std::vector<V8Context*> _freeContexts;
   std::vector<V8Context*> _dirtyContexts;
   std::unordered_set<V8Context*> _busyContexts;
-  size_t _forceNrContexts;
   size_t _contextsModificationBlockers;
 
   JSLoader _startupLoader;

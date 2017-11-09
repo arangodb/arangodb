@@ -145,6 +145,7 @@ static std::string const ReadStringValue(VPackSlice info,
 ///        Can only be given to V8, cannot be used for functionality.
 LogicalCollection::LogicalCollection(LogicalCollection const& other)
     : _internalVersion(0),
+      _isAStub(other._isAStub),
       _cid(other.cid()),
       _planId(other.planId()),
       _type(other.type()),
@@ -183,8 +184,10 @@ LogicalCollection::LogicalCollection(LogicalCollection const& other)
 // The Slice contains the part of the plan that
 // is relevant for this collection.
 LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
-                                     VPackSlice const& info)
+                                     VPackSlice const& info,
+                                     bool isAStub)
     : _internalVersion(0),
+      _isAStub(isAStub),
       _cid(ReadCid(info)),
       _planId(ReadPlanId(info, _cid)),
       _type(Helper::readNumericValue<TRI_col_type_e, int>(
@@ -215,30 +218,12 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
       _clusterEstimateTTL(0),
       _planVersion(0) {
   
-  if (_globallyUniqueId.empty()) {
-    // no id found. generate a new one
-    _globallyUniqueId = generateGloballyUniqueId();
-  }
-  
-  TRI_ASSERT(!_globallyUniqueId.empty());
- 
-  // add keyOptions from slice
   TRI_ASSERT(info.isObject());
-  VPackSlice keyOpts = info.get("keyOptions");
-  _keyGenerator.reset(KeyGenerator::factory(keyOpts));
-  if (!keyOpts.isNone()) {
-    _keyOptions = VPackBuilder::clone(keyOpts).steal();
-  }
 
-  TRI_ASSERT(_physical != nullptr);
   if (!IsAllowedName(info)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
-
-  // This has to be called AFTER _phyiscal and _logical are properly linked
-  // together.
-  prepareIndexes(info.get("indexes"));
-
+  
   if (_version < minimumVersion()) {
     // collection is too "old"
     std::string errorMsg(std::string("collection '") + _name +
@@ -247,11 +232,23 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, errorMsg);
   }
+  
+  if (_globallyUniqueId.empty()) {
+    // no id found. generate a new one
+    _globallyUniqueId = generateGloballyUniqueId();
+  }
+  
+  TRI_ASSERT(!_globallyUniqueId.empty());
+ 
+  // add keyOptions from slice
+  VPackSlice keyOpts = info.get("keyOptions");
+  _keyGenerator.reset(KeyGenerator::factory(keyOpts));
+  if (!keyOpts.isNone()) {
+    _keyOptions = VPackBuilder::clone(keyOpts).steal();
+  }
 
   VPackSlice shardKeysSlice = info.get("shardKeys");
 
-  // TODO: decide whether we will still need this
-  // bool const isCluster = ServerState::instance()->isRunningInCluster();
   // Cluster only tests
   if (ServerState::instance()->isCoordinator()) {
     if ((_numberOfShards == 0 && !_isSmart) || _numberOfShards > 1000) {
@@ -385,6 +382,11 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t* vocbase,
 
   // update server's tick value
   TRI_UpdateTickServer(static_cast<TRI_voc_tick_t>(_cid));
+  
+  TRI_ASSERT(_physical != nullptr);
+  // This has to be called AFTER _phyiscal and _logical are properly linked
+  // together.
+  prepareIndexes(info.get("indexes"));
 }
 
 LogicalCollection::~LogicalCollection() {}
@@ -660,8 +662,8 @@ LogicalCollection::getIndexes() const {
 }
 
 void LogicalCollection::getIndexesVPack(VPackBuilder& result, bool withFigures,
-                                        bool forPersistence) const {
-  getPhysical()->getIndexesVPack(result, withFigures, forPersistence);
+                                        bool forPersistence, std::function<bool(arangodb::Index const*)> const& filter) const {
+  getPhysical()->getIndexesVPack(result, withFigures, forPersistence, filter);
 }
 
 // SECTION: Replication
@@ -952,6 +954,14 @@ void LogicalCollection::toVelocyPack(VPackBuilder& result, bool translateCids,
   TRI_ASSERT(result.isOpenObject());
   // We leave the object open
 }
+
+void LogicalCollection::toVelocyPackIgnore(VPackBuilder& result,
+    std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
+    bool forPersistence) const {
+  TRI_ASSERT(result.isOpenObject());
+  VPackBuilder b = toVelocyPackIgnore(ignoreKeys, translateCids, forPersistence);
+  result.add(VPackObjectIterator(b.slice())); 
+} 
 
 VPackBuilder LogicalCollection::toVelocyPackIgnore(
     std::unordered_set<std::string> const& ignoreKeys, bool translateCids,
