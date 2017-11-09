@@ -164,7 +164,8 @@ bool normalizeCmpNode(
 
 bool attributeAccessEqual(
     arangodb::aql::AstNode const* lhs,
-    arangodb::aql::AstNode const* rhs
+    arangodb::aql::AstNode const* rhs,
+    QueryContext const* ctx
 ) {
   struct NodeValue {
     enum class Type {
@@ -174,7 +175,7 @@ bool attributeAccessEqual(
       VALUE      // REFERENCE | VALUE
     };
 
-    bool read(arangodb::aql::AstNode const* node) noexcept {
+    bool read(arangodb::aql::AstNode const* node, QueryContext const* ctx) noexcept {
       this->strVal = irs::string_ref::nil;
       this->iVal= 0;
       this->type = Type::INVALID;
@@ -211,16 +212,36 @@ bool attributeAccessEqual(
         auto* offset = node->getMemberUnchecked(1);
 
         if (root && offset) {
-          if (offset->isIntValue()) {
-            this->iVal = offset->getIntValue();
-            this->type = Type::ACCESS;
-            this->root = root;
+
+          aqlValue.reset(*offset);
+
+          if (!ctx && !aqlValue.isConstant()) {
+            // can't evaluate expression at compile time
             return true;
-          } else if (offset->isStringValue()){
-            this->strVal = getStringRef(*offset);
-            this->type = Type::ACCESS;
-            this->root = root;
-            return true;
+          }
+
+          if (!aqlValue.execute(*ctx)) {
+            // failed to execute expression
+            return false;
+          }
+
+          switch (aqlValue.type()) {
+            case arangodb::aql::VALUE_TYPE_INT:
+            case arangodb::aql::VALUE_TYPE_DOUBLE:
+              this->iVal = aqlValue.getInt64();
+              this->type = Type::ACCESS;
+              this->root = root;
+              return true;
+            case arangodb::aql::VALUE_TYPE_STRING:
+              if (!aqlValue.getString(this->strVal)) {
+                // failed to parse value as string
+                return false;
+              }
+              this->type = Type::ACCESS;
+              this->root = root;
+              return true;
+            default:
+              break;
           }
         }
 
@@ -263,13 +284,14 @@ bool attributeAccessEqual(
       return !(*this == rhs);
     }
 
+    arangodb::iresearch::ScopedAqlValue aqlValue;
     irs::string_ref strVal;
     int64_t iVal;
     Type type { Type::INVALID };
     arangodb::aql::AstNode const* root;
   } lhsValue, rhsValue;
 
-  while (lhsValue.read(lhs) & rhsValue.read(rhs)) {
+  while (lhsValue.read(lhs, ctx) & rhsValue.read(rhs, ctx)) {
     if (lhsValue != rhsValue) {
       return false;
     }

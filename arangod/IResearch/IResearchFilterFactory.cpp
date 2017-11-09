@@ -718,7 +718,7 @@ bool rangeFromBinaryAnd(
       auto const* lhsAttr = lhsNormNode.attribute;
       auto const* rhsAttr = rhsNormNode.attribute;
 
-      if (arangodb::iresearch::attributeAccessEqual(lhsAttr, rhsAttr)) {
+      if (arangodb::iresearch::attributeAccessEqual(lhsAttr, rhsAttr, filter ? &ctx : nullptr)) {
         auto const* lhsValue = lhsNormNode.value;
         auto const* rhsValue = rhsNormNode.value;
 
