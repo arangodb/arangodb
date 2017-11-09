@@ -20,16 +20,16 @@
 /// @author Manuel Baesler
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "StatisticsWorker.h"
 #include "ConnectionStatistics.h"
 #include "RequestStatistics.h"
 #include "ServerStatistics.h"
 #include "StatisticsFeature.h"
-#include "StatisticsWorker.h"
 
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
-#include "Basics/process-utils.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/process-utils.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -41,15 +41,15 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
-#include "VocBase/Methods/Indexes.h"
 #include "V8Server/V8DealerFeature.h"
+#include "VocBase/Methods/Collections.h"
+#include "VocBase/Methods/Indexes.h"
 
 #include <velocypack/Exception.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/velocypack-aliases.h>
 
 #include <iostream>
-
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -75,72 +75,59 @@ StatisticsWorker::StatisticsWorker() : Thread("StatisticsWorker") {
 }
 
 void StatisticsWorker::collectGarbage() const {
-
   auto time = TRI_microtime();
-
-  _collectGarbage("_statistics", time - 3600); // 1 hour
-  _collectGarbage("_statisticsRaw", time - 3600); // 1 hour
-  _collectGarbage("_statistics15", time  - 30 * 86400);  // 30 days
+  
+  _collectGarbage("_statistics", time - 3600);          // 1 hour
+  _collectGarbage("_statisticsRaw", time - 3600);       // 1 hour
+  _collectGarbage("_statistics15", time - 30 * 86400);  // 30 days
 }
 
-void StatisticsWorker::_collectGarbage(std::string const& collectionName,
+void StatisticsWorker::_collectGarbage(std::string const& name,
                                        double start) const {
-
   auto queryRegistryFeature =
-       application_features::ApplicationServer::getFeature<
-            QueryRegistryFeature>("QueryRegistry");
+      application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
+          "QueryRegistry");
   auto _queryRegistry = queryRegistryFeature->queryRegistry();
 
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
 
   auto bindVars = std::make_shared<VPackBuilder>();
   bindVars->openObject();
-  bindVars->add("@collection", VPackValue(collectionName));
+  bindVars->add("@collection", VPackValue(name));
   bindVars->add("start", VPackValue(start));
   bindVars->close();
 
-  std::string const aql("FOR s in @@collection FILTER s.time < @start RETURN s._key");
-    arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(aql),
-                               bindVars, nullptr, arangodb::aql::PART_MAIN);
+  std::string const aql(
+      "FOR s in @@collection FILTER s.time < @start RETURN s._key");
+  arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(aql),
+                             bindVars, nullptr, arangodb::aql::PART_MAIN);
 
-    auto queryResult = query.execute(_queryRegistry);
-    if (queryResult.code != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
-    }
+  auto queryResult = query.execute(_queryRegistry);
+  if (queryResult.code != TRI_ERROR_NO_ERROR) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+  }
 
-    VPackSlice keysToRemove = queryResult.result->slice();
+  VPackSlice keysToRemove = queryResult.result->slice();
 
-    OperationOptions opOptions;
-    opOptions.returnOld = false;
-    opOptions.ignoreRevs = true;
-    opOptions.waitForSync = false;
-    opOptions.silent = false;
+  OperationOptions opOptions;
+  opOptions.returnOld = false;
+  opOptions.ignoreRevs = true;
+  opOptions.waitForSync = false;
+  opOptions.silent = false;
 
-    auto transactionContext(transaction::StandaloneContext::Create(vocbase));
+  auto ctx = transaction::StandaloneContext::Create(vocbase);
+  SingleCollectionTransaction trx(ctx, name, AccessMode::Type::WRITE);
+  trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
-    SingleCollectionTransaction trx(transactionContext, collectionName,
-                                    AccessMode::Type::WRITE);
-    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  Result res = trx.begin();
 
-    Result res = trx.begin();
+  if (!res.ok()) {
+    return;
+  }
 
-    if (!res.ok()) {
-      return;
-    }
-
-    OperationResult result = trx.remove(collectionName, keysToRemove, opOptions);
-
-    res = trx.finish(result.code);
-
-    /* useless until we do something
-    if (!res.ok()) {
-      return;
-    } */
+  OperationResult result = trx.remove(name, keysToRemove, opOptions);
+  res = trx.finish(result.code);
 }
-
-
-
-
 
 void StatisticsWorker::historian() const {
   std::string clusterId = "";
@@ -152,7 +139,8 @@ void StatisticsWorker::historian() const {
   try {
     auto now = TRI_microtime();
 
-    std::shared_ptr<arangodb::velocypack::Builder> prevRawBuilder = _lastEntry("_statisticsRaw", now - 2 * INTERVAL, clusterId);
+    std::shared_ptr<arangodb::velocypack::Builder> prevRawBuilder =
+        _lastEntry("_statisticsRaw", now - 2 * INTERVAL, clusterId);
     VPackSlice prevRaw = prevRawBuilder->slice();
 
     VPackBuilder rawBuilder = _generateRawStatistics(clusterId, now);
@@ -162,7 +150,8 @@ void StatisticsWorker::historian() const {
     // create the per-seconds statistics
     if (prevRaw.isArray() && prevRaw.length()) {
       VPackSlice slice = prevRaw.at(0).resolveExternals();
-      VPackBuilder perSecsBuilder = _computePerSeconds(rawBuilder.slice(), slice, clusterId);
+      VPackBuilder perSecsBuilder =
+          _computePerSeconds(rawBuilder.slice(), slice, clusterId);
       VPackSlice perSecs = perSecsBuilder.slice();
 
       if (perSecs.length()) {
@@ -172,13 +161,13 @@ void StatisticsWorker::historian() const {
   } catch (...) {
     // errors on shutdown are expected. do not log them in case they occur
     // if (err.errorNum !== internal.errors.ERROR_SHUTTING_DOWN.code &&
-    //     err.errorNum !== internal.errors.ERROR_ARANGO_CORRUPTED_COLLECTION.code &&
-    //     err.errorNum !== internal.errors.ERROR_ARANGO_CORRUPTED_DATAFILE.code) {
+    //     err.errorNum !==
+    //     internal.errors.ERROR_ARANGO_CORRUPTED_COLLECTION.code &&
+    //     err.errorNum !==
+    //     internal.errors.ERROR_ARANGO_CORRUPTED_DATAFILE.code) {
     //   require('console').warn('catch error in historian: %s', err.stack);
   }
 }
-
-
 
 void StatisticsWorker::historianAverage() const {
   std::string clusterId = "";
@@ -191,7 +180,8 @@ void StatisticsWorker::historianAverage() const {
     uint64_t now = static_cast<uint64_t>(TRI_microtime());
     uint64_t start;
 
-    std::shared_ptr<arangodb::velocypack::Builder> prev15Builder = _lastEntry("_statistics15", now - 2 * HISTORY_INTERVAL, clusterId);
+    std::shared_ptr<arangodb::velocypack::Builder> prev15Builder =
+        _lastEntry("_statistics15", now - 2 * HISTORY_INTERVAL, clusterId);
     VPackSlice prev15 = prev15Builder->slice();
 
     if (prev15.isArray() && prev15.length()) {
@@ -207,13 +197,15 @@ void StatisticsWorker::historianAverage() const {
     if (stat15.length()) {
       _saveSlice(stat15, "_statistics15");
     }
-  } catch(velocypack::Exception const& ex) {
-    LOG_TOPIC(DEBUG, Logger::STATISTICS) << "vpack exception in historian average "
-    << ex.what() << " " << ex.errorCode() << " " << ex;
+  } catch (velocypack::Exception const& ex) {
+    LOG_TOPIC(DEBUG, Logger::STATISTICS)
+        << "vpack exception in historian average " << ex.what() << " "
+        << ex.errorCode() << " " << ex;
 
-  } catch(basics::Exception const& ex) {
+  } catch (basics::Exception const& ex) {
     LOG_TOPIC(DEBUG, Logger::STATISTICS) << "Exception in historian average "
-    << ex.what() << " " << ex.message() << " " << ex.code();
+                                         << ex.what() << " " << ex.message()
+                                         << " " << ex.code();
 
   } catch (...) {
     LOG_TOPIC(DEBUG, Logger::STATISTICS) << "Exception in historian average";
@@ -221,12 +213,13 @@ void StatisticsWorker::historianAverage() const {
 }
 
 std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::_lastEntry(
-  std::string const& collectionName, double start, std::string const& clusterId) const {
+    std::string const& collectionName, double start,
+    std::string const& clusterId) const {
   std::string filter = "";
 
   auto queryRegistryFeature =
-  application_features::ApplicationServer::getFeature<
-      QueryRegistryFeature>("QueryRegistry");
+      application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
+          "QueryRegistry");
   auto _queryRegistry = queryRegistryFeature->queryRegistry();
 
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
@@ -243,9 +236,10 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::_lastEntry(
 
   bindVars->close();
 
-  std::string const aql("FOR s in @@collection FILTER s.time >= @start " + filter + " SORT s.time DESC LIMIT 1 RETURN s");
+  std::string const aql("FOR s in @@collection FILTER s.time >= @start " +
+                        filter + " SORT s.time DESC LIMIT 1 RETURN s");
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(aql),
-                          bindVars, nullptr, arangodb::aql::PART_MAIN);
+                             bindVars, nullptr, arangodb::aql::PART_MAIN);
 
   auto queryResult = query.execute(_queryRegistry);
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -255,12 +249,13 @@ std::shared_ptr<arangodb::velocypack::Builder> StatisticsWorker::_lastEntry(
   return queryResult.result;
 }
 
-VPackBuilder StatisticsWorker::_compute15Minute(double start, std::string const& clusterId) const {
+VPackBuilder StatisticsWorker::_compute15Minute(
+    double start, std::string const& clusterId) const {
   std::string filter = "";
 
   auto queryRegistryFeature =
-  application_features::ApplicationServer::getFeature<
-      QueryRegistryFeature>("QueryRegistry");
+      application_features::ApplicationServer::getFeature<QueryRegistryFeature>(
+          "QueryRegistry");
   auto _queryRegistry = queryRegistryFeature->queryRegistry();
 
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
@@ -276,9 +271,10 @@ VPackBuilder StatisticsWorker::_compute15Minute(double start, std::string const&
 
   bindVars->close();
 
-  std::string const aql("FOR s in _statistics FILTER s.time >= @start " + filter + " SORT s.time RETURN s");
+  std::string const aql("FOR s in _statistics FILTER s.time >= @start " +
+                        filter + " SORT s.time RETURN s");
   arangodb::aql::Query query(false, vocbase, arangodb::aql::QueryString(aql),
-                          bindVars, nullptr, arangodb::aql::PART_MAIN);
+                             bindVars, nullptr, arangodb::aql::PART_MAIN);
 
   auto queryResult = query.execute(_queryRegistry);
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
@@ -295,44 +291,27 @@ VPackBuilder StatisticsWorker::_compute15Minute(double start, std::string const&
     return builder;
   }
 
-  VPackSlice last = result.at(count-1).resolveExternals();
+  VPackSlice last = result.at(count - 1).resolveExternals();
 
-  float serverV8available = 0,
-  serverV8busy = 0,
-  serverV8dirty = 0,
-  serverV8free = 0,
-  serverV8max = 0,
-  serverThreadsRunning = 0,
-  serverThreadsWorking = 0,
-  serverThreadsBlocked = 0,
-  serverThreadsQueued = 0,
+  float serverV8available = 0, serverV8busy = 0, serverV8dirty = 0,
+        serverV8free = 0, serverV8max = 0, serverThreadsRunning = 0,
+        serverThreadsWorking = 0, serverThreadsBlocked = 0,
+        serverThreadsQueued = 0,
 
-  systemMinorPageFaultsPerSecond = 0,
-  systemMajorPageFaultsPerSecond = 0,
-  systemUserTimePerSecond = 0,
-  systemSystemTimePerSecond = 0,
-  systemResidentSize = 0,
-  systemVirtualSize = 0,
-  systemNumberOfThreads = 0,
+        systemMinorPageFaultsPerSecond = 0, systemMajorPageFaultsPerSecond = 0,
+        systemUserTimePerSecond = 0, systemSystemTimePerSecond = 0,
+        systemResidentSize = 0, systemVirtualSize = 0,
+        systemNumberOfThreads = 0,
 
-  httpRequestsTotalPerSecond = 0,
-  httpRequestsAsyncPerSecond = 0,
-  httpRequestsGetPerSecond = 0,
-  httpRequestsHeadPerSecond = 0,
-  httpRequestsPostPerSecond = 0,
-  httpRequestsPutPerSecond = 0,
-  httpRequestsPatchPerSecond = 0,
-  httpRequestsDeletePerSecond = 0,
-  httpRequestsOptionsPerSecond = 0,
-  httpRequestsOtherPerSecond = 0,
+        httpRequestsTotalPerSecond = 0, httpRequestsAsyncPerSecond = 0,
+        httpRequestsGetPerSecond = 0, httpRequestsHeadPerSecond = 0,
+        httpRequestsPostPerSecond = 0, httpRequestsPutPerSecond = 0,
+        httpRequestsPatchPerSecond = 0, httpRequestsDeletePerSecond = 0,
+        httpRequestsOptionsPerSecond = 0, httpRequestsOtherPerSecond = 0,
 
-  clientHttpConnections = 0,
-  clientBytesSentPerSecond = 0,
-  clientBytesReceivedPerSecond = 0,
-  clientAvgTotalTime = 0,
-  clientAvgRequestTime = 0,
-  clientAvgQueueTime = 0,
-  clientAvgIoTime = 0;
+        clientHttpConnections = 0, clientBytesSentPerSecond = 0,
+        clientBytesReceivedPerSecond = 0, clientAvgTotalTime = 0,
+        clientAvgRequestTime = 0, clientAvgQueueTime = 0, clientAvgIoTime = 0;
 
   for (auto const& vs : VPackArrayIterator(result)) {
     VPackSlice const& values = vs.resolveExternals();
@@ -356,28 +335,44 @@ VPackBuilder StatisticsWorker::_compute15Minute(double start, std::string const&
     serverThreadsBlocked += threads.get("blockedPerSecond").getNumber<float>();
     serverThreadsQueued += threads.get("queuedPerSecond").getNumber<float>();
 
-    systemMinorPageFaultsPerSecond += system.get("minorPageFaultsPerSecond").getNumber<float>();
-    systemMajorPageFaultsPerSecond += system.get("majorPageFaultsPerSecond").getNumber<float>();
-    systemUserTimePerSecond += system.get("userTimePerSecond").getNumber<float>();
-    systemSystemTimePerSecond += system.get("systemTimePerSecond").getNumber<float>();
+    systemMinorPageFaultsPerSecond +=
+        system.get("minorPageFaultsPerSecond").getNumber<float>();
+    systemMajorPageFaultsPerSecond +=
+        system.get("majorPageFaultsPerSecond").getNumber<float>();
+    systemUserTimePerSecond +=
+        system.get("userTimePerSecond").getNumber<float>();
+    systemSystemTimePerSecond +=
+        system.get("systemTimePerSecond").getNumber<float>();
     systemResidentSize += system.get("residentSize").getNumber<float>();
     systemVirtualSize += system.get("virtualSize").getNumber<float>();
     systemNumberOfThreads += system.get("numberOfThreads").getNumber<float>();
 
-    httpRequestsTotalPerSecond += http.get("requestsTotalPerSecond").getNumber<float>();
-    httpRequestsAsyncPerSecond += http.get("requestsAsyncPerSecond").getNumber<float>();
-    httpRequestsGetPerSecond += http.get("requestsGetPerSecond").getNumber<float>();
-    httpRequestsHeadPerSecond += http.get("requestsHeadPerSecond").getNumber<float>();
-    httpRequestsPostPerSecond += http.get("requestsPostPerSecond").getNumber<float>();
-    httpRequestsPutPerSecond += http.get("requestsPutPerSecond").getNumber<float>();
-    httpRequestsPatchPerSecond += http.get("requestsPatchPerSecond").getNumber<float>();
-    httpRequestsDeletePerSecond += http.get("requestsDeletePerSecond").getNumber<float>();
-    httpRequestsOptionsPerSecond += http.get("requestsOptionsPerSecond").getNumber<float>();
-    httpRequestsOtherPerSecond += http.get("requestsOtherPerSecond").getNumber<float>();
+    httpRequestsTotalPerSecond +=
+        http.get("requestsTotalPerSecond").getNumber<float>();
+    httpRequestsAsyncPerSecond +=
+        http.get("requestsAsyncPerSecond").getNumber<float>();
+    httpRequestsGetPerSecond +=
+        http.get("requestsGetPerSecond").getNumber<float>();
+    httpRequestsHeadPerSecond +=
+        http.get("requestsHeadPerSecond").getNumber<float>();
+    httpRequestsPostPerSecond +=
+        http.get("requestsPostPerSecond").getNumber<float>();
+    httpRequestsPutPerSecond +=
+        http.get("requestsPutPerSecond").getNumber<float>();
+    httpRequestsPatchPerSecond +=
+        http.get("requestsPatchPerSecond").getNumber<float>();
+    httpRequestsDeletePerSecond +=
+        http.get("requestsDeletePerSecond").getNumber<float>();
+    httpRequestsOptionsPerSecond +=
+        http.get("requestsOptionsPerSecond").getNumber<float>();
+    httpRequestsOtherPerSecond +=
+        http.get("requestsOtherPerSecond").getNumber<float>();
 
     clientHttpConnections += client.get("httpConnections").getNumber<float>();
-    clientBytesSentPerSecond += client.get("bytesSentPerSecond").getNumber<float>();
-    clientBytesReceivedPerSecond += client.get("bytesReceivedPerSecond").getNumber<float>();
+    clientBytesSentPerSecond +=
+        client.get("bytesSentPerSecond").getNumber<float>();
+    clientBytesReceivedPerSecond +=
+        client.get("bytesReceivedPerSecond").getNumber<float>();
     clientAvgTotalTime += client.get("avgTotalTime").getNumber<float>();
     clientAvgRequestTime += client.get("avgRequestTime").getNumber<float>();
     clientAvgQueueTime += client.get("avgQueueTime").getNumber<float>();
@@ -452,8 +447,10 @@ VPackBuilder StatisticsWorker::_compute15Minute(double start, std::string const&
   builder.close();
 
   builder.add("system", VPackValue(VPackValueType::Object));
-  builder.add("minorPageFaultsPerSecond", VPackValue(systemMinorPageFaultsPerSecond));
-  builder.add("majorPageFaultsPerSecond", VPackValue(systemMajorPageFaultsPerSecond));
+  builder.add("minorPageFaultsPerSecond",
+              VPackValue(systemMinorPageFaultsPerSecond));
+  builder.add("majorPageFaultsPerSecond",
+              VPackValue(systemMajorPageFaultsPerSecond));
   builder.add("userTimePerSecond", VPackValue(systemUserTimePerSecond));
   builder.add("systemTimePerSecond", VPackValue(systemSystemTimePerSecond));
   builder.add("residentSize", VPackValue(systemResidentSize));
@@ -469,15 +466,18 @@ VPackBuilder StatisticsWorker::_compute15Minute(double start, std::string const&
   builder.add("requestsPostPerSecond", VPackValue(httpRequestsPostPerSecond));
   builder.add("requestsPutPerSecond", VPackValue(httpRequestsPutPerSecond));
   builder.add("requestsPatchPerSecond", VPackValue(httpRequestsPatchPerSecond));
-  builder.add("requestsDeletePerSecond", VPackValue(httpRequestsDeletePerSecond));
-  builder.add("requestsOptionsPerSecond", VPackValue(httpRequestsOptionsPerSecond));
+  builder.add("requestsDeletePerSecond",
+              VPackValue(httpRequestsDeletePerSecond));
+  builder.add("requestsOptionsPerSecond",
+              VPackValue(httpRequestsOptionsPerSecond));
   builder.add("requestsOtherPerSecond", VPackValue(httpRequestsOtherPerSecond));
   builder.close();
 
   builder.add("client", VPackValue(VPackValueType::Object));
   builder.add("httpConnections", VPackValue(clientHttpConnections));
   builder.add("bytesSentPerSecond", VPackValue(clientBytesSentPerSecond));
-  builder.add("bytesReceivedPerSecond", VPackValue(clientBytesReceivedPerSecond));
+  builder.add("bytesReceivedPerSecond",
+              VPackValue(clientBytesReceivedPerSecond));
   builder.add("avgTotalTime", VPackValue(clientAvgTotalTime));
   builder.add("avgRequestTime", VPackValue(clientAvgRequestTime));
   builder.add("avgQueueTime", VPackValue(clientAvgQueueTime));
@@ -490,22 +490,26 @@ VPackBuilder StatisticsWorker::_compute15Minute(double start, std::string const&
 }
 
 VPackBuilder StatisticsWorker::_computePerSeconds(
-  VPackSlice const& current, VPackSlice const& prev, std::string const& clusterId) const {
+    VPackSlice const& current, VPackSlice const& prev,
+    std::string const& clusterId) const {
   VPackBuilder result;
   result.openObject();
 
-  if (prev.get("time").getNumber<double>() + INTERVAL * 1.5 < current.get("time").getNumber<double>()) {
+  if (prev.get("time").getNumber<double>() + INTERVAL * 1.5 <
+      current.get("time").getNumber<double>()) {
     result.close();
     return result;
   }
 
-  if (prev.get("server").get("uptime").getNumber<double>() > current.get("server").get("uptime").getNumber<double>()) {
-      result.close();
-      return result;
+  if (prev.get("server").get("uptime").getNumber<double>() >
+      current.get("server").get("uptime").getNumber<double>()) {
+    result.close();
+    return result;
   }
 
   // compute differences and average per second
-  auto dt = current.get("time").getNumber<double>() - prev.get("time").getNumber<double>();
+  auto dt = current.get("time").getNumber<double>() -
+            prev.get("time").getNumber<double>();
 
   if (dt <= 0) {
     result.close();
@@ -517,14 +521,24 @@ VPackBuilder StatisticsWorker::_computePerSeconds(
   VPackSlice currentSystem = current.get("system");
   VPackSlice prevSystem = prev.get("system");
   result.add("system", VPackValue(VPackValueType::Object));
-  result.add("minorPageFaultsPerSecond", VPackValue((currentSystem.get("minorPageFaults").getNumber<float>() -
-                                                        prevSystem.get("minorPageFaults").getNumber<float>()) / dt));
-  result.add("majorPageFaultsPerSecond", VPackValue((currentSystem.get("majorPageFaults").getNumber<float>() -
-                                                        prevSystem.get("majorPageFaults").getNumber<float>()) / dt));
-  result.add("userTimePerSecond", VPackValue((currentSystem.get("userTime").getNumber<float>() -
-                                                 prevSystem.get("userTime").getNumber<float>()) / dt));
-  result.add("systemTimePerSecond", VPackValue((currentSystem.get("systemTime").getNumber<float>() -
-                                                   prevSystem.get("systemTime").getNumber<float>()) / dt));
+  result.add(
+      "minorPageFaultsPerSecond",
+      VPackValue((currentSystem.get("minorPageFaults").getNumber<float>() -
+                  prevSystem.get("minorPageFaults").getNumber<float>()) /
+                 dt));
+  result.add(
+      "majorPageFaultsPerSecond",
+      VPackValue((currentSystem.get("majorPageFaults").getNumber<float>() -
+                  prevSystem.get("majorPageFaults").getNumber<float>()) /
+                 dt));
+  result.add("userTimePerSecond",
+             VPackValue((currentSystem.get("userTime").getNumber<float>() -
+                         prevSystem.get("userTime").getNumber<float>()) /
+                        dt));
+  result.add("systemTimePerSecond",
+             VPackValue((currentSystem.get("systemTime").getNumber<float>() -
+                         prevSystem.get("systemTime").getNumber<float>()) /
+                        dt));
   result.add("residentSize", currentSystem.get("residentSize"));
   result.add("residentSizePercent", currentSystem.get("residentSizePercent"));
   result.add("virtualSize", currentSystem.get("virtualSize"));
@@ -557,26 +571,36 @@ VPackBuilder StatisticsWorker::_computePerSeconds(
   VPackSlice currentHttp = current.get("http");
   VPackSlice prevHttp = prev.get("http");
   result.add("http", VPackValue(VPackValueType::Object));
-  result.add("requestsTotalPerSecond", VPackValue((currentHttp.get("requestsTotal").getNumber<float>() -
-                                                      prevHttp.get("requestsTotal").getNumber<float>()) / dt));
-  result.add("requestsAsyncPerSecond", VPackValue((currentHttp.get("requestsAsync").getNumber<float>() -
-                                                      prevHttp.get("requestsAsync").getNumber<float>()) / dt));
-  result.add("requestsGetPerSecond", VPackValue((currentHttp.get("requestsGet").getNumber<float>() -
-                                                    prevHttp.get("requestsGet").getNumber<float>()) / dt));
-  result.add("requestsHeadPerSecond", VPackValue((currentHttp.get("requestsHead").getNumber<float>() -
-                                                     prevHttp.get("requestsHead").getNumber<float>()) / dt));
-  result.add("requestsPostPerSecond", VPackValue((currentHttp.get("requestsPost").getNumber<float>() -
-                                                     prevHttp.get("requestsPost").getNumber<float>()) / dt));
-  result.add("requestsPutPerSecond", VPackValue((currentHttp.get("requestsPut").getNumber<float>() -
-                                                    prevHttp.get("requestsPut").getNumber<float>()) / dt));
-  result.add("requestsPatchPerSecond", VPackValue((currentHttp.get("requestsPatch").getNumber<float>() -
-                                                      prevHttp.get("requestsPatch").getNumber<float>()) / dt));
-  result.add("requestsDeletePerSecond", VPackValue((currentHttp.get("requestsDelete").getNumber<float>() -
-                                                       prevHttp.get("requestsDelete").getNumber<float>()) / dt));
-  result.add("requestsOptionsPerSecond", VPackValue((currentHttp.get("requestsOptions").getNumber<float>() -
-                                                        prevHttp.get("requestsOptions").getNumber<float>()) / dt));
-  result.add("requestsOtherPerSecond", VPackValue((currentHttp.get("requestsOther").getNumber<float>() -
-                                                      prevHttp.get("requestsOther").getNumber<float>()) / dt));
+  result.add("requestsTotalPerSecond",
+             VPackValue((currentHttp.get("requestsTotal").getNumber<float>() -
+                         prevHttp.get("requestsTotal").getNumber<float>()) / dt));
+  result.add("requestsAsyncPerSecond",
+             VPackValue((currentHttp.get("requestsAsync").getNumber<float>() -
+                         prevHttp.get("requestsAsync").getNumber<float>()) / dt));
+  result.add("requestsGetPerSecond",
+             VPackValue((currentHttp.get("requestsGet").getNumber<float>() -
+                         prevHttp.get("requestsGet").getNumber<float>()) / dt));
+  result.add("requestsHeadPerSecond",
+             VPackValue((currentHttp.get("requestsHead").getNumber<float>() -
+                         prevHttp.get("requestsHead").getNumber<float>()) / dt));
+  result.add("requestsPostPerSecond",
+             VPackValue((currentHttp.get("requestsPost").getNumber<float>() -
+                         prevHttp.get("requestsPost").getNumber<float>()) / dt));
+  result.add("requestsPutPerSecond",
+             VPackValue((currentHttp.get("requestsPut").getNumber<float>() -
+                         prevHttp.get("requestsPut").getNumber<float>()) / dt));
+  result.add("requestsPatchPerSecond",
+             VPackValue((currentHttp.get("requestsPatch").getNumber<float>() -
+                         prevHttp.get("requestsPatch").getNumber<float>()) / dt));
+  result.add("requestsDeletePerSecond",
+             VPackValue((currentHttp.get("requestsDelete").getNumber<float>() -
+                         prevHttp.get("requestsDelete").getNumber<float>()) / dt));
+  result.add("requestsOptionsPerSecond",
+             VPackValue((currentHttp.get("requestsOptions").getNumber<float>() -
+                         prevHttp.get("requestsOptions").getNumber<float>()) / dt));
+  result.add("requestsOtherPerSecond",
+             VPackValue((currentHttp.get("requestsOther").getNumber<float>() -
+                         prevHttp.get("requestsOther").getNumber<float>()) / dt));
   result.close();
 
   VPackSlice currentClient = current.get("client");
@@ -585,68 +609,106 @@ VPackBuilder StatisticsWorker::_computePerSeconds(
   result.add("httpConnections", currentClient.get("httpConnections"));
 
   // bytes sent
-  result.add("bytesSentPerSecond", VPackValue((currentClient.get("bytesSent").get("sum").getNumber<float>() -
-                                                  prevClient.get("bytesSent").get("sum").getNumber<float>()) / dt));
+  result.add(
+      "bytesSentPerSecond",
+      VPackValue((currentClient.get("bytesSent").get("sum").getNumber<float>() -
+                  prevClient.get("bytesSent").get("sum").getNumber<float>()) /
+                 dt));
 
-    VPackBuilder tmp = _avgPercentDistributon(currentClient.get("bytesSent"), prevClient.get("bytesSent"), _bytesSentDistribution);
-    result.add("bytesSentPercent", tmp.slice());
+  VPackBuilder tmp = _avgPercentDistributon(currentClient.get("bytesSent"),
+                                            prevClient.get("bytesSent"),
+                                            _bytesSentDistribution);
+  result.add("bytesSentPercent", tmp.slice());
 
-    // bytes received
-    result.add("bytesReceivedPerSecond", VPackValue((currentClient.get("bytesReceived").get("sum").getNumber<float>() -
-                                                        prevClient.get("bytesReceived").get("sum").getNumber<float>()) / dt));
+  // bytes received
+  result.add(
+      "bytesReceivedPerSecond",
+      VPackValue(
+          (currentClient.get("bytesReceived").get("sum").getNumber<float>() -
+           prevClient.get("bytesReceived").get("sum").getNumber<float>()) /
+          dt));
 
-    tmp = _avgPercentDistributon(currentClient.get("bytesReceived"), prevClient.get("bytesReceived"), _bytesReceivedDistribution);
-    result.add("bytesReceivedPercent", tmp.slice());
+  tmp = _avgPercentDistributon(currentClient.get("bytesReceived"),
+                               prevClient.get("bytesReceived"),
+                               _bytesReceivedDistribution);
+  result.add("bytesReceivedPercent", tmp.slice());
 
-    // total time
-    auto d1 = currentClient.get("totalTime").get("count").getNumber<float>() - prevClient.get("totalTime").get("count").getNumber<float>();
+  // total time
+  auto d1 = currentClient.get("totalTime").get("count").getNumber<float>() -
+            prevClient.get("totalTime").get("count").getNumber<float>();
 
-    if (d1 == 0) {
-      result.add("avgTotalTime", VPackValue(0));
-    } else {
-      result.add("avgTotalTime", VPackValue((currentClient.get("totalTime").get("sum").getNumber<float>() -
-                                                prevClient.get("totalTime").get("sum").getNumber<float>()) / d1));
-    }
+  if (d1 == 0) {
+    result.add("avgTotalTime", VPackValue(0));
+  } else {
+    result.add(
+        "avgTotalTime",
+        VPackValue(
+            (currentClient.get("totalTime").get("sum").getNumber<float>() -
+             prevClient.get("totalTime").get("sum").getNumber<float>()) /
+            d1));
+  }
 
-    tmp = _avgPercentDistributon(currentClient.get("totalTime"), prevClient.get("totalTime"), _requestTimeDistribution);
-    result.add("totalTimePercent", tmp.slice());
+  tmp = _avgPercentDistributon(currentClient.get("totalTime"),
+                               prevClient.get("totalTime"),
+                               _requestTimeDistribution);
+  result.add("totalTimePercent", tmp.slice());
 
   // request time
-  d1 = currentClient.get("requestTime").get("count").getNumber<float>() - prevClient.get("requestTime").get("count").getNumber<float>();
+  d1 = currentClient.get("requestTime").get("count").getNumber<float>() -
+       prevClient.get("requestTime").get("count").getNumber<float>();
 
   if (d1 == 0) {
     result.add("avgRequestTime", VPackValue(0));
   } else {
-    result.add("avgRequestTime", VPackValue((currentClient.get("requestTime").get("sum").getNumber<float>() -
-                                                prevClient.get("requestTime").get("sum").getNumber<float>()) / d1));
+    result.add(
+        "avgRequestTime",
+        VPackValue(
+            (currentClient.get("requestTime").get("sum").getNumber<float>() -
+             prevClient.get("requestTime").get("sum").getNumber<float>()) /
+            d1));
   }
-  tmp = _avgPercentDistributon(currentClient.get("requestTime"), prevClient.get("requestTime"), _requestTimeDistribution);
+  tmp = _avgPercentDistributon(currentClient.get("requestTime"),
+                               prevClient.get("requestTime"),
+                               _requestTimeDistribution);
   result.add("requestTimePercent", tmp.slice());
 
   // queue time
-  d1 = currentClient.get("queueTime").get("count").getNumber<float>() - prevClient.get("queueTime").get("count").getNumber<float>();
+  d1 = currentClient.get("queueTime").get("count").getNumber<float>() -
+       prevClient.get("queueTime").get("count").getNumber<float>();
 
   if (d1 == 0) {
     result.add("avgQueueTime", VPackValue(0));
   } else {
-    result.add("avgQueueTime", VPackValue((currentClient.get("queueTime").get("sum").getNumber<float>() -
-                                              prevClient.get("queueTime").get("sum").getNumber<float>()) / d1));
+    result.add(
+        "avgQueueTime",
+        VPackValue(
+            (currentClient.get("queueTime").get("sum").getNumber<float>() -
+             prevClient.get("queueTime").get("sum").getNumber<float>()) /
+            d1));
   }
 
-  tmp = _avgPercentDistributon(currentClient.get("queueTime"), prevClient.get("queueTime"), _requestTimeDistribution);
+  tmp = _avgPercentDistributon(currentClient.get("queueTime"),
+                               prevClient.get("queueTime"),
+                               _requestTimeDistribution);
   result.add("queueTimePercent", tmp.slice());
 
   // io time
-  d1 = currentClient.get("ioTime").get("count").getNumber<float>() - prevClient.get("ioTime").get("count").getNumber<float>();
+  d1 = currentClient.get("ioTime").get("count").getNumber<float>() -
+       prevClient.get("ioTime").get("count").getNumber<float>();
 
   if (d1 == 0) {
     result.add("avgIoTime", VPackValue(0));
   } else {
-    result.add("avgIoTime", VPackValue((currentClient.get("ioTime").get("sum").getNumber<float>() -
-                                           prevClient.get("ioTime").get("sum").getNumber<float>()) / d1));
+    result.add(
+        "avgIoTime",
+        VPackValue((currentClient.get("ioTime").get("sum").getNumber<float>() -
+                    prevClient.get("ioTime").get("sum").getNumber<float>()) /
+                   d1));
   }
 
-  tmp = _avgPercentDistributon(currentClient.get("ioTime"), prevClient.get("ioTime"), _requestTimeDistribution);
+  tmp = _avgPercentDistributon(currentClient.get("ioTime"),
+                               prevClient.get("ioTime"),
+                               _requestTimeDistribution);
   result.add("ioTimePercent", tmp.slice());
 
   result.close();
@@ -661,7 +723,8 @@ VPackBuilder StatisticsWorker::_computePerSeconds(
 }
 
 VPackBuilder StatisticsWorker::_avgPercentDistributon(
-  VPackSlice const& now, VPackSlice const& last, VPackBuilder const& cuts) const {
+    VPackSlice const& now, VPackSlice const& last,
+    VPackBuilder const& cuts) const {
   VPackBuilder builder;
 
   uint32_t n = cuts.slice().length() + 1;
@@ -669,16 +732,19 @@ VPackBuilder StatisticsWorker::_avgPercentDistributon(
   std::vector<float> result(n, 0);
 
   if (last.hasKey("count")) {
-    count = now.get("count").getNumber<float>() - last.get("count").getNumber<float>();
+    count = now.get("count").getNumber<float>() -
+            last.get("count").getNumber<float>();
   } else {
     count = now.get("count").getNumber<float>();
   }
 
-  if ( count != 0) {
+  if (count != 0) {
     VPackSlice counts = now.get("counts");
     VPackSlice lastCounts = last.get("counts");
-    for (uint32_t i = 0;  i < n;  i++) {
-      result[i] = (counts.at(i).getNumber<float>() - lastCounts.at(i).getNumber<float>()) / count;
+    for (uint32_t i = 0; i < n; i++) {
+      result[i] = (counts.at(i).getNumber<float>() -
+                   lastCounts.at(i).getNumber<float>()) /
+                  count;
     }
   }
 
@@ -696,7 +762,8 @@ VPackBuilder StatisticsWorker::_avgPercentDistributon(
   return builder;
 }
 
-VPackBuilder StatisticsWorker::_generateRawStatistics(std::string const& clusterId, double const& now) const {
+VPackBuilder StatisticsWorker::_generateRawStatistics(
+    std::string const& clusterId, double const& now) const {
   ProcessInfo info = TRI_ProcessInfoSelf();
   double rss = static_cast<double>(info._residentSize);
   double rssp = 0;
@@ -727,7 +794,8 @@ VPackBuilder StatisticsWorker::_generateRawStatistics(std::string const& cluster
   ServerStatistics serverInfo = ServerStatistics::statistics();
 
   V8DealerFeature* dealer =
-  application_features::ApplicationServer::getFeature<V8DealerFeature>("V8Dealer");
+      application_features::ApplicationServer::getFeature<V8DealerFeature>(
+          "V8Dealer");
   auto v8Counters = dealer->getCurrentContextNumbers();
 
   auto threadCounters = SchedulerFeature::SCHEDULER->getCounters();
@@ -745,8 +813,10 @@ VPackBuilder StatisticsWorker::_generateRawStatistics(std::string const& cluster
   builder.add("system", VPackValue(VPackValueType::Object));
   builder.add("minorPageFaults", VPackValue(info._minorPageFaults));
   builder.add("majorPageFaults", VPackValue(info._majorPageFaults));
-  builder.add("userTime", VPackValue(static_cast<float>(info._userTime) / static_cast<float>(info._scClkTck)));
-  builder.add("systemTime", VPackValue(static_cast<float>(info._systemTime) / static_cast<float>(info._scClkTck)));
+  builder.add("userTime", VPackValue(static_cast<float>(info._userTime) /
+                                     static_cast<float>(info._scClkTck)));
+  builder.add("systemTime", VPackValue(static_cast<float>(info._systemTime) /
+                                       static_cast<float>(info._scClkTck)));
   builder.add("numberOfThreads", VPackValue(info._numberThreads));
   builder.add("residentSize", VPackValue(rss));
   builder.add("residentSizePercent", VPackValue(rssp));
@@ -783,14 +853,25 @@ VPackBuilder StatisticsWorker::_generateRawStatistics(std::string const& cluster
   builder.add("http", VPackValue(VPackValueType::Object));
   builder.add("requestsTotal", VPackValue(totalRequests._count));
   builder.add("requestsAsync", VPackValue(asyncRequests._count));
-  builder.add("requestsGet", VPackValue(methodRequests[(int)rest::RequestType::GET]._count));
-  builder.add("requestsHead", VPackValue(methodRequests[(int)rest::RequestType::HEAD]._count));
-  builder.add("requestsPost", VPackValue(methodRequests[(int)rest::RequestType::POST]._count));
-  builder.add("requestsPut", VPackValue(methodRequests[(int)rest::RequestType::PUT]._count));
-  builder.add("requestsPatch", VPackValue(methodRequests[(int)rest::RequestType::PATCH]._count));
-  builder.add("requestsDelete", VPackValue(methodRequests[(int)rest::RequestType::DELETE_REQ]._count));
-  builder.add("requestsOptions", VPackValue(methodRequests[(int)rest::RequestType::OPTIONS]._count));
-  builder.add("requestsOther", VPackValue(methodRequests[(int)rest::RequestType::ILLEGAL]._count));
+  builder.add("requestsGet",
+              VPackValue(methodRequests[(int)rest::RequestType::GET]._count));
+  builder.add("requestsHead",
+              VPackValue(methodRequests[(int)rest::RequestType::HEAD]._count));
+  builder.add("requestsPost",
+              VPackValue(methodRequests[(int)rest::RequestType::POST]._count));
+  builder.add("requestsPut",
+              VPackValue(methodRequests[(int)rest::RequestType::PUT]._count));
+  builder.add("requestsPatch",
+              VPackValue(methodRequests[(int)rest::RequestType::PATCH]._count));
+  builder.add(
+      "requestsDelete",
+      VPackValue(methodRequests[(int)rest::RequestType::DELETE_REQ]._count));
+  builder.add(
+      "requestsOptions",
+      VPackValue(methodRequests[(int)rest::RequestType::OPTIONS]._count));
+  builder.add(
+      "requestsOther",
+      VPackValue(methodRequests[(int)rest::RequestType::ILLEGAL]._count));
   builder.close();
 
   // _serverStatistics()
@@ -807,10 +888,13 @@ VPackBuilder StatisticsWorker::_generateRawStatistics(std::string const& cluster
   builder.close();
 
   builder.add("threads", VPackValue(VPackValueType::Object));
-  builder.add("running", VPackValue(rest::Scheduler::numRunning(threadCounters)));
-  builder.add("working", VPackValue(rest::Scheduler::numWorking(threadCounters)));
-  builder.add("blocked", VPackValue(rest::Scheduler::numBlocked(threadCounters)));
-  builder.add("queued",  VPackValue(SchedulerFeature::SCHEDULER->numQueued()));
+  builder.add("running",
+              VPackValue(rest::Scheduler::numRunning(threadCounters)));
+  builder.add("working",
+              VPackValue(rest::Scheduler::numWorking(threadCounters)));
+  builder.add("blocked",
+              VPackValue(rest::Scheduler::numBlocked(threadCounters)));
+  builder.add("queued", VPackValue(SchedulerFeature::SCHEDULER->numQueued()));
   builder.close();
 
   builder.close();
@@ -820,7 +904,8 @@ VPackBuilder StatisticsWorker::_generateRawStatistics(std::string const& cluster
   return builder;
 }
 
-VPackBuilder StatisticsWorker::_fillDistribution(StatisticsDistribution const& dist) const {
+VPackBuilder StatisticsWorker::_fillDistribution(
+    StatisticsDistribution const& dist) const {
   VPackBuilder builder;
   builder.openObject();
 
@@ -851,24 +936,27 @@ void StatisticsWorker::_saveSlice(VPackSlice const& slice,
   opOptions.silent = false;
 
   // find and load collection given by name or identifier
-  auto transactionContext(transaction::StandaloneContext::Create(vocbase));
-  SingleCollectionTransaction trx(transactionContext, collection,
-                                  AccessMode::Type::WRITE);
+  auto ctx = transaction::StandaloneContext::Create(vocbase);
+  SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::WRITE);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
-
   if (!res.ok()) {
+    LOG_TOPIC(INFO, Logger::STATISTICS) << "could not start transaction on "
+                                        << collection;
     return;
   }
 
-  arangodb::OperationResult result =
-      trx.insert(collection, slice, opOptions);
+  arangodb::OperationResult result = trx.insert(collection, slice, opOptions);
 
   // Will commit if no error occured.
   // or abort if an error occured.
   // result stays valid!
   res = trx.finish(result.code);
+  if (res.fail()) {
+    LOG_TOPIC(INFO, Logger::STATISTICS) << "could not commit stats to "
+                                        << collection;
+  }
 
   /* useless until we do something
   if (result.failed()) {
@@ -881,109 +969,68 @@ void StatisticsWorker::_saveSlice(VPackSlice const& slice,
 }
 
 void StatisticsWorker::createCollections() const {
-  if (!ServerState::instance()->isRunningInCluster() ||
-       ServerState::instance()->isCoordinator()) {
-         _createCollection("_statisticsRaw");
-         _createCollection("_statistics");
-         _createCollection("_statistics15");
-  } else {
-    // wait for collection creation cluster db server
-    while (true) {
-      usleep(500*1000);
-
-      TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
-
-      LogicalCollection* coll = vocbase->lookupCollection("_statisticsRaw");
-      if (coll == nullptr) continue;
-
-      coll = vocbase->lookupCollection("_statistics");
-      if (coll == nullptr) continue;
-
-      coll = vocbase->lookupCollection("_statistics15");
-      if (coll == nullptr) continue;
-
-      break;
-    }
-  }
+  _createCollection("_statisticsRaw");
+  _createCollection("_statistics");
+  _createCollection("_statistics15");
 }
 
 void StatisticsWorker::_createCollection(std::string const& collection) const {
+  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+  TRI_ASSERT(vocbase != nullptr);
+
   VPackBuilder s;
   s.openObject();
-  s.add("name", VPackValue(collection));
   s.add("isSystem", VPackValue(true));
-  s.add("waitForSync", VPackValue(false));
-
+  s.add("journalSize", VPackValue(8 * 1024 * 1024));
   if (ServerState::instance()->isRunningInCluster() &&
       ServerState::instance()->isCoordinator()) {
-    auto clusterFeature = application_features::ApplicationServer::getFeature<ClusterFeature>("Cluster");
-    s.add("replicationFactor", VPackValue(clusterFeature->systemReplicationFactor()));
+    auto clusterFeature =
+        application_features::ApplicationServer::getFeature<ClusterFeature>(
+            "Cluster");
+    s.add("replicationFactor",
+          VPackValue(clusterFeature->systemReplicationFactor()));
     s.add("distributeShardsLike", VPackValue("_graphs"));
   }
-
-  s.add("journalSize", VPackValue(8 * 1024 * 1024));
   s.close();
+  methods::Collections::create(
+      vocbase, collection, TRI_COL_TYPE_DOCUMENT, s.slice(), false, true,
+      [&](LogicalCollection* coll) {
+        VPackBuilder t;
+        t.openObject();
+        t.add("collection", VPackValue(collection));
+        t.add("type", VPackValue("skiplist"));
+        t.add("unique", VPackValue(false));
+        t.add("sparse", VPackValue(false));
 
-  TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+        t.add("fields", VPackValue(VPackValueType::Array));
+        t.add(VPackValue("time"));
+        t.close();
+        t.close();
 
-  int res = TRI_ERROR_NO_ERROR;
-  try {
-    vocbase->createCollection(s.slice());
-  } catch (basics::Exception const& ex) {
-    res = ex.code();
-  } catch (...) {
-    res = TRI_ERROR_INTERNAL;
-  }
-
-  if (res != TRI_ERROR_ARANGO_DUPLICATE_NAME && res != TRI_ERROR_NO_ERROR) {
-    LOG_TOPIC(ERR, Logger::STATISTICS) << "Can't create statistics collection " << collection;
-  }
-
-  std::shared_ptr<LogicalCollection> col = nullptr;
-  LogicalCollection* coll = nullptr;
-
-  if (ServerState::instance()->isCoordinator()) {
-    try {
-      col = ClusterInfo::instance()->getCollection(vocbase->name(), collection);
-      if (col) {
-        coll = col.get();
-      }
-    } catch (...) {
-    }
-  } else {
-    coll = vocbase->lookupCollection(collection);
-  }
-
-  VPackBuilder t;
-  t.openObject();
-  t.add("collection", VPackValue(collection));
-  t.add("type", VPackValue("skiplist"));
-  t.add("unique", VPackValue(false));
-  t.add("sparse", VPackValue(false));
-
-  t.add("fields", VPackValue(VPackValueType::Array));
-  t.add(VPackValue("time"));
-  t.close();
-
-  t.close();
-
-  VPackBuilder output;
-  Result idxRes = methods::Indexes::ensureIndex(coll, t.slice(), true, output);
-  if (!idxRes.ok()) {
-    LOG_TOPIC(WARN, Logger::STATISTICS) << "Can't create the skiplist index for collection "
-    << collection << " please create it manually; Error code: " << idxRes.errorNumber();
-  }
+        VPackBuilder output;
+        Result idxRes =
+            methods::Indexes::ensureIndex(coll, t.slice(), true, output);
+        if (!idxRes.ok()) {
+          LOG_TOPIC(WARN, Logger::STATISTICS)
+              << "Can't create the skiplist index for collection " << collection
+              << " please create it manually; Error code: "
+              << idxRes.errorNumber();
+        }
+      });
 }
 
-
-
 void StatisticsWorker::run() {
-  uint64_t seconds = 0;
-
+  
+  while (ServerState::isMaintenance()) {
+    if (isStopping()) {
+      // startup aborted
+      return;
+    }
+    usleep(100000);
+  }
   createCollections();
-
-  //
-
+  
+  uint64_t seconds = 0;
   while (!isStopping() && StatisticsFeature::enabled()) {
     historian();
 
@@ -997,6 +1044,6 @@ void StatisticsWorker::run() {
     }
 
     seconds++;
-    usleep(1000 * 1000);
+    usleep(1000 * 1000);  // TODO should this run adaptively ?
   }
 }

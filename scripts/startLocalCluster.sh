@@ -11,8 +11,7 @@ else
   #if we want to restart we should probably store the parameters line wise
 fi
 
-
-lib="$(dirname $(readlink -f ${BASH_SOURCE[0]}))/cluster-run-common.sh"
+lib="$PWD/scripts/cluster-run-common.sh"
 if [[ -f "$lib" ]]; then
     . "$lib"
 else
