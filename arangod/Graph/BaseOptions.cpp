@@ -251,8 +251,7 @@ void BaseOptions::injectLookupInfoInList(std::vector<LookupInfo>& list,
   info.indexCondition = condition->clone(plan->getAst());
   bool res = _trx->getBestIndexHandleForFilterCondition(
       collectionName, info.indexCondition, _tmpVar, 1000, info.idxHandles[0]);
-  TRI_ASSERT(res);  // Right now we have an enforced edge index which will
-                    // always fit.
+  // Right now we have an enforced edge index which should always fit.
   if (!res) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "expected edge index not found");

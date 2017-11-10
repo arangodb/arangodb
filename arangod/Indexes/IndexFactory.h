@@ -25,6 +25,7 @@
 #define ARANGOD_INDEXES_INDEX_FACTORY_H 1
 
 #include "Basics/Common.h"
+#include "VocBase/voc-types.h"
 
 namespace arangodb {
 
@@ -58,6 +59,10 @@ class IndexFactory {
       std::vector<std::shared_ptr<arangodb::Index>>& systemIndexes) const = 0;
 
   virtual std::vector<std::string> supportedIndexes() const = 0;
+  
+  static TRI_idx_iid_t validateSlice(arangodb::velocypack::Slice info, 
+                                     bool generateKey, 
+                                     bool isClusterConstructor);
 };
 
 }  // namespace arangodb

@@ -308,6 +308,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
       for (auto marker : arangodb::velocypack::ArrayIterator(data)) {
         dumper.dump(marker);
         httpResponse->body().appendChar('\n');
+        //LOG_TOPIC(INFO, Logger::FIXME) << marker.toJson(trxContext->getVPackOptions());
       }
     }
     // add client
@@ -592,7 +593,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
   
   if (keys) {
     Result rv = ctx->dumpKeys(builder, chunk, static_cast<size_t>(chunkSize), lowKey);
-    if (rv.fail()){
+    if (rv.fail()) {
       generateError(rv);
       return;
     }
@@ -603,6 +604,7 @@ void RocksDBRestReplicationHandler::handleCommandFetchKeys() {
       generateResult(rest::ResponseCode::BAD, VPackSlice());
       return;
     }
+    
     Result rv = ctx->dumpDocuments(builder, chunk, static_cast<size_t>(chunkSize), offsetInChunk, lowKey, parsedIds->slice());
     if (rv.fail()) {
       generateError(rv);

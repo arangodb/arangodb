@@ -81,7 +81,7 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
                                   std::string const& name,
                                   FuncCallback func) {
   if (name.empty()) {
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   } 
   
   ExecContext const* exec = ExecContext::CURRENT;
@@ -95,16 +95,16 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
           return Result(TRI_ERROR_FORBIDDEN, "No access to collection '" + name + "'");
         }
         func(coll.get());
-        return TRI_ERROR_NO_ERROR;
+        return Result();
       }
     } catch (basics::Exception const& ex) {
       return Result(ex.code(), ex.what());
     } catch (std::exception const& ex) {
       return Result(TRI_ERROR_INTERNAL, ex.what());
     } catch (...) {
-      return TRI_ERROR_INTERNAL;
+      return Result(TRI_ERROR_INTERNAL);
     }
-    return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
   
   LogicalCollection* coll = vocbase->lookupCollection(name);
@@ -114,10 +114,18 @@ Result methods::Collections::lookup(TRI_vocbase_t* vocbase,
         !exec->canUseCollection(vocbase->name(), coll->name(), AuthLevel::RO)) {
       return Result(TRI_ERROR_FORBIDDEN, "No access to collection '" + name + "'");
     }
-    func(coll);
-    return TRI_ERROR_NO_ERROR;
+    try {
+      func(coll);
+    } catch (basics::Exception const& ex) {
+      return Result(ex.code(), ex.what());
+    } catch (std::exception const& ex) {
+      return Result(TRI_ERROR_INTERNAL, ex.what());
+    } catch (...) {
+      return Result(TRI_ERROR_INTERNAL);
+    }
+    return Result();
   }
-  return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
+  return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
 }
 
 Result Collections::create(TRI_vocbase_t* vocbase, std::string const& name,

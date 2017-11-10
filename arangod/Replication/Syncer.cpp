@@ -497,12 +497,11 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
   }
   
   VPackSlice uuid = slice.get("globallyUniqueId");
-
   // merge in "isSystem" attribute, doesn't matter if name does not start with '_'
   VPackBuilder s;
   s.openObject();
   s.add("isSystem", VPackValue(true));
-  if (uuid.isString()) {
+  if (uuid.isString() && !simulate32Client()) {
     // if we received a globallyUniqueId from the remote, then we will always use this id
     // so we can discard the "cid" and "id" values for the collection
     s.add("id", VPackSlice::nullSlice());
@@ -557,7 +556,7 @@ Result Syncer::createIndex(VPackSlice const& slice) {
   if (!indexSlice.isObject()) {
     indexSlice = slice.get("data");
   }
-
+  
   if (!indexSlice.isObject()) {
     return Result(TRI_ERROR_REPLICATION_INVALID_RESPONSE, "index slice is not an object");
   }
@@ -568,7 +567,8 @@ Result Syncer::createIndex(VPackSlice const& slice) {
   }
   arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
   if (col == nullptr) {
-    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND,
+                  "did not find collection for index");
   }
 
   try {
@@ -805,4 +805,17 @@ Result Syncer::buildHttpError(SimpleHttpResult* response, std::string const& url
   return Result(TRI_ERROR_REPLICATION_MASTER_ERROR, std::string("got invalid response from master at ") +
                 _masterInfo._endpoint + " for URL " + url + ": HTTP " + StringUtils::itoa(response->getHttpReturnCode()) + ": " +
                 response->getHttpReturnMessage() + " - " + response->getBody().toString());
+}
+
+bool Syncer::simulate32Client() const {
+  TRI_ASSERT(!_masterInfo._endpoint.empty() && _masterInfo._serverId != 0 &&
+             _masterInfo._majorVersion != 0);
+  bool is33 = _masterInfo._majorVersion >= 3 &&
+              _masterInfo._minorVersion >= 3;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  // allows us to test the old replication API
+  return !is33 || _configuration._force32mode;
+#else
+  return !is33;
+#endif
 }
