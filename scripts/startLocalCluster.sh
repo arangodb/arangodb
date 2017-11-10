@@ -11,8 +11,15 @@ else
   #if we want to restart we should probably store the parameters line wise
 fi
 
+case $OSTYPE in
+ darwin*)
+   lib="$PWD/scripts/cluster-run-common.sh"
+ ;;
+ *)
+   lib="$(dirname $(readlink -f ${BASH_SOURCE[0]}))/cluster-run-common.sh"
+ ;;
+esac
 
-lib="$(dirname $(readlink -f ${BASH_SOURCE[0]}))/cluster-run-common.sh"
 if [[ -f "$lib" ]]; then
     . "$lib"
 else

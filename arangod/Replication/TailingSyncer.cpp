@@ -92,15 +92,9 @@ TailingSyncer::~TailingSyncer() { abortOngoingTransactions(); }
 /// @brief decide based on _masterInfo which api to use
 ///        GlobalTailingSyncer should overwrite this probably
 std::string TailingSyncer::tailingBaseUrl(std::string const& cc) {
-  TRI_ASSERT(!_masterInfo._endpoint.empty() &&
-             _masterInfo._serverId != 0 &&
-             _masterInfo._majorVersion != 0);
-  
-  bool is33 = _masterInfo._majorVersion >= 3 &&
-  _masterInfo._minorVersion >= 3;
-  std::string const& base = is33 ? TailingSyncer::WalAccessUrl :
-                                   Syncer::ReplicationUrl;
-  if (!is33) { // fallback pre 3.3
+  bool act32 = simulate32Client();
+  std::string const& base = act32 ? Syncer::ReplicationUrl : TailingSyncer::WalAccessUrl;
+  if (act32) { // fallback pre 3.3
     if (cc == "tail") {
       return base + "/logger-follow?";
     } else if (cc == "open-transactions") {
@@ -283,10 +277,8 @@ Result TailingSyncer::processDBMarker(TRI_replication_operation_e type,
         LOG_TOPIC(ERR, Logger::REPLICATION) << res.errorMessage();
       }
       return res;
-    } else {
-      return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     }
-    
+    return TRI_ERROR_NO_ERROR; // ignoring because it's idempotent
   }
   TRI_ASSERT(false);
   return Result(TRI_ERROR_INTERNAL); // unreachable
