@@ -219,22 +219,14 @@ LocalDocumentId RocksDBPrimaryIndex::lookupKey(transaction::Methods* trx,
 Result RocksDBPrimaryIndex::insertInternal(transaction::Methods* trx,
                                            RocksDBMethods* mthd,
                                            LocalDocumentId const& documentId,
-                                           VPackSlice const& slice,
-                                           OperationMode mode) {
+                                           VPackSlice const& slice) {
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(slice);
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(_objectId, StringRef(keySlice));
   auto value = RocksDBValue::PrimaryIndexValue(documentId.id());
 
   if (mthd->Exists(_cf, key.ref())) {
-    std::string existingId(slice.get(StaticStrings::KeyString).copyString());
-
-    if (mode == OperationMode::internal) {
-      return IndexResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED,
-                         existingId);
-    }
-    return IndexResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, this,
-                       existingId);
+    return IndexResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, this);
   }
 
   blackListKey(key->string().data(), static_cast<uint32_t>(key->string().size()));
@@ -248,8 +240,7 @@ Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
                                            LocalDocumentId const& oldDocumentId,
                                            arangodb::velocypack::Slice const& oldDoc,
                                            LocalDocumentId const& newDocumentId,
-                                           velocypack::Slice const& newDoc,
-                                           OperationMode mode) {
+                                           velocypack::Slice const& newDoc) {
   VPackSlice keySlice = transaction::helpers::extractKeyFromDocument(oldDoc);
   TRI_ASSERT(keySlice == oldDoc.get(StaticStrings::KeyString));
   RocksDBKeyLeaser key(trx);
@@ -266,8 +257,7 @@ Result RocksDBPrimaryIndex::updateInternal(transaction::Methods* trx,
 Result RocksDBPrimaryIndex::removeInternal(transaction::Methods* trx,
                                            RocksDBMethods* mthd,
                                            LocalDocumentId const& documentId,
-                                           VPackSlice const& slice,
-                                           OperationMode mode) {
+                                           VPackSlice const& slice) {
   // TODO: deal with matching revisions?
   RocksDBKeyLeaser key(trx);
   key->constructPrimaryIndexValue(

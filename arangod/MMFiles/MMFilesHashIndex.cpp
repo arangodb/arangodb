@@ -28,7 +28,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/FixedSizeAllocator.h"
 #include "Basics/LocalTaskQueue.h"
-#include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/IndexResult.h"
@@ -351,7 +350,7 @@ MMFilesHashIndex::MMFilesHashIndex(TRI_idx_iid_t iid,
 
   if (_unique) {
     auto array = std::make_unique<TRI_HashArray_t>(
-        MMFilesUniqueHashIndexHelper(_paths.size(), _useExpansion),
+        MMFilesUniqueHashIndexHelper(_paths.size(), _useExpansion), 
         indexBuckets,
         [this]() -> std::string { return this->context(); });
 
@@ -360,7 +359,7 @@ MMFilesHashIndex::MMFilesHashIndex(TRI_idx_iid_t iid,
     _multiArray = nullptr;
 
     auto array = std::make_unique<TRI_HashArrayMulti_t>(
-        MMFilesMultiHashIndexHelper(_paths.size(), _useExpansion),
+        MMFilesMultiHashIndexHelper(_paths.size(), _useExpansion), 
         indexBuckets, 64,
         [this]() -> std::string { return this->context(); });
 
@@ -473,21 +472,19 @@ bool MMFilesHashIndex::matchesDefinition(VPackSlice const& info) const {
 }
 
 Result MMFilesHashIndex::insert(transaction::Methods* trx,
-                                LocalDocumentId const& documentId,
-                                VPackSlice const& doc,
-                                OperationMode mode) {
+                                LocalDocumentId const& documentId, VPackSlice const& doc,
+                                bool isRollback) {
   if (_unique) {
-    return insertUnique(trx, documentId, doc, mode);
+    return IndexResult(insertUnique(trx, documentId, doc, isRollback), this);
   }
 
-  return IndexResult(insertMulti(trx, documentId, doc, mode), this);
+  return IndexResult(insertMulti(trx, documentId, doc, isRollback), this);
 }
 
 /// @brief removes an entry from the hash array part of the hash index
 Result MMFilesHashIndex::remove(transaction::Methods* trx,
-                                LocalDocumentId const& documentId,
-                                VPackSlice const& doc,
-                                OperationMode mode) {
+                                LocalDocumentId const& documentId, VPackSlice const& doc,
+                                bool isRollback) {
   std::vector<MMFilesHashIndexElement*> elements;
   int res = fillElement<MMFilesHashIndexElement>(elements, documentId, doc);
 
@@ -501,9 +498,9 @@ Result MMFilesHashIndex::remove(transaction::Methods* trx,
   for (auto& hashElement : elements) {
     int result;
     if (_unique) {
-      result = removeUniqueElement(trx, hashElement, mode);
+      result = removeUniqueElement(trx, hashElement, isRollback);
     } else {
-      result = removeMultiElement(trx, hashElement, mode);
+      result = removeMultiElement(trx, hashElement, isRollback);
     }
 
     // we may be looping through this multiple times, and if an error
@@ -592,10 +589,9 @@ int MMFilesHashIndex::lookup(
   return TRI_ERROR_NO_ERROR;
 }
 
-Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
-                                      LocalDocumentId const& documentId,
-                                      VPackSlice const& doc,
-                                      OperationMode mode) {
+int MMFilesHashIndex::insertUnique(transaction::Methods* trx,
+                                   LocalDocumentId const& documentId,
+                                   VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesHashIndexElement*> elements;
   int res = fillElement<MMFilesHashIndexElement>(elements, documentId, doc);
 
@@ -605,14 +601,13 @@ Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
       _allocator->deallocate(it);
     }
 
-    return IndexResult(res, this);
+    return res;
   }
 
   ManagedDocumentResult result;
   IndexLookupContext context(trx, _collection, &result, numPaths());
 
-  auto work = [this, &context](MMFilesHashIndexElement* element,
-                               OperationMode) -> int {
+  auto work = [this, &context](MMFilesHashIndexElement* element, bool) -> int {
     TRI_IF_FAILURE("InsertHashIndex") { return TRI_ERROR_DEBUG; }
     return _uniqueArray->_hashArray->insert(&context, element);
   };
@@ -621,33 +616,19 @@ Result MMFilesHashIndex::insertUnique(transaction::Methods* trx,
 
   for (size_t i = 0; i < n; ++i) {
     auto hashElement = elements[i];
-    res = work(hashElement, mode);
+    res = work(hashElement, isRollback);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      IndexResult error(res, this);
-      if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
-        LocalDocumentId rev(_uniqueArray->_hashArray->find(&context, hashElement)->localDocumentId());
-        ManagedDocumentResult mmdr;
-        _collection->getPhysical()->readDocument(trx, rev, mmdr);
-        std::string existingId(
-          VPackSlice(mmdr.vpack()).get(StaticStrings::KeyString).copyString());
-        if (mode == OperationMode::internal) {
-          error = IndexResult(res, existingId);
-        } else {
-          error = IndexResult(res, this, existingId);
-        }
-      }
-
       for (size_t j = i; j < n; ++j) {
         // Free all elements that are not yet in the index
         _allocator->deallocate(elements[j]);
       }
       // Already indexed elements will be removed by the rollback
-      return error;
+      break;
     }
   }
 
-  return IndexResult(res, this);
+  return res;
 }
 
 void MMFilesHashIndex::batchInsertUnique(
@@ -710,7 +691,7 @@ void MMFilesHashIndex::batchInsertUnique(
 
 int MMFilesHashIndex::insertMulti(transaction::Methods* trx,
                                   LocalDocumentId const& documentId,
-                                  VPackSlice const& doc, OperationMode mode) {
+                                  VPackSlice const& doc, bool isRollback) {
   std::vector<MMFilesHashIndexElement*> elements;
   int res = fillElement<MMFilesHashIndexElement>(elements, documentId, doc);
 
@@ -724,8 +705,7 @@ int MMFilesHashIndex::insertMulti(transaction::Methods* trx,
   ManagedDocumentResult result;
   IndexLookupContext context(trx, _collection, &result, numPaths());
 
-  auto work = [this, &context](MMFilesHashIndexElement*& element,
-                               OperationMode) {
+  auto work = [this, &context](MMFilesHashIndexElement*& element, bool) {
     TRI_IF_FAILURE("InsertHashIndex") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
@@ -745,7 +725,7 @@ int MMFilesHashIndex::insertMulti(transaction::Methods* trx,
     auto hashElement = elements[i];
 
     try {
-      work(hashElement, mode);
+      work(hashElement, isRollback);
     } catch (arangodb::basics::Exception const& ex) {
       res = ex.code();
     } catch (std::bad_alloc const&) {
@@ -762,7 +742,7 @@ int MMFilesHashIndex::insertMulti(transaction::Methods* trx,
       for (size_t j = 0; j < i; ++j) {
         // Remove all already indexed elements and free them
         if (elements[j] != nullptr) {
-          removeMultiElement(trx, elements[j], mode);
+          removeMultiElement(trx, elements[j], isRollback);
         }
       }
 
@@ -833,7 +813,7 @@ void MMFilesHashIndex::batchInsertMulti(
 
 int MMFilesHashIndex::removeUniqueElement(transaction::Methods* trx,
                                           MMFilesHashIndexElement* element,
-                                          OperationMode mode) {
+                                          bool isRollback) {
   TRI_IF_FAILURE("RemoveHashIndex") { return TRI_ERROR_DEBUG; }
   ManagedDocumentResult result;
   IndexLookupContext context(trx, _collection, &result, numPaths());
@@ -842,8 +822,7 @@ int MMFilesHashIndex::removeUniqueElement(transaction::Methods* trx,
 
   if (old == nullptr) {
     // not found
-    if (mode == OperationMode::rollback) {  // ignore in this case, because it
-                                            // can happen
+    if (isRollback) {  // ignore in this case, because it can happen
       return TRI_ERROR_NO_ERROR;
     }
     return TRI_ERROR_INTERNAL;
@@ -855,7 +834,7 @@ int MMFilesHashIndex::removeUniqueElement(transaction::Methods* trx,
 
 int MMFilesHashIndex::removeMultiElement(transaction::Methods* trx,
                                          MMFilesHashIndexElement* element,
-                                         OperationMode mode) {
+                                         bool isRollback) {
   TRI_IF_FAILURE("RemoveHashIndex") { return TRI_ERROR_DEBUG; }
   ManagedDocumentResult result;
   IndexLookupContext context(trx, _collection, &result, numPaths());
@@ -864,8 +843,7 @@ int MMFilesHashIndex::removeMultiElement(transaction::Methods* trx,
 
   if (old == nullptr) {
     // not found
-    if (mode == OperationMode::rollback) {  // ignore in this case, because it
-                                            // can happen
+    if (isRollback) {  // ignore in this case, because it can happen
       return TRI_ERROR_NO_ERROR;
     }
     return TRI_ERROR_INTERNAL;

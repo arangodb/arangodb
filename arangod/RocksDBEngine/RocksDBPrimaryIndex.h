@@ -100,7 +100,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
       arangodb::StringRef const* = nullptr) const override {
     return 1.0;
   }
-
+  
   void load() override;
 
   void toVelocyPack(VPackBuilder&, bool, bool) const override;
@@ -128,21 +128,18 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   /// insert index elements into the specified write batch.
   Result insertInternal(transaction::Methods* trx, RocksDBMethods*,
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&,
-                        OperationMode mode) override;
-
+                        arangodb::velocypack::Slice const&) override;
+  
   Result updateInternal(transaction::Methods* trx, RocksDBMethods*,
                         LocalDocumentId const& oldDocumentId,
                         arangodb::velocypack::Slice const& oldDoc,
                         LocalDocumentId const& newDocumentId,
-                        velocypack::Slice const& newDoc,
-                        OperationMode mode) override;
+                        velocypack::Slice const& newDoc) override;
 
   /// remove index elements and put it in the specified write batch.
-  Result removeInternal(transaction::Methods*, RocksDBMethods*,
+  Result removeInternal(transaction::Methods*, RocksDBMethods*, 
                         LocalDocumentId const& documentId,
-                        arangodb::velocypack::Slice const&,
-                        OperationMode mode) override;
+                        arangodb::velocypack::Slice const&) override;
 
  protected:
   Result postprocessRemove(transaction::Methods* trx, rocksdb::Slice const& key,
@@ -162,7 +159,7 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
   /// @brief add a single value node to the iterator's keys
   void handleValNode(transaction::Methods* trx, VPackBuilder* keys,
                      arangodb::aql::AstNode const* valNode, bool isId) const;
-
+  
 private:
   bool const _isRunningInCluster;
 };

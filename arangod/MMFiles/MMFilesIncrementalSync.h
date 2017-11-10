@@ -275,7 +275,6 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
   options.silent = true;
   options.ignoreRevs = true;
   options.isRestore = true;
-  options.indexOpMode = Index::OperationMode::internal;
   if (!syncer._leaderId.empty()) {
     options.isSynchronousReplicationFrom = syncer._leaderId;
   }
@@ -595,11 +594,11 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
           keysBuilder.add(VPackValue(it));
         }
         keysBuilder.close();
-
+        
         std::string const keyJsonString(keysBuilder.slice().toJson());
 
         size_t offsetInChunk = 0;
-
+        
         while (true) {
           std::string url = baseUrl + "/" + keysId +
                             "?type=docs&chunk=" + std::to_string(currentChunkId) +
@@ -661,56 +660,23 @@ Result handleSyncKeysMMFiles(arangodb::DatabaseInitialSyncer& syncer,
 
             MMFilesSimpleIndexElement element = idx->lookupKey(&trx, keySlice);
 
-            auto removeConflict = [&](std::string conflictingKey) -> OperationResult {
-              VPackBuilder conflict;
-              conflict.add(VPackValue(conflictingKey));
-              LocalDocumentId conflictId = physical->lookupKey(&trx, conflict.slice());
-              if (conflictId.isSet()) {
-                ManagedDocumentResult mmdr;
-                bool success = physical->readDocument(&trx, conflictId, mmdr);
-                if (success) {
-                  VPackSlice conflictingKey(mmdr.vpack());
-                  return trx.remove(collectionName, conflictingKey, options);
-                }
-              }
-              return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
-            };
-
             if (!element) {
               // INSERT
               OperationResult opRes = trx.insert(collectionName, it, options);
               if (opRes.code != TRI_ERROR_NO_ERROR) {
-                if (opRes.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && opRes.errorMessage > keySlice.copyString()) {
-                  // remove conflict and retry
-                  auto inner = removeConflict(opRes.errorMessage);
-                  if (inner.code != TRI_ERROR_NO_ERROR) {
-                    return opRes.errorMessage.empty() ? Result(opRes.code) : Result(opRes.code, opRes.errorMessage);
-                  }
-                  opRes = trx.insert(collectionName, it, options);
-                  if (opRes.code != TRI_ERROR_NO_ERROR) {
-                    return opRes.errorMessage.empty() ? Result(opRes.code) : Result(opRes.code, opRes.errorMessage);
-                  }
-                } else {
-                  return opRes.errorMessage.empty() ? Result(opRes.code) : Result(opRes.code, opRes.errorMessage);
-                }
+                if (opRes.errorMessage.empty()) {
+                  return Result(opRes.code);
+                } 
+                return Result(opRes.code, opRes.errorMessage);
               }
             } else {
               // UPDATE
               OperationResult opRes = trx.replace(collectionName, it, options);
               if (opRes.code != TRI_ERROR_NO_ERROR) {
-                if (opRes.code == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED && opRes.errorMessage > keySlice.copyString()) {
-                  // remove conflict and retry
-                  auto inner = removeConflict(opRes.errorMessage);
-                  if (inner.code != TRI_ERROR_NO_ERROR) {
-                    return opRes.errorMessage.empty() ? Result(opRes.code) : Result(opRes.code, opRes.errorMessage);
-                  }
-                  opRes = trx.update(collectionName, it, options);
-                  if (opRes.code != TRI_ERROR_NO_ERROR) {
-                    return opRes.errorMessage.empty() ? Result(opRes.code) : Result(opRes.code, opRes.errorMessage);
-                  }
-                } else {
-                  return opRes.errorMessage.empty() ? Result(opRes.code) : Result(opRes.code, opRes.errorMessage);
+                if (opRes.errorMessage.empty()) {
+                  return Result(opRes.code);
                 }
+                return Result(opRes.code, opRes.errorMessage);
               }
             }
           }

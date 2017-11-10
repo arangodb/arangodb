@@ -50,7 +50,7 @@ RocksDBFulltextIndex::RocksDBFulltextIndex(
     : RocksDBIndex(iid, collection, info, RocksDBColumnFamily::fulltext(), false),
       _minWordLength(TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT) {
   TRI_ASSERT(iid != 0);
-  TRI_ASSERT(_cf == RocksDBColumnFamily::fulltext());
+  TRI_ASSERT(_cf == RocksDBColumnFamily::fulltext()); 
 
   VPackSlice const value = info.get("minLength");
 
@@ -171,8 +171,7 @@ bool RocksDBFulltextIndex::matchesDefinition(VPackSlice const& info) const {
 Result RocksDBFulltextIndex::insertInternal(transaction::Methods* trx,
                                             RocksDBMethods* mthd,
                                             LocalDocumentId const& documentId,
-                                            VPackSlice const& doc,
-                                            OperationMode mode) {
+                                            VPackSlice const& doc) {
   std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
     return TRI_ERROR_NO_ERROR;
@@ -200,8 +199,7 @@ Result RocksDBFulltextIndex::insertInternal(transaction::Methods* trx,
 Result RocksDBFulltextIndex::removeInternal(transaction::Methods* trx,
                                             RocksDBMethods* mthd,
                                             LocalDocumentId const& documentId,
-                                            VPackSlice const& doc,
-                                            OperationMode mode) {
+                                            VPackSlice const& doc) {
   std::set<std::string> words = wordlist(doc);
   if (words.empty()) {
     return IndexResult();

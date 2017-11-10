@@ -447,8 +447,7 @@ void RocksDBEdgeIndex::toVelocyPack(VPackBuilder& builder, bool withFigures,
 Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
                                         RocksDBMethods* mthd,
                                         LocalDocumentId const& documentId,
-                                        VPackSlice const& doc,
-                                        OperationMode mode) {
+                                        VPackSlice const& doc) {
   VPackSlice fromTo = doc.get(_directionAttr);
   TRI_ASSERT(fromTo.isString());
   auto fromToRef = StringRef(fromTo);
@@ -479,8 +478,7 @@ Result RocksDBEdgeIndex::insertInternal(transaction::Methods* trx,
 Result RocksDBEdgeIndex::removeInternal(transaction::Methods* trx,
                                         RocksDBMethods* mthd,
                                         LocalDocumentId const& documentId,
-                                        VPackSlice const& doc,
-                                        OperationMode mode) {
+                                        VPackSlice const& doc) {
   // VPackSlice primaryKey = doc.get(StaticStrings::KeyString);
   VPackSlice fromTo = doc.get(_directionAttr);
   auto fromToRef = StringRef(fromTo);

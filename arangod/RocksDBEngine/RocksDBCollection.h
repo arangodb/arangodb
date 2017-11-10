@@ -229,13 +229,12 @@ class RocksDBCollection final : public PhysicalCollection {
 
   arangodb::RocksDBOperationResult insertDocument(
       arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-      arangodb::velocypack::Slice const& doc, OperationOptions& options,
-      bool& waitForSync) const;
+      arangodb::velocypack::Slice const& doc, bool& waitForSync) const;
 
   arangodb::RocksDBOperationResult removeDocument(
       arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-      arangodb::velocypack::Slice const& doc, OperationOptions& options,
-      bool isUpdate, bool& waitForSync) const;
+      arangodb::velocypack::Slice const& doc, bool isUpdate,
+      bool& waitForSync) const;
 
   arangodb::RocksDBOperationResult lookupDocument(
       transaction::Methods* trx, arangodb::velocypack::Slice const& key,
@@ -243,12 +242,10 @@ class RocksDBCollection final : public PhysicalCollection {
 
   arangodb::RocksDBOperationResult updateDocument(
       transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
-      arangodb::velocypack::Slice const& oldDoc,
-      LocalDocumentId const& newDocumentId,
-      arangodb::velocypack::Slice const& newDoc, OperationOptions& options,
-      bool& waitForSync) const;
+      arangodb::velocypack::Slice const& oldDoc, LocalDocumentId const& newDocumentId,
+      arangodb::velocypack::Slice const& newDoc, bool& waitForSync) const;
 
-  arangodb::Result lookupDocumentVPack(LocalDocumentId const& documentId,
+  arangodb::Result lookupDocumentVPack(LocalDocumentId const& documentId, 
                                        transaction::Methods*,
                                        arangodb::ManagedDocumentResult&,
                                        bool withCache) const;

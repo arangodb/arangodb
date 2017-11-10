@@ -162,12 +162,10 @@ class MMFilesPersistentIndex final : public MMFilesPathBasedIndex {
   }
 
   Result insert(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&,
-                OperationMode mode) override;
+                arangodb::velocypack::Slice const&, bool isRollback) override;
 
   Result remove(transaction::Methods*, LocalDocumentId const& documentId,
-                arangodb::velocypack::Slice const&,
-                OperationMode mode) override;
+                arangodb::velocypack::Slice const&, bool isRollback) override;
 
   void unload() override {}
 
