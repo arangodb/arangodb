@@ -1569,14 +1569,25 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20002, "Gossip message must contain string parameter 'id'");
   }
+  std::string id = slice.get("id").copyString();
 
   if (!slice.hasKey("endpoint") || !slice.get("endpoint").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20003, "Gossip message must contain string parameter 'endpoint'");
   }
   std::string endpoint = slice.get("endpoint").copyString();
+  
   if ( _inception != nullptr && isCallback) {
     _inception->reportVersionForEp(endpoint, version);
+  }
+
+  // If pool complete but knabe is not member => reject at all times
+  if (_config.poolComplete()) {
+    auto pool = _config.pool();
+    if (pool.find(id) == pool.end()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        20003, "Gossip message from new peer while my pool is complete.");
+    }
   }
 
   LOG_TOPIC(TRACE, Logger::AGENCY)
