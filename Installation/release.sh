@@ -1,5 +1,5 @@
 #!/bin/bash
-set -ex
+set -e
 
 SCRIPT_DIR=$(dirname "$0")
 SRC_DIR="${SCRIPT_DIR}/../"
@@ -120,8 +120,9 @@ while [ "$#" -gt 0 ];  do
     esac
 done
 
-if [ -d "${ENTERPRISE_SRC_DIR}" ];  then
+if [ ! -d "${ENTERPRISE_SRC_DIR}" ];  then
     echo "enterprise directory missing"
+    exit 1
 fi
 
 if echo "${VERSION}" | grep -q -- '-'; then

@@ -127,7 +127,7 @@ inline std::unique_ptr<basics::StringBuffer> createChunkForNetworkDetail(
   chunk <<= 1;
   chunk |= isFirstChunk ? 0x1 : 0x0;
 
-  // get the lenght of VPack data
+  // get the length of VPack data
   uint32_t dataLength = static_cast<uint32_t>(end - begin);
 
   // calculate length of current chunk
@@ -205,7 +205,7 @@ inline void send_many(
 
 // this function will be called by client code
 inline std::vector<std::unique_ptr<basics::StringBuffer>> createChunkForNetwork(
-    std::vector<VPackSlice> const& slices, uint64_t id,
+    std::vector<VPackSlice> const& slices, uint64_t messageid,
     std::size_t maxChunkBytes, ProtocolVersion protocolVersion) {
   /// variables used in this function
   std::size_t payloadLength = 0;
@@ -222,7 +222,7 @@ inline std::vector<std::unique_ptr<basics::StringBuffer>> createChunkForNetwork(
 
   if (payloadLength < maxChunkBytes - chl) {
     // one chunk uncompressed
-    rv.push_back(createChunkForNetworkDetail(slices, true, 1, id,
+    rv.push_back(createChunkForNetworkDetail(slices, true, 1, messageid,
                  protocolVersion, chl + payloadLength));
     return rv;
   } else {
@@ -251,7 +251,7 @@ inline std::vector<std::unique_ptr<basics::StringBuffer>> createChunkForNetwork(
     }
 
     // create chunks
-    send_many(rv, id, maxChunkBytes, std::move(vstPayload),
+    send_many(rv, messageid, maxChunkBytes, std::move(vstPayload),
               payloadLength, protocolVersion);
   }
   return rv;

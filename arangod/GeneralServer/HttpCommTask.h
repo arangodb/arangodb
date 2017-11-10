@@ -19,6 +19,7 @@ class HttpCommTask final : public GeneralCommTask {
  public:
   HttpCommTask(EventLoop, GeneralServer*, std::unique_ptr<Socket> socket,
                ConnectionInfo&&, double timeout);
+  //~HttpCommTask() {};
 
   arangodb::Endpoint::TransportType transportType() override {
     return arangodb::Endpoint::TransportType::HTTP;
@@ -26,15 +27,7 @@ class HttpCommTask final : public GeneralCommTask {
 
   // convert from GeneralResponse to httpResponse
   void addResponse(GeneralResponse* response,
-                   RequestStatistics* stat) override {
-    HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(response);
-
-    if (httpResponse == nullptr) {
-      throw std::logic_error("invalid response or response Type");
-    }
-
-    addResponse(httpResponse, stat);
-  }
+                   RequestStatistics* stat) override;
 
  private:
   bool processRead(double startTime) override;
@@ -58,14 +51,13 @@ class HttpCommTask final : public GeneralCommTask {
 
   void resetState();
 
-  void addResponse(HttpResponse*, RequestStatistics* stat);
-
   // check the content-length header of a request and fail it is broken
   bool checkContentLength(HttpRequest*, bool expectContentLength);
 
   std::string authenticationRealm() const;
   ResponseCode authenticateRequest(HttpRequest*);
   ResponseCode handleAuthHeader(HttpRequest* request) const;
+  
   
  private:
   size_t _readPosition;       // current read position
@@ -81,8 +73,8 @@ class HttpCommTask final : public GeneralCommTask {
   std::string _fullUrl;            // value of requested URL
   std::string _origin;  // value of the HTTP origin header the client sent (if
                         // any, CORS only)
-  size_t
-      _sinceCompactification;  // number of requests since last compactification
+  /// number of requests since last compactification
+  size_t _sinceCompactification;
   size_t _originalBodyLength;
 
   std::string const _authenticationRealm;

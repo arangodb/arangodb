@@ -176,6 +176,9 @@ class GeneralRequest {
   virtual std::string const& value(std::string const& key) const = 0;
   virtual std::string const& value(std::string const& key,
                                    bool& found) const = 0;
+  template <typename T>
+  T parsedValue(std::string const& key, T valueNotFound);
+  
   virtual std::unordered_map<std::string, std::string> values() const = 0;
   virtual std::unordered_map<std::string, std::vector<std::string>>
   arrayValues() const = 0;

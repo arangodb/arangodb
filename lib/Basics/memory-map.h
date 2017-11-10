@@ -104,7 +104,7 @@ int TRI_MMFileUnlock(void* memoryAddress, size_t numOfBytes);
 /// @brief msyncs a memory block between begin (incl) and end (excl)
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline bool TRI_MSync(int fd, char const* begin, char const* end) {
+static inline int TRI_MSync(int fd, char const* begin, char const* end) {
   size_t pageSize = arangodb::PageSizeFeature::getPageSize();
   uintptr_t p = (intptr_t)begin;
   uintptr_t q = (intptr_t)end;
@@ -113,15 +113,7 @@ static inline bool TRI_MSync(int fd, char const* begin, char const* end) {
   char* b = (char*)((p / g) * g);
   char* e = (char*)(((q + g - 1) / g) * g);
 
-  int res = TRI_FlushMMFile(fd, b, e - b, MS_SYNC);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_set_errno(res);
-
-    return false;
-  }
-
-  return true;
+  return TRI_FlushMMFile(fd, b, e - b, MS_SYNC);
 }
 
 #endif

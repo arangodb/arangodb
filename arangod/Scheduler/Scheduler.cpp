@@ -344,10 +344,9 @@ bool Scheduler::hasQueueCapacity() const {
 }
 
 bool Scheduler::queue(std::unique_ptr<Job> job) {
-  auto jobQueue = _jobQueue.get();
-  auto queueSize = (jobQueue == nullptr) ? 0 : jobQueue->queueSize();
+  TRI_ASSERT(_jobQueue);
+  auto queueSize = _jobQueue->queueSize();
   RequestStatistics::SET_QUEUE_START(job->_handler->statistics(), queueSize);
-
   return _jobQueue->queue(std::move(job));
 }
 

@@ -753,23 +753,15 @@ int MMFilesCollection::syncActiveJournal() {
     char* written = datafile->_written;
 
     if (synced < written) {
-      bool ok = datafile->sync(synced, written);
+      res = datafile->sync(synced, written);
 
-      if (ok) {
+      if (res == TRI_ERROR_NO_ERROR) {
         LOG_TOPIC(TRACE, Logger::COLLECTOR) << "msync succeeded "
                                             << (void*)synced << ", size "
                                             << (written - synced);
         datafile->_synced = written;
       } else {
-        res = TRI_errno();
-        if (res == TRI_ERROR_NO_ERROR) {
-          // oops, error code got lost
-          res = TRI_ERROR_INTERNAL;
-        }
-
-        LOG_TOPIC(ERR, Logger::COLLECTOR) << "msync failed with: "
-                                          << TRI_last_error();
-        datafile->setState(TRI_DF_STATE_WRITE_ERROR);
+        LOG_TOPIC(ERR, Logger::COLLECTOR) << "msync failed with: " << TRI_errno_string(res);
       }
     }
   }
