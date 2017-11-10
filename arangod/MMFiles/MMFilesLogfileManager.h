@@ -289,12 +289,6 @@ class MMFilesLogfileManager final : public application_features::ApplicationFeat
   // re-inserts a logfile back into the inventory only
   void relinkLogfile(MMFilesWalLogfile*);
 
-  // remove a logfile from the inventory only
-  bool unlinkLogfile(MMFilesWalLogfile*);
-
-  // remove a logfile from the inventory only
-  MMFilesWalLogfile* unlinkLogfile(MMFilesWalLogfile::IdType);
-
   // removes logfiles that are allowed to be removed
   bool removeLogfiles();
 

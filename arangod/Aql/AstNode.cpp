@@ -1278,6 +1278,11 @@ double AstNode::getDoubleValue() const {
 
 /// @brief whether or not the node value is trueish
 bool AstNode::isTrue() const {
+  if (type == NODE_TYPE_ATTRIBUTE_ACCESS && isConstant()) {
+    AstNode const* resolved = Ast::resolveConstAttributeAccess(this);
+    return resolved->isTrue();
+  }
+
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
       case VALUE_TYPE_NULL:
@@ -1315,6 +1320,11 @@ bool AstNode::isTrue() const {
 
 /// @brief whether or not the node value is falsey
 bool AstNode::isFalse() const {
+  if (type == NODE_TYPE_ATTRIBUTE_ACCESS && isConstant()) {
+    AstNode const* resolved = Ast::resolveConstAttributeAccess(this);
+    return resolved->isFalse();
+  }
+
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
       case VALUE_TYPE_NULL:

@@ -3897,11 +3897,10 @@ void arangodb::aql::removeRedundantOrRule(Optimizer* opt,
 
     RemoveRedundantOr remover;
     if (remover.hasRedundantCondition(cn->expression()->node())) {
-      Expression* expr = nullptr;
       ExecutionNode* newNode = nullptr;
       auto astNode = remover.createReplacementNode(plan->getAst());
 
-      expr = new Expression(plan.get(), plan->getAst(), astNode);
+      Expression* expr = new Expression(plan.get(), plan->getAst(), astNode);
 
       try {
         newNode =

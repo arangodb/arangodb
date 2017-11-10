@@ -118,10 +118,8 @@ class Supervision : public arangodb::Thread {
     return _agencyPrefix;
   }
 
-  static void setAgencyPrefix(std::string prefix) {
-    LOG_TOPIC(WARN, Logger::SUPERVISION) << "WTF? " << _agencyPrefix;
+  static void setAgencyPrefix(std::string const& prefix) {
     _agencyPrefix = prefix;
-    LOG_TOPIC(WARN, Logger::SUPERVISION) << "WTF? " << _agencyPrefix;
   }
 
  private:
