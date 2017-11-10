@@ -126,13 +126,10 @@ void Constituent::termNoLock(term_t t) {
         body.add("voted_for", Value(_votedFor)); }
       
       TRI_ASSERT(_vocbase != nullptr);
-      auto transactionContext =
-        std::make_shared<transaction::StandaloneContext>(_vocbase);
-      SingleCollectionTransaction trx(transactionContext, "election",
-                                      AccessMode::Type::WRITE);
+      auto ctx = transaction::StandaloneContext::Create(_vocbase);
+      SingleCollectionTransaction trx(ctx, "election", AccessMode::Type::WRITE);
       
-      auto res = trx.begin();
-      
+      Result res = trx.begin();
       if (!res.ok()) {
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -312,7 +309,7 @@ std::string Constituent::endpoint(std::string id) const {
 
 /// @brief Check leader
 bool Constituent::checkLeader(
-  term_t term, std::string id, index_t prevLogIndex, term_t prevLogTerm) {
+  term_t term, std::string const& id, index_t prevLogIndex, term_t prevLogTerm) {
 
   TRI_ASSERT(_vocbase != nullptr);
 
@@ -368,7 +365,7 @@ bool Constituent::checkLeader(
 }
 
 /// @brief Vote
-bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
+bool Constituent::vote(term_t termOfPeer, std::string const& id, index_t prevLogIndex,
                        term_t prevLogTerm) {
 
   if (!_agent->ready()) {
