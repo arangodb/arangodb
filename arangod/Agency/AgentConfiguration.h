@@ -206,9 +206,6 @@ struct config_t {
   /// @brief Supervision grace period
   double supervisionGracePeriod() const;
 
-  /// @brief Get replacement for deceased active agent
-  bool swapActiveMember(std::string const&, std::string const&);
-
   /// @brief Get next agent in line of succession
   std::string nextAgentInLine() const;
 

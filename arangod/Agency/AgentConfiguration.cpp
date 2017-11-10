@@ -287,22 +287,6 @@ bool config_t::addToPool(std::pair<std::string, std::string> const& i) {
   return true;
 }
 
-bool config_t::swapActiveMember(
-  std::string const& failed, std::string const& repl) {
-  try {
-    WRITE_LOCKER(writeLocker, _lock);
-    LOG_TOPIC(INFO, Logger::AGENCY) << "Replacing " << failed << " with " << repl;
-    std::replace (_active.begin(), _active.end(), failed, repl);
-    ++_version;
-  } catch (std::exception const& e) {
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << "Replacing " << failed << " with " << repl << "failed : " << e.what();
-    return false;
-  }
-
-  return true;
-}
-
 std::string config_t::nextAgentInLine() const {
 
   READ_LOCKER(readLocker, _lock);
