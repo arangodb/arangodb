@@ -185,6 +185,9 @@ Index::IndexType Index::type(char const* type) {
   if (::strcmp(type, "geo2") == 0) {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
+  if (::strcmp(type, "geospatial") == 0) {
+    return TRI_IDX_TYPE_GEOSPATIAL_INDEX;
+  }
   if (::strcmp(type, "noaccess") == 0) {
     return TRI_IDX_TYPE_NO_ACCESS_INDEX;
   }

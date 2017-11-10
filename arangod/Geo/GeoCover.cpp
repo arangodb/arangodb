@@ -89,7 +89,7 @@ Result GeoCover::generateCoverJson(S2RegionCoverer* coverer, VPackSlice const& d
 Result GeoCover::generateCoverLatLng(VPackSlice const& data, bool isGeoJson,
                                      std::vector<S2CellId>& cells,
                                      geo::Coordinate& centroid) {
-  if(!data.isArray() || data.length() >= 2) {
+  if(!data.isArray() || data.length() < 2) {
     return TRI_ERROR_BAD_PARAMETER;
   }
   

@@ -161,7 +161,7 @@ RocksDBSphericalIndex::RocksDBSphericalIndex(TRI_idx_iid_t iid,
   _coverParams.fromVelocyPack(info);
   if (_fields.size() == 1) {
     bool geoJson =
-        basics::VelocyPackHelper::getBooleanValue(info, "geoJson", true);
+        basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
     // geojson means [<longitude>, <latitude>] or
     // json object {type:"<name>, coordinates:[]}.
     _variant = geoJson ? IndexVariant::COMBINED_GEOJSON
@@ -199,10 +199,7 @@ void RocksDBSphericalIndex::toVelocyPack(VPackBuilder& builder,
   // Basic index
   RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
 
-  if (_variant == IndexVariant::COMBINED_GEOJSON) {
-    builder.add("geoJson", VPackValue(true));
-  }
-
+  builder.add("geoJson", VPackValue(_variant == IndexVariant::COMBINED_GEOJSON));
   // geo indexes are always non-unique
   // geo indexes are always sparse.
   // "ignoreNull" has the same meaning as "sparse" and is only returned for
@@ -258,7 +255,7 @@ bool RocksDBSphericalIndex::matchesDefinition(VPackSlice const& info) const {
 
   if (n == 1) {
     bool geoJson =
-        basics::VelocyPackHelper::getBooleanValue(info, "geoJson", true);
+        basics::VelocyPackHelper::getBooleanValue(info, "geoJson", false);
     if (geoJson && _variant != IndexVariant::COMBINED_GEOJSON) {
       return false;
     }
@@ -317,15 +314,12 @@ Result RocksDBSphericalIndex::insertInternal(transaction::Methods* trx,
   geo::Coordinate centroid(-1, -1);
   
   Result res = parse(doc, cells, centroid);
-  if (res.is(TRI_ERROR_BAD_PARAMETER)) {
+  if (res.fail()) {
     // Invalid, no insert. Index is sparse
-    return IndexResult();
-  } else if (res.fail()) {
-    return res;
+    return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
   
   RocksDBValue val = RocksDBValue::SphericalValue(centroid);
-
 
   // FIXME: can we rely on the region coverer to return
   // the same cells everytime for the same parameters ?
@@ -351,11 +345,9 @@ Result RocksDBSphericalIndex::removeInternal(transaction::Methods* trx,
   geo::Coordinate centroid(-1, -1);
   
   Result res = parse(doc, cells, centroid);
-  if (res.is(TRI_ERROR_BAD_PARAMETER)) {
+  if (res.fail()) {
     // Invalid, no insert. Index is sparse
-    return IndexResult();
-  } else if (res.fail()) {
-    return res;
+    return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
 
   // FIXME: can we rely on the region coverer to return
