@@ -219,7 +219,8 @@ size_t MMFilesPersistentIndex::memory() const {
 /// @brief inserts a document into the index
 Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
                                       LocalDocumentId const& documentId,
-                                      VPackSlice const& doc, bool isRollback) {
+                                      VPackSlice const& doc,
+                                      OperationMode mode) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;
@@ -322,6 +323,7 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
   rocksdb::ReadOptions readOptions;
 
   size_t const count = elements.size();
+  std::string existingId;
   for (size_t i = 0; i < count; ++i) {
     if (_unique) {
       bool uniqueConstraintViolated = false;
@@ -338,6 +340,10 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
 
           if (res <= 0) {
             uniqueConstraintViolated = true;
+            VPackSlice slice(comparator->extractKeySlice(iterator->key()));
+            uint64_t length = slice.length();
+            TRI_ASSERT(length > 0);
+            existingId = slice.at(length - 1).copyString();
           }
         }
 
@@ -378,13 +384,21 @@ Result MMFilesPersistentIndex::insert(transaction::Methods* trx,
     }
   }
 
+  if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED) {
+    if (mode == OperationMode::internal) {
+      return IndexResult(res, existingId);
+    }
+    return IndexResult(res, this, existingId);
+  }
+
   return IndexResult(res, this);
 }
 
 /// @brief removes a document from the index
 Result MMFilesPersistentIndex::remove(transaction::Methods* trx,
                                       LocalDocumentId const& documentId,
-                                      VPackSlice const& doc, bool isRollback) {
+                                      VPackSlice const& doc,
+                                      OperationMode mode) {
   std::vector<MMFilesSkiplistIndexElement*> elements;
 
   int res;

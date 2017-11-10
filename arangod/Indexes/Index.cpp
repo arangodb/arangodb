@@ -527,7 +527,7 @@ void Index::batchInsert(
     std::vector<std::pair<LocalDocumentId, arangodb::velocypack::Slice>> const& documents,
     std::shared_ptr<arangodb::basics::LocalTaskQueue> queue) {
   for (auto const& it : documents) {
-    Result status = insert(trx, it.first, it.second, false);
+    Result status = insert(trx, it.first, it.second, OperationMode::normal);
     if (status.errorNumber() != TRI_ERROR_NO_ERROR) {
       queue->setStatus(status.errorNumber());
       break;

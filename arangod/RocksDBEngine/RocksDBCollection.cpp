@@ -152,7 +152,7 @@ Result RocksDBCollection::updateProperties(VPackSlice const& slice, bool doSync)
     primaryIndex()->createCache();
   } else if (useCache()) {
     destroyCache();
-    primaryIndex()->destroyCache(); 
+    primaryIndex()->destroyCache();
   }
 
   // nothing else to do
@@ -757,7 +757,7 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
     rindex->truncate(trx);
   }
   _needToPersistIndexEstimates = true;
-  
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // check if documents have been deleted
   if (mthd->countInBounds(documentBounds, true)) {
@@ -873,7 +873,7 @@ Result RocksDBCollection::insert(arangodb::transaction::Methods* trx,
   state->prepareOperation(_logicalCollection->cid(), revisionId, StringRef(),
                           TRI_VOC_DOCUMENT_OPERATION_INSERT);
 
-  res = insertDocument(trx, documentId, newSlice, options.waitForSync);
+  res = insertDocument(trx, documentId, newSlice, options, options.waitForSync);
   if (res.ok()) {
     Result lookupResult = lookupDocumentVPack(documentId, trx, mdr, false);
 
@@ -978,7 +978,7 @@ Result RocksDBCollection::update(arangodb::transaction::Methods* trx,
   state->prepareOperation(_logicalCollection->cid(), revisionId, StringRef(),
                           TRI_VOC_DOCUMENT_OPERATION_UPDATE);
   res = updateDocument(trx, oldDocumentId, oldDoc, documentId, newDoc,
-                       options.waitForSync);
+                       options, options.waitForSync);
 
   if (res.ok()) {
     mdr.setManaged(newDoc.begin(), documentId);
@@ -1075,7 +1075,8 @@ Result RocksDBCollection::replace(
                           TRI_VOC_DOCUMENT_OPERATION_REPLACE);
 
   RocksDBOperationResult opResult = updateDocument(
-      trx, oldDocumentId, oldDoc, documentId, newDoc, options.waitForSync);
+      trx, oldDocumentId, oldDoc, documentId, newDoc, options,
+      options.waitForSync);
   if (opResult.ok()) {
     mdr.setManaged(newDoc.begin(), documentId);
     TRI_ASSERT(!mdr.empty());
@@ -1102,7 +1103,7 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
                                  arangodb::ManagedDocumentResult& previous,
                                  OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick,
-                                 bool /*lock*/, 
+                                 bool /*lock*/,
                                  TRI_voc_rid_t& prevRev,
                                  TRI_voc_rid_t& revisionId) {
   // store the tick that was used for writing the document
@@ -1153,9 +1154,10 @@ Result RocksDBCollection::remove(arangodb::transaction::Methods* trx,
                          [&state]() { state->resetLogState(); });
 
   // add possible log statement under guard
-  state->prepareOperation(_logicalCollection->cid(), documentId.id(), StringRef(key),
-                          TRI_VOC_DOCUMENT_OPERATION_REMOVE);
-  res = removeDocument(trx, oldDocumentId, oldDoc, false, options.waitForSync);
+  state->prepareOperation(_logicalCollection->cid(), documentId.id(),
+                          StringRef(key),TRI_VOC_DOCUMENT_OPERATION_REMOVE);
+  res = removeDocument(trx, oldDocumentId, oldDoc, options, false,
+                       options.waitForSync);
   if (res.ok()) {
     // report key size
     res = state->addOperation(_logicalCollection->cid(), documentId.id(),
@@ -1315,7 +1317,8 @@ arangodb::Result RocksDBCollection::fillIndexes(
   arangodb::Result res;
   auto cb = [&](LocalDocumentId const& documentId, VPackSlice slice) {
     if (res.ok()) {
-      res = ridx->insertInternal(trx, &batched, documentId, slice);
+      res = ridx->insertInternal(trx, &batched, documentId, slice,
+                                 Index::OperationMode::normal);
       if (res.ok()) {
         numDocsWritten++;
       }
@@ -1352,7 +1355,8 @@ arangodb::Result RocksDBCollection::fillIndexes(
           this->readDocument(trx, token, mmdr)) {
         // we need to remove already inserted documents up to numDocsWritten
         res2 = ridx->removeInternal(trx, &batched, mmdr.localDocumentId(),
-                                    VPackSlice(mmdr.vpack()));
+                                    VPackSlice(mmdr.vpack()),
+                                    Index::OperationMode::rollback);
         if (res2.ok()) {
           numDocsWritten--;
         }
@@ -1375,7 +1379,7 @@ arangodb::Result RocksDBCollection::fillIndexes(
 
 RocksDBOperationResult RocksDBCollection::insertDocument(
     arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-    VPackSlice const& doc, bool& waitForSync) const {
+    VPackSlice const& doc, OperationOptions& options, bool& waitForSync) const {
   RocksDBOperationResult res;
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
@@ -1399,7 +1403,8 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
-    Result tmpres = rIdx->insertInternal(trx, mthd, documentId, doc);
+    Result tmpres = rIdx->insertInternal(trx, mthd, documentId, doc,
+                                         options.indexOpMode);
     if (!tmpres.ok()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
         // in case of OOM return immediately
@@ -1428,7 +1433,8 @@ RocksDBOperationResult RocksDBCollection::insertDocument(
 
 RocksDBOperationResult RocksDBCollection::removeDocument(
     arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-    VPackSlice const& doc, bool isUpdate, bool& waitForSync) const {
+    VPackSlice const& doc, OperationOptions& options, bool isUpdate,
+    bool& waitForSync) const {
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_ASSERT(trx->state()->isRunning());
@@ -1460,7 +1466,7 @@ RocksDBOperationResult RocksDBCollection::removeDocument(
   RocksDBOperationResult resInner;
   READ_LOCKER(guard, _indexesLock);
   for (std::shared_ptr<Index> const& idx : _indexes) {
-    Result tmpres = idx->remove(trx, documentId, doc, false);
+    Result tmpres = idx->remove(trx, documentId, doc, options.indexOpMode);
     if (!tmpres.ok()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
         // in case of OOM return immediately
@@ -1505,7 +1511,8 @@ RocksDBOperationResult RocksDBCollection::lookupDocument(
 RocksDBOperationResult RocksDBCollection::updateDocument(
     transaction::Methods* trx, LocalDocumentId const& oldDocumentId,
     VPackSlice const& oldDoc, LocalDocumentId const& newDocumentId,
-    VPackSlice const& newDoc, bool& waitForSync) const {
+    VPackSlice const& newDoc, OperationOptions& options,
+    bool& waitForSync) const {
   // keysize in return value is set by insertDocument
 
   // Coordinator doesn't know index internals
@@ -1546,7 +1553,8 @@ RocksDBOperationResult RocksDBCollection::updateDocument(
   for (std::shared_ptr<Index> const& idx : _indexes) {
     RocksDBIndex* rIdx = static_cast<RocksDBIndex*>(idx.get());
     Result tmpres = rIdx->updateInternal(trx, mthd, oldDocumentId, oldDoc,
-                                         newDocumentId, newDoc);
+                                         newDocumentId, newDoc,
+                                         options.indexOpMode);
     if (!tmpres.ok()) {
       if (tmpres.is(TRI_ERROR_OUT_OF_MEMORY)) {
         // in case of OOM return immediately
