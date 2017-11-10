@@ -327,7 +327,7 @@ std::pair<bool, int32_t> RocksDBKey::geoValues(rocksdb::Slice const& slice) {
   return std::pair<bool, int32_t>(isSlot, static_cast<int32_t>(val >> 32));
 }
 
-uint64_t RocksDBKey::S2GeoIndexValue(rocksdb::Slice const& slice) {
+uint64_t RocksDBKey::sphericalValue(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() == sizeof(uint64_t) * 3);
   return uint64FromBigEndianPersistent(slice.data() + sizeof(uint64_t));
 }

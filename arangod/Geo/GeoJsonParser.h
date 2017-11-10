@@ -26,9 +26,9 @@
 
 #include "Basics/Result.h"
 
-#include <vector>
 #include <velocypack/Slice.h>
 #include <cstdint>
+#include <vector>
 
 #include <geometry/s2latlng.h>
 #include <geometry/s2polygon.h>
@@ -38,27 +38,27 @@ namespace arangodb {
 namespace geo {
 
 class GeoJsonParser {
-  public:
-    GeoJsonParser() {}
+ public:
+  GeoJsonParser() {}
 
-  public:
-    enum GeoJSONType : uint8_t {
-      GEOJSON_UNKNOWN = 0,
-      GEOJSON_POINT,
-      GEOJSON_LINESTRING,
-      GEOJSON_POLYGON,
-      GEOJSON_MULTI_POINT,
-      GEOJSON_MULTI_LINESTRING,
-      GEOJSON_MULTI_POLYGON, // todo
-      GEOJSON_GEOMETRY_COLLECTION
-    };
+ public:
+  enum GeoJSONType : uint8_t {
+    GEOJSON_UNKNOWN = 0,
+    GEOJSON_POINT,
+    GEOJSON_LINESTRING,
+    GEOJSON_POLYGON,
+    GEOJSON_MULTI_POINT,
+    GEOJSON_MULTI_LINESTRING,
+    GEOJSON_MULTI_POLYGON,  // todo
+    GEOJSON_GEOMETRY_COLLECTION
+  };
 
-    GeoJSONType parseGeoJSONType(velocypack::Slice const& geoJSON);
-    S2Point parsePoint(velocypack::Slice const& geoJSON);
-    S2LatLng parseLatLng(velocypack::Slice const& geoJSON);
-    Result parsePolygon(velocypack::Slice const& geoJSON, S2Polygon& poly);
-    Result parseLinestring(velocypack::Slice const&  geoJSON, S2Polyline& ll);
-    std::vector<S2Point> parseMultiPoint(velocypack::Slice const& geoJSON);
+  GeoJSONType parseGeoJSONType(velocypack::Slice const& geoJSON);
+  S2Point parsePoint(velocypack::Slice const& geoJSON);
+  S2LatLng parseLatLng(velocypack::Slice const& geoJSON);
+  Result parsePolygon(velocypack::Slice const& geoJSON, S2Polygon& poly);
+  Result parseLinestring(velocypack::Slice const& geoJSON, S2Polyline& ll);
+  std::vector<S2Point> parseMultiPoint(velocypack::Slice const& geoJSON);
 };
 
 }  // namespace geo

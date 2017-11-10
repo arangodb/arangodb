@@ -67,6 +67,10 @@ RocksDBValue RocksDBValue::KeyGeneratorValue(VPackSlice const& data) {
   return RocksDBValue(RocksDBEntryType::KeyGeneratorValue, data);
 }
 
+RocksDBValue RocksDBValue::SphericalValue(double lat, double lon) {
+  return RocksDBValue(RocksDBEntryType::SphericalIndexValue, lat, lon);
+}
+
 RocksDBValue RocksDBValue::Empty(RocksDBEntryType type) {
   return RocksDBValue(type);
 }
@@ -109,6 +113,12 @@ uint64_t RocksDBValue::keyValue(rocksdb::Slice const& slice) {
 
 uint64_t RocksDBValue::keyValue(std::string const& s) {
   return keyValue(s.data(), s.size());
+}
+
+geo::Coordinate centroid(rocksdb::Slice const& s) {
+  TRI_ASSERT(s.size() == sizeof(double) * 2);
+  return geo::Coordinate(intToDouble(uint64FromPersistent(s.data())),// lat
+       intToDouble(uint64FromPersistent(s.data() + sizeof(double))));// lon
 }
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}
@@ -160,6 +170,22 @@ RocksDBValue::RocksDBValue(RocksDBEntryType type, StringRef const& data)
       break;
     }
 
+    default:
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
+  }
+}
+
+RocksDBValue::RocksDBValue(RocksDBEntryType type, double lat, double lon)
+  : _type(type), _buffer() {
+  switch (_type) {
+    case RocksDBEntryType::SphericalIndexValue: {
+      _buffer.reserve(sizeof(double) * 2);
+      RocksDBValue val(RocksDBEntryType::SphericalIndexValue);
+      uint64ToPersistent(_buffer, rocksutils::doubleToInt(lat));
+      uint64ToPersistent(_buffer, rocksutils::doubleToInt(lon));
+      break;
+    }
+      
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }

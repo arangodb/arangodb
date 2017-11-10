@@ -42,7 +42,6 @@ class GeoCover {
   GeoCover() {}
 
  public:
-  
   /// interval to scan over for near / within /intersect queries.
   /// Bounds are INCLUSIVE! It may hold true that min === max,
   /// in that case a lookup is completely valid. Do not use these
@@ -55,7 +54,7 @@ class GeoCover {
       return a.min < b.min;
     }
   };
-  
+
   /// parses geojson or [lat, lng] pairs and turns them into
   /// a minimal set of cellIds ready for indexing
   static Result generateCover(S2RegionCoverer* coverer,
@@ -65,19 +64,21 @@ class GeoCover {
   /// convert lat, lng pair into cell id. Always uses max level
   static Result generateCover(double lat, double lng,
                               std::vector<S2CellId>& cells);
-  
+
   /// parse geoJson (has to be an area) and generate list of intervals to scan
-  static Result scanIntervals(S2RegionCoverer* coverer, velocypack::Slice const& data,
+  static Result scanIntervals(S2RegionCoverer* coverer,
+                              velocypack::Slice const& data,
                               std::vector<Interval>& sortedIntervals);
-  
+
   /// generate intervalls of list of intervals to scan
   static void scanIntervals(S2RegionCoverer* coverer, S2Region const& region,
-                              std::vector<Interval>& sortedIntervals);
-  
+                            std::vector<Interval>& sortedIntervals);
+
   /// will return all the intervals including the cells containing them
   /// in the less detailed levels. Should allow us to scan all intervals
   /// which may contain intersecting geometries
-  static void scanIntervals(int worstIndexedLevel, std::vector<S2CellId> const& cover,
+  static void scanIntervals(int worstIndexedLevel,
+                            std::vector<S2CellId> const& cover,
                             std::vector<Interval>& sortedIntervals);
 
   static bool isGeoJsonWithArea(arangodb::velocypack::Slice const& geoJson);

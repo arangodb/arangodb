@@ -39,9 +39,8 @@
 using namespace arangodb;
 using namespace arangodb::geo;
 
-Result GeoCover::generateCover(S2RegionCoverer* coverer,
-                                VPackSlice const& data, bool isGeoJson,
-                                std::vector<S2CellId>& cells) {
+Result GeoCover::generateCover(S2RegionCoverer* coverer, VPackSlice const& data,
+                               bool isGeoJson, std::vector<S2CellId>& cells) {
   if (data.isObject()) {  // actual geojson
     if (!isGeoJson) {
       return TRI_ERROR_BAD_PARAMETER;
@@ -99,7 +98,7 @@ Result GeoCover::generateCover(S2RegionCoverer* coverer,
 
 /// convert lat, lng pair into cell id. Always uses max level
 Result GeoCover::generateCover(double lat, double lng,
-                                std::vector<S2CellId>& cells) {
+                               std::vector<S2CellId>& cells) {
   S2LatLng ll = S2LatLng::FromDegrees(lat, lng);
   cells.push_back(S2CellId::FromLatLng(ll));
   return TRI_ERROR_NO_ERROR;
@@ -121,8 +120,7 @@ Result GeoCover::scanIntervals(S2RegionCoverer* coverer, VPackSlice const& data,
 
 /// generate intervalls of list of intervals to scan
 void GeoCover::scanIntervals(S2RegionCoverer* coverer, S2Region const& region,
-                               std::vector<Interval>& sortedIntervals) {
-  
+                             std::vector<Interval>& sortedIntervals) {
   std::vector<S2CellId> cover;
   coverer->GetCovering(region, &cover);
   TRI_ASSERT(!cover.empty());
@@ -133,23 +131,25 @@ void GeoCover::scanIntervals(S2RegionCoverer* coverer, S2Region const& region,
 /// will return all the intervals including the cells containing them
 /// in the less detailed levels. Should allow us to scan all intervals
 /// which may contain intersecting geometries
-void GeoCover::scanIntervals(int worstIndexedLevel, std::vector<S2CellId> const& cover,
+void GeoCover::scanIntervals(int worstIndexedLevel,
+                             std::vector<S2CellId> const& cover,
                              std::vector<Interval>& sortedIntervals) {
   TRI_ASSERT(worstIndexedLevel > 0);
-  
+
   // prefix matches
   for (S2CellId const& prefix : cover) {
     /*if (prefix.is_leaf()) {
       sortedIntervals.emplace_back(prefix, prefix);
     } else {*/
-      sortedIntervals.emplace_back(prefix.range_min(), prefix.range_max());
+    sortedIntervals.emplace_back(prefix.range_min(), prefix.range_max());
     //}
   }
-  
+
   // we need to find larger cells that may still contain (parts of) the cover,
   // these are parent cells, up to the minimum allowed cell level allowed in
   // the index. In that case we do not need to look at all sub-cells only
-  // at the exact parent cell id. E.g. we got cover cell id [47|11|50]; we do not need
+  // at the exact parent cell id. E.g. we got cover cell id [47|11|50]; we do
+  // not need
   // to look at [47|1|40] or [47|11|60] because these cells don't intersect,
   // but polygons indexed with exact cell id [47|11] still might.
   std::unordered_set<S2CellId> parentSet;
@@ -157,7 +157,7 @@ void GeoCover::scanIntervals(int worstIndexedLevel, std::vector<S2CellId> const&
     S2CellId cell = interval;
 
     // add all parent cells of our "exact" cover
-    while (cell.level() > worstIndexedLevel) { // don't use level < 0
+    while (cell.level() > worstIndexedLevel) {  // don't use level < 0
       cell = cell.parent();
       parentSet.insert(cell);
     }
@@ -166,17 +166,16 @@ void GeoCover::scanIntervals(int worstIndexedLevel, std::vector<S2CellId> const&
   for (S2CellId const& exact : parentSet) {
     sortedIntervals.emplace_back(exact, exact);
   }
-  
+
   std::sort(sortedIntervals.begin(), sortedIntervals.end(), Interval::compare);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // intervals must not overlap
   for (size_t i = 0; i < sortedIntervals.size() - 1; i++) {
     TRI_ASSERT(sortedIntervals[i].min <= sortedIntervals[i].max);
-    TRI_ASSERT(sortedIntervals[i].max < sortedIntervals[i+1].min);
+    TRI_ASSERT(sortedIntervals[i].max < sortedIntervals[i + 1].min);
   }
 #endif
 }
-
 
 bool GeoCover::isGeoJsonWithArea(VPackSlice const& data) {
   if (data.isObject()) {  // no geojson

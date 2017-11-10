@@ -27,6 +27,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/StringRef.h"
+#include "Geo/Shapes.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/vocbase.h"
 
@@ -54,6 +55,7 @@ class RocksDBValue {
   static RocksDBValue View(VPackSlice const& data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice const& data);
   static RocksDBValue KeyGeneratorValue(VPackSlice const& data);
+  static RocksDBValue SphericalValue(double lat, double lon);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Used to construct an empty value of the given type for retrieval
@@ -96,6 +98,11 @@ class RocksDBValue {
   static uint64_t keyValue(RocksDBValue const&);
   static uint64_t keyValue(rocksdb::Slice const&);
   static uint64_t keyValue(std::string const&);
+  
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Centroid of shape or point on the sphere surface in degrees
+  //////////////////////////////////////////////////////////////////////////////
+  static geo::Coordinate centroid(rocksdb::Slice const&);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -128,6 +135,7 @@ class RocksDBValue {
   RocksDBValue(RocksDBEntryType type, uint64_t data);
   RocksDBValue(RocksDBEntryType type, VPackSlice const& data);
   RocksDBValue(RocksDBEntryType type, arangodb::StringRef const& data);
+  RocksDBValue(RocksDBEntryType type, double lat, double lon);
 
  private:
   static RocksDBEntryType type(char const* data, size_t size);

@@ -58,8 +58,8 @@ struct RegionCoverParams {
   RegionCoverParams();
   RegionCoverParams(int mC, int wL, int bL)
       : maxNumCoverCells(mC), worstIndexedLevel(wL), bestIndexedLevel(bL) {
-        TRI_ASSERT(mC > 0 && wL > 0 && bL > 0);
-      }
+    TRI_ASSERT(mC > 0 && wL > 0 && bL > 0);
+  }
 
  public:
   /// @brief read the options from a vpack slice
@@ -78,41 +78,6 @@ struct RegionCoverParams {
   int worstIndexedLevel = 10;
   // Most detailed level used. Value between [0, 30]
   int bestIndexedLevel = 28;
-};
-
-struct NearQueryParams {
-  NearQueryParams(double lat, double lon)
-      : latitude(lat),
-        longitude(lon),
-        cover(queryMaxCoverCells, queryBestLevel, queryWorstLevel) {}
-
-  double latitude;
-  double longitude;
-
-  // Min and max distance from centroid that we're willing to search.
-  double minDistance = 0.0;
-  double maxDistance = kEarthRadiusInMeters;
-  bool maxInclusive = true;
-
-  // parameters to calculate the coverage
-  RegionCoverParams cover;
-
-  static constexpr int queryWorstLevel = 0;
-  static constexpr int queryBestLevel = 23;  // about 1m
-  static constexpr int queryMaxCoverCells = 20;
-};
-
-/// @brief result of a geospatial index query.
-///        distance may or may not be set
-struct GeoDocument {
-  TRI_voc_rid_t rid;
-  double distance;
-};
-
-struct GeoDocumentCompare {
-  bool operator()(GeoDocument const& a, GeoDocument const& b) {
-    return a.distance < b.distance;
-  }
 };
 
 }  // namespace geo

@@ -24,8 +24,8 @@
 #define ARANGOD_ROCKSDB_S2_GEO_INDEX_H 1
 
 #include "Basics/Result.h"
-#include "Indexes/IndexIterator.h"
 #include "Geo/GeoParams.h"
+#include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/voc-types.h"
 
@@ -33,14 +33,15 @@
 
 namespace arangodb {
 namespace rocksdbengine {
-  
+
+/*
 class RocksDBSphericalIndexIterator : public IndexIterator {
-  
-  geo::QueryType queryType() const { return _queryType; }
-  
+
+geo::QueryType queryType() const { return _queryType; }
+
 protected:
-  geo::QueryType _queryType;
-};
+geo::QueryType _queryType;
+};*/
 
 class RocksDBSphericalIndex final : public arangodb::RocksDBIndex {
   friend class RocksDBSphericalIndexIterator;
@@ -49,9 +50,9 @@ class RocksDBSphericalIndex final : public arangodb::RocksDBIndex {
   RocksDBSphericalIndex() = delete;
 
   RocksDBSphericalIndex(TRI_idx_iid_t, arangodb::LogicalCollection*,
-             velocypack::Slice const&);
+                        velocypack::Slice const&);
 
-  ~RocksDBSphericalIndex() override;
+  ~RocksDBSphericalIndex() override {}
 
  public:
   /// @brief geo index variants
@@ -68,14 +69,9 @@ class RocksDBSphericalIndex final : public arangodb::RocksDBIndex {
   };
 
  public:
-  
-  IndexType type() const override {
-    return TRI_IDX_TYPE_GEOSPATIAL_INDEX;
-  }
+  IndexType type() const override { return TRI_IDX_TYPE_GEOSPATIAL_INDEX; }
 
-  char const* typeName() const override {
-    return "geospatial";
-  }
+  char const* typeName() const override { return "geospatial"; }
 
   IndexIterator* iteratorForCondition(transaction::Methods*,
                                       ManagedDocumentResult*,
@@ -90,7 +86,7 @@ class RocksDBSphericalIndex final : public arangodb::RocksDBIndex {
   bool isSorted() const override { return true; }
 
   bool hasSelectivityEstimate() const override { return false; }
-  
+
   void toVelocyPack(velocypack::Builder&, bool, bool) const override;
   // Uses default toVelocyPackFigures
 
@@ -126,28 +122,26 @@ class RocksDBSphericalIndex final : public arangodb::RocksDBIndex {
                         arangodb::velocypack::Slice const&) override;
 
   /// remove index elements and put it in the specified write batch.
-  Result removeInternal(transaction::Methods*, RocksDBMethods*, 
+  Result removeInternal(transaction::Methods*, RocksDBMethods*,
                         LocalDocumentId const& documentId,
                         arangodb::velocypack::Slice const&) override;
-  
-  IndexVariant variant() const { return _variant; }
-  
-private:
 
+  IndexVariant variant() const { return _variant; }
+
+ private:
   /// @brief immutable region coverer parameters
   geo::RegionCoverParams _coverParams;
-  
+
   /// @brief the type of geo we support
   IndexVariant _variant;
-  
+
   /// @brief attribute paths
   std::vector<std::string> _location;
   std::vector<std::string> _latitude;
   std::vector<std::string> _longitude;
-;
+  ;
 };
 }  // namespace rocksdbengine
 }  // namespace arangodb
-
 
 #endif

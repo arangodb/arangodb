@@ -265,7 +265,7 @@ class RocksDBKey {
   ///
   /// May be called only on S2IndexValues
   //////////////////////////////////////////////////////////////////////////////
-  static uint64_t S2GeoIndexValue(rocksdb::Slice const& slice);
+  static uint64_t sphericalValue(rocksdb::Slice const& slice);
 
   /// size of internal objectID
   static constexpr size_t objectIdSize() { return sizeof(uint64_t); }
