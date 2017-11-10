@@ -42,7 +42,7 @@ namespace pregel {
 template <typename T>
 struct TypedBuffer {
   /// close file (see close() )
-  virtual ~TypedBuffer(){};
+  virtual ~TypedBuffer() {}
   TypedBuffer() : _ptr(nullptr) {}
 
   /// @brief return whether the datafile is a physical file (true) or an
@@ -112,7 +112,7 @@ template <typename T>
 class MappedFileBuffer : public TypedBuffer<T> {
  public:
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
-  MappedFileBuffer(size_t entries) : _size(entries) {
+  explicit MappedFileBuffer(size_t entries) : _size(entries) {
 #ifdef TRI_MMAP_ANONYMOUS
     // fd -1 is required for "real" anonymous regions
     _fd = -1;
@@ -156,7 +156,7 @@ class MappedFileBuffer : public TypedBuffer<T> {
     // ptr);
   }
 #else
-  MappedFileBuffer(size_t entries) : _size(entries) {
+  explicit MappedFileBuffer(size_t entries) : _size(entries) {
     double tt = TRI_microtime();
     std::string file = "pregel_" + std::to_string((uint64_t)tt) + ".mmap";
     std::string filename = FileUtils::buildFilename(TRI_GetTempPath(), file);
@@ -223,6 +223,11 @@ class MappedFileBuffer : public TypedBuffer<T> {
 
   /// close file
   void close() override {
+    if (this->_ptr == nullptr) {
+      // already closed or not opened
+      return;
+    }
+
     int res = TRI_UNMMFile(this->_ptr, _mappedSize, _fd, &_mmHandle);
     if (res != TRI_ERROR_NO_ERROR) {
       // leave file open here as it will still be memory-mapped

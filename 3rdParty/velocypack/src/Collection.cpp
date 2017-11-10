@@ -343,68 +343,12 @@ Builder Collection::merge(Slice const& left, Slice const& right,
   }
 
   Builder b;
-  b.add(Value(ValueType::Object));
-
-  std::unordered_map<std::string, Slice> rightValues;
-  {
-    ObjectIterator it(right);
-    while (it.valid()) {
-      rightValues.emplace(it.key(true).copyString(), it.value());
-      it.next();
-    }
-  }
-
-  {
-    ObjectIterator it(left);
-
-    while (it.valid()) {
-      auto key = it.key(true).copyString();
-      auto found = rightValues.find(key);
-
-      if (found == rightValues.end()) {
-        // use left value
-        b.add(key, it.value());
-      } else if (mergeValues && it.value().isObject() &&
-                 (*found).second.isObject()) {
-        // merge both values
-        auto& value = (*found).second;
-        if (!nullMeansRemove || (!value.isNone() && !value.isNull())) {
-          Builder sub = Collection::merge(it.value(), value, true, nullMeansRemove);
-          b.add(key, sub.slice());
-        }
-        // clear the value in the map so its not added again
-        (*found).second = Slice();
-      } else {
-        // use right value
-        auto& value = (*found).second;
-        if (!nullMeansRemove || (!value.isNone() && !value.isNull())) {
-          b.add(key, value);
-        }
-        // clear the value in the map so its not added again
-        (*found).second = Slice();
-      }
-      it.next();
-    }
-  }
-
-  // add remaining values that were only in right
-  for (auto& it : rightValues) {
-    auto& s = it.second;
-    if (s.isNone()) {
-      continue;
-    }
-    if (nullMeansRemove && s.isNull()) {
-      continue;
-    }
-    b.add(std::move(it.first), s);
-  }
-
-  b.close();
+  Collection::merge(b, left, right, mergeValues, nullMeansRemove);
   return b;
 }
 
 Builder& Collection::merge(Builder& builder, Slice const& left, Slice const& right,
-                          bool mergeValues, bool nullMeansRemove) {
+                           bool mergeValues, bool nullMeansRemove) {
   if (!left.isObject() || !right.isObject()) {
     throw Exception(Exception::InvalidValueType, "Expecting type Object");
   }
@@ -435,6 +379,7 @@ Builder& Collection::merge(Builder& builder, Slice const& left, Slice const& rig
         // merge both values
         auto& value = (*found).second;
         if (!nullMeansRemove || (!value.isNone() && !value.isNull())) {
+          builder.add(Value(key));
           Collection::merge(builder, it.value(), value, true, nullMeansRemove);
         }
         // clear the value in the map so its not added again

@@ -1766,11 +1766,13 @@ void RestReplicationHandler::handleCommandSync() {
   auto config = ReplicationApplierConfiguration::fromVelocyPack(body, dbname);
   // will throw if invalid
   config.validate();
+  
+  double waitForSyncTimeout = VelocyPackHelper::getNumericValue(body, "waitForSyncTimeout", 5.0);
 
   // wait until all data in current logfile got synced
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
-  engine->waitForSyncTimeout(5.0);
+  engine->waitForSyncTimeout(waitForSyncTimeout);
 
   TRI_ASSERT(!config._skipCreateDrop);
   std::unique_ptr<InitialSyncer> syncer;

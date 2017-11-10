@@ -44,6 +44,13 @@ class MMFilesIndex : public Index {
   MMFilesIndex(TRI_idx_iid_t id, LogicalCollection* collection,
                VPackSlice const& info) 
     : Index(id, collection, info) {}
+
+
+  int afterTruncate() override {
+    // for mmfiles, truncating the index just unloads it
+    unload();
+    return TRI_ERROR_NO_ERROR;
+  }
 };
 }
 
