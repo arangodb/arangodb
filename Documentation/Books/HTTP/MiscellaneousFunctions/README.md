@@ -31,8 +31,6 @@ This is an overview of ArangoDB's HTTP interface for miscellaneous functions.
 
 @startDocuBlock JSF_get_admin_database_version
 
-@startDocuBlock JSF_get_admin_sleep
-
 <!-- lib/Admin/RestShutdownHandler.cpp -->
 @startDocuBlock JSF_get_api_initiate
 

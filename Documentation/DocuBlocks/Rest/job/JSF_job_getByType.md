@@ -75,9 +75,15 @@ Querying the status of a pending job:
 (we create a sleep job therefore...)
 
 @EXAMPLE_ARANGOSH_RUN{JSF_job_getByType_03}
-  var url = "/_admin/sleep?duration=30";
+  var url = "/_api/transaction";
+  var body = {
+    collections: {
+      read : [ "_frontend" ]
+    },
+    action: "function () {require('internal').sleep(15.0);}"
+  };
   var headers = {'x-arango-async' : 'store'};
-  var response = logCurlRequest('GET', url, "", headers);
+  var response = logCurlRequest('POST', url, body, headers);
 
   assert(response.code === 202);
   logRawResponse(response);
