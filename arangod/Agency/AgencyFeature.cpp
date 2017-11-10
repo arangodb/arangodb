@@ -324,6 +324,7 @@ void AgencyFeature::stop() {
         LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for agent thread to finish";
       }
     }
+    _agent.reset();
   }
 
   AGENT = nullptr;
