@@ -303,7 +303,7 @@ static int LookupLocalInfoToId(std::string const& localInfo,
                                                                   "");
           if (id.empty()) {
             LOG_TOPIC(ERR, Logger::STARTUP) << "ID not set!";
-            return TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID;
+            break;
           }
           description = basics::VelocyPackHelper::getStringValue(slice, "Description", "");
           return TRI_ERROR_NO_ERROR;
