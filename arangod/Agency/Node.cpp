@@ -796,7 +796,9 @@ Builder Node::toBuilder() const {
 }
 
 std::string Node::toJson() const {
-  return toBuilder().toJson();
+  auto builder = toBuilder();
+  auto slice = builder.slice();
+  return slice.isString() ? slice.copyString() : slice.toJson();
 }
 
 Node const* Node::parent() const { return _parent; }
