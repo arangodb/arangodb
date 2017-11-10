@@ -24,6 +24,7 @@
 #include "catch.hpp"
 #include "common.h"
 #include "StorageEngineMock.h"
+#include "ExpressionContextMock.h"
 
 #include "analysis/token_attributes.hpp"
 #include "search/scorers.hpp"
@@ -33,6 +34,7 @@
 
 #include "ApplicationFeatures/JemallocFeature.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/SortCondition.h"
@@ -48,6 +50,8 @@
 #include "Logger/Logger.h"
 #include "Logger/LogTopic.h"
 #include "Random/RandomFeature.h"
+#include "RestServer/AqlFeature.h"
+#include "RestServer/TraverserEngineRegistryFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "RestServer/DatabasePathFeature.h"
@@ -141,6 +145,8 @@ struct IResearchViewSetup {
     features.emplace_back(new arangodb::DatabaseFeature(&server), false);
     features.emplace_back(new arangodb::DatabasePathFeature(&server), false);
     features.emplace_back(new arangodb::JemallocFeature(&server), false); // required for DatabasePathFeature
+    features.emplace_back(new arangodb::TraverserEngineRegistryFeature(&server), false); // must be before AqlFeature
+    features.emplace_back(new arangodb::AqlFeature(&server), true);
     features.emplace_back(new arangodb::aql::AqlFunctionFeature(&server), true); // required for IResearchAnalyzerFeature
     features.emplace_back(new arangodb::iresearch::IResearchAnalyzerFeature(&server), true);
     features.emplace_back(new arangodb::iresearch::IResearchFeature(&server), true);
@@ -449,6 +455,11 @@ SECTION("test_insert") {
     CHECK((nullptr != view));
     view->open();
 
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+    REQUIRE(dummyPlan);
+
+    auto options = arangodb::velocypack::Parser::fromJson("{ }");
+
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
@@ -467,11 +478,32 @@ SECTION("test_insert") {
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
     arangodb::aql::Variable variable("testVariable", 0);
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, nullptr, nullptr, &noop, &variable, nullptr));
-    CHECK((false == !itr));
-    size_t count = 0;
-    CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
-    CHECK((2 == count));
+
+    {
+      std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, &noop, nullptr));
+      CHECK((false == !itr));
+      size_t count = 0;
+      CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
+      CHECK((2 == count));
+    }
+
+    // no transaction context provided
+    {
+      std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(nullptr, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, &noop, nullptr));
+      CHECK(!itr);
+    }
+
+    // no expression context provided
+    {
+      std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), nullptr, &variable, &noop, nullptr));
+      CHECK(!itr);
+    }
+
+    // no execution plan context provided
+    {
+      std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, nullptr, &ExpressionContextMock::EMPTY, &variable, &noop, nullptr));
+      CHECK(!itr);
+    }
   }
 
   // in recovery batch (removes cid+rid before insert)
@@ -484,6 +516,9 @@ SECTION("test_insert") {
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
     view->open();
+
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+    REQUIRE(dummyPlan);
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
@@ -505,7 +540,7 @@ SECTION("test_insert") {
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
     arangodb::aql::Variable variable("testVariable", 0);
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, nullptr, nullptr, &noop, &variable, nullptr));
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, &noop, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
     CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
@@ -522,6 +557,9 @@ SECTION("test_insert") {
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
 
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+    REQUIRE(dummyPlan);
+
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
@@ -540,7 +578,7 @@ SECTION("test_insert") {
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
     arangodb::aql::Variable variable("testVariable", 0);
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, nullptr, nullptr, &noop, &variable, nullptr));
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, &noop, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
     CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
@@ -557,6 +595,9 @@ SECTION("test_insert") {
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
 
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+    REQUIRE(dummyPlan);
+
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
       arangodb::iresearch::IResearchLinkMeta linkMeta;
@@ -576,7 +617,7 @@ SECTION("test_insert") {
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
     arangodb::aql::Variable variable("testVariable", 0);
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, nullptr, nullptr, &noop, &variable, nullptr));
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, &noop, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
     CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
@@ -592,6 +633,9 @@ SECTION("test_insert") {
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
+
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+    REQUIRE(dummyPlan);
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
@@ -613,7 +657,7 @@ SECTION("test_insert") {
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
     arangodb::aql::Variable variable("testVariable", 0);
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, nullptr, nullptr, &noop, &variable, nullptr));
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, &noop, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
     CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
@@ -629,6 +673,9 @@ SECTION("test_insert") {
     CHECK((false == !viewImpl));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(viewImpl.get());
     CHECK((nullptr != view));
+
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+    REQUIRE(dummyPlan);
 
     {
       auto docJson = arangodb::velocypack::Parser::fromJson("{\"abc\": \"def\"}");
@@ -651,7 +698,7 @@ SECTION("test_insert") {
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
     arangodb::aql::Variable variable("testVariable", 0);
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, nullptr, nullptr, &noop, &variable, nullptr));
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, &noop, nullptr));
     CHECK((false == !itr));
     size_t count = 0;
     CHECK((!itr->next([&count](arangodb::LocalDocumentId const&)->void{ ++count; }, 10)));
@@ -780,7 +827,10 @@ SECTION("test_query") {
     auto view = logicalView->getImplementation();
     REQUIRE((false == !view));
 
-    CHECK((nullptr == view->iteratorForCondition(nullptr, nullptr, nullptr, &noop, nullptr, nullptr)));
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+    REQUIRE(dummyPlan);
+
+    CHECK((nullptr == view->iteratorForCondition(nullptr, dummyPlan.get(), &ExpressionContextMock::EMPTY, nullptr, &noop, nullptr)));
   }
 
   // no filter/order provided, means "RETURN *"
@@ -791,10 +841,13 @@ SECTION("test_query") {
     auto view = logicalView->getImplementation();
     REQUIRE((false == !view));
 
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+    REQUIRE(dummyPlan);
+
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
     arangodb::aql::Variable variable("testVariable", 0);
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, nullptr, nullptr, nullptr, &variable, nullptr));
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, nullptr, nullptr));
 
     CHECK((false == !itr));
     CHECK((std::string("iresearch-unordered-iterator") == itr->typeName()));
@@ -808,7 +861,7 @@ SECTION("test_query") {
     uint64_t skipped = 0;
     CHECK_NOTHROW((itr->skip(5, skipped)));
     CHECK((0 == skipped));
-    CHECK_NOTHROW((itr->reset()));
+    CHECK_NOTHROW((itr->reset(nullptr)));
   }
 
   // empty ordered iterator
@@ -818,6 +871,9 @@ SECTION("test_query") {
     REQUIRE((false == !logicalView));
     auto* view = logicalView->getImplementation();
     REQUIRE((false == !view));
+
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+    REQUIRE(dummyPlan);
 
     std::vector<std::pair<arangodb::aql::Variable const*, bool>> sorts;
     std::vector<std::vector<arangodb::basics::AttributeName>> constAttributes;
@@ -833,7 +889,7 @@ SECTION("test_query") {
     arangodb::aql::SortCondition order(nullptr, sorts, constAttributes, variableDefinitions);
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, nullptr, nullptr, &noop, &variable, &order));
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, &noop, &order));
 
     CHECK((false == !itr));
     CHECK((std::string("iresearch-ordered-iterator") == itr->typeName()));
@@ -847,7 +903,7 @@ SECTION("test_query") {
     uint64_t skipped = 0;
     CHECK_NOTHROW((itr->skip(5, skipped)));
     CHECK((0 == skipped));
-    CHECK_NOTHROW((itr->reset()));
+    CHECK_NOTHROW((itr->reset(nullptr)));
   }
 
   // empty unordered iterator (nullptr sort condition)
@@ -858,11 +914,14 @@ SECTION("test_query") {
     auto* view = logicalView->getImplementation();
     REQUIRE((false == !view));
 
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+    REQUIRE(dummyPlan);
+
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
 
     CHECK((trx.begin().ok()));
     arangodb::aql::Variable variable("testVariable", 0);
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, nullptr, nullptr, &noop, &variable, nullptr));
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, &noop, nullptr));
 
     CHECK((false == !itr));
     CHECK((std::string("iresearch-unordered-iterator") == itr->typeName()));
@@ -876,7 +935,7 @@ SECTION("test_query") {
     uint64_t skipped = 0;
     CHECK_NOTHROW((itr->skip(5, skipped)));
     CHECK((0 == skipped));
-    CHECK_NOTHROW((itr->reset()));
+    CHECK_NOTHROW((itr->reset(nullptr)));
   }
 
   // empty unordered iterator (empty sort condition)
@@ -887,11 +946,14 @@ SECTION("test_query") {
     auto* view = logicalView->getImplementation();
     REQUIRE((false == !view));
 
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+    REQUIRE(dummyPlan);
+
     arangodb::aql::SortCondition order;
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
     arangodb::aql::Variable variable("testVariable", 0);
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, nullptr, nullptr, &noop, &variable, &order));
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, &noop, &order));
 
     CHECK((false == !itr));
     CHECK((std::string("iresearch-unordered-iterator") == itr->typeName()));
@@ -905,7 +967,7 @@ SECTION("test_query") {
     uint64_t skipped = 0;
     CHECK_NOTHROW((itr->skip(5, skipped)));
     CHECK((0 == skipped));
-    CHECK_NOTHROW((itr->reset()));
+    CHECK_NOTHROW((itr->reset(nullptr)));
   }
 
   // ordered iterator
@@ -915,6 +977,9 @@ SECTION("test_query") {
     CHECK((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
     CHECK((false == !view));
+
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+    REQUIRE(dummyPlan);
 
     // fill with test data
     {
@@ -966,7 +1031,7 @@ SECTION("test_query") {
     arangodb::aql::SortCondition order(nullptr, sorts, constAttributes, variableDefinitions);
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, nullptr, nullptr, &filter, &variable, &order));
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, &filter, &order));
 
     CHECK((false == !itr));
     CHECK((std::string("iresearch-ordered-iterator") == itr->typeName()));
@@ -982,7 +1047,7 @@ SECTION("test_query") {
       CHECK((expected.size() == next));
     }
 
-    CHECK_NOTHROW((itr->reset()));
+    CHECK_NOTHROW((itr->reset(nullptr)));
     uint64_t skipped = 0;
     CHECK_NOTHROW((itr->skip(5, skipped)));
     CHECK((5 == skipped));
@@ -997,7 +1062,164 @@ SECTION("test_query") {
     CHECK_NOTHROW((itr->skip(5, skipped)));
     CHECK((0 == skipped));
 
-    CHECK_NOTHROW((itr->reset()));
+    CHECK_NOTHROW((itr->reset(nullptr)));
+  }
+
+  // ordered iterator isolation
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto logicalView = vocbase.createView(createJson->slice(), 0);
+    CHECK((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    CHECK((false == !view));
+
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+    REQUIRE(dummyPlan);
+
+    // fill with test data
+    {
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      arangodb::iresearch::IResearchLinkMeta meta;
+      meta._includeAllFields = true;
+      arangodb::transaction::UserTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(&vocbase),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+      );
+      CHECK((trx.begin().ok()));
+
+      for (size_t i = 0; i < 12; ++i) {
+        view->insert(trx, 1, arangodb::LocalDocumentId(i), doc->slice(), meta);
+      }
+
+      CHECK((trx.commit().ok()));
+      view->sync();
+    }
+
+    arangodb::aql::AstNode filter(arangodb::aql::AstNodeType::NODE_TYPE_FILTER);
+    arangodb::aql::AstNode filterGe(arangodb::aql::AstNodeType::NODE_TYPE_OPERATOR_BINARY_GE);
+    arangodb::aql::AstNode filterAttr(arangodb::aql::AstNodeType::NODE_TYPE_ATTRIBUTE_ACCESS);
+    arangodb::aql::AstNode filterReference(arangodb::aql::AstNodeType::NODE_TYPE_REFERENCE);
+    arangodb::aql::AstNode filterValue(int64_t(1), arangodb::aql::AstNodeValueType::VALUE_TYPE_INT);
+    irs::string_ref attr("key");
+
+    filterAttr.setStringValue(attr.c_str(), attr.size());
+    filterAttr.addMember(&filterReference);
+    filterGe.addMember(&filterAttr);
+    filterGe.addMember(&filterValue);
+    filter.addMember(&filterGe);
+
+    std::vector<std::pair<arangodb::aql::Variable const*, bool>> sorts;
+    std::vector<std::vector<arangodb::basics::AttributeName>> constAttributes;
+    std::unordered_map<arangodb::aql::VariableId, arangodb::aql::AstNode const*> variableDefinitions;
+
+    irs::string_ref attribute("testAttribute");
+    arangodb::aql::AstNode nodeArgs(arangodb::aql::AstNodeType::NODE_TYPE_ARRAY);
+    arangodb::aql::AstNode nodeOutVar(arangodb::aql::AstNodeType::NODE_TYPE_REFERENCE);
+    arangodb::aql::AstNode nodeExpression(arangodb::aql::AstNodeType::NODE_TYPE_FCALL);
+    arangodb::aql::Function nodeFunction("test_doc_id", "", false, true, true, false);
+    arangodb::aql::Variable variable("testVariable", 0);
+    filterReference.setData(&variable); // set pointer to variable
+
+    nodeArgs.addMember(&nodeOutVar);
+    nodeExpression.addMember(&nodeArgs);
+    nodeExpression.setData(&nodeFunction);
+    variableDefinitions.emplace(variable.id, &nodeExpression); // add node for condition
+    sorts.emplace_back(std::make_pair(&variable, true)); // add one condition
+
+    arangodb::aql::SortCondition order(nullptr, sorts, constAttributes, variableDefinitions);
+    arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
+    CHECK((trx.begin().ok()));
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, &filter, &order));
+
+    CHECK((false == !itr));
+    CHECK((std::string("iresearch-ordered-iterator") == itr->typeName()));
+    CHECK((&trx == itr->transaction()));
+    CHECK((view == itr->view()));
+    CHECK((false == itr->hasExtra()));
+    CHECK_THROWS(itr->nextExtra([](arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
+
+    // check data
+    {
+      std::vector<size_t> actual;
+      std::set<size_t> expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+      CHECK((false == itr->next([&expected, &actual](arangodb::LocalDocumentId const& token) {
+        CHECK((1 == expected.erase(token.id()))); actual.emplace_back(token.id()); }, irs::integer_traits<size_t>::const_max))
+      );
+      CHECK((expected.empty()));
+      CHECK(12 == actual.size());
+    }
+
+    // add more data
+    {
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      arangodb::iresearch::IResearchLinkMeta meta;
+      meta._includeAllFields = true;
+      arangodb::transaction::UserTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(&vocbase),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+      );
+      CHECK((trx.begin().ok()));
+
+      for (size_t i = 12; i < 24; ++i) {
+        view->insert(trx, 1, arangodb::LocalDocumentId(i), doc->slice(), meta);
+      }
+
+      CHECK((trx.commit().ok()));
+      view->sync();
+    }
+
+    // reset without context doesn't recompile the query
+    CHECK_NOTHROW((itr->reset(nullptr)));
+
+    // reset iterator, we shall see the same data as before
+    {
+      std::vector<size_t> actual;
+      std::set<size_t> expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+      CHECK((false == itr->next([&expected, &actual](arangodb::LocalDocumentId const& token){
+        CHECK((1 == expected.erase(token.id()))); actual.emplace_back(token.id()); }, irs::integer_traits<size_t>::const_max))
+      );
+      CHECK((expected.empty()));
+      CHECK(12 == actual.size());
+    }
+
+    // reset without context recompiles the query
+    CHECK_NOTHROW((itr->reset(&ExpressionContextMock::EMPTY)));
+
+    // reset iterator, we shall see the same data as before
+    {
+      std::vector<size_t> actual;
+      std::set<size_t> expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+      CHECK((false == itr->next([&expected, &actual](arangodb::LocalDocumentId const& token){
+        CHECK((1 == expected.erase(token.id()))); actual.emplace_back(token.id()); }, irs::integer_traits<size_t>::const_max))
+      );
+      CHECK((expected.empty()));
+      CHECK(12 == actual.size());
+    }
+
+    // open new iterator
+    {
+      std::unique_ptr<arangodb::ViewIterator> newItr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, &filter, &order));
+
+      CHECK((false == !newItr));
+      CHECK((std::string("iresearch-ordered-iterator") == newItr->typeName()));
+      CHECK((&trx == newItr->transaction()));
+      CHECK((view == newItr->view()));
+      CHECK((false == newItr->hasExtra()));
+      CHECK_THROWS(newItr->nextExtra([](arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
+
+      // check data
+      {
+        std::vector<size_t> newActual;
+        std::set<size_t> newExpected = { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24 };
+        CHECK((false == newItr->next([&newExpected, &newActual](arangodb::LocalDocumentId const& token) {
+            CHECK((1 == newExpected.erase(token.id())));
+            newActual.emplace_back(token.id());
+          }, irs::integer_traits<size_t>::const_max))
+        );
+        CHECK((newExpected.empty()));
+        CHECK(24 == newActual.size());
+      }
+    }
   }
 
   // unordered iterator (nullptr sort condition)
@@ -1007,6 +1229,9 @@ SECTION("test_query") {
     CHECK((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
     CHECK((false == !view));
+
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+    REQUIRE(dummyPlan);
 
     // fill with test data
     {
@@ -1027,7 +1252,7 @@ SECTION("test_query") {
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
     arangodb::aql::Variable variable("testVariable", 0);
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, nullptr, nullptr, &noop, &variable, nullptr));
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, &noop, nullptr));
 
     CHECK((false == !itr));
     CHECK((std::string("iresearch-unordered-iterator") == itr->typeName()));
@@ -1044,7 +1269,7 @@ SECTION("test_query") {
       CHECK((10 == actual.size()));
     }
 
-    CHECK_NOTHROW((itr->reset()));
+    CHECK_NOTHROW((itr->reset(nullptr)));
     uint64_t skipped = 0;
     CHECK_NOTHROW((itr->skip(5, skipped)));
     CHECK((5 == skipped));
@@ -1061,7 +1286,7 @@ SECTION("test_query") {
     CHECK_NOTHROW((itr->skip(5, skipped)));
     CHECK((0 == skipped));
 
-    CHECK_NOTHROW((itr->reset()));
+    CHECK_NOTHROW((itr->reset(nullptr)));
   }
 
   // unordered iterator (empty sort condition)
@@ -1071,6 +1296,9 @@ SECTION("test_query") {
     CHECK((false == !logicalView));
     auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
     CHECK((false == !view));
+
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+    REQUIRE(dummyPlan);
 
     // fill with test data
     {
@@ -1092,7 +1320,7 @@ SECTION("test_query") {
     arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
     CHECK((trx.begin().ok()));
     arangodb::aql::Variable variable("testVariable", 0);
-    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, nullptr, nullptr, &noop, &variable, &order));
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, &noop, &order));
 
     CHECK((false == !itr));
     CHECK((std::string("iresearch-unordered-iterator") == itr->typeName()));
@@ -1109,7 +1337,7 @@ SECTION("test_query") {
       CHECK((10 == actual.size()));
     }
 
-    CHECK_NOTHROW((itr->reset()));
+    CHECK_NOTHROW((itr->reset(nullptr)));
     uint64_t skipped = 0;
     CHECK_NOTHROW((itr->skip(5, skipped)));
     CHECK((5 == skipped));
@@ -1126,7 +1354,136 @@ SECTION("test_query") {
     CHECK_NOTHROW((itr->skip(5, skipped)));
     CHECK((0 == skipped));
 
-    CHECK_NOTHROW((itr->reset()));
+    CHECK_NOTHROW((itr->reset(nullptr)));
+  }
+
+  // unordered iterator isolation
+  {
+    TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
+    auto logicalView = vocbase.createView(createJson->slice(), 0);
+    CHECK((false == !logicalView));
+    auto* view = dynamic_cast<arangodb::iresearch::IResearchView*>(logicalView->getImplementation());
+    CHECK((false == !view));
+
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+    REQUIRE(dummyPlan);
+
+    // fill with test data
+    {
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      arangodb::iresearch::IResearchLinkMeta meta;
+      meta._includeAllFields = true;
+      arangodb::transaction::UserTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(&vocbase),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+      );
+      CHECK((trx.begin().ok()));
+
+      for (size_t i = 0; i < 12; ++i) {
+        view->insert(trx, 1, arangodb::LocalDocumentId(i), doc->slice(), meta);
+      }
+
+      CHECK((trx.commit().ok()));
+      view->sync();
+    }
+
+    arangodb::transaction::UserTransaction trx(
+      arangodb::transaction::StandaloneContext::Create(&vocbase),
+      EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+    );
+    CHECK((trx.begin().ok()));
+    arangodb::aql::Variable variable("testVariable", 0);
+    std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, &noop, nullptr));
+
+    CHECK((false == !itr));
+    CHECK((std::string("iresearch-unordered-iterator") == itr->typeName()));
+    CHECK((&trx == itr->transaction()));
+    CHECK((view == itr->view()));
+    CHECK((false == itr->hasExtra()));
+    CHECK_THROWS(itr->nextExtra([](arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
+
+    // check data
+    {
+      std::vector<size_t> actual;
+      std::set<size_t> expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+      CHECK((false == itr->next([&expected, &actual](arangodb::LocalDocumentId const& token) {
+        CHECK((1 == expected.erase(token.id()))); actual.emplace_back(token.id()); }, irs::integer_traits<size_t>::const_max))
+      );
+      CHECK((expected.empty()));
+      CHECK(12 == actual.size());
+    }
+
+    // add more data
+    {
+      auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
+      arangodb::iresearch::IResearchLinkMeta meta;
+      meta._includeAllFields = true;
+      arangodb::transaction::UserTransaction trx(
+        arangodb::transaction::StandaloneContext::Create(&vocbase),
+        EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
+      );
+      CHECK((trx.begin().ok()));
+
+      for (size_t i = 12; i < 24; ++i) {
+        view->insert(trx, 1, arangodb::LocalDocumentId(i), doc->slice(), meta);
+      }
+
+      CHECK((trx.commit().ok()));
+      view->sync();
+    }
+
+    // reset without context doesn't recompile the query
+    CHECK_NOTHROW((itr->reset(nullptr)));
+
+    // reset iterator, we shall see the same data as before
+    {
+      std::vector<size_t> actual;
+      std::set<size_t> expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+      CHECK((false == itr->next([&expected, &actual](arangodb::LocalDocumentId const& token){
+        CHECK((1 == expected.erase(token.id()))); actual.emplace_back(token.id()); }, irs::integer_traits<size_t>::const_max))
+      );
+      CHECK((expected.empty()));
+      CHECK(12 == actual.size());
+    }
+
+    // reset without context recompiles the query
+    CHECK_NOTHROW((itr->reset(&ExpressionContextMock::EMPTY)));
+
+    // reset iterator, we shall see the same data as before
+    {
+      std::vector<size_t> actual;
+      std::set<size_t> expected = { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 };
+      CHECK((false == itr->next([&expected, &actual](arangodb::LocalDocumentId const& token){
+        CHECK((1 == expected.erase(token.id()))); actual.emplace_back(token.id()); }, irs::integer_traits<size_t>::const_max))
+      );
+      CHECK((expected.empty()));
+      CHECK(12 == actual.size());
+    }
+
+    {
+      std::unique_ptr<arangodb::ViewIterator> newItr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, &noop, nullptr));
+
+      CHECK((false == !newItr));
+      CHECK((std::string("iresearch-unordered-iterator") == newItr->typeName()));
+      CHECK((&trx == newItr->transaction()));
+      CHECK((view == newItr->view()));
+      CHECK((false == newItr->hasExtra()));
+      CHECK_THROWS(newItr->nextExtra([](arangodb::LocalDocumentId const&, arangodb::velocypack::Slice)->void{}, 42));
+
+      // check data
+      {
+        std::vector<size_t> newActual;
+        std::set<size_t> newExpected = { 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24 };
+
+        CHECK((false == newItr->next([&newExpected, &newActual](arangodb::LocalDocumentId const& token) {
+            CHECK((1 == newExpected.erase(token.id())));
+            newActual.emplace_back(token.id());
+          }, irs::integer_traits<size_t>::const_max))
+        );
+        CHECK((newExpected.empty()));
+        CHECK(24 == newActual.size());
+      }
+    }
   }
 
   // query while running FlushThread
@@ -1145,6 +1502,9 @@ SECTION("test_query") {
     REQUIRE((false == !view));
     arangodb::Result res = logicalView->updateProperties(viewUpdateJson->slice(), true, false);
     REQUIRE(true == res.ok());
+
+    auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+    REQUIRE(dummyPlan);
 
     // start flush thread
     auto flush = std::make_shared<std::atomic<bool>>(true);
@@ -1181,7 +1541,7 @@ SECTION("test_query") {
       {
         arangodb::transaction::UserTransaction trx(arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options());
         CHECK((trx.begin().ok()));
-        std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, nullptr, nullptr, &noop, &variable, nullptr));
+        std::unique_ptr<arangodb::ViewIterator> itr(view->iteratorForCondition(&trx, dummyPlan.get(), &ExpressionContextMock::EMPTY, &variable, &noop, nullptr));
         CHECK((false == !itr));
 
         size_t count = 0;

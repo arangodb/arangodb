@@ -37,6 +37,9 @@ class Methods;
 namespace velocypack {
 class Slice;
 }
+namespace aql {
+class ExpressionContext;
+}
 
 class ViewIterator {
  public:
@@ -67,7 +70,7 @@ class ViewIterator {
   virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) = 0;
 
   // reset the iterator to its beginning
-  virtual void reset() = 0;
+  virtual bool reset(arangodb::aql::ExpressionContext* ctx) = 0;
 
   virtual bool nextExtra(ExtraCallback const& callback, size_t limit) = 0;
   virtual bool hasExtra() const = 0;

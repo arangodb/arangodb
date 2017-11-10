@@ -336,6 +336,6 @@ ViewIterator* LogicalView::iteratorForCondition(
     arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition) {
   return _implementation
-    ? _implementation->iteratorForCondition(trx, plan, ctx, node, reference, sortCondition)
+    ? _implementation->iteratorForCondition(trx, plan, ctx, reference, node, sortCondition)
     : nullptr;
 }

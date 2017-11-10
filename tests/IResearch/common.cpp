@@ -24,6 +24,7 @@
 #include "common.h"
 #include "ApplicationFeatures/V8PlatformFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
+#include "Aql/ExecutionPlan.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "IResearch/VelocyPackHelper.h"
@@ -74,7 +75,7 @@ v8::Isolate* v8Isolate() {
 
 bool assertRules(
     TRI_vocbase_t& vocbase,
-    const std::string& queryString,
+    std::string const& queryString,
     std::vector<int> expectedRulesIds
 ) {
   std::unordered_set<std::string> expectedRules;
@@ -100,10 +101,6 @@ bool assertRules(
 
   arangodb::velocypack::ArrayIterator rules(explanation.get("rules"));
 
-//  if (expectedRules.size() != rules.size()) {
-//    return false;
-//  }
-
   for (auto const rule : rules) {
     auto const strRule = arangodb::iresearch::getStringRef(rule);
     expectedRules.erase(strRule);
@@ -114,7 +111,7 @@ bool assertRules(
 
 arangodb::aql::QueryResult executeQuery(
     TRI_vocbase_t& vocbase,
-    const std::string& queryString
+    std::string const& queryString
 ) {
   std::shared_ptr<arangodb::velocypack::Builder> bindVars;
 
@@ -130,6 +127,32 @@ arangodb::aql::QueryResult executeQuery(
   );
 
   return query.execute(arangodb::QueryRegistryFeature::QUERY_REGISTRY);
+}
+
+std::unique_ptr<arangodb::aql::ExecutionPlan> planFromQuery(
+  TRI_vocbase_t& vocbase,
+  std::string const& queryString
+) {
+  auto options = arangodb::velocypack::Parser::fromJson(
+//    "{ \"tracing\" : 1 }"
+    "{ }"
+  );
+
+  arangodb::aql::Query query(
+    false, &vocbase, arangodb::aql::QueryString(queryString),
+    nullptr, options,
+    arangodb::aql::PART_MAIN
+  );
+
+  auto result = query.parse();
+
+  if (result.code != TRI_ERROR_NO_ERROR || !query.ast()) {
+    return nullptr;
+  }
+
+  return std::unique_ptr<arangodb::aql::ExecutionPlan>(
+    arangodb::aql::ExecutionPlan::instantiateFromAst(query.ast())
+  );
 }
 
 }

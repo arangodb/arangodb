@@ -90,12 +90,17 @@ bool ScopedAqlValue::execute(arangodb::iresearch::QueryContext const& ctx) {
     return true;
   }
 
-  if (!ctx.ast) { // || !ctx.ctx) {
-    // can't execute expression without `AST` and `ExpressionContext`
+  if (!ctx.plan) { // || !ctx.ctx) {
+    // can't execute expression without `ExecutionPlan`
     return false;
   }
 
   TRI_ASSERT(ctx.ctx); //FIXME remove, uncomment condition
+
+  if (!ctx.ast) {
+    // can't execute expression without `AST` and `ExpressionContext`
+    return false;
+  }
 
   // don't really understand why we need `ExecutionPlan` and `Ast` here
   arangodb::aql::Expression expr(

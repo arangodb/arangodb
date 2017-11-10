@@ -179,16 +179,16 @@ void EnumerateViewBlock::refreshIterator() {
 
   auto& node = ::getPlanNode<EnumerateViewNode>(*this);
 
-  if (!_iter || _volatileState) {
-    ViewExpressionContext ctx(this, _buffer.front(), _pos);
+  ViewExpressionContext ctx(this, _buffer.front(), _pos);
+
+  if (!_iter) {
+    // initialize `_iter` in lazy fashion
     _iter = node.iterator(*_trx, ctx);
   }
 
-  if (!_iter) {
+  if (!_iter || !_iter->reset(_volatileState ? &ctx : nullptr)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL); // FIXME runtime error
   }
-
-  _iter->reset();
 }
 
 AqlItemBlock* EnumerateViewBlock::getSome(size_t, size_t atMost) {

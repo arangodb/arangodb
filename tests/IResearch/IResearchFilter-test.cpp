@@ -46,6 +46,7 @@
 #include "RestServer/TraverserEngineRegistryFeature.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/UserTransaction.h"
@@ -210,12 +211,14 @@ void assertFilter(
 
   std::vector<std::string> const EMPTY;
 
+  auto dummyPlan = arangodb::tests::planFromQuery(vocbase, "RETURN 1");
+
   arangodb::transaction::UserTransaction trx(
     arangodb::transaction::StandaloneContext::Create(&vocbase), EMPTY, EMPTY, EMPTY, arangodb::transaction::Options()
   );
 
   irs::Or actual;
-  arangodb::iresearch::QueryContext const ctx{ &trx, nullptr, query.ast(), exprCtx, ref };
+  arangodb::iresearch::QueryContext const ctx{ &trx, dummyPlan.get(), query.ast(), exprCtx, ref };
   CHECK((parseOk == arangodb::iresearch::FilterFactory::filter(nullptr, ctx, *filterNode)));
   CHECK((execOk == arangodb::iresearch::FilterFactory::filter(&actual, ctx, *filterNode)));
   CHECK((!execOk || expected == actual));

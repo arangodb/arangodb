@@ -150,8 +150,8 @@ class LoggerView final : public ViewImplementation {
       transaction::Methods* trx,
       arangodb::aql::ExecutionPlan* plan,
       arangodb::aql::ExpressionContext* ctx,
-      arangodb::aql::AstNode const* node,
       arangodb::aql::Variable const* reference,
+      arangodb::aql::AstNode const* filterCondition,
       arangodb::aql::SortCondition const* sortCondition) {
     return nullptr;
   }
