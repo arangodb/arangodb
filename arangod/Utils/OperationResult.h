@@ -33,7 +33,7 @@
 
 namespace arangodb {
   
-//TODO FIXME -- This class shoulb be based on the arangodb::Result class
+//TODO FIXME -- This class should be based on the arangodb::Result class
 struct OperationResult {
 
   OperationResult() 
