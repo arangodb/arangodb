@@ -119,7 +119,7 @@ void SchedulerFeature::start() {
   ArangoGlobalContext::CONTEXT->maskAllSignals();
   buildScheduler();
 
-  bool ok = _scheduler->start(nullptr);
+  bool ok = _scheduler->start();
 
   if (!ok) {
     LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "the scheduler cannot be started";
