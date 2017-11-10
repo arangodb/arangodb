@@ -309,7 +309,7 @@ std::string Constituent::endpoint(std::string id) const {
 
 /// @brief Check leader
 bool Constituent::checkLeader(
-  term_t term, std::string id, index_t prevLogIndex, term_t prevLogTerm) {
+  term_t term, std::string const& id, index_t prevLogIndex, term_t prevLogTerm) {
 
   TRI_ASSERT(_vocbase != nullptr);
 
@@ -365,7 +365,7 @@ bool Constituent::checkLeader(
 }
 
 /// @brief Vote
-bool Constituent::vote(term_t termOfPeer, std::string id, index_t prevLogIndex,
+bool Constituent::vote(term_t termOfPeer, std::string const& id, index_t prevLogIndex,
                        term_t prevLogTerm) {
 
   if (!_agent->ready()) {

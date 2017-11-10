@@ -937,7 +937,7 @@ static void JS_QueriesPropertiesAql(
           obj->Get(TRI_V8_ASCII_STRING(isolate, "maxQueryStringLength")))));
     }
 
-    // fall-through intentional
+    // intentionally falls through
   }
 
   // return current settings

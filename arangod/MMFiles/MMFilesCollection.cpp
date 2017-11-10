@@ -259,7 +259,8 @@ int MMFilesCollection::OpenIteratorHandleDocumentMarker(
     // insert into primary index
     Result res = state->_primaryIndex->insertKey(trx, localDocumentId,
                                                  VPackSlice(vpack),
-                                                 state->_mmdr);
+                                                 state->_mmdr,
+                                                 Index::OperationMode::normal);
 
     if (res.errorNumber() != TRI_ERROR_NO_ERROR) {
       physical->removeLocalDocumentId(localDocumentId, false);
@@ -394,7 +395,7 @@ int MMFilesCollection::OpenIteratorHandleDeletionMarker(
     state->_dfi->numberDeletions++;
 
     state->_primaryIndex->removeKey(trx, oldLocalDocumentId, VPackSlice(vpack),
-                                    state->_mmdr);
+                                    state->_mmdr, Index::OperationMode::normal);
 
     physical->removeLocalDocumentId(oldLocalDocumentId, true);
   }
@@ -2497,7 +2498,7 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, double timeout) {
           LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
               << "waiting for read-lock on collection '"
               << _logicalCollection->name() << "'";
-          // fall-through intentional
+          // intentionally falls through
         } else if (++iterations >= 5) {
           // periodically check for deadlocks
           TRI_ASSERT(wasBlocked);
@@ -2747,7 +2748,7 @@ void MMFilesCollection::truncate(transaction::Methods* trx,
     if (vpack != nullptr) {
       builder->clear();
       VPackSlice oldDoc(vpack);
-      
+
       LocalDocumentId const documentId = LocalDocumentId::create();
       TRI_voc_rid_t revisionId;
       newObjectForRemove(trx, oldDoc, documentId, *builder.get(), options.isRestore, revisionId);
@@ -2780,7 +2781,7 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
                                  OperationOptions& options,
                                  TRI_voc_tick_t& resultMarkerTick, bool lock,
                                  TRI_voc_tick_t& revisionId) {
-  
+
   VPackSlice fromSlice;
   VPackSlice toSlice;
 
@@ -2907,8 +2908,8 @@ Result MMFilesCollection::insert(transaction::Methods* trx,
 
       try {
         // insert into indexes
-        res = insertDocument(trx, documentId, revisionId, doc, operation, marker,
-                             options.waitForSync);
+        res = insertDocument(trx, documentId, revisionId, doc, operation,
+                             marker, options, options.waitForSync);
       } catch (basics::Exception const& ex) {
         res = Result(ex.code());
       } catch (std::bad_alloc const&) {
@@ -3056,26 +3057,27 @@ void MMFilesCollection::removeLocalDocumentId(LocalDocumentId const& documentId,
 /// @brief creates a new entry in the primary index
 Result MMFilesCollection::insertPrimaryIndex(transaction::Methods* trx,
                                              LocalDocumentId const& documentId,
-                                             VPackSlice const& doc) {
+                                             VPackSlice const& doc,
+                                             OperationOptions& options) {
   TRI_IF_FAILURE("InsertPrimaryIndex") { return Result(TRI_ERROR_DEBUG); }
 
   // insert into primary index
-  return primaryIndex()->insertKey(trx, documentId, doc);
+  return primaryIndex()->insertKey(trx, documentId, doc, options.indexOpMode);
 }
 
 /// @brief deletes an entry from the primary index
 Result MMFilesCollection::deletePrimaryIndex(
     arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-    VPackSlice const& doc) {
+    VPackSlice const& doc, OperationOptions& options) {
   TRI_IF_FAILURE("DeletePrimaryIndex") { return Result(TRI_ERROR_DEBUG); }
 
-  return primaryIndex()->removeKey(trx, documentId, doc);
+  return primaryIndex()->removeKey(trx, documentId, doc, options.indexOpMode);
 }
 
 /// @brief creates a new entry in the secondary indexes
 Result MMFilesCollection::insertSecondaryIndexes(
     arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-    VPackSlice const& doc, bool isRollback) {
+    VPackSlice const& doc, Index::OperationMode mode) {
   // Coordinator doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   TRI_IF_FAILURE("InsertSecondaryIndexes") { return Result(TRI_ERROR_DEBUG); }
@@ -3098,7 +3100,7 @@ Result MMFilesCollection::insertSecondaryIndexes(
       continue;
     }
 
-    Result res = idx->insert(trx, documentId, doc, isRollback);
+    Result res = idx->insert(trx, documentId, doc, mode);
 
     // in case of no-memory, return immediately
     if (res.errorNumber() == TRI_ERROR_OUT_OF_MEMORY) {
@@ -3119,7 +3121,7 @@ Result MMFilesCollection::insertSecondaryIndexes(
 /// @brief deletes an entry from the secondary indexes
 Result MMFilesCollection::deleteSecondaryIndexes(
     arangodb::transaction::Methods* trx, LocalDocumentId const& documentId,
-    VPackSlice const& doc, bool isRollback) {
+    VPackSlice const& doc, Index::OperationMode mode) {
   // Coordintor doesn't know index internals
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
 
@@ -3144,7 +3146,7 @@ Result MMFilesCollection::deleteSecondaryIndexes(
       continue;
     }
 
-    Result res = idx->remove(trx, documentId, doc, isRollback);
+    Result res = idx->remove(trx, documentId, doc, mode);
 
     if (res.fail()) {
       // an error occurred
@@ -3184,9 +3186,10 @@ int MMFilesCollection::detectIndexes(transaction::Methods* trx) {
 ///        If it returns an error no documents are inserted
 Result MMFilesCollection::insertIndexes(arangodb::transaction::Methods* trx,
                                         LocalDocumentId const& documentId,
-                                        VPackSlice const& doc) {
+                                        VPackSlice const& doc,
+                                        OperationOptions& options) {
   // insert into primary index first
-  Result res = insertPrimaryIndex(trx, documentId, doc);
+  Result res = insertPrimaryIndex(trx, documentId, doc, options);
 
   if (res.fail()) {
     // insert has failed
@@ -3194,11 +3197,12 @@ Result MMFilesCollection::insertIndexes(arangodb::transaction::Methods* trx,
   }
 
   // insert into secondary indexes
-  res = insertSecondaryIndexes(trx, documentId, doc, false);
+  res = insertSecondaryIndexes(trx, documentId, doc, options.indexOpMode);
 
   if (res.fail()) {
-    deleteSecondaryIndexes(trx, documentId, doc, true);
-    deletePrimaryIndex(trx, documentId, doc);
+    deleteSecondaryIndexes(trx, documentId, doc,
+                           Index::OperationMode::rollback);
+    deletePrimaryIndex(trx, documentId, doc, options);
   }
   return res;
 }
@@ -3211,8 +3215,9 @@ Result MMFilesCollection::insertDocument(arangodb::transaction::Methods* trx,
                                          VPackSlice const& doc,
                                          MMFilesDocumentOperation& operation,
                                          MMFilesWalMarker const* marker,
+                                         OperationOptions& options,
                                          bool& waitForSync) {
-  Result res = insertIndexes(trx, documentId, doc);
+  Result res = insertIndexes(trx, documentId, doc, options);
   if (res.fail()) {
     return res;
   }
@@ -3338,8 +3343,9 @@ Result MMFilesCollection::update(
       result.reset();
     }
 
-    res = updateDocument(trx, revisionId, oldDocumentId, oldDoc, documentId, newDoc,
-                         operation, marker, options.waitForSync);
+    res = updateDocument(trx, revisionId, oldDocumentId, oldDoc, documentId,
+                         newDoc, operation, marker, options,
+                         options.waitForSync);
   } catch (basics::Exception const& ex) {
     res = Result(ex.code());
   } catch (std::bad_alloc const&) {
@@ -3370,9 +3376,9 @@ Result MMFilesCollection::replace(
     transaction::Methods* trx, VPackSlice const newSlice,
     ManagedDocumentResult& result, OperationOptions& options,
     TRI_voc_tick_t& resultMarkerTick, bool lock, TRI_voc_rid_t& prevRev,
-    ManagedDocumentResult& previous, 
+    ManagedDocumentResult& previous,
     VPackSlice const fromSlice, VPackSlice const toSlice) {
-  
+
   LocalDocumentId const documentId = LocalDocumentId::create();
   bool const isEdgeCollection =
       (_logicalCollection->type() == TRI_COL_TYPE_EDGE);
@@ -3472,8 +3478,9 @@ Result MMFilesCollection::replace(
       result.reset();
     }
 
-    res = updateDocument(trx, revisionId, oldDocumentId, oldDoc, documentId, newDoc,
-                         operation, marker, options.waitForSync);
+    res = updateDocument(trx, revisionId, oldDocumentId, oldDoc, documentId,
+                         newDoc, operation, marker, options,
+                         options.waitForSync);
   } catch (basics::Exception const& ex) {
     res = Result(ex.code());
   } catch (std::bad_alloc const&) {
@@ -3591,17 +3598,20 @@ Result MMFilesCollection::remove(arangodb::transaction::Methods* trx,
                              MMFilesDocumentDescriptor());
 
     // delete from indexes
-    res = deleteSecondaryIndexes(trx, oldDocumentId, oldDoc, false);
+    res = deleteSecondaryIndexes(trx, oldDocumentId, oldDoc,
+                                 options.indexOpMode);
 
     if (res.fail()) {
-      insertSecondaryIndexes(trx, oldDocumentId, oldDoc, true);
+      insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
+                             Index::OperationMode::rollback);
       THROW_ARANGO_EXCEPTION(res);
     }
 
-    res = deletePrimaryIndex(trx, oldDocumentId, oldDoc);
+    res = deletePrimaryIndex(trx, oldDocumentId, oldDoc, options);
 
     if (res.fail()) {
-      insertSecondaryIndexes(trx, oldDocumentId, oldDoc, true);
+      insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
+                             Index::OperationMode::rollback);
       THROW_ARANGO_EXCEPTION(res);
     }
 
@@ -3654,12 +3664,13 @@ void MMFilesCollection::deferDropCollection(
 }
 
 /// @brief rolls back a document operation
-Result MMFilesCollection::rollbackOperation(transaction::Methods* trx,
-                                            TRI_voc_document_operation_e type,
-                                            LocalDocumentId const& oldDocumentId,
-                                            VPackSlice const& oldDoc,
-                                            LocalDocumentId const& newDocumentId,
-                                            VPackSlice const& newDoc) {
+Result MMFilesCollection::rollbackOperation(
+    transaction::Methods* trx, TRI_voc_document_operation_e type,
+    LocalDocumentId const& oldDocumentId, VPackSlice const& oldDoc,
+    LocalDocumentId const& newDocumentId, VPackSlice const& newDoc) {
+  OperationOptions options;
+  options.indexOpMode=  Index::OperationMode::rollback;
+
   if (type == TRI_VOC_DOCUMENT_OPERATION_INSERT) {
     TRI_ASSERT(oldDocumentId.empty());
     TRI_ASSERT(oldDoc.isNone());
@@ -3667,8 +3678,9 @@ Result MMFilesCollection::rollbackOperation(transaction::Methods* trx,
     TRI_ASSERT(!newDoc.isNone());
 
     // ignore any errors we're getting from this
-    deletePrimaryIndex(trx, newDocumentId, newDoc);
-    deleteSecondaryIndexes(trx, newDocumentId, newDoc, true);
+    deletePrimaryIndex(trx, newDocumentId, newDoc, options);
+    deleteSecondaryIndexes(trx, newDocumentId, newDoc,
+                           Index::OperationMode::rollback);
     return TRI_ERROR_NO_ERROR;
   }
 
@@ -3680,9 +3692,11 @@ Result MMFilesCollection::rollbackOperation(transaction::Methods* trx,
     TRI_ASSERT(!newDoc.isNone());
 
     // remove the current values from the indexes
-    deleteSecondaryIndexes(trx, newDocumentId, newDoc, true);
+    deleteSecondaryIndexes(trx, newDocumentId, newDoc,
+                           Index::OperationMode::rollback);
     // re-insert old state
-    return insertSecondaryIndexes(trx, oldDocumentId, oldDoc, true);
+    return insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
+                                  Index::OperationMode::rollback);
   }
 
   if (type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
@@ -3692,10 +3706,11 @@ Result MMFilesCollection::rollbackOperation(transaction::Methods* trx,
     TRI_ASSERT(newDocumentId.empty());
     TRI_ASSERT(newDoc.isNone());
 
-    Result res = insertPrimaryIndex(trx, oldDocumentId, oldDoc);
+    Result res = insertPrimaryIndex(trx, oldDocumentId, oldDoc, options);
 
     if (res.ok()) {
-      res = insertSecondaryIndexes(trx, oldDocumentId, oldDoc, true);
+      res = insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
+                                   Index::OperationMode::rollback);
     } else {
       LOG_TOPIC(ERR, arangodb::Logger::FIXME)
           << "error rolling back remove operation";
@@ -3754,17 +3769,20 @@ Result MMFilesCollection::removeFastPath(arangodb::transaction::Methods* trx,
   // delete from indexes
   Result res;
   try {
-    res = deleteSecondaryIndexes(trx, oldDocumentId, oldDoc, false);
+    res = deleteSecondaryIndexes(trx, oldDocumentId, oldDoc,
+                                 options.indexOpMode);
 
     if (res.fail()) {
-      insertSecondaryIndexes(trx, oldDocumentId, oldDoc, true);
+      insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
+                             Index::OperationMode::rollback);
       THROW_ARANGO_EXCEPTION(res.errorNumber());
     }
 
-    res = deletePrimaryIndex(trx, oldDocumentId, oldDoc);
+    res = deletePrimaryIndex(trx, oldDocumentId, oldDoc, options);
 
     if (res.fail()) {
-      insertSecondaryIndexes(trx, oldDocumentId, oldDoc, true);
+      insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
+                             Index::OperationMode::rollback);
       THROW_ARANGO_EXCEPTION(res.errorNumber());
     }
 
@@ -3831,27 +3849,33 @@ Result MMFilesCollection::lookupDocument(transaction::Methods* trx,
 /// the caller must make sure the write lock on the collection is held
 Result MMFilesCollection::updateDocument(
     transaction::Methods* trx,TRI_voc_rid_t revisionId,
-     LocalDocumentId const& oldDocumentId,
+    LocalDocumentId const& oldDocumentId,
     VPackSlice const& oldDoc, LocalDocumentId const& newDocumentId,
     VPackSlice const& newDoc, MMFilesDocumentOperation& operation,
-    MMFilesWalMarker const* marker, bool& waitForSync) {
+    MMFilesWalMarker const* marker, OperationOptions& options,
+    bool& waitForSync) {
   // remove old document from secondary indexes
   // (it will stay in the primary index as the key won't change)
-  Result res = deleteSecondaryIndexes(trx, oldDocumentId, oldDoc, false);
+  Result res = deleteSecondaryIndexes(trx, oldDocumentId, oldDoc,
+                                      options.indexOpMode);
 
   if (res.fail()) {
     // re-enter the document in case of failure, ignore errors during rollback
-    insertSecondaryIndexes(trx, oldDocumentId, oldDoc, true);
+    insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
+                           Index::OperationMode::rollback);
     return res;
   }
 
   // insert new document into secondary indexes
-  res = insertSecondaryIndexes(trx, newDocumentId, newDoc, false);
+  res = insertSecondaryIndexes(trx, newDocumentId, newDoc,
+                               options.indexOpMode);
 
   if (res.fail()) {
     // rollback
-    deleteSecondaryIndexes(trx, newDocumentId, newDoc, true);
-    insertSecondaryIndexes(trx, oldDocumentId, oldDoc, true);
+    deleteSecondaryIndexes(trx, newDocumentId, newDoc,
+                           Index::OperationMode::rollback);
+    insertSecondaryIndexes(trx, oldDocumentId, oldDoc,
+                           Index::OperationMode::rollback);
     return res;
   }
 

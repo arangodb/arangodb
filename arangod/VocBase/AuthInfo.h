@@ -70,7 +70,7 @@ class AuthenticationHandler;
 
 class AuthInfo {
  public:
-  AuthInfo(std::unique_ptr<AuthenticationHandler>&&);
+  explicit AuthInfo(std::unique_ptr<AuthenticationHandler>&&);
   ~AuthInfo();
 
  public:

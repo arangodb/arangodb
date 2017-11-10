@@ -478,7 +478,7 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
 
     // enable the following line to see index candidates considered with their
     // abilities and scores
-    // LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", supportsSort: " << supportsSort << ", filterCost: " << filterCost << ", sortCost: " << sortCost << ", totalCost: " << (filterCost + sortCost) << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess << ", isUnidirectional: " << sortCondition->isUnidirectional() << ", isOnlyEqualityMatch: " << node->isOnlyEqualityMatch() << ", itemsInIndex: " << itemsInIndex; 
+    // LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", supportsSort: " << supportsSort << ", filterCost: " << filterCost << ", sortCost: " << sortCost << ", totalCost: " << (filterCost + sortCost) << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess << ", isUnidirectional: " << sortCondition->isUnidirectional() << ", isOnlyEqualityMatch: " << node->isOnlyEqualityMatch() << ", itemsInIndex: " << itemsInIndex;
 
     if (!supportsFilter && !supportsSort) {
       continue;
@@ -520,17 +520,17 @@ bool transaction::Methods::findIndexHandleForAndNode(
     size_t estimatedItems;
     bool supportsFilter = idx->supportsFilterCondition(node, reference, itemsInIndex,
                                                        estimatedItems, estimatedCost);
-    
+
     // enable the following line to see index candidates considered with their
     // abilities and scores
-    // LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", estimatedCost: " << estimatedCost << ", estimatedItems: " << estimatedItems << ", itemsInIndex: " << itemsInIndex << ", selectivity: " << (idx->hasSelectivityEstimate() ? idx->selectivityEstimate() : -1.0) << ", node: " << node; 
+    // LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", estimatedCost: " << estimatedCost << ", estimatedItems: " << estimatedItems << ", itemsInIndex: " << itemsInIndex << ", selectivity: " << (idx->hasSelectivityEstimate() ? idx->selectivityEstimate() : -1.0) << ", node: " << node;
 
     if (!supportsFilter) {
       continue;
     }
 
     // index supports the filter condition
-    
+
     // this reduces the number of items left
     itemsInIndex = estimatedItems;
 
@@ -1925,8 +1925,8 @@ OperationResult transaction::Methods::modifyLocal(
     resultBuilder.clear();
   }
 
-  return OperationResult(resultBuilder.steal(), nullptr, "", res.errorNumber(),
-                         options.waitForSync, errorCounter);
+  return OperationResult(resultBuilder.steal(), nullptr, res.errorMessage(),
+                         res.errorNumber(), options.waitForSync, errorCounter);
 }
 
 /// @brief remove one or multiple documents in a collection

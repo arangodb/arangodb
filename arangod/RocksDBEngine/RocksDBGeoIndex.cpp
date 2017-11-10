@@ -295,8 +295,7 @@ RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
 
     RocksDBKeyBounds b2 = RocksDBKeyBounds::GeoIndex(_objectId, true);
     iter->Seek(b2.start());
-    while (iter->Valid() && cmp->Compare(iter->key(), b2.end()) < 0 &&
-           cmp->Compare(iter->key(), b2.end()) < 0) {
+    while (iter->Valid() && cmp->Compare(iter->key(), b2.end()) < 0) {
       // found a key smaller than bounds end
       std::pair<bool, int32_t> pair = RocksDBKey::geoValues(iter->key());
       TRI_ASSERT(pair.first);
@@ -414,7 +413,8 @@ bool RocksDBGeoIndex::matchesDefinition(VPackSlice const& info) const {
 Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
                                        RocksDBMethods* mthd,
                                        LocalDocumentId const& documentId,
-                                       velocypack::Slice const& doc) {
+                                       velocypack::Slice const& doc,
+                                       OperationMode mode) {
   // GeoIndex is always exclusively write-locked with rocksdb
   double latitude;
   double longitude;
@@ -484,7 +484,8 @@ Result RocksDBGeoIndex::insertInternal(transaction::Methods* trx,
 Result RocksDBGeoIndex::removeInternal(transaction::Methods* trx,
                                        RocksDBMethods* mthd,
                                        LocalDocumentId const& documentId,
-                                       arangodb::velocypack::Slice const& doc) {
+                                       arangodb::velocypack::Slice const& doc,
+                                       OperationMode mode) {
   // GeoIndex is always exclusively write-locked with rocksdb
   double latitude = 0.0;
   double longitude = 0.0;

@@ -207,6 +207,7 @@ SET(ARANGOD_SOURCES
   Cluster/RestAgencyCallbacksHandler.cpp
   Cluster/RestClusterHandler.cpp
   Cluster/ServerState.cpp
+  Cluster/ShardDistributionReporter.cpp
   Cluster/TraverserEngine.cpp
   Cluster/TraverserEngineRegistry.cpp
   Cluster/v8-cluster.cpp

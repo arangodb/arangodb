@@ -514,9 +514,9 @@ class MMFilesEngine final : public StorageEngine {
   // lock for threads
   arangodb::Mutex _threadsLock;
   // per-database compactor threads, protected by _threadsLock
-  std::unordered_map<TRI_vocbase_t*, MMFilesCompactorThread*> _compactorThreads;
+  std::unordered_map<TRI_vocbase_t*, std::shared_ptr<MMFilesCompactorThread>> _compactorThreads;
   // per-database cleanup threads, protected by _threadsLock
-  std::unordered_map<TRI_vocbase_t*, MMFilesCleanupThread*> _cleanupThreads;
+  std::unordered_map<TRI_vocbase_t*, std::shared_ptr<MMFilesCleanupThread>> _cleanupThreads;
 };
 }
 

@@ -3,6 +3,20 @@ devel
 
 * add readonly mode rest API
 
+* allow compilation of ArangoDB with g++7
+
+* AQL: during a traversal if a vertex is not found. It will not print an ERROR to the log and continue
+  with a NULL value, but will register a warning at the query and continue with a NULL value.
+  The situation is not desired as an ERROR as ArangoDB can store edges pointing to non-existing
+  vertex which is perfectly valid, but it may be a n issue on the data model, so users
+  can directly see it on the query now and do not "by accident" have to check the LOG output.
+
+* UI: fixed event cleanup in cluster shards view
+
+* fixed issue #3618: Inconsistent behavior of OR statement with object bind parameters
+
+* potential fix for issue #3562: Document WITHIN_RECTANGLE not found
+
 * increase default maximum number of V8 contexts to at least 16 if not 
   explicitly configured otherwise. the mode for determining the actual maximum
   value of V8 contexts is unchanged and works as follows:
@@ -68,8 +82,6 @@ devel
 
 * added C++ implementations for AQL function `SUBSTRING()`, `LEFT()`, `RIGHT()` and `TRIM()`
 
-* make AQL `DISTINCT` not change the order of the results it is applied on
-
 * show C++ function name of call site in ArangoDB log output
 
   This requires option `--log.line-number` to be set to *true*
@@ -124,12 +136,16 @@ devel
 v3.2.7 (XXXX-XX-XX)
 -------------------
 
+
+* improved the speed of shardDistribution in cluster, by moving it to c++. It is now guaranteed
+  return after ~2 seconds even if the entire cluster is unresponsive.
+
 * enable JEMalloc background thread for purging and returning unused memory
   back to the operating system (Linux only)
 
 * fix agency precondition check for complex objects
-
   this fixes issues with several CAS operations in the agency
+
 
 * fixed issue #3403: How to kill long running AQL queries with the browser console's
   AQL (display issue)

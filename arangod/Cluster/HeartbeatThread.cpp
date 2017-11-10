@@ -552,7 +552,7 @@ void HeartbeatThread::runSingleServer() {
           LOG_TOPIC(INFO, Logger::HEARTBEAT) << "Did not become leader, "
           << "following " << leaderSlice.copyString();
           TRI_ASSERT(leaderSlice.isString() && leaderSlice.compareString(_myId) != 0);
-          // intentional fallthrough to case 3
+          // intentionally falls through to case 3
           
         } else {
           LOG_TOPIC(WARN, Logger::HEARTBEAT) << "got an unexpected agency error "
