@@ -52,6 +52,7 @@ add_executable(
   Cache/TransactionManager.cpp
   Cache/TransactionsWithBackingStore.cpp
   Cluster/ClusterHelpersTest.cpp
+  Cluster/ShardDistributionReporterTest.cpp
   Geo/georeg.cpp
   Graph/ClusterTraverserCacheTest.cpp
   Pregel/typedbuffer.cpp
