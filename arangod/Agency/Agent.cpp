@@ -690,14 +690,11 @@ bool Agent::activateAgency() {
     size_t count = 0;
     for (auto const& pair : _config.pool()) {
       _config.activePushBack(pair.first);
-      if (++count == size()) {
-        break;
-      }
     }
     bool persisted = false; 
     try {
-      _state.persistActiveAgents(_config.activeToBuilder(),
-                                 _config.poolToBuilder());
+      _state.persistActiveAgents(
+        _config.activeToBuilder(), _config.poolToBuilder());
       persisted = true;
     } catch (std::exception const& e) {
       LOG_TOPIC(FATAL, Logger::AGENCY)
