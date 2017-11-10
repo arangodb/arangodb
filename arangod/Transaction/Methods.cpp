@@ -42,6 +42,7 @@
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -49,6 +50,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Options.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 #include "Utils/Events.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
@@ -717,7 +719,7 @@ Result transaction::Methods::begin() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid transaction state");
   }
-
+  
   if (_state->isCoordinator()) {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::RUNNING);
@@ -734,9 +736,17 @@ Result transaction::Methods::commit() {
     // transaction not created or not running
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
+  
+  ExecContext const* exe = ExecContext::CURRENT;
+  if (exe != nullptr && !_state->isReadOnlyTransaction()) {
+    bool cancelRW = !ServerState::writeOpsEnabled() && !exe->isSuperuser();
+    if (exe->isCanceled() || cancelRW) {
+      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
+    }
+  }
 
   CallbackInvoker invoker(this);
-
+  
   if (_state->isCoordinator()) {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::COMMITTED);
@@ -2355,6 +2365,9 @@ OperationResult transaction::Methods::truncateLocal(
                                 path, body);
         }
         size_t nrDone = 0;
+        // TODO: is TRX_FOLLOWER_TIMEOUT actually appropriate here? truncate
+        // can be a much more expensive operation than a single document
+        // insert/update/remove...
         size_t nrGood = cc->performRequests(requests, TRX_FOLLOWER_TIMEOUT,
                                             nrDone, Logger::REPLICATION, false);
         if (nrGood < followers->size()) {
@@ -2394,6 +2407,46 @@ OperationResult transaction::Methods::truncateLocal(
   }
 
   res = unlock(cid, AccessMode::Type::WRITE);
+
+  return OperationResult(res);
+}
+
+/// @brief rotate all active journals of a collection
+OperationResult transaction::Methods::rotateActiveJournal(
+    std::string const& collectionName, OperationOptions const& options) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  OperationResult result;
+
+  if (_state->isCoordinator()) {
+    result = rotateActiveJournalCoordinator(collectionName, options);
+  } else {
+    result = rotateActiveJournalLocal(collectionName, options);
+  }
+
+  return result;
+}
+
+/// @brief rotate the journal of a collection
+OperationResult transaction::Methods::rotateActiveJournalCoordinator(
+    std::string const& collectionName, OperationOptions const& options) {
+
+  return OperationResult(rotateActiveJournalOnAllDBServers(databaseName(), collectionName));
+}
+
+/// @brief rotate the journal of a collection
+OperationResult transaction::Methods::rotateActiveJournalLocal(
+    std::string const& collectionName, OperationOptions const& options) {
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+
+  LogicalCollection* collection = documentCollection(trxCollection(cid));
+
+  Result res;
+  try {
+    res.reset(collection->getPhysical()->rotateActiveJournal());
+  } catch (basics::Exception const& ex) {
+    return OperationResult(ex.code(), ex.what());
+  }
 
   return OperationResult(res);
 }

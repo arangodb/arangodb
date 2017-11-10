@@ -1573,5 +1573,5 @@ Result RocksDBVPackIndex::postprocessRemove(transaction::Methods* trx,
     uint64_t hash = RocksDBVPackIndex::HashForKey(key);
     _estimator->remove(hash);
   }
-  return {TRI_ERROR_NO_ERROR};
+  return Result();
 }

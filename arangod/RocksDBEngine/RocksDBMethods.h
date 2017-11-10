@@ -95,7 +95,7 @@ class RocksDBMethods {
   
   // convenience and compatibility method
   arangodb::Result Get(rocksdb::ColumnFamilyHandle*, RocksDBKey const&,
-                               std::string*);
+                       std::string*);
 
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

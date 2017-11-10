@@ -1809,18 +1809,6 @@ var status = function () {
 };
 
 // /////////////////////////////////////////////////////////////////////////////
-// / @brief isCoordinatorRequest
-// /////////////////////////////////////////////////////////////////////////////
-
-var isCoordinatorRequest = function (req) {
-  if (!req || !req.hasOwnProperty('headers')) {
-    return false;
-  }
-
-  return req.headers.hasOwnProperty('x-arango-coordinator');
-};
-
-// /////////////////////////////////////////////////////////////////////////////
 // / @brief handlePlanChange
 // /////////////////////////////////////////////////////////////////////////////
 
@@ -1877,27 +1865,8 @@ function format (x) {
 }
 
 function shardDistribution () {
-  var db = require('internal').db;
-  var dbName = db._name();
-  var colls = db._collections();
-  var result = {};
-  for (var i = 0; i < colls.length; ++i) {
-    var collName = colls[i].name();
-    var collInfo = global.ArangoClusterInfo.getCollectionInfo(dbName, collName);
-    var shards = collInfo.shards;
-    var collInfoCurrent = {};
-    var shardNames = Object.keys(shards);
-    for (var j = 0; j < shardNames.length; ++j) {
-      collInfoCurrent[shardNames[j]] =
-        global.ArangoClusterInfo.getCollectionInfoCurrent(
-          dbName, collName, shardNames[j]).shorts;
-    }
-    result[collName] = {Plan: format(collInfo.shardShorts),
-    Current: format(collInfoCurrent)};
-  }
-
   return {
-    results: result
+    results: require('internal').getShardDistribution()
   };
 }
 
@@ -2156,7 +2125,7 @@ function waitForSyncRepl (dbName, collList) {
     if (allOk) {
       return true;
     }
-    require('internal').wait(1);
+    require('internal').wait(1, false);
   }
   console.topic('heartbeat=warn', 'waitForSyncRepl: timeout:', dbName, collList);
   return false;
@@ -2178,7 +2147,6 @@ exports.coordinatorId = coordinatorId;
 exports.handlePlanChange = handlePlanChange;
 exports.isCluster = isCluster;
 exports.isCoordinator = isCoordinator;
-exports.isCoordinatorRequest = isCoordinatorRequest;
 exports.role = role;
 exports.shardList = shardList;
 exports.status = status;

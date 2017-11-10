@@ -96,7 +96,7 @@ RestStatus RestSimpleHandler::execute() {
 }
 
 bool RestSimpleHandler::cancel() {
-  RestHandler::cancel();
+  RestVocbaseBaseHandler::cancel();
   return cancelQuery();
 }
 

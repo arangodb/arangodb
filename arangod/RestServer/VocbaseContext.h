@@ -54,9 +54,9 @@ class VocbaseContext final : public arangodb::ExecContext {
   TRI_vocbase_t* vocbase() const { return _vocbase; }
   
   /// @brief upgrade to internal superuser
-  void upgradeSuperuser();
+  void forceSuperuser();
   /// @brief upgrade to internal read-only user
-  void upgradeReadOnly();
+  void forceReadOnly();
 
  private:
   TRI_vocbase_t* _vocbase;

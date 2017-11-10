@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue */
+/*global assertEqual, assertTrue, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, graph functions
@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 var db = require("@arangodb").db;
+var errors = require("internal").errors;
 var graph = require("@arangodb/general-graph");
 var helper = require("@arangodb/aql-helper");
 var getQueryResults = helper.getQueryResults;
@@ -1935,7 +1936,8 @@ function ahuacatlQueryShortestPathTestSuite() {
         LET source = "${v1}/A"
         LET target = "${v1}/F"
         FOR v, e IN OUTBOUND SHORTEST_PATH source TO target GRAPH "${graphName}" RETURN {v, e}`;
-      var actual = getQueryResults(query);
+      var full = AQL_EXECUTE(query);
+      var actual = full.json;
       assertEqual(actual.length, 4);
       assertEqual(actual[0].v._key, "A");
       assertEqual(actual[0].e, null);
@@ -1946,6 +1948,9 @@ function ahuacatlQueryShortestPathTestSuite() {
       assertEqual(actual[2].e._to, v2 + "/D");
       assertEqual(actual[3].v._key, "F");
       assertEqual(actual[3].e.entfernung, 11);
+      // We expect one warning
+      assertEqual(full.warnings.length, 1);
+      assertEqual(full.warnings[0].code, errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code);
     }
     
   };
