@@ -533,10 +533,26 @@ void RocksDBEngine::start() {
   }
 }
 
+void RocksDBEngine::beginShutdown() {
+  if (!isEnabled()) {
+    return;
+  }
+
+  // block the creation of new replication contexts
+  if (_replicationManager != nullptr) {
+    _replicationManager->beginShutdown();
+  }
+}
+
 void RocksDBEngine::stop() {
   if (!isEnabled()) {
     return;
   }
+
+  
+  // in case we missed the beginShutdown somehow, call it again
+  replicationManager()->beginShutdown();
+
   replicationManager()->dropAll();
 
   if (_backgroundThread) {
