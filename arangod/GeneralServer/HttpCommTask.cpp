@@ -870,7 +870,7 @@ ResponseCode HttpCommTask::handleAuthHeader(HttpRequest* request) const {
         return rest::ResponseCode::UNAUTHORIZED;
       }
       
-      // intentional fallthrough
+      // intentionally falls through
     } catch (arangodb::basics::Exception const& ex) {
       // translate error
       if (ex.code() == TRI_ERROR_USER_NOT_FOUND) {

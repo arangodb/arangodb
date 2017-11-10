@@ -1,7 +1,6 @@
 /* global describe, it */
 'use strict';
 const expect = require('chai').expect;
-const sinon = require('sinon');
 const statuses = require('statuses');
 const path = require('path');
 const fs = require('fs');

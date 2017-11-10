@@ -420,7 +420,7 @@ static int V8ToVPack(BuilderContext& context,
           }
         }
 
-        // fall-through intentional
+        // intentionally falls through
       }
     }
 

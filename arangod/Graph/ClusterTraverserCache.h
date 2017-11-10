@@ -49,7 +49,7 @@ namespace graph {
 class ClusterTraverserCache : public TraverserCache {
  public:
   ClusterTraverserCache(
-      transaction::Methods* trx,
+      aql::Query* query,
       std::unordered_map<ServerID, traverser::TraverserEngineID> const*
           engines);
 
@@ -100,6 +100,7 @@ class ClusterTraverserCache : public TraverserCache {
   }
   
  private:
+
   /// @brief link by _id into our data dump
   std::unordered_map<StringRef, arangodb::velocypack::Slice> _cache;
   /// @brief dump for our edge and vertex documents

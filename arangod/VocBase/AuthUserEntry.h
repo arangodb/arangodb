@@ -68,7 +68,7 @@ class AuthUserEntry {
   void setActive(bool active) { _active = active; }
 
   std::unordered_set<std::string> roles () const { return _roles; }
-  void setRoles(std::unordered_set<std::string> roles) { _roles = roles; }
+  void setRoles(std::unordered_set<std::string> const& roles) { _roles = roles; }
 
   // grant specific access rights for db. The default "*" is also a
   // valid database name
