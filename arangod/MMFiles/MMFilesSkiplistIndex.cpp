@@ -179,7 +179,7 @@ MMFilesSkiplistLookupBuilder::MMFilesSkiplistLookupBuilder(
           } else {
             _includeUpper = false;
           }
-        // Fall through intentional
+          // intentionally falls through
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
           if (isReverseOrder) {
             value->toVelocyPackValue(*(_lowerBuilder.get()));
@@ -193,7 +193,7 @@ MMFilesSkiplistLookupBuilder::MMFilesSkiplistLookupBuilder(
           } else {
             _includeLower = false;
           }
-        // Fall through intentional
+          // intentionally falls through
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
           if (isReverseOrder) {
             value->toVelocyPackValue(*(_upperBuilder.get()));
@@ -333,7 +333,7 @@ MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
         } else {
           _includeUpper = false;
         }
-      // Fall through intentional
+        // intentionally falls through
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
         if (isReverseOrder) {
           TRI_ASSERT(lower == nullptr);
@@ -349,7 +349,7 @@ MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
         } else {
           _includeLower = false;
         }
-      // Fall through intentional
+        // intentionally falls through
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
         if (isReverseOrder) {
           TRI_ASSERT(upper == nullptr);
@@ -1249,7 +1249,7 @@ bool MMFilesSkiplistIndex::findMatchingConditions(
         if (first->getMember(1)->isArray()) {
           usesIn = true;
         }
-      // Fall through intentional
+        // intentionally falls through
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
         TRI_ASSERT(conditions.size() == 1);
         break;

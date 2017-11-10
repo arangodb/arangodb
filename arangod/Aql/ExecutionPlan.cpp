@@ -70,9 +70,9 @@ static uint64_t checkTraversalDepthValue(AstNode const* node) {
 }
 
 static std::unique_ptr<graph::BaseOptions> CreateTraversalOptions(
-    transaction::Methods* trx, AstNode const* direction,
+    aql::Query* query, AstNode const* direction,
     AstNode const* optionsNode) {
-  auto options = std::make_unique<traverser::TraverserOptions>(trx);
+  auto options = std::make_unique<traverser::TraverserOptions>(query);
 
   TRI_ASSERT(direction != nullptr);
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
@@ -150,8 +150,8 @@ static std::unique_ptr<graph::BaseOptions> CreateTraversalOptions(
 }
 
 static std::unique_ptr<graph::BaseOptions> CreateShortestPathOptions(
-    arangodb::transaction::Methods* trx, AstNode const* node) {
-  auto options = std::make_unique<graph::ShortestPathOptions>(trx);
+    arangodb::aql::Query* query, AstNode const* node) {
+  auto options = std::make_unique<graph::ShortestPathOptions>(query);
 
   if (node != nullptr && node->type == NODE_TYPE_OBJECT) {
     size_t n = node->numMembers();
@@ -727,7 +727,7 @@ ExecutionNode* ExecutionPlan::fromNodeTraversal(ExecutionNode* previous,
     previous = calc;
   }
 
-  auto options = CreateTraversalOptions(getAst()->query()->trx(), direction,
+  auto options = CreateTraversalOptions(getAst()->query(), direction,
                                         node->getMember(3));
 
   TRI_ASSERT(direction->type == NODE_TYPE_DIRECTION);
@@ -809,7 +809,7 @@ ExecutionNode* ExecutionPlan::fromNodeShortestPath(ExecutionNode* previous,
       parseTraversalVertexNode(previous, node->getMember(2));
   AstNode const* graph = node->getMember(3);
 
-  auto options = CreateShortestPathOptions(getAst()->query()->trx(), node->getMember(4));
+  auto options = CreateShortestPathOptions(getAst()->query(), node->getMember(4));
 
   // First create the node
   auto spNode = new ShortestPathNode(this, nextId(), _ast->query()->vocbase(),

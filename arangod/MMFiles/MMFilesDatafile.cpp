@@ -501,7 +501,7 @@ int MMFilesDatafile::reserveElement(uint32_t size, MMFilesMarker** position,
       return TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE;
     }
 
-    // fall-through intentional
+    // intentionally falls through
   }
 
   // add the marker, leave enough room for the footer

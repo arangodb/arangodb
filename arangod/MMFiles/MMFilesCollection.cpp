@@ -2498,7 +2498,7 @@ int MMFilesCollection::lockRead(bool useDeadlockDetector, double timeout) {
           LOG_TOPIC(TRACE, arangodb::Logger::FIXME)
               << "waiting for read-lock on collection '"
               << _logicalCollection->name() << "'";
-          // fall-through intentional
+          // intentionally falls through
         } else if (++iterations >= 5) {
           // periodically check for deadlocks
           TRI_ASSERT(wasBlocked);

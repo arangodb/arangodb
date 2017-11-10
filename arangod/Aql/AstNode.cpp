@@ -1175,7 +1175,7 @@ AstNode const* AstNode::castToBool(Ast* ast) const {
         return ast->createNodeValueBool(value.length > 0);
       default: {}
     }
-    // fall-through intentional
+    // intentionally falls through
   } else if (type == NODE_TYPE_ARRAY) {
     return ast->createNodeValueBool(true);
   } else if (type == NODE_TYPE_OBJECT) {
@@ -1220,9 +1220,9 @@ AstNode const* AstNode::castToNumber(Ast* ast) const {
           }
           // conversion failed
         }
-        // fall-through intentional
+        // intentionally falls through
     }
-    // fall-through intentional
+    // intentionally falls through
   } else if (type == NODE_TYPE_ARRAY) {
     size_t const n = numMembers();
     if (n == 0) {
@@ -1233,9 +1233,9 @@ AstNode const* AstNode::castToNumber(Ast* ast) const {
       // convert only member to number
       return member->castToNumber(ast);
     }
-    // fall-through intentional
+    // intentionally falls through
   } else if (type == NODE_TYPE_OBJECT) {
-    // fall-through intentional
+    // intentionally falls through
   }
 
   return ast->createNodeValueInt(0);

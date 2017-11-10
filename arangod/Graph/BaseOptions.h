@@ -80,9 +80,9 @@ struct BaseOptions {
 
  public:
   static std::unique_ptr<BaseOptions> createOptionsFromSlice(
-      transaction::Methods* trx, arangodb::velocypack::Slice const& definition);
+      arangodb::aql::Query* query, arangodb::velocypack::Slice const& definition);
 
-  explicit BaseOptions(transaction::Methods* trx);
+  explicit BaseOptions(arangodb::aql::Query* query);
 
   /// @brief This copy constructor is only working during planning phase.
   ///        After planning this node should not be copied anywhere.
@@ -161,6 +161,8 @@ struct BaseOptions {
                               std::vector<LookupInfo>&);
 
  protected:
+  aql::Query* _query;
+
   transaction::Methods* _trx;
 
   /// @brief Lookup info to find all edges fulfilling the base conditions

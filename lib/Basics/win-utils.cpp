@@ -569,8 +569,7 @@ int _cyg_isatty(int fd)
   // and create a thorugh fix..without this the logging stuff will not
   // log to the foreground which is super annoying for debugging the
   // resilience tests
-  char *forcetty = nullptr;
-  forcetty = getenv("FORCE_WINDOWS_TTY");
+  char* forcetty = getenv("FORCE_WINDOWS_TTY");
   if (forcetty != nullptr) {
     return strcmp(forcetty, "1") == 0;
   }

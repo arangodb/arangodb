@@ -295,8 +295,7 @@ RocksDBGeoIndex::RocksDBGeoIndex(TRI_idx_iid_t iid,
 
     RocksDBKeyBounds b2 = RocksDBKeyBounds::GeoIndex(_objectId, true);
     iter->Seek(b2.start());
-    while (iter->Valid() && cmp->Compare(iter->key(), b2.end()) < 0 &&
-           cmp->Compare(iter->key(), b2.end()) < 0) {
+    while (iter->Valid() && cmp->Compare(iter->key(), b2.end()) < 0) {
       // found a key smaller than bounds end
       std::pair<bool, int32_t> pair = RocksDBKey::geoValues(iter->key());
       TRI_ASSERT(pair.first);
