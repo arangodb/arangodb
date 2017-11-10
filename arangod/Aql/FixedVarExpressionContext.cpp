@@ -59,7 +59,7 @@ void FixedVarExpressionContext::clearVariableValues() {
 }
 
 void FixedVarExpressionContext::setVariableValue(Variable const* var,
-                                                 AqlValue value) {
+                                                 AqlValue const& value) {
   _vars.emplace(var, value);
 }
 
