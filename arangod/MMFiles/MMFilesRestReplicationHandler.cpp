@@ -90,7 +90,7 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
 
     // extract ttl
     double expires =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 30.0);
 
     TRI_voc_tick_t id;
     MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
@@ -123,7 +123,7 @@ void MMFilesRestReplicationHandler::handleCommandBatch() {
 
     // extract ttl
     double expires =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 30.0);
 
     // now extend the blocker
     MMFilesEngine* engine = static_cast<MMFilesEngine*>(EngineSelectorFeature::ENGINE);
@@ -180,7 +180,7 @@ void MMFilesRestReplicationHandler::handleCommandBarrier() {
 
     // extract ttl
     double ttl =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 30.0);
 
     TRI_voc_tick_t minTick = 0;
     VPackSlice const v = input->slice().get("tick");
@@ -223,7 +223,7 @@ void MMFilesRestReplicationHandler::handleCommandBarrier() {
 
     // extract ttl
     double ttl =
-        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 0);
+        VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", 30.0);
 
     TRI_voc_tick_t minTick = 0;
     VPackSlice const v = input->slice().get("tick");

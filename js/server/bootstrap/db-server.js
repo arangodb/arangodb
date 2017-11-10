@@ -34,6 +34,7 @@
 
 (function () {
   const internal = require('internal');
+  // note: this script will only be called and executed in V8 context #0
   if (internal.threadNumber === 0) {
     // run the local upgrade-database script (global.UPGRADE_ARGS has been set)
     global.UPGRADE_ARGS = {

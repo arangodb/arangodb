@@ -178,7 +178,7 @@ void V8Context::handleGlobalContextMethods() {
 void V8Context::handleCancelationCleanup() {
   v8::HandleScope scope(_isolate);
 
-  LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "executing cancelation cleanup context " << _id;
+  LOG_TOPIC(DEBUG, arangodb::Logger::V8) << "executing cancelation cleanup context #" << _id;
 
   try {
     TRI_ExecuteJavaScriptString(
