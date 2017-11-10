@@ -132,13 +132,9 @@ class Store {
 
   void clear();
 
-  friend class Node;
-
   /// @brief Apply single slice
   bool applies(arangodb::velocypack::Slice const&);
  
- private:
-
   /// @brief Remove time to live entries for uri
   void removeTTL(std::string const&);
 
@@ -148,6 +144,8 @@ class Store {
   std::unordered_multimap<std::string, std::string> const& observerTable() const;
   std::unordered_multimap<std::string, std::string>& observedTable();
   std::unordered_multimap<std::string, std::string> const& observedTable() const;
+
+ private:
 
   /// @brief Check precondition
   check_ret_t check(arangodb::velocypack::Slice const&, CheckMode = FIRST_FAIL) const;
