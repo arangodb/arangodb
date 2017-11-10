@@ -884,7 +884,6 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
     }
   }
 #endif
-
   static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
   if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
     LOG_TOPIC(ERR, Logger::FIXME) << "downgrading user rights";
