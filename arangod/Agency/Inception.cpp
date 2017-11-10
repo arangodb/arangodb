@@ -332,7 +332,7 @@ bool Inception::restartingActiveAgent() {
                 }
                 std::sort(myActVec.begin(),myActVec.end());
                 std::sort(theirActVec.begin(),theirActVec.end());
-                if (theirActVec.size() > 1 && theirActVec != myActVec) {
+                if (!theirActVec.empty() && theirActVec != myActVec) {
                   if (!this->isStopping()) {
                     LOG_TOPIC(FATAL, Logger::AGENCY)
                       << "Assumed active RAFT peer and I disagree on active membership:";
