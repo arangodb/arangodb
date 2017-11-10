@@ -60,6 +60,7 @@ static const std::string startupStr = "startup";
 struct config_t {
  private:
   std::string _id;
+  std::string _recoveryId;
   size_t _agencySize;
   size_t _poolSize;
   double _minPing;
@@ -110,6 +111,9 @@ struct config_t {
 
   /// @brief agent id
   std::string id() const;
+
+  /// @brief agent id
+  std::string recoveryId() const;
 
   /// @brief pool completed
   bool poolComplete() const;

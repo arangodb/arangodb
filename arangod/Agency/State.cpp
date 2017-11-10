@@ -825,18 +825,17 @@ bool State::loadOrPersistConfiguration() {
     std::string uuid;
     if (ServerState::instance()->hasPersistedId()) {
       uuid = ServerState::instance()->getPersistedId();
-      _agent->id(uuid);
     } else {
-      std::string id = _agent->id();
-      if (id.empty()) { 
+      std::string recoveryId = _agent->config().recoveryId();
+      if (recoveryId.empty()) { 
         uuid =
           ServerState::instance()->generatePersistedId(ServerState::ROLE_AGENT);
-        _agent->id(uuid);
       } else {
-        uuid = id;
-        ServerState::instance()->writePersistedId(id);
+        uuid = recoveryId;
+        ServerState::instance()->writePersistedId(recoveryId);
       }
     }
+    _agent->id(uuid);
 
     auto ctx = std::make_shared<transaction::StandaloneContext>(_vocbase);
     SingleCollectionTransaction trx(ctx, "configuration", AccessMode::Type::WRITE);

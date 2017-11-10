@@ -29,82 +29,81 @@
 using namespace arangodb::consensus;
 
 config_t::config_t()
-    : _agencySize(0),
-      _poolSize(0),
-      _minPing(0.0),
-      _maxPing(0.0),
-      _timeoutMult(1),
-      _endpoint(defaultEndpointStr),
-      _supervision(false),
-      _supervisionTouched(false),
-      _waitForSync(true),
-      _supervisionFrequency(5.0),
-      _compactionStepSize(2000),
-      _compactionKeepSize(500),
-      _supervisionGracePeriod(15.0),
-      _cmdLineTimings(false),
-      _version(0),
-      _startup("origin"),
-      _maxAppendSize(250),
-      _lock()
-      {}
+  : _agencySize(0),
+    _poolSize(0),
+    _minPing(0.0),
+    _maxPing(0.0),
+    _timeoutMult(1),
+    _endpoint(defaultEndpointStr),
+    _supervision(false),
+    _supervisionTouched(false),
+    _waitForSync(true),
+    _supervisionFrequency(5.0),
+    _compactionStepSize(2000),
+    _compactionKeepSize(500),
+    _supervisionGracePeriod(15.0),
+    _cmdLineTimings(false),
+    _version(0),
+    _startup("origin"),
+    _maxAppendSize(250),
+    _lock() {}
 
 config_t::config_t(
-  std::string const& id, size_t as, size_t ps, double minp, double maxp,
+  std::string const& rid, size_t as, size_t ps, double minp, double maxp,
   std::string const& e, std::vector<std::string> const& g, bool s, bool st,
   bool w, double f, uint64_t c, uint64_t k, double p, bool t, size_t a)
-    : _id(id),
-      _agencySize(as),
-      _poolSize(ps),
-      _minPing(minp),
-      _maxPing(maxp),
-      _timeoutMult(1),
-      _endpoint(e),
-      _gossipPeers(g),
-      _supervision(s),
-      _supervisionTouched(st),
-      _waitForSync(w),
-      _supervisionFrequency(f),
-      _compactionStepSize(c),
-      _compactionKeepSize(k),      
-      _supervisionGracePeriod(p),
-      _cmdLineTimings(t),
-      _version(0),
-      _startup("origin"),
-      _maxAppendSize(a),
-      _lock()
-      {}
+  : _recoveryId(rid),
+    _agencySize(as),
+    _poolSize(ps),
+    _minPing(minp),
+    _maxPing(maxp),
+    _timeoutMult(1),
+    _endpoint(e),
+    _gossipPeers(g),
+    _supervision(s),
+    _supervisionTouched(st),
+    _waitForSync(w),
+    _supervisionFrequency(f),
+    _compactionStepSize(c),
+    _compactionKeepSize(k),      
+    _supervisionGracePeriod(p),
+    _cmdLineTimings(t),
+    _version(0),
+    _startup("origin"),
+    _maxAppendSize(a),
+    _lock() {}
 
 config_t::config_t(config_t const& other) { *this = other; }
 
 config_t::config_t(config_t&& other)
-    : _id(std::move(other._id)),
-      _agencySize(std::move(other._agencySize)),
-      _poolSize(std::move(other._poolSize)),
-      _minPing(std::move(other._minPing)),
-      _maxPing(std::move(other._maxPing)),
-      _timeoutMult(std::move(other._timeoutMult)),
-      _endpoint(std::move(other._endpoint)),
-      _pool(std::move(other._pool)),
-      _gossipPeers(std::move(other._gossipPeers)),
-      _active(std::move(other._active)),
-      _supervision(std::move(other._supervision)),
-      _supervisionTouched(std::move(other._supervisionTouched)),
-      _waitForSync(std::move(other._waitForSync)),
-      _supervisionFrequency(std::move(other._supervisionFrequency)),
-      _compactionStepSize(std::move(other._compactionStepSize)),
-      _compactionKeepSize(std::move(other._compactionKeepSize)),
-      _supervisionGracePeriod(std::move(other._supervisionGracePeriod)),
-      _cmdLineTimings(std::move(other._cmdLineTimings)),
-      _version(std::move(other._version)),
-      _startup(std::move(other._startup)),
-      _maxAppendSize(std::move(other._maxAppendSize)){}
+  : _id(std::move(other._id)),
+    _recoveryId(std::move(other._recoveryId)),
+    _agencySize(std::move(other._agencySize)),
+    _poolSize(std::move(other._poolSize)),
+    _minPing(std::move(other._minPing)),
+    _maxPing(std::move(other._maxPing)),
+    _timeoutMult(std::move(other._timeoutMult)),
+    _endpoint(std::move(other._endpoint)),
+    _pool(std::move(other._pool)),
+    _gossipPeers(std::move(other._gossipPeers)),
+    _active(std::move(other._active)),
+    _supervision(std::move(other._supervision)),
+    _supervisionTouched(std::move(other._supervisionTouched)),
+    _waitForSync(std::move(other._waitForSync)),
+    _supervisionFrequency(std::move(other._supervisionFrequency)),
+    _compactionStepSize(std::move(other._compactionStepSize)),
+    _compactionKeepSize(std::move(other._compactionKeepSize)),
+    _supervisionGracePeriod(std::move(other._supervisionGracePeriod)),
+    _cmdLineTimings(std::move(other._cmdLineTimings)),
+    _version(std::move(other._version)),
+    _startup(std::move(other._startup)),
+    _maxAppendSize(std::move(other._maxAppendSize)){}
 
 config_t& config_t::operator=(config_t const& other) {
   // must hold the lock of other to copy _pool, _minPing, _maxPing etc.
   READ_LOCKER(readLocker, other._lock);
-
   _id = other._id;
+  _recoveryId = other._recoveryId;
   _agencySize = other._agencySize;
   _poolSize = other._poolSize;
   _minPing = other._minPing;
@@ -208,6 +207,11 @@ std::unordered_map<std::string, std::string> config_t::pool() const {
 std::string config_t::id() const {
   READ_LOCKER(readLocker, _lock);
   return _id;
+}
+
+std::string config_t::recoveryId() const {
+  READ_LOCKER(readLocker, _lock);
+  return _recoveryId;
 }
 
 std::string config_t::poolAt(std::string const& id) const {
@@ -616,6 +620,7 @@ bool config_t::merge(VPackSlice const& conf) {
   // the given default values never happen. Only fixed _supervision with
   // _supervisionTouched as an emergency measure.
   _id = conf.get(idStr).copyString();  // I get my id
+  _recoveryId.clear();
   _startup = "persistence";
 
   std::stringstream ss;
