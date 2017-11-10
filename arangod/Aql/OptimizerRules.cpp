@@ -81,7 +81,7 @@ static aql::Collection const* getCollection(ExecutionNode const* node) {
   case EN::SHORTEST_PATH:
     return static_cast<GraphNode const*>(node)->collection();
   default:
-    // note: modification nodes are not covered here yet 
+    // note: modification nodes are not covered here yet
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "node type does not have a collection");
   }
 }
@@ -91,7 +91,7 @@ static aql::Variable const* getVariable(ExecutionNode const* node) {
   if (n != nullptr) {
     return n->outVariable();
   }
-    // note: modification nodes are not covered here yet 
+    // note: modification nodes are not covered here yet
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "node type does not have an out variable");
 }
 
@@ -2227,13 +2227,13 @@ void arangodb::aql::interchangeAdjacentEnumerationsRule(
 }
 
 /// @brief optimize queries in the cluster so that the entire query gets pushed to a single server
-void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt, 
-                                                   std::unique_ptr<ExecutionPlan> plan, 
+void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt,
+                                                   std::unique_ptr<ExecutionPlan> plan,
                                                    OptimizerRule const* rule) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   bool wasModified = false;
   bool done = false;
-  
+
   std::unordered_set<std::string> responsibleServers;
   auto collections = plan->getAst()->query()->collections();
 
@@ -2246,7 +2246,7 @@ void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt,
       done = true;
       break;
     }
-        
+
     size_t n = c->responsibleServers(responsibleServers);
 
     if (n != 1) {
@@ -2260,7 +2260,7 @@ void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt,
     opt->addPlan(std::move(plan), rule, wasModified);
     return;
   }
-    
+
   // we only found a single responsible server, and all collections involved
   // have exactly one shard
   // that means we can move the entire query onto that server
@@ -2270,14 +2270,14 @@ void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt,
   // TODO: properly handle subqueries here
   SmallVector<ExecutionNode*>::allocator_type::arena_type s;
   SmallVector<ExecutionNode*> nodes{s};
-  // std::vector<ExecutionNode::NodeType> types = {ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH, ExecutionNode::SUBQUERY}; 
-  std::vector<ExecutionNode::NodeType> types = {ExecutionNode::SHORTEST_PATH, ExecutionNode::SUBQUERY}; 
+  // std::vector<ExecutionNode::NodeType> types = {ExecutionNode::TRAVERSAL, ExecutionNode::SHORTEST_PATH, ExecutionNode::SUBQUERY};
+  std::vector<ExecutionNode::NodeType> types = {ExecutionNode::SHORTEST_PATH, ExecutionNode::SUBQUERY};
   plan->findNodesOfType(nodes, types, true);
 
   bool hasIncompatibleNodes = !nodes.empty();
-    
+
   nodes.clear();
-  types = {ExecutionNode::INDEX, ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::TRAVERSAL}; 
+  types = {ExecutionNode::INDEX, ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::TRAVERSAL};
   plan->findNodesOfType(nodes, types, false);
 
   if (!nodes.empty() && !hasIncompatibleNodes) {
@@ -2292,13 +2292,13 @@ void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt,
     opt->disableRule(OptimizerRule::removeSatelliteJoinsRule_pass10);
 #endif
     opt->disableRule(OptimizerRule::undistributeRemoveAfterEnumCollRule_pass10);
-    
+
     // get first collection from query
     Collection const* c = getCollection(nodes[0]);
     TRI_ASSERT(c != nullptr);
 
     TRI_vocbase_t* vocbase = plan->getAst()->query()->vocbase();
-      
+
     ExecutionNode* rootNode = plan->root();
 
     // insert a remote node
@@ -2315,19 +2315,19 @@ void arangodb::aql::optimizeClusterSingleShardRule(Optimizer* opt,
     plan->root(gatherNode, true);
     wasModified = true;
   }
-  
+
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
-void arangodb::aql::optimizeClusterJoinsRule(Optimizer* opt, 
-                                             std::unique_ptr<ExecutionPlan> plan, 
+void arangodb::aql::optimizeClusterJoinsRule(Optimizer* opt,
+                                             std::unique_ptr<ExecutionPlan> plan,
                                              OptimizerRule const* rule) {
   TRI_ASSERT(arangodb::ServerState::instance()->isCoordinator());
   bool wasModified = false;
-  
+
   SmallVector<ExecutionNode*>::allocator_type::arena_type s;
   SmallVector<ExecutionNode*> nodes{s};
-  std::vector<ExecutionNode::NodeType> const types = {ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::INDEX}; 
+  std::vector<ExecutionNode::NodeType> const types = {ExecutionNode::ENUMERATE_COLLECTION, ExecutionNode::INDEX};
   plan->findNodesOfType(nodes, types, true);
 
   for (auto& n : nodes) {
@@ -2338,7 +2338,7 @@ void arangodb::aql::optimizeClusterJoinsRule(Optimizer* opt,
 
         Collection const* c1 = getCollection(n);
         Collection const* c2 = getCollection(current);
-        
+
         bool qualifies = false;
 
         // check how many (different) responsible servers we have for this
@@ -2347,8 +2347,8 @@ void arangodb::aql::optimizeClusterJoinsRule(Optimizer* opt,
         size_t n1 = c1->responsibleServers(responsibleServers);
         size_t n2 = c2->responsibleServers(responsibleServers);
 
-        if (responsibleServers.size() == 1 && 
-            c1->numberOfShards() == 1 && 
+        if (responsibleServers.size() == 1 &&
+            c1->numberOfShards() == 1 &&
             c2->numberOfShards() == 1) {
           // a single responsible server. so we can use a shard-local access
           qualifies = true;
@@ -2361,7 +2361,7 @@ void arangodb::aql::optimizeClusterJoinsRule(Optimizer* opt,
         if (!qualifies && n->getType() == EN::INDEX) {
           Variable const* indexVariable = getVariable(n);
           Variable const* otherVariable = getVariable(current);
-          
+
           std::string dist1 = c1->distributeShardsLike();
           std::string dist2 = c2->distributeShardsLike();
 
@@ -2376,8 +2376,8 @@ void arangodb::aql::optimizeClusterJoinsRule(Optimizer* opt,
             dist2 = trx->resolver()->getCollectionNameCluster(
                     static_cast<TRI_voc_cid_t>(basics::StringUtils::uint64(dist2)));
           }
-          
-          if (dist1 == c2->getName() || 
+
+          if (dist1 == c2->getName() ||
               dist2 == c1->getName() ||
               (!dist1.empty() && dist1 == dist2)) {
             // collections have the same "distributeShardsLike" values
@@ -2386,9 +2386,9 @@ void arangodb::aql::optimizeClusterJoinsRule(Optimizer* opt,
             // now check if the number of shardKeys match
             auto keys1 = c1->shardKeys();
             auto keys2 = c2->shardKeys();
-            
+
             if (keys1.size() == keys2.size()) {
-              // same number of shard keys... now check if the shard keys are all used 
+              // same number of shard keys... now check if the shard keys are all used
               // and whether we only have equality joins
               Condition const* condition = static_cast<IndexNode const*>(n)->condition();
 
@@ -2398,10 +2398,10 @@ void arangodb::aql::optimizeClusterJoinsRule(Optimizer* opt,
                 if (root != nullptr && root->type == NODE_TYPE_OPERATOR_NARY_OR) {
                   size_t found = 0;
                   size_t numAnds = root->numMembers();
-            
+
                   for (size_t i = 0; i < numAnds; ++i) {
                     AstNode const* andNode = root->getMember(i);
-                    
+
                     if (andNode == nullptr) {
                       continue;
                     }
@@ -2415,23 +2415,23 @@ void arangodb::aql::optimizeClusterJoinsRule(Optimizer* opt,
                       // too few join conditions, so we will definitely not cover all shardKeys
                       break;
                     }
-            
+
                     for (size_t j = 0; j < numConds; ++j) {
                       AstNode const* condNode = andNode->getMember(j);
-                      
+
                       if (condNode == nullptr || condNode->type != NODE_TYPE_OPERATOR_BINARY_EQ) {
                         // something other than an equality join. we do not support this
                         continue;
                       }
 
                       // equality comparison
-                      // now check if this comparison has the pattern 
-                      // <variable from collection1>.<attribute from collection1> == 
+                      // now check if this comparison has the pattern
+                      // <variable from collection1>.<attribute from collection1> ==
                       //   <variable from collection2>.<attribute from collection2>
-                      
-                      auto const* lhs = condNode->getMember(0);  
-                      auto const* rhs = condNode->getMember(1);  
-            
+
+                      auto const* lhs = condNode->getMember(0);
+                      auto const* rhs = condNode->getMember(1);
+
                       if (lhs->type != NODE_TYPE_ATTRIBUTE_ACCESS ||
                           rhs->type != NODE_TYPE_ATTRIBUTE_ACCESS) {
                         // something else
@@ -2449,12 +2449,12 @@ void arangodb::aql::optimizeClusterJoinsRule(Optimizer* opt,
 
                       Variable const* lhsVar = static_cast<Variable const*>(lhsData->getData());
                       Variable const* rhsVar = static_cast<Variable const*>(rhsData->getData());
-            
+
                       std::string leftString = lhs->getString();
                       std::string rightString = rhs->getString();
-            
+
                       int pos = -1;
-                      if (lhsVar == indexVariable && 
+                      if (lhsVar == indexVariable &&
                           rhsVar == otherVariable &&
                           indexOf(keys1, leftString) == indexOf(keys2, rightString)) {
                         pos = indexOf(keys1, leftString);
@@ -2465,8 +2465,8 @@ void arangodb::aql::optimizeClusterJoinsRule(Optimizer* opt,
                         // otherCollection.shardKeyAttribute == indexedCollection.shardKeyAttribute
                         pos = indexOf(keys2, leftString);
                       }
-                      
-                      // we found a shardKeys match  
+
+                      // we found a shardKeys match
                       if (pos != -1) {
                         shardKeysFound.emplace(pos);
                       }
@@ -2494,7 +2494,7 @@ void arangodb::aql::optimizeClusterJoinsRule(Optimizer* opt,
           wasModified = true;
 
           plan->excludeFromScatterGather(current);
-          break; // done for this pair 
+          break; // done for this pair
         }
 
       } else if (current->getType() != ExecutionNode::FILTER &&
@@ -2508,7 +2508,7 @@ void arangodb::aql::optimizeClusterJoinsRule(Optimizer* opt,
       current = current->getFirstDependency();
     }
   }
-  
+
   opt->addPlan(std::move(plan), rule, wasModified);
 }
 
@@ -2987,15 +2987,14 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
           stopSearching = true;
           break;
 
-        case EN::CALCULATION: {
-          auto calc = static_cast<CalculationNode const*>(inspectNode);
+        case EN::CALCULATION: 
           // check if the expression can be executed on a DB server safely
-          if (!calc->expression()->canRunOnDBServer()) {
+          if (!static_cast<CalculationNode const*>(inspectNode)->expression()->canRunOnDBServer()) {
             stopSearching = true;
             break;
-          }
-          // intentionally fall through here
-        }
+          } 
+          // intentionally falls through
+        
         case EN::FILTER:
           for (auto& v : inspectNode->getVariablesUsedHere()) {
             if (varsSetHere.find(v) != varsSetHere.end()) {
@@ -3153,7 +3152,7 @@ void arangodb::aql::removeUnnecessaryRemoteScatterRule(
       node = d[0];
       if (!plan->shouldExcludeFromScatterGather(node)) {
         if (node->getType() != EN::SINGLETON &&
-            node->getType() != EN::CALCULATION && 
+            node->getType() != EN::CALCULATION &&
             node->getType() != EN::FILTER) {
           // found some other node type...
           // this disqualifies the optimization
@@ -3546,7 +3545,7 @@ struct OrSimplifier {
           return true;
         }
       }
-      // fallthrough intentional
+      // intentionally falls through
     } else if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
@@ -3557,7 +3556,7 @@ struct OrSimplifier {
           return true;
         }
       }
-      // fallthrough intentional
+      // intentionally falls through
     }
 
     return false;
@@ -3629,9 +3628,9 @@ struct OrSimplifier {
               if (setter != nullptr && setter->getType() == EN::ENUMERATE_COLLECTION) {
                 qualifies = true;
               }
-            
+
               std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> tmp2;
-             
+
               if (qualifies && rightValue->isAttributeAccessForVariable(tmp2)) {
                 auto setter = plan->getVarSetBy(tmp2.first->id);
                 if (setter != nullptr && setter->getType() == EN::ENUMERATE_COLLECTION) {
@@ -3666,7 +3665,7 @@ struct OrSimplifier {
         return ast->createNodeBinaryOperator(node->type, lhsNew, rhsNew);
       }
 
-      // fallthrough intentional
+      // intentionally falls through
     }
 
     return const_cast<AstNode*>(node);
@@ -3854,7 +3853,7 @@ struct RemoveRedundantOr {
       }
       // if hasRedundantConditionWalker(lhs) and
       // hasRedundantConditionWalker(rhs), then one of the conditions in the OR
-      // statement is of the form x == x fall-through intentional
+      // statement is of the form x == x intentionally falls through
     } else if (type == NODE_TYPE_REFERENCE ||
                type == NODE_TYPE_ATTRIBUTE_ACCESS ||
                type == NODE_TYPE_INDEXED_ACCESS) {
@@ -3898,11 +3897,10 @@ void arangodb::aql::removeRedundantOrRule(Optimizer* opt,
 
     RemoveRedundantOr remover;
     if (remover.hasRedundantCondition(cn->expression()->node())) {
-      Expression* expr = nullptr;
       ExecutionNode* newNode = nullptr;
       auto astNode = remover.createReplacementNode(plan->getAst());
 
-      expr = new Expression(plan.get(), plan->getAst(), astNode);
+      Expression* expr = new Expression(plan.get(), plan->getAst(), astNode);
 
       try {
         newNode =
@@ -4105,53 +4103,53 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_
     opt->addPlan(std::move(plan), rule, false);
     return;
   }
-  
+
   bool modified = false;
   std::unordered_set<ExecutionNode*> toUnlink;
-  
+
   for (auto const& node : fNodes) {
     auto fn = static_cast<FilterNode const*>(node);
     // find the node with the filter expression
     auto inVar = fn->getVariablesUsedHere();
     TRI_ASSERT(inVar.size() == 1);
-    
+
     auto setter = plan->getVarSetBy(inVar[0]->id);
     if (setter == nullptr || setter->getType() != EN::CALCULATION) {
       continue;
     }
-    
+
     auto calculationNode = static_cast<CalculationNode*>(setter);
     auto conditionNode = calculationNode->expression()->node();
-    
+
     // build the filter condition
     auto condition = std::make_unique<Condition>(plan->getAst());
     condition->andCombine(conditionNode);
     condition->normalize(plan.get());
-    
+
     if (condition->root() == nullptr) {
       continue;
     }
-    
+
     size_t const n = condition->root()->numMembers();
-    
+
     if (n != 1) {
       // either no condition or multiple ORed conditions...
       continue;
     }
-    
+
     bool handled = false;
     auto current = node;
     while (current != nullptr) {
       if (current->getType() == EN::TRAVERSAL) {
         auto traversalNode = static_cast<TraversalNode const*>(current);
-        
+
         // found a traversal node, now check if the expression
         // is covered by the traversal
         auto traversalCondition = traversalNode->condition();
-        
+
         if (traversalCondition != nullptr && !traversalCondition->isEmpty()) {
           /*auto const& indexesUsed = traversalNode->get //indexNode->getIndexes();
-          
+
           if (indexesUsed.size() == 1) {*/
             // single index. this is something that we can handle
           Variable const* outVariable = traversalNode->pathOutVariable();
@@ -4159,7 +4157,7 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_
           Ast::getReferencedVariables(condition->root(), varsUsedByCondition);
           if (outVariable != nullptr &&
               varsUsedByCondition.find(outVariable) != varsUsedByCondition.end()) {
-            
+
             auto newNode = condition->removeTraversalCondition(plan.get(), outVariable, traversalCondition->root());
             if (newNode == nullptr) {
               // no condition left...
@@ -4184,12 +4182,12 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_
             }
           }
         }
-        
+
         if (handled) {
           break;
         }
       }
-      
+
       if (handled || current->getType() == EN::LIMIT ||
           !current->hasDependency()) {
         break;
@@ -4197,11 +4195,11 @@ void arangodb::aql::removeFiltersCoveredByTraversal(Optimizer* opt, std::unique_
       current = current->getFirstDependency();
     }
   }
-  
+
   if (!toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
   }
-  
+
   opt->addPlan(std::move(plan), rule, modified);
 }
 
@@ -4213,13 +4211,13 @@ void arangodb::aql::removeTraversalPathVariable(Optimizer* opt,
   SmallVector<ExecutionNode*>::allocator_type::arena_type a;
   SmallVector<ExecutionNode*> tNodes{a};
   plan->findNodesOfType(tNodes, EN::TRAVERSAL, true);
-  
+
   bool modified = false;
   // first make a pass over all traversal nodes and remove unused
   // variables from them
   for (auto const& n : tNodes) {
     TraversalNode* traversal = static_cast<TraversalNode*>(n);
-    
+
     auto varsUsedLater = n->getVarsUsedLater();
     auto outVariable = traversal->pathOutVariable();
     if (outVariable != nullptr &&
@@ -4455,7 +4453,8 @@ struct GeoIndexInfo {
         within(false),
         lessgreaterequal(false),
         valid(true),
-        constantPair{nullptr, nullptr} {}
+        constantPair{nullptr, nullptr}
+        {}
   EnumerateCollectionNode*
       collectionNode;  // node that will be replaced by (geo) IndexNode
   ExecutionNode* executionNode;  // start node that is a sort or filter
@@ -4599,19 +4598,23 @@ GeoIndexInfo iterativePreorderWithCondition(
   return GeoIndexInfo{};
 }
 
-GeoIndexInfo geoDistanceFunctionArgCheck(
-    std::pair<AstNode const*, AstNode const*> const& pair, ExecutionPlan* plan,
-    GeoIndexInfo info) {
-  std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
-      attributeAccess1;
-  std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
-      attributeAccess2;
+
+GeoIndexInfo geoDistanceFunctionArgCheck(std::pair<AstNode const*, AstNode const*> const& pair
+                                        ,ExecutionPlan* plan, GeoIndexInfo info) {
+  // checks 2 parameters of distance function if they represent a valid access to
+  // latitude and longitude attribute of the geo index.
+  //
+  // disance(a,b,c,d) - possible pairs are (a,b) and (c,d)
+
+  std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> attributeAccess1;
+  std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>> attributeAccess2;
 
   // first and second should be based on the same document - need to provide the
   // document in order to see which collection is bound to it and if that
   // collections supports geo-index
-  if (!pair.first->isAttributeAccessForVariable(attributeAccess1) ||
-      !pair.second->isAttributeAccessForVariable(attributeAccess2)) {
+
+  if (!pair.first->isAttributeAccessForVariable(attributeAccess1,true) ||
+      !pair.second->isAttributeAccessForVariable(attributeAccess2, true)) {
     info.invalidate();
     return info;
   }
@@ -4625,36 +4628,60 @@ GeoIndexInfo geoDistanceFunctionArgCheck(
 
   if (setter1 != nullptr && setter2 != nullptr && setter1 == setter2 &&
       setter1->getType() == EN::ENUMERATE_COLLECTION) {
+
+    //get logical collection
     auto collNode = reinterpret_cast<EnumerateCollectionNode*>(setter1);
-    auto coll = collNode->collection();  // what kind of indexes does it have on
-                                         // what attributes
-    auto lcoll = coll->getCollection();
-    // TODO - check collection for suitable geo-indexes
-    for (auto indexShardPtr : lcoll->getIndexes()) {
+    auto coll = collNode->collection();
+    auto logicalColl = coll->getCollection();
+
+    //check for suitiable indexes
+    for (auto indexShardPtr : logicalColl->getIndexes()) {
       // get real index
       arangodb::Index& index = *indexShardPtr.get();
 
       // check if current index is a geo-index
-      if (index.type() != arangodb::Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX &&
-          index.type() != arangodb::Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX) {
+      std::size_t fieldNum = index.fields().size();
+      bool isGeo1 = (index.type() == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX) && fieldNum == 1;
+      bool isGeo2 = (index.type() == arangodb::Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX) && fieldNum == 2;
+
+      if (!isGeo1  && !isGeo2) {
         continue;
       }
 
-      TRI_ASSERT(index.fields().size() == 2);
+      if(isGeo2){
+        // check access paths of attributes in ast and those in index match
+        if (index.fields()[0] == attributeAccess1.second && index.fields()[1] == attributeAccess2.second) {
+          info.collectionNode = collNode;
+          info.index = indexShardPtr;
+          TRI_AttributeNamesJoinNested(attributeAccess1.second, info.longitude, true);
+          TRI_AttributeNamesJoinNested(attributeAccess2.second, info.latitude, true);
+          return info;
+        }
+      } else if (isGeo1){
+        std::vector<basics::AttributeName> fields1 = index.fields()[0];
+        std::vector<basics::AttributeName> fields2 = index.fields()[0];
 
-      // check access paths of attributes in ast and those in index match
-      if (index.fields()[0] == attributeAccess1.second &&
-          index.fields()[1] == attributeAccess2.second) {
-        info.collectionNode = collNode;
-        info.index = indexShardPtr;
-        TRI_AttributeNamesJoinNested(attributeAccess1.second, info.longitude,
-                                     true);
-        TRI_AttributeNamesJoinNested(attributeAccess2.second, info.latitude,
-                                     true);
-        return info;
-      }
-    }
-  }
+        VPackBuilder builder;
+        indexShardPtr->toVelocyPack(builder,true,false);
+        bool geoJson = builder.slice().get("geoJson").getBool();
+        if(geoJson) {
+          fields1.back().name += "[1]";
+          fields2.back().name += "[0]";
+        } else {
+          fields1.back().name += "[0]";
+          fields2.back().name += "[1]";
+        }
+
+        if (fields1 == attributeAccess1.second && fields2 == attributeAccess2.second) {
+          info.collectionNode = collNode;
+          info.index = indexShardPtr;
+          TRI_AttributeNamesJoinNested(attributeAccess1.second, info.longitude, true);
+          TRI_AttributeNamesJoinNested(attributeAccess2.second, info.latitude, true);
+          return info;
+        }
+      } // if isGeo 1 or 2
+    } // for index in collection
+  } // if setters (enumerate collection)
 
   info.invalidate();
   return info;

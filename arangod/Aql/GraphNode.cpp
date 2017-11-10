@@ -362,7 +362,7 @@ GraphNode::GraphNode(ExecutionPlan* plan,
                                    "graph options have to be a json-object.");
   }
   _options = BaseOptions::createOptionsFromSlice(
-      _plan->getAst()->query()->trx(), opts);
+      _plan->getAst()->query(), opts);
 }
 
 /// @brief Internal constructor to clone the node.

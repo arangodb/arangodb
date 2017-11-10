@@ -149,6 +149,9 @@ class Syncer {
   /// @brief create an error result from a failed HTTP request/response
   Result buildHttpError(arangodb::httpclient::SimpleHttpResult* response, std::string const& url) const;
   
+  /// we need to act like a 3.2 client
+  bool simulate32Client() const;
+  
  private:
   
   /// @brief extract the collection by either id or name, may return nullptr!

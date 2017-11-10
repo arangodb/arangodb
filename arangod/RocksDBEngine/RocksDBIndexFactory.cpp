@@ -355,104 +355,56 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
 std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
     arangodb::velocypack::Slice info, bool generateKey, LogicalCollection* col,
     bool isClusterConstructor) const {
-  if (!info.isObject()) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
-  }
+  
+  TRI_idx_iid_t iid = IndexFactory::validateSlice(info, generateKey, isClusterConstructor);
 
   // extract type
   VPackSlice value = info.get("type");
 
   if (!value.isString()) {
-    // Compatibility with old v8-vocindex.
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "invalid index type definition");
   }
 
   std::string const typeString = value.copyString();
-  arangodb::Index::IndexType const type = arangodb::Index::type(typeString);
-
-  std::shared_ptr<Index> newIdx;
-
-  TRI_idx_iid_t iid = 0;
-  value = info.get("id");
-  if (value.isString()) {
-    iid = basics::StringUtils::uint64(value.copyString());
-  } else if (value.isNumber()) {
-    iid =
-        basics::VelocyPackHelper::getNumericValue<TRI_idx_iid_t>(info, "id", 0);
-  } else if (!generateKey) {
-    // In the restore case it is forbidden to NOT have id
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, "cannot restore index without index identifier");
+  if (typeString == "primary") {
+    if (!isClusterConstructor) {
+      // this indexes cannot be created directly
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                      "cannot create primary index");
+    }
+    return std::make_shared<RocksDBPrimaryIndex>(col, info);
+  }
+  if (typeString == "edge") {
+    if (!isClusterConstructor) {
+      // this indexes cannot be created directly
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                      "cannot create edge index");
+    }
+    VPackSlice fields = info.get("fields");
+    TRI_ASSERT(fields.isArray() && fields.length() == 1);
+    std::string direction = fields.at(0).copyString();
+    TRI_ASSERT(direction == StaticStrings::FromString ||
+                direction == StaticStrings::ToString);
+    return std::make_shared<RocksDBEdgeIndex>(iid, col, info, direction);
+  }
+  if (typeString == "hash") {
+    return std::make_shared<RocksDBHashIndex>(iid, col, info);
+  }
+  if (typeString == "skiplist") {
+    return std::make_shared<RocksDBSkiplistIndex>(iid, col, info);
+  }
+  if (typeString == "persistent") {
+    return std::make_shared<RocksDBPersistentIndex>(iid, col, info);
+  }
+  if (typeString == "geo1" || typeString == "geo2") {
+    return std::make_shared<RocksDBGeoIndex>(iid, col, info);
+  }
+  if (typeString == "fulltext") {
+    return std::make_shared<RocksDBFulltextIndex>(iid, col, info);
   }
 
-  if (iid == 0 && !isClusterConstructor) {
-    if (!generateKey) {
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << info.toJson();
-    }
-    // Restore is not allowed to generate an id
-    TRI_ASSERT(generateKey);
-    iid = arangodb::Index::generateId();
-  }
-
-  switch (type) {
-    case arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX: {
-      if (!isClusterConstructor) {
-        // this indexes cannot be created directly
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "cannot create primary index");
-      }
-      newIdx.reset(new arangodb::RocksDBPrimaryIndex(col, info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX: {
-      if (!isClusterConstructor) {
-        // this indexes cannot be created directly
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "cannot create edge index");
-      }
-      VPackSlice fields = info.get("fields");
-      TRI_ASSERT(fields.isArray() && fields.length() == 1);
-      std::string direction = fields.at(0).copyString();
-      TRI_ASSERT(direction == StaticStrings::FromString ||
-                 direction == StaticStrings::ToString);
-      newIdx.reset(new arangodb::RocksDBEdgeIndex(iid, col, info, direction));
-      break;
-    }
-    // case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
-    // case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
-      newIdx.reset(new arangodb::RocksDBHashIndex(iid, col, info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_SKIPLIST_INDEX: {
-      newIdx.reset(new arangodb::RocksDBSkiplistIndex(iid, col, info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_PERSISTENT_INDEX: {
-      newIdx.reset(new arangodb::RocksDBPersistentIndex(iid, col, info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
-    case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
-      newIdx.reset(new arangodb::RocksDBGeoIndex(iid, col, info));
-      break;
-    }
-    case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {
-      newIdx.reset(new arangodb::RocksDBFulltextIndex(iid, col, info));
-      break;
-    }
-
-    case arangodb::Index::TRI_IDX_TYPE_UNKNOWN:
-    default: {
-      std::string msg =
-          "invalid or unsupported index type '" + typeString + "'";
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, msg);
-    }
-  }
-
-  TRI_ASSERT(newIdx != nullptr);
-  return newIdx;
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, std::string("invalid or unsupported index type '") + typeString + "'");
 }
 
 void RocksDBIndexFactory::fillSystemIndexes(

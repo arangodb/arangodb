@@ -2472,7 +2472,7 @@ static void JS_StatusVocbaseCol(
       TRI_V8_RETURN(v8::Number::New(isolate, (int)TRI_VOC_COL_STATUS_DELETED));
     }
   }
-  // fallthru intentional
+  // intentionally falls through
 
   TRI_vocbase_col_status_e status = collection->getStatusLocked();
 
@@ -2550,7 +2550,7 @@ static void JS_TypeVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
       TRI_V8_RETURN(v8::Number::New(isolate, (int)collection->type()));
     }
   }
-  // fallthrough intentional
+  // intentionally falls through
 
   TRI_col_type_e type = collection->type();
 
