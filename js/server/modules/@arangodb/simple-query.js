@@ -601,13 +601,26 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
         * 1000; // kilometers to meters
     };
 
-    var diameter = distanceMeters(this._latitude1, this._longitude1, this._latitude2, this._longitude2);
-    var midpoint = [
-      this._latitude1 + (this._latitude2 - this._latitude1) * 0.5,
-      this._longitude1 + (this._longitude2 - this._longitude1) * 0.5
-    ];
+    // need only half of the diameter as the radius
+    // divide by just 1.999 to allow for some rounding errors
+    var radius = distanceMeters(this._latitude1, this._longitude1, this._latitude2, this._longitude2) / 1.999;
 
-    result = this._collection.within(midpoint[0], midpoint[1], diameter).toArray();
+    var midpoint = (function(latitude1, longitude1, latitude2, longitude2) {
+      latitude1 = latitude1 * Math.PI / 180;
+      latitude2 = latitude2 * Math.PI / 180;
+      longitude1 = longitude1 * Math.PI / 180;
+      longitude2 = longitude2 * Math.PI / 180;
+      var Bx = Math.cos(latitude2) * Math.cos(longitude2 - longitude1);
+      var By = Math.cos(latitude2) * Math.sin(longitude2 - longitude1);
+
+      return [
+        Math.atan2(Math.sin(latitude1) + Math.sin(latitude2),
+                   Math.sqrt((Math.cos(latitude1) + Bx) * (Math.cos(latitude1) + Bx) + By * By)) * 180 / Math.PI,
+        (((longitude1 + Math.atan2(By, Math.cos(latitude1) + Bx)) * 180 / Math.PI) + 540) % 360 - 180
+      ];
+    })(this._latitude1, this._longitude1, this._latitude2, this._longitude2);
+
+    result = this._collection.within(midpoint[0], midpoint[1], radius).toArray();
 
     var idx = this._collection.index(this._index);
     var latLower, latUpper, lonLower, lonUpper;
