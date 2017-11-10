@@ -128,6 +128,11 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            "maximum size of appendEntries document (# log entries)",
                            new UInt64Parameter(&_maxAppendSize));
 
+  options->addHiddenOption(
+    "--agency.disaster-recovery-id",
+    "allows for specification of the id for this agent; dangerous option for disaster recover only!",
+    new StringParameter(&_recoveryId));
+
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -275,17 +280,20 @@ void AgencyFeature::start() {
     _maxAppendSize /= 10;
   }
 
-  _agent.reset(new consensus::Agent(consensus::config_t(
-      _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
-      _agencyEndpoints, _supervision, _supervisionTouched, _waitForSync,
-      _supervisionFrequency, _compactionStepSize, _compactionKeepSize,
-      _supervisionGracePeriod, _cmdLineTimings, _maxAppendSize)));
-
+  _agent.reset(
+    new consensus::Agent(
+      consensus::config_t(
+        _recoveryId, _size, _poolSize, _minElectionTimeout, _maxElectionTimeout,
+        endpoint, _agencyEndpoints, _supervision, _supervisionTouched,
+        _waitForSync, _supervisionFrequency, _compactionStepSize,
+        _compactionKeepSize, _supervisionGracePeriod, _cmdLineTimings,
+        _maxAppendSize)));
+  
   AGENT = _agent.get();
-
+  
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";
   _agent->start();
-
+  
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading agency";
   _agent->load();
 }
@@ -294,7 +302,7 @@ void AgencyFeature::beginShutdown() {
   if (!isEnabled()) {
     return;
   }
-
+  
   // pass shutdown event to _agent so it can notify all its sub-threads
   _agent->beginShutdown();
 }

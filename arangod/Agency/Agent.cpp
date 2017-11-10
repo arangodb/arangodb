@@ -184,11 +184,6 @@ bool Agent::leading() const {
   return _constituent.leading();
 }
 
-/// Start constituent personality
-void Agent::startConstituent() {
-  activateAgency();
-}
-
 // Waits here for confirmation of log's commits up to index. Timeout in seconds.
 AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
 
@@ -301,9 +296,14 @@ priv_rpc_ret_t Agent::recvAppendEntriesRPC(
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Got AppendEntriesRPC from "
     << leaderId << " with term " << term;
 
+  term_t t(this->term());
+  if (!ready()) { // We have not been able to put together our configuration
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "Agent is not ready yet.";
+    return priv_rpc_ret_t(false,t);
+  }
+
   VPackSlice payload = queries->slice();
 
-  term_t t(this->term());
   // Update commit index
   if (payload.type() != VPackValueType::Array) {
     LOG_TOPIC(DEBUG, Logger::AGENCY)
@@ -680,86 +680,19 @@ bool Agent::active() const {
 }
 
 
-// Activate with everything I need to know
-query_t Agent::activate(query_t const& everything) {
-
-  auto ret = std::make_shared<Builder>();
-  ret->openObject();
-
-  Slice slice = everything->slice();
-
-  if (slice.isObject()) {
-    
-    if (active()) {
-      ret->add("success", VPackValue(false));
-    } else {
-
-      Slice compact = slice.get("compact");
-      Slice    logs = slice.get("logs");
-
-      
-      VPackBuilder batch;
-      batch.openArray();
-      for (auto const& q : VPackArrayIterator(logs)) {
-        batch.add(q.get("request"));
-      }
-      batch.close();
-
-      index_t commitIndex = 0;
-      {
-        _tiLock.assertNotLockedByCurrentThread();
-        term_t t = _constituent.term();
-        MUTEX_LOCKER(ioLocker, _ioLock); // Atomicity 
-        if (!compact.isEmptyArray()) {
-          _readDB = compact.get("readDB");
-        }
-        {
-          CONDITION_LOCKER(guard, _waitForCV);
-          commitIndex = _commitIndex;  // take a local copy
-        }
-        /* do not perform callbacks */
-        _readDB.applyLogEntries(batch, commitIndex, t, false);
-        _spearhead = _readDB;
-      }
-
-      ret->add("success", VPackValue(true));
-      ret->add("commitId", VPackValue(commitIndex));
-    }
-
-  } else {
-
-    LOG_TOPIC(ERR, Logger::AGENCY)
-      << "Activation failed. \"Everything\" must be an object, is however "
-      << slice.typeName();
-
-  }
-  ret->close();
-  return ret;
-
-}
-
 /// @brief Activate agency (Inception thread for multi-host, main thread else)
-bool Agent::activateAgency() {
-  if (_config.activeEmpty()) {
-    size_t count = 0;
-    for (auto const& pair : _config.pool()) {
-      _config.activePushBack(pair.first);
-      if (++count == size()) {
-        break;
-      }
-    }
-    bool persisted = false; 
-    try {
-      _state.persistActiveAgents(_config.activeToBuilder(),
-                                 _config.poolToBuilder());
-      persisted = true;
-    } catch (std::exception const& e) {
-      LOG_TOPIC(FATAL, Logger::AGENCY)
-        << "Failed to persist active agency: " << e.what();
-    }
-    return persisted;
+void Agent::activateAgency() {
+
+  _config.activate();
+  try {
+    _state.persistActiveAgents(
+      _config.activeToBuilder(), _config.poolToBuilder());
+  } catch (std::exception const& e) {
+    LOG_TOPIC(FATAL, Logger::AGENCY)
+      << "Failed to persist active agency: " << e.what();
+      FATAL_ERROR_EXIT();
   }
-  return true;
+  
 }
 
 /// Load persistent state called once
@@ -1637,14 +1570,25 @@ query_t Agent::gossip(query_t const& in, bool isCallback, size_t version) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20002, "Gossip message must contain string parameter 'id'");
   }
+  std::string id = slice.get("id").copyString();
 
   if (!slice.hasKey("endpoint") || !slice.get("endpoint").isString()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         20003, "Gossip message must contain string parameter 'endpoint'");
   }
   std::string endpoint = slice.get("endpoint").copyString();
+  
   if ( _inception != nullptr && isCallback) {
     _inception->reportVersionForEp(endpoint, version);
+  }
+
+  // If pool complete but knabe is not member => reject at all times
+  if (_config.poolComplete()) {
+    auto pool = _config.pool();
+    if (pool.find(id) == pool.end()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+        20003, "Gossip message from new peer while my pool is complete.");
+    }
   }
 
   LOG_TOPIC(TRACE, Logger::AGENCY)

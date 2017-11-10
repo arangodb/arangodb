@@ -63,6 +63,7 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   std::string _agencyMyAddress;
   std::vector<std::string> _agencyEndpoints;
   bool _cmdLineTimings;
+  std::string _recoveryId;
 
  public:
   consensus::Agent* agent() const { return _agent.get(); }
