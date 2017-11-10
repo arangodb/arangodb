@@ -239,7 +239,9 @@ ServerState::Mode ServerState::serverMode() {
 
 ServerState::RoleEnum ServerState::getRole() {
   auto role = loadRole();
-  TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
+  // we cannot assert for a defined role here already
+  // getRole() is called very early, even before the actual server role is determined
+  // TRI_ASSERT(role != ServerState::ROLE_UNDEFINED);
   return role;
 }
 
