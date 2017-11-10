@@ -1,6 +1,10 @@
 devel
 -----
 
+* fixed issue #3618: Inconsistent behavior of OR statement with object bind parameters
+
+* potential fix for issue #3562: Document WITHIN_RECTANGLE not found
+
 * increase default maximum number of V8 contexts to at least 16 if not 
   explicitly configured otherwise. the mode for determining the actual maximum
   value of V8 contexts is unchanged and works as follows:
@@ -65,8 +69,6 @@ devel
   while there's a lot of disk space
 
 * added C++ implementations for AQL function `SUBSTRING()`, `LEFT()`, `RIGHT()` and `TRIM()`
-
-* make AQL `DISTINCT` not change the order of the results it is applied on
 
 * show C++ function name of call site in ArangoDB log output
 
