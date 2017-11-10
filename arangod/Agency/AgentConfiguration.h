@@ -152,9 +152,6 @@ struct config_t {
   query_t activeAgentsToBuilder() const;
   query_t poolToBuilder() const;
 
-  /// @brief override this configuration with prevailing opinion (startup)
-  void override(VPackSlice const& conf);
-
   /// @brief vpack representation
   query_t toBuilder() const;
 
@@ -205,9 +202,6 @@ struct config_t {
 
   /// @brief Supervision grace period
   double supervisionGracePeriod() const;
-
-  /// @brief Get next agent in line of succession
-  std::string nextAgentInLine() const;
 
   /// @brief
   std::string startup() const;

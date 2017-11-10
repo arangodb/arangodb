@@ -287,21 +287,6 @@ bool config_t::addToPool(std::pair<std::string, std::string> const& i) {
   return true;
 }
 
-std::string config_t::nextAgentInLine() const {
-
-  READ_LOCKER(readLocker, _lock);
-
-  if (_poolSize > _agencySize) {
-    for (const auto& p : _pool) {
-      if (std::find(_active.begin(), _active.end(), p.first) == _active.end()) {
-        return p.first;
-      }
-    }
-  }
-  
-  return ""; // No one left
-}
-
 size_t config_t::maxAppendSize() const {
   READ_LOCKER(readLocker, _lock);
   return _maxAppendSize;
@@ -423,111 +408,6 @@ void config_t::update(query_t const& message) {
   if (changed) {
     ++_version;
   }
-}
-
-/// @brief override this configuration with prevailing opinion (startup)
-void config_t::override(VPackSlice const& conf) {
-  WRITE_LOCKER(writeLocker, _lock);
-
-  if (conf.hasKey(agencySizeStr) && conf.get(agencySizeStr).isUInt()) {
-    _agencySize = conf.get(agencySizeStr).getUInt();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << agencySizeStr
-                                   << " from " << conf.toJson();
-  }
-
-  if (conf.hasKey(poolSizeStr) && conf.get(poolSizeStr).isUInt()) {
-    _poolSize = conf.get(poolSizeStr).getUInt();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << poolSizeStr
-                                   << " from " << conf.toJson();
-  }
-
-  if (conf.hasKey(minPingStr) && conf.get(minPingStr).isDouble()) {
-    _minPing = conf.get(minPingStr).getNumber<double>();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << minPingStr
-                                   << " from " << conf.toJson();
-  }
-
-  if (conf.hasKey(maxPingStr) && conf.get(maxPingStr).isDouble()) {
-    _maxPing = conf.get(maxPingStr).getNumber<double>();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << maxPingStr
-                                   << " from " << conf.toJson();
-  }
-
-  if (conf.hasKey(timeoutMultStr) && conf.get(timeoutMultStr).isInteger()) {
-    _timeoutMult = conf.get(timeoutMultStr).getNumber<int64_t>();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << timeoutMultStr
-                                   << " from " << conf.toJson();
-  }
-
-  if (conf.hasKey(poolStr) && conf.get(poolStr).isArray()) {
-    _pool.clear();
-    for (auto const& peer : VPackArrayIterator(conf.get(poolStr))) {
-      auto key = peer.get(idStr).copyString();
-      auto value = peer.get(endpointStr).copyString();
-      _pool[key] = value;
-    }
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << poolStr
-                                   << " from " << conf.toJson();
-  }
-
-  if (conf.hasKey(activeStr) && conf.get(activeStr).isArray()) {
-    _active.clear();
-    for (auto const& peer : VPackArrayIterator(conf.get(activeStr))) {
-      _active.push_back(peer.copyString());
-    }
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override poolSize from "
-                                   << conf.toJson();
-  }
-
-  if (conf.hasKey(supervisionStr) && conf.get(supervisionStr).isBoolean()) {
-    _supervision = conf.get(supervisionStr).getBoolean();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << supervisionStr
-                                   << " from " << conf.toJson();
-  }
-
-  if (conf.hasKey(waitForSyncStr) && conf.get(waitForSyncStr).isBoolean()) {
-    _waitForSync = conf.get(waitForSyncStr).getBoolean();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override " << waitForSyncStr
-                                   << " from " << conf.toJson();
-  }
-
-  if (conf.hasKey(supervisionFrequencyStr) &&
-      conf.get(supervisionFrequencyStr).isDouble()) {
-    _supervisionFrequency = conf.get(supervisionFrequencyStr).getNumber<double>();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override "
-                                   << supervisionFrequencyStr << " from "
-                                   << conf.toJson();
-  }
-
-  if (conf.hasKey(compactionStepSizeStr) &&
-      conf.get(compactionStepSizeStr).isUInt()) {
-    _compactionStepSize = conf.get(compactionStepSizeStr).getUInt();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override "
-                                   << compactionStepSizeStr << " from "
-                                   << conf.toJson();
-  }
-
-  if (conf.hasKey(compactionKeepSizeStr) &&
-      conf.get(compactionKeepSizeStr).isUInt()) {
-    _compactionKeepSize = conf.get(compactionKeepSizeStr).getUInt();
-  } else {
-    LOG_TOPIC(ERR, Logger::AGENCY) << "Failed to override "
-                                   << compactionKeepSizeStr << " from "
-                                   << conf.toJson();
-  }
-
-  ++_version;
 }
 
 /// @brief vpack representation
