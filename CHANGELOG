@@ -1,6 +1,8 @@
 devel
 -----
 
+* add readonly mode rest API
+
 * allow compilation of ArangoDB with g++7
 
 * AQL: during a traversal if a vertex is not found. It will not print an ERROR to the log and continue

@@ -287,6 +287,7 @@ SET(ARANGOD_SOURCES
   Replication/TailingSyncer.cpp
   RestHandler/RestAdminLogHandler.cpp
   RestHandler/RestAdminRoutingHandler.cpp
+  RestHandler/RestAdminServerHandler.cpp
   RestHandler/RestAqlFunctionsHandler.cpp
   RestHandler/RestAuthHandler.cpp
   RestHandler/RestBaseHandler.cpp

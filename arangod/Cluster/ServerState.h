@@ -31,6 +31,7 @@
 
 namespace arangodb {
 class AgencyComm;
+class Result;
 
 class ServerState {
  public:
@@ -63,6 +64,7 @@ class ServerState {
     REDIRECT = 3,
     /// redirect to lead server if possible
     READ_ONLY = 4,
+    INVALID = 255,
   };
 
  public:
@@ -93,6 +95,12 @@ class ServerState {
 
   /// @brief convert a string representation to a state
   static StateEnum stringToState(std::string const&);
+  
+  /// @brief get the string representation of a mode
+  static std::string modeToString(Mode);
+    
+  /// @brief convert a string representation to a mode
+  static Mode stringToMode(std::string const&);
   
   /// @brief sets server mode, returns previously held
   /// value (performs atomic read-modify-write operation)
@@ -231,6 +239,9 @@ class ServerState {
   void setFoxxmasterQueueupdate(bool);
   
   bool getFoxxmasterQueueupdate();
+
+  /// @brief sets server mode and propagates new mode to agency
+  Result propagateClusterServerMode(Mode);
 
  private:
   /// @brief atomically fetches the server role
