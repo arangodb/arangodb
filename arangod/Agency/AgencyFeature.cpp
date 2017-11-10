@@ -319,6 +319,10 @@ void AgencyFeature::stop() {
         LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for agent thread to finish";
       }
     }
+
+    // delete the Agent object here ensures it shuts down all of its threads
+    // this is a precondition that it must fulfill before we can go on with the
+    // shutdown
     _agent.reset();
   }
 
