@@ -172,6 +172,16 @@ class ArangoDB
   end
 
 ################################################################################
+## properties of a collection
+################################################################################
+
+def self.properties_collection (name)
+  doc = self.get("/_api/collection/#{name}/properties") # TODO use api call
+
+  return doc.parsed_response
+end
+
+################################################################################
 ## create a single collection graph
 ################################################################################
 
