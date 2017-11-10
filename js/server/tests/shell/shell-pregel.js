@@ -35,16 +35,17 @@ var graph_module = require("@arangodb/general-graph");
 var internal = require("internal");
 var console = require("console");
 var EPS = 0.0001;
+let pregel = require("@arangodb/pregel");
 
 var graphName = "UnitTest_pregel";
 var vColl = "UnitTest_pregel_v", eColl = "UnitTest_pregel_e";
 
 function testAlgo(a, p) {
-  var key = db._pregelStart(a, vColl, eColl, p);
+  var key = pregel.start(a, graphName, p);
   var i = 10000;
   do {
     internal.wait(0.2);
-    var stats = db._pregelStatus(key);
+    var stats = pregel.status(key);
     if (stats.state !== "running") {
       assertEqual(stats.vertexCount, 11, stats);
       assertEqual(stats.edgeCount, 17, stats);

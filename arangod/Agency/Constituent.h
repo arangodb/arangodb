@@ -104,12 +104,10 @@ class Constituent : public Thread {
 
   bool start(TRI_vocbase_t* vocbase, aql::QueryRegistry*);
 
-  friend class Agent;
-
- private:
   // update leaderId and term if inactive
   void update(std::string const&, term_t);
 
+ private:
   // set term to new term
   void term(term_t);
   void termNoLock(term_t);

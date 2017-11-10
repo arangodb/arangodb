@@ -1,21 +1,45 @@
 #!/bin/bash
+params=("$@")
 
-. `dirname $0`/cluster-run-common.sh
+case $OSTYPE in
+  darwin*)
+    lib="$PWD/scripts/cluster-run-common.sh"
+  ;;
+  *)
+    lib="$(dirname $(readlink -f ${BASH_SOURCE[0]}))/cluster-run-common.sh"
+  ;;
+esac
+
+if [[ -f "$lib" ]]; then
+    . "$lib"
+else
+    echo "could not source $lib"
+    exit 1
+fi
+
+if [[ -f cluster/startup_parameters ]];then
+    if [[ -z "${params[@]}" ]]; then
+        string="$(< cluster/startup_parameters)"
+        params=( $string )
+    fi
+fi
+
+parse_args "${params[@]}"
 
 echo Number of Agents: $NRAGENTS
 echo Number of DBServers: $NRDBSERVERS
 echo Number of Coordinators: $NRCOORDINATORS
 
 if [ -z "$ONGOING_PORTS" ] ; then
-  CO_BASE=$(( $PORT_OFFSET + 8530 ))
-  DB_BASE=$(( $PORT_OFFSET + 8629 ))
-  AG_BASE=$(( $PORT_OFFSET + 4001 ))
-  SE_BASE=$(( $PORT_OFFSET + 8729 ))
+  CO_BASE=$(( PORT_OFFSET + 8530 ))
+  DB_BASE=$(( PORT_OFFSET + 8629 ))
+  AG_BASE=$(( PORT_OFFSET + 4001 ))
+  SE_BASE=$(( PORT_OFFSET + 8729 ))
 else
-  CO_BASE=$(( $PORT_OFFSET + 8530 ))
-  DB_BASE=$(( $PORT_OFFSET + 8530 + $NRCOORDINATORS ))
-  AG_BASE=$(( $PORT_OFFSET + 8530 + $NRCOORDINATORS + $NRDBSERVERS ))
-  SE_BASE=$(( $PORT_OFFSET + 8530 + $NRCOORDINATORS + $NRDBSERVERS + $NRAGENTS ))
+  CO_BASE=$(( PORT_OFFSET + 8530 ))
+  DB_BASE=$(( PORT_OFFSET + 8530 + NRCOORDINATORS ))
+  AG_BASE=$(( PORT_OFFSET + 8530 + NRCOORDINATORS + NRDBSERVERS ))
+  SE_BASE=$(( PORT_OFFSET + 8530 + NRCOORDINATORS + NRDBSERVERS + NRAGENTS ))
 fi
 
 LOCALHOST="[::1]"
@@ -72,7 +96,7 @@ testServerDown() {
     $CURL GET $PROT://$LOCALHOST:$PORT/_api/version >/dev/null 2>/dev/null
     if [ "$?" != "0" ] ; then
       pid=$(ps -eaf|grep data$PORT|grep -v grep|awk '{print $2}')
-      if [ -z $pid ]; then
+      if [ -z "$pid" ]; then
         break
       fi
     fi

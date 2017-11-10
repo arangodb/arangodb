@@ -48,12 +48,18 @@ Querying the status of a done job:
 @END_EXAMPLE_ARANGOSH_RUN
 
 Querying the status of a pending job:
-(we create a sleep job therefore...)
+(therefore we create a long runnging job...)
 
 @EXAMPLE_ARANGOSH_RUN{JSF_job_getStatusById_02}
-  var url = "/_admin/sleep?duration=30";
+  var url = "/_api/transaction";
+  var body = {
+    collections: {
+      read : [ "_frontend" ]
+    },
+    action: "function () {require('internal').sleep(15.0);}"
+  };
   var headers = {'x-arango-async' : 'store'};
-  var response = logCurlRequest('GET', url, "", headers);
+  var response = logCurlRequest('POST', url, body, headers);
 
   assert(response.code === 202);
   logRawResponse(response);

@@ -313,7 +313,7 @@ static inline v8::Handle<v8::String> v8Utf8StringFactory(v8::Isolate* isolate, v
 struct TRI_v8_global_t {
   explicit TRI_v8_global_t(v8::Isolate*);
 
-  ~TRI_v8_global_t() {}
+  ~TRI_v8_global_t();
 
   /// @brief whether or not the context has active externals
   inline bool hasActiveExternals() const { return _activeExternals > 0; }
@@ -348,9 +348,6 @@ struct TRI_v8_global_t {
   /// @brief ArangoError template
   v8::Persistent<v8::ObjectTemplate> ArangoErrorTempl;
 
-  /// @brief VPack template
-  v8::Persistent<v8::ObjectTemplate> VPackTempl;
-  
   /// @brief collection template
   v8::Persistent<v8::ObjectTemplate> VocbaseColTempl;
   
@@ -417,9 +414,6 @@ struct TRI_v8_global_t {
   /// @brief "code" key name
   v8::Persistent<v8::String> CodeKey;
 
-  /// @brief "compatibility" key name
-  v8::Persistent<v8::String> CompatibilityKey;
-
   /// @brief "contentType" key name
   v8::Persistent<v8::String> ContentTypeKey;
 
@@ -431,9 +425,6 @@ struct TRI_v8_global_t {
 
   /// @brief "database" key name
   v8::Persistent<v8::String> DatabaseKey;
-
-  /// @brief "doCompact" key name
-  v8::Persistent<v8::String> DoCompactKey;
 
   /// @brief "domain" key
   v8::Persistent<v8::String> DomainKey;
@@ -470,12 +461,6 @@ struct TRI_v8_global_t {
 
   /// @brief "isSystem" key name
   v8::Persistent<v8::String> IsSystemKey;
-
-  /// @brief "isVolatile" key name
-  v8::Persistent<v8::String> IsVolatileKey;
-
-  /// @brief "journalSize" key name
-  v8::Persistent<v8::String> JournalSizeKey;
 
   /// @brief "keepNull" key name
   v8::Persistent<v8::String> KeepNullKey;
