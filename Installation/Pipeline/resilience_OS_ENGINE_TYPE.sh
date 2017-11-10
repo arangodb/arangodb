@@ -39,9 +39,11 @@ test -d resilience || exit 1
     npm install
 
     if [ "$foxx" == "foxx" ]; then
-        TESTS=$(find test/* -name "*foxx*")
-    elif [ "$foxx" == "nofoxx" ]; then
-        TESTS=$(find test/* -not -name "*foxx*")
+        TESTS=$(find "test/foxx")
+    elif [ "$foxx" == "cluster" ]; then
+        TESTS=$(find "test/cluster")
+    elif [ "$foxx" == "single" ]; then
+        TESTS=$(find "test/single")
     else
         TESTS="$foxx"
     fi
