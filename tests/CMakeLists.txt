@@ -53,6 +53,7 @@ add_executable(
   Cache/TransactionsWithBackingStore.cpp
   Cluster/ClusterHelpersTest.cpp
   Geo/georeg.cpp
+  Graph/ClusterTraverserCacheTest.cpp
   Pregel/typedbuffer.cpp
   RocksDBEngine/KeyTest.cpp
   RocksDBEngine/IndexEstimatorTest.cpp
