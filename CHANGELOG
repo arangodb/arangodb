@@ -1,6 +1,8 @@
 devel
 -----
 
+* allow compilation of ArangoDB with g++7
+
 * AQL: during a traversal if a vertex is not found. It will not print an ERROR to the log and continue
   with a NULL value, but will register a warning at the query and continue with a NULL value.
   The situation is not desired as an ERROR as ArangoDB can store edges pointing to non-existing

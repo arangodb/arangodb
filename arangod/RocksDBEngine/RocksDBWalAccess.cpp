@@ -232,6 +232,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
 
         break;
       }
+      
       case RocksDBLogType::DocumentOperationsPrologue: {
         // part of an ongoing transaction
         if (_currentDbId != 0 && _currentTrxId != 0) {
@@ -259,6 +260,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
         _currentCid = RocksDBLogValue::collectionId(blob);
         break;
       }
+      
       case RocksDBLogType::SinglePut: {
         TRI_ASSERT(!_singleOp);
         resetTransientState(); // finish ongoing trx

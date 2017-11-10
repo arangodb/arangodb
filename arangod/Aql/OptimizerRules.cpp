@@ -2987,15 +2987,14 @@ void arangodb::aql::distributeFilternCalcToClusterRule(
           stopSearching = true;
           break;
 
-        case EN::CALCULATION: {
-          auto calc = static_cast<CalculationNode const*>(inspectNode);
+        case EN::CALCULATION: 
           // check if the expression can be executed on a DB server safely
-          if (!calc->expression()->canRunOnDBServer()) {
+          if (!static_cast<CalculationNode const*>(inspectNode)->expression()->canRunOnDBServer()) {
             stopSearching = true;
             break;
-          }
-          // intentionally fall through here
-        }
+          } 
+          // intentionally falls through
+        
         case EN::FILTER:
           for (auto& v : inspectNode->getVariablesUsedHere()) {
             if (varsSetHere.find(v) != varsSetHere.end()) {
@@ -3546,7 +3545,7 @@ struct OrSimplifier {
           return true;
         }
       }
-      // fallthrough intentional
+      // intentionally falls through
     } else if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
       auto lhs = node->getMember(0);
       auto rhs = node->getMember(1);
@@ -3557,7 +3556,7 @@ struct OrSimplifier {
           return true;
         }
       }
-      // fallthrough intentional
+      // intentionally falls through
     }
 
     return false;
@@ -3666,7 +3665,7 @@ struct OrSimplifier {
         return ast->createNodeBinaryOperator(node->type, lhsNew, rhsNew);
       }
 
-      // fallthrough intentional
+      // intentionally falls through
     }
 
     return const_cast<AstNode*>(node);
@@ -3854,7 +3853,7 @@ struct RemoveRedundantOr {
       }
       // if hasRedundantConditionWalker(lhs) and
       // hasRedundantConditionWalker(rhs), then one of the conditions in the OR
-      // statement is of the form x == x fall-through intentional
+      // statement is of the form x == x intentionally falls through
     } else if (type == NODE_TYPE_REFERENCE ||
                type == NODE_TYPE_ATTRIBUTE_ACCESS ||
                type == NODE_TYPE_INDEXED_ACCESS) {
