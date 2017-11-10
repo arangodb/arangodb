@@ -39,7 +39,6 @@
 #include <rocksdb/db.h>
 
 using namespace arangodb;
-using namespace arangodb::rocksdbengine;
 
 // Handle near queries, possibly with a radius forming an upper bound
 class RocksDBSphericalIndexNearIterator final : public IndexIterator {
@@ -83,7 +82,7 @@ class RocksDBSphericalIndexNearIterator final : public IndexIterator {
       }
     }
 
-    return true;
+    return !_nearQuery.done();
   }
 
   void reset() override { _nearQuery.reset(); }
@@ -284,47 +283,56 @@ bool RocksDBSphericalIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
+Result RocksDBSphericalIndex::parse(VPackSlice const& doc, std::vector<S2CellId>& cells,
+                                    geo::Coordinate& centroid) const {
+  if (_variant == IndexVariant::COMBINED_GEOJSON) {
+    S2RegionCoverer coverer;
+    _coverParams.configureS2RegionCoverer(&coverer);
+    VPackSlice loc = doc.get(_location);
+    return geo::GeoCover::generateCoverJson(&coverer, loc, cells, centroid);
+  } else if (_variant == IndexVariant::COMBINED_LAT_LON) {
+    VPackSlice loc = doc.get(_location);
+    return geo::GeoCover::generateCoverLatLng(loc, false, cells, centroid);
+  } else if (_variant == IndexVariant::INDIVIDUAL_LAT_LON) {
+    VPackSlice lon = doc.get(_longitude);
+    VPackSlice lat = doc.get(_latitude);
+    if (!lon.isNumber() || !lat.isNumber()) {
+      return TRI_ERROR_BAD_PARAMETER;
+    }
+    centroid.latitude = lat.getNumericValue<double>();
+    centroid.longitude = lon.getNumericValue<double>();
+    
+    return geo::GeoCover::generateCover(centroid, cells);
+  }
+  return TRI_ERROR_INTERNAL;
+}
+
 /// internal insert function, set batch or trx before calling
 Result RocksDBSphericalIndex::insertInternal(transaction::Methods* trx,
                                              RocksDBMethods* mthd,
                                              LocalDocumentId const& documentId,
                                              velocypack::Slice const& doc) {
-  S2RegionCoverer coverer;
-  _coverParams.configureS2RegionCoverer(&coverer);
+  // covering and centroid of coordinate / polygon / ...
   std::vector<S2CellId> cells;
-
-  Result res;
-  bool isGeoJson = _variant == IndexVariant::COMBINED_GEOJSON;
-  if (isGeoJson || _variant == IndexVariant::COMBINED_LAT_LON) {
-    VPackSlice loc = doc.get(_location);
-    res = geo::GeoCover::generateCover(&coverer, loc, isGeoJson, cells);
-  } else if (_variant == IndexVariant::INDIVIDUAL_LAT_LON) {
-    VPackSlice lon = doc.get(_longitude);
-    VPackSlice lat = doc.get(_latitude);
-    if (!lon.isNumber() || !lat.isNumber()) {
-      // Invalid, no insert. Index is sparse
-      return IndexResult();
-    }
-    double latitude = lat.getNumericValue<double>();
-    double longitude = lon.getNumericValue<double>();
-
-    res = geo::GeoCover::generateCover(latitude, longitude, cells);
-  }
-
+  geo::Coordinate centroid(-1, -1);
+  
+  Result res = parse(doc, cells, centroid);
   if (res.is(TRI_ERROR_BAD_PARAMETER)) {
     // Invalid, no insert. Index is sparse
     return IndexResult();
   } else if (res.fail()) {
     return res;
   }
+  
+  RocksDBValue val = RocksDBValue::SphericalValue(centroid);
+
 
   // FIXME: can we rely on the region coverer to return
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
     RocksDBKeyLeaser key(trx);
     key->constructSphericalIndexValue(_objectId, cell.id(), documentId.id());
-    Result r =
-        mthd->Put(RocksDBColumnFamily::geo(), key.ref(), rocksdb::Slice());
+    Result r = mthd->Put(RocksDBColumnFamily::geo(), key.ref(), val.string());
     if (r.fail()) {
       return r;
     }
@@ -338,28 +346,11 @@ Result RocksDBSphericalIndex::removeInternal(transaction::Methods* trx,
                                              RocksDBMethods* mthd,
                                              LocalDocumentId const& documentId,
                                              VPackSlice const& doc) {
-  S2RegionCoverer coverer;
-  _coverParams.configureS2RegionCoverer(&coverer);
+  // covering and centroid of coordinate / polygon / ...
   std::vector<S2CellId> cells;
-
-  Result res;
-  bool isGeoJson = _variant == IndexVariant::COMBINED_GEOJSON;
-  if (isGeoJson || _variant == IndexVariant::COMBINED_LAT_LON) {
-    VPackSlice loc = doc.get(_location);
-    res = geo::GeoCover::generateCover(&coverer, loc, isGeoJson, cells);
-  } else if (_variant == IndexVariant::INDIVIDUAL_LAT_LON) {
-    VPackSlice lon = doc.get(_longitude);
-    VPackSlice lat = doc.get(_latitude);
-    if (!lon.isNumber() || !lat.isNumber()) {
-      // Invalid, no insert. Index is sparse
-      return IndexResult();
-    }
-    double latitude = lat.getNumericValue<double>();
-    double longitude = lon.getNumericValue<double>();
-
-    res = geo::GeoCover::generateCover(latitude, longitude, cells);
-  }
-
+  geo::Coordinate centroid(-1, -1);
+  
+  Result res = parse(doc, cells, centroid);
   if (res.is(TRI_ERROR_BAD_PARAMETER)) {
     // Invalid, no insert. Index is sparse
     return IndexResult();

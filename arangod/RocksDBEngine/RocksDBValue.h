@@ -55,7 +55,7 @@ class RocksDBValue {
   static RocksDBValue View(VPackSlice const& data);
   static RocksDBValue ReplicationApplierConfig(VPackSlice const& data);
   static RocksDBValue KeyGeneratorValue(VPackSlice const& data);
-  static RocksDBValue SphericalValue(double lat, double lon);
+  static RocksDBValue SphericalValue(geo::Coordinate const& c);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Used to construct an empty value of the given type for retrieval

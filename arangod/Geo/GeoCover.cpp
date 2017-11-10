@@ -39,73 +39,87 @@
 using namespace arangodb;
 using namespace arangodb::geo;
 
-Result GeoCover::generateCover(S2RegionCoverer* coverer, VPackSlice const& data,
-                               bool isGeoJson, std::vector<S2CellId>& cells) {
-  if (data.isObject()) {  // actual geojson
-    if (!isGeoJson) {
-      return TRI_ERROR_BAD_PARAMETER;
-    }
-
-    GeoJsonParser parser;
-    GeoJsonParser::GeoJSONType t = parser.parseGeoJSONType(data);
-    switch (t) {
-      case GeoJsonParser::GEOJSON_POINT: {
-        S2LatLng ll = parser.parseLatLng(data);
-        cells.push_back(S2CellId::FromLatLng(ll));
-      }
-
-      case GeoJsonParser::GEOJSON_LINESTRING: {
-        S2Polyline ll;
-        Result res = parser.parseLinestring(data, ll);
-        coverer->GetCovering(ll, &cells);
-      }
-
-      case GeoJsonParser::GEOJSON_POLYGON: {
-        S2Polygon poly;
-        Result res = parser.parsePolygon(data, poly);
-        coverer->GetCovering(poly, &cells);
-      }
-      case GeoJsonParser::GEOJSON_MULTI_POINT:
-      case GeoJsonParser::GEOJSON_MULTI_LINESTRING:
-      case GeoJsonParser::GEOJSON_MULTI_POLYGON:
-      case GeoJsonParser::GEOJSON_GEOMETRY_COLLECTION:
-      case GeoJsonParser::GEOJSON_UNKNOWN: {
-        return TRI_ERROR_NOT_IMPLEMENTED;  // TODO
-      }
-    }
-
-    return TRI_ERROR_NO_ERROR;
-
-  } else if (data.isArray() && data.length() >= 2) {
-    VPackSlice first = data.at(0);
-    VPackSlice second = data.at(1);
-    if (!first.isNumber() || !second.isNumber()) {
-      return TRI_ERROR_BAD_PARAMETER;
-    }
-    double longitude, latitude;
-    if (isGeoJson) {
-      longitude = first.getNumericValue<double>();
-      latitude = second.getNumericValue<double>();
-    } else {
-      latitude = first.getNumericValue<double>();
-      longitude = second.getNumericValue<double>();
-    }
-    return generateCover(latitude, longitude, cells);
+Result GeoCover::generateCoverJson(S2RegionCoverer* coverer, VPackSlice const& data,
+                                      std::vector<S2CellId>& cells, geo::Coordinate& centroid) {
+  
+  if (data.isArray()) {
+    return generateCoverLatLng(data, true, cells, centroid);
+  } else if (!data.isObject()) {  // actual geojson
+    return TRI_ERROR_BAD_PARAMETER;
   }
 
-  return TRI_ERROR_BAD_PARAMETER;
+  GeoJsonParser parser;
+  GeoJsonParser::GeoJSONType t = parser.parseGeoJSONType(data);
+  switch (t) {
+    case GeoJsonParser::GEOJSON_POINT: {
+      S2LatLng ll = parser.parseLatLng(data);
+      cells.push_back(S2CellId::FromLatLng(ll));
+      centroid.latitude = ll.lat().degrees();
+      centroid.longitude = ll.lng().degrees();
+    }
+
+    case GeoJsonParser::GEOJSON_LINESTRING: {
+      S2Polyline line;
+      Result res = parser.parseLinestring(data, line);
+      coverer->GetCovering(line, &cells);
+      S2LatLng ll(line.GetCentroid());
+      centroid.latitude = ll.lat().degrees();
+      centroid.longitude = ll.lng().degrees();
+    }
+
+    case GeoJsonParser::GEOJSON_POLYGON: {
+      S2Polygon poly;
+      Result res = parser.parsePolygon(data, poly);
+      coverer->GetCovering(poly, &cells);
+      S2LatLng ll(poly.GetCentroid());
+      centroid.latitude = ll.lat().degrees();
+      centroid.longitude = ll.lng().degrees();
+    }
+    case GeoJsonParser::GEOJSON_MULTI_POINT:
+    case GeoJsonParser::GEOJSON_MULTI_LINESTRING:
+    case GeoJsonParser::GEOJSON_MULTI_POLYGON:
+    case GeoJsonParser::GEOJSON_GEOMETRY_COLLECTION:
+    case GeoJsonParser::GEOJSON_UNKNOWN: {
+      return TRI_ERROR_NOT_IMPLEMENTED;  // TODO
+    }
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+Result GeoCover::generateCoverLatLng(VPackSlice const& data, bool isGeoJson,
+                                     std::vector<S2CellId>& cells,
+                                     geo::Coordinate& centroid) {
+  if(!data.isArray() || data.length() >= 2) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+  
+  VPackSlice first = data.at(0);
+  VPackSlice second = data.at(1);
+  if (!first.isNumber() || !second.isNumber()) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+  if (isGeoJson) {
+    centroid.longitude = first.getNumericValue<double>();
+    centroid.latitude = second.getNumericValue<double>();
+  } else {
+    centroid.latitude = first.getNumericValue<double>();
+    centroid.longitude = second.getNumericValue<double>();
+  }
+  S2LatLng ll = S2LatLng::FromDegrees(centroid.latitude, centroid.longitude);
+  cells.push_back(S2CellId::FromLatLng(ll));
+  return TRI_ERROR_NO_ERROR;
 }
 
 /// convert lat, lng pair into cell id. Always uses max level
-Result GeoCover::generateCover(double lat, double lng,
+Result GeoCover::generateCover(geo::Coordinate const& c,
                                std::vector<S2CellId>& cells) {
-  S2LatLng ll = S2LatLng::FromDegrees(lat, lng);
+  S2LatLng ll = S2LatLng::FromDegrees(c.latitude, c.longitude);
   cells.push_back(S2CellId::FromLatLng(ll));
   return TRI_ERROR_NO_ERROR;
 }
 
 /// parse geoJson (has to be an area) and generate maxium cover
-Result GeoCover::scanIntervals(S2RegionCoverer* coverer, VPackSlice const& data,
+/*Result GeoCover::scanIntervals(S2RegionCoverer* coverer, VPackSlice const& data,
                                std::vector<Interval>& sortedIntervals) {
   TRI_ASSERT(isGeoJsonWithArea(data));
   std::vector<S2CellId> cover;
@@ -116,7 +130,7 @@ Result GeoCover::scanIntervals(S2RegionCoverer* coverer, VPackSlice const& data,
   TRI_ASSERT(!cover.empty());
   scanIntervals(coverer->min_level(), cover, sortedIntervals);
   return TRI_ERROR_NO_ERROR;
-}
+}*/
 
 /// generate intervalls of list of intervals to scan
 void GeoCover::scanIntervals(S2RegionCoverer* coverer, S2Region const& region,
@@ -125,7 +139,6 @@ void GeoCover::scanIntervals(S2RegionCoverer* coverer, S2Region const& region,
   coverer->GetCovering(region, &cover);
   TRI_ASSERT(!cover.empty());
   scanIntervals(coverer->min_level(), cover, sortedIntervals);
-  return TRI_ERROR_NO_ERROR;
 }
 
 /// will return all the intervals including the cells containing them

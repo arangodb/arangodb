@@ -4636,7 +4636,8 @@ GeoIndexInfo geoDistanceFunctionArgCheck(
 
       // check if current index is a geo-index
       if (index.type() != arangodb::Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX &&
-          index.type() != arangodb::Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX) {
+          index.type() != arangodb::Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX &&
+          index.type() != arangodb::Index::IndexType::TRI_IDX_TYPE_GEOSPATIAL_INDEX) {
         continue;
       }
 

@@ -24,6 +24,7 @@
 #define ARANGOD_GEO_GEO_COVER_H 1
 
 #include "Basics/Result.h"
+#include "Geo/Shapes.h"
 
 #include <geometry/s2cellid.h>
 #include <velocypack/Slice.h>
@@ -55,20 +56,25 @@ class GeoCover {
     }
   };
 
-  /// parses geojson or [lat, lng] pairs and turns them into
+  /// parses geojson or and turns them into
   /// a minimal set of cellIds ready for indexing
-  static Result generateCover(S2RegionCoverer* coverer,
-                              velocypack::Slice const& data, bool isGeoJson,
-                              std::vector<S2CellId>& cells);
+  static Result generateCoverJson(S2RegionCoverer* coverer,
+                                  velocypack::Slice const& data,
+                                    std::vector<S2CellId>& cells,
+                                    geo::Coordinate& centroid);
+  
+  static Result generateCoverLatLng(velocypack::Slice const& data, bool isGeoJson,
+                                    std::vector<S2CellId>& cells,
+                                    geo::Coordinate& centroid);
 
   /// convert lat, lng pair into cell id. Always uses max level
-  static Result generateCover(double lat, double lng,
+  static Result generateCover(geo::Coordinate const& c,
                               std::vector<S2CellId>& cells);
 
   /// parse geoJson (has to be an area) and generate list of intervals to scan
-  static Result scanIntervals(S2RegionCoverer* coverer,
+  /*static Result scanIntervals(S2RegionCoverer* coverer,
                               velocypack::Slice const& data,
-                              std::vector<Interval>& sortedIntervals);
+                              std::vector<Interval>& sortedIntervals);*/
 
   /// generate intervalls of list of intervals to scan
   static void scanIntervals(S2RegionCoverer* coverer, S2Region const& region,

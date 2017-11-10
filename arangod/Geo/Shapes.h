@@ -30,8 +30,8 @@ namespace geo {
   struct Coordinate {
     Coordinate(double lat, double lon)
       : latitude(lat), longitude(lon) {}
-    double latitude;
-    double longitude;
+    double latitude; // in degrees
+    double longitude; // in degrees
   };
   
   /// ring on a sphere

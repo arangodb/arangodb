@@ -34,6 +34,7 @@
 #include "RocksDBEngine/RocksDBPersistentIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBSkiplistIndex.h"
+#include "RocksDBEngine/RocksDBSphericalIndex.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -48,12 +49,11 @@
 using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief process the fields list and add them to the json
+/// @brief process the fields list deduplicate and add them to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-static int ProcessIndexFields(VPackSlice const definition,
-                              VPackBuilder& builder, int numFields,
-                              bool create) {
+static int ProcessIndexFields(VPackSlice const definition, VPackBuilder& builder,
+                              size_t minFields, size_t maxField, bool create) {
   TRI_ASSERT(builder.isOpenObject());
   std::unordered_set<StringRef> fields;
 
@@ -84,7 +84,8 @@ static int ProcessIndexFields(VPackSlice const definition,
     }
   }
 
-  if (fields.empty() || (numFields > 0 && (int)fields.size() != numFields)) {
+  size_t cc = fields.size();
+  if (cc == 0 || cc < minFields || cc > maxField) {
     return TRI_ERROR_BAD_PARAMETER;
   }
 
@@ -131,42 +132,12 @@ static void ProcessIndexDeduplicateFlag(VPackSlice const definition,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a hash index
+/// @brief enhances the json of a vpack index
 ////////////////////////////////////////////////////////////////////////////////
 
-static int EnhanceJsonIndexHash(VPackSlice const definition,
+static int EnhanceJsonIndexVPack(VPackSlice const definition,
                                 VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 0, create);
-  if (res == TRI_ERROR_NO_ERROR) {
-    ProcessIndexSparseFlag(definition, builder, create);
-    ProcessIndexUniqueFlag(definition, builder);
-    ProcessIndexDeduplicateFlag(definition, builder);
-  }
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a skiplist index
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexSkiplist(VPackSlice const definition,
-                                    VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 0, create);
-  if (res == TRI_ERROR_NO_ERROR) {
-    ProcessIndexSparseFlag(definition, builder, create);
-    ProcessIndexUniqueFlag(definition, builder);
-    ProcessIndexDeduplicateFlag(definition, builder);
-  }
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief enhances the json of a persistent index
-////////////////////////////////////////////////////////////////////////////////
-
-static int EnhanceJsonIndexPersistent(VPackSlice const definition,
-                                      VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 0, create);
+  int res = ProcessIndexFields(definition, builder, 1, INT_MAX, create);
   if (res == TRI_ERROR_NO_ERROR) {
     ProcessIndexSparseFlag(definition, builder, create);
     ProcessIndexUniqueFlag(definition, builder);
@@ -183,8 +154,8 @@ static void ProcessIndexGeoJsonFlag(VPackSlice const definition,
                                     VPackBuilder& builder) {
   VPackSlice fieldsSlice = definition.get("fields");
   if (fieldsSlice.isArray() && fieldsSlice.length() == 1) {
-    // only add geoJson for indexes with a single field (with needs to be an
-    // array)
+    // only add geoJson for indexes with a single field
+    // (which needs to be an array)
     bool geoJson =
         basics::VelocyPackHelper::getBooleanValue(definition, "geoJson", false);
     builder.add("geoJson", VPackValue(geoJson));
@@ -197,7 +168,7 @@ static void ProcessIndexGeoJsonFlag(VPackSlice const definition,
 
 static int EnhanceJsonIndexGeo1(VPackSlice const definition,
                                 VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 1, create);
+  int res = ProcessIndexFields(definition, builder, 1, 1, create);
   if (res == TRI_ERROR_NO_ERROR) {
     if (ServerState::instance()->isCoordinator()) {
       builder.add("ignoreNull", VPackValue(true));
@@ -216,7 +187,7 @@ static int EnhanceJsonIndexGeo1(VPackSlice const definition,
 
 static int EnhanceJsonIndexGeo2(VPackSlice const definition,
                                 VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 2, create);
+  int res = ProcessIndexFields(definition, builder, 2, 2, create);
   if (res == TRI_ERROR_NO_ERROR) {
     if (ServerState::instance()->isCoordinator()) {
       builder.add("ignoreNull", VPackValue(true));
@@ -230,12 +201,32 @@ static int EnhanceJsonIndexGeo2(VPackSlice const definition,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief enhances the json of a spherical index
+////////////////////////////////////////////////////////////////////////////////
+
+static int EnhanceJsonIndexSpherical(VPackSlice const definition,
+                                     VPackBuilder& builder, bool create) {
+  int res = ProcessIndexFields(definition, builder, 1, 2, create);
+  if (res == TRI_ERROR_NO_ERROR) {
+    if (ServerState::instance()->isCoordinator()) {
+      builder.add("ignoreNull", VPackValue(true));
+      builder.add("constraint", VPackValue(false));
+    }
+    builder.add("sparse", VPackValue(true));
+    builder.add("unique", VPackValue(false));
+    ProcessIndexGeoJsonFlag(definition, builder);
+  }
+  return res;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief enhances the json of a fulltext index
 ////////////////////////////////////////////////////////////////////////////////
 
 static int EnhanceJsonIndexFulltext(VPackSlice const definition,
                                     VPackBuilder& builder, bool create) {
-  int res = ProcessIndexFields(definition, builder, 1, create);
+  int res = ProcessIndexFields(definition, builder, 1, 1, create);
   if (res == TRI_ERROR_NO_ERROR) {
     // hard-coded defaults
     builder.add("sparse", VPackValue(true));
@@ -326,17 +317,15 @@ int RocksDBIndexFactory::enhanceIndexDefinition(VPackSlice const definition,
     case Index::TRI_IDX_TYPE_GEO2_INDEX:
       res = EnhanceJsonIndexGeo2(definition, enhanced, create);
       break;
+      
+    case Index::TRI_IDX_TYPE_GEOSPATIAL_INDEX:
+      res = EnhanceJsonIndexSpherical(definition, enhanced, create);
+      break;
 
     case Index::TRI_IDX_TYPE_HASH_INDEX:
-      res = EnhanceJsonIndexHash(definition, enhanced, create);
-      break;
-
     case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
-      res = EnhanceJsonIndexSkiplist(definition, enhanced, create);
-      break;
-
     case Index::TRI_IDX_TYPE_PERSISTENT_INDEX:
-      res = EnhanceJsonIndexPersistent(definition, enhanced, create);
+      res = EnhanceJsonIndexVPack(definition, enhanced, create);
       break;
 
     case Index::TRI_IDX_TYPE_FULLTEXT_INDEX:
@@ -419,8 +408,7 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
       newIdx.reset(new arangodb::RocksDBEdgeIndex(iid, col, info, direction));
       break;
     }
-    // case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
-    // case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX:
+
     case arangodb::Index::TRI_IDX_TYPE_HASH_INDEX: {
       newIdx.reset(new arangodb::RocksDBHashIndex(iid, col, info));
       break;
@@ -436,6 +424,10 @@ std::shared_ptr<Index> RocksDBIndexFactory::prepareIndexFromSlice(
     case arangodb::Index::TRI_IDX_TYPE_GEO1_INDEX:
     case arangodb::Index::TRI_IDX_TYPE_GEO2_INDEX: {
       newIdx.reset(new arangodb::RocksDBGeoIndex(iid, col, info));
+      break;
+    }
+    case arangodb::Index::TRI_IDX_TYPE_GEOSPATIAL_INDEX: {
+      newIdx.reset(new arangodb::RocksDBSphericalIndex(iid, col, info));
       break;
     }
     case arangodb::Index::TRI_IDX_TYPE_FULLTEXT_INDEX: {

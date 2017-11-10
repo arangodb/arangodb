@@ -29,10 +29,10 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/voc-types.h"
 
+#include <geometry/s2cellid.h>
 #include <velocypack/Builder.h>
 
 namespace arangodb {
-namespace rocksdbengine {
 
 /*
 class RocksDBSphericalIndexIterator : public IndexIterator {
@@ -129,6 +129,12 @@ class RocksDBSphericalIndex final : public arangodb::RocksDBIndex {
   IndexVariant variant() const { return _variant; }
 
  private:
+  
+  Result parse(velocypack::Slice const& doc, std::vector<S2CellId>& cells,
+                                      geo::Coordinate& co) const;
+  
+private:
+  
   /// @brief immutable region coverer parameters
   geo::RegionCoverParams _coverParams;
 
@@ -141,7 +147,6 @@ class RocksDBSphericalIndex final : public arangodb::RocksDBIndex {
   std::vector<std::string> _longitude;
   ;
 };
-}  // namespace rocksdbengine
 }  // namespace arangodb
 
 #endif
