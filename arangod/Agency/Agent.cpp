@@ -687,7 +687,6 @@ bool Agent::active() const {
 /// @brief Activate agency (Inception thread for multi-host, main thread else)
 bool Agent::activateAgency() {
   if (_config.activeEmpty()) {
-    size_t count = 0;
     for (auto const& pair : _config.pool()) {
       _config.activePushBack(pair.first);
     }
