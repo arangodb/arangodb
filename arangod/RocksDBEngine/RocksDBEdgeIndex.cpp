@@ -1002,5 +1002,5 @@ Result RocksDBEdgeIndex::postprocessRemove(transaction::Methods* trx,
 
   uint64_t hash = RocksDBEdgeIndex::HashForKey(key);
   _estimator->remove(hash);
-  return {TRI_ERROR_NO_ERROR};
+  return Result();
 }

@@ -8,6 +8,21 @@ v3.2.7 (XXXX-XX-XX)
 * only users with read/write rights on the "_system" database can now execute
   "_admin/shutdown" as well as modify properties of the write-ahead log
 
+* increase default maximum number of V8 contexts to at least 16 if not 
+  explicitly configured otherwise. the mode for determining the actual maximum
+  value of V8 contexts is unchanged and works as follows:
+  - if explicitly set, the value of the configuration option `--javascript.v8-contexts`
+    is used as the maximum number of V8 contexts
+  - when the option is not set, the maximum number of V8 contexts is determined
+    by the configuration option `--server.threads` if that option is set. if 
+    `--server.threads` is not set, then the maximum number of V8 contexts is the
+    server's reported hardware concurrency (number of processors visible
+    to the arangod process). if that would result in a maximum value of 16 in 
+    any of these two cases, then the maximum value will be increased to 16.
+
+* fixed issue #3447: ArangoError 1202: AQL: NotFound: (while executing) when 
+  updating collection
+
 * potential fix for issue #3581: Unexpected "rocksdb unique constraint 
   violated" with unique hash index
 

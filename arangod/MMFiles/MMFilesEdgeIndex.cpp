@@ -193,26 +193,33 @@ MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid,
                                                   false)}}),
             false, false),
       _edgesFrom(nullptr),
-      _edgesTo(nullptr),
-      _numBuckets(1) {
+      _edgesTo(nullptr) {
   TRI_ASSERT(iid != 0);
+  size_t indexBuckets = 1;
+  size_t initialSize = 64;
 
   if (collection != nullptr) {
     // collection is a nullptr in the coordinator case
     auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
     TRI_ASSERT(physical != nullptr);
-    _numBuckets = static_cast<size_t>(physical->indexBuckets());
+    indexBuckets = static_cast<size_t>(physical->indexBuckets());
+
+    if (collection->isAStub()) {
+      // in order to reduce memory usage
+      indexBuckets = 1;
+      initialSize = 4;
+    }
   }
 
   auto context = [this]() -> std::string { return this->context(); };
 
   _edgesFrom = new TRI_MMFilesEdgeIndexHash_t(
       HashElementKey, HashElementEdge, IsEqualKeyEdge, IsEqualElementEdge,
-      IsEqualElementEdgeByKey, _numBuckets, 64, context);
+      IsEqualElementEdgeByKey, indexBuckets, initialSize, context);
 
   _edgesTo = new TRI_MMFilesEdgeIndexHash_t(
       HashElementKey, HashElementEdge, IsEqualKeyEdge, IsEqualElementEdge,
-      IsEqualElementEdgeByKey, _numBuckets, 64, context);
+      IsEqualElementEdgeByKey, indexBuckets, initialSize, context);
 }
 
 MMFilesEdgeIndex::~MMFilesEdgeIndex() {
@@ -279,7 +286,6 @@ void MMFilesEdgeIndex::toVelocyPackFigures(VPackBuilder& builder) const {
   builder.add("to", VPackValue(VPackValueType::Object));
   _edgesTo->appendToVelocyPack(builder);
   builder.close();
-  // builder.add("buckets", VPackValue(_numBuckets));
 }
 
 Result MMFilesEdgeIndex::insert(transaction::Methods* trx,

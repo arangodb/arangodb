@@ -215,7 +215,7 @@ class MMFilesSkiplistIterator final : public IndexIterator {
   void reset() override;
 
   size_t numPaths() const { return _numPaths; }
-
+  
  private:
   /// @brief Initialize left and right endpoints with current lookup
   ///        value. Also points the _cursor to the border of this interval.
@@ -281,6 +281,12 @@ class MMFilesSkiplistIndex final : public MMFilesPathBasedIndex {
   bool hasSelectivityEstimate() const override { return false; }
 
   size_t memory() const override;
+  
+  int afterTruncate() override {
+    // for mmfiles, truncating the index just unloads it
+    unload();
+    return TRI_ERROR_NO_ERROR;
+  }
 
   void toVelocyPackFigures(VPackBuilder&) const override;
 

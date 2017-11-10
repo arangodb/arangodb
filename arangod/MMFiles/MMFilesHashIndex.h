@@ -120,7 +120,7 @@ class MMFilesHashIndexIteratorVPack final : public IndexIterator {
   bool next(TokenCallback const& cb, size_t limit) override;
 
   void reset() override;
-
+  
  private:
   MMFilesHashIndex const* _index;
   std::unique_ptr<arangodb::velocypack::Builder> _searchValues;
@@ -158,6 +158,12 @@ class MMFilesHashIndex final : public MMFilesPathBasedIndex {
       arangodb::StringRef const* = nullptr) const override;
 
   size_t memory() const override;
+  
+  int afterTruncate() override {
+    // for mmfiles, truncating the index just unloads it
+    unload();
+    return TRI_ERROR_NO_ERROR;
+  }
 
   void toVelocyPackFigures(VPackBuilder&) const override;
 

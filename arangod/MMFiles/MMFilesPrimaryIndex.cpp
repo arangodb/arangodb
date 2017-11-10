@@ -221,6 +221,11 @@ MMFilesPrimaryIndex::MMFilesPrimaryIndex(
         static_cast<arangodb::MMFilesCollection*>(collection->getPhysical());
     TRI_ASSERT(physical != nullptr);
     indexBuckets = static_cast<size_t>(physical->indexBuckets());
+
+    if (collection->isAStub()) {
+      // in order to reduce memory usage
+      indexBuckets = 1;
+    }
   }
 
   _primaryIndex = new MMFilesPrimaryIndexImpl(

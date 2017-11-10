@@ -107,9 +107,9 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
 }
 
 RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
-                                     PhysicalCollection* physical)
+                                     PhysicalCollection const* physical)
     : PhysicalCollection(collection, VPackSlice::emptyObjectSlice()),
-      _objectId(static_cast<RocksDBCollection*>(physical)->_objectId),
+      _objectId(static_cast<RocksDBCollection const*>(physical)->_objectId),
       _numberDocuments(0),
       _revisionId(0),
       _needToPersistIndexEstimates(false),
@@ -117,7 +117,8 @@ RocksDBCollection::RocksDBCollection(LogicalCollection* collection,
       _primaryIndex(nullptr),
       _cache(nullptr),
       _cachePresent(false),
-      _cacheEnabled(static_cast<RocksDBCollection*>(physical)->_cacheEnabled) {
+      _cacheEnabled(static_cast<RocksDBCollection const*>(physical)->_cacheEnabled) {
+  
   addCollectionMapping(_objectId, _logicalCollection->vocbase()->id(),
                        _logicalCollection->cid());
   if (_cacheEnabled) {
@@ -162,10 +163,10 @@ arangodb::Result RocksDBCollection::updateProperties(VPackSlice const& slice,
 arangodb::Result RocksDBCollection::persistProperties() {
   // only code path calling this causes these properties to be
   // already written in RocksDBEngine::changeCollection()
-  return TRI_ERROR_NO_ERROR;
+  return Result();
 }
 
-PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical) {
+PhysicalCollection* RocksDBCollection::clone(LogicalCollection* logical) const {
   return new RocksDBCollection(logical, this);
 }
 
@@ -700,7 +701,6 @@ void RocksDBCollection::invokeOnAllElements(
 
 void RocksDBCollection::truncate(transaction::Methods* trx,
                                  OperationOptions& options) {
-  // TODO FIXME -- improve transaction size
   TRI_ASSERT(_objectId != 0);
   TRI_voc_cid_t cid = _logicalCollection->cid();
   auto state = RocksDBTransactionState::toState(trx);
@@ -719,7 +719,9 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
       mthd->NewIterator(ro, documentBounds.columnFamily());
   iter->Seek(documentBounds.start());
 
+  uint64_t found = 0;
   while (iter->Valid() && cmp->Compare(iter->key(), end) < 0) {
+    ++found;
     TRI_ASSERT(_objectId == RocksDBKey::objectId(iter->key()));
 
     TRI_voc_rid_t revId =
@@ -766,6 +768,12 @@ void RocksDBCollection::truncate(transaction::Methods* trx,
                                    "deleted");
   }
 #endif
+
+  if (found > 64 * 1024) {
+    // also compact the ranges in order to speed up all further accesses
+    // to the collection
+    compact();
+  }
 }
 
 DocumentIdentifierToken RocksDBCollection::lookupKey(transaction::Methods* trx,
@@ -1974,6 +1982,7 @@ void RocksDBCollection::deserializeKeyGenerator(RocksDBCounterManager* mgr) {
 
 void RocksDBCollection::createCache() const {
   if (!_cacheEnabled || _cachePresent ||
+      _logicalCollection->isAStub() ||
       ServerState::instance()->isCoordinator()) {
     // we leave this if we do not need the cache
     // or if cache already created
