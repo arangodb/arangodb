@@ -441,16 +441,12 @@ void RocksDBRestReplicationHandler::handleCommandBatch() {
       return;
     }
 
-    RocksDBReplicationContext* ctx = _manager->createContext();
+    double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl",
+                                                           RocksDBReplicationContext::DefaultTTL);
+    RocksDBReplicationContext* ctx = _manager->createContext(ttl);
     if (ctx == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "unable to create replication context");
-    }
-
-    // extract ttl
-    if (input->slice().hasKey("ttl")){
-      double ttl = VelocyPackHelper::getNumericValue<double>(input->slice(), "ttl", RocksDBReplicationContext::DefaultTTL);
-      ctx->adjustTtl(ttl);
     }
 
     RocksDBReplicationContextGuard(_manager, ctx);

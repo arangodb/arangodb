@@ -49,7 +49,7 @@ using namespace arangodb::velocypack;
 
 double const RocksDBReplicationContext::DefaultTTL = 30 * 60.0;
 
-RocksDBReplicationContext::RocksDBReplicationContext()
+RocksDBReplicationContext::RocksDBReplicationContext(double ttl)
     : _id(TRI_NewTickServer()),
       _lastTick(0),
       _currentTick(0),
@@ -60,7 +60,7 @@ RocksDBReplicationContext::RocksDBReplicationContext()
       _customTypeHandler(),
       _vpackOptions(Options::Defaults),
       _lastIteratorOffset(0),
-      _expires(TRI_microtime() + DefaultTTL),
+      _expires(TRI_microtime() + ttl),
       _isDeleted(false),
       _isUsed(true),
       _hasMore(true) {}
@@ -143,7 +143,7 @@ RocksDBReplicationResult RocksDBReplicationContext::dump(
     TRI_vocbase_t* vocbase, std::string const& collectionName,
     basics::StringBuffer& buff, uint64_t chunkSize, bool compat28) {
   TRI_ASSERT(vocbase != nullptr);
-  if (_trx.get() == nullptr) {
+  if (_trx.get() == nullptr || !_trx->state()->isRunning()) {
     return RocksDBReplicationResult(TRI_ERROR_BAD_PARAMETER, _lastTick);
   }
   int res = bindCollection(collectionName);
@@ -445,12 +445,9 @@ void RocksDBReplicationContext::use(double ttl) {
   TRI_ASSERT(!_isUsed);
 
   _isUsed = true;
-  _expires = TRI_microtime() + ttl;
-}
-
-void RocksDBReplicationContext::adjustTtl(double ttl) {
-  TRI_ASSERT(_isUsed);
-
+  if (ttl <= 0.0) {
+    ttl = DefaultTTL;
+  }
   _expires = TRI_microtime() + ttl;
 }
 
@@ -460,12 +457,12 @@ void RocksDBReplicationContext::release() {
 }
 
 void RocksDBReplicationContext::releaseDumpingResources() {
+  if (_iter.get() != nullptr) {
+    _iter.reset();
+  }
   if (_trx.get() != nullptr) {
     _trx->abort();
     _trx.reset();
-  }
-  if (_iter.get() != nullptr) {
-    _iter.reset();
   }
   _collection = nullptr;
   _guard.reset();
