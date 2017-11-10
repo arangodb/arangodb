@@ -131,6 +131,9 @@ struct config_t {
   bool addToPool(std::pair<std::string, std::string> const& i);
 
   /// @brief active agency size
+  void activate();
+
+  /// @brief active agency size
   size_t size() const;
 
   /// @brief maximum appendEntries #logs

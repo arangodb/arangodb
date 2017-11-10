@@ -149,7 +149,7 @@ void Inception::gossip() {
       if (complete) {
         LOG_TOPIC(INFO, Logger::AGENCY) << "Agent pool completed. Stopping "
           "active gossipping. Starting RAFT process.";
-        _agent->startConstituent();
+        _agent->activateAgency();
         break;
       }
     }

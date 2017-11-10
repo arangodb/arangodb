@@ -212,9 +212,6 @@ class Agent : public arangodb::Thread,
   /// @brief Serve active agent interface
   bool serveActiveAgent();
 
-  /// @brief Start constituent
-  void startConstituent();
-
   /// @brief Get notification as inactive pool member
   void notify(query_t const&);
 
@@ -277,6 +274,9 @@ class Agent : public arangodb::Thread,
     _appendCV.broadcast();
   }
 
+  /// @brief Activate this agent in single agent mode.
+  void activateAgency();
+
  private:
 
   /// @brief Find out, if we've had acknowledged RPCs recent enough
@@ -284,9 +284,6 @@ class Agent : public arangodb::Thread,
 
   /// @brief Notify inactive pool members of changes in configuration
   void notifyInactive() const;
-
-  /// @brief Activate this agent in single agent mode.
-  bool activateAgency();
 
   /// @brief Leader election delegate
   Constituent _constituent;

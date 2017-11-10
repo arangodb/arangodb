@@ -184,11 +184,6 @@ bool Agent::leading() const {
   return _constituent.leading();
 }
 
-/// Start constituent personality
-void Agent::startConstituent() {
-  activateAgency();
-}
-
 // Waits here for confirmation of log's commits up to index. Timeout in seconds.
 AgentInterface::raft_commit_t Agent::waitFor(index_t index, double timeout) {
 
@@ -685,23 +680,18 @@ bool Agent::active() const {
 
 
 /// @brief Activate agency (Inception thread for multi-host, main thread else)
-bool Agent::activateAgency() {
-  if (_config.activeEmpty()) {
-    for (auto const& pair : _config.pool()) {
-      _config.activePushBack(pair.first);
-    }
-    bool persisted = false; 
-    try {
-      _state.persistActiveAgents(
-        _config.activeToBuilder(), _config.poolToBuilder());
-      persisted = true;
-    } catch (std::exception const& e) {
-      LOG_TOPIC(FATAL, Logger::AGENCY)
-        << "Failed to persist active agency: " << e.what();
-    }
-    return persisted;
+void Agent::activateAgency() {
+
+  _config.activate();
+  try {
+    _state.persistActiveAgents(
+      _config.activeToBuilder(), _config.poolToBuilder());
+  } catch (std::exception const& e) {
+    LOG_TOPIC(FATAL, Logger::AGENCY)
+      << "Failed to persist active agency: " << e.what();
+      FATAL_ERROR_EXIT();
   }
-  return true;
+  
 }
 
 /// Load persistent state called once

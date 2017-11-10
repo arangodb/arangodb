@@ -234,6 +234,14 @@ bool config_t::activeEmpty() const {
   return _active.empty();
 }
 
+void config_t::activate() {
+  WRITE_LOCKER(readLocker, _lock);
+  _active.clear();
+  for (auto const& pair : _pool) {
+    _active.push_back(pair.first);
+  }
+}
+
 bool config_t::waitForSync() const {
   READ_LOCKER(readLocker, _lock);
   return _waitForSync;
