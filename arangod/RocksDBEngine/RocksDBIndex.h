@@ -76,6 +76,7 @@ class RocksDBIndex : public Index {
   bool isPersistent() const override final { return true; }
 
   int drop() override;
+  int afterTruncate() override;
 
   void load() override;
   void unload() override;

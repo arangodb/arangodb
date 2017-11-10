@@ -109,6 +109,7 @@ bool MMFilesEdgeIndexIterator::next(LocalDocumentIdCallback const& cb, size_t li
     } else {
       _lastElement = _buffer.back();
       // found something
+      TRI_ASSERT(_posInBuffer < _buffer.size());
       cb(LocalDocumentId{_buffer[_posInBuffer++].localDocumentId()});
       limit--;
     }
@@ -131,22 +132,28 @@ MMFilesEdgeIndex::MMFilesEdgeIndex(TRI_idx_iid_t iid,
                                                   false)},
                  {arangodb::basics::AttributeName(StaticStrings::ToString,
                                                   false)}}),
-            false, false),
-      _numBuckets(1) {
+            false, false) {
   TRI_ASSERT(iid != 0);
+  size_t indexBuckets = 1;
+  size_t initialSize = 64;
 
   if (collection != nullptr) {
     // collection is a nullptr in the coordinator case
     auto physical = static_cast<MMFilesCollection*>(collection->getPhysical());
     TRI_ASSERT(physical != nullptr);
-    _numBuckets = static_cast<size_t>(physical->indexBuckets());
+    indexBuckets = static_cast<size_t>(physical->indexBuckets());
+
+    if (collection->isAStub()) {
+      // in order to reduce memory usage
+      indexBuckets = 1;
+      initialSize = 4;
+    }
   }
 
   auto context = [this]() -> std::string { return this->context(); };
 
-  _edgesFrom.reset(new TRI_MMFilesEdgeIndexHash_t(MMFilesEdgeIndexHelper(), _numBuckets, 64, context));
-
-  _edgesTo.reset(new TRI_MMFilesEdgeIndexHash_t(MMFilesEdgeIndexHelper(), _numBuckets, 64, context));
+  _edgesFrom.reset(new TRI_MMFilesEdgeIndexHash_t(MMFilesEdgeIndexHelper(), indexBuckets, initialSize, context));
+  _edgesTo.reset(new TRI_MMFilesEdgeIndexHash_t(MMFilesEdgeIndexHelper(), indexBuckets, initialSize, context));
 }
 
 /// @brief return a selectivity estimate for the index

@@ -42,7 +42,7 @@ LoggerStream::~LoggerStream() {
 }
 
 // print a hex representation of the binary data
-LoggerStream& LoggerStream::operator<<(Logger::BINARY binary) {
+LoggerStream& LoggerStream::operator<<(Logger::BINARY const& binary) {
   try {
     std::ostringstream tmp;
   
@@ -68,7 +68,18 @@ LoggerStream& LoggerStream::operator<<(Logger::BINARY binary) {
   return *this;
 }
 
-LoggerStream& LoggerStream::operator<<(Logger::RANGE range) {
+// print a character array
+LoggerStream& LoggerStream::operator<<(Logger::CHARS const& data) {
+  try {
+    _out.write(data.data, data.size);
+  } catch (...) {
+    // ignore any errors here. logging should not have side effects
+  }
+
+  return *this;
+}
+
+LoggerStream& LoggerStream::operator<<(Logger::RANGE const& range) {
   try {
     std::ostringstream tmp;
     tmp << range.baseAddress << " - "
@@ -83,7 +94,7 @@ LoggerStream& LoggerStream::operator<<(Logger::RANGE range) {
   return *this;
 }
 
-LoggerStream& LoggerStream::operator<<(Logger::FIXED value) {
+LoggerStream& LoggerStream::operator<<(Logger::FIXED const& value) {
   try {
     std::ostringstream tmp;
     tmp << std::setprecision(value._precision) << std::fixed

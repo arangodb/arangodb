@@ -239,7 +239,7 @@ actions.defineHttp({
     } catch (e) {
     }
 
-    if (typeof serverId !== 'string') {
+    if (typeof serverId !== 'string' || serverId.length === 0) {
       actions.resultError(req, res, actions.HTTP_BAD,
         'required parameter ServerID was not given');
       return;

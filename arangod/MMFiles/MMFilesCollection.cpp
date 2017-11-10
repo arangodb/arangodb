@@ -203,7 +203,7 @@ arangodb::Result MMFilesCollection::persistProperties() {
   return res;
 }
 
-PhysicalCollection* MMFilesCollection::clone(LogicalCollection* logical) {
+PhysicalCollection* MMFilesCollection::clone(LogicalCollection* logical) const {
   return new MMFilesCollection(logical, this);
 }
 
@@ -508,11 +508,11 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* collection,
 }
 
 MMFilesCollection::MMFilesCollection(LogicalCollection* logical,
-                                     PhysicalCollection* physical)
+                                     PhysicalCollection const* physical)
     : PhysicalCollection(logical, VPackSlice::emptyObjectSlice()),
       _ditches(logical),
-      _isVolatile(static_cast<MMFilesCollection*>(physical)->isVolatile()) {
-  MMFilesCollection& mmfiles = *static_cast<MMFilesCollection*>(physical);
+      _isVolatile(static_cast<MMFilesCollection const*>(physical)->isVolatile()) {
+  MMFilesCollection const& mmfiles = *static_cast<MMFilesCollection const*>(physical);
   _persistentIndexes = mmfiles._persistentIndexes;
   _useSecondaryIndexes = mmfiles._useSecondaryIndexes;
   _initialCount = mmfiles._initialCount;
@@ -526,13 +526,13 @@ MMFilesCollection::MMFilesCollection(LogicalCollection* logical,
   _path = mmfiles._path;
   _doCompact = mmfiles._doCompact;
   _maxTick = mmfiles._maxTick;
-
+/*
   // Copy over index definitions
   _indexes.reserve(mmfiles._indexes.size());
   for (auto const& idx : mmfiles._indexes) {
     _indexes.emplace_back(idx);
   }
-
+*/
   setCompactionStatus("compaction not yet started");
   //  not copied
   //  _datafiles;   // all datafiles
@@ -2057,7 +2057,6 @@ void MMFilesCollection::prepareIndexes(VPackSlice indexesSlice) {
                                                             false)) {
       // We have an error here.
       // Do not add index.
-      // TODO Handle Properly
       continue;
     }
 
@@ -2226,6 +2225,9 @@ int MMFilesCollection::saveIndex(transaction::Methods* trx,
     builder = idx->toVelocyPack(false, true);
   } catch (arangodb::basics::Exception const& ex) {
     return ex.code();
+  } catch (std::exception const& ex) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition: " << ex.what();
+    return TRI_ERROR_INTERNAL;
   } catch (...) {
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "cannot save index definition";
     return TRI_ERROR_INTERNAL;
@@ -2762,6 +2764,15 @@ void MMFilesCollection::truncate(transaction::Methods* trx,
     return true;
   };
   primaryIdx->invokeOnAllElementsForRemoval(callback);
+  
+  auto indexes = _indexes;
+  size_t const n = indexes.size();
+
+  for (size_t i = 1; i < n; ++i) {
+    auto idx = indexes[i];
+    TRI_ASSERT(idx->type() != Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+    idx->afterTruncate();
+  }
 }
 
 Result MMFilesCollection::insert(transaction::Methods* trx,

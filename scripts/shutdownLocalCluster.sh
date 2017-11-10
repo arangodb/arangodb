@@ -1,7 +1,15 @@
 #!/bin/bash
 params=("$@")
 
-lib="$(dirname $(readlink -f ${BASH_SOURCE[0]}))/cluster-run-common.sh"
+case $OSTYPE in
+  darwin*)
+    lib="$PWD/scripts/cluster-run-common.sh"
+  ;;
+  *)
+    lib="$(dirname $(readlink -f ${BASH_SOURCE[0]}))/cluster-run-common.sh"
+  ;;
+esac
+
 if [[ -f "$lib" ]]; then
     . "$lib"
 else

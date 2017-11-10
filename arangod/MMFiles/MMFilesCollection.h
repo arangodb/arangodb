@@ -126,8 +126,7 @@ class MMFilesCollection final : public PhysicalCollection {
 
  public:
   explicit MMFilesCollection(LogicalCollection*, VPackSlice const& info);
-  explicit MMFilesCollection(LogicalCollection*,
-                             PhysicalCollection*);  // use in cluster only!!!!!
+  MMFilesCollection(LogicalCollection*, PhysicalCollection const*);  // use in cluster only!!!!!
 
   ~MMFilesCollection();
 
@@ -143,7 +142,7 @@ class MMFilesCollection final : public PhysicalCollection {
                                     bool doSync) override;
   virtual arangodb::Result persistProperties() override;
 
-  virtual PhysicalCollection* clone(LogicalCollection*) override;
+  virtual PhysicalCollection* clone(LogicalCollection*) const override;
 
   TRI_voc_rid_t revision(arangodb::transaction::Methods* trx) const override;
   TRI_voc_rid_t revision() const;

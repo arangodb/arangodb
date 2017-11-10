@@ -92,15 +92,13 @@ class MMFilesGeoIndex final : public MMFilesIndex {
   /// @brief geo index variants
   enum IndexVariant {
     INDEX_GEO_NONE = 0,
-    INDEX_GEO_INDIVIDUAL_LAT_LON,
-    INDEX_GEO_COMBINED_LAT_LON,
-    INDEX_GEO_COMBINED_LON_LAT
+    INDEX_GEO_INDIVIDUAL,
+    INDEX_GEO_COMBINED
   };
 
  public:
   IndexType type() const override {
-    if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
-        _variant == INDEX_GEO_COMBINED_LON_LAT) {
+    if (_variant == INDEX_GEO_COMBINED) {
       return TRI_IDX_TYPE_GEO1_INDEX;
     }
 
@@ -108,8 +106,7 @@ class MMFilesGeoIndex final : public MMFilesIndex {
   }
 
   char const* typeName() const override {
-    if (_variant == INDEX_GEO_COMBINED_LAT_LON ||
-        _variant == INDEX_GEO_COMBINED_LON_LAT) {
+    if (_variant == INDEX_GEO_COMBINED) {
       return "geo1";
     }
     return "geo2";
