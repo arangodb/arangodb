@@ -33,10 +33,6 @@ class ExecutionPlan;
 class Query;
 }
 
-namespace transaction {
-class Methods;
-}
-
 namespace velocypack {
 class Builder;
 class Slice;
@@ -55,9 +51,9 @@ struct ShortestPathOptions : public BaseOptions {
   arangodb::velocypack::Builder startBuilder;
   arangodb::velocypack::Builder endBuilder;
 
-  explicit ShortestPathOptions(transaction::Methods* trx);
+  explicit ShortestPathOptions(aql::Query* query);
 
-  ShortestPathOptions(transaction::Methods* trx,
+  ShortestPathOptions(aql::Query* query,
                       arangodb::velocypack::Slice const& info);
 
   // @brief DBServer-constructor used by TraverserEngines

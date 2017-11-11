@@ -160,23 +160,25 @@ double BaseOptions::LookupInfo::estimateCost(size_t& nrItems) const {
 }
 
 std::unique_ptr<BaseOptions> BaseOptions::createOptionsFromSlice(
-    transaction::Methods* trx, VPackSlice const& definition) {
+    arangodb::aql::Query* query, VPackSlice const& definition) {
   VPackSlice type = definition.get("type");
   if (type.isString() && type.isEqualString("shortestPath")) {
-    return std::make_unique<ShortestPathOptions>(trx, definition);
+    return std::make_unique<ShortestPathOptions>(query, definition);
   }
-  return std::make_unique<TraverserOptions>(trx, definition);
+  return std::make_unique<TraverserOptions>(query, definition);
 }
 
-BaseOptions::BaseOptions(transaction::Methods* trx)
+BaseOptions::BaseOptions(arangodb::aql::Query* query)
     : _ctx(new aql::FixedVarExpressionContext()),
-      _trx(trx),
+      _query(query),
+      _trx(query->trx()),
       _tmpVar(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
       _cache(nullptr) {}
 
 BaseOptions::BaseOptions(BaseOptions const& other)
     : _ctx(new aql::FixedVarExpressionContext()),
+      _query(other._query),
       _trx(other._trx),
       _tmpVar(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
@@ -188,6 +190,7 @@ BaseOptions::BaseOptions(BaseOptions const& other)
 BaseOptions::BaseOptions(arangodb::aql::Query* query, VPackSlice info,
                          VPackSlice collections)
     : _ctx(new aql::FixedVarExpressionContext()),
+      _query(query),
       _trx(query->trx()),
       _tmpVar(nullptr),
       _isCoordinator(arangodb::ServerState::instance()->isCoordinator()),
@@ -443,5 +446,5 @@ void BaseOptions::activateCache(
     std::unordered_map<ServerID, traverser::TraverserEngineID> const* engines) {
   // Do not call this twice.
   TRI_ASSERT(_cache == nullptr);
-  _cache.reset(cacheFactory::CreateCache(_trx, enableDocumentCache, engines));
+  _cache.reset(cacheFactory::CreateCache(_query, enableDocumentCache, engines));
 }

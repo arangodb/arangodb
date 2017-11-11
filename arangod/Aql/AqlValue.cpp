@@ -206,11 +206,11 @@ AqlValue AqlValue::at(transaction::Methods* trx,
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_INLINE:
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_MANAGED_SLICE:
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isArray()) {
@@ -228,7 +228,7 @@ AqlValue AqlValue::at(transaction::Methods* trx,
           return AqlValue(s.at(position).begin());
         }
       }
-      // fall-through intentional
+      // intentionally falls through
       break;
     }
     case DOCVEC: {
@@ -254,7 +254,7 @@ AqlValue AqlValue::at(transaction::Methods* trx,
           total += it->size();
         }
       }
-      // fall-through intentional
+      // intentionally falls through
       break;
     }
     case RANGE: {
@@ -268,7 +268,7 @@ AqlValue AqlValue::at(transaction::Methods* trx,
         // only look up the value if it is within array bounds
         return AqlValue(AqlValueHintInt(_data.range->at(static_cast<size_t>(position))));
       }
-      // fall-through intentional
+      // intentionally falls through
       break;
     }
   }
@@ -284,11 +284,11 @@ AqlValue AqlValue::getKeyAttribute(transaction::Methods* trx,
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_INLINE:
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_MANAGED_SLICE:
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isObject()) {
@@ -302,7 +302,7 @@ AqlValue AqlValue::getKeyAttribute(transaction::Methods* trx,
           return AqlValue(found.begin());
         }
       }
-      // fall-through intentional
+      // intentionally falls through
       break;
     }
     case DOCVEC:
@@ -323,11 +323,11 @@ AqlValue AqlValue::getIdAttribute(transaction::Methods* trx,
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_INLINE:
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_MANAGED_SLICE:
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isObject()) {
@@ -346,7 +346,7 @@ AqlValue AqlValue::getIdAttribute(transaction::Methods* trx,
           return AqlValue(found.begin());
         }
       }
-      // fall-through intentional
+      // intentionally falls through
       break;
     }
     case DOCVEC:
@@ -367,11 +367,11 @@ AqlValue AqlValue::getFromAttribute(transaction::Methods* trx,
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_INLINE:
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_MANAGED_SLICE:
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isObject()) {
@@ -385,7 +385,7 @@ AqlValue AqlValue::getFromAttribute(transaction::Methods* trx,
           return AqlValue(found.begin());
         }
       }
-      // fall-through intentional
+      // intentionally falls through
       break;
     }
     case DOCVEC:
@@ -406,11 +406,11 @@ AqlValue AqlValue::getToAttribute(transaction::Methods* trx,
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_INLINE:
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_MANAGED_SLICE:
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isObject()) {
@@ -424,7 +424,7 @@ AqlValue AqlValue::getToAttribute(transaction::Methods* trx,
           return AqlValue(found.begin());
         }
       }
-      // fall-through intentional
+      // intentionally falls through
       break;
     }
     case DOCVEC:
@@ -446,11 +446,11 @@ AqlValue AqlValue::get(transaction::Methods* trx,
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_INLINE:
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_MANAGED_SLICE:
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isObject()) {
@@ -469,7 +469,7 @@ AqlValue AqlValue::get(transaction::Methods* trx,
           return AqlValue(found.begin());
         }
       }
-      // fall-through intentional
+      // intentionally falls through
       break;
     }
     case DOCVEC:
@@ -495,11 +495,11 @@ AqlValue AqlValue::get(transaction::Methods* trx,
   switch (type()) {
     case VPACK_SLICE_POINTER:
       doCopy = false;
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_INLINE:
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_MANAGED_SLICE:
-    // fall-through intentional
+    // intentionally falls through
     case VPACK_MANAGED_BUFFER: {
       VPackSlice s(slice());
       if (s.isObject()) {
@@ -542,7 +542,7 @@ AqlValue AqlValue::get(transaction::Methods* trx,
           return AqlValue(s.begin());
         }
       }
-      // fall-through intentional
+      // intentionally falls through
       break;
     }
     case DOCVEC:
@@ -632,7 +632,7 @@ double AqlValue::toDouble(transaction::Methods* trx, bool& failed) const {
           return at(trx, 0, mustDestroy, false).toDouble(trx, failed);
         }
       }
-      // fall-through intentional
+      // intentionally falls through
       break;
     }
     case DOCVEC:
@@ -685,7 +685,7 @@ int64_t AqlValue::toInt64(transaction::Methods* trx) const {
           return at(trx, 0, mustDestroy, false).toInt64(trx);
         }
       }
-      // fall-through intentional
+      // intentionally falls through
       break;
     }
     case DOCVEC:
@@ -860,7 +860,7 @@ void AqlValue::toVelocyPack(transaction::Methods* trx,
       if (!resolveExternals && isManagedDocument()) {
         builder.addExternal(_data.pointer);
         break;
-      }  // fallthrough intentional
+      }  // intentionally falls through
     case VPACK_INLINE:
     case VPACK_MANAGED_SLICE:
     case VPACK_MANAGED_BUFFER: {

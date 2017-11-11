@@ -41,6 +41,7 @@ class Slice;
 
 namespace aql {
   struct AqlValue;
+  class Query;
 }
   
 namespace graph {
@@ -55,7 +56,7 @@ struct EdgeDocumentToken;
 class TraverserCache {
 
   public:
-   explicit TraverserCache(transaction::Methods* trx);
+   explicit TraverserCache(aql::Query* query);
 
    virtual ~TraverserCache();
 
@@ -130,6 +131,11 @@ class TraverserCache {
    //////////////////////////////////////////////////////////////////////////////
    std::unique_ptr<ManagedDocumentResult> _mmdr;
 
+   //////////////////////////////////////////////////////////////////////////////
+   /// @brief Query used to register warnings to.
+   //////////////////////////////////////////////////////////////////////////////
+   arangodb::aql::Query* _query;
+ 
    //////////////////////////////////////////////////////////////////////////////
    /// @brief Transaction to access data, This class is NOT responsible for it.
    //////////////////////////////////////////////////////////////////////////////

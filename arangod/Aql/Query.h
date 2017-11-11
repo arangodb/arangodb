@@ -85,7 +85,7 @@ class Query {
         std::shared_ptr<arangodb::velocypack::Builder> const& queryStruct,
         std::shared_ptr<arangodb::velocypack::Builder> const& options, QueryPart);
 
-  ~Query();
+  virtual ~Query();
 
   /// @brief clone a query
   /// note: as a side-effect, this will also create and start a transaction for
@@ -176,7 +176,7 @@ class Query {
   void registerErrorCustom(int, char const*);
 
   /// @brief register a warning
-  void registerWarning(int, char const* = nullptr);
+  virtual void registerWarning(int, char const* = nullptr);
   
   void prepare(QueryRegistry*, uint64_t queryHash);
 
@@ -208,7 +208,7 @@ class Query {
   void releaseEngine();
 
   /// @brief return the transaction, if prepared
-  inline transaction::Methods* trx() { return _trx; }
+  virtual transaction::Methods* trx() { return _trx; }
 
   /// @brief get the plan for the query
   ExecutionPlan* plan() const { return _plan.get(); }

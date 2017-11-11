@@ -211,6 +211,50 @@ ServerState::StateEnum ServerState::stringToState(std::string const& value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a mode to string
+////////////////////////////////////////////////////////////////////////////////
+
+std::string ServerState::modeToString(Mode mode) {
+  switch (mode) {
+    case Mode::DEFAULT:
+      return "default";
+    case Mode::MAINTENANCE:
+      return "maintenance";
+    case Mode::TRYAGAIN:
+      return "tryagain";
+    case Mode::REDIRECT:
+      return "redirect";
+    case Mode::READ_ONLY:
+      return "readonly";
+    case Mode::INVALID:
+      return "invalid";
+  }
+
+  TRI_ASSERT(false);
+  return "";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert string to mode
+////////////////////////////////////////////////////////////////////////////////
+
+ServerState::Mode ServerState::stringToMode(std::string const& value) {
+  if (value == "default") {
+    return Mode::DEFAULT;
+  } else if (value == "maintenance") {
+    return Mode::MAINTENANCE;
+  } else if (value == "tryagain") {
+    return Mode::TRYAGAIN;
+  } else if (value == "redirect") {
+    return Mode::REDIRECT;
+  } else if (value == "readonly") {
+    return Mode::READ_ONLY;
+  } else {
+    return Mode::INVALID;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief current server mode
 ////////////////////////////////////////////////////////////////////////////////
 static std::atomic<ServerState::Mode> _serverstate_mode(ServerState::Mode::DEFAULT);
@@ -285,12 +329,13 @@ static int LookupLocalInfoToId(std::string const& localInfo,
       std::string const endpoints = AgencyCommManager::MANAGER->endpointsString();
       
       LOG_TOPIC(DEBUG, Logger::STARTUP)
-      << "Could not fetch configuration from agency endpoints ("
-      << endpoints << "): got status code " << result._statusCode
-      << ", message: " << result.errorMessage() << ", key: " << key;
+        << "Could not fetch configuration from agency endpoints ("
+        << endpoints << "): got status code " << result._statusCode
+        << ", message: " << result.errorMessage() << ", key: " << key;
     } else {
-      VPackSlice slice = result.slice()[0].get(std::vector<std::string>(
-                                    {AgencyCommManager::path(), "Target", "MapLocalToID"}));
+      VPackSlice slice = result.slice()[0].get(
+        std::vector<std::string>(
+          {AgencyCommManager::path(), "Target", "MapLocalToID"}));
       
       if (!slice.isObject()) {
         LOG_TOPIC(DEBUG, Logger::STARTUP) << "Target/MapLocalToID corrupt: "
@@ -302,10 +347,12 @@ static int LookupLocalInfoToId(std::string const& localInfo,
                                                                   "");
           if (id.empty()) {
             LOG_TOPIC(ERR, Logger::STARTUP) << "ID not set!";
-            return TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID;
+            break;
           }
           description = basics::VelocyPackHelper::getStringValue(slice, "Description", "");
           return TRI_ERROR_NO_ERROR;
+        } else { // No such localId
+          break;
         }
       }
     }
@@ -323,20 +370,36 @@ bool ServerState::integrateIntoCluster(ServerState::RoleEnum role,
                                        std::string const& myLocalInfo) {
 
   AgencyComm comm;
-  
-  if (!myLocalInfo.empty()) {
-    LOG_TOPIC(WARN, Logger::STARTUP) << "--cluster.my-local-info is deprecated and will be deleted.";
-    std::string myId, description;
-    int res = LookupLocalInfoToId(myLocalInfo, myId, description);
-    if (res == TRI_ERROR_NO_ERROR) {
-      writePersistedId(myId);
-      setId(myId);
-    }
-  }
 
+  // if (have persisted id) {
+  //   use the persisted id
+  // } else {
+  //  if (myLocalId not empty) {
+  //    lookup in agency
+  //    if (found) {
+  //      persist id
+  //    } 
+  //  }
+  //  if (id still not set) {
+  //    generate and persist new id
+  //  }
   std::string id;
   if (!hasPersistedId()) {
-    id = generatePersistedId(role);
+
+    if (!myLocalInfo.empty()) {
+      LOG_TOPIC(WARN, Logger::STARTUP) << "--cluster.my-local-info is deprecated and will be deleted.";
+      std::string description;
+      int res = LookupLocalInfoToId(myLocalInfo, id, description);
+      if (res == TRI_ERROR_NO_ERROR) {
+        writePersistedId(id);
+        setId(id);
+      } 
+    }
+
+    if (id.empty()) {
+      id = generatePersistedId(role);
+    }
+
     LOG_TOPIC(INFO, Logger::CLUSTER)
       << "Fresh start. Persisting new UUID " << id;
   } else {
@@ -803,4 +866,30 @@ void ServerState::setFoxxmasterQueueupdate(bool value) {
 std::ostream& operator<<(std::ostream& stream, arangodb::ServerState::RoleEnum role) {
   stream << arangodb::ServerState::roleToString(role);
   return stream;
+}
+
+Result ServerState::propagateClusterServerMode(Mode mode) {
+  if (mode == Mode::DEFAULT || mode == Mode::READ_ONLY) {
+    // Agency enabled will work for single server replication as well as cluster
+    if (isCoordinator()) {
+      std::vector<AgencyOperation> operations;
+      VPackBuilder builder;
+      if (mode == Mode::DEFAULT) {
+        builder.add(VPackValue(false));
+      } else {
+        builder.add(VPackValue(true));
+      }
+      operations.push_back(AgencyOperation("Readonly", AgencyValueOperationType::SET, builder.slice()));
+    
+      AgencyWriteTransaction readonlyMode(operations);
+      AgencyComm comm;
+      AgencyCommResult r = comm.sendTransactionWithFailover(readonlyMode);
+      if (!r.successful()) {
+        return Result(TRI_ERROR_CLUSTER_AGENCY_COMMUNICATION_FAILED, r.errorMessage());
+      }
+    }
+    setServerMode(mode);
+  }
+
+  return Result();
 }

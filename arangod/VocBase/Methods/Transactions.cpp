@@ -212,7 +212,7 @@ Result executeTransactionJS(
         collectionError += std::string(" There is no array in '") + attributeName + "'";
         return false;
       }
-      // fallthrough intentional
+      // intentionally falls through
     }
     return true;
   };

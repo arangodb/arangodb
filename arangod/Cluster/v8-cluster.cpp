@@ -27,9 +27,10 @@
 #include <velocypack/velocypack-aliases.h>
 
 #include "Agency/AgencyComm.h"
+#include "Cluster/ClusterComm.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "Cluster/ClusterComm.h"
+#include "Cluster/ShardDistributionReporter.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
 #include "V8/v8-buffer.h"
@@ -1880,6 +1881,26 @@ static void JS_ClusterDownload(v8::FunctionCallbackInfo<v8::Value> const& args) 
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Collect the distribution of shards
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_GetShardDistribution(v8::FunctionCallbackInfo<v8::Value> const& args) {
+  TRI_V8_TRY_CATCH_BEGIN(isolate);
+  ONLY_IN_CLUSTER
+
+  v8::HandleScope scope(isolate);
+  auto vocbase = GetContextVocBase(isolate);
+
+  auto reporter = cluster::ShardDistributionReporter::instance();
+
+  VPackBuilder result;
+  reporter->getDistributionForDatabase(vocbase->name(), result);
+
+  TRI_V8_RETURN(TRI_VPackToV8(isolate, result.slice()));
+  TRI_V8_TRY_CATCH_END
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a global cluster context
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2076,4 +2097,8 @@ void TRI_InitV8Cluster(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "SYS_CLUSTER_DOWNLOAD"),
       JS_ClusterDownload);
+
+  TRI_AddGlobalFunctionVocbase(
+      isolate, TRI_V8_ASCII_STRING(isolate, "SYS_CLUSTER_SHARD_DISTRIBUTION"),
+      JS_GetShardDistribution);
 }

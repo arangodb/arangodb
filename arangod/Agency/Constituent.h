@@ -75,10 +75,10 @@ class Constituent : public Thread {
   bool running() const;
 
   // Called by REST handler
-  bool vote(term_t, std::string, index_t, term_t);
+  bool vote(term_t termOfPeer, std::string const& id, index_t prevLogIndex, term_t prevLogTerm);
 
   // Check leader
-  bool checkLeader(term_t, std::string, index_t, term_t);
+  bool checkLeader(term_t term, std::string const& id, index_t prevLogIndex, term_t prevLogTerm);
 
   // Notify about heartbeat being sent out:
   void notifyHeartbeatSent(std::string followerId);
