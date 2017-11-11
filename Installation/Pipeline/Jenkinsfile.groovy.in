@@ -1185,7 +1185,7 @@ def testStepParallel(os, edition, maintainer, modeList) {
 // --SECTION--                                                SCRIPTS RESILIENCE
 // -----------------------------------------------------------------------------
 
-def testResilience(os, engine, foxx, logFile, runDir) {
+def testResilience(os, engine, type, logFile, runDir) {
     def tmpDir = pwd() + "/" + runDir + "/tmp"
 
     fileOperations([
@@ -1198,15 +1198,15 @@ def testResilience(os, engine, foxx, logFile, runDir) {
             shellAndPipe("echo \"PWD:  `pwd`\"", logFile)
             shellAndPipe("echo \"Date: `date`\"", logFile)
 
-            shellAndPipe("./Installation/Pipeline/resilience_OS_ENGINE_FOXX.sh ${os} ${engine} ${foxx}", logFile)
+            shellAndPipe("./Installation/Pipeline/resilience_OS_ENGINE_TYPE.sh ${os} ${engine} ${type}", logFile)
         }
         else if (os == 'windows') {
-            powershell ".\\Installation\\Pipeline\\test_resilience_${foxx}_${engine}_${os}.ps1"
+            powershell ".\\Installation\\Pipeline\\test_resilience_${type}_${engine}_${os}.ps1"
         }
     }
 }
 
-def testResilienceCheck(os, edition, maintainer, engine, foxx) {
+def testResilienceCheck(os, edition, maintainer, engine, type) {
     if (! runResilience) {
         return false
     }
@@ -1226,10 +1226,10 @@ def testResilienceCheck(os, edition, maintainer, engine, foxx) {
     return true
 }
 
-def testResilienceStep(os, edition, maintainer, engine, foxx) {
+def testResilienceStep(os, edition, maintainer, engine, type) {
     return {
         def archDir  = "${os}-${edition}-${maintainer}"
-        def arch     = "${archDir}/03-resilience/${engine}-${foxx}"
+        def arch     = "${archDir}/03-resilience/${engine}-${type}"
         def archRun  = "${arch}-RUN"
 
         def runDir = "resilience"
@@ -1251,7 +1251,7 @@ def testResilienceStep(os, edition, maintainer, engine, foxx) {
 
                 timeout(120) {
                     unstashBinaries(os, edition, maintainer)
-                    testResilience(os, engine, foxx, logFile, runDir)
+                    testResilience(os, engine, type, logFile, runDir)
                 }
 
                 checkCores(os, runDir)
@@ -1287,11 +1287,11 @@ def testResilienceStep(os, edition, maintainer, engine, foxx) {
 def testResilienceParallel(os, edition, maintainer) {
     def branches = [:]
 
-    for (foxx in ['foxx', 'nofoxx']) {
+    for (type in ['single', 'cluster', 'single']) {
         for (engine in ['mmfiles', 'rocksdb']) {
-            if (testResilienceCheck(os, edition, maintainer, engine, foxx)) {
-                def name = "resilience-${os}-${edition}-${maintainer}-${engine}-${foxx}"
-                branches[name] = testResilienceStep(os, edition, maintainer, engine, foxx)
+            if (testResilienceCheck(os, edition, maintainer, engine, type)) {
+                def name = "resilience-${os}-${edition}-${maintainer}-${engine}-${type}"
+                branches[name] = testResilienceStep(os, edition, maintainer, engine, type)
             }
         }
     }

@@ -1287,7 +1287,7 @@ def testResilienceStep(os, edition, maintainer, engine, type) {
 def testResilienceParallel(os, edition, maintainer) {
     def branches = [:]
 
-    for (type in ['single']) {
+    for (type in ['single', 'cluster', 'single']) {
         for (engine in ['mmfiles', 'rocksdb']) {
             if (testResilienceCheck(os, edition, maintainer, engine, type)) {
                 def name = "resilience-${os}-${edition}-${maintainer}-${engine}-${type}"
