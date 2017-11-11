@@ -53,8 +53,8 @@ NearQuery::NearQuery(NearQueryParams const& params)
 }
 
 void NearQuery::reset() {
-  constexpr int level = NearQueryParams::queryBestLevel - 2;
-  static_assert(0 < level && level < S2::kMaxCellLevel - 2, "");
+  int level = std::max(1, _params.cover.bestIndexedLevel - 2);
+  TRI_ASSERT(0 < level && level < S2::kMaxCellLevel - 2);
 
   _boundDelta = S2::kAvgEdge.GetValue(level);
   TRI_ASSERT(_boundDelta > 0);
@@ -62,19 +62,20 @@ void NearQuery::reset() {
   _outerBound = _innerBound + _boundDelta;
   _maxBounds = std::min(_params.maxDistance / kEarthRadiusInMeters, 1.0);
   TRI_ASSERT(_innerBound < _outerBound && _outerBound <= _maxBounds);
+  _numFoundLastInterval = 0;
 }
 
 /// Call only once current intervals contain
 /// no more results
 std::vector<GeoCover::Interval> NearQuery::intervals() {
-  if (_scannedCells.num_cells() > 0) {
-    if (_numFoundLastInterval < 256) {
-      _boundDelta *= 2;
-    } else if (_numFoundLastInterval > 512) {
-      _boundDelta /= 2;
-    }
-    _numFoundLastInterval = 0;
+  TRI_ASSERT(!done());
+  // FIXME do update delta directly after reset
+  if (_numFoundLastInterval < 256) {
+    _boundDelta *= 2;
+  } else if (_numFoundLastInterval > 512) {
+    _boundDelta /= 2;
   }
+  _numFoundLastInterval = 0;
 
   std::vector<S2CellId> cover;
   if (0.0 < _innerBound && _outerBound < _maxBounds) {
@@ -97,21 +98,33 @@ std::vector<GeoCover::Interval> NearQuery::intervals() {
     TRI_ASSERT(_innerBound == _outerBound == _maxBounds);
     return {};
   }
-
-  TRI_ASSERT(!cover.empty());
-  S2CellUnion coverUnion;
-  coverUnion.Init(cover);
-  S2CellUnion lookup;
-  lookup.GetDifference(&coverUnion, &_scannedCells);
-
+  
   std::vector<GeoCover::Interval> intervals;
-  if (lookup.num_cells() > 0) {
-    GeoCover::scanIntervals(_params.cover.worstIndexedLevel, lookup.cell_ids(),
-                            intervals);
-  } else {
-    LOG_TOPIC(WARN, Logger::ENGINES) << "empty lookup cellunion";
-    _boundDelta *= 2;  // seems weird
+  if (!cover.empty()) { // not sure if this can ever happen
+    if (_scannedCells.num_cells() == 0) {
+      GeoCover::scanIntervals(_params.cover.worstIndexedLevel, cover,  intervals);
+      _scannedCells.Add(cover);
+    } else {
+      S2CellUnion coverUnion;
+      coverUnion.Init(cover);
+      S2CellUnion lookup;
+      lookup.GetDifference(&coverUnion, &_scannedCells);
+      
+      if (lookup.num_cells() > 0) {
+        cover = lookup.cell_ids();
+        GeoCover::scanIntervals(_params.cover.worstIndexedLevel, cover, intervals);
+        TRI_ASSERT(!cover.empty());
+        _scannedCells.Add(cover);
+      } else {
+        LOG_TOPIC(WARN, Logger::ENGINES) << "empty lookup cellunion";
+        /*_innerBound = _maxBounds; // done ?
+        _outerBound = _maxBounds;*/
+      }
+    }
   }
+  
+  
+  
   // TODO why do I need this ?
   /*for (int i = 0; i < lookup.num_cells(); i++) {
     if (region->MayIntersect(S2Cell(lookup.cell_id(i)))) {
@@ -134,7 +147,7 @@ std::vector<GeoCover::Interval> NearQuery::intervals() {
   return intervals;
 }
 
-void NearQuery::reportFound(TRI_voc_rid_t const& rid,
+void NearQuery::reportFound(TRI_voc_rid_t rid,
                             geo::Coordinate const& center) {
   S2LatLng cords = S2LatLng::FromDegrees(center.latitude, center.longitude);
   double rad = _centroid.Angle(cords.ToPoint());

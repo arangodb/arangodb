@@ -3,7 +3,7 @@
 #ifndef UTIL_GEOMETRY_S1INTERVAL_H_
 #define UTIL_GEOMETRY_S1INTERVAL_H_
 
-#include <math.h>
+#include <cmath>
 #include "base/basictypes.h"
 #include "base/logging.h"
 #include "util/math/vector2-inl.h"

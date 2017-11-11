@@ -13,27 +13,12 @@
 #define STRINGS_STRUTIL_H_
 
 #include <functional>
-using std::less;
-
 #include <unordered_map>
-using std::unordered_map;
-
 #include <unordered_set>
-using std::unordered_set;
-
 #include <set>
-using std::set;
-using std::multiset;
-
 #include <string>
-using std::string;
-
 #include <utility>
-using std::pair;
-using std::make_pair;
-
 #include <vector>
-using std::vector;
 
 #include <string.h>
 #include <stdlib.h>
@@ -77,17 +62,17 @@ static const int kFastToBufferSize =       32;
 //    represented in 16 hex digits.
 // ----------------------------------------------------------------------
 
-string FpToString(Fprint fp);
-string FloatToString(float f, const char* format);
-string IntToString(int i, const char* format);
-string Int64ToString(int64 i64, const char* format);
-string UInt64ToString(uint64 ui64, const char* format);
+std::string FpToString(Fprint fp);
+std::string FloatToString(float f, const char* format);
+std::string IntToString(int i, const char* format);
+std::string Int64ToString(int64 i64, const char* format);
+std::string UInt64ToString(uint64 ui64, const char* format);
 
 // The default formats are %7f, %7d, and %7u respectively
-string FloatToString(float f);
-string IntToString(int i);
-string Int64ToString(int64 i64);
-string UInt64ToString(uint64 ui64);
+std::string FloatToString(float f);
+std::string IntToString(int i);
+std::string Int64ToString(int64 i64);
+std::string UInt64ToString(uint64 ui64);
 
 // ----------------------------------------------------------------------
 // FastIntToBuffer()
@@ -302,7 +287,7 @@ inline uint64 ParseLeadingUDec64Value(const string& str, uint64 deflt) {
 //   <key, value> pairs. Returns true if there if no error in parsing, false
 //    otherwise.
 // -------------------------------------------------------------------------
-bool DictionaryParse(const string& encoded_str,
+bool DictionaryParse(const std::string& encoded_str,
                       vector<pair<string, string> >* items);
 
 #endif   /* #ifndef STRINGS_STRUTIL_H_ */

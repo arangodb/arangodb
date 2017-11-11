@@ -44,7 +44,7 @@ namespace geo {
 struct NearQueryParams {
   NearQueryParams(geo::Coordinate center)
       : centroid(center),
-        cover(queryMaxCoverCells, queryBestLevel, queryWorstLevel) {}
+        cover(queryMaxCoverCells, queryWorstLevel, queryBestLevel) {}
 
   /// Centroid from which to start
   Coordinate centroid;
@@ -56,7 +56,7 @@ struct NearQueryParams {
   // parameters to calculate the coverage
   RegionCoverParams cover;
 
-  static constexpr int queryWorstLevel = 0;
+  static constexpr int queryWorstLevel = 2;
   static constexpr int queryBestLevel = 23;  // about 1m
   static constexpr int queryMaxCoverCells = 20;
 };
@@ -99,7 +99,7 @@ class NearQuery {
   std::vector<GeoCover::Interval> intervals();
 
   /// @brief buffer and sort results
-  void reportFound(TRI_voc_rid_t const&, geo::Coordinate const& center);
+  void reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center);
 
   bool done() const;
 
@@ -113,15 +113,15 @@ class NearQuery {
   std::unordered_map<TRI_voc_rid_t, double> _seen;
 
   // Amount to increment by (in length on unit sphere)
-  double _boundDelta;
+  double _boundDelta = 0.1;
   // inner limit (in length on unit sphere)
-  double _innerBound;
+  double _innerBound = 0.0;
   // outer limit (in length on unit sphere)
-  double _outerBound;
+  double _outerBound = 0.0;
   // max outer limit or > 1.0
-  double _maxBounds;
+  double _maxBounds = 1.0;
 
-  size_t _numFoundLastInterval;
+  size_t _numFoundLastInterval = 0;
   /// Track the already scanned region
   S2CellUnion _scannedCells;
   /// full area to scan

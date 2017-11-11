@@ -371,6 +371,8 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
     case RocksDBIndex::TRI_IDX_TYPE_GEO1_INDEX:
     case RocksDBIndex::TRI_IDX_TYPE_GEO2_INDEX:
       return RocksDBKeyBounds::GeoIndex(objectId);
+    case RocksDBIndex::TRI_IDX_TYPE_GEOSPATIAL_INDEX:
+      return RocksDBKeyBounds::SphericalIndex(objectId);
     case RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

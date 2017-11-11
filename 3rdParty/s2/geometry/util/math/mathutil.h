@@ -9,13 +9,7 @@
 
 #include <math.h>
 #include <algorithm>
-using std::min;
-using std::max;
-using std::swap;
-using std::reverse;
-
 #include <vector>
-using std::vector;
 
 #include "base/basictypes.h"
 #include "base/logging.h"

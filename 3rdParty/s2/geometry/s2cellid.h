@@ -478,7 +478,7 @@ inline S2CellId S2CellId::End(int level) {
   return FromFacePosLevel(5, 0, 0).child_end(level);
 }
 
-ostream& operator<<(ostream& os, S2CellId const& id);
+std::ostream& operator<<(std::ostream& os, S2CellId const& id);
 
 #ifndef SWIG
 #include <unordered_set>

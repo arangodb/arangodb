@@ -6,10 +6,6 @@
 #define BASE_INT128_H_
 
 #include <iostream>
-using std::ostream;
-using std::cout;
-using std::endl;
-
 #include "base/integral_types.h"
 #include "base/logging.h"
 
@@ -60,7 +56,7 @@ public:
   friend uint64 Uint128Low64(const uint128& v);
   friend uint64 Uint128High64(const uint128& v);
 
-  friend ostream& operator<<(ostream& o, const uint128& b);
+  friend std::ostream& operator<<(std::ostream& o, const uint128& b);
 
 private:
   // Little-endian memory order optimizations can benefit from
@@ -79,7 +75,7 @@ private:
 extern const uint128 kuint128max;
 
 // allow uint128 to be logged
-extern ostream& operator<<(ostream& o, const uint128& b);
+extern std::ostream& operator<<(std::ostream& o, const uint128& b);
 
 // Methods to access low and high pieces of 128-bit value.
 // Defined externally from uint128 to facilitate conversion

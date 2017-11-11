@@ -148,6 +148,9 @@ void GeoCover::scanIntervals(int worstIndexedLevel,
                              std::vector<S2CellId> const& cover,
                              std::vector<Interval>& sortedIntervals) {
   TRI_ASSERT(worstIndexedLevel > 0);
+  if (cover.empty()) {
+    return;
+  }
 
   // prefix matches
   for (S2CellId const& prefix : cover) {
@@ -179,13 +182,19 @@ void GeoCover::scanIntervals(int worstIndexedLevel,
   for (S2CellId const& exact : parentSet) {
     sortedIntervals.emplace_back(exact, exact);
   }
-
+  // sort these disjunct intervals
   std::sort(sortedIntervals.begin(), sortedIntervals.end(), Interval::compare);
+  
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // intervals must not overlap
+  //  constexpr size_t diff = 64;
   for (size_t i = 0; i < sortedIntervals.size() - 1; i++) {
     TRI_ASSERT(sortedIntervals[i].min <= sortedIntervals[i].max);
     TRI_ASSERT(sortedIntervals[i].max < sortedIntervals[i + 1].min);
+    /*
+    if (std::abs((sortedIntervals[i].max.id() -
+                  sortedIntervals[i + 1].min.id())) < diff) {
+      sortedIntervals[i].max = sortedIntervals.min
+    }*/
   }
 #endif
 }

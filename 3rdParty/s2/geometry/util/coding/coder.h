@@ -8,11 +8,7 @@
 #define UTIL_CODING_CODER_H__
 
 #include <algorithm>
-using std::min;
-using std::max;
-using std::swap;
-using std::reverse;
-        // for min
+// for min
 #include "util/coding/varint.h"
 #include "base/logging.h"
 #include "base/port.h"
@@ -286,7 +282,7 @@ inline void Decoder::getcn(void* dst, int c, int n) {
 }
 
 inline void Decoder::gets(void* dst, int n) {
-  int len = min<int>((n - 1), (limit_ - buf_));
+  int len = std::min<int>((n - 1), (limit_ - buf_));
   (reinterpret_cast<char *>(dst))[len] = '\0';
   getcn(dst, '\0', len);
 }

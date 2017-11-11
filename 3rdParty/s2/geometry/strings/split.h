@@ -7,28 +7,11 @@
 #define STRINGS_SPLIT_H_
 
 #include <string>
-using std::string;
-
 #include <vector>
-using std::vector;
-
 #include <set>
-using std::set;
-using std::multiset;
-
 #include <utility>
-using std::pair;
-using std::make_pair;
-
 #include <unordered_map>
-using std::unordered_map;
-
-
 #include <unordered_set>
-using std::unordered_set;
-
-
-using namespace std;
 
 // ----------------------------------------------------------------------
 // SplitStringAllowEmpty()
@@ -43,19 +26,19 @@ using namespace std;
 //
 //    If "full" is the empty string, yields an empty string as the only value.
 // ----------------------------------------------------------------------
-void SplitStringAllowEmpty(const string& full, const char* delim,
-                           vector<string>* res);
-void SplitStringToHashsetAllowEmpty(const string& full, const char* delim,
-                                    unordered_set<string>* res);
-void SplitStringToSetAllowEmpty(const string& full, const char* delim,
-                                set<string>* res);
+void SplitStringAllowEmpty(const std::string& full, const char* delim,
+                           std::vector<string>* res);
+void SplitStringToHashsetAllowEmpty(const std::string& full, const char* delim,
+                                    std::unordered_set<string>* res);
+void SplitStringToSetAllowEmpty(const std::string& full, const char* delim,
+                                std::set<string>* res);
 // The even-positioned (0-based) components become the keys for the
 // odd-positioned components that follow them. When there is an odd
 // number of components, the value for the last key will be unchanged
 // if the key was already present in the hash table, or will be the
 // empty string if the key is a newly inserted key.
-void SplitStringToHashmapAllowEmpty(const string& full, const char* delim,
-                                    unordered_map<string, string>* result);
+void SplitStringToHashmapAllowEmpty(const std::string& full, const char* delim,
+                            std::unordered_map<std::string, std::string>* result);
 
 // ----------------------------------------------------------------------
 // SplitStringUsing()
@@ -68,19 +51,19 @@ void SplitStringToHashmapAllowEmpty(const string& full, const char* delim,
 //    If there are consecutive delimiters, this function skips over
 //    all of them.
 // ----------------------------------------------------------------------
-void SplitStringUsing(const string& full, const char* delim,
-                      vector<string>* res);
-void SplitStringToHashsetUsing(const string& full, const char* delim,
-                               unordered_set<string>* res);
-void SplitStringToSetUsing(const string& full, const char* delim,
-                           set<string>* res);
+void SplitStringUsing(const std::string& full, const char* delim,
+                      std::vector<string>* res);
+void SplitStringToHashsetUsing(const std::string& full, const char* delim,
+                               std::unordered_set<string>* res);
+void SplitStringToSetUsing(const std::string& full, const char* delim,
+                           std::set<string>* res);
 // The even-positioned (0-based) components become the keys for the
 // odd-positioned components that follow them. When there is an odd
 // number of components, the value for the last key will be unchanged
 // if the key was already present in the hash table, or will be the
 // empty string if the key is a newly inserted key.
-void SplitStringToHashmapUsing(const string& full, const char* delim,
-                               unordered_map<string, string>* result);
+void SplitStringToHashmapUsing(const std::string& full, const char* delim,
+                      std::unordered_map<std::string, std::string>* result);
 
 // ----------------------------------------------------------------------
 // SplitOneIntToken()

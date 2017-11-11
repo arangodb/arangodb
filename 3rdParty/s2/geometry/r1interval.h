@@ -3,18 +3,8 @@
 #ifndef UTIL_GEOMETRY_R1INTERVAL_H_
 #define UTIL_GEOMETRY_R1INTERVAL_H_
 
-#include <math.h>
-
-#include <algorithm>
-using std::min;
-using std::max;
-using std::swap;
-using std::reverse;
-
+#include <cmath>
 #include <iostream>
-using std::ostream;
-using std::cout;
-using std::endl;
 
 #include "base/basictypes.h"
 #include "base/logging.h"
@@ -179,7 +169,7 @@ class R1Interval {
 };
 DECLARE_POD(R1Interval);
 
-inline ostream& operator<<(ostream& os, R1Interval const& x) {
+inline std::ostream& operator<<(std::ostream& os, R1Interval const& x) {
   return os << "[" << x.lo() << ", " << x.hi() << "]";
 }
 
