@@ -79,10 +79,13 @@ void RestAgencyHandler::redirectRequest(std::string const& leaderId) {
     _response->setHeaderNC(StaticStrings::Location, url);
     LOG_TOPIC(DEBUG, Logger::AGENCY) << "Sending 307 redirect to " << url;
   } catch (std::exception const& e) {
-    LOG_TOPIC(WARN, Logger::AGENCY) << e.what() << " " << __FILE__ << ":"
-                                    << __LINE__;
-    generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                  e.what());
+    Builder body;
+    body.openObject();
+    body.add("message", VPackValue("No leader"));
+    body.close();
+    generateResult(rest::ResponseCode::SERVICE_UNAVAILABLE, body.slice());
+    LOG_TOPIC(DEBUG, Logger::AGENCY) << "We don't know who the leader is, "
+      "caught exception in redirectRequest: " << e.what();
   }
 }
 

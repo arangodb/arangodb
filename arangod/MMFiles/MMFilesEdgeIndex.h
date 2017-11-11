@@ -96,6 +96,12 @@ class MMFilesEdgeIndex final : public Index {
 
   double selectivityEstimateLocal(
       arangodb::StringRef const* = nullptr) const override;
+  
+  int afterTruncate() override {
+    // for mmfiles, truncating the index just unloads it
+    unload();
+    return TRI_ERROR_NO_ERROR;
+  }
 
   size_t memory() const override;
 
@@ -168,9 +174,6 @@ class MMFilesEdgeIndex final : public Index {
 
   /// @brief the hash table for _to
   TRI_MMFilesEdgeIndexHash_t* _edgesTo;
-
-  /// @brief number of buckets effectively used by the index
-  size_t _numBuckets;
 };
 }
 

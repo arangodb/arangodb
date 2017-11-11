@@ -214,6 +214,11 @@ class ServerState {
   
   bool getFoxxmasterQueueupdate();
 
+  std::string getPersistedId();
+  bool hasPersistedId();
+  std::string generatePersistedId(RoleEnum const&);
+  bool writePersistedId(std::string const&);
+
  private:
   /// @brief atomically fetches the server role
   RoleEnum loadRole() {
@@ -259,12 +264,7 @@ class ServerState {
   static std::string roleToAgencyKey(RoleEnum);
 
   std::string getUuidFilename();
-  std::string getPersistedId();
-  bool hasPersistedId();
-  std::string generatePersistedId(RoleEnum const&);
-  bool writePersistedId(std::string const&);
 
- private:
   /// @brief the pointer to the singleton instance
   static ServerState* _theinstance;
 

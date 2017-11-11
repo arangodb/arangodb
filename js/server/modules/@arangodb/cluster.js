@@ -2119,7 +2119,7 @@ function waitForSyncRepl (dbName, collList) {
     if (allOk) {
       return true;
     }
-    require('internal').wait(1);
+    require('internal').wait(1, false);
   }
   console.topic('heartbeat=warn', 'waitForSyncRepl: timeout:', dbName, collList);
   return false;

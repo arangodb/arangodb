@@ -65,6 +65,8 @@ RocksDBTransactionState::RocksDBTransactionState(
       _rocksWriteOptions(),
       _rocksReadOptions(),
       _cacheTx(nullptr),
+      _numCommits(0),
+      _numInternal(0),
       _numInserts(0),
       _numUpdates(0),
       _numRemoves(0),
@@ -192,6 +194,9 @@ void RocksDBTransactionState::createTransaction() {
   
   // set begin marker
   if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_numLogdata == 0);
+#endif
     RocksDBLogValue header =
         RocksDBLogValue::BeginTransaction(_vocbase->id(), _id);
     _rocksTransaction->PutLogData(header.slice());
@@ -212,17 +217,8 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
       _rocksTransaction->SetWriteOptions(_rocksWriteOptions);
     }
 
-    // double t1 = TRI_microtime();
+    ++_numCommits;
     result = rocksutils::convertStatus(_rocksTransaction->Commit());
-    // double t2 = TRI_microtime();
-    // if (t2 - t1 > 0.25) {
-    //   LOG_TOPIC(ERR, Logger::FIXME)
-    //       << "COMMIT TOOK: " << (t2 - t1)
-    //       << " S. NUMINSERTS: " << _numInserts
-    //       << ", NUMUPDATES: " << _numUpdates
-    //       << ", NUMREMOVES: " << _numRemoves
-    //       << ", TRANSACTIONSIZE: " << _transactionSize;
-    // }
     rocksdb::SequenceNumber latestSeq =
         rocksutils::globalRocksDB()->GetLatestSequenceNumber();
     if (!result.ok()) {
@@ -408,7 +404,6 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
     TRI_voc_cid_t cid, TRI_voc_rid_t revisionId,
     TRI_voc_document_operation_e operationType, uint64_t operationSize,
     uint64_t keySize) {
-  RocksDBOperationResult res;
 
   size_t currentSize =
       _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
@@ -418,8 +413,7 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
     std::string message =
         "aborting transaction because maximal transaction size limit of " +
         std::to_string(_options.maxTransactionSize) + " bytes is reached";
-    res.reset(TRI_ERROR_RESOURCE_LIMIT, message);
-    return res;
+    return RocksDBOperationResult(Result(TRI_ERROR_RESOURCE_LIMIT, message));
   }
 
   auto collection =
@@ -455,24 +449,33 @@ RocksDBOperationResult RocksDBTransactionState::addOperation(
       break;
   }
 
-  auto numOperations = _numInserts + _numUpdates + _numRemoves;
-  // perform an intermediate commit
-  // this will be done if either the "number of operations" or the
-  // "transaction size" counters have reached their limit
-  if (_options.intermediateCommitCount <= numOperations ||
-      _options.intermediateCommitSize <= newSize) {
-    // LOG_TOPIC(ERR, Logger::FIXME) << "INTERMEDIATE COMMIT!";
-    internalCommit();
-    _numInserts = 0;
-    _numUpdates = 0;
-    _numRemoves = 0;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    _numLogdata = 0;
-#endif
-    createTransaction();
-  }
+  // perform an intermediate commit if necessary
+  checkIntermediateCommit(newSize);
 
-  return res;
+  return RocksDBOperationResult();
+}
+
+/// @brief add an internal operation for a transaction
+RocksDBOperationResult RocksDBTransactionState::addInternalOperation(
+    uint64_t operationSize, uint64_t keySize) {
+
+  size_t currentSize =
+      _rocksTransaction->GetWriteBatch()->GetWriteBatch()->GetDataSize();
+  uint64_t newSize = currentSize + operationSize + keySize;
+  if (newSize > _options.maxTransactionSize) {
+    // we hit the transaction size limit
+    std::string message =
+        "aborting transaction because maximal transaction size limit of " +
+        std::to_string(_options.maxTransactionSize) + " bytes is reached";
+    return RocksDBOperationResult(Result(TRI_ERROR_RESOURCE_LIMIT, message));
+  }
+  
+  ++_numInternal;
+
+  // perform an intermediate commit if necessary
+  checkIntermediateCommit(newSize);
+
+  return RocksDBOperationResult();
 }
 
 RocksDBMethods* RocksDBTransactionState::rocksdbMethods() {
@@ -490,6 +493,26 @@ uint64_t RocksDBTransactionState::sequenceNumber() const {
 }
 
 void RocksDBTransactionState::prepareForParallelReads() { _parallel = true; }
+
+void RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize) {
+  auto numOperations = _numInserts + _numUpdates + _numRemoves + _numInternal;
+  // perform an intermediate commit
+  // this will be done if either the "number of operations" or the
+  // "transaction size" counters have reached their limit
+  if (_options.intermediateCommitCount <= numOperations ||
+      _options.intermediateCommitSize <= newSize) {
+    // LOG_TOPIC(ERR, Logger::FIXME) << "INTERMEDIATE COMMIT!";
+    internalCommit();
+    _numInternal = 0;
+    _numInserts = 0;
+    _numUpdates = 0;
+    _numRemoves = 0;
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    _numLogdata = 0;
+#endif
+    createTransaction();
+  }
+}
 
 /// @brief temporarily lease a Builder object
 RocksDBKey* RocksDBTransactionState::leaseRocksDBKey() {

@@ -129,6 +129,12 @@ class MMFilesPrimaryIndex final : public Index {
   ~MMFilesPrimaryIndex();
 
  public:
+  int afterTruncate() override {
+    // for mmfiles, truncating the index just unloads it
+    unload();
+    return TRI_ERROR_NO_ERROR;
+  }
+
   IndexType type() const override { return Index::TRI_IDX_TYPE_PRIMARY_INDEX; }
 
   char const* typeName() const override { return "primary"; }
