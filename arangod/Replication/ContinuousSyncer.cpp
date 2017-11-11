@@ -796,7 +796,12 @@ int ContinuousSyncer::applyLogMarker(VPackSlice const& slice,
 
   if (type == REPLICATION_MARKER_DOCUMENT || 
       type == REPLICATION_MARKER_REMOVE) {
-    return processDocument(type, slice, errorMsg);
+    try {
+      return processDocument(type, slice, errorMsg);
+    } catch (basics::Exception const& ex) {
+      errorMsg = ex.what();
+      return ex.code();
+    }
   }
 
   else if (type == REPLICATION_TRANSACTION_START) {
