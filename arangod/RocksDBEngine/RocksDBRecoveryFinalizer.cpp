@@ -29,7 +29,7 @@ using namespace arangodb::application_features;
 
 RocksDBRecoveryFinalizer::RocksDBRecoveryFinalizer(ApplicationServer* server)
     : ApplicationFeature(server, "RocksDBRecoveryFinalizer") {
-  setOptional(false);
+  setOptional(true);
   requiresElevatedPrivileges(false);
   startsAfter("Database");
   startsAfter("RocksDBEngine");
