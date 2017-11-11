@@ -77,7 +77,9 @@ class RocksDBSphericalIndexNearIterator final : public IndexIterator {
         _nearQuery.popNearest();
         limit--;
       }
-      if (!_nearQuery.done()) {
+      // need to fetch more geo results
+      if (limit > 0 && !_nearQuery.done()) {
+        TRI_ASSERT(!_nearQuery.hasNearest());
         performScan();
       }
     }
@@ -88,29 +90,41 @@ class RocksDBSphericalIndexNearIterator final : public IndexIterator {
   void reset() override { _nearQuery.reset(); }
 
  private:
-  
+  // we need to get intervals representing areas in a ring (annulus)
+  // around our target point. We need to fetch them ALL and then sort
+  // found results in a priority list according to their distance
   void performScan() {
-    std::vector<geo::GeoCover::Interval> scan = _nearQuery.intervals();
+    // list of sorted intervals to scan
+    std::vector<geo::GeoCover::Interval> const scan = _nearQuery.intervals();
+    LOG_TOPIC(INFO, Logger::FIXME) << "# scans: " << scan.size();
+
     for (geo::GeoCover::Interval const& it : scan) {
       TRI_ASSERT(it.min <= it.max);
+
+      // LOG_TOPIC(INFO, Logger::FIXME) << "[Seeking] " << it.min << " - " <<
+      // it.max;
 
       RocksDBKeyBounds bounds = RocksDBKeyBounds::SphericalIndex(
           _index->objectId(), it.min.id(), it.max.id());
       _iterator->Seek(bounds.start());
+
       while (_iterator->Valid()) {
         uint64_t cellId = RocksDBKey::sphericalValue(_iterator->key());
         TRI_ASSERT(it.min.id() <= cellId);
         if (cellId > it.max.id()) {
-          break;
+          break;  // skip this interval
         }
-        // TODO support for within / intersect + near
 
-        LOG_TOPIC(INFO, Logger::FIXME) << it.min << " - " << it.max;
+        // TODO support for within / intersect combined with near
+
         TRI_voc_rid_t rid = RocksDBKey::revisionId(
             RocksDBEntryType::SphericalIndexValue, _iterator->key());
         geo::Coordinate cntrd = RocksDBValue::centroid(_iterator->value());
         _nearQuery.reportFound(rid, cntrd);
-        
+
+        // LOG_TOPIC(ERR, Logger::FIXME) << "[Found] " << S2CellId(cellId)
+        //  << " | rid: " << rid << " at " << cntrd.latitude << ", " <<
+        //  cntrd.longitude;
         _iterator->Next();
       }
     }
@@ -156,7 +170,7 @@ IndexIterator* RocksDBSphericalIndex::iteratorForCondition(
     // it is unnessesary to have the level smaller
     params.cover.bestIndexedLevel = _coverParams.bestIndexedLevel;
   }
-  
+
   return new RocksDBSphericalIndexNearIterator(_collection, trx, mmdr, this,
                                                params);
 }
@@ -211,7 +225,8 @@ void RocksDBSphericalIndex::toVelocyPack(VPackBuilder& builder,
   // Basic index
   RocksDBIndex::toVelocyPack(builder, withFigures, forPersistence);
 
-  builder.add("geoJson", VPackValue(_variant == IndexVariant::COMBINED_GEOJSON));
+  builder.add("geoJson",
+              VPackValue(_variant == IndexVariant::COMBINED_GEOJSON));
   // geo indexes are always non-unique
   // geo indexes are always sparse.
   // "ignoreNull" has the same meaning as "sparse" and is only returned for
@@ -292,7 +307,8 @@ bool RocksDBSphericalIndex::matchesDefinition(VPackSlice const& info) const {
   return true;
 }
 
-Result RocksDBSphericalIndex::parse(VPackSlice const& doc, std::vector<S2CellId>& cells,
+Result RocksDBSphericalIndex::parse(VPackSlice const& doc,
+                                    std::vector<S2CellId>& cells,
                                     geo::Coordinate& centroid) const {
   if (_variant == IndexVariant::COMBINED_GEOJSON) {
     S2RegionCoverer coverer;
@@ -310,7 +326,7 @@ Result RocksDBSphericalIndex::parse(VPackSlice const& doc, std::vector<S2CellId>
     }
     centroid.latitude = lat.getNumericValue<double>();
     centroid.longitude = lon.getNumericValue<double>();
-    
+
     return geo::GeoCover::generateCover(centroid, cells);
   }
   return TRI_ERROR_INTERNAL;
@@ -324,22 +340,21 @@ Result RocksDBSphericalIndex::insertInternal(transaction::Methods* trx,
   // covering and centroid of coordinate / polygon / ...
   std::vector<S2CellId> cells;
   geo::Coordinate centroid(-1, -1);
-  
+
   Result res = parse(doc, cells, centroid);
   if (res.fail()) {
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
-  
+
   RocksDBValue val = RocksDBValue::SphericalValue(centroid);
+  RocksDBKeyLeaser key(trx);
 
   // FIXME: can we rely on the region coverer to return
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
-    
-    LOG_TOPIC(INFO, Logger::FIXME) << "[Insert] " << cell;
-    
-    RocksDBKeyLeaser key(trx);
+    // LOG_TOPIC(INFO, Logger::FIXME) << "[Insert] " << cell;
+
     key->constructSphericalIndexValue(_objectId, cell.id(), documentId.id());
     Result r = mthd->Put(RocksDBColumnFamily::geo(), key.ref(), val.string());
     if (r.fail()) {
@@ -358,20 +373,19 @@ Result RocksDBSphericalIndex::removeInternal(transaction::Methods* trx,
   // covering and centroid of coordinate / polygon / ...
   std::vector<S2CellId> cells;
   geo::Coordinate centroid(-1, -1);
-  
+
   Result res = parse(doc, cells, centroid);
   if (res.fail()) {
     // Invalid, no insert. Index is sparse
     return res.is(TRI_ERROR_BAD_PARAMETER) ? IndexResult() : res;
   }
 
+  RocksDBKeyLeaser key(trx);
   // FIXME: can we rely on the region coverer to return
   // the same cells everytime for the same parameters ?
   for (S2CellId cell : cells) {
-    
-    LOG_TOPIC(INFO, Logger::FIXME) << "[Remove] " << cell;
-    
-    RocksDBKeyLeaser key(trx);
+    // LOG_TOPIC(INFO, Logger::FIXME) << "[Remove] " << cell;
+
     key->constructSphericalIndexValue(_objectId, cell.id(), documentId.id());
     Result r = mthd->Delete(RocksDBColumnFamily::geo(), key.ref());
     if (r.fail()) {

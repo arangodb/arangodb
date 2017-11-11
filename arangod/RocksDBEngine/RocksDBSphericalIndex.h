@@ -129,12 +129,10 @@ class RocksDBSphericalIndex final : public arangodb::RocksDBIndex {
   IndexVariant variant() const { return _variant; }
 
  private:
-  
   Result parse(velocypack::Slice const& doc, std::vector<S2CellId>& cells,
-                                      geo::Coordinate& co) const;
-  
-private:
-  
+               geo::Coordinate& co) const;
+
+ private:
   /// @brief immutable region coverer parameters
   geo::RegionCoverParams _coverParams;
 

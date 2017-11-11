@@ -36,7 +36,7 @@ namespace geo {
 
 // Equatorial radius of earth.
 // Source: http://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html
-const double kEarthRadiusInMeters = (6378.1 * 1000);
+const double kEarthRadiusInMeters = (6378.137 * 1000);
 
 enum class QueryType {
   // Specifiy a location for which a geospatial query returns the documents

@@ -53,32 +53,36 @@ NearQuery::NearQuery(NearQueryParams const& params)
 }
 
 void NearQuery::reset() {
-  int level = std::max(1, _params.cover.bestIndexedLevel - 2);
-  TRI_ASSERT(0 < level && level < S2::kMaxCellLevel - 2);
+  _maxBounds = std::min(_params.maxDistance / kEarthRadiusInMeters, M_PI);
 
-  _boundDelta = S2::kAvgEdge.GetValue(level);
+  int level = std::max(1, _params.cover.bestIndexedLevel - 2);
+  level = std::min(level, S2::kMaxCellLevel - 4);
+  _boundDelta = S2::kAvgEdge.GetValue(level);  // in radians ?
   TRI_ASSERT(_boundDelta > 0);
+
+  _lastInnerBound = 0.0;  // used for fast out-of-bounds rejections
   _innerBound = std::max(0.0, _params.minDistance / kEarthRadiusInMeters);
   _outerBound = _innerBound + _boundDelta;
-  _maxBounds = std::min(_params.maxDistance / kEarthRadiusInMeters, 1.0);
   TRI_ASSERT(_innerBound < _outerBound && _outerBound <= _maxBounds);
   _numFoundLastInterval = 0;
 }
 
-/// Call only once current intervals contain
-/// no more results
 std::vector<GeoCover::Interval> NearQuery::intervals() {
-  TRI_ASSERT(!done());
-  // FIXME do update delta directly after reset
-  if (_numFoundLastInterval < 256) {
-    _boundDelta *= 2;
-  } else if (_numFoundLastInterval > 512) {
-    _boundDelta /= 2;
+  // we already scanned the entire planet, if this fails
+  TRI_ASSERT(_innerBound != _outerBound && _innerBound != _maxBounds);
+
+  if (_lastInnerBound > 0) {
+    if (_numFoundLastInterval < 256) {
+      _boundDelta *= 2;
+    } else if (_numFoundLastInterval > 512) {
+      _boundDelta /= 2;
+    }
+    _numFoundLastInterval = 0;
   }
-  _numFoundLastInterval = 0;
 
   std::vector<S2CellId> cover;
   if (0.0 < _innerBound && _outerBound < _maxBounds) {
+    // create a search ring
     std::vector<S2Region*> regions;
     S2Cap ib = S2Cap::FromAxisAngle(_centroid, S1Angle::Radians(_innerBound));
     regions.push_back(new S2Cap(ib.Complement()));
@@ -87,7 +91,6 @@ std::vector<GeoCover::Interval> NearQuery::intervals() {
     S2RegionIntersection ring(&regions);
     _coverer.GetCovering(ring, &cover);
   } else if (0.0 == _innerBound && _outerBound < _maxBounds) {
-    // scan everything up till bounds fix floating point errors
     S2Cap ob = S2Cap::FromAxisAngle(_centroid, S1Angle::Radians(_outerBound));
     _coverer.GetCovering(ob, &cover);
   } else if (0.0 < _innerBound && _outerBound >= _maxBounds) {
@@ -98,33 +101,32 @@ std::vector<GeoCover::Interval> NearQuery::intervals() {
     TRI_ASSERT(_innerBound == _outerBound == _maxBounds);
     return {};
   }
-  
+
   std::vector<GeoCover::Interval> intervals;
-  if (!cover.empty()) { // not sure if this can ever happen
+  if (!cover.empty()) {  // not sure if this can ever happen
     if (_scannedCells.num_cells() == 0) {
-      GeoCover::scanIntervals(_params.cover.worstIndexedLevel, cover,  intervals);
+      GeoCover::scanIntervals(_params.cover.worstIndexedLevel, cover,
+                              intervals);
       _scannedCells.Add(cover);
     } else {
       S2CellUnion coverUnion;
       coverUnion.Init(cover);
       S2CellUnion lookup;
       lookup.GetDifference(&coverUnion, &_scannedCells);
-      
+
       if (lookup.num_cells() > 0) {
         cover = lookup.cell_ids();
-        GeoCover::scanIntervals(_params.cover.worstIndexedLevel, cover, intervals);
+        GeoCover::scanIntervals(_params.cover.worstIndexedLevel, cover,
+                                intervals);
         TRI_ASSERT(!cover.empty());
         _scannedCells.Add(cover);
-      } else {
-        LOG_TOPIC(WARN, Logger::ENGINES) << "empty lookup cellunion";
-        /*_innerBound = _maxBounds; // done ?
-        _outerBound = _maxBounds;*/
-      }
+      } /* else {
+         LOG_TOPIC(WARN, Logger::ENGINES) << "empty lookup cellunion"
+         << "inner " << _innerBound << " outer " << _outerBound;
+       }*/
     }
   }
-  
-  
-  
+
   // TODO why do I need this ?
   /*for (int i = 0; i < lookup.num_cells(); i++) {
     if (region->MayIntersect(S2Cell(lookup.cell_id(i)))) {
@@ -132,26 +134,26 @@ std::vector<GeoCover::Interval> NearQuery::intervals() {
     }
   }*/
 
+  _lastInnerBound = _innerBound;
   _innerBound = _outerBound;
   _outerBound = std::min(_outerBound + _boundDelta, _maxBounds);
 
+  // prune the _seen list revision IDs
   auto it = _seen.begin();
   while (it != _seen.end()) {
-    if (it->second < _innerBound) {
+    if (it->second < _lastInnerBound) {
       it = _seen.erase(it);
     } else {
       it++;
     }
   }
-
   return intervals;
 }
 
-void NearQuery::reportFound(TRI_voc_rid_t rid,
-                            geo::Coordinate const& center) {
+void NearQuery::reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center) {
   S2LatLng cords = S2LatLng::FromDegrees(center.latitude, center.longitude);
   double rad = _centroid.Angle(cords.ToPoint());
-  if (_innerBound < rad || _maxBounds < rad ||
+  if (rad < _lastInnerBound || _maxBounds < rad ||
       (!_params.maxInclusive && rad == _maxBounds)) {
     return;
   }
@@ -160,17 +162,15 @@ void NearQuery::reportFound(TRI_voc_rid_t rid,
   if (it == _seen.end()) {
     _buffer.emplace(rid, rad);
     _seen.emplace(rid, rad);
-    _numFoundLastInterval++;  // we have to estimate scan bounds
-  } else {                    // deduplication
-    TRI_ASSERT(it->second == rad);
-    /*if (doc.distance / kEarthRadiusInMeters < _innerBound) {
-      _seen.erase(it); // no need to store
-    }*/
+    _numFoundLastInterval++;        // we have to estimate scan bounds
+  } else {                          // deduplication
+    TRI_ASSERT(it->second == rad);  // should never change
   }
 }
 
 bool NearQuery::NearQuery::done() const {
   TRI_ASSERT(_innerBound >= 0 && _innerBound <= _outerBound);
-  TRI_ASSERT(_outerBound <= _maxBounds && _maxBounds <= 1.0);
-  return _buffer.empty() && _innerBound == _outerBound == _maxBounds;
+  TRI_ASSERT(_outerBound <= _maxBounds && _maxBounds <= M_PI);
+  return _buffer.empty() && _innerBound == _outerBound &&
+         _outerBound == _maxBounds;
 }

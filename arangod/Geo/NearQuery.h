@@ -50,7 +50,8 @@ struct NearQueryParams {
   Coordinate centroid;
   // Min and max distance from centroid that we're willing to search.
   double minDistance = 0.0;
-  double maxDistance = kEarthRadiusInMeters;
+  // entire earth (halfaround in each direction)
+  double maxDistance = kEarthRadiusInMeters * M_PI;
   bool maxInclusive = true;
 
   // parameters to calculate the coverage
@@ -96,6 +97,8 @@ class NearQuery {
   void reset();
 
   /// Call only when current scan intervals contain no more results
+  /// will internall track already returned intervals and not return
+  /// new ones without calling updateBounds
   std::vector<GeoCover::Interval> intervals();
 
   /// @brief buffer and sort results
@@ -112,14 +115,20 @@ class NearQuery {
   // for deduplication
   std::unordered_map<TRI_voc_rid_t, double> _seen;
 
-  // Amount to increment by (in length on unit sphere)
+  // max distance on the unit spherer or M_PI
+  double _maxBounds = M_PI;
+
+  // Amount to increment by (in radians on unit sphere)
   double _boundDelta = 0.1;
-  // inner limit (in length on unit sphere)
+
+  // inner limit (in radians on unit sphere)
+  double _lastInnerBound = 0.0;
+
+  // inner limit (in radians on unit sphere)
   double _innerBound = 0.0;
-  // outer limit (in length on unit sphere)
+
+  // outer limit (in radians on unit sphere)
   double _outerBound = 0.0;
-  // max outer limit or > 1.0
-  double _maxBounds = 1.0;
 
   size_t _numFoundLastInterval = 0;
   /// Track the already scanned region
