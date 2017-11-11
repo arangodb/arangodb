@@ -82,9 +82,9 @@ struct TraverserOptions : public graph::BaseOptions {
 
   UniquenessLevel uniqueEdges;
 
-  explicit TraverserOptions(transaction::Methods* trx);
+  explicit TraverserOptions(aql::Query* query);
 
-  TraverserOptions(transaction::Methods* trx, arangodb::velocypack::Slice const& definition);
+  TraverserOptions(aql::Query* query, arangodb::velocypack::Slice const& definition);
 
   TraverserOptions(arangodb::aql::Query*, arangodb::velocypack::Slice,
                    arangodb::velocypack::Slice);

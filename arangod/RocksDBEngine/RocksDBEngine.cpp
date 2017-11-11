@@ -956,10 +956,8 @@ void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase,
   builder.add("deleted", VPackValue(true));
   builder.close();
 
-  auto log = RocksDBLogValue::DatabaseDrop(vocbase->id(),
-                                           StringRef(vocbase->name()));
-  Result res = writeDatabaseMarker(vocbase->id(), builder.slice(),
-                                           std::move(log));
+  auto log = RocksDBLogValue::DatabaseDrop(vocbase->id());
+  Result res = writeDatabaseMarker(vocbase->id(), builder.slice(), std::move(log));
   status = res.errorNumber();
 }
 
@@ -1158,7 +1156,7 @@ arangodb::Result RocksDBEngine::renameCollection(
   int res = writeCreateCollectionMarker(
       vocbase->id(), collection->cid(), builder.slice(),
       RocksDBLogValue::CollectionRename(vocbase->id(), collection->cid(),
-                                        StringRef(collection->name())));
+                                        StringRef(oldName)));
   return arangodb::Result(res);
 }
 

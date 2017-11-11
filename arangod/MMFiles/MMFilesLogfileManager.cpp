@@ -943,36 +943,6 @@ void MMFilesLogfileManager::relinkLogfile(MMFilesWalLogfile* logfile) {
   _logfiles.emplace(id, logfile);
 }
 
-// remove a logfile from the inventory only
-bool MMFilesLogfileManager::unlinkLogfile(MMFilesWalLogfile* logfile) {
-  MMFilesWalLogfile::IdType const id = logfile->id();
-
-  WRITE_LOCKER(writeLocker, _logfilesLock);
-  auto it = _logfiles.find(id);
-
-  if (it == _logfiles.end()) {
-    return false;
-  }
-
-  _logfiles.erase(it);
-
-  return true;
-}
-
-// remove a logfile from the inventory only
-MMFilesWalLogfile* MMFilesLogfileManager::unlinkLogfile(MMFilesWalLogfile::IdType id) {
-  WRITE_LOCKER(writeLocker, _logfilesLock);
-  auto it = _logfiles.find(id);
-
-  if (it == _logfiles.end()) {
-    return nullptr;
-  }
-
-  _logfiles.erase(it);
-
-  return (*it).second;
-}
-
 // removes logfiles that are allowed to be removed
 bool MMFilesLogfileManager::removeLogfiles() {
   int iterations = 0;

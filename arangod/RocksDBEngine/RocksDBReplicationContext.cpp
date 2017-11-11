@@ -543,12 +543,12 @@ void RocksDBReplicationContext::release() {
 }
 
 void RocksDBReplicationContext::releaseDumpingResources() {
+  if (_iter != nullptr) {
+    _iter.reset();
+  }
   if (_trx != nullptr) {
     _trx->abort();
     _trx.reset();
-  }
-  if (_iter != nullptr) {
-    _iter.reset();
   }
   _collection = nullptr;
   _guard.reset();
