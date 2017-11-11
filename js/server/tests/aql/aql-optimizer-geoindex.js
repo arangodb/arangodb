@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertFalse, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE, print */
+/*global assertEqual, assertFalse, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
 
 // execute with:
 // ./scripts/unittest shell_server_aql --test js/server/tests/aql/aql-optimizer-geoindex.js
@@ -41,7 +41,6 @@ var findReferencedNodes = helper.findReferencedNodes;
 var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
 var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
 var db = require('internal').db;
-var debug = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -93,11 +92,13 @@ function optimizerRuleTestSuite() {
   };
   var hasIndexNode = function (plan,query) {
     var rn = findExecutionNodes(plan,"IndexNode");
-    assertEqual(rn.length, 1, query.string + "Has IndexNode");
-    return;
+    assertEqual(rn.length, 1, query.string + " Has IndexNode");
+    assertEqual(rn[0].indexes.length, 1);
+    var indexType = rn[0].indexes[0].type;
+    assertTrue(indexType === "geo1" || indexType === "geo2");
   };
   var isNodeType = function(node, type, query) {
-    assertEqual(node.type, type, query.string + " check whether this node is of type "+type);
+    assertEqual(node.type, type, query.string + " check whether this node is of type " + type);
   };
 
   var geodistance = function(latitude1, longitude1, latitude2, longitude2) {
@@ -209,9 +210,6 @@ function optimizerRuleTestSuite() {
         ];
 
         queries.forEach(function(query) {
-          if(debug) {
-            db._explain(query.string);
-          }
           var result = AQL_EXPLAIN(query.string);
 
           //sort nodes
@@ -259,10 +257,6 @@ function optimizerRuleTestSuite() {
         ];
 
         queries.forEach(function(query, qindex) {
-          if (debug) {
-            print(qindex, ": ", query, " ", expected[qindex]);
-            db._explain(query[0]);
-          }
           var result = AQL_EXECUTE(query[0]);
           expect(expected[qindex].length).to.be.equal(result.json.length);
           var pairs = result.json.map(function(res){
@@ -280,7 +274,6 @@ function optimizerRuleTestSuite() {
         var query = "FOR d IN " + colName + " SORT distance(d.lat, d.lon, 0, 0) RETURN distance(d.lat, d.lon, 0, 0)";
         var result = AQL_EXECUTE(query);
         var distances = result.json.map(d => { return parseFloat(d.toFixed(5)); });
-        //internal.print(distances);
         old=0;
         distances.forEach(d => { assertTrue( d >= old); old = d; });
       }

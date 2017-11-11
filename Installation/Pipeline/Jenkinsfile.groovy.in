@@ -872,6 +872,7 @@ def getTests(os, edition, maintainer, mode, engine) {
         ["arangosh", "arangosh", "--skipShebang true"],
         ["authentication", "authentication", ""],
         ["authentication_parameters", "authentication_parameters", ""],
+        ["authentication_server", "authentication_server", ""],
         ["config", "config" , ""],
         ["dump", "dump" , ""],
         ["dump_authentication", "dump_authentication" , ""],
