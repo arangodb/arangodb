@@ -2047,24 +2047,33 @@ std::string TRI_GetTempPath() {
 
     system += TRI_ApplicationName + "_XXXXXX";
 
-    // copy to a character array
-    SystemTempPath.reset(new char[system.size() + 1]);
-    path = SystemTempPath.get();
-    TRI_CopyString(path, system.c_str(), system.size());
-
-    // fill template
-    int res = mkDTemp(SystemTempPath.get(), system.size() + 1);
-
-    if (res != 0) {
-      system = TRI_DIR_SEPARATOR_STR "tmp" TRI_DIR_SEPARATOR_STR "arangodb";
+    int tries = 0;
+    while (true) {
+      // copy to a character array
       SystemTempPath.reset(new char[system.size() + 1]);
       path = SystemTempPath.get();
       TRI_CopyString(path, system.c_str(), system.size());
-      if (TRI_MKDIR(path, 0700) != 0) {
+
+      // fill template
+      int res = mkDTemp(SystemTempPath.get(), system.size() + 1);
+
+      if (res == TRI_ERROR_NO_ERROR) {
+        break;
+      }
+      
+      // directory could not be created
+      // this may be a race, a permissions problem or something else
+      if (++tries >= 10) {
         LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "failed to create a temporary directory - giving up";
         FATAL_ERROR_ABORT();
       }
+      
+      // sleep for a random amout of time and try again soon
+      // with this, we try to avoid races between multiple processes
+      // that try to create temp directories at the same time
+      std::this_thread::sleep_for(std::chrono::milliseconds(5 + RandomGenerator::interval(uint64_t(20))));
     }
+    
     atexit(SystemTempPathCleaner);
   }
 
