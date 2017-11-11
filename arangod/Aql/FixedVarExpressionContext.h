@@ -48,7 +48,7 @@ class FixedVarExpressionContext final : public ExpressionContext {
 
   void clearVariableValues();
 
-  void setVariableValue(Variable const*, AqlValue);
+  void setVariableValue(Variable const*, AqlValue const&);
 
   void serializeAllVariables(transaction::Methods*,
                              arangodb::velocypack::Builder&) const;
