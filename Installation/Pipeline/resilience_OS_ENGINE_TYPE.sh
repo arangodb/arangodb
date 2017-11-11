@@ -36,7 +36,7 @@ test -d resilience || exit 1
     ln -s ../etc .
     ln -s ../js .
 
-    npm install
+    npm install > install.log
 
     if [ "$foxx" == "foxx" ]; then
         TESTS=$(find "test/foxx")
