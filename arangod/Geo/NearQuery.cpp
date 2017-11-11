@@ -39,26 +39,29 @@
 using namespace arangodb;
 using namespace arangodb::geo;
 
-NearQuery::NearQuery(NearQueryParams const& params)
-    : _params(params),
-      _centroid(S2LatLng::FromDegrees(params.centroid.latitude,
-                                      params.centroid.longitude)
-                    .ToPoint()) {
-  /*S1Angle angle = S1Angle::Radians(params.maxDistance / kEarthRadiusInMeters);
-  S2LatLng pos = S2LatLng::FromDegrees(params.latitude, params.longitude);
-  _fullScanBounds = S2Cap::FromAxisAngle(pos.ToPoint(), angle);*/
-  params.cover.configureS2RegionCoverer(&_coverer);
+NearQuery::NearQuery(NearQueryParams const& qp)
+    : _params(qp),
+      _centroid(S2LatLng::FromDegrees(qp.centroid.latitude,
+                                      qp.centroid.longitude).ToPoint()),
+      _maxBounds(std::min(qp.maxDistance / kEarthRadiusInMeters, M_PI)) {
 
+  qp.cover.configureS2RegionCoverer(&_coverer);
   reset();
 }
 
 void NearQuery::reset() {
-  _maxBounds = std::min(_params.maxDistance / kEarthRadiusInMeters, M_PI);
-
-  int level = std::max(1, _params.cover.bestIndexedLevel - 2);
-  level = std::min(level, S2::kMaxCellLevel - 4);
-  _boundDelta = S2::kAvgEdge.GetValue(level);  // in radians ?
-  TRI_ASSERT(_boundDelta > 0);
+  if (!_seen.empty() || !_buffer.empty()) {
+    _seen.clear();
+    GeoDocumentsQueue emp;
+    _buffer.swap(emp);
+  }
+  
+  if (_boundDelta <= 0) { // do not reset everytime
+    int level = std::max(1,  _params.cover.bestIndexedLevel - 1);
+    level = std::min(level, S2::kMaxCellLevel - 4);
+    _boundDelta = S2::kAvgEdge.GetValue(level);  // in radians ?
+    TRI_ASSERT(_boundDelta * kEarthRadiusInMeters > 250);
+  }
 
   _lastInnerBound = 0.0;  // used for fast out-of-bounds rejections
   _innerBound = std::max(0.0, _params.minDistance / kEarthRadiusInMeters);
@@ -72,13 +75,16 @@ std::vector<GeoCover::Interval> NearQuery::intervals() {
   TRI_ASSERT(_innerBound != _outerBound && _innerBound != _maxBounds);
 
   if (_lastInnerBound > 0) {
-    if (_numFoundLastInterval < 256) {
+    if (_numFoundLastInterval == 0) {
+      _boundDelta *= 4;
+    } else if (_numFoundLastInterval < 256) {
       _boundDelta *= 2;
     } else if (_numFoundLastInterval > 512) {
       _boundDelta /= 2;
     }
     _numFoundLastInterval = 0;
   }
+  //LOG_TOPIC(ERR, Logger::FIXME) << "delta: " << _boundDelta;
 
   std::vector<S2CellId> cover;
   if (0.0 < _innerBound && _outerBound < _maxBounds) {
@@ -168,9 +174,21 @@ void NearQuery::reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center) {
   }
 }
 
-bool NearQuery::NearQuery::done() const {
+void NearQuery::estimateDensity(geo::Coordinate const& found) {
+  S2LatLng cords = S2LatLng::FromDegrees(found.latitude, found.longitude);
+  _boundDelta = _centroid.Angle(cords.ToPoint()) * 2;
+  LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Estimating density with "
+    << _boundDelta * kEarthRadiusInMeters << "m";
+}
+
+bool NearQuery::NearQuery::isDone() const {
   TRI_ASSERT(_innerBound >= 0 && _innerBound <= _outerBound);
   TRI_ASSERT(_outerBound <= _maxBounds && _maxBounds <= M_PI);
   return _buffer.empty() && _innerBound == _outerBound &&
          _outerBound == _maxBounds;
+}
+
+void NearQuery::invalidate() {
+  _innerBound = _maxBounds;
+  _outerBound = _maxBounds;
 }

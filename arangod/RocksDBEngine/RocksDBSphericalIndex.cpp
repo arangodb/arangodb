@@ -58,6 +58,7 @@ class RocksDBSphericalIndexNearIterator final : public IndexIterator {
     _iterator = mthds->NewIterator(options, _index->columnFamily());
     TRI_ASSERT(_index->columnFamily()->GetID() ==
                RocksDBColumnFamily::geo()->GetID());
+    estimateDensity();
   }
 
   ~RocksDBSphericalIndexNearIterator() {}
@@ -65,29 +66,31 @@ class RocksDBSphericalIndexNearIterator final : public IndexIterator {
   char const* typeName() const override { return "geospatial-index-iterator"; }
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
-    if (_nearQuery.done()) {
+    if (_nearQuery.isDone()) {
       // we already know that no further results will be returned by the index
       TRI_ASSERT(!_nearQuery.hasNearest());
       return false;
     }
 
-    while (limit > 0 && !_nearQuery.done()) {
+    while (limit > 0 && !_nearQuery.isDone()) {
       while (limit > 0 && _nearQuery.hasNearest()) {
         cb(LocalDocumentId(_nearQuery.nearest().rid));
         _nearQuery.popNearest();
         limit--;
       }
       // need to fetch more geo results
-      if (limit > 0 && !_nearQuery.done()) {
+      if (limit > 0 && !_nearQuery.isDone()) {
         TRI_ASSERT(!_nearQuery.hasNearest());
         performScan();
       }
     }
 
-    return !_nearQuery.done();
+    return !_nearQuery.isDone();
   }
 
-  void reset() override { _nearQuery.reset(); }
+  void reset() override {
+    _nearQuery.reset();
+  }
 
  private:
   // we need to get intervals representing areas in a ring (annulus)
@@ -129,9 +132,30 @@ class RocksDBSphericalIndexNearIterator final : public IndexIterator {
       }
     }
   }
-
+  
+  /// find the first indexed entry to estimate the # of entries
+  /// around our target coordinates
+  void estimateDensity() {
+    S2CellId cell = S2CellId::FromPoint(_nearQuery.centroid());
+    
+    RocksDBKeyLeaser key(_trx);
+    key->constructSphericalIndexValue(_index->objectId(), cell.id(), 0);
+    _iterator->Seek(key->string());
+    if (!_iterator->Valid()) {
+      _iterator->SeekForPrev(key->string());
+    }
+    if (_iterator->Valid()) {
+      geo::Coordinate first = RocksDBValue::centroid(_iterator->value());
+      _nearQuery.estimateDensity(first);
+    } else {
+      LOG_TOPIC(INFO, Logger::ROCKSDB) << "Apparently the spherical index is empty";
+      _nearQuery.invalidate();
+    }
+  }
+ 
+private:
+  
   std::unique_ptr<rocksdb::Iterator> _iterator;
-
   RocksDBSphericalIndex const* _index;
   geo::NearQuery _nearQuery;
 };

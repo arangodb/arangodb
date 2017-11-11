@@ -89,8 +89,19 @@ class NearQuery {
   NearQuery(NearQueryParams const& params);
 
  public:
+  
+  /// @brief get cell covering target coordinate (at max level)
+  S2Point centroid() const {
+    return _centroid;
+  }
+  
+  /// @brief has buffered results
   bool hasNearest() const { return !_buffer.empty(); }
+  
+  /// @brief closest buffered result
   GeoDocument const& nearest() const { return _buffer.top(); }
+  
+  /// remove closest buffered result
   void popNearest() { _buffer.pop(); }
 
   /// @brief reset query to inital state
@@ -103,23 +114,28 @@ class NearQuery {
 
   /// @brief buffer and sort results
   void reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center);
+  
+  /// @brief aid density estimation by reporting a result close
+  /// to the target coordinates
+  void estimateDensity(geo::Coordinate const& found);
 
-  bool done() const;
+  /// @brief all intervals are covered, no more buffered results
+  bool isDone() const;
+  
+  /// @brief make isDone return true
+  void invalidate();
 
  private:
   geo::NearQueryParams const _params;
+  
+  // target from which distances are measured
   S2Point const _centroid;
 
-  /// buffer of found documents
-  GeoDocumentsQueue _buffer;
-  // for deduplication
-  std::unordered_map<TRI_voc_rid_t, double> _seen;
-
   // max distance on the unit spherer or M_PI
-  double _maxBounds = M_PI;
+  double const _maxBounds = M_PI;
 
   // Amount to increment by (in radians on unit sphere)
-  double _boundDelta = 0.1;
+  double _boundDelta = 0.0;
 
   // inner limit (in radians on unit sphere)
   double _lastInnerBound = 0.0;
@@ -130,7 +146,15 @@ class NearQuery {
   // outer limit (in radians on unit sphere)
   double _outerBound = 0.0;
 
+  // for adjusting _boundDelta on the fly
   size_t _numFoundLastInterval = 0;
+  
+  /// buffer of found documents
+  GeoDocumentsQueue _buffer;
+  
+  // for deduplication of results
+  std::unordered_map<TRI_voc_rid_t, double> _seen;
+  
   /// Track the already scanned region
   S2CellUnion _scannedCells;
   /// full area to scan
