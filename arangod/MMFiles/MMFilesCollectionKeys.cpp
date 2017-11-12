@@ -43,8 +43,6 @@
 
 using namespace arangodb;
 
-static constexpr size_t maxChunkSize = 8 * 1024 * 1024; // 8 MB maximum size per documents transfer
-
 MMFilesCollectionKeys::MMFilesCollectionKeys(TRI_vocbase_t* vocbase, std::string const& name,
                                              TRI_voc_tick_t blockerId, double ttl)
     : CollectionKeys(vocbase, name, ttl),
@@ -192,7 +190,7 @@ void MMFilesCollectionKeys::dumpKeys(VPackBuilder& result, size_t chunk,
 ////////////////////////////////////////////////////////////////////////////////
 
 void MMFilesCollectionKeys::dumpDocs(arangodb::velocypack::Builder& result, size_t chunk,
-                                     size_t chunkSize, size_t offsetInChunk, 
+                                     size_t chunkSize, size_t offsetInChunk, size_t maxChunkSize, 
                                      VPackSlice const& ids) const {
   if (!ids.isArray()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);

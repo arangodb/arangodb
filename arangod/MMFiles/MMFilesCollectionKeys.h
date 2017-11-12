@@ -80,7 +80,7 @@ class MMFilesCollectionKeys final : public CollectionKeys {
   //////////////////////////////////////////////////////////////////////////////
 
   void dumpDocs(arangodb::velocypack::Builder& result, size_t chunk, size_t chunkSize,
-                size_t offsetInChunk, arangodb::velocypack::Slice const& ids) const override;
+                size_t offsetInChunk, size_t maxChunkSize, arangodb::velocypack::Slice const& ids) const override;
 
  private:
   std::unique_ptr<arangodb::CollectionGuard> _guard;

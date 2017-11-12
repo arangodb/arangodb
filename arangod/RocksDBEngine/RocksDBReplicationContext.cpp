@@ -50,8 +50,6 @@ using namespace arangodb::velocypack;
 
 double const RocksDBReplicationContext::DefaultTTL = 300.0; // seconds
 
-static constexpr size_t maxChunkSize = 8 * 1024 * 1024; // 8 MB maximum size per documents transfer
-
 RocksDBReplicationContext::RocksDBReplicationContext()
     : RocksDBReplicationContext(DefaultTTL) {}
 
@@ -416,7 +414,7 @@ arangodb::Result RocksDBReplicationContext::dumpKeys(
 /// dump keys and document
 arangodb::Result RocksDBReplicationContext::dumpDocuments(
     VPackBuilder& b, size_t chunk, size_t chunkSize, size_t offsetInChunk,
-    std::string const& lowKey, VPackSlice const& ids) {
+    size_t maxChunkSize, std::string const& lowKey, VPackSlice const& ids) {
   Result rv;
 
   TRI_ASSERT(_trx);
