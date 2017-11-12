@@ -627,7 +627,15 @@ Result TailingSyncer::applyLogMarker(VPackSlice const& slice,
   TRI_replication_operation_e type = (TRI_replication_operation_e)typeValue;
   if (type == REPLICATION_MARKER_DOCUMENT ||
       type == REPLICATION_MARKER_REMOVE) {
-    return processDocument(type, slice);
+    try {
+      return processDocument(type, slice);
+    } catch (basics::Exception const& ex) {
+      return Result(ex.code(), ex.what());
+    } catch (std::exception const& ex) {
+      return Result(TRI_ERROR_INTERNAL, ex.what());
+    } catch (...) {
+      return Result(TRI_ERROR_INTERNAL, "unknown exception in processDocument");
+    }
   }
 
   else if (type == REPLICATION_TRANSACTION_START) {

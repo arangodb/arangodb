@@ -28,6 +28,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Result.h"
+#include "Basics/StaticStrings.h"
 
 #include <rocksdb/status.h>
 #include <velocypack/Buffer.h>
@@ -35,14 +36,18 @@
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
 
+#include <string>
+
 namespace arangodb {
 namespace rocksutils {
+
 
 enum StatusHint { none, document, collection, view, index, database, wal };
 
 arangodb::Result convertStatus(rocksdb::Status const&,
-                               StatusHint hint = StatusHint::none);
-
+                               StatusHint hint = StatusHint::none,
+                               std::string const& prefix  = StaticStrings::Empty,
+                               std::string const& postfix = StaticStrings::Empty);
 std::pair<VPackSlice, std::unique_ptr<VPackBuffer<uint8_t>>> stripObjectIds(
     VPackSlice const& inputSlice, bool checkBeforeCopy = true);
 

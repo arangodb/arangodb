@@ -450,7 +450,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
     if (!isMultiple) {
       // loop over the complete block. Well it is one element only
       for (size_t i = 0; i < n; ++i) {
-        AqlValue a = res->getValue(i, registerId);
+        AqlValue const& a = res->getValueReference(i, registerId);
 
         // only copy 1st row of registers inherited from previous frame(s)
         inheritRegisters(res, result.get(), i, dstRow);
@@ -487,7 +487,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
       babyBuilder.clear();
       babyBuilder.openArray();
       for (size_t i = 0; i < n; ++i) {
-        AqlValue a = res->getValue(i, registerId);
+        AqlValue const& a = res->getValueReference(i, registerId);
 
         // only copy 1st row of registers inherited from previous frame(s)
         inheritRegisters(res, result.get(), i, dstRow);
@@ -511,7 +511,7 @@ AqlItemBlock* InsertBlock::work(std::vector<AqlItemBlock*>& blocks) {
           TRI_ASSERT(resultList.isArray());
           auto iter = VPackArrayIterator(resultList);
           for (size_t i = 0; i < n; ++i) {
-            AqlValue a = res->getValue(i, registerId);
+            AqlValue const& a = res->getValueReference(i, registerId);
             if (!ep->_options.consultAqlWriteFilter ||
                 !_collection->getCollection()->skipForAqlWrite(a.slice(), "")) {
               TRI_ASSERT(iter.valid());
