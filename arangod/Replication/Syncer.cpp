@@ -511,7 +511,7 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
 
   VPackBuilder merged = VPackCollection::merge(slice, s.slice(),
                                                /*mergeValues*/true, /*nullMeansRemove*/true);
-
+  
   try {
     col = vocbase->createCollection(merged.slice());
   } catch (basics::Exception const& ex) {
