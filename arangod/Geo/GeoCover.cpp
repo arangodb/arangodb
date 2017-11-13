@@ -52,28 +52,38 @@ Result GeoCover::generateCoverJson(S2RegionCoverer* coverer, VPackSlice const& d
   GeoJsonParser::GeoJSONType t = parser.parseGeoJSONType(data);
   switch (t) {
     case GeoJsonParser::GEOJSON_POINT: {
-      S2LatLng ll = parser.parseLatLng(data);
-      cells.push_back(S2CellId::FromLatLng(ll));
-      centroid.latitude = ll.lat().degrees();
-      centroid.longitude = ll.lng().degrees();
+      S2LatLng ll;
+      Result res = parser.parsePoint(data, ll);
+      if (res.ok()) {
+        cells.push_back(S2CellId::FromLatLng(ll));
+        centroid.latitude = ll.lat().degrees();
+        centroid.longitude = ll.lng().degrees();
+      }
+      return res;
     }
 
     case GeoJsonParser::GEOJSON_LINESTRING: {
       S2Polyline line;
       Result res = parser.parseLinestring(data, line);
-      coverer->GetCovering(line, &cells);
-      S2LatLng ll(line.GetCentroid());
-      centroid.latitude = ll.lat().degrees();
-      centroid.longitude = ll.lng().degrees();
+      if (res.ok()) {
+        coverer->GetCovering(line, &cells);
+        S2LatLng ll(line.GetCentroid());
+        centroid.latitude = ll.lat().degrees();
+        centroid.longitude = ll.lng().degrees();
+      }
+      return res;
     }
 
     case GeoJsonParser::GEOJSON_POLYGON: {
       S2Polygon poly;
       Result res = parser.parsePolygon(data, poly);
-      coverer->GetCovering(poly, &cells);
-      S2LatLng ll(poly.GetCentroid());
-      centroid.latitude = ll.lat().degrees();
-      centroid.longitude = ll.lng().degrees();
+      if (res.ok()) {
+        coverer->GetCovering(poly, &cells);
+        S2LatLng ll(poly.GetCentroid());
+        centroid.latitude = ll.lat().degrees();
+        centroid.longitude = ll.lng().degrees();
+      }
+      return res;
     }
     case GeoJsonParser::GEOJSON_MULTI_POINT:
     case GeoJsonParser::GEOJSON_MULTI_LINESTRING:
@@ -83,7 +93,7 @@ Result GeoCover::generateCoverJson(S2RegionCoverer* coverer, VPackSlice const& d
       return TRI_ERROR_NOT_IMPLEMENTED;  // TODO
     }
   }
-  return TRI_ERROR_NO_ERROR;
+  return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
 Result GeoCover::generateCoverLatLng(VPackSlice const& data, bool isGeoJson,
@@ -197,31 +207,4 @@ void GeoCover::scanIntervals(int worstIndexedLevel,
     }*/
   }
 #endif
-}
-
-bool GeoCover::isGeoJsonWithArea(VPackSlice const& data) {
-  if (data.isObject()) {  // no geojson
-    return false;
-  }
-
-  GeoJsonParser parser;
-  GeoJsonParser::GeoJSONType t = parser.parseGeoJSONType(data);
-  switch (t) {
-    case GeoJsonParser::GEOJSON_POINT:
-    case GeoJsonParser::GEOJSON_LINESTRING:
-    case GeoJsonParser::GEOJSON_MULTI_POINT:
-    case GeoJsonParser::GEOJSON_MULTI_LINESTRING:
-      return false;
-
-    case GeoJsonParser::GEOJSON_POLYGON:
-    case GeoJsonParser::GEOJSON_MULTI_POLYGON: {
-      return true;  // TODO we need to perform actual checking
-    }
-
-    case GeoJsonParser::GEOJSON_GEOMETRY_COLLECTION:
-    case GeoJsonParser::GEOJSON_UNKNOWN: {
-      return false;
-    }
-  }
-  return false;
 }

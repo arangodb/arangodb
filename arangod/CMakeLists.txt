@@ -226,7 +226,7 @@ SET(ARANGOD_SOURCES
   Geo/GeoCover.cpp
   Geo/GeoJsonParser.cpp
   Geo/GeoParams.cpp
-  Geo/NearQuery.cpp
+  Geo/Near.cpp
   Graph/AttributeWeightShortestPathFinder.cpp
   Graph/BaseOptions.cpp
   Graph/BreadthFirstEnumerator.cpp

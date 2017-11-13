@@ -38,10 +38,9 @@ namespace geo {
 // Source: http://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html
 const double kEarthRadiusInMeters = (6378.137 * 1000);
 
-enum class QueryType {
-  // Specifiy a location for which a geospatial query returns the documents
-  // sorted from nearest to farthest.
-  NEAR,
+enum class FilterType {
+  // no filter, only useful on a near query
+  NONE,
   // Select documents with geospatial data that are located entirely within a
   // shape.
   // When determining inclusion, we consider the border of a shape to be part of

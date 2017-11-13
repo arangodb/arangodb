@@ -29,7 +29,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Geo/GeoCover.h"
 #include "Geo/GeoJsonParser.h"
-#include "Geo/NearQuery.h"
 #include "Indexes/IndexResult.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -40,57 +39,86 @@
 
 using namespace arangodb;
 
-// Handle near queries, possibly with a radius forming an upper bound
-class RocksDBSphericalIndexNearIterator final : public IndexIterator {
+RocksDBSphericalIndexIterator::RocksDBSphericalIndexIterator(
+    LogicalCollection* collection, transaction::Methods* trx,
+    ManagedDocumentResult* mmdr, RocksDBSphericalIndex const* index)
+    : IndexIterator(collection, trx, mmdr, index), _index(index) {
+  RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
+  rocksdb::ReadOptions options = mthds->readOptions();
+  TRI_ASSERT(options.prefix_same_as_start);
+  _iterator = mthds->NewIterator(options, _index->columnFamily());
+  TRI_ASSERT(_index->columnFamily()->GetID() ==
+             RocksDBColumnFamily::geo()->GetID());
+}
+
+class RegionIterator : public RocksDBSphericalIndexIterator {
+ public:
+  RegionIterator(LogicalCollection* collection, transaction::Methods* trx,
+                 ManagedDocumentResult* mmdr,
+                 RocksDBSphericalIndex const* index,
+                 std::unique_ptr<S2Region> region, geo::FilterType ft)
+      : RocksDBSphericalIndexIterator(collection, trx, mmdr, index),
+        _region(region.release()),
+        _filterType(ft) {}
+
+  ~RegionIterator() { delete _region; }
+
+  geo::FilterType filterType() const override { return _filterType; };
+
+  bool nextDocument(DocumentCallback const& cb, size_t limit) override {}
+
+  /// if you call this it's your own damn fault
+  bool next(LocalDocumentIdCallback const& cb, size_t limit) override {}
+
+  void reset() override {
+    _seen.clear();
+    // TODO
+  }
+
+ private:
+  S2Region* const _region;
+  geo::FilterType const _filterType;
+  std::unordered_set<TRI_voc_rid_t> _seen;
+  std::vector<geo::GeoCover::Interval> _intervals;
+};
+
+class NearIterator final : public RocksDBSphericalIndexIterator {
  public:
   /// @brief Construct an RocksDBGeoIndexIterator based on Ast Conditions
-  RocksDBSphericalIndexNearIterator(LogicalCollection* collection,
-                                    transaction::Methods* trx,
-                                    ManagedDocumentResult* mmdr,
-                                    RocksDBSphericalIndex const* index,
-                                    geo::NearQueryParams params)
-      : IndexIterator(collection, trx, mmdr, index),
-        _index(index),
-        _nearQuery(params) {
-    RocksDBMethods* mthds = RocksDBTransactionState::toMethods(trx);
-    rocksdb::ReadOptions options = mthds->readOptions();
-    TRI_ASSERT(options.prefix_same_as_start);
-    _iterator = mthds->NewIterator(options, _index->columnFamily());
-    TRI_ASSERT(_index->columnFamily()->GetID() ==
-               RocksDBColumnFamily::geo()->GetID());
+  NearIterator(LogicalCollection* collection, transaction::Methods* trx,
+               ManagedDocumentResult* mmdr, RocksDBSphericalIndex const* index,
+               geo::NearParams const& params)
+      : RocksDBSphericalIndexIterator(collection, trx, mmdr, index),
+        _near(params) {
     estimateDensity();
   }
 
-  ~RocksDBSphericalIndexNearIterator() {}
-
-  char const* typeName() const override { return "geospatial-index-iterator"; }
+  geo::FilterType filterType() const override { return _near.filterType(); }
 
   bool next(LocalDocumentIdCallback const& cb, size_t limit) override {
-    if (_nearQuery.isDone()) {
+    if (_near.isDone()) {
       // we already know that no further results will be returned by the index
-      TRI_ASSERT(!_nearQuery.hasNearest());
+      TRI_ASSERT(!_near.hasNearest());
       return false;
     }
 
-    while (limit > 0 && !_nearQuery.isDone()) {
-      while (limit > 0 && _nearQuery.hasNearest()) {
-        cb(LocalDocumentId(_nearQuery.nearest().rid));
-        _nearQuery.popNearest();
+    while (limit > 0 && !_near.isDone()) {
+      while (limit > 0 && _near.hasNearest()) {
+        cb(LocalDocumentId(_near.nearest().rid));
+        _near.popNearest();
         limit--;
       }
       // need to fetch more geo results
-      if (limit > 0 && !_nearQuery.isDone()) {
-        TRI_ASSERT(!_nearQuery.hasNearest());
+      if (limit > 0 && !_near.isDone()) {
+        TRI_ASSERT(!_near.hasNearest());
         performScan();
       }
     }
 
-    return !_nearQuery.isDone();
+    return !_near.isDone();
   }
 
-  void reset() override {
-    _nearQuery.reset();
-  }
+  void reset() override { _near.reset(); }
 
  private:
   // we need to get intervals representing areas in a ring (annulus)
@@ -98,32 +126,44 @@ class RocksDBSphericalIndexNearIterator final : public IndexIterator {
   // found results in a priority list according to their distance
   void performScan() {
     // list of sorted intervals to scan
-    std::vector<geo::GeoCover::Interval> const scan = _nearQuery.intervals();
+    std::vector<geo::GeoCover::Interval> const scan = _near.intervals();
     LOG_TOPIC(INFO, Logger::FIXME) << "# scans: " << scan.size();
 
-    for (geo::GeoCover::Interval const& it : scan) {
+    for (size_t i = 0; i < scan.size(); i++) {
+      geo::GeoCover::Interval const& it = scan[i];
       TRI_ASSERT(it.min <= it.max);
 
       // LOG_TOPIC(INFO, Logger::FIXME) << "[Seeking] " << it.min << " - " <<
-      // it.max;
+      bool seek = true;            // we might have performed a seek already
+      if (i > 0 && _iterator->Valid()) {  // we're somewhere in the index
+        // don't bother to seek if we're already past the interval
+        TRI_ASSERT(scan[i - 1].max < it.min);
+        uint64_t cellId = RocksDBKey::sphericalValue(_iterator->key());
+        if (it.max.id() < cellId) {
+          continue;  // out of range
+        } else if (it.min.id() < cellId) {
+          seek = false;  // already in range!!
+        }                // TODO next() instead of seek sometimes?
+      }
 
-      RocksDBKeyBounds bounds = RocksDBKeyBounds::SphericalIndex(
-          _index->objectId(), it.min.id(), it.max.id());
-      _iterator->Seek(bounds.start());
+      // try to avoid seeking at all cost
+      if (seek) {
+        RocksDBKeyBounds bounds = RocksDBKeyBounds::SphericalIndex(
+            _index->objectId(), it.min.id(), it.max.id());
+        _iterator->Seek(bounds.start());
+      }
 
       while (_iterator->Valid()) {
         uint64_t cellId = RocksDBKey::sphericalValue(_iterator->key());
         TRI_ASSERT(it.min.id() <= cellId);
-        if (cellId > it.max.id()) {
-          break;  // skip this interval
+        if (it.max.id() < cellId) {
+          break;  // out of range
         }
-
-        // TODO support for within / intersect combined with near
 
         TRI_voc_rid_t rid = RocksDBKey::revisionId(
             RocksDBEntryType::SphericalIndexValue, _iterator->key());
         geo::Coordinate cntrd = RocksDBValue::centroid(_iterator->value());
-        _nearQuery.reportFound(rid, cntrd);
+        _near.reportFound(rid, cntrd);
 
         // LOG_TOPIC(ERR, Logger::FIXME) << "[Found] " << S2CellId(cellId)
         //  << " | rid: " << rid << " at " << cntrd.latitude << ", " <<
@@ -132,12 +172,12 @@ class RocksDBSphericalIndexNearIterator final : public IndexIterator {
       }
     }
   }
-  
+
   /// find the first indexed entry to estimate the # of entries
   /// around our target coordinates
   void estimateDensity() {
-    S2CellId cell = S2CellId::FromPoint(_nearQuery.centroid());
-    
+    S2CellId cell = S2CellId::FromPoint(_near.centroid());
+
     RocksDBKeyLeaser key(_trx);
     key->constructSphericalIndexValue(_index->objectId(), cell.id(), 0);
     _iterator->Seek(key->string());
@@ -146,58 +186,17 @@ class RocksDBSphericalIndexNearIterator final : public IndexIterator {
     }
     if (_iterator->Valid()) {
       geo::Coordinate first = RocksDBValue::centroid(_iterator->value());
-      _nearQuery.estimateDensity(first);
+      _near.estimateDensity(first);
     } else {
-      LOG_TOPIC(INFO, Logger::ROCKSDB) << "Apparently the spherical index is empty";
-      _nearQuery.invalidate();
+      LOG_TOPIC(INFO, Logger::ROCKSDB)
+          << "Apparently the spherical index is empty";
+      _near.invalidate();
     }
   }
- 
-private:
-  
-  std::unique_ptr<rocksdb::Iterator> _iterator;
-  RocksDBSphericalIndex const* _index;
-  geo::NearQuery _nearQuery;
+
+ private:
+  geo::NearUtils _near;
 };
-
-/// @brief creates an IndexIterator for the given Condition
-IndexIterator* RocksDBSphericalIndex::iteratorForCondition(
-    transaction::Methods* trx, ManagedDocumentResult* mmdr,
-    arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, bool reverse) {
-  TRI_ASSERT(node != nullptr);
-
-  size_t numMembers = node->numMembers();
-
-  TRI_ASSERT(numMembers == 1);  // should only be an FCALL
-  auto fcall = node->getMember(0);
-  TRI_ASSERT(fcall->type == arangodb::aql::NODE_TYPE_FCALL);
-  TRI_ASSERT(fcall->numMembers() == 1);
-  auto args = fcall->getMember(0);
-
-  numMembers = args->numMembers();
-  TRI_ASSERT(numMembers >= 3);
-
-  geo::Coordinate center(/*lat*/ args->getMember(1)->getDoubleValue(),
-                         /*lon*/ args->getMember(2)->getDoubleValue());
-  geo::NearQueryParams params(center);
-  if (numMembers == 5) {
-    // WITHIN
-    params.maxDistance = args->getMember(3)->getDoubleValue();
-    params.maxInclusive = args->getMember(4)->getBoolValue();
-  }
-
-  // params.cover.worstIndexedLevel < _coverParams.worstIndexedLevel
-  // is not necessary, > would be missing entries.
-  params.cover.worstIndexedLevel = _coverParams.worstIndexedLevel;
-  if (params.cover.bestIndexedLevel > _coverParams.bestIndexedLevel) {
-    // it is unnessesary to have the level smaller
-    params.cover.bestIndexedLevel = _coverParams.bestIndexedLevel;
-  }
-
-  return new RocksDBSphericalIndexNearIterator(_collection, trx, mmdr, this,
-                                               params);
-}
 
 RocksDBSphericalIndex::RocksDBSphericalIndex(TRI_idx_iid_t iid,
                                              LogicalCollection* collection,
@@ -329,6 +328,44 @@ bool RocksDBSphericalIndex::matchesDefinition(VPackSlice const& info) const {
     }
   }
   return true;
+}
+
+/// @brief creates an IndexIterator for the given Condition
+IndexIterator* RocksDBSphericalIndex::iteratorForCondition(
+    transaction::Methods* trx, ManagedDocumentResult* mmdr,
+    arangodb::aql::AstNode const* node,
+    arangodb::aql::Variable const* reference, bool reverse) {
+  TRI_ASSERT(node != nullptr);
+
+  size_t numMembers = node->numMembers();
+
+  TRI_ASSERT(numMembers == 1);  // should only be an FCALL
+  auto fcall = node->getMember(0);
+  TRI_ASSERT(fcall->type == arangodb::aql::NODE_TYPE_FCALL);
+  TRI_ASSERT(fcall->numMembers() == 1);
+  auto args = fcall->getMember(0);
+
+  numMembers = args->numMembers();
+  TRI_ASSERT(numMembers >= 3);
+
+  geo::Coordinate center(/*lat*/ args->getMember(1)->getDoubleValue(),
+                         /*lon*/ args->getMember(2)->getDoubleValue());
+  geo::NearParams params(center);
+  if (numMembers == 5) {
+    // WITHIN
+    params.maxDistance = args->getMember(3)->getDoubleValue();
+    params.maxInclusive = args->getMember(4)->getBoolValue();
+  }
+
+  // params.cover.worstIndexedLevel < _coverParams.worstIndexedLevel
+  // is not necessary, > would be missing entries.
+  params.cover.worstIndexedLevel = _coverParams.worstIndexedLevel;
+  if (params.cover.bestIndexedLevel > _coverParams.bestIndexedLevel) {
+    // it is unnessesary to have the level smaller
+    params.cover.bestIndexedLevel = _coverParams.bestIndexedLevel;
+  }
+
+  return new NearIterator(_collection, trx, mmdr, this, params);
 }
 
 Result RocksDBSphericalIndex::parse(VPackSlice const& doc,

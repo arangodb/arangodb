@@ -37,6 +37,7 @@
 namespace arangodb {
 namespace geo {
 
+// should try to comply with https://tools.ietf.org/html/rfc7946
 class GeoJsonParser {
  public:
   GeoJsonParser() {}
@@ -53,12 +54,16 @@ class GeoJsonParser {
     GEOJSON_GEOMETRY_COLLECTION
   };
 
-  GeoJSONType parseGeoJSONType(velocypack::Slice const& geoJSON);
-  S2Point parsePoint(velocypack::Slice const& geoJSON);
-  S2LatLng parseLatLng(velocypack::Slice const& geoJSON);
-  Result parsePolygon(velocypack::Slice const& geoJSON, S2Polygon& poly);
-  Result parseLinestring(velocypack::Slice const& geoJSON, S2Polyline& ll);
-  std::vector<S2Point> parseMultiPoint(velocypack::Slice const& geoJSON);
+  GeoJSONType parseGeoJSONType(velocypack::Slice const& geoJSON) const;
+  
+  Result parseGeoJsonRegion(velocypack::Slice const& geoJSON,
+                            std::unique_ptr<S2Region>& region) const;
+  
+  Result parsePoint(velocypack::Slice const& geoJSON, S2LatLng& latLng) const;
+  Result parsePolygon(velocypack::Slice const& geoJSON, S2Polygon& poly) const;
+  Result parseLinestring(velocypack::Slice const& geoJSON, S2Polyline& ll) const;
+  
+  bool isGeoJsonWithArea(arangodb::velocypack::Slice const& geoJson);
 };
 
 }  // namespace geo

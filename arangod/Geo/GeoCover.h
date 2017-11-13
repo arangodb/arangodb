@@ -86,8 +86,6 @@ class GeoCover {
   static void scanIntervals(int worstIndexedLevel,
                             std::vector<S2CellId> const& cover,
                             std::vector<Interval>& sortedIntervals);
-
-  static bool isGeoJsonWithArea(arangodb::velocypack::Slice const& geoJson);
 };
 
 }  // namespace geo

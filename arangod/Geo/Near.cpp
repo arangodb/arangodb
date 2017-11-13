@@ -20,7 +20,7 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "NearQuery.h"
+#include "Near.h"
 #include "Basics/Common.h"
 #include "Geo/GeoCover.h"
 #include "Geo/GeoParams.h"
@@ -39,17 +39,26 @@
 using namespace arangodb;
 using namespace arangodb::geo;
 
-NearQuery::NearQuery(NearQueryParams const& qp)
+double NearParams::maxDistanceRad() const {
+  double mm = std::min(maxDistance / kEarthRadiusInMeters, M_PI);
+  if (filter != FilterType::NONE) {
+    TRI_ASSERT(region != nullptr);
+    S1Angle angle = region->GetCapBound().angle();
+    return std::min(angle.radians(), mm);
+  }
+  return mm;
+}
+
+NearUtils::NearUtils(NearParams const& qp)
     : _params(qp),
       _centroid(S2LatLng::FromDegrees(qp.centroid.latitude,
                                       qp.centroid.longitude).ToPoint()),
-      _maxBounds(std::min(qp.maxDistance / kEarthRadiusInMeters, M_PI)) {
-
+      _maxBounds(qp.maxDistanceRad()) {
   qp.cover.configureS2RegionCoverer(&_coverer);
   reset();
 }
 
-void NearQuery::reset() {
+void NearUtils::reset() {
   if (!_seen.empty() || !_buffer.empty()) {
     _seen.clear();
     GeoDocumentsQueue emp;
@@ -65,12 +74,12 @@ void NearQuery::reset() {
 
   _lastInnerBound = 0.0;  // used for fast out-of-bounds rejections
   _innerBound = std::max(0.0, _params.minDistance / kEarthRadiusInMeters);
-  _outerBound = _innerBound + _boundDelta;
+  _outerBound = std::min(_outerBound + _boundDelta, _maxBounds);
   TRI_ASSERT(_innerBound < _outerBound && _outerBound <= _maxBounds);
   _numFoundLastInterval = 0;
 }
 
-std::vector<GeoCover::Interval> NearQuery::intervals() {
+std::vector<GeoCover::Interval> NearUtils::intervals() {
   // we already scanned the entire planet, if this fails
   TRI_ASSERT(_innerBound != _outerBound && _innerBound != _maxBounds);
 
@@ -133,8 +142,12 @@ std::vector<GeoCover::Interval> NearQuery::intervals() {
     }
   }
 
-  // TODO why do I need this ?
-  /*for (int i = 0; i < lookup.num_cells(); i++) {
+  /*if (_params.region != nullptr) { // expensive rejection
+    TRI_ASSERT(_params.filter != geo::FilterType::NONE);
+    
+  }
+  
+  for (int i = 0; i < lookup.num_cells(); i++) {
     if (region->MayIntersect(S2Cell(lookup.cell_id(i)))) {
       cover.push_back(cellId);
     }
@@ -156,39 +169,49 @@ std::vector<GeoCover::Interval> NearQuery::intervals() {
   return intervals;
 }
 
-void NearQuery::reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center) {
+void NearUtils::reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center) {
   S2LatLng cords = S2LatLng::FromDegrees(center.latitude, center.longitude);
-  double rad = _centroid.Angle(cords.ToPoint());
+  S2Point pp = cords.ToPoint();
+  double rad = _centroid.Angle(pp);
+  // cheap rejections based on distance to target
   if (rad < _lastInnerBound || _maxBounds < rad ||
       (!_params.maxInclusive && rad == _maxBounds)) {
     return;
   }
-
+  
   auto const& it = _seen.find(rid);
   if (it == _seen.end()) {
-    _buffer.emplace(rid, rad);
-    _seen.emplace(rid, rad);
     _numFoundLastInterval++;        // we have to estimate scan bounds
+    _seen.emplace(rid, rad);
+    
+    if (_params.region != nullptr) { // expensive rejection
+      TRI_ASSERT(_params.filter != geo::FilterType::NONE);
+      if (!_params.region->VirtualContainsPoint(pp)) {
+        return;
+      }
+    }
+    _buffer.emplace(rid, rad);
   } else {                          // deduplication
     TRI_ASSERT(it->second == rad);  // should never change
   }
 }
 
-void NearQuery::estimateDensity(geo::Coordinate const& found) {
+void NearUtils::estimateDensity(geo::Coordinate const& found) {
   S2LatLng cords = S2LatLng::FromDegrees(found.latitude, found.longitude);
   _boundDelta = _centroid.Angle(cords.ToPoint()) * 2;
   LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Estimating density with "
     << _boundDelta * kEarthRadiusInMeters << "m";
+  _outerBound = std::min(_outerBound + _boundDelta, _maxBounds);
 }
 
-bool NearQuery::NearQuery::isDone() const {
+bool NearUtils::isDone() const {
   TRI_ASSERT(_innerBound >= 0 && _innerBound <= _outerBound);
   TRI_ASSERT(_outerBound <= _maxBounds && _maxBounds <= M_PI);
   return _buffer.empty() && _innerBound == _outerBound &&
          _outerBound == _maxBounds;
 }
 
-void NearQuery::invalidate() {
+void NearUtils::invalidate() {
   _innerBound = _maxBounds;
   _outerBound = _maxBounds;
 }

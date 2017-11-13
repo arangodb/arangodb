@@ -20,11 +20,13 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGOD_ROCKSDB_S2_GEO_INDEX_H
-#define ARANGOD_ROCKSDB_S2_GEO_INDEX_H 1
+#ifndef ARANGOD_ROCKSDB_SPHERICAL_INDEX_H
+#define ARANGOD_ROCKSDB_SPHERICAL_INDEX_H 1
 
 #include "Basics/Result.h"
+#include "Geo/GeoCover.h"
 #include "Geo/GeoParams.h"
+#include "Geo/Near.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "VocBase/voc-types.h"
@@ -32,16 +34,27 @@
 #include <geometry/s2cellid.h>
 #include <velocypack/Builder.h>
 
+class S2Region;
+
 namespace arangodb {
+class RocksDBSphericalIndex;
 
-/*
+/// Common spherical Iterator supertype
 class RocksDBSphericalIndexIterator : public IndexIterator {
+ public:
+  RocksDBSphericalIndexIterator(LogicalCollection* collection,
+                                transaction::Methods* trx,
+                                ManagedDocumentResult* mmdr,
+                                RocksDBSphericalIndex const* index);
 
-geo::QueryType queryType() const { return _queryType; }
+  char const* typeName() const override { return "geospatial-index-iterator"; }
 
-protected:
-geo::QueryType _queryType;
-};*/
+  virtual geo::FilterType filterType() const = 0;
+
+ protected:
+  RocksDBSphericalIndex const* _index;
+  std::unique_ptr<rocksdb::Iterator> _iterator;
+};
 
 class RocksDBSphericalIndex final : public arangodb::RocksDBIndex {
   friend class RocksDBSphericalIndexIterator;

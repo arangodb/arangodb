@@ -30,6 +30,7 @@
 #include <geometry/s2cap.h>
 #include <geometry/s2cellid.h>
 #include <geometry/s2cellunion.h>
+#include <geometry/s2region.h>
 #include <geometry/s2regioncoverer.h>
 #include <queue>
 #include <vector>
@@ -41,8 +42,8 @@ class Slice;
 }
 namespace geo {
 
-struct NearQueryParams {
-  NearQueryParams(geo::Coordinate center)
+struct NearParams {
+  NearParams(geo::Coordinate center)
       : centroid(center),
         cover(queryMaxCoverCells, queryWorstLevel, queryBestLevel) {}
 
@@ -50,20 +51,38 @@ struct NearQueryParams {
   Coordinate centroid;
   // Min and max distance from centroid that we're willing to search.
   double minDistance = 0.0;
-  // entire earth (halfaround in each direction)
+  
+  /// entire earth (halfaround in each direction),
+  /// may not be larger than half earth circumference or larger
+  /// than the bounding cap of the filter region (see _filter)
   double maxDistance = kEarthRadiusInMeters * M_PI;
+  /// Include result points
   bool maxInclusive = true;
 
-  // parameters to calculate the coverage
+  // parameters to calculate the cover for index
+  // lookup intervals
   RegionCoverParams cover;
+  
+  /// @brief filter to be applied on top of near
+  geo::FilterType filter = geo::FilterType::NONE;
+  
+  /// @brief used depending on _filter
+  S2Region* region = nullptr;
+  
+public:
 
+  /// depending on @{filter} and @{region} uses maxDistance or
+  /// maxDistance / kEarthRadius or a bounding circle around
+  /// the area in region
+  double maxDistanceRad() const;
+  
+  /// some defaults for queries
   static constexpr int queryWorstLevel = 2;
   static constexpr int queryBestLevel = 23;  // about 1m
   static constexpr int queryMaxCoverCells = 20;
 };
 
-/// @brief result of a geospatial index query.
-///        distance may or may not be set
+/// result of a geospatial index query. distance may or may not be set
 struct GeoDocument {
   GeoDocument(TRI_voc_rid_t doc, double rad) : rid(doc), radians(doc) {}
   /// @brief LocalDocumentId
@@ -71,22 +90,24 @@ struct GeoDocument {
   /// @brief distance from centroids on the unit sphere
   double radians;
 };
-
+  
 struct GeoDocumentCompare {
   bool operator()(GeoDocument const& a, GeoDocument const& b) {
     return a.radians < b.radians;
   }
 };
-
-/// @brief helper class to build a simple near query iterator.
-/// Main design goal is to be modular and storage engine agnostic
-class NearQuery {
+  
+/// @brief Helper class to build a simple near query iterator.
+/// Will return points sorted by distance to the target point, can
+/// also filter contains / intersect in regions (on rsesult points and
+/// search intervals). Should be storage engine agnostic
+class NearUtils {
  public:
   typedef std::priority_queue<GeoDocument, std::vector<GeoDocument>,
                               GeoDocumentCompare>
       GeoDocumentsQueue;
 
-  NearQuery(NearQueryParams const& params);
+  NearUtils(NearParams const& params);
 
  public:
   
@@ -95,13 +116,17 @@ class NearQuery {
     return _centroid;
   }
   
+  geo::FilterType filterType() const {
+    return _params.filter;
+  }
+  
   /// @brief has buffered results
   bool hasNearest() const { return !_buffer.empty(); }
   
   /// @brief closest buffered result
   GeoDocument const& nearest() const { return _buffer.top(); }
   
-  /// remove closest buffered result
+  /// @brief remove closest buffered result
   void popNearest() { _buffer.pop(); }
 
   /// @brief reset query to inital state
@@ -112,10 +137,10 @@ class NearQuery {
   /// new ones without calling updateBounds
   std::vector<GeoCover::Interval> intervals();
 
-  /// @brief buffer and sort results
+  /// buffer and sort results
   void reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center);
   
-  /// @brief aid density estimation by reporting a result close
+  /// aid density estimation by reporting a result close
   /// to the target coordinates
   void estimateDensity(geo::Coordinate const& found);
 
@@ -124,35 +149,35 @@ class NearQuery {
   
   /// @brief make isDone return true
   void invalidate();
-
- private:
-  geo::NearQueryParams const _params;
   
-  // target from which distances are measured
+ private:
+  geo::NearParams const _params;
+  
+  /// target from which distances are measured
   S2Point const _centroid;
-
-  // max distance on the unit spherer or M_PI
+  
+  /// max distance on the unit spherer or M_PI
   double const _maxBounds = M_PI;
 
-  // Amount to increment by (in radians on unit sphere)
+  /// Amount to increment by (in radians on unit sphere)
   double _boundDelta = 0.0;
 
-  // inner limit (in radians on unit sphere)
+  /// inner limit (in radians on unit sphere)
   double _lastInnerBound = 0.0;
 
-  // inner limit (in radians on unit sphere)
+  /// inner limit (in radians on unit sphere)
   double _innerBound = 0.0;
 
-  // outer limit (in radians on unit sphere)
+  /// outer limit (in radians on unit sphere)
   double _outerBound = 0.0;
 
-  // for adjusting _boundDelta on the fly
+  /// for adjusting _boundDelta on the fly
   size_t _numFoundLastInterval = 0;
   
   /// buffer of found documents
   GeoDocumentsQueue _buffer;
   
-  // for deduplication of results
+  /// for deduplication of results
   std::unordered_map<TRI_voc_rid_t, double> _seen;
   
   /// Track the already scanned region
