@@ -13,15 +13,15 @@ x-content-type-options: nosniff
 { 
   <span class="hljs-string">"result"</span> : [ 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11999"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11999"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VzmHEsC---"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11977"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11977"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V5cvUe2---"</span>, 
       <span class="hljs-string">"text"</span> : <span class="hljs-string">"this text contains word"</span> 
     }, 
     { 
-      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"12003"</span>, 
-      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/12003"</span>, 
-      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_VzmHEsC--_"</span>, 
+      <span class="hljs-string">"_key"</span> : <span class="hljs-string">"11981"</span>, 
+      <span class="hljs-string">"_id"</span> : <span class="hljs-string">"products/11981"</span>, 
+      <span class="hljs-string">"_rev"</span> : <span class="hljs-string">"_V5cvUe2--_"</span>, 
       <span class="hljs-string">"text"</span> : <span class="hljs-string">"this text also has a word"</span> 
     } 
   ], 
