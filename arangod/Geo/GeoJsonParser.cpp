@@ -285,7 +285,6 @@ Result GeoJsonParser::parsePolygon(VPackSlice const& geoJSON, S2Polygon& poly) c
   // - A linear ring is a closed LineString with four or more positions.
   // -  The first and last positions are equivalent, and they MUST contain
   //    identical values; their representation SHOULD also be identical.
-  
   std::vector<std::unique_ptr<S2Loop>> loops;
   for (VPackSlice loopPts : VPackArrayIterator(coordinates)) {
     std::vector<S2Point> vertices;
@@ -329,7 +328,8 @@ Result GeoJsonParser::parsePolygon(VPackSlice const& geoJSON, S2Polygon& poly) c
   return TRI_ERROR_NO_ERROR;
 }
 
-/// {"type": "LineString", "coordinates": [ [100.0, 0.0], [101.0, 1.0]]}
+// https://tools.ietf.org/html/rfc7946#section-3.1.4
+/// from the rfc {"type":"LineString","coordinates":[[100.0, 0.0],[101.0,1.0]]}
 Result GeoJsonParser::parseLinestring(VPackSlice const& geoJson,
                                       S2Polyline& linestring) const {
   // verify polygon values
@@ -338,6 +338,11 @@ Result GeoJsonParser::parseLinestring(VPackSlice const& geoJson,
   std::vector<S2Point> vertices;
   Result res = ParsePoints(geoJson, vertices);
   if (res.ok()) {
+    removeAdjacentDuplicates(vertices);
+    if (vertices.size() < 2 || !S2Polyline::IsValid(vertices)) {
+      return Result(TRI_ERROR_BAD_PARAMETER, "Invalid linestring, adjacent "
+                    "vertices must not be identical or antipodal.");
+    }
     linestring.Init(vertices);
     TRI_ASSERT(vertices.empty());
   }
