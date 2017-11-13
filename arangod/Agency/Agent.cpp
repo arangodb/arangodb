@@ -86,7 +86,7 @@ bool Agent::mergeConfiguration(VPackSlice const& persisted) {
 
 /// Dtor shuts down thread
 Agent::~Agent() {
-  waitForThreadsStop(true);
+  waitForThreadsStop();
   // This usually was already done called from AgencyFeature::unprepare,
   // but since this only waits for the threads to stop, it can be done
   // multiple times, and we do it just in case the Agent object was
@@ -95,7 +95,7 @@ Agent::~Agent() {
 }
 
 /// Wait until threads are terminated:
-void Agent::waitForThreadsStop(bool fatal) {
+void Agent::waitForThreadsStop() {
   // It is allowed to call this multiple times, we do so from the constructor
   // and from AgencyFeature::unprepare.
   int counter = 0;
@@ -104,14 +104,10 @@ void Agent::waitForThreadsStop(bool fatal) {
          (_inception != nullptr && _inception->isRunning())) {
     usleep(100000);
 
-    // emit warning after 15 seconds
-    if (++counter == 10 * 15) {
-      if (fatal) {
-        LOG_TOPIC(FATAL, Logger::AGENCY) << "some agency thread did not finish";
-        FATAL_ERROR_EXIT();
-      } else {
-        LOG_TOPIC(WARN, Logger::AGENCY) << "some agency thread did not finish";
-      }
+    // fail fatally after 5 mins:
+    if (++counter >= 10 * 60 * 5) {
+      LOG_TOPIC(FATAL, Logger::AGENCY) << "some agency thread did not finish";
+      FATAL_ERROR_EXIT();
     }
   }
   shutdown();  // wait for the main Agent thread to terminate
