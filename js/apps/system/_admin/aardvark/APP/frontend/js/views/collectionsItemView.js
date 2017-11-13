@@ -305,12 +305,15 @@
                 this.truncateCollection.bind(this)
               )
             );
-            buttons.push(
-              window.modalView.createDeleteButton(
-                'Load Indexes in Memory',
-                this.warumupCollection.bind(this)
-              )
-            );
+
+            if (frontendConfig.engine === 'rocksdb') {
+              buttons.push(
+                window.modalView.createDeleteButton(
+                  'Load Indexes into Memory',
+                  this.warumupCollection.bind(this)
+                )
+              );
+            }
             if (collectionIsLoaded) {
               buttons.push(
                 window.modalView.createNotificationButton(

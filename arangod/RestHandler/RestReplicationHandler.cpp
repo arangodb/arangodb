@@ -784,7 +784,7 @@ void RestReplicationHandler::handleCommandRestoreCollection() {
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
-    THROW_ARANGO_EXCEPTION(res);
+    THROW_ARANGO_EXCEPTION_MESSAGE(res, errorMsg);
   }
 
   VPackBuilder result;
@@ -1075,8 +1075,10 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
 
       return res;
     }
-  } catch (...) {
-  }
+  } catch (basics::Exception const& e) {
+    LOG_TOPIC(DEBUG, Logger::FIXME) << "processRestoreCollectionCoordinator "
+      << "could not drop collection: " << e.message();
+  } catch (...) {}
 
   // now re-create the collection
 
@@ -1154,7 +1156,7 @@ int RestReplicationHandler::processRestoreCollectionCoordinator(
     TRI_ASSERT(col != nullptr);
     
     ExecContext const* exe = ExecContext::CURRENT;
-    if (exe != nullptr && !exe->isSuperuser()) {
+    if (name[0] != '_' && exe != nullptr && !exe->isSuperuser()) {
       AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
       auth->authInfo()->updateUser(ExecContext::CURRENT->user(),
                      [&](AuthUserEntry& entry) {
@@ -1766,11 +1768,13 @@ void RestReplicationHandler::handleCommandSync() {
   auto config = ReplicationApplierConfiguration::fromVelocyPack(body, dbname);
   // will throw if invalid
   config.validate();
+  
+  double waitForSyncTimeout = VelocyPackHelper::getNumericValue(body, "waitForSyncTimeout", 5.0);
 
   // wait until all data in current logfile got synced
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   TRI_ASSERT(engine != nullptr);
-  engine->waitForSyncTimeout(5.0);
+  engine->waitForSyncTimeout(waitForSyncTimeout);
 
   TRI_ASSERT(!config._skipCreateDrop);
   std::unique_ptr<InitialSyncer> syncer;
@@ -2516,7 +2520,7 @@ int RestReplicationHandler::createCollection(VPackSlice slice,
   }
 
   ExecContext const* exe = ExecContext::CURRENT;
-  if (exe != nullptr && !exe->isSuperuser() &&
+  if (name[0] != '_' && exe != nullptr && !exe->isSuperuser() &&
       ServerState::instance()->isSingleServer()) {
     AuthenticationFeature *auth = AuthenticationFeature::INSTANCE;
     auth->authInfo()->updateUser(exe->user(), [&](AuthUserEntry& entry) {

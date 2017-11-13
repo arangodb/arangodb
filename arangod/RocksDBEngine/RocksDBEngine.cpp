@@ -965,10 +965,8 @@ void RocksDBEngine::prepareDropDatabase(TRI_vocbase_t* vocbase,
   builder.add("deleted", VPackValue(true));
   builder.close();
 
-  auto log = RocksDBLogValue::DatabaseDrop(vocbase->id(),
-                                           StringRef(vocbase->name()));
-  Result res = writeDatabaseMarker(vocbase->id(), builder.slice(),
-                                           std::move(log));
+  auto log = RocksDBLogValue::DatabaseDrop(vocbase->id());
+  Result res = writeDatabaseMarker(vocbase->id(), builder.slice(), std::move(log));
   status = res.errorNumber();
 }
 
@@ -1167,7 +1165,7 @@ arangodb::Result RocksDBEngine::renameCollection(
   int res = writeCreateCollectionMarker(
       vocbase->id(), collection->cid(), builder.slice(),
       RocksDBLogValue::CollectionRename(vocbase->id(), collection->cid(),
-                                        StringRef(collection->name())));
+                                        StringRef(oldName)));
   return arangodb::Result(res);
 }
 
@@ -1559,7 +1557,7 @@ TRI_vocbase_t* RocksDBEngine::openExistingDatabase(TRI_voc_tick_t id,
       // we found a collection that is still active
       TRI_ASSERT(!it.get("id").isNone() || !it.get("cid").isNone());
       auto uniqCol =
-          std::make_unique<arangodb::LogicalCollection>(vocbase.get(), it);
+          std::make_unique<arangodb::LogicalCollection>(vocbase.get(), it, false);
       auto collection = uniqCol.get();
       TRI_ASSERT(collection != nullptr);
       StorageEngine::registerCollection(vocbase.get(), uniqCol.get());
