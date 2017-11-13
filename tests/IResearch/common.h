@@ -40,7 +40,7 @@ class Isolate; // forward declaration
 namespace arangodb {
 namespace tests {
 
-void init();
+void init(bool withICU = false);
 v8::Isolate* v8Isolate();
 
 bool assertRules(

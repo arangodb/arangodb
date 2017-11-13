@@ -31,7 +31,7 @@
 namespace arangodb {
 namespace aql {
 
-class Variable; // forward decl
+struct Variable; // forward decl
 
 } // aql
 } // arangodb

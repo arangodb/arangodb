@@ -58,7 +58,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
-#include "tests/Basics/icu-helper.h"
 #include "3rdParty/iresearch/tests/tests_config.hpp"
 
 #include "IResearch/VelocyPackHelper.h"
@@ -150,8 +149,7 @@ struct IResearchQuerySetup {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
     arangodb::aql::AqlFunctionFeature* functions = nullptr;
 
-    arangodb::tests::init();
-    IcuInitializer::setup(ARGV0); // initialize ICU, required for Utf8Helper which is using by optimizer
+    arangodb::tests::init(true);
 
     // setup required application features
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true);

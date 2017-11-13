@@ -95,7 +95,7 @@ typedef irs::async_utils::read_write_mutex::write_mutex WriteMutex;
 std::string toString(arangodb::iresearch::IResearchView const& view) {
   std::string str(arangodb::iresearch::IResearchView::type());
   str += ":";
-  str += view.id();
+  str += std::to_string(view.id());
   return str;
 }
 
