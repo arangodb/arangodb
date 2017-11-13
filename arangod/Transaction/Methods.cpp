@@ -42,6 +42,7 @@
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -789,7 +790,9 @@ Result transaction::Methods::finish(Result const& res) {
 
 std::string transaction::Methods::name(TRI_voc_cid_t cid) const {
   auto c = trxCollection(cid);
-  TRI_ASSERT(c != nullptr);
+  if (c == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
   return c->collectionName();
 }
 
@@ -2353,6 +2356,9 @@ OperationResult transaction::Methods::truncateLocal(
                                 path, body);
         }
         size_t nrDone = 0;
+        // TODO: is TRX_FOLLOWER_TIMEOUT actually appropriate here? truncate
+        // can be a much more expensive operation than a single document
+        // insert/update/remove...
         size_t nrGood = cc->performRequests(requests, TRX_FOLLOWER_TIMEOUT,
                                             nrDone, Logger::REPLICATION, false);
         if (nrGood < followers->size()) {
@@ -2392,6 +2398,46 @@ OperationResult transaction::Methods::truncateLocal(
   }
 
   res = unlock(cid, AccessMode::Type::WRITE);
+
+  return OperationResult(res);
+}
+
+/// @brief rotate all active journals of a collection
+OperationResult transaction::Methods::rotateActiveJournal(
+    std::string const& collectionName, OperationOptions const& options) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  OperationResult result;
+
+  if (_state->isCoordinator()) {
+    result = rotateActiveJournalCoordinator(collectionName, options);
+  } else {
+    result = rotateActiveJournalLocal(collectionName, options);
+  }
+
+  return result;
+}
+
+/// @brief rotate the journal of a collection
+OperationResult transaction::Methods::rotateActiveJournalCoordinator(
+    std::string const& collectionName, OperationOptions const& options) {
+
+  return OperationResult(rotateActiveJournalOnAllDBServers(databaseName(), collectionName));
+}
+
+/// @brief rotate the journal of a collection
+OperationResult transaction::Methods::rotateActiveJournalLocal(
+    std::string const& collectionName, OperationOptions const& options) {
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+
+  LogicalCollection* collection = documentCollection(trxCollection(cid));
+
+  Result res;
+  try {
+    res.reset(collection->getPhysical()->rotateActiveJournal());
+  } catch (basics::Exception const& ex) {
+    return OperationResult(ex.code(), ex.what());
+  }
 
   return OperationResult(res);
 }

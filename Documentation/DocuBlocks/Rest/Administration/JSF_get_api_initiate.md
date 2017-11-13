@@ -5,7 +5,7 @@
 @RESTHEADER{DELETE /_admin/shutdown, Initiate shutdown sequence}
 
 @RESTDESCRIPTION
-This call initiates a clean shutdown sequence.
+This call initiates a clean shutdown sequence. Requires administrive privileges
 
 @RESTRETURNCODES
 

@@ -1,9 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Library to build up VPack documents.
-///
 /// DISCLAIMER
 ///
-/// Copyright 2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2016 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -19,49 +17,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Max Neunhoeffer
 /// @author Jan Steemann
-/// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef VELOCYPACK_VALUETYPE_H
-#define VELOCYPACK_VALUETYPE_H
+#ifndef ROCKSDB_RECOVERY_FINALIZER_H
+#define ROCKSDB_RECOVERY_FINALIZER_H 1
 
-#include <iosfwd>
-
-#include "velocypack-common.h"
+#include "ApplicationFeatures/ApplicationFeature.h"
 
 namespace arangodb {
-namespace velocypack {
+// a small glue feature that only establishes the dependencies between the RocksDBEngine
+// feature and the DatabaseFeature
+// its start method will be run after both the RocksDBEngine and the DatabaseFeature
+// have started and all databases have been established
+// it will then call the DatabaseFeature's recoveryDone() method, which will start
+// replication in all databases if nececessary
+class RocksDBRecoveryFinalizer final : public application_features::ApplicationFeature {
+ public:
+  explicit RocksDBRecoveryFinalizer(application_features::ApplicationServer* server);
 
-enum class ValueType {
-  None,    // not yet initialized
-  Illegal, // illegal value
-  Null,    // JSON null
-  Bool,
-  Array,
-  Object,
-  Double,
-  UTCDate,
-  External,
-  MinKey,
-  MaxKey,
-  Int,
-  UInt,
-  SmallInt,
-  String,
-  Binary,
-  BCD,
-  Custom
+ public:
+  void start() override final;
 };
-
-char const* valueTypeName(ValueType);
-
-ValueType valueTypeGroup(ValueType type);
-
-}  // namespace arangodb::velocypack
-}  // namespace arangodb
-
-std::ostream& operator<<(std::ostream&, arangodb::velocypack::ValueType);
+}
 
 #endif

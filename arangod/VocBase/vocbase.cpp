@@ -337,7 +337,7 @@ arangodb::LogicalCollection* TRI_vocbase_t::createCollectionWorker(
   // Try to create a new collection. This is not registered yet
 
   std::unique_ptr<arangodb::LogicalCollection> collection =
-      std::make_unique<arangodb::LogicalCollection>(this, parameters);
+      std::make_unique<arangodb::LogicalCollection>(this, parameters, false);
   TRI_ASSERT(collection != nullptr);
 
   WRITE_LOCKER(writeLocker, _collectionsLock);
@@ -580,6 +580,7 @@ int TRI_vocbase_t::dropCollectionWorker(arangodb::LogicalCollection* collection,
 
     // sleep for a while
     std::this_thread::yield();
+    usleep(10000);
   }
 
   TRI_ASSERT(writeLocker.isLocked());
@@ -1149,6 +1150,7 @@ int TRI_vocbase_t::renameCollection(arangodb::LogicalCollection* collection,
 
     // sleep for a while
     std::this_thread::yield();
+    usleep(10000);
   }
 
   TRI_ASSERT(writeLocker.isLocked());
@@ -1395,6 +1397,7 @@ int TRI_vocbase_t::dropView(std::shared_ptr<arangodb::LogicalView> view) {
 
     // sleep for a while
     std::this_thread::yield();
+    usleep(10000);
   }
 
   TRI_ASSERT(writeLocker.isLocked());
