@@ -21,7 +21,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
 #ifndef ARANGODB_BASICS_SCOPEDTIMER__H
 #define ARANGODB_BASICS_SCOPEDTIMER__H 1
 
