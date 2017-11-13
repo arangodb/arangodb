@@ -25,7 +25,6 @@
 #define ARANGOD_AQL_BLOCK_COLLECTOR_H 1
 
 #include "Basics/Common.h"
-#include "Basics/SmallVector.h"
 #include "Aql/types.h"
 
 namespace arangodb {
@@ -55,8 +54,7 @@ class BlockCollector {
 
  private:
   AqlItemBlockManager* _blockManager;
-  SmallVector<AqlItemBlock*>::allocator_type::arena_type _arena;
-  SmallVector<AqlItemBlock*> _blocks;
+  std::vector<AqlItemBlock*> _blocks;
   size_t _totalSize;
 };
 
