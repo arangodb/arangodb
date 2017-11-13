@@ -229,7 +229,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
           _callback(vocbase, _builder.slice());
           _builder.clear();
         }
-
         break;
       }
       
@@ -238,20 +237,24 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
         if (_currentDbId != 0 && _currentTrxId != 0) {
           // database (and therefore transaction) may be ignored
           TRI_ASSERT(_seenBeginTransaction && !_singleOp);
+          // document ops can ignore this collection later
           _currentCid = RocksDBLogValue::collectionId(blob);
         }
         break;
       }
       case RocksDBLogType::DocumentRemove: {
         // part of an ongoing transaction
-        if (_currentDbId != 0 && _currentTrxId != 0 && _currentCid != 0) {
+        if (_currentDbId != 0 && _currentTrxId != 0) {
           // collection may be ignored
           TRI_ASSERT(_seenBeginTransaction && !_singleOp);
-          _removeDocumentKey = RocksDBLogValue::documentKey(blob).toString();
+          if (shouldHandleCollection(_currentDbId, _currentCid)) {
+            _removeDocumentKey = RocksDBLogValue::documentKey(blob).toString();
+          }
         }
         break;
       }
       case RocksDBLogType::SingleRemove: {
+        // we can only get here if we can handle this collection
         TRI_ASSERT(!_singleOp);
         resetTransientState(); // finish ongoing trx
         _removeDocumentKey = RocksDBLogValue::documentKey(blob).toString();
@@ -365,7 +368,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
         // log type is only ever relevant, immediately after it appeared
         // we want double occurences create / drop / change collection to fail
         resetTransientState();
-      }  // if (RocksDBKey::type(key) == RocksDBEntryType::Collection)
+      } // if (RocksDBKey::type(key) == RocksDBEntryType::Collection)
 
     } else if (column_family_id == _documentsCF) {
       TRI_ASSERT((_seenBeginTransaction && !_singleOp) ||
@@ -429,7 +432,9 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
     
     if (column_family_id != _documentsCF ||
         !shouldHandleMarker(column_family_id, false, key)) {
-      _removeDocumentKey.clear();
+      if (column_family_id == _documentsCF) {
+        _removeDocumentKey.clear();
+      }
       return rocksdb::Status();
     }
     
@@ -558,8 +563,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
         dbId = RocksDBKey::databaseId(key);
         cid = RocksDBKey::collectionId(key);
         if (!isPut || dbId == 0 || cid == 0) {
-          // FIXME: I don't get why this happens, seems broken
-          // to get a key with zero entries here
+          // FIXME: seems broken to get a key with zero entries here
           return false;
         }
       } else {
