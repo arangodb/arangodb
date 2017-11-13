@@ -73,31 +73,10 @@ config_t::config_t(
     _maxAppendSize(a),
     _lock() {}
 
-config_t::config_t(config_t const& other) { *this = other; }
-
-config_t::config_t(config_t&& other)
-  : _id(std::move(other._id)),
-    _recoveryId(std::move(other._recoveryId)),
-    _agencySize(std::move(other._agencySize)),
-    _poolSize(std::move(other._poolSize)),
-    _minPing(std::move(other._minPing)),
-    _maxPing(std::move(other._maxPing)),
-    _timeoutMult(std::move(other._timeoutMult)),
-    _endpoint(std::move(other._endpoint)),
-    _pool(std::move(other._pool)),
-    _gossipPeers(std::move(other._gossipPeers)),
-    _active(std::move(other._active)),
-    _supervision(std::move(other._supervision)),
-    _supervisionTouched(std::move(other._supervisionTouched)),
-    _waitForSync(std::move(other._waitForSync)),
-    _supervisionFrequency(std::move(other._supervisionFrequency)),
-    _compactionStepSize(std::move(other._compactionStepSize)),
-    _compactionKeepSize(std::move(other._compactionKeepSize)),
-    _supervisionGracePeriod(std::move(other._supervisionGracePeriod)),
-    _cmdLineTimings(std::move(other._cmdLineTimings)),
-    _version(std::move(other._version)),
-    _startup(std::move(other._startup)),
-    _maxAppendSize(std::move(other._maxAppendSize)){}
+config_t::config_t(config_t const& other) { 
+  READ_LOCKER(readLocker, other._lock);
+  *this = other; 
+}
 
 config_t& config_t::operator=(config_t const& other) {
   // must hold the lock of other to copy _pool, _minPing, _maxPing etc.
@@ -128,6 +107,8 @@ config_t& config_t::operator=(config_t const& other) {
 }
 
 config_t& config_t::operator=(config_t&& other) {
+  READ_LOCKER(readLocker, other._lock);
+
   _id = std::move(other._id);
   _agencySize = std::move(other._agencySize);
   _poolSize = std::move(other._poolSize);
