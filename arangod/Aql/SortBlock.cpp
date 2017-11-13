@@ -126,7 +126,7 @@ void SortBlock::doSorting() {
     count = 0;
     RegisterId const nrRegs = _buffer.front()->getNrRegs();
 
-    std::unordered_map<AqlValue, AqlValue> cache;
+    std::unordered_set<AqlValue> cache;
 
     // install the rearranged values from _buffer into newbuffer
 
@@ -156,12 +156,11 @@ void SortBlock::doSorting() {
             auto it = cache.find(a);
 
             if (it != cache.end()) {
-              AqlValue const& b = it->second;
               // If one of the following throws, all is well, because
               // the new block already has either a copy or stolen
               // the AqlValue:
               _buffer[coords[count].first]->eraseValue(coords[count].second, j);
-              next->setValue(i, j, b);
+              next->setValue(i, j, (*it));
             } else {
               // We need to copy a, if it has already been stolen from
               // its original buffer, which we know by looking at the
@@ -175,7 +174,7 @@ void SortBlock::doSorting() {
                   TRI_IF_FAILURE("SortBlock::doSortingCache") {
                     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
                   }
-                  cache.emplace(a, b);
+                  cache.emplace(b);
                 } catch (...) {
                   b.destroy();
                   throw;
@@ -187,8 +186,8 @@ void SortBlock::doSorting() {
                   }
                   next->setValue(i, j, b);
                 } catch (...) {
+                  cache.erase(b);
                   b.destroy();
-                  cache.erase(a);
                   throw;
                 }
                 // It does not matter whether the following works or not,
@@ -218,7 +217,7 @@ void SortBlock::doSorting() {
 
                 // If the following does not work, we will create a
                 // few unnecessary copies, but this does not matter:
-                cache.emplace(a, a);
+                cache.emplace(a);
               }
             }
           }

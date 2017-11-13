@@ -472,7 +472,6 @@ bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
     return true;
   }
 
-  size_t i = 0;
   for (auto const& reg : _sortRegisters) {
     // Fast path if there is no attributePath:
     int cmp;
@@ -502,8 +501,6 @@ bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
     } else if (cmp == 1) {
       return !reg.ascending;
     }
-
-    i++;
   }
 
   return false;
