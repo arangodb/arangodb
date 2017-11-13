@@ -336,7 +336,7 @@ void AgencyFeature::stop() {
     // Wait until all agency threads have been shut down. Note that the
     // actual agent object is only destroyed in the destructor to allow
     // server jobs from RestAgencyHandlers to complete without incident:
-    _agent->waitForThreadsStop(false);
+    _agent->waitForThreadsStop();
   }
 
   AGENT = nullptr;

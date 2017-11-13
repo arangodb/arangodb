@@ -52,7 +52,7 @@ class Agent : public arangodb::Thread,
   ~Agent();
 
   /// @brief bring down threads, can be called multiple times.
-  void waitForThreadsStop(bool fatal);
+  void waitForThreadsStop();
 
   /// @brief Get current term
   term_t term() const;
