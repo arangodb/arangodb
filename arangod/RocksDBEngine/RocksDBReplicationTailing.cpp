@@ -115,7 +115,6 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       case RocksDBLogType::DatabaseDrop: {
         resetTransientState(); // finish ongoing trx
         _currentDbId = RocksDBLogValue::databaseId(blob);
-        // FIXME: do we have to print something?
         break;
       }
       case RocksDBLogType::CollectionRename:
@@ -203,18 +202,15 @@ class WALParser : public rocksdb::WriteBatch::Handler {
       case RocksDBLogType::BeginTransaction: {
         TRI_ASSERT(!_singleOp);
         resetTransientState(); // finish ongoing trx
-        TRI_voc_tick_t dbId = RocksDBLogValue::databaseId(blob);
-        if (shouldHandleDB(dbId)) {
-          _seenBeginTransaction = true;
-          _currentDbId = RocksDBLogValue::databaseId(blob);
-          _currentTrxId = RocksDBLogValue::transactionId(blob);
-          _builder.openObject();
-          _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
-          _builder.add("type", VPackValue(convertLogType(type)));
-          _builder.add("database", VPackValue(std::to_string(_currentDbId)));
-          _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
-          _builder.close();
-        }
+        _seenBeginTransaction = true;
+        _currentDbId = RocksDBLogValue::databaseId(blob);
+        _currentTrxId = RocksDBLogValue::transactionId(blob);
+        _builder.openObject();
+        _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
+        _builder.add("type", VPackValue(convertLogType(type)));
+        _builder.add("database", VPackValue(std::to_string(_currentDbId)));
+        _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
+        _builder.close();
         break;
       }
       case RocksDBLogType::DocumentOperationsPrologue: {
@@ -388,8 +384,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     uint64_t revId = RocksDBKey::revisionId(RocksDBEntryType::Document, key);
     _builder.openObject();
     _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
-    _builder.add(
-        "type", VPackValue(static_cast<uint64_t>(REPLICATION_MARKER_REMOVE)));
+    _builder.add("type", VPackValue(static_cast<uint64_t>(REPLICATION_MARKER_REMOVE)));
     _builder.add("database", VPackValue(std::to_string(_currentDbId)));
     _builder.add("cid", VPackValue(std::to_string(_currentCid)));
     std::string const& cname = nameFromCid(_currentCid);
@@ -424,8 +419,7 @@ class WALParser : public rocksdb::WriteBatch::Handler {
 
     _builder.openObject();
     _builder.add("tick", VPackValue(std::to_string(_currentSequence)));
-    _builder.add(
-        "type",
+    _builder.add("type",
         VPackValue(static_cast<uint64_t>(REPLICATION_TRANSACTION_COMMIT)));
     _builder.add("database", VPackValue(std::to_string(_currentDbId)));
     _builder.add("tid", VPackValue(std::to_string(_currentTrxId)));
@@ -448,7 +442,6 @@ class WALParser : public rocksdb::WriteBatch::Handler {
     _currentCid = 0;
     _removeDocumentKey.clear();
     _oldCollectionName.clear();
-    _indexSlice = VPackSlice::illegalSlice();
   }
 
   uint64_t endBatch() {
@@ -583,7 +576,6 @@ class WALParser : public rocksdb::WriteBatch::Handler {
   TRI_voc_cid_t _currentCid = 0;
   std::string _oldCollectionName;
   std::string _removeDocumentKey;
-  VPackSlice _indexSlice;
 };
 
 // iterates over WAL starting at 'from' and returns up to 'limit' documents
