@@ -295,7 +295,6 @@ void ShardDistributionReporter::getDistributionForDatabase(
     std::unordered_map<ShardID, SyncCountInfo> counters;
     std::vector<ServerID> serversToAsk;
     while (!todoSyncStateCheck.empty()) {
-      double timeleft = endtime - TRI_microtime();
       serversToAsk.clear();
       counters.clear();
       auto const col = todoSyncStateCheck.front();
@@ -304,6 +303,7 @@ void ShardDistributionReporter::getDistributionForDatabase(
       auto cic = _ci->getCollectionCurrent(dbName, col->cid_as_string());
       // Send requests
       for (auto const& s : *(allShards.get())) {
+        double timeleft = endtime - TRI_microtime();
         uint64_t requestsInFlight = 0;
         OperationID leaderOpId = 0;
         auto curServers = cic->servers(s.first);
@@ -316,16 +316,7 @@ void ShardDistributionReporter::getDistributionForDatabase(
             std::string path = "/_api/collection/" + s.first + "/count";
             auto body = std::make_shared<std::string const>();
 
-            {
-              // First Ask the leader
-              auto headers = std::make_unique<
-                  std::unordered_map<std::string, std::string>>();
-              leaderOpId = _cc->asyncRequest(
-                  "", coordId, "server:" + s.second.at(0), rest::RequestType::GET,
-                  path, body, headers, nullptr, timeleft);
-            }
-
-            // Now figure out which servers need to be asked
+           // Now figure out which servers need to be asked
             for (auto const& planned : s.second) {
               bool found = false;
               for (auto const& current : entry.followers) {
@@ -339,7 +330,17 @@ void ShardDistributionReporter::getDistributionForDatabase(
               }
             }
 
-            // Ask them
+            {
+              // First Ask the leader
+              auto headers = std::make_unique<
+                  std::unordered_map<std::string, std::string>>();
+              leaderOpId = _cc->asyncRequest(
+                  "", coordId, "server:" + s.second.at(0), rest::RequestType::GET,
+                  path, body, headers, nullptr, timeleft);
+            }
+
+ 
+            // Ask followers
             for (auto const& server : serversToAsk) {
               auto headers = std::make_unique<
                   std::unordered_map<std::string, std::string>>();
