@@ -12,6 +12,10 @@ for i in $@; do
     fi
 done
 
+if ! test -d 3rdParty/arangodb-starter; then
+    MOREOPTS="${MOREOPTS} --downloadStarter"
+fi
+
 ./Installation/Jenkins/build.sh \
     standard \
     --rpath \
@@ -20,9 +24,9 @@ done
     --buildDir build-${EP}bundle \
     --prefix "/opt/arangodb" \
     --targetDir /var/tmp/ \
-    --downloadStarter \
     --clang \
     --staticOpenSSL \
+    ${MOREOPTS} \
     $@
 
 cd ${DIR}/..
