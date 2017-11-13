@@ -28,13 +28,14 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "Basics/ArangoGlobalContext.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "tests/Basics/icu-helper.h"
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
 
 #include <unordered_set>
 
-extern char* ARGV0; // defined in main.cpp
+extern const char* ARGV0; // defined in main.cpp
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief there can be at most one ArangoGlobalConetxt instance because each
@@ -49,7 +50,7 @@ struct singleton_t {
   arangodb::V8PlatformFeature v8PlatformFeature;
 
   singleton_t()
-    : ctx(1, &ARGV0, "."),
+    : ctx(1, const_cast<char**>(&ARGV0), "."),
       v8PlatformFeature(nullptr) {
     v8PlatformFeature.start(); // required for createIsolate()
   }
@@ -64,9 +65,14 @@ static singleton_t* SINGLETON = nullptr;
 namespace arangodb {
 namespace tests {
 
-void init() {
+void init(bool withICU /*= false*/) {
   static singleton_t singleton;
   SINGLETON = &singleton;
+
+  if (withICU) {
+    // initialize ICU, required for Utf8Helper which is used by the optimizer
+    IcuInitializer::setup(ARGV0);
+  }
 }
 
 v8::Isolate* v8Isolate() {

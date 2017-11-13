@@ -45,7 +45,7 @@ class Ast; // forward declaration
 struct AstNode; // forward declaration
 class SortCondition; // forward declaration
 struct Variable; // forward declaration
-struct ExpressionContext; // forward declaration
+class ExpressionContext; // forward declaration
 
 NS_END // aql
 

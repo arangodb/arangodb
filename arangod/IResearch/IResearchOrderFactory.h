@@ -36,7 +36,7 @@ NS_END // iresearch
 NS_BEGIN(arangodb)
 NS_BEGIN(aql)
 
-struct SortCondition; // forward declaration
+class SortCondition; // forward declaration
 
 NS_END // aql
 

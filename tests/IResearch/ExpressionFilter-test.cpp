@@ -59,7 +59,6 @@
 #include "Aql/Ast.h"
 #include "Aql/Query.h"
 #include "Aql/OptimizerRulesFeature.h"
-#include "tests/Basics/icu-helper.h"
 #include "utils/utf8_path.hpp"
 #include "velocypack/Iterator.h"
 #include "IResearch/VelocyPackHelper.h"
@@ -231,8 +230,7 @@ struct TestSetup {
     arangodb::EngineSelectorFeature::ENGINE = &engine;
     arangodb::aql::AqlFunctionFeature* functions = nullptr;
 
-    arangodb::tests::init();
-    IcuInitializer::setup(ARGV0); // initialize ICU, required for Utf8Helper which is using by optimizer
+    arangodb::tests::init(true);
 
     // setup required application features
     features.emplace_back(new arangodb::ViewTypesFeature(&server), true);
@@ -907,3 +905,7 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     CHECK(irs::type_limits<irs::type_t::doc_id_t>::eof() == docs->value());
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------
