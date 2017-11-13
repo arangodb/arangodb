@@ -441,6 +441,13 @@ void MMFilesRestReplicationHandler::handleCommandLoggerFollow() {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                        "invalid response type");
       }
+      
+      /*std::string ll(TRI_BeginStringBuffer(dump._buffer),
+                       TRI_LengthStringBuffer(dump._buffer));
+      for (std::string const& str : basics::StringUtils::split(ll, '\n')) {
+        if (!str.empty()) LOG_TOPIC(WARN, Logger::FIXME) << str;
+      }*/
+      
       // transfer ownership of the buffer contents
       httpResponse->body().set(dump._buffer);
 
