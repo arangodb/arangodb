@@ -1344,7 +1344,7 @@ int truncateCollectionOnCoordinator(std::string const& dbname,
                      arangodb::rest::RequestType::PUT,
                      "/_db/" + StringUtils::urlEncode(dbname) +
                          "/_api/collection/" + p.first + "/truncate",
-                     std::shared_ptr<std::string>(), headers, nullptr, 60.0);
+                     std::shared_ptr<std::string>(), headers, nullptr, 600.0);
   }
   // Now listen to the results:
   unsigned int count;
