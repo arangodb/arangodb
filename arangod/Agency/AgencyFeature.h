@@ -45,6 +45,7 @@ class AgencyFeature : virtual public application_features::ApplicationFeature {
   void start() override final;
   void beginShutdown() override final;
   void stop() override final;
+  void unprepare() override final;
 
  private:
   bool _activated;
