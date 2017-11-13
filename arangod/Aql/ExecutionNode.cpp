@@ -1400,7 +1400,9 @@ double EnumerateViewNode::estimateCost(size_t& nrItems) const {
 }
 
 std::unique_ptr<arangodb::ViewIterator> EnumerateViewNode::iterator(
-    transaction::Methods& trx, ExpressionContext& ctx) const {
+    arangodb::transaction::Methods& trx,
+    ExpressionContext& ctx
+) const {
   return std::unique_ptr<arangodb::ViewIterator>(_view->iteratorForCondition(
     &trx,
     const_cast<ExecutionPlan*>(plan()), // FIXME `Expression` requires non-const pointer
