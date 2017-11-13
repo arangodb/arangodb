@@ -1,24 +1,40 @@
-v3.2.7 (XXXX-XX-XX)
+v3.2.7 (2017-11-14)
 -------------------
 
-* smart graphs now return a proper inventory for replication
+* fixed some undefined behavior in some internal value caches for AQL GatherNodes
+  and SortNodes, which could have led to sorted results being effectively not
+  correctly sorted.
+
+* make the replication applier for the RocksDB engine start automatically after a
+  restart of the server if the applier was configured with its `autoStart` property
+  set to `true`. previously the replication appliers were only automatically restarted
+  at server start for the MMFiles engine.
+
+* fixed arangodump batch size adaptivity in cluster mode and upped default batch size
+  for arangodump
+
+  these changes speed up arangodump in cluster context
+
+* smart graphs now return a proper inventory in response to replication inventory
+  requests
 
 * fixed issue #3618: Inconsistent behavior of OR statement with object bind parameters
 
 * only users with read/write rights on the "_system" database can now execute
-  "_admin/shutdown" as well as modify properties of the write-ahead log
-
-* increase default maximum number of V8 contexts to at least 16 if not 
-  explicitly configured otherwise. the mode for determining the actual maximum
-  value of V8 contexts is unchanged and works as follows:
+  "_admin/shutdown" as well as modify properties of the write-ahead log (WAL)
+ 
+* increase default maximum number of V8 contexts to at least 16 if not explicitly 
+  configured otherwise. 
+  the procedure for determining the actual maximum value of V8 contexts is unchanged 
+  apart from the value `16` and works as follows:
   - if explicitly set, the value of the configuration option `--javascript.v8-contexts`
     is used as the maximum number of V8 contexts
   - when the option is not set, the maximum number of V8 contexts is determined
     by the configuration option `--server.threads` if that option is set. if 
     `--server.threads` is not set, then the maximum number of V8 contexts is the
     server's reported hardware concurrency (number of processors visible
-    to the arangod process). if that would result in a maximum value of 16 in 
-    any of these two cases, then the maximum value will be increased to 16.
+    to the arangod process). if that would result in a maximum value of less than 16 
+    in any of these two cases, then the maximum value will be increased to 16.
 
 * fixed issue #3447: ArangoError 1202: AQL: NotFound: (while executing) when 
   updating collection
@@ -26,110 +42,20 @@ v3.2.7 (XXXX-XX-XX)
 * potential fix for issue #3581: Unexpected "rocksdb unique constraint 
   violated" with unique hash index
 
-* introduce `enforceReplicationFactor`: An optional parameter controlling
-  if the server should bail out during collection creation if there are not
-  enough DBServers available for the desired `replicationFactor`.
+* fixed geo index optimizer rule for geo indexes with a single (array of coordinates)
+  attribute.
 
-* fixed issue #3516: Show execution time in arangosh
-    
-  this change adds more dynamic prompt components for arangosh
-  The following components are now available for dynamic prompts, 
-  settable via the `--console.prompt` option in arangosh:
-    
-  - '%t': current time as timestamp
-  - '%p': duration of last command in seconds
-  - '%d': name of current database
-  - '%e': current endpoint
-  - '%E': current endpoint without protocol
-  - '%u': current user
-    
-  The time a command takes can be displayed easily by starting arangosh with `--console.prompt "%p> "`.
-
-* make the ArangoShell refill its collection cache when a yet-unknown collection
-  is first accessed. This fixes the following problem:
-
-      arangosh1> db._collections();  // shell1 lists all collections
-      arangosh2> db._create("test"); // shell2 now creates a new collection 'test'
-      arangosh1> db.test.insert({}); // shell1 is not aware of the collection created
-                                     // in shell2, so the insert will fail
-
-* make AQL `DISTINCT` not change the order of the results it is applied on
-
-* enable JEMalloc background thread for purging and returning unused memory
-  back to the operating system (Linux only)
-
-* incremental transfer of initial collection data now can handle partial 
-  responses for a chunk, allowing the leader/master to send smaller chunks 
-  (in terms of HTTP response size) and limit memory usage
-
-* initial creation of shards for cluster collections is now faster with
-  replicationFactor values bigger than 1. this is achieved by an optimization
-  for the case when the collection on the leader is still empty
-
-* potential fix for issue #3517: several "filesystem full" errors in logs 
-  while there's a lot of disk space
-
-* added C++ implementations for AQL function `SUBSTRING()`, `LEFT()`, `RIGHT()` and `TRIM()`
-
-* show C++ function name of call site in ArangoDB log output
-
-  This requires option `--log.line-number` to be set to *true*
-
-* UI: added word wrapping to query editor
-
-* UI: fixed wrong user attribute name validation, issue #3228
-
-* make AQL return a proper error message in case of a unique key constraint
-  violation. previously it only returned the generic "unique constraint violated"
-  error message but omitted the details about which index caused the problem.
-
-  This addresses https://stackoverflow.com/questions/46427126/arangodb-3-2-unique-constraint-violation-id-or-key
-
-* added option `--server.local-authentication`
-
-* UI: added user roles
-
-* added config option `--log.color` to toggle colorful logging to terminal
-
-* added config option `--log.thread-name` to additionally log thread names
-
-* usernames must not start with `:role:`, added new options:
-    --server.authentication-timeout
-    --ldap.roles-attribute-name
-    --ldap.roles-transformation
-    --ldap.roles-search
-    --ldap.superuser-role
-    --ldap.roles-include
-    --ldap.roles-exclude
-
-* performance improvements for full collection scans and a few other operations
-  in MMFiles engine
-
-* added `--rocksdb.encryption-key-generator` for enterprise
-
-* removed `--compat28` parameter from arangodump and replication API
-  
-  old Arango versions will no longer be supported by these tools.
-
-* increase the recommended value for `/proc/sys/vm/max_map_count` to a value
-  eight times as high as the previous recommended value. Increasing the
-  values helps to prevent an ArangoDB server from running out of memory mappings.
-
-  The raised minimum recommended value may lead to ArangoDB showing some startup
-  warnings as follows:
-
-      WARNING {memory} maximum number of memory mappings per process is 65530, which seems too low. it is recommended to set it to at least 512000
-      WARNING {memory} execute 'sudo sysctl -w "vm.max_map_count=512000"'
-
-* improved the speed of shardDistribution in cluster, by moving it to c++. It is now guaranteed
-  return after ~2 seconds even if the entire cluster is unresponsive.
-
-* enable JEMalloc background thread for purging and returning unused memory
-  back to the operating system (Linux only)
+* improved the speed of the shards overview in cluster (API endpoint /_api/cluster/shardDistribution API)
+  It is now guaranteed to return after ~2 seconds even if the entire cluster is unresponsive.
 
 * fix agency precondition check for complex objects
   this fixes issues with several CAS operations in the agency
 
+* several fixes for agency restart and shutdown
+
+* the cluster-internal representation of planned collection objects is now more 
+  lightweight than before, using less memory and not allocating any cache for indexes
+  etc.
 
 * fixed issue #3403: How to kill long running AQL queries with the browser console's
   AQL (display issue)
@@ -137,13 +63,53 @@ v3.2.7 (XXXX-XX-XX)
 * fixed issue #3549: server reading ENGINE config file fails on common standard 
   newline character
 
+* UI: fixed error notifications for collection modifications
+
+* several improvements for the truncate operation on collections:
+
+  * the timeout for the truncate operation was increased in cluster mode in
+    order to prevent too frequent "could not truncate collection" errors
+
+  * after a truncate operation, collections in MMFiles still used disk space.
+    to reclaim disk space used by truncated collection, the truncate actions 
+    in the web interface and from the ArangoShell now issue an extra WAL flush
+    command (in cluster mode, this command is also propagated to all servers).
+    the WAL flush allows all servers to write out any pending operations into the 
+    datafiles of the truncated collection. afterwards, a final journal rotate 
+    command is sent, which enables the compaction to entirely remove all datafiles 
+    and journals for the truncated collection, so that all disk space can be
+    reclaimed
+
+  * for MMFiles a special method will be called after a truncate operation so that
+    all indexes of the collection can free most of their memory. previously some
+    indexes (hash and skiplist indexes) partially kept already allocated memory 
+    in order to avoid future memory allocations
+
+  * after a truncate operation in the RocksDB engine, an additional compaction
+    will be triggered for the truncated collection. this compaction removes all
+    deletions from the key space so that follow-up scans over the collection's key
+    range do not have to filter out lots of already-removed values
+
+  These changes make truncate operations potentially more time-consuming than before,
+  but allow for memory/disk space savings afterwards.
+
+* enable JEMalloc background threads for purging and returning unused memory
+  back to the operating system (Linux only)
+
+  JEMalloc will create its background threads on demand. The number of background 
+  threads is capped by the number of CPUs or active arenas. The background threads run
+  periodically and purge unused memory pages, allowing memory to be returned to the
+  operating system.
+
+  This change will make the arangod process create several additional threads.
+  It is accompanied by an increased `TasksMax` value in the systemd service configuration
+  file for the arangodb3 service.
+
 * upgraded bundled V8 engine to bugfix version v5.7.492.77
 
-  the upgrade fixes a memory leak in upstream V8 described in 
+  this upgrade fixes a memory leak in upstream V8 described in 
   https://bugs.chromium.org/p/v8/issues/detail?id=5945 that will result in memory
   chunks only getting uncommitted but not unmapped
-
-* UI: fixed error notifications for collection modifications
 
 
 v3.2.6 (2017-10-26)
