@@ -1,4 +1,4 @@
-v3.2.7 (2017-11-14)
+v3.2.7 (2017-11-13)
 -------------------
 
 * fixed some undefined behavior in some internal value caches for AQL GatherNodes
