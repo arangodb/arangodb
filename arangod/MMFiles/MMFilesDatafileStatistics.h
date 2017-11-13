@@ -65,13 +65,13 @@ class MMFilesDatafileStatistics {
   void remove(TRI_voc_fid_t);
 
   /// @brief merge statistics for a datafile
-  void update(TRI_voc_fid_t, MMFilesDatafileStatisticsContainer const&);
+  void update(TRI_voc_fid_t, MMFilesDatafileStatisticsContainer const&, bool warn);
 
   /// @brief merge statistics for a datafile, by copying the stats from another
-  void update(TRI_voc_fid_t, TRI_voc_fid_t);
+  void update(TRI_voc_fid_t fid, TRI_voc_fid_t src, bool warn);
 
   /// @brief replace statistics for a datafile
-  void replace(TRI_voc_fid_t, MMFilesDatafileStatisticsContainer const&);
+  void replace(TRI_voc_fid_t, MMFilesDatafileStatisticsContainer const&, bool warn);
 
   /// @brief increase dead stats for a datafile, if it exists
   void increaseDead(TRI_voc_fid_t, int64_t, int64_t);
