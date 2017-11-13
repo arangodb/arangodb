@@ -242,16 +242,6 @@ TEST_CASE("IResearchQueryTestJoinVolatileBlock", "[iresearch][iresearch-query]")
   // should not recreate iterator each loop iteration in case of deterministic/independent inner loop scope
 }
 
-TEST_CASE("IResearchQueryTestJoinIsolation", "[iresearch][iresearch-query]") {
-  // populate view
-  // start query
-  // get EnumerateViewBlock
-  // EnumerateViewBlock::getSome
-  // add data to a view
-  // EnumerateViewBlock::getSome
-  // block should not return data added after query has started
-}
-
 TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
   IResearchQuerySetup s;
   UNUSED(s);

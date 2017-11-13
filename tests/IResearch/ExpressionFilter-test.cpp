@@ -72,6 +72,7 @@
 #include "analysis/token_attributes.hpp"
 #include "search/scorers.hpp"
 #include "search/score.hpp"
+#include "search/cost.hpp"
 #include "utils/type_limits.hpp"
 #include "3rdParty/iresearch/tests/tests_config.hpp"
 
@@ -543,6 +544,9 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     REQUIRE(columnValues);
     auto docs = prepared->execute(segment);
     CHECK(irs::type_limits<irs::type_t::doc_id_t>::invalid() == docs->value());
+    auto& cost = docs->attributes().get<irs::cost>();
+    REQUIRE(cost);
+    CHECK(arangodb::velocypack::ArrayIterator(testDataRoot).size() == cost->estimate());
 
     irs::bytes_ref value;
     for (auto doc : arangodb::velocypack::ArrayIterator(testDataRoot)) {
@@ -751,6 +755,9 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     auto& score = docs->attributes().get<irs::score>();
     CHECK(score);
     CHECK(!score->empty());
+    auto& cost = docs->attributes().get<irs::cost>();
+    REQUIRE(cost);
+    CHECK(arangodb::velocypack::ArrayIterator(testDataRoot).size() == cost->estimate());
 
     // set reachable filter condition
     {
@@ -856,6 +863,9 @@ TEST_CASE("IResearchExpressionFilterTest", "[iresearch][iresearch-expression-fil
     auto docs = prepared->execute(segment);
     CHECK(irs::type_limits<irs::type_t::doc_id_t>::invalid() == docs->value());
     CHECK(!docs->attributes().get<irs::score>());
+    auto& cost = docs->attributes().get<irs::cost>();
+    REQUIRE(cost);
+    CHECK(arangodb::velocypack::ArrayIterator(testDataRoot).size() == cost->estimate());
 
     // set reachable filter condition
     {
