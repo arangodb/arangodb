@@ -369,5 +369,14 @@
     exports.isEnterprise = global.SYS_IS_ENTERPRISE;
     delete global.SYS_IS_ENTERPRISE;
   }
- 
+
+  // //////////////////////////////////////////////////////////////////////////////
+  // / @brief getShardDistrbiution
+  // //////////////////////////////////////////////////////////////////////////////
+
+  if (global.SYS_CLUSTER_SHARD_DISTRIBUTION) {
+    exports.getShardDistribution = global.SYS_CLUSTER_SHARD_DISTRIBUTION;
+    delete global.SYS_CLUSTER_SHARD_DISTRIBUTION;
+  }
+
 }());
