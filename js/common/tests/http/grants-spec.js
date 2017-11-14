@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global describe, beforeEach, afterEach, it */
+/* global describe, after, afterEach, it */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -69,7 +69,7 @@ describe('Grants', function() {
     expect(JSON.parse(resp.body)).to.have.property('result', 'ro');
   });
 
-  it('should show the configured rights when readonly mode is on', function() {
+  it('should show the configured rights when readonly mode is on and configured is requested', function() {
     users.save('hans');
     users.grantDatabase('hans', '_system', 'rw');
     
