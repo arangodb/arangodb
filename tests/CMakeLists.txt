@@ -52,7 +52,7 @@ add_executable(
   Cache/TransactionManager.cpp
   Cache/TransactionsWithBackingStore.cpp
   Cluster/ClusterHelpersTest.cpp
-  #Cluster/ShardDistributionReporterTest.cpp
+  Cluster/ShardDistributionReporterTest.cpp
   Geo/georeg.cpp
   Pregel/typedbuffer.cpp
   RocksDBEngine/KeyTest.cpp
