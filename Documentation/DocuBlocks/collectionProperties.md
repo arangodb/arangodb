@@ -53,7 +53,7 @@ In a cluster setup, the result will also contain the following attributes:
 
 `collection.properties(properties)`
 
-Changes the collection properties. *properties* must be a object with
+Changes the collection properties. *properties* must be an object with
 one or more of the following attribute(s):
 
 * *waitForSync*: If *true* creating a document will only return

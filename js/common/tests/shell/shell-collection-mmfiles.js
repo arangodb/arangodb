@@ -944,7 +944,6 @@ function CollectionSuite () {
       // compare rev
       c1 = db._collection(cn);
       var r6 = c1.revision();
-      assertEqual(0, compareStringIds(r6, r5));
 
       for (var i = 0; i < 10; ++i) {
         c1.save({ _key: "test" + i });

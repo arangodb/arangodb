@@ -913,8 +913,7 @@ AgencyCommResult AgencyComm::getValues(std::string const& key) {
 AgencyCommResult AgencyComm::removeValues(std::string const& key,
                                           bool recursive) {
   AgencyWriteTransaction transaction(
-      AgencyOperation(key, AgencySimpleOperationType::DELETE_OP),
-      AgencyPrecondition(key, AgencyPrecondition::Type::EMPTY, false));
+      AgencyOperation(key, AgencySimpleOperationType::DELETE_OP));
 
   return sendTransactionWithFailover(transaction);
 }

@@ -85,7 +85,7 @@ The following AQL string functions have been added:
 
 The following other AQL functions have been added:
 
-- `VALUES(document)`: returns the values of an object as a array (this is 
+- `VALUES(document)`: returns the values of an object as an array (this is 
    the counterpart to the already existing `ATTRIBUTES` function)
 - `ZIP(attributes, values)`: returns an object constructed from attributes
    and values passed in separate parameters

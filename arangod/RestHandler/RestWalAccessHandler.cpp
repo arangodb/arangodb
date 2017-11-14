@@ -236,7 +236,6 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
 
   // determine end tick for dump
   std::string const& value2 = _request->value("to", found);
-
   if (found) {
     tickEnd = static_cast<TRI_voc_tick_t>(StringUtils::uint64(value2));
   }
@@ -311,7 +310,7 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
                     }
                     dumper.dump(marker);
                     buffer.appendChar('\n');
-                    // LOG_TOPIC(ERR, Logger::FIXME) << marker.toJson(&opts);
+                    //LOG_TOPIC(INFO, Logger::FIXME) << marker.toJson(&opts);
                   });
   }
 
