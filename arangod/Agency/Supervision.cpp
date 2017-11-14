@@ -252,7 +252,7 @@ void Supervision::upgradeAgency() {
     upgradeHealthRecords(builder);
   }
 
-  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+  LOG_TOPIC(DEBUG, Logger::AGENCY)
     << "Upgrading the agency:" << builder.toJson();
 
   if (builder.slice().length() > 0) {
