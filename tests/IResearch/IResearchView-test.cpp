@@ -446,7 +446,9 @@ SECTION("test_insert") {
 
   // in recovery (removes cid+rid before insert)
   {
+    auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
+    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     arangodb::LogicalView logicalView(nullptr, namedJson->slice());
     auto viewImpl = arangodb::iresearch::IResearchView::make(&logicalView, json->slice(), false);
@@ -508,7 +510,9 @@ SECTION("test_insert") {
 
   // in recovery batch (removes cid+rid before insert)
   {
+    auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
+    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     TRI_vocbase_t vocbase(TRI_vocbase_type_e::TRI_VOCBASE_TYPE_NORMAL, 1, "testVocbase");
     arangodb::LogicalView logicalView(nullptr, namedJson->slice());
     auto viewImpl = arangodb::iresearch::IResearchView::make(&logicalView, json->slice(), false);
@@ -1711,8 +1715,9 @@ SECTION("test_register_link") {
 
     CHECK((0 == view->linkCount()));
 
+    auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
-    auto restore = irs::make_finally([]()->void { StorageEngineMock::inRecoveryResult = false; });
+    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     persisted = false;
     auto link = arangodb::iresearch::IResearchMMFilesLink::make(1, logicalCollection, linkJson->slice());
     CHECK((false == persisted));
@@ -1789,8 +1794,9 @@ SECTION("test_unregister_link") {
     CHECK((1 == view->linkCount()));
     CHECK((nullptr != vocbase->lookupCollection("testCollection")));
 
+    auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
-    auto restore = irs::make_finally([]()->void { StorageEngineMock::inRecoveryResult = false; });
+    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     persisted = false;
     CHECK((TRI_ERROR_NO_ERROR == vocbase->dropCollection(logicalCollection, true, -1)));
     CHECK((false == persisted));
@@ -2223,8 +2229,9 @@ SECTION("test_update_partial") {
       "{ \"links\": { \"testCollection\": {} } }"
     );
 
+    auto before = StorageEngineMock::inRecoveryResult;
     StorageEngineMock::inRecoveryResult = true;
-    auto restore = irs::make_finally([]()->void { StorageEngineMock::inRecoveryResult = false; });
+    auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
     persisted = false;
     CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
     CHECK((false == persisted));
@@ -2447,8 +2454,9 @@ SECTION("test_update_partial") {
         "{ \"links\": { \"testCollection\": null } }"
       );
 
+      auto before = StorageEngineMock::inRecoveryResult;
       StorageEngineMock::inRecoveryResult = true;
-      auto restore = irs::make_finally([]()->void { StorageEngineMock::inRecoveryResult = false; });
+      auto restore = irs::make_finally([&before]()->void { StorageEngineMock::inRecoveryResult = before; });
       persisted = false;
       CHECK((view->updateProperties(updateJson->slice(), true, false).ok()));
       CHECK((false == persisted));
