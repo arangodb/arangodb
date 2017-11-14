@@ -142,7 +142,7 @@ bool BreadthFirstEnumerator::next() {
           }
         }
 
-        if (_traverser->getSingleVertex(e, nextVertex, _currentDepth, vId)) {
+        if (_traverser->getSingleVertex(e, nextVertex, _currentDepth + 1, vId)) {
           _schreier.emplace_back(
               std::make_unique<PathStep>(nextIdx, std::move(eid), vId));
           if (_currentDepth < _opts->maxDepth - 1) {

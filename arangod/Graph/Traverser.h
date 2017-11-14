@@ -290,7 +290,7 @@ class Traverser {
   bool edgeMatchesConditions(arangodb::velocypack::Slice edge, StringRef vid,
                              uint64_t depth, size_t cursorId);
 
-  bool vertexMatchesConditions(arangodb::velocypack::Slice, uint64_t);
+  bool vertexMatchesConditions(StringRef vid, uint64_t depth);
 
   void allowOptimizedNeighbors();
     

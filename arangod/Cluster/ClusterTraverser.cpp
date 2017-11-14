@@ -65,7 +65,7 @@ void ClusterTraverser::setStartVertex(std::string const& vid) {
     }
   }
 
-  if (!vertexMatchesConditions(idSlice, 0)) {
+  if (!vertexMatchesConditions(StringRef(vid), 0)) {
     // Start vertex invalid
     _done = true;
     return;
