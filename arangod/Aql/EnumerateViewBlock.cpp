@@ -94,10 +94,6 @@ class ViewExpressionContext final : public arangodb::aql::ExpressionContext {
 
 }
 
-// FIXME:
-//  - LRU for prepared queries
-//  - detect cases whithout dependecies
-
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -107,56 +103,7 @@ EnumerateViewBlock::EnumerateViewBlock(
   : ExecutionBlock(engine, en),
     _iter(nullptr),
     _hasMore(true), // has more data initially
-    _volatileState(false) {
-  // FIXME move the following evaluation to optimizer rule
-
-  auto const* condition = en->condition();
-
-  if (condition && en->isInInnerLoop()) {
-    auto const* conditionRoot = condition->root();
-
-    if (!conditionRoot->isDeterministic()) {
-      _volatileState = true;
-      return;
-    }
-
-    std::unordered_set<arangodb::aql::Variable const*> vars;
-    Ast::getReferencedVariables(conditionRoot, vars);
-    vars.erase(en->outVariable()); // remove "our" variable
-
-    auto const* plan = en->plan();
-
-    for (auto const* var : vars) {
-      auto* setter = plan->getVarSetBy(var->id);
-
-      if (!setter) {
-        // unable to find setter
-        continue;
-      }
-
-      if (!setter->isDeterministic()) {
-        // found nondeterministic setter
-        _volatileState = true;
-        return;
-      }
-
-      switch (setter->getType()) {
-        case arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION:
-        case arangodb::aql::ExecutionNode::ENUMERATE_LIST:
-        case arangodb::aql::ExecutionNode::SUBQUERY:
-        case arangodb::aql::ExecutionNode::COLLECT:
-        case arangodb::aql::ExecutionNode::TRAVERSAL:
-        case arangodb::aql::ExecutionNode::INDEX:
-        case arangodb::aql::ExecutionNode::SHORTEST_PATH:
-        case arangodb::aql::ExecutionNode::ENUMERATE_VIEW:
-          // we're in the loop with dependent context
-          _volatileState = true;
-          return;
-        default:
-          break;
-      }
-    }
-  }
+    _volatileState(en->volatile_state()) {
 }
 
 int EnumerateViewBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
@@ -176,13 +123,11 @@ int EnumerateViewBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 void EnumerateViewBlock::refreshIterator() {
   TRI_ASSERT(!_buffer.empty());
 
-  auto& node = ::getPlanNode<EnumerateViewNode>(*this);
-
   ViewExpressionContext ctx(this, _buffer.front(), _pos);
 
   if (!_iter) {
     // initialize `_iter` in lazy fashion
-    _iter = node.iterator(*_trx, ctx);
+    _iter = ::getPlanNode<EnumerateViewNode>(*this).iterator(*_trx, ctx);
   }
 
   if (!_iter || !_iter->reset(_volatileState ? &ctx : nullptr)) {

@@ -828,20 +828,23 @@ class EnumerateViewNode : public ExecutionNode {
   friend class RedundantCalculationsReplacer;
 
  public:
-  EnumerateViewNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
-                    std::shared_ptr<LogicalView> view,
-                    Variable const* outVariable,
-                    Condition* condition,
-                    std::shared_ptr<SortCondition> sortCondition)
-      : ExecutionNode(plan, id),
-        _vocbase(vocbase),
-        _view(view),
-        _outVariable(outVariable),
-        _condition(condition),
-        _sortCondition(sortCondition) {
-    TRI_ASSERT(_vocbase != nullptr);
-    TRI_ASSERT(_view != nullptr);
-    TRI_ASSERT(_outVariable != nullptr);
+  EnumerateViewNode(
+      ExecutionPlan* plan,
+      size_t id,
+      TRI_vocbase_t* vocbase,
+      std::shared_ptr<LogicalView> view,
+      Variable const* outVariable,
+      Condition* condition,
+      std::shared_ptr<SortCondition> sortCondition)
+    : ExecutionNode(plan, id),
+      _vocbase(vocbase),
+      _view(view),
+      _outVariable(outVariable),
+      _condition(condition),
+      _sortCondition(sortCondition) {
+    TRI_ASSERT(_vocbase);
+    TRI_ASSERT(_view);
+    TRI_ASSERT(_outVariable);
   }
 
   EnumerateViewNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
@@ -897,6 +900,9 @@ class EnumerateViewNode : public ExecutionNode {
     std::unordered_set<Variable const*>& vars
   ) const override final;
 
+  /// @brief node has nondeterministic filter condition or located inside a loop
+  bool volatile_state() const;
+
  private:
   /// @brief the database
   TRI_vocbase_t* _vocbase;
@@ -912,7 +918,7 @@ class EnumerateViewNode : public ExecutionNode {
 
   /// @brief sortCondition to pass to the view
   std::shared_ptr<SortCondition> _sortCondition;
-};
+}; // EnumerateViewNode
 
 /// @brief class LimitNode
 class LimitNode : public ExecutionNode {

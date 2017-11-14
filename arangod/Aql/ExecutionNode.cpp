@@ -1336,6 +1336,51 @@ EnumerateViewNode::~EnumerateViewNode() {
   delete _condition;
 }
 
+bool EnumerateViewNode::volatile_state() const {
+  if (_condition && isInInnerLoop()) {
+    auto const* conditionRoot = _condition->root();
+
+    if (!conditionRoot->isDeterministic()) {
+      return true;
+    }
+
+    std::unordered_set<arangodb::aql::Variable const*> vars;
+    Ast::getReferencedVariables(conditionRoot, vars);
+    vars.erase(this->outVariable()); // remove "our" variable
+
+    for (auto const* var : vars) {
+      auto* setter = this->plan()->getVarSetBy(var->id);
+
+      if (!setter) {
+        // unable to find setter
+        continue;
+      }
+
+      if (!setter->isDeterministic()) {
+        // found nondeterministic setter
+        return true;
+      }
+
+      switch (setter->getType()) {
+        case arangodb::aql::ExecutionNode::ENUMERATE_COLLECTION:
+        case arangodb::aql::ExecutionNode::ENUMERATE_LIST:
+        case arangodb::aql::ExecutionNode::SUBQUERY:
+        case arangodb::aql::ExecutionNode::COLLECT:
+        case arangodb::aql::ExecutionNode::TRAVERSAL:
+        case arangodb::aql::ExecutionNode::INDEX:
+        case arangodb::aql::ExecutionNode::SHORTEST_PATH:
+        case arangodb::aql::ExecutionNode::ENUMERATE_VIEW:
+          // we're in the loop with dependent context
+          return true;
+        default:
+          break;
+      }
+    }
+  }
+
+  return false;
+}
+
 /// @brief toVelocyPack, for EnumerateViewNode
 void EnumerateViewNode::toVelocyPackHelper(VPackBuilder& nodes,
                                            bool verbose) const {
