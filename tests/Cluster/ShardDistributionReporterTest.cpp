@@ -815,7 +815,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       THEN("It needs to call drop") {
         VPackBuilder resultBuilder;
         testee.getDistributionForDatabase(dbname, resultBuilder);
-        Verify(Method(commMock, drop)).Exactly(1);
+        fakeit::Verify(Method(commMock, drop)).Exactly(1);
       }
 
     }
@@ -936,7 +936,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       THEN("It should not call drop") {
         VPackBuilder resultBuilder;
         testee.getDistributionForDatabase(dbname, resultBuilder);
-        Verify(Method(commMock, drop)).Exactly(0);
+        fakeit::Verify(Method(commMock, drop)).Exactly(0);
       }
 
     }
@@ -1056,7 +1056,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       THEN("It should not call drop") {
         VPackBuilder resultBuilder;
         testee.getDistributionForDatabase(dbname, resultBuilder);
-        Verify(Method(commMock, drop)).Exactly(0);
+        fakeit::Verify(Method(commMock, drop)).Exactly(0);
       }
 
     }
@@ -1212,8 +1212,3 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
     }
   }
 }
-
-// TEST TO ADD
-// We need to verify the following count reports:
-// if (min(followCount) < leaderCount) => current == min(followCount)
-// if (min(followCount) >= leaderCount) => current == max(followCount)
