@@ -858,8 +858,8 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   return result;
 }
 
-AuthLevel AuthInfo::canUseDatabase(std::string const& username,
-                                   std::string const& dbname) {
+AuthLevel AuthInfo::configuredDatabaseAuthLevel(std::string const& username,
+                                                std::string const& dbname) {
   loadFromDB();
   READ_LOCKER(guard, _authInfoLock);
   auto it = _authInfo.find(username);
@@ -884,9 +884,14 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
     }
   }
 #endif
+  return level;
+}
+
+AuthLevel AuthInfo::canUseDatabase(std::string const& username,
+                                   std::string const& dbname) {
+  AuthLevel level = configuredDatabaseAuthLevel(username, dbname);
   static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
   if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "downgrading user rights";
     return AuthLevel::RO;
   }
   return level;
@@ -1264,4 +1269,10 @@ std::string AuthInfo::generateJwt(VPackBuilder const& payload) {
     }
   }
   return generateRawJwt(bodyBuilder);
+}
+
+void AuthInfo::setAuthInfo(AuthUserEntryMap const& newMap) {
+  WRITE_LOCKER(writeLocker, _authInfoLock);
+  _authInfo = newMap;
+  _outdated = false;
 }

@@ -68,7 +68,10 @@ class AuthJwtResult : public AuthResult {
 
 class AuthenticationHandler;
 
+typedef std::unordered_map<std::string, AuthUserEntry> AuthUserEntryMap;
+
 class AuthInfo {
+
  public:
   explicit AuthInfo(std::unique_ptr<AuthenticationHandler>&&);
   ~AuthInfo();
@@ -112,7 +115,8 @@ class AuthInfo {
 
   AuthResult checkAuthentication(arangodb::rest::AuthenticationMethod authType,
                                  std::string const& secret);
-
+  AuthLevel configuredDatabaseAuthLevel(std::string const& username,
+                                        std::string const& dbname);
   AuthLevel canUseDatabase(std::string const& username,
                            std::string const& dbname);
   AuthLevel canUseCollection(std::string const& username,
@@ -123,6 +127,8 @@ class AuthInfo {
   std::string jwtSecret();
   std::string generateJwt(VPackBuilder const&);
   std::string generateRawJwt(VPackBuilder const&);
+
+  void setAuthInfo(AuthUserEntryMap const& userEntryMap);
 
  private:
   // internal method called by canUseCollection
@@ -149,7 +155,7 @@ class AuthInfo {
   Mutex _loadFromDBLock;
   std::atomic<bool> _outdated;
 
-  std::unordered_map<std::string, AuthUserEntry> _authInfo;
+  AuthUserEntryMap _authInfo;
   std::unordered_map<std::string, arangodb::AuthResult> _authBasicCache;
   arangodb::basics::LruCache<std::string, arangodb::AuthJwtResult>
       _authJwtCache;
