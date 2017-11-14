@@ -380,7 +380,6 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       vocbase, query,
       {
         arangodb::aql::OptimizerRule::handleViewsRule_pass6,
-        arangodb::aql::OptimizerRule::removeFiltersAndSortsCoveredByViewRule_pass6
       }
     ));
 
@@ -428,7 +427,6 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       vocbase, query,
       {
         arangodb::aql::OptimizerRule::handleViewsRule_pass6,
-        arangodb::aql::OptimizerRule::removeFiltersAndSortsCoveredByViewRule_pass6
       }
     ));
 
@@ -477,7 +475,6 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       vocbase, query,
       {
         arangodb::aql::OptimizerRule::handleViewsRule_pass6,
-        arangodb::aql::OptimizerRule::removeFiltersAndSortsCoveredByViewRule_pass6
       }
     ));
 
@@ -526,7 +523,6 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       vocbase, query,
       {
         arangodb::aql::OptimizerRule::handleViewsRule_pass6,
-        arangodb::aql::OptimizerRule::removeFiltersAndSortsCoveredByViewRule_pass6
       }
     ));
 
@@ -573,7 +569,6 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       vocbase, query,
       {
         arangodb::aql::OptimizerRule::handleViewsRule_pass6,
-        arangodb::aql::OptimizerRule::removeFiltersAndSortsCoveredByViewRule_pass6
       }
     ));
 
@@ -621,7 +616,6 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       vocbase, query,
       {
         arangodb::aql::OptimizerRule::handleViewsRule_pass6,
-        arangodb::aql::OptimizerRule::removeFiltersAndSortsCoveredByViewRule_pass6
       }
     ));
 
@@ -670,7 +664,6 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       vocbase, query,
       {
         arangodb::aql::OptimizerRule::handleViewsRule_pass6,
-        arangodb::aql::OptimizerRule::removeFiltersAndSortsCoveredByViewRule_pass6
       }
     ));
 
@@ -712,7 +705,6 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       vocbase, query,
       {
         arangodb::aql::OptimizerRule::handleViewsRule_pass6,
-        arangodb::aql::OptimizerRule::removeFiltersAndSortsCoveredByViewRule_pass6
       }
     ));
 
@@ -884,7 +876,6 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       vocbase, query,
       {
         arangodb::aql::OptimizerRule::handleViewsRule_pass6,
-        arangodb::aql::OptimizerRule::removeFiltersAndSortsCoveredByViewRule_pass6
       }
     ));
 
@@ -928,7 +919,6 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       vocbase, query,
       {
         arangodb::aql::OptimizerRule::handleViewsRule_pass6,
-        arangodb::aql::OptimizerRule::removeFiltersAndSortsCoveredByViewRule_pass6
       }
     ));
 
@@ -973,7 +963,6 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
       vocbase, query,
       {
         arangodb::aql::OptimizerRule::handleViewsRule_pass6,
-        arangodb::aql::OptimizerRule::removeFiltersAndSortsCoveredByViewRule_pass6
       }
     ));
 
@@ -1014,8 +1003,7 @@ TEST_CASE("IResearchQueryTestJoin", "[iresearch][iresearch-query]") {
     CHECK(arangodb::tests::assertRules(
       vocbase, query,
       {
-        arangodb::aql::OptimizerRule::handleViewsRule_pass6,
-        arangodb::aql::OptimizerRule::removeFiltersAndSortsCoveredByViewRule_pass6
+        arangodb::aql::OptimizerRule::handleViewsRule_pass6
       }
     ));
 

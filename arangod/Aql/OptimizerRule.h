@@ -136,9 +136,6 @@ struct OptimizerRule {
     // remove redundant OR conditions
     removeRedundantOrRule_pass6,
 
-    // move filters and sort conditions into views
-    handleViewsRule_pass6,
-
     applyGeoIndexRule,
 
     useIndexesRule_pass6,
@@ -163,8 +160,8 @@ struct OptimizerRule {
     // needs to run after filter removal
     removeUnnecessaryCalculationsRule_pass6,
 
-    // try to remove filters and sorts covered by view
-    removeFiltersAndSortsCoveredByViewRule_pass6,
+    // move filters and sort conditions into views and remove them
+    handleViewsRule_pass6,
 
     // remove now obsolete path variables
     removeTraversalPathVariable_pass6,
