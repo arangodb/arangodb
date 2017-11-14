@@ -213,12 +213,15 @@ void Supervision::upgradeHealthRecords(Builder& builder) {
     HealthRecord hr;
     { VPackObjectBuilder oo(&b);
       for (auto recPair : _snapshot(healthPrefix).children()) {
-        hr = *recPair.second;
-        if (hr.version == 1.0) {
-          ++n;
-          b.add(VPackValue(recPair.first));
-          { VPackObjectBuilder ooo(&b);
-            hr.toVelocyPack(b);        
+        if (recPair.second->has("ShortName") &&
+            recPair.second->has("Endpoint")) {
+          hr = *recPair.second;
+          if (hr.version == 1.0) {
+            ++n;
+            b.add(VPackValue(recPair.first));
+            { VPackObjectBuilder ooo(&b);
+              hr.toVelocyPack(b);        
+            }
           }
         }
       }
