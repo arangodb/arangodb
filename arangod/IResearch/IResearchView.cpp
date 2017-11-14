@@ -316,6 +316,7 @@ ViewIteratorBase::ViewIteratorBase(
     arangodb::aql::Variable const& ref
 ): ViewIterator(&view, &trx),
    _reader(std::move(reader)),
+   _filter(irs::filter::prepared::empty()),
    _filterCondition(&filterCondition),
    _plan(&plan),
    _ref(&ref),
@@ -425,8 +426,7 @@ class OrderedViewIterator final : public ViewIteratorBase {
     std::vector<irs::stored_attribute::ptr>&& orderAttrs,
     arangodb::aql::ExecutionPlan& plan,
     arangodb::aql::AstNode const& filterCondition,
-    arangodb::aql::Variable const& ref,
-    arangodb::aql::ExpressionContext* ctx
+    arangodb::aql::Variable const& ref
   );
   virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) override;
   virtual bool reset(arangodb::aql::ExpressionContext* ctx) noexcept override;
@@ -453,8 +453,7 @@ OrderedViewIterator::OrderedViewIterator(
     std::vector<irs::stored_attribute::ptr>&& orderAttrs,
     arangodb::aql::ExecutionPlan& plan,
     arangodb::aql::AstNode const& filterCondition,
-    arangodb::aql::Variable const& ref,
-    arangodb::aql::ExpressionContext* ctx
+    arangodb::aql::Variable const& ref
 ) : ViewIteratorBase("iresearch-ordered-iterator", view, trx, std::move(reader), plan, filterCondition, ref),
     _order(order.prepare()),
     _orderAttrs(std::move(orderAttrs)),
@@ -472,8 +471,6 @@ OrderedViewIterator::OrderedViewIterator(
       *trxAttr = &_trx;
     }
   }
-
-  reset(ctx); // class marked as final
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -485,6 +482,8 @@ OrderedViewIterator::OrderedViewIterator(
 /// @return has more
 ////////////////////////////////////////////////////////////////////////////////
 bool OrderedViewIterator::next(LocalDocumentIdCallback const& callback, size_t limit) {
+  TRI_ASSERT(_filter);
+
   auto& order = _order;
   auto scoreLess = [&order](
       irs::bstring const& lhs,
@@ -624,8 +623,7 @@ class UnorderedViewIterator final : public ViewIteratorBase {
     CompoundReader&& reader,
     arangodb::aql::ExecutionPlan& plan,
     arangodb::aql::AstNode const& filterCondition,
-    arangodb::aql::Variable const& ref,
-    arangodb::aql::ExpressionContext* ctx
+    arangodb::aql::Variable const& ref
   );
   virtual bool next(LocalDocumentIdCallback const& callback, size_t limit) override;
   virtual bool reset(arangodb::aql::ExpressionContext* ctx) noexcept override;
@@ -646,10 +644,8 @@ UnorderedViewIterator::UnorderedViewIterator(
     CompoundReader&& reader,
     arangodb::aql::ExecutionPlan& plan,
     arangodb::aql::AstNode const& filterCondition,
-    arangodb::aql::Variable const& ref,
-    arangodb::aql::ExpressionContext* ctx
+    arangodb::aql::Variable const& ref
 ) : ViewIteratorBase("iresearch-unordered-iterator", view, trx, std::move(reader), plan, filterCondition, ref) {
-  reset(ctx); // class marked as final
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -661,6 +657,8 @@ UnorderedViewIterator::UnorderedViewIterator(
 /// @return has more
 ////////////////////////////////////////////////////////////////////////////////
 bool UnorderedViewIterator::next(LocalDocumentIdCallback const& callback, size_t limit) {
+  TRI_ASSERT(_filter);
+
   arangodb::LocalDocumentId tmpToken;
 
   for (size_t count = _reader.size();
@@ -2127,11 +2125,12 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
       std::move(compoundReader),
       *plan,
       *filterCondition,
-      *reference,
-      exprCtx
+      *reference
     );
 
-    return iterator.release();
+    return iterator->reset(exprCtx)
+      ? iterator.release()
+      : nullptr;
   }
 
   PTR_NAMED(OrderedViewIterator,
@@ -2143,11 +2142,12 @@ arangodb::ViewIterator* IResearchView::iteratorForCondition(
     std::move(orderAttrs),
     *plan,
     *filterCondition,
-    *reference,
-    exprCtx
+    *reference
   );
 
-  return iterator.release();
+  return iterator->reset(exprCtx)
+    ? iterator.release()
+    : nullptr;
 }
 
 size_t IResearchView::linkCount() const noexcept {

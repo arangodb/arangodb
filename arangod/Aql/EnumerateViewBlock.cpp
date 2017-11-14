@@ -74,8 +74,7 @@ class ViewExpressionContext final : public arangodb::aql::ExpressionContext {
     auto const reg = _block->getRegister(variable);
 
     if (reg == arangodb::aql::ExecutionNode::MaxRegisterId) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Internal error"); // FIXME
-      return arangodb::aql::AqlValue();
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
     auto& value = _data->getValueReference(_pos, reg);
@@ -187,7 +186,7 @@ void EnumerateViewBlock::refreshIterator() {
   }
 
   if (!_iter || !_iter->reset(_volatileState ? &ctx : nullptr)) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL); // FIXME runtime error
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_BAD_PARAMETER);
   }
 }
 
