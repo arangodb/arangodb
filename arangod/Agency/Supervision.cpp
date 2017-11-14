@@ -49,6 +49,9 @@ struct HealthRecord {
   std::string status;
   std::string endpoint;
   std::string lastAcked;
+  double version;
+
+  HealthRecord() : version(0) {}
 
   HealthRecord(
     std::string const& sn, std::string const& ep) :
@@ -63,14 +66,31 @@ struct HealthRecord {
   }
 
   HealthRecord& operator=(Node const& node) {
-    if (node.has("Status")) {
-      syncStatus = node("SyncStatus").toJson();
-      status = node("Status").toJson();
-      if (node.has("SyncTime")) {
-        lastAcked = node("LastAcked").toJson();
-        syncTime = node("SyncTime").toJson();
-      }
+    version = 0;
+    if (shortName.empty()) {
+      shortName = node("ShortName").getString();
     }
+    if (endpoint.empty()) {
+      endpoint = node("Endpoint").getString();
+    }
+    if (node.has("Status")) {
+      status = node("Status").toJson();
+      if (node.has("SyncStatus")) { // New format
+        version = 2;
+        syncStatus = node("SyncStatus").toJson();
+        if (node.has("SyncTime")) {
+          lastAcked = node("LastAcked").toJson();
+          syncTime = node("SyncTime").toJson();
+        }
+      } else if (node.has("LastHeartbeatStatus")) {
+        version = 1;
+        lastAcked = node("LastHeartbeatStatus").toJson();
+        if (node.has("LastHeartbeatSent")) {
+          lastAcked = node("LastHeartbeatAcked").toJson();
+          syncTime = node("LastHeartbeatSent").toJson();
+        }
+      }
+    } 
     return *this;
   }
 
@@ -180,10 +200,43 @@ void Supervision::upgradeZero(Builder& builder) {
               { VPackObjectBuilder ooo(&builder); }
             }
           }
+        }}} // trx
+  }
+}
+
+void Supervision::upgradeHealthRecords(Builder& builder) {
+  _lock.assertLockedByCurrentThread();
+  // "/arango/Supervision/health" is in old format
+  Builder b;
+  size_t n = 0;
+  
+  if (_snapshot.has(healthPrefix)) {
+    HealthRecord hr;
+    { VPackObjectBuilder oo(&b);
+      for (auto recPair : _snapshot(healthPrefix).children()) {
+        if (recPair.second->has("ShortName") &&
+            recPair.second->has("Endpoint")) {
+          hr = *recPair.second;
+          if (hr.version == 1) {
+            ++n;
+            b.add(VPackValue(recPair.first));
+            { VPackObjectBuilder ooo(&b);
+              hr.toVelocyPack(b);        
+            }
+          }
         }
       }
     }
   }
+  
+  if (n>0) {
+    { VPackArrayBuilder trx(&builder);
+      { VPackObjectBuilder o(&builder);
+        b.add(healthPrefix, b.slice());
+      }
+    }
+  }
+  
 }
 
 // Upgrade agency, guarded by wakeUp
@@ -196,7 +249,11 @@ void Supervision::upgradeAgency() {
     upgradeZero(builder);
     fixPrototypeChain(builder);
     upgradeOne(builder);
+    upgradeHealthRecords(builder);
   }
+
+  LOG_TOPIC(DEBUG, Logger::SUPERVISION)
+    << "Upgrading the agency:" << builder.toJson();
 
   if (builder.slice().length() > 0) {
     generalTransaction(_agent, builder);
@@ -258,7 +315,6 @@ void handleOnStatusCoordinator(
   }
 
 }
-
   
 void handleOnStatus(
   Agent* agent, Node const& snapshot, HealthRecord& persisted,
