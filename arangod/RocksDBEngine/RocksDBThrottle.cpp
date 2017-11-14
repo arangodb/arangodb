@@ -120,6 +120,14 @@ RocksDBThrottle::RocksDBThrottle()
 // Shutdown the background thread only if it was ever started
 //
 RocksDBThrottle::~RocksDBThrottle() {
+  StopThread();
+}
+
+
+//
+// Shutdown the background thread only if it was ever started
+//
+void RocksDBThrottle::StopThread() {
 
   if (_threadRunning.load()) {
     {
