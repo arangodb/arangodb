@@ -130,7 +130,18 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
       } else if (suffixes.size() == 3) {
         //_api/user/<user>/database/<dbname>
         // return specific database
-        AuthLevel lvl = authInfo->canUseDatabase(user, suffixes[2]);
+        bool configured = false;
+        std::string const& param = _request->value("configured", configured);
+        if (configured) {
+          configured = StringUtils::boolean(param);
+        }
+        AuthLevel lvl;
+        if (configured) {
+          lvl = authInfo->configuredDatabaseAuthLevel(user, suffixes[2]);
+        } else {
+          // return effective user rights
+          lvl = authInfo->canUseDatabase(user, suffixes[2]);
+        }
         VPackBuilder data;
         data.add(VPackValue(convertFromAuthLevel(lvl)));
         generateOk(ResponseCode::OK, data.slice());
