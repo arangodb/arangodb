@@ -1,17 +1,30 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #if defined (__GNUC__)
   #pragma GCC diagnostic push
   #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+  #pragma GCC diagnostic ignored "-Wunused-variable"
 #endif
 
   #include <boost/filesystem/operations.hpp>
@@ -34,6 +47,24 @@ const boost::filesystem::path::codecvt_type& fs_codecvt() {
   static auto default_locale = iresearch::locale_utils::locale("", true);
 
   return std::use_facet<boost::filesystem::path::codecvt_type>(default_locale);
+}
+
+// check if the error code matches the system specific not-found errors
+// error code list taken from Boost
+bool fs_error_not_found(int err) {
+  #ifdef _WIN32
+    return err == ERROR_FILE_NOT_FOUND
+      || err == ERROR_PATH_NOT_FOUND
+      || err == ERROR_INVALID_NAME      // "tools/jam/src/:sys:stat.h", "//foo"
+      || err == ERROR_INVALID_DRIVE     // USB card reader with no card inserted
+      || err == ERROR_NOT_READY         // CD/DVD drive with no disc inserted
+      || err == ERROR_INVALID_PARAMETER // ":sys:stat.h"
+      || err == ERROR_BAD_PATHNAME      // "//nosuch" on Win64
+      || err == ERROR_BAD_NETPATH       // "//nosuch" on Win32
+      ;
+  #else // POSIX
+    return err == ENOENT || err == ENOTDIR;
+  #endif
 }
 
 static auto& fs_cvt = fs_codecvt();
@@ -186,7 +217,7 @@ bool utf8_path::exists(bool& result) const NOEXCEPT {
   result = boost::filesystem::exists(path_, code);
 
   return boost::system::errc::success == code.value()
-      || boost::system::errc::no_such_file_or_directory == code.value();
+    || fs_error_not_found(code.value());
 }
 
 bool utf8_path::exists_file(bool& result) const NOEXCEPT {
@@ -195,7 +226,7 @@ bool utf8_path::exists_file(bool& result) const NOEXCEPT {
   result = boost::filesystem::is_regular_file(path_, code);
 
   return boost::system::errc::success == code.value()
-      || boost::system::errc::no_such_file_or_directory == code.value();
+    || fs_error_not_found(code.value());
 }
 
 bool utf8_path::file_size(uint64_t& result) const NOEXCEPT {
