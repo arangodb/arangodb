@@ -27,8 +27,12 @@
 const expect = require('chai').expect;
 const request = require('@arangodb/request');
 const users = require('@arangodb/users');
+const db = require('@arangodb').db;
 
 describe('Grants', function() {
+  before(function() {
+    db._create('grants');
+  });
   afterEach(function() {
     users.remove('hans');
     let resp = request.put({
@@ -39,6 +43,7 @@ describe('Grants', function() {
     expect(resp.statusCode).to.equal(200);
   });
   after(function() {
+    db._drop('grants');
     // wait for readonly mode to reset
     require('internal').wait(5.0);
   });
@@ -86,4 +91,39 @@ describe('Grants', function() {
     expect(JSON.parse(resp.body)).to.have.property('result', 'rw');
   });
 
+  it('should show the effective rights when readonly mode is on', function() {
+    users.save('hans');
+    users.grantDatabase('hans', '_system', 'rw');
+    users.grantCollection('hans', '_system', 'grants');
+    
+    let resp;
+    resp = request.put({
+      url: '/_admin/server/mode',
+      body: {'mode': 'readonly'},
+      json: true,
+    });
+    resp = request.get({
+      url: '/_api/user/hans/database/_system/grants',
+      json: true,
+    });
+    expect(JSON.parse(resp.body)).to.have.property('result', 'ro');
+  });
+
+  it('should show the configured rights when readonly mode is on and configured is requested', function() {
+    users.save('hans');
+    users.grantDatabase('hans', '_system', 'rw');
+    users.grantCollection('hans', '_system', 'grants');
+    
+    let resp;
+    resp = request.put({
+      url: '/_admin/server/mode',
+      body: {'mode': 'readonly'},
+      json: true,
+    });
+    resp = request.get({
+      url: '/_api/user/hans/database/_system/grants?configured=true',
+      json: true,
+    });
+    expect(JSON.parse(resp.body)).to.have.property('result', 'rw');
+  });
 });

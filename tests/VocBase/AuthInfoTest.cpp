@@ -127,6 +127,34 @@ TEST_CASE("🥑🔐 AuthInfo", "[authentication]") {
     REQUIRE(authLevel == AuthLevel::RW);
   }
 
+  SECTION("Setting ServerState to readonly will make all users effective RO users (collection level)") {
+    AuthUserEntryMap userEntryMap;
+    auto testUser = AuthUserEntry::newUser("test", "test", AuthSource::COLLECTION);
+    testUser.grantDatabase("*", AuthLevel::RW);
+    testUser.grantCollection("test", "test", AuthLevel::RW);
+    userEntryMap.emplace("test", testUser);
+
+    state->setServerMode(ServerState::Mode::READ_ONLY);
+
+    authInfo.setAuthInfo(userEntryMap);
+    AuthLevel authLevel = authInfo.canUseCollection("test", "test", "test");
+    REQUIRE(authLevel == AuthLevel::RO);
+  }
+
+  SECTION("In readonly mode the configured access level will still be accessible (collection level)") {
+    AuthUserEntryMap userEntryMap;
+    auto testUser = AuthUserEntry::newUser("test", "test", AuthSource::COLLECTION);
+    testUser.grantDatabase("*", AuthLevel::RW);
+    testUser.grantCollection("test", "test", AuthLevel::RW);
+    userEntryMap.emplace("test", testUser);
+
+    state->setServerMode(ServerState::Mode::READ_ONLY);
+
+    authInfo.setAuthInfo(userEntryMap);
+    AuthLevel authLevel = authInfo.configuredCollectionAuthLevel("test", "test", "test");
+    REQUIRE(authLevel == AuthLevel::RW);
+  }
+
   state->setServerMode(ServerState::Mode::DEFAULT);
 }
 

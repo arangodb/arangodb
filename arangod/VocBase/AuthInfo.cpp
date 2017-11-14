@@ -887,6 +887,18 @@ AuthLevel AuthInfo::configuredDatabaseAuthLevel(std::string const& username,
   return level;
 }
 
+AuthLevel AuthInfo::configuredCollectionAuthLevel(std::string const& username,
+                                                  std::string const& dbname,
+                                                  std::string coll) {
+  if (coll[0] >= '0' && coll[0] <= '9') {
+    // lookup by collection id
+    // translate numeric collection id into collection name
+    coll = DatabaseFeature::DATABASE->translateCollectionName(dbname, coll);
+  }
+
+  return canUseCollectionInternal(username, dbname, coll);
+}
+
 AuthLevel AuthInfo::canUseDatabase(std::string const& username,
                                    std::string const& dbname) {
   AuthLevel level = configuredDatabaseAuthLevel(username, dbname);
@@ -905,16 +917,12 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
     return AuthLevel::NONE;
   }
 
-  if (coll[0] >= '0' && coll[0] <= '9') {
-    // lookup by collection id
-    // translate numeric collection id into collection name
-    return canUseCollectionInternal(
-        username, dbname,
-        DatabaseFeature::DATABASE->translateCollectionName(dbname, coll));
+  AuthLevel level = configuredCollectionAuthLevel(username, dbname, coll);
+  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
+  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
+    return AuthLevel::RO;
   }
-
-  // lookup by collection name
-  return canUseCollectionInternal(username, dbname, coll);
+  return level;
 }
 
 // internal method called by canUseCollection
@@ -954,12 +962,6 @@ AuthLevel AuthInfo::canUseCollectionInternal(std::string const& username,
     }
   }
 #endif
-
-  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
-  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
-    LOG_TOPIC(ERR, Logger::FIXME) << "downgrading user rights";
-    return AuthLevel::RO;
-  }
   return level;
 }
 

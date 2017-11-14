@@ -145,18 +145,26 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
         VPackBuilder data;
         data.add(VPackValue(convertFromAuthLevel(lvl)));
         generateOk(ResponseCode::OK, data.slice());
-
       } else if (suffixes.size() == 4) {
+        bool configured = false;
+        std::string const& param = _request->value("configured", configured);
+        if (configured) {
+          configured = StringUtils::boolean(param);
+        }
         //_api/user/<user>/database/<dbname>/<collection>
-        AuthLevel lvl =
-            authInfo->canUseCollection(user, suffixes[2], suffixes[3]);
+        AuthLevel lvl;
+        if (configured) {
+          lvl = authInfo->configuredCollectionAuthLevel(user, suffixes[2], suffixes[3]);
+        } else {
+          // return effective user rights
+          lvl = authInfo->canUseCollection(user, suffixes[2], suffixes[3]);
+        }
         VPackBuilder data;
         data.add(VPackValue(convertFromAuthLevel(lvl)));
         generateOk(ResponseCode::OK, data.slice());
       } else {
         generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
       }
-
     } else if (suffixes[1] == "config") {
       //_api/user/<user>//config
       VPackBuilder data = authInfo->getConfigData(user);

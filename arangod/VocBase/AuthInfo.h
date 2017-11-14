@@ -117,6 +117,9 @@ class AuthInfo {
                                  std::string const& secret);
   AuthLevel configuredDatabaseAuthLevel(std::string const& username,
                                         std::string const& dbname);
+  AuthLevel configuredCollectionAuthLevel(std::string const& username,
+                                          std::string const& dbname,
+                                          std::string coll);
   AuthLevel canUseDatabase(std::string const& username,
                            std::string const& dbname);
   AuthLevel canUseCollection(std::string const& username,
