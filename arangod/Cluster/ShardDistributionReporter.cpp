@@ -364,14 +364,14 @@ void ShardDistributionReporter::getDistributionForDatabase(
               VPackSlice response = body->slice();
               if (!response.isObject()) {
                 LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-                    << "Recieved invalid response for count. Shard distribution "
+                    << "Received invalid response for count. Shard distribution "
                        "inaccurate";
                 continue;
               }
               response = response.get("count");
               if (!response.isNumber()) {
                 LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-                    << "Recieved invalid response for count. Shard distribution "
+                    << "Received invalid response for count. Shard distribution "
                        "inaccurate";
                 continue;
               }
@@ -394,14 +394,14 @@ void ShardDistributionReporter::getDistributionForDatabase(
                 VPackSlice response = body->slice();
                 if (!response.isObject()) {
                   LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-                      << "Recieved invalid response for count. Shard "
+                      << "Received invalid response for count. Shard "
                          "distribution inaccurate";
                   continue;
                 }
                 response = response.get("count");
                 if (!response.isNumber()) {
                   LOG_TOPIC(WARN, arangodb::Logger::CLUSTER)
-                      << "Recieved invalid response for count. Shard "
+                      << "Received invalid response for count. Shard "
                          "distribution inaccurate";
                   continue;
                 }

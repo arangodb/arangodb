@@ -1,4 +1,4 @@
-/*global describe, it, ArangoAgency, afterEach, instanceInfo */
+/*global describe, it, ArangoAgency, after, afterEach, instanceInfo */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cluster collection creation tests
@@ -49,9 +49,16 @@ if (isCluster) {
 // this only tests the http api...there is a separate readonly test
 describe('Readonly mode api', function() {
   afterEach(function() {
+    // restore default server mode
     let resp = download(endpoint.url + '/_admin/server/mode', JSON.stringify({'mode': 'default'}), {
       method: 'put',
     });
+  });
+  
+  after(function() {
+    // wait 5 seconds so the "default" server mode has a chance to be picked up by all db servers
+    // before we go on with other tests
+    require("internal").wait(5, false); 
   });
 
   it('outputs its current mode', function() {
