@@ -84,7 +84,7 @@ struct HealthRecord {
         }
       } else if (node.has("LastHeartbeatStatus")) {
         version = 1;
-        lastAcked = node("LastHeartbeatStatus").toJson();
+        syncStatus = node("LastHeartbeatStatus").toJson();
         if (node.has("LastHeartbeatSent")) {
           lastAcked = node("LastHeartbeatAcked").toJson();
           syncTime = node("LastHeartbeatSent").toJson();
@@ -221,7 +221,8 @@ void Supervision::upgradeHealthRecords(Builder& builder) {
             ++n;
             b.add(VPackValue(recPair.first));
             { VPackObjectBuilder ooo(&b);
-              hr.toVelocyPack(b);        
+              hr.toVelocyPack(b);
+              
             }
           }
         }
