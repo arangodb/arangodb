@@ -1034,7 +1034,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   mmdr->addToBuilder(result, true);
   return Result(TRI_ERROR_NO_ERROR);
 }
-
+      
 /// @brief return one document from a collection, fast path
 ///        If everything went well the result will contain the found document
 ///        (as an external on single_server) and this function will return
@@ -1065,6 +1065,22 @@ Result transaction::Methods::documentFastPathLocal(
   return res;
 }
 
+static OperationResult errorCodeFromClusterResult(std::shared_ptr<VPackBuilder> const& resultBody) {
+  // read the error number from the response
+  if (resultBody != nullptr) {
+    VPackSlice slice = resultBody->slice();
+    if (slice.isObject()) {
+      VPackSlice num = slice.get("errorNum");
+      if (num.isNumber()) {
+        // we found an error number, so let's use it!
+        return OperationResult(num.getNumericValue<int>());
+      }
+    }
+  }
+  // default is to return "internal error"
+  return OperationResult(TRI_ERROR_INTERNAL);
+}
+
 /// @brief Create Cluster Communication result for document
 OperationResult transaction::Methods::clusterResultDocument(
     rest::ResponseCode const& responseCode,
@@ -1081,7 +1097,7 @@ OperationResult transaction::Methods::clusterResultDocument(
     case rest::ResponseCode::NOT_FOUND:
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default:
-      return OperationResult(TRI_ERROR_INTERNAL);
+      return errorCodeFromClusterResult(resultBody);
   }
 }
 
@@ -1105,7 +1121,7 @@ OperationResult transaction::Methods::clusterResultInsert(
     case rest::ResponseCode::CONFLICT:
       return OperationResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     default:
-      return OperationResult(TRI_ERROR_INTERNAL);
+      return errorCodeFromClusterResult(resultBody);
   }
 }
 
@@ -1134,7 +1150,7 @@ OperationResult transaction::Methods::clusterResultModify(
     case rest::ResponseCode::NOT_FOUND:
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default:
-      return OperationResult(TRI_ERROR_INTERNAL);
+      return errorCodeFromClusterResult(resultBody);
   }
 }
 
@@ -1158,7 +1174,7 @@ OperationResult transaction::Methods::clusterResultRemove(
     case rest::ResponseCode::NOT_FOUND:
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default:
-      return OperationResult(TRI_ERROR_INTERNAL);
+      return errorCodeFromClusterResult(resultBody);
   }
 }
 
