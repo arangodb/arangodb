@@ -49,7 +49,7 @@ struct HealthRecord {
   std::string status;
   std::string endpoint;
   std::string lastAcked;
-  double version;
+  size_t version;
 
   HealthRecord() : version(0) {}
 
