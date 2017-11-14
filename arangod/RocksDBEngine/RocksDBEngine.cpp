@@ -130,7 +130,13 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
   startsAfter("RocksDBOption");
 }
 
-RocksDBEngine::~RocksDBEngine() { delete _db; }
+RocksDBEngine::~RocksDBEngine() {
+  // turn off RocksDBThrottle, and release our pointers to it
+  _listener->StopThread();
+  _listener.reset();
+  _options.listeners.clear();
+
+  delete _db; }
 
 // inherited from ApplicationFeature
 // ---------------------------------
@@ -352,8 +358,8 @@ void RocksDBEngine::start() {
   // TODO: enable memtable_insert_with_hint_prefix_extractor?
   _options.bloom_locality = 1;
 
-  std::shared_ptr<RocksDBThrottle> listener(new RocksDBThrottle);
-  _options.listeners.push_back(listener);
+  _listener.reset(new RocksDBThrottle);
+  _options.listeners.push_back(_listener);
 
   // this is cfFamilies.size() + 2 ... but _option needs to be set before
   //  building cfFamilies
@@ -490,7 +496,7 @@ void RocksDBEngine::start() {
   }
 
   // mev
-  listener->SetFamilies(cfHandles);
+  _listener->SetFamilies(cfHandles);
 
   // set our column families
   RocksDBColumnFamily::_definitions = cfHandles[0];
