@@ -26,6 +26,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
 #include "MMFiles/MMFilesLogfileManager.h"
+#include "Utils/ExecContext.h"
 
 using namespace arangodb;
 using namespace arangodb::rest;
@@ -78,6 +79,13 @@ void MMFilesRestWalHandler::properties() {
   auto l = MMFilesLogfileManager::instance();
 
   if (_request->requestType() == rest::RequestType::PUT) {
+    if (ExecContext::CURRENT != nullptr &&
+        ExecContext::CURRENT->systemAuthLevel() != AuthLevel::RW) {
+      generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
+                    "you need admin rights to modify WAL properties");
+      return;
+    }
+    
     std::shared_ptr<VPackBuilder> parsedRequest;
     VPackSlice slice;
     try {

@@ -74,11 +74,12 @@ class RocksDBEngine final : public StorageEngine {
   // validate the storage engine's specific options
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override;
 
-  void start() override;
-  void stop() override;
   // preparation phase for storage engine. can be used for internal setup.
   // the storage engine must not start any threads here or write any files
   void prepare() override;
+  void start() override;
+  void beginShutdown() override;
+  void stop() override;
   void unprepare() override;
 
   bool supportsDfdb() const override { return false; }

@@ -270,7 +270,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   // the non-simple case . . .
   size_t available = 0;  // nr of available rows
   size_t index = 0;      // an index of a non-empty buffer
-
+	  
   // pull more blocks from dependencies . . .
   TRI_ASSERT(_gatherBlockBuffer.size() == _dependencies.size());
   TRI_ASSERT(_gatherBlockBuffer.size() == _gatherBlockPos.size());
@@ -303,7 +303,7 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
   size_t toSend = (std::min)(available, atMost);  // nr rows in outgoing block
 
   // the following is similar to AqlItemBlock's slice method . . .
-  std::unordered_map<AqlValue, AqlValue> cache;
+  std::unordered_set<AqlValue> cache;
 
   // comparison function
   OurLessThan ourLessThan(_trx, _gatherBlockBuffer, _sortRegisters);
@@ -333,9 +333,9 @@ AqlItemBlock* GatherBlock::getSome(size_t atLeast, size_t atMost) {
             y.destroy();
             throw;
           }
-          cache.emplace(x, y);
+          cache.emplace(y);
         } else {
-          res->setValue(i, col, it->second);
+          res->setValue(i, col, (*it));
         }
       }
     }
@@ -472,7 +472,6 @@ bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
     return true;
   }
 
-  size_t i = 0;
   for (auto const& reg : _sortRegisters) {
     // Fast path if there is no attributePath:
     int cmp;
@@ -502,8 +501,6 @@ bool GatherBlock::OurLessThan::operator()(std::pair<size_t, size_t> const& a,
     } else if (cmp == 1) {
       return !reg.ascending;
     }
-
-    i++;
   }
 
   return false;

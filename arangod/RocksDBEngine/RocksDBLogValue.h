@@ -87,8 +87,11 @@ class RocksDBLogValue {
   static TRI_voc_cid_t collectionId(rocksdb::Slice const&);
   static TRI_idx_iid_t indexId(rocksdb::Slice const&);
   static velocypack::Slice indexSlice(rocksdb::Slice const&);
-  static arangodb::StringRef newCollectionName(rocksdb::Slice const&);
+  static arangodb::StringRef oldCollectionName(rocksdb::Slice const&);
   static arangodb::StringRef documentKey(rocksdb::Slice const&);
+  
+  static bool containsDatabaseId(RocksDBLogType type);
+  static bool containsCollectionId(RocksDBLogType type);
 
  public:
   //////////////////////////////////////////////////////////////////////////////

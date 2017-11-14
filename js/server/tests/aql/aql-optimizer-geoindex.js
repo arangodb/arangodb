@@ -1,8 +1,8 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertFalse, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/*global assertEqual, assertFalse, assertTrue, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE, print */
 
 // execute with:
-// ./scripts/unittest shell_server_aql --test js/server/tests/aql/aql-optimizer-geoindex.js 
+// ./scripts/unittest shell_server_aql --test js/server/tests/aql/aql-optimizer-geoindex.js
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules
@@ -40,6 +40,8 @@ var findExecutionNodes = helper.findExecutionNodes;
 var findReferencedNodes = helper.findReferencedNodes;
 var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
 var removeAlwaysOnClusterRules = helper.removeAlwaysOnClusterRules;
+var db = require('internal').db;
+var debug = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -125,19 +127,13 @@ function optimizerRuleTestSuite() {
         internal.db._drop(colName);
         geocol = internal.db._create(colName);
         geocol.ensureIndex({type:"geo", fields:["lat","lon"]});
+        geocol.ensureIndex({type:"geo", fields:["geo"]});
+        geocol.ensureIndex({type:"geo", fields:["loca.tion.lat","loca.tion.lon"]});
         var lat, lon;
         for (lat=-40; lat <=40 ; ++lat) {
             for (lon=-40; lon <= 40; ++lon) {
-                geocol.insert({lat,lon});
-            }
-        }
-
-        internal.db._drop(colName2);
-        geocol = internal.db._create(colName2);
-        geocol.ensureIndex({type:"geo", fields:["loca.tion.lat","loca.tion.lon"]});
-        for (lat=-40; lat <=40 ; ++lat) {
-            for (lon=-40; lon <= 40; ++lon) {
-                geocol.insert({ loca : { tion : { lat , lon } } });
+                //geocol.insert({lat,lon});
+                geocol.insert({lat, lon, "geo":[lat,lon], "loca":{"tion":{ lat, lon }} });
             }
         }
     },
@@ -148,7 +144,6 @@ function optimizerRuleTestSuite() {
 
     tearDown : function () {
       internal.db._drop(colName);
-      internal.db._drop(colName2);
       geocol = null;
     },
 
@@ -163,7 +158,7 @@ function optimizerRuleTestSuite() {
             filter  : false,
             index   : true
           },
-          { string  : "FOR d IN " + colName2 + " SORT distance(d.loca.tion.lat, d.loca.tion.lon, 0 ,0 ) ASC LIMIT 1 RETURN d",
+          { string  : "FOR d IN " + colName + " SORT distance(d.loca.tion.lat, d.loca.tion.lon, 0 ,0 ) ASC LIMIT 1 RETURN d",
             cluster : false,
             sort    : false,
             filter  : false,
@@ -180,6 +175,18 @@ function optimizerRuleTestSuite() {
             sort    : false,
             filter  : false,
             index   : true
+          },
+          { string  : "FOR d IN " + colName + " FILTER distance(0, 0, d.geo[0],d.geo[1] ) < 1 LIMIT 1 RETURN d",
+            cluster : false,
+            sort    : false,
+            filter  : false,
+            index   : true
+          },
+          { string  : "FOR d IN " + colName + " FILTER distance(0, 0, d.lat, d.geo[1] ) < 1 LIMIT 1 RETURN d",
+            cluster : false,
+            sort    : false,
+            filter  : true,
+            index   : false
           },
           { string  : "FOR d IN " + colName + " SORT distance(0, 0, d.lat, d.lon) FILTER distance(0, 0, d.lat,d.lon ) < 1 LIMIT 1 RETURN d",
             cluster : false,
@@ -202,6 +209,9 @@ function optimizerRuleTestSuite() {
         ];
 
         queries.forEach(function(query) {
+          if(debug) {
+            db._explain(query.string);
+          }
           var result = AQL_EXPLAIN(query.string);
 
           //sort nodes
@@ -230,42 +240,37 @@ function optimizerRuleTestSuite() {
 
     testRuleRemoveNodes : function () {
       if(enabled.removeNodes){
-        var queries = [ 
+        var queries = [
           [ "FOR d IN " + colName  + " SORT distance(d.lat,d.lon, 0 ,0 ) ASC LIMIT 5 RETURN d", false, false, false ],
           [ "FOR d IN " + colName  + " SORT distance(0, 0, d.lat,d.lon ) ASC LIMIT 5 RETURN d", false, false, false ],
           [ "FOR d IN " + colName  + " FILTER distance(0, 0, d.lat,d.lon ) < 111200 RETURN d", false, false, false ],
-//          [ "FOR i IN 1..2 FOR d IN geocol SORT distance(i,2,d.lat,d.lon) ASC LIMIT 5 RETURN d", false, false, false ],
-        ];
-          
-        var queries2 = [ 
-          [ "FOR d IN " + colName2 + " SORT distance(d.loca.tion.lat,d.loca.tion.lon, 0 ,0 ) ASC LIMIT 5 RETURN d", false, false, false ]
+          [ "FOR d IN " + colName + " SORT distance(d.loca.tion.lat,d.loca.tion.lon, 0 ,0 ) ASC LIMIT 5 RETURN d", false, false, false ],
+          [ "FOR d IN " + colName + " SORT distance(d.geo[0], d.geo[1], 0 ,0 ) ASC LIMIT 5 RETURN d", false, false, false ],
+          [ "FOR d IN " + colName + " SORT distance(0, 0, d.geo[0], d.geo[1]) ASC LIMIT 5 RETURN d", false, false, false ],
         ];
 
         var expected = [
           [[0,0], [-1,0], [0,1], [1,0], [0,-1]],
           [[0,0], [-1,0], [0,1], [1,0], [0,-1]],
           [[0,0], [-1,0], [0,1], [1,0], [0,-1]],
+          [[0,0], [-1,0], [0,1], [1,0], [0,-1]],
+          [[0,0], [-1,0], [0,1], [1,0], [0,-1]],
+          [[0,0], [-1,0], [0,1], [1,0], [0,-1]],
         ];
 
         queries.forEach(function(query, qindex) {
+          if (debug) {
+            print(qindex, ": ", query, " ", expected[qindex]);
+            db._explain(query[0]);
+          }
           var result = AQL_EXECUTE(query[0]);
           expect(expected[qindex].length).to.be.equal(result.json.length);
           var pairs = result.json.map(function(res){
               return [res.lat,res.lon];
           });
           assertEqual(expected[qindex].sort(),pairs.sort());
-          //expect(expected[qindex].sort()).to.be.equal(result.json.sort())
         });
-        
-        queries2.forEach(function(query, qindex) {
-          var result = AQL_EXECUTE(query[0]);
-          expect(expected[qindex].length).to.be.equal(result.json.length);
-          var pairs = result.json.map(function(res){
-              return [res.loca.tion.lat,res.loca.tion.lon];
-          });
-          assertEqual(expected[qindex].sort(),pairs.sort());
-          //expect(expected[qindex].sort()).to.be.equal(result.json.sort())
-        });
+
       }
     }, // testRuleSort
 

@@ -8,17 +8,17 @@ arangosh&gt; c.getExtra();
     <span class="hljs-string">"scannedIndex"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"filtered"</span> : <span class="hljs-number">0</span>, 
     <span class="hljs-string">"httpRequests"</span> : <span class="hljs-number">0</span>, 
-    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00009298324584960938</span> 
+    <span class="hljs-string">"executionTime"</span> : <span class="hljs-number">0.00015687942504882812</span> 
   }, 
   <span class="hljs-string">"profile"</span> : { 
-    <span class="hljs-string">"initializing"</span> : <span class="hljs-number">0.0000021457672119140625</span>, 
-    <span class="hljs-string">"parsing"</span> : <span class="hljs-number">0.000018358230590820312</span>, 
-    <span class="hljs-string">"optimizing ast"</span> : <span class="hljs-number">0.0000030994415283203125</span>, 
+    <span class="hljs-string">"initializing"</span> : <span class="hljs-number">0.0000040531158447265625</span>, 
+    <span class="hljs-string">"parsing"</span> : <span class="hljs-number">0.000034809112548828125</span>, 
+    <span class="hljs-string">"optimizing ast"</span> : <span class="hljs-number">0.0000021457672119140625</span>, 
     <span class="hljs-string">"loading collections"</span> : <span class="hljs-number">0.00000286102294921875</span>, 
-    <span class="hljs-string">"instantiating plan"</span> : <span class="hljs-number">0.0000095367431640625</span>, 
-    <span class="hljs-string">"optimizing plan"</span> : <span class="hljs-number">0.000020503997802734375</span>, 
-    <span class="hljs-string">"executing"</span> : <span class="hljs-number">0.000021219253540039062</span>, 
-    <span class="hljs-string">"finalizing"</span> : <span class="hljs-number">0.000008344650268554688</span> 
+    <span class="hljs-string">"instantiating plan"</span> : <span class="hljs-number">0.000015974044799804688</span>, 
+    <span class="hljs-string">"optimizing plan"</span> : <span class="hljs-number">0.00003910064697265625</span>, 
+    <span class="hljs-string">"executing"</span> : <span class="hljs-number">0.000031948089599609375</span>, 
+    <span class="hljs-string">"finalizing"</span> : <span class="hljs-number">0.000016927719116210938</span> 
   }, 
   <span class="hljs-string">"warnings"</span> : [ ] 
 }

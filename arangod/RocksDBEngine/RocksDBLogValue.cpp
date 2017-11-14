@@ -240,32 +240,14 @@ RocksDBLogType RocksDBLogValue::type(rocksdb::Slice const& slice) {
 TRI_voc_tick_t RocksDBLogValue::databaseId(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + sizeof(uint64_t));
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
-  TRI_ASSERT(type == RocksDBLogType::DatabaseCreate ||
-             type == RocksDBLogType::DatabaseDrop ||
-             type == RocksDBLogType::CollectionCreate ||
-             type == RocksDBLogType::CollectionDrop ||
-             type == RocksDBLogType::CollectionRename ||
-             type == RocksDBLogType::CollectionChange ||
-             type == RocksDBLogType::IndexCreate ||
-             type == RocksDBLogType::IndexDrop ||
-             type == RocksDBLogType::BeginTransaction ||
-             type == RocksDBLogType::SinglePut ||
-             type == RocksDBLogType::SingleRemove);
+   TRI_ASSERT(RocksDBLogValue::containsDatabaseId(type));
   return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType));
 }
 
 TRI_voc_cid_t RocksDBLogValue::collectionId(rocksdb::Slice const& slice) {
   TRI_ASSERT(slice.size() >= sizeof(RocksDBLogType) + sizeof(uint64_t));
   RocksDBLogType type = static_cast<RocksDBLogType>(slice.data()[0]);
-  TRI_ASSERT(type == RocksDBLogType::CollectionCreate ||
-             type == RocksDBLogType::CollectionDrop ||
-             type == RocksDBLogType::CollectionRename ||
-             type == RocksDBLogType::CollectionChange ||
-             type == RocksDBLogType::IndexCreate ||
-             type == RocksDBLogType::IndexDrop ||
-             type == RocksDBLogType::DocumentOperationsPrologue ||
-             type == RocksDBLogType::SinglePut ||
-             type == RocksDBLogType::SingleRemove);
+  TRI_ASSERT(RocksDBLogValue::containsCollectionId(type));
   if (type == RocksDBLogType::DocumentOperationsPrologue) {  // only exception
     return uint64FromPersistent(slice.data() + sizeof(RocksDBLogType));
   } else {
@@ -301,7 +283,7 @@ VPackSlice RocksDBLogValue::indexSlice(rocksdb::Slice const& slice) {
                     sizeof(uint64_t) * 2);
 }
 
-arangodb::StringRef RocksDBLogValue::newCollectionName(
+arangodb::StringRef RocksDBLogValue::oldCollectionName(
     rocksdb::Slice const& slice) {
   size_t off = sizeof(RocksDBLogType) + sizeof(uint64_t) * 2;
   TRI_ASSERT(slice.size() >= off);
@@ -320,4 +302,30 @@ arangodb::StringRef RocksDBLogValue::documentKey(rocksdb::Slice const& slice) {
   }
   TRI_ASSERT(slice.size() >= off);
   return StringRef(slice.data() + off, slice.size() - off);
+}
+
+bool RocksDBLogValue::containsDatabaseId(RocksDBLogType type) {
+  return type == RocksDBLogType::DatabaseCreate ||
+  type == RocksDBLogType::DatabaseDrop ||
+  type == RocksDBLogType::CollectionCreate ||
+  type == RocksDBLogType::CollectionDrop ||
+  type == RocksDBLogType::CollectionRename ||
+  type == RocksDBLogType::CollectionChange ||
+  type == RocksDBLogType::IndexCreate ||
+  type == RocksDBLogType::IndexDrop ||
+  type == RocksDBLogType::BeginTransaction ||
+  type == RocksDBLogType::SinglePut ||
+  type == RocksDBLogType::SingleRemove;
+}
+
+bool RocksDBLogValue::containsCollectionId(RocksDBLogType type) {
+  return type == RocksDBLogType::CollectionCreate ||
+  type == RocksDBLogType::CollectionDrop ||
+  type == RocksDBLogType::CollectionRename ||
+  type == RocksDBLogType::CollectionChange ||
+  type == RocksDBLogType::IndexCreate ||
+  type == RocksDBLogType::IndexDrop ||
+  type == RocksDBLogType::DocumentOperationsPrologue ||
+  type == RocksDBLogType::SinglePut ||
+  type == RocksDBLogType::SingleRemove;
 }

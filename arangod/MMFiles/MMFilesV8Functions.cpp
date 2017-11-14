@@ -33,6 +33,7 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/V8Context.h"
+#include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -51,11 +52,6 @@ static void JS_RotateVocbaseCol(
   TRI_V8_TRY_CATCH_BEGIN(isolate);
   v8::HandleScope scope(isolate);
 
-  if (ServerState::instance()->isCoordinator()) {
-    // renaming a collection in a cluster is unsupported
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_CLUSTER_UNSUPPORTED);
-  }
-
   PREVENT_EMBEDDED_TRANSACTION();
 
   arangodb::LogicalCollection* collection =
@@ -65,11 +61,9 @@ static void JS_RotateVocbaseCol(
     TRI_V8_THROW_EXCEPTION_INTERNAL("cannot extract collection");
   }
   
-  TRI_THROW_SHARDING_COLLECTION_NOT_YET_IMPLEMENTED(collection);
-
   SingleCollectionTransaction trx(
       transaction::V8Context::Create(collection->vocbase(), true),
-      collection->cid(), AccessMode::Type::READ);
+      collection->cid(), AccessMode::Type::WRITE);
 
   Result res = trx.begin();
   
@@ -77,7 +71,8 @@ static void JS_RotateVocbaseCol(
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  res = static_cast<MMFilesCollection*>(collection->getPhysical())->rotateActiveJournal();
+  OperationResult result = trx.rotateActiveJournal(collection->name(), OperationOptions());
+  res.reset(result.code);
 
   trx.finish(res);
 

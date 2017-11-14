@@ -25,6 +25,7 @@ set(ROCKSDB_SOURCES
   RocksDBEngine/RocksDBMethods.cpp
   RocksDBEngine/RocksDBOptimizerRules.cpp
   RocksDBEngine/RocksDBPrimaryIndex.cpp
+  RocksDBEngine/RocksDBRecoveryFinalizer.cpp
   RocksDBEngine/RocksDBReplicationCommon.cpp
   RocksDBEngine/RocksDBReplicationContext.cpp
   RocksDBEngine/RocksDBReplicationManager.cpp
