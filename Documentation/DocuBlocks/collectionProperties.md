@@ -70,7 +70,8 @@ one or more of the following attribute(s):
   This option is meaningful for the MMFiles storage engine only.
 
 * *replicationFactor* : Change the number of shard copies kept on 
-  different DBServers *(Cluster only)*
+  different DBServers, valid values are  integer numbers
+  in the range of 1-10 *(Cluster only)*
 
 *Note*: it is not possible to change the journal size after the journal or
 datafile has been created. Changing this parameter will only effect newly
