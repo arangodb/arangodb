@@ -295,7 +295,6 @@ void ShardDistributionReporter::getDistributionForDatabase(
     std::unordered_map<ShardID, SyncCountInfo> counters;
     std::vector<ServerID> serversToAsk;
     while (!todoSyncStateCheck.empty()) {
-      serversToAsk.clear();
       counters.clear();
       auto const col = todoSyncStateCheck.front();
 
@@ -303,6 +302,7 @@ void ShardDistributionReporter::getDistributionForDatabase(
       auto cic = _ci->getCollectionCurrent(dbName, col->cid_as_string());
       // Send requests
       for (auto const& s : *(allShards.get())) {
+        serversToAsk.clear();
         double timeleft = endtime - TRI_microtime();
         uint64_t requestsInFlight = 0;
         OperationID leaderOpId = 0;
