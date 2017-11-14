@@ -386,7 +386,7 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
     Node node("precond");
 
     // Check is guarded in ::apply
-    bool found = (_node.exists(pv).size() == pv.size());
+    bool found = _node.has(pv);
     if (found) {
       node = _node(pv);
     }
@@ -483,8 +483,15 @@ check_ret_t Store::check(VPackSlice const& slice, CheckMode mode) const {
           if (mode == FIRST_FAIL) {
             break;
           }
+        } else {
+          if (!found || node != precond.value) {
+            ret.push_back(precond.key);
+            if (mode == FIRST_FAIL) {
+              break;
+            }
+          }
         }
-      } 
+      }
     } else {
       if (node != precond.value) {
         ret.push_back(precond.key);

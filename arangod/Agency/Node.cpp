@@ -285,13 +285,19 @@ bool Node::removeChild(std::string const& key) {
 }
 
 /// Node type
-NodeType Node::type() const { return _children.size() ? NODE : LEAF; }
+NodeType Node::type() const { return (_isArray || _value.size()) ? LEAF : NODE; }
 
 /// lh-value at path vector
 Node& Node::operator()(std::vector<std::string> const& pv) {
   if (!pv.empty()) {
     std::string const& key = pv.front();
+    // Create new child
+    // 1. Remove any values, 2. add new child
     if (_children.find(key) == _children.end()) {
+      _isArray = false;
+      if (!_value.empty()) {
+        _value.clear();
+      }
       _children[key] = std::make_shared<Node>(key, this);
     }
     auto pvc(pv);
@@ -406,6 +412,7 @@ bool Node::handle<SET>(VPackSlice const& slice) {
   if (val.isObject()) {
     if (val.hasKey("op")) {  // No longer a keyword but a regular key "op"
       if (_children.find("op") == _children.end()) {
+        
         _children["op"] = std::make_shared<Node>("op", this);
       }
       *(_children["op"]) = val.get("op");
@@ -728,10 +735,9 @@ bool Node::applieOp(VPackSlice const& slice) {
 bool Node::applies(VPackSlice const& slice) {
   std::regex reg("/+");
 
+  clear();
+
   if (slice.isObject()) {
-    if (slice.isEmptyObject()) {
-      *this = slice;
-    }
     for (auto const& i : VPackObjectIterator(slice)) {
       std::string key = std::regex_replace(i.key.copyString(), reg, "/");
       if (key.find('/') != std::string::npos) {
