@@ -138,6 +138,16 @@ void RocksDBThrottle::StopThread() {
     } // lock
 
     _threadFuture.wait();
+
+    {
+      CONDITION_LOCKER(guard, _threadCondvar);
+
+      _internalRocksDB = nullptr;
+      _delayToken.reset();
+    } // lock
+
+
+
   } // if
 
 }
@@ -389,16 +399,21 @@ void RocksDBThrottle::RecalculateThrottle() {
 void RocksDBThrottle::SetThrottle() {
   // called by routine with _threadMutex held
 
-  // this routine can get called before _internalRocksDB is set
-  if (nullptr != _internalRocksDB) {
-    // inform write_controller_ of our new rate
-    if (1<_throttleBps) {
-      // hard casting away of "const" ...
-      _delayToken=(((WriteController&)_internalRocksDB->write_controller()).GetDelayToken(_throttleBps));
-    } else {
-      _delayToken.reset();
-    } // else
-  } // if
+  // using condition variable's mutex to protect _internalRocksDB race
+  {
+    CONDITION_LOCKER(guard, _threadCondvar);
+
+    // this routine can get called before _internalRocksDB is set
+    if (nullptr != _internalRocksDB) {
+      // inform write_controller_ of our new rate
+      if (1<_throttleBps) {
+        // hard casting away of "const" ...
+        _delayToken=(((WriteController&)_internalRocksDB->write_controller()).GetDelayToken(_throttleBps));
+      } else {
+        _delayToken.reset();
+      } // else
+    } // if
+  } // lock
 } // RocksDBThrottle::SetThrottle
 
 
