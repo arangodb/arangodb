@@ -195,7 +195,8 @@ void RocksDBThrottle::OnFlushCompleted(rocksdb::DB* db, const rocksdb::FlushJobI
 
   // start throttle after first data is posted
   //  (have seen some odd zero and small size flushes early)
-  if (1024<flush_size) {
+  //  (64<<20) is default size for write_buffer_size in column family options, too hard to read from here
+  if ((64<<19)<flush_size) {
     std::call_once(_initFlag, &RocksDBThrottle::Startup, this, db);
   } // if
 

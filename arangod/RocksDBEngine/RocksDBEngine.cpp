@@ -136,7 +136,9 @@ RocksDBEngine::~RocksDBEngine() {
   _listener.reset();
   _options.listeners.clear();
 
-  delete _db; }
+  delete _db;
+  _db = nullptr;
+}
 
 // inherited from ApplicationFeature
 // ---------------------------------
