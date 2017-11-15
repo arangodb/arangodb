@@ -208,8 +208,9 @@ class MMFilesCollection final : public PhysicalCollection {
 
   /// @brief increase dead stats for a datafile, if it exists
   void updateStats(TRI_voc_fid_t fid,
-                   MMFilesDatafileStatisticsContainer const& values) {
-    _datafileStatistics.update(fid, values);
+                   MMFilesDatafileStatisticsContainer const& values,
+                   bool warn) {
+    _datafileStatistics.update(fid, values, warn);
   }
 
   uint64_t numberDocuments(transaction::Methods* trx) const override;
