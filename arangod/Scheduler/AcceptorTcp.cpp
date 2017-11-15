@@ -37,14 +37,13 @@ void AcceptorTcp::open() {
   boost::asio::ip::tcp::endpoint asioEndpoint;
   boost::system::error_code err;
   auto address = boost::asio::ip::address::from_string(hostname,err);
-  if(!err) {
+  if (!err) {
     asioEndpoint = boost::asio::ip::tcp::endpoint(address,portNumber);
   } else { // we need to resolve the string containing the ip
     std::unique_ptr<boost::asio::ip::tcp::resolver::query> query;
     if (_endpoint->domain() == AF_INET6) {
       query.reset(new boost::asio::ip::tcp::resolver::query(boost::asio::ip::tcp::v6(), hostname, std::to_string(portNumber)));
     } else if (_endpoint->domain() == AF_INET) {
-
       query.reset(new boost::asio::ip::tcp::resolver::query(boost::asio::ip::tcp::v4(), hostname, std::to_string(portNumber)));
     } else {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_IP_ADDRESS_INVALID);
@@ -56,7 +55,7 @@ void AcceptorTcp::open() {
       throw std::runtime_error(err.message());
     }
 
-    if(boost::asio::ip::tcp::resolver::iterator{} == iter){
+    if (boost::asio::ip::tcp::resolver::iterator{} == iter) {
       LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to to resolve endpoint: endpoint is default constructed";
     }
 
@@ -73,7 +72,11 @@ void AcceptorTcp::open() {
     LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to bind endpoint: " << err.message();
     throw std::runtime_error(err.message());
   }
-  _acceptor.listen();
+  _acceptor.listen(_endpoint->listenBacklog(), err);
+  if (err) {
+    LOG_TOPIC(ERR, Logger::COMMUNICATION) << "unable to bind endpoint: " << err.message();
+    throw std::runtime_error(err.message());
+  }
 }
 
 void AcceptorTcp::asyncAccept(AcceptHandler const& handler) {
