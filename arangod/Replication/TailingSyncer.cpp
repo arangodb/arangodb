@@ -560,11 +560,14 @@ Result TailingSyncer::renameCollection(VPackSlice const& slice) {
   arangodb::LogicalCollection* col = nullptr;
   if (slice.hasKey("cuid")) {
     col = resolveCollection(vocbase, slice);
+    if (col == nullptr) {
+      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unknown cuid");
+    }
   } else if (collection.hasKey("oldName")) {
     col = vocbase->lookupCollection(collection.get("oldName").copyString());
-  }
-  if (col == nullptr) {
-    return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+    if (col == nullptr) {
+      return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND, "unknown old collection name");
+    }
   }
   return Result(vocbase->renameCollection(col, name, true));
 }

@@ -351,7 +351,9 @@ TRI_vocbase_t* Syncer::resolveVocbase(VPackSlice const& slice) {
 arangodb::LogicalCollection* Syncer::resolveCollection(TRI_vocbase_t* vocbase,
                                                        VPackSlice const& slice) {
   TRI_ASSERT(vocbase != nullptr);
-  if (!simulate32Client()) {
+  // extract "cid"
+  TRI_voc_cid_t cid = getCid(slice);
+  if (!simulate32Client() || cid == 0) {
     VPackSlice uuid;
     if ((uuid = slice.get("cuid")).isString()) {
       return vocbase->lookupCollectionByUuid(uuid.copyString());
@@ -360,8 +362,6 @@ arangodb::LogicalCollection* Syncer::resolveCollection(TRI_vocbase_t* vocbase,
     }
   }
   
-  // extract "cid"
-  TRI_voc_cid_t cid = getCid(slice);
   if (cid == 0) {
     LOG_TOPIC(ERR, Logger::REPLICATION) <<
       TRI_errno_string(TRI_ERROR_REPLICATION_INVALID_RESPONSE);
