@@ -56,8 +56,9 @@ struct NearParams {
   /// may not be larger than half earth circumference or larger
   /// than the bounding cap of the filter region (see _filter)
   double maxDistance = kEarthRadiusInMeters * M_PI;
-  /// Include result points
-  bool maxInclusive = true;
+  
+  /// Default order is from closest to farthest
+  //bool _ascending = true;
 
   // parameters to calculate the cover for index
   // lookup intervals
@@ -84,7 +85,7 @@ public:
 
 /// result of a geospatial index query. distance may or may not be set
 struct GeoDocument {
-  GeoDocument(TRI_voc_rid_t doc, double rad) : rid(doc), radians(doc) {}
+  GeoDocument(TRI_voc_rid_t doc, double rad) : rid(doc), radians(rad) {}
   /// @brief LocalDocumentId
   TRI_voc_rid_t rid;
   /// @brief distance from centroids on the unit sphere
@@ -93,7 +94,7 @@ struct GeoDocument {
   
 struct GeoDocumentCompare {
   bool operator()(GeoDocument const& a, GeoDocument const& b) {
-    return a.radians < b.radians;
+    return a.radians > b.radians;
   }
 };
   
@@ -120,11 +121,23 @@ class NearUtils {
     return _params.filter;
   }
   
+  S2Region const* region() const {
+    return _params.region;
+  }
+  
   /// @brief has buffered results
-  bool hasNearest() const { return !_buffer.empty(); }
+  bool hasNearest() const {
+    // we need to not return results in the search area
+    // between _innerBound and _maxBound. Otherwise results may appear
+    // too early in the result list
+    return !_buffer.empty() && _buffer.top().radians <= _innerBound;
+  }
   
   /// @brief closest buffered result
-  GeoDocument const& nearest() const { return _buffer.top(); }
+  GeoDocument const& nearest() const {
+    TRI_ASSERT(_buffer.top().radians <= _innerBound);
+    return _buffer.top();
+  }
   
   /// @brief remove closest buffered result
   void popNearest() { _buffer.pop(); }
@@ -162,15 +175,11 @@ class NearUtils {
   /// Amount to increment by (in radians on unit sphere)
   double _boundDelta = 0.0;
 
-  /// inner limit (in radians on unit sphere)
-  double _lastInnerBound = 0.0;
-
-  /// inner limit (in radians on unit sphere)
+  /// inner limit (in radians on unit sphere) of search area
   double _innerBound = 0.0;
-
-  /// outer limit (in radians on unit sphere)
+  /// outer limit (in radians on unit sphere) of search area
   double _outerBound = 0.0;
-
+  
   /// for adjusting _boundDelta on the fly
   size_t _numFoundLastInterval = 0;
   

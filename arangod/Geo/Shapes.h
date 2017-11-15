@@ -23,6 +23,8 @@
 #ifndef ARANGOD_GEO_SHAPES_H
 #define ARANGOD_GEO_SHAPES_H 1
 
+#include <string>
+
 namespace arangodb {
 namespace geo {
   
@@ -32,6 +34,13 @@ namespace geo {
       : latitude(lat), longitude(lon) {}
     double latitude; // in degrees
     double longitude; // in degrees
+    
+    std::string toString() const {
+      return "(lat: " + std::to_string(latitude) + ", lon: " +
+             std::to_string(longitude) + ")";
+    }
+    
+    //arangodb::LoggerStream& operator<<(arangodb::LoggerStream& os, arangodb::geo::Coordinate const& cc);
   };
   
   /// ring on a sphere
@@ -42,7 +51,6 @@ namespace geo {
     double minRadius;
     double maxRadius;
   };
-
 }  // namespace geo
 }  // namespace arangodb
 

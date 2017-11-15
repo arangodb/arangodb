@@ -1573,6 +1573,7 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }
 
+  TRI_ASSERT(info->replicationFactor() <= 10 && info->replicationFactor() >= 0);
   VPackBuilder temp;
   temp.openObject();
   temp.add("waitForSync", VPackValue(info->waitForSync()));

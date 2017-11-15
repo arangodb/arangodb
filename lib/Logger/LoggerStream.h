@@ -24,7 +24,8 @@
 #ifndef ARANGODB_LOGGER_LOGGER_STREAM_H
 #define ARANGODB_LOGGER_LOGGER_STREAM_H 1
 
-#include "Basics/Common.h"
+#include "Logger/Logger.h"
+#include "Logger/LogTopic.h"
 
 #include <sstream>
 

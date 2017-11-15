@@ -40,17 +40,17 @@ using namespace arangodb;
 using namespace arangodb::geo;
 
 // This field must be present, and...
-static const string GEOJSON_TYPE = "type";
+static const std::string GEOJSON_TYPE = "type";
 // Have one of these values:
-static const string GEOJSON_TYPE_POINT = "Point";
-static const string GEOJSON_TYPE_LINESTRING = "PolyLine";
-static const string GEOJSON_TYPE_POLYGON = "Polygon";
-static const string GEOJSON_TYPE_MULTI_POINT = "MultiPoint";
-static const string GEOJSON_TYPE_MULTI_LINESTRING = "MultiLineString";
-static const string GEOJSON_TYPE_MULTI_POLYGON = "MultiPolygon";
-static const string GEOJSON_TYPE_GEOMETRY_COLLECTION = "GeometryCollection";
+static const std::string GEOJSON_TYPE_POINT = "Point";
+static const std::string GEOJSON_TYPE_LINESTRING = "PolyLine";
+static const std::string GEOJSON_TYPE_POLYGON = "Polygon";
+static const std::string GEOJSON_TYPE_MULTI_POINT = "MultiPoint";
+static const std::string GEOJSON_TYPE_MULTI_LINESTRING = "MultiLineString";
+static const std::string GEOJSON_TYPE_MULTI_POLYGON = "MultiPolygon";
+static const std::string GEOJSON_TYPE_GEOMETRY_COLLECTION = "GeometryCollection";
 // This field must also be present.  The value depends on the type.
-static const string GEOJSON_COORDINATES = "coordinates";
+static const std::string FIELD_COORDINATES = "coordinates";
 
 /// @brief parse GeoJSON Type
 GeoJsonParser::GeoJSONType GeoJsonParser::parseGeoJSONType(
@@ -274,7 +274,7 @@ Result GeoJsonParser::parsePoint(VPackSlice const& geoJSON, S2LatLng& latLng) co
 /// }
 Result GeoJsonParser::parsePolygon(VPackSlice const& geoJSON, S2Polygon& poly) const {
   
-  VPackSlice coordinates = geoJSON.get("coordinates");
+  VPackSlice coordinates = geoJSON.get(FIELD_COORDINATES);
   if (!coordinates.isArray()) {
     return Result(TRI_ERROR_BAD_PARAMETER, "coordinates missing");
   }
@@ -333,9 +333,14 @@ Result GeoJsonParser::parsePolygon(VPackSlice const& geoJSON, S2Polygon& poly) c
 Result GeoJsonParser::parseLinestring(VPackSlice const& geoJson,
                                       S2Polyline& linestring) const {
   // verify polygon values
-  TRI_ASSERT(parseGeoJSONType(geoJson) == GeoJSONType::GEOJSON_LINESTRING);
+  if (!geoJson.isObject() && !geoJson.isArray()) {
+    return Result(TRI_ERROR_BAD_PARAMETER, "invalid linestring inpuz");
+  }
+  TRI_ASSERT(!geoJson.isObject() ||
+             parseGeoJSONType(geoJson) == GeoJSONType::GEOJSON_LINESTRING);
 
   std::vector<S2Point> vertices;
+  // can handle arrays and {coordinates:[...]}
   Result res = ParsePoints(geoJson, vertices);
   if (res.ok()) {
     removeAdjacentDuplicates(vertices);
@@ -348,6 +353,27 @@ Result GeoJsonParser::parseLinestring(VPackSlice const& geoJson,
   }
   return res;
 };
+
+/// Coordinates of a MultiLineString are an array of LineString coordinate arrays:
+Result GeoJsonParser::parseMultiLinestring(VPackSlice const& geoJSON,
+                                           std::vector<S2Polyline>& ll) const {
+  TRI_ASSERT(parseGeoJSONType(geoJSON) == GeoJSONType::GEOJSON_LINESTRING);
+  VPackSlice coordinates = geoJSON.get(FIELD_COORDINATES);
+  if (!coordinates.isArray()) {
+    return Result(TRI_ERROR_BAD_PARAMETER, "coordinates missing");
+  }
+  
+  for (VPackSlice linestring : VPackArrayIterator(coordinates)) {
+    S2Polyline polyline;
+    // can handle lineatring array
+    Result res = parseLinestring(linestring, polyline);
+    if (res.fail()) {
+      return res;
+    }
+    ll.emplace_back(std::move(polyline));
+  }
+  return TRI_ERROR_NO_ERROR;
+}
 
 bool GeoJsonParser::isGeoJsonWithArea(VPackSlice const& data) {
   if (data.isObject()) {  // no geojson

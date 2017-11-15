@@ -119,7 +119,7 @@ uint64_t RocksDBValue::keyValue(std::string const& s) {
 geo::Coordinate RocksDBValue::centroid(rocksdb::Slice const& s) {
   TRI_ASSERT(s.size() == sizeof(double) * 2);
   return geo::Coordinate(intToDouble(uint64FromPersistent(s.data())),// lat
-       intToDouble(uint64FromPersistent(s.data() + sizeof(double))));// lon
+       intToDouble(uint64FromPersistent(s.data() + sizeof(uint64_t))));// lon
 }
 
 RocksDBValue::RocksDBValue(RocksDBEntryType type) : _type(type), _buffer() {}

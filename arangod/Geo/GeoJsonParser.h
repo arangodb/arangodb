@@ -62,6 +62,9 @@ class GeoJsonParser {
   Result parsePoint(velocypack::Slice const& geoJSON, S2LatLng& latLng) const;
   Result parsePolygon(velocypack::Slice const& geoJSON, S2Polygon& poly) const;
   Result parseLinestring(velocypack::Slice const& geoJSON, S2Polyline& ll) const;
+  Result parseMultiLinestring(velocypack::Slice const& geoJSON,
+                              std::vector<S2Polyline>& ll) const;
+
   
   bool isGeoJsonWithArea(arangodb::velocypack::Slice const& geoJson);
 };

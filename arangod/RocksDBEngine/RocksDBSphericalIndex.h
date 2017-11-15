@@ -53,7 +53,7 @@ class RocksDBSphericalIndexIterator : public IndexIterator {
 
  protected:
   RocksDBSphericalIndex const* _index;
-  std::unique_ptr<rocksdb::Iterator> _iterator;
+  std::unique_ptr<rocksdb::Iterator> _iter;
 };
 
 class RocksDBSphericalIndex final : public arangodb::RocksDBIndex {

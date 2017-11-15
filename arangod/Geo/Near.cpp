@@ -56,13 +56,19 @@ NearUtils::NearUtils(NearParams const& qp)
       _maxBounds(qp.maxDistanceRad()) {
   qp.cover.configureS2RegionCoverer(&_coverer);
   reset();
+      
+  LOG_TOPIC(ERR, Logger::FIXME) << "--------------------------------------------------------";
+  LOG_TOPIC(INFO, Logger::FIXME) << "[Near] centroid target: " << _params.centroid.toString();
+  LOG_TOPIC(INFO, Logger::FIXME) << "[Near] minBounds: " << _params.minDistance
+        << "  maxBounds:" << _params.maxDistance;
 }
 
 void NearUtils::reset() {
   if (!_seen.empty() || !_buffer.empty()) {
     _seen.clear();
-    GeoDocumentsQueue emp;
-    _buffer.swap(emp);
+    while(!_buffer.empty()) {
+      _buffer.pop();
+    }
   }
   
   if (_boundDelta <= 0) { // do not reset everytime
@@ -71,29 +77,34 @@ void NearUtils::reset() {
     _boundDelta = S2::kAvgEdge.GetValue(level);  // in radians ?
     TRI_ASSERT(_boundDelta * kEarthRadiusInMeters > 250);
   }
-
-  _lastInnerBound = 0.0;  // used for fast out-of-bounds rejections
-  _innerBound = std::max(0.0, _params.minDistance / kEarthRadiusInMeters);
-  _outerBound = std::min(_outerBound + _boundDelta, _maxBounds);
-  TRI_ASSERT(_innerBound < _outerBound && _outerBound <= _maxBounds);
+  TRI_ASSERT(_boundDelta > 0);
+  
+  // this initial interval is never used like that, see intervals()
+  _innerBound = 0;
+  _outerBound = std::max(0.0, _params.minDistance / kEarthRadiusInMeters);
   _numFoundLastInterval = 0;
+  TRI_ASSERT(_innerBound <= _outerBound && _outerBound <= _maxBounds);
 }
 
 std::vector<GeoCover::Interval> NearUtils::intervals() {
-  // we already scanned the entire planet, if this fails
-  TRI_ASSERT(_innerBound != _outerBound && _innerBound != _maxBounds);
-
-  if (_lastInnerBound > 0) {
-    if (_numFoundLastInterval == 0) {
-      _boundDelta *= 4;
-    } else if (_numFoundLastInterval < 256) {
-      _boundDelta *= 2;
-    } else if (_numFoundLastInterval > 512) {
+  if (_innerBound > 0) {
+    // we already scanned the entire planet, if this fails
+    TRI_ASSERT(_innerBound != _outerBound && _innerBound != _maxBounds);
+    if (_numFoundLastInterval < 256) {
+      _boundDelta *= (_numFoundLastInterval == 0 ? 4 : 2);
+    } else if (_numFoundLastInterval > 512 && _boundDelta > DBL_MIN * 2) {
       _boundDelta /= 2;
     }
     _numFoundLastInterval = 0;
+    TRI_ASSERT(_boundDelta > 0);
   }
-  //LOG_TOPIC(ERR, Logger::FIXME) << "delta: " << _boundDelta;
+
+  _innerBound = _outerBound;
+  _outerBound = std::min(_outerBound + _boundDelta, _maxBounds);
+  TRI_ASSERT(_innerBound <= _outerBound && _outerBound <= _maxBounds);
+  
+  LOG_TOPIC(INFO, Logger::FIXME) << "[Near] inner: " << _innerBound * kEarthRadiusInMeters
+  << "  outerBounds: " << _outerBound * kEarthRadiusInMeters << " delta: " << _boundDelta;
 
   std::vector<S2CellId> cover;
   if (0.0 < _innerBound && _outerBound < _maxBounds) {
@@ -105,7 +116,7 @@ std::vector<GeoCover::Interval> NearUtils::intervals() {
     regions.push_back(new S2Cap(ob));
     S2RegionIntersection ring(&regions);
     _coverer.GetCovering(ring, &cover);
-  } else if (0.0 == _innerBound && _outerBound < _maxBounds) {
+  } else if (0.0 == _innerBound && _outerBound <= _maxBounds) {
     S2Cap ob = S2Cap::FromAxisAngle(_centroid, S1Angle::Radians(_outerBound));
     _coverer.GetCovering(ob, &cover);
   } else if (0.0 < _innerBound && _outerBound >= _maxBounds) {
@@ -113,7 +124,7 @@ std::vector<GeoCover::Interval> NearUtils::intervals() {
     S2Cap ib = S2Cap::FromAxisAngle(_centroid, S1Angle::Radians(_innerBound));
     _coverer.GetCovering(ib, &cover);
   } else {  // done or invalid bounds
-    TRI_ASSERT(_innerBound == _outerBound == _maxBounds);
+    TRI_ASSERT(_innerBound == _outerBound && _outerBound == _maxBounds);
     return {};
   }
 
@@ -144,28 +155,25 @@ std::vector<GeoCover::Interval> NearUtils::intervals() {
 
   /*if (_params.region != nullptr) { // expensive rejection
     TRI_ASSERT(_params.filter != geo::FilterType::NONE);
-    
-  }
-  
-  for (int i = 0; i < lookup.num_cells(); i++) {
+   // FIXME: Use S2RegionIntersection instead ?
+   for (int i = 0; i < lookup.num_cells(); i++) {
     if (region->MayIntersect(S2Cell(lookup.cell_id(i)))) {
       cover.push_back(cellId);
     }
-  }*/
-
-  _lastInnerBound = _innerBound;
-  _innerBound = _outerBound;
-  _outerBound = std::min(_outerBound + _boundDelta, _maxBounds);
+   }
+  }
+  */
 
   // prune the _seen list revision IDs
   auto it = _seen.begin();
   while (it != _seen.end()) {
-    if (it->second < _lastInnerBound) {
+    if (it->second < _innerBound) {
       it = _seen.erase(it);
     } else {
       it++;
     }
   }
+  
   return intervals;
 }
 
@@ -173,9 +181,12 @@ void NearUtils::reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center) {
   S2LatLng cords = S2LatLng::FromDegrees(center.latitude, center.longitude);
   S2Point pp = cords.ToPoint();
   double rad = _centroid.Angle(pp);
+  
+  LOG_TOPIC(INFO, Logger::FIXME) << "[Found] " << rid <<
+  " at " << (center.toString()) << " distance: " << (rad * kEarthRadiusInMeters);
+  
   // cheap rejections based on distance to target
-  if (rad < _lastInnerBound || _maxBounds < rad ||
-      (!_params.maxInclusive && rad == _maxBounds)) {
+  if (rad < _innerBound || _maxBounds <= rad) {
     return;
   }
   
@@ -184,12 +195,12 @@ void NearUtils::reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center) {
     _numFoundLastInterval++;        // we have to estimate scan bounds
     _seen.emplace(rid, rad);
     
-    if (_params.region != nullptr) { // expensive rejection
+    /*if (_params.region != nullptr) { // expensive rejection
       TRI_ASSERT(_params.filter != geo::FilterType::NONE);
       if (!_params.region->VirtualContainsPoint(pp)) {
         return;
       }
-    }
+    }*/
     _buffer.emplace(rid, rad);
   } else {                          // deduplication
     TRI_ASSERT(it->second == rad);  // should never change
@@ -198,10 +209,13 @@ void NearUtils::reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center) {
 
 void NearUtils::estimateDensity(geo::Coordinate const& found) {
   S2LatLng cords = S2LatLng::FromDegrees(found.latitude, found.longitude);
-  _boundDelta = _centroid.Angle(cords.ToPoint()) * 2;
-  LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Estimating density with "
+  double delta = _centroid.Angle(cords.ToPoint()) * 4;
+  if (delta > 0) {
+    _boundDelta = delta;
+    TRI_ASSERT(_innerBound == 0 && _buffer.empty()); // only call after reset
+    LOG_TOPIC(DEBUG, Logger::ROCKSDB) << "Estimating density with "
     << _boundDelta * kEarthRadiusInMeters << "m";
-  _outerBound = std::min(_outerBound + _boundDelta, _maxBounds);
+  }
 }
 
 bool NearUtils::isDone() const {

@@ -36,7 +36,10 @@ namespace geo {
 
 // Equatorial radius of earth.
 // Source: http://nssdc.gsfc.nasa.gov/planetary/factsheet/earthfact.html
-const double kEarthRadiusInMeters = (6378.137 * 1000);
+// Equatorial radius
+//const double kEarthRadiusInMeters = (6378.137 * 1000);
+// Volumetric mean radius
+const double kEarthRadiusInMeters = (6371.008 * 1000);
 
 enum class FilterType {
   // no filter, only useful on a near query

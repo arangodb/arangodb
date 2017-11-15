@@ -24,6 +24,12 @@ class S2Polyline : public S2Region {
   // Convenience constructors that call Init() with the given vertices.
   S2Polyline(std::vector<S2Point> const& vertices);
   S2Polyline(std::vector<S2LatLng> const& vertices);
+  S2Polyline(S2Polyline&& other) {
+    num_vertices_ = other.num_vertices_;
+    vertices_ = other.vertices_;
+    other.num_vertices_ = 0;
+    other.vertices_ = nullptr;
+  }
 
   // Initialize a polyline that connects the given vertices. Empty polylines are
   // allowed.  Adjacent vertices should not be identical or antipodal.  All
