@@ -95,8 +95,8 @@ struct DocIdScorer: public irs::sort {
   };
 
   struct Scorer: public irs::sort::scorer {
-    irs::attribute_view::ref<irs::document> const& _doc;
-    Scorer(irs::attribute_view::ref<irs::document> const& doc): _doc(doc) { }
+    irs::attribute_view::ref<irs::document>::type const& _doc;
+    Scorer(irs::attribute_view::ref<irs::document>::type const& doc): _doc(doc) { }
     virtual void score(irs::byte_type* score_buf) override {
       reinterpret_cast<uint64_t&>(*score_buf) = _doc.get()->value;
     }

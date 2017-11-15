@@ -500,7 +500,7 @@ bool OrderedViewIterator::next(LocalDocumentIdCallback const& callback, size_t l
   for (size_t i = 0, count = _reader.size(); i < count; ++i) {
     auto& segmentReader = _reader[i];
     auto itr = segmentReader.mask(_filter->execute(segmentReader, _order));
-    const irs::score* score = itr->attributes().get<irs::score>();
+    const irs::score* score = itr->attributes().get<irs::score>().get();
 
     if (!score) {
       LOG_TOPIC(ERR, arangodb::iresearch::IResearchFeature::IRESEARCH)

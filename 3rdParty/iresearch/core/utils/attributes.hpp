@@ -564,7 +564,18 @@ class IRESEARCH_API attribute_view
   }
 
   template<typename T>
-  typename ref<T>::type& emplace(T& value) {
+  inline typename ref<T>::type& emplace() {
+    return emplace_internal<T>();
+  }
+
+  template<typename T>
+  inline typename ref<T>::type& emplace(T& value) {
+    return emplace_internal(&value);
+  }
+
+ private:
+  template<typename T>
+  typename ref<T>::type& emplace_internal(T* value = nullptr) {
     REGISTER_TIMER_DETAILED();
 
     typedef typename std::enable_if<
@@ -576,7 +587,7 @@ class IRESEARCH_API attribute_view
 
     if (inserted) {
       // reinterpret_cast to avoid layout related problems
-      attr = reinterpret_cast<attribute*>(&value);
+      attr = reinterpret_cast<attribute*>(value);
     }
 
     return reinterpret_cast<typename ref<T>::type&>(attr);
