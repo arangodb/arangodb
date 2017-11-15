@@ -66,14 +66,14 @@ struct HealthRecord {
 
   HealthRecord& operator=(Node const& node) {
     if (node.has("Status")) {
-      syncStatus = node("SyncStatus").toJson();
-      status = node("Status").toJson();
+      syncStatus = node("SyncStatus").getString();
+      status = node("Status").getString();
       if (node.has("SyncTime")) {
-        lastAcked = node("LastAcked").toJson();
-        syncTime = node("SyncTime").toJson();
+        lastAcked = node("LastAcked").getString();
+        syncTime = node("SyncTime").getString();
       }
       if (node.has("Host")) {
-        hostId = node("Host").toJson();
+        hostId = node("Host").getString();
       }
     }
     return *this;
@@ -343,18 +343,18 @@ std::vector<check_t> Supervision::check(std::string const& type) {
   for (auto const& machine : machinesPlanned) {
     std::string lastHeartbeatStatus, lastHeartbeatAcked, lastHeartbeatTime,
       lastStatus, serverID(machine.first),
-      shortName(_snapshot(targetShortID + serverID + "/ShortName").toJson());
+      shortName(_snapshot(targetShortID + serverID + "/ShortName").getString());
     
     // Endpoint
     std::string endpoint;
     std::string epPath = serverID + "/endpoint";
     if (serversRegistered.has(epPath)) {
-      endpoint = serversRegistered(epPath).toJson();
+      endpoint = serversRegistered(epPath).getString();
     }
     std::string hostId;
     std::string hoPath = serverID + "/host";
     if (serversRegistered.has(hoPath)) {
-      hostId = serversRegistered(hoPath).toJson();
+      hostId = serversRegistered(hoPath).getString();
     }
 
     // Health records from persistence, from transience and a new one
@@ -373,10 +373,10 @@ std::vector<check_t> Supervision::check(std::string const& type) {
     // Sync.time is copied to Health.syncTime
     // Sync.status is copied to Health.syncStatus
     std::string syncTime = _transient.has(syncPrefix + serverID) ?
-      _transient(syncPrefix + serverID + "/time").toJson() :
+      _transient(syncPrefix + serverID + "/time").getString() :
       timepointToString(std::chrono::system_clock::time_point());
     std::string syncStatus = _transient.has(syncPrefix + serverID) ?
-      _transient(syncPrefix + serverID + "/status").toJson() : "UNKNOWN";
+      _transient(syncPrefix + serverID + "/status").getString() : "UNKNOWN";
 
     // Last change registered in sync (transient != sync)
     // Either now or value in transient

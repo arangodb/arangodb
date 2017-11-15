@@ -222,7 +222,7 @@ class Node {
   bool has(std::string const&) const;
 
   /// @brief Get integer value (throws if type NODE or if conversion fails)
-  int getInt() const;
+  int64_t getInt() const;
 
   /// @brief Is UInt
   bool isInt() const;
