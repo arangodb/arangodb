@@ -148,12 +148,12 @@ class NearIterator final : public RocksDBSphericalIndexIterator {
   void performScan() {
     rocksdb::Comparator const* cmp = _index->comparator();
     // list of sorted intervals to scan
-    std::vector<geo::GeoCover::Interval> const scan = _near.intervals();
+    std::vector<geo::Interval> const scan = _near.intervals();
     LOG_TOPIC(INFO, Logger::FIXME) << "# intervals: " << scan.size();
     size_t seeks = 0;
 
     for (size_t i = 0; i < scan.size(); i++) {
-      geo::GeoCover::Interval const& it = scan[i];
+      geo::Interval const& it = scan[i];
       TRI_ASSERT(it.min <= it.max);
       RocksDBKeyBounds bds = RocksDBKeyBounds::SphericalIndex(_index->objectId(),
                                                               it.min.id(), it.max.id());
@@ -413,10 +413,10 @@ Result RocksDBSphericalIndex::parse(VPackSlice const& doc,
     S2RegionCoverer coverer;
     _coverParams.configureS2RegionCoverer(&coverer);
     VPackSlice loc = doc.get(_location);
-    return geo::GeoCover::generateCoverJson(&coverer, loc, cells, centroid);
+    return geo::GeoUtils::indexCellsGeoJson(&coverer, loc, cells, centroid);
   } else if (_variant == IndexVariant::COMBINED_LAT_LON) {
     VPackSlice loc = doc.get(_location);
-    return geo::GeoCover::generateCoverLatLng(loc, false, cells, centroid);
+    return geo::GeoUtils::indexCellsLatLng(loc, false, cells, centroid);
   } else if (_variant == IndexVariant::INDIVIDUAL_LAT_LON) {
     VPackSlice lon = doc.get(_longitude);
     VPackSlice lat = doc.get(_latitude);
@@ -425,8 +425,7 @@ Result RocksDBSphericalIndex::parse(VPackSlice const& doc,
     }
     centroid.latitude = lat.getNumericValue<double>();
     centroid.longitude = lon.getNumericValue<double>();
-
-    return geo::GeoCover::generateCover(centroid, cells);
+    return geo::GeoUtils::indexCells(centroid, cells);
   }
   return TRI_ERROR_INTERNAL;
 }

@@ -148,7 +148,7 @@ class NearUtils {
   /// Call only when current scan intervals contain no more results
   /// will internall track already returned intervals and not return
   /// new ones without calling updateBounds
-  std::vector<GeoCover::Interval> intervals();
+  std::vector<geo::Interval> intervals();
 
   /// buffer and sort results
   void reportFound(TRI_voc_rid_t rid, geo::Coordinate const& center);

@@ -86,7 +86,7 @@ void NearUtils::reset() {
   TRI_ASSERT(_innerBound <= _outerBound && _outerBound <= _maxBounds);
 }
 
-std::vector<GeoCover::Interval> NearUtils::intervals() {
+std::vector<geo::Interval> NearUtils::intervals() {
   if (_innerBound > 0) {
     // we already scanned the entire planet, if this fails
     TRI_ASSERT(_innerBound != _outerBound && _innerBound != _maxBounds);
@@ -128,10 +128,10 @@ std::vector<GeoCover::Interval> NearUtils::intervals() {
     return {};
   }
 
-  std::vector<GeoCover::Interval> intervals;
+  std::vector<geo::Interval> intervals;
   if (!cover.empty()) {  // not sure if this can ever happen
     if (_scannedCells.num_cells() == 0) {
-      GeoCover::scanIntervals(_params.cover.worstIndexedLevel, cover,
+      GeoUtils::scanIntervals(_params.cover.worstIndexedLevel, cover,
                               intervals);
       _scannedCells.Add(cover);
     } else {
@@ -142,7 +142,7 @@ std::vector<GeoCover::Interval> NearUtils::intervals() {
 
       if (lookup.num_cells() > 0) {
         cover = lookup.cell_ids();
-        GeoCover::scanIntervals(_params.cover.worstIndexedLevel, cover,
+        GeoUtils::scanIntervals(_params.cover.worstIndexedLevel, cover,
                                 intervals);
         TRI_ASSERT(!cover.empty());
         _scannedCells.Add(cover);

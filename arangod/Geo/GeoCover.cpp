@@ -39,11 +39,11 @@
 using namespace arangodb;
 using namespace arangodb::geo;
 
-Result GeoCover::generateCoverJson(S2RegionCoverer* coverer, VPackSlice const& data,
+Result GeoUtils::indexCellsGeoJson(S2RegionCoverer* coverer, VPackSlice const& data,
                                       std::vector<S2CellId>& cells, geo::Coordinate& centroid) {
   
   if (data.isArray()) {
-    return generateCoverLatLng(data, true, cells, centroid);
+    return indexCellsLatLng(data, true, cells, centroid);
   } else if (!data.isObject()) {  // actual geojson
     return TRI_ERROR_BAD_PARAMETER;
   }
@@ -96,7 +96,7 @@ Result GeoCover::generateCoverJson(S2RegionCoverer* coverer, VPackSlice const& d
   return TRI_ERROR_NOT_IMPLEMENTED;
 }
 
-Result GeoCover::generateCoverLatLng(VPackSlice const& data, bool isGeoJson,
+Result GeoUtils::indexCellsLatLng(VPackSlice const& data, bool isGeoJson,
                                      std::vector<S2CellId>& cells,
                                      geo::Coordinate& centroid) {
   if(!data.isArray() || data.length() < 2) {
@@ -121,7 +121,7 @@ Result GeoCover::generateCoverLatLng(VPackSlice const& data, bool isGeoJson,
 }
 
 /// convert lat, lng pair into cell id. Always uses max level
-Result GeoCover::generateCover(geo::Coordinate const& c,
+Result GeoUtils::indexCells(geo::Coordinate const& c,
                                std::vector<S2CellId>& cells) {
   S2LatLng ll = S2LatLng::FromDegrees(c.latitude, c.longitude);
   cells.push_back(S2CellId::FromLatLng(ll));
@@ -143,7 +143,7 @@ Result GeoCover::generateCover(geo::Coordinate const& c,
 }*/
 
 /// generate intervalls of list of intervals to scan
-void GeoCover::scanIntervals(S2RegionCoverer* coverer, S2Region const& region,
+void GeoUtils::scanIntervals(S2RegionCoverer* coverer, S2Region const& region,
                              std::vector<Interval>& sortedIntervals) {
   std::vector<S2CellId> cover;
   coverer->GetCovering(region, &cover);
@@ -154,7 +154,7 @@ void GeoCover::scanIntervals(S2RegionCoverer* coverer, S2Region const& region,
 /// will return all the intervals including the cells containing them
 /// in the less detailed levels. Should allow us to scan all intervals
 /// which may contain intersecting geometries
-void GeoCover::scanIntervals(int worstIndexedLevel,
+void GeoUtils::scanIntervals(int worstIndexedLevel,
                              std::vector<S2CellId> const& cover,
                              std::vector<Interval>& sortedIntervals) {
   TRI_ASSERT(worstIndexedLevel > 0);
