@@ -64,7 +64,7 @@ class ServerState {
     REDIRECT = 3,
     /// redirect to lead server if possible
     READ_ONLY = 4,
-    INVALID = 255,
+    INVALID = 255, // this mode is used to indicate shutdown
   };
 
  public:
