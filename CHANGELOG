@@ -109,8 +109,15 @@ devel
       WARNING {memory} execute 'sudo sysctl -w "vm.max_map_count=512000"'
 
 
-v3.2.7 (2017-11-14)
+v3.2.7 (2017-11-13)
 -------------------
+
+* Cluster customers, which have upgraded from 3.1 to 3.2 need to upgrade 
+  to 3.2.7. The cluster supervision is otherwise not operational.
+
+* Fixed issue #3597: AQL with path filters returns unexpected results
+  In some cases breadth first search in combination with vertex filters
+  yields wrong result, the filter was not applied correctly.
 
 * fixed some undefined behavior in some internal value caches for AQL GatherNodes
   and SortNodes, which could have led to sorted results being effectively not
