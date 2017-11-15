@@ -41,7 +41,6 @@
 #include <queue>
 
 using namespace arangodb;
-using namespace fakeit;
 using namespace arangodb::cluster;
 using namespace arangodb::httpclient;
 
@@ -80,19 +79,19 @@ static std::shared_ptr<VPackBuilder> buildCountBody(uint64_t count) {
 }
 
 SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
-  Mock<ClusterComm> commMock;
+  fakeit::Mock<ClusterComm> commMock;
   ClusterComm& cc = commMock.get();
 
-  Mock<ClusterInfo> infoMock;
+  fakeit::Mock<ClusterInfo> infoMock;
   ClusterInfo& ci = infoMock.get();
 
-  Mock<CollectionInfoCurrent> infoCurrentMock;
+  fakeit::Mock<CollectionInfoCurrent> infoCurrentMock;
   CollectionInfoCurrent& cicInst = infoCurrentMock.get();
 
   std::shared_ptr<CollectionInfoCurrent> cic(&cicInst,
                                              [](CollectionInfoCurrent*) {});
 
-  Mock<LogicalCollection> colMock;
+  fakeit::Mock<LogicalCollection> colMock;
   LogicalCollection& col = colMock.get();
 
   std::string dbname = "UnitTestDB";
@@ -125,23 +124,23 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
   std::vector<std::shared_ptr<LogicalCollection>> allCollections;
 
   // Now we fake the calls
-  When(Method(infoMock, getCollections)).AlwaysDo([&](DatabaseID const& dbId) {
+  fakeit::When(Method(infoMock, getCollections)).AlwaysDo([&](DatabaseID const& dbId) {
     REQUIRE(dbId == dbname);
     return allCollections;
   });
-  When(Method(infoMock, getServerAliases)).AlwaysReturn(aliases);
-  When(Method(infoMock, getCollectionCurrent).Using(dbname, cidString))
+  fakeit::When(Method(infoMock, getServerAliases)).AlwaysReturn(aliases);
+  fakeit::When(Method(infoMock, getCollectionCurrent).Using(dbname, cidString))
       .AlwaysDo([&](DatabaseID const& dbId, CollectionID const& cId) {
         REQUIRE(dbId == dbname);
         REQUIRE(cId == cidString);
         return cic;
       });
 
-  When(Method(colMock, name)).AlwaysReturn(colName);
-  When(
+  fakeit::When(Method(colMock, name)).AlwaysReturn(colName);
+  fakeit::When(
       ConstOverloadedMethod(colMock, shardIds, std::shared_ptr<ShardMap>()))
       .AlwaysReturn(shards);
-  When(Method(colMock, cid_as_string)).AlwaysReturn(cidString);
+  fakeit::When(Method(colMock, cid_as_string)).AlwaysReturn(cidString);
 
   ShardDistributionReporter testee(
       std::shared_ptr<ClusterComm>(&cc, [](ClusterComm*) {}), &ci);
@@ -164,19 +163,19 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       uint64_t shard3FollowerCount = 912;
 
       // Moking HttpResults
-      Mock<SimpleHttpResult> db1s2CountMock;
+      fakeit::Mock<SimpleHttpResult> db1s2CountMock;
       SimpleHttpResult& httpdb1s2Count = db1s2CountMock.get();
 
-      Mock<SimpleHttpResult> db1s3CountMock;
+      fakeit::Mock<SimpleHttpResult> db1s3CountMock;
       SimpleHttpResult& httpdb1s3Count = db1s3CountMock.get();
 
-      Mock<SimpleHttpResult> db2s2CountMock;
+      fakeit::Mock<SimpleHttpResult> db2s2CountMock;
       SimpleHttpResult& httpdb2s2Count = db2s2CountMock.get();
 
-      Mock<SimpleHttpResult> db3s2CountMock;
+      fakeit::Mock<SimpleHttpResult> db3s2CountMock;
       SimpleHttpResult& httpdb3s2Count = db3s2CountMock.get();
 
-      Mock<SimpleHttpResult> db3s3CountMock;
+      fakeit::Mock<SimpleHttpResult> db3s3CountMock;
       SimpleHttpResult& httpdb3s3Count = db3s3CountMock.get();
 
       bool gotFirstRequest = false;
@@ -207,34 +206,34 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       allCollections.emplace_back(
           std::shared_ptr<LogicalCollection>(&col, [](LogicalCollection*) {}));
 
-      When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
+      fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
         REQUIRE(((sid == s1) || (sid == s2) || (sid == s3)));
         return currentShards[sid];
       });
 
       // Mocking HTTP Response
-      When(ConstOverloadedMethod(db1s2CountMock, getBodyVelocyPack,
+      fakeit::When(ConstOverloadedMethod(db1s2CountMock, getBodyVelocyPack,
                                  std::shared_ptr<VPackBuilder>()))
           .AlwaysDo([&]() { return buildCountBody(shard2LowFollowerCount); });
 
-      When(ConstOverloadedMethod(db1s3CountMock, getBodyVelocyPack,
+      fakeit::When(ConstOverloadedMethod(db1s3CountMock, getBodyVelocyPack,
                                  std::shared_ptr<VPackBuilder>()))
           .AlwaysDo([&]() { return buildCountBody(shard3FollowerCount); });
 
-      When(ConstOverloadedMethod(db2s2CountMock, getBodyVelocyPack,
+      fakeit::When(ConstOverloadedMethod(db2s2CountMock, getBodyVelocyPack,
                                  std::shared_ptr<VPackBuilder>()))
           .AlwaysDo([&]() { return buildCountBody(shard2LeaderCount); });
 
-      When(ConstOverloadedMethod(db3s2CountMock, getBodyVelocyPack,
+      fakeit::When(ConstOverloadedMethod(db3s2CountMock, getBodyVelocyPack,
                                  std::shared_ptr<VPackBuilder>()))
           .AlwaysDo([&]() { return buildCountBody(shard2HighFollowerCount); });
 
-      When(ConstOverloadedMethod(db3s3CountMock, getBodyVelocyPack,
+      fakeit::When(ConstOverloadedMethod(db3s3CountMock, getBodyVelocyPack,
                                  std::shared_ptr<VPackBuilder>()))
           .AlwaysDo([&]() { return buildCountBody(shard3LeaderCount); });
 
       // Mocking the ClusterComm for count calls
-      When(Method(commMock, asyncRequest))
+      fakeit::When(Method(commMock, asyncRequest))
           .AlwaysDo(
               [&](ClientTransactionID const&,
                   CoordTransactionID const coordTransactionID,
@@ -317,7 +316,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 return opId;
               });
 
-      When(Method(commMock, wait))
+      fakeit::When(Method(commMock, wait))
           .AlwaysDo([&](ClientTransactionID const&,
                         CoordTransactionID const coordTransactionID,
                         OperationID const operationID, ShardID const& shardID,
@@ -597,19 +596,19 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
     allCollections.emplace_back(
         std::shared_ptr<LogicalCollection>(&col, [](LogicalCollection*) {}));
 
-    When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
+    fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
       REQUIRE(sid == s1);
       return currentShards[sid];
     });
 
     // Moking HttpResults
-    Mock<SimpleHttpResult> leaderCountMock;
+    fakeit::Mock<SimpleHttpResult> leaderCountMock;
     SimpleHttpResult& lCount = leaderCountMock.get();
 
-    Mock<SimpleHttpResult> followerOneCountMock;
+    fakeit::Mock<SimpleHttpResult> followerOneCountMock;
     SimpleHttpResult& f1Count = followerOneCountMock.get();
 
-    Mock<SimpleHttpResult> followerTwoCountMock;
+    fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
     SimpleHttpResult& f2Count = followerTwoCountMock.get();
 
     uint64_t leaderCount = 1337;
@@ -617,15 +616,15 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
     uint64_t largerFollowerCount = 1111;
 
     // Mocking HTTP Response
-    When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
+    fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
                                std::shared_ptr<VPackBuilder>()))
         .AlwaysDo([&]() { return buildCountBody(leaderCount); });
 
-    When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
+    fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
                                std::shared_ptr<VPackBuilder>()))
         .AlwaysDo([&]() { return buildCountBody(largerFollowerCount); });
 
-    When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
+    fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
                                std::shared_ptr<VPackBuilder>()))
         .AlwaysDo([&]() { return buildCountBody(smallerFollowerCount); });
 
@@ -636,7 +635,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
     bool returnedFirstFollower = false;
 
     // Mocking the ClusterComm for count calls
-    When(Method(commMock, asyncRequest))
+    fakeit::When(Method(commMock, asyncRequest))
         .AlwaysDo(
             [&](ClientTransactionID const&,
                 CoordTransactionID const coordTransactionID,
@@ -676,7 +675,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
             return opId;
         });
 
-    When(Method(commMock, wait))
+    fakeit::When(Method(commMock, wait))
         .AlwaysDo([&](ClientTransactionID const&,
                       CoordTransactionID const coordTransactionID,
                       OperationID const operationID, ShardID const& shardID,
@@ -738,7 +737,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
     allCollections.emplace_back(
         std::shared_ptr<LogicalCollection>(&col, [](LogicalCollection*) {}));
 
-    When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
+    fakeit::When(Method(infoCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
       REQUIRE(currentShards.find(sid) != currentShards.end());
       return currentShards[sid];
     });
@@ -749,7 +748,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
 
       CoordTransactionID coordId = 0;
       // Mocking the ClusterComm for count calls
-      When(Method(commMock, asyncRequest))
+      fakeit::When(Method(commMock, asyncRequest))
           .AlwaysDo(
               [&](ClientTransactionID const&,
                   CoordTransactionID const coordTransactionID,
@@ -782,7 +781,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
               return opId;
           });
 
-      When(Method(commMock, wait))
+      fakeit::When(Method(commMock, wait))
         .AlwaysDo([&](ClientTransactionID const&,
                       CoordTransactionID const coordTransactionID,
                       OperationID const operationID, ShardID const& shardID,
@@ -795,7 +794,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
           return leaderRes;
         });
 
-      When(Method(commMock, drop))
+      fakeit::When(Method(commMock, drop))
         .AlwaysDo([&](ClientTransactionID const&,
                       CoordTransactionID const coordTransactionID,
                       OperationID const operationID, ShardID const& shardID
@@ -816,7 +815,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       THEN("It needs to call drop") {
         VPackBuilder resultBuilder;
         testee.getDistributionForDatabase(dbname, resultBuilder);
-        Verify(Method(commMock, drop)).Exactly(1);
+        fakeit::Verify(Method(commMock, drop)).Exactly(1);
       }
 
     }
@@ -827,25 +826,25 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       uint64_t largerFollowerCount = 1111;
 
       // Moking HttpResults
-      Mock<SimpleHttpResult> leaderCountMock;
+      fakeit::Mock<SimpleHttpResult> leaderCountMock;
       SimpleHttpResult& lCount = leaderCountMock.get();
 
-      Mock<SimpleHttpResult> followerOneCountMock;
+      fakeit::Mock<SimpleHttpResult> followerOneCountMock;
       SimpleHttpResult& f1Count = followerOneCountMock.get();
 
-      Mock<SimpleHttpResult> followerTwoCountMock;
+      fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
       SimpleHttpResult& f2Count = followerTwoCountMock.get();
 
       // Mocking HTTP Response
-      When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
+      fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
                                  std::shared_ptr<VPackBuilder>()))
           .AlwaysDo([&]() { return buildCountBody(leaderCount); });
 
-      When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
+      fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
                                  std::shared_ptr<VPackBuilder>()))
           .AlwaysDo([&]() { return buildCountBody(largerFollowerCount); });
 
-      When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
+      fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
                                  std::shared_ptr<VPackBuilder>()))
           .AlwaysDo([&]() { REQUIRE(false); return buildCountBody(smallerFollowerCount); });
 
@@ -858,7 +857,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
 
       CoordTransactionID coordId = 0;
       // Mocking the ClusterComm for count calls
-      When(Method(commMock, asyncRequest))
+      fakeit::When(Method(commMock, asyncRequest))
           .AlwaysDo(
               [&](ClientTransactionID const&,
                   CoordTransactionID const coordTransactionID,
@@ -900,7 +899,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
  
               return opId;
           });
-      When(Method(commMock, wait))
+      fakeit::When(Method(commMock, wait))
           .AlwaysDo([&](ClientTransactionID const&,
                         CoordTransactionID const coordTransactionID,
                         OperationID const operationID, ShardID const& shardID,
@@ -916,7 +915,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
             }
           });
 
-      When(Method(commMock, drop))
+      fakeit::When(Method(commMock, drop))
         .AlwaysDo([&](ClientTransactionID const&,
                       CoordTransactionID const coordTransactionID,
                       OperationID const operationID, ShardID const& shardID
@@ -937,7 +936,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       THEN("It should not call drop") {
         VPackBuilder resultBuilder;
         testee.getDistributionForDatabase(dbname, resultBuilder);
-        Verify(Method(commMock, drop)).Exactly(0);
+        fakeit::Verify(Method(commMock, drop)).Exactly(0);
       }
 
     }
@@ -948,25 +947,25 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       uint64_t largerFollowerCount = 1111;
 
       // Moking HttpResults
-      Mock<SimpleHttpResult> leaderCountMock;
+      fakeit::Mock<SimpleHttpResult> leaderCountMock;
       SimpleHttpResult& lCount = leaderCountMock.get();
 
-      Mock<SimpleHttpResult> followerOneCountMock;
+      fakeit::Mock<SimpleHttpResult> followerOneCountMock;
       SimpleHttpResult& f1Count = followerOneCountMock.get();
 
-      Mock<SimpleHttpResult> followerTwoCountMock;
+      fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
       SimpleHttpResult& f2Count = followerTwoCountMock.get();
 
       // Mocking HTTP Response
-      When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
+      fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
                                  std::shared_ptr<VPackBuilder>()))
           .AlwaysDo([&]() { return buildCountBody(leaderCount); });
 
-      When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
+      fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
                                  std::shared_ptr<VPackBuilder>()))
           .AlwaysDo([&]() { REQUIRE(false); return buildCountBody(largerFollowerCount); });
 
-      When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
+      fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
                                  std::shared_ptr<VPackBuilder>()))
           .AlwaysDo([&]() { REQUIRE(false); return buildCountBody(smallerFollowerCount); });
 
@@ -977,7 +976,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
 
       CoordTransactionID coordId = 0;
       // Mocking the ClusterComm for count calls
-      When(Method(commMock, asyncRequest))
+      fakeit::When(Method(commMock, asyncRequest))
           .AlwaysDo(
               [&](ClientTransactionID const&,
                   CoordTransactionID const coordTransactionID,
@@ -1020,7 +1019,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
  
               return opId;
           });
-      When(Method(commMock, wait))
+      fakeit::When(Method(commMock, wait))
           .AlwaysDo([&](ClientTransactionID const&,
                         CoordTransactionID const coordTransactionID,
                         OperationID const operationID, ShardID const& shardID,
@@ -1036,7 +1035,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
             }
           });
 
-      When(Method(commMock, drop))
+      fakeit::When(Method(commMock, drop))
         .AlwaysDo([&](ClientTransactionID const&,
                       CoordTransactionID const coordTransactionID,
                       OperationID const operationID, ShardID const& shardID
@@ -1057,26 +1056,26 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
       THEN("It should not call drop") {
         VPackBuilder resultBuilder;
         testee.getDistributionForDatabase(dbname, resultBuilder);
-        Verify(Method(commMock, drop)).Exactly(0);
+        fakeit::Verify(Method(commMock, drop)).Exactly(0);
       }
 
     }
 
     GIVEN("A second collection") {
-      Mock<LogicalCollection> secColMock;
+      fakeit::Mock<LogicalCollection> secColMock;
       LogicalCollection& secCol = secColMock.get();
 
       std::string secColName = "UnitTestOtherCollection";
       std::string secCidString = "4561";
 
 
-      Mock<CollectionInfoCurrent> infoOtherCurrentMock;
+      fakeit::Mock<CollectionInfoCurrent> infoOtherCurrentMock;
       CollectionInfoCurrent& otherCicInst = infoOtherCurrentMock.get();
 
       std::shared_ptr<CollectionInfoCurrent> otherCic(
           &otherCicInst, [](CollectionInfoCurrent*) {});
 
-      When(Method(infoMock, getCollectionCurrent).Using(dbname, secCidString))
+      fakeit::When(Method(infoMock, getCollectionCurrent).Using(dbname, secCidString))
           .AlwaysDo([&](DatabaseID const& dbId, CollectionID const& cId) {
             REQUIRE(dbId == dbname);
             REQUIRE(cId == secCidString);
@@ -1094,26 +1093,26 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
 
       otherCurrentShards.emplace(s2, std::vector<ServerID>{dbserver1});
 
-      When(Method(secColMock, name)).AlwaysReturn(secColName);
-      When(
+      fakeit::When(Method(secColMock, name)).AlwaysReturn(secColName);
+      fakeit::When(
           ConstOverloadedMethod(secColMock, shardIds, std::shared_ptr<ShardMap>()))
           .AlwaysReturn(otherShards);
-      When(Method(secColMock, cid_as_string)).AlwaysReturn(secCidString);
+      fakeit::When(Method(secColMock, cid_as_string)).AlwaysReturn(secCidString);
 
-      When(Method(infoOtherCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
+      fakeit::When(Method(infoOtherCurrentMock, servers)).AlwaysDo([&](ShardID const& sid) {
         REQUIRE(otherCurrentShards.find(sid) != otherCurrentShards.end());
         return otherCurrentShards[sid];
       });
 
       THEN("It should not ask the second collection if the first waits > 2.0s") {
         // Moking HttpResults
-        Mock<SimpleHttpResult> leaderCountMock;
+        fakeit::Mock<SimpleHttpResult> leaderCountMock;
         SimpleHttpResult& lCount = leaderCountMock.get();
 
-        Mock<SimpleHttpResult> followerOneCountMock;
+        fakeit::Mock<SimpleHttpResult> followerOneCountMock;
         SimpleHttpResult& f1Count = followerOneCountMock.get();
 
-        Mock<SimpleHttpResult> followerTwoCountMock;
+        fakeit::Mock<SimpleHttpResult> followerTwoCountMock;
         SimpleHttpResult& f2Count = followerTwoCountMock.get();
 
         uint64_t leaderCount = 1337;
@@ -1121,15 +1120,15 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         uint64_t largerFollowerCount = 1111;
 
         // Mocking HTTP Response
-        When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
+        fakeit::When(ConstOverloadedMethod(leaderCountMock, getBodyVelocyPack,
                                    std::shared_ptr<VPackBuilder>()))
             .AlwaysDo([&]() { return buildCountBody(leaderCount); });
 
-        When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
+        fakeit::When(ConstOverloadedMethod(followerOneCountMock, getBodyVelocyPack,
                                    std::shared_ptr<VPackBuilder>()))
             .AlwaysDo([&]() { return buildCountBody(largerFollowerCount); });
 
-        When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
+        fakeit::When(ConstOverloadedMethod(followerTwoCountMock, getBodyVelocyPack,
                                    std::shared_ptr<VPackBuilder>()))
             .AlwaysDo([&]() { return buildCountBody(smallerFollowerCount); });
 
@@ -1140,7 +1139,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
         bool returnedFirstFollower = false;
 
         // Mocking the ClusterComm for count calls
-        When(Method(commMock, asyncRequest))
+        fakeit::When(Method(commMock, asyncRequest))
             .AlwaysDo(
                 [&](ClientTransactionID const&,
                     CoordTransactionID const coordTransactionID,
@@ -1180,7 +1179,7 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
                 return opId;
             });
 
-        When(Method(commMock, wait))
+        fakeit::When(Method(commMock, wait))
             .AlwaysDo([&](ClientTransactionID const&,
                           CoordTransactionID const coordTransactionID,
                           OperationID const operationID, ShardID const& shardID,
@@ -1213,8 +1212,3 @@ SCENARIO("The shard distribution can be reported", "[cluster][shards]") {
     }
   }
 }
-
-// TEST TO ADD
-// We need to verify the following count reports:
-// if (min(followCount) < leaderCount) => current == min(followCount)
-// if (min(followCount) >= leaderCount) => current == max(followCount)
