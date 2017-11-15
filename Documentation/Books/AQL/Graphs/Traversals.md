@@ -7,7 +7,7 @@ Syntax
 There are two slightly different syntaxes for traversals in AQL, one for
 - [named graphs](../../Manual/Graphs/index.html#named-graphs) and another to
 - specify a [set of edge collections](#working-with-collection-sets)
-  ([anonymous graph](../../Manual/Graphs/index.html#anonymous-graph)).
+  ([anonymous graph](../../Manual/Graphs/index.html#anonymous-graphs)).
 
 ### Working with named graphs
 
