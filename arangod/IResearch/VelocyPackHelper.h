@@ -183,7 +183,7 @@ inline bool getString(
   arangodb::velocypack::Slice const& slice,
   std::string const& fieldName,
   bool& seen,
-  std::string const& fallback
+  irs::string_ref const& fallback
 ) noexcept {
   seen = slice.hasKey(fieldName);
 
