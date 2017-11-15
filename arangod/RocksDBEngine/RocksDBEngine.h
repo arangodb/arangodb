@@ -48,6 +48,7 @@ class RocksDBVPackComparator;
 class RocksDBCounterManager;
 class RocksDBReplicationManager;
 class RocksDBLogValue;
+class RocksDBThrottle;
 class TransactionCollection;
 class TransactionState;
 

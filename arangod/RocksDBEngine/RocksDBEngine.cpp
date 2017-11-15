@@ -130,9 +130,11 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
 
 RocksDBEngine::~RocksDBEngine() {
   // turn off RocksDBThrottle, and release our pointers to it
-  _listener->StopThread();
-  _listener.reset();
-  _options.listeners.clear();
+  if (nullptr != _listener.get()) {
+    _listener->StopThread();
+    _listener.reset();
+    _options.listeners.clear();
+  } // if
 
   delete _db;
   _db = nullptr;
