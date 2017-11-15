@@ -272,7 +272,7 @@ class RocksDBEngine final : public StorageEngine {
   std::string _path;
   /// path to arangodb data dir
   std::string _basePath;
-    
+
   /// repository for replication contexts
   std::unique_ptr<RocksDBReplicationManager> _replicationManager;
   /// tracks the count of documents in collections
@@ -295,6 +295,11 @@ class RocksDBEngine final : public StorageEngine {
 
   // number of seconds to wait before an obsolete WAL file is actually pruned
   double _pruneWaitTime;
+
+  // code to pace ingest rate of writes to reduce chances of compactions getting
+  //  too far behind and blocking incoming writes
+  std::shared_ptr<RocksDBThrottle> _listener;
+
 };
 }  // namespace arangodb
 #endif

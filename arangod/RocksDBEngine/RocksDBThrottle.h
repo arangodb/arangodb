@@ -91,6 +91,7 @@ public:
 
   static void AdjustThreadPriority(int Adjustment);
 
+  void StopThread();
 
 protected:
   void Startup(rocksdb::DB * db);

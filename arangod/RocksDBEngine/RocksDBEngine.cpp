@@ -124,11 +124,19 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine and the MMFiles PersistentIndexFeature
   startsAfter("RocksDBOption");
-  
+
   server->addFeature(new RocksDBRecoveryFinalizer(server));
 }
 
-RocksDBEngine::~RocksDBEngine() { delete _db; }
+RocksDBEngine::~RocksDBEngine() {
+  // turn off RocksDBThrottle, and release our pointers to it
+  _listener->StopThread();
+  _listener.reset();
+  _options.listeners.clear();
+
+  delete _db;
+  _db = nullptr;
+}
 
 // inherited from ApplicationFeature
 // ---------------------------------
@@ -332,10 +340,10 @@ void RocksDBEngine::start() {
   }
   tableOptions.block_size = opts->_tableBlockSize;
   tableOptions.filter_policy.reset(rocksdb::NewBloomFilterPolicy(10, true));
-  
+
   _options.table_factory.reset(
       rocksdb::NewBlockBasedTableFactory(tableOptions));
-  
+
   _options.create_if_missing = true;
   _options.create_missing_column_families = true;
   _options.max_open_files = -1;
@@ -350,8 +358,8 @@ void RocksDBEngine::start() {
   // TODO: enable memtable_insert_with_hint_prefix_extractor?
   _options.bloom_locality = 1;
 
-  std::shared_ptr<RocksDBThrottle> listener(new RocksDBThrottle);
-  _options.listeners.push_back(listener);
+  _listener.reset(new RocksDBThrottle);
+  _options.listeners.push_back(_listener);
 
   // this is cfFamilies.size() + 2 ... but _option needs to be set before
   //  building cfFamilies
@@ -487,6 +495,9 @@ void RocksDBEngine::start() {
     FATAL_ERROR_EXIT();
   }
 
+  // give throttle family list
+  _listener->SetFamilies(cfHandles);
+
   // set our column families
   RocksDBColumnFamily::_definitions = cfHandles[0];
   RocksDBColumnFamily::_documents = cfHandles[1];
@@ -561,7 +572,7 @@ void RocksDBEngine::stop() {
     return;
   }
 
-  
+
   // in case we missed the beginShutdown somehow, call it again
   replicationManager()->beginShutdown();
 
