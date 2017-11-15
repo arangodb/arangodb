@@ -110,7 +110,8 @@ RocksDBCompactionListener gCompactionListener;
 // Setup the object, clearing variables, but do no real work
 //
 RocksDBThrottle::RocksDBThrottle()
-  : _internalRocksDB(nullptr), _threadRunning(false), _throttleBps(0), _firstThrottle(true)
+  : _internalRocksDB(nullptr), _threadRunning(false), _replaceIdx(2),
+    _throttleBps(0), _firstThrottle(true)
 {
   memset(&_throttleData, 0, sizeof(_throttleData));
 }
