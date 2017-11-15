@@ -611,6 +611,7 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
 ExecutionNode* ExecutionPlan::registerNode(ExecutionNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->id() > 0);
+  TRI_ASSERT(_ids.find(node->id()) == _ids.end());
 
   try {
     _ids.emplace(node->id(), node);

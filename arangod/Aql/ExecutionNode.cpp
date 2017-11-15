@@ -393,6 +393,13 @@ void ExecutionNode::toVelocyPack(VPackBuilder& builder,
 void ExecutionNode::cloneHelper(ExecutionNode* other, ExecutionPlan* plan,
                                 bool withDependencies,
                                 bool withProperties) const {
+  if (other->plan() == plan) {
+    // same execution plan for source and target
+    // now assign a new id to the cloned node, otherwise it will leak
+    // upon node registration and its meaning is ambiguous
+    other->setId(plan->nextId());
+  }
+
   plan->registerNode(other);
 
   if (withProperties) {
