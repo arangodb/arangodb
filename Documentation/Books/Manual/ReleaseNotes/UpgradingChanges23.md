@@ -263,7 +263,7 @@ non-deterministic behavior because queries are not executed linearly.
 
 ### Changed return value of `TO_BOOL`
 
-The AQL function `TO_BOOL` now always returns *true* if its argument is a array or an object.
+The AQL function `TO_BOOL` now always returns *true* if its argument is an array or an object.
 In previous versions of ArangoDB, the function returned *false* for empty arrays or for
 objects without attributes.
 

@@ -340,7 +340,7 @@ void Logger::log(char const* function, char const* file, long int line,
   out << Logger::translateLogLevel(level) << ' ';
 
   // check if we must display the line number
-  if (_showLineNumber) {
+  if (_showLineNumber && file != nullptr && function != nullptr) {
     char const* filename = file;
 
     if (_shortenFilenames) {

@@ -68,7 +68,6 @@ class JobQueueThread final
         LOG_TOPIC(TRACE, Logger::THREADS) << "starting next queued job";
 
         idleTries = 0;
-
         std::shared_ptr<Job> job(jobPtr);
 
         _scheduler->post([this, self, job]() {
@@ -122,7 +121,11 @@ JobQueue::JobQueue(size_t maxQueueSize, rest::Scheduler* scheduler)
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-void JobQueue::start() { _queueThread->start(); }
+void JobQueue::start() { 
+  if (!_queueThread->start()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "unable to start jobqueue thread");
+  }
+}
 
 void JobQueue::beginShutdown() { _queueThread->beginShutdown(); }
 
@@ -137,3 +140,4 @@ void JobQueue::waitForWork() {
   CONDITION_LOCKER(guard, _queueCondition);
   guard.wait(WAIT_TIME);
 }
+

@@ -140,12 +140,21 @@ double DistributeNode::estimateCost(size_t& nrItems) const {
 
 /// @brief construct a gather node
 GatherNode::GatherNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
-                       SortElementVector const& elements)
+                       SortElementVector const& elements, std::size_t shardsRequiredForHeapMerge)
     : ExecutionNode(plan, base),
       _elements(elements),
       _vocbase(plan->getAst()->query()->vocbase()),
       _collection(plan->getAst()->query()->collections()->get(
-          base.get("collection").copyString())) {}
+          base.get("collection").copyString())),
+      _sortmode( _collection ? ( _collection->numberOfShards() >= shardsRequiredForHeapMerge ? 'h' : 'm') : 'u')
+      {}
+  
+GatherNode::GatherNode(ExecutionPlan* plan, size_t id, TRI_vocbase_t* vocbase,
+             Collection const* collection, std::size_t shardsRequiredForHeapMerge)
+      : ExecutionNode(plan, id), _vocbase(vocbase), _collection(collection),
+        _auxiliaryCollections(),
+        _sortmode( _collection ? ( _collection->numberOfShards() >= shardsRequiredForHeapMerge ? 'h' : 'm') : 'u')
+        {}
 
 /// @brief toVelocyPack, for GatherNode
 void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
@@ -154,6 +163,14 @@ void GatherNode::toVelocyPackHelper(VPackBuilder& nodes, bool verbose) const {
 
   nodes.add("database", VPackValue(_vocbase->name()));
   nodes.add("collection", VPackValue(_collection->getName()));
+
+  if(_sortmode == 'h'){
+    nodes.add("sortmode", VPackValue("heap"));
+  } else if (_sortmode == 'm') {
+    nodes.add("sortmode", VPackValue("minelement"));
+  } else {
+    nodes.add("sortmode", VPackValue("unset"));
+  }
 
   nodes.add(VPackValue("elements"));
   {

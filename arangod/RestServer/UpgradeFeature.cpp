@@ -27,6 +27,7 @@
 #include "Logger/Logger.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "V8/v8-conv.h"
@@ -87,10 +88,13 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "executing upgrade procedure: disabling server features";
 
   ApplicationServer::forceDisableFeatures(_nonServerFeatures);
+  
+  ReplicationFeature* replicationFeature =
+      ApplicationServer::getFeature<ReplicationFeature>("Replication");
+  replicationFeature->disableReplicationApplier();
 
   DatabaseFeature* database =
       ApplicationServer::getFeature<DatabaseFeature>("Database");
-  database->disableReplicationApplier();
   database->enableUpgrade();
 
   ClusterFeature* cluster =
@@ -163,8 +167,7 @@ void UpgradeFeature::upgradeDatabase() {
 
   // enter context and isolate
   {
-    V8Context* context =
-        V8DealerFeature::DEALER->enterContext(systemVocbase, true, 0);
+    V8Context* context = V8DealerFeature::DEALER->enterContext(systemVocbase, true, 0);
 
     if (context == nullptr) {
       LOG_TOPIC(FATAL, arangodb::Logger::FIXME) << "could not enter context #0";

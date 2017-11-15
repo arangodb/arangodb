@@ -31,6 +31,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Indexes/IndexLookupContext.h"
 #include "Indexes/IndexResult.h"
+#include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
@@ -177,7 +178,7 @@ MMFilesSkiplistLookupBuilder::MMFilesSkiplistLookupBuilder(
           } else {
             _includeUpper = false;
           }
-        // Fall through intentional
+          // intentionally falls through
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
           if (isReverseOrder) {
             value->toVelocyPackValue(*(_lowerBuilder.get()));
@@ -191,7 +192,7 @@ MMFilesSkiplistLookupBuilder::MMFilesSkiplistLookupBuilder(
           } else {
             _includeLower = false;
           }
-        // Fall through intentional
+          // intentionally falls through
         case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
           if (isReverseOrder) {
             value->toVelocyPackValue(*(_upperBuilder.get()));
@@ -331,7 +332,7 @@ MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
         } else {
           _includeUpper = false;
         }
-      // Fall through intentional
+        // intentionally falls through
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_LE:
         if (isReverseOrder) {
           TRI_ASSERT(lower == nullptr);
@@ -347,7 +348,7 @@ MMFilesSkiplistInLookupBuilder::MMFilesSkiplistInLookupBuilder(
         } else {
           _includeLower = false;
         }
-      // Fall through intentional
+        // intentionally falls through
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_GE:
         if (isReverseOrder) {
           TRI_ASSERT(upper == nullptr);
@@ -1032,11 +1033,11 @@ void MMFilesSkiplistIndex::matchAttributes(
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN:
         if (accessFitsIndex(op->getMember(0), op->getMember(1), op, reference,
                             found, nonNullAttributes, isExecution)) {
-          auto m = op->getMember(1);
-          if (m->isArray() && m->numMembers() > 1) {
+          size_t av = SimpleAttributeEqualityMatcher::estimateNumberOfArrayMembers(op->getMember(1));
+          if (av > 1) {
             // attr IN [ a, b, c ]  =>  this will produce multiple items, so
             // count them!
-            values += m->numMembers() - 1;
+            values += av - 1;
           }
         }
         break;
@@ -1201,7 +1202,7 @@ bool MMFilesSkiplistIndex::findMatchingConditions(
         if (first->getMember(1)->isArray()) {
           usesIn = true;
         }
-      // Fall through intentional
+        // intentionally falls through
       case arangodb::aql::NODE_TYPE_OPERATOR_BINARY_EQ:
         TRI_ASSERT(conditions.size() == 1);
         break;

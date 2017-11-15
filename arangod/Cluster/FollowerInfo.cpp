@@ -264,7 +264,8 @@ bool FollowerInfo::remove(ServerID const& sid) {
           break;  //
         } else {
           LOG_TOPIC(WARN, Logger::CLUSTER)
-              << "FollowerInfo::remove, could not cas key " << path;
+              << "FollowerInfo::remove, could not cas key " << path 
+              << ". status code: " << res2._statusCode << ", incriminating body: " << res2.bodyRef();
         }
       }
     } else {

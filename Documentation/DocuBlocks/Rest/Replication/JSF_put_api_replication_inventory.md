@@ -17,11 +17,11 @@ server.
 The response will contain a JSON object with the *collection* and *state* and
 *tick* attributes.
 
-*collections* is a array of collections with the following sub-attributes:
+*collections* is an array of collections with the following sub-attributes:
 
 - *parameters*: the collection properties
 
-- *indexes*: a array of the indexes of a the collection. Primary indexes and edges indexes
+- *indexes*: an array of the indexes of a the collection. Primary indexes and edge indexes
    are not included in this array.
 
 The *state* attribute contains the current state of the replication logger. It

@@ -117,7 +117,10 @@ function setupBinaries (builddir, buildType, configDir) {
     BIN_DIR = fs.join(TOP_DIR, BIN_DIR);
   }
 
-  UNITTESTS_DIR = fs.join(TOP_DIR, fs.join(builddir, 'tests'));
+  UNITTESTS_DIR = fs.join(fs.join(builddir, 'tests'));
+  if (!fs.exists(UNITTESTS_DIR)) {
+    UNITTESTS_DIR = fs.join(TOP_DIR, UNITTESTS_DIR);
+  }
 
   if (buildType !== '') {
     BIN_DIR = fs.join(BIN_DIR, buildType);
@@ -937,7 +940,6 @@ function startInstanceCluster (instanceInfo, protocol, options,
     let primaryArgs = _.clone(options.extraArgs);
     primaryArgs['server.endpoint'] = endpoint;
     primaryArgs['cluster.my-address'] = endpoint;
-    primaryArgs['cluster.my-local-info'] = endpoint;
     primaryArgs['cluster.my-role'] = 'PRIMARY';
     primaryArgs['cluster.agency-endpoint'] = agencyEndpoint;
 
@@ -951,7 +953,6 @@ function startInstanceCluster (instanceInfo, protocol, options,
     let coordinatorArgs = _.clone(options.extraArgs);
     coordinatorArgs['server.endpoint'] = endpoint;
     coordinatorArgs['cluster.my-address'] = endpoint;
-    coordinatorArgs['cluster.my-local-info'] = endpoint;
     coordinatorArgs['cluster.my-role'] = 'COORDINATOR';
     coordinatorArgs['cluster.agency-endpoint'] = agencyEndpoint;
 

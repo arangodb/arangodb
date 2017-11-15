@@ -43,15 +43,16 @@ class RocksDBLogValue {
   // parameter in an appropriate format into the underlying string buffer.
   //----------------------------------------------------------------------------
 
-  static RocksDBLogValue DatabaseCreate();
-  static RocksDBLogValue DatabaseDrop(TRI_voc_tick_t vocbaseId);
+  static RocksDBLogValue DatabaseCreate(TRI_voc_tick_t id);
+  static RocksDBLogValue DatabaseDrop(TRI_voc_tick_t id);
   static RocksDBLogValue CollectionCreate(TRI_voc_tick_t vocbaseId,
                                           TRI_voc_cid_t cid);
   static RocksDBLogValue CollectionDrop(TRI_voc_tick_t vocbaseId,
-                                        TRI_voc_cid_t cid);
+                                        TRI_voc_cid_t cid,
+                                        StringRef const& uuid);
   static RocksDBLogValue CollectionRename(TRI_voc_tick_t vocbaseId,
                                           TRI_voc_cid_t cid,
-                                          StringRef const& newName);
+                                          StringRef const& oldName);
   static RocksDBLogValue CollectionChange(TRI_voc_tick_t vocbaseId,
                                           TRI_voc_cid_t cid);
 
@@ -71,8 +72,7 @@ class RocksDBLogValue {
 
   static RocksDBLogValue SinglePut(TRI_voc_tick_t vocbaseId, TRI_voc_cid_t cid);
   static RocksDBLogValue SingleRemove(TRI_voc_tick_t vocbaseId,
-                                      TRI_voc_cid_t cid,
-                                      arangodb::StringRef const&);
+                                      TRI_voc_cid_t cid, StringRef const&);
 
  public:
   //////////////////////////////////////////////////////////////////////////////
@@ -87,9 +87,13 @@ class RocksDBLogValue {
   static TRI_voc_cid_t collectionId(rocksdb::Slice const&);
   static TRI_idx_iid_t indexId(rocksdb::Slice const&);
   static velocypack::Slice indexSlice(rocksdb::Slice const&);
-  static arangodb::StringRef newCollectionName(rocksdb::Slice const&);
+  static arangodb::StringRef collectionUUID(rocksdb::Slice const&);
+  static arangodb::StringRef oldCollectionName(rocksdb::Slice const&);
   static arangodb::StringRef documentKey(rocksdb::Slice const&);
 
+  static bool containsDatabaseId(RocksDBLogType type);
+  static bool containsCollectionId(RocksDBLogType type);
+  
  public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a reference to the underlying string buffer.
@@ -105,14 +109,12 @@ class RocksDBLogValue {
   rocksdb::Slice slice() const { return rocksdb::Slice(_buffer); }
 
  private:
-  explicit RocksDBLogValue(RocksDBLogType type);
-  RocksDBLogValue(RocksDBLogType type, uint64_t);
-  RocksDBLogValue(RocksDBLogType type, uint64_t, uint64_t);
-  RocksDBLogValue(RocksDBLogType type, uint64_t, uint64_t, uint64_t);
-  RocksDBLogValue(RocksDBLogType type, uint64_t, uint64_t, VPackSlice const&);
-  RocksDBLogValue(RocksDBLogType type, uint64_t, uint64_t,
-                  StringRef const& data);
-  RocksDBLogValue(RocksDBLogType type, StringRef const& data);
+  RocksDBLogValue(RocksDBLogType, uint64_t);
+  RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t);
+  RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, uint64_t);
+  RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, VPackSlice const&);
+  RocksDBLogValue(RocksDBLogType, uint64_t, uint64_t, StringRef const& data);
+  RocksDBLogValue(RocksDBLogType, StringRef const& data);
 
  private:
   std::string _buffer;

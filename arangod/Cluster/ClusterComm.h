@@ -393,7 +393,8 @@ class ClusterComm {
   //////////////////////////////////////////////////////////////////////////////
 
  public:
-  ~ClusterComm();
+
+  virtual ~ClusterComm();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the unique instance
@@ -442,7 +443,7 @@ class ClusterComm {
   /// @brief submit an HTTP request to a shard asynchronously.
   //////////////////////////////////////////////////////////////////////////////
 
-  OperationID asyncRequest(
+  virtual OperationID asyncRequest(
       ClientTransactionID const& clientTransactionID,
       CoordTransactionID const coordTransactionID,
       std::string const& destination, rest::RequestType reqtype,
@@ -474,19 +475,19 @@ class ClusterComm {
   /// @brief wait for one answer matching the criteria
   //////////////////////////////////////////////////////////////////////////////
 
-  ClusterCommResult const wait(ClientTransactionID const& clientTransactionID,
-                               CoordTransactionID const coordTransactionID,
-                               OperationID const operationID,
-                               ShardID const& shardID,
-                               ClusterCommTimeout timeout = 0.0);
+  virtual ClusterCommResult const wait(ClientTransactionID const& clientTransactionID,
+                                       CoordTransactionID const coordTransactionID,
+                                       OperationID const operationID,
+                                       ShardID const& shardID,
+                                       ClusterCommTimeout timeout = 0.0);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief ignore and drop current and future answers matching
   //////////////////////////////////////////////////////////////////////////////
 
-  void drop(ClientTransactionID const& clientTransactionID,
-            CoordTransactionID const coordTransactionID,
-            OperationID const operationID, ShardID const& shardID);
+  virtual void drop(ClientTransactionID const& clientTransactionID,
+                    CoordTransactionID const coordTransactionID,
+                    OperationID const operationID, ShardID const& shardID);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief send an answer HTTP request to a coordinator
@@ -528,8 +529,6 @@ class ClusterComm {
   }
 
   void addAuthorization(std::unordered_map<std::string, std::string>* headers);
-
-  std::string jwt() { return _jwt; };
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief abort and disable all communication 
@@ -655,7 +654,6 @@ class ClusterComm {
 
   std::shared_ptr<communicator::Communicator> _communicator;
   bool _authenticationEnabled;
-  std::string _jwt;
   std::string _jwtAuthorization;
 
 };

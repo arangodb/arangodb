@@ -501,7 +501,7 @@ int MMFilesDatafile::reserveElement(uint32_t size, MMFilesMarker** position,
       return TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE;
     }
 
-    // fall-through intentional
+    // intentionally falls through
   }
 
   // add the marker, leave enough room for the footer
@@ -613,20 +613,12 @@ int MMFilesDatafile::writeElement(void* position, MMFilesMarker const* marker, b
   }
 
   if (forceSync) {
-    bool ok = sync(static_cast<char const*>(position), reinterpret_cast<char const*>(position) + marker->getSize());
+    int res = this->sync(static_cast<char const*>(position), reinterpret_cast<char const*>(position) + marker->getSize());
 
-    if (!ok) {
-      setState(TRI_DF_STATE_WRITE_ERROR);
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "msync failed with: " << TRI_errno_string(res);
 
-      if (errno == ENOSPC) {
-        _lastError = TRI_set_errno(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
-      } else {
-        _lastError = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      }
-
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "msync failed with: " << TRI_last_error();
-
-      return _lastError;
+      return res;
     } else {
       LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "msync succeeded " << (void*) position << ", size " << marker->getSize();
     }
@@ -844,18 +836,10 @@ int MMFilesDatafile::seal() {
   }
 
   // sync file
-  bool ok = sync(_synced, reinterpret_cast<char const*>(_data) + _currentSize);
+  res = this->sync(_synced, reinterpret_cast<char const*>(_data) + _currentSize);
 
-  if (!ok) {
-    _state = TRI_DF_STATE_WRITE_ERROR;
-
-    if (errno == ENOSPC) {
-      _lastError = TRI_set_errno(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
-    } else {
-      _lastError = TRI_errno();
-    }
-
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "msync failed with: " << TRI_last_error();
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "msync failed with: " << TRI_errno_string(res);
   }
 
   // everything is now synced
@@ -866,18 +850,16 @@ int MMFilesDatafile::seal() {
   // for ArangoDB to work) 
   readOnly();
 
-  // seal datafile
-  if (ok) {
-    _isSealed = true;
-    _state = TRI_DF_STATE_READ;
-    // note: _initSize must remain constant
-    TRI_ASSERT(_initSize == _maximalSize);
-    _maximalSize = _currentSize;
-  }
-
-  if (!ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     return _lastError;
   }
+  
+  // seal datafile
+  _isSealed = true;
+  _state = TRI_DF_STATE_READ;
+  // note: _initSize must remain constant
+  TRI_ASSERT(_initSize == _maximalSize);
+  _maximalSize = _currentSize;
 
   if (isPhysical()) {
     // From now on we predict random access (until collection or compaction):
@@ -1083,20 +1065,27 @@ int MMFilesDatafile::close() {
 }
 
 /// @brief sync the data of a datafile
-bool MMFilesDatafile::sync(char const* begin, char const* end) {
+int MMFilesDatafile::sync(char const* begin, char const* end) {
   if (!isPhysical()) {
     // anonymous regions do not need to be synced
-    return true;
+    return TRI_ERROR_NO_ERROR;
   }
 
   TRI_ASSERT(_fd >= 0);
 
   if (begin == end) {
     // no need to sync
-    return true;
+    return TRI_ERROR_NO_ERROR;
   }
 
-  return TRI_MSync(_fd, begin, end);
+  int res = TRI_MSync(_fd, begin, end);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    _state = TRI_DF_STATE_WRITE_ERROR;
+    _lastError = res;
+  }
+
+  return res;
 }
  
 /// @brief truncates a datafile
@@ -1741,9 +1730,9 @@ bool MMFilesDatafile::tryRepair() {
                      static_cast<size_t>(size));
 
               buffer.reset(); // don't need the buffer anymore
-              bool ok = sync(ptr, (ptr + size));
+              int res = this->sync(ptr, (ptr + size));
 
-              if (ok) {
+              if (res == TRI_ERROR_NO_ERROR) {
                 LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "zeroed single invalid marker in datafile '" << getName() << "' at position " << currentSize;
               } else {
                 LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not zero single invalid marker in datafile '" << getName() << "' at position " << currentSize;

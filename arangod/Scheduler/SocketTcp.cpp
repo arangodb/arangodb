@@ -43,6 +43,16 @@ void SocketTcp::asyncWrite(boost::asio::mutable_buffers_1 const& buffer,
     return socketcommon::doAsyncWrite(_socket, buffer, handler);
   }
 }
+/*
+void SocketTcp::asyncWrite(std::vector<void const*> const& buffers,
+                           AsyncHandler const& handler) {
+  MUTEX_LOCKER(guard, _lock);
+  if (_encrypted) {
+    return socketcommon::doAsyncWrite(_sslSocket, buffers, handler);
+  } else {
+    return socketcommon::doAsyncWrite(_socket, buffers, handler);
+  }
+}*/
 
 size_t SocketTcp::read(boost::asio::mutable_buffers_1 const& buffer,
                        boost::system::error_code& ec) {

@@ -103,8 +103,9 @@ class CollectionKeys {
   /// @brief dumps documents into the result
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void dumpDocs(arangodb::velocypack::Builder&, size_t, size_t,
-                        arangodb::velocypack::Slice const&) const = 0;
+  virtual void dumpDocs(arangodb::velocypack::Builder& result, size_t chunk, 
+                        size_t chunkSize, size_t offsetInChunk, size_t maxChunkSize,
+                        arangodb::velocypack::Slice const& ids) const = 0;
 
  protected:
   TRI_vocbase_t* _vocbase;

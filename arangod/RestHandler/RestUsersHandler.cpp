@@ -27,6 +27,7 @@
 #include "Rest/Version.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/FeatureCacheFeature.h"
+#include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 #include "VocBase/vocbase.h"
@@ -67,19 +68,20 @@ RestStatus RestUsersHandler::execute() {
   }
 }
 
-bool RestUsersHandler::isSystemUser() const {
-  if (_request->execContext() != nullptr) {
-    return _request->execContext()->systemAuthLevel() == AuthLevel::RW;
+bool RestUsersHandler::isAdminUser() const {
+  if (ExecContext::CURRENT != nullptr) {
+    return ExecContext::CURRENT->isAdminUser();
   }
+  AuthenticationFeature* auth = AuthenticationFeature::INSTANCE;
   // if authentication is deactivated authorize anyway
-  return !FeatureCacheFeature::instance()->authenticationFeature()->isActive();
+  return auth != nullptr && !auth->isActive();
 }
 
 bool RestUsersHandler::canAccessUser(std::string const& user) const {
   if (_request->authorized() && user == _request->user()) {
     return true;
   }
-  return isSystemUser();
+  return isAdminUser();
 }
 
 /// helper to generate a compliant response for individual user requests
@@ -95,9 +97,9 @@ void RestUsersHandler::generateUserResult(rest::ResponseCode code,
 RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
   if (suffixes.empty()) {
-    if (isSystemUser()) {
+    if (isAdminUser()) {
       VPackBuilder users = authInfo->allUsers();
-      generateSuccess(ResponseCode::OK, users.slice());
+      generateOk(ResponseCode::OK, users.slice());
     } else {
       generateError(ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
     }
@@ -131,7 +133,7 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
         AuthLevel lvl = authInfo->canUseDatabase(user, suffixes[2]);
         VPackBuilder data;
         data.add(VPackValue(convertFromAuthLevel(lvl)));
-        generateSuccess(ResponseCode::OK, data.slice());
+        generateOk(ResponseCode::OK, data.slice());
 
       } else if (suffixes.size() == 4) {
         //_api/user/<user>/database/<dbname>/<collection>
@@ -139,7 +141,7 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
             authInfo->canUseCollection(user, suffixes[2], suffixes[3]);
         VPackBuilder data;
         data.add(VPackValue(convertFromAuthLevel(lvl)));
-        generateSuccess(ResponseCode::OK, data.slice());
+        generateOk(ResponseCode::OK, data.slice());
       } else {
         generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
       }
@@ -151,7 +153,7 @@ RestStatus RestUsersHandler::getRequest(AuthInfo* authInfo) {
       if (suffixes.size() == 3) {
         resp = data.slice().get(suffixes[2]);
       }
-      generateSuccess(ResponseCode::OK,
+      generateOk(ResponseCode::OK,
                       resp.isNone() ? VPackSlice::nullSlice() : resp);
     } else {
       generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
@@ -181,7 +183,7 @@ void RestUsersHandler::generateDatabaseResult(AuthInfo* authInfo,
         VPackObjectBuilder b(&data, vocbase->name(), true);
         data.add("permission", VPackValue(str));
         VPackObjectBuilder b2(&data, "collections", true);
-        methods::Collections::enumerateCollections(
+        methods::Collections::enumerate(
             vocbase, [&](LogicalCollection* c) {
               if (entry.hasSpecificCollection(vocbase->name(), c->name())) {
                 lvl = entry.collectionAuthLevel(vocbase->name(), c->name());
@@ -204,7 +206,7 @@ void RestUsersHandler::generateDatabaseResult(AuthInfo* authInfo,
   });
   data.close();
   if (res.ok()) {
-    generateSuccess(ResponseCode::OK, data.slice());
+    generateOk(ResponseCode::OK, data.slice());
   } else {
     generateError(res);
   }
@@ -257,7 +259,7 @@ RestStatus RestUsersHandler::postRequest(AuthInfo* authInfo) {
 
   if (suffixes.empty()) {
     // create a new user
-    if (isSystemUser()) {
+    if (isAdminUser()) {
       VPackSlice s = parsedBody->slice().get("user");
       std::string user = s.isString() ? s.copyString() : "";
       // create user
@@ -282,7 +284,7 @@ RestStatus RestUsersHandler::postRequest(AuthInfo* authInfo) {
     }
     AuthResult result = authInfo->checkPassword(user, password);
     if (result._authorized) {
-      generateSuccess(rest::ResponseCode::OK, VPackSlice::trueSlice());
+      generateOk(rest::ResponseCode::OK, VPackSlice::trueSlice());
     } else {
       generateError(rest::ResponseCode::NOT_FOUND, TRI_ERROR_USER_NOT_FOUND);
     }
@@ -322,7 +324,7 @@ RestStatus RestUsersHandler::putRequest(AuthInfo* authInfo) {
       // update a user's permissions
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
-      if (!isSystemUser()) {
+      if (!isAdminUser()) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
         return RestStatus::DONE;
       }
@@ -437,7 +439,7 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
   std::vector<std::string> suffixes = _request->decodedSuffixes();
 
   if (suffixes.size() == 1) {
-    if (!isSystemUser()) {
+    if (!isAdminUser()) {
       generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
       return RestStatus::DONE;
     }
@@ -471,7 +473,7 @@ RestStatus RestUsersHandler::deleteRequest(AuthInfo* authInfo) {
       // revoke a user's permissions
       std::string const& db = suffixes[2];
       std::string coll = suffixes.size() == 4 ? suffixes[3] : "";
-      if (!isSystemUser()) {
+      if (!isAdminUser()) {
         generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
         return RestStatus::DONE;
       }

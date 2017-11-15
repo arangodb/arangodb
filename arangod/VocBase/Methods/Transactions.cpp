@@ -103,9 +103,7 @@ Result executeTransactionJS(
     v8::Isolate* isolate,
     v8::Handle<v8::Value> const& arg,
     v8::Handle<v8::Value>& result,
-    v8::TryCatch& tryCatch
-    )
-{
+    v8::TryCatch& tryCatch) {
   Result rv;
   TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
   if (vocbase == nullptr) {
@@ -143,7 +141,9 @@ Result executeTransactionJS(
     // be overwritten later if is contained in `object`
     VPackBuilder builder;
     TRI_V8ToVPack(isolate, builder, object, false);
-    if (!builder.isClosed()) builder.close();
+    if (!builder.isClosed()) {
+      builder.close();
+    }
     if (!builder.slice().isObject()) {
       rv.reset(TRI_ERROR_BAD_PARAMETER);
       return rv;
@@ -212,7 +212,7 @@ Result executeTransactionJS(
         collectionError += std::string(" There is no array in '") + attributeName + "'";
         return false;
       }
-      // fallthrough intentional
+      // intentionally falls through
     }
     return true;
   };

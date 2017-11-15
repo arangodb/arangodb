@@ -91,7 +91,6 @@ std::string const StaticStrings::Connection("connection");
 std::string const StaticStrings::ContentEncoding("content-encoding");
 std::string const StaticStrings::ContentLength("content-length");
 std::string const StaticStrings::ContentTypeHeader("content-type");
-std::string const StaticStrings::Coordinator("x-arango-coordinator");
 std::string const StaticStrings::CorsMethods(
     "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT");
 std::string const StaticStrings::Error("error");

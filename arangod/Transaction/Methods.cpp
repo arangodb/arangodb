@@ -42,6 +42,7 @@
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
@@ -49,6 +50,7 @@
 #include "Transaction/Helpers.h"
 #include "Transaction/Options.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 #include "Utils/Events.h"
 #include "Utils/OperationCursor.h"
 #include "Utils/OperationOptions.h"
@@ -410,7 +412,7 @@ bool transaction::Methods::sortOrs(
 }
 
 std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
-    std::vector<std::shared_ptr<Index>> indexes, arangodb::aql::AstNode* node,
+    std::vector<std::shared_ptr<Index>> const& indexes, arangodb::aql::AstNode* node,
     arangodb::aql::Variable const* reference,
     arangodb::aql::SortCondition const* sortCondition, size_t itemsInCollection,
     std::vector<transaction::Methods::IndexHandle>& usedIndexes,
@@ -419,7 +421,6 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
   double bestCost = 0.0;
   bool bestSupportsFilter = false;
   bool bestSupportsSort = false;
-  size_t coveredAttributes = 0;
 
   for (auto const& idx : indexes) {
     double filterCost = 0.0;
@@ -448,6 +449,7 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
         (!sortCondition->isEmpty() && sortCondition->isOnlyAttributeAccess());
 
     if (sortCondition->isUnidirectional()) {
+      size_t coveredAttributes = 0;
       // only go in here if we actually have a sort condition and it can in
       // general be supported by an index. for this, a sort condition must not
       // be empty, must consist only of attribute access, and all attributes
@@ -473,6 +475,10 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
         sortCost = 0.0;
       }
     }
+
+    // enable the following line to see index candidates considered with their
+    // abilities and scores
+    // LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", supportsSort: " << supportsSort << ", filterCost: " << filterCost << ", sortCost: " << sortCost << ", totalCost: " << (filterCost + sortCost) << ", isOnlyAttributeAccess: " << isOnlyAttributeAccess << ", isUnidirectional: " << sortCondition->isUnidirectional() << ", isOnlyEqualityMatch: " << node->isOnlyEqualityMatch() << ", itemsInIndex: " << itemsInIndex; 
 
     if (!supportsFilter && !supportsSort) {
       continue;
@@ -500,33 +506,37 @@ std::pair<bool, bool> transaction::Methods::findIndexHandleForAndNode(
 }
 
 bool transaction::Methods::findIndexHandleForAndNode(
-    std::vector<std::shared_ptr<Index>> indexes, arangodb::aql::AstNode*& node,
+    std::vector<std::shared_ptr<Index>> const& indexes, arangodb::aql::AstNode*& node,
     arangodb::aql::Variable const* reference, size_t itemsInCollection,
     transaction::Methods::IndexHandle& usedIndex) const {
   std::shared_ptr<Index> bestIndex;
   double bestCost = 0.0;
 
   for (auto const& idx : indexes) {
-    double filterCost = 0.0;
-    double sortCost = 0.0;
     size_t itemsInIndex = itemsInCollection;
 
     // check if the index supports the filter expression
     double estimatedCost;
     size_t estimatedItems;
-    if (!idx->supportsFilterCondition(node, reference, itemsInIndex,
-                                      estimatedItems, estimatedCost)) {
+    bool supportsFilter = idx->supportsFilterCondition(node, reference, itemsInIndex,
+                                                       estimatedItems, estimatedCost);
+    
+    // enable the following line to see index candidates considered with their
+    // abilities and scores
+    // LOG_TOPIC(TRACE, Logger::FIXME) << "looking at index: " << idx.get() << ", isSorted: " << idx->isSorted() << ", isSparse: " << idx->sparse() << ", fields: " << idx->fields().size() << ", supportsFilter: " << supportsFilter << ", estimatedCost: " << estimatedCost << ", estimatedItems: " << estimatedItems << ", itemsInIndex: " << itemsInIndex << ", selectivity: " << (idx->hasSelectivityEstimate() ? idx->selectivityEstimate() : -1.0) << ", node: " << node; 
+
+    if (!supportsFilter) {
       continue;
     }
+
     // index supports the filter condition
-    filterCost = estimatedCost;
+    
     // this reduces the number of items left
     itemsInIndex = estimatedItems;
 
-    double const totalCost = filterCost + sortCost;
-    if (bestIndex == nullptr || totalCost < bestCost) {
+    if (bestIndex == nullptr || estimatedCost < bestCost) {
       bestIndex = idx;
-      bestCost = totalCost;
+      bestCost = estimatedCost;
     }
   }
 
@@ -709,7 +719,7 @@ Result transaction::Methods::begin() {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid transaction state");
   }
-
+  
   if (_state->isCoordinator()) {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::RUNNING);
@@ -726,9 +736,17 @@ Result transaction::Methods::commit() {
     // transaction not created or not running
     return TRI_ERROR_TRANSACTION_INTERNAL;
   }
+  
+  ExecContext const* exe = ExecContext::CURRENT;
+  if (exe != nullptr && !_state->isReadOnlyTransaction()) {
+    bool cancelRW = !ServerState::writeOpsEnabled() && !exe->isSuperuser();
+    if (exe->isCanceled() || cancelRW) {
+      return Result(TRI_ERROR_ARANGO_READ_ONLY, "server is in read-only mode");
+    }
+  }
 
   CallbackInvoker invoker(this);
-
+  
   if (_state->isCoordinator()) {
     if (_state->isTopLevelTransaction()) {
       _state->updateStatus(transaction::Status::COMMITTED);
@@ -789,7 +807,9 @@ Result transaction::Methods::finish(Result const& res) {
 
 std::string transaction::Methods::name(TRI_voc_cid_t cid) const {
   auto c = trxCollection(cid);
-  TRI_ASSERT(c != nullptr);
+  if (c == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+  }
   return c->collectionName();
 }
 
@@ -1014,7 +1034,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
   mmdr->addToBuilder(result, true);
   return Result(TRI_ERROR_NO_ERROR);
 }
-
+      
 /// @brief return one document from a collection, fast path
 ///        If everything went well the result will contain the found document
 ///        (as an external on single_server) and this function will return
@@ -1045,6 +1065,22 @@ Result transaction::Methods::documentFastPathLocal(
   return res;
 }
 
+static OperationResult errorCodeFromClusterResult(std::shared_ptr<VPackBuilder> const& resultBody) {
+  // read the error number from the response
+  if (resultBody != nullptr) {
+    VPackSlice slice = resultBody->slice();
+    if (slice.isObject()) {
+      VPackSlice num = slice.get("errorNum");
+      if (num.isNumber()) {
+        // we found an error number, so let's use it!
+        return OperationResult(num.getNumericValue<int>());
+      }
+    }
+  }
+  // default is to return "internal error"
+  return OperationResult(TRI_ERROR_INTERNAL);
+}
+
 /// @brief Create Cluster Communication result for document
 OperationResult transaction::Methods::clusterResultDocument(
     rest::ResponseCode const& responseCode,
@@ -1061,7 +1097,7 @@ OperationResult transaction::Methods::clusterResultDocument(
     case rest::ResponseCode::NOT_FOUND:
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default:
-      return OperationResult(TRI_ERROR_INTERNAL);
+      return errorCodeFromClusterResult(resultBody);
   }
 }
 
@@ -1085,7 +1121,7 @@ OperationResult transaction::Methods::clusterResultInsert(
     case rest::ResponseCode::CONFLICT:
       return OperationResult(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
     default:
-      return OperationResult(TRI_ERROR_INTERNAL);
+      return errorCodeFromClusterResult(resultBody);
   }
 }
 
@@ -1114,7 +1150,7 @@ OperationResult transaction::Methods::clusterResultModify(
     case rest::ResponseCode::NOT_FOUND:
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default:
-      return OperationResult(TRI_ERROR_INTERNAL);
+      return errorCodeFromClusterResult(resultBody);
   }
 }
 
@@ -1138,7 +1174,7 @@ OperationResult transaction::Methods::clusterResultRemove(
     case rest::ResponseCode::NOT_FOUND:
       return OperationResult(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default:
-      return OperationResult(TRI_ERROR_INTERNAL);
+      return errorCodeFromClusterResult(resultBody);
   }
 }
 
@@ -1390,10 +1426,11 @@ OperationResult transaction::Methods::insertLocal(
 
     ManagedDocumentResult result;
     TRI_voc_tick_t resultMarkerTick = 0;
+    TRI_voc_rid_t revisionId = 0;
 
     Result res =
         collection->insert(this, value, result, options, resultMarkerTick,
-                           !isLocked(collection, AccessMode::Type::WRITE));
+                           !isLocked(collection, AccessMode::Type::WRITE), revisionId);
 
     if (resultMarkerTick > 0 && resultMarkerTick > maxTick) {
       maxTick = resultMarkerTick;
@@ -1410,9 +1447,7 @@ OperationResult transaction::Methods::insertLocal(
     StringRef keyString(transaction::helpers::extractKeyFromDocument(
         VPackSlice(result.vpack())));
 
-    buildDocumentIdentity(collection, resultBuilder, cid, keyString,
-                          transaction::helpers::extractRevFromDocument(
-                              VPackSlice(result.vpack())),
+    buildDocumentIdentity(collection, resultBuilder, cid, keyString, revisionId,
                           0, nullptr, options.returnNew ? &result : nullptr);
 
     return TRI_ERROR_NO_ERROR;
@@ -1438,7 +1473,7 @@ OperationResult transaction::Methods::insertLocal(
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
-    EngineSelectorFeature::ENGINE->waitForSync(maxTick);
+    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
   if (res.ok() && _state->isDBServer()) {
@@ -1783,7 +1818,7 @@ OperationResult transaction::Methods::modifyLocal(
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
-    EngineSelectorFeature::ENGINE->waitForSync(maxTick);
+    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -2064,7 +2099,7 @@ OperationResult transaction::Methods::removeLocal(
   // wait for operation(s) to be synced to disk here. On rocksdb maxTick == 0
   if (res.ok() && options.waitForSync && maxTick > 0 &&
       isSingleOperationTransaction()) {
-    EngineSelectorFeature::ENGINE->waitForSync(maxTick);
+    EngineSelectorFeature::ENGINE->waitForSyncTick(maxTick);
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -2348,6 +2383,9 @@ OperationResult transaction::Methods::truncateLocal(
                                 path, body);
         }
         size_t nrDone = 0;
+        // TODO: is TRX_FOLLOWER_TIMEOUT actually appropriate here? truncate
+        // can be a much more expensive operation than a single document
+        // insert/update/remove...
         size_t nrGood = cc->performRequests(requests, TRX_FOLLOWER_TIMEOUT,
                                             nrDone, Logger::REPLICATION, false);
         if (nrGood < followers->size()) {
@@ -2387,6 +2425,46 @@ OperationResult transaction::Methods::truncateLocal(
   }
 
   res = unlock(cid, AccessMode::Type::WRITE);
+
+  return OperationResult(res);
+}
+
+/// @brief rotate all active journals of a collection
+OperationResult transaction::Methods::rotateActiveJournal(
+    std::string const& collectionName, OperationOptions const& options) {
+  TRI_ASSERT(_state->status() == transaction::Status::RUNNING);
+
+  OperationResult result;
+
+  if (_state->isCoordinator()) {
+    result = rotateActiveJournalCoordinator(collectionName, options);
+  } else {
+    result = rotateActiveJournalLocal(collectionName, options);
+  }
+
+  return result;
+}
+
+/// @brief rotate the journal of a collection
+OperationResult transaction::Methods::rotateActiveJournalCoordinator(
+    std::string const& collectionName, OperationOptions const& options) {
+
+  return OperationResult(rotateActiveJournalOnAllDBServers(databaseName(), collectionName));
+}
+
+/// @brief rotate the journal of a collection
+OperationResult transaction::Methods::rotateActiveJournalLocal(
+    std::string const& collectionName, OperationOptions const& options) {
+  TRI_voc_cid_t cid = addCollectionAtRuntime(collectionName);
+
+  LogicalCollection* collection = documentCollection(trxCollection(cid));
+
+  Result res;
+  try {
+    res.reset(collection->getPhysical()->rotateActiveJournal());
+  } catch (basics::Exception const& ex) {
+    return OperationResult(ex.code(), ex.what());
+  }
 
   return OperationResult(res);
 }
@@ -2978,7 +3056,8 @@ void transaction::Methods::setupEmbedded(TRI_vocbase_t*) {
 }
 
 /// @brief set up a top-level transaction
-void transaction::Methods::setupToplevel(TRI_vocbase_t* vocbase, transaction::Options const& options) {
+void transaction::Methods::setupToplevel(TRI_vocbase_t* vocbase,
+                                         transaction::Options const& options) {
   // we are not embedded. now start our own transaction
   StorageEngine* engine = EngineSelectorFeature::ENGINE;
   _state = engine->createTransactionState(vocbase, options);

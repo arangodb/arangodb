@@ -41,6 +41,7 @@
 #include "RestServer/InitDatabaseFeature.h"
 #include "Ssl/SslInterface.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/ExecContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -125,10 +126,7 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope(ExecContext::superuser());
   std::string const queryStr("FOR user IN _users RETURN user");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
   arangodb::aql::Query query(false, vocbase,
@@ -144,12 +142,12 @@ static std::shared_ptr<VPackBuilder> QueryAllUsers(
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code,
-                                   "Error executing user query");
-    // return std::shared_ptr<VPackBuilder>();
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        queryResult.code, "Error executing user query: " + queryResult.details);
   }
 
   VPackSlice usersSlice = queryResult.result->slice();
+
   if (usersSlice.isNone()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   } else if (!usersSlice.isArray()) {
@@ -171,10 +169,7 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope(ExecContext::superuser());
   std::string const queryStr("FOR u IN _users FILTER u.user == @name RETURN u");
   auto emptyBuilder = std::make_shared<VPackBuilder>();
 
@@ -188,14 +183,14 @@ static VPackBuilder QueryUser(aql::QueryRegistry* queryRegistry,
                              emptyBuilder, arangodb::aql::PART_MAIN);
 
   auto queryResult = query.execute(queryRegistry);
+
   if (queryResult.code != TRI_ERROR_NO_ERROR) {
     if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
         (queryResult.code == TRI_ERROR_QUERY_KILLED)) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
     }
-
-    THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code,
-                                   "Error executing user query");
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        queryResult.code, "Error executing user query: " + queryResult.details);
   }
 
   VPackSlice usersSlice = queryResult.result->slice();
@@ -270,8 +265,12 @@ void AuthInfo::loadFromDB() {
     }
 
     _outdated = (_authInfo.empty() == true);
-  } catch (...) {
+  } catch (std::exception const& ex) {
     LOG_TOPIC(WARN, Logger::AUTHENTICATION)
+        << "Exception when loading users from db: " << ex.what();
+    _outdated = true;
+  } catch (...) {
+    LOG_TOPIC(TRACE, Logger::AUTHENTICATION)
         << "Exception when loading users from db";
     _outdated = true;
   }
@@ -326,10 +325,7 @@ Result AuthInfo::storeUserInternal(AuthUserEntry const& entry, bool replace) {
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope(ExecContext::superuser());
   auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
@@ -454,9 +450,11 @@ Result AuthInfo::storeUser(bool replace, std::string const& user,
     return TRI_ERROR_USER_DUPLICATE;
   }
 
-  auto const& oldEntry = it->second;
+  std::string oldKey;  // will only be populated during replace
 
   if (replace) {
+    auto const& oldEntry = it->second;
+    oldKey = oldEntry.key();
     if (oldEntry.source() == AuthSource::LDAP) {
       return TRI_ERROR_USER_EXTERNAL;
     }
@@ -467,8 +465,8 @@ Result AuthInfo::storeUser(bool replace, std::string const& user,
   entry.setActive(active);
 
   if (replace) {
-    TRI_ASSERT(!(oldEntry.key().empty()));
-    entry._key = oldEntry.key();
+    TRI_ASSERT(!oldKey.empty());
+    entry._key = std::move(oldKey);
   }
 
   Result r = storeUserInternal(entry, replace);
@@ -489,10 +487,7 @@ static Result UpdateUser(VPackSlice const& user) {
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope(ExecContext::superuser());
   auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
@@ -510,8 +505,7 @@ static Result UpdateUser(VPackSlice const& user) {
 Result AuthInfo::enumerateUsers(
     std::function<void(AuthUserEntry&)> const& func) {
   loadFromDB();
-
-  // we require an consistent view on the user object
+  // we require a consistent view on the user object
   {
     WRITE_LOCKER(guard, _authInfoLock);
     for (auto& it : _authInfo) {
@@ -551,7 +545,7 @@ Result AuthInfo::updateUser(std::string const& user,
   loadFromDB();
 
   Result r;
-  {  // we require an consisten view on the user object
+  {  // we require a consistent view on the user object
     WRITE_LOCKER(guard, _authInfoLock);
     auto it = _authInfo.find(user);
 
@@ -609,16 +603,14 @@ VPackBuilder AuthInfo::serializeUser(std::string const& user) {
 static Result RemoveUserInternal(AuthUserEntry const& entry) {
   TRI_ASSERT(!entry.key().empty());
   TRI_vocbase_t* vocbase = DatabaseFeature::DATABASE->systemDatabase();
+
   if (vocbase == nullptr) {
     return Result(TRI_ERROR_INTERNAL);
   }
 
   // we cannot set this execution context, otherwise the transaction
   // will ask us again for permissions and we get a deadlock
-  ExecContext* oldExe = ExecContext::CURRENT;
-  ExecContext::CURRENT = nullptr;
-  TRI_DEFER(ExecContext::CURRENT = oldExe);
-
+  ExecContextScope scope(ExecContext::superuser());
   auto ctx = transaction::StandaloneContext::Create(vocbase);
   SingleCollectionTransaction trx(ctx, TRI_COL_NAME_USERS,
                                   AccessMode::Type::WRITE);
@@ -626,6 +618,7 @@ static Result RemoveUserInternal(AuthUserEntry const& entry) {
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   Result res = trx.begin();
+
   if (res.ok()) {
     VPackBuilder builder;
     {
@@ -638,6 +631,7 @@ static Result RemoveUserInternal(AuthUserEntry const& entry) {
         trx.remove(TRI_COL_NAME_USERS, builder.slice(), OperationOptions());
     res = trx.finish(result.code);
   }
+
   return res;
 }
 
@@ -645,10 +639,13 @@ Result AuthInfo::removeUser(std::string const& user) {
   if (user.empty()) {
     return TRI_ERROR_USER_NOT_FOUND;
   }
+
   if (user == "root") {
     return TRI_ERROR_FORBIDDEN;
   }
+
   loadFromDB();
+
   Result res;
   {
     WRITE_LOCKER(guard, _authInfoLock);
@@ -672,13 +669,16 @@ Result AuthInfo::removeUser(std::string const& user) {
       _authBasicCache.clear();
     }
   }
+
   reloadAllUsers();
   return res;
 }
 
 Result AuthInfo::removeAllUsers() {
   loadFromDB();
+
   Result res;
+
   {
     WRITE_LOCKER(guard, _authInfoLock);
 
@@ -783,8 +783,7 @@ Result AuthInfo::setUserData(std::string const& user,
 AuthResult AuthInfo::checkPassword(std::string const& username,
                                    std::string const& password) {
   AuthResult result(username);
-
-  if (StringUtils::isPrefix(username, ":role:")) {
+  if (username.empty() || StringUtils::isPrefix(username, ":role:")) {
     return result;
   }
 
@@ -795,8 +794,9 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   auto it = _authInfo.find(username);
   auto feature = AuthenticationFeature::INSTANCE;
 
-  if (it != _authInfo.end() && (it->second.source() == AuthSource::COLLECTION)
-      && feature != nullptr && ! feature->localAuthentication()) {
+  if (it != _authInfo.end() &&
+      (it->second.source() == AuthSource::COLLECTION) && feature != nullptr &&
+      !feature->localAuthentication()) {
     return result;
   }
 
@@ -858,8 +858,6 @@ AuthResult AuthInfo::checkPassword(std::string const& username,
   return result;
 }
 
-#include <iostream>
-
 AuthLevel AuthInfo::canUseDatabase(std::string const& username,
                                    std::string const& dbname) {
   loadFromDB();
@@ -873,6 +871,7 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
   auto const& entry = it->second;
   AuthLevel level = entry.databaseAuthLevel(dbname);
 
+#ifdef USE_ENTERPRISE
   for (auto const& role : entry.roles()) {
     if (level == AuthLevel::RW) {
       return level;
@@ -884,7 +883,12 @@ AuthLevel AuthInfo::canUseDatabase(std::string const& username,
       level = roleLevel;
     }
   }
-
+#endif
+  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
+  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "downgrading user rights";
+    return AuthLevel::RO;
+  }
   return level;
 }
 
@@ -899,7 +903,9 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
   if (coll[0] >= '0' && coll[0] <= '9') {
     // lookup by collection id
     // translate numeric collection id into collection name
-    return canUseCollectionInternal(username, dbname, DatabaseFeature::DATABASE->translateCollectionName(dbname, coll));
+    return canUseCollectionInternal(
+        username, dbname,
+        DatabaseFeature::DATABASE->translateCollectionName(dbname, coll));
   }
 
   // lookup by collection name
@@ -912,8 +918,11 @@ AuthLevel AuthInfo::canUseCollection(std::string const& username,
 AuthLevel AuthInfo::canUseCollectionInternal(std::string const& username,
                                              std::string const& dbname,
                                              std::string const& coll) {
+  if (coll.empty()) {
+    // no collection name given
+    return AuthLevel::NONE;
+  }
   // we must have got a non-empty collection name when we get here
-  TRI_ASSERT(!coll.empty());
   TRI_ASSERT(coll[0] < '0' || coll[0] > '9');
 
   loadFromDB();
@@ -927,6 +936,7 @@ AuthLevel AuthInfo::canUseCollectionInternal(std::string const& username,
   auto const& entry = it->second;
   AuthLevel level = entry.collectionAuthLevel(dbname, coll);
 
+#ifdef USE_ENTERPRISE
   for (auto const& role : entry.roles()) {
     if (level == AuthLevel::RW) {
       return level;
@@ -938,7 +948,13 @@ AuthLevel AuthInfo::canUseCollectionInternal(std::string const& username,
       level = roleLevel;
     }
   }
+#endif
 
+  static_assert(AuthLevel::RO < AuthLevel::RW, "ro < rw");
+  if (level > AuthLevel::RO && !ServerState::writeOpsEnabled()) {
+    LOG_TOPIC(ERR, Logger::FIXME) << "downgrading user rights";
+    return AuthLevel::RO;
+  }
   return level;
 }
 
@@ -962,7 +978,6 @@ AuthResult AuthInfo::checkAuthentication(AuthenticationMethod authType,
 // private
 AuthResult AuthInfo::checkAuthenticationBasic(std::string const& secret) {
   auto role = ServerState::instance()->getRole();
-
   if (role != ServerState::ROLE_SINGLE &&
       role != ServerState::ROLE_COORDINATOR) {
     return AuthResult();

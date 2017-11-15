@@ -32,17 +32,19 @@
 
 using namespace arangodb::aql;
 
+namespace {
 static AqlValue EmptyValue;
 
 /// @brief get the value from an input register
 /// for a reduce function that does not require input, this will return a
 /// reference to a static empty AqlValue
-static inline AqlValue const& GetValueForRegister(AqlItemBlock const* src,
-                                                   size_t row, RegisterId reg) {
+static inline AqlValue const& getValueForRegister(AqlItemBlock const* src,
+                                                  size_t row, RegisterId reg) {
   if (reg == ExecutionNode::MaxRegisterId) {
     return EmptyValue;
   }
   return src->getValueReference(row, reg);
+}
 }
 
 SortedCollectBlock::CollectGroup::CollectGroup(bool count)
@@ -251,6 +253,7 @@ int SortedCollectBlock::initialize() {
 
   // reserve space for the current row
   _currentGroup.initialize(_groupRegisters.size());
+  _pos = 0;
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -307,7 +310,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
   // If we get here, we do have _buffer.front()
   AqlItemBlock* cur = _buffer.front();
   TRI_ASSERT(cur != nullptr);
-
+  
   if (!skipping) {
     res.reset(requestBlock(atMost, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
 
@@ -437,7 +440,7 @@ int SortedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
           RegisterId const reg = _aggregateRegisters[j].second;
           for (size_t r = _currentGroup.firstRow; r < _currentGroup.lastRow + 1;
                ++r) {
-            it->reduce(GetValueForRegister(cur, r, reg));
+            it->reduce(getValueForRegister(cur, r, reg));
           }
           ++j;
         }
@@ -468,7 +471,7 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
     // re-use already copied AqlValues
     TRI_ASSERT(cur != nullptr);
     for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
-      res->setValue(row, i, res->getValue(0, i));
+      res->emplaceValue(row, i, res->getValueReference(0, i));
       // Note: if this throws, then all values will be deleted
       // properly since the first one is.
     }
@@ -478,12 +481,11 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
   for (auto& it : _groupRegisters) {
     if (!skipping) {
       res->setValue(row, it.first, _currentGroup.groupValues[i]);
-      // ownership of value is transferred into res
-      _currentGroup.groupValues[i].erase();
     } else {
       _currentGroup.groupValues[i].destroy();
-      _currentGroup.groupValues[i].erase();
     }
+    // ownership of value is transferred into res
+    _currentGroup.groupValues[i].erase();
     ++i;
   }
 
@@ -496,7 +498,7 @@ void SortedCollectBlock::emitGroup(AqlItemBlock const* cur, AqlItemBlock* res,
         RegisterId const reg = _aggregateRegisters[j].second;
         for (size_t r = _currentGroup.firstRow; r < _currentGroup.lastRow + 1;
             ++r) {
-          it->reduce(GetValueForRegister(cur, r, reg));
+          it->reduce(getValueForRegister(cur, r, reg));
         }
         res->setValue(row, _aggregateRegisters[j].first, it->stealValue());
       } else {
@@ -742,7 +744,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
           for (auto const& r : en->_aggregateVariables) {
             aggregateValues->emplace_back(Aggregator::fromTypeString(_trx, r.second.second));
             aggregateValues->back()->reduce(
-                GetValueForRegister(cur, _pos, _aggregateRegisters[j].second));
+                getValueForRegister(cur, _pos, _aggregateRegisters[j].second));
             ++j;
           }
         }
@@ -766,7 +768,7 @@ int HashedCollectBlock::getOrSkipSome(size_t atLeast, size_t atMost,
           size_t j = 0;
           for (auto const& r : _aggregateRegisters) {
             (*aggregateValues)[j]->reduce(
-                GetValueForRegister(cur, _pos, r.second));
+                getValueForRegister(cur, _pos, r.second));
             ++j;
           }
         }

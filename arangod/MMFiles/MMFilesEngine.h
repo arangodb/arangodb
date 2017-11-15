@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2016 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2017 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -37,6 +37,7 @@
 namespace arangodb {
 class MMFilesCleanupThread;
 class MMFilesCompactorThread;
+class MMFilesWalAccess;
 class PhysicalCollection;
 class PhysicalView;
 class TransactionCollection;
@@ -89,27 +90,31 @@ class MMFilesEngine final : public StorageEngine {
   
   bool useRawDocumentPointers() override { return true; }
 
-  std::shared_ptr<arangodb::velocypack::Builder>
-  getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
-                                     int& status) override;
+  velocypack::Builder getReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
+                                                         int& status) override;
+  velocypack::Builder getReplicationApplierConfiguration(int& status) override;
   int removeReplicationApplierConfiguration(TRI_vocbase_t* vocbase) override;
+  int removeReplicationApplierConfiguration() override;
   int saveReplicationApplierConfiguration(TRI_vocbase_t* vocbase,
                                           arangodb::velocypack::Slice slice,
                                           bool doSync) override;
-  int handleSyncKeys(arangodb::InitialSyncer& syncer,
-                     arangodb::LogicalCollection* col,
-                     std::string const& keysId, std::string const& cid,
-                     std::string const& collectionName, TRI_voc_tick_t maxTick,
-                     std::string& errorMsg) override;
+  int saveReplicationApplierConfiguration(arangodb::velocypack::Slice slice,
+                                          bool doSync) override;
+  Result handleSyncKeys(arangodb::DatabaseInitialSyncer& syncer,
+                        arangodb::LogicalCollection* col,
+                        std::string const& keysId, std::string const& cid,
+                        std::string const& collectionName, TRI_voc_tick_t maxTick) override;
 
   Result createLoggerState(TRI_vocbase_t* vocbase, VPackBuilder& builder) override;
   Result createTickRanges(VPackBuilder& builder) override;
   Result firstTick(uint64_t& tick) override;
   Result lastLogger(TRI_vocbase_t* vocbase, std::shared_ptr<transaction::Context>, uint64_t tickStart, uint64_t tickEnd,  std::shared_ptr<VPackBuilder>& builderSPtr) override;
+  WalAccess const* walAccess() const override;
 
   TransactionManager* createTransactionManager() override;
   transaction::ContextData* createTransactionContextData() override;
-  TransactionState* createTransactionState(TRI_vocbase_t*, transaction::Options const&) override;
+  TransactionState* createTransactionState(TRI_vocbase_t*,
+                  transaction::Options const&) override;
   TransactionCollection* createTransactionCollection(
       TransactionState* state, TRI_voc_cid_t cid, AccessMode::Type accessType,
       int nestingLevel) override;
@@ -162,7 +167,12 @@ class MMFilesEngine final : public StorageEngine {
 
   std::string versionFilename(TRI_voc_tick_t id) const override;
 
-  void waitForSync(TRI_voc_tick_t tick) override;
+  void waitForSyncTick(TRI_voc_tick_t tick) override;
+  
+  void waitForSyncTimeout(double maxWait) override;
+  
+  Result flushWal(bool waitForSync, bool waitForCollector,
+                  bool writeShutdownFile) override;
 
   virtual TRI_vocbase_t* openDatabase(
       arangodb::velocypack::Slice const& parameters, bool isUpgrade,
@@ -355,6 +365,10 @@ class MMFilesEngine final : public StorageEngine {
                             TRI_voc_cid_t viewId) const;
 
  private:
+  velocypack::Builder getReplicationApplierConfiguration(std::string const& filename, int& status);
+  int removeReplicationApplierConfiguration(std::string const& filename);
+  int saveReplicationApplierConfiguration(std::string const& filename, arangodb::velocypack::Slice, bool doSync);
+
   /// @brief: check the initial markers in a datafile
   bool checkDatafileHeader(MMFilesDatafile* datafile,
                            std::string const& filename) const;
@@ -458,7 +472,7 @@ class MMFilesEngine final : public StorageEngine {
   int stopCompactor(TRI_vocbase_t* vocbase);
 
   /// @brief writes a drop-database marker into the log
-  int writeDropMarker(TRI_voc_tick_t id);
+  int writeDropMarker(TRI_voc_tick_t id, std::string const& name);
 
  public:
   static std::string const EngineName;
@@ -469,6 +483,8 @@ class MMFilesEngine final : public StorageEngine {
   std::string _databasePath;
   bool _isUpgrade;
   TRI_voc_tick_t _maxTick;
+  /// @brief Local wal access abstraction
+  std::unique_ptr<MMFilesWalAccess> _walAccess;
   std::vector<std::pair<std::string, std::string>> _deleted;
 
   arangodb::basics::ReadWriteLock mutable _pathsLock;
@@ -498,9 +514,9 @@ class MMFilesEngine final : public StorageEngine {
   // lock for threads
   arangodb::Mutex _threadsLock;
   // per-database compactor threads, protected by _threadsLock
-  std::unordered_map<TRI_vocbase_t*, MMFilesCompactorThread*> _compactorThreads;
+  std::unordered_map<TRI_vocbase_t*, std::shared_ptr<MMFilesCompactorThread>> _compactorThreads;
   // per-database cleanup threads, protected by _threadsLock
-  std::unordered_map<TRI_vocbase_t*, MMFilesCleanupThread*> _cleanupThreads;
+  std::unordered_map<TRI_vocbase_t*, std::shared_ptr<MMFilesCleanupThread>> _cleanupThreads;
 };
 }
 

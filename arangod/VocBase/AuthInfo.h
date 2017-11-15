@@ -33,7 +33,6 @@
 #include "Basics/Result.h"
 #include "Rest/CommonDefines.h"
 #include "Utils/Authentication.h"
-#include "Utils/ExecContext.h"
 #include "VocBase/AuthUserEntry.h"
 
 #include <velocypack/Builder.h>
@@ -53,6 +52,8 @@ class AuthResult {
   bool expired() { return _expiry != 0 && _expiry < TRI_microtime(); }
 
  public:
+  //enum class AuthenticationMethod { BASIC, JWT, NONE };
+
   std::string _username;
   bool _authorized;  // User exists and password was checked
   double _expiry;
@@ -69,7 +70,7 @@ class AuthenticationHandler;
 
 class AuthInfo {
  public:
-  AuthInfo(std::unique_ptr<AuthenticationHandler>&&);
+  explicit AuthInfo(std::unique_ptr<AuthenticationHandler>&&);
   ~AuthInfo();
 
  public:

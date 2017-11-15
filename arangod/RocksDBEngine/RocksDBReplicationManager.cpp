@@ -21,6 +21,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RocksDBReplicationManager.h"
+#include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
 #include "Logger/Logger.h"
 #include "RocksDBEngine/RocksDBCommon.h"
@@ -33,13 +34,17 @@
 using namespace arangodb;
 using namespace arangodb::rocksutils;
 
-size_t const RocksDBReplicationManager::MaxCollectCount = 32;
+/// @brief maximum number of contexts to garbage-collect in one go
+static constexpr size_t maxCollectCount = 32;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a context repository
 ////////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationManager::RocksDBReplicationManager() : _lock(), _contexts() {
+RocksDBReplicationManager::RocksDBReplicationManager() 
+    : _lock(), 
+      _contexts(),
+      _isShuttingDown(false) {
   _contexts.reserve(64);
 }
 
@@ -90,8 +95,8 @@ RocksDBReplicationManager::~RocksDBReplicationManager() {
 /// there are active contexts
 //////////////////////////////////////////////////////////////////////////////
 
-RocksDBReplicationContext* RocksDBReplicationManager::createContext() {
-  auto context = std::make_unique<RocksDBReplicationContext>();
+RocksDBReplicationContext* RocksDBReplicationManager::createContext(double ttl) {
+  auto context = std::make_unique<RocksDBReplicationContext>(ttl);
   TRI_ASSERT(context.get() != nullptr);
   TRI_ASSERT(context->isUsed());
 
@@ -99,6 +104,12 @@ RocksDBReplicationContext* RocksDBReplicationManager::createContext() {
 
   {
     MUTEX_LOCKER(mutexLocker, _lock);
+
+    if (_isShuttingDown) {
+      // do not accept any further contexts when we are already shutting down
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
     _contexts.emplace(id, context.get());
   }
   return context.release();
@@ -197,7 +208,7 @@ void RocksDBReplicationManager::release(RocksDBReplicationContext* context) {
     if (!context->isDeleted()) {
       return;
     }
-
+      
     // remove from the list
     _contexts.erase(context->id());
   }
@@ -274,22 +285,23 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
   std::vector<RocksDBReplicationContext*> found;
 
   try {
-    found.reserve(MaxCollectCount);
+    found.reserve(maxCollectCount);
 
     MUTEX_LOCKER(mutexLocker, _lock);
 
     for (auto it = _contexts.begin(); it != _contexts.end();
          /* no hoisting */) {
       auto context = it->second;
-
-      if (context->isUsed()) {
-        // must not destroy used contexts
-        ++it;
-        continue;
+      
+      if (force || context->expires() < now) {
+        // expire contexts
+        context->deleted();
       }
 
-      if (force || context->expires() < now) {
-        context->deleted();
+      if (context->isUsed()) {
+        // must not physically destroy contexts that are currently used
+        ++it;
+        continue;
       }
 
       if (context->isDeleted()) {
@@ -301,7 +313,7 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
           break;
         }
 
-        if (!force && found.size() >= MaxCollectCount) {
+        if (!force && found.size() >= maxCollectCount) {
           break;
         }
       } else {
@@ -319,13 +331,13 @@ bool RocksDBReplicationManager::garbageCollect(bool force) {
 
   return (!found.empty());
 }
-
-RocksDBReplicationContextGuard::RocksDBReplicationContextGuard(
-    RocksDBReplicationManager* manager, RocksDBReplicationContext* ctx)
-    : _manager(manager), _ctx(ctx) {}
-
-RocksDBReplicationContextGuard::~RocksDBReplicationContextGuard() {
-  if (_ctx != nullptr) {
-    _manager->release(_ctx);
-  }
+  
+//////////////////////////////////////////////////////////////////////////////
+/// @brief tell the replication manager that a shutdown is in progress
+/// effectively this will block the creation of new contexts
+//////////////////////////////////////////////////////////////////////////////
+    
+void RocksDBReplicationManager::beginShutdown() {
+  MUTEX_LOCKER(mutexLocker, _lock);
+  _isShuttingDown = true;
 }

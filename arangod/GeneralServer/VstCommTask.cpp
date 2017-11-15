@@ -98,11 +98,18 @@ VstCommTask::VstCommTask(EventLoop loop, GeneralServer* server,
       ->vstMaxSize();
 }
 
-void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
-  _lock.assertLockedByCurrentThread();
+void VstCommTask::addResponse(GeneralResponse* baseResponse,
+                              RequestStatistics* stat) {
+    _lock.assertLockedByCurrentThread();
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    VstResponse* response = dynamic_cast<VstResponse*>(baseResponse);
+    TRI_ASSERT(response != nullptr);
+#else
+    VstResponse* response = static_cast<VstResponse*>(baseResponse);
+#endif
 
   VPackMessageNoOwnBuffer response_message = response->prepareForNetwork();
-  uint64_t const id = response_message._id;
+  uint64_t const mid = response_message._id;
 
   std::vector<VPackSlice> slices;
 
@@ -112,7 +119,7 @@ void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
 
     for (auto& payload : response_message._payloads) {
       LOG_TOPIC(DEBUG, Logger::REQUESTS) << "\"vst-request-result\",\""
-                                         << (void*)this << "/" << id << "\","
+                                         << (void*)this << "/" << mid << "\","
                                          << payload.toJson() << "\"";
 
       slices.push_back(payload);
@@ -123,7 +130,7 @@ void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
   }
 
   // set some sensible maxchunk size and compression
-  auto buffers = createChunkForNetwork(slices, id, _maxChunkSize,
+  auto buffers = createChunkForNetwork(slices, mid, _maxChunkSize,
                                        _protocolVersion);
   double const totalTime = RequestStatistics::ELAPSED_SINCE_READ_START(stat);
 
@@ -146,11 +153,9 @@ void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
 
     for (auto&& buffer : buffers) {
       if (c == n) {
-        WriteBuffer b(buffer.release(), stat);
-        addWriteBuffer(b);
+        addWriteBuffer(WriteBuffer(buffer.release(), stat));
       } else {
-        WriteBuffer b(buffer.release(), nullptr);
-        addWriteBuffer(b);
+        addWriteBuffer(WriteBuffer(buffer.release(), nullptr));
       }
 
       ++c;
@@ -159,7 +164,7 @@ void VstCommTask::addResponse(VstResponse* response, RequestStatistics* stat) {
 
   // and give some request information
   LOG_TOPIC(INFO, Logger::REQUESTS)
-      << "\"vst-request-end\",\"" << (void*)this << "/" << id << "\",\""
+      << "\"vst-request-end\",\"" << (void*)this << "/" << mid << "\",\""
       << _connectionInfo.clientAddress << "\",\""
       << VstRequest::translateVersion(_protocolVersion) << "\","
       << static_cast<int>(response->responseCode()) << ","
@@ -242,36 +247,38 @@ bool VstCommTask::isChunkComplete(char* start) {
 }
 
 void VstCommTask::handleAuthHeader(VPackSlice const& header,
-                                       uint64_t messageId) {
+                                   uint64_t messageId) {
   _authorized = false;
-  if (_authentication->isActive()) {
-    std::string auth, user;
-    AuthenticationMethod authType = AuthenticationMethod::NONE;
+  
+  std::string authString;
+  std::string user = "";
+  AuthenticationMethod authType = AuthenticationMethod::NONE;
 
-    std::string encryption = header.at(2).copyString();
-    if (encryption == "jwt") {// doing JWT
-      auth = header.at(3).copyString();
-      authType = AuthenticationMethod::JWT;
-    } else if (encryption == "plain") {
-      user = header.at(3).copyString();
-      std::string pass = header.at(4).copyString();
-      auth = basics::StringUtils::encodeBase64(user + ":" + pass);
-      authType = AuthenticationMethod::BASIC;
-    } else {
-      LOG_TOPIC(ERR, Logger::REQUESTS) << "Unknown VST encryption type";
-    }
-    AuthResult result = _authentication->authInfo()->checkAuthentication(
-        authType, auth);
-
+  std::string encryption = header.at(2).copyString();
+  if (encryption == "jwt") {// doing JWT
+    authString = header.at(3).copyString();
+    authType = AuthenticationMethod::JWT;
+  } else if (encryption == "plain") {
+    user = header.at(3).copyString();
+    std::string pass = header.at(4).copyString();
+    authString = basics::StringUtils::encodeBase64(user + ":" + pass);
+    authType = AuthenticationMethod::BASIC;
+  } else {
+    LOG_TOPIC(ERR, Logger::REQUESTS) << "Unknown VST encryption type";
+  }
+  
+  if (_authentication->isActive()) { // will just fail if method is NONE
+    AuthResult result = _authentication->authInfo()->checkAuthentication(authType, authString);
     _authorized = result._authorized;
     if (_authorized) {
       _authenticatedUser = std::move(result._username);
     }
   } else {
     _authorized = true;
+    _authenticatedUser = std::move(user); // may be empty
   }
   
- VstRequest fakeRequest( _connectionInfo, VstInputMessage{}, 0, true /*fakeRequest*/);
+ VstRequest fakeRequest(_connectionInfo, VstInputMessage{}, 0, true /*fakeRequest*/);
   if (_authorized) {
     // mop: hmmm...user should be completely ignored if there is no auth IMHO
     // obi: user who sends authentication expects a reply
@@ -368,11 +375,9 @@ bool VstCommTask::processRead(double startTime) {
           _connectionInfo, std::move(message), chunkHeader._messageID));
       request->setAuthorized(_authorized);
       request->setUser(_authenticatedUser);
-      GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
-      
-      if (request->requestContext() == nullptr) {
-        handleSimpleError(
-                          rest::ResponseCode::NOT_FOUND, *request,
+      bool res = GeneralServerFeature::HANDLER_FACTORY->setRequestContext(request.get());
+      if (!res || request->requestContext() == nullptr) {
+        handleSimpleError(rest::ResponseCode::NOT_FOUND, *request,
                           TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
                           TRI_errno_string(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND),
                           chunkHeader._messageID);
@@ -450,10 +455,11 @@ void VstCommTask::handleSimpleError(rest::ResponseCode responseCode,
                                     int errorNum,
                                     std::string const& errorMessage,
                                     uint64_t messageId) {
-  VstResponse response(responseCode, messageId);
-  response.setContentType(req.contentTypeResponse());
+  VstResponse resp(responseCode, messageId);
+  resp.setContentType(req.contentTypeResponse());
 
-  VPackBuilder builder;
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder builder(buffer);
   builder.openObject();
   builder.add(StaticStrings::Error, VPackValue(true));
   builder.add(StaticStrings::ErrorNum, VPackValue(errorNum));
@@ -462,8 +468,8 @@ void VstCommTask::handleSimpleError(rest::ResponseCode responseCode,
   builder.close();
 
   try {
-    response.setPayload(builder.slice(), true, VPackOptions::Defaults);
-    processResponse(&response);
+    resp.setPayload(std::move(buffer), true, VPackOptions::Defaults);
+    addResponse(&resp, nullptr);
   } catch (...) {
     closeStream();
   }

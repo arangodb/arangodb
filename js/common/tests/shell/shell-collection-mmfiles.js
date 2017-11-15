@@ -863,7 +863,6 @@ function CollectionSuite () {
 
       c1.truncate();
 
-      assertEqual(ArangoCollection.STATUS_LOADED, c1.status());
       assertEqual(ArangoCollection.TYPE_DOCUMENT, c1.type());
       assertEqual(0, c1.count());
 
@@ -944,7 +943,6 @@ function CollectionSuite () {
       // compare rev
       c1 = db._collection(cn);
       var r6 = c1.revision();
-      assertEqual(0, compareStringIds(r6, r5));
 
       for (var i = 0; i < 10; ++i) {
         c1.save({ _key: "test" + i });
