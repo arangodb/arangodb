@@ -118,10 +118,16 @@ VPackMessageNoOwnBuffer VstResponse::prepareForNetwork() {
   // steal the header and can avoid the shared pointer
   VPackBuilder builder;
   builder.openArray();
-  builder.add(VPackValue(int(1)));
+  builder.add(VPackValue(int(1)));  // 1 == version
   builder.add(VPackValue(int(2)));  // 2 == response
-  builder.add(
-      VPackValue(static_cast<int>(meta::underlyingValue(_responseCode))));
+  builder.add(VPackValue(static_cast<int>(meta::underlyingValue(_responseCode)))); // 3 == request - return code
+
+  builder.openObject(); // 4 == meta
+  for (auto const& item : _headers) {
+    builder.add(item.first, VPackValue(item.second));
+  }
+  builder.close();
+
   builder.close();
   _header = builder.steal();
   if (_vpackPayloads.empty()) {

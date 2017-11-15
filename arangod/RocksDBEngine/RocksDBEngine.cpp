@@ -59,6 +59,7 @@
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "RocksDBEngine/RocksDBPrefixExtractor.h"
+#include "RocksDBEngine/RocksDBRecoveryFinalizer.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
 #include "RocksDBEngine/RocksDBRestHandlers.h"
@@ -128,6 +129,8 @@ RocksDBEngine::RocksDBEngine(application_features::ApplicationServer* server)
   // inherits order from StorageEngine but requires "RocksDBOption" that is used
   // to configure this engine and the MMFiles PersistentIndexFeature
   startsAfter("RocksDBOption");
+  
+  server->addFeature(new RocksDBRecoveryFinalizer(server));
 }
 
 RocksDBEngine::~RocksDBEngine() { delete _db; }
@@ -513,11 +516,11 @@ void RocksDBEngine::start() {
                                key.string(), &oldVersion);
   if (dbExisted) {
     if (s.IsNotFound() || oldVersion.data()[0] < version) {
-      LOG_TOPIC(ERR, Logger::ENGINES)
+      LOG_TOPIC(FATAL, Logger::ENGINES)
       << "Your db directory is in an old format. Please delete the directory.";
       FATAL_ERROR_EXIT();
     } else if (oldVersion.data()[0] > version) {
-      LOG_TOPIC(ERR, Logger::ENGINES)
+      LOG_TOPIC(FATAL, Logger::ENGINES)
       << "You are using an old version of ArangoDB, please update "
       << "before opening this dir.";
       FATAL_ERROR_EXIT();
@@ -537,9 +540,9 @@ void RocksDBEngine::start() {
 
   _counterManager->runRecovery();
 
-  double const counter_sync_seconds = 2.5;
+  double const counterSyncSeconds = 2.5;
   _backgroundThread.reset(
-      new RocksDBBackgroundThread(this, counter_sync_seconds));
+      new RocksDBBackgroundThread(this, counterSyncSeconds));
   if (!_backgroundThread->start()) {
     LOG_TOPIC(FATAL, Logger::ENGINES)
         << "could not start rocksdb counter manager";

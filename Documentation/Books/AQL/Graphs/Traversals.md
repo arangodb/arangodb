@@ -1,92 +1,13 @@
 Graph traversals in AQL
 =======================
 
-General query idea
-------------------
-
-A traversal starts at one specific document (*startVertex*) and follows all
-edges connected to this document. For all documents (*vertices*) that are
-targeted by these edges it will again follow all edges connected to them and
-so on. It is possible to define how many of these follow iterations should be
-executed at least (*min* depth) and at most (*max* depth).
-
-For all vertices that were visited during this process in the range between
-*min* depth and *max* depth iterations you will get a result in form of a
-set with three items:
-
-1. The visited vertex.
-2. The edge pointing to it.
-3. The complete path from startVertex to the visited vertex as object with an
-  attribute *edges* and an attribute *vertices*, each a list of the coresponding
-  elements. These lists are sorted, which means the first element in *vertices*
-  is the *startVertex* and the last is the visited vertex, and the n-th element
-  in *edges* connects the n-th element with the (n+1)-th element in *vertices*.
-
-### Example execution
-
-Let's take a look at a simple example to explain how it works.
-This is the graph that we are going to traverse:
-
-![traversal graph](traversal_graph.png)
-
-We use the following parameters for our query:
-
-1. We start at the vertex **A**.
-2. We use a *min* depth of 1.
-3. We use a *max* depth of 2.
-4. We follow only in *OUTBOUND* direction of edges
-
-![traversal graph step 1](traversal_graph1.png)
-
-Now it walks to one of the direct neighbors of **A**, say **B** (note: ordering
-is not guaranteed!):
-
-![traversal graph step 2](traversal_graph2.png)
-
-The query will remember the state (red circle) and will emit the first result
-**A** → **B** (black box). This will also prevent the traverser to be trapped
-in cycles. Now again it will visit one of the direct neighbors of **B**, say **E**:
-
-![traversal graph step 3](traversal_graph3.png)
-
-We have limited the query with a *max* depth of *2*, so it will not pick any
-neighbor of **E**, as the path from **A** to **E** already requires *2* steps.
-Instead, we will go back one level to **B** and continue with any other direct
-neighbor there:
-
-![traversal graph step 4](traversal_graph4.png)
-
-Again after we produced this result we will step back to **B**.
-But there is no neighbor of **B** left that we have not yet visited.
-Hence we go another step back to **A** and continue with any other neighbor there.
-
-![traversal graph step 5](traversal_graph5.png)
-
-And identical to the iterations before we will visit **H**:
-
-![traversal graph step 6](traversal_graph6.png)
-
-And **J**:
-
-![traversal graph step 7](traversal_graph7.png)
-
-After these steps there is no further result left. So all together this query
-has returned the following paths:
-
-1. **A** → **B**
-2. **A** → **B** → **E**
-3. **A** → **B** → **C**
-4. **A** → **G**
-5. **A** → **G** → **H**
-6. **A** → **G** → **J**
-
-
 Syntax
 ------
 
-Now let's see how we can write a query that follows this schema.
-You have two options here, you can either use a named graph or a set of edge
-collections (anonymous graph).
+There are two slightly different syntaxes for traversals in AQL, one for
+- [named graphs](../../Manual/Graphs/index.html#named-graphs) and another to
+- specify a [set of edge collections](#working-with-collection-sets)
+  ([anonymous graph](../../Manual/Graphs/index.html#anonymous-graphs)).
 
 ### Working with named graphs
 
@@ -121,7 +42,8 @@ FOR vertex[, edge[, path]]
   result. If the specified document does not exist, the result is empty as well
   and there is no warning.
 - `GRAPH` **graphName** (string): the name identifying the named graph.
-  Its vertex and edge collections will be looked up.
+  Its vertex and edge collections will be looked up. Note that the graph name
+  is like a regular string, hence it must be enclosed by quote marks.
 - `OPTIONS` **options** (object, *optional*): used to modify the execution of the
   traversal. Only the following attributes have an effect, all others are ignored:
   - **uniqueVertices** (string): optionally ensure vertex uniqueness
@@ -162,8 +84,9 @@ FOR vertex[, edge[, path]]
 ```
 
 Instead of `GRAPH graphName` you may specify a list of edge collections. Vertex
-collections are determined by the edges in the edge collections. The rest of the
-behavior is similar to the named version.
+collections are determined by the edges in the edge collections. The traversal
+options are the same as with the [named graph variant](#working-with-named-graphs).
+
 If the same edge collection is specified multiple times, it will behave as if it
 were specified only once. Specifying the same edge collection is only allowed when
 the collections do not have conflicting traversal directions. 
@@ -186,6 +109,17 @@ FOR vertex IN OUTBOUND
 All collections in the list that do not specify their own direction will use the
 direction defined after `IN`. This allows to use a different direction for each
 collection in your traversal.
+
+### Graph traversals in a cluster
+
+Due to the nature of graphs, edges may reference vertices from arbitrary
+collections. Following the path can thus involve documents from various
+collections and it's not possible to predict which will be visited in a
+traversal. Hence, which collections need to be locked can only be determined
+at run time. Deadlocks may occur under certain circumstances.
+
+Please consider to use the [`WITH` statement](../Operations/With.md) to
+specify the collections you expect to be involved. 
 
 Using filters and the explainer to extrapolate the costs
 --------------------------------------------------------
@@ -401,8 +335,6 @@ have edges in other directions and they will be traversed.
 **Note**: The traverser may use identical edges multiple times. For instance,
 if it walks from **E** to **F**, it will continue to walk from **F** to **E**
 using the same edge once again. Due to this we will see duplicate nodes in the result.
-
-Please also consider [to use `WITH`](../Operations/With.md) to specify the collections you expect to be involved.
 
 Please note that the direction can't be passed in by a bind parameter.
 
