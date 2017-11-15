@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, maxlen: 5000 */
-/* global describe, after, afterEach, it */
+/* global describe, after, afterEach, before, it */
 'use strict';
 
 // //////////////////////////////////////////////////////////////////////////////
