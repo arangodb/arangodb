@@ -50,9 +50,6 @@ using namespace arangodb::velocypack;
 
 double const RocksDBReplicationContext::DefaultTTL = 300.0; // seconds
 
-RocksDBReplicationContext::RocksDBReplicationContext()
-    : RocksDBReplicationContext(DefaultTTL) {}
-
 RocksDBReplicationContext::RocksDBReplicationContext(double ttl)
     : _id(TRI_NewTickServer()),
       _lastTick(0),
