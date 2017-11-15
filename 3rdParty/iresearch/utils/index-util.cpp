@@ -23,6 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "index-dump.hpp"
+#include "index-convert.hpp"
 
 #include <unordered_map>
 #include <functional>
@@ -33,9 +34,11 @@ typedef std::unordered_map<
 > handlers_t;
 
 const std::string MODE_DUMP = "dump";
+const std::string MODE_CONV = "convert";
 
 bool init_handlers(handlers_t& handlers) {
   handlers.emplace(MODE_DUMP, &dump);
+  handlers.emplace(MODE_CONV, &convert);
   return true;
 }
 

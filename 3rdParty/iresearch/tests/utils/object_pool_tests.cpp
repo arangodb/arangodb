@@ -1,48 +1,120 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
 #include "utils/object_pool.hpp"
+#include "utils/thread_utils.hpp"
 
-namespace tests {
-  struct test_sobject {
-    DECLARE_SPTR(test_sobject);
-    int id;
-    test_sobject(int i): id(i) {}
-    static ptr make(int i) { return ptr(new test_sobject(i)); }
-  };
+NS_BEGIN(tests)
 
-  struct test_uobject {
-    DECLARE_PTR(test_uobject);
-    int id;
-    test_uobject(int i): id(i) {}
-    static ptr make(int i) { return ptr(new test_uobject(i)); }
-  };
+struct test_slow_sobject {
+  DECLARE_SPTR(test_slow_sobject);
+  int id;
+  test_slow_sobject (int i): id(i) {
+    ++TOTAL_COUNT;
+  }
+  static std::atomic<size_t> TOTAL_COUNT; // # number of objects created
+  static ptr make(int i) {
+    irs::sleep_ms(2000);
+    return ptr(new test_slow_sobject(i));
+  }
+};
 
-  class object_pool_tests: public ::testing::Test {
-    virtual void SetUp() {
-      // Code here will be called immediately after the constructor (right before each test).
-    }
+std::atomic<size_t> test_slow_sobject::TOTAL_COUNT{};
 
-    virtual void TearDown() {
-      // Code here will be called immediately after each test (right before the destructor).
-    }
-  };
-}
+struct test_sobject {
+  DECLARE_SPTR(test_sobject);
+  int id;
+  test_sobject(int i): id(i) { }
+  static ptr make(int i) { return ptr(new test_sobject(i)); }
+};
+
+struct test_uobject {
+  DECLARE_PTR(test_uobject);
+  int id;
+  test_uobject(int i): id(i) {}
+  static ptr make(int i) { return ptr(new test_uobject(i)); }
+};
+
+class object_pool_tests: public ::testing::Test {
+  virtual void SetUp() {
+    // Code here will be called immediately after the constructor (right before each test).
+  }
+
+  virtual void TearDown() {
+    // Code here will be called immediately after each test (right before the destructor).
+  }
+};
+
+NS_END
 
 using namespace tests;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
+
+TEST_F(object_pool_tests, check_total_number_of_instances) {
+  const size_t MAX_COUNT = 2;
+  iresearch::bounded_object_pool<test_slow_sobject> pool(MAX_COUNT);
+
+  std::mutex mutex;
+  std::condition_variable ready_cv;
+  bool ready{false};
+
+  std::atomic<size_t> id{};
+  test_slow_sobject::TOTAL_COUNT = 0;
+
+  auto job = [&mutex, &ready_cv, &pool, &ready, &id](){
+    // wait for all threads to be ready
+    {
+      SCOPED_LOCK_NAMED(mutex, lock);
+
+      while (!ready) {
+        ready_cv.wait(lock);
+      }
+    }
+
+    pool.emplace(id++);
+  };
+
+  const size_t THREADS_COUNT = 32;
+  std::vector<std::thread> threads;
+
+  for (size_t i = 0; i < THREADS_COUNT; ++i) {
+    threads.emplace_back(job);
+  }
+
+  // ready
+  ready = true;
+  ready_cv.notify_all();
+
+  for (auto& thread : threads) {
+    thread.join();
+  }
+
+  ASSERT_LE(test_slow_sobject::TOTAL_COUNT.load(), MAX_COUNT);
+}
 
 TEST_F(object_pool_tests, bounded_sobject_pool) {
   // block on full pool
@@ -55,7 +127,7 @@ TEST_F(object_pool_tests, bounded_sobject_pool) {
     {
       SCOPED_LOCK_NAMED(mutex, lock);
       std::thread thread([&cond, &mutex, &pool]()->void{ auto obj = pool.emplace(2); SCOPED_LOCK(mutex); cond.notify_all(); });
-      ASSERT_NE(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(1000))); // assume thread blocks in 1000ms
+      ASSERT_NE(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(9000))); // assume thread blocks in 9000ms (8000ms is not enough for MSVC2017@appveyor, 7000ms is not enough for MSVC2017@jenkins)
       obj.reset();
       lock.unlock();
       thread.join();
@@ -113,7 +185,7 @@ TEST_F(object_pool_tests, bounded_sobject_pool) {
       SCOPED_LOCK(mutex);
       cond.notify_all();
     });
-    auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread finishes in 1000ms
+    auto result = cond.wait_for(lock, std::chrono::milliseconds(4000)); // assume thread finishes in 4000ms (3000ms is not enough for MSVC2017@appveyor)
 
     obj.reset();
 
@@ -137,7 +209,8 @@ TEST_F(object_pool_tests, bounded_uobject_pool) {
     {
       SCOPED_LOCK_NAMED(mutex, lock);
       std::thread thread([&cond, &mutex, &pool]()->void{ auto obj = pool.emplace(2); SCOPED_LOCK(mutex); cond.notify_all(); });
-      ASSERT_NE(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(1000))); // assume thread blocks in 1000ms
+      ASSERT_NE(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(7000))); // assume thread blocks in 7000ms (3000ms is not enough for MSVC2017@appveyor, 6000ms is not enough for MSVC2017@jenkins)
+      obj.reset();
       obj.reset();
       lock.unlock();
       thread.join();
@@ -195,7 +268,7 @@ TEST_F(object_pool_tests, bounded_uobject_pool) {
       SCOPED_LOCK(mutex);
       cond.notify_all();
     });
-    auto result = cond.wait_for(lock, std::chrono::milliseconds(1000)); // assume thread finishes in 1000ms
+    auto result = cond.wait_for(lock, std::chrono::milliseconds(3000)); // assume thread finishes in 3000ms (2000ms is not enough for MSVC2017@appveyor)
     obj.reset();
 
     if (lock) {

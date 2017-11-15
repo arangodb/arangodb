@@ -1,14 +1,14 @@
-EMC IResearch search engine License Information
+IResearch search engine License Information
 
-The default license for EMC IResearch search engine is the Apache
+The default license for IResearch search engine is the Apache
 License, Version 2.0 (ALv2). The license text can be found at
 http://www.apache.org/licenses/LICENSE-2.0.txt and it is reproduced below.
-"Default" means, unless stated otherwise, ALv2 is the license under which EMC
+"Default" means, unless stated otherwise, ALv2 is the license under which 
 IResearch search engine is made available to you and it is the
 license you should use when making contributions to this project.
 
 Please refer to the APPENDIX section below for information on how to document
-the use of the ALv2 in your contributions to EMC IResearch search engine
+the use of the ALv2 in your contributions to IResearch search engine
 
                                  Apache License
                            Version 2.0, January 2004

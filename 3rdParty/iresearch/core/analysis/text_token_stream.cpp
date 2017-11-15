@@ -1,13 +1,25 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #include <cctype>
 #include <fstream>
@@ -130,7 +142,7 @@ bool get_ignored_words(
   try {
     if (!boost::filesystem::is_directory(stopword_path) ||
         !boost::filesystem::is_directory(stopword_path.append(language))) {
-      IR_FRMT_ERROR("Failed to load stopwords from path: %s", stopword_path.c_str());
+      IR_FRMT_ERROR("Failed to load stopwords from path: " IR_FILEPATH_SPECIFIER, stopword_path.c_str());
 
       return false;
     }
@@ -145,7 +157,7 @@ bool get_ignored_words(
       std::ifstream in(dir_itr->path().native());
 
       if (!in) {
-        IR_FRMT_ERROR("Failed to load stopwords from path: %s", dir_itr->path().c_str());
+        IR_FRMT_ERROR("Failed to load stopwords from path: " IR_FILEPATH_SPECIFIER, dir_itr->path().c_str());
 
         return false;
       }
@@ -167,7 +179,7 @@ bool get_ignored_words(
 
     return true;
   } catch (...) {
-    IR_FRMT_ERROR("Caught error while loading stopwords from path: %s", stopword_path.c_str());
+    IR_FRMT_ERROR("Caught error while loading stopwords from path: " IR_FILEPATH_SPECIFIER, stopword_path.c_str());
     IR_EXCEPTION();
   }
 
@@ -468,7 +480,7 @@ bool text_token_stream::reset(const string_ref& data) {
 
   if (!state_->transliterator) {
     // transliteration rule taken verbatim from: http://userguide.icu-project.org/transforms/general
-    static UnicodeString collationRule = "NFD; [:Nonspacing Mark:] Remove; NFC";
+    static UnicodeString collationRule("NFD; [:Nonspacing Mark:] Remove; NFC");
 
     // reusable object owned by *this
     state_->transliterator.reset(

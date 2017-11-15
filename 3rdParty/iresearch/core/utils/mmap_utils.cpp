@@ -25,54 +25,58 @@
 #include "mmap_utils.hpp"
 #include "utils/log.hpp"
 
-#ifdef _WIN32
-#include <Windows.h>
-#else
-#include <unistd.h>   // ::close
-#include <sys/mman.h> // ::mmap
-#include <fcntl.h>    // ::open
-#endif // _WIN32
-
 #include <cassert>
 
 NS_ROOT
 NS_BEGIN(mmap_utils)
 
-mmap_handle::operator bool() const NOEXCEPT {
-#ifdef _WIN32
-  // FIXME TODO
-  return false;
-#else
-  return fd_ >= 0;
-#endif // _WIN32
+int flush(int fd, void* addr, size_t size, int flags) NOEXCEPT {  
+  if (fd < 0) { // an invalid file descriptor of course means an invalid handle
+    return 0;
+  }
+
+  // sync mmapped region
+  if (msync(addr, size, flags)) {
+    return -1;
+  }
+
+#ifdef __APPLE__
+  if (fcntl(fd, F_FULLFSYNC, 0) < 0) {
+    return -1;
+  }
+#endif
+
+#ifdef _MSC_VER
+  // under windows all flushes are achieved synchronously, however
+  // under windows, there is no guarentee that the underlying disk hardware
+  // cache has physically written to disk.
+  // FlushFileBuffers ensures file written to disk
+  if (((flags & MS_SYNC) == MS_SYNC) && !file_utils::file_sync(fd)) {
+    return -1;
+  }
+#endif
+  
+  return 0;
 }
 
 void mmap_handle::close() NOEXCEPT {
-#ifdef _WIN32
-  if (NULL != fd_) {
-    ::CloseHandle(reinterpret_cast<HANDLE>(fd_));
-  }
-  // FIXME TODO
-#else
   if (addr_ != MAP_FAILED) {
-    ::munmap(addr_, size_);
+    if (dontneed_) {
+      advise(IR_MADVICE_DONTNEED);
+    }
+    munmap(addr_, size_);
   }
-
+ 
   if (fd_ >= 0) {
-    ::close(fd_);
+    ::posix_close(static_cast<int>(fd_));
   }
-#endif // _WIN32
 }
 
 void mmap_handle::init() NOEXCEPT {
-#ifdef _WIN32
-  fd_ = NULL;
-  // FIXME TODO
-#else
-  addr_ = MAP_FAILED;
   fd_ = -1;
-#endif // _WIN32
+  addr_ = MAP_FAILED;
   size_ = 0;
+  dontneed_ = false;
 }
 
 bool mmap_handle::open(const file_path_t path) NOEXCEPT {
@@ -81,14 +85,10 @@ bool mmap_handle::open(const file_path_t path) NOEXCEPT {
   close();
   init();
 
-#ifdef _WIN32
-  // FIXME TODO
-  return false;
-#else
-  const int fd = ::open(path, O_RDONLY);
+  const int fd = ::posix_open(path, O_RDONLY);
 
   if (fd < 0) {
-    IR_FRMT_ERROR("Failed to open input file, error: %d, path: %s", errno, path);
+    IR_FRMT_ERROR("Failed to open input file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
     close();
     return false;
   }
@@ -98,7 +98,7 @@ bool mmap_handle::open(const file_path_t path) NOEXCEPT {
   const auto size = irs::file_utils::file_size(fd);
 
   if (size < 0) {
-    IR_FRMT_ERROR("Failed to get stats for input file, error: %d, path: %s", errno, path);
+    IR_FRMT_ERROR("Failed to get stats for input file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
     close();
     return false;
   }
@@ -106,17 +106,16 @@ bool mmap_handle::open(const file_path_t path) NOEXCEPT {
   if (size) {
     size_ = size;
 
-    void* addr = ::mmap(0, size, PROT_READ, MAP_PRIVATE, fd, 0);
+    void* addr = mmap(0, size, PROT_READ, MAP_PRIVATE, fd, 0);
 
     if (MAP_FAILED == addr) {
-      IR_FRMT_ERROR("Failed to mmap input file, error: %d, path: %s", errno, path);
+      IR_FRMT_ERROR("Failed to mmap input file, error: %d, path: " IR_FILEPATH_SPECIFIER, errno, path);
       close();
       return false;
     }
 
     addr_ = addr;
   }
-#endif // _WIN32
 
   return true;
 }

@@ -1,13 +1,25 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
 #include "index/index_tests.hpp"
@@ -73,6 +85,35 @@ TEST_F(bm25_test, test_load) {
   ASSERT_EQ(1, order.add(scorer).size());
 }
 
+TEST_F(bm25_test, test_normalize_features) {
+  // default norms
+  {
+    auto scorer = irs::scorers::get("bm25", irs::string_ref::nil);
+    ASSERT_NE(nullptr, scorer);
+    auto prepared = scorer->prepare();
+    ASSERT_NE(nullptr, prepared);
+    ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
+  }
+
+  // with norms
+  {
+    auto scorer = irs::scorers::get("bm25", "{\"with-norms\": true}");
+    ASSERT_NE(nullptr, scorer);
+    auto prepared = scorer->prepare();
+    ASSERT_NE(nullptr, prepared);
+    ASSERT_EQ(irs::flags({irs::frequency::type(), irs::norm::type()}), prepared->features());
+  }
+
+  // without norms
+  {
+    auto scorer = irs::scorers::get("bm25", "{\"with-norms\": false}");
+    ASSERT_NE(nullptr, scorer);
+    auto prepared = scorer->prepare();
+    ASSERT_NE(nullptr, prepared);
+    ASSERT_EQ(irs::flags({irs::frequency::type()}), prepared->features());
+  }
+}
+
 TEST_F(bm25_test, test_query) {
   {
     tests::json_doc_generator gen(
@@ -117,7 +158,7 @@ TEST_F(bm25_test, test_query) {
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto& score = docs->attributes().get<irs::score>();
-    ASSERT_TRUE(score);
+    ASSERT_TRUE(bool(score));
 
     // ensure that we avoid COW for pre c++11 std::basic_string
     const irs::bytes_ref score_value = score->value();
@@ -194,7 +235,7 @@ TEST_F(bm25_test, test_query) {
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto& score = docs->attributes().get<irs::score>();
-    ASSERT_TRUE(score);
+    ASSERT_TRUE(bool(score));
 
     // ensure that we avoid COW for pre c++11 std::basic_string
     const irs::bytes_ref score_value = score->value();
@@ -234,7 +275,7 @@ TEST_F(bm25_test, test_query) {
 //    auto prepared_filter = filter.prepare(reader, prepared_order);
 //    auto docs = prepared_filter->execute(segment, prepared_order);
 //    auto& score = docs->attributes().get<irs::score>();
-//    ASSERT_TRUE(score);
+//    ASSERT_TRUE(bool(score));
 //
 //    // ensure that we avoid COW for pre c++11 std::basic_string
 //    const irs::bytes_ref score_value = score->value();
@@ -324,7 +365,7 @@ TEST_F(bm25_test, test_query) {
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto& score = docs->attributes().get<irs::score>();
-    ASSERT_TRUE(score);
+    ASSERT_TRUE(bool(score));
 
     // ensure that we avoid COW for pre c++11 std::basic_string
     const irs::bytes_ref score_value = score->value();
@@ -448,7 +489,7 @@ TEST_F(bm25_test, test_query_norms) {
     auto prepared_filter = filter.prepare(reader, prepared_order);
     auto docs = prepared_filter->execute(segment, prepared_order);
     auto& score = docs->attributes().get<irs::score>();
-    ASSERT_TRUE(score);
+    ASSERT_TRUE(bool(score));
 
     // ensure that we avoid COW for pre c++11 std::basic_string
     const irs::bytes_ref score_value = score->value();
@@ -519,6 +560,52 @@ TEST_F(bm25_test, test_query_norms) {
 
 #ifndef IRESEARCH_DLL
 
+TEST_F(bm25_test, test_make) {
+  // default values
+  {
+    auto scorer = irs::scorers::get("bm25", irs::string_ref::nil);
+    ASSERT_NE(nullptr, scorer);
+    auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
+    ASSERT_EQ(0.75f, scr.b());
+    ASSERT_EQ(1.2f, scr.k());
+    ASSERT_EQ(true, scr.normalize());
+  }
+
+  // custom values
+  {
+    auto scorer = irs::scorers::get("bm25", "{\"b\": 123.456, \"k\": 78.9, \"with-norms\": false}");
+    ASSERT_NE(nullptr, scorer);
+    auto& scr = dynamic_cast<irs::bm25_sort&>(*scorer);
+    ASSERT_EQ(123.456f, scr.b());
+    ASSERT_EQ(78.9f, scr.k());
+    ASSERT_EQ(false, scr.normalize());
+  }
+
+  // invalid args
+  {
+    auto scorer = irs::scorers::get("bm25", "\"12345");
+    ASSERT_EQ(nullptr, scorer);
+  }
+
+  // invalid values (b)
+  {
+    auto scorer = irs::scorers::get("bm25", "{\"b\": false, \"k\": 78.9}");
+    ASSERT_EQ(nullptr, scorer);
+  }
+
+  // invalid values (k)
+  {
+    auto scorer = irs::scorers::get("bm25", "{\"b\": 123.456, \"k\": true}");
+    ASSERT_EQ(nullptr, scorer);
+  }
+
+  // invalid values (with-norms)
+  {
+    auto scorer = irs::scorers::get("bm25", "{\"b\": 123.456, \"k\": 78.9, \"with-norms\": 42}");
+    ASSERT_EQ(nullptr, scorer);
+  }
+}
+
 TEST_F(bm25_test, test_order) {
   {
     tests::json_doc_generator gen(
@@ -564,7 +651,7 @@ TEST_F(bm25_test, test_order) {
     auto prepared = query.prepare(reader, prepared_order);
     auto docs = prepared->execute(segment, prepared_order);
     auto& score = docs->attributes().get<iresearch::score>();
-    ASSERT_TRUE(score);
+    ASSERT_TRUE(bool(score));
 
     // ensure that we avoid COW for pre c++11 std::basic_string
     const irs::bytes_ref score_value = score->value();
@@ -590,3 +677,7 @@ TEST_F(bm25_test, test_order) {
 }
 
 #endif // IRESEARCH_DLL
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

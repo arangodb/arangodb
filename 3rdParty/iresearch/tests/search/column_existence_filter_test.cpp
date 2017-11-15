@@ -526,7 +526,7 @@ class column_existence_filter_test_case
 
       size_t docs_count = 0;
       auto& score = filter_itr->attributes().get<irs::score>();
-      ASSERT_TRUE(score);
+      ASSERT_TRUE(bool(score));
 
       // ensure that we avoid COW for pre c++11 std::basic_string
       const irs::bytes_ref score_value = score->value();
@@ -602,7 +602,7 @@ class column_existence_filter_test_case
 
       size_t docs_count = 0;
       auto& score = filter_itr->attributes().get<irs::score>();
-      ASSERT_TRUE(score);
+      ASSERT_TRUE(bool(score));
 
       // ensure that we avoid COW for pre c++11 std::basic_string
       const irs::bytes_ref score_value = score->value();
@@ -679,7 +679,7 @@ class column_existence_filter_test_case
 
       size_t docs_count = 0;
       auto& score = filter_itr->attributes().get<irs::score>();
-      ASSERT_TRUE(score);
+      ASSERT_TRUE(bool(score));
 
       // ensure that we avoid COW for pre c++11 std::basic_string
       const irs::bytes_ref score_value = score->value();

@@ -1,18 +1,31 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #include "utils/register.hpp"
 
 // list of statically loaded scorers via init()
 #ifndef IRESEARCH_DLL
+  #include "delimited_token_stream.hpp"
   #include "text_token_stream.hpp"
 #endif
 
@@ -23,7 +36,7 @@ NS_LOCAL
 const std::string FILENAME_PREFIX("libanalyzer-");
 
 class analyzer_register:
-  public iresearch::generic_register<iresearch::string_ref, iresearch::analysis::analyzer::ptr(*)(const iresearch::string_ref& args), analyzer_register> {
+  public irs::tagged_generic_register<irs::string_ref, irs::analysis::analyzer::ptr(*)(const irs::string_ref& args), irs::string_ref, analyzer_register> {
  protected:
   virtual std::string key_to_filename(const key_type& key) const override {
     std::string filename(FILENAME_PREFIX.size() + key.size(), 0);
@@ -49,6 +62,7 @@ NS_BEGIN(analysis)
 
 /*static*/ void analyzers::init() {
   #ifndef IRESEARCH_DLL
+    REGISTER_ANALYZER(irs::analysis::delimited_token_stream);
     REGISTER_ANALYZER(iresearch::analysis::text_token_stream);
   #endif
 }
@@ -72,16 +86,36 @@ analyzer_registrar::analyzer_registrar(
     analyzer::ptr(*factory)(const iresearch::string_ref& args),
     const char* source /*= nullptr*/
 ) {
-  auto entry = analyzer_register::instance().set(type.name(), factory);
+  irs::string_ref source_ref(source);
+  auto entry = analyzer_register::instance().set(
+    type.name(),
+    factory,
+    source_ref.null() ? nullptr : &source_ref
+  );
 
   registered_ = entry.second;
 
   if (!registered_ && factory != entry.first) {
-    if (source) {
+    auto* registered_source = analyzer_register::instance().tag(type.name());
+
+    if (source && registered_source) {
+      IR_FRMT_WARN(
+        "type name collision detected while registering analyzer, ignoring: type '%s' from %s, previously from %s",
+        type.name().c_str(),
+        source,
+        registered_source->c_str()
+      );
+    } else if (source) {
       IR_FRMT_WARN(
         "type name collision detected while registering analyzer, ignoring: type '%s' from %s",
         type.name().c_str(),
         source
+      );
+    } else if (registered_source) {
+      IR_FRMT_WARN(
+        "type name collision detected while registering analyzer, ignoring: type '%s', previously from %s",
+        type.name().c_str(),
+        registered_source->c_str()
       );
     } else {
       IR_FRMT_WARN(

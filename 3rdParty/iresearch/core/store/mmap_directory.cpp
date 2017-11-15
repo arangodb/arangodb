@@ -33,12 +33,41 @@ using irs::mmap_utils::mmap_handle;
 typedef std::shared_ptr<mmap_handle> mmap_handle_ptr;
 
 //////////////////////////////////////////////////////////////////////////////
+/// @brief converts the specified IOAdvice to corresponding posix madvice
+//////////////////////////////////////////////////////////////////////////////
+inline int get_posix_madvice(irs::IOAdvice advice) {
+  switch (advice) {
+    case irs::IOAdvice::NORMAL:
+      return IR_MADVICE_NORMAL;
+    case irs::IOAdvice::SEQUENTIAL:
+      return IR_MADVICE_SEQUENTIAL;
+    case irs::IOAdvice::RANDOM:
+      return IR_MADVICE_RANDOM;
+    case irs::IOAdvice::READONCE:
+      return IR_MADVICE_NORMAL;
+    case irs::IOAdvice::READONCE_SEQUENTIAL:
+      return IR_MADVICE_SEQUENTIAL;
+    case irs::IOAdvice::READONCE_RANDOM:
+      return IR_MADVICE_RANDOM;
+  }
+
+  IR_FRMT_ERROR(
+    "madvice '%d' is not valid (RANDOM|SEQUENTIAL), fallback to NORMAL",
+    uint32_t(advice)
+  );
+
+  return IR_MADVICE_NORMAL;
+}
+
+//////////////////////////////////////////////////////////////////////////////
 /// @struct mmap_index_input
 /// @brief input stream for memory mapped directory
 //////////////////////////////////////////////////////////////////////////////
 class mmap_index_input : public irs::bytes_ref_input {
  public:
-  static irs::index_input::ptr open(const file_path_t file) NOEXCEPT {
+  static irs::index_input::ptr open(
+      const file_path_t file,
+      irs::IOAdvice advice) NOEXCEPT {
     assert(file);
 
     mmap_handle_ptr handle;
@@ -51,9 +80,17 @@ class mmap_index_input : public irs::bytes_ref_input {
     }
 
     if (!handle->open(file)) {
-      IR_FRMT_ERROR("Failed to open mmapped input file, path: %s", file);
+      IR_FRMT_ERROR("Failed to open mmapped input file, path: " IR_FILEPATH_SPECIFIER, file);
       return nullptr;
     }
+
+    const int padvice = get_posix_madvice(advice);
+
+    if (IR_MADVICE_NORMAL != padvice && !handle->advise(padvice)) {
+      IR_FRMT_ERROR("Failed to madvise input file, path: " IR_FILEPATH_SPECIFIER ", error %d", file, errno);
+    }
+
+    handle->dontneed(bool(advice & irs::IOAdvice::READONCE));
 
     return mmap_index_input::make<mmap_index_input>(std::move(handle));
   }
@@ -99,10 +136,9 @@ mmap_directory::mmap_directory(const std::string& path)
   : fs_directory(path) {
 }
 
-index_input::ptr mmap_directory::open(const std::string& name) const NOEXCEPT {
-#ifdef _WIN32
-  return fs_directory::open(name); // FIXME TODO
-#else
+index_input::ptr mmap_directory::open(
+    const std::string& name,
+    IOAdvice advice) const NOEXCEPT {
   utf8_path path;
 
   try {
@@ -112,8 +148,11 @@ index_input::ptr mmap_directory::open(const std::string& name) const NOEXCEPT {
     return nullptr;
   }
 
-  return mmap_index_input::open(path.c_str());
-#endif // _WIN32
+  return mmap_index_input::open(path.c_str(), advice);
 }
 
 NS_END // ROOT
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

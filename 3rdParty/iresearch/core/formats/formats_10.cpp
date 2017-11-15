@@ -111,6 +111,7 @@ inline void prepare_output(
 inline void prepare_input(
     std::string& str,
     index_input::ptr& in,
+    IOAdvice advice,
     const reader_state& state,
     const string_ref& ext,
     const string_ref& format,
@@ -118,7 +119,7 @@ inline void prepare_input(
     const int32_t max_ver ) {
   assert( !in );
   file_name(str, state.meta->name, ext);
-  in = state.dir->open(str);
+  in = state.dir->open(str, advice);
 
   if (!in) {
     std::stringstream ss;
@@ -149,7 +150,7 @@ FORCE_INLINE void skip_offsets(index_input& in) {
 }
 
 NS_END // NS_LOCAL
-  
+
 struct skip_state {
   uint64_t doc_ptr{}; // pointer to the beginning of document block
   uint64_t pos_ptr{}; // pointer to the positions of the first document in a document block
@@ -204,7 +205,7 @@ class doc_iterator : public iresearch::doc_iterator {
     begin_ = end_ = docs_;
 
     // get state attribute
-    assert(attrs.contains<version10::term_meta>());
+    assert(attrs.contains<version10::term_meta>());    
     term_state_ = *attrs.get<version10::term_meta>();
 
     // init document stream
@@ -1303,7 +1304,9 @@ void index_meta_reader::read(
     ? file_name<index_meta_reader>(meta)
     : static_cast<std::string>(filename);
 
-  auto in = dir.open(meta_file);
+  auto in = dir.open(
+    meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
+  );
 
   if (!in) {
     std::stringstream ss;
@@ -1394,7 +1397,10 @@ void segment_meta_reader::read(
   const std::string meta_file = filename.null()
     ? file_name<segment_meta_writer>(meta)
     : static_cast<std::string>(filename);
-  auto in = dir.open(meta_file);
+
+  auto in = dir.open(
+    meta_file, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
+  );
 
   if (!in) {
     std::stringstream ss;
@@ -1513,7 +1519,9 @@ bool document_mask_reader::prepare(
     return true;
   }
 
-  auto in = dir.open(in_name);
+  auto in = dir.open(
+    in_name, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
+  );
 
   if (!in) {
     checksum_index_input<boost::crc_32_type> empty_in;
@@ -1644,7 +1652,10 @@ bool meta_reader::prepare(
     field_id& count
 ) {
   auto filename = file_name<column_meta_writer>(meta);
-  auto in = dir.open(filename);
+
+  auto in = dir.open(
+    filename, irs::IOAdvice::SEQUENTIAL | irs::IOAdvice::READONCE
+  );
 
   if (!in) {
     IR_FRMT_ERROR("Failed to open file, path: %s", filename.c_str());
@@ -1714,21 +1725,7 @@ enum ColumnProperty : uint32_t {
   CP_MASK = 4, // column contains no data
 }; // ColumnProperty
 
-CONSTEXPR ColumnProperty operator&(ColumnProperty lhs, ColumnProperty rhs) {
-  return enum_bitwise_and(lhs, rhs);
-}
-
-ColumnProperty& operator&=(ColumnProperty& lhs, ColumnProperty rhs) {
-  return lhs = enum_bitwise_and(lhs, rhs);
-}
-
-CONSTEXPR ColumnProperty operator|(ColumnProperty lhs, ColumnProperty rhs) {
-  return enum_bitwise_or(lhs, rhs);
-}
-
-ColumnProperty& operator|=(ColumnProperty& lhs, ColumnProperty rhs) {
-  return lhs = enum_bitwise_or(lhs, rhs);
-}
+ENABLE_BITMASK_ENUM(ColumnProperty);
 
 ColumnProperty write_compact(
     irs::index_output& out,
@@ -3682,7 +3679,7 @@ bool reader::prepare(
   }
 
   // open columstore stream
-  auto stream = dir.open(filename);
+  auto stream = dir.open(filename, irs::IOAdvice::RANDOM);
 
   if (!stream) {
     IR_FRMT_ERROR("Failed to open file, path: %s", filename.c_str());
@@ -3891,7 +3888,11 @@ void postings_writer::begin_block() {
 irs::postings_writer::state postings_writer::write(doc_iterator& docs) {
   REGISTER_TIMER_DETAILED();
   auto& freq = docs.attributes().get<frequency>();
-  auto& pos = freq ? docs.attributes().get<position>() : irs::attribute_view::ref<position>::nil();
+
+  auto& pos = freq
+    ? docs.attributes().get<position>()
+    : irs::attribute_view::ref<position>::nil;
+
   const offset* offs = nullptr;
   const payload* pay = nullptr;
 
@@ -4257,69 +4258,69 @@ bool postings_reader::prepare(
     const reader_state& state,
     const flags& features) {
   std::string buf;
- 
-  /* prepare document input */
-  detail::prepare_input( 
-    buf, doc_in_, state,
-    postings_writer::DOC_EXT, 
-    postings_writer::DOC_FORMAT_NAME, 
-    postings_writer::FORMAT_MIN, 
+
+  // prepare document input
+  detail::prepare_input(
+    buf, doc_in_, irs::IOAdvice::RANDOM, state,
+    postings_writer::DOC_EXT,
+    postings_writer::DOC_FORMAT_NAME,
+    postings_writer::FORMAT_MIN,
     postings_writer::FORMAT_MAX
   );
 
-  /* Since terms doc postings too large
-   * it is too costly to verify checksum of
-   * the entire file. Here we perform cheap
-   * error detection which could recognize
-   * some forms of corruption. */
+  // Since terms doc postings too large
+  //  it is too costly to verify checksum of
+  //  the entire file. Here we perform cheap
+  //  error detection which could recognize
+  //  some forms of corruption.
   format_utils::read_checksum(*doc_in_);
 
   if (features.check<position>()) {
     /* prepare positions input */
     detail::prepare_input(
-      buf, pos_in_, state,
+      buf, pos_in_, irs::IOAdvice::RANDOM, state,
       postings_writer::POS_EXT,
       postings_writer::POS_FORMAT_NAME,
       postings_writer::FORMAT_MIN,
       postings_writer::FORMAT_MAX
     );
 
-    /* Since terms pos postings too large
-     * it is too costly to verify checksum of
-     * the entire file. Here we perform cheap
-     * error detection which could recognize
-     * some forms of corruption. */
+    // Since terms pos postings too large
+    // it is too costly to verify checksum of
+    // the entire file. Here we perform cheap
+    // error detection which could recognize
+    // some forms of corruption.
     format_utils::read_checksum(*pos_in_);
 
     if (features.check<payload>() || features.check<offset>()) {
-      /* prepare positions input */
+      // prepare positions input
       detail::prepare_input(
-        buf, pay_in_, state,
+        buf, pay_in_, irs::IOAdvice::RANDOM, state,
         postings_writer::PAY_EXT,
         postings_writer::PAY_FORMAT_NAME,
         postings_writer::FORMAT_MIN,
         postings_writer::FORMAT_MAX
       );
 
-      /* Since terms pos postings too large
-       * it is too costly to verify checksum of
-       * the entire file. Here we perform cheap
-       * error detection which could recognize
-       * some forms of corruption. */
+      // Since terms pos postings too large
+      // it is too costly to verify checksum of
+      // the entire file. Here we perform cheap
+      // error detection which could recognize
+      // some forms of corruption.
       format_utils::read_checksum(*pay_in_);
     }
   }
 
-  /* check postings format */
+  // check postings format
   format_utils::check_header(in,
-    postings_writer::TERMS_FORMAT_NAME, 
-    postings_writer::TERMS_FORMAT_MIN, 
+    postings_writer::TERMS_FORMAT_NAME,
+    postings_writer::TERMS_FORMAT_MIN,
     postings_writer::TERMS_FORMAT_MAX
   );
 
   const uint64_t block_size = in.read_vlong();
-  if ( block_size != postings_writer::BLOCK_SIZE ) {
-    /* invalid block size */
+  if (block_size != postings_writer::BLOCK_SIZE) {
+    // invalid block size
     throw index_error();
   }
 
@@ -4369,17 +4370,6 @@ doc_iterator::ptr postings_reader::iterator(
     const flags& req) {
   typedef detail::doc_iterator doc_iterator_t;
   typedef detail::pos_doc_iterator pos_doc_iterator_t;
-  typedef std::function<doc_iterator_t::ptr()> factory_t;
-
-  static const factory_t FACTORIES[] {
-    []() {
-      return doc_iterator_t::make<detail::doc_iterator>();
-    },
-
-    []() {
-      return doc_iterator_t::make<pos_doc_iterator_t>();
-    },
-  };
 
   // compile field features
   const auto features = version10::features(field);
@@ -4387,16 +4377,16 @@ doc_iterator::ptr postings_reader::iterator(
   // find intersection between requested and available features
   const auto enabled = features & req;
 
-  const auto& factory = FACTORIES[enabled.position()];
-
-  auto it = factory();
+  auto it = enabled.position()
+    ? doc_iterator_t::make<pos_doc_iterator_t>()
+    : doc_iterator_t::make<doc_iterator_t>();
 
   it->prepare(
     features, enabled, attrs,
     doc_in_.get(), pos_in_.get(), pay_in_.get() 
   );
 
-  return std::move(it);
+  return MOVE_WORKAROUND_MSVC2013(it);
 }
 
 // ----------------------------------------------------------------------------

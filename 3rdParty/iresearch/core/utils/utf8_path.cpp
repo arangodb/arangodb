@@ -241,7 +241,7 @@ bool utf8_path::file_size(uint64_t& result) const NOEXCEPT {
 
     return boost::system::errc::success == code.value();
   } catch(...) { // boost::filesystem::file_size(...) is not noexcept
-    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: %s", __FUNCTION__, code.value(), path_.c_str());
+    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: " IR_FILEPATH_SPECIFIER, __FUNCTION__, code.value(), path_.c_str());
   }
 
   return false;
@@ -255,7 +255,7 @@ bool utf8_path::mtime(std::time_t& result) const NOEXCEPT {
 
     return boost::system::errc::success == code.value();
   } catch(...) { // boost::filesystem::last_write_time(...) is not noexcept
-    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: %s", __FUNCTION__, code.value(), path_.c_str());
+    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: " IR_FILEPATH_SPECIFIER, __FUNCTION__, code.value(), path_.c_str());
   }
 
   return false;
@@ -269,7 +269,7 @@ bool utf8_path::mkdir() const NOEXCEPT {
            && boost::filesystem::create_directories(path_, code)
            && boost::system::errc::success == code.value();
   } catch(...) { // boost::filesystem::create_directories(...) is not noexcept
-    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: %s", __FUNCTION__, code.value(), path_.c_str());
+    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: " IR_FILEPATH_SPECIFIER, __FUNCTION__, code.value(), path_.c_str());
   }
 
   return false;
@@ -282,7 +282,7 @@ bool utf8_path::remove() const NOEXCEPT {
     return boost::filesystem::remove_all(path_, code) > 0
            && boost::system::errc::success == code.value();
   } catch(...) { // boost::filesystem::remove_all(...) is not noexcept
-    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: %s", __FUNCTION__, code.value(), path_.c_str());
+    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: " IR_FILEPATH_SPECIFIER, __FUNCTION__, code.value(), path_.c_str());
   }
 
   return false;
@@ -296,7 +296,7 @@ bool utf8_path::rename(const utf8_path& destination) const NOEXCEPT {
 
     return true;
   } catch (...) {
-    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: %s", __FUNCTION__,code.value(), path_.c_str());
+    IR_FRMT_ERROR("Caught exception at: %s code: %d for path: " IR_FILEPATH_SPECIFIER, __FUNCTION__,code.value(), path_.c_str());
   }
 
   return false;

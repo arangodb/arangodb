@@ -1,13 +1,25 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_SHARED_H
 #define IRESEARCH_SHARED_H
@@ -21,7 +33,7 @@
 #include <string> //need to include this really early...
 
 //////////////////////////////////////////////////////////
-// Export/Import definition
+/// Export/Import definitions
 //////////////////////////////////////////////////////////
 
 // Generic helper definitions for shared library support
@@ -35,6 +47,7 @@
 #if _MSC_VER < 1900 // prior the vc14    
   #define CONSTEXPR
   #define NOEXCEPT throw()
+  #define MOVE_WORKAROUND_MSVC2013(x) std::move(x)
 #else
   #define CONSTEXPR constexpr
   #define NOEXCEPT noexcept 
@@ -68,6 +81,17 @@
   #define ALIGNED_VALUE(_value, _type) _value alignas( _type );
 #endif
 
+// MSVC2013 doesn't support c++11 in a proper way
+// sometimes it can't choose move constructor for
+// move-only types while returning a value.
+// The following macro tries to avoid potentiol
+// performance problems on other compilers since
+// 'return std::move(x)' prevents such compiler
+// optimizations like 'copy elision'
+#ifndef MOVE_WORKAROUND_MSVC2013
+#define MOVE_WORKAROUND_MSVC2013(x) x
+#endif
+
 // hook for MSVC-only code
 #if defined(_MSC_VER)
   #define MSVC_ONLY(...) __VA_ARGS__
@@ -80,6 +104,13 @@
   #define GCC_ONLY(...) __VA_ARGS__
 #else
   #define GCC_ONLY(...)
+#endif
+
+// hool for Valgrind-only code
+#if !defined(IRESEARCH_VALGRIND)
+  #define VALGRIND_ONLY(...) __VA_ARGS__
+#else
+  #define VALGRIND_ONLY(...)
 #endif
 
 // check if sizeof(float_t) == sizeof(double_t)
@@ -156,6 +187,12 @@
   #define CURRENT_FUNCTION __PRETTY_FUNCTION__
 #elif defined(_MSC_VER)
   #define CURRENT_FUNCTION __FUNCSIG__
+#endif
+
+#ifndef __has_feature
+  #define IRESEARCH_COMPILER_HAS_FEATURE(x) 0 // Compatibility with non-clang compilers.
+#else
+  #define IRESEARCH_COMPILER_HAS_FEATURE(x) __has_feature(x)
 #endif
 
 //////////////////////////////////////////////////////////

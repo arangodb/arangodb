@@ -1,13 +1,25 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #include <atomic>
 #include <condition_variable>
@@ -42,7 +54,7 @@ namespace tests {
 
 using namespace tests;
 
-TEST_F(async_utils_tests, test_busywait_mutex) {
+TEST_F(async_utils_tests, test_busywait_mutex_mt) {
   typedef iresearch::async_utils::busywait_mutex mutex_t;
   // lock + unlock
   {
@@ -90,7 +102,7 @@ TEST_F(async_utils_tests, test_busywait_mutex) {
   }
 }
 
-TEST_F(async_utils_tests, test_read_write_mutex) {
+TEST_F(async_utils_tests, test_read_write_mutex_mt) {
   typedef iresearch::async_utils::read_write_mutex mutex_t;
   typedef iresearch::async_utils::read_write_mutex::read_mutex r_mutex_t;
   typedef iresearch::async_utils::read_write_mutex::write_mutex w_mutex_t;
@@ -324,7 +336,7 @@ TEST_F(async_utils_tests, test_read_write_mutex) {
   }
 }
 
-TEST_F(async_utils_tests, test_thread_pool_run) {
+TEST_F(async_utils_tests, test_thread_pool_run_mt) {
   // test schedule 1 task
   {
     iresearch::async_utils::thread_pool pool(1, 0);
@@ -396,7 +408,7 @@ TEST_F(async_utils_tests, test_thread_pool_run) {
   }
 }
 
-TEST_F(async_utils_tests, test_thread_pool_bound) {
+TEST_F(async_utils_tests, test_thread_pool_bound_mt) {
   // test max threads
   {
     iresearch::async_utils::thread_pool pool(0, 0);
@@ -511,7 +523,7 @@ TEST_F(async_utils_tests, test_thread_pool_bound) {
   }
 }
 
-TEST_F(async_utils_tests, test_thread_pool_stop) {
+TEST_F(async_utils_tests, test_thread_pool_stop_mt) {
   // test stop run pending
   {
     iresearch::async_utils::thread_pool pool(1, 0);
@@ -581,7 +593,7 @@ TEST_F(async_utils_tests, test_thread_pool_stop) {
     std::unique_lock<std::mutex> lock2(mutex2);
     std::thread thread1([&pool, &mutex2, &cond2]()->void { pool.stop(); std::lock_guard<std::mutex> lock(mutex2); cond2.notify_all(); });
     std::thread thread2([&pool, &mutex2, &cond2]()->void { pool.stop(); std::lock_guard<std::mutex> lock(mutex2); cond2.notify_all(); });
-    ASSERT_EQ(std::cv_status::timeout, cond2.wait_for(lock2, std::chrono::milliseconds(1000)));
+    ASSERT_EQ(std::cv_status::timeout, cond2.wait_for(lock2, std::chrono::milliseconds(6000))); // assume thread blocks in 6000ms (5000ms is not enough for MSVC2015@appveyor)
     lock2.unlock();
     ASSERT_EQ(std::cv_status::no_timeout, cond.wait_for(lock, std::chrono::milliseconds(1000)));
     thread1.join();

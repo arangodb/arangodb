@@ -25,14 +25,6 @@
 #ifndef IRESEARCH_INDEX_DUMP_H
 #define IRESEARCH_INDEX_DUMP_H
 
-#include "shared.hpp"
-
-NS_BEGIN(cmdline)
-
-class parser;
-
-NS_END // cmdline
-
 int dump(int argc, char* argv[]);
 
 #endif // IRESEARCH_INDEX_DUMP_H

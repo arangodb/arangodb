@@ -1,13 +1,25 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #include "tests_shared.hpp"
 #include "formats/skip_list.hpp"
@@ -67,7 +79,7 @@ void write_flush(size_t count, size_t max_levels, size_t skip) {
   // check data in stream
   // we write levels in reverse order into a stream (from n downto 0)
   {
-    auto in = dir.open("docs");
+    auto in = dir.open("docs", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in);
 
     // skip number of levels
@@ -222,7 +234,7 @@ TEST(skip_writer_test, reset) {
     // check data in stream
     // we write levels in reverse order into a stream (from n downto 0)
     {
-      auto in = dir.open(file);
+      auto in = dir.open(file, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
 
       // skip number of levels
@@ -295,7 +307,7 @@ TEST(skip_writer_test, reset) {
     // check data in stream
     // we write levels in reverse order into a stream (from n downto 0)
     {
-      auto in = dir.open(file);
+      auto in = dir.open(file, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
 
       // skip number of levels
@@ -349,7 +361,7 @@ TEST(skip_reader_test, prepare) {
     ir::skip_reader reader(skip, skip);
     ASSERT_FALSE(reader);
     {
-      auto in = dir.open("docs");
+      auto in = dir.open("docs", irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       reader.prepare(std::move(in));
     }
@@ -391,7 +403,7 @@ TEST(skip_reader_test, prepare) {
 
     ir::skip_reader reader(skip, skip);
     ASSERT_FALSE(reader);
-    auto in = dir.open("docs");
+    auto in = dir.open("docs", irs::IOAdvice::NORMAL);
     ASSERT_FALSE(!in);
     reader.prepare(std::move(in));
     ASSERT_TRUE(static_cast<bool>(reader));
@@ -455,7 +467,7 @@ TEST(skip_reader_test, seek) {
 
       ir::skip_reader reader(skip_0, skip_n);
       ASSERT_FALSE(reader);
-      auto in = dir.open(file);
+      auto in = dir.open(file, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       reader.prepare(
         std::move(in), [&lower, &upper, &calls_count](size_t level, ir::index_input& in) {
@@ -751,7 +763,7 @@ TEST(skip_reader_test, seek) {
 
       ir::skip_reader reader(skip_0, skip_n);
       ASSERT_FALSE(reader);
-      auto in = dir.open(file);
+      auto in = dir.open(file, irs::IOAdvice::RANDOM);
       ASSERT_FALSE(!in);
       reader.prepare(
         std::move(in), [&lower, &upper, &calls_count](size_t level, ir::index_input& in) {
@@ -956,7 +968,7 @@ TEST(skip_reader_test, seek) {
 
       ir::skip_reader reader(skip_0, skip_n);
       ASSERT_FALSE(reader);
-      auto in = dir.open(file);
+      auto in = dir.open(file, irs::IOAdvice::RANDOM);
       ASSERT_FALSE(!in);
       reader.prepare(
         std::move(in), [&lower, &last_level, &upper, &calls_count](size_t level, ir::index_input& in) {
@@ -1133,7 +1145,7 @@ TEST(skip_reader_test, seek) {
 
       ir::skip_reader reader(skip_0, skip_n);
       ASSERT_FALSE(reader);
-      auto in = dir.open(file);
+      auto in = dir.open(file, irs::IOAdvice::NORMAL);
       ASSERT_FALSE(!in);
       reader.prepare(
         std::move(in), [&lower, &last_level, &upper, &calls_count](size_t level, ir::index_input &in) {

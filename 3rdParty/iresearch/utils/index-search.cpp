@@ -1,14 +1,38 @@
-//
-// IResearch search engine
-//
-// Copyright (c) 2017 by EMC Corporation, All Rights Reserved
-//
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-//
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
+#if defined(__GNUC__)
+  #pragma GCC diagnostic push
+  #pragma GCC diagnostic ignored "-Wdeprecated-declarations"
+#endif
+
+#include <boost/thread.hpp>
+
+#if defined(__GNUC__)
+  #pragma GCC diagnostic pop
+#endif
+
+#include "common.hpp"
 #include "analysis/analyzers.hpp"
 #include "analysis/token_attributes.hpp"
 #include "index/directory_reader.hpp"
@@ -23,7 +47,6 @@
 #include "utils/memory_pool.hpp"
 
 #include <boost/chrono.hpp>
-#include <boost/thread.hpp>
 #include <unicode/uclean.h>
 
 #include <random>
@@ -60,6 +83,9 @@ const std::string RND = "random";
 const std::string RPT = "repeat";
 const std::string CSV = "csv";
 const std::string SCORED_TERMS_LIMIT = "scored-terms-limit";
+const std::string SCORER = "scorer";
+const std::string SCORER_ARG = "scorer-arg";
+const std::string DIR_TYPE = "dir-type";
 
 static bool v = false;
 
@@ -153,11 +179,14 @@ struct SearchTask : public Task {
             order.add<irs::bm25_sort>(irs::string_ref::nil);
             auto prepared_order = order.prepare();
             auto docs = prepared->execute(segment, prepared_order); // query segment
-            const irs::score* score = docs->attributes().get<iresearch::score>();
+            const irs::score* score = docs->attributes().get<iresearch::score>().get();
             auto comparer = [&prepared_order](const irs::bstring& lhs, const irs::bstring& rhs)->bool {
               return prepared_order.less(lhs.c_str(), rhs.c_str());
             };
             std::multimap<irs::bstring, Entry, decltype(comparer)> sorted(comparer);
+
+            // ensure we avoid COW for pre c++11 std::basic_string
+            const irs::bytes_ref score_value = score->value();
 
             while (docs->next()) {
               SCOPED_TIMER("Result processing time");
@@ -165,8 +194,8 @@ struct SearchTask : public Task {
               score->evaluate();
               sorted.emplace(
                 std::piecewise_construct,
-                std::forward_as_tuple(score->value()),
-                std::forward_as_tuple(docs->value(), score ? prepared_order.get<float>(score->c_str(), 0) : .0)
+                std::forward_as_tuple(score_value),
+                std::forward_as_tuple(docs->value(), score ? prepared_order.get<float>(score_value.c_str(), 0) : .0)
               );
 
               if (sorted.size() > topN) {
@@ -776,6 +805,7 @@ static int search(const std::string& path, std::istream& in, std::ostream& out,
 
 int search(
     const std::string& path,
+    const std::string& dir_type,
     std::istream& in,
     std::ostream& out,
     size_t tasks_max,
@@ -784,8 +814,28 @@ int search(
     size_t limit,
     bool shuffle,
     bool csv,
-    size_t scored_terms_limit
+    size_t scored_terms_limit,
+    const std::string& scorer,
+    const irs::string_ref& scorer_arg
 ) {
+  auto scr = irs::scorers::get(scorer, scorer_arg);
+
+  if (!scr) {
+    if (scorer_arg.null()) {
+      std::cerr << "Unable to instantiate scorer '" << scorer << "' with nil arguments" << std::endl;
+    } else {
+      std::cerr << "Unable to instantiate scorer '" << scorer << "' with arguments '" << scorer_arg << "'" << std::endl;
+    }
+    return 1;
+  }
+
+  auto dir = create_directory(dir_type, path);
+
+  if (!dir) {
+    std::cerr << "Unable to create directory of type '" << dir_type << "'" << std::endl;
+    return 1;
+  }
+
   repeat = (std::max)(size_t(1), repeat);
   search_threads = (std::max)(size_t(1), search_threads);
   scored_terms_limit = (std::max)(size_t(1), scored_terms_limit);
@@ -800,22 +850,23 @@ int search(
   std::cout << RND << "=" << shuffle << std::endl;
   std::cout << CSV << "=" << csv << std::endl;
   std::cout << SCORED_TERMS_LIMIT << "=" << scored_terms_limit << std::endl;
+  std::cout << SCORER << "=" << scorer << std::endl;
+  std::cout << SCORER_ARG << "=" << scorer_arg << std::endl;
 
-  irs::fs_directory dir(path);
   irs::directory_reader reader;
   irs::order::prepared order;
   irs::async_utils::thread_pool thread_pool(search_threads);
 
   {
     SCOPED_TIMER("Index read time");
-    reader = irs::directory_reader::open(dir, irs::formats::get("1_0"));
+    reader = irs::directory_reader::open(*dir, irs::formats::get("1_0"));
   }
 
   {
     SCOPED_TIMER("Order build time");
     irs::order sort;
 
-    sort.add(irs::scorers::get("bm25", irs::string_ref::nil));
+    sort.add(scr);
     order = sort.prepare();
   }
 
@@ -965,18 +1016,27 @@ int search(
 
           for (auto& segment: reader) {
             auto docs = filter->execute(segment, order); // query segment
-            const irs::score* score = docs->attributes().get<irs::score>();
-            const auto& score_value = score ? order.get<float>(score->c_str(), 0) : EMPTY_SCORE;
+            const irs::score* score = docs->attributes().get<irs::score>().get();            
 
+#ifdef IRESEARCH_COMPLEX_SCORING
+            // ensure we avoid COW for pre c++11 std::basic_string
+            const irs::bytes_ref raw_score_value = score->value();                        
+#endif
+            const auto& score_value = score
+              ? order.get<float>(score->c_str(), 0)
+              : EMPTY_SCORE;
+            
             while (docs->next()) {
               ++doc_count;
 
-              score->evaluate();
+              if (score) {
+                score->evaluate();
+              }
 
 #ifdef IRESEARCH_COMPLEX_SCORING
               sorted.emplace(
                 std::piecewise_construct,
-                std::forward_as_tuple(score->value()),
+                std::forward_as_tuple(raw_score_value),
                 std::forward_as_tuple(docs->value(), score_value)
               );
 #else
@@ -1044,6 +1104,9 @@ int search(const cmdline::parser& args) {
   const size_t topN = args.get<size_t>(TOPN);
   const bool csv = args.exist(CSV);
   const size_t scored_terms_limit = args.get<size_t>(SCORED_TERMS_LIMIT);
+  const auto scorer = args.get<std::string>(SCORER);
+  const auto scorer_arg = args.exist(SCORER_ARG) ? irs::string_ref(args.get<std::string>(SCORER_ARG)) : irs::string_ref::nil;
+  const auto dir_type = args.exist(DIR_TYPE) ? args.get<std::string>(DIR_TYPE) : std::string("fs");
 
   std::cout << "Max tasks in category="                      << maxtasks           << '\n'
             << "Task repeat count="                          << repeat             << '\n'
@@ -1051,6 +1114,8 @@ int search(const cmdline::parser& args) {
             << "Search threads="                             << thrs               << '\n'
             << "Number of top documents to collect="         << topN               << '\n'
             << "Number of terms to in range/prefix queries=" << scored_terms_limit << '\n'
+            << "Scorer used for ranking query results="      << scorer             << '\n'
+            << "Configuration argument for query scorer="    << scorer_arg         << '\n'
             << "Output CSV="                                 << csv                << std::endl;
 
   std::fstream in(args.get<std::string>(INPUT), std::fstream::in);
@@ -1069,10 +1134,10 @@ int search(const cmdline::parser& args) {
       return 1;
     }
 
-    return search(path, in, out, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit);
+    return search(path, dir_type, in, out, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit, scorer, scorer_arg);
   }
 
-  return search(path, in, std::cout, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit);
+  return search(path, dir_type, in, std::cout, maxtasks, repeat, thrs, topN, shuffle, csv, scored_terms_limit, scorer, scorer_arg);
 }
 
 int search(int argc, char* argv[]) {
@@ -1080,6 +1145,7 @@ int search(int argc, char* argv[]) {
   cmdline::parser cmdsearch;
   cmdsearch.add(HELP, '?', "Produce help message");
   cmdsearch.add<std::string>(INDEX_DIR, 0, "Path to index directory", true);
+  cmdsearch.add<std::string>(DIR_TYPE, 0, "Directory type (fs|mmap)", false, std::string("fs"));
   cmdsearch.add<std::string>(INPUT, 0, "Task file", true);
   cmdsearch.add<std::string>(OUTPUT, 0, "Stats file", false);
   cmdsearch.add<size_t>(MAX, 0, "Maximum tasks per category", false, size_t(1));
@@ -1087,6 +1153,8 @@ int search(int argc, char* argv[]) {
   cmdsearch.add<size_t>(THR, 0, "Number of search threads", false, size_t(1));
   cmdsearch.add<size_t>(TOPN, 0, "Number of top search results", false, size_t(10));
   cmdsearch.add<size_t>(SCORED_TERMS_LIMIT, 0, "Number of terms to score in range/prefix queries", false, size_t(1024));
+  cmdsearch.add<std::string>(SCORER, 0, "Scorer used for ranking query results", false, "bm25");
+  cmdsearch.add<std::string>(SCORER_ARG, 0, "Configuration argument for query scorer", false);
   cmdsearch.add(RND, 0, "Shuffle tasks");
   cmdsearch.add(CSV, 0, "CSV output");
 
@@ -1099,3 +1167,7 @@ int search(int argc, char* argv[]) {
 
   return search(cmdsearch);
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       END-OF-FILE
+// -----------------------------------------------------------------------------

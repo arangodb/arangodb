@@ -1,13 +1,25 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_BLOCK_POOL_H
 #define IRESEARCH_BLOCK_POOL_H
@@ -666,6 +678,14 @@ class block_pool_sliced_inserter : public std::iterator < std::output_iterator_t
 
   block_pool_sliced_inserter& operator++() { return *this; }
 
+  // MSVC 2017.3 and 2017.4 incorectly count offsets if this function is inlined during optimization
+  // MSVC 2017.2 and below work correctly for both debug and release
+  #if defined(_MSC_VER) \
+      && !defined(_DEBUG) \
+      && (((_MSC_FULL_VER >= 191125506) && (_MSC_FULL_VER <= 191125508)) \
+          || ((_MSC_FULL_VER >= 191125542) && (_MSC_FULL_VER <= 191125547)))
+    __declspec(noinline)
+  #endif
   void write(const_pointer b, size_t len) {
     // find end of the slice
     for (; 0 == *where_ && len; --len, ++where_, ++b) {

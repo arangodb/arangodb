@@ -1,13 +1,25 @@
-//
-// IResearch search engine 
-// 
-// Copyright (c) 2016 by EMC Corporation, All Rights Reserved
-// 
-// This software contains the intellectual property of EMC Corporation or is licensed to
-// EMC Corporation from third parties. Use of this software and the intellectual property
-// contained therein is expressly limited to the terms and conditions of the License
-// Agreement under which it is provided by or on behalf of EMC.
-// 
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2016 by EMC Corporation, All Rights Reserved
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is EMC Corporation
+///
+/// @author Andrey Abramov
+/// @author Vasiliy Nabatchikov
+////////////////////////////////////////////////////////////////////////////////
 
 #ifndef IRESEARCH_LOG_H
 #define IRESEARCH_LOG_H
@@ -17,16 +29,19 @@
 #include "shared.hpp"
 
 #if defined(_MSC_VER) || defined(__MINGW32__)
+  #define IR_FILEPATH_SPECIFIER  "%ws"
   #define IR_UINT64_T_SPECIFIER  "%lu"
   #define IR_SIZE_T_SPECIFIER    "%Iu"
   #define IR_SSIZE_T_SPECIFIER   "%Id"
   #define IR_PTRDIFF_T_SPECIFIER "%Id"
 #elif defined(__APPLE__)
+  #define IR_FILEPATH_SPECIFIER  "%s"
   #define IR_UINT64_T_SPECIFIER  "%llu"
   #define IR_SIZE_T_SPECIFIER    "%zu"
   #define IR_SSIZE_T_SPECIFIER   "%zd"
   #define IR_PTRDIFF_T_SPECIFIER "%zd"
 #elif defined(__GNUC__)
+  #define IR_FILEPATH_SPECIFIER  "%s"
   #define IR_UINT64_T_SPECIFIER  "%lu"
   #define IR_SIZE_T_SPECIFIER    "%zu"
   #define IR_SSIZE_T_SPECIFIER   "%zd"
@@ -54,6 +69,8 @@ IRESEARCH_API void output(level_t level, FILE* out); // nullptr == /dev/null
 IRESEARCH_API void output_le(level_t level, FILE* out); // nullptr == /dev/null
 IRESEARCH_API void stack_trace(level_t level);
 IRESEARCH_API void stack_trace(level_t level, const std::exception_ptr& eptr);
+IRESEARCH_API irs::logger::level_t stack_trace_level(); // stack trace output level
+IRESEARCH_API void stack_trace_level(level_t level); // stack trace output level
 IRESEARCH_API std::ostream& stream(level_t level);
 
 #ifndef _MSC_VER
@@ -64,25 +81,30 @@ IRESEARCH_API std::ostream& stream(level_t level);
 NS_END // logger
 NS_END
 
-NS_LOCAL
+#if defined(_MSC_VER)
+  #define IR_LOG_FORMATED(level, prefix, format, ...) \
+    std::fprintf(::iresearch::logger::output(level), "%s: %s:%u " format "\n", prefix, __FILE__, __LINE__, __VA_ARGS__)
 
-FORCE_INLINE CONSTEXPR iresearch::logger::level_t exception_stack_trace_level() {
-  return iresearch::logger::IRL_DEBUG;
-}
+  #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, "FATAL", format, __VA_ARGS__)
+  #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, "ERROR", format, __VA_ARGS__)
+  #define IR_FRMT_WARN(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_WARN, "WARN", format, __VA_ARGS__)
+  #define IR_FRMT_INFO(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_INFO, "INFO", format, __VA_ARGS__)
+  #define IR_FRMT_DEBUG(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_DEBUG, "DEBUG", format, __VA_ARGS__)
+  #define IR_FRMT_TRACE(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_TRACE, "TRACE", format, __VA_ARGS__)
+#else // use a GNU extension for ignoring the trailing comma: ', ##__VA_ARGS__'
+  #define IR_LOG_FORMATED(level, prefix, format, ...) \
+    std::fprintf(::iresearch::logger::output(level), "%s: %s:%u " format "\n", prefix, __FILE__, __LINE__, ##__VA_ARGS__)
 
-NS_END
+  #define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, "FATAL", format, ##__VA_ARGS__)
+  #define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, "ERROR", format, ##__VA_ARGS__)
+  #define IR_FRMT_WARN(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_WARN, "WARN", format, ##__VA_ARGS__)
+  #define IR_FRMT_INFO(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_INFO, "INFO", format, ##__VA_ARGS__)
+  #define IR_FRMT_DEBUG(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_DEBUG, "DEBUG", format, ##__VA_ARGS__)
+  #define IR_FRMT_TRACE(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_TRACE, "TRACE", format, ##__VA_ARGS__)
+#endif
 
-#define IR_LOG_FORMATED(level, prefix, format, ...) \
-  std::fprintf(::iresearch::logger::output(level), "%s: %s:%u " format "\n", prefix, __FILE__, __LINE__, __VA_ARGS__)
 #define IR_LOG_STREM(level, prefix) \
   ::iresearch::logger::stream(level) << prefix << " " << __FILE__ << ":" << __LINE__ << " "
-
-#define IR_FRMT_FATAL(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_FATAL, "FATAL", format, __VA_ARGS__)
-#define IR_FRMT_ERROR(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_ERROR, "ERROR", format, __VA_ARGS__)
-#define IR_FRMT_WARN(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_WARN, "WARN", format, __VA_ARGS__)
-#define IR_FRMT_INFO(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_INFO, "INFO", format, __VA_ARGS__)
-#define IR_FRMT_DEBUG(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_DEBUG, "DEBUG", format, __VA_ARGS__)
-#define IR_FRMT_TRACE(format, ...) IR_LOG_FORMATED(::iresearch::logger::IRL_TRACE, "TRACE", format, __VA_ARGS__)
 
 #define IR_STRM_FATAL() IR_LOG_STREM(::iresearch::logger::IRL_FATAL, "FATAL")
 #define IR_STRM_ERROR() IR_LOG_STREM(::iresearch::logger::IRL_ERROR, "ERROR")
@@ -92,10 +114,10 @@ NS_END
 #define IR_STRM_TRACE() IR_LOG_STREM(::iresearch::logger::IRL_TRACE, "TRACE")
 
 #define IR_EXCEPTION() \
-  IR_LOG_FORMATED(exception_stack_trace_level(), "EXCEPTION", "@%s\nstack trace:", __FUNCTION__); \
-  ::iresearch::logger::stack_trace(exception_stack_trace_level(), std::current_exception());
+  IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "EXCEPTION", "@%s\nstack trace:", __FUNCTION__); \
+  ::iresearch::logger::stack_trace(::iresearch::logger::stack_trace_level(), std::current_exception());
 #define IR_STACK_TRACE() \
-  IR_LOG_FORMATED(exception_stack_trace_level(), "STACK_TRACE", "@%s\nstack trace:", __FUNCTION__); \
-  ::iresearch::logger::stack_trace(exception_stack_trace_level());
+  IR_LOG_FORMATED(::iresearch::logger::stack_trace_level(), "STACK_TRACE", "@%s\nstack trace:", __FUNCTION__); \
+  ::iresearch::logger::stack_trace(::iresearch::logger::stack_trace_level());
 
 #endif
