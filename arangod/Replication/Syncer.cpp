@@ -494,10 +494,37 @@ Result Syncer::createCollection(TRI_vocbase_t* vocbase,
   TRI_col_type_e const type = static_cast<TRI_col_type_e>(VelocyPackHelper::getNumericValue<int>(
       slice, "type", TRI_COL_TYPE_DOCUMENT));
 
+  // resolve collection by uuid, name, cid (in that order of preference)
   arangodb::LogicalCollection* col = resolveCollection(vocbase, slice);
   if (col != nullptr && col->type() == type) {
     // collection already exists. TODO: compare attributes
     return Result();
+  }
+  // conflicting collections need to be dropped from 3.3 onwards
+  col = vocbase->lookupCollection(name);
+  if (col != nullptr) {
+    TRI_ASSERT(!simulate32Client()); // < 3.3 should never get here
+    if (col->isSystem()) {
+      TRI_ASSERT(col->globallyUniqueId() == col->name());
+      CollectionGuard guard(vocbase, col);
+      if (guard.collection() == nullptr) {
+        return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
+      }
+      SingleCollectionTransaction trx(transaction::StandaloneContext::Create(vocbase),
+                                      guard.collection()->cid(), AccessMode::Type::WRITE);
+      Result res = trx.begin();
+      if (!res.ok()) {
+        return res;
+      }
+      OperationOptions opts;
+      OperationResult opRes = trx.truncate(col->name(), opts);
+      if (opRes.failed()) {
+        return Result(opRes.code, opRes.errorMessage);
+      }
+      return trx.finish(opRes.code);
+    } else {
+      vocbase->dropCollection(col, false, -1.0);
+    }
   }
   
   VPackSlice uuid = slice.get("globallyUniqueId");
@@ -577,7 +604,6 @@ Result Syncer::createIndex(VPackSlice const& slice) {
 
   try {
     CollectionGuard guard(vocbase, col);
-
     if (guard.collection() == nullptr) {
       return Result(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
     }

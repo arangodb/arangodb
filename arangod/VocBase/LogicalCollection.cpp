@@ -1385,16 +1385,7 @@ std::string LogicalCollection::generateGloballyUniqueId() const {
   
   
   std::string result;
-  /*if (_vocbase->isSystem()) {
-    result.reserve(32);
-    result.append(StaticStrings::SystemDatabase);
-  } else {*/
   result.reserve(64);
-
-    //result.append(_vocbase->name());
-  //}
-  //result.push_back('/');
-  
   if (ServerState::isCoordinator(role)) {
     TRI_ASSERT(_planId != 0);
     result.append(std::to_string(_planId));
