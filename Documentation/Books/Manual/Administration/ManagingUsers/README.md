@@ -34,6 +34,8 @@ user.
 
 - **drop database**: allows to delete an existing database.
 
+- **shutdown server**: remove server from cluster and shutdown
+
 The **database actions** are tied to a given database, and access
 levels must be set
 for each database individually. For a given database the actions are
@@ -77,11 +79,12 @@ access levels. The access levels are *Administrate* and
 | update a user             | Administrate |
 | update user access level  | Administrate |
 | drop a user               | Administrate |
+| shutdown server       | Administrate | 
 
 To perform actions in a specific database (like creating or dropping collections),
 a user needs at least the following access level.
 The possible access levels for databases are *Administrate*, *Access* and *No access*.
-The access levels for collections are *Read/Write*, *Read Only* and *No Access*. 
+The access levels for collections are *Read/Write*, *Read Only* and *No Access*.
 
 | database action              | database level | collection level |
 |------------------------------|----------------|------------------|
@@ -129,7 +132,7 @@ collection *data* nor create new collections in the database *example*.
 Granting Access Levels
 ----------------------
 
-Access levels can be managed via the [web interface] or in [arangosh].
+Access levels can be managed via the [web interface](../WebInterface/Users.md) or in [arangosh](InArangosh.md).
 
 In order to grant an access level to a user, you can assign one of
 three access levels for each database and one of three levels for each
@@ -139,13 +142,17 @@ from the database access level in the `_system` database, it is
 *Administrate*. Note that this means that database access level
 *Access* does not grant a user server access level *Administrate*.
 
+### Initial Access Levels
+
+When a user creates a database the access level of the user for that database is set to *Administrate*. The same is true for creating a collection, in this case the user get *Read/Write* access to the collection.
+
 ### Wildcard Database Access Level
 
 With the above definition, one must define the database access level for
 all database/user pairs in the server, which would be very tedious. In
 order to simplify this process, it is possible to define, for a user,
 a wildcard database access level. This wildcard is used if the database
-access level is *not* explicitly defined for a certain database.
+access level is *not* explicitly defined for a certain database. Each new created user has an initial database wildcard of *No Access*.
 
 Changing the wildcard database access level for a user will change the
 access level for all databases that have no explicitly defined
@@ -153,7 +160,9 @@ access level. Note that this includes databases which will be created
 in the future and for which no explicit access levels are set for that
 user!
 
-If you delete the wildard, the default access level is defined as *No Access*.
+If you delete the wildcard, the default access level is defined as *No Access*.
+
+The `root` user has an initial database wildcard of *Administrate*.
 
 *Example*
 
@@ -184,9 +193,13 @@ For each user and database there is a wildcard collection access level.
 This level is used for all collections pairs without an explicitly
 defined collection access level. Note that this includes collections
 which will be created in the future and for which no explicit access
-levels are set for a that user!
+levels are set for a that user! Each new created user has an initial collection wildcard of *No Access*.
 
 If you delete the wildcard, the system defaults to *No Access*.
+
+The `root` user has an initial collection wildcard of *Read/Write* in every database.
+
+When creating a user through [db._createDatabase(name, options, users)](../../DataModeling/Databases/WorkingWith.md#create-database) the access level of the user for this database will be set to *Administrate* and the wildcard for all collections within this database will be set to *Read/Write*.
 
 *Example*
 
@@ -231,7 +244,7 @@ Therefore the wildcard is selected. The level is *Read/Write*.
 
 ### System Collections
 
-The access level for system collections cannot be changed. They follow 
+The access level for system collections cannot be changed. They follow
 different rules than user defined collections and may change without further
 notice. Currently the system collections follow these rules:
 
@@ -246,7 +259,7 @@ All other system collections have access level *Read/Write* if the
 user has *Administrate* access to the database. They have access level
 *Read/Only* if the user has *Access* to the database.
 
-To modify these system collections you should always use the 
+To modify these system collections you should always use the
 specialized APIs provided by ArangoDB. For example
 no user has access to the *\_users* collection in the *\_system*
 database. All changes to the access levels must be done using the

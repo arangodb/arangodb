@@ -57,8 +57,7 @@ class RocksDBCollection final : public PhysicalCollection {
  public:
  public:
   explicit RocksDBCollection(LogicalCollection*, VPackSlice const& info);
-  explicit RocksDBCollection(LogicalCollection*,
-                             PhysicalCollection*);  // use in cluster only!!!!!
+  RocksDBCollection(LogicalCollection*, PhysicalCollection const*);  // use in cluster only!!!!!
 
   ~RocksDBCollection();
 
@@ -69,9 +68,11 @@ class RocksDBCollection final : public PhysicalCollection {
                                     bool doSync) override;
   virtual arangodb::Result persistProperties() override;
 
-  virtual PhysicalCollection* clone(LogicalCollection*) override;
+  virtual PhysicalCollection* clone(LogicalCollection*) const override;
 
+  /// @brief export properties
   void getPropertiesVPack(velocypack::Builder&) const override;
+  /// @brief used for updating properties
   void getPropertiesVPackCoordinator(velocypack::Builder&) const override;
 
   /// @brief closes an open collection
@@ -123,10 +124,6 @@ class RocksDBCollection final : public PhysicalCollection {
   ///////////////////////////////////
 
   void truncate(transaction::Methods* trx, OperationOptions& options) override;
-  /// non transactional truncate, will continoiusly commit the deletes
-  /// and no fully rollback on failure. Uses trx snapshots to isolate
-  /// against newer PUTs
-  // void truncateNoTrx(transaction::Methods* trx);
 
   LocalDocumentId lookupKey(
       transaction::Methods* trx,
@@ -152,7 +149,7 @@ class RocksDBCollection final : public PhysicalCollection {
                 arangodb::velocypack::Slice const newSlice,
                 arangodb::ManagedDocumentResult& result,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock) override;
+                bool lock, TRI_voc_rid_t& revisionId) override;
 
   Result update(arangodb::transaction::Methods* trx,
                 arangodb::velocypack::Slice const newSlice,
@@ -160,7 +157,6 @@ class RocksDBCollection final : public PhysicalCollection {
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
                 bool lock, TRI_voc_rid_t& prevRev,
                 ManagedDocumentResult& previous,
-                TRI_voc_rid_t const& revisionId,
                 arangodb::velocypack::Slice const key) override;
 
   Result replace(transaction::Methods* trx,
@@ -168,7 +164,6 @@ class RocksDBCollection final : public PhysicalCollection {
                  ManagedDocumentResult& result, OperationOptions& options,
                  TRI_voc_tick_t& resultMarkerTick, bool lock,
                  TRI_voc_rid_t& prevRev, ManagedDocumentResult& previous,
-                 TRI_voc_rid_t const revisionId,
                  arangodb::velocypack::Slice const fromSlice,
                  arangodb::velocypack::Slice const toSlice) override;
 
@@ -176,7 +171,7 @@ class RocksDBCollection final : public PhysicalCollection {
                 arangodb::velocypack::Slice const slice,
                 arangodb::ManagedDocumentResult& previous,
                 OperationOptions& options, TRI_voc_tick_t& resultMarkerTick,
-                bool lock, TRI_voc_rid_t& prevRev) override;
+                bool lock, TRI_voc_rid_t& prevRev, TRI_voc_rid_t& revisionId) override;
 
   void deferDropCollection(
       std::function<bool(LogicalCollection*)> callback) override;

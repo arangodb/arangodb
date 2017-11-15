@@ -45,6 +45,7 @@
   * [In the GiantSwarm](Cloud/GiantSwarm.md)
   * [ArangoDB in Mesos](Cloud/Mesosphere.md)
   * [DC/OS: Full example](Cloud/DcosFullExample.md)
+  * [DC/OS: Choosing Container engine](Cloud/MesosContainers.md)
 * [Monitoring](Monitoring/Collectd.md)
   * [Collectd - Replication Slaves](Monitoring/SlaveStatus.md)
   * [Collectd - Network usage](Monitoring/TrafficWithIPAccounting.md)

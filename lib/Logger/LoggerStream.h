@@ -55,23 +55,25 @@ class LoggerStream {
     return *this;
   }
   
-  LoggerStream& operator<<(Logger::BINARY binary);
+  LoggerStream& operator<<(Logger::BINARY const& binary);
+  
+  LoggerStream& operator<<(Logger::CHARS const& chars);
 
-  LoggerStream& operator<<(Logger::RANGE range);
+  LoggerStream& operator<<(Logger::RANGE const& range);
 
-  LoggerStream& operator<<(Logger::FIXED duration);
+  LoggerStream& operator<<(Logger::FIXED const& duration);
 
-  LoggerStream& operator<<(Logger::LINE line) {
+  LoggerStream& operator<<(Logger::LINE const& line) {
     _line = line._line;
     return *this;
   }
 
-  LoggerStream& operator<<(Logger::FILE file) {
+  LoggerStream& operator<<(Logger::FILE const& file) {
     _file = file._file;
     return *this;
   }
 
-  LoggerStream& operator<<(Logger::FUNCTION function) {
+  LoggerStream& operator<<(Logger::FUNCTION const& function) {
     _function = function._function;
     return *this;
   }

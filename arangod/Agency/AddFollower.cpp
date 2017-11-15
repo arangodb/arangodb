@@ -159,7 +159,7 @@ bool AddFollower::start() {
   // Now find some new servers to add:
   auto available = Job::availableServers(_snapshot);
   // Remove those already in Plan:
-  for (auto const& server : VPackArrayIterator(planned)) {
+  for (VPackSlice server : VPackArrayIterator(planned)) {
     available.erase(std::remove(available.begin(), available.end(),
                                 server.copyString()), available.end());
   }
@@ -238,7 +238,7 @@ bool AddFollower::start() {
 
       // --- Plan changes
       doForAllShards(_snapshot, _database, shardsLikeMe,
-        [this, &trx, &chosen](Slice plan, Slice current, std::string& planPath) {
+        [&trx, &chosen](Slice plan, Slice current, std::string& planPath) {
           trx.add(VPackValue(planPath));
           { VPackArrayBuilder serverList(&trx);
             for (auto const& srv : VPackArrayIterator(plan)) {

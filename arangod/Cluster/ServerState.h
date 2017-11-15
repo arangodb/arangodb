@@ -27,8 +27,11 @@
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 
+#include <iosfwd>
+
 namespace arangodb {
 class AgencyComm;
+class Result;
 
 class ServerState {
  public:
@@ -37,27 +40,31 @@ class ServerState {
     ROLE_UNDEFINED = 0,  // initial value
     ROLE_SINGLE,         // is set when cluster feature is off
     ROLE_PRIMARY,
-    ROLE_SECONDARY,
     ROLE_COORDINATOR,
     ROLE_AGENT
   };
-
-  static const std::vector<std::string> RoleStr;
-  static const std::vector<std::string> RoleStrReadable;
 
   /// @brief an enum describing the possible states a server can have
   enum StateEnum {
     STATE_UNDEFINED = 0,  // initial value
     STATE_STARTUP,        // used by all roles
-    STATE_SERVINGASYNC,   // primary only
-    STATE_SERVINGSYNC,    // primary only
+    STATE_SERVING,        // used by all roles
     STATE_STOPPING,       // primary only
     STATE_STOPPED,        // primary only
-    STATE_SYNCING,        // secondary only
-    STATE_INSYNC,         // secondary only
-    STATE_LOSTPRIMARY,    // secondary only
-    STATE_SERVING,        // coordinator only
     STATE_SHUTDOWN        // used by all roles
+  };
+  
+  enum class Mode : uint8_t {
+    DEFAULT = 0,
+    /// reject all requests
+    MAINTENANCE = 1,
+    /// status unclear, client must try again
+    TRYAGAIN = 2,
+    /// redirect to lead server if possible
+    REDIRECT = 3,
+    /// redirect to lead server if possible
+    READ_ONLY = 4,
+    INVALID = 255,
   };
 
  public:
@@ -71,6 +78,14 @@ class ServerState {
 
   /// @brief get the string representation of a role
   static std::string roleToString(RoleEnum);
+  
+  static std::string roleToShortString(RoleEnum);
+  
+  /// @brief get the key for lists of a role in the agency
+  static std::string roleToAgencyListKey(RoleEnum);
+  
+  /// @brief get the key for a role in the agency
+  static std::string roleToAgencyKey(RoleEnum role);
 
   /// @brief convert a string to a role
   static RoleEnum stringToRole(std::string const&);
@@ -80,6 +95,30 @@ class ServerState {
 
   /// @brief convert a string representation to a state
   static StateEnum stringToState(std::string const&);
+  
+  /// @brief get the string representation of a mode
+  static std::string modeToString(Mode);
+    
+  /// @brief convert a string representation to a mode
+  static Mode stringToMode(std::string const&);
+  
+  /// @brief sets server mode, returns previously held
+  /// value (performs atomic read-modify-write operation)
+  static Mode setServerMode(Mode mode);
+  
+  /// @brief atomically load current server mode
+  static Mode serverMode();
+  
+  /// @brief checks maintenance mode
+  static bool isMaintenance() {
+    return serverMode() == Mode::MAINTENANCE;
+  }
+  
+  /// @brief should not allow DDL operations / transactions
+  static bool writeOpsEnabled() {
+    Mode mode = serverMode();
+    return mode == Mode::DEFAULT || mode == Mode::MAINTENANCE;
+  }
 
  public:
   /// @brief sets the initialized flag
@@ -115,14 +154,12 @@ class ServerState {
   /// @brief check whether the server is a DB server (primary or secondary)
   /// running in cluster mode.
   static bool isDBServer(ServerState::RoleEnum role) {
-    return (role == ServerState::ROLE_PRIMARY ||
-            role == ServerState::ROLE_SECONDARY);
+    return (role == ServerState::ROLE_PRIMARY);
   }
   
   /// @brief whether or not the role is a cluster-related role
   static bool isClusterRole(ServerState::RoleEnum role) {
     return (role == ServerState::ROLE_PRIMARY ||
-            role == ServerState::ROLE_SECONDARY ||
             role == ServerState::ROLE_COORDINATOR);
   }
   
@@ -150,39 +187,33 @@ class ServerState {
   /// @brief get the server role
   RoleEnum getRole();
   
-  bool integrateIntoCluster(RoleEnum, std::string const&, std::string const&);
+  bool integrateIntoCluster(RoleEnum role, std::string const& myAddr,
+                            std::string const& myLocalInfo);
   
   bool unregister();
 
   /// @brief set the server role
   void setRole(RoleEnum);
 
-  /// @brief get the server local info
-  std::string getLocalInfo();
-
   /// @brief get the server id
   std::string getId();
-
-  /// @brief for a secondary get the server id of its primary
-  std::string getPrimaryId();
-
-  /// @brief get the server description
-  std::string getDescription();
-
-  /// @brief set the server local info
-  void setLocalInfo(std::string const&);
-
+  
   /// @brief set the server id
   void setId(std::string const&);
-
-  /// @brief set the server description
-  void setDescription(std::string const& description);
 
   /// @brief get the server address
   std::string getAddress();
 
   /// @brief set the server address
   void setAddress(std::string const&);
+
+  /// @brief find a host identification string
+  void findHost(std::string const& fallback);
+
+  /// @brief get a string to identify the host we are running on
+  std::string getHost() {
+    return _host;
+  }
 
   /// @brief get the current state
   StateEnum getState();
@@ -193,17 +224,12 @@ class ServerState {
   /// @brief gets the JavaScript startup path
   std::string getJavaScriptPath();
 
+  /// @brief forces a specific role
+  void forceRole(RoleEnum role);
+
   /// @brief sets the JavaScript startup path
   void setJavaScriptPath(std::string const&);
 
-  /// @brief redetermine the server role, we do this after a plan change.
-  /// This is needed for automatic failover. This calls determineRole with
-  /// previous values of _info and _id. In particular, the _id will usually
-  /// already be set. If the current role cannot be determined from the
-  /// agency or is not unique, then the system keeps the old role.
-  /// Returns true if there is a change and false otherwise.
-  bool redetermineRole();
-  
   bool isFoxxmaster();
 
   std::string const& getFoxxmaster();
@@ -214,38 +240,25 @@ class ServerState {
   
   bool getFoxxmasterQueueupdate();
 
- private:
+  std::string getPersistedId();
+  bool hasPersistedId();
+  bool writePersistedId(std::string const&);
+  std::string generatePersistedId(RoleEnum const&);
+
+  /// @brief sets server mode and propagates new mode to agency
+  Result propagateClusterServerMode(Mode);
+
+private:
   /// @brief atomically fetches the server role
   RoleEnum loadRole() {
     return static_cast<RoleEnum>(_role.load(std::memory_order_consume));
   }
-  
-  /// @brief determine role and save role blocking
-  void findAndSetRoleBlocking();
 
   /// @brief store the server role
   bool storeRole(RoleEnum role);
 
-  /// @brief determine the server role
-  RoleEnum determineRole(std::string const& info, std::string& id);
-  
-  /// @brief we are new and need to determine our role from the plan
-  RoleEnum takeOnRole(std::string const& id);
-
-  /// @brief lookup the server id by using the local info
-  int lookupLocalInfoToId(std::string const& localInfo, std::string& id);
-
-  /// @brief lookup the server role by scanning Plan/Coordinators for our id
-  ServerState::RoleEnum checkCoordinatorsList(std::string const&);
-
-  /// @brief lookup the server role by scanning Plan/DBServers for our id
-  ServerState::RoleEnum checkServersList(std::string const&);
-
   /// @brief validate a state transition for a primary server
   bool checkPrimaryState(StateEnum);
-
-  /// @brief validate a state transition for a secondary server
-  bool checkSecondaryState(StateEnum);
 
   /// @brief validate a state transition for a coordinator server
   bool checkCoordinatorState(StateEnum);
@@ -254,28 +267,15 @@ class ServerState {
   bool registerAtAgency(AgencyComm&, const RoleEnum&, std::string const&);
   /// @brief register shortname for an id
   bool registerShortName(std::string const& id, const RoleEnum&);
-  
-  /// @brief get the key for a role in the agency
-  static std::string roleToAgencyKey(RoleEnum);
 
+  /// 
   std::string getUuidFilename();
-  std::string getPersistedId();
-  bool hasPersistedId();
-  std::string generatePersistedId(RoleEnum const&);
-  bool writePersistedId(std::string const&);
 
- private:
   /// @brief the pointer to the singleton instance
   static ServerState* _theinstance;
-
-  /// @brief the server's local info, can be set just once
-  std::string _localInfo;
-
+  
   /// @brief the server's id, can be set just once
   std::string _id;
-
-  /// @brief the server's description
-  std::string _description;
 
   /// @brief the JavaScript startup path, can be set just once
   std::string _javaScriptStartupPath;
@@ -283,14 +283,14 @@ class ServerState {
   /// @brief the server's own address, can be set just once
   std::string _address;
 
+  /// @brief an identification string for the host a server is running on
+  std::string _host;
+
   /// @brief r/w lock for state
   arangodb::basics::ReadWriteLock _lock;
 
   /// @brief the server role
-  std::atomic<int> _role;
-
-  /// @brief a secondary stores the ID of its primary here:
-  std::string _idOfPrimary;
+  std::atomic<RoleEnum> _role;
 
   /// @brief the current state
   StateEnum _state;
@@ -306,5 +306,7 @@ class ServerState {
   bool _foxxmasterQueueupdate;
 };
 }
+
+std::ostream& operator<<(std::ostream&, arangodb::ServerState::RoleEnum);
 
 #endif

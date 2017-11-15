@@ -564,20 +564,9 @@ char* TRI_Concatenate3String(char const* a,
 /// @brief frees a string
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-
-void TRI_FreeStringZ(char* value, char const* file,
-                     int line) {
-  TRI_FreeZ(value, file, line);
-}
-
-#else
-
 void TRI_FreeString(char* value) {
   TRI_Free(value);
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts into hex representation
@@ -1008,7 +997,7 @@ char* TRI_UnescapeUtf8String(char const* in,
       TRI_Free(buffer);
       return utf8_nfc;
     }
-    // intentional fall-through
+    // intentionally falls through
   }
 
   return buffer;

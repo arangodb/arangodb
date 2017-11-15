@@ -138,11 +138,9 @@ void IndexBlock::executeExpressions() {
                               _inRegs[posInExpressions], mustDestroy);
     AqlValueGuard guard(a, mustDestroy);
 
-    AstNode* evaluatedNode = nullptr;
-
     AqlValueMaterializer materializer(_trx);
     VPackSlice slice = materializer.slice(a, false);
-    evaluatedNode = ast->nodeFromVPack(slice, true);
+    AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
 
     _condition->getMember(toReplace->orMember)
         ->getMember(toReplace->andMember)

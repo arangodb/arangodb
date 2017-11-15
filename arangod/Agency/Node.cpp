@@ -26,6 +26,7 @@
 
 #include "Basics/StringUtils.h"
 
+#include <velocypack/Compare.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 #include <velocypack/velocypack-aliases.h>
@@ -253,9 +254,10 @@ Node& Node::operator=(Node const& rhs) {
 /// Comparison with slice
 bool Node::operator==(VPackSlice const& rhs) const {
   if (rhs.isObject()) {
-    return rhs.toJson() == toJson();
+    // build object recursively, take ttl into account
+    return VPackNormalizedCompare::equals(toBuilder().slice(), rhs);
   } else {
-    return rhs.equals(slice());
+    return VPackNormalizedCompare::equals(slice(), rhs);
   }
 }
 
@@ -778,10 +780,7 @@ void Node::toBuilder(Builder& builder, bool showHidden) const {
 // Print internals to ostream
 std::ostream& Node::print(std::ostream& o) const {
   Builder builder;
-  {
-    VPackArrayBuilder b(&builder);
-    toBuilder(builder);
-  }
+  toBuilder(builder);
   o << builder.toJson();
   return o;
 }
@@ -797,12 +796,9 @@ Builder Node::toBuilder() const {
 }
 
 std::string Node::toJson() const {
-  Builder builder;
-  { VPackArrayBuilder b(&builder);
-    toBuilder(builder); }
-  std::string strval = builder.slice()[0].isString() ?
-    builder.slice()[0].copyString() : builder.slice()[0].toJson();
-  return strval;
+  auto builder = toBuilder();
+  auto slice = builder.slice();
+  return slice.isString() ? slice.copyString() : slice.toJson();
 }
 
 Node const* Node::parent() const { return _parent; }

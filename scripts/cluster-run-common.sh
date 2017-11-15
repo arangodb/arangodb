@@ -7,7 +7,6 @@ function help() {
   echo "  -a/--nagents            # agents            (odd integer      default: 1))"
   echo "  -c/--ncoordinators      # coordinators      (odd integer      default: 1))"
   echo "  -d/--ndbservers         # db servers        (odd integer      default: 2))"
-  echo "  -s/--secondaries        Start secondaries   (0|1              default: 0)"
   echo "  -t/--transport          Protocol            (ssl|tcp          default: tcp)"
   echo "  -j/--jwt-secret         JWT-Secret          (string           default: )"
   echo "     --log-level-agency   Log level (agency)  (string           default: )"
@@ -43,13 +42,13 @@ fi
 if [ -z "$XTERMOPTIONS" ] ; then
     XTERMOPTIONS="--geometry=80x43"
 fi
-SECONDARIES=0
 BUILD="./build"
 JWT_SECRET=""
 PORT_OFFSET=0
 SRC_DIR="."
 
-while [[ ${1} ]]; do
+parse_args(){
+while [[ -n "$1" ]]; do
     case "${1}" in
     -a|--agency-size)
       NRAGENTS=${2}
@@ -65,10 +64,6 @@ while [[ ${1} ]]; do
       ;;
     -r|--rocksdb-engine)
       USE_ROCKSDB=${2}
-      shift
-      ;;
-    -s|--secondaries)
-      SECONDARIES=${2}
       shift
       ;;
     -t|--transport)
@@ -131,3 +126,4 @@ while [[ ${1} ]]; do
     return 1
   fi
 done
+}

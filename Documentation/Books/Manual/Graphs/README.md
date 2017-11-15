@@ -27,8 +27,8 @@ In queries you can define in which directions the edge relations may be followed
 
 ### Named Graphs
 
-Named graphs are completely managed by arangodb, and thus also [visible in the webinterface](../Administration/WebInterface/Graphs.md).
-They use the full spectrum of ArangoDBs graph features. You may access them via several interfaces.
+Named graphs are completely managed by ArangoDB, and thus also [visible in the web interface](../Administration/WebInterface/Graphs.md).
+They use the full spectrum of ArangoDB's graph features. You may access them via several interfaces.
 
 - [AQL Graph Operations](../../AQL/Graphs/index.html) with several flavors:
   - [AQL Traversals](../../AQL/Graphs/Traversals.html) on both named and anonymous graphs

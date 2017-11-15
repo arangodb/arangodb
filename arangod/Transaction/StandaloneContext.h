@@ -67,7 +67,7 @@ class StandaloneContext final : public Context {
   
   /// @brief create a context, returned in a shared ptr
   static std::shared_ptr<transaction::StandaloneContext> Create(TRI_vocbase_t*);
-
+  
 };
 
 }

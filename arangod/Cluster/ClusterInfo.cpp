@@ -523,7 +523,7 @@ void ClusterInfo::loadPlan() {
               std::shared_ptr<LogicalCollection> newCollection;
 #ifndef USE_ENTERPRISE
               newCollection = std::make_shared<LogicalCollection>(
-                  vocbase, collectionSlice);
+                  vocbase, collectionSlice, true);
 #else
               VPackSlice isSmart = collectionSlice.get("isSmart");
               if (isSmart.isTrue()) {
@@ -537,7 +537,7 @@ void ClusterInfo::loadPlan() {
                 }
               } else {
                 newCollection = std::make_shared<LogicalCollection>(
-                    vocbase, collectionSlice);
+                    vocbase, collectionSlice, true);
               }
 #endif
               newCollection->setPlanVersion(newPlanVersion);
@@ -934,7 +934,7 @@ int ClusterInfo::createDatabaseCoordinator(std::string const& name,
           std::string tmpMsg = "";
           bool tmpHaveError = false;
 
-          for (auto const& dbserver : dbs) {
+          for (VPackObjectIterator::ObjectPair dbserver : dbs) {
             VPackSlice slice = dbserver.value;
             if (arangodb::basics::VelocyPackHelper::getBooleanValue(
                   slice, "error", false)) {
@@ -1576,6 +1576,7 @@ int ClusterInfo::setCollectionPropertiesCoordinator(
   VPackBuilder temp;
   temp.openObject();
   temp.add("waitForSync", VPackValue(info->waitForSync()));
+  temp.add("replicationFactor", VPackValue(info->replicationFactor()));
   info->getPhysical()->getPropertiesVPackCoordinator(temp);
   temp.close();
 
@@ -1858,7 +1859,7 @@ int ClusterInfo::ensureIndexCoordinatorWithoutRollback(
     // now create a new index
     std::unordered_set<std::string> const ignoreKeys{
         "allowUserKeys", "cid", /* cid really ignore?*/
-        "count",         "planId", "version", "objectId"
+        "count",         "globallyUniqueId", "planId", "version", "objectId"
     };
     c->setStatus(TRI_VOC_COL_STATUS_LOADED);
     collectionBuilder = c->toVelocyPackIgnore(ignoreKeys, false, false);
@@ -2186,11 +2187,11 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
 
     if (!indexes.isArray()) {
       try {
-        LOG_TOPIC(WARN, Logger::CLUSTER)
+        LOG_TOPIC(DEBUG, Logger::CLUSTER)
           << "Failed to find index " << databaseName << "/" << collectionID
           << "/" << iid << " - " << indexes.toJson();
       } catch (std::exception const& e) {
-        LOG_TOPIC(WARN, Logger::CLUSTER)
+        LOG_TOPIC(DEBUG, Logger::CLUSTER)
           << "Failed to find index " << databaseName << "/" << collectionID
           << "/" << iid << " - " << e.what();
       }
@@ -2229,11 +2230,14 @@ int ClusterInfo::dropIndexCoordinator(std::string const& databaseName,
   }
   if (!found) {
     try {
-      LOG_TOPIC(WARN, Logger::CLUSTER)
+      // it is not necessarily an error that the index is not found,
+      // for example if one tries to drop a non-existing index. so we
+      // do not log any warnings but just in debug mode
+      LOG_TOPIC(DEBUG, Logger::CLUSTER)
         << "Failed to find index " << databaseName << "/" << collectionID
         << "/" << iid << " - " << indexes.toJson();
     } catch (std::exception const& e) {
-      LOG_TOPIC(WARN, Logger::CLUSTER)
+      LOG_TOPIC(DEBUG, Logger::CLUSTER)
         << "Failed to find index " << databaseName << "/" << collectionID
         << "/" << iid << " - " << e.what();
     }
@@ -2901,6 +2905,14 @@ std::shared_ptr<VPackBuilder> ClusterInfo::getCurrent() {
   return _current;
 }
 
+std::unordered_map<ServerID, std::string> ClusterInfo::getServers() {
+  if (!_serversProt.isValid) {
+    loadServers();
+  }
+  READ_LOCKER(readLocker, _serversProt.lock);
+  std::unordered_map<ServerID, std::string> serv = _servers;
+  return serv;
+}
 
 std::unordered_map<ServerID, std::string> ClusterInfo::getServerAliases() {
   READ_LOCKER(readLocker, _serversProt.lock);

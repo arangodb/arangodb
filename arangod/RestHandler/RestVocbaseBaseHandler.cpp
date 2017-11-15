@@ -67,6 +67,12 @@ std::string const RestVocbaseBaseHandler::AGENCY_PRIV_PATH =
 std::string const RestVocbaseBaseHandler::BATCH_PATH = "/_api/batch";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief collection path
+////////////////////////////////////////////////////////////////////////////////
+
+std::string const RestVocbaseBaseHandler::COLLECTION_PATH = "/_api/collection";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief cursor path
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -312,8 +318,8 @@ void RestVocbaseBaseHandler::generatePreconditionFailed(
     }
   }
 
-  auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
-  writeResult(builder.slice(), *(transactionContext->getVPackOptionsForDump()));
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  writeResult(builder.slice(), *(ctx->getVPackOptionsForDump()));
 }
 
 ////////////////////////////////////////////////////////////////////////////////

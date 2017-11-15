@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
-/*global assertEqual, assertTrue, assertFalse, AQL_EXECUTE, AQL_EXPLAIN */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ COUNT
@@ -56,7 +56,7 @@ function optimizerCollectMethodsTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief number of plans
 ////////////////////////////////////////////////////////////////////////////////
-
+    
     testHashedNumberOfPlans : function () {
       var queries = [
         "FOR j IN " + c.name() + " COLLECT value = j RETURN value",
@@ -437,8 +437,53 @@ function optimizerCollectMethodsTestSuite () {
       
       result = AQL_EXECUTE("FOR doc IN " + c.name() + " COLLECT id = doc.group INTO g RETURN { id, g }").json;
       assertEqual(10, result.length);
-    }
+    },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test many collects
+////////////////////////////////////////////////////////////////////////////////
+
+    testManyCollects : function () {
+      c.truncate();
+      c.insert({ value: 3 });
+      var q = "", g = [];
+      for (var i = 0; i < 10; ++i) {
+        q += "LET q" + i + " = (FOR doc IN " + c.name() + " COLLECT id = doc.value RETURN id) ";
+        g.push("q" + i);
+      }
+      q += "RETURN INTERSECTION(" + g.join(", ") + ")";
+      assertTrue(AQL_EXPLAIN(q, null).stats.plansCreated >= 256);
+      var result = AQL_EXECUTE(q).json;
+      assertEqual([3], result[0]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test collect with offset
+////////////////////////////////////////////////////////////////////////////////
+ 
+    testCollectWithOffset : function () {
+      // create a skiplist index so the optimizer can use the sorted collect
+      c.ensureIndex({ type: "skiplist", fields: [ "value" ] });
+      var query = "FOR doc IN " + c.name() + " COLLECT v = doc.value OPTIONS { method: 'sorted' } LIMIT 1001, 2 RETURN v";
+        
+      var plan = AQL_EXPLAIN(query).plan;
+
+      // we want a sorted collect!
+      var aggregateNodes = 0;
+      plan.nodes.map(function(node) {
+        assertNotEqual("SortNode", node.type);
+        if (node.type === "CollectNode") {
+          ++aggregateNodes;
+          assertEqual("sorted", node.collectOptions.method);
+        }
+      });
+        
+      assertEqual(1, aggregateNodes);
+      
+      var result = AQL_EXECUTE(query).json;
+      assertEqual([ 1001, 1002 ], result);
+    }
+  
   };
 }
 

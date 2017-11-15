@@ -13,9 +13,9 @@ include(ExternalProject)
 option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
 
 
-set(V8_SUB_DIR "v5.7.0.0")
+set(V8_SUB_DIR "v5.7.492.77")
 set(V8_VERSION
-  "5.7.0.0"
+  "5.7.492.77"
   CACHE INTERNAL
   "${PROJECT_NAME}: Version"
   FORCE
@@ -49,7 +49,6 @@ if (USE_PRECOMPILED_V8)
 
   set(ICU_LIBS
     "${ICU_BIN_DIR}/libicui18n.a;${ICU_BIN_DIR}/libicuuc.a"
-    ${libev_BINARY_DIR}/libev.a
     CACHE INTERNAL
     "ICU: Libraries"
     FORCE
@@ -64,7 +63,6 @@ if (USE_PRECOMPILED_V8)
 
   set(V8_LIBS
     "${V8_BIN_DIR}/libv8_base.a;${V8_BIN_DIR}/libv8_libbase.a;${V8_BIN_DIR}/libv8_libplatform.a;${V8_BIN_DIR}/libv8_nosnapshot.a"
-    ${libev_BINARY_DIR}/libev.a
     CACHE INTERNAL
     "${PROJECT_NAME}: Libraries"
     FORCE

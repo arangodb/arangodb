@@ -39,7 +39,7 @@
 #define READ_LOCKER(obj, lock) \
   arangodb::basics::ReadLocker<typename std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::BLOCKING, true, __FILE__, __LINE__)
 
-#define READ_LOCKER_EVENTUAL(obj, lock, t) \
+#define READ_LOCKER_EVENTUAL(obj, lock) \
   arangodb::basics::ReadLocker<typename std::decay<decltype (lock)>::type> obj(&lock, arangodb::basics::LockerType::EVENTUAL, true, __FILE__, __LINE__)
 
 #define TRY_READ_LOCKER(obj, lock) \

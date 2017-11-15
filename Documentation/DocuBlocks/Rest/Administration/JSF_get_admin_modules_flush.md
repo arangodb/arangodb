@@ -42,22 +42,30 @@ imposes a chronological order. The default value is *asc*.
 Returns fatal, error, warning or info log messages from the server's global log.
 The result is a JSON object with the following attributes:
 
-- *lid*: a list of log entry identifiers. Each log message is uniquely
-  identified by its @LIT{lid} and the identifiers are in ascending
-  order.
-
-- *level*: a list of the log-levels for all log entries.
-
-- *timestamp*: a list of the timestamps as seconds since 1970-01-01 for all log
-  entries.
-
-- *text* a list of the texts of all log entries
-
-- *topic* a list of the topics of all log entries
-
-- *totalAmount*: the total amount of log entries before pagination.
-
 @RESTRETURNCODES
+
+@RESTRETURNCODE{200}
+
+@RESTREPLYBODY{lid,array,required,string}
+a list of log entry identifiers. Each log message is uniquely
+identified by its @LIT{lid} and the identifiers are in ascending
+order.
+
+@RESTREPLYBODY{level,string,required,string}
+A list of the loglevels for all log entries.
+
+@RESTREPLYBODY{timestamp,array,required,string}
+a list of the timestamps as seconds since 1970-01-01 for all log
+entries.
+
+@RESTREPLYBODY{text,string,required,string}
+a list of the texts of all log entries
+
+@RESTREPLYBODY{topic,string,required,string}
+a list of the topics of all log entries
+
+@RESTREPLYBODY{totalAmount,integer,required,int64}
+the total amount of log entries before pagination.
 
 @RESTRETURNCODE{400}
 is returned if invalid values are specified for *upto* or *level*.
@@ -101,6 +109,133 @@ and the log levels being the object values.
 
 The result is a JSON object with the adjusted log topics being the object keys, and
 the adjusted log levels being the object values.
+
+It can set the loglevel of all facilities by only specifying the loglevel as string without json.
+
+Possible loglevels are:
+ - FATAL - There will be no way out of this. ArangoDB will go down after this message.
+ - ERROR - This is an error. you should investigate and fix it. It may harm your production.
+ - WARNING - This may be serious application-wise, but we don't know.
+ - INFO - Something has happened, take notice, but no drama attached.
+ - DEBUG - output debug messages
+ - TRACE - trace - prepare your log to be flooded - don't use in production.
+
+@RESTBODYPARAM{agency,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{agencycomm,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{authentication,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{authorization,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{cache,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{cluster,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{collector,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{communication,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{compactor,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{config,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{datafiles,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{development,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{engines,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{general,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{graphs,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{heartbeat,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{memory,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{mmap,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{performance,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{pregel,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{queries,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{replication,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{requests,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{rocksdb,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{ssl,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{startup,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{supervision,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{syscall,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{threads,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{trx,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{v8,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{views,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{ldap,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{audit-authentication,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{audit-database,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{audit-collection,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{audit-view,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{audit-documentation,string,optional,string}
+One of the possible loglevels.
+
+@RESTBODYPARAM{audit-service,string,optional,string}
+One of the possible loglevels.
 
 @RESTRETURNCODES
 

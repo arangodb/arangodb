@@ -169,7 +169,8 @@ void Worker<V, E, M>::_initializeMessageCaches() {
 }
 
 template <typename V, typename E, typename M>
-VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
+void Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data,
+                                        VPackBuilder& response) {
   // Only expect serial calls from the conductor.
   // Lock to prevent malicous activity
   MUTEX_LOCKER(guard, _commandMutex);
@@ -229,7 +230,6 @@ VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
 
   // responds with info which allows the conductor to decide whether
   // to start the next GSS or end the execution
-  VPackBuilder response;
   response.openObject();
   response.add(Utils::senderKey, VPackValue(ServerState::instance()->getId()));
   response.add(Utils::activeCountKey, VPackValue(_activeCount));
@@ -238,9 +238,6 @@ VPackBuilder Worker<V, E, M>::prepareGlobalStep(VPackSlice const& data) {
   response.add(Utils::edgeCountKey, VPackValue(_graphStore->localEdgeCount()));
   _workerAggregators->serializeValues(response);
   response.close();
-
-  // LOG_TOPIC(INFO, Logger::PREGEL) << "Responded: " << response.toJson();
-  return response;
 }
 
 template <typename V, typename E, typename M>

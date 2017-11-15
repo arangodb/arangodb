@@ -126,9 +126,8 @@ bool RestDocumentHandler::createDocument() {
                          opOptions.isSynchronousReplicationFrom);
 
   // find and load collection given by name or identifier
-  auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
-  SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  AccessMode::Type::WRITE);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
   bool const isMultiple = body.isArray();
   if (!isMultiple) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
@@ -161,8 +160,7 @@ bool RestDocumentHandler::createDocument() {
 
   generateSaved(result, collectionName,
                 TRI_col_type_e(trx.getCollectionType(collectionName)),
-                transactionContext->getVPackOptionsForDump(), isMultiple);
-
+                ctx->getVPackOptionsForDump(), isMultiple);
   return true;
 }
 
@@ -233,9 +231,8 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   VPackSlice search = builder.slice();
 
   // find and load collection given by name or identifier
-  auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
-  SingleCollectionTransaction trx(transactionContext, collection,
-                                  AccessMode::Type::READ);
+  auto ctx(transaction::StandaloneContext::Create(_vocbase));
+  SingleCollectionTransaction trx(ctx, collection, AccessMode::Type::READ);
   trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   // ...........................................................................
@@ -279,8 +276,7 @@ bool RestDocumentHandler::readSingleDocument(bool generateBody) {
   }
 
   // use default options
-  generateDocument(result.slice(), generateBody,
-                   transactionContext->getVPackOptionsForDump());
+  generateDocument(result.slice(), generateBody, ctx->getVPackOptionsForDump());
   return true;
 }
 
@@ -425,9 +421,8 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
   }
 
   // find and load collection given by name or identifier
-  auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
-  SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  AccessMode::Type::WRITE);
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
   if (!isArrayCase) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
@@ -473,7 +468,7 @@ bool RestDocumentHandler::modifyDocument(bool isPatch) {
 
   generateSaved(result, collectionName,
                 TRI_col_type_e(trx.getCollectionType(collectionName)),
-                transactionContext->getVPackOptionsForDump(), isArrayCase);
+                ctx->getVPackOptionsForDump(), isArrayCase);
 
   return true;
 }
@@ -521,8 +516,7 @@ bool RestDocumentHandler::deleteDocument() {
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
 
-  auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
-
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
   VPackBuilder builder;
   VPackSlice search;
   std::shared_ptr<VPackBuilder> builderPtr;
@@ -558,8 +552,7 @@ bool RestDocumentHandler::deleteDocument() {
     return false;
   }
 
-  SingleCollectionTransaction trx(transactionContext, collectionName,
-                                  AccessMode::Type::WRITE);
+  SingleCollectionTransaction trx(ctx, collectionName, AccessMode::Type::WRITE);
   if (suffixes.size() == 2 || !search.isArray()) {
     trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
@@ -587,7 +580,7 @@ bool RestDocumentHandler::deleteDocument() {
 
   generateDeleted(result, collectionName,
                   TRI_col_type_e(trx.getCollectionType(collectionName)),
-                  transactionContext->getVPackOptionsForDump());
+                  ctx->getVPackOptionsForDump());
   return true;
 }
 
@@ -611,8 +604,8 @@ bool RestDocumentHandler::readManyDocuments() {
   opOptions.ignoreRevs =
       extractBooleanParameter(StaticStrings::IgnoreRevsString, true);
 
-  auto transactionContext(transaction::StandaloneContext::Create(_vocbase));
-  SingleCollectionTransaction trx(transactionContext, collectionName,
+  auto ctx = transaction::StandaloneContext::Create(_vocbase);
+  SingleCollectionTransaction trx(ctx, collectionName,
                                   AccessMode::Type::READ);
 
   // ...........................................................................
@@ -627,7 +620,7 @@ bool RestDocumentHandler::readManyDocuments() {
   }
 
   TRI_ASSERT(_request != nullptr);
-  VPackSlice search = _request->payload(transactionContext->getVPackOptions());
+  VPackSlice search = _request->payload(ctx->getVPackOptions());
 
   OperationResult result = trx.document(collectionName, search, opOptions);
 
@@ -643,7 +636,6 @@ bool RestDocumentHandler::readManyDocuments() {
     return false;
   }
 
-  generateDocument(result.slice(), true,
-                   transactionContext->getVPackOptionsForDump());
+  generateDocument(result.slice(), true, ctx->getVPackOptionsForDump());
   return true;
 }

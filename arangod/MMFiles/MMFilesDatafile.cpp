@@ -82,7 +82,7 @@ static TRI_voc_crc_t Crc28(TRI_voc_crc_t crc, void const* data, size_t length) {
 }
 
 /// @brief check if a marker appears to be created by ArangoDB 2.8
-static bool IsMarker28(void const* marker) {
+static bool IsMarker28(void const* marker, size_t length) {
   struct Marker28 {
     uint32_t       _size; 
     TRI_voc_crc_t        _crc;     
@@ -99,6 +99,10 @@ static bool IsMarker28(void const* marker) {
 
   char const* ptr = static_cast<char const*>(marker);
   Marker28 const* m = static_cast<Marker28 const*>(marker);
+  
+  if (m->_size < o + n || (m->_size - o - n > length)) {
+    return false;
+  }
 
   TRI_voc_crc_t crc = TRI_InitialCrc32();
 
@@ -316,9 +320,10 @@ int MMFilesDatafile::judge(std::string const& filename) {
 }
 
 /// @brief creates either an anonymous or a physical datafile
-MMFilesDatafile* MMFilesDatafile::create(std::string const& filename, TRI_voc_fid_t fid,
-                                   uint32_t maximalSize,
-                                   bool withInitialMarkers) {
+MMFilesDatafile* MMFilesDatafile::create(std::string const& filename, 
+                                         TRI_voc_fid_t fid,
+                                         uint32_t maximalSize,
+                                         bool withInitialMarkers) {
   size_t pageSize = PageSizeFeature::getPageSize();
 
   TRI_ASSERT(pageSize >= 256);
@@ -496,7 +501,7 @@ int MMFilesDatafile::reserveElement(uint32_t size, MMFilesMarker** position,
       return TRI_ERROR_ARANGO_DOCUMENT_TOO_LARGE;
     }
 
-    // fall-through intentional
+    // intentionally falls through
   }
 
   // add the marker, leave enough room for the footer
@@ -595,24 +600,25 @@ int MMFilesDatafile::writeElement(void* position, MMFilesMarker const* marker, b
     LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "logic error. writing out of bounds of datafile '" << getName() << "'";
     return TRI_ERROR_ARANGO_ILLEGAL_STATE;
   }
-
+  
   memcpy(position, marker, static_cast<size_t>(marker->getSize()));
+  
+  TRI_IF_FAILURE("BreakHeaderMarker") {
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+    if (marker->getType() == TRI_DF_MARKER_HEADER && getName().find("logfile-") == std::string::npos) { 
+      // intentionally corrupt the marker
+      reinterpret_cast<MMFilesMarker*>(position)->breakIt();
+    }
+#endif
+  }
 
   if (forceSync) {
-    bool ok = sync(static_cast<char const*>(position), reinterpret_cast<char const*>(position) + marker->getSize());
+    int res = this->sync(static_cast<char const*>(position), reinterpret_cast<char const*>(position) + marker->getSize());
 
-    if (!ok) {
-      setState(TRI_DF_STATE_WRITE_ERROR);
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "msync failed with: " << TRI_errno_string(res);
 
-      if (errno == ENOSPC) {
-        _lastError = TRI_set_errno(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
-      } else {
-        _lastError = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-      }
-
-      LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "msync failed with: " << TRI_last_error();
-
-      return _lastError;
+      return res;
     } else {
       LOG_TOPIC(TRACE, arangodb::Logger::FIXME) << "msync succeeded " << (void*) position << ", size " << marker->getSize();
     }
@@ -666,7 +672,7 @@ int MMFilesDatafile::writeCrcElement(void* position, MMFilesMarker* marker, bool
     crc = TRI_BlockCrc32(crc, (char const*)marker, marker->getSize());
     marker->setCrc(TRI_FinalCrc32(crc));
   }
-
+  
   return writeElement(position, marker, forceSync);
 }
 
@@ -830,18 +836,10 @@ int MMFilesDatafile::seal() {
   }
 
   // sync file
-  bool ok = sync(_synced, reinterpret_cast<char const*>(_data) + _currentSize);
+  res = this->sync(_synced, reinterpret_cast<char const*>(_data) + _currentSize);
 
-  if (!ok) {
-    _state = TRI_DF_STATE_WRITE_ERROR;
-
-    if (errno == ENOSPC) {
-      _lastError = TRI_set_errno(TRI_ERROR_ARANGO_FILESYSTEM_FULL);
-    } else {
-      _lastError = TRI_errno();
-    }
-
-    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "msync failed with: " << TRI_last_error();
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "msync failed with: " << TRI_errno_string(res);
   }
 
   // everything is now synced
@@ -852,18 +850,16 @@ int MMFilesDatafile::seal() {
   // for ArangoDB to work) 
   readOnly();
 
-  // seal datafile
-  if (ok) {
-    _isSealed = true;
-    _state = TRI_DF_STATE_READ;
-    // note: _initSize must remain constant
-    TRI_ASSERT(_initSize == _maximalSize);
-    _maximalSize = _currentSize;
-  }
-
-  if (!ok) {
+  if (res != TRI_ERROR_NO_ERROR) {
     return _lastError;
   }
+  
+  // seal datafile
+  _isSealed = true;
+  _state = TRI_DF_STATE_READ;
+  // note: _initSize must remain constant
+  TRI_ASSERT(_initSize == _maximalSize);
+  _maximalSize = _currentSize;
 
   if (isPhysical()) {
     // From now on we predict random access (until collection or compaction):
@@ -1069,20 +1065,27 @@ int MMFilesDatafile::close() {
 }
 
 /// @brief sync the data of a datafile
-bool MMFilesDatafile::sync(char const* begin, char const* end) {
+int MMFilesDatafile::sync(char const* begin, char const* end) {
   if (!isPhysical()) {
     // anonymous regions do not need to be synced
-    return true;
+    return TRI_ERROR_NO_ERROR;
   }
 
   TRI_ASSERT(_fd >= 0);
 
   if (begin == end) {
     // no need to sync
-    return true;
+    return TRI_ERROR_NO_ERROR;
   }
 
-  return TRI_MSync(_fd, begin, end);
+  int res = TRI_MSync(_fd, begin, end);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    _state = TRI_DF_STATE_WRITE_ERROR;
+    _lastError = res;
+  }
+
+  return res;
 }
  
 /// @brief truncates a datafile
@@ -1727,9 +1730,9 @@ bool MMFilesDatafile::tryRepair() {
                      static_cast<size_t>(size));
 
               buffer.reset(); // don't need the buffer anymore
-              bool ok = sync(ptr, (ptr + size));
+              int res = this->sync(ptr, (ptr + size));
 
-              if (ok) {
+              if (res == TRI_ERROR_NO_ERROR) {
                 LOG_TOPIC(INFO, arangodb::Logger::FIXME) << "zeroed single invalid marker in datafile '" << getName() << "' at position " << currentSize;
               } else {
                 LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "could not zero single invalid marker in datafile '" << getName() << "' at position " << currentSize;
@@ -1873,7 +1876,7 @@ MMFilesDatafile* MMFilesDatafile::openHelper(std::string const& filename, bool i
   ok = CheckCrcMarker(reinterpret_cast<MMFilesMarker const*>(ptr), end);
 
   if (!ok) {
-    if (IsMarker28(ptr)) {
+    if (IsMarker28(ptr, len)) {
       TRI_TRACKED_CLOSE_FILE(fd);
       LOG_TOPIC(ERR, arangodb::Logger::FIXME) << "datafile found from older version of ArangoDB. "
                << "Please dump data from that version with arangodump "

@@ -34,8 +34,6 @@ EnumerateListBlock::EnumerateListBlock(ExecutionEngine* engine,
                                        EnumerateListNode const* en)
     : ExecutionBlock(engine, en),
       _index(0),
-      _thisBlock(0),
-      _seen(0),
       _docVecSize(0),
       _inVarRegId(ExecutionNode::MaxRegisterId) {
   auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
@@ -60,8 +58,6 @@ int EnumerateListBlock::initializeCursor(AqlItemBlock* items, size_t pos) {
 
   // handle local data (if any)
   _index = 0;      // index in _inVariable for next run
-  _thisBlock = 0;  // the current block in the _inVariable DOCVEC
-  _seen = 0;       // the sum of the sizes of the blocks in the _inVariable
 
   return TRI_ERROR_NO_ERROR;
   DEBUG_END_BLOCK();  
@@ -150,8 +146,6 @@ AqlItemBlock* EnumerateListBlock::getSome(size_t, size_t atMost) {
 
     if (_index == sizeInVar) {
       _index = 0;
-      _thisBlock = 0;
-      _seen = 0;
       // advance read position in the current block . . .
       if (++_pos == cur->size()) {
         returnBlock(cur);
@@ -217,8 +211,6 @@ size_t EnumerateListBlock::skipSome(size_t atLeast, size_t atMost) {
       // eat the whole of the current inVariable and proceed . . .
       skipped += (sizeInVar - _index);
       _index = 0;
-      _thisBlock = 0;
-      _seen = 0;
       if (++_pos == cur->size()) {
         returnBlock(cur);
         _buffer.pop_front();  // does not throw
@@ -235,18 +227,6 @@ AqlValue EnumerateListBlock::getAqlValue(AqlValue const& inVarReg, bool& mustDes
   DEBUG_BEGIN_BLOCK();  
   TRI_IF_FAILURE("EnumerateListBlock::getAqlValue") {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-  }
-
-  if (inVarReg.isDocvec()) {
-    // special handling here, to save repeated evaluation of all itemblocks
-    AqlItemBlock* block = inVarReg.docvecAt(_thisBlock);
-    AqlValue out = block->getValueReference(_index - _seen, 0).clone();
-    if (++_index == block->size() + _seen) {
-      _seen += block->size();
-      _thisBlock++;
-    }
-    mustDestroy = true;
-    return out;
   }
 
   return inVarReg.at(_trx, _index++, mustDestroy, true);

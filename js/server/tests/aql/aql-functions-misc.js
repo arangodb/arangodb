@@ -555,7 +555,6 @@ function ahuacatlMiscFunctionsTestSuite () {
       // allow some tolerance for the time diff (because of busy servers and Valgrind)
       assertTrue(diff >= 1.8 && diff <= 20, "SLEEP(2) did not take between 1.8 and 20 seconds");
     }
-  
   };
 }
 
@@ -646,8 +645,16 @@ function ahuacatlCollectionCountTestSuite () {
         assertEqual(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, err.errorNum);
       }
       assertEqual(1000, c.count());
+   },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test COLLECTIONS()
+////////////////////////////////////////////////////////////////////////////////
+
+    testCollections : function () {
+      assertEqual(db._collections().map((col) => {return {name:col.name(),_id:col._id};}), getQueryResults('RETURN NOOPT(COLLECTIONS())')[0]);
+      assertEqual(db._collections().map((col) => {return {name:col.name(),_id:col._id};}), getQueryResults('RETURN NOOPT(V8(COLLECTIONS()))')[0]);
     }
-  
   };
 }
 
@@ -659,4 +666,3 @@ jsunity.run(ahuacatlMiscFunctionsTestSuite);
 jsunity.run(ahuacatlCollectionCountTestSuite);
 
 return jsunity.done();
-

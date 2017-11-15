@@ -517,7 +517,10 @@ void MMFilesCompactorThread::compactDatafiles(LogicalCollection* collection,
   TRI_ASSERT(context->_dfi.sizeDead == 0);
 
   physical->_datafileStatistics.compactionRun(nrCombined, compactionBytesRead, context->_dfi.sizeAlive);
-  physical->_datafileStatistics.replace(compactor->fid(), context->_dfi);
+  try {
+    physical->_datafileStatistics.replace(compactor->fid(), context->_dfi, true);
+  } catch (...) {
+  }
 
   trx.commit();
 

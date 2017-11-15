@@ -46,6 +46,31 @@ class AuthenticationFeature final
 
   bool isActive() const { return _active && isEnabled(); }
 
+ public:
+  bool authenticationUnixSockets() const { return _authenticationUnixSockets; }
+  bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
+  std::string jwtSecret() { return authInfo()->jwtSecret(); }
+  bool hasUserdefinedJwt() const { return !_jwtSecretProgramOption.empty(); }
+
+  /// set new jwt secret, regenerate _jetToken
+  void setJwtSecret(std::string const& jwtSecret) {
+    authInfo()->setJwtSecret(jwtSecret);
+    generateJwtToken();
+  }
+
+  /// Get the jwt token, which should be used for communicatin
+  std::string const& jwtToken() const { return _jwtToken; }
+      
+  double authenticationTimeout() const { return _authenticationTimeout; }
+  bool localAuthentication() const { return _localAuthentication; }
+
+  AuthInfo* authInfo() const;
+  
+private:
+
+  /// generate new _jwtToken
+  void generateJwtToken();
+
  private:
   AuthInfo* _authInfo;
   bool _authenticationUnixSockets;
@@ -54,26 +79,10 @@ class AuthenticationFeature final
   bool _localAuthentication;
 
   std::string _jwtSecretProgramOption;
+  std::string _jwtToken;
   bool _active;
 
- public:
-  bool authenticationUnixSockets() const { return _authenticationUnixSockets; }
-  bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
-  std::string jwtSecret() { return authInfo()->jwtSecret(); }
-  std::string generateNewJwtSecret();
-  bool hasUserdefinedJwt() const { return !_jwtSecretProgramOption.empty(); }
-  void setJwtSecret(std::string const& jwtSecret) {
-    authInfo()->setJwtSecret(jwtSecret);
-  }
-  double authenticationTimeout() const { return _authenticationTimeout; }
-  bool localAuthentication() const { return _localAuthentication; }
 
-  AuthInfo* authInfo();
-  AuthLevel canUseDatabase(std::string const& username,
-                           std::string const& dbname);
-  AuthLevel canUseCollection(std::string const& username,
-                             std::string const& dbname,
-                             std::string const& collection);
 };
 };
 

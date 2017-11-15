@@ -129,3 +129,15 @@ bool TRI_ObjectToBoolean(v8::Handle<v8::Value> const value) {
   return false;
 }
 
+/// @brief extracts an optional boolean property from a V8 object
+bool TRI_GetOptionalBooleanProperty(v8::Isolate* isolate,
+                                    v8::Handle<v8::Object> const obj,
+                                    const char* property,
+                                    bool defaultValue) {
+  auto value = obj->Get(TRI_V8_ASCII_STRING(isolate, property));
+  if (!value->IsUndefined()) {
+    return TRI_ObjectToBoolean(value);
+  } else {
+    return defaultValue;
+  }
+}

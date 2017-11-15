@@ -48,6 +48,7 @@ AgencyFeature::AgencyFeature(application_features::ApplicationServer* server)
       _minElectionTimeout(1.0),
       _maxElectionTimeout(5.0),
       _supervision(false),
+      _supervisionTouched(false),
       _waitForSync(true),
       _supervisionFrequency(1.0),
       _compactionStepSize(20000),
@@ -127,6 +128,11 @@ void AgencyFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
                            "maximum size of appendEntries document (# log entries)",
                            new UInt64Parameter(&_maxAppendSize));
 
+  options->addHiddenOption(
+    "--agency.disaster-recovery-id",
+    "allows for specification of the id for this agent; dangerous option for disaster recover only!",
+    new StringParameter(&_recoveryId));
+
 }
 
 void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
@@ -201,6 +207,23 @@ void AgencyFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
                                        << "' specified for --agency.my-address";
       FATAL_ERROR_EXIT();
     }
+
+    std::string fallback = unified;
+    // Now extract the hostname/IP:
+    auto pos = fallback.find("://");
+    if (pos != std::string::npos) {
+      fallback = fallback.substr(pos+3);
+    }
+    pos = fallback.rfind(':');
+    if (pos != std::string::npos) {
+      fallback = fallback.substr(0, pos);
+    }
+    auto ss = ServerState::instance();
+    ss->findHost(fallback);
+  }
+
+  if (result.touched("agency.supervision")) {
+    _supervisionTouched = true;
   }
 }
 
@@ -250,17 +273,20 @@ void AgencyFeature::start() {
     _maxAppendSize /= 10;
   }
 
-  _agent.reset(new consensus::Agent(consensus::config_t(
-      _size, _poolSize, _minElectionTimeout, _maxElectionTimeout, endpoint,
-      _agencyEndpoints, _supervision, _waitForSync, _supervisionFrequency,
-      _compactionStepSize, _compactionKeepSize, _supervisionGracePeriod,
-      _cmdLineTimings, _maxAppendSize)));
-
+  _agent.reset(
+    new consensus::Agent(
+      consensus::config_t(
+        _recoveryId, _size, _poolSize, _minElectionTimeout, _maxElectionTimeout,
+        endpoint, _agencyEndpoints, _supervision, _supervisionTouched,
+        _waitForSync, _supervisionFrequency, _compactionStepSize,
+        _compactionKeepSize, _supervisionGracePeriod, _cmdLineTimings,
+        _maxAppendSize)));
+  
   AGENT = _agent.get();
-
+  
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Starting agency personality";
   _agent->start();
-
+  
   LOG_TOPIC(DEBUG, Logger::AGENCY) << "Loading agency";
   _agent->load();
 }
@@ -269,7 +295,7 @@ void AgencyFeature::beginShutdown() {
   if (!isEnabled()) {
     return;
   }
-
+  
   // pass shutdown event to _agent so it can notify all its sub-threads
   _agent->beginShutdown();
 }
@@ -299,7 +325,23 @@ void AgencyFeature::stop() {
         LOG_TOPIC(WARN, Logger::AGENCY) << "waiting for agent thread to finish";
       }
     }
+
+    // Wait until all agency threads have been shut down. Note that the
+    // actual agent object is only destroyed in the destructor to allow
+    // server jobs from RestAgencyHandlers to complete without incident:
+    _agent->waitForThreadsStop();
   }
 
   AGENT = nullptr;
 }
+
+void AgencyFeature::unprepare() {
+  if (!isEnabled()) {
+    return;
+  }
+  // delete the Agent object here ensures it shuts down all of its threads
+  // this is a precondition that it must fulfill before we can go on with the
+  // shutdown
+  _agent.reset();
+}
+
