@@ -286,7 +286,7 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
     if (!shouldHandleMarker(column_family_id, true, key)) {
       if (column_family_id == _documentsCF && // ignoring collection
           _lastLogType == RocksDBLogType::SinglePut) {
-        TRI_ASSERT(!_seenBeginTransaction && _singleOp);
+        TRI_ASSERT(!_seenBeginTransaction);
         resetTransientState(); // ignoring the put
       }
       return rocksdb::Status();
