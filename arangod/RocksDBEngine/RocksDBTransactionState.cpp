@@ -198,13 +198,11 @@ void RocksDBTransactionState::createTransaction() {
   
   // set begin marker
   if (!hasHint(transaction::Hints::Hint::SINGLE_OPERATION)) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-    TRI_ASSERT(_numLogdata == 0);
-#endif
     RocksDBLogValue header =
         RocksDBLogValue::BeginTransaction(_vocbase->id(), _id);
     _rocksTransaction->PutLogData(header.slice());
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+    TRI_ASSERT(_numLogdata == 0);
     ++_numLogdata;
 #endif
   }
@@ -218,6 +216,13 @@ arangodb::Result RocksDBTransactionState::internalCommit() {
     TRI_ASSERT(x <= 1);
     TRI_ASSERT(_numLogdata == x);
   } else {
+    if (_numLogdata < 1 + (x > 0 ? 1 : 0) + _numRemoves) {
+      LOG_TOPIC(ERR, Logger::FIXME)
+      << "_numInserts " << _numInserts << "  "
+      << "_numRemoves " << _numRemoves << "  "
+      << "_numUpdates " << _numUpdates << "  "
+      << "_numLogdata " << _numLogdata;
+    }
     // begin transaction + n DocumentOpsPrologue + m doc removes
     TRI_ASSERT(_numLogdata >= 1 + (x > 0 ? 1 : 0) + _numRemoves);
   }
@@ -546,6 +551,7 @@ void RocksDBTransactionState::checkIntermediateCommit(uint64_t newSize) {
       _options.intermediateCommitSize <= newSize) {
     // LOG_TOPIC(ERR, Logger::FIXME) << "INTERMEDIATE COMMIT!";
     internalCommit();
+    _lastUsedCollection = 0;
     _numInternal = 0;
     _numInserts = 0;
     _numUpdates = 0;
