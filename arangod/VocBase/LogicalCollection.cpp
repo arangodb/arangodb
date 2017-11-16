@@ -1383,16 +1383,16 @@ Result LogicalCollection::compareChecksums(VPackSlice checksumSlice, std::string
 std::string LogicalCollection::generateGloballyUniqueId() const {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   
-  
   std::string result;
   result.reserve(64);
+
   if (ServerState::isCoordinator(role)) {
     TRI_ASSERT(_planId != 0);
     result.append(std::to_string(_planId));
   } else if (ServerState::isDBServer(role)) {
     TRI_ASSERT(_planId != 0);
-    // we add the shard name to the collection. If we every
-    // replicate shards, we identify them clusterwide
+    // we add the shard name to the collection. If we ever
+    // replicate shards, we can identify them cluster-wide
     result.append(std::to_string(_planId));
     result.push_back('/');
     result.append(_name);
