@@ -575,7 +575,6 @@ class MyWALParser : public rocksdb::WriteBatch::Handler,
       // happens when dropping a collection or log markers
       // are ignored for dbs and collections
       if (!(_seenBeginTransaction || _singleOp)) {
-        TRI_ASSERT(dbId == 0 && cid == 0);
         return false;
       }
     } else {
