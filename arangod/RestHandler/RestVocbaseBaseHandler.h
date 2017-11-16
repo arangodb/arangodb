@@ -262,8 +262,7 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
 
   void generateTransactionError(std::string const& str, Result const& res,
                                 std::string const& key, TRI_voc_rid_t rid = 0){
-    generateTransactionError(str,
-        OperationResult(res.errorNumber(), res.errorMessage()), key, rid);
+    generateTransactionError(str, OperationResult(res), key, rid);
   }
 
   //////////////////////////////////////////////////////////////////////////////

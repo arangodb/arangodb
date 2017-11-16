@@ -127,9 +127,7 @@ static OperationResult emptyResult(bool waitForSync) {
   VPackBuilder resultBuilder;
   resultBuilder.openArray();
   resultBuilder.close();
-  std::unordered_map<int, size_t> errorCounter;
-  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
-                         waitForSync, errorCounter);
+  return OperationResult(Result(), resultBuilder.steal(), nullptr, waitForSync);
 }
 }  // namespace
 
@@ -854,9 +852,7 @@ OperationResult transaction::Methods::anyLocal(
     return OperationResult(res);
   }
 
-  return OperationResult(resultBuilder.steal(),
-                         _transactionContextPtr->orderCustomTypeHandler(), "",
-                         TRI_ERROR_NO_ERROR, false);
+  return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
 }
 
 TRI_voc_cid_t transaction::Methods::addCollectionAtRuntime(
@@ -1064,7 +1060,7 @@ static OperationResult errorCodeFromClusterResult(std::shared_ptr<VPackBuilder> 
       if (num.isNumber()) {
         if (msg.isString()) {
           // found an error number and an error message, so let's use it!
-          return OperationResult(num.getNumericValue<int>(), msg.copyString());
+          return OperationResult(Result(num.getNumericValue<int>(), msg.copyString()));
         }
         // we found an error number, so let's use it!
         return OperationResult(num.getNumericValue<int>());
@@ -1083,11 +1079,9 @@ OperationResult transaction::Methods::clusterResultDocument(
   switch (responseCode) {
     case rest::ResponseCode::OK:
     case rest::ResponseCode::PRECONDITION_FAILED:
-      return OperationResult(resultBody->steal(), nullptr, "",
-                             responseCode == rest::ResponseCode::OK
+      return OperationResult(Result(responseCode == rest::ResponseCode::OK
                                  ? TRI_ERROR_NO_ERROR
-                                 : TRI_ERROR_ARANGO_CONFLICT,
-                             false, errorCounter);
+                                 : TRI_ERROR_ARANGO_CONFLICT), resultBody->steal(), nullptr, false, errorCounter);
     case rest::ResponseCode::NOT_FOUND:
       return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND);
     default:
@@ -1103,9 +1097,7 @@ OperationResult transaction::Methods::clusterResultInsert(
   switch (responseCode) {
     case rest::ResponseCode::ACCEPTED:
     case rest::ResponseCode::CREATED:
-      return OperationResult(
-          resultBody->steal(), nullptr, "", TRI_ERROR_NO_ERROR,
-          responseCode == rest::ResponseCode::CREATED, errorCounter);
+      return OperationResult(Result(), resultBody->steal(), nullptr, responseCode == rest::ResponseCode::CREATED, errorCounter);
     case rest::ResponseCode::PRECONDITION_FAILED:
       return errorCodeFromClusterResult(resultBody, TRI_ERROR_ARANGO_CONFLICT);
     case rest::ResponseCode::BAD:
@@ -1136,7 +1128,7 @@ OperationResult transaction::Methods::clusterResultModify(
     // Fall through
     case rest::ResponseCode::ACCEPTED:
     case rest::ResponseCode::CREATED:
-      return OperationResult(resultBody->steal(), nullptr, "", errorCode,
+      return OperationResult(Result(errorCode), resultBody->steal(), nullptr, 
                              responseCode == rest::ResponseCode::CREATED,
                              errorCounter);
     case rest::ResponseCode::BAD:
@@ -1158,10 +1150,10 @@ OperationResult transaction::Methods::clusterResultRemove(
     case rest::ResponseCode::ACCEPTED:
     case rest::ResponseCode::PRECONDITION_FAILED:
       return OperationResult(
-          resultBody->steal(), nullptr, "",
-          responseCode == rest::ResponseCode::PRECONDITION_FAILED
+          Result(responseCode == rest::ResponseCode::PRECONDITION_FAILED
               ? TRI_ERROR_ARANGO_CONFLICT
-              : TRI_ERROR_NO_ERROR,
+              : TRI_ERROR_NO_ERROR),
+          resultBody->steal(), nullptr, 
           responseCode != rest::ResponseCode::ACCEPTED, errorCounter);
     case rest::ResponseCode::BAD:
       return errorCodeFromClusterResult(resultBody, TRI_ERROR_INTERNAL);
@@ -1292,9 +1284,8 @@ OperationResult transaction::Methods::documentLocal(
     res = TRI_ERROR_NO_ERROR;
   }
 
-  return OperationResult(resultBuilder.steal(),
+  return OperationResult(std::move(res), resultBuilder.steal(),
                          _transactionContextPtr->orderCustomTypeHandler(),
-                         res.errorMessage(), res.errorNumber(),
                          options.waitForSync, countErrorCodes);
 }
 
@@ -1585,9 +1576,7 @@ OperationResult transaction::Methods::insertLocal(
     resultBuilder.clear();
   }
 
-  return OperationResult(resultBuilder.steal(), nullptr, res.errorMessage(),
-                         res.errorNumber(), options.waitForSync,
-                         countErrorCodes);
+  return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options.waitForSync, countErrorCodes);
 }
 
 /// @brief update/patch one or multiple documents in a collection
@@ -1937,8 +1926,7 @@ OperationResult transaction::Methods::modifyLocal(
     resultBuilder.clear();
   }
 
-  return OperationResult(resultBuilder.steal(), nullptr, res.errorMessage(),
-                         res.errorNumber(), options.waitForSync, errorCounter);
+  return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options.waitForSync, errorCounter);
 }
 
 /// @brief remove one or multiple documents in a collection
@@ -2213,9 +2201,7 @@ OperationResult transaction::Methods::removeLocal(
     resultBuilder.clear();
   }
 
-  return OperationResult(resultBuilder.steal(), nullptr, res.errorMessage(),
-                         res.errorNumber(), options.waitForSync,
-                         countErrorCodes);
+  return OperationResult(std::move(res), resultBuilder.steal(), nullptr, options.waitForSync, countErrorCodes);
 }
 
 /// @brief fetches all documents in a collection
@@ -2278,9 +2264,7 @@ OperationResult transaction::Methods::allLocal(
     return OperationResult(res);
   }
 
-  return OperationResult(resultBuilder.steal(),
-                         _transactionContextPtr->orderCustomTypeHandler(), "",
-                         TRI_ERROR_NO_ERROR, false);
+  return OperationResult(Result(), resultBuilder.steal(), _transactionContextPtr->orderCustomTypeHandler(), false);
 }
 
 /// @brief remove all documents in a collection
@@ -2348,7 +2332,10 @@ OperationResult transaction::Methods::truncateLocal(
     collection->truncate(this, options);
   } catch (basics::Exception const& ex) {
     unlock(cid, AccessMode::Type::WRITE);
-    return OperationResult(ex.code(), ex.what());
+    return OperationResult(Result(ex.code(), ex.what()));
+  } catch (std::exception const& ex) {
+    unlock(cid, AccessMode::Type::WRITE);
+    return OperationResult(Result(TRI_ERROR_INTERNAL, ex.what()));
   }
 
   // Now see whether or not we have to do synchronous replication:
@@ -2457,7 +2444,9 @@ OperationResult transaction::Methods::rotateActiveJournalLocal(
   try {
     res.reset(collection->getPhysical()->rotateActiveJournal());
   } catch (basics::Exception const& ex) {
-    return OperationResult(ex.code(), ex.what());
+    return OperationResult(Result(ex.code(), ex.what()));
+  } catch (std::exception const& ex) {
+    return OperationResult(Result(TRI_ERROR_INTERNAL, ex.what()));
   }
 
   return OperationResult(res);
@@ -2513,8 +2502,7 @@ OperationResult transaction::Methods::countLocal(
   VPackBuilder resultBuilder;
   resultBuilder.add(VPackValue(num));
 
-  return OperationResult(resultBuilder.steal(), nullptr, "", TRI_ERROR_NO_ERROR,
-                         false);
+  return OperationResult(Result(), resultBuilder.steal(), nullptr, false);
 }
 
 /// @brief Gets the best fitting index for an AQL condition.
